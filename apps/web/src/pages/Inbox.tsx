@@ -3,8 +3,15 @@ import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { InboxListOutput, InboxMark, InboxTodo, MailRow } from "@rakazo/contracts";
 import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
-import { dueTone, groupInbox, isSuspiciousCategory, localDaysUntil } from "@rakazo/core";
 import {
+  dueTone,
+  groupInbox,
+  inboxLabel,
+  isSuspiciousCategory,
+  localDaysUntil,
+} from "@rakazo/core";
+import {
+  Badge,
   Button,
   Card,
   Checkbox,
@@ -250,150 +257,150 @@ export function InboxPage({
   };
 
   return (
-    <div className="rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-medium">
+    <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+      <div className="mb-4 flex items-center gap-2">
+        <h1 className="me-1 shrink-0 text-lg font-medium">
           <Trans>Inbox</Trans>
         </h1>
-        <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-          {accounts.length > 1 ? (
-            <Tabs
-              value={tab ?? ALL}
-              onValueChange={(value) => setTab(value === ALL ? undefined : value)}
-            >
-              <TabsList className="max-w-full rounded-full">
-                <TabsTrigger value={ALL} className="rounded-full px-3">
-                  <Trans>All</Trans>
-                </TabsTrigger>
-                {accounts.map((account) => (
-                  <TabsTrigger
-                    key={account.connectionId}
-                    value={account.connectionId}
-                    className="max-w-40 rounded-full px-3"
-                  >
-                    <span className="truncate">{account.label}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          ) : null}
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              setParam("q", draft.trim());
-            }}
-          >
-            <InputGroup className="w-40 md:w-56">
-              <InputGroupAddon>
-                <Search aria-hidden="true" />
+        <form
+          className="min-w-0 flex-1"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setParam("q", draft.trim());
+          }}
+        >
+          <InputGroup className="w-full max-w-sm">
+            <InputGroupAddon>
+              <Search aria-hidden="true" />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              name="inbox-search"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder={t`Search mail`}
+              aria-label={t`Search mail`}
+              maxLength={MAX_QUERY}
+              className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
+              autoComplete="off"
+            />
+            {draft ? (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  aria-label={t`Clear`}
+                  onClick={() => {
+                    setDraft("");
+                    setParam("q", "");
+                  }}
+                >
+                  <X aria-hidden="true" />
+                </InputGroupButton>
               </InputGroupAddon>
-              <InputGroupInput
-                type="search"
-                name="inbox-search"
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder={t`Search mail`}
-                aria-label={t`Search mail`}
-                maxLength={MAX_QUERY}
-                className="[&::-webkit-search-cancel-button]:appearance-none"
-                autoComplete="off"
+            ) : null}
+          </InputGroup>
+        </form>
+        {triage ? (
+          <Toggle
+            variant="outline"
+            size="sm"
+            pressed={view === "important"}
+            onPressedChange={(pressed) => setParam("view", pressed ? "important" : "")}
+          >
+            <Trans>Important</Trans>
+          </Toggle>
+        ) : null}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            data-testid="inbox-filter"
+            render={
+              <Button
+                variant={filter || (triage && category) ? "secondary" : "outline"}
+                size="sm"
               />
-              {draft ? (
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    size="icon-xs"
-                    aria-label={t`Clear`}
-                    onClick={() => {
-                      setDraft("");
-                      setParam("q", "");
-                    }}
-                  >
-                    <X aria-hidden="true" />
-                  </InputGroupButton>
-                </InputGroupAddon>
-              ) : null}
-            </InputGroup>
-          </form>
-          {triage ? (
-            <Toggle
-              variant="outline"
-              size="sm"
-              pressed={view === "important"}
-              onPressedChange={(pressed) => setParam("view", pressed ? "important" : "")}
+            }
+            aria-label={filter || (triage && category) ? undefined : t`Filter`}
+          >
+            <ListFilter aria-hidden="true" />
+            {filter
+              ? filterLabels()[filter]
+              : triage && category
+                ? categoryLabels()[category]
+                : null}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuRadioGroup
+              value={filter ?? (triage ? category : undefined) ?? ""}
+              onValueChange={(value) => {
+                const named = InboxFilterSchema.safeParse(value);
+                setParam(named.success ? "filter" : "category", String(value));
+              }}
             >
-              <Trans>Important</Trans>
-            </Toggle>
-          ) : null}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              data-testid="inbox-filter"
-              render={
-                <Button
-                  variant={filter || (triage && category) ? "secondary" : "outline"}
-                  size="sm"
-                />
-              }
-              aria-label={filter || (triage && category) ? undefined : t`Filter`}
-            >
-              <ListFilter aria-hidden="true" />
-              {filter
-                ? filterLabels()[filter]
-                : triage && category
-                  ? categoryLabels()[category]
-                  : null}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuRadioGroup
-                value={filter ?? (triage ? category : undefined) ?? ""}
-                onValueChange={(value) => {
-                  const named = InboxFilterSchema.safeParse(value);
-                  setParam(named.success ? "filter" : "category", String(value));
-                }}
-              >
-                {(["unread", "starred", "important", "attachment"] as const).map((name) => (
-                  <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                    {filterLabels()[name]}
-                  </DropdownMenuRadioItem>
-                ))}
-                <DropdownMenuSeparator />
-                {(["primary", "promotions", "social", "updates"] as const).map((name) => (
-                  <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                    {filterLabels()[name]}
-                  </DropdownMenuRadioItem>
-                ))}
-                {triage ? (
-                  <>
-                    <DropdownMenuSeparator />
-                    {InboxViewCategorySchema.options.map((name) => (
-                      <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                        {categoryLabels()[name]}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </>
-                ) : null}
-              </DropdownMenuRadioGroup>
-              {filter || (triage && category) ? (
+              {(["unread", "starred", "important", "attachment"] as const).map((name) => (
+                <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                  {filterLabels()[name]}
+                </DropdownMenuRadioItem>
+              ))}
+              <DropdownMenuSeparator />
+              {(["primary", "promotions", "social", "updates"] as const).map((name) => (
+                <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                  {filterLabels()[name]}
+                </DropdownMenuRadioItem>
+              ))}
+              {triage ? (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setParam(filter ? "filter" : "category", "")}>
-                    <Trans>Clear</Trans>
-                  </DropdownMenuItem>
+                  {InboxViewCategorySchema.options.map((name) => (
+                    <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                      {categoryLabels()[name]}
+                    </DropdownMenuRadioItem>
+                  ))}
                 </>
               ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {onShowAgent ? (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t`Show Inbox agent`}
-              onClick={onShowAgent}
-            >
-              <PanelRightOpen aria-hidden="true" />
-            </Button>
-          ) : null}
-        </div>
+            </DropdownMenuRadioGroup>
+            {filter || (triage && category) ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setParam(filter ? "filter" : "category", "")}>
+                  <Trans>Clear</Trans>
+                </DropdownMenuItem>
+              </>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {onShowAgent ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t`Show Inbox agent`}
+            onClick={onShowAgent}
+          >
+            <PanelRightOpen aria-hidden="true" />
+          </Button>
+        ) : null}
       </div>
+      {accounts.length > 1 ? (
+        <Tabs
+          className="-mt-2 mb-4"
+          value={tab ?? ALL}
+          onValueChange={(value) => setTab(value === ALL ? undefined : value)}
+        >
+          <TabsList className="max-w-full rounded-full">
+            <TabsTrigger value={ALL} className="rounded-full px-3">
+              <Trans>All</Trans>
+            </TabsTrigger>
+            {accounts.map((account) => (
+              <TabsTrigger
+                key={account.connectionId}
+                value={account.connectionId}
+                className="max-w-40 rounded-full px-3"
+              >
+                <span className="truncate">{account.label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      ) : null}
 
       {failed ? (
         <div role="alert" className="mb-4 flex items-center gap-3 text-sm text-destructive">
@@ -646,6 +653,13 @@ export function InboxRow({
 }) {
   const bodyId = useId();
   const { t } = useLingui();
+  const labelNames = {
+    attention: t`Needs attention`,
+    newsletter: t`Newsletter`,
+    spam: t`Spam`,
+    junk: t`Junk`,
+  };
+  const label = inboxLabel(row);
   return (
     <div className={open ? "rounded-lg bg-muted" : undefined}>
       <div className="group/row flex items-center">
@@ -654,13 +668,16 @@ export function InboxRow({
           aria-expanded={open}
           aria-controls={open ? bodyId : undefined}
           onClick={onToggle}
-          className={`grid min-w-0 flex-1 grid-cols-[8px_1fr_auto] items-baseline gap-x-3 rounded-lg px-2.5 py-2 text-start text-sm hover:bg-muted md:grid-cols-[8px_160px_1fr_auto] ${row.feedback === "noise" ? "text-muted-foreground" : ""}`}
+          className={`grid min-w-0 flex-1 grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-lg px-2.5 py-2 text-start text-sm hover:bg-muted @3xl:grid-cols-[8px_160px_minmax(0,1fr)_auto] ${row.feedback === "noise" ? "text-muted-foreground" : ""}`}
         >
           <span
             aria-hidden="true"
-            className={`h-[7px] w-[7px] self-center rounded-full ${row.unread ? "bg-foreground" : "bg-transparent"}`}
+            className={`col-start-1 row-start-1 h-[7px] w-[7px] rounded-full ${row.unread ? "bg-foreground" : "bg-transparent"}`}
           />
-          <span dir="auto" className={`truncate ${row.unread ? "font-semibold" : ""}`}>
+          <span
+            dir="auto"
+            className={`col-start-2 row-start-1 truncate ${row.unread ? "font-semibold" : ""}`}
+          >
             {isSuspiciousCategory(row.category) ? (
               <TriangleAlert
                 role="img"
@@ -677,13 +694,26 @@ export function InboxRow({
           </span>
           <span
             dir="auto"
-            className="col-span-2 col-start-2 row-start-2 truncate md:col-span-1 md:col-start-auto md:row-start-auto"
+            className="col-span-2 col-start-2 row-start-2 truncate @3xl:col-span-1 @3xl:col-start-3 @3xl:row-start-1"
           >
             {row.subject}
             {row.snippet ? <span className="text-muted-foreground"> — {row.snippet}</span> : null}
           </span>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {formatMailTime(row.receivedAt, today)}
+          <span className="col-start-3 row-start-1 flex items-center justify-self-end gap-2 @3xl:col-start-4">
+            {label ? (
+              <Badge
+                variant={label === "newsletter" ? "outline" : "secondary"}
+                className={label === "spam" || label === "junk" ? "bg-warning/15 text-warning" : ""}
+              >
+                {labelNames[label]}
+              </Badge>
+            ) : null}
+            <time
+              dateTime={row.receivedAt}
+              className="text-xs whitespace-nowrap text-muted-foreground tabular-nums"
+            >
+              {formatMailTime(row.receivedAt, today)}
+            </time>
           </span>
         </button>
         {onMark ? (

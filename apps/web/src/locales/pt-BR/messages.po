@@ -2599,6 +2599,10 @@ msgstr "Ir para a mensagem mais recente"
 msgid "Jump to replied message: {excerpt}"
 msgstr "Ir para a mensagem respondida: {excerpt}"
 
+#: src/pages/Inbox.tsx
+msgid "Junk"
+msgstr ""
+
 #: src/lib/relative-time.ts
 #: src/pages/ActivityList.tsx
 msgid "just now"
@@ -3064,6 +3068,10 @@ msgstr ""
 msgid "Needs an answer"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Needs attention"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Precisa de entrada"
@@ -3113,6 +3121,10 @@ msgstr ""
 
 #: src/pages/Board.tsx
 msgid "New ticket"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Newsletter"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -4337,6 +4349,10 @@ msgstr "Padrão do espaço"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Spaces"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Spam"
 msgstr ""
 
 #: src/pages/Shell.tsx

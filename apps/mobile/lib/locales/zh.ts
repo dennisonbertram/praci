@@ -776,5 +776,8 @@ export const ZH_MESSAGES: Record<string, string> = {
   "Connect mail": "连接邮箱",
   "No mail": "没有邮件",
   Suspicious: "可疑",
+  Newsletter: "订阅邮件",
+  Spam: "垃圾邮件",
+  Junk: "垃圾内容",
   "To do": "待办",
 };

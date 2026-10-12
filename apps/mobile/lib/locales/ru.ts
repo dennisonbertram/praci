@@ -801,5 +801,8 @@ export const RU_MESSAGES: Record<string, string> = {
   "Connect mail": "Подключить почту",
   "No mail": "Нет писем",
   Suspicious: "Подозрительное",
+  Newsletter: "Рассылка",
+  Spam: "Спам",
+  Junk: "Нежелательное",
   "To do": "К выполнению",
 };
