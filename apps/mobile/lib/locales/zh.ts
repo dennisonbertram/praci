@@ -767,4 +767,13 @@ export const ZH_MESSAGES: Record<string, string> = {
   "Send deletion code": "发送删除验证码",
   "Sign in to your existing account to link SSO": "请登录现有账户以关联 SSO",
   "SSO is temporarily unavailable. Try again.": "SSO 暂时不可用，请重试。",
+  Inbox: "收件箱",
+  "Inbox agent": "收件箱助手",
+  "Could not load mail.": "无法加载邮件。",
+  "Needs reply": "待回复",
+  Earlier: "更早",
+  All: "全部",
+  "Connect mail": "连接邮箱",
+  "No mail": "没有邮件",
+  "To do": "待办",
 };

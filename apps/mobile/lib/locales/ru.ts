@@ -792,4 +792,13 @@ export const RU_MESSAGES: Record<string, string> = {
   "Sign in to your existing account to link SSO":
     "Войдите в существующий аккаунт, чтобы привязать SSO",
   "SSO is temporarily unavailable. Try again.": "SSO временно недоступен. Попробуйте снова.",
+  Inbox: "Входящие",
+  "Inbox agent": "Агент входящих",
+  "Could not load mail.": "Не удалось загрузить почту.",
+  "Needs reply": "Нужен ответ",
+  Earlier: "Ранее",
+  All: "Все",
+  "Connect mail": "Подключить почту",
+  "No mail": "Нет писем",
+  "To do": "К выполнению",
 };

@@ -27,11 +27,11 @@ vi.mock("./native", () => ({
   native: {},
   useThemedStyles: (factory: () => unknown) => factory(),
 }));
-vi.mock("./i18n", () => ({
-  t: (text: string) => text,
-  useI18n: () => ({ t: (text: string) => text }),
-  dateLocaleForUi: () => "en-US",
-}));
+vi.mock("./i18n", () => {
+  // The real t is one module-level function; a fresh one per render would retrigger focus effects.
+  const t = (text: string) => text;
+  return { t, useI18n: () => ({ t }), dateLocaleForUi: () => "en-US" };
+});
 vi.mock("../components/native-symbol", () => ({ NativeSymbol: () => null }));
 vi.mock("../components/native-action-button", () => ({
   NativeActionButton: ({ label, onPress }: { label: string; onPress: () => void }) => (
@@ -202,9 +202,11 @@ const procs = () => state.rpc.mock.calls.map(([proc]) => proc as string);
 const button = (label: string) =>
   [...container.querySelectorAll("button")].find((item) => item.textContent === label);
 const headerItems = () => {
-  const options = state.setOptions.mock.calls.at(-1)?.[0] as undefined | {
-    unstable_headerRightItems?: () => { accessibilityLabel: string; onPress: () => void }[];
-  };
+  const options = state.setOptions.mock.calls.at(-1)?.[0] as
+    | undefined
+    | {
+        unstable_headerRightItems?: () => { accessibilityLabel: string; onPress: () => void }[];
+      };
   return options?.unstable_headerRightItems?.() ?? [];
 };
 
