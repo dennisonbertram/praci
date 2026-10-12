@@ -26,6 +26,8 @@ export interface EmulatedMessage {
   subject: string;
   /** Message-ID header; defaults to `<id@mail.example.test>`. */
   messageId?: string;
+  /** Reply-To header, as written in the message. */
+  replyTo?: string;
   /** In-Reply-To and References headers, as written in the message. */
   inReplyTo?: string;
   references?: string;
@@ -539,6 +541,7 @@ function store(source: EmulatedMessage): Stored {
     { name: "From", value: source.from },
     { name: "To", value: source.to },
     ...(source.cc ? [{ name: "Cc", value: source.cc }] : []),
+    ...(source.replyTo ? [{ name: "Reply-To", value: source.replyTo }] : []),
     { name: "Subject", value: source.subject },
     { name: "Date", value: date.toUTCString() },
     { name: "Message-ID", value: source.messageId ?? `<${source.id}@mail.example.test>` },

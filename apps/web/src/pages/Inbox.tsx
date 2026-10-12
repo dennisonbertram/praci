@@ -400,14 +400,12 @@ export function InboxPage({
         </DropdownMenu>
         <Button
           variant="outline"
-          size="sm"
+          size="icon-sm"
+          aria-label={t`Compose`}
           disabled={accounts.length === 0}
           onClick={() => setComposing(true)}
         >
           <SquarePen aria-hidden="true" />
-          <span className="max-sm:sr-only">
-            <Trans>Compose</Trans>
-          </span>
         </Button>
         {onShowAgent ? (
           <Button

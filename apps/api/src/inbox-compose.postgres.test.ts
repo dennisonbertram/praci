@@ -459,6 +459,86 @@ describePostgres("inbox compose (PostgreSQL)", () => {
     });
   });
 
+  describe("regressions", () => {
+    it("recreates a draft that was deleted in Gmail, for both a save and a send", async () => {
+      const input = fields();
+      await inboxComposeDraftSave(deps(), a, input);
+      const [first] = gmail.draftsOf("box-a");
+      gmail.handle(
+        "box-a",
+        `https://gmail.googleapis.com/gmail/v1/users/me/drafts/${first?.id}`,
+        "DELETE",
+      );
+      expect(gmail.draftsOf("box-a")).toHaveLength(0);
+
+      expect(await inboxComposeDraftSave(deps(), a, { ...input, subject: "Again" })).toEqual({
+        status: "saved",
+      });
+      expect(gmail.draftsOf("box-a")).toHaveLength(1);
+      const [second] = gmail.draftsOf("box-a");
+      gmail.handle(
+        "box-a",
+        `https://gmail.googleapis.com/gmail/v1/users/me/drafts/${second?.id}`,
+        "DELETE",
+      );
+
+      expect(await inboxComposeSend(deps(), a, { ...input, subject: "Third" })).toEqual({
+        status: "sent",
+      });
+      expect(gmail.sentOf("box-a")).toHaveLength(1);
+      const row = await prisma.composeSend.findFirstOrThrow({
+        where: { clientId: input.clientId },
+      });
+      expect(row.state).toBe("sent");
+    });
+
+    it("answers failed, and lets the user try again, when the rate limit never lets up", async () => {
+      const input = fields();
+      gmail.failNext(429, { urlIncludes: "drafts/send", times: 10 });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "failed" });
+      expect(
+        (await prisma.composeSend.findFirstOrThrow({ where: { clientId: input.clientId } })).state,
+      ).toBe("failed");
+      gmail.clearFailures();
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "sent" });
+      expect(gmail.sentOf("box-a")).toHaveLength(1);
+    });
+
+    it("refuses a reply whose original belongs to another of the caller's accounts", async () => {
+      const second = await connect(a, "box-b");
+      const original = await cache(a, second, "b-1");
+      await expect(
+        inboxComposeSend(deps(), a, fields({ replyToMessageId: original.id })),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      expect(gmail.sentOf("box-a")).toHaveLength(0);
+      await prisma.connection.delete({ where: { id: second } });
+    });
+
+    it("sends nothing once the account is disconnected, even for a saved draft", async () => {
+      const input = fields();
+      await inboxComposeDraftSave(deps(), a, input);
+      await prisma.connection.update({ where: { id: connA }, data: { status: "revoked" } });
+      try {
+        await expect(inboxComposeSend(deps(), a, input)).rejects.toMatchObject({
+          code: "NOT_FOUND",
+        });
+        await inboxComposeDiscard(deps(), a, { clientId: input.clientId });
+      } finally {
+        await prisma.connection.update({ where: { id: connA }, data: { status: "connected" } });
+      }
+      expect(gmail.sentOf("box-a")).toHaveLength(0);
+      expect(gmail.draftsOf("box-a")).toHaveLength(1);
+    });
+
+    it("drops a connection's compose records with the connection", async () => {
+      const doomed = await connect(a, "box-doomed");
+      await inboxComposeDraftSave(deps(), a, fields({ connectionId: doomed }));
+      expect(await prisma.composeSend.count({ where: { connectionId: doomed } })).toBe(1);
+      await prisma.connection.delete({ where: { id: doomed } });
+      expect(await prisma.composeSend.count({ where: { connectionId: doomed } })).toBe(0);
+    });
+  });
+
   describe("through the router", () => {
     const client = (who: Actor) =>
       createRouterClient(createRouter({ ...deps(), env: {} } as unknown as RouterDeps), {
