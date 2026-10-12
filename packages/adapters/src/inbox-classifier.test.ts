@@ -499,7 +499,7 @@ const cases: Case[] = [
   },
 ];
 const inputs = cases.map((c, i) => msg(`m${i}`, c.subject));
-const caseOf = (subject: string) => cases.find((c) => c.subject === subject) as Case;
+const caseOf = (subject: string | undefined) => cases.find((c) => c.subject === subject) as Case;
 
 function llmAdapter(options: { noise?: boolean; garble?: string } = {}): InboxClassifierProvider {
   const runtime = {

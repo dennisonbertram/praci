@@ -50,5 +50,6 @@ function recipientName(provider: string, use: AiDataUse) {
   if (use === "voice") return voiceCatalogEntry(provider)?.name ?? provider;
   if (use === "memory") return provider === "supermemory" ? "Supermemory" : provider;
   if (provider === "cursor") return "Cursor";
+  if (provider === "typesafe") return "TypeSafe";
   return listPiCatalog().find((entry) => entry.provider === provider)?.providerName ?? provider;
 }

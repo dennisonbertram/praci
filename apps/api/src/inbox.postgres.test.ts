@@ -9,6 +9,7 @@ import type {
 import { aiRecipient, createMailProvider, GmailApiEmulator } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION, inboxAgentSpawnKey } from "@rakazo/contracts";
+import { TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -618,7 +619,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
 
   describe("triage", () => {
     const model = { provider: "openrouter", id: "vendor/small-model" } as never;
-    const triaged = { triagedAt: new Date(), triageVersion: 1 };
+    const triaged = { triagedAt: new Date(), triageVersion: TRIAGE_VERSION };
     const allow = (who: Actor) =>
       prisma.aiDataConsent.create({
         data: {

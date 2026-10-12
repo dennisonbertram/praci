@@ -1,26 +1,35 @@
 import { randomUUID } from "node:crypto";
-import type { AgentRunModel, AgentRuntime, JobPublisher } from "@rakazo/adapter-kit";
+import type {
+  AdapterContext,
+  AgentRunModel,
+  AgentRuntime,
+  InboxClassification,
+  InboxClassifierProvider,
+  JobPublisher,
+} from "@rakazo/adapter-kit";
 import { inboxTriageJob, inboxTriageJobKey } from "@rakazo/adapter-kit";
 import { AI_DISCLOSURE_VERSION, inboxAgentSpawnKey } from "@rakazo/contracts";
 import type { TriageInputMessage, TriageItem } from "@rakazo/core";
 import {
-  buildTriagePrompt,
+  isNoReplyCategory,
   MAX_TRIAGE_PER_RUN,
-  parseTriageResponse,
+  needsLlmDetail,
   planTodoSync,
   selectTodoCandidates,
+  TODO_CATEGORIES,
   TRIAGE_BATCH_SIZE,
-  TRIAGE_INSTRUCTIONS,
   TRIAGE_VERSION,
 } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "@rakazo/db";
 import { recordUsage } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { aiRecipient } from "./ai-consent.js";
-import { formatCurrentTimeInstruction } from "./current-time.js";
+import { LlmInboxClassifier } from "./llm-inbox-classifier.js";
 
 const WINDOW_MS = 14 * 86_400_000;
 const MODEL_TIMEOUT_MS = 30_000;
+/** A batch is up to 20 requests to the optional classifier, a few at a time. */
+const CLASSIFIER_TIMEOUT_MS = 60_000;
 
 type Scope = { userId: string; spaceId: string };
 
@@ -28,6 +37,8 @@ export interface TriageReadinessDeps {
   prisma: Pick<PrismaClient, "bot" | "aiDataConsent">;
   /** The executor's resolver; without it no model can be resolved. */
   resolveModel?: (scope: Scope & { botId?: string }) => Promise<AgentRunModel>;
+  /** Optional first-pass classifier. It is used only after the user consents to its recipient. */
+  classifier?: InboxClassifierProvider | null;
 }
 
 export interface InboxTriageDeps extends TriageReadinessDeps {
@@ -36,15 +47,23 @@ export interface InboxTriageDeps extends TriageReadinessDeps {
   jobs: JobPublisher;
 }
 
+type Ready = {
+  model: AgentRunModel;
+  botId: string | undefined;
+  /** The optional classifier when its recipient is allowed; otherwise null and the LLM does it all. */
+  classifier: InboxClassifierProvider | null;
+};
+
 /**
  * The one check shared by the triage job and the API's `enabled` flag, so they always agree.
  * Resolves the model the Inbox agent would use (its override, else the user's default) and returns
  * null unless it is a real model whose exact recipient the user has allowed to receive their data.
+ * A configured classifier is another recipient: it is returned only with its own consent.
  */
 export async function triageReadiness(
   deps: TriageReadinessDeps,
   { userId, spaceId }: Scope,
-): Promise<{ model: AgentRunModel; botId: string | undefined } | null> {
+): Promise<Ready | null> {
   if (!deps.resolveModel) return null;
   const bot = await deps.prisma.bot.findFirst({
     where: { spaceId, userId, spawnKey: inboxAgentSpawnKey(userId), archivedAt: null },
@@ -64,16 +83,26 @@ export async function triageReadiness(
     use: "model",
   });
   if (!recipient) return null;
-  const consent = await deps.prisma.aiDataConsent.findFirst({
-    where: { userId, spaceId, recipientKey: recipient.key, version: AI_DISCLOSURE_VERSION },
-    select: { userId: true },
-  });
-  return consent ? { model, botId: bot?.id } : null;
+  const allowed = (recipientKey: string) =>
+    deps.prisma.aiDataConsent.findFirst({
+      where: { userId, spaceId, recipientKey, version: AI_DISCLOSURE_VERSION },
+      select: { userId: true },
+    });
+  if (!(await allowed(recipient.key))) return null;
+  const classifierRecipient = deps.classifier
+    ? aiRecipient({ provider: deps.classifier.describe().id, use: "model" })
+    : null;
+  const classifier =
+    deps.classifier && classifierRecipient && (await allowed(classifierRecipient.key))
+      ? deps.classifier
+      : null;
+  return { model, botId: bot?.id, classifier };
 }
 
 /**
  * Classifies a user's new inbox mail and syncs their to-dos. Only metadata and snippets reach the
- * model, which has no tools. Every query is scoped to the user and space.
+ * model or the optional classifier, and the model has no tools. Every query is scoped to the user
+ * and space.
  */
 export async function runInboxTriage(deps: InboxTriageDeps, scope: Scope): Promise<void> {
   const { prisma } = deps;
@@ -109,7 +138,7 @@ export async function runInboxTriage(deps: InboxTriageDeps, scope: Scope): Promi
   let classified = 0;
   for (let i = 0; i < selected.length; i += TRIAGE_BATCH_SIZE) {
     const batch = selected.slice(i, i + TRIAGE_BATCH_SIZE);
-    const items = await classify(deps, ready, scope, await toInput(prisma, scope, batch));
+    const items = await triageBatch(deps, ready, scope, await toInput(prisma, scope, batch));
     const byId = new Map(items.map((item) => [item.id, item]));
     // An id the model skipped is stamped too, with null fields, so it is not paid for again.
     await prisma.$transaction(
@@ -123,7 +152,7 @@ export async function runInboxTriage(deps: InboxTriageDeps, scope: Scope): Promi
             needsReply: item?.needsReply ?? null,
             priority: item?.priority ?? null,
             category: item?.category ?? null,
-            reason: item?.reason ?? null,
+            reason: item?.reason || null,
             todoText: item?.todo ?? null,
             dueOn: item?.due ? new Date(`${item.due}T00:00:00Z`) : null,
           },
@@ -210,53 +239,93 @@ async function toInput(
   });
 }
 
-async function classify(
+/**
+ * Classifier first, when the user allowed one. A message it labeled confidently keeps that label;
+ * the LLM then only writes reason, to-do and due, and only for mail that needs a reply or action.
+ * A message the classifier skipped or failed on, or a classifier that threw, goes to the LLM whole.
+ */
+async function triageBatch(
   deps: InboxTriageDeps,
-  ready: { model: AgentRunModel; botId: string | undefined },
+  ready: Ready,
   { userId, spaceId }: Scope,
   messages: TriageInputMessage[],
 ): Promise<TriageItem[]> {
-  const runId = `triage:${randomUUID()}`;
-  const attribution = {
-    spaceId,
-    userId,
-    ...(ready.botId ? { botId: ready.botId } : {}),
-    operationId: runId,
-    operationKind: "triage" as const,
-  };
-  let text = "";
-  for await (const event of deps.runtime.run(
-    {
-      botId: ready.botId ?? "inbox-triage",
-      threadId: runId,
-      runId,
-      usageOperationKind: "triage",
-      onUsage: async (usage) => {
-        await recordUsage(deps.prisma, usage, attribution);
-      },
-      prompt: buildTriagePrompt(messages),
-      instructions: [formatCurrentTimeInstruction(), TRIAGE_INSTRUCTIONS].join("\n\n"),
-      history: [],
-      tools: [],
-      model: ready.model,
-    },
-    {
-      operationId: runId,
-      traceId: runId,
+  const context = (timeoutMs: number): AdapterContext => {
+    const id = `triage:${randomUUID()}`;
+    return {
+      operationId: id,
+      traceId: id,
       spaceId,
       userId,
-      signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
-    },
-  )) {
-    if (event.type === "usage" && !event.accounted) {
-      await recordUsage(deps.prisma, event, attribution);
+      signal: AbortSignal.timeout(timeoutMs),
+    };
+  };
+  const labeled = new Map<string, InboxClassification>();
+  if (ready.classifier) {
+    const ids = new Set(messages.map((m) => m.id));
+    try {
+      const call = context(CLASSIFIER_TIMEOUT_MS);
+      const result = await ready.classifier.classify(messages, call);
+      for (const item of result.items) {
+        if (ids.has(item.id) && !labeled.has(item.id)) labeled.set(item.id, item);
+      }
+      if (result.usage) {
+        await recordUsage(
+          deps.prisma,
+          {
+            type: "usage",
+            provider: ready.classifier.describe().id,
+            model: result.model,
+            ...result.usage,
+          },
+          {
+            spaceId,
+            userId,
+            ...(ready.botId ? { botId: ready.botId } : {}),
+            operationId: call.operationId,
+            operationKind: "triage",
+          },
+        );
+      }
+    } catch (error) {
+      getLogger().warn("inbox classifier failed, using the model", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
-    if (event.type === "done" && event.text) text = event.text;
   }
-  return parseTriageResponse(
-    text,
-    messages.map((m) => m.id),
+
+  const detail = messages.filter((m) => {
+    const label = labeled.get(m.id);
+    return !label || needsLlmDetail(label);
+  });
+  const llm = new LlmInboxClassifier({
+    runtime: deps.runtime,
+    model: ready.model,
+    ...(ready.botId ? { botId: ready.botId } : {}),
+    onUsage: (usage, attribution) => recordUsage(deps.prisma, usage, attribution),
+  });
+  const written = new Map(
+    (detail.length > 0 ? (await llm.classify(detail, context(MODEL_TIMEOUT_MS))).items : []).map(
+      (item) => [item.id, item],
+    ),
   );
+  return messages.flatMap((m): TriageItem[] => {
+    const text = written.get(m.id);
+    // The classifier's label wins; the model's answer only adds the written parts.
+    const base = labeled.get(m.id) ?? text;
+    if (!base) return [];
+    return [
+      {
+        id: m.id,
+        needsReply: !isNoReplyCategory(base.category) && base.needsReply,
+        priority: base.priority,
+        category: base.category,
+        reason: text?.reason ?? "",
+        todo: text?.todo ?? null,
+        due: text?.due ?? null,
+      },
+    ];
+  });
 }
 
 /** Two overlapping runs for one user apply their to-do changes one after the other. */
@@ -272,7 +341,7 @@ async function syncTodos(prisma: PrismaClient, { userId, spaceId }: Scope, windo
           connection: { status: "connected" },
           todoText: { not: null },
           alreadyHandled: false,
-          category: { in: ["reply", "action"] },
+          category: { in: [...TODO_CATEGORIES] },
         },
       }),
       tx.inboxTodo.findMany({
