@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 
 /** Adds two Gmail accounts from the Integrations overlay that "Connect mail" opened. */
@@ -692,4 +692,158 @@ test("Inbox says what failed when an account's sync failed, and nothing when it 
   await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(main.getByRole("alert")).toHaveText(/Gmail needs to be reconnected\./);
+});
+
+test("Inbox rows show one triage label and keep the header and rows on their lines at every width", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `inbox-layout-${Date.now()}@rakazo.test`, "password12", "Inbox Layout");
+  await completeOnboarding(page);
+
+  // Real: the Gmail emulator and the real inbox.list. Stubbed: triage results, because the e2e stack
+  // has no allowed model so the real list reports triage disabled. Long text makes truncation visible.
+  const triage: Record<string, { needsReply: boolean; priority: string; category: string }> = {
+    "Offsite dates": { needsReply: true, priority: "important", category: "reply" },
+    "Invoice #1043": { needsReply: false, priority: "normal", category: "billing" },
+    "CI passed on main": { needsReply: false, priority: "low", category: "newsletter" },
+    "You won a free cruise": { needsReply: false, priority: "low", category: "spam" },
+    "Verify your account today": { needsReply: false, priority: "normal", category: "scam" },
+  };
+  await page.route("**/rpc/inbox/list", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as {
+      json: { rows: Array<{ id: string; subject: string; snippet: string; receivedAt: string }> };
+    };
+    const invoice = body.json.rows.find((row) => row.subject === "Invoice #1043");
+    const extra = invoice
+      ? ["You won a free cruise", "Verify your account today"].map((subject, index) => ({
+          ...invoice,
+          id: `stub-${index}`,
+          subject,
+        }))
+      : [];
+    const rows = [...body.json.rows, ...extra].map((row) => ({
+      ...row,
+      snippet: `${row.snippet} and a long preview that keeps going well past the end of any narrow row`,
+      reason: null,
+      feedback: null,
+      ...triage[row.subject],
+    }));
+    await route.fulfill({
+      response,
+      json: {
+        json: { ...body.json, rows, enabled: true, triageBlocked: null, triagePending: false },
+      },
+    });
+  });
+
+  await page.getByTestId("sidebar-inbox").click();
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByRole("button", { name: "Close integrations" }).click();
+
+  const main = page.getByRole("main");
+  const row = (name: string | RegExp) => main.getByRole("button", { name });
+  await expect(row(/Offsite dates/)).toBeVisible();
+
+  // One label per row, by triage; the scam row keeps its warning icon beside "Junk".
+  const labelOf = (name: RegExp) => row(name).locator('[data-slot="badge"]');
+  await expect(labelOf(/Offsite dates/)).toHaveText("Needs attention");
+  await expect(labelOf(/CI passed on main/)).toHaveText("Newsletter");
+  await expect(labelOf(/You won a free cruise/)).toHaveText("Spam");
+  await expect(labelOf(/Verify your account today/)).toHaveText("Junk");
+  await expect(
+    row(/Verify your account today/).getByRole("img", { name: "Suspicious" }),
+  ).toBeVisible();
+  await expect(row(/Invoice #1043/).locator('[data-slot="badge"]')).toHaveCount(0);
+  await expect(main.locator('[data-slot="badge"]')).toHaveCount(4);
+
+  const box = async (locator: Locator) => {
+    const found = await locator.boundingBox();
+    if (!found) throw new Error("element has no box");
+    return found;
+  };
+  // Layout checks. "Narrow" is the main pane's own width (the Inbox agent panel shrinks it), so each
+  // case reports the pane width it actually got.
+  // The Inbox agent panel and the sidebar take about 700px of the window, so the main pane is much
+  // narrower than the viewport until the panel is collapsed.
+  const cases = [
+    { name: "agent-open-1396", width: 1396, height: 800, agent: "open", twoLine: true },
+    { name: "agent-open-1440", width: 1440, height: 900, agent: "open", twoLine: true },
+    { name: "agent-open-1024", width: 1024, height: 800, agent: "open", twoLine: true },
+    { name: "agent-closed-1440", width: 1440, height: 900, agent: "closed", twoLine: false },
+  ] as const;
+  for (const layout of cases.flatMap((item) =>
+    (["light", "dark"] as const).map((scheme) => ({ ...item, scheme })),
+  )) {
+    await page.setViewportSize({ width: layout.width, height: layout.height });
+    await page.emulateMedia({ colorScheme: layout.scheme });
+    const collapse = page.getByRole("button", { name: "Collapse Inbox agent" });
+    if (layout.agent === "closed" && (await collapse.isVisible())) await collapse.click();
+    // The panel animates shut; measure once the pane has taken its width.
+    if (layout.agent === "closed") {
+      await expect.poll(async () => (await box(main)).width).toBeGreaterThan(layout.width - 320);
+    }
+    await expect(row(/Offsite dates/)).toBeVisible();
+    const pane = await box(main);
+    testInfo.annotations.push({
+      type: layout.name,
+      description: `${layout.scheme} pane ${Math.round(pane.width)}px`,
+    });
+
+    // The header is one line: title, search, Important and the filter share a vertical center.
+    const title = await box(main.getByRole("heading", { name: "Inbox", level: 1 }));
+    const parts = [
+      main.getByRole("searchbox", { name: "Search mail" }),
+      main.getByRole("button", { name: "Important", exact: true }),
+      page.getByTestId("inbox-filter"),
+    ];
+    for (const part of parts) {
+      const found = await box(part);
+      expect(Math.abs(found.y + found.height / 2 - (title.y + title.height / 2))).toBeLessThan(8);
+    }
+    const search = await box(parts[0]);
+    const important = await box(parts[1]);
+    expect(search.x + search.width).toBeLessThanOrEqual(important.x);
+
+    // Account tabs sit under the header, starting at the content's left edge.
+    const tabs = await box(page.getByRole("tablist"));
+    expect(tabs.y).toBeGreaterThan(title.y + title.height);
+    expect(Math.abs(tabs.x - title.x)).toBeLessThanOrEqual(1);
+
+    for (const name of [
+      /Offsite dates/,
+      /Invoice #1043/,
+      /CI passed on main/,
+      /Verify your account today/,
+    ]) {
+      const target = row(name);
+      const cells = target.locator('span[dir="auto"]');
+      const sender = await box(cells.first());
+      const subject = await box(cells.nth(1));
+      const time = await box(target.locator("time"));
+      const whole = await box(target);
+      // The time is one line, inside the row, and the subject keeps real width.
+      expect(time.height).toBeLessThan(20);
+      expect(time.x + time.width).toBeLessThanOrEqual(whole.x + whole.width);
+      expect(subject.width).toBeGreaterThan(80);
+      if (layout.twoLine) {
+        // Narrow: the subject is a second line aligned under the sender.
+        expect(subject.y).toBeGreaterThan(sender.y + sender.height - 2);
+        expect(Math.abs(subject.x - sender.x)).toBeLessThanOrEqual(1);
+      } else {
+        expect(
+          Math.abs(subject.y + subject.height / 2 - (sender.y + sender.height / 2)),
+        ).toBeLessThan(8);
+        expect(subject.x).toBeGreaterThanOrEqual(sender.x + sender.width);
+        expect(subject.x + subject.width).toBeLessThanOrEqual(time.x + 1);
+      }
+      expect(Math.abs(time.y + time.height / 2 - (sender.y + sender.height / 2))).toBeLessThan(8);
+    }
+    await captureScreenshot(
+      page,
+      testInfo,
+      `inbox-layout-${layout.name}-${layout.scheme}-pane${Math.round(pane.width)}`,
+    );
+  }
 });

@@ -29,6 +29,7 @@ export * from "./format-file-size.js";
 export * from "./group-mentions.js";
 export * from "./http-response.js";
 export * from "./inbox-groups.js";
+export * from "./inbox-label.js";
 export * from "./inbox-triage.js";
 export * from "./mail-results.js";
 export * from "./markdown-plain.js";

@@ -467,3 +467,32 @@ it("flags suspicious, spam and scam mail with a named warning and never hides it
   for (const id of ["r1", "r2", "r3", "r4", "r5"]) expect(text).toContain(`Subject ${id}`);
   expect(container.querySelectorAll('[data-label="Suspicious"]')).toHaveLength(3);
 });
+
+it("shows one triage label per row, and none on an untriaged row", async () => {
+  listReply = () =>
+    inboxList({
+      rows: [
+        mailRow("r1", { needsReply: true, priority: "important", category: "reply" }),
+        mailRow("r2", { category: "newsletter" }),
+        mailRow("r3", { category: "spam" }),
+        mailRow("r4", { category: "bulk" }),
+        mailRow("r5", { category: "scam" }),
+        mailRow("r6"),
+        mailRow("r7", { category: "billing" }),
+      ],
+    });
+  await render();
+  const rowText = (id: string) =>
+    [...container.querySelectorAll("button")]
+      .find((item) => item.textContent?.includes(`Subject ${id}`))
+      ?.textContent?.replace(`Sender ${id}`, "")
+      .replace(`Subject ${id}`, "")
+      .replace(`Snippet ${id}`, "");
+  expect(rowText("r1")).toContain("Needs attention");
+  expect(rowText("r2")).toContain("Newsletter");
+  expect(rowText("r3")).toContain("Spam");
+  expect(rowText("r4")).toContain("Junk");
+  expect(rowText("r5")).toContain("Junk");
+  expect(rowText("r6")).not.toMatch(/Needs attention|Newsletter|Spam|Junk/);
+  expect(rowText("r7")).not.toMatch(/Needs attention|Newsletter|Spam|Junk/);
+});

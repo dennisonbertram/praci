@@ -1,5 +1,11 @@
 import type { InboxTodo, MailRow } from "@rakazo/contracts";
-import { dueTone, groupInbox, isSuspiciousCategory, localDaysUntil } from "@rakazo/core";
+import {
+  dueTone,
+  groupInbox,
+  inboxLabel,
+  isSuspiciousCategory,
+  localDaysUntil,
+} from "@rakazo/core";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -353,6 +359,13 @@ function TodoCard({
 function MailListRow({ row, onPress }: { row: MailRow; onPress: () => void }) {
   const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
+  const label = inboxLabel(row);
+  const labelNames = {
+    attention: t("Needs attention"),
+    newsletter: t("Newsletter"),
+    spam: t("Spam"),
+    junk: t("Junk"),
+  };
   return (
     <Pressable onPress={onPress} style={styles.row}>
       <View style={[styles.unreadDot, !row.unread && styles.readDot]} />
@@ -371,6 +384,17 @@ function MailListRow({ row, onPress }: { row: MailRow; onPress: () => void }) {
           <Text style={[styles.sender, row.unread && styles.unread]} numberOfLines={1}>
             {row.from}
           </Text>
+          {label ? (
+            <Text
+              style={[
+                styles.label,
+                (label === "spam" || label === "junk") && { color: mobileTokens().warning },
+              ]}
+              numberOfLines={1}
+            >
+              {labelNames[label]}
+            </Text>
+          ) : null}
           <Text style={styles.meta}>{formatThreadTime(row.receivedAt)}</Text>
         </View>
         <Text style={styles.subject} numberOfLines={1}>
@@ -435,6 +459,16 @@ function createStyles() {
     unread: { fontWeight: "600" },
     subject: { color: native.label, fontSize: 14 },
     meta: { color: native.secondaryLabel, fontSize: 12.5 },
+    label: {
+      color: native.secondaryLabel,
+      backgroundColor: native.fill,
+      fontSize: 11,
+      fontWeight: "600",
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 6,
+      overflow: "hidden",
+    },
     dimmed: { opacity: 0.55 },
     headerButton: { padding: 8 },
   });

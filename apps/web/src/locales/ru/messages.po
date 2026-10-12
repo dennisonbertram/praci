@@ -2599,6 +2599,10 @@ msgstr "Перейти к последнему"
 msgid "Jump to replied message: {excerpt}"
 msgstr "Перейти к исходному сообщению: {excerpt}"
 
+#: src/pages/Inbox.tsx
+msgid "Junk"
+msgstr ""
+
 #: src/lib/relative-time.ts
 #: src/pages/ActivityList.tsx
 msgid "just now"
@@ -3064,6 +3068,10 @@ msgstr "Назовите эту задачу"
 msgid "Needs an answer"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Needs attention"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Требуется ввод данных"
@@ -3113,6 +3121,10 @@ msgstr "Новое пространство"
 
 #: src/pages/Board.tsx
 msgid "New ticket"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Newsletter"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -4338,6 +4350,10 @@ msgstr "Пространство по умолчанию"
 #: src/pages/shell/dialogs.tsx
 msgid "Spaces"
 msgstr "Пространства"
+
+#: src/pages/Inbox.tsx
+msgid "Spam"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Speak"
