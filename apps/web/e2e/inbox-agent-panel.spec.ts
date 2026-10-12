@@ -61,3 +61,21 @@ test("the Inbox agent chats in a collapsible side panel on /app/inbox", async ({
   await expect(page).toHaveURL(/\/app\/(?!inbox$)[^/?]+$/);
   await expect(page.getByText(/writing that into my home|handled/i).first()).toBeVisible();
 });
+
+test("a reload on /app/inbox shows the existing Inbox agent, not the first bot", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  await signup(page, `inbox-agent-reload-${Date.now()}@rakazo.test`, "password12", "Inbox Reload");
+  await completeOnboarding(page);
+  await page.goto("/app/inbox");
+  const panel = page.getByTestId("side-panel");
+  await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
+  await expect(panel.getByPlaceholder("Message Inbox agent")).toBeVisible();
+
+  await page.reload();
+  await expect(panel.getByPlaceholder("Message Inbox agent")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Create Inbox agent" })).toHaveCount(0);
+  expect(new URL(page.url()).pathname).toBe("/app/inbox");
+  await expect(page.getByTitle("Agent computer")).toHaveCount(0);
+});
