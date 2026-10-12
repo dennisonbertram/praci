@@ -36,8 +36,14 @@ import type {
   ConnectorCapabilities,
   ConnectorCatalogItem,
   ConnectorEvent,
+  ConnectorProxyRequest,
+  ConnectorProxyResponse,
   ConnectorTool,
   ControlLeaseRef,
+  MailAccount,
+  MailListRequest,
+  MailMessage,
+  MailMessagePage,
   MemoryCapabilities,
   MemoryCommitRequest,
   MemoryExportRequest,
@@ -205,6 +211,22 @@ export interface ManagedConnectorProvider
   listConnectedExternalIds(context: AdapterContext): Promise<string[]>;
   connectionReady(context: AdapterContext, externalId: string): Promise<boolean>;
   warmDirectory?(): Promise<void>;
+  /** Authenticated GET against the app's API as one connected account. Status codes are returned, not thrown. */
+  proxy?(request: ConnectorProxyRequest, context: AdapterContext): Promise<ConnectorProxyResponse>;
+}
+
+/** Read access to a user's mailboxes, whichever connector authenticated them. */
+export interface MailProvider {
+  listAccounts(
+    scope: { spaceId: string; userId: string },
+    context: AdapterContext,
+  ): Promise<MailAccount[]>;
+  listMessages(
+    account: MailAccount,
+    request: MailListRequest,
+    context: AdapterContext,
+  ): Promise<MailMessagePage>;
+  getMessage(account: MailAccount, id: string, context: AdapterContext): Promise<MailMessage>;
 }
 
 export interface MemoryStore {

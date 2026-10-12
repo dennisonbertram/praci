@@ -65,6 +65,8 @@ export * from "./fake-web.js";
 export * from "./favicon.js";
 export * from "./fish-audio-voice.js";
 export * from "./github-webhook-emulator.js";
+export * from "./gmail-api-emulator.js";
+export * from "./gmail-mail-provider.js";
 export * from "./graphql-connectors.js";
 export * from "./group-handoff.js";
 export * from "./home.js";
