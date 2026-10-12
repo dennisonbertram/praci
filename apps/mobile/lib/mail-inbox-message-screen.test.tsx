@@ -18,6 +18,7 @@ vi.mock("expo-router", () => ({
   useNavigation: () => ({ setOptions: state.setOptions }),
   useRouter: () => ({ push: state.push }),
 }));
+vi.mock("expo-router/react-navigation", () => ({ useHeaderHeight: () => 96 }));
 vi.mock("expo-web-browser", () => ({ openBrowserAsync: state.openBrowser }));
 vi.mock("./api", () => ({ rpc: state.rpc }));
 vi.mock("./native", () => ({

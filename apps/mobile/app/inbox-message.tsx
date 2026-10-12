@@ -1,5 +1,6 @@
 import type { InboxMessage } from "@rakazo/contracts";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useHeaderHeight } from "expo-router/react-navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -26,6 +27,8 @@ export default function InboxMessageScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
+  // The iOS 26 header floats over the content, so the message starts below it.
+  const headerHeight = useHeaderHeight();
   const [message, setMessage] = useState<InboxMessage | null>(null);
   const [error, setError] = useState("");
   const openingAgentRef = useRef(false);
@@ -107,7 +110,7 @@ export default function InboxMessageScreen() {
     ? message.date
     : sent.toLocaleString(dateLocaleForUi(), { dateStyle: "medium", timeStyle: "short" });
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, iosAtLeast(26) && { paddingTop: headerHeight }]}>
       <View style={styles.meta}>
         <Text style={styles.from} selectable>
           {message.from}
@@ -120,7 +123,7 @@ export default function InboxMessageScreen() {
       {message.html ? (
         <SandboxedHtmlPreview html={message.html} scripts={false} onOpenLink={openLink} />
       ) : (
-        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.text}>
+        <ScrollView contentContainerStyle={styles.text}>
           <Text style={styles.body} selectable>
             {message.text}
           </Text>
