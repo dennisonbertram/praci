@@ -257,8 +257,9 @@ msgstr "操作确认"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.spaceName
-#. placeholder {0}: sectionMenu.section.name
+#. placeholder {0}: row.subject
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
 msgstr "{0} 的操作"
@@ -725,6 +726,10 @@ msgstr "Bearer token"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Bills"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -2770,6 +2775,22 @@ msgstr "标为已读"
 msgid "Mark as Unread"
 msgstr "标为未读"
 
+#: src/pages/Inbox.tsx
+msgid "Mark important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Mark noise"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked noise"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -3070,6 +3091,10 @@ msgstr "新建工作区"
 msgid "New ticket"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Newsletters"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No agent connections yet."
 msgstr "还没有 Agent 连接。"
@@ -3223,6 +3248,7 @@ msgstr "没有仍在运行的任务"
 msgid "Nothing remembered yet"
 msgstr "暂无记忆"
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "通知"
@@ -3433,6 +3459,10 @@ msgstr "请粘贴你的 API 密钥，然后重新测试。"
 msgid "Paused"
 msgstr "已暂停"
 
+#: src/pages/Inbox.tsx
+msgid "Personal"
+msgstr ""
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
@@ -3544,6 +3574,10 @@ msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Receipts"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
@@ -3973,6 +4007,10 @@ msgstr "正在保存…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "回答是或否，或一句话说明。"
 
+#: src/pages/Inbox.tsx
+msgid "Scheduling"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -4031,6 +4069,10 @@ msgstr ""
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "正在搜索…"
+
+#: src/pages/Inbox.tsx
+msgid "Security"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Select a bot"
@@ -4381,6 +4423,10 @@ msgstr "支持图片"
 msgid "Supports thinking"
 msgstr "支持思考"
 
+#: src/pages/Inbox.tsx
+msgid "Suspicious"
+msgstr ""
+
 #: src/pages/shell/command-palette.tsx
 msgid "Switch bot"
 msgstr ""
@@ -4653,6 +4699,10 @@ msgstr "未分配"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "不可用"
+
+#: src/pages/Inbox.tsx
+msgid "Undo"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Uninstall"

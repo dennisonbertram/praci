@@ -1023,7 +1023,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         await cache(a, connA, "bill", { category: "billing", receivedAt: daysAgo(1), ...triaged });
         await cache(a, connA, "paid", { category: "receipt", receivedAt: daysAgo(2), ...triaged });
         await cache(a, connA, "nl", { category: "newsletter", receivedAt: daysAgo(3), ...triaged });
-        await cache(a, connA, "untriaged");
+        await cache(a, connA, "untriaged", { receivedAt: daysAgo(4) });
         await cache(b, connB, "their-bill", { category: "billing", ...triaged });
 
         const out = await inboxList(on(), a, { category: "billing" });
@@ -1099,7 +1099,10 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
           receivedAt: daysAgo(1),
           ...triaged,
         });
-        expect(subjects(await inboxList(on(), a, { view: "important" }))).toEqual(["peer"]);
+        expect(subjects(await inboxList(on(), a, { view: "important" }))).toEqual([
+          "peer",
+          "vip-2",
+        ]);
 
         expect(await mark(a, "vip-1", "important")).toEqual({ mark: "important" });
 

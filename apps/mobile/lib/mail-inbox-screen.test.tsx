@@ -75,8 +75,18 @@ vi.mock("../components/menu-picker", () => ({
   ),
 }));
 vi.mock("react-native", () => {
-  const View = ({ children, testID }: { children?: ReactNode; testID?: string }) => (
-    <div data-testid={testID}>{children}</div>
+  const View = ({
+    children,
+    testID,
+    accessibilityLabel,
+  }: {
+    children?: ReactNode;
+    testID?: string;
+    accessibilityLabel?: string;
+  }) => (
+    <div data-testid={testID} data-label={accessibilityLabel}>
+      {children}
+    </div>
   );
   return {
     View,
@@ -141,6 +151,8 @@ const mailRow = (id: string, extra: Record<string, unknown> = {}) => ({
   needsReply: null,
   priority: null,
   reason: null,
+  category: null,
+  feedback: null,
   ...extra,
 });
 const inboxList = (extra: Record<string, unknown> = {}) => ({
@@ -436,4 +448,21 @@ it("opens a mail row in the message screen", async () => {
     pathname: "/inbox-message",
     params: { messageId: "r1" },
   });
+});
+
+it("flags suspicious, spam and scam mail with a named warning and never hides it", async () => {
+  listReply = () =>
+    inboxList({
+      rows: [
+        mailRow("r1", { category: "scam" }),
+        mailRow("r2", { category: "spam" }),
+        mailRow("r3", { category: "suspicious" }),
+        mailRow("r4", { category: "billing" }),
+        mailRow("r5"),
+      ],
+    });
+  await render();
+  const text = container.textContent ?? "";
+  for (const id of ["r1", "r2", "r3", "r4", "r5"]) expect(text).toContain(`Subject ${id}`);
+  expect(container.querySelectorAll('[data-label="Suspicious"]')).toHaveLength(3);
 });

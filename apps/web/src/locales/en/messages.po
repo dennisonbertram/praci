@@ -257,8 +257,9 @@ msgstr "Action confirmations"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.spaceName
-#. placeholder {0}: sectionMenu.section.name
+#. placeholder {0}: row.subject
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
 msgstr "Actions for {0}"
@@ -726,6 +727,10 @@ msgstr "Bearer token"
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
 msgstr "Billing"
+
+#: src/pages/Inbox.tsx
+msgid "Bills"
+msgstr "Bills"
 
 #: src/lib/ticket-status.ts
 msgid "Blocked"
@@ -2770,6 +2775,22 @@ msgstr "Mark as Read"
 msgid "Mark as Unread"
 msgstr "Mark as Unread"
 
+#: src/pages/Inbox.tsx
+msgid "Mark important"
+msgstr "Mark important"
+
+#: src/pages/Inbox.tsx
+msgid "Mark noise"
+msgstr "Mark noise"
+
+#: src/pages/Inbox.tsx
+msgid "Marked important"
+msgstr "Marked important"
+
+#: src/pages/Inbox.tsx
+msgid "Marked noise"
+msgstr "Marked noise"
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -3070,6 +3091,10 @@ msgstr "New space"
 msgid "New ticket"
 msgstr "New ticket"
 
+#: src/pages/Inbox.tsx
+msgid "Newsletters"
+msgstr "Newsletters"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No agent connections yet."
 msgstr "No agent connections yet."
@@ -3223,6 +3248,7 @@ msgstr "Nothing is still running"
 msgid "Nothing remembered yet"
 msgstr "Nothing remembered yet"
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "Notifications"
@@ -3433,6 +3459,10 @@ msgstr "Paste your API key, then test again."
 msgid "Paused"
 msgstr "Paused"
 
+#: src/pages/Inbox.tsx
+msgid "Personal"
+msgstr "Personal"
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
@@ -3545,6 +3575,10 @@ msgstr "Recall and write"
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
 msgstr "Recall only"
+
+#: src/pages/Inbox.tsx
+msgid "Receipts"
+msgstr "Receipts"
 
 #: src/pages/ActivityList.tsx
 msgid "Recent"
@@ -3973,6 +4007,10 @@ msgstr "Saving…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "Say yes or no, or answer in a sentence."
 
+#: src/pages/Inbox.tsx
+msgid "Scheduling"
+msgstr "Scheduling"
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -4031,6 +4069,10 @@ msgstr "Search: {0}"
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "Searching…"
+
+#: src/pages/Inbox.tsx
+msgid "Security"
+msgstr "Security"
 
 #: src/pages/Shell.tsx
 msgid "Select a bot"
@@ -4381,6 +4423,10 @@ msgstr "Supports images"
 msgid "Supports thinking"
 msgstr "Supports thinking"
 
+#: src/pages/Inbox.tsx
+msgid "Suspicious"
+msgstr "Suspicious"
+
 #: src/pages/shell/command-palette.tsx
 msgid "Switch bot"
 msgstr "Switch bot"
@@ -4653,6 +4699,10 @@ msgstr "Unassigned"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "Unavailable"
+
+#: src/pages/Inbox.tsx
+msgid "Undo"
+msgstr "Undo"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Uninstall"

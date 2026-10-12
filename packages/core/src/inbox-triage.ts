@@ -1,6 +1,6 @@
 // Pure triage logic for the inbox: prompt, response parser, to-do candidate selection, and the
 // to-do sync plan. No vendor or database dependency; the triage job (a later PR) wires it up.
-import { InboxCategorySchema, InboxPrioritySchema } from "@rakazo/contracts";
+import { InboxCategorySchema, InboxMarkSchema, InboxPrioritySchema } from "@rakazo/contracts";
 
 /** Bump to re-triage every message after a prompt or category change. */
 export const TRIAGE_VERSION = 2;
@@ -14,6 +14,10 @@ export const TODO_CATEGORIES: readonly string[] = ["reply", "action", "billing",
 /** Mail that is never answered, never gets a to-do, and never needs the LLM's detail. */
 const NO_REPLY_CATEGORIES: readonly string[] = ["suspicious", "spam", "scam"];
 export const isNoReplyCategory = (category: string) => NO_REPLY_CATEGORIES.includes(category);
+
+/** The rows lists mark with a warning. The mail is never hidden. */
+export const isSuspiciousCategory = (category: string | null | undefined) =>
+  category != null && isNoReplyCategory(category);
 
 /** Whether the LLM still has to write reason, to-do and due for a message a classifier labeled. */
 export function needsLlmDetail(item: { needsReply: boolean; category: string }): boolean {
@@ -183,9 +187,32 @@ export function applySenderMark(
   row: { needsReply: boolean | null; priority: string | null },
   mark: SenderMark | null | undefined,
 ): { needsReply: boolean | null; priority: string | null } {
-  // ponytail: scaffold, behavior arrives with the tests.
+  if (mark === "noise") {
+    return {
+      needsReply: row.needsReply === null ? null : false,
+      priority: row.priority === null ? null : "low",
+    };
+  }
+  if (mark === "important" && priorityRank(row.priority) > priorityRank("important")) {
+    return { needsReply: row.needsReply, priority: "important" };
+  }
   return { needsReply: row.needsReply, priority: row.priority };
 }
+
+/** Marks by lowercased sender address, skipping any value that is not a known mark. */
+export function senderMarkMap(
+  rows: Array<{ senderAddress: string; mark: string }>,
+): Map<string, SenderMark> {
+  const marks = new Map<string, SenderMark>();
+  for (const { senderAddress, mark } of rows) {
+    const parsed = InboxMarkSchema.safeParse(mark);
+    if (parsed.success) marks.set(senderAddress, parsed.data);
+  }
+  return marks;
+}
+
+const markedRank = (m: TodoCandidateMessage) =>
+  priorityRank(applySenderMark({ needsReply: null, priority: m.priority }, m.senderMark).priority);
 
 /**
  * The messages that deserve a to-do, best first. The caller passes the user's connected-account
@@ -199,13 +226,14 @@ export function selectTodoCandidates(
     .filter(
       (m) =>
         m.todoText !== null &&
+        m.senderMark !== "noise" &&
         !m.alreadyHandled &&
         !isNoReplyCategory(m.category ?? "") &&
         (m.needsReply === true || TODO_CATEGORIES.includes(m.category ?? "")),
     )
     .sort(
       (a, b) =>
-        priorityRank(a.priority) - priorityRank(b.priority) ||
+        markedRank(a) - markedRank(b) ||
         (a.dueOn?.getTime() ?? Number.POSITIVE_INFINITY) -
           (b.dueOn?.getTime() ?? Number.POSITIVE_INFINITY) ||
         b.receivedAt.getTime() - a.receivedAt.getTime(),

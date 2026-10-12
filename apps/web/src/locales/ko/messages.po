@@ -257,8 +257,9 @@ msgstr "작업 실행 전 확인"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.spaceName
-#. placeholder {0}: sectionMenu.section.name
+#. placeholder {0}: row.subject
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
 msgstr "{0} 작업 메뉴"
@@ -725,6 +726,10 @@ msgstr "Bearer 토큰"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Bills"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -2770,6 +2775,22 @@ msgstr "읽음으로 표시"
 msgid "Mark as Unread"
 msgstr "읽지 않음으로 표시"
 
+#: src/pages/Inbox.tsx
+msgid "Mark important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Mark noise"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked noise"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -3070,6 +3091,10 @@ msgstr "새 스페이스"
 msgid "New ticket"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Newsletters"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No agent connections yet."
 msgstr "아직 Agent 연결이 없습니다."
@@ -3223,6 +3248,7 @@ msgstr "실행 중인 작업 없음"
 msgid "Nothing remembered yet"
 msgstr "아직 기억한 내용이 없습니다"
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "알림"
@@ -3433,6 +3459,10 @@ msgstr "API 키를 붙여넣은 뒤 다시 테스트하세요."
 msgid "Paused"
 msgstr "일시 중지됨"
 
+#: src/pages/Inbox.tsx
+msgid "Personal"
+msgstr ""
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
@@ -3544,6 +3574,10 @@ msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Receipts"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
@@ -3973,6 +4007,10 @@ msgstr "저장 중…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "예 또는 아니요로 답하거나 문장으로 답해 주세요."
 
+#: src/pages/Inbox.tsx
+msgid "Scheduling"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -4031,6 +4069,10 @@ msgstr ""
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "검색 중…"
+
+#: src/pages/Inbox.tsx
+msgid "Security"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Select a bot"
@@ -4381,6 +4423,10 @@ msgstr "이미지 지원"
 msgid "Supports thinking"
 msgstr "사고 모드 지원"
 
+#: src/pages/Inbox.tsx
+msgid "Suspicious"
+msgstr ""
+
 #: src/pages/shell/command-palette.tsx
 msgid "Switch bot"
 msgstr ""
@@ -4653,6 +4699,10 @@ msgstr "섹션 없음"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "사용할 수 없음"
+
+#: src/pages/Inbox.tsx
+msgid "Undo"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Uninstall"

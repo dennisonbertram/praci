@@ -16,6 +16,7 @@ import {
   needsLlmDetail,
   planTodoSync,
   selectTodoCandidates,
+  senderMarkMap,
   TODO_CATEGORIES,
   TRIAGE_BATCH_SIZE,
   TRIAGE_VERSION,
@@ -332,7 +333,7 @@ async function triageBatch(
 async function syncTodos(prisma: PrismaClient, { userId, spaceId }: Scope, windowStart: Date) {
   await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${inboxTriageJobKey(userId, spaceId)}))`;
-    const [messages, existing] = await Promise.all([
+    const [messages, existing, feedback] = await Promise.all([
       tx.cachedMailMessage.findMany({
         where: {
           spaceId,
@@ -348,8 +349,17 @@ async function syncTodos(prisma: PrismaClient, { userId, spaceId }: Scope, windo
         where: { spaceId, userId },
         select: { id: true, messageId: true, doneAt: true, touchedAt: true },
       }),
+      tx.inboxSenderFeedback.findMany({
+        where: { spaceId, userId },
+        select: { senderAddress: true, mark: true },
+      }),
     ]);
-    const { deleteIds, inserts } = planTodoSync(existing, selectTodoCandidates(messages));
+    // A sender marked noise gets no to-do, and an important sender's mail ranks first.
+    const marks = senderMarkMap(feedback);
+    const candidates = selectTodoCandidates(
+      messages.map((m) => ({ ...m, senderMark: marks.get(m.fromAddress.toLowerCase()) ?? null })),
+    );
+    const { deleteIds, inserts } = planTodoSync(existing, candidates);
     if (deleteIds.length > 0) {
       await tx.inboxTodo.deleteMany({ where: { id: { in: deleteIds }, spaceId, userId } });
     }

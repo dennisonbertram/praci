@@ -800,5 +800,6 @@ export const RU_MESSAGES: Record<string, string> = {
   All: "Все",
   "Connect mail": "Подключить почту",
   "No mail": "Нет писем",
+  Suspicious: "Подозрительное",
   "To do": "К выполнению",
 };

@@ -257,8 +257,9 @@ msgstr "Подтверждения действий"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.spaceName
-#. placeholder {0}: sectionMenu.section.name
+#. placeholder {0}: row.subject
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
 msgstr "Действия для {0}"
@@ -725,6 +726,10 @@ msgstr "Bearer-токен"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Bills"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -2770,6 +2775,22 @@ msgstr "Отметить как прочитанное"
 msgid "Mark as Unread"
 msgstr "Отметить как непрочитанное"
 
+#: src/pages/Inbox.tsx
+msgid "Mark important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Mark noise"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked noise"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -3070,6 +3091,10 @@ msgstr "Новое пространство"
 msgid "New ticket"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Newsletters"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No agent connections yet."
 msgstr "Агентских подключений пока нет."
@@ -3223,6 +3248,7 @@ msgstr ""
 msgid "Nothing remembered yet"
 msgstr "Пока ничего не запомнено"
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "Уведомления"
@@ -3433,6 +3459,10 @@ msgstr "Вставьте API-ключ и повторите тест."
 msgid "Paused"
 msgstr "Приостановлено"
 
+#: src/pages/Inbox.tsx
+msgid "Personal"
+msgstr ""
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
@@ -3544,6 +3574,10 @@ msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Receipts"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
@@ -3973,6 +4007,10 @@ msgstr "Сохранение…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "Скажите «да» или «нет» или ответьте предложением."
 
+#: src/pages/Inbox.tsx
+msgid "Scheduling"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -4031,6 +4069,10 @@ msgstr ""
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "Поиск…"
+
+#: src/pages/Inbox.tsx
+msgid "Security"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Select a bot"
@@ -4381,6 +4423,10 @@ msgstr ""
 msgid "Supports thinking"
 msgstr "Поддерживает рассуждения"
 
+#: src/pages/Inbox.tsx
+msgid "Suspicious"
+msgstr ""
+
 #: src/pages/shell/command-palette.tsx
 msgid "Switch bot"
 msgstr "Сменить бота"
@@ -4653,6 +4699,10 @@ msgstr "Без раздела"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "Недоступно"
+
+#: src/pages/Inbox.tsx
+msgid "Undo"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Uninstall"

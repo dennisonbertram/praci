@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  InboxFeedbackInputSchema,
   InboxFilterSchema,
   InboxListInputSchema,
   InboxListOutputSchema,
@@ -50,7 +51,7 @@ describe("inbox contracts", () => {
     ).toMatchObject({ accounts: [], agent: null });
   });
 
-  it("rejects a row without the triage fields (needsReply, priority, reason)", () => {
+  it("rejects a row without the triage fields (needsReply, priority, reason, category, feedback)", () => {
     const row = {
       id: "m1",
       connectionId: "c1",
@@ -73,7 +74,40 @@ describe("inbox contracts", () => {
       }).success;
     expect(parse(row)).toBe(false);
     expect(parse({ ...row, needsReply: null })).toBe(false);
-    expect(parse({ ...row, needsReply: null, priority: null, reason: null })).toBe(true);
-    expect(parse({ ...row, needsReply: true, priority: "urgent", reason: null })).toBe(false);
+    const triage = { needsReply: null, priority: null, reason: null };
+    expect(parse({ ...row, ...triage })).toBe(false);
+    expect(parse({ ...row, ...triage, category: null, feedback: null })).toBe(true);
+    expect(parse({ ...row, ...triage, category: "scam", feedback: "noise" })).toBe(true);
+    expect(parse({ ...row, ...triage, category: "invoice", feedback: null })).toBe(false);
+    expect(parse({ ...row, ...triage, category: null, feedback: "spam" })).toBe(false);
+    expect(
+      parse({
+        ...row,
+        needsReply: true,
+        priority: "urgent",
+        reason: null,
+        category: null,
+        feedback: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts the Important view and the seven category views, and nothing else", () => {
+    expect(InboxListInputSchema.parse({ view: "important", category: "billing" })).toEqual({
+      view: "important",
+      category: "billing",
+    });
+    expect(InboxListInputSchema.safeParse({ view: "starred" }).success).toBe(false);
+    // Spam and scam stay visible in the list but have no view of their own.
+    expect(InboxListInputSchema.safeParse({ category: "spam" }).success).toBe(false);
+  });
+
+  it("takes a mark or null to remove it, and no other mark", () => {
+    expect(InboxFeedbackInputSchema.parse({ messageId: "m1", mark: "noise" }).mark).toBe("noise");
+    expect(InboxFeedbackInputSchema.parse({ messageId: "m1", mark: null }).mark).toBeNull();
+    expect(InboxFeedbackInputSchema.safeParse({ messageId: "m1", mark: "spam" }).success).toBe(
+      false,
+    );
+    expect(InboxFeedbackInputSchema.safeParse({ messageId: "m1" }).success).toBe(false);
   });
 });
