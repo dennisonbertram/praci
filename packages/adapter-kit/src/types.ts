@@ -920,6 +920,23 @@ export interface ConnectorProxyRequest {
   url: string;
 }
 
+/**
+ * A proxy call that failed before any upstream response arrived. `message` is already free of
+ * credentials. `transient` marks failures worth retrying (network, timeout, provider 5xx).
+ */
+export class ConnectorProxyError extends Error {
+  constructor(
+    message: string,
+    readonly transient: boolean,
+    readonly status?: number,
+    /** The provider SDK's error class name, kept for diagnosis. */
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "ConnectorProxyError";
+  }
+}
+
 export interface ConnectorProxyResponse {
   status: number;
   data: unknown;

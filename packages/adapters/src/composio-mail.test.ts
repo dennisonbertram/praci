@@ -1,4 +1,4 @@
-import { type AdapterContext, MailProviderError } from "@rakazo/adapter-kit";
+import { type AdapterContext, ConnectorProxyError, MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ComposioConnector } from "./composio-connector.js";
@@ -199,6 +199,89 @@ describe("ComposioConnector.proxy", () => {
     expect(mapped).toBeInstanceOf(MailProviderError);
     expect((mapped as MailProviderError).kind).toBe("unavailable");
     expect((mapped as MailProviderError).message).not.toContain("ck_live_supersecret");
+  });
+
+  describe("transport failures", () => {
+    const request = {
+      app: "GMAIL",
+      accountRef: "ca-1",
+      method: "GET" as const,
+      url: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+    };
+    const sdkError = (name: string, message: string, extra: Record<string, unknown> = {}) =>
+      Object.assign(new Error(message), { name, ...extra });
+    const failure = (connector = new ComposioConnector("test-key"), ctx = context) =>
+      connector.proxy(request, ctx).catch((error: unknown) => error as ConnectorProxyError);
+
+    it("marks a Composio 5xx as transient and keeps its status and class", async () => {
+      class InternalServerError extends Error {
+        status = 502;
+      }
+      sdk.proxyExecute.mockRejectedValue(new InternalServerError("502 bad gateway"));
+      expect(await failure()).toMatchObject({
+        name: "ConnectorProxyError",
+        transient: true,
+        status: 502,
+        code: "InternalServerError",
+        message: "502 bad gateway",
+      });
+    });
+
+    it("marks a network failure with no status as transient", async () => {
+      sdk.proxyExecute.mockRejectedValue(sdkError("Error", "Connection error."));
+      expect(await failure()).toMatchObject({ transient: true, status: undefined });
+    });
+
+    it("marks a Composio 4xx other than 429 as permanent", async () => {
+      sdk.proxyExecute.mockRejectedValue(
+        sdkError("Error", "401 invalid key apiKey=ck_live_supersecret", { status: 401 }),
+      );
+      const error = await failure();
+      expect(error).toMatchObject({ transient: false, status: 401 });
+      expect(error.message).not.toContain("ck_live_supersecret");
+    });
+
+    it("marks a request the caller cancelled as permanent", async () => {
+      const controller = new AbortController();
+      sdk.proxyExecute.mockImplementation(async () => {
+        controller.abort();
+        throw sdkError("Error", "Request was cancelled by the caller: Request was aborted.");
+      });
+      expect(
+        await failure(new ComposioConnector("test-key"), { ...context, signal: controller.signal }),
+      ).toMatchObject({
+        transient: false,
+      });
+    });
+
+    it("turns a thrown 429 into a response with the Retry-After delay", async () => {
+      sdk.proxyExecute.mockRejectedValue(
+        sdkError("Error", "429 slow down", {
+          status: 429,
+          headers: new Headers({ "retry-after": "2" }),
+        }),
+      );
+      expect(await new ComposioConnector("test-key").proxy(request, context)).toMatchObject({
+        status: 429,
+        retryAfterMs: 2000,
+      });
+    });
+
+    it("recovers a mail listing when the first proxy call hits a transient Composio error", async () => {
+      const sleeps: number[] = [];
+      const { provider, accounts } = composioMailbox(sleeps);
+      const forward = sdk.proxyExecute.getMockImplementation();
+      let calls = 0;
+      sdk.proxyExecute.mockImplementation(async (body, options) => {
+        if (++calls === 1) throw sdkError("Error", "Connection error.");
+        return forward?.(body, options);
+      });
+      const account = accounts[0];
+      if (!account) throw new Error("no account");
+      const page = await provider.listMessages(account, { query: "", pageSize: 2 }, context);
+      expect(page.messages.length).toBeGreaterThan(0);
+      expect(sleeps.length).toBe(1);
+    });
   });
 });
 
