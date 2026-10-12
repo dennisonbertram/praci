@@ -51,6 +51,7 @@ import {
   HistoryReadInputSchema,
   HistorySearchInputSchema,
   isAttachmentImageMimeType,
+  isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@rakazo/contracts";
 import type { ActionApprovalRule, ToolCallStreak } from "@rakazo/core";
@@ -3472,9 +3473,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const onShutdown = () => runAbortController?.abort(deps.shutdownSignal?.reason);
         deps.shutdownSignal?.addEventListener("abort", onShutdown);
         detachShutdown = () => deps.shutdownSignal?.removeEventListener("abort", onShutdown);
-        const composioRows = storedConnections.filter(
-          (connection) => connection.connectorId === "composio",
-        );
+        // The Inbox agent reads mail only through the mail tools. Offering it the Composio tools
+        // as well sent it through their search and execute round trips first (about 28s of an
+        // 89s run), so it gets none of them and skips the discovery calls.
+        const mailOnly = isInboxAgentSpawnKey(bot.spawnKey);
+        const composioRows = mailOnly
+          ? []
+          : storedConnections.filter((connection) => connection.connectorId === "composio");
         let liveSlugs: string[] = [];
         if (needsLivePluginSync(composioRows)) {
           const listing = await loadLivePluginSlugs(deps.listConnectedPluginSlugs, run.userId);
@@ -3486,10 +3491,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
         }
         const connectedComposio = mergeConnectedPlugins(composioRows, liveSlugs);
-        const connectedPlugins = selectRunConnections(
-          storedConnections,
-          connectedComposio.map((connection) => connection.provider),
-        );
+        const connectedPlugins = mailOnly
+          ? []
+          : selectRunConnections(
+              storedConnections,
+              connectedComposio.map((connection) => connection.provider),
+            );
         const context = {
           operationId: runId,
           traceId: runId,
@@ -3522,9 +3529,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           payload: { trigger: run.trigger, routineId: run.routineId },
         });
 
-        const discoveredPromise = deps.connector
-          ? deps.connector.discoverTools(context)
-          : Promise.resolve([]);
+        const discoveredPromise =
+          deps.connector && !mailOnly ? deps.connector.discoverTools(context) : Promise.resolve([]);
         const threadContext = threadContextForRun(
           run.trigger,
           {
@@ -6369,8 +6375,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
           return finish({ error: `unknown tool ${name}` });
         };
 
-        const pluginLine =
-          connectedPlugins.length > 0
+        const pluginLine = mailOnly
+          ? undefined
+          : connectedPlugins.length > 0
             ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
             : "No plugins are connected yet.";
         const taughtSkillIndex = savedSkills.slice(0, 20);

@@ -4,6 +4,9 @@ import { Id } from "./ids.js";
 /** The one place the Inbox agent's spawn key is built. */
 export const inboxAgentSpawnKey = (userId: string) => `inbox-agent:${userId}`;
 
+export const isInboxAgentSpawnKey = (spawnKey: string | null | undefined) =>
+  Boolean(spawnKey?.startsWith(inboxAgentSpawnKey("")));
+
 /** Connection.displayName labels the account tab. */
 export const MailAccountSchema = z.object({ connectionId: Id, label: z.string() });
 

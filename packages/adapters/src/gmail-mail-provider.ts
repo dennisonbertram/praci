@@ -20,7 +20,9 @@ const MAX_PAGE_SIZE = 500;
 const MAX_ATTEMPTS = 3;
 const BASE_DELAY_MS = 500;
 const MAX_DELAY_MS = 60_000;
-const CONCURRENCY = 4;
+// Measured through the Composio proxy (about 290 ms per get): 4 in flight hydrates 11 messages/s,
+// 12 gives about 30/s and more adds nothing. 30 gets/s is 150 of Gmail's 250 quota units/s per user.
+const CONCURRENCY = 12;
 const MAX_TEXT = 40_000;
 const MAX_HTML = 200_000;
 const METADATA_QUERY = ["From", "To", "Cc", "Subject", "Date"]

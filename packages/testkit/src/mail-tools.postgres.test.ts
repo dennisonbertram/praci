@@ -288,7 +288,9 @@ describe.skipIf(!databaseAvailable)(
             modelId: model.model.id,
           });
         }
-        const storedBot = await handles.prisma.bot.findUniqueOrThrow({ where: { id: ordinary.id } });
+        const storedBot = await handles.prisma.bot.findUniqueOrThrow({
+          where: { id: ordinary.id },
+        });
         await handles.prisma.connection.create({
           data: {
             spaceId: storedBot.spaceId,
@@ -317,7 +319,9 @@ describe.skipIf(!databaseAvailable)(
         model.assertComplete();
         const connectorTools = (names: string[]) => names.filter((name) => /gmail/i.test(name));
         expect(connectorTools(offered.ordinary ?? [])).not.toEqual([]);
-        expect(offered.inbox).toEqual(expect.arrayContaining(["mail_search", "mail_grep", "mail_get"]));
+        expect(offered.inbox).toEqual(
+          expect.arrayContaining(["mail_search", "mail_grep", "mail_get"]),
+        );
         expect(connectorTools(offered.inbox ?? [])).toEqual([]);
         expect(systemText.inbox).not.toContain("Connected plugins");
       } finally {
