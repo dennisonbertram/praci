@@ -70,6 +70,8 @@ describe("background job contracts", () => {
       replaceKey: "inbox.triage:space-1:user-1",
       maxAttempts: 3,
     });
+    const later = new Date("2030-01-01T00:00:00Z");
+    expect(inboxTriageJob("user-1", "space-1", later).availableAt).toBe(later);
     expect(inboxTriageJob("user-2", "space-1").replaceKey).not.toBe(
       inboxTriageJob("user-1", "space-1").replaceKey,
     );

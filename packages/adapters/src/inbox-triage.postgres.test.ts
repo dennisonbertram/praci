@@ -572,7 +572,12 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     const user = await addUser();
     for (let i = 0; i < 25; i += 1) await mail(user, `Mail ${i}`, { minutesAgo: i + 1 });
     const rt = fakeRuntime(answerAll(), 200);
-    const workers = [first, other, createDb(databaseUrl as string), createDb(databaseUrl as string)];
+    const workers = [
+      first,
+      other,
+      createDb(databaseUrl as string),
+      createDb(databaseUrl as string),
+    ];
     const queues = workers.map(() => fakeJobs());
 
     try {
@@ -658,6 +663,25 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     await run(user, rt.runtime, { jobs });
 
     expect(lockFreeWhenQueued).toBe(true);
+  });
+
+  it("does not call the model while another run holds the user, and retries later", async () => {
+    const user = await addUser();
+    await mail(user, "Waiting", { minutesAgo: 1 });
+    const rt = fakeRuntime(answerAll());
+    const queue = fakeJobs();
+
+    await other.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('inbox.triage.run'), hashtext(${`${spaceId}:${user.userId}`}))`;
+      await run(user, rt.runtime, { jobs: queue.jobs });
+    });
+
+    expect(rt.requests).toHaveLength(0);
+    expect((await messagesOf(user))[0]?.triagedAt).toBeNull();
+    expect(queue.enqueued).toHaveLength(1);
+    // Once the holder is gone the retry triages normally.
+    await run(user, rt.runtime);
+    expect(rt.requests).toHaveLength(1);
   });
 
   it("applies to-do changes only while holding the per-user advisory lock", async () => {
