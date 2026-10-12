@@ -4,6 +4,8 @@ import type {
   ConnectorCall,
   ConnectorCatalogItem,
   ConnectorEvent,
+  ConnectorProxyRequest,
+  ConnectorProxyResponse,
   ConnectorTool,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
@@ -390,6 +392,48 @@ export class PipedreamConnector implements ManagedConnectorProvider {
     );
   }
 
+  /**
+   * GET an app API URL as one connected account through the Connect proxy. Upstream statuses
+   * are returned, not thrown. A ref that is not an `apn_` account id is the legacy app slug:
+   * it works only when the user has exactly one healthy account for the app.
+   */
+  async proxy(
+    request: ConnectorProxyRequest,
+    context: AdapterContext,
+  ): Promise<ConnectorProxyResponse> {
+    let accountId = request.accountRef;
+    if (!accountId.startsWith("apn_")) {
+      const ids = (await this.accounts(context, request.app))
+        .filter(
+          (account) =>
+            account.app?.name_slug === request.app &&
+            account.healthy !== false &&
+            account.dead !== true,
+        )
+        .map((account) => account.id);
+      // Ambiguous or missing: report an auth failure so the user reconnects.
+      if (ids.length !== 1)
+        return { status: 401, data: "No single Pipedream account for this app" };
+      accountId = ids[0] as string;
+    }
+    const query = new URLSearchParams({
+      external_user_id: this.externalUserId(context),
+      account_id: accountId,
+    });
+    const { response, body, token } = await this.send(
+      `/v1/connect/${encodeURIComponent(this.config.projectId)}/proxy/${Buffer.from(request.url).toString("base64url")}?${query}`,
+      { method: "GET" },
+      context.signal,
+    );
+    const retryAfter = response.headers.get("retry-after");
+    const seconds = retryAfter === null ? Number.NaN : Number(retryAfter);
+    return {
+      status: response.status,
+      data: parseBody(body, [token, this.config.clientSecret]),
+      ...(Number.isFinite(seconds) && seconds >= 0 ? { retryAfterMs: seconds * 1000 } : {}),
+    };
+  }
+
   private externalUserId(context: AdapterContext): string {
     return `rkz_${createHmac("sha256", this.config.identitySecret)
       .update(`${context.spaceId}:${context.userId}`)
@@ -464,6 +508,17 @@ export class PipedreamConnector implements ManagedConnectorProvider {
     init: RequestInit = {},
     signal?: AbortSignal,
   ): Promise<T> {
+    const { response, body, token } = await this.send(path, init, signal);
+    if (!response.ok) {
+      throw new Error(
+        sanitizeConnectorError(`Pipedream returned HTTP ${response.status}: ${body}`, [token]),
+      );
+    }
+    return (body ? JSON.parse(body) : {}) as T;
+  }
+
+  /** One authenticated Pipedream API call that returns the response whatever its status. */
+  private async send(path: string, init: RequestInit, signal?: AbortSignal) {
     const token = await this.token();
     const requestAbort = combineSignals(signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS));
     const response = await (this.dependencies.fetch ?? globalThis.fetch)(`${API_BASE}${path}`, {
@@ -477,13 +532,7 @@ export class PipedreamConnector implements ManagedConnectorProvider {
       signal: requestAbort,
     });
     if (response.status === 401) this.accessToken = undefined;
-    const body = await readPipedreamBody(response, requestAbort);
-    if (!response.ok) {
-      throw new Error(
-        sanitizeConnectorError(`Pipedream returned HTTP ${response.status}: ${body}`, [token]),
-      );
-    }
-    return (body ? JSON.parse(body) : {}) as T;
+    return { response, body: await readPipedreamBody(response, requestAbort), token };
   }
 
   private async token(): Promise<string> {
@@ -551,5 +600,14 @@ async function readPipedreamBody(response: Response, signal: AbortSignal): Promi
       throw new Error("Pipedream response is too large.");
     }
     throw error;
+  }
+}
+
+function parseBody(body: string, secrets: string[]): unknown {
+  if (!body) return null;
+  try {
+    return JSON.parse(body);
+  } catch {
+    return sanitizeConnectorError(body, secrets);
   }
 }
