@@ -13,13 +13,30 @@ function isPreviewDocument(url: string): boolean {
   return url === "about:blank" || url === "about:blank/";
 }
 
-export function SandboxedHtmlPreview({ html }: { html: string }) {
+function isWebUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url);
+}
+
+/**
+ * `scripts={false}` is for untrusted documents such as email. `onOpenLink` receives an http(s) URL
+ * only for a positively identified tap (`navigationType: "click"`, reported on iOS only); the
+ * navigation itself is always blocked, and every other navigation (meta refresh, Android) opens nothing.
+ */
+export function SandboxedHtmlPreview({
+  html,
+  scripts = true,
+  onOpenLink,
+}: {
+  html: string;
+  scripts?: boolean;
+  onOpenLink?: (url: string) => void;
+}) {
   return (
     <View style={styles.container}>
       <WebView
         source={{ html: withSandboxedArtifactCsp(html), baseUrl: "about:blank" }}
         style={styles.webview}
-        javaScriptEnabled
+        javaScriptEnabled={scripts}
         domStorageEnabled={false}
         allowFileAccess={false}
         allowFileAccessFromFileURLs={false}
@@ -29,7 +46,11 @@ export function SandboxedHtmlPreview({ html }: { html: string }) {
         sharedCookiesEnabled={false}
         mixedContentMode="never"
         cacheEnabled={false}
-        onShouldStartLoadWithRequest={({ url }) => isPreviewDocument(url)}
+        onShouldStartLoadWithRequest={({ url, navigationType }) => {
+          if (isPreviewDocument(url)) return true;
+          if (onOpenLink && navigationType === "click" && isWebUrl(url)) onOpenLink(url);
+          return false;
+        }}
       />
     </View>
   );

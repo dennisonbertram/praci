@@ -7,6 +7,7 @@ vi.mock("./i18n", () => ({ t: (text: string) => text, dateLocaleForUi: () => "en
 import {
   completeMailTodo,
   ensureMailAgent,
+  getMailMessage,
   listMailInbox,
   listMailTodos,
   refreshMailInbox,
@@ -22,6 +23,7 @@ it("calls the inbox procedures with the account only when one is chosen", async 
   await refreshMailInbox();
   await completeMailTodo("t1");
   await ensureMailAgent();
+  await getMailMessage("m1");
   expect(rpc.mock.calls).toEqual([
     ["inbox/list", {}],
     ["inbox/list", { connectionId: "c1" }],
@@ -29,6 +31,7 @@ it("calls the inbox procedures with the account only when one is chosen", async 
     ["inbox/refresh", {}],
     ["inbox/todos/setDone", { id: "t1", done: true }],
     ["inbox/agent"],
+    ["inbox/get", { messageId: "m1" }],
   ]);
 });
 

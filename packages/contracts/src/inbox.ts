@@ -113,6 +113,7 @@ export const InboxMessageSchema = z.object({
 });
 
 export type InboxListInput = z.infer<typeof InboxListInputSchema>;
+export type InboxMessage = z.infer<typeof InboxMessageSchema>;
 export type InboxTodo = z.infer<typeof InboxTodoSchema>;
 export type MailRow = z.infer<typeof MailRowSchema>;
 export type InboxListOutput = z.infer<typeof InboxListOutputSchema>;

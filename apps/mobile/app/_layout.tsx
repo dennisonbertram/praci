@@ -227,6 +227,7 @@ export default function Layout() {
                       }}
                     />
                     <Stack.Screen name="inbox" options={glassHeaderOptions(t("Inbox"))} />
+                    <Stack.Screen name="inbox-message" options={{ title: "" }} />
                     <Stack.Screen name="artifacts" options={glassHeaderOptions(t("Artifacts"))} />
                     <Stack.Screen name="artifact" options={{ title: t("Artifact") }} />
                     <Stack.Screen name="group-thread" options={{ title: t("Group") }} />
