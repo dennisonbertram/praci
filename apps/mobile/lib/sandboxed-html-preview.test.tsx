@@ -7,6 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SandboxedHtmlPreview } from "../components/sandboxed-html-preview";
 
 type WebViewProps = {
+  source: { html: string };
   javaScriptEnabled: boolean;
   onShouldStartLoadWithRequest: (request: { url: string; navigationType?: string }) => boolean;
 };
@@ -70,4 +71,10 @@ it("keeps today's behavior without onOpenLink: only the document itself loads", 
   const allow = props().onShouldStartLoadWithRequest;
   expect(allow({ url: "about:blank", navigationType: "other" })).toBe(true);
   expect(allow({ url: "https://example.com/", navigationType: "click" })).toBe(false);
+});
+
+it("still blocks remote images and the network for email-style documents", () => {
+  show(<SandboxedHtmlPreview html='<img src="https://tracker.example/p.gif">' scripts={false} />);
+  expect(props().source.html).toContain("img-src data:");
+  expect(props().source.html).toContain("default-src 'none'");
 });
