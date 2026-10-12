@@ -7,9 +7,11 @@ import type {
   MailProvider,
 } from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
-import { isMailConnection, syncMailbox } from "@rakazo/adapters";
-import type { Actor, InboxListOutput } from "@rakazo/contracts";
+import type { TriageReadinessDeps } from "@rakazo/adapters";
+import { isMailConnection, syncMailbox, triageReadiness } from "@rakazo/adapters";
+import type { Actor, InboxListOutput, InboxTodo } from "@rakazo/contracts";
 import { inboxAgentSpawnKey } from "@rakazo/contracts";
+import { TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -18,10 +20,13 @@ export interface InboxDeps {
   prisma: PrismaClient;
   mail: MailProvider;
   jobs: JobPublisher;
+  /** The executor's resolver, for the same readiness check the triage job makes. */
+  resolveModel?: TriageReadinessDeps["resolveModel"];
 }
 
 const WINDOW_MS = 14 * 86_400_000;
 const MAX_ROWS = 200;
+const DONE_VISIBLE_MS = 86_400_000;
 const SYNC_PARALLELISM = 4;
 
 const notFound = () => new ORPCError("NOT_FOUND", { message: "Not found" });
@@ -43,6 +48,14 @@ async function connectedMailConnections(prisma: PrismaClient, actor: Actor) {
     orderBy: { createdAt: "asc" },
   });
   return rows.filter(isMailConnection);
+}
+
+const PRIORITIES = ["critical", "important", "normal", "low"] as const;
+const asPriority = (value: string | null) => PRIORITIES.find((p) => p === value) ?? null;
+
+/** True when the triage job would run for this user: the one check the job itself makes. */
+async function triageEnabled(deps: InboxDeps, actor: Actor): Promise<boolean> {
+  return (await triageReadiness(deps, actor)) !== null;
 }
 
 function formatAddress(address: MailAddress | null | undefined): string {
@@ -74,11 +87,20 @@ export async function inboxList(
   });
   const accounts = connections.map((c) => ({ connectionId: c.id, label: c.displayName }));
   const agentOut = agent ? { botId: agent.id, name: agent.name } : null;
+  const enabled = await triageEnabled(deps, actor);
   if (ids.length === 0) {
-    return { accounts, agent: agentOut, rows: [], syncedAt: null, failedAccounts: [] };
+    return {
+      accounts,
+      agent: agentOut,
+      rows: [],
+      syncedAt: null,
+      failedAccounts: [],
+      enabled,
+      triagePending: false,
+    };
   }
 
-  const [messages, states] = await Promise.all([
+  const [messages, states, untriaged] = await Promise.all([
     prisma.cachedMailMessage.findMany({
       where: {
         spaceId: actor.spaceId,
@@ -91,6 +113,21 @@ export async function inboxList(
       take: MAX_ROWS,
     }),
     prisma.mailSyncState.findMany({ where: { connectionId: { in: ids } } }),
+    // The rows Job flow step 4 of the triage job would select, across all the user's accounts.
+    enabled
+      ? prisma.cachedMailMessage.findFirst({
+          where: {
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            connectionId: { in: connections.map((c) => c.id) },
+            inInbox: true,
+            fromSelf: false,
+            receivedAt: { gte: new Date(Date.now() - WINDOW_MS) },
+            OR: [{ triagedAt: null }, { triageVersion: { lt: TRIAGE_VERSION } }],
+          },
+          select: { id: true },
+        })
+      : null,
   ]);
 
   const seen = new Set<string>();
@@ -108,7 +145,10 @@ export async function inboxList(
         snippet: m.snippet,
         receivedAt: m.receivedAt.toISOString(),
         unread: m.unread,
-        needsReply: m.needsReply,
+        // Triage fields stay hidden while triage is off, and an answered thread needs no reply.
+        needsReply: enabled && m.needsReply !== null ? m.needsReply && !m.alreadyHandled : null,
+        priority: enabled ? asPriority(m.priority) : null,
+        reason: enabled ? m.reason : null,
       },
     ];
   });
@@ -119,6 +159,8 @@ export async function inboxList(
     rows,
     syncedAt: synced.length ? new Date(Math.max(...synced)).toISOString() : null,
     failedAccounts: states.filter((s) => s.lastErrorAt).map((s) => s.connectionId),
+    enabled,
+    triagePending: untriaged !== null,
   };
 }
 
@@ -204,4 +246,70 @@ export async function inboxUnreadCount(
         AND m."inInbox" AND m.unread AND m."receivedAt" >= ${since}
     ) threads`);
   return { count: row?.count ?? 0 };
+}
+
+const todoInclude = {
+  message: { select: { priority: true, fromName: true, fromAddress: true } },
+} satisfies Prisma.InboxTodoInclude;
+
+function todoOut(row: Prisma.InboxTodoGetPayload<{ include: typeof todoInclude }>): InboxTodo {
+  return {
+    id: row.id,
+    connectionId: row.connectionId,
+    messageId: row.messageId,
+    text: row.text,
+    detail: row.detail,
+    from: row.message ? row.message.fromName || row.message.fromAddress : null,
+    priority: asPriority(row.message?.priority ?? null),
+    dueOn: row.dueOn ? row.dueOn.toISOString().slice(0, 10) : null,
+    doneAt: row.doneAt ? row.doneAt.toISOString() : null,
+  };
+}
+
+export async function inboxTodosList(
+  deps: InboxDeps,
+  actor: Actor,
+  input: { connectionId?: string },
+): Promise<{ enabled: boolean; todos: InboxTodo[] }> {
+  const connections = await connectedMailConnections(deps.prisma, actor);
+  if (input.connectionId && !connections.some((c) => c.id === input.connectionId)) {
+    throw notFound();
+  }
+  const enabled = await triageEnabled(deps, actor);
+  if (!enabled) return { enabled, todos: [] };
+  const rows = await deps.prisma.inboxTodo.findMany({
+    where: {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      connectionId: input.connectionId ?? { in: connections.map((c) => c.id) },
+      OR: [{ doneAt: null }, { doneAt: { gte: new Date(Date.now() - DONE_VISIBLE_MS) } }],
+    },
+    include: todoInclude,
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  return { enabled, todos: rows.map(todoOut) };
+}
+
+export async function inboxTodoSetDone(
+  deps: Pick<InboxDeps, "prisma">,
+  actor: Actor,
+  input: { id: string; done: boolean },
+): Promise<InboxTodo> {
+  const now = new Date();
+  const scope = {
+    id: input.id,
+    spaceId: actor.spaceId,
+    userId: actor.userId,
+    connection: { status: "connected" },
+  };
+  // Any user action marks the to-do touched, so triage never replaces or re-creates it.
+  const { count } = await deps.prisma.inboxTodo.updateMany({
+    where: scope,
+    data: { doneAt: input.done ? now : null, touchedAt: now },
+  });
+  const row = count
+    ? await deps.prisma.inboxTodo.findFirst({ where: scope, include: todoInclude })
+    : null;
+  if (!row) throw notFound();
+  return todoOut(row);
 }

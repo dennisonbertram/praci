@@ -7,6 +7,8 @@ export const inboxAgentSpawnKey = (userId: string) => `inbox-agent:${userId}`;
 /** Connection.displayName labels the account tab. */
 export const MailAccountSchema = z.object({ connectionId: Id, label: z.string() });
 
+export const InboxPrioritySchema = z.enum(["critical", "important", "normal", "low"]);
+
 export const MailRowSchema = z.object({
   id: Id,
   connectionId: Id,
@@ -16,7 +18,10 @@ export const MailRowSchema = z.object({
   snippet: z.string(),
   receivedAt: z.string(),
   unread: z.boolean(),
+  /** Null until triaged, and while triage is not enabled. Already-answered threads are false. */
   needsReply: z.boolean().nullable(),
+  priority: InboxPrioritySchema.nullable(),
+  reason: z.string().nullable(),
 });
 
 export const InboxListInputSchema = z.object({ connectionId: Id.optional() });
@@ -32,6 +37,32 @@ export const InboxListOutputSchema = z.object({
   syncedAt: z.string().nullable(),
   /** Accounts whose last sync failed. */
   failedAccounts: z.array(Id),
+  /** True when triage can run: a usable model the user has allowed. Clients hide triage UI otherwise. */
+  enabled: z.boolean(),
+  /** True while connected-account mail still waits for triage; clients refetch a few times. */
+  triagePending: z.boolean(),
+});
+
+export const InboxTodoSchema = z.object({
+  id: Id,
+  connectionId: Id,
+  /** Null once the message left the 14-day cache. */
+  messageId: Id.nullable(),
+  text: z.string(),
+  /** The message's one-line reason. */
+  detail: z.string().nullable(),
+  /** Sender of the message, if it is still cached. */
+  from: z.string().nullable(),
+  priority: InboxPrioritySchema.nullable(),
+  /** YYYY-MM-DD */
+  dueOn: z.string().nullable(),
+  doneAt: z.string().nullable(),
+});
+
+export const InboxTodosOutputSchema = z.object({
+  enabled: z.boolean(),
+  /** Open to-dos plus those finished in the last 24 hours. Empty when not enabled. */
+  todos: z.array(InboxTodoSchema),
 });
 
 export const InboxMessageSchema = z.object({
@@ -43,5 +74,6 @@ export const InboxMessageSchema = z.object({
   text: z.string().nullable(),
 });
 
+export type InboxTodo = z.infer<typeof InboxTodoSchema>;
 export type MailRow = z.infer<typeof MailRowSchema>;
 export type InboxListOutput = z.infer<typeof InboxListOutputSchema>;

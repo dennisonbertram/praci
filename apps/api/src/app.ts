@@ -562,6 +562,7 @@ export async function createApp(
     remoteConnectors,
     artifacts,
     mail,
+    resolveModel: executor.resolveModel,
     dataDir: env.dataDir,
     billing,
     messaging: {
