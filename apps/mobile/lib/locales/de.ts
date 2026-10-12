@@ -789,4 +789,13 @@ export const DE_MESSAGES: Record<string, string> = {
     "Melde dich bei deinem bestehenden Konto an, um SSO zu verknüpfen",
   "SSO is temporarily unavailable. Try again.":
     "SSO ist vorübergehend nicht verfügbar. Versuche es erneut.",
+  Inbox: "Posteingang",
+  "Inbox agent": "Posteingang-Agent",
+  "Could not load mail.": "E-Mails konnten nicht geladen werden.",
+  "Needs reply": "Antwort nötig",
+  Earlier: "Früher",
+  All: "Alle",
+  "Connect mail": "E-Mail verbinden",
+  "No mail": "Keine E-Mails",
+  "To do": "Zu erledigen",
 };
