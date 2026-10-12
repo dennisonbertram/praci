@@ -825,6 +825,8 @@ export function ShellPage() {
   const recordingSkill = activeTaughtSkills.find((skill) => skill.status === "recording") ?? null;
   const routeBotId = useRef<string | undefined>(botId);
   routeBotId.current = botId;
+  const routeInbox = useRef(false);
+  routeInbox.current = inboxMode;
   const routeGroupId = useRef<string | undefined>(groupId);
   routeGroupId.current = groupId;
   const activeBotId = useRef<string | undefined>(inGroup ? undefined : active?.id);
@@ -1004,6 +1006,8 @@ export function ShellPage() {
           return;
         }
         const currentBotId = routeBotId.current;
+        // The Inbox route has no bot id; the 3-second poll must not send the user away from it.
+        if (routeInbox.current) return;
         if (!currentBotId || !list.some((bot) => bot.id === currentBotId)) {
           navigate(firstThreadRoute(list, groupList), { replace: true });
         }

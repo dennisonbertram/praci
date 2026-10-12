@@ -1,15 +1,18 @@
 import { i18n } from "@lingui/core";
-import { Trans } from "@lingui/react/macro";
-import type { InboxListOutput, MailRow } from "@rakazo/contracts";
-import { groupInbox } from "@rakazo/core";
-import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
-import { useEffect, useId, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
+import type { InboxListOutput, InboxTodo, MailRow } from "@rakazo/contracts";
+import { dueTone, groupInbox, localDaysUntil } from "@rakazo/core";
+import { Button, Card, Checkbox, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
 const ALL = "all";
+// ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
+const TRIAGE_POLL_MS = 5_000;
+const TRIAGE_MAX_POLLS = 6;
 
 /** Time of day for today's mail, month and day otherwise. */
 function formatMailTime(iso: string, today: boolean): string {
@@ -40,6 +43,7 @@ export function InboxPage({
   const [synced, setSynced] = useState(false);
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
+  const polls = useRef(0);
 
   useEffect(() => {
     if (paused) return;
@@ -60,9 +64,20 @@ export function InboxPage({
     };
   }, [tab, reload, paused]);
 
+  // Triage runs after the sync returns, so refetch a few times while the list reports it pending.
+  useEffect(() => {
+    if (paused || !data?.triagePending || polls.current >= TRIAGE_MAX_POLLS) return;
+    const timer = setTimeout(() => {
+      polls.current += 1;
+      setReload((n) => n + 1);
+    }, TRIAGE_POLL_MS);
+    return () => clearTimeout(timer);
+  }, [data, paused]);
+
   // `attempt` re-runs the sync for "Try again".
   useEffect(() => {
     if (paused) return;
+    polls.current = 0;
     let live = true;
     rpc.inbox
       .refresh({})
@@ -152,6 +167,7 @@ export function InboxPage({
         </p>
       ) : (
         <>
+          <TodoCard connectionId={tab} list={data} paused={paused} />
           <InboxGroup
             title={<Trans>Needs reply</Trans>}
             rows={groups.needsReply}
@@ -176,6 +192,118 @@ export function InboxPage({
         </>
       )}
     </div>
+  );
+}
+
+/** The open to-dos triage keeps; hidden while triage is off or there is nothing to do. */
+function TodoCard({
+  connectionId,
+  list,
+  paused,
+}: {
+  connectionId: string | undefined;
+  /** Each new list response refetches the to-dos, so they are never older than the list's triage state. */
+  list: InboxListOutput;
+  paused: boolean;
+}) {
+  const { t, i18n: lingui } = useLingui();
+  const [todos, setTodos] = useState<InboxTodo[]>([]);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (paused) return;
+    if (!list.enabled) {
+      setTodos([]);
+      return;
+    }
+    let live = true;
+    rpc.inbox.todos
+      .list(connectionId ? { connectionId } : {})
+      .then((next) => {
+        if (live) setTodos(next.todos);
+      })
+      .catch(() => {
+        // The inbox list above already reports a failed load; the card just stays hidden.
+        if (live) setTodos([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [connectionId, list, paused]);
+
+  if (todos.length === 0) return null;
+  const now = new Date();
+  const ordered = [...todos].sort((a, b) => Number(a.doneAt !== null) - Number(b.doneAt !== null));
+  const dueLabel = (dueOn: string, days: number) => {
+    if (days === 0) return t`Today`;
+    const [year = 0, month = 1, day = 1] = dueOn.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString(
+      lingui.locale || "en",
+      days > 0 && days <= 6 ? { weekday: "short" } : { month: "short", day: "numeric" },
+    );
+  };
+  const setDone = (todo: InboxTodo, done: boolean) => {
+    setError("");
+    rpc.inbox.todos
+      .setDone({ id: todo.id, done })
+      .then((next) => setTodos((list) => list.map((item) => (item.id === next.id ? next : item))))
+      .catch((cause) => setError(errorText(cause)));
+  };
+
+  return (
+    <Card
+      size="sm"
+      role="region"
+      className="mb-5 gap-1 px-3.5"
+      aria-labelledby="inbox-todo-heading"
+    >
+      <h2 id="inbox-todo-heading" className="mb-1 text-xs font-semibold text-muted-foreground">
+        <Trans>To do</Trans>
+      </h2>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <ul>
+        {ordered.map((todo) => {
+          const days = todo.dueOn ? localDaysUntil(todo.dueOn, now) : null;
+          const tone = dueTone(days, todo.priority);
+          const done = todo.doneAt !== null;
+          return (
+            <li
+              key={todo.id}
+              className="flex items-start gap-2.5 border-t border-border py-1.5 first:border-t-0"
+            >
+              <Checkbox
+                aria-label={todo.text}
+                checked={done}
+                onCheckedChange={(checked) => setDone(todo, checked)}
+                className="mt-0.5"
+              />
+              <div
+                dir="auto"
+                className={`min-w-0 flex-1 text-sm ${done ? "text-muted-foreground line-through" : ""}`}
+              >
+                {todo.text}
+                {todo.from || todo.detail ? (
+                  <small className="block truncate text-xs text-muted-foreground">
+                    {[todo.from, todo.detail].filter(Boolean).join(" · ")}
+                  </small>
+                ) : null}
+              </div>
+              {todo.dueOn && days !== null ? (
+                <span
+                  className={`whitespace-nowrap text-xs ${tone === "crit" ? "text-destructive" : tone === "warn" ? "text-warning" : "text-muted-foreground"}`}
+                >
+                  {dueLabel(todo.dueOn, days)}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }
 
