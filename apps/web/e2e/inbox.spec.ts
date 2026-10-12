@@ -651,19 +651,26 @@ test("Inbox says what failed when an account's sync failed, and nothing when it 
     reconnectAccounts: [],
   };
   await page.route("**/rpc/inbox/list", async (route) => {
-    const response = await route.fetch();
-    const body = (await response.json()) as { json: { accounts: Array<{ connectionId: string }> } };
-    const first = body.json.accounts[0]?.connectionId ?? "none";
-    await route.fulfill({
-      response,
-      json: {
+    try {
+      const response = await route.fetch();
+      const body = (await response.json()) as {
+        json: { accounts: Array<{ connectionId: string }> };
+      };
+      const first = body.json.accounts[0]?.connectionId ?? "none";
+      await route.fulfill({
+        response,
         json: {
-          ...body.json,
-          failedAccounts: failure.failedAccounts.map(() => first),
-          reconnectAccounts: failure.reconnectAccounts.map(() => first),
+          json: {
+            ...body.json,
+            failedAccounts: failure.failedAccounts.map(() => first),
+            reconnectAccounts: failure.reconnectAccounts.map(() => first),
+          },
         },
-      },
-    });
+      });
+    } catch {
+      // A list request still in flight when the page reloads is dropped with the page.
+      await route.abort().catch(() => {});
+    }
   });
 
   await page.getByTestId("sidebar-inbox").click();
@@ -676,11 +683,13 @@ test("Inbox says what failed when an account's sync failed, and nothing when it 
   await expect(main.getByRole("alert")).toHaveCount(0);
 
   failure = { failedAccounts: ["x"], reconnectAccounts: [] };
+  await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(main.getByRole("alert")).toHaveText(/Couldn't reach Gmail\./);
   await expect(main.getByRole("button", { name: "Try again" })).toBeVisible();
 
   failure = { failedAccounts: ["x"], reconnectAccounts: ["x"] };
+  await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(main.getByRole("alert")).toHaveText(/Gmail needs to be reconnected\./);
 });
