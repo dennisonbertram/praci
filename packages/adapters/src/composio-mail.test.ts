@@ -32,7 +32,7 @@ const context: AdapterContext = {
 };
 
 /** A Composio connector whose mocked SDK forwards every proxy call to the Gmail emulator. */
-function composioMailbox() {
+function composioMailbox(sleeps: number[] = []) {
   const emulator = createMailEmulator();
   sdk.proxyExecute.mockImplementation(async (body) => {
     const response = emulator.gmail.handle(String(body.connectedAccountId), String(body.endpoint));
@@ -66,7 +66,9 @@ function composioMailbox() {
   const provider = createMailProvider({
     prisma,
     connectors: { managed: () => connector },
-    sleep: async () => {},
+    sleep: async (ms) => {
+      sleeps.push(ms);
+    },
   });
   const accounts = emulator.accounts.map((account) => ({ ...account, connectorId: "composio" }));
   return { emulator, connector, provider, accounts };
@@ -197,6 +199,35 @@ describe("ComposioConnector.proxy", () => {
     expect(mapped).toBeInstanceOf(MailProviderError);
     expect((mapped as MailProviderError).kind).toBe("unavailable");
     expect((mapped as MailProviderError).message).not.toContain("ck_live_supersecret");
+  });
+});
+
+describe("Gmail errors through the Composio proxy", () => {
+  beforeEach(() => {
+    sdk.proxyExecute.mockReset();
+  });
+
+  it("retries a Gmail 429 after the Retry-After delay and then returns the page", async () => {
+    const sleeps: number[] = [];
+    const { emulator, provider, accounts } = composioMailbox(sleeps);
+    const account = accounts[0];
+    if (!account) throw new Error("no account");
+    emulator.gmail.failNext(429, { retryAfter: 3, urlIncludes: "/messages?" });
+    const page = await provider.listMessages(account, { query: "in:inbox", pageSize: 2 }, context);
+    expect(page.messages).toHaveLength(2);
+    expect(sleeps).toEqual([3000]);
+  });
+
+  it("maps a Gmail 401 to an auth error so the UI can ask the user to reconnect", async () => {
+    const { emulator, provider, accounts } = composioMailbox();
+    const account = accounts[0];
+    if (!account) throw new Error("no account");
+    emulator.gmail.failNext(401, { reason: "authError", urlIncludes: "/messages?" });
+    const failure = await provider
+      .listMessages(account, { query: "", pageSize: 1 }, context)
+      .catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(MailProviderError);
+    expect((failure as MailProviderError).kind).toBe("auth");
   });
 });
 
