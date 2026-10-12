@@ -10,7 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
-import { Ellipsis, TriangleAlert } from "lucide-react";
+import { BellOff, Ellipsis, Star, TriangleAlert } from "lucide-react";
 
 /** Time of day for today's mail, month and day otherwise. */
 function formatMailTime(iso: string, today: boolean): string {
@@ -28,6 +28,8 @@ export function InboxGroup({
   onOpen,
   onMark,
   today,
+  selectedId,
+  hideAttention,
 }: {
   title: React.ReactNode;
   rows: MailRow[];
@@ -35,6 +37,9 @@ export function InboxGroup({
   /** Present only while triage is enabled. */
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   today: boolean;
+  selectedId?: string;
+  /** Set when the group heading already says the rows need attention. */
+  hideAttention?: boolean;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -48,6 +53,8 @@ export function InboxGroup({
             onOpen={() => onOpen(row.id)}
             onMark={onMark}
             today={today}
+            selected={row.id === selectedId}
+            hideAttention={hideAttention}
           />
         ))}
       </div>
@@ -60,11 +67,15 @@ export function InboxRow({
   onOpen,
   onMark,
   today,
+  selected = false,
+  hideAttention = false,
 }: {
   row: MailRow;
   onOpen: () => void;
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   today: boolean;
+  selected?: boolean;
+  hideAttention?: boolean;
 }) {
   const { t } = useLingui();
   const labelNames = {
@@ -73,25 +84,30 @@ export function InboxRow({
     spam: t`Spam`,
     junk: t`Junk`,
   };
-  const label = inboxLabel(row);
-  // Unread reads as weight; read rows and rows marked noise are muted.
-  const strong = row.unread && row.feedback !== "noise";
+  const found = inboxLabel(row);
+  const label = hideAttention && found === "attention" ? null : found;
   const weight = row.unread ? "font-semibold" : "";
+  const muted = row.feedback === "noise";
+  const marks = [
+    { mark: "important", name: t`Mark important`, Icon: Star },
+    { mark: "noise", name: t`Mark noise`, Icon: BellOff },
+  ] as const;
   return (
     <div className="border-b border-border">
       <div className="group/row relative">
         <button
           type="button"
           aria-haspopup="dialog"
+          aria-current={selected ? "true" : undefined}
+          data-row-id={row.id}
           onClick={onOpen}
-          className={`grid w-full min-w-0 grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 px-3 py-2 text-start text-sm hover:bg-muted/50 @3xl:h-12 @3xl:grid-cols-[28px_170px_minmax(0,1fr)_auto] @3xl:py-0 ${onMark ? "pointer-coarse:pe-11" : ""} ${strong ? "text-foreground" : "text-muted-foreground"}`}
+          className={`grid w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto_4rem] items-center gap-x-3 gap-y-0.5 border-s-2 py-2 ps-2.5 pe-3 text-start text-sm hover:bg-muted @3xl:h-11 @3xl:grid-cols-[8px_180px_minmax(0,1fr)_auto_4rem] @3xl:py-0 ${selected ? "border-primary bg-muted" : "border-transparent"} ${onMark ? "pointer-coarse:pe-11" : ""} ${muted ? "text-muted-foreground" : "text-foreground"}`}
         >
           <span
             aria-hidden="true"
-            className="col-start-1 row-start-1 grid size-7 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground"
-          >
-            {row.from.match(/[\p{L}\p{N}]/u)?.[0]?.toUpperCase()}
-          </span>
+            data-unread-dot={row.unread ? "" : undefined}
+            className={`col-start-1 row-start-1 size-2 rounded-full ${row.unread ? "bg-primary" : ""}`}
+          />
           <span dir="auto" className={`col-start-2 row-start-1 truncate ${weight}`}>
             {isSuspiciousCategory(row.category) ? (
               <TriangleAlert
@@ -109,59 +125,80 @@ export function InboxRow({
           </span>
           <span
             dir="auto"
-            className={`col-span-2 col-start-2 row-start-2 truncate @3xl:col-span-1 @3xl:col-start-3 @3xl:row-start-1 ${weight}`}
+            className={`col-span-3 col-start-2 row-start-2 truncate @3xl:col-span-1 @3xl:col-start-3 @3xl:row-start-1 ${weight}`}
           >
             {row.subject}
             {row.snippet ? (
               <span className="font-normal text-muted-foreground"> - {row.snippet}</span>
             ) : null}
           </span>
-          <span className="col-start-3 row-start-1 flex items-center justify-self-end gap-2 @3xl:col-start-4">
-            {label ? (
-              <Badge
-                variant={label === "newsletter" ? "outline" : "secondary"}
-                className={label === "spam" || label === "junk" ? "bg-warning/15 text-warning" : ""}
-              >
-                {labelNames[label]}
-              </Badge>
-            ) : null}
-            <time
-              dateTime={row.receivedAt}
-              className={`text-xs whitespace-nowrap tabular-nums ${onMark ? "group-hover/row:opacity-0 group-has-[[aria-haspopup=menu]:focus-visible]/row:opacity-0 group-has-[[aria-haspopup=menu][aria-expanded=true]]/row:opacity-0 pointer-coarse:opacity-100" : ""} ${weight}`}
+          {label ? (
+            <Badge
+              variant={label === "newsletter" ? "outline" : "secondary"}
+              className={`col-start-3 row-start-1 @3xl:col-start-4 ${label === "spam" || label === "junk" ? "bg-warning/15 text-warning" : ""}`}
             >
-              {formatMailTime(row.receivedAt, today)}
-            </time>
-          </span>
+              {labelNames[label]}
+            </Badge>
+          ) : null}
+          <time
+            dateTime={row.receivedAt}
+            className={`col-start-4 row-start-1 text-end text-xs whitespace-nowrap tabular-nums @3xl:col-start-5 ${row.unread ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+          >
+            {formatMailTime(row.receivedAt, today)}
+          </time>
         </button>
         {onMark ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className="absolute end-3 top-1.5 @3xl:top-1/2 @3xl:-translate-y-1/2 opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100 data-popup-open:opacity-100"
-                />
-              }
-              aria-label={t`More`}
+          <>
+            <div
+              className={`absolute end-22 top-1.5 flex items-center gap-0.5 bg-muted @3xl:top-1/2 @3xl:-translate-y-1/2 pointer-coarse:hidden ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
             >
-              <Ellipsis aria-hidden="true" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-44">
-              <DropdownMenuCheckboxItem
-                checked={row.feedback === "important"}
-                onCheckedChange={(checked) => onMark(row.id, checked ? "important" : null)}
+              {marks.map(({ mark, name, Icon }) => {
+                const pressed = row.feedback === mark;
+                return (
+                  <Button
+                    key={mark}
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={name}
+                    aria-pressed={pressed}
+                    tabIndex={selected ? 0 : -1}
+                    className={pressed ? "text-foreground" : "text-muted-foreground"}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onMark(row.id, pressed ? null : mark);
+                    }}
+                  >
+                    <Icon aria-hidden="true" className={pressed ? "fill-current" : ""} />
+                  </Button>
+                );
+              })}
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="absolute end-3 top-1.5 hidden pointer-coarse:inline-flex"
+                  />
+                }
+                aria-label={t`More`}
               >
-                <Trans>Mark important</Trans>
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={row.feedback === "noise"}
-                onCheckedChange={(checked) => onMark(row.id, checked ? "noise" : null)}
-              >
-                <Trans>Mark noise</Trans>
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <Ellipsis aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-44">
+                {marks.map(({ mark, name }) => (
+                  <DropdownMenuCheckboxItem
+                    key={mark}
+                    checked={row.feedback === mark}
+                    onCheckedChange={(checked) => onMark(row.id, checked ? mark : null)}
+                  >
+                    {name}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
         ) : null}
       </div>
     </div>
