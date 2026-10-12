@@ -73,6 +73,9 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
   await expect(body).toHaveValue(/> Can you do the 14th or the 21st\?/);
   // The cursor starts above the quoted original.
   await expect(body).toBeFocused();
+  await expect(body).toHaveValue(/^\n\n/);
+  expect(await body.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(0);
+  expect(await body.evaluate((el: HTMLTextAreaElement) => el.scrollTop)).toBe(0);
   await captureScreenshot(page, testInfo, "compose-reply");
 
   // Typing autosaves a Gmail draft in the original thread.
