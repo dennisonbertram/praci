@@ -162,6 +162,18 @@ export function inferScript(
       },
     ];
   }
+  if (lower.includes("show email cards")) {
+    const emails = [...prompt.matchAll(/([\w-]+)=(today|within_3_days|this_week|later)\b/g)].map(
+      ([, id, urgency]) => ({ id, urgency }),
+    );
+    return [
+      {
+        assistant: "here are those messages.",
+        toolCalls: [{ name: "show_emails", args: { emails } }],
+        complete: true,
+      },
+    ];
+  }
   if (lower.includes("message the bot named") || lower.includes("message bot named")) {
     const name = namedBot(prompt) ?? "Peer";
     const message =

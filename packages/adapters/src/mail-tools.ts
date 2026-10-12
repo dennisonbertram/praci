@@ -8,6 +8,8 @@ import type {
   MailProvider,
 } from "@rakazo/adapter-kit";
 import { MailProviderError, mailSearchExpireJob } from "@rakazo/adapter-kit";
+import type { EmailCard, MessageBlock } from "@rakazo/contracts";
+import { EmailUrgency, MAX_EMAIL_CARDS } from "@rakazo/contracts";
 import {
   clampInt,
   createGrepScan,
@@ -18,10 +20,11 @@ import {
   resultRow,
   stripQuotedReply,
   summarizeResults,
+  triageUrgency,
 } from "@rakazo/core";
 import { Prisma, type PrismaClient } from "@rakazo/db";
 
-export const MAIL_TOOL_NAMES = new Set(["mail_search", "mail_grep", "mail_get"]);
+export const MAIL_TOOL_NAMES = new Set(["mail_search", "mail_grep", "mail_get", "show_emails"]);
 
 const SEARCH_TTL_MS = 24 * 3_600_000;
 const EXPIRED_BACKSTOP_MS = 3_600_000;
@@ -47,6 +50,8 @@ export type MailToolDeps = {
   accounts: () => Promise<MailAccount[]>;
   /** From the run, never from model input. */
   scope: { spaceId: string; userId: string; botId: string };
+  /** Puts blocks in the run's thread. Without it show_emails is unavailable. */
+  publish?: (blocks: MessageBlock[]) => Promise<unknown>;
   deadlineMs?: number;
   now?: () => Date;
 };
@@ -90,6 +95,7 @@ export async function mailToolFromTool(
     if (name === "mail_search") return await mailSearch(deps, context, args);
     if (name === "mail_grep") return await mailGrep(deps, args);
     if (name === "mail_get") return await mailGet(deps, context, args);
+    if (name === "show_emails") return await showEmails(deps, context, args);
     return { error: `Unknown mail tool ${name}` };
   } catch (error) {
     // Provider errors carry sanitized text; anything else is not shown to the model.
@@ -513,4 +519,73 @@ async function mailGet(deps: MailToolDeps, context: AdapterContext, args: Record
       body,
     ].join("\n"),
   };
+}
+
+// --- show_emails ---
+
+const CARD_NOT_FOUND = {
+  error: "None of those messages are in the synced mail. Run mail_search first.",
+};
+
+/**
+ * Publishes the cited messages as one `emails` block. Ids resolve only to the owner's cached rows
+ * on accounts still connected; the card carries the cached row id the Inbox opens.
+ */
+async function showEmails(
+  deps: MailToolDeps,
+  context: AdapterContext,
+  args: Record<string, unknown>,
+) {
+  if (!deps.publish) return { error: "Cards are unavailable" };
+  const requested = new Map<string, EmailUrgency | undefined>();
+  for (const entry of Array.isArray(args.emails) ? args.emails : []) {
+    if (requested.size >= MAX_EMAIL_CARDS) break;
+    const { id, urgency } = (entry ?? {}) as Record<string, unknown>;
+    if (typeof id === "string" && id.trim() && !requested.has(id.trim())) {
+      requested.set(id.trim(), EmailUrgency.safeParse(urgency).data);
+    }
+  }
+  if (requested.size === 0) return { error: "emails is required" };
+
+  const accounts = await deps.accounts();
+  const rows = await deps.prisma.cachedMailMessage.findMany({
+    where: {
+      spaceId: deps.scope.spaceId,
+      userId: deps.scope.userId,
+      connectionId: { in: accounts.map((account) => account.id) },
+      providerMessageId: { in: [...requested.keys()] },
+    },
+  });
+  const found = new Map(rows.map((row) => [row.providerMessageId, row]));
+  const now = currentTime(deps);
+  // ponytail: up to 20 getMessage calls in parallel for attachment counts; the provider retries
+  // rate limits. Cache the count at sync time if this is slow.
+  const emails = await Promise.all(
+    [...requested].flatMap(([providerId, urgency]) => {
+      const row = found.get(providerId);
+      if (!row) return [];
+      return [
+        (async (): Promise<EmailCard> => {
+          const account = accounts.find((candidate) => candidate.id === row.connectionId);
+          const attachments = await deps.mail
+            .getMessage(account as MailAccount, providerId, context)
+            .then((message) => message.attachments.length)
+            .catch(() => undefined);
+          return {
+            id: row.id,
+            urgency: urgency ?? triageUrgency(row, now),
+            from: row.fromName || row.fromAddress,
+            subject: row.subject,
+            snippet: row.snippet,
+            receivedAt: row.receivedAt.toISOString(),
+            ...(attachments === undefined ? {} : { attachments }),
+          };
+        })(),
+      ];
+    }),
+  );
+  if (emails.length === 0) return CARD_NOT_FOUND;
+  await deps.publish([{ kind: "emails", emails }]);
+  const notFound = [...requested.keys()].filter((id) => !found.has(id));
+  return { shown: emails.length, ...(notFound.length ? { notFound } : {}) };
 }

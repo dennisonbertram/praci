@@ -92,6 +92,25 @@ const ChartBlock = z
 export const SecretAskPurpose = z.enum(["otp", "password", "api_key"]);
 export type SecretAskPurpose = z.infer<typeof SecretAskPurpose>;
 
+export const MAX_EMAIL_CARDS = 20;
+
+/** How soon a cited message needs attention; the chat groups cards by it. */
+export const EmailUrgency = z.enum(["today", "within_3_days", "this_week", "later"]);
+export type EmailUrgency = z.infer<typeof EmailUrgency>;
+
+/** A snapshot of one cached mail message; `id` is the CachedMailMessage id the Inbox opens. */
+export const EmailCardSchema = z.object({
+  id: Id,
+  urgency: EmailUrgency,
+  from: z.string(),
+  subject: z.string(),
+  snippet: z.string(),
+  receivedAt: z.string(),
+  /** Absent when the count could not be read. */
+  attachments: z.number().int().nonnegative().optional(),
+});
+export type EmailCard = z.infer<typeof EmailCardSchema>;
+
 export const MessageBlock = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string() }),
   z.object({
@@ -229,6 +248,11 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     endpoint: z.string().nullable(),
     needsOAuth: z.boolean(),
     status: z.enum(["pending", "connected", "dismissed"]).default("pending"),
+  }),
+  z.object({
+    /** Mail messages the bot cited, shown as cards grouped by urgency. */
+    kind: z.literal("emails"),
+    emails: z.array(EmailCardSchema).min(1).max(MAX_EMAIL_CARDS),
   }),
   z.object({
     kind: z.literal("image"),

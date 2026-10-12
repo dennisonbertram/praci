@@ -157,6 +157,28 @@ describe("messageReplyExcerpt", () => {
     );
     expect(messageReplyExcerpt(textBlock("**literal**\nSecond line"), "user")).toBe("**literal**");
   });
+  it("previews an emails block by its first subject", () => {
+    expect(
+      messageReplyExcerpt(
+        [
+          {
+            kind: "emails",
+            emails: [
+              {
+                id: "row-1",
+                urgency: "today",
+                from: "Sam",
+                subject: "Offsite dates",
+                snippet: "",
+                receivedAt: "2026-10-12T09:00:00.000Z",
+              },
+            ],
+          },
+        ],
+        "bot",
+      ),
+    ).toBe("Offsite dates");
+  });
   it("bounds the preview and handles messages without text", () => {
     expect(messageReplyExcerpt(textBlock("a".repeat(1000)), "bot")).toHaveLength(280);
     expect(messageReplyExcerpt([], "user")).toBe("");

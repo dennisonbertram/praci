@@ -594,7 +594,7 @@ function InboxRow({
   );
 }
 
-function InboxMessageView({
+export function InboxMessageView({
   id,
   messageId,
   subject,
