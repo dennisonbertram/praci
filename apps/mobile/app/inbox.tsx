@@ -277,7 +277,14 @@ export default function InboxScreen() {
         renderSectionHeader={({ section }) => (
           <Text style={styles.sectionTitle}>{section.title}</Text>
         )}
-        renderItem={({ item }) => <MailListRow row={item} />}
+        renderItem={({ item }) => (
+          <MailListRow
+            row={item}
+            onPress={() =>
+              router.push({ pathname: "/inbox-message", params: { messageId: item.id } })
+            }
+          />
+        )}
       />
     </View>
   );
@@ -343,10 +350,10 @@ function TodoCard({
   );
 }
 
-function MailListRow({ row }: { row: MailRow }) {
+function MailListRow({ row, onPress }: { row: MailRow; onPress: () => void }) {
   const styles = useThemedStyles(createStyles);
   return (
-    <View style={styles.row}>
+    <Pressable onPress={onPress} style={styles.row}>
       <View style={[styles.unreadDot, !row.unread && styles.readDot]} />
       <View style={styles.rowBody}>
         <View style={styles.rowTop}>
@@ -364,7 +371,7 @@ function MailListRow({ row }: { row: MailRow }) {
           </Text>
         ) : null}
       </View>
-    </View>
+    </Pressable>
   );
 }
 

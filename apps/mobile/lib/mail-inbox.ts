@@ -1,4 +1,4 @@
-import type { InboxListOutput, InboxTodo } from "@rakazo/contracts";
+import type { InboxListOutput, InboxMessage, InboxTodo } from "@rakazo/contracts";
 import { rpc } from "./api";
 import { dateLocaleForUi, t } from "./i18n";
 
@@ -9,6 +9,8 @@ export const listMailInbox = (connectionId?: string) =>
   rpc<InboxListOutput>("inbox/list", connectionId ? { connectionId } : {});
 
 export const refreshMailInbox = () => rpc<{ ok: true }>("inbox/refresh", {});
+
+export const getMailMessage = (messageId: string) => rpc<InboxMessage>("inbox/get", { messageId });
 
 export const listMailTodos = (connectionId?: string) =>
   rpc<{ enabled: boolean; todos: InboxTodo[] }>(
