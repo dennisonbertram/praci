@@ -222,6 +222,59 @@ describe("MCP connector session cache", () => {
     }
   });
 
+  it("rebuilds a session in this process when another process replaces its large OAuth credential", async () => {
+    // Two stores over one fanout stand in for the API and worker processes. The fanout
+    // rejects payloads over the PostgreSQL NOTIFY limit, as PostgresRealtimeFanout does.
+    class NotifyLimitedFanout extends InMemoryRealtimeFanout {
+      override async publish(topic: string, payload: string): Promise<void> {
+        if (Buffer.byteLength(JSON.stringify({ topic, payload }), "utf8") > 7_900)
+          throw new Error("Realtime signal exceeds the PostgreSQL NOTIFY payload limit");
+        return super.publish(topic, payload);
+      }
+    }
+    const fanout = new NotifyLimitedFanout();
+    const api = new ComposedSecretStore(new EncryptedSecretStore("key"), undefined, fanout);
+    const worker = new ComposedSecretStore(new EncryptedSecretStore("key"), undefined, fanout);
+    await api.start();
+    await worker.start();
+    const context = {
+      operationId: "test",
+      traceId: "test",
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+    };
+    const record = await api.put(
+      JSON.stringify({ headers: { Authorization: `Bearer ${"a".repeat(9_000)}` } }),
+      context,
+    );
+    const assignment = { ...ASSIGNMENT, server: { ...SERVER, secretId: record.id } };
+    const prisma = {
+      botMcpServer: {
+        findMany: vi.fn(async () => [assignment]),
+        findFirst: vi.fn(async () => assignment),
+      },
+      secret: { findFirst: vi.fn(async () => ({ id: record.id, ciphertext: record.ref })) },
+    };
+    const state = { failNext: false, initializations: 0 };
+    vi.stubGlobal("fetch", mcpFetch(state));
+    const connector = new McpConnector(prisma as never, worker, { network: TEST_NETWORK });
+    try {
+      await connector.discoverTools(context);
+      await connector.discoverTools(context);
+      expect(state.initializations).toBe(1);
+      await api.delete(record.ref, record.id);
+      await connector.discoverTools(context);
+      expect(state.initializations).toBe(2);
+    } finally {
+      await connector.close();
+      await api.close();
+      await worker.close();
+      await fanout.close();
+    }
+  });
+
   it("keeps a live session working during a secret-store outage after TTL", async () => {
     vi.useFakeTimers();
     const sink = createTestSink();

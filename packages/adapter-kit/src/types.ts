@@ -672,6 +672,7 @@ export interface SecretPutOptions {
   recordId?: string;
   ephemeral?: boolean;
 }
+/** `ref` is the changed ref, or its SHA-256 hex digest when the change came from another process. */
 export type SecretChangeListener = (ref: string) => void;
 
 export interface ArtifactPut {

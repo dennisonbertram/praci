@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { JobPublisher, SecretStore } from "@rakazo/adapter-kit";
 import { runContinueJob, SecretStoreUnavailableError } from "@rakazo/adapter-kit";
-import { inboundRoutineModelPin } from "@rakazo/adapters";
+import { inboundRoutineModelPin, secretRefMatches } from "@rakazo/adapters";
 import type { PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 
@@ -118,7 +118,8 @@ function subscribeWebhookCache(secrets: SecretStore, cache: WebhookSecretCache):
   if (caches.has(cache)) return;
   caches.add(cache);
   secrets.onChange?.((ref) => {
-    for (const [botId, entry] of cache) if (entry.ciphertext === ref) cache.delete(botId);
+    for (const [botId, entry] of cache)
+      if (secretRefMatches(entry.ciphertext, ref)) cache.delete(botId);
   });
 }
 
