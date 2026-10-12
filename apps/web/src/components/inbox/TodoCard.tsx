@@ -1,46 +1,21 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { InboxListOutput, InboxTodo } from "@rakazo/contracts";
+import type { InboxTodo } from "@rakazo/contracts";
 import { dueTone, localDaysUntil } from "@rakazo/core";
 import { Card, Checkbox } from "@rakazo/ui-web";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
-/** The open to-dos triage keeps; hidden while triage is off or there is nothing to do. */
+/** The open to-dos triage keeps; the page loads them with the list. Hidden when there is nothing to do. */
 export function TodoCard({
-  connectionId,
-  list,
-  paused,
+  todos,
+  onChange,
 }: {
-  connectionId: string | undefined;
-  /** Each new list response refetches the to-dos, so they are never older than the list's triage state. */
-  list: InboxListOutput;
-  paused: boolean;
+  todos: InboxTodo[];
+  onChange: (todo: InboxTodo) => void;
 }) {
   const { t, i18n: lingui } = useLingui();
-  const [todos, setTodos] = useState<InboxTodo[]>([]);
   const [error, setError] = useState("");
-  useEffect(() => {
-    if (paused) return;
-    if (!list.enabled) {
-      setTodos([]);
-      return;
-    }
-    let live = true;
-    rpc.inbox.todos
-      .list(connectionId ? { connectionId } : {})
-      .then((next) => {
-        if (live) setTodos(next.todos);
-      })
-      .catch(() => {
-        // The inbox list above already reports a failed load; the card just stays hidden.
-        if (live) setTodos([]);
-      });
-    return () => {
-      live = false;
-    };
-  }, [connectionId, list, paused]);
-
   if (todos.length === 0) return null;
   const now = new Date();
   const ordered = [...todos].sort((a, b) => Number(a.doneAt !== null) - Number(b.doneAt !== null));
@@ -57,7 +32,7 @@ export function TodoCard({
     setError("");
     rpc.inbox.todos
       .setDone({ id: todo.id, done })
-      .then((next) => setTodos((list) => list.map((item) => (item.id === next.id ? next : item))))
+      .then(onChange)
       .catch((cause) => setError(errorText(cause)));
   };
 
