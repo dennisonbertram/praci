@@ -28,6 +28,8 @@ export interface EmulatedMessage {
   html?: string;
   charset?: "utf-8" | "iso-8859-1";
   attachments?: Array<{ filename: string; mimeType: string; size: number }>;
+  /** Inline parts referenced as `cid:<contentId>`; `data` is standard base64 and is served as an attachment. */
+  inlineImages?: Array<{ contentId: string; mimeType: string; data: string }>;
 }
 
 export interface GmailSeed {
@@ -56,6 +58,8 @@ interface Stored {
   snippet: string;
   headers: Header[];
   payload: Part;
+  /** attachmentId to base64url bytes, for parts the payload only references. */
+  files: Map<string, string>;
 }
 interface Mailbox {
   address: string;
@@ -153,6 +157,9 @@ export class GmailApiEmulator {
     if (path === "messages") return list(mailbox, parsed.searchParams);
     const id = /^messages\/([^/]+)$/.exec(path)?.[1];
     if (id) return get(mailbox, decodeURIComponent(id), parsed.searchParams);
+    const file = /^messages\/([^/]+)\/attachments\/([^/]+)$/.exec(path);
+    if (file)
+      return attachment(mailbox, decodeURIComponent(file[1]!), decodeURIComponent(file[2]!));
     return fail(404, "notFound", "Not found");
   }
 
@@ -208,6 +215,12 @@ function list(mailbox: Mailbox, params: URLSearchParams): ConnectorProxyResponse
       resultSizeEstimate: all.length,
     },
   };
+}
+
+function attachment(mailbox: Mailbox, id: string, attachmentId: string): ConnectorProxyResponse {
+  const data = mailbox.messages.find((m) => m.id === id)?.files.get(attachmentId);
+  if (data === undefined) return fail(404, "notFound", "Requested entity was not found.");
+  return { status: 200, data: { size: Buffer.from(data, "base64url").length, data } };
 }
 
 function get(mailbox: Mailbox, id: string, params: URLSearchParams): ConnectorProxyResponse {
@@ -340,10 +353,27 @@ function store(source: EmulatedMessage): Stored {
   });
   let payload =
     bodies.length === 1 ? (bodies[0] as Part) : container("multipart/alternative", bodies);
-  if (source.attachments?.length) {
+  const files = new Map<string, string>();
+  const inlineParts = (source.inlineImages ?? []).map((image, index): Part => {
+    const attachmentId = `att-${source.id}-inline-${index}`;
+    const bytes = Buffer.from(image.data, "base64");
+    files.set(attachmentId, bytes.toString("base64url"));
+    return {
+      mimeType: image.mimeType,
+      filename: `inline-${index}`,
+      headers: [
+        { name: "Content-Type", value: image.mimeType },
+        { name: "Content-ID", value: `<${image.contentId}>` },
+        { name: "Content-Disposition", value: "inline" },
+      ],
+      body: { size: bytes.length, attachmentId },
+    };
+  });
+  if (source.attachments?.length || inlineParts.length) {
     payload = container("multipart/mixed", [
       payload,
-      ...source.attachments.map(
+      ...inlineParts,
+      ...(source.attachments ?? []).map(
         (a): Part => ({
           mimeType: a.mimeType,
           filename: a.filename,
@@ -369,6 +399,7 @@ function store(source: EmulatedMessage): Stored {
     snippet: source.snippet ?? (text ?? "").slice(0, 100),
     headers,
     payload: { ...payload, headers: [...headers, ...payload.headers] },
+    files,
   };
 }
 

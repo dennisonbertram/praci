@@ -441,7 +441,7 @@ function InboxMessageView({
         <Skeleton className="h-24 w-full" />
       ) : message.html ? (
         <div className="h-[min(70vh,640px)] overflow-hidden rounded-lg border border-border">
-          <SandboxedHtmlViewer html={message.html} title={subject} scripts={false} />
+          <SandboxedHtmlViewer html={message.html} title={subject} email />
         </div>
       ) : (
         <p dir="auto" className="whitespace-pre-wrap text-sm">

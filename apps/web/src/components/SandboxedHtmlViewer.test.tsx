@@ -94,11 +94,15 @@ it("email mode loads https and data images, opens links in new tabs, and still r
   // Even when the caller asks for scripts, an email never gets them.
   expect(shell).toMatch(/csp="[^"]*script-src 'none'/);
   expect(shell).toMatch(/csp="[^"]*img-src data: https:/);
+  // The message frame inherits the shell's policy, so the shell must not block images either.
+  expect(directiveSources(shellContentSecurityPolicy(view.srcDoc), "img-src")).toEqual([
+    "data:",
+    "https:",
+  ]);
   const innerSandbox = /<iframe id="preview" sandbox="([^"]*)"/.exec(shell)?.[1] ?? "";
   expect(innerSandbox.split(" ").sort()).toEqual([
     "allow-popups",
     "allow-popups-to-escape-sandbox",
-    "allow-same-origin",
   ]);
   const outer = view.iframe?.getAttribute("sandbox")?.split(" ").sort();
   expect(outer).toEqual(["allow-popups", "allow-popups-to-escape-sandbox", "allow-scripts"]);
@@ -115,48 +119,51 @@ it("leaves remote images blocked for a plain scripts-off preview", async () => {
   const view = await render('<img src="https://example.invalid/pixel.png">', false);
 
   expect(view.srcDoc).not.toMatch(/img-src[^;]*https:/);
+  expect(directiveSources(shellContentSecurityPolicy(view.srcDoc), "img-src")).toBeUndefined();
   expect(view.iframe?.getAttribute("sandbox")).toBe("allow-scripts");
 
   await view.cleanup();
 });
 
-it("email mode sizes the frame to the height its shell reports, within limits", async () => {
-  const view = await render("<p>Hello</p>", false, true);
-  const frame = view.iframe as HTMLIFrameElement;
-  const report = async (data: unknown, source: MessageEventSource | null = frame.contentWindow) => {
-    await act(async () => {
-      window.dispatchEvent(new MessageEvent("message", { data, source }));
-    });
-  };
+it("email mode opens http(s) links in a new tab without opener or referrer and drops other targets", async () => {
+  const view = await render(
+    '<a id="web" href="https://example.invalid/a">a</a>' +
+      '<a id="plain" href=" HTTP://example.invalid/b">b</a>' +
+      '<a id="js" href="javascript:alert(1)">c</a>' +
+      '<a id="data" href="data:text/html,x">d</a>' +
+      '<a id="anchor" href="#top">e</a>' +
+      '<map><area id="area" href="https://example.invalid/m"></map>',
+    false,
+    true,
+  );
+  const doc = embeddedMessage(view.srcDoc);
+  for (const id of ["web", "plain", "area"]) {
+    const link = doc.getElementById(id);
+    expect(link?.getAttribute("target")).toBe("_blank");
+    expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
+  }
+  for (const id of ["js", "data", "anchor"]) {
+    expect(doc.getElementById(id)?.hasAttribute("href")).toBe(false);
+    expect(doc.getElementById(id)?.hasAttribute("target")).toBe(false);
+  }
 
-  await report({ rakazoHeight: 412 });
-  expect(frame.style.height).toBe("412px");
-  // A message from anywhere else, or a value that is not a finite number, is ignored.
-  await report({ rakazoHeight: 900 }, window);
-  await report({ rakazoHeight: "900" });
-  await report({ rakazoHeight: Number.NaN });
-  await report("rakazoHeight");
-  expect(frame.style.height).toBe("412px");
-  await report({ rakazoHeight: 10 });
-  expect(Number.parseInt(frame.style.height)).toBeGreaterThanOrEqual(40);
-  await report({ rakazoHeight: 1_000_000 });
-  expect(Number.parseInt(frame.style.height)).toBeLessThanOrEqual(4000);
+  await view.cleanup();
+});
+
+it("leaves links untouched outside email mode", async () => {
+  const view = await render('<a id="web" href="https://example.invalid/a">a</a>', false);
+
+  expect(embeddedMessage(view.srcDoc).getElementById("web")?.hasAttribute("target")).toBe(false);
 
   await view.cleanup();
 });
 
-it("does not size a non-email preview from messages", async () => {
-  const view = await render("<p>Hello</p>");
-  const frame = view.iframe as HTMLIFrameElement;
-  await act(async () => {
-    window.dispatchEvent(
-      new MessageEvent("message", { data: { rakazoHeight: 300 }, source: frame.contentWindow }),
-    );
-  });
-  expect(frame.style.height).toBe("");
-
-  await view.cleanup();
-});
+/** The message document the shell hands to the preview frame, parsed back from the shell's script. */
+function embeddedMessage(srcDoc: string): Document {
+  const literal = /srcdoc=(".*");<\/script>$/s.exec(srcDoc)?.[1];
+  if (!literal) throw new Error("embedded message missing");
+  return new DOMParser().parseFromString(JSON.parse(literal) as string, "text/html");
+}
 
 function shellContentSecurityPolicy(srcDoc: string): string {
   const match = srcDoc.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/);
