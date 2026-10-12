@@ -100,7 +100,12 @@ describe("selectMailTools", () => {
       "mail_get",
     ]);
     expect(selectMailTools(tools, false).map((tool) => tool.name)).toEqual(["web_search"]);
-    expect([...MAIL_TOOL_NAMES].sort()).toEqual(["mail_get", "mail_grep", "mail_search"]);
+    expect([...MAIL_TOOL_NAMES].sort()).toEqual([
+      "inbox_overview",
+      "mail_get",
+      "mail_grep",
+      "mail_search",
+    ]);
   });
 });
 

@@ -558,6 +558,13 @@ export const builtinAgentTools: ConnectorTool[] = [
     readOnly: true,
   },
   {
+    name: "inbox_overview",
+    description:
+      'One call for "what\'s on my email", "what\'s new" or "what needs me": refreshes the cache, then returns per-account unread and needs-reply counts, the messages that need a reply (by priority), open to-dos with due dates, and the latest other inbox mail from the last 14 days. Answer from it directly; use mail_search only for older mail or a specific topic.',
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+  },
+  {
     name: "mail_search",
     description:
       "Search the user's connected mail and save every match, sorted oldest-first. Returns a summary and a searchId, not the messages. Then use mail_grep on the searchId and mail_get for a few bodies.",

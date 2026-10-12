@@ -186,8 +186,16 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(first.accounts.map((a) => a.account)).toEqual(["a@example.test", "b@example.test"]);
     expect(first.accounts.every((a) => a.sync === "synced" && a.lastSyncedAt !== null)).toBe(true);
 
-    await t.triage("crit-old", { needsReply: true, priority: "critical", reason: "Deadline Friday" });
-    await t.triage("imp-new", { needsReply: true, priority: "important", reason: "Asks a question" });
+    await t.triage("crit-old", {
+      needsReply: true,
+      priority: "critical",
+      reason: "Deadline Friday",
+    });
+    await t.triage("imp-new", {
+      needsReply: true,
+      priority: "important",
+      reason: "Asks a question",
+    });
     await t.triage("low-new", { needsReply: true, priority: "low", reason: "Casual hello" });
     await t.triage("answered", { needsReply: true, priority: "critical", alreadyHandled: true });
     await t.triage("newsletter", { needsReply: false, priority: "low", reason: "Newsletter" });

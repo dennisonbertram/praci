@@ -417,6 +417,7 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "mail_search",
   "mail_grep",
   "mail_get",
+  "inbox_overview",
   "browser_snapshot",
   "list_secrets",
   "cloud_agent_status",
@@ -2684,7 +2685,7 @@ export interface ExecutorDeps {
   mcpAllowPrivateEndpoint?: boolean;
   /** Remote cloud coding agents. Null/omit means tools stay uninjected. */
   cloudAgent?: CloudAgentConnection | null;
-  /** Mail tools (mail_search, mail_grep, mail_get). Null/omit means they are never offered. */
+  /** Mail tools (mail_search, mail_grep, mail_get, inbox_overview). Null/omit means they are never offered. */
   mail?: MailProvider | null;
   /** Optional Auto Review verifier. When omitted, the factory selects from env (llm | jev | scripted). */
   autoReview?: AutoReviewProvider;
