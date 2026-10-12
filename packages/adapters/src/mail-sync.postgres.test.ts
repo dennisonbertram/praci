@@ -426,6 +426,45 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     ).not.toBeNull();
   });
 
+  it("deleteMailConnectionData removes the connection's to-dos, done ones included, and keeps others", async () => {
+    seed("todo-a", [message("a", 1, ["INBOX"])]);
+    const target = await connect("todo-a");
+    seed("todo-b", [message("b", 1, ["INBOX"])]);
+    const other = await connect("todo-b");
+    const todo = (connectionId: string, extra: { doneAt?: Date } = {}) =>
+      prisma.inboxTodo.create({
+        data: { spaceId, userId, connectionId, text: "Reply to Ann", ...extra },
+      });
+    await todo(target.id);
+    await todo(target.id, { doneAt: new Date() });
+    await todo(other.id);
+
+    await prisma.$transaction((tx) =>
+      deleteMailConnectionData(tx, { spaceId, userId, connectionId: target.id }),
+    );
+
+    expect(await prisma.inboxTodo.count({ where: { connectionId: target.id } })).toBe(0);
+    expect(await prisma.inboxTodo.count({ where: { connectionId: other.id } })).toBe(1);
+  });
+
+  it("does not delete to-dos when the scope does not match", async () => {
+    seed("todo-scoped", [message("a", 1, ["INBOX"])]);
+    const account = await connect("todo-scoped");
+    await prisma.inboxTodo.create({
+      data: { spaceId, userId, connectionId: account.id, text: "Reply to Ann" },
+    });
+
+    await prisma.$transaction((tx) =>
+      deleteMailConnectionData(tx, {
+        spaceId,
+        userId: `someone-else-${randomUUID()}`,
+        connectionId: account.id,
+      }),
+    );
+
+    expect(await prisma.inboxTodo.count({ where: { connectionId: account.id } })).toBe(1);
+  });
+
   it("does not delete another user's connection data when the scope does not match", async () => {
     seed("scoped", [message("a", 1, ["INBOX"])]);
     const account = await connect("scoped");
