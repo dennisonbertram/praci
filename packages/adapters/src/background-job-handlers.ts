@@ -17,6 +17,7 @@ import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
 import type { createRunExecutor } from "./executor.js";
 import { compactHistory } from "./history-compaction.js";
+import { runInboxTriage } from "./inbox-triage.js";
 import { expireMailSearch } from "./mail-tools.js";
 import type { MemoryProviderResolver } from "./memory-provider-factory.js";
 import { deliverMessagingOutbound, mirrorMessagingOutbound } from "./messaging-delivery.js";
@@ -91,6 +92,17 @@ export function createBackgroundJobHandlers(deps: {
     },
     "mail.search.expire": async (payload) => {
       await expireMailSearch(deps.prisma, payload.searchId);
+    },
+    "inbox.triage": async (payload) => {
+      await runInboxTriage(
+        {
+          prisma: deps.prisma,
+          runtime: deps.runtime,
+          jobs: deps.jobs,
+          resolveModel: deps.executor.resolveModel,
+        },
+        payload,
+      );
     },
     "cloud_agent.poll": async (payload) => {
       await pollCloudAgent(

@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type {
   AdapterContext,
+  JobPublisher,
   MailAccount,
   MailMessageSummary,
   MailProvider,
 } from "@rakazo/adapter-kit";
-import { MailProviderError } from "@rakazo/adapter-kit";
+import { inboxTriageJob, MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -24,6 +25,8 @@ const DB_NOW = Prisma.sql`timezone('utc', now())`;
 export interface MailSyncDeps {
   prisma: PrismaClient;
   mail: MailProvider;
+  /** Queues triage after each successful sync. */
+  jobs: JobPublisher;
   /** Clock for the 14-day window; defaults to the system clock. */
   now?: () => Date;
   /** Provider deadline; defaults to 90 seconds, which is shorter than the 2-minute stale claim. */
@@ -45,7 +48,8 @@ interface Listed {
  * Syncs one account's inbox and sent mail for the last 14 days into the Postgres cache.
  * One conditional UPDATE is both the 60-second throttle and the in-flight claim; the write
  * transaction re-checks the claim token under a row lock, so a sync that lost its claim writes
- * nothing. Provider errors are recorded on the state row, never thrown.
+ * nothing. Provider errors are recorded on the state row, never thrown. A successful sync, with or
+ * without new mail, enqueues the user's `inbox.triage` job; the job key merges repeats.
  */
 export async function syncMailbox(
   deps: MailSyncDeps,
@@ -205,6 +209,15 @@ export async function syncMailbox(
       getLogger().warn("mail sync was incomplete", {
         connectionId: account.id,
         durationMs: Date.now() - started,
+      });
+    }
+    if (outcome === "synced") {
+      // The mail is already cached; a lost enqueue only delays triage until the next sync.
+      await deps.jobs.enqueue(inboxTriageJob(userId, spaceId)).catch((error) => {
+        getLogger().warn("inbox triage enqueue failed", {
+          connectionId: account.id,
+          reason: error instanceof Error ? error.name : "error",
+        });
       });
     }
     return outcome;

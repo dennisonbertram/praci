@@ -521,7 +521,13 @@ export interface AgentUsage {
   usageSource?: string | null;
 }
 
-export type UsageOperationKind = "answer" | "setup" | "retrieval" | "subagent" | "compaction";
+export type UsageOperationKind =
+  | "answer"
+  | "setup"
+  | "retrieval"
+  | "subagent"
+  | "compaction"
+  | "triage";
 
 export interface ModelCallObserver {
   beforeCall(call: {
@@ -631,6 +637,8 @@ export interface BackgroundJobPayloads {
   "cloud_agent.poll": { agentId: string };
   /** Deletes a saved mail search (and its rows) once it has expired. */
   "mail.search.expire": { searchId: string };
+  /** Classifies a user's new inbox mail and syncs their to-dos; one queued job per user and space. */
+  "inbox.triage": { userId: string; spaceId: string };
 }
 
 export type BackgroundJobName = keyof BackgroundJobPayloads;

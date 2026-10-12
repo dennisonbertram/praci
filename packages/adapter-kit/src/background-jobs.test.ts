@@ -4,6 +4,7 @@ import {
   HISTORY_COMPACT_MAX_ATTEMPTS,
   historyCompactJob,
   historyCompactJobKey,
+  inboxTriageJob,
   mailSearchExpireJob,
   messagingDeliverJob,
   parseBackgroundJob,
@@ -22,6 +23,7 @@ function handlers(): BackgroundJobHandlers {
     "messaging.deliver": vi.fn(async () => undefined),
     "cloud_agent.poll": vi.fn(async () => undefined),
     "mail.search.expire": vi.fn(async () => undefined),
+    "inbox.triage": vi.fn(async () => undefined),
   };
 }
 
@@ -54,6 +56,23 @@ describe("background job contracts", () => {
       availableAt: expiresAt,
       replaceKey: "mail.search.expire:search-1",
     });
+  });
+
+  it("validates inbox.triage and merges repeats for one user in one space under one key", async () => {
+    const target = handlers();
+    await dispatchBackgroundJob(target, "inbox.triage", { userId: "user-1", spaceId: "space-1" });
+    expect(target["inbox.triage"]).toHaveBeenCalledWith({ userId: "user-1", spaceId: "space-1" });
+    expect(() => parseBackgroundJob("inbox.triage", { userId: "user-1" })).toThrow();
+    expect(() => parseBackgroundJob("inbox.triage", { userId: "", spaceId: "space-1" })).toThrow();
+    expect(inboxTriageJob("user-1", "space-1")).toEqual({
+      name: "inbox.triage",
+      payload: { userId: "user-1", spaceId: "space-1" },
+      replaceKey: "inbox.triage:space-1:user-1",
+      maxAttempts: 3,
+    });
+    expect(inboxTriageJob("user-2", "space-1").replaceKey).not.toBe(
+      inboxTriageJob("user-1", "space-1").replaceKey,
+    );
   });
 
   it("validates and dispatches a typed job", async () => {

@@ -23,6 +23,7 @@ const payloadSchemas = {
   "messaging.deliver": z.object({ runId: z.string().min(1).optional() }),
   "cloud_agent.poll": z.object({ agentId: z.string().min(1) }),
   "mail.search.expire": z.object({ searchId: z.string().min(1) }),
+  "inbox.triage": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
 } satisfies { [Name in BackgroundJobName]: z.ZodType<BackgroundJobPayloads[Name]> };
 
 export function parseBackgroundJob(name: string, payload: unknown): BackgroundJob {
@@ -168,5 +169,20 @@ export function mailSearchExpireJob(searchId: string, availableAt: Date): Backgr
     payload: { searchId },
     availableAt,
     replaceKey: mailSearchExpireJobKey(searchId),
+  };
+}
+
+export function inboxTriageJobKey(userId: string, spaceId: string): string {
+  return `inbox.triage:${spaceId}:${userId}`;
+}
+
+/** The job key merges repeated enqueues for one user into a single queued job. */
+export function inboxTriageJob(userId: string, spaceId: string): BackgroundJob {
+  return {
+    name: "inbox.triage",
+    payload: { userId, spaceId },
+    replaceKey: inboxTriageJobKey(userId, spaceId),
+    // Each attempt can make up to five paid model calls.
+    maxAttempts: 3,
   };
 }

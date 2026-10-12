@@ -165,6 +165,7 @@ export function emptyTrial(caseId: string, trial: number): TrialResult {
       retrieval: null,
       subagent: null,
       compaction: null,
+      triage: null,
     },
     trace: [],
     artifacts: {},
