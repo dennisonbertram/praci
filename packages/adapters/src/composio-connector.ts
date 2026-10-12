@@ -11,6 +11,7 @@ import type {
   ConnectorTool,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
+import { ConnectorProxyError } from "@rakazo/adapter-kit";
 import { getLogger } from "@rakazo/logging";
 import {
   composioToolkitDirectory,
@@ -716,7 +717,26 @@ export class ComposioConnector implements ComposioProvider {
         { signal: context.signal },
       );
     } catch (error) {
-      throw new Error(sanitizeComposioError(error));
+      const failure = error as { status?: unknown; headers?: { get?: (name: string) => unknown } };
+      const status = typeof failure?.status === "number" ? failure.status : undefined;
+      if (status === 429) {
+        // The SDK throws on 429; hand it back as a response so callers apply their one backoff.
+        const seconds = Number(failure.headers?.get?.("retry-after"));
+        return {
+          status,
+          data: undefined,
+          ...(Number.isFinite(seconds) && seconds >= 0 ? { retryAfterMs: seconds * 1000 } : {}),
+        };
+      }
+      // Network failures have no status; 5xx and 408 are the provider's. Anything else is final.
+      const transient =
+        !context.signal.aborted && (status === undefined || status >= 500 || status === 408);
+      throw new ConnectorProxyError(
+        sanitizeComposioError(error),
+        transient,
+        status,
+        error instanceof Error ? error.constructor.name : undefined,
+      );
     }
     const retryAfter = Number(
       Object.entries(response.headers ?? {}).find(

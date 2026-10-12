@@ -1,5 +1,6 @@
 import {
   type AdapterContext,
+  ConnectorProxyError,
   type ConnectorProxyResponse,
   type MailAccount,
   type MailAddress,
@@ -469,24 +470,38 @@ export class GmailMailProvider implements MailProvider {
     for (let attempt = 1; ; attempt++) {
       if (context.signal.aborted)
         throw new MailProviderError("unavailable", "Mail request aborted");
-      const response = await this.limit(account.id, async () => {
-        try {
-          return await proxy(
-            { app: account.app, accountRef: account.accountRef, method: "GET", url },
-            context,
-          );
-        } catch {
-          // Transport errors can carry credentials, so the original text is dropped.
-          throw new MailProviderError("unavailable", "Mail request failed");
-        }
-      });
-      const error = mapStatus(response);
-      if (!error) return response.data;
-      if (error.kind !== "rate_limited" || attempt >= MAX_ATTEMPTS || context.signal.aborted)
-        throw error;
+      let failure: { error: MailProviderError; retry: boolean };
+      try {
+        const response = await this.limit(account.id, () =>
+          proxy({ app: account.app, accountRef: account.accountRef, method: "GET", url }, context),
+        );
+        const error = mapStatus(response);
+        if (!error) return response.data;
+        failure = {
+          error,
+          retry: error.kind === "rate_limited" || response.status >= 500 || response.status === 408,
+        };
+      } catch (cause) {
+        // Only the connector's sanitized error is kept: other transport errors can carry credentials.
+        failure = context.signal.aborted
+          ? { error: new MailProviderError("unavailable", "Mail request aborted"), retry: false }
+          : {
+              error: new MailProviderError(
+                "unavailable",
+                "Mail request failed",
+                undefined,
+                describeProxyError(cause),
+              ),
+              retry: cause instanceof ConnectorProxyError && cause.transient,
+            };
+      }
+      if (!failure.retry || attempt >= MAX_ATTEMPTS || context.signal.aborted) throw failure.error;
       const backoff = BASE_DELAY_MS * 2 ** (attempt - 1) + this.random() * 250;
-      await this.sleep(Math.min(error.retryAfterMs ?? backoff, MAX_DELAY_MS), context.signal);
-      if (context.signal.aborted) throw error;
+      await this.sleep(
+        Math.min(failure.error.retryAfterMs ?? backoff, MAX_DELAY_MS),
+        context.signal,
+      );
+      if (context.signal.aborted) throw failure.error;
     }
   }
 
@@ -545,6 +560,14 @@ function buildQuery(request: MailListRequest): string {
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+/** Log text for a failed proxy call: the sanitized connector error, or only the class of any other. */
+function describeProxyError(cause: unknown): string {
+  if (!(cause instanceof ConnectorProxyError))
+    return cause instanceof Error ? cause.name : "unknown";
+  const status = cause.status === undefined ? "" : ` status=${cause.status}`;
+  return `${cause.code ?? cause.name}${status}: ${cause.message.slice(0, 300)}`;
 }
 
 /** The single place HTTP statuses become typed errors. Returns undefined for 2xx. */

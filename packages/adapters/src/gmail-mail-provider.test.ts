@@ -1,5 +1,6 @@
 import {
   type AdapterContext,
+  ConnectorProxyError,
   type ConnectorProxyRequest,
   type ConnectorProxyResponse,
   type MailAccount,
@@ -378,7 +379,7 @@ describe("retries and status mapping", () => {
     expect(await rejection(provider.getMessage(account(), "missing", context()))).toMatchObject({
       kind: "not_found",
     });
-    gmail.failNext(500);
+    gmail.failNext(500, { times: 10 });
     expect(
       await rejection(provider.listMessages(account(), { query: "", pageSize: 5 }, context())),
     ).toMatchObject({ kind: "unavailable" });
@@ -772,5 +773,111 @@ describe("isMailConnection and listAccounts", () => {
     const [only] = await provider.listAccounts({ spaceId: "space-1", userId: "user-1" }, context());
     expect(only?.address).toBeNull();
     expect(updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("transient transport errors", () => {
+  const down = (status?: number) =>
+    new ConnectorProxyError(
+      `${status ?? "Connection error."} upstream down`,
+      true,
+      status,
+      "InternalServerError",
+    );
+
+  it("retries a transient transport error with the existing backoff and then succeeds", async () => {
+    const gmail = box([msg("m1")]);
+    const sleeps: number[] = [];
+    let calls = 0;
+    const provider = new GmailMailProvider({
+      connectors: connectors(async (r) => {
+        if (++calls === 1) throw down(502);
+        return gmail.handle(r.accountRef, r.url);
+      }),
+      sleep: async (ms) => void sleeps.push(ms),
+      random: () => 0,
+    });
+    const page = await provider.listMessages(account(), { query: "", pageSize: 5 }, context());
+    expect(page.messages.map((m) => m.id)).toEqual(["m1"]);
+    expect(sleeps).toEqual([500]);
+  });
+
+  it("gives unavailable with the sanitized detail after 3 attempts", async () => {
+    let calls = 0;
+    const provider = new GmailMailProvider({
+      connectors: connectors(async () => {
+        calls++;
+        throw down(502);
+      }),
+      sleep: async () => {},
+      random: () => 0,
+    });
+    const error = (await rejection(
+      provider.listMessages(account(), { query: "", pageSize: 5 }, context()),
+    )) as MailProviderError;
+    expect(error).toMatchObject({ kind: "unavailable", message: "Mail request failed" });
+    expect(error.detail).toContain("InternalServerError");
+    expect(error.detail).toContain("502");
+    expect(calls).toBe(3);
+  });
+
+  it("does not retry a failure the connector marks as permanent", async () => {
+    let calls = 0;
+    const provider = new GmailMailProvider({
+      connectors: connectors(async () => {
+        calls++;
+        throw new ConnectorProxyError("401 invalid key", false, 401, "AuthenticationError");
+      }),
+      sleep: async () => {},
+      random: () => 0,
+    });
+    const error = (await rejection(
+      provider.listMessages(account(), { query: "", pageSize: 5 }, context()),
+    )) as MailProviderError;
+    expect(error).toMatchObject({ kind: "unavailable" });
+    expect(error.detail).toContain("401");
+    expect(calls).toBe(1);
+  });
+
+  it("retries a 5xx response from the provider and then succeeds", async () => {
+    const gmail = box([msg("m1")]);
+    const { provider, sleeps } = over(gmail);
+    gmail.failNext(503);
+    const page = await provider.listMessages(account(), { query: "", pageSize: 5 }, context());
+    expect(page.messages.map((m) => m.id)).toEqual(["m1"]);
+    expect(sleeps).toEqual([500]);
+  });
+
+  it("does not retry a 400 response", async () => {
+    const gmail = box([msg("m1")]);
+    const { provider } = over(gmail);
+    gmail.failNext(400, { times: 5 });
+    expect(
+      await rejection(provider.listMessages(account(), { query: "", pageSize: 5 }, context())),
+    ).toMatchObject({ kind: "unavailable" });
+    expect(gmail.requests).toHaveLength(1);
+  });
+
+  it("reports an aborted request without retrying when the caller went away", async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    const provider = new GmailMailProvider({
+      connectors: connectors(async () => {
+        calls++;
+        controller.abort();
+        throw down();
+      }),
+      sleep: async () => {},
+      random: () => 0,
+    });
+    const error = await rejection(
+      provider.listMessages(
+        account(),
+        { query: "", pageSize: 5 },
+        context({ signal: controller.signal }),
+      ),
+    );
+    expect(error).toMatchObject({ kind: "unavailable", message: "Mail request aborted" });
+    expect(calls).toBe(1);
   });
 });

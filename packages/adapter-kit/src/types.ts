@@ -903,6 +903,8 @@ export class MailProviderError extends Error {
     readonly kind: MailErrorKind,
     message: string,
     readonly retryAfterMs?: number,
+    /** Credential-free cause for logs. Never shown to users. */
+    readonly detail?: string,
   ) {
     super(message);
     this.name = "MailProviderError";
@@ -918,6 +920,23 @@ export interface ConnectorProxyRequest {
   method: "GET";
   /** Absolute https URL including the query string. */
   url: string;
+}
+
+/**
+ * A proxy call that failed before any upstream response arrived. `message` is already free of
+ * credentials. `transient` marks failures worth retrying (network, timeout, provider 5xx).
+ */
+export class ConnectorProxyError extends Error {
+  constructor(
+    message: string,
+    readonly transient: boolean,
+    readonly status?: number,
+    /** The provider SDK's error class name, kept for diagnosis. */
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "ConnectorProxyError";
+  }
 }
 
 export interface ConnectorProxyResponse {

@@ -33,7 +33,7 @@ export interface MailSyncDeps {
   deadlineMs?: number;
 }
 
-/** `skipped`: throttled, claimed elsewhere, revoked, or this sync lost its claim. */
+/** `skipped`: throttled, claimed elsewhere, revoked, this sync lost its claim, or the caller left. */
 export type MailSyncOutcome = "synced" | "skipped" | "failed";
 
 interface Listed {
@@ -79,8 +79,20 @@ export async function syncMailbox(
     RETURNING s."connectionId"`;
   if (claimed.length === 0) return "skipped";
 
-  const fail = async (error: unknown): Promise<"failed"> => {
+  const fail = async (error: unknown): Promise<"failed" | "skipped"> => {
     // The token check keeps a sync that lost its claim from clearing its replacement's.
+    if (context.signal.aborted) {
+      // The caller left (a page reload or navigation), which says nothing about the provider.
+      await prisma.$executeRaw`
+        UPDATE mail_sync_states
+        SET "syncStartedAt" = NULL, "claimToken" = NULL
+        WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
+      getLogger().info("mail sync cancelled", {
+        connectionId: account.id,
+        durationMs: Date.now() - started,
+      });
+      return "skipped";
+    }
     const needsReconnect = error instanceof MailProviderError && error.kind === "auth";
     await prisma.$executeRaw`
       UPDATE mail_sync_states
@@ -91,6 +103,8 @@ export async function syncMailbox(
       connectionId: account.id,
       durationMs: Date.now() - started,
       reason: error instanceof MailProviderError ? error.kind : "error",
+      ...(error instanceof MailProviderError && error.detail ? { detail: error.detail } : {}),
+      ...(error instanceof MailProviderError ? {} : { errorName: errorName(error) }),
     });
     return "failed";
   };
@@ -231,6 +245,10 @@ export async function syncMailbox(
   } catch (error) {
     return fail(error);
   }
+}
+
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : "unknown";
 }
 
 /** Collects up to 200 messages of one query inside the window, newest first. */
