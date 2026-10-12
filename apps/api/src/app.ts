@@ -27,6 +27,7 @@ import {
   createCloudAgentConnection,
   createConnectorStack,
   createJobReconciler,
+  createMailProvider,
   createMessagingContextLoader,
   createMessagingTeamChatSender,
   createRunExecutor,
@@ -378,6 +379,8 @@ export async function createApp(
     mcp,
   ]);
   const connector = stack.destination;
+  // One instance serves the Inbox handlers (and the mail tools that reuse it later).
+  const mail = createMailProvider({ prisma, connectors: stack.connector });
   await connector.start();
   integrationSettings.warmDirectories();
   const runtime =
@@ -550,6 +553,7 @@ export async function createApp(
     connectors: stack.connector,
     remoteConnectors,
     artifacts,
+    mail,
     dataDir: env.dataDir,
     billing,
     messaging: {

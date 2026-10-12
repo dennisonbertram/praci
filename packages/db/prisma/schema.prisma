@@ -33,6 +33,7 @@ model User {
   avatarStyle                 String                       @default("robot")
   sessions                    Session[]
   accounts                    Account[]
+  cachedMailMessages          CachedMailMessage[]
   members                     Member[]
   invitations                 Invitation[]
   modelCredentials            UserModelCredential[]
@@ -219,6 +220,7 @@ model Space {
   taughtSkills                TaughtSkill[]
   agentSkills                 AgentSkill[]
   connections                 Connection[]
+  cachedMailMessages          CachedMailMessage[]
   capabilities                CapabilityInstall[]
   memoryDocuments             MemoryDocument[]
   agentHomes                  AgentHome[]
@@ -873,6 +875,8 @@ model Connection {
   metadata    Json     @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  cachedMailMessages CachedMailMessage[]
+  mailSyncState      MailSyncState?
 
   @@index([spaceId, userId, connectorId])
   @@map("connections")
@@ -1475,4 +1479,53 @@ model TicketComment {
 
   @@index([ticketId, createdAt])
   @@map("ticket_comments")
+}
+
+/// Mail metadata cached for the Inbox list, the unread count and mail searches. Bodies are never stored.
+model CachedMailMessage {
+  id                String     @id @default(cuid())
+  spaceId           String
+  space             Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId      String
+  connection        Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  providerMessageId String
+  threadId          String
+  fromName          String?
+  fromAddress       String
+  toAddresses       String[]
+  ccAddresses       String[]
+  subject           String
+  snippet           String
+  receivedAt        DateTime
+  unread            Boolean
+  /// Set by sync from the in:inbox list.
+  inInbox           Boolean    @default(false)
+  /// Set by sync from the in:sent list.
+  fromSelf          Boolean    @default(false)
+  /// Null until triage has looked at the message.
+  needsReply        Boolean?
+  /// Last time a sync or a search wrote this row.
+  seenAt            DateTime
+
+  @@unique([connectionId, providerMessageId])
+  @@index([spaceId, userId, inInbox, receivedAt])
+  @@map("mail_messages")
+}
+
+/// Sync throttle and in-flight claim for one mail connection.
+model MailSyncState {
+  connectionId  String     @id
+  connection    Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Last successful sync.
+  lastSyncedAt  DateTime?
+  /// Claim held by the process that is syncing; stale after 2 minutes.
+  syncStartedAt DateTime?
+  /// Set when the last sync failed, cleared on success.
+  lastErrorAt   DateTime?
+  /// Random id of the sync holding the claim; every write checks it.
+  claimToken    String?
+
+  @@map("mail_sync_states")
 }

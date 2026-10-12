@@ -101,6 +101,7 @@ import {
 } from "./domain.js";
 import { ComputerCommandSchema, ProductEventSchema } from "./events.js";
 import { Id, IsoDate } from "./ids.js";
+import { InboxListInputSchema, InboxListOutputSchema, InboxMessageSchema } from "./inbox.js";
 import {
   IntegrationProviderConfigSchema,
   IntegrationSetupStateSchema,
@@ -947,6 +948,12 @@ export const appContract = {
     list: oc.output(z.array(AgentSecretSchema)),
     put: oc.input(AgentSecretInputSchema).output(AgentSecretSchema),
     remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+  },
+  inbox: {
+    list: oc.input(InboxListInputSchema).output(InboxListOutputSchema),
+    refresh: oc.input(InboxListInputSchema).output(z.object({ ok: z.literal(true) })),
+    get: oc.input(z.object({ messageId: Id })).output(InboxMessageSchema),
+    unreadCount: oc.output(z.object({ count: z.number().int() })),
   },
   botSecrets: {
     list: oc.input(z.object({ botId: Id })).output(z.array(BotSecretMetadata)),
