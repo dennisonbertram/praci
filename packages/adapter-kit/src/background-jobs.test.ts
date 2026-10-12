@@ -4,6 +4,7 @@ import {
   HISTORY_COMPACT_MAX_ATTEMPTS,
   historyCompactJob,
   historyCompactJobKey,
+  mailSearchExpireJob,
   messagingDeliverJob,
   parseBackgroundJob,
 } from "./background-jobs.js";
@@ -20,6 +21,7 @@ function handlers(): BackgroundJobHandlers {
     "history.compact": vi.fn(async () => undefined),
     "messaging.deliver": vi.fn(async () => undefined),
     "cloud_agent.poll": vi.fn(async () => undefined),
+    "mail.search.expire": vi.fn(async () => undefined),
   };
 }
 
@@ -37,6 +39,20 @@ describe("background job contracts", () => {
       name: "messaging.deliver",
       payload: {},
       replaceKey: "messaging.deliver:drain",
+    });
+  });
+
+  it("validates and dispatches mail.search.expire for one search at its expiry time", async () => {
+    const target = handlers();
+    await dispatchBackgroundJob(target, "mail.search.expire", { searchId: "search-1" });
+    expect(target["mail.search.expire"]).toHaveBeenCalledWith({ searchId: "search-1" });
+    expect(() => parseBackgroundJob("mail.search.expire", { searchId: "" })).toThrow();
+    const expiresAt = new Date("2026-10-13T12:00:00.000Z");
+    expect(mailSearchExpireJob("search-1", expiresAt)).toEqual({
+      name: "mail.search.expire",
+      payload: { searchId: "search-1" },
+      availableAt: expiresAt,
+      replaceKey: "mail.search.expire:search-1",
     });
   });
 
