@@ -32,7 +32,8 @@ function split(raw: string) {
       continue;
     }
     const colon = line.indexOf(":");
-    if (colon > 0) headers.push({ name: line.slice(0, colon), value: line.slice(colon + 1).trim() });
+    if (colon > 0)
+      headers.push({ name: line.slice(0, colon), value: line.slice(colon + 1).trim() });
   }
   return { headers, body };
 }

@@ -106,7 +106,12 @@ export async function assertMailWriteConformance(
   assert.equal(emulator.gmail.draftsOf(a.accountRef).length, 1);
   assert.equal(emulator.gmail.sentOf(a.accountRef).length, 0, "saving a draft sends nothing");
 
-  const updated = await provider.updateDraft(a, created.draftId, { ...draft, text: "second version" }, context);
+  const updated = await provider.updateDraft(
+    a,
+    created.draftId,
+    { ...draft, text: "second version" },
+    context,
+  );
   assert.equal(updated.draftId, created.draftId);
   assert.equal(emulator.gmail.draftsOf(a.accountRef).length, 1);
 

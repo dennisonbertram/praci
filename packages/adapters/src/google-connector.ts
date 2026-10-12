@@ -21,7 +21,10 @@ const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
 const GMAIL_ORIGIN = "https://gmail.googleapis.com";
 const GMAIL_READONLY = "https://www.googleapis.com/auth/gmail.readonly";
-const SCOPES = ["openid", "email", GMAIL_READONLY];
+// gmail.compose adds drafts and sending. It cannot read mail, so gmail.readonly stays.
+const GMAIL_COMPOSE = "https://www.googleapis.com/auth/gmail.compose";
+const SCOPES = ["openid", "email", GMAIL_READONLY, GMAIL_COMPOSE];
+const GMAIL_METHODS = new Set(["GET", "POST", "PUT", "DELETE"]);
 const SECRET_KIND = "google-oauth";
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_AUTH_RESPONSE_BYTES = 256 * 1024;
@@ -59,7 +62,11 @@ class GoogleAuthError extends Error {
   }
 }
 
-/** Rakazo's own Google OAuth client. Read-only Gmail in v1. */
+/**
+ * Rakazo's own Google OAuth client. Reads mail, and saves and sends drafts. Accounts connected
+ * before gmail.compose was requested only have read access, and Google answers 403
+ * insufficientPermissions to their writes, which the mail provider reports as "reconnect".
+ */
 export class GoogleConnector implements ManagedConnectorProvider {
   /** ponytail: per-process access-token cache; each process refreshes on its own, which Google allows. */
   private readonly tokens = new Map<string, { value: string; expiresAt: number }>();
@@ -159,7 +166,8 @@ export class GoogleConnector implements ManagedConnectorProvider {
       );
       secrets.push(token.accessToken);
       if (token.refreshToken) secrets.push(token.refreshToken);
-      // Google lets the user untick individual scopes on the consent screen.
+      // Google lets the user untick individual scopes on the consent screen. Reading is required.
+      // Without gmail.compose the account still reads mail, and sending asks the user to reconnect.
       if (!token.scope.split(" ").includes(GMAIL_READONLY)) {
         await this.revokeToken(token.refreshToken ?? token.accessToken, context.signal).catch(
           () => undefined,
@@ -220,8 +228,8 @@ export class GoogleConnector implements ManagedConnectorProvider {
     context: AdapterContext,
   ): Promise<ConnectorProxyResponse> {
     // Without this check an access token could be sent to another host.
-    if (request.method !== "GET" || !isGmailUrl(request.url))
-      throw new Error("The Google connector only reads from the Gmail API");
+    if (!GMAIL_METHODS.has(request.method) || !isGmailUrl(request.url))
+      throw new Error("The Google connector only calls the Gmail API");
     const row = await this.config.prisma.connection.findFirst({
       where: {
         connectorId: "google",
@@ -233,8 +241,9 @@ export class GoogleConnector implements ManagedConnectorProvider {
     });
     if (!row?.secretId) return { status: 401, data: {} };
     try {
-      const first = await this.gmailGet(row, request.url, context, false);
-      return first.status === 401 ? await this.gmailGet(row, request.url, context, true) : first;
+      // A 401 means Gmail did not act on the request, so repeating it with a fresh token is safe.
+      const first = await this.gmailFetch(row, request, context, false);
+      return first.status === 401 ? await this.gmailFetch(row, request, context, true) : first;
     } catch (error) {
       if (error instanceof GoogleAuthError && error.invalidGrant) return { status: 401, data: {} };
       throw new Error(sanitizeConnectorError(error, [this.config.clientSecret]));
@@ -246,16 +255,21 @@ export class GoogleConnector implements ManagedConnectorProvider {
     yield { type: "error", message: "The Google connector does not run tools" };
   }
 
-  private async gmailGet(
+  private async gmailFetch(
     row: { id: string; secretId: string | null },
-    url: string,
+    request: ConnectorProxyRequest,
     context: AdapterContext,
     forceRefresh: boolean,
   ): Promise<ConnectorProxyResponse> {
     const token = await this.accessToken(row, context, forceRefresh);
-    const response = await (this.config.fetch ?? fetch)(url, {
-      method: "GET",
-      headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+    const response = await (this.config.fetch ?? fetch)(request.url, {
+      method: request.method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        accept: "application/json",
+        ...(request.body === undefined ? {} : { "content-type": "application/json" }),
+      },
+      ...(request.body === undefined ? {} : { body: JSON.stringify(request.body) }),
       redirect: "error",
       signal: combineSignals(context.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)),
     });

@@ -100,7 +100,10 @@ describe("ComposioConnector.proxy", () => {
     const url = "https://gmail.googleapis.com/gmail/v1/users/me/drafts";
     const body = { message: { raw: "Zm9v" } };
     await connector.proxy({ app: "GMAIL", accountRef: "ca-1", method: "POST", url, body }, context);
-    await connector.proxy({ app: "GMAIL", accountRef: "ca-1", method: "DELETE", url: `${url}/d1` }, context);
+    await connector.proxy(
+      { app: "GMAIL", accountRef: "ca-1", method: "DELETE", url: `${url}/d1` },
+      context,
+    );
     expect(sdk.proxyExecute.mock.calls[0]?.[0]).toEqual({
       endpoint: url,
       method: "POST",
@@ -116,7 +119,9 @@ describe("ComposioConnector.proxy", () => {
     const account = accounts[0];
     if (!account) throw new Error("no account");
     sdk.proxyExecute.mockRejectedValue(Object.assign(new Error("fetch failed"), { status: 502 }));
-    await expect(provider.sendDraft(account, "d1", context)).rejects.toMatchObject({ kind: "unknown" });
+    await expect(provider.sendDraft(account, "d1", context)).rejects.toMatchObject({
+      kind: "unknown",
+    });
     expect(sdk.proxyExecute).toHaveBeenCalledTimes(1);
   });
 

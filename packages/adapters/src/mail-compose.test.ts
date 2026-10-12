@@ -49,7 +49,10 @@ describe("buildRawMessage", () => {
 
   it("escapes the HTML part and keeps line breaks and indentation", () => {
     const mime = parseRawMime(
-      buildRawMessage({ ...base, text: '<script>alert("x")</script> & more\nline two\n\n  indented' }),
+      buildRawMessage({
+        ...base,
+        text: '<script>alert("x")</script> & more\nline two\n\n  indented',
+      }),
     );
     expect(mime.html).not.toContain("<script>");
     expect(mime.html).toContain("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; more");
@@ -61,7 +64,8 @@ describe("buildRawMessage", () => {
   });
 
   it("encodes non-ASCII subjects and names as RFC 2047 words of at most 75 characters", () => {
-    const subject = "Réunion à Zürich — 请确认日程安排 and a long enough tail to need several encoded words";
+    const subject =
+      "Réunion à Zürich — 请确认日程安排 and a long enough tail to need several encoded words";
     const raw = buildRawMessage({
       ...base,
       to: [{ name: "Zoë Ångström", address: "zoe@example.test" }],
@@ -88,17 +92,37 @@ describe("buildRawMessage", () => {
     invalid(() => buildRawMessage({ ...base, subject: "Hi\r\nBcc: evil@example.test" }));
     invalid(() => buildRawMessage({ ...base, subject: "Hi\nthere" }));
     invalid(() => buildRawMessage({ ...base, subject: "Hi\u0000there" }));
-    invalid(() => buildRawMessage({ ...base, to: [{ name: "A\r\nBcc: x@y.test", address: "a@example.test" }] }));
-    invalid(() => buildRawMessage({ ...base, to: [{ address: "a@example.test\r\nBcc: x@y.test" }] }));
+    invalid(() =>
+      buildRawMessage({ ...base, to: [{ name: "A\r\nBcc: x@y.test", address: "a@example.test" }] }),
+    );
+    invalid(() =>
+      buildRawMessage({ ...base, to: [{ address: "a@example.test\r\nBcc: x@y.test" }] }),
+    );
     invalid(() => buildRawMessage({ ...base, inReplyTo: "<a@b.test>\r\nBcc: x@y.test" }));
     invalid(() => buildRawMessage({ ...base, references: "<a@b.test>\nBcc: x@y.test" }));
   });
 
   it("rejects malformed addresses and messages with no recipient", () => {
-    for (const address of ["plain", "a@", "@b.test", "a b@example.test", "a@exam ple.test", "a@b", "a@b.test,c@d.test", "<a@b.test>", "ü@example.test"]) {
+    for (const address of [
+      "plain",
+      "a@",
+      "@b.test",
+      "a b@example.test",
+      "a@exam ple.test",
+      "a@b",
+      "a@b.test,c@d.test",
+      "<a@b.test>",
+      "ü@example.test",
+    ]) {
       invalid(() => buildRawMessage({ ...base, to: [{ address }] }));
     }
     invalid(() => buildRawMessage({ ...base, to: [], cc: [], bcc: [] }));
+  });
+
+  it("lets a draft have no recipient yet", () => {
+    const mime = parseRawMime(buildRawMessage({ ...base, to: [] }, { draft: true }));
+    expect(mime.header("To")).toBeUndefined();
+    expect(mime.header("Subject")).toBe("Hello");
   });
 
   it("limits the recipient count", () => {
@@ -116,6 +140,13 @@ describe("parseRecipients", () => {
       { name: "Doe, John", address: "jd@example.test" },
       { address: "bob@example.test" },
     ]);
+  });
+
+  it("drops entries that are not addresses when saving a draft, and still never passes a line break on", () => {
+    expect(parseRecipients("ann@example.test, nobody, pri", true)).toEqual([
+      { address: "ann@example.test" },
+    ]);
+    expect(parseRecipients("ann@example.test\r\nBcc: x@y.test", true)).toEqual([]);
   });
 
   it("returns nothing for blank text and rejects an entry that is not an address", () => {
@@ -164,15 +195,23 @@ describe("replyPrefill", () => {
   });
 
   it("does not stack Re: prefixes", () => {
-    expect(replyPrefill(original({ subject: "RE: Plans" }), "reply", null).subject).toBe("RE: Plans");
-    expect(replyPrefill(original({ subject: "re: Plans" }), "reply", null).subject).toBe("re: Plans");
+    expect(replyPrefill(original({ subject: "RE: Plans" }), "reply", null).subject).toBe(
+      "RE: Plans",
+    );
+    expect(replyPrefill(original({ subject: "re: Plans" }), "reply", null).subject).toBe(
+      "re: Plans",
+    );
   });
 
   it("reply all keeps the other recipients and leaves out the user's own address in any case", () => {
     const out = replyPrefill(
       original({
         to: [alice, { address: "Carol@Example.test" }],
-        cc: [{ name: "Dev", address: "dev@example.test" }, { address: "ALICE@example.test" }, { address: "carol@example.test" }],
+        cc: [
+          { name: "Dev", address: "dev@example.test" },
+          { address: "ALICE@example.test" },
+          { address: "carol@example.test" },
+        ],
       }),
       "replyAll",
       "alice@example.test",
@@ -198,6 +237,8 @@ describe("replyPrefill", () => {
     expect(out.body).toContain("To: Alice Example <alice@example.test>");
     expect(out.body).toContain("Cc: Dev <dev@example.test>");
     expect(out.body).toContain("Offsite is on the 14th.\nBring a laptop.");
-    expect(replyPrefill(original({ subject: "Fwd: Plans" }), "forward", null).subject).toBe("Fwd: Plans");
+    expect(replyPrefill(original({ subject: "Fwd: Plans" }), "forward", null).subject).toBe(
+      "Fwd: Plans",
+    );
   });
 });

@@ -75,7 +75,17 @@ Approved design: [approved-mockup.html](approved-mockup.html).
    `status = "connected"`.
 9. **Per-account concurrency cap is per process** in v1; Gmail's own quota and the
    retry backoff are what keep it correct.
-10. **Read-only in v1**: no mark-as-read, archive or send.
+10. **Reading, plus drafts and sending.** Reversed from "read-only" for sending only: a user can
+    reply, reply to all, forward and compose, and the Inbox saves Gmail drafts as they type.
+    The user's Send click is the approval; there is no extra confirmation step. Mark-as-read,
+    archive and label changes are still not allowed, and the agent has no send or draft tool.
+    Native Google asks for `gmail.compose` next to `gmail.readonly`; accounts connected before
+    that only read, and a send from one shows the existing reconnect notice. A send is keyed by
+    a client-generated id in `ComposeSend` (`draft`, `pending`, `sent`, `failed`, `unknown`) so a
+    retry or double click never sends twice, and a send whose outcome is unclear is never
+    repeated: the user is told to check Sent. `MAIL_WRITES_DISABLED=true` turns off drafts and
+    sending for the whole deployment. See phase 2, item 2 of
+    [08-port-reference-inbox.md](08-port-reference-inbox.md).
 
 ## Implementation order
 

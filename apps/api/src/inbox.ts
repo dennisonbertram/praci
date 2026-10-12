@@ -52,9 +52,13 @@ const FILTER_QUERY = {
   updates: "category:updates",
 } as const;
 
-const notFound = () => new ORPCError("NOT_FOUND", { message: "Not found" });
+export const notFound = () => new ORPCError("NOT_FOUND", { message: "Not found" });
 
-function mailContext(actor: Actor, operationId: string, signal?: AbortSignal): AdapterContext {
+export function mailContext(
+  actor: Actor,
+  operationId: string,
+  signal?: AbortSignal,
+): AdapterContext {
   return {
     operationId,
     traceId: operationId,

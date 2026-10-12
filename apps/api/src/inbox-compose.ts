@@ -1,54 +1,382 @@
+import { ORPCError } from "@orpc/server";
+import type { AdapterContext, MailAccount, MailDraftInput } from "@rakazo/adapter-kit";
+import { MailProviderError } from "@rakazo/adapter-kit";
+import { buildRawMessage, parseRecipients, replyPrefill, syncMailbox } from "@rakazo/adapters";
+import type {
+  Actor,
+  ComposeFields,
+  ComposeMode,
+  ComposePrefillOutput,
+  ComposeResult,
+} from "@rakazo/contracts";
+import { getLogger } from "@rakazo/logging";
 import type { InboxDeps } from "./inbox.js";
+import { mailContext, notFound } from "./inbox.js";
 
-type Actor = Parameters<typeof import("./inbox.js").inboxGet>[1];
+export type ComposeDeps = InboxDeps & { mailWritesDisabled?: boolean };
+
+/** A send still pending after this long belongs to a process that died, so its outcome is unknown. */
+const PENDING_STALE_MS = 2 * 60_000;
+/** How long a duplicate request waits for the first one to finish before answering "unknown". */
+const WAIT_MS = 15_000;
+const POLL_MS = 200;
+/** The sync after a send is awaited this long, so Sent usually shows when the composer closes. */
+const SYNC_WAIT_MS = 4_000;
+const SEND_DEADLINE_MS = 100_000;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Messages here are safe to show: they name the problem, never the text or the addresses. */
+function badRequest(error: unknown): never {
+  if (error instanceof MailProviderError && error.kind === "invalid")
+    throw new ORPCError("BAD_REQUEST", { message: error.message });
+  throw error;
+}
+
+/** One of the caller's own connected Gmail accounts, by connection id. */
+async function ownAccount(
+  deps: ComposeDeps,
+  actor: Actor,
+  connectionId: string,
+  context: AdapterContext,
+): Promise<MailAccount> {
+  const accounts = await deps.mail.listAccounts(
+    { spaceId: actor.spaceId, userId: actor.userId },
+    context,
+  );
+  const account = accounts.find((a) => a.id === connectionId);
+  if (!account) throw notFound();
+  return account;
+}
+
+/** The provider id of the caller's cached message on this account. */
+async function ownMessage(
+  deps: ComposeDeps,
+  actor: Actor,
+  messageId: string,
+  connectionId: string | undefined,
+): Promise<{ providerMessageId: string; connectionId: string }> {
+  const row = await deps.prisma.cachedMailMessage.findFirst({
+    where: {
+      id: messageId,
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      ...(connectionId ? { connectionId } : {}),
+    },
+    select: { providerMessageId: true, connectionId: true },
+  });
+  if (!row) throw notFound();
+  return row;
+}
 
 export async function inboxComposePrefill(
-  _deps: InboxDeps,
-  _actor: Actor,
-  _input: { messageId: string; mode: "reply" | "replyAll" | "forward" },
-): Promise<{
-  connectionId: string;
-  to: string;
-  cc: string;
-  subject: string;
-  body: string;
-  replyToMessageId?: string;
-}> {
-  throw new Error("not implemented");
+  deps: ComposeDeps,
+  actor: Actor,
+  input: { messageId: string; mode: ComposeMode },
+  signal?: AbortSignal,
+): Promise<ComposePrefillOutput> {
+  const context = mailContext(actor, "inbox.compose.prefill", signal);
+  const original = await ownMessage(deps, actor, input.messageId, undefined);
+  // The account comes from the actor's own connections, never from client input.
+  const account = await ownAccount(deps, actor, original.connectionId, context);
+  try {
+    const message = await deps.mail.getMessage(account, original.providerMessageId, context);
+    const prefill = replyPrefill(message, input.mode, account.address);
+    return {
+      connectionId: account.id,
+      ...prefill,
+      ...(input.mode === "forward" ? {} : { replyToMessageId: input.messageId }),
+    };
+  } catch (error) {
+    if (error instanceof MailProviderError) {
+      getLogger().warn("inbox.compose.prefill failed", {
+        connectionId: account.id,
+        reason: error.kind,
+      });
+      if (error.kind === "not_found") throw notFound();
+      if (error.kind === "auth")
+        throw new ORPCError("PRECONDITION_FAILED", { message: error.message });
+      throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
+    }
+    throw error;
+  }
 }
 
-interface ComposeFields {
-  clientId: string;
-  connectionId: string;
-  replyToMessageId?: string;
-  to: string;
-  cc: string;
-  bcc: string;
-  subject: string;
-  body: string;
+/**
+ * The provider draft for the fields. A draft is saved leniently, dropping recipients still being
+ * typed; a send is strict, and checked here so a bad field fails before any state changes.
+ */
+function draftOf(input: ComposeFields, providerMessageId: string | undefined, lenient: boolean) {
+  try {
+    const draft: MailDraftInput = {
+      to: parseRecipients(input.to, lenient),
+      cc: parseRecipients(input.cc, lenient),
+      bcc: parseRecipients(input.bcc, lenient),
+      subject: input.subject,
+      text: input.body,
+      ...(providerMessageId ? { inReplyTo: providerMessageId } : {}),
+    };
+    // Dry run of the message build: recipients, addresses and subject are checked, nothing is sent.
+    buildRawMessage({ ...draft, inReplyTo: undefined }, { draft: lenient });
+    return draft;
+  } catch (error) {
+    return badRequest(error);
+  }
 }
-type ComposeStatus = { status: "saved" | "sent" | "unknown" | "reconnect" | "disabled" | "failed" };
+
+type Row = { id: string; connectionId: string; draftId: string | null; state: string };
+
+/** The compose record for this client id, created on first use. It never changes accounts. */
+async function composeRow(deps: ComposeDeps, actor: Actor, input: ComposeFields): Promise<Row> {
+  const key = { spaceId: actor.spaceId, userId: actor.userId, clientId: input.clientId };
+  const row = await deps.prisma.composeSend.upsert({
+    where: { spaceId_userId_clientId: key },
+    create: { ...key, connectionId: input.connectionId },
+    update: {},
+    select: { id: true, connectionId: true, draftId: true, state: true },
+  });
+  if (row.connectionId !== input.connectionId)
+    throw new ORPCError("BAD_REQUEST", { message: "A draft cannot change accounts" });
+  return row;
+}
+
+/** Marks the account as needing a new login, which the Inbox already shows as a reconnect notice. */
+async function flagReconnect(deps: ComposeDeps, connectionId: string): Promise<void> {
+  const now = new Date();
+  await deps.prisma.mailSyncState
+    .upsert({
+      where: { connectionId },
+      create: { connectionId, lastErrorAt: now, needsReconnect: true },
+      update: { lastErrorAt: now, needsReconnect: true },
+    })
+    .catch(() => undefined);
+}
+
+/** Creates the Gmail draft for the row, or replaces the one it has; a draft deleted in Gmail is recreated. */
+async function writeDraft(
+  deps: ComposeDeps,
+  account: MailAccount,
+  row: Row,
+  draft: MailDraftInput,
+  context: AdapterContext,
+): Promise<string> {
+  if (row.draftId) {
+    try {
+      return (await deps.mail.updateDraft(account, row.draftId, draft, context)).draftId;
+    } catch (error) {
+      if (!(error instanceof MailProviderError) || error.kind !== "not_found") throw error;
+    }
+  }
+  const created = (await deps.mail.createDraft(account, draft, context)).draftId;
+  // Two saves racing with no draft yet: the first to record its id wins, the other joins it.
+  const { count } = await deps.prisma.composeSend.updateMany({
+    where: {
+      id: row.id,
+      OR: [{ draftId: null }, ...(row.draftId ? [{ draftId: row.draftId }] : [])],
+    },
+    data: { draftId: created },
+  });
+  if (count > 0) return created;
+  await deps.mail.deleteDraft(account, created, context).catch(() => undefined);
+  const winner = await deps.prisma.composeSend.findUniqueOrThrow({
+    where: { id: row.id },
+    select: { draftId: true },
+  });
+  if (!winner.draftId) throw new MailProviderError("unavailable", "Draft could not be saved");
+  return (await deps.mail.updateDraft(account, winner.draftId, draft, context)).draftId;
+}
+
+const savedStatus = (state: string): ComposeResult["status"] =>
+  state === "sent" ? "sent" : state === "unknown" ? "unknown" : "saved";
 
 export async function inboxComposeDraftSave(
-  _deps: InboxDeps & { mailWritesDisabled?: boolean },
-  _actor: Actor,
-  _input: ComposeFields,
-): Promise<ComposeStatus> {
-  throw new Error("not implemented");
+  deps: ComposeDeps,
+  actor: Actor,
+  input: ComposeFields,
+  signal?: AbortSignal,
+): Promise<ComposeResult> {
+  if (deps.mailWritesDisabled) return { status: "disabled" };
+  const context = mailContext(actor, "inbox.compose.draftSave", signal);
+  const account = await ownAccount(deps, actor, input.connectionId, context);
+  const original = input.replyToMessageId
+    ? await ownMessage(deps, actor, input.replyToMessageId, input.connectionId)
+    : undefined;
+  const draft = draftOf(input, original?.providerMessageId, true);
+  const row = await composeRow(deps, actor, input);
+  // A send in flight, or one that already happened, owns the draft.
+  if (row.state === "sent" || row.state === "unknown" || row.state === "pending")
+    return { status: savedStatus(row.state) };
+  try {
+    const draftId = await writeDraft(deps, account, row, draft, context);
+    await deps.prisma.composeSend.updateMany({
+      where: { id: row.id, state: { in: ["draft", "failed"] } },
+      data: { draftId },
+    });
+    return { status: "saved" };
+  } catch (error) {
+    if (!(error instanceof MailProviderError)) throw error;
+    getLogger().warn("inbox compose draft not saved", {
+      connectionId: account.id,
+      reason: error.kind,
+    });
+    if (error.kind === "auth") {
+      await flagReconnect(deps, account.id);
+      return { status: "reconnect" };
+    }
+    return { status: "failed" };
+  }
+}
+
+/** What an earlier or concurrent request settled on, waiting briefly for one still in flight. */
+async function settled(deps: ComposeDeps, rowId: string): Promise<ComposeResult> {
+  const deadline = Date.now() + WAIT_MS;
+  for (;;) {
+    const row = await deps.prisma.composeSend.findUnique({
+      where: { id: rowId },
+      select: { state: true, updatedAt: true },
+    });
+    if (!row) return { status: "failed" };
+    if (row.state === "sent") return { status: "sent" };
+    if (row.state === "unknown") return { status: "unknown" };
+    if (row.state !== "pending") return { status: "failed" };
+    if (Date.now() - row.updatedAt.getTime() > PENDING_STALE_MS) {
+      // The process that held it is gone; whether it sent is not known.
+      await deps.prisma.composeSend.updateMany({
+        where: { id: rowId, state: "pending" },
+        data: { state: "unknown" },
+      });
+      continue;
+    }
+    if (Date.now() >= deadline) return { status: "unknown" };
+    await sleep(POLL_MS);
+  }
 }
 
 export async function inboxComposeSend(
-  _deps: InboxDeps & { mailWritesDisabled?: boolean },
-  _actor: Actor,
-  _input: ComposeFields,
-): Promise<ComposeStatus> {
-  throw new Error("not implemented");
+  deps: ComposeDeps,
+  actor: Actor,
+  input: ComposeFields,
+): Promise<ComposeResult> {
+  if (deps.mailWritesDisabled) return { status: "disabled" };
+  // The send runs to its end even if the browser leaves, so its outcome is always recorded.
+  const context = mailContext(actor, "inbox.compose.send", AbortSignal.timeout(SEND_DEADLINE_MS));
+  const account = await ownAccount(deps, actor, input.connectionId, context);
+  const original = input.replyToMessageId
+    ? await ownMessage(deps, actor, input.replyToMessageId, input.connectionId)
+    : undefined;
+  const draft = draftOf(input, original?.providerMessageId, false);
+  const row = await composeRow(deps, actor, input);
+
+  // Only one request moves a record out of draft/failed; every other one reports what happened.
+  const claim = await deps.prisma.composeSend.updateMany({
+    where: { id: row.id, state: { in: ["draft", "failed"] } },
+    data: { state: "pending" },
+  });
+  if (claim.count === 0) return settled(deps, row.id);
+
+  let sending = false;
+  try {
+    const draftId = await writeDraft(deps, account, row, draft, context);
+    await deps.prisma.composeSend.update({ where: { id: row.id }, data: { draftId } });
+    sending = true;
+    const sent = await deps.mail.sendDraft(account, draftId, context);
+    sending = false;
+    await record(deps, row.id, {
+      state: "sent",
+      providerMessageId: sent.messageId || null,
+      threadId: sent.threadId || null,
+    });
+    getLogger().info("inbox compose sent", { connectionId: account.id });
+    await syncAfterSend(deps, account, context);
+    return { status: "sent" };
+  } catch (error) {
+    if (sending && !(error instanceof MailProviderError && error.kind !== "unknown")) {
+      await record(deps, row.id, { state: "unknown" });
+      getLogger().warn("inbox compose send outcome unknown", {
+        connectionId: account.id,
+        reason: error instanceof MailProviderError ? error.kind : "error",
+      });
+      return { status: "unknown" };
+    }
+    // Nothing was sent: allow another attempt.
+    await record(deps, row.id, { state: "failed" });
+    if (!(error instanceof MailProviderError)) throw error;
+    getLogger().warn("inbox compose send failed", { connectionId: account.id, reason: error.kind });
+    if (error.kind === "auth") {
+      await flagReconnect(deps, account.id);
+      return { status: "reconnect" };
+    }
+    return { status: "failed" };
+  }
+}
+
+/** Bookkeeping that must not turn a send that happened into an error. */
+async function record(
+  deps: ComposeDeps,
+  id: string,
+  data: { state: string; providerMessageId?: string | null; threadId?: string | null },
+): Promise<void> {
+  try {
+    await deps.prisma.composeSend.update({ where: { id }, data });
+  } catch (error) {
+    getLogger().error("inbox compose record failed", error, { state: data.state });
+  }
+}
+
+/**
+ * Syncs the account again so the sent message is in the cache (and triage can see the thread was
+ * answered). A send is a real change, so it skips the 60-second sync throttle.
+ */
+async function syncAfterSend(
+  deps: ComposeDeps,
+  account: MailAccount,
+  context: AdapterContext,
+): Promise<void> {
+  const sync = (async () => {
+    await deps.prisma.mailSyncState.updateMany({
+      where: { connectionId: account.id },
+      data: { lastSyncedAt: null },
+    });
+    await syncMailbox(deps, account, context);
+  })().catch((error: unknown) => {
+    getLogger().warn("inbox compose sync failed", {
+      reason: error instanceof Error ? error.name : "error",
+    });
+  });
+  await Promise.race([sync, sleep(SYNC_WAIT_MS)]);
 }
 
 export async function inboxComposeDiscard(
-  _deps: InboxDeps,
-  _actor: Actor,
-  _input: { clientId: string },
+  deps: ComposeDeps,
+  actor: Actor,
+  input: { clientId: string },
+  signal?: AbortSignal,
 ): Promise<{ ok: true }> {
-  throw new Error("not implemented");
+  if (deps.mailWritesDisabled) return { ok: true };
+  const row = await deps.prisma.composeSend.findFirst({
+    where: {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      clientId: input.clientId,
+      state: { in: ["draft", "failed"] },
+      connection: { status: "connected" },
+    },
+  });
+  if (!row) return { ok: true };
+  if (row.draftId) {
+    const context = mailContext(actor, "inbox.compose.discard", signal);
+    const account = await ownAccount(deps, actor, row.connectionId, context);
+    try {
+      await deps.mail.deleteDraft(account, row.draftId, context);
+    } catch (error) {
+      if (!(error instanceof MailProviderError)) throw error;
+      // A draft already gone is what was wanted; anything else keeps the record so Discard can be retried.
+      if (error.kind !== "not_found")
+        throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
+    }
+  }
+  await deps.prisma.composeSend.deleteMany({
+    where: { id: row.id, state: { in: ["draft", "failed"] } },
+  });
+  return { ok: true };
 }

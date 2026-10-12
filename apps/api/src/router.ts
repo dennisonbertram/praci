@@ -252,6 +252,12 @@ import {
   inboxUnreadCount,
 } from "./inbox.js";
 import { ensureInboxAgent } from "./inbox-agent.js";
+import {
+  inboxComposeDiscard,
+  inboxComposeDraftSave,
+  inboxComposePrefill,
+  inboxComposeSend,
+} from "./inbox-compose.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
   dismissMcpServerApprovals,
@@ -622,6 +628,7 @@ export interface RouterDeps {
     imageTag?: string;
     integrationsCatalogUrl?: string;
     mcpAllowPrivateEndpoint?: boolean;
+    mailWritesDisabled?: boolean;
   };
 }
 
@@ -5883,6 +5890,29 @@ export function createRouter(deps: RouterDeps) {
       feedback: authed.inbox.feedback.handler(({ context, input }) =>
         inboxFeedbackSet(deps, context.actor, input),
       ),
+      compose: {
+        prefill: authed.inbox.compose.prefill.handler(({ context, input }) =>
+          inboxComposePrefill(deps, context.actor, input, context.signal),
+        ),
+        draftSave: authed.inbox.compose.draftSave.handler(({ context, input }) =>
+          inboxComposeDraftSave(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+            context.signal,
+          ),
+        ),
+        send: authed.inbox.compose.send.handler(({ context, input }) =>
+          inboxComposeSend(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+          ),
+        ),
+        discard: authed.inbox.compose.discard.handler(({ context, input }) =>
+          inboxComposeDiscard(deps, context.actor, input, context.signal),
+        ),
+      },
       todos: {
         list: authed.inbox.todos.list.handler(({ context, input }) =>
           inboxTodosList(deps, context.actor, input),

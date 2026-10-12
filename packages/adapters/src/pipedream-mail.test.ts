@@ -38,6 +38,8 @@ function fakePipedream(
   options: { accounts?: Account[]; respond?: (target: string) => Response | undefined } = {},
 ) {
   const mail = createMailEmulator({ now: NOW, sleep: async () => {}, random: () => 0 });
+  // Pipedream names accounts `apn_<id>`; the emulator serves the same mailbox under both names.
+  for (const ref of mail.gmail.accountRefs()) mail.gmail.alias(`apn_${ref}`, ref);
   const proxied: Array<{
     url: URL;
     target: string;
@@ -70,12 +72,14 @@ function fakePipedream(
     const accountId = url.searchParams.get("account_id") ?? "";
     const text = await request.text();
     const answer = mail.gmail.handle(
-      accountId.replace(/^apn_/, ""),
+      accountId,
       target,
       request.method as "GET",
       text ? JSON.parse(text) : undefined,
     );
-    return Response.json(answer.data, { status: answer.status });
+    return answer.status === 204
+      ? new Response(null, { status: 204 })
+      : Response.json(answer.data, { status: answer.status });
   });
   const connector = new PipedreamConnector(CONFIG, {
     fetch: fetch as unknown as typeof globalThis.fetch,

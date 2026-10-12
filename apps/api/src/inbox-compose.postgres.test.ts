@@ -155,7 +155,12 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       [orgB, spaceB],
     ] as const) {
       await prisma.organization.create({
-        data: { id: organizationId, name: organizationId, slug: organizationId, createdAt: new Date() },
+        data: {
+          id: organizationId,
+          name: organizationId,
+          slug: organizationId,
+          createdAt: new Date(),
+        },
       });
       await prisma.space.create({
         data: { id: spaceId, organizationId, name: "General", isDefault: true },
@@ -165,7 +170,11 @@ describePostgres("inbox compose (PostgreSQL)", () => {
     connB = await connect(b, "box-b");
     connC = await connect(c, "box-c");
     revokedA = await connect(a, "box-revoked", "revoked");
-    mail = createMailProvider({ prisma, connectors: { managed: () => connector }, sleep: async () => {} });
+    mail = createMailProvider({
+      prisma,
+      connectors: { managed: () => connector },
+      sleep: async () => {},
+    });
   });
 
   afterAll(async () => {
@@ -246,7 +255,11 @@ describePostgres("inbox compose (PostgreSQL)", () => {
 
     it("saves a reply into the original thread", async () => {
       const row = await cache(a, connA, "a-1", "t-a1");
-      await inboxComposeDraftSave(deps(), a, fields({ replyToMessageId: row.id, subject: "Re: Subject a-1" }));
+      await inboxComposeDraftSave(
+        deps(),
+        a,
+        fields({ replyToMessageId: row.id, subject: "Re: Subject a-1" }),
+      );
       expect(gmail.draftsOf("box-a")[0]?.threadId).toBe("t-a1");
     });
 
@@ -265,7 +278,11 @@ describePostgres("inbox compose (PostgreSQL)", () => {
 
       // The same client id from two users is two separate drafts.
       await inboxComposeDraftSave(deps(), a, fields({ clientId: "same-client-id" }));
-      await inboxComposeDraftSave(deps(), b, fields({ clientId: "same-client-id", connectionId: connB }));
+      await inboxComposeDraftSave(
+        deps(),
+        b,
+        fields({ clientId: "same-client-id", connectionId: connB }),
+      );
       expect(gmail.draftsOf("box-a")).toHaveLength(1);
       expect(gmail.draftsOf("box-b")).toHaveLength(1);
       expect(await prisma.composeSend.count({ where: { clientId: "same-client-id" } })).toBe(2);
@@ -288,7 +305,9 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "sent" });
       expect(gmail.sentOf("box-a")).toHaveLength(1);
       expect(gmail.draftsOf("box-a")).toHaveLength(0);
-      const row = await prisma.composeSend.findFirstOrThrow({ where: { clientId: input.clientId } });
+      const row = await prisma.composeSend.findFirstOrThrow({
+        where: { clientId: input.clientId },
+      });
       expect(row).toMatchObject({ state: "sent" });
       expect(row.providerMessageId).toBe(gmail.sentOf("box-a")[0]?.id);
 
@@ -334,7 +353,9 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       const input = fields();
       gmail.failNext(500, { urlIncludes: "drafts/send", times: 10 });
       expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "unknown" });
-      expect((await prisma.composeSend.findFirstOrThrow({ where: { clientId: input.clientId } })).state).toBe("unknown");
+      expect(
+        (await prisma.composeSend.findFirstOrThrow({ where: { clientId: input.clientId } })).state,
+      ).toBe("unknown");
       gmail.clearFailures();
       const before = sendRequests().length;
       expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "unknown" });
@@ -368,7 +389,9 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       gmail.failNext(403, { urlIncludes: "/drafts", reason: "insufficientPermissions", times: 10 });
       expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "reconnect" });
       expect(await inboxComposeDraftSave(deps(), a, fields())).toEqual({ status: "reconnect" });
-      const state = await prisma.mailSyncState.findUniqueOrThrow({ where: { connectionId: connA } });
+      const state = await prisma.mailSyncState.findUniqueOrThrow({
+        where: { connectionId: connA },
+      });
       expect(state.needsReconnect).toBe(true);
       expect(state.lastErrorAt).not.toBeNull();
       gmail.clearFailures();
@@ -394,7 +417,9 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(await prisma.composeSend.count({ where: { spaceId: spaceA } })).toBe(0);
       // Reading the original to reply still works.
       const row = await cache(a, connA, "a-1", "t-a1");
-      await expect(inboxComposePrefill(off, a, { messageId: row.id, mode: "reply" })).resolves.toBeTruthy();
+      await expect(
+        inboxComposePrefill(off, a, { messageId: row.id, mode: "reply" }),
+      ).resolves.toBeTruthy();
     });
 
     it("keeps message text and recipients out of the logs", async () => {
@@ -445,11 +470,11 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(await api.inbox.compose.send(fields())).toEqual({ status: "sent" });
       requests = [];
       const bad: Array<Record<string, unknown>> = [
-        { body: "x".repeat(100_001) },
+        { body: "x".repeat(150_001) },
         { subject: "x".repeat(999) },
         { subject: "Hi\r\nBcc: evil@example.test" },
         { to: "not an address" },
-        { to: "" , cc: "", bcc: "" },
+        { to: "", cc: "", bcc: "" },
         { to: Array.from({ length: 101 }, (_, i) => `p${i}@example.test`).join(",") },
         { clientId: "x" },
       ];

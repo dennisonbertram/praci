@@ -1,21 +1,26 @@
 import {
   type AdapterContext,
   ConnectorProxyError,
+  type ConnectorProxyRequest,
   type ConnectorProxyResponse,
   type MailAccount,
   type MailAddress,
   type MailAttachment,
+  type MailDraftInput,
+  type MailDraftRef,
   type MailListRequest,
   type MailMessage,
   type MailMessagePage,
   type MailMessageSummary,
   type MailProvider,
   MailProviderError,
+  type MailSent,
   type ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { JSDOM } from "jsdom";
 import { asRecord } from "./connector-http.js";
+import { buildRawMessage } from "./mail-compose.js";
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 const MAX_PAGE_SIZE = 500;
@@ -362,7 +367,17 @@ export class GmailMailProvider implements MailProvider {
     }
     if (html !== undefined && inline.length)
       html = await this.embedInlineImages(account, id, context, html, inline);
-    return { ...summary, text, ...(html === undefined ? {} : { html }), truncated, attachments };
+    const replyTo = parseAddressList(
+      headerOf(asRecord(asRecord(data)?.payload) ?? {}, "reply-to") ?? "",
+    );
+    return {
+      ...summary,
+      replyTo,
+      text,
+      ...(html === undefined ? {} : { html }),
+      truncated,
+      attachments,
+    };
   }
 
   async getAttachment(
@@ -403,6 +418,125 @@ export class GmailMailProvider implements MailProvider {
       mimeType: typeof part.mimeType === "string" ? part.mimeType.toLowerCase() : "",
       size: bytes.length,
       bytes,
+    };
+  }
+
+  async createDraft(
+    account: MailAccount,
+    draft: MailDraftInput,
+    context: AdapterContext,
+  ): Promise<MailDraftRef> {
+    assertScope(account, context);
+    const message = await this.draftMessage(account, draft, context);
+    const data = await this.request(account, context, `${GMAIL}/drafts`, {
+      method: "POST",
+      body: { message },
+    });
+    return parseDraft(data);
+  }
+
+  async updateDraft(
+    account: MailAccount,
+    draftId: string,
+    draft: MailDraftInput,
+    context: AdapterContext,
+  ): Promise<MailDraftRef> {
+    assertScope(account, context);
+    const message = await this.draftMessage(account, draft, context);
+    const data = await this.request(
+      account,
+      context,
+      `${GMAIL}/drafts/${encodeURIComponent(draftId)}`,
+      {
+        method: "PUT",
+        body: { message },
+      },
+    );
+    return parseDraft(data);
+  }
+
+  async sendDraft(
+    account: MailAccount,
+    draftId: string,
+    context: AdapterContext,
+  ): Promise<MailSent> {
+    assertScope(account, context);
+    try {
+      const sent = asRecord(
+        await this.request(account, context, `${GMAIL}/drafts/send`, {
+          method: "POST",
+          body: { id: draftId },
+        }),
+      );
+      // A 2xx means Gmail sent it, so an unexpected body must not look like a failure.
+      return {
+        messageId: typeof sent?.id === "string" ? sent.id : "",
+        threadId: typeof sent?.threadId === "string" ? sent.threadId : "",
+      };
+    } catch (error) {
+      // Timeouts, dropped connections and provider 5xx leave it unclear whether the mail went out.
+      if (error instanceof MailProviderError && error.kind === "unavailable")
+        throw new MailProviderError(
+          "unknown",
+          "It is not known whether the message was sent",
+          undefined,
+          error.detail,
+        );
+      throw error;
+    }
+  }
+
+  async deleteDraft(account: MailAccount, draftId: string, context: AdapterContext): Promise<void> {
+    assertScope(account, context);
+    await this.request(account, context, `${GMAIL}/drafts/${encodeURIComponent(draftId)}`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * The `message` of a Gmail draft: the raw RFC 2822 text and, for a reply, the original's thread
+   * with In-Reply-To and the original's References followed by its own Message-ID.
+   */
+  private async draftMessage(
+    account: MailAccount,
+    draft: MailDraftInput,
+    context: AdapterContext,
+  ): Promise<{ raw: string; threadId?: string }> {
+    let threadId: string | undefined;
+    let inReplyTo: string | undefined;
+    let references: string | undefined;
+    if (draft.inReplyTo) {
+      const original = asRecord(
+        await this.request(
+          account,
+          context,
+          `${GMAIL}/messages/${encodeURIComponent(draft.inReplyTo)}?format=metadata&metadataHeaders=Message-ID&metadataHeaders=References`,
+        ),
+      );
+      threadId = typeof original?.threadId === "string" ? original.threadId : undefined;
+      const payload = asRecord(original?.payload) ?? {};
+      const ids = (value: string | undefined) =>
+        (value ?? "").split(/\s+/).filter((id) => /^<[^<>\s@]+@[^<>\s@]+>$/.test(id));
+      const [own] = ids(headerOf(payload, "message-id"));
+      inReplyTo = own;
+      references =
+        [...ids(headerOf(payload, "references")), ...(own ? [own] : [])].join(" ") || undefined;
+    }
+    const raw = buildRawMessage(
+      {
+        to: draft.to,
+        cc: draft.cc,
+        bcc: draft.bcc,
+        subject: draft.subject,
+        text: draft.text,
+        ...(inReplyTo ? { inReplyTo } : {}),
+        ...(references ? { references } : {}),
+      },
+      { draft: true },
+    );
+    return {
+      raw: Buffer.from(raw, "utf8").toString("base64url"),
+      ...(threadId ? { threadId } : {}),
     };
   }
 
@@ -458,12 +592,19 @@ export class GmailMailProvider implements MailProvider {
       : html;
   }
 
-  /** One authenticated GET with per-account concurrency, retry and status mapping. */
+  /**
+   * One authenticated call with per-account concurrency, retry and status mapping. A POST is the only
+   * method that is not safe to repeat, so after an unclear failure (5xx, timeout, dropped connection)
+   * it is not retried; a rate limit proves nothing happened and is retried for every method.
+   */
   private async request(
     account: MailAccount,
     context: AdapterContext,
     url: string,
+    init: { method?: ConnectorProxyRequest["method"]; body?: unknown } = {},
   ): Promise<unknown> {
+    const method = init.method ?? "GET";
+    const repeatable = method !== "POST";
     const connector = this.deps.connectors.managed(account.connectorId);
     const proxy = connector?.proxy?.bind(connector);
     if (!proxy) throw new MailProviderError("unavailable", "This mail connection cannot be read");
@@ -473,13 +614,24 @@ export class GmailMailProvider implements MailProvider {
       let failure: { error: MailProviderError; retry: boolean };
       try {
         const response = await this.limit(account.id, () =>
-          proxy({ app: account.app, accountRef: account.accountRef, method: "GET", url }, context),
+          proxy(
+            {
+              app: account.app,
+              accountRef: account.accountRef,
+              method,
+              url,
+              ...(init.body === undefined ? {} : { body: init.body }),
+            },
+            context,
+          ),
         );
-        const error = mapStatus(response);
+        const error = mapStatus(response, method);
         if (!error) return response.data;
         failure = {
           error,
-          retry: error.kind === "rate_limited" || response.status >= 500 || response.status === 408,
+          retry:
+            error.kind === "rate_limited" ||
+            (repeatable && (response.status >= 500 || response.status === 408)),
         };
       } catch (cause) {
         // Only the connector's sanitized error is kept: other transport errors can carry credentials.
@@ -492,7 +644,7 @@ export class GmailMailProvider implements MailProvider {
                 undefined,
                 describeProxyError(cause),
               ),
-              retry: cause instanceof ConnectorProxyError && cause.transient,
+              retry: repeatable && cause instanceof ConnectorProxyError && cause.transient,
             };
       }
       if (!failure.retry || attempt >= MAX_ATTEMPTS || context.signal.aborted) throw failure.error;
@@ -571,7 +723,10 @@ function describeProxyError(cause: unknown): string {
 }
 
 /** The single place HTTP statuses become typed errors. Returns undefined for 2xx. */
-function mapStatus(response: ConnectorProxyResponse): MailProviderError | undefined {
+function mapStatus(
+  response: ConnectorProxyResponse,
+  method: ConnectorProxyRequest["method"],
+): MailProviderError | undefined {
   const { status } = response;
   if (status >= 200 && status < 300) return undefined;
   const errors = asRecord(asRecord(response.data)?.error)?.errors;
@@ -584,7 +739,19 @@ function mapStatus(response: ConnectorProxyResponse): MailProviderError | undefi
   if (status === 429 || (status === 403 && reasons.some((r) => RATE_REASONS.has(r))))
     return new MailProviderError("rate_limited", "Mail rate limit reached", response.retryAfterMs);
   if (status === 404) return new MailProviderError("not_found", "Message not found");
+  // For a write, Gmail refusing the message means nothing was saved or sent.
+  if (method !== "GET" && (status === 400 || status === 413 || status === 422))
+    return new MailProviderError("invalid", "Gmail did not accept the message");
   return new MailProviderError("unavailable", `Mail provider returned ${status}`);
+}
+
+function parseDraft(data: unknown): MailDraftRef {
+  const draft = asRecord(data);
+  const id = draft?.id;
+  const threadId = asRecord(draft?.message)?.threadId;
+  if (typeof id !== "string" || !id)
+    throw new MailProviderError("unavailable", "Unexpected mail response");
+  return { draftId: id, threadId: typeof threadId === "string" ? threadId : "" };
 }
 
 function parseSummary(data: unknown): MailMessageSummary | undefined {

@@ -139,11 +139,16 @@ function fakeGoogle(): FakeGoogle {
       state.gmailRequests.push({ url, method, body, contentType: headers.get("content-type") });
       const bearer = headers.get("authorization")?.replace("Bearer ", "") ?? "";
       if (state.rejectOnce.delete(bearer)) return Response.json({}, { status: 401 });
-      const result = state.gmail?.(state.mailboxByToken.get(bearer) ?? "", url, { method, body }) ?? {
+      const result = state.gmail?.(state.mailboxByToken.get(bearer) ?? "", url, {
+        method,
+        body,
+      }) ?? {
         status: 200,
         data: { ok: true },
       };
-      return Response.json(result.data, { status: result.status });
+      return result.status === 204
+        ? new Response(null, { status: 204 })
+        : Response.json(result.data, { status: result.status });
     }) as typeof fetch,
   };
   return state;
@@ -415,12 +420,28 @@ describe("GoogleConnector.proxy", () => {
     await connect(s);
     const drafts = "https://gmail.googleapis.com/gmail/v1/users/me/drafts";
     s.google.gmailRequests.length = 0;
-    await s.connector.proxy({ ...request(drafts), method: "POST", body: { message: { raw: "abc" } } }, context);
-    await s.connector.proxy({ ...request(`${drafts}/d1`), method: "PUT", body: { message: { raw: "def" } } }, context);
+    await s.connector.proxy(
+      { ...request(drafts), method: "POST", body: { message: { raw: "abc" } } },
+      context,
+    );
+    await s.connector.proxy(
+      { ...request(`${drafts}/d1`), method: "PUT", body: { message: { raw: "def" } } },
+      context,
+    );
     await s.connector.proxy({ ...request(`${drafts}/d1`), method: "DELETE" }, context);
     expect(s.google.gmailRequests).toEqual([
-      { url: drafts, method: "POST", body: { message: { raw: "abc" } }, contentType: "application/json" },
-      { url: `${drafts}/d1`, method: "PUT", body: { message: { raw: "def" } }, contentType: "application/json" },
+      {
+        url: drafts,
+        method: "POST",
+        body: { message: { raw: "abc" } },
+        contentType: "application/json",
+      },
+      {
+        url: `${drafts}/d1`,
+        method: "PUT",
+        body: { message: { raw: "def" } },
+        contentType: "application/json",
+      },
       { url: `${drafts}/d1`, method: "DELETE", body: undefined, contentType: null },
     ]);
   });
@@ -454,7 +475,10 @@ describe("GoogleConnector.proxy", () => {
     s.google.rejectOnce.add("access-2");
     s.google.gmailRequests.length = 0;
     const drafts = "https://gmail.googleapis.com/gmail/v1/users/me/drafts";
-    const result = await s.connector.proxy({ ...request(drafts), method: "POST", body: { a: 1 } }, context);
+    const result = await s.connector.proxy(
+      { ...request(drafts), method: "POST", body: { a: 1 } },
+      context,
+    );
     expect(result.status).toBe(200);
     expect(s.google.gmailRequests.filter((r) => r.method === "POST")).toHaveLength(2);
   });
@@ -465,7 +489,11 @@ describe("GoogleConnector.proxy", () => {
     s.google.gmail = () => ({ status: 500, data: {} });
     s.google.gmailRequests.length = 0;
     const result = await s.connector.proxy(
-      { ...request("https://gmail.googleapis.com/gmail/v1/users/me/drafts/send"), method: "POST", body: { id: "d" } },
+      {
+        ...request("https://gmail.googleapis.com/gmail/v1/users/me/drafts/send"),
+        method: "POST",
+        body: { id: "d" },
+      },
       context,
     );
     expect(result.status).toBe(500);
@@ -562,7 +590,9 @@ describe("GoogleConnector as a mail connector", () => {
     expect(writes.map((r) => r.method)).toContain("POST");
     expect(writes.map((r) => r.method)).toContain("PUT");
     expect(writes.map((r) => r.method)).toContain("DELETE");
-    expect(writes.filter((r) => r.body !== undefined).every((r) => r.contentType === "application/json")).toBe(true);
+    expect(
+      writes.filter((r) => r.body !== undefined).every((r) => r.contentType === "application/json"),
+    ).toBe(true);
   });
 
   it("maps Google's insufficient-scope answer for an old read-only grant to a reconnect error", async () => {
@@ -601,7 +631,15 @@ describe("GoogleConnector as a mail connector", () => {
       connectors: { managed: () => s.connector as unknown as ManagedConnectorProvider },
     });
     const ctx = { ...context, ...owner };
-    expect((await provider.listMessages({ ...account, ...owner }, { query: "in:inbox", pageSize: 3 }, ctx)).messages).toHaveLength(3);
+    expect(
+      (
+        await provider.listMessages(
+          { ...account, ...owner },
+          { query: "in:inbox", pageSize: 3 },
+          ctx,
+        )
+      ).messages,
+    ).toHaveLength(3);
     await expect(
       provider.createDraft(
         { ...account, ...owner },

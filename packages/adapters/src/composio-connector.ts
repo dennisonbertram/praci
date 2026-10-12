@@ -702,9 +702,10 @@ export class ComposioConnector implements ComposioProvider {
   }
 
   /**
-   * Authenticated GET against the toolkit's own API. `endpoint` is the absolute URL, which
+   * Authenticated call against the toolkit's own API. `endpoint` is the absolute URL, which
    * Composio accepts when it shares the toolkit's registrable domain, so the query string
    * (including repeated parameters) travels unchanged. Upstream status codes are returned.
+   * The SDK never retries a proxied call, so a write is sent at most once here.
    */
   async proxy(
     request: ConnectorProxyRequest,
@@ -713,7 +714,12 @@ export class ComposioConnector implements ComposioProvider {
     let response: Awaited<ReturnType<Composio["tools"]["proxyExecute"]>>;
     try {
       response = await this.sdk().tools.proxyExecute(
-        { endpoint: request.url, method: "GET", connectedAccountId: request.accountRef },
+        {
+          endpoint: request.url,
+          method: request.method,
+          ...(request.body === undefined ? {} : { body: request.body }),
+          connectedAccountId: request.accountRef,
+        },
         { signal: context.signal },
       );
     } catch (error) {

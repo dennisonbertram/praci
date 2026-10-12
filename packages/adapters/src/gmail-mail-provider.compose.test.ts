@@ -8,8 +8,8 @@ import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it } from "vitest";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
-import { assertMailWriteConformance } from "./testing/mail-conformance.js";
 import { parseRawMime } from "./mime-parse.js";
+import { assertMailWriteConformance } from "./testing/mail-conformance.js";
 
 const NOW = new Date("2026-10-01T12:00:00Z");
 const to = [{ name: "Priya Shah", address: "priya@example.test" }];
@@ -50,7 +50,9 @@ function setup() {
     },
   } as unknown as ManagedConnectorProvider;
   const provider = createMailProvider({
-    prisma: { connection: { findMany: async () => rows, updateMany: async () => ({ count: 0 }) } } as unknown as Pick<PrismaClient, "connection">,
+    prisma: {
+      connection: { findMany: async () => rows, updateMany: async () => ({ count: 0 }) },
+    } as unknown as Pick<PrismaClient, "connection">,
     connectors: { managed: () => connector },
     sleep: async (ms) => {
       sleeps.push(ms);
@@ -98,7 +100,12 @@ describe("GmailMailProvider drafts", () => {
     expect(mime.text).toBe("Hi Priya");
     expect(mail.gmail.sentOf(a.accountRef)).toHaveLength(0);
 
-    await provider.updateDraft(a, created.draftId, { ...draft, subject: "Hello again", text: "Edited" }, context());
+    await provider.updateDraft(
+      a,
+      created.draftId,
+      { ...draft, subject: "Hello again", text: "Edited" },
+      context(),
+    );
     const after = mail.gmail.draftsOf(a.accountRef);
     expect(after).toHaveLength(1);
     expect(parseRawMime(after[0]?.raw ?? "").header("Subject")).toBe("Hello again");
@@ -107,7 +114,11 @@ describe("GmailMailProvider drafts", () => {
   it("puts a reply in the original thread with In-Reply-To and the full References chain", async () => {
     const { provider, mail, a, context } = setup();
     // a-02 is itself a reply: it already carries References.
-    const created = await provider.createDraft(a, { ...draft, subject: "Re: Contract renewal", inReplyTo: "a-02" }, context());
+    const created = await provider.createDraft(
+      a,
+      { ...draft, subject: "Re: Contract renewal", inReplyTo: "a-02" },
+      context(),
+    );
     expect(created.threadId).toBe("t-contract");
     await provider.sendDraft(a, created.draftId, context());
     const [sent] = mail.gmail.sentOf(a.accountRef);
@@ -125,13 +136,27 @@ describe("GmailMailProvider drafts", () => {
     const [sent] = mail.gmail.sentOf(a.accountRef);
     expect(sent?.threadId).not.toBe("t-contract");
     expect(parseRawMime(sent?.raw ?? "").header("In-Reply-To")).toBeUndefined();
-    expect(await kindOf(provider.createDraft(a, { ...draft, inReplyTo: "nope" }, context()))).toBe("not_found");
+    expect(await kindOf(provider.createDraft(a, { ...draft, inReplyTo: "nope" }, context()))).toBe(
+      "not_found",
+    );
   });
 
   it("rejects header injection before any request leaves", async () => {
     const { provider, a, context, calls } = setup();
-    expect(await kindOf(provider.createDraft(a, { ...draft, subject: "x\r\nBcc: evil@example.test" }, context()))).toBe("invalid");
-    expect(await kindOf(provider.createDraft(a, { ...draft, to: [{ address: "a@example.test\nBcc: e@example.test" }] }, context()))).toBe("invalid");
+    expect(
+      await kindOf(
+        provider.createDraft(a, { ...draft, subject: "x\r\nBcc: evil@example.test" }, context()),
+      ),
+    ).toBe("invalid");
+    expect(
+      await kindOf(
+        provider.createDraft(
+          a,
+          { ...draft, to: [{ address: "a@example.test\nBcc: e@example.test" }] },
+          context(),
+        ),
+      ),
+    ).toBe("invalid");
     expect(calls).toHaveLength(0);
   });
 
@@ -182,7 +207,9 @@ describe("GmailMailProvider sending is never retried when the outcome is unclear
     const created = await provider.createDraft(a, draft, context());
     const controller = new AbortController();
     controller.abort();
-    expect(await kindOf(provider.sendDraft(a, created.draftId, context({ signal: controller.signal })))).toBe("unknown");
+    expect(
+      await kindOf(provider.sendDraft(a, created.draftId, context({ signal: controller.signal }))),
+    ).toBe("unknown");
   });
 
   it("retries after a rate limit, which proves nothing was sent, and sends once", async () => {

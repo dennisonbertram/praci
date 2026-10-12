@@ -393,7 +393,8 @@ export class PipedreamConnector implements ManagedConnectorProvider {
   }
 
   /**
-   * GET an app API URL as one connected account through the Connect proxy. Upstream statuses
+   * Call an app API URL as one connected account through the Connect proxy, which forwards the
+   * method and the JSON body and sends a request once. Upstream statuses
    * are returned, not thrown. A ref that is not an `apn_` account id is the legacy app slug:
    * it works only when the user has exactly one healthy account for the app.
    */
@@ -422,7 +423,10 @@ export class PipedreamConnector implements ManagedConnectorProvider {
     });
     const { response, body, token } = await this.send(
       `/v1/connect/${encodeURIComponent(this.config.projectId)}/proxy/${Buffer.from(request.url).toString("base64url")}?${query}`,
-      { method: "GET" },
+      {
+        method: request.method,
+        ...(request.body === undefined ? {} : { body: JSON.stringify(request.body) }),
+      },
       context.signal,
     );
     const retryAfter = response.headers.get("retry-after");

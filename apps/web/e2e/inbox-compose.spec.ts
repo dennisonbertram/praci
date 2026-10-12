@@ -10,7 +10,13 @@ interface EmulatedMail {
 }
 type Snapshot = Record<string, { address: string; drafts: EmulatedMail[]; sent: EmulatedMail[] }>;
 
-/** What the Gmail emulator behind the API holds. No real mailbox is involved anywhere in this spec. */
+const count = (snapshot: Snapshot, ref: string, kind: "drafts" | "sent") =>
+  snapshot[ref]?.[kind].length ?? 0;
+
+/**
+ * What the Gmail emulator behind the API holds. No real mailbox is involved anywhere in this spec.
+ * The emulator lives as long as the test run, so each test counts against what it found at the start.
+ */
 async function gmail(page: Page): Promise<Snapshot> {
   const response = await page.request.get(`${api()}/__e2e/gmail`);
   return (await response.json()) as Snapshot;
@@ -22,7 +28,7 @@ function headerOf(raw: string, name: string): string | undefined {
   return match?.[1]?.replace(/\r?\n[ \t]+/g, " ").trim();
 }
 function textOf(raw: string): string {
-  const part = /Content-Type: text\/plain[^]*?\r?\n\r?\n([^]*?)\r?\n--/i.exec(raw)?.[1] ?? "";
+  const part = /Content-Type: text\/plain[\s\S]*?\r?\n\r?\n([\s\S]*?)\r?\n--/i.exec(raw)?.[1] ?? "";
   return Buffer.from(part.replace(/\s+/g, ""), "base64").toString("utf8");
 }
 
@@ -54,6 +60,7 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
   await signup(page, `compose-${Date.now()}@rakazo.test`, "password12", "Compose User");
   await completeOnboarding(page);
   await connectTwoGmailAccounts(page);
+  const before = await gmail(page);
 
   const main = page.getByRole("main");
   await main.getByRole("button", { name: /Offsite dates/ }).click();
@@ -75,10 +82,12 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
   await body.pressSequentially("Thursday the 14th works for me.");
   await saved;
   await expect(composer.getByText("Draft saved", { exact: true })).toBeVisible();
-  await expect.poll(async () => (await gmail(page))["e2e-first"]?.drafts.length).toBe(1);
-  const draft = (await gmail(page))["e2e-first"]?.drafts[0];
+  await expect
+    .poll(async () => count(await gmail(page), "e2e-first", "drafts"))
+    .toBe(count(before, "e2e-first", "drafts") + 1);
+  const draft = (await gmail(page))["e2e-first"]?.drafts.at(-1);
   expect(draft?.threadId).toBe("e2e-t-offsite");
-  expect((await gmail(page))["e2e-first"]?.sent).toHaveLength(0);
+  expect(count(await gmail(page), "e2e-first", "sent")).toBe(count(before, "e2e-first", "sent"));
 
   // Dark and phone-sized renderings of the same composer.
   await page.emulateMedia({ colorScheme: "dark" });
@@ -93,9 +102,11 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
   await expect(composer).toBeHidden();
   await expect(page.getByText("Sent", { exact: true })).toBeVisible();
 
-  await expect.poll(async () => (await gmail(page))["e2e-first"]?.sent.length).toBe(1);
+  await expect
+    .poll(async () => count(await gmail(page), "e2e-first", "sent"))
+    .toBe(count(before, "e2e-first", "sent") + 1);
   const after = (await gmail(page))["e2e-first"];
-  const [sent] = after?.sent ?? [];
+  const sent = after?.sent.at(-1);
   expect(sent?.threadId).toBe("e2e-t-offsite");
   expect(headerOf(sent?.raw ?? "", "To")).toBe("Sam Rivera <sam@example.test>");
   expect(headerOf(sent?.raw ?? "", "Subject")).toBe("Re: Offsite dates");
@@ -103,9 +114,11 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
   expect(headerOf(sent?.raw ?? "", "References")).toContain("<e2e-a-1@mail.example.test>");
   expect(textOf(sent?.raw ?? "")).toContain("Thursday the 14th works for me.");
   expect(textOf(sent?.raw ?? "")).toContain("> Can you do the 14th or the 21st?");
-  expect(after?.drafts).toHaveLength(0);
-  // The other account was never touched.
-  expect((await gmail(page))["e2e-second"]?.sent).toHaveLength(0);
+  // The draft became the sent message, and the other account was never touched.
+  expect(count(await gmail(page), "e2e-first", "drafts")).toBe(
+    count(before, "e2e-first", "drafts"),
+  );
+  expect(count(await gmail(page), "e2e-second", "sent")).toBe(count(before, "e2e-second", "sent"));
 });
 
 test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an empty one closes silently", async ({
@@ -114,6 +127,7 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
   await signup(page, `compose-new-${Date.now()}@rakazo.test`, "password12", "Compose New");
   await completeOnboarding(page);
   await connectTwoGmailAccounts(page);
+  const before = await gmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
   let composer = page.getByRole("dialog", { name: "Compose" });
@@ -121,7 +135,9 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
   // Nothing typed: Escape closes without a prompt and leaves no draft behind.
   await page.keyboard.press("Escape");
   await expect(composer).toBeHidden();
-  expect((await gmail(page))["e2e-first"]?.drafts).toHaveLength(0);
+  expect(count(await gmail(page), "e2e-first", "drafts")).toBe(
+    count(before, "e2e-first", "drafts"),
+  );
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
   composer = page.getByRole("dialog", { name: "Compose" });
@@ -137,21 +153,24 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
   await composer.getByLabel("Message").press("ControlOrMeta+Enter");
   await expect(composer).toBeHidden();
 
-  await expect.poll(async () => (await gmail(page))["e2e-second"]?.sent.length).toBe(1);
-  const [sent] = (await gmail(page))["e2e-second"]?.sent ?? [];
+  await expect
+    .poll(async () => count(await gmail(page), "e2e-second", "sent"))
+    .toBe(count(before, "e2e-second", "sent") + 1);
+  const sent = (await gmail(page))["e2e-second"]?.sent.at(-1);
   expect(headerOf(sent?.raw ?? "", "To")).toBe("Priya Shah <priya@example.test>");
   expect(headerOf(sent?.raw ?? "", "Cc")).toBe("dev@example.test");
   expect(headerOf(sent?.raw ?? "", "Bcc")).toBe("audit@example.test");
   expect(headerOf(sent?.raw ?? "", "In-Reply-To")).toBeUndefined();
   expect(headerOf(sent?.raw ?? "", "Subject")).toMatch(/^=\?UTF-8\?B\?/);
   expect(textOf(sent?.raw ?? "").replace(/\r\n/g, "\n")).toBe("Line one\n\n<b>not bold</b>");
-  expect((await gmail(page))["e2e-first"]?.sent).toHaveLength(0);
+  expect(count(await gmail(page), "e2e-first", "sent")).toBe(count(before, "e2e-first", "sent"));
 });
 
 test("closing a composer with text in it keeps the draft in Gmail", async ({ page }) => {
   await signup(page, `compose-keep-${Date.now()}@rakazo.test`, "password12", "Compose Keep");
   await completeOnboarding(page);
   await connectTwoGmailAccounts(page);
+  const before = await gmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
   const composer = page.getByRole("dialog", { name: "Compose" });
@@ -159,6 +178,8 @@ test("closing a composer with text in it keeps the draft in Gmail", async ({ pag
   await composer.getByLabel("Subject").fill("Half written");
   await page.keyboard.press("Escape");
   await expect(composer).toBeHidden();
-  await expect.poll(async () => (await gmail(page))["e2e-first"]?.drafts.length).toBe(1);
-  expect((await gmail(page))["e2e-first"]?.sent).toHaveLength(0);
+  await expect
+    .poll(async () => count(await gmail(page), "e2e-first", "drafts"))
+    .toBe(count(before, "e2e-first", "drafts") + 1);
+  expect(count(await gmail(page), "e2e-first", "sent")).toBe(count(before, "e2e-first", "sent"));
 });

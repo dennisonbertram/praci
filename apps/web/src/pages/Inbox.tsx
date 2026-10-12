@@ -1,7 +1,13 @@
 import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { InboxListOutput, InboxMark, InboxTodo, MailRow } from "@rakazo/contracts";
+import type {
+  ComposeMode,
+  InboxListOutput,
+  InboxMark,
+  InboxTodo,
+  MailRow,
+} from "@rakazo/contracts";
 import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
 import {
   dueTone,
@@ -38,15 +44,20 @@ import {
   FileArchive,
   FileImage,
   FileText,
+  Forward,
   ListFilter,
   PanelRightOpen,
+  Reply,
+  ReplyAll,
   Search,
+  SquarePen,
   TriangleAlert,
   X,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
+import { ComposeEmail, MAIL_SENT_EVENT, NEW_MESSAGE } from "../components/ComposeEmail";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
 import {
   inboxListInput,
@@ -138,6 +149,25 @@ export function InboxPage({
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const polls = useRef(0);
+  const [composing, setComposing] = useState(false);
+  const [sentNotice, setSentNotice] = useState(false);
+
+  // A message sent from any composer: say so briefly and reload, since the send synced the account.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onSent = () => {
+      setSentNotice(true);
+      setReload((n) => n + 1);
+      onRefreshed();
+      clearTimeout(timer);
+      timer = setTimeout(() => setSentNotice(false), 4_000);
+    };
+    window.addEventListener(MAIL_SENT_EVENT, onSent);
+    return () => {
+      window.removeEventListener(MAIL_SENT_EVENT, onSent);
+      clearTimeout(timer);
+    };
+  }, [onRefreshed]);
 
   useEffect(() => {
     if (paused) return;
@@ -368,6 +398,17 @@ export function InboxPage({
             ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={accounts.length === 0}
+          onClick={() => setComposing(true)}
+        >
+          <SquarePen aria-hidden="true" />
+          <span className="max-sm:sr-only">
+            <Trans>Compose</Trans>
+          </span>
+        </Button>
         {onShowAgent ? (
           <Button
             variant="ghost"
@@ -402,6 +443,11 @@ export function InboxPage({
         </Tabs>
       ) : null}
 
+      {sentNotice ? (
+        <p role="status" className="mb-3 text-sm text-muted-foreground">
+          <Trans>Sent</Trans>
+        </p>
+      ) : null}
       {failed ? (
         <div role="alert" className="mb-4 flex items-center gap-3 text-sm text-destructive">
           <span>{failed}</span>
@@ -488,6 +534,14 @@ export function InboxPage({
           ) : null}
         </>
       )}
+      {composing ? (
+        <ComposeEmail
+          seed={NEW_MESSAGE}
+          accounts={accounts}
+          connectionId={tab}
+          onClose={() => setComposing(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -763,6 +817,11 @@ export function InboxMessageView({
 }) {
   const [message, setMessage] = useState<Awaited<ReturnType<typeof rpc.inbox.get>> | null>(null);
   const [error, setError] = useState("");
+  const [composing, setComposing] = useState<ComposeMode | null>(null);
+  const seed = useMemo(
+    () => (composing ? ({ kind: composing, messageId } as const) : null),
+    [composing, messageId],
+  );
   useEffect(() => {
     let live = true;
     setMessage(null);
@@ -782,6 +841,23 @@ export function InboxMessageView({
 
   return (
     <div id={id} className="px-2.5 pb-3">
+      {message ? (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => setComposing("reply")}>
+            <Reply aria-hidden="true" />
+            <Trans>Reply</Trans>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setComposing("replyAll")}>
+            <ReplyAll aria-hidden="true" />
+            <Trans>Reply all</Trans>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setComposing("forward")}>
+            <Forward aria-hidden="true" />
+            <Trans>Forward</Trans>
+          </Button>
+        </div>
+      ) : null}
+      {seed ? <ComposeEmail seed={seed} accounts={[]} onClose={() => setComposing(null)} /> : null}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}

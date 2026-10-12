@@ -371,7 +371,7 @@ new non-English entries can be left empty and fall back to English.
    then adds the To do card and fills `needsReply` without changing this page's
    layout.
 
-## Decided: read-only in v1
+## Decided: read-only in v1 (sending was added later: README decision 10)
 
 Opening a message does not mark it read. Marking read needs `gmail.modify` and a
 `markRead` method on item 1's interface; both are listed under item 1's "Later".

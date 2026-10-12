@@ -12,9 +12,11 @@ account was connected:
 - through Rakazo's own Google OAuth client (no third-party broker).
 
 All Gmail-specific code is written once. The three connection methods differ only in
-how one authenticated HTTP `GET` reaches `gmail.googleapis.com`, and that is the only
-code each method adds. Version 1 is read-only (`gmail.readonly`). Sending, labels,
-marking read and archiving come later and are listed under "Later".
+how one authenticated HTTP call (`GET`, and now `POST`, `PUT` and `DELETE` with a JSON
+body) reaches `gmail.googleapis.com`, and that is the only code each method adds.
+Version 1 read mail (`gmail.readonly`); drafts and sending were added afterwards (see
+decision 10 in the README). Labels, marking read and archiving come later and are
+listed under "Later".
 
 ## Design in one paragraph
 
@@ -369,6 +371,9 @@ to a `GmailApiEmulator`.
 ### Scopes
 
 - Version 1: `openid email https://www.googleapis.com/auth/gmail.readonly`.
+- Now also `https://www.googleapis.com/auth/gmail.compose` (drafts and sending). Accounts
+  connected before it was requested only read; Google answers their writes with 403
+  `insufficientPermissions`, which the provider reports as `auth` (reconnect).
 - Later: `gmail.modify` (mark read, archive, labels) and `gmail.send` or
   `gmail.compose`. Request them with `include_granted_scopes=true`, and mark accounts
   that lack a needed scope as needing reconnect only when that feature is used. Do not
