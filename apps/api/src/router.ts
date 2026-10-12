@@ -243,6 +243,7 @@ import {
 } from "./computer-status.js";
 import { completeNativeOAuth } from "./connection-oauth.js";
 import {
+  inboxFeedbackSet,
   inboxGet,
   inboxList,
   inboxRefresh,
@@ -5878,6 +5879,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       unreadCount: authed.inbox.unreadCount.handler(({ context }) =>
         inboxUnreadCount(deps, context.actor),
+      ),
+      feedback: authed.inbox.feedback.handler(({ context, input }) =>
+        inboxFeedbackSet(deps, context.actor, input),
       ),
       todos: {
         list: authed.inbox.todos.list.handler(({ context, input }) =>

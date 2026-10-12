@@ -55,8 +55,13 @@ export interface TriageItem {
   due: string | null;
 }
 
+/** A user's mark on a sender (see InboxMarkSchema). */
+export type SenderMark = "important" | "noise";
+
 export interface TodoCandidateMessage {
   id: string;
+  /** The user's mark on the sender, if any. */
+  senderMark?: SenderMark | null;
   connectionId: string;
   needsReply?: boolean | null;
   priority: string | null;
@@ -168,6 +173,19 @@ export const priorityRank = (priority: string | null) => {
   const rank = PRIORITIES.indexOf(priority as TriagePriority);
   return rank === -1 ? PRIORITIES.length : rank;
 };
+
+/**
+ * How a sender mark changes a triaged message. Noise never needs a reply and ranks lowest;
+ * important ranks at least "important". Untriaged fields stay null, except that an important
+ * sender's priority is set so the message counts as Important.
+ */
+export function applySenderMark(
+  row: { needsReply: boolean | null; priority: string | null },
+  mark: SenderMark | null | undefined,
+): { needsReply: boolean | null; priority: string | null } {
+  // ponytail: scaffold, behavior arrives with the tests.
+  return { needsReply: row.needsReply, priority: row.priority };
+}
 
 /**
  * The messages that deserve a to-do, best first. The caller passes the user's connected-account

@@ -102,6 +102,8 @@ import {
 import { ComputerCommandSchema, ProductEventSchema } from "./events.js";
 import { Id, IsoDate } from "./ids.js";
 import {
+  InboxFeedbackInputSchema,
+  InboxFeedbackOutputSchema,
   InboxListInputSchema,
   InboxListOutputSchema,
   InboxMessageSchema,
@@ -976,6 +978,7 @@ export const appContract = {
     refresh: oc.input(InboxScopeInputSchema).output(z.object({ ok: z.literal(true) })),
     get: oc.input(z.object({ messageId: Id })).output(InboxMessageSchema),
     unreadCount: oc.output(z.object({ count: z.number().int() })),
+    feedback: oc.input(InboxFeedbackInputSchema).output(InboxFeedbackOutputSchema),
     todos: {
       list: oc.input(InboxScopeInputSchema).output(InboxTodosOutputSchema),
       setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoSchema),

@@ -10,7 +10,15 @@ import type {
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { TriageReadinessDeps } from "@rakazo/adapters";
 import { isMailConnection, syncMailbox, triageReadiness } from "@rakazo/adapters";
-import type { Actor, InboxListInput, InboxListOutput, InboxTodo, MailRow } from "@rakazo/contracts";
+import type {
+  Actor,
+  InboxFeedbackInput,
+  InboxListInput,
+  InboxListOutput,
+  InboxMark,
+  InboxTodo,
+  MailRow,
+} from "@rakazo/contracts";
 import { inboxAgentSpawnKey } from "@rakazo/contracts";
 import { TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
@@ -105,6 +113,8 @@ function toMailRow(m: CachedMessage, enabled: boolean): MailRow {
     needsReply: enabled && m.needsReply !== null ? m.needsReply && !m.alreadyHandled : null,
     priority: enabled ? asPriority(m.priority) : null,
     reason: enabled ? m.reason : null,
+    category: null,
+    feedback: null,
   };
 }
 
@@ -298,6 +308,14 @@ export async function inboxList(
     enabled,
     triagePending: untriaged !== null,
   };
+}
+
+export async function inboxFeedbackSet(
+  _deps: InboxDeps,
+  _actor: Actor,
+  _input: InboxFeedbackInput,
+): Promise<{ mark: InboxMark | null }> {
+  throw new ORPCError("NOT_IMPLEMENTED", { message: "Not implemented" });
 }
 
 export async function inboxRefresh(

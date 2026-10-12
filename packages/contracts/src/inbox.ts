@@ -32,6 +32,24 @@ export const InboxCategorySchema = z.enum([
 ]);
 export type InboxCategory = z.infer<typeof InboxCategorySchema>;
 
+/** A user's mark on a sender: "important" mail ranks up, "noise" mail is left out of Needs reply and to-dos. */
+export const InboxMarkSchema = z.enum(["important", "noise"]);
+export type InboxMark = z.infer<typeof InboxMarkSchema>;
+
+/** The categories the Inbox offers as views. The rest stay visible in the list but have no view. */
+export const InboxViewCategorySchema = z.enum([
+  "billing",
+  "receipt",
+  "scheduling",
+  "newsletter",
+  "security",
+  "notification",
+  "personal",
+]);
+
+/** `important` is priority critical or important, or needs a reply, or a sender marked important. */
+export const InboxViewSchema = z.enum(["all", "important"]);
+
 export const MailRowSchema = z.object({
   id: Id,
   connectionId: Id,
@@ -45,6 +63,10 @@ export const MailRowSchema = z.object({
   needsReply: z.boolean().nullable(),
   priority: InboxPrioritySchema.nullable(),
   reason: z.string().nullable(),
+  /** Null until triaged, and while triage is not enabled. */
+  category: InboxCategorySchema.nullable(),
+  /** The user's mark on this sender; null when unmarked and while triage is not enabled. */
+  feedback: InboxMarkSchema.nullable(),
 });
 
 /** Which account a request covers; omitted means every connected mail account. */
@@ -66,10 +88,14 @@ export const InboxFilterSchema = z.enum([
  * With a `filter` or a `query` the list is read live from Gmail, newest first, 50 per account.
  * `query` is Gmail search syntax, passed through. `pageToken` is the opaque `nextPageToken`
  * of the previous response.
+ * `view` and `category` narrow the cached list by triage results and cannot be combined with a
+ * `filter` or `query`. Both are ignored while triage is not enabled.
  */
 export const InboxListInputSchema = InboxScopeInputSchema.extend({
   filter: InboxFilterSchema.optional(),
   query: z.string().max(500).optional(),
+  view: InboxViewSchema.optional(),
+  category: InboxViewCategorySchema.optional(),
   pageToken: z.string().max(4096).optional(),
 });
 
@@ -132,6 +158,14 @@ export const InboxMessageSchema = z.object({
   ),
 });
 
+/** `mark: null` removes the mark from the message's sender. */
+export const InboxFeedbackInputSchema = z.object({
+  messageId: Id,
+  mark: InboxMarkSchema.nullable(),
+});
+export const InboxFeedbackOutputSchema = z.object({ mark: InboxMarkSchema.nullable() });
+
+export type InboxFeedbackInput = z.infer<typeof InboxFeedbackInputSchema>;
 export type InboxListInput = z.infer<typeof InboxListInputSchema>;
 export type InboxMessage = z.infer<typeof InboxMessageSchema>;
 export type InboxTodo = z.infer<typeof InboxTodoSchema>;
