@@ -275,3 +275,32 @@ describe("deriveAlreadyHandled", () => {
     expect(handled.size).toBe(0);
   });
 });
+
+describe("planTodoSync invariant", () => {
+  it("never leaves more open to-dos than the limit unless the user already holds more", () => {
+    const when = new Date("2026-03-02T00:00:00Z");
+    // Deterministic sweep over how many kept-open, done, and untouched to-dos exist.
+    for (let kept = 0; kept <= 7; kept++) {
+      for (let untouched = 0; untouched <= 4; untouched++) {
+        const existing: ExistingTodo[] = [
+          ...Array.from({ length: kept }, (_, i) => ({
+            id: `k${i}`,
+            messageId: `km${i}`,
+            doneAt: null,
+            touchedAt: when,
+          })),
+          ...Array.from({ length: untouched }, (_, i) => ({
+            id: `u${i}`,
+            messageId: `um${i}`,
+            doneAt: null,
+            touchedAt: null,
+          })),
+        ];
+        const candidates = Array.from({ length: 8 }, (_, i) => message(`c${i}`));
+        const plan = planTodoSync(existing, candidates);
+        const survivors = existing.filter((t) => !plan.deleteIds.includes(t.id)).length;
+        expect(survivors + plan.inserts.length).toBeLessThanOrEqual(Math.max(MAX_OPEN_TODOS, kept));
+      }
+    }
+  });
+});

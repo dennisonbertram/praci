@@ -447,6 +447,29 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     expect(await prisma.inboxTodo.count({ where: { connectionId: other.id } })).toBe(1);
   });
 
+  it("allows one to-do per message and keeps the to-do, with no message, when the message is pruned", async () => {
+    seed("todo-key", [message("a", 1, ["INBOX"])]);
+    const account = await connect("todo-key");
+    await sync(account);
+    const [cached] = await rows(account.id);
+    const data = {
+      spaceId,
+      userId,
+      connectionId: account.id,
+      messageId: cached?.id,
+      text: "Reply",
+    };
+    await prisma.inboxTodo.create({ data });
+
+    await expect(prisma.inboxTodo.create({ data })).rejects.toThrow();
+
+    await prisma.cachedMailMessage.delete({ where: { id: cached?.id } });
+    const todo = await prisma.inboxTodo.findFirstOrThrow({ where: { connectionId: account.id } });
+    expect(todo.messageId).toBeNull();
+    // Many to-dos without a message are fine: Postgres treats NULLs as distinct.
+    await prisma.inboxTodo.create({ data: { ...data, messageId: null } });
+  });
+
   it("does not delete to-dos when the scope does not match", async () => {
     seed("todo-scoped", [message("a", 1, ["INBOX"])]);
     const account = await connect("todo-scoped");
