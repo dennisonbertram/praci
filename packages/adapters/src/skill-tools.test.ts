@@ -253,6 +253,15 @@ describe("skill tools", () => {
     for (const name of names) expect(BUILTIN_TOOL_NAMES).toContain(name);
   });
 
+  it("tells the model to cite messages with show_emails, a tool that exists and is offered with the mail tools", () => {
+    const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
+    const parsed = parseSkillMd(skill?.content ?? "");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.body).toContain("show_emails");
+    expect(parsed.body).toContain("within_3_days");
+    expect(BUILTIN_TOOL_NAMES).toContain("show_emails");
+  });
+
   it("ships builtin skills as valid, readable, read-only SKILL.md records", async () => {
     expect(BUILTIN_AGENT_SKILLS.map((skill) => skill.name)).toContain("Interrogate");
     for (const skill of BUILTIN_AGENT_SKILLS) {

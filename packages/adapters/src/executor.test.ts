@@ -430,6 +430,25 @@ describe("run tool selection", () => {
     ).toEqual(["mail_get", "mail_search"]);
   });
 
+  it("offers show_emails exactly when the mail tools are offered", () => {
+    const offered = (mailEnabled: boolean, disabledBuiltinTools?: readonly string[]) =>
+      selectBuiltinToolsForRun({
+        graphicalToolsAllowed: false,
+        pageBrowserAllowed: false,
+        groupId: null,
+        trigger: "message",
+        semanticMemoryEnabled: false,
+        messagingChannelRun: false,
+        mailEnabled,
+        disabledBuiltinTools,
+      }).map((tool) => tool.name);
+
+    expect(offered(true)).toContain("show_emails");
+    expect(offered(false)).not.toContain("show_emails");
+    expect(offered(true, ["show_emails"])).not.toContain("show_emails");
+    expect(READ_ONLY_AGENT_TOOLS.has("show_emails")).toBe(true);
+  });
+
   it("treats the mail tools as read-only so they need no approval", () => {
     for (const name of ["mail_search", "mail_grep", "mail_get"]) {
       expect(READ_ONLY_AGENT_TOOLS.has(name)).toBe(true);
