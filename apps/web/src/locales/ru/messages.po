@@ -3355,6 +3355,7 @@ msgid "OAuth connection failed"
 msgstr "Соединение OAuth не удалось"
 
 #: src/pages/McpServersOverlay.tsx
+#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr "Срок действия OAuth истек"
 
@@ -4450,6 +4451,7 @@ msgid "Start recording"
 msgstr "Начать запись"
 
 #: src/pages/ActivityList.tsx
+#: src/pages/Shell.tsx
 msgid "Starting"
 msgstr "Запуск"
 
@@ -4624,6 +4626,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
+#: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Thinking"
 msgstr "рассуждение"
@@ -4955,6 +4958,11 @@ msgstr ""
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Использует собственные учётные данные {hostCredentialSource} этого сервера для доступа к {selectedProviderName}."
 
+#. placeholder {0}: activity.label
+#: src/pages/Shell.tsx
+msgid "Using {0}"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
 msgstr ""
@@ -5079,6 +5087,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "Выполняется…"
+
+#: src/pages/Shell.tsx
+msgid "Writing"
+msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Wrote {path}"

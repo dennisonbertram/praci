@@ -43,20 +43,30 @@ function useElapsed(startedAtMs?: number): string {
   return formatElapsed(startedAtMs ?? mountedAt, now);
 }
 
-/** Pixel-grid loader with shimmering label and live elapsed timer. */
-function DefaultLoadingState({ label, startedAt }: { label: string; startedAt?: number }) {
+/** Pixel-grid loader (or a custom indicator) with shimmering label and live elapsed timer. */
+function DefaultLoadingState({
+  indicator,
+  label,
+  startedAt,
+}: {
+  indicator?: React.ReactNode;
+  label: string;
+  startedAt?: number;
+}) {
   const elapsed = useElapsed(startedAt);
   return (
     <>
-      <span aria-hidden className="grid grid-cols-[repeat(3,4px)] gap-[1.5px]">
-        {CHEVRON_DELAYS.map((delay, i) => (
-          <span
-            key={i}
-            className="h-[4px] w-[4px] rounded-[1px] bg-foreground opacity-15"
-            style={{ animation: `bui-pixel-on 650ms ease-in-out ${delay}ms infinite` }}
-          />
-        ))}
-      </span>
+      {indicator ?? (
+        <span aria-hidden className="grid grid-cols-[repeat(3,4px)] gap-[1.5px]">
+          {CHEVRON_DELAYS.map((delay, i) => (
+            <span
+              key={i}
+              className="h-[4px] w-[4px] rounded-[1px] bg-foreground opacity-15"
+              style={{ animation: `bui-pixel-on 650ms ease-in-out ${delay}ms infinite` }}
+            />
+          ))}
+        </span>
+      )}
       <span className="text-[13.5px] font-medium">
         <Shimmer>{label}</Shimmer>
       </span>
@@ -75,17 +85,9 @@ export function LoadingState({
   /** Epoch ms when the run started. Falls back to mount time when omitted. */
   startedAt?: number;
 }) {
-  if (indicator) {
-    return (
-      <span role="status" className="flex w-fit items-center gap-2.5">
-        <span className="sr-only">{label}</span>
-        {indicator}
-      </span>
-    );
-  }
   return (
-    <span className="flex w-fit items-center gap-2.5">
-      <DefaultLoadingState label={label} startedAt={startedAt} />
+    <span role={indicator ? "status" : undefined} className="flex w-fit items-center gap-2.5">
+      <DefaultLoadingState indicator={indicator} label={label} startedAt={startedAt} />
     </span>
   );
 }

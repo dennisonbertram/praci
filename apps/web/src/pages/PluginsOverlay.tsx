@@ -5,6 +5,7 @@ import type {
   ConnectionCatalogItem,
   IntegrationCatalogResult,
   IntegrationCatalogSurface,
+  McpServer,
 } from "@rakazo/contracts";
 import { preferNativeGmail } from "@rakazo/contracts";
 import {
@@ -91,6 +92,7 @@ export function PluginsOverlay({
   const [connections, setConnections] = useState<Connection[]>([]);
   const [labelDrafts, setLabelDrafts] = useState<Record<string, string>>({});
   const [sources, setSources] = useState<CapabilityInstall[]>([]);
+  const [mcpServers, setMcpServers] = useState<McpServer[]>([]);
   const [sourceKind, setSourceKind] = useState<SourceKind | null>(null);
   const [sourceName, setSourceName] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -116,13 +118,15 @@ export function PluginsOverlay({
   const connectionAttempt = useRef<AbortController | null>(null);
 
   async function refresh() {
-    const [items, installs, rows, catalogFeed] = await Promise.all([
+    const [items, installs, rows, catalogFeed, servers] = await Promise.all([
       rpc.connections.catalog({}),
       rpc.capabilities.list(),
       rpc.connections.list(),
       optionalCatalogFeedProbe(rpc.capabilities.catalogSearch({ query: "" })),
+      rpc.mcp.servers.list(),
     ]);
     setCatalog(preferNativeGmail(items, { nativeGoogle: !desktopBridge() }));
+    setMcpServers(servers.filter((server) => server.enabled));
     setConnections(rows);
     setLabelDrafts((current) => {
       const next: Record<string, string> = {};
@@ -704,6 +708,34 @@ export function PluginsOverlay({
         ) : null}
 
         <div id="integration-list" className="rk-scroll flex-1 overflow-y-auto px-8 py-6">
+          {!detailItem && mcpServers.length > 0 ? (
+            <div className="mb-6 grid grid-cols-2 gap-2" data-testid="connected-mcp-servers">
+              {mcpServers.map((server) => (
+                <div
+                  key={server.id}
+                  className="flex min-w-0 items-center gap-3 rounded-xl px-2.5 py-2"
+                >
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-sm font-semibold text-foreground">
+                    {server.name[0]}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[15px] font-medium text-foreground">
+                      {server.name}
+                    </div>
+                    <div
+                      className={`truncate text-[12.5px] ${server.oauthStatus === "reconnect" ? "text-warning" : "text-muted-foreground"}`}
+                    >
+                      {server.oauthStatus === "reconnect"
+                        ? t`OAuth expired`
+                        : server.endpoint
+                          ? new URL(server.endpoint).host
+                          : server.command}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <Button
             variant="outline"
             className="mb-4"
@@ -715,6 +747,7 @@ export function PluginsOverlay({
             <div className="mb-6">
               <IntegrationSetup
                 botId={activeBotId}
+                onServerConnected={() => void refresh().catch(() => undefined)}
                 onDone={() => {
                   setSetupOpen(false);
                   void refresh().catch((err: unknown) =>
