@@ -246,10 +246,21 @@ describe("skill tools", () => {
     expect(parsed.body).not.toContain("default to the last 30 days");
   });
 
+  it("sends overview questions to inbox_overview once and keeps mail_search for history", () => {
+    const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
+    const parsed = parseSkillMd(skill?.content ?? "");
+    if ("error" in parsed) throw new Error(parsed.error);
+    const overview = parsed.body.indexOf("inbox_overview");
+    expect(overview).toBeGreaterThanOrEqual(0);
+    expect(overview).toBeLessThan(parsed.body.indexOf("mail_search"));
+    expect(parsed.body).toMatch(/what's new|what needs/i);
+    expect(parsed.body).toMatch(/history/i);
+  });
+
   it("only names mail tools that exist in the built-in tool contract", () => {
     const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
-    const names = new Set(skill?.content.match(/\bmail_[a-z]+\b/g));
-    expect([...names].sort()).toEqual(["mail_get", "mail_grep", "mail_search"]);
+    const names = new Set(skill?.content.match(/\b(?:mail_[a-z]+|inbox_overview)\b/g));
+    expect([...names].sort()).toEqual(["inbox_overview", "mail_get", "mail_grep", "mail_search"]);
     for (const name of names) expect(BUILTIN_TOOL_NAMES).toContain(name);
   });
 

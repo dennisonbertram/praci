@@ -23,8 +23,15 @@ import {
   triageUrgency,
 } from "@rakazo/core";
 import { Prisma, type PrismaClient } from "@rakazo/db";
+import { inboxOverview } from "./inbox-overview.js";
 
-export const MAIL_TOOL_NAMES = new Set(["mail_search", "mail_grep", "mail_get", "show_emails"]);
+export const MAIL_TOOL_NAMES = new Set([
+  "mail_search",
+  "mail_grep",
+  "mail_get",
+  "show_emails",
+  "inbox_overview",
+]);
 
 const SEARCH_TTL_MS = 24 * 3_600_000;
 const EXPIRED_BACKSTOP_MS = 3_600_000;
@@ -96,6 +103,7 @@ export async function mailToolFromTool(
     if (name === "mail_grep") return await mailGrep(deps, args);
     if (name === "mail_get") return await mailGet(deps, context, args);
     if (name === "show_emails") return await showEmails(deps, context, args);
+    if (name === "inbox_overview") return await inboxOverview(deps, context);
     return { error: `Unknown mail tool ${name}` };
   } catch (error) {
     // Provider errors carry sanitized text; anything else is not shown to the model.

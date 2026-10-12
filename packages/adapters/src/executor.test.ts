@@ -417,17 +417,19 @@ describe("run tool selection", () => {
       }).map((tool) => tool.name);
 
     expect(offered(false)).not.toEqual(expect.arrayContaining(["mail_search"]));
-    expect(offered(false).filter((name) => name.startsWith("mail_"))).toEqual([]);
-    expect(
-      offered(true)
-        .filter((name) => name.startsWith("mail_"))
-        .sort(),
-    ).toEqual(["mail_get", "mail_grep", "mail_search"]);
-    expect(
-      offered(true, ["mail_grep"])
-        .filter((name) => name.startsWith("mail_"))
-        .sort(),
-    ).toEqual(["mail_get", "mail_search"]);
+    const mailNames = (names: string[]) =>
+      names.filter((name) => name.startsWith("mail_") || name === "inbox_overview").sort();
+    expect(mailNames(offered(false))).toEqual([]);
+    expect(mailNames(offered(true))).toEqual([
+      "inbox_overview",
+      "mail_get",
+      "mail_grep",
+      "mail_search",
+    ]);
+    expect(mailNames(offered(true, ["mail_grep", "inbox_overview"]))).toEqual([
+      "mail_get",
+      "mail_search",
+    ]);
   });
 
   it("offers show_emails exactly when the mail tools are offered", () => {
@@ -450,7 +452,7 @@ describe("run tool selection", () => {
   });
 
   it("treats the mail tools as read-only so they need no approval", () => {
-    for (const name of ["mail_search", "mail_grep", "mail_get"]) {
+    for (const name of ["mail_search", "mail_grep", "mail_get", "inbox_overview"]) {
       expect(READ_ONLY_AGENT_TOOLS.has(name)).toBe(true);
     }
   });
