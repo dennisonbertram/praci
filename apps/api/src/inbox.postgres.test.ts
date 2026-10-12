@@ -13,6 +13,7 @@ import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  inboxAttachment,
   inboxGet,
   inboxList,
   inboxRefresh,
@@ -217,6 +218,9 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       subject: `Subject ${messageId}`,
       snippet: `Snippet ${messageId}`,
       html: `<p>Body of ${messageId}</p>`,
+      attachments: [
+        { filename: `${messageId}.txt`, mimeType: "text/plain", size: 0, data: "aGVsbG8=" },
+      ],
     });
     gmail = new GmailApiEmulator({
       mailboxes: {
@@ -598,6 +602,42 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       });
       expect(message.text).toContain("Body of a-1");
       expect(new Date(message.date).toString()).not.toBe("Invalid Date");
+    });
+
+    it("lists the message's attachments, and only the caller can download one", async () => {
+      await wipe();
+      seedMailboxes();
+      await inboxRefresh(deps, a, {});
+      await inboxRefresh(deps, b, {});
+      const mine = await prisma.cachedMailMessage.findFirstOrThrow({
+        where: { providerMessageId: "a-1", userId: userA },
+      });
+      const theirs = await prisma.cachedMailMessage.findFirstOrThrow({
+        where: { providerMessageId: "b-1", userId: userB },
+      });
+
+      const opened = await inboxGet(deps, a, { messageId: mine.id });
+      expect(opened.attachments).toEqual([
+        { id: expect.any(String), filename: "a-1.txt", mimeType: "text/plain", size: 5 },
+      ]);
+      const [file] = opened.attachments;
+      const attachmentId = (file as { id: string }).id;
+      const bytes = await inboxAttachment(deps, a, { messageId: mine.id, attachmentId });
+      expect(Buffer.from(bytes.bytes).toString()).toBe("hello");
+
+      // Another user's message, with a part id that exists on it, and the same part id on mine.
+      await expect(
+        inboxAttachment(deps, a, { messageId: theirs.id, attachmentId }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(
+        inboxAttachment(deps, b, { messageId: mine.id, attachmentId }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(
+        inboxAttachment(deps, c, { messageId: mine.id, attachmentId }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(
+        inboxAttachment(deps, a, { messageId: mine.id, attachmentId: "99" }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
 
     it("answers NOT_FOUND for another user's, another space's, a revoked and an unknown id", async () => {

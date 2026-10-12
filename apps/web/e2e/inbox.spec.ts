@@ -109,6 +109,37 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
   expect(new URL(page.url()).searchParams.has("mail")).toBe(false);
 });
 
+test("an opened message lists its attachments and downloads one", async ({ page }, testInfo) => {
+  await signup(page, `inbox-attach-${Date.now()}@rakazo.test`, "password12", "Inbox Attach");
+  await completeOnboarding(page);
+  await page.getByTestId("sidebar-inbox").click();
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByRole("button", { name: "Close integrations" }).click();
+
+  const main = page.getByRole("main");
+  // A message with no attachment shows no list.
+  await main.getByRole("button", { name: /CI passed on main/ }).click();
+  await expect(main.getByText("All checks have passed.")).toBeVisible();
+  await expect(main.getByRole("list", { name: "Attachments" })).toHaveCount(0);
+  await page.goBack();
+
+  await main.getByRole("button", { name: /Q3 report/ }).click();
+  const attachments = main.getByRole("list", { name: "Attachments" });
+  await expect(attachments.getByRole("button")).toHaveCount(2);
+  await expect(attachments.getByRole("button", { name: /budget\.csv/ })).toBeVisible();
+  const report = attachments.getByRole("button", { name: /q3-report\.pdf/ });
+  await expect(report).toContainText(/18\s?B/);
+  await captureScreenshot(page, testInfo, "inbox-attachments");
+
+  const downloading = page.waitForEvent("download");
+  await report.click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe("q3-report.pdf");
+  const path = await download.path();
+  expect((await import("node:fs")).readFileSync(path, "utf8")).toBe("%PDF-1.4 Q3 report");
+});
+
 test("Inbox filters and searches the whole mailbox through Gmail", async ({ page }, testInfo) => {
   await signup(page, `inbox-filter-${Date.now()}@rakazo.test`, "password12", "Inbox Filter");
   await completeOnboarding(page);
