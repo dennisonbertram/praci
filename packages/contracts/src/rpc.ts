@@ -964,6 +964,7 @@ export const appContract = {
     remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
   },
   inbox: {
+    agent: oc.output(BotSchema),
     list: oc.input(InboxListInputSchema).output(InboxListOutputSchema),
     refresh: oc.input(InboxListInputSchema).output(z.object({ ok: z.literal(true) })),
     get: oc.input(z.object({ messageId: Id })).output(InboxMessageSchema),

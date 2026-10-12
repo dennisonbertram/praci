@@ -4,8 +4,8 @@ import { inboxAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { ensureInboxAgent } from "./inbox-agent.js";
 import { inboxList } from "./inbox.js";
+import { ensureInboxAgent } from "./inbox-agent.js";
 import { createRouter, type RouterDeps } from "./router.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -54,6 +54,17 @@ describePostgres("ensureInboxAgent (PostgreSQL)", () => {
     await prisma.space.create({
       data: { id: spaceId, organizationId: orgId, name: "General", isDefault: true },
     });
+    for (const userId of [userA, userB]) {
+      await prisma.member.create({
+        data: {
+          id: id(`member-${userId}`),
+          organizationId: orgId,
+          userId,
+          role: "member",
+          createdAt: new Date(),
+        },
+      });
+    }
   });
 
   afterAll(async () => {
@@ -65,9 +76,7 @@ describePostgres("ensureInboxAgent (PostgreSQL)", () => {
   });
 
   it("creates one bot and returns it again on later and concurrent calls", async () => {
-    const results = await Promise.all(
-      Array.from({ length: 6 }, () => ensureInboxAgent(repos, a)),
-    );
+    const results = await Promise.all(Array.from({ length: 6 }, () => ensureInboxAgent(repos, a)));
     const again = await ensureInboxAgent(repos, a);
 
     expect(new Set([...results, again].map((bot) => bot.id)).size).toBe(1);
@@ -121,7 +130,8 @@ describePostgres("ensureInboxAgent (PostgreSQL)", () => {
       const first = await client(b).inbox.agent();
       const second = await client(b).inbox.agent();
       expect(second.id).toBe(first.id);
-      expect(first).toMatchObject({ name: "Inbox agent", userId: userB });
+      expect(first).toMatchObject({ name: "Inbox agent", spawnKey: inboxAgentSpawnKey(userB) });
+      expect((await prisma.bot.findUniqueOrThrow({ where: { id: first.id } })).userId).toBe(userB);
     });
 
     it("refuses a client-supplied Inbox agent spawn key", async () => {

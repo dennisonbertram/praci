@@ -148,6 +148,7 @@ import {
   ComputerCommandSchema,
   foldComputerCommands,
   IntegrationProviderIdSchema,
+  inboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   parseTicketRef,
   usableModelId,
@@ -241,6 +242,7 @@ import {
 } from "./computer-status.js";
 import { completeNativeOAuth } from "./connection-oauth.js";
 import { inboxGet, inboxList, inboxRefresh, inboxUnreadCount } from "./inbox.js";
+import { ensureInboxAgent } from "./inbox-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
   dismissMcpServerApprovals,
@@ -1588,6 +1590,10 @@ export function createRouter(deps: RouterDeps) {
         return found;
       }),
       create: authed.bots.create.handler(async ({ context, input }) => {
+        // inbox.agent is the only way to create an Inbox agent; reserve its key prefix.
+        if (input.spawnKey?.startsWith(inboxAgentSpawnKey(""))) {
+          throw new ORPCError("BAD_REQUEST", { message: "Reserved spawn key" });
+        }
         let bot: Bot;
         try {
           bot = await repos.createBot(context.actor, input);
@@ -5846,6 +5852,11 @@ export function createRouter(deps: RouterDeps) {
       }),
     },
     inbox: {
+      agent: authed.inbox.agent.handler(async ({ context }) =>
+        ensureInboxAgent(repos, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
       list: authed.inbox.list.handler(({ context, input }) =>
         inboxList(deps, context.actor, input),
       ),
