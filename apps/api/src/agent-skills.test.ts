@@ -25,6 +25,10 @@ function savedSkill(name: string, source = "user") {
   };
 }
 
+// Every actor sees the always-on inbox-search builtin; these tests are about Interrogate.
+const withoutInboxSearch = <T extends { id: string }>(skills: T[]) =>
+  skills.filter((skill) => skill.id !== "builtin:inbox-search");
+
 function setup(rows: ReturnType<typeof savedSkill>[] = []) {
   type Where = { id?: string; spaceId: string; userId: string; source?: string };
   const matches = (row: ReturnType<typeof savedSkill>, where: Where) =>
@@ -60,10 +64,10 @@ describe("built-in skill precedence in the API", () => {
     "keeps %j listed, readable and mutable",
     async (name) => {
       const { service } = setup([savedSkill(name)]);
-      await expect(service.list(actor)).resolves.toEqual([
+      await expect(service.list(actor).then(withoutInboxSearch)).resolves.toEqual([
         expect.objectContaining({ id: "saved-1", name, readOnly: false }),
       ]);
-      await expect(service.listWithContent(actor)).resolves.toEqual([
+      await expect(service.listWithContent(actor).then(withoutInboxSearch)).resolves.toEqual([
         expect.objectContaining({ id: "saved-1", content: expect.stringContaining("Saved steps") }),
       ]);
       await expect(service.get(actor, { name: " INTERROGATE " })).resolves.toMatchObject({
@@ -105,7 +109,7 @@ describe("built-in skill precedence in the API", () => {
         id: "builtin:Interrogate",
         readOnly: true,
       });
-      await expect(service.list(actor)).resolves.toEqual([
+      await expect(service.list(actor).then(withoutInboxSearch)).resolves.toEqual([
         expect.objectContaining({ id: "builtin:Interrogate" }),
       ]);
       await expect(service.get(actor, { skillId: "saved-1" })).rejects.toThrow();
