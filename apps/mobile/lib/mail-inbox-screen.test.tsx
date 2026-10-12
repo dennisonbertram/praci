@@ -424,3 +424,16 @@ it("does not refetch when triage is not pending", async () => {
   });
   expect(procs().filter((proc) => proc === "inbox/list")).toHaveLength(2);
 });
+
+it("opens a mail row in the message screen", async () => {
+  listReply = () => inboxList({ rows: [mailRow("r1")] });
+  await render();
+  const row = [...container.querySelectorAll("button")].find((item) =>
+    item.textContent?.includes("Subject r1"),
+  );
+  await act(async () => row?.click());
+  expect(state.push).toHaveBeenCalledWith({
+    pathname: "/inbox-message",
+    params: { messageId: "r1" },
+  });
+});
