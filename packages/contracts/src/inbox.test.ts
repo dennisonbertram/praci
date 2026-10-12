@@ -46,9 +46,44 @@ describe("inbox contracts", () => {
         syncedAt: null,
         failedAccounts: [],
         enabled: false,
+        triageBlocked: { reason: "no_model" },
         triagePending: false,
       }),
-    ).toMatchObject({ accounts: [], agent: null });
+    ).toMatchObject({ accounts: [], agent: null, triageBlocked: { reason: "no_model" } });
+  });
+
+  it("says why triage is off: no model, or consent needed for one exact recipient", () => {
+    const list = (triageBlocked: unknown) =>
+      InboxListOutputSchema.safeParse({
+        accounts: [],
+        agent: null,
+        rows: [],
+        syncedAt: null,
+        failedAccounts: [],
+        enabled: false,
+        triageBlocked,
+        triagePending: false,
+      });
+    const recipient = { key: "abc123", name: "OpenRouter" };
+    expect(list(null).success).toBe(true);
+    expect(list({ reason: "needs_consent", recipient })).toMatchObject({
+      success: true,
+      data: { triageBlocked: { reason: "needs_consent", recipient } },
+    });
+    expect(list({ reason: "needs_consent" }).success).toBe(false);
+    expect(list({ reason: "billing" }).success).toBe(false);
+    // A response from before this field existed is no longer valid output.
+    const { triageBlocked: _omitted, ...without } = {
+      accounts: [],
+      agent: null,
+      rows: [],
+      syncedAt: null,
+      failedAccounts: [],
+      enabled: false,
+      triageBlocked: null,
+      triagePending: false,
+    };
+    expect(InboxListOutputSchema.safeParse(without).success).toBe(false);
   });
 
   it("rejects a row without the triage fields (needsReply, priority, reason, category, feedback)", () => {
@@ -70,6 +105,7 @@ describe("inbox contracts", () => {
         syncedAt: null,
         failedAccounts: [],
         enabled: true,
+        triageBlocked: null,
         triagePending: false,
       }).success;
     expect(parse(row)).toBe(false);

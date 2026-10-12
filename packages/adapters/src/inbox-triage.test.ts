@@ -2,7 +2,7 @@ import type { AgentRunModel, InboxClassifierProvider } from "@rakazo/adapter-kit
 import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { aiRecipient } from "./ai-consent.js";
-import { triageReadiness } from "./inbox-triage.js";
+import { triageReadiness, triageStatus } from "./inbox-triage.js";
 
 const scope = { userId: "user-1", spaceId: "space-1" };
 const keyFor = (provider: string, modelId: string, baseUrl?: string) =>
@@ -155,5 +155,67 @@ describe("triageReadiness with an optional classifier", () => {
   it("does not let TypeSafe consent stand in for model consent", async () => {
     const { deps } = withConsent([typesafeKey]);
     expect(await triageReadiness(deps, scope)).toBeNull();
+  });
+});
+
+describe("triageStatus says why triage cannot run", () => {
+  it("is ready, with nothing blocked, when the exact recipient is allowed", async () => {
+    const { deps } = setup({});
+    const status = await triageStatus(deps, scope);
+    expect(status.blocked).toBeNull();
+    expect(status.ready?.model).toMatchObject({ provider: "openrouter", id: "test-model" });
+  });
+
+  it("asks for consent to the resolved model's recipient key and name", async () => {
+    const { deps } = setup({ consented: false });
+    const status = await triageStatus(deps, scope);
+    expect(status.ready).toBeNull();
+    expect(status.blocked).toEqual({
+      reason: "needs_consent",
+      recipient: { key: keyFor("openrouter", "test-model"), name: "OpenRouter" },
+    });
+  });
+
+  it("asks for the connection's own key, so consent to another endpoint does not count", async () => {
+    const baseUrl = "https://llm.example.test/v1";
+    const { deps } = setup({
+      model: { provider: "openai-compatible", id: "local-1", baseUrl },
+      consented: false,
+    });
+    const status = await triageStatus(deps, scope);
+    expect(status.blocked).toMatchObject({
+      reason: "needs_consent",
+      recipient: { key: keyFor("openai-compatible", "local-1", baseUrl) },
+    });
+  });
+
+  it("reports no model when none resolves, for the scripted provider, and without a resolver", async () => {
+    for (const { deps, consent } of [
+      setup({ model: new Error("Connect a model in Settings") }),
+      setup({ model: { provider: "scripted", id: "scripted" } }),
+    ]) {
+      expect((await triageStatus(deps, scope)).blocked).toEqual({ reason: "no_model" });
+      expect(consent).not.toHaveBeenCalled();
+    }
+    const { deps } = setup({});
+    expect((await triageStatus({ ...deps, resolveModel: undefined }, scope)).blocked).toEqual({
+      reason: "no_model",
+    });
+  });
+
+  it("does not ask for the optional classifier's consent: the model alone is enough to start", async () => {
+    const { deps } = setup({});
+    const classifier: InboxClassifierProvider = {
+      describe: () => ({
+        id: "typesafe",
+        contractVersion: "1",
+        adapterVersion: "0.1.0",
+        capabilities: {},
+      }),
+      classify: async () => ({ model: "m", items: [] }),
+    };
+    const status = await triageStatus({ ...deps, classifier }, scope);
+    expect(status.blocked).toBeNull();
+    expect(status.ready?.classifier).toBeNull();
   });
 });

@@ -730,6 +730,33 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await wipeConsent();
     });
 
+    it("says why triage is off: no model, or consent needed for the model's exact recipient", async () => {
+      await wipe();
+      await wipeConsent();
+      const recipient = {
+        key: aiRecipient({
+          provider: "openrouter",
+          modelId: "vendor/small-model",
+          use: "model",
+        })!.key,
+        name: "OpenRouter",
+      };
+
+      expect((await inboxList(deps, a, {})).triageBlocked).toEqual({ reason: "no_model" });
+      expect((await inboxList({ ...deps, ...ready }, a, {})).triageBlocked).toEqual({
+        reason: "needs_consent",
+        recipient,
+      });
+
+      await allow(a);
+      expect((await inboxList({ ...deps, ...ready }, a, {})).triageBlocked).toBeNull();
+      // Consent is per user: b still has to allow it, and the empty list says so too.
+      expect((await inboxList({ ...deps, ...ready }, b, {})).triageBlocked).toMatchObject({
+        reason: "needs_consent",
+      });
+      await wipeConsent();
+    });
+
     it("counts an Inbox agent model override with no default model as enabled", async () => {
       await wipe();
       await wipeConsent();
