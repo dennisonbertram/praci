@@ -164,9 +164,14 @@ async function main() {
     }
 
     const [
-      { ComposioEmulator, EmailEmulator, PipedreamConnector, ThirdPartyConnectorEmulator },
+      { EmailEmulator, PipedreamConnector, ThirdPartyConnectorEmulator },
       { createApp },
-    ] = await Promise.all([import("@rakazo/adapters"), import("../../../../apps/api/src/app.ts")]);
+      { createE2eComposio },
+    ] = await Promise.all([
+      import("@rakazo/adapters"),
+      import("../../../../apps/api/src/app.ts"),
+      import("./e2e-mail.js"),
+    ]);
     const { serve } = await import("@hono/node-server");
     const thirdParties = new ThirdPartyConnectorEmulator();
     const pipedream = new PipedreamConnector(
@@ -183,7 +188,7 @@ async function main() {
     const handles = await createApp({
       databaseUrl,
       prisma: undefined,
-      composio: new ComposioEmulator(),
+      composio: createE2eComposio(),
       pipedream,
       email,
       remoteConnectors: {
