@@ -16,6 +16,8 @@ import type {
   ConnectorProvider,
   ConnectorTool,
   JobPublisher,
+  MailAccount,
+  MailProvider,
   ManagedConnectorProvider,
   MemoryStore,
   ModelCredentialFailedState,
@@ -258,6 +260,12 @@ import {
   uniquifyInstalledToolName,
 } from "./lazy-tool-catalog.js";
 import {
+  MAIL_TOOL_NAMES,
+  mailToolFromTool,
+  mailToolsAllowed,
+  selectMailTools,
+} from "./mail-tools.js";
+import {
   buildMcpCredentialBlob,
   needsOAuthProbe,
   parseMcpServerToolArgs,
@@ -388,7 +396,7 @@ import {
 import { createWebProvider } from "./web-provider-factory.js";
 import { webFetchFromTool, webSearchFromTool } from "./web-tools.js";
 
-const READ_ONLY_AGENT_TOOLS = new Set([
+export const READ_ONLY_AGENT_TOOLS = new Set([
   "computer_observe",
   "list_files",
   "read_file",
@@ -405,6 +413,9 @@ const READ_ONLY_AGENT_TOOLS = new Set([
   "skill_read",
   "web_search",
   "web_fetch",
+  "mail_search",
+  "mail_grep",
+  "mail_get",
   "browser_snapshot",
   "list_secrets",
   "cloud_agent_status",
@@ -2672,6 +2683,8 @@ export interface ExecutorDeps {
   mcpAllowPrivateEndpoint?: boolean;
   /** Remote cloud coding agents. Null/omit means tools stay uninjected. */
   cloudAgent?: CloudAgentConnection | null;
+  /** Mail tools (mail_search, mail_grep, mail_get). Null/omit means they are never offered. */
+  mail?: MailProvider | null;
   /** Optional Auto Review verifier. When omitted, the factory selects from env (llm | jev | scripted). */
   autoReview?: AutoReviewProvider;
   /**
@@ -3820,6 +3833,22 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const pageBrowserAllowed =
           graphical && browser.describe().capabilities.page && !heldForTakeover;
         const disabledBuiltinTools = disabledBuiltinToolSet(bot.disabledBuiltinTools);
+        // Connected mail accounts of the bot owner, looked up once per run and never shared.
+        let mailAccountsPromise: Promise<MailAccount[]> | undefined;
+        const mailAccounts = () => {
+          mailAccountsPromise ??= deps.mail
+            ? deps.mail.listAccounts({ spaceId: run.spaceId, userId: bot.userId }, context)
+            : Promise.resolve([]);
+          return mailAccountsPromise;
+        };
+        const mailEnabled =
+          mailToolsAllowed({
+            hasProvider: Boolean(deps.mail),
+            groupId: thread.groupId,
+            runUserId: run.userId,
+            botUserId: bot.userId,
+            messagingChannelRun,
+          }) && (await mailAccounts().catch(() => [])).length > 0;
         const builtins = [
           ...selectBuiltinToolsForRun({
             ticketBoardEnabled: deps.ticketBoardEnabled,
@@ -3830,6 +3859,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             trigger: run.trigger,
             semanticMemoryEnabled,
             cloudAgentEnabled: cloudAgentsEnabled(cloudAgent, run.spaceId),
+            mailEnabled,
             messagingChannelRun,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
@@ -5192,6 +5222,22 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (name === "web_fetch") {
             return finish(await webFetchFromTool(web, context, args));
+          }
+          if (MAIL_TOOL_NAMES.has(name) && deps.mail && mailEnabled) {
+            return finish(
+              await mailToolFromTool(
+                name,
+                {
+                  mail: deps.mail,
+                  prisma: deps.prisma,
+                  jobs: deps.jobs,
+                  accounts: mailAccounts,
+                  scope: { spaceId: run.spaceId, userId: bot.userId, botId: bot.id },
+                },
+                context,
+                args,
+              ),
+            );
           }
           if (PAGE_BROWSER_TOOL_NAMES.has(name)) {
             if (heldForTakeover) {
@@ -7469,6 +7515,8 @@ export function selectBuiltinToolsForRun(options: {
   trigger: string;
   semanticMemoryEnabled: boolean;
   cloudAgentEnabled?: boolean;
+  /** The run's requester owns the bot and has a connected mail account. */
+  mailEnabled?: boolean;
   messagingChannelRun: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
@@ -7476,21 +7524,24 @@ export function selectBuiltinToolsForRun(options: {
   disabledBuiltinTools?: readonly string[];
 }) {
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
-  return selectCloudAgentTools(
-    selectMemoryTools(
-      filterBuiltinToolsForRun(
-        filterBuiltinToolsForThread(
-          filterPageBrowserTools(
-            filterImageReturningComputerTools(builtinAgentTools, options.graphicalToolsAllowed),
-            options.pageBrowserAllowed ?? options.graphicalToolsAllowed,
+  return selectMailTools(
+    selectCloudAgentTools(
+      selectMemoryTools(
+        filterBuiltinToolsForRun(
+          filterBuiltinToolsForThread(
+            filterPageBrowserTools(
+              filterImageReturningComputerTools(builtinAgentTools, options.graphicalToolsAllowed),
+              options.pageBrowserAllowed ?? options.graphicalToolsAllowed,
+            ),
+            options.groupId,
           ),
-          options.groupId,
+          options.trigger,
         ),
-        options.trigger,
+        options.semanticMemoryEnabled,
       ),
-      options.semanticMemoryEnabled,
+      Boolean(options.cloudAgentEnabled),
     ),
-    Boolean(options.cloudAgentEnabled),
+    Boolean(options.mailEnabled),
   ).filter(
     (tool) =>
       !disabled.has(tool.name) &&

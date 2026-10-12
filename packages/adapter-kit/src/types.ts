@@ -629,6 +629,8 @@ export interface BackgroundJobPayloads {
   "messaging.deliver": { runId?: string };
   /** Reconcile durable remote-agent intent; scope is loaded from the database. */
   "cloud_agent.poll": { agentId: string };
+  /** Deletes a saved mail search (and its rows) once it has expired. */
+  "mail.search.expire": { searchId: string };
 }
 
 export type BackgroundJobName = keyof BackgroundJobPayloads;

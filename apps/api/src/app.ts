@@ -27,6 +27,7 @@ import {
   createCloudAgentConnection,
   createConnectorStack,
   createJobReconciler,
+  createMailProvider,
   createMessagingContextLoader,
   createMessagingTeamChatSender,
   createRunExecutor,
@@ -495,6 +496,8 @@ export async function createApp(
     messaging: messaging ? createMessagingContextLoader(prisma) : undefined,
     web: createWebProvider(),
     cloudAgent,
+    // Item 4 PR 1 creates a shared provider for RouterDeps.mail; reuse it here once that lands.
+    mail: createMailProvider({ prisma, connectors: stack.connector }),
     shutdownSignal: shutdown.signal,
   });
 

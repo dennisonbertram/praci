@@ -58,6 +58,7 @@ import {
   createTicket,
   createVoiceProvider,
   defaultCatalogModelId,
+  deleteMailSearches,
   deletePushToken,
   deploymentAutoReviewDefault,
   destroyBot,
@@ -70,6 +71,7 @@ import {
   hostCredentialSource,
   isAutoReviewCheckerConfigured,
   isComputerScreenUnavailable,
+  isMailConnection,
   isSandboxGoneError,
   isScratchpadStatus,
   kickModelCredentialRefresh,
@@ -5310,6 +5312,14 @@ export function createRouter(deps: RouterDeps) {
           },
           { timeout: 60_000 },
         );
+
+        // Revoke keeps the Connection row, so no cascade removes the saved mail searches.
+        if (snapshot && isMailConnection(snapshot)) {
+          await deleteMailSearches(deps.prisma, {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+          });
+        }
 
         if (outcome.remote) {
           const restoreLocalStatus = async () => {
