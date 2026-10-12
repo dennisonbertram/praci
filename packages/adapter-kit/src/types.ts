@@ -787,6 +787,113 @@ export interface MessagingOutboundStatus {
 
 export type MessagingInboundEvent = MessagingInboundMessage | MessagingOutboundStatus;
 
+/** One connected mailbox. Built from a `Connection` row whose app slug is "gmail". */
+export interface MailAccount {
+  /** Connection.id. Stable key for tabs, caches and tool arguments. */
+  id: string;
+  /** Connection.connectorId: "composio" | "pipedream" | "google". */
+  connectorId: string;
+  /** Connection.provider (app slug as stored, e.g. "GMAIL" or "gmail"). */
+  app: string;
+  /** Connection.providerRef: the remote account id the connector authenticates as. */
+  accountRef: string;
+  /** Connection.displayName. */
+  label: string;
+  /** Owner of the Connection row. Every call checks these against the AdapterContext. */
+  spaceId: string;
+  userId: string;
+  /** Mailbox address from the provider profile; null when the lookup failed. */
+  address: string | null;
+}
+
+export interface MailAddress {
+  name?: string;
+  address: string;
+}
+
+export interface MailListRequest {
+  /** Provider search syntax, passed through. Every adapter today speaks Gmail syntax. */
+  query: string;
+  /** Inclusive lower bound, YYYY-MM-DD. Translated by the provider. */
+  after?: string;
+  /** Exclusive upper bound, YYYY-MM-DD. Translated by the provider. */
+  before?: string;
+  /** 1..500 (Gmail's `maxResults` limit). Each listed message is hydrated, so this bounds quota per call. */
+  pageSize: number;
+  /** Opaque cursor from the previous page. */
+  pageToken?: string;
+  /** Resume an interrupted page: hydrate exactly these ids (a previous page's `unhydratedIds`) and skip the list call. `query`, dates and `pageToken` are ignored. */
+  ids?: string[];
+  /** Default true: reuse metadata already cached by the Inbox. Not used by the Gmail provider yet. */
+  useCache?: boolean;
+}
+
+export interface MailMessageSummary {
+  id: string;
+  threadId: string;
+  /** ISO 8601, from Gmail internalDate (more reliable than the Date header). */
+  date: string;
+  from: MailAddress | null;
+  to: MailAddress[];
+  cc: MailAddress[];
+  subject: string;
+  /** Plain text; HTML entities decoded. */
+  snippet: string;
+  unread: boolean;
+  labelIds: string[];
+}
+
+export interface MailMessagePage {
+  messages: MailMessageSummary[];
+  nextPageToken?: string;
+  resultSizeEstimate?: number;
+  /**
+   * Listed ids that were not hydrated because the caller's signal aborted or rate-limit
+   * retries ran out. Empty or absent means the page is complete. Pass them back as `ids`
+   * to finish the page; `nextPageToken` still points past the whole page.
+   */
+  unhydratedIds?: string[];
+}
+
+export interface MailMessage extends MailMessageSummary {
+  /** text/plain part, or the HTML part reduced to text. At most 40,000 characters. */
+  text: string;
+  /** Raw text/html part when present, at most 200,000 characters. Untrusted. */
+  html?: string;
+  truncated: boolean;
+  attachments: Array<{ filename: string; mimeType: string; size: number }>;
+}
+
+export type MailErrorKind = "auth" | "rate_limited" | "not_found" | "unavailable";
+
+export class MailProviderError extends Error {
+  constructor(
+    readonly kind: MailErrorKind,
+    message: string,
+    readonly retryAfterMs?: number,
+  ) {
+    super(message);
+    this.name = "MailProviderError";
+  }
+}
+
+/** Authenticated passthrough to an app's own API for one connected account. */
+export interface ConnectorProxyRequest {
+  /** Connection.provider (app slug). */
+  app: string;
+  /** Connection.providerRef. */
+  accountRef: string;
+  method: "GET";
+  /** Absolute https URL including the query string. */
+  url: string;
+}
+
+export interface ConnectorProxyResponse {
+  status: number;
+  data: unknown;
+  retryAfterMs?: number;
+}
+
 export interface WebSearchCapabilities {
   search: boolean;
   /** True when results come from the active model’s native search, not a third-party API. */

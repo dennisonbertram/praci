@@ -40,6 +40,66 @@ function fixture() {
   );
   return { rows, prisma, adapter, factory, secrets, settings };
 }
+describe("configured provider wrapper", () => {
+  const ref = {
+    app: "gmail",
+    accountRef: "acct",
+    method: "GET",
+    url: "https://example.test/x",
+  } as const;
+
+  async function wrapper(adapter: Record<string, unknown>) {
+    const f = fixture();
+    const factory = vi.fn(() => adapter as unknown as ManagedConnectorProvider);
+    const settings = new IntegrationProviderSettings(
+      f.prisma as unknown as PrismaClient,
+      f.secrets,
+      "test-identity",
+      {},
+      factory,
+    );
+    await settings.save({ provider: "composio", apiKey: "fake-key" }, context);
+    const provider = settings.providers().find((p) => p.describe().id === "composio");
+    if (!provider) throw new Error("composio wrapper missing");
+    return provider;
+  }
+
+  it("forwards proxy and resolveConnectedAccountId to the configured adapter", async () => {
+    const proxy = vi.fn(async () => ({ status: 200, data: { ok: true } }));
+    const resolve = vi.fn(async () => "apn_real");
+    const provider = await wrapper({
+      listConnectedExternalIds: async () => [],
+      proxy,
+      resolveConnectedAccountId: resolve,
+    });
+    await expect(provider.proxy?.(ref, context)).resolves.toEqual({
+      status: 200,
+      data: { ok: true },
+    });
+    expect(proxy).toHaveBeenCalledWith(ref, context);
+    await expect(
+      (
+        provider as unknown as {
+          resolveConnectedAccountId(...args: unknown[]): Promise<string | undefined>;
+        }
+      ).resolveConnectedAccountId("user", "gmail", "gmail", ["x"], "space"),
+    ).resolves.toBe("apn_real");
+    expect(resolve).toHaveBeenCalledWith("user", "gmail", "gmail", ["x"], "space");
+  });
+
+  it("rejects proxy and keeps the current ref when the adapter lacks those methods", async () => {
+    const provider = await wrapper({ listConnectedExternalIds: async () => [] });
+    await expect(provider.proxy?.(ref, context)).rejects.toThrow(/proxy/i);
+    await expect(
+      (
+        provider as unknown as {
+          resolveConnectedAccountId(...args: unknown[]): Promise<string | undefined>;
+        }
+      ).resolveConnectedAccountId("user", "gmail", " ca_1 "),
+    ).resolves.toBe("ca_1");
+  });
+});
+
 describe("integration provider settings", () => {
   it("encrypts credentials and shares updates with a separately created worker resolver", async () => {
     const f = fixture();
