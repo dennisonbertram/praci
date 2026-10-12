@@ -35,6 +35,8 @@ export function InboxGroup({
   /** Present only while triage is enabled. */
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   today: boolean;
+  selectedId?: string;
+  hideAttention?: boolean;
 }) {
   if (rows.length === 0) return null;
   return (

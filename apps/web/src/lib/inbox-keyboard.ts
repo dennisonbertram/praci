@@ -1,0 +1,64 @@
+import { useEffect, useRef } from "react";
+
+interface InboxKeyboard {
+  /** Row ids in display order. */
+  ids: string[];
+  selectedId: string | undefined;
+  enabled: boolean;
+  select: (id: string) => void;
+  open: (id: string) => void;
+  focusSearch: () => void;
+  compose: (() => void) | undefined;
+  help: () => void;
+}
+
+const rowButton = (id: string) =>
+  [...document.querySelectorAll<HTMLElement>("[data-row-id]")].find(
+    (el) => el.dataset.rowId === id,
+  );
+
+/** List shortcuts for the Inbox: j/k and arrows move, Enter or o opens, / searches, c composes, ? lists them. */
+export function useInboxKeyboard(options: InboxKeyboard) {
+  const latest = useRef(options);
+  latest.current = options;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const { ids, selectedId, enabled, select, open, focusSearch, compose, help } = latest.current;
+      if (!enabled || event.defaultPrevented) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest("input,textarea,select,[contenteditable],[role=menu],[role=tablist]"))
+        return;
+      if (document.querySelector('[role="dialog"],[role="alertdialog"]')) return;
+      const key = event.key;
+      const index = selectedId ? ids.indexOf(selectedId) : -1;
+      const move = (to: number) => {
+        const id = ids[Math.max(0, Math.min(ids.length - 1, to))];
+        if (!id) return;
+        event.preventDefault();
+        select(id);
+        const el = rowButton(id);
+        el?.scrollIntoView?.({ block: "nearest" });
+        el?.focus();
+      };
+      if (key === "j" || key === "ArrowDown") move(index + 1);
+      else if (key === "k" || key === "ArrowUp") move(index < 0 ? 0 : index - 1);
+      else if (key === "o" || (key === "Enter" && !target?.closest("button,a"))) {
+        if (index < 0) return;
+        event.preventDefault();
+        open(ids[index] as string);
+      } else if (key === "/") {
+        event.preventDefault();
+        focusSearch();
+      } else if (key === "c" && compose) {
+        event.preventDefault();
+        compose();
+      } else if (key === "?") {
+        event.preventDefault();
+        help();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+}

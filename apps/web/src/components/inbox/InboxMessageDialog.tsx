@@ -20,6 +20,9 @@ export function InboxMessageDialog({
   /** Shown until the message loads, from the list row that was opened. */
   subject?: string;
   onClose: () => void;
+  previousId?: string;
+  nextId?: string;
+  onNavigate?: (messageId: string) => void;
 }) {
   return (
     <Dialog open={messageId !== null} onOpenChange={(next) => !next && onClose()}>

@@ -252,7 +252,7 @@ test("Inbox filters and searches the whole mailbox through Gmail", async ({ page
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "inbox-search");
   await choose("Starred");
-  await expect(main.getByText("No mail", { exact: true })).toBeVisible();
+  await expect(main.getByText('No results for "from:northwind"')).toBeVisible();
   await captureScreenshot(page, testInfo, "inbox-search-empty");
 
   // Gmail rejecting the query shows the error and its retry button, not an empty list.
@@ -497,7 +497,7 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await captureScreenshot(page, testInfo, "inbox-important-view");
   await page.getByRole("tablist").getByRole("tab", { name: "Work" }).click();
   await expect(row(/Offsite dates/)).toHaveCount(0);
-  await expect(main.getByText("No mail", { exact: true })).toBeVisible();
+  await expect(main.getByText("No mail matches this filter", { exact: true })).toBeVisible();
   await expect
     .poll(() => requests.at(-1))
     .toMatchObject({ view: "important", connectionId: expect.any(String) });
@@ -554,7 +554,7 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await captureScreenshot(page, testInfo, "inbox-marked-noise");
   await status.getByRole("button", { name: "Undo" }).click();
   await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: null });
-  await expect(status).toHaveCount(0);
+  await expect(status).toBeEmpty();
   await expect(needsReply.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
 
   // Marking a sender important from the menu shows its checked state next time.

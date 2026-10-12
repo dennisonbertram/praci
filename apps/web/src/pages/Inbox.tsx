@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { InboxListOutput, InboxMark, MailRow } from "@rakazo/contracts";
+import type { InboxListOutput, InboxMark, InboxTodo, MailRow } from "@rakazo/contracts";
 import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
 import { groupInbox } from "@rakazo/core";
 import {
@@ -24,12 +24,14 @@ import {
 } from "@rakazo/ui-web";
 import { ListFilter, PanelRightOpen, Search, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
 import { ComposeEmail, MAIL_SENT_EVENT, NEW_MESSAGE } from "../components/ComposeEmail";
 import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
 import { InboxGroup } from "../components/inbox/InboxRow";
+import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
 import { TodoCard } from "../components/inbox/TodoCard";
+import { useInboxKeyboard } from "../lib/inbox-keyboard";
 import {
   inboxListInput,
   MAX_QUERY,
@@ -44,6 +46,11 @@ const ALL = "all";
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 6;
+const STATUS_MS = 6_000;
+/** Marks the `?mail=` history entry the list pushed, so closing the message can go Back. */
+const LIST_OPEN = { inboxList: true };
+
+type Status = { kind: "sent" } | { kind: "marked"; messageId: string; mark: InboxMark };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
 type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
@@ -86,6 +93,8 @@ export function InboxPage({
   paused: boolean;
 }) {
   const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const openId = params.get("mail");
   const listState = readInboxListState(params);
   const { filter, query, view, category } = listState;
@@ -96,6 +105,8 @@ export function InboxPage({
   // Which request `data` answers, so a changed tab, filter or search shows loading, not old rows.
   const listKey = JSON.stringify([tab, filter, query, view, category]);
   const [dataKey, setDataKey] = useState("");
+  // Lists already fetched this session, shown at once while their key is refetched.
+  const cache = useRef(new Map<string, InboxListOutput>());
   const keyRef = useRef(listKey);
   keyRef.current = listKey;
   // Pages after the first of a filtered or searched list, which Gmail pages for us.
@@ -104,31 +115,35 @@ export function InboxPage({
     busy: false,
   });
   const [error, setError] = useState("");
-  // The last mark the user made, kept so it can be undone even after the row left the list.
-  const [marked, setMarked] = useState<{ messageId: string; mark: InboxMark } | null>(null);
+  // Shown briefly at the bottom; a mark stays undoable even after its row left the list.
+  const [status, setStatus] = useState<Status | null>(null);
+  const [todosByTab, setTodosByTab] = useState<Record<string, InboxTodo[]>>({});
+  const [todoRefresh, setTodoRefresh] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | undefined>();
+  const [help, setHelp] = useState(false);
+  const searchRef = useRef<HTMLFormElement>(null);
   const [synced, setSynced] = useState(false);
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const polls = useRef(0);
   const [composing, setComposing] = useState(false);
-  const [sentNotice, setSentNotice] = useState(false);
 
-  // A message sent from any composer: say so briefly and reload, since the send synced the account.
+  // A message sent from any composer: say so and reload, since the send synced the account.
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
     const onSent = () => {
-      setSentNotice(true);
+      setStatus({ kind: "sent" });
       setReload((n) => n + 1);
       onRefreshed();
-      clearTimeout(timer);
-      timer = setTimeout(() => setSentNotice(false), 4_000);
     };
     window.addEventListener(MAIL_SENT_EVENT, onSent);
-    return () => {
-      window.removeEventListener(MAIL_SENT_EVENT, onSent);
-      clearTimeout(timer);
-    };
+    return () => window.removeEventListener(MAIL_SENT_EVENT, onSent);
   }, [onRefreshed]);
+
+  useEffect(() => {
+    if (!status) return;
+    const timer = setTimeout(() => setStatus(null), STATUS_MS);
+    return () => clearTimeout(timer);
+  }, [status]);
 
   useEffect(() => {
     if (paused) return;
@@ -137,6 +152,7 @@ export function InboxPage({
       .list(inboxListInput(listState, tab))
       .then((next) => {
         if (!live) return;
+        cache.current.set(listKey, next);
         setData(next);
         setDataKey(listKey);
         setMore({ rows: [], token: next.nextPageToken, busy: false });
@@ -153,7 +169,33 @@ export function InboxPage({
   }, [tab, filter, query, view, category, reload, paused]);
 
   useEffect(() => setDraft(query), [query]);
-  useEffect(() => setMarked(null), [listKey]);
+
+  // To-dos load beside the list, so the card never pushes loaded rows down.
+  const tabKey = tab ?? ALL;
+  useEffect(() => {
+    if (paused) return;
+    let live = true;
+    rpc.inbox.todos
+      .list(tab ? { connectionId: tab } : {})
+      .then((next) => live && setTodosByTab((all) => ({ ...all, [tabKey]: next.todos })))
+      // The list reports its own failure; the card just stays hidden.
+      .catch(() => live && setTodosByTab((all) => ({ ...all, [tabKey]: [] })));
+    return () => {
+      live = false;
+    };
+  }, [tab, tabKey, todoRefresh, paused]);
+  // Refetch when a sync lands or triage finishes, not on every reload or poll.
+  const syncedAt = data?.syncedAt;
+  const pending = data?.triagePending;
+  const seen = useRef<{ syncedAt: unknown; pending: unknown } | null>(null);
+  useEffect(() => {
+    if (!data) return;
+    const before = seen.current;
+    seen.current = { syncedAt, pending };
+    if (before && (before.syncedAt !== syncedAt || (before.pending && !pending))) {
+      setTodoRefresh((n) => n + 1);
+    }
+  }, [data, syncedAt, pending]);
 
   // Triage runs after the sync returns, so refetch a few times while the list reports it pending.
   useEffect(() => {
@@ -186,21 +228,29 @@ export function InboxPage({
     };
   }, [paused, attempt]);
 
+  // This key's answer, or its cached one while the fresh one loads; never another key's rows.
+  const fresh = dataKey === listKey;
+  const shown = fresh ? data : (cache.current.get(listKey) ?? null);
+  const moreRows = fresh ? more.rows : [];
   const rows = useMemo(() => {
-    if (!filtered) return data?.rows ?? [];
+    if (!filtered) return shown?.rows ?? [];
     // Needs reply belongs to the unfiltered view; a page loaded later can repeat a thread.
     const seen = new Set<string>();
-    return [...(data?.rows ?? []), ...more.rows].flatMap((row) => {
+    return [...(shown?.rows ?? []), ...moreRows].flatMap((row) => {
       const thread = `${row.connectionId}:${row.threadId}`;
       if (seen.has(thread)) return [];
       seen.add(thread);
       return [{ ...row, needsReply: null }];
     });
-  }, [data, more.rows, filtered]);
+  }, [shown, moreRows, filtered]);
   const groups = useMemo(() => groupInbox(rows, new Date()), [rows]);
+  const ids = useMemo(
+    () => [...groups.needsReply, ...groups.today, ...groups.earlier].map((row) => row.id),
+    [groups],
+  );
   const accounts = data?.accounts ?? [];
-  const failed = error || (data ? syncErrorText(data) : "");
-  const loading = !data || dataKey !== listKey || (!filtered && data.rows.length === 0 && !synced);
+  const failed = error || (shown ? syncErrorText(shown) : "");
+  const todos = todosByTab[tabKey];
   const retry = () => {
     setError("");
     setAttempt((n) => n + 1);
@@ -209,17 +259,36 @@ export function InboxPage({
   const setParam = (name: Parameters<typeof setInboxListParam>[1], value: string) =>
     setParams(setInboxListParam(params, name, value));
   // The view and category buttons show only when triage can fill them in.
-  const triage = Boolean(data?.enabled);
+  const triage = Boolean(shown?.enabled);
   const narrowed = triage && (view === "important" || Boolean(category));
+  const showTodos =
+    triage && !filtered && !narrowed && shown?.triageBlocked?.reason !== "needs_consent";
+  const loading =
+    !shown ||
+    (!filtered && shown.rows.length === 0 && !synced) ||
+    (showTodos && todos === undefined);
+  const patchFeedback = (messageId: string, feedback: InboxMark | null) => {
+    const patchRows = (list: MailRow[]) =>
+      list.map((row) => (row.id === messageId ? { ...row, feedback } : row));
+    const patch = (list: InboxListOutput) => ({ ...list, rows: patchRows(list.rows) });
+    setData((list) => list && patch(list));
+    setMore((m) => ({ ...m, rows: patchRows(m.rows) }));
+    for (const [key, list] of cache.current) cache.current.set(key, patch(list));
+  };
+  // The row changes at once; a failed save puts it back.
   const mark = (messageId: string, value: InboxMark | null) => {
+    const before = rows.find((row) => row.id === messageId)?.feedback ?? null;
     setError("");
+    patchFeedback(messageId, value);
+    setStatus(value ? { kind: "marked", messageId, mark: value } : null);
     rpc.inbox
       .feedback({ messageId, mark: value })
-      .then(() => {
-        setMarked(value ? { messageId, mark: value } : null);
-        setReload((n) => n + 1);
-      })
-      .catch((cause) => setError(errorText(cause)));
+      .then(() => setReload((n) => n + 1))
+      .catch((cause) => {
+        patchFeedback(messageId, before);
+        setStatus(null);
+        setError(errorText(cause));
+      });
   };
   const loadMore = () => {
     const key = listKey;
@@ -241,17 +310,56 @@ export function InboxPage({
       });
   };
   // `?mail=` is the source of truth for the open message, so Back and deep links work.
+  // A list-opened message pushes an entry marked with LIST_OPEN, and closing goes Back to it.
   const openMessage = (id: string) => {
     const next = new URLSearchParams(params);
     next.set("mail", id);
-    setParams(next);
+    setSelectedId(id);
+    setParams(next, { state: LIST_OPEN });
   };
   const closeMessage = () => {
+    if ((location.state as typeof LIST_OPEN | null)?.inboxList) return navigate(-1);
     const next = new URLSearchParams(params);
     next.delete("mail");
     setParams(next, { replace: true });
   };
-  const openRow = [...(data?.rows ?? []), ...more.rows].find((row) => row.id === openId);
+  const goToMessage = (id: string) => {
+    const next = new URLSearchParams(params);
+    next.set("mail", id);
+    setSelectedId(id);
+    setParams(next, { replace: true, state: location.state });
+  };
+  const openRow = [...(shown?.rows ?? []), ...moreRows].find((row) => row.id === openId);
+  const openIndex = openId ? ids.indexOf(openId) : -1;
+  const clearFilters = () => {
+    const next = new URLSearchParams(params);
+    for (const name of ["filter", "category", "view", "mail"]) next.delete(name);
+    setParams(next);
+  };
+
+  useInboxKeyboard({
+    ids,
+    selectedId,
+    enabled: !paused && !openId && !composing && !help,
+    select: setSelectedId,
+    open: openMessage,
+    focusSearch: () => searchRef.current?.querySelector("input")?.focus(),
+    compose: accounts.length > 0 ? () => setComposing(true) : undefined,
+    help: () => setHelp(true),
+  });
+  // Back from a message lands on its row.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (openId) wasOpen.current = true;
+    else if (wasOpen.current) {
+      wasOpen.current = false;
+      requestAnimationFrame(() =>
+        [...document.querySelectorAll<HTMLElement>("[data-row-id]")]
+          .find((el) => el.dataset.rowId === selectedId)
+          ?.focus(),
+      );
+    }
+  }, [openId, selectedId]);
 
   return (
     <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
@@ -260,6 +368,7 @@ export function InboxPage({
           <Trans>Inbox</Trans>
         </h1>
         <form
+          ref={searchRef}
           className="min-w-0 flex-1"
           onSubmit={(event) => {
             event.preventDefault();
@@ -301,6 +410,7 @@ export function InboxPage({
           <Toggle
             variant="outline"
             size="sm"
+            className="aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90"
             pressed={view === "important"}
             onPressedChange={(pressed) => setParam("view", pressed ? "important" : "")}
           >
@@ -333,7 +443,10 @@ export function InboxPage({
                 setParam(named.success ? "filter" : "category", String(value));
               }}
             >
-              {(["unread", "starred", "important", "attachment"] as const).map((name) => (
+              {(triage
+                ? (["unread", "starred", "attachment"] as const)
+                : (["unread", "starred", "important", "attachment"] as const)
+              ).map((name) => (
                 <DropdownMenuRadioItem key={name} value={name} closeOnClick>
                   {filterLabels()[name]}
                 </DropdownMenuRadioItem>
@@ -408,11 +521,6 @@ export function InboxPage({
         </Tabs>
       ) : null}
 
-      {sentNotice ? (
-        <p role="status" className="mb-3 text-sm text-muted-foreground">
-          <Trans>Sent</Trans>
-        </p>
-      ) : null}
       {failed ? (
         <div role="alert" className="mb-4 flex items-center gap-3 text-sm text-destructive">
           <span>{failed}</span>
@@ -434,43 +542,63 @@ export function InboxPage({
             <Skeleton key={n} className="h-9 w-full" />
           ))}
         </div>
-      ) : data && data.rows.length === 0 ? (
+      ) : shown && shown.rows.length === 0 ? (
         failed ? null : (
-          <p className="py-16 text-center text-sm text-muted-foreground">
-            <Trans>No mail</Trans>
-          </p>
+          <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
+            {query ? (
+              <>
+                <p>
+                  <Trans>No results for "{query}"</Trans>
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setParam("q", "")}>
+                  <Trans>Clear search</Trans>
+                </Button>
+              </>
+            ) : filter || category || view === "important" ? (
+              <>
+                <p>
+                  <Trans>No mail matches this filter</Trans>
+                </p>
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  <Trans>Clear filter</Trans>
+                </Button>
+              </>
+            ) : (
+              <p>
+                <Trans>No mail</Trans>
+              </p>
+            )}
+          </div>
         )
-      ) : (
+      ) : shown ? (
         <>
-          {filtered || narrowed ? null : data.triageBlocked?.reason === "needs_consent" ? (
+          {filtered || narrowed ? null : shown.triageBlocked?.reason === "needs_consent" ? (
             // Allowing syncs again, which is what queues triage now that it may run.
             <InboxConsentPrompt
-              recipient={data.triageBlocked.recipient}
+              recipient={shown.triageBlocked.recipient}
               onAllowed={() => {
                 setAttempt((n) => n + 1);
                 setReload((n) => n + 1);
               }}
             />
-          ) : (
-            <TodoCard connectionId={tab} list={data} paused={paused} />
-          )}
-          {marked ? (
-            <p role="status" className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
-              {marked.mark === "noise" ? (
-                <Trans>Marked noise</Trans>
-              ) : (
-                <Trans>Marked important</Trans>
-              )}
-              <Button variant="ghost" size="sm" onClick={() => mark(marked.messageId, null)}>
-                <Trans>Undo</Trans>
-              </Button>
-            </p>
+          ) : showTodos && todos ? (
+            <TodoCard
+              todos={todos}
+              onChange={(next) =>
+                setTodosByTab((all) => ({
+                  ...all,
+                  [tabKey]: (all[tabKey] ?? []).map((item) => (item.id === next.id ? next : item)),
+                }))
+              }
+            />
           ) : null}
           <InboxGroup
             title={<Trans>Needs reply</Trans>}
+            hideAttention
             rows={groups.needsReply}
             onOpen={openMessage}
             onMark={triage ? mark : undefined}
+            selectedId={selectedId}
             today={false}
           />
           <InboxGroup
@@ -478,6 +606,7 @@ export function InboxPage({
             rows={groups.today}
             onOpen={openMessage}
             onMark={triage ? mark : undefined}
+            selectedId={selectedId}
             today
           />
           <InboxGroup
@@ -485,9 +614,10 @@ export function InboxPage({
             rows={groups.earlier}
             onOpen={openMessage}
             onMark={triage ? mark : undefined}
+            selectedId={selectedId}
             today={false}
           />
-          {filtered && more.token ? (
+          {filtered && fresh && more.token ? (
             <div className="grid place-items-center pb-2">
               <Button variant="outline" size="sm" disabled={more.busy} onClick={loadMore}>
                 <Trans>Load more</Trans>
@@ -495,8 +625,37 @@ export function InboxPage({
             </div>
           ) : null}
         </>
-      )}
-      <InboxMessageDialog messageId={openId} subject={openRow?.subject} onClose={closeMessage} />
+      ) : null}
+      <InboxMessageDialog
+        messageId={openId}
+        subject={openRow?.subject}
+        onClose={closeMessage}
+        previousId={openIndex > 0 ? ids[openIndex - 1] : undefined}
+        nextId={openIndex >= 0 ? ids[openIndex + 1] : undefined}
+        onNavigate={goToMessage}
+      />
+      <InboxShortcuts open={help} onClose={() => setHelp(false)} />
+      <div
+        role="status"
+        className="pointer-events-none fixed inset-x-0 bottom-4 z-100 flex justify-center px-4"
+      >
+        {status ? (
+          <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
+            {status.kind === "sent" ? (
+              <Trans>Sent</Trans>
+            ) : status.mark === "noise" ? (
+              <Trans>Marked noise</Trans>
+            ) : (
+              <Trans>Marked important</Trans>
+            )}
+            {status.kind === "marked" ? (
+              <Button variant="ghost" size="sm" onClick={() => mark(status.messageId, null)}>
+                <Trans>Undo</Trans>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
       {composing ? (
         <ComposeEmail
           seed={NEW_MESSAGE}
