@@ -1,7 +1,7 @@
 import { triageReadiness } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./thread-target.js", () => ({
   resolveThreadTarget: async () => ({ kind: "bot", botId: "bot" }),
@@ -236,5 +236,45 @@ describe("triage readiness uses the key the consent dialog lists", () => {
         actor,
       ),
     ).not.toBe(checked);
+  });
+});
+
+describe("inbox classifier recipient", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  const enable = () => {
+    vi.stubEnv("RAKAZO_INBOX_CLASSIFIER_PROVIDER", "typesafe");
+    vi.stubEnv("TYPESAFE_API_KEY", "ts-key");
+  };
+
+  it("lists TypeSafe in the settings view when the classifier is on, and lets the user allow it", async () => {
+    enable();
+    const { deps, actor, upsert } = setup();
+    deps.env.agentRuntime = "pi";
+    const status = await aiConsentStatus(deps, actor);
+    const typesafe = status.recipients.find((recipient) => recipient.name === "TypeSafe");
+    expect(typesafe).toMatchObject({ use: "model", allowed: false });
+
+    await allowAiConsent(deps, actor, {
+      scope: status.scope,
+      version: status.version,
+      keys: [typesafe?.key as string],
+    });
+    expect(upsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not make TypeSafe a gate on sending a chat message", async () => {
+    enable();
+    const { deps, actor } = setup();
+    deps.env.agentRuntime = "pi";
+    const status = await aiConsentStatus(deps, actor, { uses: ["model", "memory"] });
+    expect(status.recipients.map((recipient) => recipient.name)).not.toContain("TypeSafe");
+  });
+
+  it("lists nothing for TypeSafe when only the Auto Review key is set", async () => {
+    vi.stubEnv("TYPESAFE_API_KEY", "ts-key");
+    const { deps, actor } = setup();
+    deps.env.agentRuntime = "pi";
+    const status = await aiConsentStatus(deps, actor);
+    expect(status.recipients.map((recipient) => recipient.name)).not.toContain("TypeSafe");
   });
 });

@@ -7,6 +7,14 @@ export const TRIAGE_BATCH_SIZE = 20;
 export const MAX_TRIAGE_PER_RUN = 100;
 export const MAX_OPEN_TODOS = 5;
 
+/** Categories whose messages can carry a to-do. */
+export const TODO_CATEGORIES: readonly string[] = ["reply", "action"];
+
+/** Whether the LLM still has to write reason, to-do and due for a message a classifier labeled. */
+export function needsLlmDetail(_item: { needsReply: boolean; category: string }): boolean {
+  return false;
+}
+
 const SNIPPET_CAP = 500;
 const REASON_CAP = 120;
 const TODO_CAP = 100;

@@ -1,4 +1,4 @@
-import type { AgentRunModel } from "@rakazo/adapter-kit";
+import type { AgentRunModel, InboxClassifierProvider } from "@rakazo/adapter-kit";
 import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { aiRecipient } from "./ai-consent.js";
@@ -96,5 +96,64 @@ describe("triageReadiness", () => {
   it("returns null when the executor cannot resolve models", async () => {
     const { deps } = setup({});
     expect(await triageReadiness({ ...deps, resolveModel: undefined }, scope)).toBeNull();
+  });
+});
+
+describe("triageReadiness with an optional classifier", () => {
+  const typesafeKey = aiRecipient({ provider: "typesafe", use: "model" })?.key as string;
+  const classifier: InboxClassifierProvider = {
+    describe: () => ({
+      id: "typesafe",
+      contractVersion: "1",
+      adapterVersion: "0.1.0",
+      capabilities: {},
+    }),
+    classify: async () => ({ model: "m", items: [] }),
+  };
+  /** Consent rows by recipient key; the model recipient is listed under `granted` too. */
+  function withConsent(granted: Array<string | undefined>) {
+    const { deps } = setup({});
+    const findFirst = vi.fn(async (args: { where: { recipientKey: string } }) =>
+      granted.includes(args.where.recipientKey) ? { userId: "user-1" } : null,
+    );
+    return {
+      deps: {
+        ...deps,
+        classifier,
+        prisma: { ...(deps.prisma as object), aiDataConsent: { findFirst } } as never,
+      },
+      findFirst,
+    };
+  }
+
+  it("has no classifier when none is configured", async () => {
+    const { deps } = setup({});
+    expect((await triageReadiness(deps, scope))?.classifier).toBeNull();
+  });
+
+  it("returns the classifier when the user also consented to TypeSafe", async () => {
+    const { deps } = withConsent([keyFor("openrouter", "test-model"), typesafeKey]);
+    const result = await triageReadiness(deps, scope);
+    expect(result?.classifier).toBe(classifier);
+  });
+
+  it("uses the LLM alone when TypeSafe has no consent row", async () => {
+    const { deps, findFirst } = withConsent([keyFor("openrouter", "test-model")]);
+    const result = await triageReadiness(deps, scope);
+    expect(result?.model).toMatchObject({ id: "test-model" });
+    expect(result?.classifier).toBeNull();
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          recipientKey: typesafeKey,
+          version: AI_DISCLOSURE_VERSION,
+        }),
+      }),
+    );
+  });
+
+  it("does not let TypeSafe consent stand in for model consent", async () => {
+    const { deps } = withConsent([typesafeKey]);
+    expect(await triageReadiness(deps, scope)).toBeNull();
   });
 });

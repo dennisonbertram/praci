@@ -1,6 +1,8 @@
 import type {
   CacheCapabilities as ConnectionCacheCapabilities,
   ConnectionCatalogItem,
+  InboxCategory,
+  InboxPriority,
   SandboxKind,
 } from "@rakazo/contracts";
 
@@ -1111,6 +1113,52 @@ export interface AutoReviewResult {
   decision: AutoReviewDecision;
   reason?: string;
   model: string;
+}
+
+/** Optional first-pass mail classifier. Core runs with none configured and uses the LLM adapter. */
+export interface InboxClassifierCapabilities {
+  /** True when the adapter never leaves the process (tests). */
+  offline?: boolean;
+  /** True when a hosted vendor key is not required. */
+  keyless?: boolean;
+}
+
+export type InboxSuspiciousSignal = "phishing" | "junk" | "brand_mismatch";
+
+/** Metadata and a snippet of at most 500 characters. Bodies never reach a classifier. */
+export interface InboxClassifierMessage {
+  id: string;
+  from: string;
+  to: string[];
+  cc: string[];
+  subject: string;
+  snippet: string;
+  receivedAt: string;
+  addressedToMe: boolean;
+  threadLength: number;
+}
+
+export interface InboxClassification {
+  id: string;
+  category: InboxCategory;
+  priority: InboxPriority;
+  needsReply: boolean;
+  signals: InboxSuspiciousSignal[];
+  /** 0 to 1. The LLM adapter reports 1 because the model gives none. */
+  confidence: number;
+  /** Only the LLM adapter writes these; they stay null for a classifier that only labels. */
+  reason: string | null;
+  todo: string | null;
+  /** YYYY-MM-DD */
+  due: string | null;
+}
+
+export interface InboxClassifyResult {
+  model: string;
+  /** Messages the adapter could not classify with enough confidence are left out. */
+  items: InboxClassification[];
+  /** Vendor-reported tokens, when the adapter bills outside the agent runtime. */
+  usage?: { inputTokens: number; outputTokens: number };
 }
 
 /** Provider-neutral subscription state. Vendor-specific states map onto these. */

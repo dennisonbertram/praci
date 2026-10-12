@@ -11,6 +11,26 @@ export const isInboxAgentSpawnKey = (spawnKey: string | null | undefined) =>
 export const MailAccountSchema = z.object({ connectionId: Id, label: z.string() });
 
 export const InboxPrioritySchema = z.enum(["critical", "important", "normal", "low"]);
+export type InboxPriority = z.infer<typeof InboxPrioritySchema>;
+
+/** What triage calls a message. `reply` and `action` came first; the rest widen the set for views. */
+export const InboxCategorySchema = z.enum([
+  "reply",
+  "action",
+  "billing",
+  "receipt",
+  "scheduling",
+  "newsletter",
+  "security",
+  "notification",
+  "personal",
+  "fyi",
+  "bulk",
+  "suspicious",
+  "spam",
+  "scam",
+]);
+export type InboxCategory = z.infer<typeof InboxCategorySchema>;
 
 export const MailRowSchema = z.object({
   id: Id,

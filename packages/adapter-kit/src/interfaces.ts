@@ -40,6 +40,9 @@ import type {
   ConnectorProxyResponse,
   ConnectorTool,
   ControlLeaseRef,
+  InboxClassifierCapabilities,
+  InboxClassifierMessage,
+  InboxClassifyResult,
   MailAccount,
   MailListRequest,
   MailMessage,
@@ -514,4 +517,17 @@ export interface CloudAgentProvider {
 export interface AutoReviewProvider {
   describe(): AdapterDescriptor<AutoReviewCapabilities>;
   review(request: AutoReviewRequest, context: AdapterContext): Promise<AutoReviewResult>;
+}
+
+/**
+ * Provider-neutral first-pass mail classifier. The LLM triage path is the default adapter; an
+ * optional vendor adapter labels messages faster and leaves the rest to the LLM. A message the
+ * adapter cannot label confidently is omitted from the result, and vendor failures are not thrown.
+ */
+export interface InboxClassifierProvider {
+  describe(): AdapterDescriptor<InboxClassifierCapabilities>;
+  classify(
+    messages: InboxClassifierMessage[],
+    context: AdapterContext,
+  ): Promise<InboxClassifyResult>;
 }
