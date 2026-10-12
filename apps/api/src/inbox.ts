@@ -4,6 +4,7 @@ import type {
   JobPublisher,
   MailAccount,
   MailAddress,
+  MailAttachment,
   MailProvider,
 } from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
@@ -28,6 +29,7 @@ const WINDOW_MS = 14 * 86_400_000;
 const MAX_ROWS = 200;
 const DONE_VISIBLE_MS = 86_400_000;
 const SYNC_PARALLELISM = 4;
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 /** Messages asked of Gmail per account for one page of a filtered or searched list. */
 const SEARCH_PAGE_SIZE = 50;
 
@@ -323,17 +325,17 @@ export async function inboxRefresh(
   return { ok: true };
 }
 
-export async function inboxGet(
+/** The caller's cached message and the connected account it came from, or NOT_FOUND. */
+async function ownMessage(
   deps: InboxDeps,
   actor: Actor,
-  input: { messageId: string },
-  signal?: AbortSignal,
+  messageId: string,
+  context: AdapterContext,
 ) {
   const row = await deps.prisma.cachedMailMessage.findFirst({
-    where: { id: input.messageId, spaceId: actor.spaceId, userId: actor.userId },
+    where: { id: messageId, spaceId: actor.spaceId, userId: actor.userId },
   });
   if (!row) throw notFound();
-  const context = mailContext(actor, "inbox.get", signal);
   // The account comes from the actor's own connections, never from client input.
   const accounts = await deps.mail.listAccounts(
     { spaceId: actor.spaceId, userId: actor.userId },
@@ -341,8 +343,34 @@ export async function inboxGet(
   );
   const account: MailAccount | undefined = accounts.find((a) => a.id === row.connectionId);
   if (!account) throw notFound();
+  return { account, providerMessageId: row.providerMessageId };
+}
+
+function providerFailure(error: unknown, operation: string, connectionId: string): never {
+  if (error instanceof MailProviderError) {
+    getLogger().warn(`${operation} failed`, { connectionId, reason: error.kind });
+    if (error.kind === "not_found") throw notFound();
+    if (error.kind === "too_large") {
+      throw new ORPCError("PAYLOAD_TOO_LARGE", { message: "Attachment is too large" });
+    }
+    if (error.kind === "auth") {
+      throw new ORPCError("PRECONDITION_FAILED", { message: error.message });
+    }
+    throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
+  }
+  throw error;
+}
+
+export async function inboxGet(
+  deps: InboxDeps,
+  actor: Actor,
+  input: { messageId: string },
+  signal?: AbortSignal,
+) {
+  const context = mailContext(actor, "inbox.get", signal);
+  const { account, providerMessageId } = await ownMessage(deps, actor, input.messageId, context);
   try {
-    const message = await deps.mail.getMessage(account, row.providerMessageId, context);
+    const message = await deps.mail.getMessage(account, providerMessageId, context);
     return {
       from: formatAddress(message.from),
       to: message.to.map(formatAddress).join(", "),
@@ -350,17 +378,34 @@ export async function inboxGet(
       subject: message.subject,
       html: message.html ?? null,
       text: message.text,
+      attachments: message.attachments
+        .filter((a) => !a.inline && a.id)
+        .map(({ id, filename, mimeType, size }) => ({ id, filename, mimeType, size })),
     };
   } catch (error) {
-    if (error instanceof MailProviderError) {
-      getLogger().warn("inbox.get failed", { connectionId: account.id, reason: error.kind });
-      if (error.kind === "not_found") throw notFound();
-      if (error.kind === "auth") {
-        throw new ORPCError("PRECONDITION_FAILED", { message: error.message });
-      }
-      throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
-    }
-    throw error;
+    providerFailure(error, "inbox.get", account.id);
+  }
+}
+
+/** One attachment of the caller's own message. The bytes go to the caller only, never to a model. */
+export async function inboxAttachment(
+  deps: InboxDeps,
+  actor: Actor,
+  input: { messageId: string; attachmentId: string },
+  signal?: AbortSignal,
+): Promise<MailAttachment> {
+  const context = mailContext(actor, "inbox.attachment", signal);
+  const { account, providerMessageId } = await ownMessage(deps, actor, input.messageId, context);
+  try {
+    return await deps.mail.getAttachment(
+      account,
+      providerMessageId,
+      input.attachmentId,
+      MAX_ATTACHMENT_BYTES,
+      context,
+    );
+  } catch (error) {
+    providerFailure(error, "inbox.attachment", account.id);
   }
 }
 

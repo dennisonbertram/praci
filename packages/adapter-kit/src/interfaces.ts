@@ -41,6 +41,7 @@ import type {
   ConnectorTool,
   ControlLeaseRef,
   MailAccount,
+  MailAttachment,
   MailListRequest,
   MailMessage,
   MailMessagePage,
@@ -227,6 +228,17 @@ export interface MailProvider {
     context: AdapterContext,
   ): Promise<MailMessagePage>;
   getMessage(account: MailAccount, id: string, context: AdapterContext): Promise<MailMessage>;
+  /**
+   * One attachment of one message, named by `MailMessage.attachments[].id`. Throws `too_large`,
+   * before fetching the bytes when the size is known, when it exceeds `maxBytes`.
+   */
+  getAttachment(
+    account: MailAccount,
+    messageId: string,
+    attachmentId: string,
+    maxBytes: number,
+    context: AdapterContext,
+  ): Promise<MailAttachment>;
 }
 
 export interface MemoryStore {

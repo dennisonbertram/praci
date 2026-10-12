@@ -517,7 +517,9 @@ describe("getMessage", () => {
   it("refuses an attachment over the cap before fetching its bytes", async () => {
     const gmail = box([
       msg("m1", {
-        attachments: [{ filename: "big.bin", mimeType: "application/octet-stream", size: 0, data: "YWFhYQ==" }],
+        attachments: [
+          { filename: "big.bin", mimeType: "application/octet-stream", size: 0, data: "YWFhYQ==" },
+        ],
       }),
     ]);
     const { provider } = over(gmail);
@@ -530,11 +532,23 @@ describe("getMessage", () => {
   });
 
   it("answers not_found for an unknown part and for another account's message", async () => {
-    const gmail = box([msg("m1", { attachments: [{ filename: "a.txt", mimeType: "text/plain", size: 0, data: "YWFh" }] })]);
+    const gmail = box([
+      msg("m1", {
+        attachments: [{ filename: "a.txt", mimeType: "text/plain", size: 0, data: "YWFh" }],
+      }),
+    ]);
     const { provider } = over(gmail);
-    expect(await rejection(provider.getAttachment(account(), "m1", "99", 1000, context()))).toMatchObject({ kind: "not_found" });
-    expect(await rejection(provider.getAttachment(account(), "nope", "1", 1000, context()))).toMatchObject({ kind: "not_found" });
-    expect(await rejection(provider.getAttachment(account({ userId: "other" }), "m1", "1", 1000, context()))).toMatchObject({ kind: "auth" });
+    expect(
+      await rejection(provider.getAttachment(account(), "m1", "99", 1000, context())),
+    ).toMatchObject({ kind: "not_found" });
+    expect(
+      await rejection(provider.getAttachment(account(), "nope", "1", 1000, context())),
+    ).toMatchObject({ kind: "not_found" });
+    expect(
+      await rejection(
+        provider.getAttachment(account({ userId: "other" }), "m1", "1", 1000, context()),
+      ),
+    ).toMatchObject({ kind: "auth" });
   });
 
   it("reduces an html-only body to text without style or script content", async () => {

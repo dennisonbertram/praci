@@ -874,10 +874,27 @@ export interface MailMessage extends MailMessageSummary {
    */
   html?: string;
   truncated: boolean;
-  attachments: Array<{ filename: string; mimeType: string; size: number }>;
+  attachments: MailAttachmentInfo[];
 }
 
-export type MailErrorKind = "auth" | "rate_limited" | "not_found" | "unavailable";
+export interface MailAttachmentInfo {
+  /** Names this part for `MailProvider.getAttachment`; stable for the same message. */
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  /** An embedded picture that the message body shows itself, not a file to offer. */
+  inline: boolean;
+}
+
+export interface MailAttachment {
+  filename: string;
+  mimeType: string;
+  size: number;
+  bytes: Uint8Array;
+}
+
+export type MailErrorKind = "auth" | "rate_limited" | "not_found" | "unavailable" | "too_large";
 
 export class MailProviderError extends Error {
   constructor(

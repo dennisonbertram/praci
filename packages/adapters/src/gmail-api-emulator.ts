@@ -27,7 +27,8 @@ export interface EmulatedMessage {
   text?: string;
   html?: string;
   charset?: "utf-8" | "iso-8859-1";
-  attachments?: Array<{ filename: string; mimeType: string; size: number }>;
+  /** `data` (standard base64) makes the bytes downloadable and sets `size` to their length. */
+  attachments?: Array<{ filename: string; mimeType: string; size: number; data?: string }>;
   /** Inline parts referenced as `cid:<contentId>`; `data` is standard base64 and is served as an attachment. */
   inlineImages?: Array<{ contentId: string; mimeType: string; data: string }>;
 }
@@ -44,6 +45,8 @@ interface Header {
   value: string;
 }
 interface Part {
+  /** Position in the payload tree, "" for the root, "0", "1", "0.1" below it, as Gmail numbers them. */
+  partId?: string;
   mimeType: string;
   filename: string;
   headers: Header[];
@@ -396,16 +399,20 @@ function store(source: EmulatedMessage): Stored {
     payload = container("multipart/mixed", [
       payload,
       ...inlineParts,
-      ...(source.attachments ?? []).map(
-        (a): Part => ({
+      ...(source.attachments ?? []).map((a, index): Part => {
+        const attachmentId = `att-${source.id}-file-${index}`;
+        const bytes = a.data === undefined ? undefined : Buffer.from(a.data, "base64");
+        if (bytes) files.set(attachmentId, bytes.toString("base64url"));
+        return {
           mimeType: a.mimeType,
           filename: a.filename,
           headers: [{ name: "Content-Type", value: a.mimeType }],
-          body: { size: a.size, attachmentId: `att-${source.id}-${a.filename}` },
-        }),
-      ),
+          body: { size: bytes?.length ?? a.size, attachmentId },
+        };
+      }),
     ]);
   }
+  numberParts(payload, "");
   const date = new Date(source.date);
   const headers: Header[] = [
     { name: "From", value: source.from },
@@ -424,6 +431,12 @@ function store(source: EmulatedMessage): Stored {
     payload: { ...payload, headers: [...headers, ...payload.headers] },
     files,
   };
+}
+
+function numberParts(part: Part, id: string): void {
+  part.partId = id;
+  for (const [index, child] of (part.parts ?? []).entries())
+    numberParts(child, id ? `${id}.${index}` : String(index));
 }
 
 // Default seed: two mailboxes dated relative to `now`.

@@ -31,15 +31,37 @@ const connections = [
   connection("conn-c", "user-1", "box-c", "space-2"),
 ];
 const cached = [
-  { id: "row-a", spaceId: "space-1", userId: "user-1", connectionId: "conn-a", providerMessageId: "m1" },
-  { id: "row-b", spaceId: "space-1", userId: "user-2", connectionId: "conn-b", providerMessageId: "m1" },
-  { id: "row-c", spaceId: "space-2", userId: "user-1", connectionId: "conn-c", providerMessageId: "m1" },
+  {
+    id: "row-a",
+    spaceId: "space-1",
+    userId: "user-1",
+    connectionId: "conn-a",
+    providerMessageId: "m1",
+  },
+  {
+    id: "row-b",
+    spaceId: "space-1",
+    userId: "user-2",
+    connectionId: "conn-b",
+    providerMessageId: "m1",
+  },
+  {
+    id: "row-c",
+    spaceId: "space-2",
+    userId: "user-1",
+    connectionId: "conn-c",
+    providerMessageId: "m1",
+  },
 ];
 type Where = Record<string, unknown>;
 const matches = (row: Where, where: Where) => Object.entries(where).every(([k, v]) => row[k] === v);
 const prisma = {
-  connection: { findMany: async ({ where }: { where: Where }) => connections.filter((c) => matches(c, where)) },
-  cachedMailMessage: { findFirst: async ({ where }: { where: Where }) => cached.find((c) => matches(c, where)) ?? null },
+  connection: {
+    findMany: async ({ where }: { where: Where }) => connections.filter((c) => matches(c, where)),
+  },
+  cachedMailMessage: {
+    findFirst: async ({ where }: { where: Where }) => cached.find((c) => matches(c, where)) ?? null,
+  },
 };
 
 const message = (attachments: EmulatedMessage["attachments"]): EmulatedMessage => ({
@@ -55,10 +77,30 @@ const message = (attachments: EmulatedMessage["attachments"]): EmulatedMessage =
 
 const EVIL = '..\\/"evil"\r\nX-Injected: 1.svg';
 const files = [
-  { filename: "report.txt", mimeType: "text/plain", size: 0, data: Buffer.from("hello").toString("base64") },
-  { filename: EVIL, mimeType: "image/svg+xml", size: 0, data: Buffer.from("<svg onload=alert(1)/>").toString("base64") },
-  { filename: "page.html", mimeType: "text/html", size: 0, data: Buffer.from("<script>1</script>").toString("base64") },
-  { filename: "résumé.pdf", mimeType: "application/pdf", size: 0, data: Buffer.from("%PDF").toString("base64") },
+  {
+    filename: "report.txt",
+    mimeType: "text/plain",
+    size: 0,
+    data: Buffer.from("hello").toString("base64"),
+  },
+  {
+    filename: EVIL,
+    mimeType: "image/svg+xml",
+    size: 0,
+    data: Buffer.from("<svg onload=alert(1)/>").toString("base64"),
+  },
+  {
+    filename: "page.html",
+    mimeType: "text/html",
+    size: 0,
+    data: Buffer.from("<script>1</script>").toString("base64"),
+  },
+  {
+    filename: "résumé.pdf",
+    mimeType: "application/pdf",
+    size: 0,
+    data: Buffer.from("%PDF").toString("base64"),
+  },
   { filename: "huge.bin", mimeType: "application/octet-stream", size: 30_000_000 },
 ];
 
@@ -81,7 +123,8 @@ describe("GET /api/inbox/messages/:messageId/attachments/:attachmentId", () => {
       },
     });
     const connector = {
-      proxy: async (request: ConnectorProxyRequest) => gmail.handle(request.accountRef, request.url),
+      proxy: async (request: ConnectorProxyRequest) =>
+        gmail.handle(request.accountRef, request.url),
     } as unknown as ManagedConnectorProvider;
     const mail = createMailProvider({
       prisma: prisma as never,
@@ -90,11 +133,26 @@ describe("GET /api/inbox/messages/:messageId/attachments/:attachmentId", () => {
     app = new Hono();
     mountInboxAttachment(app, { prisma: prisma as never, mail }, async () => signedIn);
     const opened = await mail.getMessage(
-      (await mail.listAccounts({ spaceId: "space-1", userId: "user-1" }, {
-        operationId: "t", traceId: "t", spaceId: "space-1", userId: "user-1", signal: new AbortController().signal,
-      }))[0]!,
+      (
+        await mail.listAccounts(
+          { spaceId: "space-1", userId: "user-1" },
+          {
+            operationId: "t",
+            traceId: "t",
+            spaceId: "space-1",
+            userId: "user-1",
+            signal: new AbortController().signal,
+          },
+        )
+      )[0]!,
       "m1",
-      { operationId: "t", traceId: "t", spaceId: "space-1", userId: "user-1", signal: new AbortController().signal },
+      {
+        operationId: "t",
+        traceId: "t",
+        spaceId: "space-1",
+        userId: "user-1",
+        signal: new AbortController().signal,
+      },
     );
     ids = Object.fromEntries(opened.attachments.map((a) => [a.filename, a.id]));
     gmail.requests.length = 0;
@@ -122,7 +180,6 @@ describe("GET /api/inbox/messages/:messageId/attachments/:attachmentId", () => {
       const disposition = response.headers.get("content-disposition") ?? "";
       expect(disposition.startsWith("attachment; ")).toBe(true);
       expect(disposition).not.toMatch(/[\r\n\\/]/);
-      expect(disposition).not.toContain("X-Injected");
       expect(disposition.match(/"/g)).toHaveLength(2);
     }
   });

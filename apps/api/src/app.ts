@@ -104,6 +104,7 @@ import { mountBillingRoutes } from "./billing-webhook.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
 import { healthRoutes } from "./health.js";
+import { mountInboxAttachment } from "./inbox-attachment.js";
 import { mountLocalSettings } from "./local-settings.js";
 import {
   createMessagingInboundHandler,
@@ -671,6 +672,11 @@ export async function createApp(
     });
     if (matched) return c.newResponse(response.body, response);
     await next();
+  });
+  mountInboxAttachment(app, { prisma, mail }, async (request) => {
+    const actor = await sessionActor(request);
+    if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
+    return actor;
   });
   mountVoiceHttpRoutes(app, { prisma, secrets }, async (c) => {
     const actor = await sessionActor(c.req.raw);
