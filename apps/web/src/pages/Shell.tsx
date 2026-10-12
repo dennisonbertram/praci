@@ -134,7 +134,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
@@ -792,7 +792,8 @@ export function ShellPage() {
   const autoSpokenBotId = useRef<string | null>(null);
 
   const inGroup = Boolean(groupId);
-  const active = inGroup ? undefined : (bots.find((b) => b.id === botId) ?? bots[0]);
+  const inboxMode = useMatch("/app/inbox") != null;
+  const active = inGroup || inboxMode ? undefined : (bots.find((b) => b.id === botId) ?? bots[0]);
   const computerBot =
     (computerBotId ? bots.find((bot) => bot.id === computerBotId) : undefined) ?? active;
   computerOpenRef.current = computerOpen;
@@ -1220,7 +1221,7 @@ export function ShellPage() {
           return;
         }
         const selectedBotId = bootstrap.thread?.botId ?? bootstrap.bots[0]?.id;
-        if (selectedBotId && selectedBotId !== botId) {
+        if (selectedBotId && selectedBotId !== botId && !inboxMode) {
           navigate(`/app/${selectedBotId}`, { replace: true });
         }
       })
@@ -1864,7 +1865,7 @@ export function ShellPage() {
     initialBotsLoaded &&
     (inGroup
       ? Boolean(activeGroup && activeSnapshot)
-      : bots.length === 0 || Boolean(active && activeSnapshot));
+      : bots.length === 0 || inboxMode || Boolean(active && activeSnapshot));
   const refreshThreadRef = useRef(refreshThread);
   refreshThreadRef.current = refreshThread;
   const refreshGroupThreadRef = useRef(refreshGroupThread);
@@ -2754,6 +2755,113 @@ export function ShellPage() {
     .slice(0, 2)
     .toUpperCase();
 
+  const threadView = (
+    <>
+      <Transcript
+        key={activeSnapshot?.threadId}
+        scrollRef={messageScroll}
+        scrollRequest={scrollRequest}
+        onScrollRequestHandled={clearScrollRequest}
+        artifactTarget={transcriptArtifactTarget}
+        messages={transcriptMessages}
+        showToolActivity={showToolActivity}
+        olderCursor={activeSnapshot?.olderCursor ?? null}
+        loadingOlder={loadingOlder}
+        answerableAskMessageId={answerableAskMessageId}
+        running={transcriptRunning}
+        workingBots={workingBots}
+        onLoadOlder={loadOlder}
+        onOpenBot={openBot}
+        onAnswer={answerMessage}
+        onReply={(message) => {
+          setReplyTarget(message);
+          setReplyQuote(null);
+        }}
+        onQuote={(message, quote) => {
+          setReplyTarget(message);
+          setReplyQuote(quote);
+        }}
+        onReact={reactToMessage}
+        onJumpToMessage={jumpToReplyMessage}
+        onOpenPeerMessages={(peer) => {
+          setPeerConversation(peer);
+        }}
+        memberName={resolveTranscriptMemberName}
+        peerBot={resolveTranscriptBot}
+        onRefresh={refreshActiveThread}
+        onBotChanged={refreshBots}
+        onAddRoutine={addSkillRoutine}
+        voiceReady={Boolean(voiceStatus?.ready)}
+        speakingMessageId={speakingMessageId}
+        onSpeak={speakMessage}
+        onOpenComputer={onOpenComputer}
+      />
+      {recordingSkill ? (
+        <div className="px-6 pb-2 text-center text-[13px] text-destructive">
+          <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
+        </div>
+      ) : null}
+      {active || activeGroup ? (
+        <Composer
+          key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
+          activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
+          running={composerRunning}
+          disabled={Boolean(recordingSkill)}
+          pendingAttachments={activePendingAttachments}
+          attachmentNotice={attachmentNotice}
+          sendError={sendError}
+          runError={displayedRunError}
+          runErrorId={displayedRunErrorId}
+          onRunErrorPresented={handleRunErrorPresented}
+          onDismissError={dismissComposerError}
+          sending={sending}
+          fileInputRef={fileInputRef}
+          onAttachmentPick={onAttachmentPick}
+          onRemoveAttachment={removeAttachment}
+          onSend={sendMessage}
+          onStop={stopRun}
+          onVoice={
+            !inGroup && active
+              ? () => {
+                  if (!voiceStatus?.ready) {
+                    openSettings("voice");
+                    return;
+                  }
+                  startCall({
+                    botId: active.id,
+                    botName: active.name,
+                    botColor: active.color,
+                    transcribe: Boolean(voiceStatus?.transcribe),
+                  });
+                }
+              : undefined
+          }
+          artifactTarget={transcriptArtifactTarget}
+          replyTarget={activeReplyTarget}
+          replyQuote={activeReplyQuote}
+          replyTargetName={replyTargetName}
+          onClearReply={clearReply}
+          mentionTargets={composerMentionTargets}
+          agentSkills={agentSkills}
+          onSlashOpen={refreshAgentSkills}
+          onSlashAction={(action) => {
+            if (action === "chat-settings") {
+              setPanel(inGroup ? "group-settings" : "settings");
+              return;
+            }
+            if (action === "settings-general") {
+              openSettings("general");
+              return;
+            }
+            if (action === "settings-usage") {
+              openSettings("usage");
+            }
+          }}
+        />
+      ) : null}
+    </>
+  );
+
   const shell = (
     <div
       data-testid="shell-root"
@@ -3574,80 +3682,85 @@ export function ShellPage() {
             className="absolute bottom-20 start-0 top-16 z-20 w-8 touch-none md:hidden"
           />
         ) : null}
-        <div className="app-drag flex items-center justify-between border-b border-sidebar-border px-3 py-[17px] md:px-[22px]">
-          <div className="flex min-w-0 items-center gap-2">
-            {/* Collapsed bots sidebar: this header is the leading edge for window chrome. */}
-            {botsSidebarCollapsed && desktopBridge() ? <WindowChrome /> : null}
-            <button
-              type="button"
-              aria-label={t`Open navigation`}
-              onClick={() => setMobileSidebarOpen(true)}
-              className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:hidden"
-            >
-              <Menu size={19} strokeWidth={1.7} />
-            </button>
-            {botsSidebarCollapsed ? (
+        {inboxMode ? null : (
+          <div className="app-drag flex items-center justify-between border-b border-sidebar-border px-3 py-[17px] md:px-[22px]">
+            <div className="flex min-w-0 items-center gap-2">
+              {/* Collapsed bots sidebar: this header is the leading edge for window chrome. */}
+              {botsSidebarCollapsed && desktopBridge() ? <WindowChrome /> : null}
               <button
                 type="button"
-                data-testid="restore-bots-sidebar"
-                aria-label={t`Show bots`}
-                title={t`Show bots`}
-                onClick={() => setBotsSidebarCollapsedPref(false)}
-                className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:grid"
+                aria-label={t`Open navigation`}
+                onClick={() => setMobileSidebarOpen(true)}
+                className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:hidden"
               >
-                <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
+                <Menu size={19} strokeWidth={1.7} />
               </button>
-            ) : null}
-            <button
-              type="button"
-              data-testid="bot-settings-trigger"
-              onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
-              className="app-no-drag flex min-w-0 items-center gap-3"
-            >
-              {inGroup ? (
-                <GroupAvatar
-                  members={activeSnapshot?.members ?? activeGroup?.members ?? []}
-                  size={26}
-                />
-              ) : active ? (
-                <BotAvatar
-                  color={active.color}
-                  identity={active.id}
-                  size={26}
-                  status={active.status}
-                />
+              {botsSidebarCollapsed ? (
+                <button
+                  type="button"
+                  data-testid="restore-bots-sidebar"
+                  aria-label={t`Show bots`}
+                  title={t`Show bots`}
+                  onClick={() => setBotsSidebarCollapsedPref(false)}
+                  className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:grid"
+                >
+                  <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
+                </button>
               ) : null}
-              <span className="min-w-0">
-                <span className="block truncate text-[16px] font-medium text-foreground" dir="auto">
-                  {inGroup
-                    ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
-                    : (active?.name ?? t`Select a bot`)}
-                </span>
-              </span>
-            </button>
-          </div>
-          <div className="flex items-center gap-1">
-            {!inGroup && active ? (
               <button
                 type="button"
-                title={t`Agent computer`}
-                onClick={() => {
-                  const next = panel === "computer" ? null : "computer";
-                  setPanel(next);
-                  if (next === "computer" && active) {
-                    // Refresh run/computer so Take control isn't stuck on a stale busyBotName.
-                    void refreshThread(active.id).catch(() => undefined);
-                  }
-                }}
-                data-active={panel === "computer" ? "" : undefined}
-                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                data-testid="bot-settings-trigger"
+                onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
+                className="app-no-drag flex min-w-0 items-center gap-3"
               >
-                <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                {inGroup ? (
+                  <GroupAvatar
+                    members={activeSnapshot?.members ?? activeGroup?.members ?? []}
+                    size={26}
+                  />
+                ) : active ? (
+                  <BotAvatar
+                    color={active.color}
+                    identity={active.id}
+                    size={26}
+                    status={active.status}
+                  />
+                ) : null}
+                <span className="min-w-0">
+                  <span
+                    className="block truncate text-[16px] font-medium text-foreground"
+                    dir="auto"
+                  >
+                    {inGroup
+                      ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
+                      : (active?.name ?? t`Select a bot`)}
+                  </span>
+                </span>
               </button>
-            ) : null}
+            </div>
+            <div className="flex items-center gap-1">
+              {!inGroup && active ? (
+                <button
+                  type="button"
+                  title={t`Agent computer`}
+                  onClick={() => {
+                    const next = panel === "computer" ? null : "computer";
+                    setPanel(next);
+                    if (next === "computer" && active) {
+                      // Refresh run/computer so Take control isn't stuck on a stale busyBotName.
+                      void refreshThread(active.id).catch(() => undefined);
+                    }
+                  }}
+                  data-active={panel === "computer" ? "" : undefined}
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                >
+                  <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
-        {!active && !activeGroup && initialBotsLoaded ? (
+        )}
+        {inboxMode ? null : !active && !activeGroup && initialBotsLoaded ? (
           <div className="grid flex-1 place-items-center">
             <Button onClick={() => setPanel("create")}>
               <Plus size={16} aria-hidden="true" />
@@ -3655,109 +3768,8 @@ export function ShellPage() {
             </Button>
           </div>
         ) : (
-          <Transcript
-            key={activeSnapshot?.threadId}
-            scrollRef={messageScroll}
-            scrollRequest={scrollRequest}
-            onScrollRequestHandled={clearScrollRequest}
-            artifactTarget={transcriptArtifactTarget}
-            messages={transcriptMessages}
-            showToolActivity={showToolActivity}
-            olderCursor={activeSnapshot?.olderCursor ?? null}
-            loadingOlder={loadingOlder}
-            answerableAskMessageId={answerableAskMessageId}
-            running={transcriptRunning}
-            workingBots={workingBots}
-            onLoadOlder={loadOlder}
-            onOpenBot={openBot}
-            onAnswer={answerMessage}
-            onReply={(message) => {
-              setReplyTarget(message);
-              setReplyQuote(null);
-            }}
-            onQuote={(message, quote) => {
-              setReplyTarget(message);
-              setReplyQuote(quote);
-            }}
-            onReact={reactToMessage}
-            onJumpToMessage={jumpToReplyMessage}
-            onOpenPeerMessages={(peer) => {
-              setPeerConversation(peer);
-            }}
-            memberName={resolveTranscriptMemberName}
-            peerBot={resolveTranscriptBot}
-            onRefresh={refreshActiveThread}
-            onBotChanged={refreshBots}
-            onAddRoutine={addSkillRoutine}
-            voiceReady={Boolean(voiceStatus?.ready)}
-            speakingMessageId={speakingMessageId}
-            onSpeak={speakMessage}
-            onOpenComputer={onOpenComputer}
-          />
+          threadView
         )}
-        {recordingSkill ? (
-          <div className="px-6 pb-2 text-center text-[13px] text-destructive">
-            <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
-          </div>
-        ) : null}
-        {active || activeGroup ? (
-          <Composer
-            key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
-            activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
-            running={composerRunning}
-            disabled={Boolean(recordingSkill)}
-            pendingAttachments={activePendingAttachments}
-            attachmentNotice={attachmentNotice}
-            sendError={sendError}
-            runError={displayedRunError}
-            runErrorId={displayedRunErrorId}
-            onRunErrorPresented={handleRunErrorPresented}
-            onDismissError={dismissComposerError}
-            sending={sending}
-            fileInputRef={fileInputRef}
-            onAttachmentPick={onAttachmentPick}
-            onRemoveAttachment={removeAttachment}
-            onSend={sendMessage}
-            onStop={stopRun}
-            onVoice={
-              !inGroup && active
-                ? () => {
-                    if (!voiceStatus?.ready) {
-                      openSettings("voice");
-                      return;
-                    }
-                    startCall({
-                      botId: active.id,
-                      botName: active.name,
-                      botColor: active.color,
-                      transcribe: Boolean(voiceStatus?.transcribe),
-                    });
-                  }
-                : undefined
-            }
-            artifactTarget={transcriptArtifactTarget}
-            replyTarget={activeReplyTarget}
-            replyQuote={activeReplyQuote}
-            replyTargetName={replyTargetName}
-            onClearReply={clearReply}
-            mentionTargets={composerMentionTargets}
-            agentSkills={agentSkills}
-            onSlashOpen={refreshAgentSkills}
-            onSlashAction={(action) => {
-              if (action === "chat-settings") {
-                setPanel(inGroup ? "group-settings" : "settings");
-                return;
-              }
-              if (action === "settings-general") {
-                openSettings("general");
-                return;
-              }
-              if (action === "settings-usage") {
-                openSettings("usage");
-              }
-            }}
-          />
-        ) : null}
       </main>
 
       <CallCard onSettings={() => openSettings("voice")} />
