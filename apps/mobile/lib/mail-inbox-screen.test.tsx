@@ -361,3 +361,66 @@ it("refetches every 5 seconds while triage is pending, at most 6 times", async (
   });
   expect(lists()).toBe(8);
 });
+
+it("drops a slow response for the previous account after the tab changes", async () => {
+  const twoAccounts = [
+    { connectionId: "c1", label: "Work" },
+    { connectionId: "c2", label: "Home" },
+  ];
+  let releaseRefresh!: () => void;
+  state.rpc.mockImplementation(async (proc: string, body?: { connectionId?: string }) => {
+    if (proc === "inbox/list") {
+      const home = body?.connectionId === "c2";
+      return inboxList({
+        accounts: twoAccounts,
+        rows: [mailRow(home ? "home" : "all")],
+      });
+    }
+    if (proc === "inbox/refresh") {
+      await new Promise<void>((resolve) => {
+        releaseRefresh = resolve;
+      });
+      return { ok: true };
+    }
+    return { enabled: true, todos: [] };
+  });
+  await render();
+  expect(container.textContent).toContain("Subject all");
+  await act(async () => button("Home")?.click());
+  expect(container.textContent).toContain("Subject home");
+  await act(async () => releaseRefresh());
+  expect(container.textContent).toContain("Subject home");
+  expect(container.textContent).not.toContain("Subject all");
+});
+
+it("falls back to All when the chosen account can no longer be loaded", async () => {
+  state.rpc.mockImplementation(async (proc: string, body?: { connectionId?: string }) => {
+    if (proc === "inbox/list") {
+      if (body?.connectionId === "c2") throw new Error("Gone");
+      return inboxList({
+        accounts: [
+          { connectionId: "c1", label: "Work" },
+          { connectionId: "c2", label: "Home" },
+        ],
+        rows: [mailRow("all")],
+      });
+    }
+    if (proc === "inbox/refresh") return { ok: true };
+    return { enabled: true, todos: [] };
+  });
+  await render();
+  await act(async () => button("Home")?.click());
+  const lists = state.rpc.mock.calls.filter(([proc]) => proc === "inbox/list");
+  expect(lists.at(-2)?.[1]).toEqual({ connectionId: "c2" });
+  expect(lists.at(-1)?.[1]).toEqual({});
+  expect(container.textContent).toContain("Subject all");
+});
+
+it("does not refetch when triage is not pending", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  await render();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(procs().filter((proc) => proc === "inbox/list")).toHaveLength(2);
+});
