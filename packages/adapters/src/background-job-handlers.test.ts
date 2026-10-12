@@ -10,11 +10,13 @@ import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { describe, expect, it, vi } from "vitest";
 import { createBackgroundJobHandlers } from "./background-job-handlers.js";
 import { createRunExecutor } from "./executor.js";
+import { runInboxTriage } from "./inbox-triage.js";
 import { compactHistory } from "./history-compaction.js";
 import { deliverMessagingOutbound, mirrorMessagingOutbound } from "./messaging-delivery.js";
 import type { EncryptedSecretStore } from "./secrets.js";
 
 vi.mock("./history-compaction.js", () => ({ compactHistory: vi.fn(async () => undefined) }));
+vi.mock("./inbox-triage.js", () => ({ runInboxTriage: vi.fn(async () => undefined) }));
 vi.mock("./messaging-delivery.js", () => ({
   deliverMessagingOutbound: vi.fn(async () => undefined),
   mirrorMessagingOutbound: vi.fn(async () => undefined),
@@ -182,5 +184,31 @@ describe("createBackgroundJobHandlers", () => {
       thinkingLevel: null,
       oauth: undefined,
     });
+  });
+
+  it("runs triage for the payload's user and space with the executor's model resolver", async () => {
+    const resolveModel = vi.fn();
+    const jobs = {} as unknown as JobPublisher;
+    const runtime = {} as unknown as AgentRuntime;
+    const prisma = {} as unknown as PrismaClient;
+    const handlers = createBackgroundJobHandlers({
+      executor: { resolveModel } as unknown as ReturnType<typeof createRunExecutor>,
+      prisma,
+      sandbox: {} as unknown as SandboxProvider,
+      home: {} as unknown as AgentHomeStore,
+      jobs,
+      events: {} as unknown as ThreadEvents,
+      workerId: "worker-1",
+      runtime,
+      secretStore: {} as unknown as EncryptedSecretStore,
+      memoryProviders: { resolve: vi.fn(async () => null) },
+    });
+
+    await handlers["inbox.triage"]({ userId: "user-1", spaceId: "space-1" });
+
+    expect(runInboxTriage).toHaveBeenCalledExactlyOnceWith(
+      { prisma, runtime, jobs, resolveModel },
+      { userId: "user-1", spaceId: "space-1" },
+    );
   });
 });

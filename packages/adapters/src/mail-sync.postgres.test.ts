@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type {
   AdapterContext,
+  BackgroundJob,
   ConnectorProxyRequest,
   ConnectorProxyResponse,
   MailAccount,
+  JobPublisher,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
@@ -105,8 +107,16 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     const accounts = await mail.listAccounts({ spaceId, userId }, ctx());
     return accounts.find((a) => a.id === row.id) as MailAccount;
   }
+  const enqueued: BackgroundJob[] = [];
+  const jobs = {
+    enqueue: async (job: BackgroundJob) => {
+      enqueued.push(job);
+    },
+    cancel: async () => {},
+    close: async () => {},
+  } as JobPublisher;
   const sync = (account: MailAccount, operationId = "op", extra = {}) =>
-    syncMailbox({ prisma, mail, ...extra }, account, ctx(operationId));
+    syncMailbox({ prisma, mail, jobs, ...extra }, account, ctx(operationId));
   const rows = (connectionId: string) =>
     prisma.cachedMailMessage.findMany({ where: { connectionId }, orderBy: { receivedAt: "desc" } });
   const state = (connectionId: string) =>
@@ -185,6 +195,47 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     expect(after.claimToken).toBeNull();
   });
 
+  it("enqueues one inbox.triage job for the user after a successful sync, and only then", async () => {
+    seed("enqueue", [message("a", 1, ["INBOX"])]);
+    const account = await connect("enqueue");
+    const bad = await connect("enqueue-no-mailbox");
+    enqueued.length = 0;
+
+    expect(await sync(bad)).toBe("failed");
+    expect(enqueued).toEqual([]);
+
+    expect(await sync(account)).toBe("synced");
+    const expected = {
+      name: "inbox.triage",
+      payload: { userId, spaceId },
+      replaceKey: `inbox.triage:${spaceId}:${userId}`,
+      maxAttempts: 3,
+    };
+    expect(enqueued).toEqual([expected]);
+
+    // A throttled sync did not sync, so it enqueues nothing.
+    expect(await sync(account)).toBe("skipped");
+    expect(enqueued).toHaveLength(1);
+
+    // A sync that finds no new mail still enqueues, so a sent reply or a new model is picked up.
+    await expireThrottle(account.id);
+    expect(await sync(account)).toBe("synced");
+    expect(enqueued).toEqual([expected, expected]);
+  });
+
+  it("still reports synced when the triage job cannot be enqueued", async () => {
+    seed("enqueue-fails", [message("a", 1, ["INBOX"])]);
+    const account = await connect("enqueue-fails");
+    const failing = {
+      enqueue: async () => {
+        throw new Error("queue down");
+      },
+    } as unknown as JobPublisher;
+
+    expect(await sync(account, "op", { jobs: failing })).toBe("synced");
+    expect(await rows(account.id)).toHaveLength(1);
+  });
+
   it("caps subject and snippet at 500 characters", async () => {
     seed("caps", [
       message("long", 1, ["INBOX"], { subject: "s".repeat(900), snippet: "n".repeat(900) }),
@@ -230,8 +281,8 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     const otherMail = providerFor(second.prisma);
 
     const results = await Promise.all([
-      syncMailbox({ prisma, mail }, account, ctx("race-1")),
-      syncMailbox({ prisma: second.prisma, mail: otherMail }, account, ctx("race-2")),
+      syncMailbox({ prisma, mail, jobs }, account, ctx("race-1")),
+      syncMailbox({ prisma: second.prisma, mail: otherMail, jobs }, account, ctx("race-2")),
     ]);
 
     expect(results.sort()).toEqual(["skipped", "synced"]);
