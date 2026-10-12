@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { SANDBOXED_ARTIFACT_CSP, SANDBOXED_EMAIL_CSP, withSandboxedArtifactCsp } from "./artifact-sandbox.js";
+import {
+  SANDBOXED_ARTIFACT_CSP,
+  SANDBOXED_EMAIL_CSP,
+  withSandboxedArtifactCsp,
+} from "./artifact-sandbox.js";
 
 describe("withSandboxedArtifactCsp", () => {
   it("keeps a leading doctype ahead of the CSP meta tag", () => {

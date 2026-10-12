@@ -121,7 +121,7 @@ export default function InboxMessageScreen() {
         <Text style={styles.metaLine}>{date}</Text>
       </View>
       {message.html ? (
-        <SandboxedHtmlPreview html={message.html} scripts={false} onOpenLink={openLink} />
+        <SandboxedHtmlPreview html={message.html} email onOpenLink={openLink} />
       ) : (
         <ScrollView contentContainerStyle={styles.text}>
           <Text style={styles.body} selectable>

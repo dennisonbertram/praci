@@ -76,12 +76,18 @@ it("keeps today's behavior without onOpenLink: only the document itself loads", 
 it("blocks remote images by default, as artifacts need", () => {
   show(<SandboxedHtmlPreview html='<img src="https://tracker.example/p.gif">' />);
   expect(props().source.html).toContain("img-src data:;");
-  expect(props().source.html).not.toContain("https:");
+  expect(props().source.html).not.toContain("img-src data: https:");
 });
 
 it("email mode loads https images, runs no script, and still blocks other navigation", () => {
   const onOpenLink = vi.fn();
-  show(<SandboxedHtmlPreview html="<img src='https://x.example/p.png'>" email onOpenLink={onOpenLink} />);
+  show(
+    <SandboxedHtmlPreview
+      html="<img src='https://x.example/p.png'>"
+      email
+      onOpenLink={onOpenLink}
+    />,
+  );
   expect(props().source.html).toContain("img-src data: https:;");
   expect(props().source.html).toContain("default-src 'none'");
   expect(props().javaScriptEnabled).toBe(false);

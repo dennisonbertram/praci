@@ -34,16 +34,19 @@ vi.mock("../components/sandboxed-html-preview", () => ({
   SandboxedHtmlPreview: ({
     html,
     scripts,
+    email,
     onOpenLink,
   }: {
     html: string;
     scripts?: boolean;
+    email?: boolean;
     onOpenLink?: (url: string) => void;
   }) => (
     <button
       type="button"
       data-testid="preview"
       data-scripts={String(scripts)}
+      data-email={String(email)}
       onClick={() => onOpenLink?.("https://example.com/offer")}
     >
       {html}
@@ -132,12 +135,13 @@ it("shows a spinner while the message loads", async () => {
   expect(container.querySelector('[data-testid="spinner"]')).not.toBeNull();
 });
 
-it("renders the HTML part in the sandbox with scripts off", async () => {
+it("renders the HTML part in the sandbox in email mode", async () => {
   getReply = async () => message({ html: "<p>Hello</p>", text: "ignored" });
   await render();
   const preview = container.querySelector('[data-testid="preview"]');
   expect(preview?.textContent).toBe("<p>Hello</p>");
-  expect(preview?.getAttribute("data-scripts")).toBe("false");
+  expect(preview?.getAttribute("data-email")).toBe("true");
+  expect(preview?.getAttribute("data-scripts")).not.toBe("true");
   expect(container.textContent).not.toContain("ignored");
 });
 

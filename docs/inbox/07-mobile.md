@@ -90,10 +90,12 @@ calls the mail provider, so adding it later is cheap.
     safe degradation). Revisit with a `postMessage` click bridge if users miss it;
     that needs scripts, which email rendering keeps off.
 - **Plain-text body.** When a message has no HTML part, the body is selectable `Text`.
-- **No remote images in v1.** The existing remote-images preference
-  (`lib/remote-images-preference.ts`) covers markdown images in chat. Use it for email
-  only if the web page (item 4) adds a "load images" option. Otherwise keep remote images
-  blocked.
+- **Remote images load.** The user asked for emails to load with their images, and web
+  already does this. Email mode (`email` on `SandboxedHtmlPreview`) uses a CSP that
+  allows `img-src data: https:` for email only; artifacts keep the data:-only policy.
+  JavaScript stays off. Inline `cid:` images need nothing extra: `inbox.get` embeds them
+  as `data:` URLs on the server. The remote-images preference
+  (`lib/remote-images-preference.ts`) still covers markdown images in chat only.
 - **Ask about this message.** A header item pushes the Inbox agent thread, the same as
   on the list screen. The message is not passed as context; v1 does not prefill the
   composer.
