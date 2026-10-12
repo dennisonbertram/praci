@@ -16,6 +16,7 @@ import { ComposioConnector } from "./composio-connector.js";
 import { credentialDigest } from "./credential-digest.js";
 import { GoogleConnector } from "./google-connector.js";
 import { PipedreamConnector } from "./pipedream-connector.js";
+import { secretRefMatches } from "./secret-changes.js";
 
 /** Resolve persisted credentials on every operation so API and workers observe changes.
  * Cache adapters by ciphertext to preserve sessions without retaining old credentials. */
@@ -37,7 +38,8 @@ export class IntegrationProviderSettings {
     private readonly googleRedirectUri?: string,
   ) {
     this.secrets.onChange?.((ref) => {
-      for (const [id, entry] of this.cache) if (entry.ciphertext === ref) this.cache.delete(id);
+      for (const [id, entry] of this.cache)
+        if (secretRefMatches(entry.ciphertext, ref)) this.cache.delete(id);
     });
   }
 
@@ -82,7 +84,7 @@ export class IntegrationProviderSettings {
     let invalidated = false;
     const unsubscribe =
       this.secrets.onChange?.((ref) => {
-        if (ref === row.ciphertext) invalidated = true;
+        if (secretRefMatches(row.ciphertext, ref)) invalidated = true;
       }) ?? (() => {});
     try {
       const plaintext = await this.secrets.load(row.ciphertext, `integration-provider:${id}`);

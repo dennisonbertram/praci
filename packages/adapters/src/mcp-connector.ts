@@ -28,6 +28,7 @@ import { oauthMaterialSecrets } from "./mcp-oauth.js";
 import { McpSession } from "./mcp-transport.js";
 import { actorMayUsePrivateEndpoint } from "./private-endpoint.js";
 import type { RemoteTransportDependencies } from "./remote-mcp.js";
+import { secretRefMatches } from "./secret-changes.js";
 
 type SessionEntry = {
   session: McpSession;
@@ -106,9 +107,10 @@ export class McpConnector implements ConnectorProvider {
     this.unsubscribe =
       this.secrets.onChange?.((ref) => {
         for (const [key, entry] of this.sessions)
-          if (entry.ref === ref) void this.evict(key).catch(() => undefined);
+          if (entry.ref && secretRefMatches(entry.ref, ref))
+            void this.evict(key).catch(() => undefined);
         for (const entry of this.connecting.values())
-          if (entry.ref === ref) entry.invalidated = true;
+          if (entry.ref && secretRefMatches(entry.ref, ref)) entry.invalidated = true;
       }) ?? (() => {});
   }
 
