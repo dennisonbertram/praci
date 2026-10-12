@@ -73,14 +73,16 @@ export function PluginsOverlay({
   onClose,
   onOpenMcp,
   activeBotId,
+  initialQuery = "",
 }: {
   onClose: () => void;
   onOpenMcp?: () => void;
   activeBotId?: string;
+  initialQuery?: string;
 }) {
   const { t } = useLingui();
   const [setupOpen, setSetupOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [visibleCount, setVisibleCount] = useState(CONNECTION_CATALOG_PAGE_SIZE);
   const [catalog, setCatalog] = useState<ConnectionCatalogItem[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);

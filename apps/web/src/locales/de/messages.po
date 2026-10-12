@@ -13,6 +13,7 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (ungelesen)"
@@ -136,6 +137,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "{hours}h ago"
 msgstr "vor {hours} Std."
+
+#: src/pages/Shell.tsx
+msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
+msgstr ""
 
 #: src/lib/relative-time.ts
 #: src/pages/ActivityList.tsx
@@ -410,6 +415,10 @@ msgstr ""
 #: src/pages/McpServersOverlay.tsx
 msgid "Agents:"
 msgstr "Agents:"
+
+#: src/pages/Inbox.tsx
+msgid "All"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "All bots"
@@ -1160,6 +1169,10 @@ msgstr "API-Schlüssel verbinden"
 #: src/pages/PluginsOverlay.tsx
 msgid "Connect Executor"
 msgstr "Executor verbinden"
+
+#: src/pages/Inbox.tsx
+msgid "Connect mail"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
@@ -2060,6 +2073,10 @@ msgstr "Duplizieren"
 msgid "e.g. Hivenet Agent, Presales, Timesheets bot"
 msgstr "z. B. Hivenet Agent, Presales, Zeiterfassungs-Bot"
 
+#: src/pages/Inbox.tsx
+msgid "Earlier"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Edit first"
 msgstr "Zuerst bearbeiten"
@@ -2443,6 +2460,11 @@ msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+#: src/pages/Shell.tsx
+msgid "Inbox"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -2958,6 +2980,10 @@ msgstr ""
 msgid "Needs input"
 msgstr "Eingabe erforderlich"
 
+#: src/pages/Inbox.tsx
+msgid "Needs reply"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "Übernahme erforderlich"
@@ -3048,6 +3074,10 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "No longer active"
 msgstr "Nicht mehr aktiv"
+
+#: src/pages/Inbox.tsx
+msgid "No mail"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "No managed app catalog is configured on this deployment."
@@ -4484,6 +4514,7 @@ msgid "To:"
 msgstr "An:"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Today"
 msgstr "Heute"
@@ -4517,6 +4548,7 @@ msgid "Trial ends {day}"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 msgid "Try again"
 msgstr "Erneut versuchen"
