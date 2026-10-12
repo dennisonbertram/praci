@@ -363,14 +363,21 @@ export async function createApp(
     remoteConnectors,
     env.mcpAllowPrivateEndpoint,
   );
-  const integrationSettings = new IntegrationProviderSettings(prisma, secrets, env.encryptionKey, {
-    composio:
-      composioOverride ??
-      (isComposioEnabled(env.composioApiKey)
-        ? new ComposioConnector(env.composioApiKey)
-        : undefined),
-    pipedream,
-  });
+  const integrationSettings = new IntegrationProviderSettings(
+    prisma,
+    secrets,
+    env.encryptionKey,
+    {
+      composio:
+        composioOverride ??
+        (isComposioEnabled(env.composioApiKey)
+          ? new ComposioConnector(env.composioApiKey)
+          : undefined),
+      pipedream,
+    },
+    undefined,
+    new URL("/integrations/google/callback", env.webOrigin).toString(),
+  );
   const stack = createConnectorStack(false, composioOverride, [
     installed,
     ...integrationSettings

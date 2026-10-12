@@ -239,6 +239,7 @@ import {
   resolveBusyBotName,
   toComputerStatus,
 } from "./computer-status.js";
+import { completeNativeOAuth } from "./connection-oauth.js";
 import { inboxGet, inboxList, inboxRefresh, inboxUnreadCount } from "./inbox.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
@@ -4635,7 +4636,9 @@ export function createRouter(deps: RouterDeps) {
       begin: authed.connections.begin.handler(async ({ context, input }) => {
         const connector =
           deps.integrationSettings &&
-          (input.connectorId === "composio" || input.connectorId === "pipedream")
+          (input.connectorId === "composio" ||
+            input.connectorId === "pipedream" ||
+            input.connectorId === "google")
             ? await deps.integrationSettings.resolve(input.connectorId)
             : deps.connectors.managed(input.connectorId);
         if (!connector) {
@@ -4829,6 +4832,25 @@ export function createRouter(deps: RouterDeps) {
         }
       }),
       complete: authed.connections.complete.handler(async ({ context, input }) => {
+        if (input.state !== undefined) {
+          const connector = deps.connectors.managed("google");
+          if (!connector) {
+            throw new ORPCError("BAD_REQUEST", { message: "Connector google is not configured" });
+          }
+          return completeNativeOAuth({
+            prisma: deps.prisma,
+            actor: context.actor,
+            connector,
+            connectorId: "google",
+            state: input.state,
+            code: input.code ?? "",
+            context: connectionContext(context.actor, "connections.complete", context.signal),
+            lock: (tx, connectorId, provider) =>
+              lockProviderConnectionScope(tx, context.actor, connectorId, provider),
+          });
+        }
+        // An undefined id would match any of the caller's rows; the input schema forbids it.
+        if (!input.connectionId) throw new ORPCError("BAD_REQUEST");
         const existing = await deps.prisma.connection.findFirst({
           where: {
             id: input.connectionId,

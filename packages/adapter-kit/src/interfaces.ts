@@ -199,7 +199,7 @@ export interface ConnectionAuthProvider {
   complete(
     request: { state: string; code?: string },
     context: AdapterContext,
-  ): Promise<{ connectionRef: string }>;
+  ): Promise<{ connectionRef: string; secretId?: string }>;
   revoke(connectionRef: string, context: AdapterContext): Promise<void>;
 }
 
