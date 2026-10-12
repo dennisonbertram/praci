@@ -2,9 +2,29 @@ import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { InboxListOutput, InboxTodo, MailRow } from "@rakazo/contracts";
+import { InboxFilterSchema } from "@rakazo/contracts";
 import { dueTone, groupInbox, localDaysUntil } from "@rakazo/core";
-import { Button, Card, Checkbox, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
-import { PanelRightOpen } from "lucide-react";
+import {
+  Button,
+  Card,
+  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  Skeleton,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@rakazo/ui-web";
+import { ListFilter, PanelRightOpen, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
@@ -15,6 +35,21 @@ const ALL = "all";
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 6;
+const MAX_QUERY = 500;
+
+type InboxFilter = (typeof InboxFilterSchema.options)[number];
+
+/** Gmail's own labels for these filters. Search text goes to Gmail as typed. */
+const filterLabels = (): Record<InboxFilter, string> => ({
+  unread: t`Unread`,
+  starred: t`Starred`,
+  important: t`Important`,
+  attachment: t`Has attachment`,
+  primary: t`Primary`,
+  promotions: t`Promotions`,
+  social: t`Social`,
+  updates: t`Updates`,
+});
 
 /** Time of day for today's mail, month and day otherwise. */
 function formatMailTime(iso: string, today: boolean): string {
@@ -42,8 +77,23 @@ export function InboxPage({
 }) {
   const [params, setParams] = useSearchParams();
   const openId = params.get("mail");
+  const filterParam = InboxFilterSchema.safeParse(params.get("filter"));
+  const filter = filterParam.success ? filterParam.data : undefined;
+  const query = (params.get("q") ?? "").trim().slice(0, MAX_QUERY);
+  const filtered = Boolean(filter || query);
+  const [draft, setDraft] = useState(query);
   const [tab, setTab] = useState<string | undefined>();
   const [data, setData] = useState<InboxListOutput | null>(null);
+  // Which request `data` answers, so a changed tab, filter or search shows loading, not old rows.
+  const listKey = JSON.stringify([tab, filter, query]);
+  const [dataKey, setDataKey] = useState("");
+  const keyRef = useRef(listKey);
+  keyRef.current = listKey;
+  // Pages after the first of a filtered or searched list, which Gmail pages for us.
+  const [more, setMore] = useState<{ rows: MailRow[]; token?: string; busy: boolean }>({
+    rows: [],
+    busy: false,
+  });
   const [error, setError] = useState("");
   const [synced, setSynced] = useState(false);
   const [reload, setReload] = useState(0);
@@ -54,9 +104,16 @@ export function InboxPage({
     if (paused) return;
     let live = true;
     rpc.inbox
-      .list(tab ? { connectionId: tab } : {})
+      .list({
+        ...(tab ? { connectionId: tab } : {}),
+        ...(filter ? { filter } : {}),
+        ...(query ? { query } : {}),
+      })
       .then((next) => {
-        if (live) setData(next);
+        if (!live) return;
+        setData(next);
+        setDataKey(listKey);
+        setMore({ rows: [], token: next.nextPageToken, busy: false });
       })
       .catch((cause) => {
         if (!live) return;
@@ -67,7 +124,9 @@ export function InboxPage({
     return () => {
       live = false;
     };
-  }, [tab, reload, paused]);
+  }, [tab, filter, query, reload, paused]);
+
+  useEffect(() => setDraft(query), [query]);
 
   // Triage runs after the sync returns, so refetch a few times while the list reports it pending.
   useEffect(() => {
@@ -100,14 +159,56 @@ export function InboxPage({
     };
   }, [paused, attempt]);
 
-  const groups = useMemo(() => groupInbox(data?.rows ?? [], new Date()), [data]);
+  const rows = useMemo(() => {
+    if (!filtered) return data?.rows ?? [];
+    // Needs reply belongs to the unfiltered view; a page loaded later can repeat a thread.
+    const seen = new Set<string>();
+    return [...(data?.rows ?? []), ...more.rows].flatMap((row) => {
+      const thread = `${row.connectionId}:${row.threadId}`;
+      if (seen.has(thread)) return [];
+      seen.add(thread);
+      return [{ ...row, needsReply: null }];
+    });
+  }, [data, more.rows, filtered]);
+  const groups = useMemo(() => groupInbox(rows, new Date()), [rows]);
   const accounts = data?.accounts ?? [];
   const failed = error || (data && data.failedAccounts.length > 0 ? errorText(undefined) : "");
-  const loading = !data || (data.rows.length === 0 && !synced);
+  const loading = !data || dataKey !== listKey || (!filtered && data.rows.length === 0 && !synced);
   const retry = () => {
     setError("");
     setAttempt((n) => n + 1);
     setReload((n) => n + 1);
+  };
+  const setParam = (name: "filter" | "q", value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(name, value);
+    else next.delete(name);
+    next.delete("mail");
+    setParams(next);
+  };
+  const loadMore = () => {
+    const key = listKey;
+    setMore((m) => ({ ...m, busy: true }));
+    rpc.inbox
+      .list({
+        ...(tab ? { connectionId: tab } : {}),
+        ...(filter ? { filter } : {}),
+        ...(query ? { query } : {}),
+        ...(more.token ? { pageToken: more.token } : {}),
+      })
+      .then((page) => {
+        if (keyRef.current !== key) return;
+        setMore((m) => ({
+          rows: [...m.rows, ...page.rows],
+          token: page.nextPageToken,
+          busy: false,
+        }));
+      })
+      .catch((cause) => {
+        if (keyRef.current !== key) return;
+        setMore((m) => ({ ...m, busy: false }));
+        setError(errorText(cause));
+      });
   };
   const toggle = (id: string) => {
     const next = new URLSearchParams(params);
@@ -144,6 +245,78 @@ export function InboxPage({
               </TabsList>
             </Tabs>
           ) : null}
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              setParam("q", draft.trim());
+            }}
+          >
+            <InputGroup className="w-40 md:w-56">
+              <InputGroupAddon>
+                <Search aria-hidden="true" />
+              </InputGroupAddon>
+              <InputGroupInput
+                type="search"
+                name="inbox-search"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder={t`Search mail`}
+                aria-label={t`Search mail`}
+                maxLength={MAX_QUERY}
+                autoComplete="off"
+              />
+              {draft ? (
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    size="icon-xs"
+                    aria-label={t`Clear`}
+                    onClick={() => {
+                      setDraft("");
+                      setParam("q", "");
+                    }}
+                  >
+                    <X aria-hidden="true" />
+                  </InputGroupButton>
+                </InputGroupAddon>
+              ) : null}
+            </InputGroup>
+          </form>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              data-testid="inbox-filter"
+              render={<Button variant={filter ? "secondary" : "outline"} size="sm" />}
+              aria-label={filter ? undefined : t`Filter`}
+            >
+              <ListFilter aria-hidden="true" />
+              {filter ? filterLabels()[filter] : null}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuRadioGroup
+                value={filter ?? ""}
+                onValueChange={(value) => setParam("filter", String(value))}
+              >
+                {(["unread", "starred", "important", "attachment"] as const).map((name) => (
+                  <DropdownMenuRadioItem key={name} value={name}>
+                    {filterLabels()[name]}
+                  </DropdownMenuRadioItem>
+                ))}
+                <DropdownMenuSeparator />
+                {(["primary", "promotions", "social", "updates"] as const).map((name) => (
+                  <DropdownMenuRadioItem key={name} value={name}>
+                    {filterLabels()[name]}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              {filter ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setParam("filter", "")}>
+                    <Trans>Clear</Trans>
+                  </DropdownMenuItem>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {onShowAgent ? (
             <Button
               variant="ghost"
@@ -179,12 +352,14 @@ export function InboxPage({
           ))}
         </div>
       ) : data && data.rows.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">
-          <Trans>No mail</Trans>
-        </p>
+        failed ? null : (
+          <p className="py-16 text-center text-sm text-muted-foreground">
+            <Trans>No mail</Trans>
+          </p>
+        )
       ) : (
         <>
-          <TodoCard connectionId={tab} list={data} paused={paused} />
+          {filtered ? null : <TodoCard connectionId={tab} list={data} paused={paused} />}
           <InboxGroup
             title={<Trans>Needs reply</Trans>}
             rows={groups.needsReply}
@@ -206,6 +381,13 @@ export function InboxPage({
             onToggle={toggle}
             today={false}
           />
+          {filtered && more.token ? (
+            <div className="grid place-items-center pb-2">
+              <Button variant="outline" size="sm" disabled={more.busy} onClick={loadMore}>
+                <Trans>Load more</Trans>
+              </Button>
+            </div>
+          ) : null}
         </>
       )}
     </div>

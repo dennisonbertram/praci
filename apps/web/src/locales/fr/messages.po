@@ -936,6 +936,7 @@ msgstr "Choisir un fichier"
 msgid "Choose which connected model Rakazo uses."
 msgstr "Choisissez le modèle connecté utilisé par Rakazo."
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
 msgstr "Effacer"
@@ -2259,6 +2260,10 @@ msgstr ""
 msgid "Files"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Filter"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Filter by date"
 msgstr "Filtrer par date"
@@ -2379,6 +2384,10 @@ msgstr "Raccrochez d'abord, puis saisissez le code à l'écran."
 msgid "Hang up, then enter the code on screen."
 msgstr "Raccrochez, puis saisissez le code à l'écran."
 
+#: src/pages/Inbox.tsx
+msgid "Has attachment"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "header"
 msgstr "en-tête"
@@ -2464,6 +2473,10 @@ msgstr "Zone de téléchargement d'image"
 #: src/pages/PluginsOverlay.tsx
 msgid "Import OpenAPI JSON"
 msgstr "Importer OpenAPI JSON"
+
+#: src/pages/Inbox.tsx
+msgid "Important"
+msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "In progress"
@@ -2615,6 +2628,7 @@ msgid "Load earlier messages"
 msgstr "Charger les messages précédents"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/Inbox.tsx
 msgid "Load more"
 msgstr "Charger plus"
 
@@ -3443,6 +3457,10 @@ msgstr "Aperçu de {0}"
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr "L'aperçu n'est pas disponible pour ce type de fichier — téléchargez-le pour le consulter."
 
+#: src/pages/Inbox.tsx
+msgid "Primary"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Priority"
 msgstr ""
@@ -3458,6 +3476,10 @@ msgstr "Espace de travail privé avec ses propres bots et groupes."
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Project ID"
 msgstr "ID du projet"
+
+#: src/pages/Inbox.tsx
+msgid "Promotions"
+msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Protected input"
@@ -3970,6 +3992,10 @@ msgstr "Rechercher par domaine"
 msgid "Search integrations.sh"
 msgstr "Rechercher sur integrations.sh"
 
+#: src/pages/Inbox.tsx
+msgid "Search mail"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
 msgstr "Rechercher des modèles"
@@ -4200,6 +4226,10 @@ msgstr "Message Slack"
 msgid "Slack not enabled"
 msgstr "Slack non activé"
 
+#: src/pages/Inbox.tsx
+msgid "Social"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "Mise à jour logicielle"
@@ -4248,6 +4278,10 @@ msgstr "Modèle de parole"
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO est temporairement indisponible. Réessayez."
+
+#: src/pages/Inbox.tsx
+msgid "Starred"
+msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
@@ -4624,6 +4658,10 @@ msgstr "Réactiver le micro"
 msgid "Unpin"
 msgstr "Désépingler"
 
+#: src/pages/Inbox.tsx
+msgid "Unread"
+msgstr ""
+
 #. placeholder {0}: pending.file.name
 #: src/pages/Shell.tsx
 msgid "Unsupported file type: {0}"
@@ -4667,6 +4705,7 @@ msgstr "Mis à jour"
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
 msgstr "Mises à jour"

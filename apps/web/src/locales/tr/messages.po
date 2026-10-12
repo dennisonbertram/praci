@@ -936,6 +936,7 @@ msgstr "Dosya seç"
 msgid "Choose which connected model Rakazo uses."
 msgstr "Rakazo'nun hangi bağlı modeli kullanacağını seç."
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
 msgstr "Temizle"
@@ -2259,6 +2260,10 @@ msgstr ""
 msgid "Files"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Filter"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Filter by date"
 msgstr ""
@@ -2379,6 +2384,10 @@ msgstr ""
 msgid "Hang up, then enter the code on screen."
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Has attachment"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "header"
 msgstr ""
@@ -2464,6 +2473,10 @@ msgstr "Görüntü yükleme alanı"
 #: src/pages/PluginsOverlay.tsx
 msgid "Import OpenAPI JSON"
 msgstr "OpenAPI JSON içe aktar"
+
+#: src/pages/Inbox.tsx
+msgid "Important"
+msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "In progress"
@@ -2615,6 +2628,7 @@ msgid "Load earlier messages"
 msgstr "Önceki mesajları yükle"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/Inbox.tsx
 msgid "Load more"
 msgstr ""
 
@@ -3443,6 +3457,10 @@ msgstr "{0} önizle"
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Primary"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Priority"
 msgstr ""
@@ -3457,6 +3475,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Project ID"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Promotions"
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -3970,6 +3992,10 @@ msgstr ""
 msgid "Search integrations.sh"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Search mail"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
 msgstr ""
@@ -4200,6 +4226,10 @@ msgstr ""
 msgid "Slack not enabled"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Social"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr ""
@@ -4248,6 +4278,10 @@ msgstr "Konuşma modeli"
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO geçici olarak kullanılamıyor. Yeniden deneyin."
+
+#: src/pages/Inbox.tsx
+msgid "Starred"
+msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
@@ -4624,6 +4658,10 @@ msgstr "Sesi aç"
 msgid "Unpin"
 msgstr "Sabitlemeyi kaldır"
 
+#: src/pages/Inbox.tsx
+msgid "Unread"
+msgstr ""
+
 #. placeholder {0}: pending.file.name
 #: src/pages/Shell.tsx
 msgid "Unsupported file type: {0}"
@@ -4667,6 +4705,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
 msgstr "Güncellemeler"
