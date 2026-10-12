@@ -300,3 +300,32 @@ test("owners can choose Google and see the redirect URI to register", async ({
       },
     ]);
 });
+
+test("the Google callback page finishes the connection with the state and code", async ({
+  page,
+}) => {
+  const completed: unknown[] = [];
+  await page.route("**/rpc/connections/complete", (route) => {
+    completed.push(route.request().postDataJSON());
+    return route.fulfill({
+      json: { json: { id: "00000000-0000-4000-8000-000000000000", status: "connected" } },
+    });
+  });
+  await signup(page, `google-callback-${Date.now()}@rakazo.test`, "password12", "Google Callback");
+  await completeOnboarding(page);
+  await page.goto("/integrations/google/callback?code=fake-code&state=fake-state");
+  await expect
+    .poll(() => completed)
+    .toEqual([{ json: { state: "fake-state", code: "fake-code" } }]);
+  await page.waitForURL(/\/app/);
+});
+
+test("the Google callback page shows the failure and a way back when Google denies access", async ({
+  page,
+}) => {
+  await signup(page, `google-denied-${Date.now()}@rakazo.test`, "password12", "Google Denied");
+  await completeOnboarding(page);
+  await page.goto("/integrations/google/callback?error=access_denied");
+  await expect(page.getByText("OAuth connection failed")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Return to Rakazo" })).toBeVisible();
+});
