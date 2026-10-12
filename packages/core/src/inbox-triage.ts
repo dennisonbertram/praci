@@ -146,7 +146,7 @@ export function parseTriageResponse(raw: string, inputIds: string[]): TriageItem
   return result;
 }
 
-const priorityRank = (priority: string | null) => {
+export const priorityRank = (priority: string | null) => {
   const rank = PRIORITIES.indexOf(priority as TriagePriority);
   return rank === -1 ? PRIORITIES.length : rank;
 };

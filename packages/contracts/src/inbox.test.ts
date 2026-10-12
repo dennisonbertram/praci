@@ -14,11 +14,13 @@ describe("inbox contracts", () => {
         rows: [],
         syncedAt: null,
         failedAccounts: [],
+        enabled: false,
+        triagePending: false,
       }),
     ).toMatchObject({ accounts: [], agent: null });
   });
 
-  it("rejects a row without the needsReply field, which item 5 fills in later", () => {
+  it("rejects a row without the triage fields (needsReply, priority, reason)", () => {
     const row = {
       id: "m1",
       connectionId: "c1",
@@ -36,8 +38,12 @@ describe("inbox contracts", () => {
         rows: [r],
         syncedAt: null,
         failedAccounts: [],
+        enabled: true,
+        triagePending: false,
       }).success;
     expect(parse(row)).toBe(false);
-    expect(parse({ ...row, needsReply: null })).toBe(true);
+    expect(parse({ ...row, needsReply: null })).toBe(false);
+    expect(parse({ ...row, needsReply: null, priority: null, reason: null })).toBe(true);
+    expect(parse({ ...row, needsReply: true, priority: "urgent", reason: null })).toBe(false);
   });
 });

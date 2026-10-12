@@ -34,6 +34,7 @@ import type {
   PiOAuthLogins,
   RemoteConnectorDependencies,
   TicketChangeNotifier,
+  TriageReadinessDeps,
 } from "@rakazo/adapters";
 import {
   acquireComputerExecutionLease,
@@ -241,7 +242,14 @@ import {
   toComputerStatus,
 } from "./computer-status.js";
 import { completeNativeOAuth } from "./connection-oauth.js";
-import { inboxGet, inboxList, inboxRefresh, inboxUnreadCount } from "./inbox.js";
+import {
+  inboxGet,
+  inboxList,
+  inboxRefresh,
+  inboxTodoSetDone,
+  inboxTodosList,
+  inboxUnreadCount,
+} from "./inbox.js";
 import { ensureInboxAgent } from "./inbox-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
@@ -587,6 +595,8 @@ export interface RouterDeps {
   artifacts: ArtifactStore;
   /** Provider-neutral mail access; the Inbox handlers read and sync through it. */
   mail: MailProvider;
+  /** The executor's model resolver; the Inbox `enabled` flag asks the same question as the triage job. */
+  resolveModel?: TriageReadinessDeps["resolveModel"];
   dataDir: string;
   /** Present when the external messaging surface is enabled. */
   messaging?: { enabled: boolean; providers: string[]; openSignup: boolean };
@@ -5869,6 +5879,14 @@ export function createRouter(deps: RouterDeps) {
       unreadCount: authed.inbox.unreadCount.handler(({ context }) =>
         inboxUnreadCount(deps, context.actor),
       ),
+      todos: {
+        list: authed.inbox.todos.list.handler(({ context, input }) =>
+          inboxTodosList(deps, context.actor, input),
+        ),
+        setDone: authed.inbox.todos.setDone.handler(({ context, input }) =>
+          inboxTodoSetDone(deps, context.actor, input),
+        ),
+      },
     },
     artifacts: {
       list: authed.artifacts.list.handler(async ({ context, input }) => {
