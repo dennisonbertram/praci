@@ -445,6 +445,27 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     ).not.toBeNull();
   });
 
+  it("writes nothing when the connection is revoked while a sync is in flight", async () => {
+    seed("revoke-mid", [message("a", 1, ["INBOX"])]);
+    const account = await connect("revoke-mid");
+    let release!: () => void;
+    holds.set("revoke-mid-op", new Promise<void>((resolve) => (release = resolve)));
+
+    const inFlight = sync(account, "revoke-mid-op");
+    await expect.poll(async () => (await state(account.id)).claimToken).not.toBeNull();
+    await prisma.$transaction(async (tx) => {
+      await tx.connection.update({ where: { id: account.id }, data: { status: "revoked" } });
+      await deleteMailConnectionData(tx, { spaceId, userId, connectionId: account.id });
+    });
+    release();
+
+    expect(await inFlight).toBe("skipped");
+    expect(await rows(account.id)).toHaveLength(0);
+    expect(
+      await prisma.mailSyncState.findUnique({ where: { connectionId: account.id } }),
+    ).toBeNull();
+  });
+
   describe("metadata cache in listMessages", () => {
     const three = [
       message("c1", 1, ["INBOX"]),
@@ -483,6 +504,19 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
 
       expect(getCalls()).toBe(6);
       expect(await rows(account.id)).toHaveLength(0);
+    });
+
+    it("never serves one connection's cached row to another connection with the same message id", async () => {
+      seed("iso-a", [message("same-id", 1, ["INBOX"], { subject: "Mailbox A" })]);
+      const first = await connect("iso-a");
+      await mail.listMessages(first, { query: "", pageSize: 10 }, ctx());
+      seed("iso-b", [message("same-id", 1, ["INBOX"], { subject: "Mailbox B" })]);
+      const second = await connect("iso-b");
+
+      const page = await mail.listMessages(second, { query: "", pageSize: 10 }, ctx());
+
+      expect(page.messages.map((m) => m.subject)).toEqual(["Mailbox B"]);
+      expect(getCalls()).toBe(1);
     });
 
     it("does not overwrite sync state when a search sees a synced message", async () => {
