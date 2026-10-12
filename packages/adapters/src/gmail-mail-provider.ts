@@ -32,8 +32,11 @@ const RATE_REASONS = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
 export type MailSleep = (ms: number, signal: AbortSignal) => Promise<void>;
 
 export interface GmailMailProviderDeps {
-  /** Needed by `listAccounts` only. */
-  prisma?: Pick<PrismaClient, "connection">;
+  /**
+   * `connection` serves `listAccounts`. `cachedMailMessage` turns on the Postgres metadata cache
+   * in `listMessages`; without it (the emulator) every listed id is fetched.
+   */
+  prisma?: Pick<PrismaClient, "connection"> & Partial<Pick<PrismaClient, "cachedMailMessage">>;
   connectors: { managed(id: string): ManagedConnectorProvider | undefined };
   /** Backoff wait; resolves early when the signal aborts. Injected by tests. */
   sleep?: MailSleep;
@@ -153,11 +156,19 @@ export class GmailMailProvider implements MailProvider {
     const wanted = ids;
     const results: Array<MailMessageSummary | undefined> = [];
     const done = new Set<number>();
+    const cached = request.useCache === false ? new Map() : await this.readCache(account, wanted);
+    wanted.forEach((id, index) => {
+      const hit = cached.get(id);
+      if (!hit) return;
+      results[index] = hit;
+      done.add(index);
+    });
     let next = 0;
     let stopped = false;
     const worker = async () => {
       while (!stopped && next < wanted.length) {
         const index = next++;
+        if (done.has(index)) continue;
         try {
           const data = await this.request(
             account,
@@ -184,12 +195,94 @@ export class GmailMailProvider implements MailProvider {
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, wanted.length) }, worker));
 
     const unhydratedIds = wanted.filter((_, index) => !done.has(index));
+    if (request.useCache !== false) {
+      await this.writeCache(
+        account,
+        results.filter(
+          (m, index): m is MailMessageSummary => Boolean(m) && !cached.has(wanted[index] as string),
+        ),
+      );
+    }
     return {
       messages: results.filter((m): m is MailMessageSummary => Boolean(m)),
       ...(nextPageToken ? { nextPageToken } : {}),
       ...(resultSizeEstimate === undefined ? {} : { resultSizeEstimate }),
       ...(unhydratedIds.length ? { unhydratedIds } : {}),
     };
+  }
+
+  /** Metadata for the ids a search already hydrated. A cache failure never fails the search. */
+  private async readCache(
+    account: MailAccount,
+    ids: string[],
+  ): Promise<Map<string, MailMessageSummary>> {
+    const cache = this.deps.prisma?.cachedMailMessage;
+    const hits = new Map<string, MailMessageSummary>();
+    if (!cache || ids.length === 0) return hits;
+    try {
+      const rows = await cache.findMany({
+        where: {
+          connectionId: account.id,
+          spaceId: account.spaceId,
+          userId: account.userId,
+          providerMessageId: { in: ids },
+        },
+      });
+      for (const row of rows) {
+        hits.set(row.providerMessageId, {
+          id: row.providerMessageId,
+          threadId: row.threadId,
+          date: row.receivedAt.toISOString(),
+          from: row.fromAddress
+            ? { ...(row.fromName ? { name: row.fromName } : {}), address: row.fromAddress }
+            : null,
+          to: row.toAddresses.map((address) => ({ address })),
+          cc: row.ccAddresses.map((address) => ({ address })),
+          subject: row.subject,
+          snippet: row.snippet,
+          unread: row.unread,
+          labelIds: [
+            ...(row.inInbox ? ["INBOX"] : []),
+            ...(row.fromSelf ? ["SENT"] : []),
+            ...(row.unread ? ["UNREAD"] : []),
+          ],
+        });
+      }
+    } catch {
+      // Fall back to fetching every id.
+    }
+    return hits;
+  }
+
+  /** Inserts newly hydrated metadata as search-only rows; sync state is never touched. */
+  private async writeCache(account: MailAccount, messages: MailMessageSummary[]): Promise<void> {
+    const cache = this.deps.prisma?.cachedMailMessage;
+    if (!cache || messages.length === 0) return;
+    const seenAt = new Date();
+    try {
+      await cache.createMany({
+        skipDuplicates: true,
+        data: messages.map((m) => ({
+          spaceId: account.spaceId,
+          userId: account.userId,
+          connectionId: account.id,
+          providerMessageId: m.id,
+          threadId: m.threadId,
+          fromName: m.from?.name ?? null,
+          fromAddress: m.from?.address ?? "",
+          toAddresses: m.to.map((a) => a.address),
+          ccAddresses: m.cc.map((a) => a.address),
+          subject: m.subject.slice(0, 500),
+          snippet: m.snippet.slice(0, 500),
+          receivedAt: new Date(m.date),
+          unread: m.unread,
+          inInbox: false,
+          seenAt,
+        })),
+      });
+    } catch {
+      // The cache is an optimization.
+    }
   }
 
   async getMessage(
@@ -299,7 +392,7 @@ export class GmailMailProvider implements MailProvider {
 }
 
 export function createMailProvider(
-  deps: GmailMailProviderDeps & { prisma: Pick<PrismaClient, "connection"> },
+  deps: GmailMailProviderDeps & { prisma: NonNullable<GmailMailProviderDeps["prisma"]> },
 ): MailProvider {
   return new GmailMailProvider(deps);
 }

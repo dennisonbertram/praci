@@ -6,6 +6,7 @@ import type {
   ArtifactStore,
   ConnectorCatalogItem,
   JobPublisher,
+  MailProvider,
   MemoryStore,
   SandboxProvider,
   SecretStore,
@@ -58,6 +59,7 @@ import {
   createTicket,
   createVoiceProvider,
   defaultCatalogModelId,
+  deleteMailConnectionData,
   deletePushToken,
   deploymentAutoReviewDefault,
   destroyBot,
@@ -235,6 +237,7 @@ import {
   resolveBusyBotName,
   toComputerStatus,
 } from "./computer-status.js";
+import { inboxGet, inboxList, inboxRefresh, inboxUnreadCount } from "./inbox.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
   dismissMcpServerApprovals,
@@ -577,6 +580,8 @@ export interface RouterDeps {
   connectors: ConnectorRegistry;
   remoteConnectors?: RemoteConnectorDependencies;
   artifacts: ArtifactStore;
+  /** Provider-neutral mail access; the Inbox handlers read and sync through it. */
+  mail: MailProvider;
   dataDir: string;
   /** Present when the external messaging surface is enabled. */
   messaging?: { enabled: boolean; providers: string[]; openSignup: boolean };
@@ -5237,6 +5242,12 @@ export function createRouter(deps: RouterDeps) {
                 previousStatus: null as string | null,
               };
             }
+            // Revoking only marks the row, so no cascade fires; mail data goes explicitly.
+            await deleteMailConnectionData(tx, {
+              spaceId: context.actor.spaceId,
+              userId: context.actor.userId,
+              connectionId: row.id,
+            });
 
             const remaining = await tx.connection.count({
               where: {
@@ -5801,6 +5812,20 @@ export function createRouter(deps: RouterDeps) {
         });
         return loadAutoReviewSettings(deps, context.actor);
       }),
+    },
+    inbox: {
+      list: authed.inbox.list.handler(({ context, input }) =>
+        inboxList(deps, context.actor, input),
+      ),
+      refresh: authed.inbox.refresh.handler(({ context, input }) =>
+        inboxRefresh(deps, context.actor, input, context.signal),
+      ),
+      get: authed.inbox.get.handler(({ context, input }) =>
+        inboxGet(deps, context.actor, input, context.signal),
+      ),
+      unreadCount: authed.inbox.unreadCount.handler(({ context }) =>
+        inboxUnreadCount(deps, context.actor),
+      ),
     },
     artifacts: {
       list: authed.artifacts.list.handler(async ({ context, input }) => {
