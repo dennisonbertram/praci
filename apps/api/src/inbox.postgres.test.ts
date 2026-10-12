@@ -2,6 +2,7 @@ import { createRouterClient } from "@orpc/server";
 import type {
   AdapterContext,
   ConnectorProxyRequest,
+  JobPublisher,
   MailProvider,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
@@ -45,7 +46,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
   let close: () => Promise<void>;
   let gmail: GmailApiEmulator;
   let mail: MailProvider;
-  let deps: { prisma: PrismaClient; mail: MailProvider };
+  let deps: { prisma: PrismaClient; mail: MailProvider; jobs: JobPublisher };
 
   let connA: string;
   let connB: string;
@@ -154,7 +155,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       connectors: { managed: () => connector },
       sleep: async () => {},
     });
-    deps = { prisma, mail };
+    deps = { prisma, mail, jobs: { enqueue: async () => {} } as unknown as JobPublisher };
   });
 
   afterAll(async () => {

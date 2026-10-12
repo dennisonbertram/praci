@@ -10,8 +10,8 @@ import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { describe, expect, it, vi } from "vitest";
 import { createBackgroundJobHandlers } from "./background-job-handlers.js";
 import { createRunExecutor } from "./executor.js";
-import { runInboxTriage } from "./inbox-triage.js";
 import { compactHistory } from "./history-compaction.js";
+import { runInboxTriage } from "./inbox-triage.js";
 import { deliverMessagingOutbound, mirrorMessagingOutbound } from "./messaging-delivery.js";
 import type { EncryptedSecretStore } from "./secrets.js";
 

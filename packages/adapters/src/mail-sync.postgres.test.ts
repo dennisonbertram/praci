@@ -4,8 +4,8 @@ import type {
   BackgroundJob,
   ConnectorProxyRequest,
   ConnectorProxyResponse,
-  MailAccount,
   JobPublisher,
+  MailAccount,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";

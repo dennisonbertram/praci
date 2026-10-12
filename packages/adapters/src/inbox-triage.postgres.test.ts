@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type {
   AgentRunModel,
   AgentRunRequest,
@@ -19,7 +18,6 @@ const describePostgres =
   process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
 
 const MINUTE = 60_000;
-const DAY = 86_400_000;
 const model: AgentRunModel = { provider: "openrouter", id: "test-model", apiKey: "test-key" };
 const modelKey = aiRecipient({ provider: "openrouter", modelId: "test-model", use: "model" })?.key;
 
@@ -170,7 +168,11 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
   const run = (
     user: TestUser,
     rt: AgentRuntime,
-    options: { jobs?: JobPublisher; client?: PrismaClient; resolve?: () => Promise<AgentRunModel> } = {},
+    options: {
+      jobs?: JobPublisher;
+      client?: PrismaClient;
+      resolve?: () => Promise<AgentRunModel>;
+    } = {},
   ) =>
     runInboxTriage(
       {
@@ -229,7 +231,17 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     expect(sent?.snippet).toHaveLength(500);
     expect(sent).toMatchObject({ addressedToMe: true, threadLength: 1, to: [user.address] });
     expect(Object.keys(sent as object).sort()).toEqual(
-      ["addressedToMe", "cc", "from", "id", "receivedAt", "snippet", "subject", "threadLength", "to"].sort(),
+      [
+        "addressedToMe",
+        "cc",
+        "from",
+        "id",
+        "receivedAt",
+        "snippet",
+        "subject",
+        "threadLength",
+        "to",
+      ].sort(),
     );
     const usage = await prisma.usageRecord.findMany({
       where: { spaceId, userId: user.userId },
@@ -296,8 +308,8 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     const user = await addUser();
     const kept = await mail(user, "Answered", { minutesAgo: 1 });
     const skipped = await mail(user, "Skipped", { minutesAgo: 2 });
-    const rt = fakeRuntime(
-      (prompt) => answerAll()(prompt).replace(skipped.id, "unknown-id-from-model"),
+    const rt = fakeRuntime((prompt) =>
+      answerAll()(prompt).replace(skipped.id, "unknown-id-from-model"),
     );
 
     await run(user, rt.runtime);
@@ -359,7 +371,9 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     await mail(user, "Waiting");
     const rt = fakeRuntime(answerAll());
 
-    await run(user, rt.runtime, { resolve: async () => ({ provider: "scripted", id: "scripted" }) });
+    await run(user, rt.runtime, {
+      resolve: async () => ({ provider: "scripted", id: "scripted" }),
+    });
     await run(user, rt.runtime, {
       resolve: async () => {
         throw new Error("Connect a model in Settings before running bots.");
@@ -410,7 +424,10 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     const todos = await todosOf(user);
     expect(todos).toHaveLength(MAX_OPEN_TODOS);
     expect(todos.map((t) => t.text).sort()).toEqual(
-      priorities.slice(0, 5).map((p, i) => `Reply to ${p}-${i}`).sort(),
+      priorities
+        .slice(0, 5)
+        .map((p, i) => `Reply to ${p}-${i}`)
+        .sort(),
     );
     expect(todos.every((t) => t.detail === "Asked a direct question")).toBe(true);
   });
@@ -494,10 +511,7 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     for (let i = 0; i < 4; i += 1) await mail(user, `Mail ${i}`, { minutesAgo: i + 1 });
     const rt = fakeRuntime(answerAll(), 150);
 
-    await Promise.all([
-      run(user, rt.runtime),
-      run(user, rt.runtime, { client: other.prisma }),
-    ]);
+    await Promise.all([run(user, rt.runtime), run(user, rt.runtime, { client: other.prisma })]);
 
     // Both runs classified the batch; the cost is a duplicate call, not duplicate data.
     expect(rt.requests).toHaveLength(2);

@@ -1,5 +1,11 @@
 import { ORPCError } from "@orpc/server";
-import type { AdapterContext, MailAccount, MailAddress, MailProvider } from "@rakazo/adapter-kit";
+import type {
+  AdapterContext,
+  JobPublisher,
+  MailAccount,
+  MailAddress,
+  MailProvider,
+} from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
 import { isMailConnection, syncMailbox } from "@rakazo/adapters";
 import type { Actor, InboxListOutput } from "@rakazo/contracts";
@@ -11,6 +17,7 @@ import { getLogger } from "@rakazo/logging";
 export interface InboxDeps {
   prisma: PrismaClient;
   mail: MailProvider;
+  jobs: JobPublisher;
 }
 
 const WINDOW_MS = 14 * 86_400_000;
