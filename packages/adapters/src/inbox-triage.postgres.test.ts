@@ -821,6 +821,17 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
       expect((await todosOf(user)).map((t) => t.text)).toEqual(["Pay invoice 42"]);
     });
 
+    it("makes a to-do for a personal message the classifier says needs a reply", async () => {
+      const user = await withTypesafeConsent();
+      await mail(user, "Lunch Friday?");
+      const classifier = scriptedClassifier(() => ({ category: "personal", needsReply: true }));
+      const rt = fakeRuntime(answerAll(() => ({ category: "fyi", todo: "Reply about lunch" })));
+
+      await run(user, rt.runtime, { classifier: classifier.provider });
+
+      expect((await todosOf(user)).map((t) => t.text)).toEqual(["Reply about lunch"]);
+    });
+
     it("records the classifier's tokens as triage usage", async () => {
       const user = await withTypesafeConsent();
       await mail(user, "Digest");
@@ -851,6 +862,133 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
       expect(fetchSpy).not.toHaveBeenCalled();
       expect(rt.requests).toHaveLength(1);
       expect((await messagesOf(user))[0]?.category).toBe("reply");
+    });
+
+    it("re-triages a row stamped with the previous TRIAGE_VERSION under the new category set", async () => {
+      const user = await withTypesafeConsent();
+      const row = await mail(user, "Old label");
+      await prisma.cachedMailMessage.update({
+        where: { id: row.id },
+        data: { triagedAt: new Date(), triageVersion: TRIAGE_VERSION - 1, category: "bulk" },
+      });
+      const classifier = scriptedClassifier(() => ({ category: "receipt" }));
+
+      await run(user, fakeRuntime(answerAll()).runtime, { classifier: classifier.provider });
+
+      expect(
+        await prisma.cachedMailMessage.findUniqueOrThrow({ where: { id: row.id } }),
+      ).toMatchObject({ category: "receipt", triageVersion: TRIAGE_VERSION });
+    });
+
+    it("ignores a classifier item for an id it was not sent or repeated", async () => {
+      const user = await withTypesafeConsent();
+      const row = await mail(user, "Real");
+      const classifier: InboxClassifierProvider = {
+        describe: () => ({
+          id: "typesafe",
+          contractVersion: "1",
+          adapterVersion: "0",
+          capabilities: {},
+        }),
+        classify: async () => {
+          const item = (
+            id: string,
+            category: InboxClassification["category"],
+          ): InboxClassification => ({
+            id,
+            category,
+            priority: "low",
+            needsReply: false,
+            signals: [],
+            confidence: 1,
+            reason: null,
+            todo: null,
+            due: null,
+          });
+          return {
+            model: "m",
+            items: [
+              item("someone-elses-id", "scam"),
+              item(row.id, "receipt"),
+              item(row.id, "scam"),
+            ],
+          };
+        },
+      };
+      const rt = fakeRuntime(answerAll());
+
+      await run(user, rt.runtime, { classifier });
+
+      expect(
+        await prisma.cachedMailMessage.findUniqueOrThrow({ where: { id: row.id } }),
+      ).toMatchObject({ category: "receipt" });
+      expect(rt.requests).toHaveLength(0);
+    });
+
+    it("gives the classifier at most one batch of 20 per call", async () => {
+      const user = await withTypesafeConsent();
+      for (let i = 0; i < 45; i += 1) await mail(user, `Mail ${i}`, { minutesAgo: i + 1 });
+      const classifier = scriptedClassifier(() => ({ category: "notification" }));
+
+      await run(user, fakeRuntime(answerAll()).runtime, { classifier: classifier.provider });
+
+      expect(classifier.batches.map((b) => b.length)).toEqual([20, 20, 5]);
+    });
+
+    it("leaves a labeled message unwritten when the LLM step fails, so the job retries all of it", async () => {
+      const user = await withTypesafeConsent();
+      await mail(user, "Needs an answer");
+      const classifier = scriptedClassifier(() => ({ category: "personal", needsReply: true }));
+      const rt = fakeRuntime(() => "I cannot help with that.");
+
+      await expect(run(user, rt.runtime, { classifier: classifier.provider })).rejects.toThrow();
+
+      expect((await messagesOf(user)).every((m) => m.triagedAt === null)).toBe(true);
+    });
+
+    it("sends only the failed message to the LLM when the vendor errors on part of a batch", async () => {
+      const user = await withTypesafeConsent();
+      const ok = await mail(user, "Fine", { minutesAgo: 1 });
+      const failed = await mail(user, "Vendor 500", { minutesAgo: 2 });
+      const fetchSpy = vi.fn(async (_url: unknown, init?: RequestInit) => {
+        const { state } = JSON.parse(String(init?.body)) as { state: { subject: string } };
+        if (state.subject === "Vendor 500") return new Response("{}", { status: 500 });
+        return new Response(
+          JSON.stringify({
+            model: "jev-1.13.0",
+            answers: {
+              category: { type: "choice", choice: "receipt", probabilities: {}, confidence: 0.95 },
+              needs_response: { type: "noul", noul: 0.02 },
+              is_newsletter: { type: "noul", noul: 0.1 },
+              is_phishing: { type: "noul", noul: 0.01 },
+              is_junk: { type: "noul", noul: 0.01 },
+              brand_mismatch: { type: "noul", noul: 0.01 },
+              priority: {
+                type: "score",
+                score: 0.2,
+                legend: {},
+                probabilities: {},
+                confidence: 0.9,
+              },
+            },
+            usage: { input_tokens: 100, output_tokens: 10 },
+          }),
+          { status: 200 },
+        );
+      });
+      const classifier = new TypesafeInboxClassifier({
+        apiKey: "ts-key",
+        retryDelayMs: 0,
+        fetch: fetchSpy as typeof fetch,
+      });
+      const rt = fakeRuntime(answerAll(() => ({ category: "action", reason: "Needs a look" })));
+
+      await run(user, rt.runtime, { classifier });
+
+      expect(rt.prompts().map(idsIn)).toEqual([[failed.id]]);
+      const rows = Object.fromEntries((await messagesOf(user)).map((m) => [m.id, m]));
+      expect(rows[ok.id]).toMatchObject({ category: "receipt", reason: null });
+      expect(rows[failed.id]).toMatchObject({ category: "action", reason: "Needs a look" });
     });
 
     it("classifies hostile mail through the real adapter without the LLM or a to-do", async () => {
