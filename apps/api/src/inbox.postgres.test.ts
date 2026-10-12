@@ -893,6 +893,22 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         expect(queued).toEqual([job]);
       });
 
+      it("enqueues triage for mail cached earlier even when Gmail fails during the refresh", async () => {
+        await wipe();
+        await wipeConsent();
+        seedMailboxes();
+        await refresh();
+        await allow(a);
+        await prisma.$executeRaw`UPDATE mail_sync_states SET "lastSyncedAt" = now() - interval '5 minutes' WHERE "connectionId" = ${connA}`;
+        gmail.failNext(503, { times: 1000 });
+        queued.length = 0;
+
+        await refresh();
+
+        expect(queued).toEqual([job]);
+        await wipeConsent();
+      });
+
       it("does not enqueue when triage is not ready or no mail waits for it", async () => {
         await wipe();
         await wipeConsent();
