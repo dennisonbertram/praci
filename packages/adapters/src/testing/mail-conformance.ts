@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { type AdapterContext, type MailProvider, MailProviderError } from "@rakazo/adapter-kit";
 import type { MailEmulator } from "../gmail-api-emulator.js";
+import { parseRawMime } from "../mime-parse.js";
 
 /**
  * Behavior every MailProvider must show against the seeded Gmail emulator: listing, paging,
@@ -73,5 +74,73 @@ export async function assertMailConformance(
   await assert.rejects(
     provider.listMessages(a, everything, context),
     (error) => error instanceof MailProviderError && error.kind === "auth",
+  );
+}
+
+/**
+ * Write behavior every MailProvider must show: save, change and send a draft, a threaded reply,
+ * and delete a draft. Run it after `assertMailConformance`; it reads the result from the emulator.
+ */
+export async function assertMailWriteConformance(
+  provider: MailProvider,
+  emulator: Pick<MailEmulator, "gmail" | "accounts">,
+): Promise<void> {
+  const [a] = emulator.accounts;
+  assert.ok(a, "conformance needs an account");
+  const context: AdapterContext = {
+    operationId: "mail-write-conformance",
+    traceId: "mail-write-conformance",
+    spaceId: a.spaceId,
+    userId: a.userId,
+    signal: new AbortController().signal,
+  };
+  const draft = {
+    to: [{ name: "Priya Shah", address: "priya@example.test" }],
+    cc: [],
+    bcc: [],
+    subject: "Conformance",
+    text: "first version",
+  };
+  const created = await provider.createDraft(a, draft, context);
+  assert.ok(created.draftId);
+  assert.equal(emulator.gmail.draftsOf(a.accountRef).length, 1);
+  assert.equal(emulator.gmail.sentOf(a.accountRef).length, 0, "saving a draft sends nothing");
+
+  const updated = await provider.updateDraft(
+    a,
+    created.draftId,
+    { ...draft, text: "second version" },
+    context,
+  );
+  assert.equal(updated.draftId, created.draftId);
+  assert.equal(emulator.gmail.draftsOf(a.accountRef).length, 1);
+
+  const sent = await provider.sendDraft(a, created.draftId, context);
+  assert.ok(sent.messageId && sent.threadId);
+  assert.equal(emulator.gmail.draftsOf(a.accountRef).length, 0, "a sent draft is gone");
+  const [record] = emulator.gmail.sentOf(a.accountRef);
+  assert.equal(record?.id, sent.messageId);
+  assert.match(parseRawMime(record?.raw ?? "").text ?? "", /second version/);
+
+  const listed = await provider.listMessages(a, { query: "in:sent", pageSize: 500 }, context);
+  assert.ok(listed.messages.some((m) => m.id === sent.messageId));
+
+  const reply = await provider.createDraft(
+    a,
+    { ...draft, subject: "Re: Contract renewal", inReplyTo: "a-01" },
+    context,
+  );
+  assert.equal(reply.threadId, "t-contract");
+  await provider.sendDraft(a, reply.draftId, context);
+  const replied = emulator.gmail.sentOf(a.accountRef).at(-1);
+  assert.equal(replied?.threadId, "t-contract");
+  assert.equal(parseRawMime(replied?.raw ?? "").header("In-Reply-To"), "<a-01@mail.example.test>");
+
+  const spare = await provider.createDraft(a, draft, context);
+  await provider.deleteDraft(a, spare.draftId, context);
+  assert.equal(emulator.gmail.draftsOf(a.accountRef).length, 0);
+  await assert.rejects(
+    provider.deleteDraft(a, spare.draftId, context),
+    (error) => error instanceof MailProviderError && error.kind === "not_found",
   );
 }

@@ -729,6 +729,10 @@ msgstr ""
 msgid "Basic auth ({username})"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Bcc"
+msgstr ""
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -867,6 +871,10 @@ msgstr "Annulé"
 #: src/pages/Artifacts.tsx
 msgid "Card view"
 msgstr "Vue en cartes"
+
+#: src/components/ComposeEmail.tsx
+msgid "Cc"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Change password"
@@ -1117,6 +1125,11 @@ msgstr ""
 #: src/pages/ScratchpadSection.tsx
 msgid "Complete"
 msgstr "Terminé"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Compose"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -1763,6 +1776,14 @@ msgstr "Impossible de charger les paramètres de messagerie"
 msgid "Couldn't reach Gmail."
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't save the draft"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't send. Try again."
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
 msgstr "Impossible de mettre à jour les avatars"
@@ -2013,6 +2034,10 @@ msgstr "MCP direct"
 msgid "Disabled tools"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Discard"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2106,6 +2131,10 @@ msgstr ""
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
 msgstr "Téléchargement en cours…"
+
+#: src/components/ComposeEmail.tsx
+msgid "Draft saved"
+msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
@@ -2347,10 +2376,16 @@ msgstr "Signaler les actions inattendues"
 msgid "Forgot password?"
 msgstr "Mot de passe oublié ?"
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Forward"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Free"
 msgstr "Gratuit"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
 msgstr ""
@@ -2389,6 +2424,7 @@ msgstr "Préparation en cours"
 msgid "Git event"
 msgstr "Événement Git"
 
+#: src/components/ComposeEmail.tsx
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail needs to be reconnected."
 msgstr ""
@@ -2891,6 +2927,7 @@ msgstr "Mentions"
 msgid "Mentions only"
 msgstr "Mentions uniquement"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "Message"
@@ -3263,6 +3300,10 @@ msgstr "Aucun pour le moment"
 
 #: src/lib/ticket-priority.ts
 msgid "Normal"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Not confirmed as sent. Check Sent before trying again."
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -3810,9 +3851,16 @@ msgstr "Remplacer la clé"
 msgid "Replace value"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "Répondre"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Reply all"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Reply cancelled"
@@ -4119,6 +4167,7 @@ msgstr "Sélectionnez un bot"
 msgid "Select a connected model"
 msgstr "Sélectionnez un modèle connecté"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
 msgstr "Envoyer"
@@ -4147,9 +4196,17 @@ msgstr "Envoyer le lien de réinitialisation"
 msgid "Senders, recipients, subjects and short previews are sent to {name}."
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Sending is turned off."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Sending…"
 msgstr "Envoi en cours…"
+
+#: src/pages/Inbox.tsx
+msgid "Sent"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Sentry alert"
@@ -4445,6 +4502,10 @@ msgstr "Diffuser les réponses"
 msgid "subagent"
 msgstr "sous-agent"
 
+#: src/components/ComposeEmail.tsx
+msgid "Subject"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
@@ -4662,6 +4723,7 @@ msgstr "Heure de la journée"
 msgid "Title"
 msgstr "Titre"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
 msgstr ""

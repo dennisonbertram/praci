@@ -729,6 +729,10 @@ msgstr ""
 msgid "Basic auth ({username})"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Bcc"
+msgstr ""
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -866,6 +870,10 @@ msgstr "已取消"
 
 #: src/pages/Artifacts.tsx
 msgid "Card view"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Cc"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -1117,6 +1125,11 @@ msgstr ""
 #: src/pages/ScratchpadSection.tsx
 msgid "Complete"
 msgstr "完成"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Compose"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -1763,6 +1776,14 @@ msgstr "无法加载消息设置"
 msgid "Couldn't reach Gmail."
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't save the draft"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't send. Try again."
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
 msgstr "无法更新头像"
@@ -2013,6 +2034,10 @@ msgstr ""
 msgid "Disabled tools"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Discard"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2105,6 +2130,10 @@ msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Draft saved"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -2347,10 +2376,16 @@ msgstr "标记异常操作"
 msgid "Forgot password?"
 msgstr "忘记密码？"
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Forward"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Free"
 msgstr "免费"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
 msgstr ""
@@ -2389,6 +2424,7 @@ msgstr ""
 msgid "Git event"
 msgstr "Git 事件"
 
+#: src/components/ComposeEmail.tsx
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail needs to be reconnected."
 msgstr ""
@@ -2891,6 +2927,7 @@ msgstr "提及"
 msgid "Mentions only"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "消息"
@@ -3263,6 +3300,10 @@ msgstr "暂无"
 
 #: src/lib/ticket-priority.ts
 msgid "Normal"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Not confirmed as sent. Check Sent before trying again."
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -3810,9 +3851,16 @@ msgstr "替换密钥"
 msgid "Replace value"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "回复"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Reply all"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Reply cancelled"
@@ -4119,6 +4167,7 @@ msgstr "选择 Bot"
 msgid "Select a connected model"
 msgstr "选择已连接的模型"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
 msgstr "发送"
@@ -4147,9 +4196,17 @@ msgstr "发送重置链接"
 msgid "Senders, recipients, subjects and short previews are sent to {name}."
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Sending is turned off."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Sending…"
 msgstr "正在发送…"
+
+#: src/pages/Inbox.tsx
+msgid "Sent"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Sentry alert"
@@ -4445,6 +4502,10 @@ msgstr "流式回复"
 msgid "subagent"
 msgstr "子 Agent"
 
+#: src/components/ComposeEmail.tsx
+msgid "Subject"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
@@ -4662,6 +4723,7 @@ msgstr "时间"
 msgid "Title"
 msgstr "标题"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
 msgstr ""

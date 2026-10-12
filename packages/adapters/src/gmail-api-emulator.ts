@@ -1,4 +1,5 @@
 import type {
+  ConnectorProxyRequest,
   ConnectorProxyResponse,
   MailAccount,
   MailProvider,
@@ -6,6 +7,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { createMailProvider, type GmailMailProviderDeps } from "./gmail-mail-provider.js";
+import { parseRawMime } from "./mime-parse.js";
 
 const PREFIX = "/gmail/v1/users/me/";
 const DAY_MS = 86_400_000;
@@ -22,6 +24,13 @@ export interface EmulatedMessage {
   to: string;
   cc?: string;
   subject: string;
+  /** Message-ID header; defaults to `<id@mail.example.test>`. */
+  messageId?: string;
+  /** Reply-To header, as written in the message. */
+  replyTo?: string;
+  /** In-Reply-To and References headers, as written in the message. */
+  inReplyTo?: string;
+  references?: string;
   /** Raw snippet; may contain HTML entities as Gmail returns them. */
   snippet?: string;
   text?: string;
@@ -38,6 +47,8 @@ export interface GmailSeed {
   now?: Date;
   /** Replaces the default mailboxes. Keyed by the connector account reference. */
   mailboxes?: Record<string, { address: string; messages: EmulatedMessage[] }>;
+  /** Dates sent messages. Defaults to the system clock. */
+  clock?: () => Date;
 }
 
 interface Header {
@@ -67,6 +78,13 @@ interface Stored {
 interface Mailbox {
   address: string;
   messages: Stored[];
+  drafts: Map<string, EmulatedDraft>;
+}
+/** A draft or sent message as the emulator holds it: the base64url-decoded RFC 2822 text. */
+export interface EmulatedDraft {
+  id: string;
+  threadId: string;
+  raw: string;
 }
 interface Failure {
   status: number;
@@ -83,16 +101,21 @@ class QueryError extends Error {}
 
 /** Deterministic, in-memory stand-in for the Gmail REST endpoints the mail provider uses. */
 export class GmailApiEmulator {
-  readonly requests: Array<{ accountRef: string; url: string }> = [];
+  readonly requests: Array<{ accountRef: string; url: string; method: string }> = [];
   private readonly mailboxes = new Map<string, Mailbox>();
+  private readonly sent = new Map<string, EmulatedDraft[]>();
   private failure: Failure | undefined;
+  private sequence = 0;
+  private readonly clock: () => Date;
 
   constructor(seed: GmailSeed = {}) {
+    this.clock = seed.clock ?? (() => new Date());
     const mailboxes = seed.mailboxes ?? defaultMailboxes(seed.now ?? DEFAULT_NOW);
     for (const [accountRef, mailbox] of Object.entries(mailboxes)) {
       this.mailboxes.set(accountRef, {
         address: mailbox.address,
         messages: mailbox.messages.map(store).sort(newestFirst),
+        drafts: new Map(),
       });
     }
   }
@@ -133,8 +156,38 @@ export class GmailApiEmulator {
     this.failure = undefined;
   }
 
-  handle(accountRef: string, url: string): ConnectorProxyResponse {
-    this.requests.push({ accountRef, url });
+  /** Drafts not yet sent, oldest first. */
+  draftsOf(accountRef: string): EmulatedDraft[] {
+    return [...(this.mailboxes.get(accountRef)?.drafts.values() ?? [])];
+  }
+
+  /** Messages sent through `drafts/send`, oldest first. Sharing a mailbox through `alias` shares them. */
+  sentOf(accountRef: string): EmulatedDraft[] {
+    return this.sent.get(this.keyOf(accountRef)) ?? [];
+  }
+
+  /** Everything written so far, for the e2e harness to serve to a browser test. */
+  snapshot(): Record<string, { address: string; drafts: EmulatedDraft[]; sent: EmulatedDraft[] }> {
+    return Object.fromEntries(
+      [...this.mailboxes].map(([ref, mailbox]) => [
+        ref,
+        { address: mailbox.address, drafts: this.draftsOf(ref), sent: this.sentOf(ref) },
+      ]),
+    );
+  }
+
+  private keyOf(accountRef: string): string {
+    const mailbox = this.mailboxes.get(accountRef);
+    return [...this.mailboxes].find(([, other]) => other === mailbox)?.[0] ?? accountRef;
+  }
+
+  handle(
+    accountRef: string,
+    url: string,
+    method: ConnectorProxyRequest["method"] = "GET",
+    body?: unknown,
+  ): ConnectorProxyResponse {
+    this.requests.push({ accountRef, url, method });
     const failed = this.takeFailure(url);
     if (failed) return failed;
     const mailbox = this.mailboxes.get(accountRef);
@@ -148,6 +201,9 @@ export class GmailApiEmulator {
     if (parsed.origin !== "https://gmail.googleapis.com" || !parsed.pathname.startsWith(PREFIX))
       return fail(404, "notFound", "Not found");
     const path = parsed.pathname.slice(PREFIX.length);
+    if (path === "drafts" || path === "drafts/send" || path.startsWith("drafts/"))
+      return this.drafts(accountRef, mailbox, path, method, body);
+    if (method !== "GET") return fail(405, "methodNotAllowed", "Method not allowed");
     if (path === "profile")
       return {
         status: 200,
@@ -164,6 +220,73 @@ export class GmailApiEmulator {
     if (file)
       return attachment(mailbox, decodeURIComponent(file[1]!), decodeURIComponent(file[2]!));
     return fail(404, "notFound", "Not found");
+  }
+
+  private drafts(
+    accountRef: string,
+    mailbox: Mailbox,
+    path: string,
+    method: ConnectorProxyRequest["method"],
+    body: unknown,
+  ): ConnectorProxyResponse {
+    const message = (body as { message?: { raw?: unknown; threadId?: unknown } } | undefined)
+      ?.message;
+    const read = (): { raw: string; threadId: string } | ConnectorProxyResponse => {
+      if (typeof message?.raw !== "string" || !message.raw)
+        return fail(400, "invalidArgument", "Invalid message");
+      const raw = Buffer.from(message.raw, "base64url").toString("utf8");
+      if (!/^[A-Za-z-]+:/.test(raw)) return fail(400, "invalidArgument", "Invalid message");
+      const threadId = typeof message.threadId === "string" ? message.threadId : undefined;
+      if (threadId && !this.threadExists(mailbox, accountRef, threadId))
+        return fail(404, "notFound", "Requested entity was not found.");
+      return { raw, threadId: threadId ?? `t-sent-${++this.sequence}` };
+    };
+    const resource = (draft: EmulatedDraft) => ({
+      id: draft.id,
+      message: { id: `m-${draft.id}`, threadId: draft.threadId, labelIds: ["DRAFT"] },
+    });
+    if (path === "drafts" && method === "POST") {
+      const parsed = read();
+      if ("status" in parsed) return parsed;
+      const draft = { id: `draft-${++this.sequence}`, ...parsed };
+      mailbox.drafts.set(draft.id, draft);
+      return { status: 200, data: resource(draft) };
+    }
+    if (path === "drafts/send" && method === "POST") {
+      const id = (body as { id?: unknown } | undefined)?.id;
+      const draft = typeof id === "string" ? mailbox.drafts.get(id) : undefined;
+      if (!draft) return fail(404, "notFound", "Requested entity was not found.");
+      mailbox.drafts.delete(draft.id);
+      const sentId = `sent-${++this.sequence}`;
+      const key = this.keyOf(accountRef);
+      this.sent.set(key, [...(this.sent.get(key) ?? []), { ...draft, id: sentId }]);
+      mailbox.messages.push(storeSent(sentId, draft, mailbox.address, this.clock()));
+      mailbox.messages.sort(newestFirst);
+      return { status: 200, data: { id: sentId, threadId: draft.threadId, labelIds: ["SENT"] } };
+    }
+    const id = /^drafts\/([^/]+)$/.exec(path)?.[1];
+    if (!id) return fail(404, "notFound", "Not found");
+    const current = mailbox.drafts.get(decodeURIComponent(id));
+    if (!current) return fail(404, "notFound", "Requested entity was not found.");
+    if (method === "PUT") {
+      const parsed = read();
+      if ("status" in parsed) return parsed;
+      const draft = { id: current.id, ...parsed };
+      mailbox.drafts.set(draft.id, draft);
+      return { status: 200, data: resource(draft) };
+    }
+    if (method === "DELETE") {
+      mailbox.drafts.delete(current.id);
+      return { status: 204, data: undefined };
+    }
+    return fail(405, "methodNotAllowed", "Method not allowed");
+  }
+
+  private threadExists(mailbox: Mailbox, accountRef: string, threadId: string): boolean {
+    return (
+      mailbox.messages.some((m) => m.threadId === threadId) ||
+      this.draftsOf(accountRef).some((d) => d.threadId === threadId)
+    );
   }
 
   private takeFailure(url: string): ConnectorProxyResponse | undefined {
@@ -418,8 +541,12 @@ function store(source: EmulatedMessage): Stored {
     { name: "From", value: source.from },
     { name: "To", value: source.to },
     ...(source.cc ? [{ name: "Cc", value: source.cc }] : []),
+    ...(source.replyTo ? [{ name: "Reply-To", value: source.replyTo }] : []),
     { name: "Subject", value: source.subject },
     { name: "Date", value: date.toUTCString() },
+    { name: "Message-ID", value: source.messageId ?? `<${source.id}@mail.example.test>` },
+    ...(source.inReplyTo ? [{ name: "In-Reply-To", value: source.inReplyTo }] : []),
+    ...(source.references ? [{ name: "References", value: source.references }] : []),
   ];
   return {
     id: source.id,
@@ -431,6 +558,27 @@ function store(source: EmulatedMessage): Stored {
     payload: { ...payload, headers: [...headers, ...payload.headers] },
     files,
   };
+}
+
+/** A message the mailbox owner sent, built from the raw text of a draft. */
+function storeSent(id: string, draft: EmulatedDraft, address: string, at: Date): Stored {
+  const mime = parseRawMime(draft.raw);
+  const header = (name: string) => mime.header(name);
+  return store({
+    id,
+    threadId: draft.threadId,
+    date: at.toISOString(),
+    labels: ["SENT"],
+    from: address,
+    to: header("To") ?? "",
+    ...(header("Cc") ? { cc: header("Cc") } : {}),
+    subject: header("Subject") ?? "",
+    messageId: `<${id}@mail.example.test>`,
+    ...(header("In-Reply-To") ? { inReplyTo: header("In-Reply-To") } : {}),
+    ...(header("References") ? { references: header("References") } : {}),
+    ...(mime.text === undefined ? {} : { text: mime.text }),
+    ...(mime.html === undefined ? {} : { html: mime.html }),
+  });
 }
 
 function numberParts(part: Part, id: string): void {
@@ -465,6 +613,8 @@ function defaultMailboxes(now: Date): NonNullable<GmailSeed["mailboxes"]> {
       from: alice,
       to: priya,
       subject: "Re: Contract renewal",
+      inReplyTo: "<a-01@mail.example.test>",
+      references: "<a-01@mail.example.test>",
       text: "Confirmed. The terms look fine.",
     },
     {
@@ -607,7 +757,8 @@ export function createMailEmulator(
     },
   } as unknown as Pick<PrismaClient, "connection">;
   const connector = {
-    proxy: async (request) => gmail.handle(request.accountRef, request.url),
+    proxy: async (request) =>
+      gmail.handle(request.accountRef, request.url, request.method, request.body),
   } as Pick<ManagedConnectorProvider, "proxy">;
   const provider = createMailProvider({
     prisma,

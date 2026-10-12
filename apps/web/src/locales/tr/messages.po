@@ -729,6 +729,10 @@ msgstr ""
 msgid "Basic auth ({username})"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Bcc"
+msgstr ""
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -866,6 +870,10 @@ msgstr "İptal edildi"
 
 #: src/pages/Artifacts.tsx
 msgid "Card view"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Cc"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -1117,6 +1125,11 @@ msgstr ""
 #: src/pages/ScratchpadSection.tsx
 msgid "Complete"
 msgstr "Tamamlandı"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Compose"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -1763,6 +1776,14 @@ msgstr ""
 msgid "Couldn't reach Gmail."
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't save the draft"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't send. Try again."
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
 msgstr ""
@@ -2013,6 +2034,10 @@ msgstr ""
 msgid "Disabled tools"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Discard"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2105,6 +2130,10 @@ msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Draft saved"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -2347,10 +2376,16 @@ msgstr ""
 msgid "Forgot password?"
 msgstr "Parolanızı mı unuttunuz?"
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Forward"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Free"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
 msgstr ""
@@ -2389,6 +2424,7 @@ msgstr ""
 msgid "Git event"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail needs to be reconnected."
 msgstr ""
@@ -2891,6 +2927,7 @@ msgstr ""
 msgid "Mentions only"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "Mesaj"
@@ -3263,6 +3300,10 @@ msgstr "Henüz yok"
 
 #: src/lib/ticket-priority.ts
 msgid "Normal"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Not confirmed as sent. Check Sent before trying again."
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -3810,9 +3851,16 @@ msgstr "Anahtarı değiştir"
 msgid "Replace value"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "Yanıtla"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Reply all"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Reply cancelled"
@@ -4119,6 +4167,7 @@ msgstr "Bir bot seç"
 msgid "Select a connected model"
 msgstr "Bağlı bir model seçin"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
 msgstr "Gönder"
@@ -4147,9 +4196,17 @@ msgstr "Sıfırlama bağlantısı gönder"
 msgid "Senders, recipients, subjects and short previews are sent to {name}."
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Sending is turned off."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Sending…"
 msgstr "Gönderiliyor…"
+
+#: src/pages/Inbox.tsx
+msgid "Sent"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Sentry alert"
@@ -4445,6 +4502,10 @@ msgstr "Yanıtları akışla göster"
 msgid "subagent"
 msgstr "alt ajan"
 
+#: src/components/ComposeEmail.tsx
+msgid "Subject"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
@@ -4662,6 +4723,7 @@ msgstr "Günün saati"
 msgid "Title"
 msgstr "Başlık"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
 msgstr ""

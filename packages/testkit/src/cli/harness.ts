@@ -185,10 +185,11 @@ async function main() {
       { fetch: thirdParties.fetch, resolveHostname: thirdParties.resolveHostname },
     );
     const email = new EmailEmulator();
+    const composio = createE2eComposio();
     const handles = await createApp({
       databaseUrl,
       prisma: undefined,
-      composio: createE2eComposio(),
+      composio,
       pipedream,
       email,
       remoteConnectors: {
@@ -203,6 +204,12 @@ async function main() {
       fetch: async (request) => {
         if (new URL(request.url).pathname === "/__e2e/emails") {
           return Response.json(email.sent, { headers: { "cache-control": "no-store" } });
+        }
+        if (new URL(request.url).pathname === "/__e2e/gmail") {
+          // What the Gmail emulator holds, so a browser test can check the drafts and mail it sent.
+          return Response.json(composio.gmail.snapshot(), {
+            headers: { "cache-control": "no-store" },
+          });
         }
         activeRequests += 1;
         try {

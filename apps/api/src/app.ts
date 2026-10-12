@@ -590,6 +590,7 @@ export async function createApp(
       imageTag: env.imageTag,
       integrationsCatalogUrl: env.integrationsCatalogUrl,
       mcpAllowPrivateEndpoint: env.mcpAllowPrivateEndpoint,
+      mailWritesDisabled: env.mailWritesDisabled,
     },
   });
   const rpc = new RPCHandler(router, {

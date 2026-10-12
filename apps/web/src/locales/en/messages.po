@@ -729,6 +729,10 @@ msgstr "Basic auth"
 msgid "Basic auth ({username})"
 msgstr "Basic auth ({username})"
 
+#: src/components/ComposeEmail.tsx
+msgid "Bcc"
+msgstr "Bcc"
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -867,6 +871,10 @@ msgstr "Cancelled"
 #: src/pages/Artifacts.tsx
 msgid "Card view"
 msgstr "Card view"
+
+#: src/components/ComposeEmail.tsx
+msgid "Cc"
+msgstr "Cc"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Change password"
@@ -1117,6 +1125,11 @@ msgstr "Compact"
 #: src/pages/ScratchpadSection.tsx
 msgid "Complete"
 msgstr "Complete"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Compose"
+msgstr "Compose"
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -1763,6 +1776,14 @@ msgstr "Couldn't load messaging settings"
 msgid "Couldn't reach Gmail."
 msgstr "Couldn't reach Gmail."
 
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't save the draft"
+msgstr "Couldn't save the draft"
+
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't send. Try again."
+msgstr "Couldn't send. Try again."
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
 msgstr "Couldn't update avatars"
@@ -2013,6 +2034,10 @@ msgstr "Direct MCP"
 msgid "Disabled tools"
 msgstr "Disabled tools"
 
+#: src/components/ComposeEmail.tsx
+msgid "Discard"
+msgstr "Discard"
+
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2106,6 +2131,10 @@ msgstr "Download failed"
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
 msgstr "Downloading…"
+
+#: src/components/ComposeEmail.tsx
+msgid "Draft saved"
+msgstr "Draft saved"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
@@ -2347,10 +2376,16 @@ msgstr "Flag unexpected actions"
 msgid "Forgot password?"
 msgstr "Forgot password?"
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Forward"
+msgstr "Forward"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Free"
 msgstr "Free"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
 msgstr "From"
@@ -2389,6 +2424,7 @@ msgstr "Getting ready"
 msgid "Git event"
 msgstr "Git event"
 
+#: src/components/ComposeEmail.tsx
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail needs to be reconnected."
 msgstr "Gmail needs to be reconnected."
@@ -2891,6 +2927,7 @@ msgstr "Mentions"
 msgid "Mentions only"
 msgstr "Mentions only"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "Message"
@@ -3264,6 +3301,10 @@ msgstr "None yet"
 #: src/lib/ticket-priority.ts
 msgid "Normal"
 msgstr "Normal"
+
+#: src/components/ComposeEmail.tsx
+msgid "Not confirmed as sent. Check Sent before trying again."
+msgstr "Not confirmed as sent. Check Sent before trying again."
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Not connected"
@@ -3810,9 +3851,16 @@ msgstr "Replace key"
 msgid "Replace value"
 msgstr "Replace value"
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "Reply"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Reply all"
+msgstr "Reply all"
 
 #: src/pages/Shell.tsx
 msgid "Reply cancelled"
@@ -4119,6 +4167,7 @@ msgstr "Select a bot"
 msgid "Select a connected model"
 msgstr "Select a connected model"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
 msgstr "Send"
@@ -4147,9 +4196,17 @@ msgstr "Send reset link"
 msgid "Senders, recipients, subjects and short previews are sent to {name}."
 msgstr "Senders, recipients, subjects and short previews are sent to {name}."
 
+#: src/components/ComposeEmail.tsx
+msgid "Sending is turned off."
+msgstr "Sending is turned off."
+
 #: src/components/AskCard.tsx
 msgid "Sending…"
 msgstr "Sending…"
+
+#: src/pages/Inbox.tsx
+msgid "Sent"
+msgstr "Sent"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Sentry alert"
@@ -4445,6 +4502,10 @@ msgstr "Stream replies"
 msgid "subagent"
 msgstr "subagent"
 
+#: src/components/ComposeEmail.tsx
+msgid "Subject"
+msgstr "Subject"
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
@@ -4662,6 +4723,7 @@ msgstr "Time of day"
 msgid "Title"
 msgstr "Title"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
 msgstr "To"

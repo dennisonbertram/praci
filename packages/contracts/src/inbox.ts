@@ -173,6 +173,51 @@ export const InboxMessageSchema = z.object({
   ),
 });
 
+/** Chosen by the browser when a composer opens; it names that message for idempotency. */
+export const ComposeClientId = z
+  .string()
+  .min(8)
+  .max(64)
+  .regex(/^[A-Za-z0-9_-]+$/);
+
+export const ComposeModeSchema = z.enum(["reply", "replyAll", "forward"]);
+
+export const ComposePrefillInputSchema = z.object({ messageId: Id, mode: ComposeModeSchema });
+
+/** Fields are text as typed; recipients are comma-separated. The account is the one the original came from. */
+export const ComposePrefillOutputSchema = z.object({
+  connectionId: Id,
+  to: z.string(),
+  cc: z.string(),
+  subject: z.string(),
+  body: z.string(),
+  /** Present for a reply, which stays in the original's thread; absent for a forward. */
+  replyToMessageId: Id.optional(),
+});
+
+export const MAX_COMPOSE_BODY = 150_000;
+
+export const ComposeFieldsSchema = z.object({
+  clientId: ComposeClientId,
+  /** The From account: one of the caller's connected Gmail accounts. */
+  connectionId: Id,
+  replyToMessageId: Id.optional(),
+  to: z.string().max(4_000),
+  cc: z.string().max(4_000),
+  bcc: z.string().max(4_000),
+  subject: z.string().max(998),
+  body: z.string().max(MAX_COMPOSE_BODY),
+});
+
+/**
+ * `saved`/`sent`: done. `unknown`: the send may have gone out; it is never repeated, so the user
+ * checks Sent. `reconnect`: the account lacks permission. `disabled`: the deployment turned
+ * Gmail writes off. `failed`: nothing was sent or saved; trying again is safe.
+ */
+export const ComposeResultSchema = z.object({
+  status: z.enum(["saved", "sent", "unknown", "reconnect", "disabled", "failed"]),
+});
+
 /** `mark: null` removes the mark from the message's sender. */
 export const InboxFeedbackInputSchema = z.object({
   messageId: Id,
@@ -180,6 +225,10 @@ export const InboxFeedbackInputSchema = z.object({
 });
 export const InboxFeedbackOutputSchema = z.object({ mark: InboxMarkSchema.nullable() });
 
+export type ComposeFields = z.infer<typeof ComposeFieldsSchema>;
+export type ComposeMode = z.infer<typeof ComposeModeSchema>;
+export type ComposePrefillOutput = z.infer<typeof ComposePrefillOutputSchema>;
+export type ComposeResult = z.infer<typeof ComposeResultSchema>;
 export type InboxFeedbackInput = z.infer<typeof InboxFeedbackInputSchema>;
 export type InboxListInput = z.infer<typeof InboxListInputSchema>;
 export type InboxMessage = z.infer<typeof InboxMessageSchema>;

@@ -343,12 +343,12 @@ export class ComposioEmulator implements ComposioProvider {
     private readonly directory: ReadonlyArray<
       Omit<ComposioCatalogItem, "connected">
     > = DEFAULT_CATALOG,
-    private readonly gmail: GmailApiEmulator = new GmailApiEmulator(),
+    readonly gmail: GmailApiEmulator = new GmailApiEmulator(),
   ) {}
 
   /** Answers Gmail REST requests from the seeded Gmail emulator, keyed by account reference. */
   async proxy(request: ConnectorProxyRequest): Promise<ConnectorProxyResponse> {
-    return this.gmail.handle(request.accountRef, request.url);
+    return this.gmail.handle(request.accountRef, request.url, request.method, request.body);
   }
 
   describe() {

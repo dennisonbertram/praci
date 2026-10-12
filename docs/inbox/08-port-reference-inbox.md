@@ -22,13 +22,13 @@ The reference implementation is a single-user, local-first app (SQLite files, th
 7. **Email result cards in chat.** When the agent cites messages, render them as cards grouped by urgency (Today, Within 3 days, This week, Later), with Later as a compact row list. Clicking a card opens the message.
 8. **Relevance feedback.** "Mark important" / "Mark noise" on a row, stored per user and space in Postgres and used by ranking and triage. No Gmail write.
 
-## Phase 2 — Gmail writes (needs decision 10 reversed)
+## Phase 2 — Gmail writes
 
-Requires `gmail.modify` and `gmail.compose`, restricted-scope verification for public deployments, POST support in the Composio and Pipedream proxy paths, and a write kill switch.
+Sending was approved first (decision 10 in the README now allows drafts and sending, not the other writes). Item 2 below is built; items 1, 3 and 4 still need `gmail.modify`, restricted-scope verification for public deployments, and their own sign-off. The proxy paths (Composio, Pipedream, native Google) now carry POST, PUT and DELETE with a JSON body, and `MAIL_WRITES_DISABLED=true` is the deployment-wide kill switch.
 
 1. Archive, spam, label, mark read from the read view; bulk archive on category views behind a confirmation dialog.
-2. Reply, forward and compose, always draft first then confirm then send. Sends use a Postgres idempotency key per draft so a retry after an unknown state never sends twice.
-3. Agent write tools (`create_draft`, `modify_labels`, `archive`) gated by Rakazo's existing action-approval flow. No direct send tool; the agent proposes a send card.
+2. **Built.** Reply, reply all, forward and compose. The user's Send click is the approval (no extra modal). The composer saves a Gmail draft as the user types, and a send is keyed by a client-generated id in Postgres (`ComposeSend`), so a retry or double click never sends twice and a send with an unclear outcome is never repeated (the user is told to check Sent). Plain-text body; the HTML part is generated from it and escaped. Left out for now: attachments (a forward quotes the text only), rich text, and re-opening a saved draft in Rakazo (it stays in Gmail Drafts).
+3. Agent write tools (`create_draft`, `modify_labels`, `archive`) gated by Rakazo's existing action-approval flow. No direct send tool; the agent proposes a send card. Not built: the agent still has no draft or send tool.
 4. Cards: send confirmation (editable fields), quick reply (several drafts, send one), bulk action, attachment-read consent. Each has Dismiss, persisted with the message, taking no Gmail action.
 
 ## Phase 3 — larger features
@@ -44,7 +44,7 @@ Local SQLite stores, the loopback OAuth server, file locks, the single-user lear
 
 ## Decisions needed
 
-1. Reverse decision 10 and allow Gmail writes (phase 2)?
+1. Reverse decision 10 and allow Gmail writes (phase 2)? Answered for sending: yes, drafts and send only. Archive, label and mark-read still need a decision.
 2. Add TypeSafe as an optional classifier, and is a separate consent for it acceptable? Key as a deployment setting or per user?
 3. Adopt the wider category set?
 4. Are Focus items, the triage loop, the brief and calendar in scope, and in what order?
