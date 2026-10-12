@@ -28,6 +28,7 @@ import {
   showSessionUnavailable,
 } from "./lib/session-gate";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
+import { GoogleOAuthCallbackPage } from "./pages/GoogleOAuthCallback";
 import { IntegrationSetupPage } from "./pages/IntegrationSetup";
 import { LocalSettingsPage } from "./pages/LocalSettings";
 import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
@@ -150,6 +151,10 @@ function SessionApp() {
           <Route
             path="/mcp/oauth/callback"
             element={user ? <McpOAuthCallbackPage /> : <Navigate to="/sign-in" replace />}
+          />
+          <Route
+            path="/integrations/google/callback"
+            element={user ? <GoogleOAuthCallbackPage /> : <Navigate to="/sign-in" replace />}
           />
           <Route
             path="/integrations/setup"

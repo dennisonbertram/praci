@@ -1178,6 +1178,7 @@ msgid "Connect Treg"
 msgstr "Connecter Treg"
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1207,6 +1208,7 @@ msgid "Connected. Its tools are available from your next message."
 msgstr "Connecté. Ses outils sont disponibles dès votre prochain message."
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
@@ -1303,6 +1305,7 @@ msgstr "Impossible d'effacer la conversation"
 msgid "Could not complete action"
 msgstr "Impossible de terminer l'action"
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Could not complete OAuth"
 msgstr "Impossible de terminer OAuth"
@@ -3163,6 +3166,7 @@ msgstr "Maintenant"
 msgid "Now using {0}."
 msgstr "Utilise maintenant {0}."
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth authorization was cancelled."
 msgstr "L'autorisation OAuth a été annulée."
@@ -3171,6 +3175,7 @@ msgstr "L'autorisation OAuth a été annulée."
 msgid "OAuth connected"
 msgstr "OAuth connecté"
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "Échec de la connexion OAuth"
@@ -3532,6 +3537,10 @@ msgstr "Recréer un ordinateur qui ne fonctionne pas."
 msgid "Recreating the computer"
 msgstr "Recréation de l'ordinateur"
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Redirect URI"
+msgstr ""
+
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/pages/RoutineRunHistory.tsx
@@ -3737,6 +3746,7 @@ msgstr "Réessayer maintenant"
 msgid "Retry screen"
 msgstr "Réessayer l'écran"
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Rakazo"
 msgstr "Retour à Rakazo"
@@ -4821,6 +4831,7 @@ msgstr "Vous"
 msgid "You can close this tab if it does not redirect automatically."
 msgstr "Vous pouvez fermer cet onglet s'il ne redirige pas automatiquement."
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this window."
 msgstr "Vous pouvez fermer cette fenêtre."

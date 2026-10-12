@@ -8,7 +8,7 @@ import { connectMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
-type Choice = "direct" | "composio" | "pipedream" | "executor";
+type Choice = "direct" | "composio" | "pipedream" | "google" | "executor";
 
 export function IntegrationSetup({
   onDone,
@@ -45,12 +45,19 @@ export function IntegrationSetup({
     { id: "direct", label: t`Direct MCP` },
     { id: "composio", label: "Composio" },
     { id: "pipedream", label: "Pipedream" },
+    { id: "google", label: "Google" },
     { id: "executor", label: "Executor" },
   ];
-  const managed = choice === "composio" || choice === "pipedream";
+  const managed = choice === "composio" || choice === "pipedream" || choice === "google";
   const hasCredentials = Boolean(apiKey.trim());
   const credentialsReady =
-    hasCredentials && (choice !== "pipedream" || Boolean(clientId.trim() && projectId.trim()));
+    hasCredentials &&
+    (choice === "composio" || Boolean(clientId.trim())) &&
+    (choice !== "pipedream" || Boolean(projectId.trim()));
+  // Same origin as the setup page, which is where the API's webOrigin points.
+  const googleRedirectUri = state
+    ? new URL("/integrations/google/callback", state.webUrl).toString()
+    : "";
   const remoteResults = [
     ...new Map(
       results.flatMap((result) =>
@@ -89,13 +96,15 @@ export function IntegrationSetup({
       await rpc.integrationSetup.save(
         choice === "composio"
           ? { provider: "composio", apiKey }
-          : {
-              provider: "pipedream",
-              clientId,
-              clientSecret: apiKey,
-              projectId,
-              environment: "production",
-            },
+          : choice === "google"
+            ? { provider: "google", clientId, clientSecret: apiKey }
+            : {
+                provider: "pipedream",
+                clientId,
+                clientSecret: apiKey,
+                projectId,
+                environment: "production",
+              },
       );
       setApiKey("");
       setState(await rpc.integrationSetup.get());
@@ -149,6 +158,7 @@ export function IntegrationSetup({
                 onClick={() => {
                   setChoice(id);
                   setApiKey("");
+                  setClientId("");
                   setError(null);
                 }}
                 className={`flex min-h-11 w-full items-center justify-between border-b border-border px-3.5 py-2.5 text-left last:border-0 ${choice === id ? "bg-muted" : "hover:bg-accent"}`}
@@ -159,7 +169,7 @@ export function IntegrationSetup({
             ))}
         </fieldset>
       ) : null}
-      {choice === "composio" || choice === "pipedream" ? (
+      {managed ? (
         <>
           {configured ? (
             <p className="text-sm text-success">
@@ -168,29 +178,29 @@ export function IntegrationSetup({
           ) : null}
           {state?.canConfigure ? (
             <>
+              {choice === "pipedream" || choice === "google" ? (
+                <label htmlFor={`${fieldId}-client-id`} className="block text-sm">
+                  <Trans>Client ID</Trans>
+                  <Input
+                    id={`${fieldId}-client-id`}
+                    className="mt-2"
+                    value={clientId}
+                    onChange={(event) => setClientId(event.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+              ) : null}
               {choice === "pipedream" ? (
-                <>
-                  <label htmlFor={`${fieldId}-client-id`} className="block text-sm">
-                    <Trans>Client ID</Trans>
-                    <Input
-                      id={`${fieldId}-client-id`}
-                      className="mt-2"
-                      value={clientId}
-                      onChange={(event) => setClientId(event.target.value)}
-                      autoComplete="off"
-                    />
-                  </label>
-                  <label htmlFor={`${fieldId}-project-id`} className="block text-sm">
-                    <Trans>Project ID</Trans>
-                    <Input
-                      id={`${fieldId}-project-id`}
-                      className="mt-2"
-                      value={projectId}
-                      onChange={(event) => setProjectId(event.target.value)}
-                      autoComplete="off"
-                    />
-                  </label>
-                </>
+                <label htmlFor={`${fieldId}-project-id`} className="block text-sm">
+                  <Trans>Project ID</Trans>
+                  <Input
+                    id={`${fieldId}-project-id`}
+                    className="mt-2"
+                    value={projectId}
+                    onChange={(event) => setProjectId(event.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
               ) : null}
               <label htmlFor={`${fieldId}-key`} className="block text-sm">
                 {choice === "composio" ? t`API key` : t`Client secret`}
@@ -203,12 +213,26 @@ export function IntegrationSetup({
                   autoComplete="new-password"
                 />
               </label>
+              {choice === "google" ? (
+                <label htmlFor={`${fieldId}-redirect-uri`} className="block text-sm">
+                  <Trans>Redirect URI</Trans>
+                  <Input
+                    id={`${fieldId}-redirect-uri`}
+                    className="mt-2"
+                    value={googleRedirectUri}
+                    readOnly
+                    onFocus={(event) => event.target.select()}
+                  />
+                </label>
+              ) : null}
               <a
                 className="text-sm text-muted-foreground underline"
                 href={
                   choice === "composio"
                     ? "https://dashboard.composio.dev"
-                    : "https://pipedream.com/docs/connect/mcp/developers"
+                    : choice === "google"
+                      ? "https://console.cloud.google.com/apis/credentials"
+                      : "https://pipedream.com/docs/connect/mcp/developers"
                 }
                 target="_blank"
                 rel="noreferrer"
