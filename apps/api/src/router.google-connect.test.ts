@@ -226,3 +226,65 @@ describe("connections.complete with { connectionId } polling", () => {
     expect(h.rows[0]).toMatchObject({ status: "pending", providerRef: STATE });
   });
 });
+
+describe("connections.begin for the native Google connector", () => {
+  it("resolves the connector from Integration setup and stores the state on the pending row", async () => {
+    const begin = vi.fn(async () => ({
+      authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth?state=fake",
+      state: STATE,
+    }));
+    const resolve = vi.fn(async () => ({ begin }) as unknown as ManagedConnectorProvider);
+    const rows: Row[] = [];
+    const created = pendingGoogleRow({ providerRef: null, metadata: {} });
+    const updateMany = vi.fn(async ({ data }: { data: Row }) => {
+      Object.assign(created, data);
+      rows.push(created);
+      return { count: 1 };
+    });
+    const tx = {
+      $executeRaw: vi.fn(async () => 0),
+      connection: {
+        findMany: vi.fn(async () => []),
+        create: vi.fn(async () => created),
+        updateMany,
+      },
+    };
+    const deps = {
+      prisma: { $transaction: vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)) },
+      integrationSettings: { resolve },
+      connectors: { managed: vi.fn(() => undefined) },
+      env: {
+        defaultProvider: "fake",
+        defaultModel: "fake-model",
+        webOrigin: "http://127.0.0.1:5173",
+        screenProxySecret: "fake-test-secret",
+        sandboxProvider: "fake",
+      },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const handler = new RPCHandler(createRouter(deps));
+    const { response } = await handler.handle(
+      new Request("http://127.0.0.1/rpc/connections/begin", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          json: { connectorId: "google", provider: "gmail", displayName: "Gmail" },
+        }),
+      }),
+      { prefix: "/rpc", context: { actor: owner } },
+    );
+    expect(response!.status).toBe(200);
+    expect(resolve).toHaveBeenCalledWith("google");
+    expect(rows[0]).toMatchObject({
+      status: "pending",
+      providerRef: STATE,
+      metadata: { state: STATE },
+    });
+    await expect(response!.json()).resolves.toMatchObject({
+      json: {
+        connectionId: "conn-1",
+        authorizationUrl: expect.stringContaining("accounts.google.com"),
+      },
+    });
+  });
+});
