@@ -176,11 +176,16 @@ export function inboxTriageJobKey(userId: string, spaceId: string): string {
   return `inbox.triage:${spaceId}:${userId}`;
 }
 
-/** The job key merges repeated enqueues for one user into a single queued job. */
-export function inboxTriageJob(userId: string, spaceId: string): BackgroundJob {
+/**
+ * The job key merges repeated enqueues for one user into a single queued job. It does not stop
+ * a job from being queued while another is running (graphile detaches the key from a running
+ * job), so `runInboxTriage` takes its own per-user lock.
+ */
+export function inboxTriageJob(userId: string, spaceId: string, availableAt?: Date): BackgroundJob {
   return {
     name: "inbox.triage",
     payload: { userId, spaceId },
+    ...(availableAt ? { availableAt } : {}),
     replaceKey: inboxTriageJobKey(userId, spaceId),
     // Each attempt can make up to five paid model calls.
     maxAttempts: 3,

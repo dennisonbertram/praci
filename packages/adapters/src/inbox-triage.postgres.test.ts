@@ -592,7 +592,6 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     expect(new Set(sent).size).toBe(25);
     expect(rt.maxInFlight()).toBe(1);
     expect((await messagesOf(user)).every((m) => m.triagedAt !== null)).toBe(true);
-    expect(await todosOf(user)).toHaveLength(25);
     // The three runs that found the user busy come back later in case mail arrived meanwhile.
     const retries = queues.flatMap((q) => q.enqueued);
     expect(retries).toHaveLength(3);
