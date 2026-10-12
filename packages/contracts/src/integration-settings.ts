@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-export const IntegrationProviderIdSchema = z.enum(["composio", "pipedream"]);
+export const IntegrationProviderIdSchema = z.enum(["composio", "pipedream", "google"]);
 export const IntegrationProviderConfigSchema = z.discriminatedUnion("provider", [
   z.object({ provider: z.literal("composio"), apiKey: z.string().trim().min(1).max(16384) }),
   z.object({
@@ -9,6 +9,11 @@ export const IntegrationProviderConfigSchema = z.discriminatedUnion("provider", 
     clientSecret: z.string().trim().min(1).max(16384),
     projectId: z.string().trim().min(1).max(512),
     environment: z.enum(["production", "development"]).default("production"),
+  }),
+  z.object({
+    provider: z.literal("google"),
+    clientId: z.string().trim().min(1).max(512),
+    clientSecret: z.string().trim().min(1).max(16384),
   }),
 ]);
 export type IntegrationProviderConfig = z.infer<typeof IntegrationProviderConfigSchema>;

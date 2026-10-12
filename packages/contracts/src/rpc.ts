@@ -763,8 +763,22 @@ export const appContract = {
         }),
       )
       .output(z.object({ connectionId: Id, authorizationUrl: z.string().nullable() })),
+    /** Poll with `connectionId`, or finish a native OAuth callback with `state` and `code`. */
     complete: oc
-      .input(z.object({ connectionId: Id, code: z.string().optional() }))
+      .input(
+        z
+          .object({
+            connectionId: Id.optional(),
+            state: z.string().min(1).max(512).optional(),
+            code: z.string().optional(),
+          })
+          .refine(
+            (input) =>
+              (input.connectionId === undefined) !== (input.state === undefined) &&
+              (input.state === undefined || Boolean(input.code)),
+            "Provide connectionId, or state with code",
+          ),
+      )
       .output(ConnectionSchema),
     rename: oc
       .input(z.object({ connectionId: Id, displayName: z.string().trim().min(1).max(80) }))

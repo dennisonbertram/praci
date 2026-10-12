@@ -274,7 +274,7 @@ describe("GoogleConnector.complete", () => {
     s.google.refreshToken = undefined;
     const { state } = await s.connector.begin({ provider: "gmail", redirectUrl: "" }, context);
     await expect(s.connector.complete({ state, code: "code-1" }, context)).rejects.toThrow(
-      /try again/i,
+      /try connecting again/i,
     );
     expect(s.db.secrets).toHaveLength(0);
   });
@@ -437,8 +437,8 @@ describe("GoogleConnector catalog", () => {
     expect(await s.connector.listConnectedExternalIds({ ...context, userId: "user-2" })).toEqual(
       [],
     );
-    expect(await s.connector.connectionReady(context, "gmail")).toBe(false);
-    expect(await s.connector.discoverTools(context)).toEqual([]);
+    expect(await s.connector.connectionReady()).toBe(false);
+    expect(await s.connector.discoverTools()).toEqual([]);
   });
 });
 
@@ -468,7 +468,12 @@ describe("GoogleConnector as a mail connector", () => {
       prisma: s.db.prisma,
       connectors: { managed: () => s.connector as unknown as ManagedConnectorProvider },
     });
-    await assertMailConformance(provider, { gmail: emulator.gmail, accounts: emulator.accounts });
+    // The connector retries a 401 once with a fresh token, so a lasting failure takes two.
+    const gmail = Object.assign(Object.create(emulator.gmail), {
+      failNext: (status: number, options?: object) =>
+        emulator.gmail.failNext(status, { ...options, times: 2 }),
+    }) as typeof emulator.gmail;
+    await assertMailConformance(provider, { gmail, accounts: emulator.accounts });
   });
 });
 
