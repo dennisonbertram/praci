@@ -1,7 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { InboxListOutputSchema, inboxAgentSpawnKey } from "./inbox.js";
+import {
+  InboxFilterSchema,
+  InboxListInputSchema,
+  InboxListOutputSchema,
+  inboxAgentSpawnKey,
+} from "./inbox.js";
 
 describe("inbox contracts", () => {
+  it("accepts the eight Gmail filters, a bounded search query and a page token on inbox.list", () => {
+    for (const filter of InboxFilterSchema.options) {
+      expect(
+        InboxListInputSchema.parse({ filter, query: "from:ann", pageToken: "t" }),
+      ).toMatchObject({ filter });
+    }
+    expect(InboxFilterSchema.options).toHaveLength(8);
+    expect(InboxListInputSchema.parse({})).toEqual({});
+  });
+
+  it("rejects an unknown filter, an over-long query and an over-long page token", () => {
+    expect(InboxListInputSchema.safeParse({ filter: "spam" }).success).toBe(false);
+    expect(InboxListInputSchema.safeParse({ query: "x".repeat(501) }).success).toBe(false);
+    expect(InboxListInputSchema.safeParse({ pageToken: "x".repeat(4097) }).success).toBe(false);
+  });
+
   it("builds the Inbox agent spawn key from the user id", () => {
     expect(inboxAgentSpawnKey("user-1")).toBe("inbox-agent:user-1");
   });

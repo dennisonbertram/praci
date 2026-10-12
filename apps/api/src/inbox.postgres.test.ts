@@ -310,6 +310,188 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
     });
   });
 
+  describe("list with a filter or a search", () => {
+    const mailbox = (
+      address: string,
+      messages: Array<{ id: string; days: number; labels: string[]; subject?: string }>,
+    ) => ({
+      address,
+      messages: messages.map((m) => ({
+        id: m.id,
+        date: daysAgo(m.days).toISOString(),
+        labels: m.labels,
+        from: "Ann Sender <ann@example.test>",
+        to: "me@example.test",
+        subject: m.subject ?? `Subject ${m.id}`,
+        snippet: `Snippet ${m.id}`,
+        html: `<p>Body of ${m.id}</p>`,
+      })),
+    });
+    const requestedBoxes = () => [...new Set(gmail.requests.map((r) => r.accountRef))].sort();
+
+    it("asks Gmail for the whole mailbox, newest first, past the 14-day cache window", async () => {
+      await wipe();
+      gmail = new GmailApiEmulator({
+        mailboxes: {
+          "box-a": mailbox("box-a@example.test", [
+            { id: "a-old", days: 60, labels: ["INBOX", "UNREAD"] },
+            { id: "a-new", days: 1, labels: ["INBOX", "UNREAD"] },
+            { id: "a-read", days: 2, labels: ["INBOX"] },
+            { id: "a-star", days: 90, labels: ["STARRED"] },
+          ]),
+          "box-b": mailbox("box-b@example.test", [
+            { id: "b-1", days: 1, labels: ["INBOX", "UNREAD"] },
+          ]),
+        },
+      });
+
+      const unread = await inboxList(deps, a, { filter: "unread" });
+      expect(unread.rows.map((r) => r.subject)).toEqual(["Subject a-new", "Subject a-old"]);
+      expect(unread.rows.every((r) => r.unread)).toBe(true);
+      expect(unread.nextPageToken).toBeUndefined();
+      expect(unread.failedAccounts).toEqual([]);
+      expect(unread.accounts).toEqual([{ connectionId: connA, label: "Mailbox box-a" }]);
+      expect(requestedBoxes()).toEqual(["box-a"]);
+
+      const starred = await inboxList(deps, a, { filter: "starred" });
+      expect(starred.rows.map((r) => r.subject)).toEqual(["Subject a-star"]);
+      // A row returned for a message outside the cache window can be opened.
+      const body = await inboxGet(deps, a, { messageId: (starred.rows[0] as { id: string }).id });
+      expect(body.html).toBe("<p>Body of a-star</p>");
+    });
+
+    it("combines the filter with the search text and searches without a filter", async () => {
+      await wipe();
+      gmail = new GmailApiEmulator({
+        mailboxes: {
+          "box-a": mailbox("box-a@example.test", [
+            { id: "a-1", days: 1, labels: ["INBOX", "UNREAD"], subject: "Budget" },
+            { id: "a-2", days: 2, labels: ["INBOX"], subject: "Budget review" },
+            { id: "a-3", days: 3, labels: ["INBOX", "UNREAD"], subject: "Lunch" },
+          ]),
+          "box-b": mailbox("box-b@example.test", []),
+        },
+      });
+      const subjects = async (input: object) =>
+        (await inboxList(deps, a, input)).rows.map((r) => r.subject);
+
+      expect(await subjects({ query: "budget" })).toEqual(["Budget", "Budget review"]);
+      expect(await subjects({ filter: "unread", query: "budget" })).toEqual(["Budget"]);
+      // The search text is grouped, so an OR inside it cannot escape the filter.
+      expect(await subjects({ filter: "unread", query: "budget OR lunch" })).toEqual([
+        "Budget",
+        "Lunch",
+      ]);
+    });
+
+    it("pages with a continuation token until the mailbox is exhausted", async () => {
+      await wipe();
+      gmail = new GmailApiEmulator({
+        mailboxes: {
+          "box-a": mailbox(
+            "box-a@example.test",
+            Array.from({ length: 120 }, (_, i) => ({
+              id: `a-${String(i).padStart(3, "0")}`,
+              days: 1 + i * 0.01,
+              labels: ["INBOX", "UNREAD"],
+            })),
+          ),
+          "box-b": mailbox("box-b@example.test", []),
+        },
+      });
+      const first = await inboxList(deps, a, { filter: "unread" });
+      expect(first.rows).toHaveLength(50);
+      expect(first.nextPageToken).toEqual(expect.any(String));
+      const second = await inboxList(deps, a, {
+        filter: "unread",
+        pageToken: first.nextPageToken,
+      });
+      expect(second.rows).toHaveLength(50);
+      const third = await inboxList(deps, a, { filter: "unread", pageToken: second.nextPageToken });
+      expect(third.rows).toHaveLength(20);
+      expect(third.nextPageToken).toBeUndefined();
+      const all = [...first.rows, ...second.rows, ...third.rows];
+      expect(new Set(all.map((r) => r.id)).size).toBe(120);
+      expect(all.map((r) => r.receivedAt)).toEqual(
+        [...all.map((r) => r.receivedAt)].sort().reverse(),
+      );
+    });
+
+    it("merges every account for All and narrows to one account's mail on a tab", async () => {
+      await wipe();
+      const second = await connect(a, "box-a2");
+      gmail = new GmailApiEmulator({
+        mailboxes: {
+          "box-a": mailbox("box-a@example.test", [
+            { id: "a-1", days: 3, labels: ["INBOX", "UNREAD"] },
+          ]),
+          "box-a2": mailbox("box-a2@example.test", [
+            { id: "x-1", days: 1, labels: ["INBOX", "UNREAD"] },
+            { id: "x-2", days: 5, labels: ["INBOX", "UNREAD"] },
+          ]),
+          "box-b": mailbox("box-b@example.test", [
+            { id: "b-1", days: 1, labels: ["INBOX", "UNREAD"] },
+          ]),
+          "box-c": mailbox("box-c@example.test", [
+            { id: "c-1", days: 1, labels: ["INBOX", "UNREAD"] },
+          ]),
+        },
+      });
+
+      const all = await inboxList(deps, a, { filter: "unread" });
+      expect(all.rows.map((r) => r.subject)).toEqual(["Subject x-1", "Subject a-1", "Subject x-2"]);
+      expect(requestedBoxes()).toEqual(["box-a", "box-a2"]);
+
+      gmail.requests.length = 0;
+      const one = await inboxList(deps, a, { filter: "unread", connectionId: second });
+      expect(one.rows.map((r) => r.subject)).toEqual(["Subject x-1", "Subject x-2"]);
+      expect(requestedBoxes()).toEqual(["box-a2"]);
+      await prisma.connection.delete({ where: { id: second } });
+    });
+
+    it("never queries another user's, another space's or a revoked account", async () => {
+      await wipe();
+      seedMailboxes();
+      for (const connectionId of [connB, connC, revokedA, "no-such-connection"]) {
+        await expect(inboxList(deps, a, { filter: "unread", connectionId })).rejects.toMatchObject({
+          code: "NOT_FOUND",
+        });
+      }
+      expect(gmail.requests).toEqual([]);
+      // Without a connection id only the caller's own connected account is read.
+      const out = await inboxList(deps, a, { query: "Subject" });
+      expect(out.rows.map((r) => r.subject)).toEqual(["Subject a-1"]);
+      expect(requestedBoxes()).toEqual(["box-a"]);
+    });
+
+    it("reports an account Gmail refuses as failed and still returns the others", async () => {
+      await wipe();
+      const broken = await connect(a, "box-missing");
+      gmail = new GmailApiEmulator({
+        mailboxes: {
+          "box-a": mailbox("box-a@example.test", [
+            { id: "a-1", days: 1, labels: ["INBOX", "UNREAD"] },
+          ]),
+        },
+      });
+      const out = await inboxList(deps, a, { filter: "unread" });
+      expect(out.rows.map((r) => r.subject)).toEqual(["Subject a-1"]);
+      expect(out.failedAccounts).toEqual([broken]);
+      await prisma.connection.delete({ where: { id: broken } });
+    });
+
+    it("rejects a malformed page token and treats a blank search as no search", async () => {
+      await wipe();
+      seedMailboxes();
+      await expect(
+        inboxList(deps, a, { filter: "unread", pageToken: "not a token" }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      const out = await inboxList(deps, a, { query: "   " });
+      expect(out.rows).toEqual([]);
+      expect(gmail.requests).toEqual([]);
+    });
+  });
+
   describe("agent", () => {
     it("is the caller's own unarchived Inbox agent, never someone else's", async () => {
       await wipe();

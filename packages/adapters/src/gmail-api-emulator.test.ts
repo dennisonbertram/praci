@@ -176,9 +176,84 @@ describe("GmailApiEmulator", () => {
     expect(q("(lunch OR travel) after:2026/09/04")).toEqual(["m4"]);
   });
 
+  it("filters by is:starred, is:important, has:attachment and category:", () => {
+    const base = { to: "x@example.test", from: "ann@example.test", snippet: "s" };
+    const gmail = new GmailApiEmulator({
+      now: NOW,
+      mailboxes: {
+        x: {
+          address: "x@example.test",
+          messages: [
+            {
+              ...base,
+              id: "s1",
+              date: "2026-09-01T10:00:00Z",
+              labels: ["INBOX", "STARRED"],
+              subject: "Starred",
+            },
+            {
+              ...base,
+              id: "i1",
+              date: "2026-09-02T10:00:00Z",
+              labels: ["INBOX", "IMPORTANT"],
+              subject: "Important",
+            },
+            {
+              ...base,
+              id: "f1",
+              date: "2026-09-03T10:00:00Z",
+              labels: ["INBOX"],
+              subject: "File",
+              attachments: [{ filename: "a.pdf", mimeType: "application/pdf", size: 10 }],
+            },
+            {
+              ...base,
+              id: "p1",
+              date: "2026-09-04T10:00:00Z",
+              labels: ["INBOX", "CATEGORY_PROMOTIONS"],
+              subject: "Sale",
+            },
+            {
+              ...base,
+              id: "u1",
+              date: "2026-09-05T10:00:00Z",
+              labels: ["INBOX", "CATEGORY_UPDATES"],
+              subject: "Receipt",
+            },
+            {
+              ...base,
+              id: "n1",
+              date: "2026-09-06T10:00:00Z",
+              labels: ["INBOX"],
+              subject: "Plain",
+            },
+            {
+              ...base,
+              id: "o1",
+              date: "2026-09-07T10:00:00Z",
+              labels: ["CATEGORY_SOCIAL"],
+              subject: "Archived social",
+            },
+          ],
+        },
+      },
+    });
+    const q = (query: string) => ids(gmail, "x", query);
+    expect(q("is:starred")).toEqual(["s1"]);
+    expect(q("is:important")).toEqual(["i1"]);
+    expect(q("has:attachment")).toEqual(["f1"]);
+    expect(q("category:promotions")).toEqual(["p1"]);
+    expect(q("category:updates")).toEqual(["u1"]);
+    expect(q("category:social")).toEqual(["o1"]);
+    expect(q("category:primary")).toEqual(["n1", "f1", "i1", "s1"]);
+    expect(q("is:starred (plain OR starred)")).toEqual(["s1"]);
+  });
+
   it("rejects unknown operators, bad page sizes and bad tokens with 400", () => {
     const gmail = new GmailApiEmulator({ now: NOW });
-    expect(list(gmail, "acct-a", { q: "has:attachment" }).status).toBe(400);
+    expect(list(gmail, "acct-a", { q: "has:drive" }).status).toBe(400);
+    expect(list(gmail, "acct-a", { q: "is:snoozed" }).status).toBe(400);
+    expect(list(gmail, "acct-a", { q: "category:forums" }).status).toBe(400);
     expect(list(gmail, "acct-a", { q: "in:trash" }).status).toBe(400);
     expect(list(gmail, "acct-a", { q: "after:yesterday" }).status).toBe(400);
     expect(list(gmail, "acct-a", { maxResults: "501" }).status).toBe(400);
