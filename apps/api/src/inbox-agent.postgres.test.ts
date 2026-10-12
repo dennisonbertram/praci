@@ -120,6 +120,19 @@ describePostgres("ensureInboxAgent (PostgreSQL)", () => {
     expect((await prisma.bot.findUniqueOrThrow({ where: { id: old.id } })).spawnKey).toBeNull();
   });
 
+  it("starts a re-created bot on an empty thread and lists only one active Inbox agent", async () => {
+    const before = await ensureInboxAgent(repos, b);
+    const oldThread = await prisma.thread.findFirstOrThrow({ where: { botId: before.id } });
+    await prisma.bot.update({ where: { id: before.id }, data: { archivedAt: new Date() } });
+
+    const fresh = await ensureInboxAgent(repos, b);
+
+    const freshThread = await prisma.thread.findFirstOrThrow({ where: { botId: fresh.id } });
+    expect(freshThread.id).not.toBe(oldThread.id);
+    const active = (await repos.listBots(b)).filter((bot) => bot.name === "Inbox agent");
+    expect(active.map((bot) => bot.id)).toEqual([fresh.id]);
+  });
+
   describe("inbox.agent and bots.create", () => {
     const client = (who: Actor) =>
       createRouterClient(createRouter({ prisma } as unknown as RouterDeps), {
