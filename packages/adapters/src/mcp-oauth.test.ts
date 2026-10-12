@@ -211,6 +211,29 @@ describe("MCP OAuth", () => {
     };
   }
 
+  it("hides the old token while re-authorizing and keeps it stored until a new one arrives", async () => {
+    const persisted: OAuthMaterial[] = [];
+    const material = expiringMaterial(Date.now());
+    const provider = new StoredMcpOAuthProvider(
+      "server-1",
+      material,
+      async (next) => {
+        persisted.push(next);
+      },
+      { reauthorize: true },
+    );
+
+    // The SDK must see no token, otherwise it connects without asking the user again.
+    await expect(provider.tokens()).resolves.toBeUndefined();
+    await provider.saveCodeVerifier("verifier");
+    // A cancelled attempt leaves the working token in the stored material.
+    expect(persisted.at(-1)?.oauth?.tokens?.access_token).toBe("old-access");
+
+    await provider.saveTokens({ access_token: "new-access", token_type: "Bearer" });
+    await expect(provider.tokens()).resolves.toMatchObject({ access_token: "new-access" });
+    expect(persisted.at(-1)?.oauth?.tokens?.access_token).toBe("new-access");
+  });
+
   it("renews an expired token once before handing it out", async () => {
     const persisted: { oauth?: { tokens?: { access_token?: string } } }[] = [];
     const tokenRequests: URLSearchParams[] = [];

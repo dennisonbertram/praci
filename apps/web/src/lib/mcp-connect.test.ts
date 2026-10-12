@@ -43,4 +43,18 @@ describe("connectMcpOauth", () => {
     expect(popup.location.href).toBe("https://provider.example/authorize");
     expect([...storage.values()]).toEqual(["1"]);
   });
+
+  it("asks the API for a fresh authorization when reauthorizing an already connected server", async () => {
+    vi.mocked(rpc.mcp.oauth.begin).mockResolvedValue({ status: "already_connected" } as never);
+    vi.stubGlobal("window", { location: { origin: "http://127.0.0.1:5173" } });
+
+    await expect(connectMcpOauth("server-id", { reauthorize: true })).resolves.toBe(
+      "already_connected",
+    );
+    expect(rpc.mcp.oauth.begin).toHaveBeenLastCalledWith({
+      serverId: "server-id",
+      redirectUri: "http://127.0.0.1:5173/mcp/oauth/callback",
+      reauthorize: true,
+    });
+  });
 });
