@@ -57,4 +57,13 @@ describe("connectMcpOauth", () => {
       reauthorize: true,
     });
   });
+
+  it("does not ask for a fresh authorization on a plain connect", async () => {
+    vi.mocked(rpc.mcp.oauth.begin).mockResolvedValue({ status: "already_connected" } as never);
+    vi.stubGlobal("window", { location: { origin: "http://127.0.0.1:5173" } });
+
+    await connectMcpOauth("server-id");
+
+    expect(vi.mocked(rpc.mcp.oauth.begin).mock.lastCall?.[0]).not.toHaveProperty("reauthorize");
+  });
 });

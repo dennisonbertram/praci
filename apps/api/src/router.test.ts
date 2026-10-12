@@ -4242,3 +4242,42 @@ describe("MCP server rename", () => {
     await expect(client.mcp.servers.rename({ id: "server-9", name: "Mine" })).rejects.toThrow();
   });
 });
+
+describe("MCP OAuth reauthorization", () => {
+  it("passes the reauthorize request to the broker with the caller's space and user", async () => {
+    const begin = vi.fn().mockResolvedValue({ status: "authorization_not_requested" });
+    const deps = {
+      prisma: {} as PrismaClient,
+      mcpOAuth: { begin },
+      env: {
+        defaultProvider: "fake",
+        defaultModel: "fake-model",
+        webOrigin: "http://127.0.0.1:5173",
+        screenProxySecret: "fake-test-secret",
+        sandboxProvider: "fake",
+      },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "workspace-1",
+      userId: "user-1",
+      email: "user@rakazo.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+    const client = createRouterClient(createRouter(deps), { context: { actor } as never });
+
+    await client.mcp.oauth.begin({
+      serverId: "server-1",
+      redirectUri: "http://127.0.0.1:5173/mcp/oauth/callback",
+      reauthorize: true,
+    });
+
+    expect(begin).toHaveBeenCalledWith({
+      serverId: "server-1",
+      redirectUri: "http://127.0.0.1:5173/mcp/oauth/callback",
+      reauthorize: true,
+      spaceId: "workspace-1",
+      userId: "user-1",
+    });
+  });
+});
