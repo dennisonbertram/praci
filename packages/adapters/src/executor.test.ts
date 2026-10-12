@@ -14,6 +14,7 @@ import {
   parseUpdateBotPatch,
   persistentComputerInstruction,
   runNotificationsEnabled,
+  splitInboxSearchSkill,
   selectBuiltinToolsForRun,
   settleSteeringAttachmentLoads,
   threadContextForRun,
@@ -1010,6 +1011,28 @@ describe("run notification preference", () => {
   });
 });
 
+describe("splitInboxSearchSkill", () => {
+  const skills = [
+    { name: "Interrogate", content: "---\nname: Interrogate\ndescription: d\n---\n\nReview it." },
+    {
+      name: "inbox-search",
+      content: "---\nname: inbox-search\ndescription: d\n---\n\nRun mail_search first.",
+    },
+  ];
+
+  it("returns the skill body and drops it from the catalog when mail_search is offered", () => {
+    const result = splitInboxSearchSkill([{ name: "web_search" }, { name: "mail_search" }], skills);
+    expect(result.guidance).toBe("Run mail_search first.");
+    expect(result.catalog.map((skill) => skill.name)).toEqual(["Interrogate"]);
+  });
+
+  it("omits both the body and the catalog entry when mail_search is not offered", () => {
+    const result = splitInboxSearchSkill([{ name: "web_search" }], skills);
+    expect(result.guidance).toBeUndefined();
+    expect(result.catalog.map((skill) => skill.name)).toEqual(["Interrogate"]);
+  });
+});
+
 describe("userTurnInstructions", () => {
   const computerInstruction = "You have a persistent computer.";
   const pageBrowserAllowed = true;
@@ -1040,6 +1063,27 @@ describe("userTurnInstructions", () => {
     workspaceInstruction: "This entire computer workspace is your private home.",
     replyGuidance,
   };
+
+  it("puts mail search guidance after the plugin line and before the skills catalog", () => {
+    const instructions = userTurnInstructions({
+      ...base,
+      groupContext: undefined,
+      messagingContext: undefined,
+      redactedMemoryContext: undefined,
+      redactedScratchpadContext: undefined,
+      hasHistoricalContext: false,
+      agentEnvironmentInstruction: undefined,
+      botDirectory: undefined,
+      pluginLine: "Connected plugins: none",
+      mailSearchGuidance: "Mail guidance",
+      agentSkillsLine: "Agent skills",
+      taughtSkillsLine: undefined,
+    }).filter(Boolean);
+
+    const at = (text: string) => instructions.indexOf(text);
+    expect(at("Mail guidance")).toBe(at("Connected plugins: none") + 1);
+    expect(at("Agent skills")).toBe(at("Mail guidance") + 1);
+  });
 
   it("places stable guidance before volatile context when every optional context is present", () => {
     const instructions = userTurnInstructions({

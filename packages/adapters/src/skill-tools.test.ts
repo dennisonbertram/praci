@@ -1,6 +1,6 @@
 import { buildSkillMd, formatSkillsCatalogInstruction, parseSkillMd } from "@rakazo/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_AGENT_SKILLS } from "./builtin-skills.js";
+import { BUILTIN_AGENT_SKILLS, INBOX_SEARCH_SKILL_NAME } from "./builtin-skills.js";
 import {
   listAgentSkillRecords,
   skillCreateFromTool,
@@ -216,6 +216,25 @@ describe("skill tools", () => {
     expect(await skillDeleteFromTool(prisma as never, owner, { name: "Plugin recipe" })).toEqual({
       error: "Builtin and plugin skills are read-only.",
     });
+  });
+
+  it("ships a read-only inbox-search skill that names the mail tools and their arguments", async () => {
+    expect(INBOX_SEARCH_SKILL_NAME).toBe("inbox-search");
+    const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
+    expect(skill).toBeDefined();
+    const parsed = parseSkillMd(skill?.content ?? "");
+    if ("error" in parsed) throw new Error(parsed.error);
+    for (const term of ["mail_search", "mail_grep", "mail_get", "searchId", "continueFrom"]) {
+      expect(parsed.body).toContain(term);
+    }
+    const records = await listAgentSkillRecords(prisma as never, owner);
+    expect(records.find((row) => row.name === INBOX_SEARCH_SKILL_NAME)).toMatchObject({
+      source: "builtin",
+      readOnly: true,
+    });
+    expect(
+      await skillDeleteFromTool(prisma as never, owner, { name: INBOX_SEARCH_SKILL_NAME }),
+    ).toEqual({ error: "Builtin and plugin skills are read-only." });
   });
 
   it("ships builtin skills as valid, readable, read-only SKILL.md records", async () => {
