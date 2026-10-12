@@ -50,7 +50,7 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   await expect(cards.getByTestId("email-row")).toHaveCount(2);
   await expect(cards.getByTestId("email-card").first()).toContainText("Offsite dates");
   const attached = cards.getByTestId("email-row").filter({ hasText: "Q3 report" });
-  await expect(attached.getByLabel("Attachments: 1")).toBeVisible();
+  await expect(attached.getByLabel("Attachments: 2")).toBeVisible();
   await expect(
     cards
       .getByTestId("email-row")
