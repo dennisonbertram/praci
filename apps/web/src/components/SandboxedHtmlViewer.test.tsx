@@ -5,17 +5,18 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { SandboxedHtmlViewer } from "./SandboxedHtmlViewer";
 
-async function render(html: string, scripts?: boolean) {
+async function render(html: string, scripts?: boolean, email?: boolean) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   await act(async () => {
-    root.render(<SandboxedHtmlViewer title="Notes" html={html} scripts={scripts} />);
+    root.render(<SandboxedHtmlViewer title="Notes" html={html} scripts={scripts} email={email} />);
   });
   const iframe = container.querySelector("iframe");
   return {
     iframe,
+    container,
     srcDoc: iframe?.getAttribute("srcdoc") ?? "",
     async cleanup() {
       await act(async () => root.unmount());
@@ -82,6 +83,77 @@ it("lets the shell load the nested srcdoc preview and rejects http(s) navigation
   expect(frameSourceAllows(sources, "about:srcdoc")).toBe(true);
   expect(frameSourceAllows(sources, "https://example.invalid/nav")).toBe(false);
   expect(frameSourceAllows(sources, "http://example.invalid/nav")).toBe(false);
+
+  await view.cleanup();
+});
+
+it("email mode loads https and data images, opens links in new tabs, and still runs no script in the message", async () => {
+  const view = await render('<img src="https://example.invalid/pixel.png">', true, true);
+  const shell = view.srcDoc.split("srcdoc=")[0] ?? "";
+
+  // Even when the caller asks for scripts, an email never gets them.
+  expect(shell).toMatch(/csp="[^"]*script-src 'none'/);
+  expect(shell).toMatch(/csp="[^"]*img-src data: https:/);
+  const innerSandbox = /<iframe id="preview" sandbox="([^"]*)"/.exec(shell)?.[1] ?? "";
+  expect(innerSandbox.split(" ").sort()).toEqual([
+    "allow-popups",
+    "allow-popups-to-escape-sandbox",
+    "allow-same-origin",
+  ]);
+  const outer = view.iframe?.getAttribute("sandbox")?.split(" ").sort();
+  expect(outer).toEqual(["allow-popups", "allow-popups-to-escape-sandbox", "allow-scripts"]);
+  // The app origin is never shared with the frame, and form posts stay blocked.
+  expect(view.iframe?.getAttribute("sandbox")).not.toContain("allow-same-origin");
+  expect(view.srcDoc).toContain("form-action 'none'");
+  expect(view.srcDoc).toContain("base-uri 'none'");
+  expect(view.srcDoc).toContain("frame-src about:");
+
+  await view.cleanup();
+});
+
+it("leaves remote images blocked for a plain scripts-off preview", async () => {
+  const view = await render('<img src="https://example.invalid/pixel.png">', false);
+
+  expect(view.srcDoc).not.toMatch(/img-src[^;]*https:/);
+  expect(view.iframe?.getAttribute("sandbox")).toBe("allow-scripts");
+
+  await view.cleanup();
+});
+
+it("email mode sizes the frame to the height its shell reports, within limits", async () => {
+  const view = await render("<p>Hello</p>", false, true);
+  const frame = view.iframe as HTMLIFrameElement;
+  const report = async (data: unknown, source: MessageEventSource | null = frame.contentWindow) => {
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent("message", { data, source }));
+    });
+  };
+
+  await report({ rakazoHeight: 412 });
+  expect(frame.style.height).toBe("412px");
+  // A message from anywhere else, or a value that is not a finite number, is ignored.
+  await report({ rakazoHeight: 900 }, window);
+  await report({ rakazoHeight: "900" });
+  await report({ rakazoHeight: Number.NaN });
+  await report("rakazoHeight");
+  expect(frame.style.height).toBe("412px");
+  await report({ rakazoHeight: 10 });
+  expect(Number.parseInt(frame.style.height)).toBeGreaterThanOrEqual(40);
+  await report({ rakazoHeight: 1_000_000 });
+  expect(Number.parseInt(frame.style.height)).toBeLessThanOrEqual(4000);
+
+  await view.cleanup();
+});
+
+it("does not size a non-email preview from messages", async () => {
+  const view = await render("<p>Hello</p>");
+  const frame = view.iframe as HTMLIFrameElement;
+  await act(async () => {
+    window.dispatchEvent(
+      new MessageEvent("message", { data: { rakazoHeight: 300 }, source: frame.contentWindow }),
+    );
+  });
+  expect(frame.style.height).toBe("");
 
   await view.cleanup();
 });
