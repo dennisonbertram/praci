@@ -9,7 +9,13 @@ import type {
   JobPublisher,
 } from "@rakazo/adapter-kit";
 import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
-import { MAX_OPEN_TODOS, TRIAGE_BATCH_SIZE, TRIAGE_VERSION, type TriageItem } from "@rakazo/core";
+import {
+  MAX_OPEN_TODOS,
+  MAX_TRIAGE_PER_RUN,
+  TRIAGE_BATCH_SIZE,
+  TRIAGE_VERSION,
+  type TriageItem,
+} from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -96,10 +102,15 @@ const answerAll =
 
 function fakeRuntime(respond: (prompt: string, call: number) => string, delayMs = 0) {
   const requests: AgentRunRequest[] = [];
+  let inFlight = 0;
+  let maxInFlight = 0;
   const runtime = {
     run: async function* (request: AgentRunRequest) {
       requests.push(request);
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
       if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      inFlight -= 1;
       yield {
         type: "usage" as const,
         provider: "openrouter",
@@ -110,7 +121,12 @@ function fakeRuntime(respond: (prompt: string, call: number) => string, delayMs 
       yield { type: "done" as const, text: respond(request.prompt, requests.length) };
     },
   } as unknown as AgentRuntime;
-  return { runtime, requests, prompts: () => requests.map((r) => r.prompt) };
+  return {
+    runtime,
+    requests,
+    prompts: () => requests.map((r) => r.prompt),
+    maxInFlight: () => maxInFlight,
+  };
 }
 
 function fakeJobs() {
@@ -552,18 +568,97 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     expect(await todosOf(user)).toHaveLength(1);
   });
 
-  it("leaves one to-do per message when two runs for one user overlap", async () => {
+  it("classifies each message once when several runs for one user overlap", async () => {
     const user = await addUser();
-    for (let i = 0; i < 4; i += 1) await mail(user, `Mail ${i}`, { minutesAgo: i + 1 });
-    const rt = fakeRuntime(answerAll(), 150);
+    for (let i = 0; i < 25; i += 1) await mail(user, `Mail ${i}`, { minutesAgo: i + 1 });
+    const rt = fakeRuntime(answerAll(), 200);
+    const workers = [first, other, createDb(databaseUrl as string), createDb(databaseUrl as string)];
+    const queues = workers.map(() => fakeJobs());
 
-    await Promise.all([run(user, rt.runtime), run(user, rt.runtime, { client: other.prisma })]);
+    try {
+      await Promise.all(
+        workers.map((db, i) => run(user, rt.runtime, { client: db.prisma, jobs: queues[i]?.jobs })),
+      );
+    } finally {
+      for (const db of workers.slice(2)) {
+        await db.prisma.$disconnect();
+        await db.pool.end();
+      }
+    }
 
-    // Both runs classified the batch; the cost is a duplicate call, not duplicate data.
+    // 25 messages are two model batches, sent once; no other run paid for them again.
+    const sent = rt.prompts().flatMap(idsIn);
+    expect(sent).toHaveLength(25);
+    expect(new Set(sent).size).toBe(25);
+    expect(rt.maxInFlight()).toBe(1);
+    expect((await messagesOf(user)).every((m) => m.triagedAt !== null)).toBe(true);
+    expect(await todosOf(user)).toHaveLength(25);
+    // The three runs that found the user busy come back later in case mail arrived meanwhile.
+    const retries = queues.flatMap((q) => q.enqueued);
+    expect(retries).toHaveLength(3);
+    for (const job of retries) {
+      expect(job).toMatchObject({
+        name: "inbox.triage",
+        replaceKey: `inbox.triage:${spaceId}:${user.userId}`,
+      });
+      expect((job.availableAt as Date).getTime()).toBeGreaterThan(Date.now());
+    }
+  });
+
+  it("runs triage for different users at the same time", async () => {
+    const users = [await addUser(), await addUser()];
+    for (const user of users) await mail(user, "Hello", { minutesAgo: 1 });
+    const rt = fakeRuntime(answerAll(), 300);
+
+    await Promise.all(
+      users.map((user, i) => run(user, rt.runtime, i ? { client: other.prisma } : {})),
+    );
+
     expect(rt.requests).toHaveLength(2);
-    const todos = await todosOf(user);
-    expect(todos).toHaveLength(4);
-    expect(new Set(todos.map((t) => t.messageId)).size).toBe(4);
+    expect(rt.maxInFlight()).toBe(2);
+  });
+
+  it("lets the next run triage after a run that failed in the middle", async () => {
+    const user = await addUser();
+    await mail(user, "Retry me", { minutesAgo: 1 });
+    const failing = {
+      // biome-ignore lint/correctness/useYield: fails before producing any event
+      run: async function* () {
+        throw new Error("model down");
+      },
+    } as unknown as AgentRuntime;
+
+    await expect(run(user, failing)).rejects.toThrow();
+    const rt = fakeRuntime(answerAll());
+    await run(user, rt.runtime, { client: other.prisma });
+
+    expect(rt.requests).toHaveLength(1);
+    expect((await messagesOf(user))[0]?.triagedAt).not.toBeNull();
+  });
+
+  it("queues the backlog follow-up only after the per-user run lock is free", async () => {
+    const user = await addUser();
+    for (let i = 0; i < MAX_TRIAGE_PER_RUN + 1; i += 1) {
+      await mail(user, `Mail ${i}`, { minutesAgo: i + 1 });
+    }
+    const rt = fakeRuntime(answerAll());
+    let lockFreeWhenQueued: boolean | undefined;
+    const jobs = {
+      enqueue: async () => {
+        lockFreeWhenQueued = await other.prisma.$transaction(async (tx) => {
+          const [row] = await tx.$queryRaw<
+            { ok: boolean }[]
+          >`SELECT pg_try_advisory_xact_lock(hashtext('inbox.triage.run'), hashtext(${`${spaceId}:${user.userId}`})) AS ok`;
+          return row?.ok === true;
+        });
+      },
+      cancel: async () => {},
+      close: async () => {},
+    } as JobPublisher;
+
+    await run(user, rt.runtime, { jobs });
+
+    expect(lockFreeWhenQueued).toBe(true);
   });
 
   it("applies to-do changes only while holding the per-user advisory lock", async () => {
