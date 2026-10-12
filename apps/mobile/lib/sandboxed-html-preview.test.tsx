@@ -73,8 +73,31 @@ it("keeps today's behavior without onOpenLink: only the document itself loads", 
   expect(allow({ url: "https://example.com/", navigationType: "click" })).toBe(false);
 });
 
-it("still blocks remote images and the network for email-style documents", () => {
-  show(<SandboxedHtmlPreview html='<img src="https://tracker.example/p.gif">' scripts={false} />);
-  expect(props().source.html).toContain("img-src data:");
+it("blocks remote images by default, as artifacts need", () => {
+  show(<SandboxedHtmlPreview html='<img src="https://tracker.example/p.gif">' />);
+  expect(props().source.html).toContain("img-src data:;");
+  expect(props().source.html).not.toContain("img-src data: https:");
+});
+
+it("email mode loads https images, runs no script, and still blocks other navigation", () => {
+  const onOpenLink = vi.fn();
+  show(
+    <SandboxedHtmlPreview
+      html="<img src='https://x.example/p.png'>"
+      email
+      onOpenLink={onOpenLink}
+    />,
+  );
+  expect(props().source.html).toContain("img-src data: https:;");
   expect(props().source.html).toContain("default-src 'none'");
+  expect(props().javaScriptEnabled).toBe(false);
+  const allow = props().onShouldStartLoadWithRequest;
+  expect(allow({ url: "https://x.example/p.png", navigationType: "other" })).toBe(false);
+  expect(allow({ url: "https://x.example/a", navigationType: "click" })).toBe(false);
+  expect(onOpenLink).toHaveBeenCalledWith("https://x.example/a");
+});
+
+it("email mode keeps JavaScript off even if scripts is left on", () => {
+  show(<SandboxedHtmlPreview html="<p>hi</p>" email scripts />);
+  expect(props().javaScriptEnabled).toBe(false);
 });

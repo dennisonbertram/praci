@@ -7,7 +7,8 @@ import { WebView } from "react-native-webview";
  * a fresh `source.html` load has no cookies/local storage from the rest of
  * the app, `domStorageEnabled`/file access/shared cookies are explicitly off,
  * and navigation is limited to the preview document itself. The CSP meta tag
- * (the same policy as the web viewer) blocks outbound network requests.
+ * (the same policy as the web viewer) blocks outbound network requests, except
+ * https images in `email` mode.
  */
 function isPreviewDocument(url: string): boolean {
   return url === "about:blank" || url === "about:blank/";
@@ -18,25 +19,28 @@ function isWebUrl(url: string): boolean {
 }
 
 /**
- * `scripts={false}` is for untrusted documents such as email. `onOpenLink` receives an http(s) URL
+ * `email` is for a whole message: https images load, and JavaScript stays off whatever `scripts`
+ * says. `scripts={false}` alone is for other untrusted documents. `onOpenLink` receives an http(s) URL
  * only for a positively identified tap (`navigationType: "click"`, reported on iOS only); the
  * navigation itself is always blocked, and every other navigation (meta refresh, Android) opens nothing.
  */
 export function SandboxedHtmlPreview({
   html,
   scripts = true,
+  email = false,
   onOpenLink,
 }: {
   html: string;
   scripts?: boolean;
+  email?: boolean;
   onOpenLink?: (url: string) => void;
 }) {
   return (
     <View style={styles.container}>
       <WebView
-        source={{ html: withSandboxedArtifactCsp(html), baseUrl: "about:blank" }}
+        source={{ html: withSandboxedArtifactCsp(html, { email }), baseUrl: "about:blank" }}
         style={styles.webview}
-        javaScriptEnabled={scripts}
+        javaScriptEnabled={scripts && !email}
         domStorageEnabled={false}
         allowFileAccess={false}
         allowFileAccessFromFileURLs={false}
