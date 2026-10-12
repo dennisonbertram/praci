@@ -1,6 +1,6 @@
 import type { MessageBlock } from "@rakazo/contracts";
 import { CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE } from "@rakazo/contracts";
-import { ONCE_ROUTINE_CRON } from "@rakazo/core";
+import { expandSkillReferencesInPrompt, ONCE_ROUTINE_CRON } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -1024,6 +1024,20 @@ describe("splitInboxSearchSkill", () => {
     const result = splitInboxSearchSkill([{ name: "web_search" }, { name: "mail_search" }], skills);
     expect(result.guidance).toBe("Run mail_search first.");
     expect(result.catalog.map((skill) => skill.name)).toEqual(["Interrogate"]);
+  });
+
+  it("keeps the skill in the full list so /inbox-search can still force it", () => {
+    const { catalog } = splitInboxSearchSkill([{ name: "mail_search" }], skills);
+    expect(catalog.map((skill) => skill.name)).not.toContain("inbox-search");
+    const records = skills.map((skill) => ({
+      ...skill,
+      description: "d",
+      source: "builtin" as const,
+      readOnly: true,
+    }));
+    expect(expandSkillReferencesInPrompt("/inbox-search\nfind the invoice", records)).toContain(
+      "Run mail_search first.",
+    );
   });
 
   it("omits both the body and the catalog entry when mail_search is not offered", () => {
