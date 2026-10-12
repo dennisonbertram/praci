@@ -34,10 +34,10 @@ export function InboxConsentPrompt({
       aria-labelledby="inbox-consent-heading"
     >
       <h2 id="inbox-consent-heading" className="text-sm font-medium">
-        <Trans>Let {name} sort your mail</Trans>
+        <Trans>Let Rakazo sort your mail</Trans>
       </h2>
       <p className="text-xs text-muted-foreground">
-        <Trans>Senders, recipients, subjects and short previews are sent to it.</Trans>
+        <Trans>Senders, recipients, subjects and short previews are sent to {name}.</Trans>
       </p>
       {error ? (
         <p role="alert" className="text-sm text-destructive">

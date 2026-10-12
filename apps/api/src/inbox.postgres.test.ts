@@ -503,6 +503,8 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       const out = await inboxList(deps, a, { filter: "unread" });
       expect(out.rows.map((r) => r.subject)).toEqual(["Subject a-1"]);
       expect(out.failedAccounts).toEqual([broken]);
+      // Gmail answers 401 for a mailbox it does not know, which the provider maps to "reconnect".
+      expect(out.reconnectAccounts).toEqual([broken]);
       await prisma.connection.delete({ where: { id: broken } });
     });
 
@@ -591,6 +593,28 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(gmail.accountRefs().length).toBe(4);
       expect(gmail.requests.every((r) => r.accountRef === "box-a")).toBe(true);
       expect((await inboxList(deps, a, {})).syncedAt).not.toBeNull();
+    });
+
+    it("reports a failed sync, and whether the account needs a reconnect, but not an incomplete one", async () => {
+      await wipe();
+      seedMailboxes();
+      const status = async () => {
+        const out = await inboxList(deps, a, {});
+        return { failed: out.failedAccounts, reconnect: out.reconnectAccounts };
+      };
+
+      gmail.failNext(401, { times: 1000 });
+      await inboxRefresh(deps, a, {});
+      expect(await status()).toEqual({ failed: [connA], reconnect: [connA] });
+
+      gmail.failNext(503, { times: 1000 });
+      await inboxRefresh(deps, a, {});
+      expect(await status()).toEqual({ failed: [connA], reconnect: [] });
+
+      // One message cannot be hydrated (rate limit): the rest loaded, so this is not a failure.
+      gmail.failNext(429, { times: 1000, urlIncludes: "messages/a-1" });
+      await inboxRefresh(deps, a, {});
+      expect(await status()).toEqual({ failed: [], reconnect: [] });
     });
 
     it("rejects someone else's, a revoked or an unknown connection id with NOT_FOUND", async () => {
@@ -838,6 +862,85 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       // Never pending while triage is disabled: the job would not run.
       expect((await inboxList(deps, a, {})).triagePending).toBe(false);
       await wipeConsent();
+    });
+
+    describe("refresh starts triage", () => {
+      const queued: unknown[] = [];
+      const jobs = {
+        enqueue: async (job: unknown) => void queued.push(job),
+      } as unknown as JobPublisher;
+      const job = inboxTriageJob(userA, spaceA);
+      const refresh = (extra: object = ready) => inboxRefresh({ ...deps, ...extra, jobs }, a, {});
+
+      it("enqueues triage after consent is granted inside the 60 second sync throttle", async () => {
+        await wipe();
+        await wipeConsent();
+        seedMailboxes();
+        queued.length = 0;
+
+        // The first sync caches the mail; with no consent yet the job it queues would do nothing.
+        await refresh();
+        expect(await prisma.cachedMailMessage.count({ where: { userId: userA } })).toBe(1);
+        queued.length = 0;
+
+        // The user presses Allow, which refreshes. Every sync is throttled, so only the refresh
+        // itself can start triage.
+        await allow(a);
+        const listed = () => gmail.requests.filter((r) => r.url.includes("/messages")).length;
+        const before = listed();
+        await refresh();
+        expect(listed()).toBe(before);
+        expect(queued).toEqual([job]);
+      });
+
+      it("enqueues triage for mail cached earlier even when Gmail fails during the refresh", async () => {
+        await wipe();
+        await wipeConsent();
+        seedMailboxes();
+        await refresh();
+        await allow(a);
+        await prisma.$executeRaw`UPDATE mail_sync_states SET "lastSyncedAt" = now() - interval '5 minutes' WHERE "connectionId" = ${connA}`;
+        gmail.failNext(503, { times: 1000 });
+        queued.length = 0;
+
+        await refresh();
+
+        expect(queued).toEqual([job]);
+        await wipeConsent();
+      });
+
+      it("does not enqueue when triage is not ready or no mail waits for it", async () => {
+        await wipe();
+        await wipeConsent();
+        seedMailboxes();
+        await refresh();
+        await allow(a);
+
+        // Throttled, not ready: no model.
+        queued.length = 0;
+        await refresh({});
+        expect(queued).toEqual([]);
+
+        // Throttled, ready, but everything in the window is already triaged or sent.
+        await prisma.cachedMailMessage.updateMany({
+          where: { userId: userA },
+          data: { triagedAt: new Date(), triageVersion: TRIAGE_VERSION },
+        });
+        await cache(a, connA, "sent", { fromSelf: true });
+        await refresh();
+        expect(queued).toEqual([]);
+
+        // Someone else's untriaged mail does not count.
+        await cache(b, connB, "theirs");
+        await refresh();
+        expect(queued).toEqual([]);
+
+        // Mail that is waiting does.
+        await cache(a, connA, "waiting");
+        await refresh();
+        expect(queued).toEqual([job]);
+        await wipeConsent();
+      });
     });
 
     it("lists open to-dos and those finished in the last day, for connected accounts only", async () => {

@@ -45,6 +45,7 @@ describe("inbox contracts", () => {
         rows: [],
         syncedAt: null,
         failedAccounts: [],
+        reconnectAccounts: [],
         enabled: false,
         triageBlocked: { reason: "no_model" },
         triagePending: false,
@@ -60,6 +61,7 @@ describe("inbox contracts", () => {
         rows: [],
         syncedAt: null,
         failedAccounts: [],
+        reconnectAccounts: [],
         enabled: false,
         triageBlocked,
         triagePending: false,
@@ -79,11 +81,29 @@ describe("inbox contracts", () => {
       rows: [],
       syncedAt: null,
       failedAccounts: [],
+      reconnectAccounts: [],
       enabled: false,
       triageBlocked: null,
       triagePending: false,
     };
     expect(InboxListOutputSchema.safeParse(without).success).toBe(false);
+  });
+
+  it("requires reconnectAccounts, the accounts whose failed sync needs a reconnect", () => {
+    const list = (reconnectAccounts?: unknown) =>
+      InboxListOutputSchema.safeParse({
+        accounts: [],
+        agent: null,
+        rows: [],
+        syncedAt: null,
+        failedAccounts: ["c1"],
+        ...(reconnectAccounts === undefined ? {} : { reconnectAccounts }),
+        enabled: false,
+        triageBlocked: null,
+        triagePending: false,
+      });
+    expect(list(["c1"])).toMatchObject({ success: true, data: { reconnectAccounts: ["c1"] } });
+    expect(list().success).toBe(false);
   });
 
   it("rejects a row without the triage fields (needsReply, priority, reason, category, feedback)", () => {
@@ -104,6 +124,7 @@ describe("inbox contracts", () => {
         rows: [r],
         syncedAt: null,
         failedAccounts: [],
+        reconnectAccounts: [],
         enabled: true,
         triageBlocked: null,
         triagePending: false,
