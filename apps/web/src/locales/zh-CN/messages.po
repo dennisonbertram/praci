@@ -628,6 +628,10 @@ msgstr ""
 msgid "Attachment"
 msgstr "附件"
 
+#: src/pages/Inbox.tsx
+msgid "Attachments"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
 msgstr "身份验证失败。"
@@ -2067,6 +2071,10 @@ msgstr "下载为 Markdown"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Download Executor"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Download failed"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx

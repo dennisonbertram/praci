@@ -628,6 +628,10 @@ msgstr ""
 msgid "Attachment"
 msgstr "अटैचमेंट"
 
+#: src/pages/Inbox.tsx
+msgid "Attachments"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
 msgstr "प्रमाणीकरण विफल रहा।"
@@ -2067,6 +2071,10 @@ msgstr "मार्कडाउन के रूप में डाउनल�
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Download Executor"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Download failed"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx

@@ -20,6 +20,12 @@ const OFFSITE_HTML =
 const MARK_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
+/** The bytes the Inbox e2e downloads; apps/web/e2e/inbox.spec.ts asserts the same text. */
+const REPORT_PDF_TEXT = "%PDF-1.4 Q3 report";
+const BUDGET_CSV_TEXT = "team,spend\nplatform,1200\n";
+const REPORT_PDF = Buffer.from(REPORT_PDF_TEXT).toString("base64");
+const BUDGET_CSV = Buffer.from(BUDGET_CSV_TEXT).toString("base64");
+
 /** Two seeded mailboxes, dated against `now` so the 14-day sync window always includes them. */
 export function e2eMailboxes(now = new Date()) {
   const at = (ms: number) => new Date(now.getTime() - ms).toISOString();
@@ -54,7 +60,10 @@ export function e2eMailboxes(now = new Date()) {
       to: "first@example.test",
       subject: "Q3 report",
       text: "The report is attached.",
-      attachments: [{ filename: "q3-report.pdf", mimeType: "application/pdf", size: 20_480 }],
+      attachments: [
+        { filename: "q3-report.pdf", mimeType: "application/pdf", size: 0, data: REPORT_PDF },
+        { filename: "budget.csv", mimeType: "text/csv", size: 0, data: BUDGET_CSV },
+      ],
     },
     {
       id: "e2e-a-4",
