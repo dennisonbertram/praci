@@ -210,6 +210,173 @@ describe.skipIf(!databaseAvailable)(
       }
     }, 45_000);
 
+    it("show_emails posts an emails block for a message the search cached, in the run's thread", async () => {
+      const gmail = new GmailApiEmulator({
+        now: new Date("2026-10-01T12:00:00Z"),
+        mailboxes: {
+          "acct-mail": {
+            address: "me@example.test",
+            messages: [
+              {
+                id: "cite-me",
+                date: "2026-09-30T08:00:00Z",
+                labels: ["INBOX"],
+                from: "Jana <jana@example.test>",
+                to: "Me <me@example.test>",
+                subject: "Contract needs a signature",
+                attachments: [{ filename: "contract.pdf", mimeType: "application/pdf", size: 10 }],
+              },
+            ],
+          },
+        },
+      });
+      const fixtureKey = "offline-show-emails-key";
+      let offered: string[] = [];
+      const model = await startModelEmulator({
+        apiKey: fixtureKey,
+        steps: [
+          {
+            expect(request) {
+              offered = (request.tools ?? []).map(
+                (tool: { function: { name: string } }) => tool.function.name,
+              );
+            },
+            response: {
+              type: "tool",
+              id: "search",
+              name: "mail_search",
+              arguments: { queries: ["from:jana"] },
+            },
+          },
+          {
+            expect(request) {
+              expect(toolResult(request)).toMatchObject({ records: 1 });
+            },
+            response: {
+              type: "tool",
+              id: "cards",
+              name: "show_emails",
+              arguments: { emails: [{ id: "cite-me", urgency: "today" }, { id: "not-cached" }] },
+            },
+          },
+          {
+            expect(request) {
+              expect(toolResult(request)).toEqual({ shown: 1, notFound: ["not-cached"] });
+            },
+            response: { type: "text", text: "One message needs your signature today." },
+          },
+        ],
+      });
+      const dataDir = await mkdtemp(path.join(tmpdir(), "rakazo-show-emails-"));
+      let stop: (() => Promise<void>) | undefined;
+      try {
+        const { createApp } = await import("../../../apps/api/src/app.ts");
+        const handles = await createApp({
+          databaseUrl: process.env.DATABASE_URL!,
+          realtimeDatabaseUrl: process.env.DATABASE_URL!,
+          authUrl: fixtureOrigin,
+          webOrigin: fixtureOrigin,
+          dataDir,
+          sandboxProvider: "fake",
+          agentRuntime: "pi",
+          wakeupDriver: "memory",
+          signupsEnabled: "true",
+          composio: new MailComposioEmulator(gmail),
+          encryptionKey: "offline-mail-fixture-encryption-key",
+        });
+        stop = handles.stop;
+        const signup = await handles.app.request("/api/auth/sign-up/email", {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: fixtureOrigin },
+          body: JSON.stringify({
+            email: `show-emails-${randomUUID()}@rakazo.test`,
+            password: "password12",
+            name: "Show emails fixture",
+          }),
+        });
+        expect(signup.status).toBeLessThan(400);
+        const cookie = sessionCookieHeader(signup);
+        await rpc(handles.app, cookie, "models/connect", {
+          provider: model.model.provider,
+          modelId: model.model.id,
+          baseUrl: model.baseUrl,
+          apiKey: fixtureKey,
+          contextWindow: 160_000,
+          maxTokens: 4096,
+        });
+        const bot = await rpc<{ id: string }>(handles.app, cookie, "bots/create", {
+          name: "Cards fixture",
+          title: "",
+          description: "",
+          instructions: "Answer questions about the user's mail.",
+          notifyOnFinish: false,
+        });
+        await discardBotIntroRun(handles, cookie, bot.id);
+        await rpc(handles.app, cookie, "bots/update", {
+          botId: bot.id,
+          modelProvider: model.model.provider,
+          modelId: model.model.id,
+        });
+        const storedBot = await handles.prisma.bot.findUniqueOrThrow({ where: { id: bot.id } });
+        const connection = await handles.prisma.connection.create({
+          data: {
+            spaceId: storedBot.spaceId,
+            userId: storedBot.userId,
+            connectorId: "composio",
+            provider: "gmail",
+            providerRef: "acct-mail",
+            displayName: "Gmail",
+            status: "connected",
+            metadata: { mailAddress: "me@example.test" },
+          },
+        });
+        const sent = await rpc<{ runId: string }>(handles.app, cookie, "threads/send", {
+          botId: bot.id,
+          text: "What needs my attention?",
+        });
+        await expect
+          .poll(
+            async () => {
+              const run = await handles.prisma.run.findUniqueOrThrow({ where: { id: sent.runId } });
+              if (run.status === "failed") model.assertComplete();
+              return run.status;
+            },
+            { timeout: 15_000, interval: 100 },
+          )
+          .toBe("completed");
+        model.assertComplete();
+        expect(offered).toContain("show_emails");
+        // The card carries the cached row's id, which is what the Inbox opens.
+        const cachedRow = await handles.prisma.cachedMailMessage.findFirstOrThrow({
+          where: { connectionId: connection.id, providerMessageId: "cite-me" },
+        });
+        const messages = await handles.prisma.message.findMany({
+          where: { runId: sent.runId, role: "bot" },
+        });
+        const blocks = messages.flatMap((message) => message.blocks as Array<{ kind: string }>);
+        expect(blocks.filter((block) => block.kind === "emails")).toEqual([
+          {
+            kind: "emails",
+            emails: [
+              expect.objectContaining({
+                id: cachedRow.id,
+                urgency: "today",
+                subject: "Contract needs a signature",
+                attachments: 1,
+              }),
+            ],
+          },
+        ]);
+      } finally {
+        try {
+          await stop?.();
+        } finally {
+          await model.close();
+          await rm(dataDir, { recursive: true, force: true });
+        }
+      }
+    }, 45_000);
+
     it("gives the Inbox agent only the mail tools, while an ordinary bot with the same Gmail connection also gets the Composio tools", async () => {
       const gmail = new GmailApiEmulator({
         now: new Date("2026-10-01T12:00:00Z"),

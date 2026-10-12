@@ -144,7 +144,7 @@ describePostgres("mail tools (PostgreSQL + Gmail emulator)", () => {
       mailToolFromTool(name, as, context(signal), args) as Promise<Record<string, any>>;
     const everything = async (searchId: string) =>
       idsOf(await call("mail_grep", { searchId, maxResults: 200 }));
-    return { scope, gmail, deps, call, everything, enqueue, accounts };
+    return { scope, gmail, deps, call, everything, enqueue, accounts, context };
   }
 
   it("saves matches from two accounts oldest-first, deduplicated, with a matching summary", async () => {
@@ -469,5 +469,75 @@ describePostgres("mail tools (PostgreSQL + Gmail emulator)", () => {
     expect(
       (await t.call("mail_grep", { searchId: search.id, patterns: ["invoice"] })).totalMatches,
     ).toBe(176);
+  });
+  it("show_emails resolves only the caller's cached rows on accounts that are still connected", async () => {
+    const mine = await harness({ a: [] });
+    const other = await tenant();
+    const connect = (scope: { spaceId: string; userId: string }, ref: string, status: string) =>
+      prisma.connection.create({
+        data: {
+          spaceId: scope.spaceId,
+          userId: scope.userId,
+          connectorId: "composio",
+          provider: "gmail",
+          providerRef: ref,
+          displayName: ref,
+          status,
+        },
+      });
+    const live = await connect(mine.scope, "live", "connected");
+    const revoked = await connect(mine.scope, "revoked", "revoked");
+    const theirs = await connect(other, "theirs", "connected");
+    const cached = (
+      scope: { spaceId: string; userId: string },
+      connectionId: string,
+      providerMessageId: string,
+      subject: string,
+    ) => ({
+      spaceId: scope.spaceId,
+      userId: scope.userId,
+      connectionId,
+      providerMessageId,
+      threadId: providerMessageId,
+      fromAddress: "sender@example.test",
+      subject,
+      snippet: "",
+      receivedAt: new Date("2026-10-01T12:00:00Z"),
+      unread: false,
+      seenAt: new Date(),
+    });
+    await prisma.cachedMailMessage.createMany({
+      data: [
+        cached(mine.scope, live.id, "shared", "Mine"),
+        cached(mine.scope, revoked.id, "revoked-only", "On a revoked account"),
+        cached(other, theirs.id, "shared", "Theirs"),
+        cached(other, theirs.id, "theirs-only", "Theirs only"),
+      ],
+    });
+    const published: unknown[] = [];
+    const deps: MailToolDeps = {
+      ...mine.deps,
+      // Only the live account is connected; attachment lookups fail and are skipped.
+      accounts: async () => [{ ...mine.accounts[0]!, id: live.id }],
+      mail: {
+        getMessage: async () => {
+          throw new MailProviderError("not_found", "gone");
+        },
+      } as unknown as MailProvider,
+      publish: async (blocks) => void published.push(...blocks),
+    };
+
+    const result = await mailToolFromTool("show_emails", deps, mine.context(), {
+      emails: [{ id: "shared" }, { id: "revoked-only" }, { id: "theirs-only" }],
+    });
+
+    expect(result).toEqual({ shown: 1, notFound: ["revoked-only", "theirs-only"] });
+    expect(published).toHaveLength(1);
+    const [block] = published as Array<{ emails: Array<{ id: string; subject: string }> }>;
+    expect(block?.emails.map((email) => email.subject)).toEqual(["Mine"]);
+    const row = await prisma.cachedMailMessage.findFirstOrThrow({
+      where: { connectionId: live.id, providerMessageId: "shared" },
+    });
+    expect(block?.emails[0]?.id).toBe(row.id);
   });
 });
