@@ -66,6 +66,7 @@ import {
   createStreamingRedactor,
   endsSentence,
   expandSkillReferencesInPrompt,
+  findSkillByName,
   formatSkillRunPrompt,
   formatSkillsCatalogInstruction,
   humanizeToolName,
@@ -80,6 +81,7 @@ import {
   messagingDmSurfaceNote,
   nextCronDateAcross,
   nextFence,
+  parseSkillMd,
   planActionGate,
   promptInvokesSkill,
   redactSecrets,
@@ -190,6 +192,7 @@ import {
   browserNavigateFromTool,
   browserSnapshotFromTool,
 } from "./browser-tools.js";
+import { INBOX_SEARCH_SKILL_NAME } from "./builtin-skills.js";
 import { agentConnectionTools, builtinAgentTools, sharedMemorySaveError } from "./builtin-tools.js";
 import { archiveSpawnedBot, spawnBot } from "./child-bots.js";
 import type { CloudAgentConnection } from "./cloud-agent-factory.js";
@@ -6337,7 +6340,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   "\n",
                 )}\nWhen the user asks to run a taught skill by name, follow that skill's playbook exactly. The full playbook is included in the user task when they invoke it.`
             : undefined;
-        const agentSkillsLine = formatSkillsCatalogInstruction(agentSkills);
+        const mailSkill = splitInboxSearchSkill(tools, agentSkills);
+        const agentSkillsLine = formatSkillsCatalogInstruction(mailSkill.catalog);
         const missingImagesInstruction = missingTurnImagesInstruction(
           turnBlocks,
           currentTurnImages,
@@ -6527,6 +6531,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 agentEnvironmentInstruction,
                 botDirectory,
                 pluginLine,
+                mailSearchGuidance: mailSkill.guidance,
                 agentSkillsLine,
                 taughtSkillsLine,
                 replyGuidance: runReplyGuidance(run.trigger),
@@ -7753,6 +7758,21 @@ function toolUsageLine(parts: {
   return `${parts.computerInstruction} ${clauses.join(" ")}`;
 }
 
+// The inbox-search recipe goes straight into the turn when the run offers mail_search, so the
+// model does not need a skill_read round trip. It never appears in the catalog line.
+export function splitInboxSearchSkill<T extends { name: string; content: string }>(
+  tools: readonly { name: string }[],
+  skills: T[],
+): { catalog: T[]; guidance: string | undefined } {
+  const skill = findSkillByName(skills, INBOX_SEARCH_SKILL_NAME);
+  const catalog = skills.filter((row) => row !== skill);
+  if (!skill || !tools.some((tool) => tool.name === "mail_search")) {
+    return { catalog, guidance: undefined };
+  }
+  const parsed = parseSkillMd(skill.content);
+  return { catalog, guidance: "error" in parsed ? undefined : parsed.body };
+}
+
 // Ordering matters: stable blocks first, volatile ones last, so the prefix stays cacheable.
 export function userTurnInstructions(parts: {
   botInstructions: string;
@@ -7770,6 +7790,7 @@ export function userTurnInstructions(parts: {
   agentEnvironmentInstruction: string | undefined;
   botDirectory: string | undefined;
   pluginLine: string | undefined;
+  mailSearchGuidance?: string | undefined;
   agentSkillsLine: string | undefined;
   taughtSkillsLine: string | undefined;
   replyGuidance: string;
@@ -7810,6 +7831,7 @@ export function userTurnInstructions(parts: {
       "archive_bot safely archives a bot this bot created, and only that bot. Use it when the user asks to remove that bot or when it is finished and unused. The user can restore it or permanently delete it later. confirm_name must exactly match its name.",
     ),
     parts.pluginLine,
+    parts.mailSearchGuidance,
     parts.agentSkillsLine,
     parts.taughtSkillsLine,
     offeredBuiltinClause(
