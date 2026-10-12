@@ -236,9 +236,9 @@ describe("grepRows", () => {
   });
 
   it("supports safe regex syntax", () => {
-    const rows = rowsWithSubjects(["a+b", "ab", "see example.com", "see exampleXcom"]);
+    const rows = rowsWithSubjects(["a+b", "ab", "see foo.bar", "see fooXbar"]);
     expect(lines(grepRows(rows, { ...opts, patterns: ["subject:a\\+b"] }))).toEqual([1]);
-    expect(lines(grepRows(rows, { ...opts, patterns: ["example\\.com"] }))).toEqual([3]);
+    expect(lines(grepRows(rows, { ...opts, patterns: ["foo\\.bar"] }))).toEqual([3]);
     expect(lines(grepRows(rows, { ...opts, patterns: ["subject:ab|subject:a\\+b"] }))).toEqual([
       1, 2,
     ]);
@@ -338,7 +338,7 @@ describe("grepRows", () => {
           { line: 2, text: "y".repeat(100) },
         ],
       },
-      120,
+      170,
     );
     expect(shrunk.matches).toEqual([{ line: 1, text: "x" }]);
     expect(shrunk.shown).toBe(1);
@@ -380,13 +380,13 @@ describe("grepRows", () => {
     const rows = Array.from({ length: 1200 }, (_, i) =>
       row(i + 1, { subject: i % 7 === 0 ? "needle" : "hay" }),
     );
-    const options = { ...opts, patterns: ["needle"], maxResults: 40, contextLines: 1 };
+    const options = { ...opts, patterns: ["needle"], maxResults: 20, contextLines: 1 };
     const onePass = grepRows(rows, options);
     const scan = createGrepScan(options);
     for (let i = 0; i < rows.length; i += 500) scan.add(rows.slice(i, i + 500));
     expect(scan.finish(rows)).toEqual(onePass);
     expect(onePass.totalMatches).toBe(Math.ceil(1200 / 7));
-    expect(onePass.shown).toBe(40);
+    expect(onePass.shown).toBe(20);
   });
 
   it("takes context from a separate read, as the SQL path does", () => {
