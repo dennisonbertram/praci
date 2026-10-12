@@ -110,6 +110,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
     await prisma.cachedMailMessage.deleteMany({
       where: { spaceId: { in: [spaceA, spaceB] } },
     });
+    await prisma.inboxTodo.deleteMany({ where: { spaceId: { in: [spaceA, spaceB] } } });
     await prisma.mailSyncState.deleteMany({
       where: { connection: { spaceId: { in: [spaceA, spaceB] } } },
     });
@@ -388,6 +389,13 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await cache(a, connA, "keep");
       await prisma.mailSyncState.create({ data: { connectionId: doomed } });
       await prisma.mailSyncState.create({ data: { connectionId: connA } });
+      const todo = (who: Actor, connectionId: string, doneAt: Date | null) =>
+        prisma.inboxTodo.create({
+          data: { spaceId: who.spaceId, userId: who.userId, connectionId, text: "Reply", doneAt },
+        });
+      await todo(a, doomed, null);
+      await todo(a, doomed, new Date());
+      await todo(a, connA, null);
       const client = createRouterClient(
         createRouter({
           prisma,
@@ -404,6 +412,8 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       );
       expect(await prisma.cachedMailMessage.count({ where: { connectionId: doomed } })).toBe(0);
       expect(await prisma.mailSyncState.count({ where: { connectionId: doomed } })).toBe(0);
+      expect(await prisma.inboxTodo.count({ where: { connectionId: doomed } })).toBe(0);
+      expect(await prisma.inboxTodo.count({ where: { connectionId: connA } })).toBe(1);
       expect(await prisma.cachedMailMessage.count({ where: { connectionId: connA } })).toBe(1);
       expect(await prisma.mailSyncState.count({ where: { connectionId: connA } })).toBe(1);
       await prisma.connection.delete({ where: { id: doomed } });

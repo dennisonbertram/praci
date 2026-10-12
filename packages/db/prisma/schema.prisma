@@ -35,6 +35,7 @@ model User {
   sessions                    Session[]
   accounts                    Account[]
   cachedMailMessages          CachedMailMessage[]
+  inboxTodos                  InboxTodo[]
   members                     Member[]
   invitations                 Invitation[]
   modelCredentials            UserModelCredential[]
@@ -223,6 +224,7 @@ model Space {
   mailSearches                MailSearch[]
   connections                 Connection[]
   cachedMailMessages          CachedMailMessage[]
+  inboxTodos                  InboxTodo[]
   capabilities                CapabilityInstall[]
   memoryDocuments             MemoryDocument[]
   agentHomes                  AgentHome[]
@@ -915,6 +917,7 @@ model Connection {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   cachedMailMessages CachedMailMessage[]
+  inboxTodos         InboxTodo[]
   mailSyncState      MailSyncState?
 
   @@index([spaceId, userId, connectorId])
@@ -1545,12 +1548,57 @@ model CachedMailMessage {
   fromSelf          Boolean    @default(false)
   /// Null until triage has looked at the message.
   needsReply        Boolean?
+  /// Set when triage has classified (or skipped past) the message.
+  triagedAt         DateTime?
+  /// TRIAGE_VERSION that classified the row; a bump re-triages it.
+  triageVersion     Int?
+  /// "critical" | "important" | "normal" | "low".
+  priority          String?
+  /// "reply" | "action" | "fyi" | "bulk" | "suspicious".
+  category          String?
+  /// One short line shown under the to-do.
+  reason            String?
+  /// Candidate to-do text; null when there is nothing to do.
+  todoText          String?
+  dueOn             DateTime?  @db.Date
+  /// Computed in code: the user sent a later message in the same thread.
+  alreadyHandled    Boolean    @default(false)
   /// Last time a sync or a search wrote this row.
   seenAt            DateTime
+  inboxTodos        InboxTodo[]
 
   @@unique([connectionId, providerMessageId])
   @@index([spaceId, userId, inInbox, receivedAt])
   @@map("mail_messages")
+}
+
+/// A private to-do created by triage from one cached message. Scoped to one user in one space,
+/// never shown on the shared ticket board. Triage replaces only untouched, unfinished rows.
+model InboxTodo {
+  id           String             @id @default(cuid())
+  spaceId      String
+  space        Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId String
+  connection   Connection         @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Set null when the cache prunes the message.
+  messageId    String?
+  message      CachedMailMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  text         String
+  /// Copied from the message's reason.
+  detail       String?
+  dueOn        DateTime?          @db.Date
+  doneAt       DateTime?
+  /// Set on any user action; touched to-dos are never replaced.
+  touchedAt    DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  /// One to-do per message; Postgres allows many NULLs.
+  @@unique([userId, messageId])
+  @@index([spaceId, userId, doneAt])
+  @@map("inbox_todos")
 }
 
 /// Sync throttle and in-flight claim for one mail connection.

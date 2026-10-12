@@ -27,6 +27,7 @@ export * from "./featured-connectors.js";
 export * from "./format-file-size.js";
 export * from "./group-mentions.js";
 export * from "./http-response.js";
+export * from "./inbox-triage.js";
 export * from "./mail-results.js";
 export * from "./markdown-plain.js";
 export * from "./mcp.js";

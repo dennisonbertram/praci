@@ -426,6 +426,68 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     ).not.toBeNull();
   });
 
+  it("deleteMailConnectionData removes the connection's to-dos, done ones included, and keeps others", async () => {
+    seed("todo-a", [message("a", 1, ["INBOX"])]);
+    const target = await connect("todo-a");
+    seed("todo-b", [message("b", 1, ["INBOX"])]);
+    const other = await connect("todo-b");
+    const todo = (connectionId: string, extra: { doneAt?: Date } = {}) =>
+      prisma.inboxTodo.create({
+        data: { spaceId, userId, connectionId, text: "Reply to Ann", ...extra },
+      });
+    await todo(target.id);
+    await todo(target.id, { doneAt: new Date() });
+    await todo(other.id);
+
+    await prisma.$transaction((tx) =>
+      deleteMailConnectionData(tx, { spaceId, userId, connectionId: target.id }),
+    );
+
+    expect(await prisma.inboxTodo.count({ where: { connectionId: target.id } })).toBe(0);
+    expect(await prisma.inboxTodo.count({ where: { connectionId: other.id } })).toBe(1);
+  });
+
+  it("allows one to-do per message and keeps the to-do, with no message, when the message is pruned", async () => {
+    seed("todo-key", [message("a", 1, ["INBOX"])]);
+    const account = await connect("todo-key");
+    await sync(account);
+    const [cached] = await rows(account.id);
+    const data = {
+      spaceId,
+      userId,
+      connectionId: account.id,
+      messageId: cached?.id,
+      text: "Reply",
+    };
+    await prisma.inboxTodo.create({ data });
+
+    await expect(prisma.inboxTodo.create({ data })).rejects.toThrow();
+
+    await prisma.cachedMailMessage.delete({ where: { id: cached?.id } });
+    const todo = await prisma.inboxTodo.findFirstOrThrow({ where: { connectionId: account.id } });
+    expect(todo.messageId).toBeNull();
+    // Many to-dos without a message are fine: Postgres treats NULLs as distinct.
+    await prisma.inboxTodo.create({ data: { ...data, messageId: null } });
+  });
+
+  it("does not delete to-dos when the scope does not match", async () => {
+    seed("todo-scoped", [message("a", 1, ["INBOX"])]);
+    const account = await connect("todo-scoped");
+    await prisma.inboxTodo.create({
+      data: { spaceId, userId, connectionId: account.id, text: "Reply to Ann" },
+    });
+
+    await prisma.$transaction((tx) =>
+      deleteMailConnectionData(tx, {
+        spaceId,
+        userId: `someone-else-${randomUUID()}`,
+        connectionId: account.id,
+      }),
+    );
+
+    expect(await prisma.inboxTodo.count({ where: { connectionId: account.id } })).toBe(1);
+  });
+
   it("does not delete another user's connection data when the scope does not match", async () => {
     seed("scoped", [message("a", 1, ["INBOX"])]);
     const account = await connect("scoped");

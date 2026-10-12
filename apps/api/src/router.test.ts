@@ -1102,6 +1102,7 @@ describe("connections.complete", () => {
           updateMany: vi.fn(async () => ({ count: 1 })),
         },
         cachedMailMessage: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        inboxTodo: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         mailSyncState: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         $executeRaw: vi.fn(),
         $queryRaw: vi.fn(async () => []),
