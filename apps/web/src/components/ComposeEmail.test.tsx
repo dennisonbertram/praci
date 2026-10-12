@@ -35,7 +35,7 @@ vi.mock("@rakazo/ui-web", () => {
   };
 });
 
-import { type ComposeSeed, ComposeEmail } from "./ComposeEmail";
+import { ComposeEmail, type ComposeSeed } from "./ComposeEmail";
 
 const body = `\n\nOn Mon, Sam wrote:\n${Array.from({ length: 40 }, (_, i) => `> line ${i}`).join("\n")}`;
 const reply = (kind: "reply" | "forward"): ComposeSeed => ({ kind, messageId: "m1" });
@@ -59,7 +59,8 @@ async function open(seed: ComposeSeed) {
   return { container, root };
 }
 
-const message = () => document.querySelector<HTMLTextAreaElement>("textarea") as HTMLTextAreaElement;
+const message = () =>
+  document.querySelector<HTMLTextAreaElement>("textarea") as HTMLTextAreaElement;
 
 // jsdom has no layout. Like a browser, focusing a long, freshly filled textarea puts the caret at
 // the end and scrolls it into view; the fix has to undo that.
