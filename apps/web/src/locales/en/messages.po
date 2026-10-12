@@ -416,6 +416,10 @@ msgstr "Agent connections"
 msgid "Agents:"
 msgstr "Agents:"
 
+#: src/components/AiDataSharing.tsx
+msgid "AI data sharing"
+msgstr "AI data sharing"
+
 #: src/pages/Inbox.tsx
 msgid "All"
 msgstr "All"
@@ -436,6 +440,10 @@ msgstr "All statuses"
 msgid "All time"
 msgstr "All time"
 
+#: src/components/AiDataSharing.tsx
+msgid "Allow"
+msgstr "Allow"
+
 #. placeholder {0}: rule.matchValue
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} actions without asking"
@@ -450,6 +458,10 @@ msgstr "Allow {0} connector without asking"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} without asking"
 msgstr "Allow {0} without asking"
+
+#: src/components/AiDataSharing.tsx
+msgid "Allow {name}"
+msgstr "Allow {name}"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow email actions without asking"
@@ -2613,6 +2625,10 @@ msgstr "Launched {app}"
 msgid "Leave"
 msgstr "Leave"
 
+#: src/components/AiDataSharing.tsx
+msgid "Let {name} sort your mail"
+msgstr "Let {name} sort your mail"
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
 msgstr "Light"
@@ -4105,6 +4121,10 @@ msgstr "Send it"
 #: src/pages/Auth.tsx
 msgid "Send reset link"
 msgstr "Send reset link"
+
+#: src/components/AiDataSharing.tsx
+msgid "Senders, recipients, subjects and short previews are sent to it."
+msgstr "Senders, recipients, subjects and short previews are sent to it."
 
 #: src/components/AskCard.tsx
 msgid "Sending…"

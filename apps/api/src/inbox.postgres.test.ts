@@ -371,6 +371,21 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(body.html).toBe("<p>Body of a-star</p>");
     });
 
+    it("says why triage is off on a searched list as well, so every response carries the reason", async () => {
+      await wipe();
+      gmail = new GmailApiEmulator({
+        mailboxes: {
+          "box-a": mailbox("box-a@example.test", [
+            { id: "a-1", days: 1, labels: ["INBOX"], subject: "Budget" },
+          ]),
+          "box-b": mailbox("box-b@example.test", []),
+        },
+      });
+      const found = await inboxList(deps, a, { query: "budget" });
+      expect(found.rows).toHaveLength(1);
+      expect(found.triageBlocked).toEqual({ reason: "no_model" });
+    });
+
     it("combines the filter with the search text and searches without a filter", async () => {
       await wipe();
       gmail = new GmailApiEmulator({
@@ -727,6 +742,33 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(on.rows[0]).toMatchObject({ needsReply: true, priority: "critical", reason: "Asked" });
       // Consent is per user: another member of the space is not enabled by it.
       expect((await inboxList({ ...deps, ...ready }, b, {})).enabled).toBe(false);
+      await wipeConsent();
+    });
+
+    it("says why triage is off: no model, or consent needed for the model's exact recipient", async () => {
+      await wipe();
+      await wipeConsent();
+      const recipient = {
+        key: aiRecipient({
+          provider: "openrouter",
+          modelId: "vendor/small-model",
+          use: "model",
+        })!.key,
+        name: "OpenRouter",
+      };
+
+      expect((await inboxList(deps, a, {})).triageBlocked).toEqual({ reason: "no_model" });
+      expect((await inboxList({ ...deps, ...ready }, a, {})).triageBlocked).toEqual({
+        reason: "needs_consent",
+        recipient,
+      });
+
+      await allow(a);
+      expect((await inboxList({ ...deps, ...ready }, a, {})).triageBlocked).toBeNull();
+      // Consent is per user: b still has to allow it, and the empty list says so too.
+      expect((await inboxList({ ...deps, ...ready }, b, {})).triageBlocked).toMatchObject({
+        reason: "needs_consent",
+      });
       await wipeConsent();
     });
 

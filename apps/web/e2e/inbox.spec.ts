@@ -286,7 +286,10 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
     );
     await route.fulfill({
       response,
-      json: { ...body, json: { ...body.json, rows, enabled: true, triagePending: !triaged } },
+      json: {
+        ...body,
+        json: { ...body.json, rows, enabled: true, triageBlocked: null, triagePending: !triaged },
+      },
     });
   });
   await page.route("**/rpc/inbox/todos/list", (route) =>
@@ -406,7 +409,9 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
     }
     await route.fulfill({
       response,
-      json: { json: { ...body.json, rows, enabled: true, triagePending: false } },
+      json: {
+        json: { ...body.json, rows, enabled: true, triageBlocked: null, triagePending: false },
+      },
     });
   });
   await page.route("**/rpc/inbox/feedback", (route) => {
@@ -514,4 +519,121 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: "important" });
   await actions.click();
   await expect(page.getByRole("menuitemcheckbox", { name: "Mark important" })).toBeChecked();
+});
+
+test("Inbox asks before a model sorts the mail, and Allow starts triage", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `inbox-consent-${Date.now()}@rakazo.test`, "password12", "Inbox Consent");
+  await completeOnboarding(page);
+
+  // Real: signup, the Gmail emulator and the mail list. Stubbed: the e2e stack's scripted runtime
+  // has no usable model, so the consent status and grant, and the list's triage state, are
+  // answered here the way the API answers once a model is connected.
+  const recipient = { key: "recipient-key", name: "OpenRouter" };
+  let allowed = false;
+  let allowBody: unknown;
+  let refreshes = 0;
+  const consentStatus = () => ({
+    scope: "scope-1",
+    version: "2026-09-14",
+    recipients: [{ ...recipient, use: "model", detail: "vendor/model", allowed }],
+  });
+  await page.route("**/rpc/aiConsent/status", (route) =>
+    route.fulfill({ json: { json: consentStatus() } }),
+  );
+  await page.route("**/rpc/aiConsent/allow", (route) => {
+    allowBody = (route.request().postDataJSON() as { json: unknown }).json;
+    allowed = true;
+    return route.fulfill({ json: { json: consentStatus() } });
+  });
+  await page.route("**/rpc/inbox/refresh", (route) => {
+    refreshes += 1;
+    return route.continue();
+  });
+  await page.route("**/rpc/inbox/list", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { json: Record<string, unknown> };
+    await route.fulfill({
+      response,
+      json: {
+        json: {
+          ...body.json,
+          enabled: allowed,
+          triageBlocked: allowed ? null : { reason: "needs_consent", recipient },
+          triagePending: false,
+        },
+      },
+    });
+  });
+  await page.route("**/rpc/inbox/todos/list", (route) =>
+    route.fulfill({
+      json: {
+        json: {
+          enabled: allowed,
+          todos: allowed
+            ? [
+                {
+                  id: "t1",
+                  connectionId: "c",
+                  messageId: null,
+                  text: "Sign the vendor agreement",
+                  detail: null,
+                  from: null,
+                  priority: null,
+                  dueOn: null,
+                  doneAt: null,
+                },
+              ]
+            : [],
+        },
+      },
+    }),
+  );
+
+  await page.getByTestId("sidebar-inbox").click();
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByRole("button", { name: "Close integrations" }).click();
+
+  const main = page.getByRole("main");
+  await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+  const prompt = main.getByRole("region", { name: "Let OpenRouter sort your mail" });
+  await expect(prompt).toBeVisible();
+  await expect(main.getByRole("region", { name: "To do" })).toHaveCount(0);
+  expect(allowBody).toBeUndefined();
+  await captureScreenshot(page, testInfo, "inbox-consent-prompt");
+
+  // Allow grants exactly the listed recipient, then syncs again so triage runs.
+  const before = refreshes;
+  await prompt.getByRole("button", { name: "Allow", exact: true }).click();
+  await expect(main.getByRole("region", { name: "To do" })).toBeVisible();
+  await expect(prompt).toHaveCount(0);
+  expect(allowBody).toEqual({ scope: "scope-1", version: "2026-09-14", keys: ["recipient-key"] });
+  expect(refreshes).toBeGreaterThan(before);
+});
+
+test("Inbox offers no consent prompt while there is no model to allow", async ({ page }) => {
+  await signup(page, `inbox-nomodel-${Date.now()}@rakazo.test`, "password12", "Inbox No Model");
+  await completeOnboarding(page);
+
+  // The list's reason is stubbed; the mail is the real emulated Gmail.
+  await page.route("**/rpc/inbox/list", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { json: Record<string, unknown> };
+    await route.fulfill({
+      response,
+      json: { json: { ...body.json, enabled: false, triageBlocked: { reason: "no_model" } } },
+    });
+  });
+
+  await page.getByTestId("sidebar-inbox").click();
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByRole("button", { name: "Close integrations" }).click();
+
+  const main = page.getByRole("main");
+  await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Allow", exact: true })).toHaveCount(0);
+  await expect(main.getByRole("region", { name: "To do" })).toHaveCount(0);
 });

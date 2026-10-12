@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { InboxConsentPrompt } from "../components/AiDataSharing";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
 import {
   inboxListInput,
@@ -422,7 +423,16 @@ export function InboxPage({
         )
       ) : (
         <>
-          {filtered || narrowed ? null : (
+          {filtered || narrowed ? null : data.triageBlocked?.reason === "needs_consent" ? (
+            // Allowing syncs again, which is what queues triage now that it may run.
+            <InboxConsentPrompt
+              recipient={data.triageBlocked.recipient}
+              onAllowed={() => {
+                setAttempt((n) => n + 1);
+                setReload((n) => n + 1);
+              }}
+            />
+          ) : (
             <TodoCard connectionId={tab} list={data} paused={paused} />
           )}
           {marked ? (

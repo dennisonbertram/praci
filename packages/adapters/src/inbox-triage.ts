@@ -8,6 +8,7 @@ import type {
   JobPublisher,
 } from "@rakazo/adapter-kit";
 import { inboxTriageJob, inboxTriageJobKey } from "@rakazo/adapter-kit";
+import type { TriageBlocked } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION, inboxAgentSpawnKey } from "@rakazo/contracts";
 import type { TriageInputMessage, TriageItem } from "@rakazo/core";
 import {
@@ -57,15 +58,17 @@ type Ready = {
 
 /**
  * The one check shared by the triage job and the API's `enabled` flag, so they always agree.
- * Resolves the model the Inbox agent would use (its override, else the user's default) and returns
- * null unless it is a real model whose exact recipient the user has allowed to receive their data.
- * A configured classifier is another recipient: it is returned only with its own consent.
+ * Resolves the model the Inbox agent would use (its override, else the user's default). It is
+ * `ready` only for a real model whose exact recipient the user has allowed to receive their data;
+ * otherwise `blocked` says whether a model is missing or that recipient needs consent. A configured
+ * classifier is another recipient: it is returned only with its own consent, and never blocks.
  */
-export async function triageReadiness(
+export async function triageStatus(
   deps: TriageReadinessDeps,
   { userId, spaceId }: Scope,
-): Promise<Ready | null> {
-  if (!deps.resolveModel) return null;
+): Promise<{ ready: Ready; blocked: null } | { ready: null; blocked: TriageBlocked }> {
+  const noModel = { ready: null, blocked: { reason: "no_model" } } as const;
+  if (!deps.resolveModel) return noModel;
   const bot = await deps.prisma.bot.findFirst({
     where: { spaceId, userId, spawnKey: inboxAgentSpawnKey(userId), archivedAt: null },
     select: { id: true },
@@ -74,7 +77,7 @@ export async function triageReadiness(
   try {
     model = await deps.resolveModel({ userId, spaceId, botId: bot?.id });
   } catch {
-    return null;
+    return noModel;
   }
   // Same recipient as `aiConsentStatus` lists; `baseUrl` is only set for OpenAI-compatible connections.
   const recipient = aiRecipient({
@@ -83,13 +86,21 @@ export async function triageReadiness(
     baseUrl: model.baseUrl,
     use: "model",
   });
-  if (!recipient) return null;
+  if (!recipient) return noModel;
   const allowed = (recipientKey: string) =>
     deps.prisma.aiDataConsent.findFirst({
       where: { userId, spaceId, recipientKey, version: AI_DISCLOSURE_VERSION },
       select: { userId: true },
     });
-  if (!(await allowed(recipient.key))) return null;
+  if (!(await allowed(recipient.key))) {
+    return {
+      ready: null,
+      blocked: {
+        reason: "needs_consent",
+        recipient: { key: recipient.key, name: recipient.name },
+      },
+    };
+  }
   const classifierRecipient = deps.classifier
     ? aiRecipient({ provider: deps.classifier.describe().id, use: "model" })
     : null;
@@ -97,7 +108,15 @@ export async function triageReadiness(
     deps.classifier && classifierRecipient && (await allowed(classifierRecipient.key))
       ? deps.classifier
       : null;
-  return { model, botId: bot?.id, classifier };
+  return { ready: { model, botId: bot?.id, classifier }, blocked: null };
+}
+
+/** `triageStatus` when only the yes or no matters. */
+export async function triageReadiness(
+  deps: TriageReadinessDeps,
+  scope: Scope,
+): Promise<Ready | null> {
+  return (await triageStatus(deps, scope)).ready;
 }
 
 /**
