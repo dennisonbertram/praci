@@ -4,11 +4,13 @@ import {
   deriveAlreadyHandled,
   type ExistingTodo,
   MAX_OPEN_TODOS,
+  needsLlmDetail,
   parseTriageResponse,
   planTodoSync,
   selectTodoCandidates,
   type TodoCandidateMessage,
   TRIAGE_INSTRUCTIONS,
+  TRIAGE_VERSION,
 } from "./inbox-triage.js";
 
 const item = (id: string, extra: Record<string, unknown> = {}) => ({
@@ -301,6 +303,89 @@ describe("planTodoSync invariant", () => {
         const survivors = existing.filter((t) => !plan.deleteIds.includes(t.id)).length;
         expect(survivors + plan.inserts.length).toBeLessThanOrEqual(Math.max(MAX_OPEN_TODOS, kept));
       }
+    }
+  });
+});
+
+describe("widened taxonomy", () => {
+  it("re-triages rows classified under the old category set", () => {
+    expect(TRIAGE_VERSION).toBeGreaterThanOrEqual(2);
+  });
+
+  it("accepts the new categories from the model", () => {
+    const categories = [
+      "billing",
+      "receipt",
+      "scheduling",
+      "newsletter",
+      "security",
+      "notification",
+      "personal",
+      "spam",
+      "scam",
+    ];
+    const parsed = parseTriageResponse(
+      wrap(categories.map((category) => item(category, { category, needsReply: false }))),
+      categories,
+    );
+    expect(parsed.map((i) => i.category)).toEqual(categories);
+  });
+
+  it("rejects a category outside the set", () => {
+    expect(parseTriageResponse(wrap([item("a", { category: "promo" })]), ["a"])).toEqual([]);
+  });
+
+  it("removes the to-do and needsReply from spam and scam like suspicious", () => {
+    for (const category of ["spam", "scam"]) {
+      const [parsed] = parseTriageResponse(wrap([item("a", { category })]), ["a"]);
+      expect(parsed).toMatchObject({ category, needsReply: false, todo: null });
+    }
+  });
+
+  it("tells the LLM about every widened category", () => {
+    for (const category of ["billing", "receipt", "scheduling", "newsletter", "scam", "spam"]) {
+      expect(TRIAGE_INSTRUCTIONS).toContain(category);
+    }
+  });
+
+  it("gives billing and scheduling messages a to-do like reply and action", () => {
+    const picked = selectTodoCandidates([
+      message("billing", { category: "billing" }),
+      message("scheduling", { category: "scheduling" }),
+      message("receipt", { category: "receipt" }),
+      message("newsletter", { category: "newsletter" }),
+    ]).map((m) => m.id);
+    expect(picked.sort()).toEqual(["billing", "scheduling"]);
+  });
+});
+
+describe("to-dos for mail a classifier says needs a reply", () => {
+  it("makes a candidate of a message that needs a reply whatever its category", () => {
+    const picked = selectTodoCandidates([
+      message("personal", { category: "personal", needsReply: true }),
+      message("personal-no-reply", { category: "personal", needsReply: false }),
+      message("scam", { category: "scam", needsReply: true }),
+      message("spam", { category: "spam", needsReply: true }),
+      message("suspicious", { category: "suspicious", needsReply: true }),
+    ]).map((m) => m.id);
+    expect(picked).toEqual(["personal"]);
+  });
+});
+
+describe("needsLlmDetail", () => {
+  it("is true only for a message that needs a reply or an action", () => {
+    expect(needsLlmDetail({ needsReply: true, category: "personal" })).toBe(true);
+    expect(needsLlmDetail({ needsReply: false, category: "action" })).toBe(true);
+    expect(needsLlmDetail({ needsReply: false, category: "billing" })).toBe(true);
+    expect(needsLlmDetail({ needsReply: false, category: "scheduling" })).toBe(true);
+    for (const category of ["fyi", "bulk", "newsletter", "receipt", "notification", "security"]) {
+      expect(needsLlmDetail({ needsReply: false, category })).toBe(false);
+    }
+  });
+
+  it("is false for suspicious, spam and scam even when reply is claimed", () => {
+    for (const category of ["suspicious", "spam", "scam"]) {
+      expect(needsLlmDetail({ needsReply: true, category })).toBe(false);
     }
   });
 });

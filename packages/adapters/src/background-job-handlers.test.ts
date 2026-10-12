@@ -207,8 +207,34 @@ describe("createBackgroundJobHandlers", () => {
     await handlers["inbox.triage"]({ userId: "user-1", spaceId: "space-1" });
 
     expect(runInboxTriage).toHaveBeenCalledExactlyOnceWith(
-      { prisma, runtime, jobs, resolveModel },
+      { prisma, runtime, jobs, resolveModel, classifier: null },
       { userId: "user-1", spaceId: "space-1" },
     );
+  });
+
+  it("gives triage the TypeSafe classifier only when the deployment selects it", async () => {
+    vi.stubEnv("RAKAZO_INBOX_CLASSIFIER_PROVIDER", "typesafe");
+    vi.stubEnv("TYPESAFE_API_KEY", "ts-key");
+    try {
+      const handlers = createBackgroundJobHandlers({
+        executor: { resolveModel: vi.fn() } as unknown as ReturnType<typeof createRunExecutor>,
+        prisma: {} as unknown as PrismaClient,
+        sandbox: {} as unknown as SandboxProvider,
+        home: {} as unknown as AgentHomeStore,
+        jobs: {} as unknown as JobPublisher,
+        events: {} as unknown as ThreadEvents,
+        workerId: "worker-1",
+        runtime: {} as unknown as AgentRuntime,
+        secretStore: {} as unknown as EncryptedSecretStore,
+        memoryProviders: { resolve: vi.fn(async () => null) },
+      });
+
+      await handlers["inbox.triage"]({ userId: "user-1", spaceId: "space-1" });
+
+      const [deps] = vi.mocked(runInboxTriage).mock.lastCall ?? [];
+      expect(deps?.classifier?.describe().id).toBe("typesafe");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

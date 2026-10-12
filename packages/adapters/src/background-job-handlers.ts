@@ -17,6 +17,7 @@ import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
 import type { createRunExecutor } from "./executor.js";
 import { compactHistory } from "./history-compaction.js";
+import { createInboxClassifierProvider } from "./inbox-classifier-factory.js";
 import { runInboxTriage } from "./inbox-triage.js";
 import { expireMailSearch } from "./mail-tools.js";
 import type { MemoryProviderResolver } from "./memory-provider-factory.js";
@@ -100,6 +101,7 @@ export function createBackgroundJobHandlers(deps: {
           runtime: deps.runtime,
           jobs: deps.jobs,
           resolveModel: deps.executor.resolveModel,
+          classifier: createInboxClassifierProvider(),
         },
         payload,
       );

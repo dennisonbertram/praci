@@ -3,8 +3,10 @@ import { ORPCError } from "@orpc/server";
 import {
   aiRecipient,
   cloudAgentsEnabled,
+  inboxClassifierSelected,
   parseModelSecret,
   selectConfiguredModel,
+  TYPESAFE_CLASSIFIER_ID,
   toStringRecord,
 } from "@rakazo/adapters";
 import type { Actor, AiConsentQuery, AiConsentStatus, AiRecipient } from "@rakazo/contracts";
@@ -233,6 +235,11 @@ export async function aiConsentStatus(
     !deps.cloudAgent.provider.describe().capabilities.offline
   ) {
     add(aiRecipient({ provider: deps.cloudAgent.provider.describe().id, use: "model" }));
+  }
+  // The optional inbox classifier is its own recipient. It is listed for the settings view and for
+  // granting, but not for a chat send, which it does not take part in.
+  if (modelsEnabled && !query.uses && inboxClassifierSelected()) {
+    add(aiRecipient({ provider: TYPESAFE_CLASSIFIER_ID, use: "model" }));
   }
   return {
     scope: createHash("sha256")
