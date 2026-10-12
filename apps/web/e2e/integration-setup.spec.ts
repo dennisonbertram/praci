@@ -258,3 +258,43 @@ test("configured server owners manage providers from settings", async ({ page },
   await expect(page.getByText("Connected", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "server-integrations-configured");
 });
+
+test("owners can choose Google and see the redirect URI to register", async ({ page }, testInfo) => {
+  await page.route("**/rpc/integrationSetup/get", (route) =>
+    route.fulfill({
+      json: {
+        json: {
+          canConfigure: true,
+          needsSetup: true,
+          webUrl: "https://example.test/integrations/setup",
+          providers: [{ id: "google", configured: false }],
+        },
+      },
+    }),
+  );
+  const saved: unknown[] = [];
+  await page.route("**/rpc/integrationSetup/save", (route) => {
+    saved.push(route.request().postDataJSON());
+    return route.fulfill({ json: { json: { ok: true } } });
+  });
+  await signup(page, `google-setup-${Date.now()}@rakazo.test`, "password12", "Google Setup");
+  await page.getByRole("button", { name: "Google", exact: true }).click();
+  await expect(page.getByLabel("Redirect URI", { exact: true })).toHaveValue(
+    "https://example.test/integrations/google/callback",
+  );
+  await page.getByLabel("Client ID", { exact: true }).fill("fake-client-id.apps.example.test");
+  await page.getByLabel("Client secret", { exact: true }).fill("fake-client-secret");
+  await captureScreenshot(page, testInfo, "integration-setup-google");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect
+    .poll(() => saved)
+    .toEqual([
+      {
+        json: {
+          provider: "google",
+          clientId: "fake-client-id.apps.example.test",
+          clientSecret: "fake-client-secret",
+        },
+      },
+    ]);
+});
