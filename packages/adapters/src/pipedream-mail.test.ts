@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import { PipedreamConnector } from "./pipedream-connector.js";
-import { assertMailConformance } from "./testing/mail-conformance.js";
+import { assertMailConformance, assertMailWriteConformance } from "./testing/mail-conformance.js";
 
 const NOW = new Date("2026-10-01T12:00:00Z");
 const CONFIG = {
@@ -38,7 +38,13 @@ function fakePipedream(
   options: { accounts?: Account[]; respond?: (target: string) => Response | undefined } = {},
 ) {
   const mail = createMailEmulator({ now: NOW, sleep: async () => {}, random: () => 0 });
-  const proxied: Array<{ url: URL; target: string; headers: Headers }> = [];
+  const proxied: Array<{
+    url: URL;
+    target: string;
+    headers: Headers;
+    method: string;
+    body: unknown;
+  }> = [];
   const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const request = input instanceof Request ? input : new Request(input, init);
     const url = new URL(request.url);
@@ -51,11 +57,24 @@ function fakePipedream(
     const match = url.pathname.match(/^\/v1\/connect\/proj_fake\/proxy\/(.+)$/);
     if (!match) return new Response("not found", { status: 404 });
     const target = Buffer.from(match[1] as string, "base64url").toString("utf8");
-    proxied.push({ url, target, headers: request.headers });
+    const bodyText = await request.clone().text();
+    proxied.push({
+      url,
+      target,
+      headers: request.headers,
+      method: request.method,
+      body: bodyText ? JSON.parse(bodyText) : undefined,
+    });
     const override = options.respond?.(target);
     if (override) return override;
     const accountId = url.searchParams.get("account_id") ?? "";
-    const answer = mail.gmail.handle(accountId.replace(/^apn_/, ""), target);
+    const text = await request.text();
+    const answer = mail.gmail.handle(
+      accountId.replace(/^apn_/, ""),
+      target,
+      request.method as "GET",
+      text ? JSON.parse(text) : undefined,
+    );
     return Response.json(answer.data, { status: answer.status });
   });
   const connector = new PipedreamConnector(CONFIG, {
@@ -97,7 +116,33 @@ describe("PipedreamConnector.proxy", () => {
       random: () => 0,
     });
     await assertMailConformance(provider, { gmail: fake.mail.gmail, accounts });
+    await assertMailWriteConformance(provider, { gmail: fake.mail.gmail, accounts });
     expect(fake.proxied.length).toBeGreaterThan(0);
+  });
+
+  it("forwards POST, PUT and DELETE with the method and the JSON body to the Connect proxy", async () => {
+    const fake = fakePipedream();
+    const drafts = "https://gmail.googleapis.com/gmail/v1/users/me/drafts";
+    const body = { message: { raw: "Zm9v", threadId: "t-contract" } };
+    const created = await fake.connector.proxy(
+      { ...proxyRequest("apn_acct-a", drafts), method: "POST", body },
+      context,
+    );
+    const id = (created.data as { id: string }).id;
+    await fake.connector.proxy(
+      { ...proxyRequest("apn_acct-a", `${drafts}/${id}`), method: "PUT", body },
+      context,
+    );
+    await fake.connector.proxy(
+      { ...proxyRequest("apn_acct-a", `${drafts}/${id}`), method: "DELETE" },
+      context,
+    );
+    expect(fake.proxied.map((p) => [p.method, p.target, p.body])).toEqual([
+      ["POST", drafts, body],
+      ["PUT", `${drafts}/${id}`, body],
+      ["DELETE", `${drafts}/${id}`, undefined],
+    ]);
+    expect(fake.proxied[0]?.headers.get("content-type")).toBe("application/json");
   });
 
   it("sends a GET with the base64url target, account_id, hashed external_user_id and bearer token", async () => {

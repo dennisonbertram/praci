@@ -682,7 +682,7 @@ function decodeEntities(text: string): string {
 }
 
 /** RFC 2047 encoded words (`=?utf-8?B?...?=`), which Gmail leaves in raw header values. */
-function decodeEncodedWords(text: string): string {
+export function decodeEncodedWords(text: string): string {
   return text
     .replace(/(\?=)\s+(?==\?)/g, "$1")
     .replace(

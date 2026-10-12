@@ -37,6 +37,7 @@ model User {
   cachedMailMessages          CachedMailMessage[]
   inboxTodos                  InboxTodo[]
   inboxSenderFeedback         InboxSenderFeedback[]
+  composeSends                ComposeSend[]
   members                     Member[]
   invitations                 Invitation[]
   modelCredentials            UserModelCredential[]
@@ -227,6 +228,7 @@ model Space {
   cachedMailMessages          CachedMailMessage[]
   inboxTodos                  InboxTodo[]
   inboxSenderFeedback         InboxSenderFeedback[]
+  composeSends                ComposeSend[]
   capabilities                CapabilityInstall[]
   memoryDocuments             MemoryDocument[]
   agentHomes                  AgentHome[]
@@ -921,6 +923,7 @@ model Connection {
   cachedMailMessages CachedMailMessage[]
   inboxTodos         InboxTodo[]
   mailSyncState      MailSyncState?
+  composeSends       ComposeSend[]
 
   @@index([spaceId, userId, connectorId])
   @@map("connections")
@@ -1620,6 +1623,33 @@ model InboxSenderFeedback {
 
   @@unique([spaceId, userId, senderAddress])
   @@map("inbox_sender_feedback")
+}
+
+/// One compose session's draft and send record, keyed by a client-generated id so a retried or
+/// double-clicked send never sends twice. Holds ids and state only, never recipients or text.
+model ComposeSend {
+  id                String     @id @default(cuid())
+  spaceId           String
+  space             Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId      String
+  connection        Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Chosen by the browser when the composer opens.
+  clientId          String
+  /// The Gmail draft, once one is saved.
+  draftId           String?
+  /// "draft" | "pending" | "sent" | "failed" | "unknown". A send that may have happened is
+  /// "unknown" and is never retried.
+  state             String     @default("draft")
+  providerMessageId String?
+  threadId          String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@unique([spaceId, userId, clientId])
+  @@index([connectionId])
+  @@map("compose_sends")
 }
 
 /// Sync throttle and in-flight claim for one mail connection.

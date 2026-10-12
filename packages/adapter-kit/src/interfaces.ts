@@ -46,8 +46,11 @@ import type {
   MailAccount,
   MailAttachment,
   MailListRequest,
+  MailDraftInput,
+  MailDraftRef,
   MailMessage,
   MailMessagePage,
+  MailSent,
   MemoryCapabilities,
   MemoryCommitRequest,
   MemoryExportRequest,
@@ -215,7 +218,7 @@ export interface ManagedConnectorProvider
   listConnectedExternalIds(context: AdapterContext): Promise<string[]>;
   connectionReady(context: AdapterContext, externalId: string): Promise<boolean>;
   warmDirectory?(): Promise<void>;
-  /** Authenticated GET against the app's API as one connected account. Status codes are returned, not thrown. */
+  /** Authenticated call to the app's API as one connected account. Status codes are returned, not thrown. */
   proxy?(request: ConnectorProxyRequest, context: AdapterContext): Promise<ConnectorProxyResponse>;
 }
 
@@ -242,6 +245,24 @@ export interface MailProvider {
     maxBytes: number,
     context: AdapterContext,
   ): Promise<MailAttachment>;
+  /** Saves a new draft. Never retried after an unclear failure, so it cannot leave two drafts. */
+  createDraft(
+    account: MailAccount,
+    draft: MailDraftInput,
+    context: AdapterContext,
+  ): Promise<MailDraftRef>;
+  updateDraft(
+    account: MailAccount,
+    draftId: string,
+    draft: MailDraftInput,
+    context: AdapterContext,
+  ): Promise<MailDraftRef>;
+  /**
+   * Sends a saved draft. Never retried after an unclear failure: throws `unknown` when the send
+   * may have happened, `invalid` or `auth` when it certainly did not.
+   */
+  sendDraft(account: MailAccount, draftId: string, context: AdapterContext): Promise<MailSent>;
+  deleteDraft(account: MailAccount, draftId: string, context: AdapterContext): Promise<void>;
 }
 
 export interface MemoryStore {

@@ -9,7 +9,7 @@ import { ComposioConnector } from "./composio-connector.js";
 import { ComposioEmulator } from "./composio-emulator.js";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
-import { assertMailConformance } from "./testing/mail-conformance.js";
+import { assertMailConformance, assertMailWriteConformance } from "./testing/mail-conformance.js";
 
 const sdk = vi.hoisted(() => ({
   proxyExecute:
@@ -39,7 +39,12 @@ const context: AdapterContext = {
 function composioMailbox(sleeps: number[] = []) {
   const emulator = createMailEmulator();
   sdk.proxyExecute.mockImplementation(async (body) => {
-    const response = emulator.gmail.handle(String(body.connectedAccountId), String(body.endpoint));
+    const response = emulator.gmail.handle(
+      String(body.connectedAccountId),
+      String(body.endpoint),
+      body.method as "GET",
+      body.body,
+    );
     return {
       status: response.status,
       data: response.data,
@@ -86,6 +91,33 @@ describe("ComposioConnector.proxy", () => {
   it("passes mail conformance when proxyExecute reaches the Gmail emulator", async () => {
     const { emulator, provider, accounts } = composioMailbox();
     await assertMailConformance(provider, { gmail: emulator.gmail, accounts });
+    await assertMailWriteConformance(provider, { gmail: emulator.gmail, accounts });
+  });
+
+  it("passes the method and JSON body of a write to proxyExecute", async () => {
+    sdk.proxyExecute.mockResolvedValue({ status: 200, data: { id: "d1" }, headers: {} });
+    const connector = new ComposioConnector("test-key");
+    const url = "https://gmail.googleapis.com/gmail/v1/users/me/drafts";
+    const body = { message: { raw: "Zm9v" } };
+    await connector.proxy({ app: "GMAIL", accountRef: "ca-1", method: "POST", url, body }, context);
+    await connector.proxy({ app: "GMAIL", accountRef: "ca-1", method: "DELETE", url: `${url}/d1` }, context);
+    expect(sdk.proxyExecute.mock.calls[0]?.[0]).toEqual({
+      endpoint: url,
+      method: "POST",
+      body,
+      connectedAccountId: "ca-1",
+    });
+    expect(sdk.proxyExecute.mock.calls[1]?.[0]).toMatchObject({ method: "DELETE" });
+    expect(sdk.proxyExecute.mock.calls[1]?.[0]).not.toHaveProperty("body");
+  });
+
+  it("marks a dropped write as not transient-retryable by the mail layer and sends once", async () => {
+    const { provider, accounts } = composioMailbox();
+    const account = accounts[0];
+    if (!account) throw new Error("no account");
+    sdk.proxyExecute.mockRejectedValue(Object.assign(new Error("fetch failed"), { status: 502 }));
+    await expect(provider.sendDraft(account, "d1", context)).rejects.toMatchObject({ kind: "unknown" });
+    expect(sdk.proxyExecute).toHaveBeenCalledTimes(1);
   });
 
   it("sends a GET with connectedAccountId equal to the row's providerRef", async () => {

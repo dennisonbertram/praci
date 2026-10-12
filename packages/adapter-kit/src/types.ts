@@ -868,6 +868,8 @@ export interface MailMessagePage {
 }
 
 export interface MailMessage extends MailMessageSummary {
+  /** Reply-To header; empty when absent. */
+  replyTo: MailAddress[];
   /** text/plain part, or the HTML part reduced to text. At most 40,000 characters. */
   text: string;
   /**
@@ -877,6 +879,29 @@ export interface MailMessage extends MailMessageSummary {
   html?: string;
   truncated: boolean;
   attachments: MailAttachmentInfo[];
+}
+
+/** A message to save as a draft. The provider adds the HTML part and the threading headers. */
+export interface MailDraftInput {
+  to: MailAddress[];
+  cc: MailAddress[];
+  bcc: MailAddress[];
+  /** One line. */
+  subject: string;
+  /** Plain text body. */
+  text: string;
+  /** Provider id of the message this answers. Puts the draft in that thread (In-Reply-To, References). */
+  inReplyTo?: string;
+}
+
+export interface MailDraftRef {
+  draftId: string;
+  threadId: string;
+}
+
+export interface MailSent {
+  messageId: string;
+  threadId: string;
 }
 
 export interface MailAttachmentInfo {
@@ -896,7 +921,18 @@ export interface MailAttachment {
   bytes: Uint8Array;
 }
 
-export type MailErrorKind = "auth" | "rate_limited" | "not_found" | "unavailable" | "too_large";
+/**
+ * `invalid`: the provider (or the caller's input) rejected a write, so nothing was saved or sent.
+ * `unknown`: a send may or may not have happened (timeout, dropped connection, provider 5xx).
+ */
+export type MailErrorKind =
+  | "auth"
+  | "rate_limited"
+  | "not_found"
+  | "unavailable"
+  | "too_large"
+  | "invalid"
+  | "unknown";
 
 export class MailProviderError extends Error {
   constructor(
@@ -917,9 +953,11 @@ export interface ConnectorProxyRequest {
   app: string;
   /** Connection.providerRef. */
   accountRef: string;
-  method: "GET";
+  method: "GET" | "POST" | "PUT" | "DELETE";
   /** Absolute https URL including the query string. */
   url: string;
+  /** JSON body for POST and PUT. */
+  body?: unknown;
 }
 
 /**
