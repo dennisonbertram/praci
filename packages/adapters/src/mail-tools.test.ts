@@ -92,6 +92,12 @@ describe("selectMailTools", () => {
     name,
   })) as ConnectorTool[];
 
+  it("drops inbox_overview with the other mail tools when mail is not enabled", () => {
+    const withOverview = [{ name: "web_search" }, { name: "inbox_overview" }] as ConnectorTool[];
+    expect(selectMailTools(withOverview, false).map((tool) => tool.name)).toEqual(["web_search"]);
+    expect(selectMailTools(withOverview, true)).toHaveLength(2);
+  });
+
   it("keeps the mail tools only when mail is enabled", () => {
     expect(selectMailTools(tools, true).map((tool) => tool.name)).toEqual([
       "web_search",
