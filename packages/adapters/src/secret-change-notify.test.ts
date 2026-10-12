@@ -2,6 +2,7 @@ import type { AdapterContext, RealtimeFanout } from "@rakazo/adapter-kit";
 import { createLogger, createTestSink, getLogger, installLogger } from "@rakazo/logging";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InMemoryRealtimeFanout } from "./realtime.js";
+import { secretRefDigest, secretRefMatches } from "./secret-changes.js";
 import { ComposedSecretStore } from "./secret-store-factory.js";
 import { EncryptedSecretStore } from "./secrets.js";
 
@@ -82,6 +83,53 @@ describe("secret change notifications", () => {
     expect(listener).toHaveBeenCalledTimes(1);
     await writer.close();
     await reader.close();
+    await fanout.close();
+  });
+});
+
+describe("secret change notice format", () => {
+  it("hands listeners in other processes the digest of the changed ref", async () => {
+    const fanout = new InMemoryRealtimeFanout();
+    const writer = new ComposedSecretStore(new EncryptedSecretStore("key"), undefined, fanout);
+    const reader = new ComposedSecretStore(new EncryptedSecretStore("key"), undefined, fanout);
+    await writer.start();
+    await reader.start();
+    const listener = vi.fn();
+    reader.onChange(listener);
+    const record = await writer.put("fake-credential", context);
+    expect(listener).toHaveBeenCalledExactlyOnceWith(secretRefDigest(record.ref));
+    expect(secretRefMatches(record.ref, listener.mock.calls[0]![0])).toBe(true);
+    expect(secretRefMatches("some-other-ref", listener.mock.calls[0]![0])).toBe(false);
+    await writer.close();
+    await reader.close();
+    await fanout.close();
+  });
+
+  it("still accepts a notice from an older process that carries the ref itself", async () => {
+    const fanout = new InMemoryRealtimeFanout();
+    const store = new ComposedSecretStore(new EncryptedSecretStore("key"), undefined, fanout);
+    await store.start();
+    const listener = vi.fn();
+    store.onChange(listener);
+    await fanout.publish(
+      "secret-store-change",
+      JSON.stringify({ origin: "older-process", ref: "v2:fake-ref" }),
+    );
+    expect(listener).toHaveBeenCalledExactlyOnceWith("v2:fake-ref");
+    expect(secretRefMatches("v2:fake-ref", "v2:fake-ref")).toBe(true);
+    await store.close();
+    await fanout.close();
+  });
+
+  it("ignores its own notices", async () => {
+    const fanout = new InMemoryRealtimeFanout();
+    const store = new ComposedSecretStore(new EncryptedSecretStore("key"), undefined, fanout);
+    await store.start();
+    const listener = vi.fn();
+    store.onChange(listener);
+    await store.put("fake-credential", context);
+    expect(listener).toHaveBeenCalledTimes(1);
+    await store.close();
     await fanout.close();
   });
 });
