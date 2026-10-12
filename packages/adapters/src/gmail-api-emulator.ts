@@ -240,7 +240,8 @@ function get(mailbox: Mailbox, id: string, params: URLSearchParams): ConnectorPr
   };
 }
 
-// Query subset: after:, before:, from:, in:inbox, in:sent, is:unread, bare words, OR, parentheses.
+// Query subset: after:, before:, from:, in:inbox, in:sent, is:unread|starred|important,
+// has:attachment, category:primary|social|promotions|updates, bare words, OR, parentheses.
 // Anything else is a 400, so a test cannot pass because a filter was silently ignored.
 
 function parseQuery(query: string): Matcher {
@@ -300,12 +301,34 @@ function parseTerm(token: string): Matcher {
       if (!label) throw new QueryError(`Unsupported in: value ${value}`);
       return (m) => m.labelIds.includes(label);
     }
-    case "is":
-      if (value.toLowerCase() !== "unread") throw new QueryError(`Unsupported is: value ${value}`);
-      return (m) => m.labelIds.includes("UNREAD");
+    case "is": {
+      const label = { unread: "UNREAD", starred: "STARRED", important: "IMPORTANT" }[
+        value.toLowerCase()
+      ];
+      if (!label) throw new QueryError(`Unsupported is: value ${value}`);
+      return (m) => m.labelIds.includes(label);
+    }
+    case "has":
+      if (value.toLowerCase() !== "attachment")
+        throw new QueryError(`Unsupported has: value ${value}`);
+      return (m) => hasAttachment(m.payload);
+    case "category": {
+      const category = value.toLowerCase();
+      if (category === "primary")
+        return (m) => m.labelIds.includes("INBOX") && !m.labelIds.some(isCategoryLabel);
+      if (!["social", "promotions", "updates"].includes(category))
+        throw new QueryError(`Unsupported category: value ${value}`);
+      return (m) => m.labelIds.includes(`CATEGORY_${category.toUpperCase()}`);
+    }
     default:
       throw new QueryError(`Unsupported operator ${name}:`);
   }
+}
+
+const isCategoryLabel = (label: string) => label.startsWith("CATEGORY_");
+
+function hasAttachment(part: Part): boolean {
+  return Boolean(part.filename) || (part.parts ?? []).some(hasAttachment);
 }
 
 function header(message: Stored, name: string): string {

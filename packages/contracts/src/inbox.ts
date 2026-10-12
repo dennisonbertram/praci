@@ -24,7 +24,31 @@ export const MailRowSchema = z.object({
   reason: z.string().nullable(),
 });
 
-export const InboxListInputSchema = z.object({ connectionId: Id.optional() });
+/** Which account a request covers; omitted means every connected mail account. */
+export const InboxScopeInputSchema = z.object({ connectionId: Id.optional() });
+
+/** Gmail filters, each one a fixed Gmail search term. */
+export const InboxFilterSchema = z.enum([
+  "unread",
+  "starred",
+  "important",
+  "attachment",
+  "primary",
+  "promotions",
+  "social",
+  "updates",
+]);
+
+/**
+ * With a `filter` or a `query` the list is read live from Gmail, newest first, 50 per account.
+ * `query` is Gmail search syntax, passed through. `pageToken` is the opaque `nextPageToken`
+ * of the previous response.
+ */
+export const InboxListInputSchema = InboxScopeInputSchema.extend({
+  filter: InboxFilterSchema.optional(),
+  query: z.string().max(500).optional(),
+  pageToken: z.string().max(4096).optional(),
+});
 
 export const InboxListOutputSchema = z.object({
   /** Empty means no mail account is connected. */
@@ -41,6 +65,8 @@ export const InboxListOutputSchema = z.object({
   enabled: z.boolean(),
   /** True while connected-account mail still waits for triage; clients refetch a few times. */
   triagePending: z.boolean(),
+  /** Only on filtered or searched lists: present while Gmail has more results. */
+  nextPageToken: z.string().optional(),
 });
 
 export const InboxTodoSchema = z.object({
@@ -74,6 +100,7 @@ export const InboxMessageSchema = z.object({
   text: z.string().nullable(),
 });
 
+export type InboxListInput = z.infer<typeof InboxListInputSchema>;
 export type InboxTodo = z.infer<typeof InboxTodoSchema>;
 export type MailRow = z.infer<typeof MailRowSchema>;
 export type InboxListOutput = z.infer<typeof InboxListOutputSchema>;

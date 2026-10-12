@@ -5868,7 +5868,7 @@ export function createRouter(deps: RouterDeps) {
         }),
       ),
       list: authed.inbox.list.handler(({ context, input }) =>
-        inboxList(deps, context.actor, input),
+        inboxList(deps, context.actor, input, context.signal),
       ),
       refresh: authed.inbox.refresh.handler(({ context, input }) =>
         inboxRefresh(deps, context.actor, input, context.signal),

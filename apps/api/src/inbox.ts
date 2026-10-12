@@ -9,7 +9,7 @@ import type {
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { TriageReadinessDeps } from "@rakazo/adapters";
 import { isMailConnection, syncMailbox, triageReadiness } from "@rakazo/adapters";
-import type { Actor, InboxListOutput, InboxTodo } from "@rakazo/contracts";
+import type { Actor, InboxListInput, InboxListOutput, InboxTodo, MailRow } from "@rakazo/contracts";
 import { inboxAgentSpawnKey } from "@rakazo/contracts";
 import { TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
@@ -28,6 +28,19 @@ const WINDOW_MS = 14 * 86_400_000;
 const MAX_ROWS = 200;
 const DONE_VISIBLE_MS = 86_400_000;
 const SYNC_PARALLELISM = 4;
+/** Messages asked of Gmail per account for one page of a filtered or searched list. */
+const SEARCH_PAGE_SIZE = 50;
+
+const FILTER_QUERY = {
+  unread: "is:unread",
+  starred: "is:starred",
+  important: "is:important",
+  attachment: "has:attachment",
+  primary: "category:primary",
+  promotions: "category:promotions",
+  social: "category:social",
+  updates: "category:updates",
+} as const;
 
 const notFound = () => new ORPCError("NOT_FOUND", { message: "Not found" });
 
@@ -63,10 +76,128 @@ function formatAddress(address: MailAddress | null | undefined): string {
   return address.name ? `${address.name} <${address.address}>` : address.address;
 }
 
+type CachedMessage = Prisma.CachedMailMessageGetPayload<object>;
+
+/** Newest first in, newest of each thread out. */
+function oneRowPerThread(messages: CachedMessage[]): CachedMessage[] {
+  const seen = new Set<string>();
+  return messages.filter((m) => {
+    const thread = `${m.connectionId}:${m.threadId}`;
+    if (seen.has(thread)) return false;
+    seen.add(thread);
+    return true;
+  });
+}
+
+function toMailRow(m: CachedMessage, enabled: boolean): MailRow {
+  return {
+    id: m.id,
+    connectionId: m.connectionId,
+    threadId: m.threadId,
+    from: m.fromName || m.fromAddress,
+    subject: m.subject,
+    snippet: m.snippet,
+    receivedAt: m.receivedAt.toISOString(),
+    unread: m.unread,
+    // Triage fields stay hidden while triage is off, and an answered thread needs no reply.
+    needsReply: enabled && m.needsReply !== null ? m.needsReply && !m.alreadyHandled : null,
+    priority: enabled ? asPriority(m.priority) : null,
+    reason: enabled ? m.reason : null,
+  };
+}
+
+/** One opaque token carries each account's Gmail page token; an account missing from it is done. */
+const encodePageToken = (tokens: Record<string, string>) =>
+  Buffer.from(JSON.stringify(tokens)).toString("base64url");
+
+function decodePageToken(token: string): Record<string, string> {
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(token, "base64url").toString());
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed) &&
+      Object.values(parsed).every((value) => typeof value === "string")
+    )
+      return parsed as Record<string, string>;
+  } catch {
+    // Falls through to the error below.
+  }
+  throw new ORPCError("BAD_REQUEST", { message: "Invalid page token" });
+}
+
+/**
+ * Asks Gmail live, once per account, and returns the matches that Postgres now has rows for
+ * (the provider caches the metadata it hydrates). Newest first across accounts within the page.
+ * Only the actor's own connected accounts are queried; a page token can only narrow that set.
+ * ponytail: each account pages on its own, so a later page can hold mail newer than the previous
+ * page's oldest row from another account; merge by date across accounts if that is noticed.
+ */
+async function searchMail(
+  deps: InboxDeps,
+  actor: Actor,
+  connections: Array<{ id: string }>,
+  request: { query: string; pageToken: string | undefined; signal: AbortSignal | undefined },
+): Promise<{ messages: CachedMessage[]; failed: string[]; nextPageToken: string | undefined }> {
+  const tokens = request.pageToken ? decodePageToken(request.pageToken) : undefined;
+  const targets = connections.filter((c) => !tokens || Object.hasOwn(tokens, c.id));
+  const context = mailContext(actor, "inbox.list", request.signal);
+  const accounts = await deps.mail.listAccounts(
+    { spaceId: actor.spaceId, userId: actor.userId },
+    context,
+  );
+  const next: Record<string, string> = {};
+  const failed: string[] = [];
+  const pages = await Promise.all(
+    targets.map(async ({ id }): Promise<CachedMessage[]> => {
+      const account = accounts.find((a) => a.id === id);
+      try {
+        if (!account) throw new MailProviderError("unavailable", "Mail account unavailable");
+        const page = await deps.mail.listMessages(
+          account,
+          {
+            query: request.query,
+            pageSize: SEARCH_PAGE_SIZE,
+            ...(tokens?.[id] ? { pageToken: tokens[id] } : {}),
+          },
+          context,
+        );
+        if (page.nextPageToken) next[id] = page.nextPageToken;
+        if (page.unhydratedIds?.length) failed.push(id);
+        const cached = await deps.prisma.cachedMailMessage.findMany({
+          where: {
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            connectionId: id,
+            providerMessageId: { in: page.messages.map((m) => m.id) },
+          },
+        });
+        return cached;
+      } catch (error) {
+        if (!(error instanceof MailProviderError)) throw error;
+        getLogger().warn("inbox.list search failed", { connectionId: id, reason: error.kind });
+        failed.push(id);
+        return [];
+      }
+    }),
+  );
+  const messages = oneRowPerThread(
+    pages
+      .flat()
+      .sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime() || b.id.localeCompare(a.id)),
+  );
+  return {
+    messages,
+    failed,
+    nextPageToken: Object.keys(next).length ? encodePageToken(next) : undefined,
+  };
+}
+
 export async function inboxList(
   deps: InboxDeps,
   actor: Actor,
-  input: { connectionId?: string },
+  input: InboxListInput,
+  signal?: AbortSignal,
 ): Promise<InboxListOutput> {
   const { prisma } = deps;
   const connections = await connectedMailConnections(prisma, actor);
@@ -100,6 +231,30 @@ export async function inboxList(
     };
   }
 
+  const search = [
+    input.filter ? FILTER_QUERY[input.filter] : "",
+    input.query?.trim() ? `(${input.query.trim()})` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  if (search) {
+    const result = await searchMail(deps, actor, selected, {
+      query: search,
+      pageToken: input.pageToken,
+      signal,
+    });
+    return {
+      accounts,
+      agent: agentOut,
+      rows: result.messages.map((m) => toMailRow(m, enabled)),
+      syncedAt: null,
+      failedAccounts: result.failed,
+      enabled,
+      triagePending: false,
+      ...(result.nextPageToken ? { nextPageToken: result.nextPageToken } : {}),
+    };
+  }
+
   const [messages, states, untriaged] = await Promise.all([
     prisma.cachedMailMessage.findMany({
       where: {
@@ -130,28 +285,7 @@ export async function inboxList(
       : null,
   ]);
 
-  const seen = new Set<string>();
-  const rows = messages.flatMap((m) => {
-    const thread = `${m.connectionId}:${m.threadId}`;
-    if (seen.has(thread)) return [];
-    seen.add(thread);
-    return [
-      {
-        id: m.id,
-        connectionId: m.connectionId,
-        threadId: m.threadId,
-        from: m.fromName || m.fromAddress,
-        subject: m.subject,
-        snippet: m.snippet,
-        receivedAt: m.receivedAt.toISOString(),
-        unread: m.unread,
-        // Triage fields stay hidden while triage is off, and an answered thread needs no reply.
-        needsReply: enabled && m.needsReply !== null ? m.needsReply && !m.alreadyHandled : null,
-        priority: enabled ? asPriority(m.priority) : null,
-        reason: enabled ? m.reason : null,
-      },
-    ];
-  });
+  const rows = oneRowPerThread(messages).map((m) => toMailRow(m, enabled));
   const synced = states.flatMap((s) => (s.lastSyncedAt ? [s.lastSyncedAt.getTime()] : []));
   return {
     accounts,
