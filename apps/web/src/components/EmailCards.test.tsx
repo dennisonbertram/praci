@@ -17,9 +17,13 @@ vi.mock("@lingui/react/macro", () => {
 });
 // The real message view loads the body in a sandboxed iframe; here only its inputs matter.
 vi.mock("../pages/Inbox", () => ({
-  InboxMessageView: ({ messageId }: { messageId: string }) => (
-    <div data-testid="message-view">{messageId}</div>
-  ),
+  InboxMessageDialog: ({ messageId, subject }: { messageId: string | null; subject?: string }) =>
+    messageId ? (
+      <div role="dialog">
+        {subject}
+        <div data-testid="message-view">{messageId}</div>
+      </div>
+    ) : null,
 }));
 
 import { EmailCards } from "./EmailCards";

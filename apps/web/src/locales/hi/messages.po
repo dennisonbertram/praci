@@ -993,6 +993,7 @@ msgid "Client secret"
 msgstr ""
 
 #: src/components/ErrorBoundary.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
@@ -4663,6 +4664,11 @@ msgstr "शीर्षक"
 
 #: src/pages/ActivityList.tsx
 msgid "To"
+msgstr ""
+
+#. placeholder {0}: message.to
+#: src/pages/Inbox.tsx
+msgid "to {0}"
 msgstr ""
 
 #. placeholder {0}: filters.dateRange.to

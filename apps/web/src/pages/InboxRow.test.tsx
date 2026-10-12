@@ -43,7 +43,7 @@ async function render(row: MailRow) {
   document.body.append(container);
   const root = createRoot(container);
   await act(async () =>
-    root.render(<InboxRow row={row} open={false} onToggle={() => {}} onMark={undefined} today />),
+    root.render(<InboxRow row={row} onOpen={() => {}} onMark={undefined} today />),
   );
   cleanups.push(async () => {
     await act(async () => root.unmount());
@@ -90,4 +90,38 @@ it("keeps the time on one line, right after the label, and the subject in the ro
   expect(container.textContent).toContain("Can you do the 14th?");
   // Label and time share one right-aligned cell so neither can wrap onto the other.
   expect(time?.parentElement).toBe(badge(container)?.parentElement);
+});
+
+it("shows the sender's first initial in an avatar chip and loads no image", async () => {
+  const container = await render(mail({ from: "dana Reyes" }));
+  const chip = container.querySelector("span[aria-hidden='true']");
+  expect(chip?.textContent).toBe("D");
+  expect(chip?.className).toContain("rounded-full");
+  expect(container.querySelectorAll("img")).toHaveLength(0);
+});
+
+it("reads unread as semibold and read as regular and muted", async () => {
+  const unread = await render(mail({ unread: true }));
+  const read = await render(mail({ unread: false }));
+  const classes = (c: HTMLElement) => ({
+    sender: c.querySelectorAll('span[dir="auto"]')[0]?.className ?? "",
+    subject: c.querySelectorAll('span[dir="auto"]')[1]?.className ?? "",
+    time: c.querySelector("time")?.className ?? "",
+    row: c.querySelector("button")?.className ?? "",
+  });
+  for (const part of ["sender", "subject", "time"] as const) {
+    expect(classes(unread)[part]).toContain("font-semibold");
+    expect(classes(read)[part]).not.toContain("font-semibold");
+  }
+  expect(classes(unread).row).toContain("text-foreground");
+  expect(classes(read).row).toContain("text-muted-foreground");
+  expect(read.textContent).not.toContain("(unread)");
+  expect(unread.textContent).toContain("(unread)");
+});
+
+it("joins the subject and preview with a hyphen, the preview in regular weight", async () => {
+  const container = await render(mail());
+  const subject = container.querySelectorAll('span[dir="auto"]')[1];
+  expect(subject?.textContent).toBe("Offsite dates - Can you do the 14th?");
+  expect(subject?.querySelector("span")?.className).toContain("font-normal");
 });

@@ -15,6 +15,10 @@ import {
   Button,
   Card,
   Checkbox,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -44,7 +48,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
@@ -249,12 +253,18 @@ export function InboxPage({
         setError(errorText(cause));
       });
   };
-  const toggle = (id: string) => {
+  // `?mail=` is the source of truth for the open message, so Back and deep links work.
+  const openMessage = (id: string) => {
     const next = new URLSearchParams(params);
-    if (openId === id) next.delete("mail");
-    else next.set("mail", id);
+    next.set("mail", id);
     setParams(next);
   };
+  const closeMessage = () => {
+    const next = new URLSearchParams(params);
+    next.delete("mail");
+    setParams(next, { replace: true });
+  };
+  const openRow = [...(data?.rows ?? []), ...more.rows].find((row) => row.id === openId);
 
   return (
     <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
@@ -458,24 +468,21 @@ export function InboxPage({
           <InboxGroup
             title={<Trans>Needs reply</Trans>}
             rows={groups.needsReply}
-            openId={openId}
-            onToggle={toggle}
+            onOpen={openMessage}
             onMark={triage ? mark : undefined}
             today={false}
           />
           <InboxGroup
             title={<Trans>Today</Trans>}
             rows={groups.today}
-            openId={openId}
-            onToggle={toggle}
+            onOpen={openMessage}
             onMark={triage ? mark : undefined}
             today
           />
           <InboxGroup
             title={<Trans>Earlier</Trans>}
             rows={groups.earlier}
-            openId={openId}
-            onToggle={toggle}
+            onOpen={openMessage}
             onMark={triage ? mark : undefined}
             today={false}
           />
@@ -488,6 +495,7 @@ export function InboxPage({
           ) : null}
         </>
       )}
+      <InboxMessageDialog messageId={openId} subject={openRow?.subject} onClose={closeMessage} />
     </div>
   );
 }
@@ -607,15 +615,13 @@ function TodoCard({
 function InboxGroup({
   title,
   rows,
-  openId,
-  onToggle,
+  onOpen,
   onMark,
   today,
 }: {
   title: React.ReactNode;
   rows: MailRow[];
-  openId: string | null;
-  onToggle: (id: string) => void;
+  onOpen: (id: string) => void;
   /** Present only while triage is enabled. */
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   today: boolean;
@@ -623,35 +629,33 @@ function InboxGroup({
   if (rows.length === 0) return null;
   return (
     <section className="mb-5">
-      <h2 className="mb-2 text-xs font-semibold text-muted-foreground">{title}</h2>
-      {rows.map((row) => (
-        <InboxRow
-          key={row.id}
-          row={row}
-          open={openId === row.id}
-          onToggle={() => onToggle(row.id)}
-          onMark={onMark}
-          today={today}
-        />
-      ))}
+      <h2 className="mb-1.5 text-xs font-semibold text-muted-foreground">{title}</h2>
+      <div className="border-t border-border">
+        {rows.map((row) => (
+          <InboxRow
+            key={row.id}
+            row={row}
+            onOpen={() => onOpen(row.id)}
+            onMark={onMark}
+            today={today}
+          />
+        ))}
+      </div>
     </section>
   );
 }
 
 export function InboxRow({
   row,
-  open,
-  onToggle,
+  onOpen,
   onMark,
   today,
 }: {
   row: MailRow;
-  open: boolean;
-  onToggle: () => void;
+  onOpen: () => void;
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   today: boolean;
 }) {
-  const bodyId = useId();
   const { t } = useLingui();
   const labelNames = {
     attention: t`Needs attention`,
@@ -660,24 +664,25 @@ export function InboxRow({
     junk: t`Junk`,
   };
   const label = inboxLabel(row);
+  // Unread reads as weight; read rows and rows marked noise are muted.
+  const strong = row.unread && row.feedback !== "noise";
+  const weight = row.unread ? "font-semibold" : "";
   return (
-    <div className={open ? "rounded-lg bg-muted" : undefined}>
-      <div className="group/row flex items-center">
+    <div className="border-b border-border">
+      <div className="group/row relative">
         <button
           type="button"
-          aria-expanded={open}
-          aria-controls={open ? bodyId : undefined}
-          onClick={onToggle}
-          className={`grid min-w-0 flex-1 grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-lg px-2.5 py-2 text-start text-sm hover:bg-muted @3xl:grid-cols-[8px_160px_minmax(0,1fr)_auto] ${row.feedback === "noise" ? "text-muted-foreground" : ""}`}
+          aria-haspopup="dialog"
+          onClick={onOpen}
+          className={`grid w-full min-w-0 grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 px-3 py-2 text-start text-sm hover:bg-muted/50 @3xl:h-12 @3xl:grid-cols-[28px_170px_minmax(0,1fr)_auto] @3xl:py-0 ${onMark ? "pointer-coarse:pe-11" : ""} ${strong ? "text-foreground" : "text-muted-foreground"}`}
         >
           <span
             aria-hidden="true"
-            className={`col-start-1 row-start-1 h-[7px] w-[7px] rounded-full ${row.unread ? "bg-foreground" : "bg-transparent"}`}
-          />
-          <span
-            dir="auto"
-            className={`col-start-2 row-start-1 truncate ${row.unread ? "font-semibold" : ""}`}
+            className="col-start-1 row-start-1 grid size-7 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground"
           >
+            {row.from.match(/[\p{L}\p{N}]/u)?.[0]?.toUpperCase()}
+          </span>
+          <span dir="auto" className={`col-start-2 row-start-1 truncate ${weight}`}>
             {isSuspiciousCategory(row.category) ? (
               <TriangleAlert
                 role="img"
@@ -694,10 +699,12 @@ export function InboxRow({
           </span>
           <span
             dir="auto"
-            className="col-span-2 col-start-2 row-start-2 truncate @3xl:col-span-1 @3xl:col-start-3 @3xl:row-start-1"
+            className={`col-span-2 col-start-2 row-start-2 truncate @3xl:col-span-1 @3xl:col-start-3 @3xl:row-start-1 ${weight}`}
           >
             {row.subject}
-            {row.snippet ? <span className="text-muted-foreground"> — {row.snippet}</span> : null}
+            {row.snippet ? (
+              <span className="font-normal text-muted-foreground"> - {row.snippet}</span>
+            ) : null}
           </span>
           <span className="col-start-3 row-start-1 flex items-center justify-self-end gap-2 @3xl:col-start-4">
             {label ? (
@@ -710,7 +717,7 @@ export function InboxRow({
             ) : null}
             <time
               dateTime={row.receivedAt}
-              className="text-xs whitespace-nowrap text-muted-foreground tabular-nums"
+              className={`text-xs whitespace-nowrap tabular-nums ${onMark ? "group-hover/row:opacity-0 group-has-[[aria-haspopup=menu]:focus-visible]/row:opacity-0 group-has-[[aria-haspopup=menu][aria-expanded=true]]/row:opacity-0 pointer-coarse:opacity-100" : ""} ${weight}`}
             >
               {formatMailTime(row.receivedAt, today)}
             </time>
@@ -723,7 +730,7 @@ export function InboxRow({
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  className="mx-1 shrink-0 opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100 data-popup-open:opacity-100"
+                  className="absolute end-3 top-1.5 @3xl:top-1/2 @3xl:-translate-y-1/2 opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100 data-popup-open:opacity-100"
                 />
               }
               aria-label={t`More`}
@@ -747,26 +754,41 @@ export function InboxRow({
           </DropdownMenu>
         ) : null}
       </div>
-      {open ? <InboxMessageView id={bodyId} messageId={row.id} subject={row.subject} /> : null}
     </div>
   );
 }
 
-export function InboxMessageView({
-  id,
+/** Opens one cached message in a modal; full screen on phones. Shared by the Inbox and chat email cards. */
+export function InboxMessageDialog({
   messageId,
   subject,
+  onClose,
 }: {
-  id: string;
-  messageId: string;
-  subject: string;
+  messageId: string | null;
+  /** Shown until the message loads, from the list row that was opened. */
+  subject?: string;
+  onClose: () => void;
 }) {
+  return (
+    <Dialog open={messageId !== null} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-1/2 md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl md:ring-1"
+      >
+        {messageId ? (
+          <InboxMessage key={messageId} messageId={messageId} subject={subject} />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function InboxMessage({ messageId, subject }: { messageId: string; subject?: string }) {
+  const { t } = useLingui();
   const [message, setMessage] = useState<Awaited<ReturnType<typeof rpc.inbox.get>> | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
     let live = true;
-    setMessage(null);
-    setError("");
     rpc.inbox
       .get({ messageId })
       .then((next) => {
@@ -780,27 +802,65 @@ export function InboxMessageView({
     };
   }, [messageId]);
 
+  const title = message?.subject ?? subject ?? "";
+  const sent = message ? new Date(message.date) : null;
   return (
-    <div id={id} className="px-2.5 pb-3">
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : !message ? (
-        <Skeleton className="h-24 w-full" />
-      ) : message.html ? (
-        <div className="h-[min(70vh,640px)] overflow-hidden rounded-lg border border-border">
-          <SandboxedHtmlViewer html={message.html} title={subject} email />
+    <>
+      <div className="flex items-start gap-2">
+        <DialogTitle dir="auto" className="min-w-0 flex-1 text-base leading-snug">
+          {title}
+        </DialogTitle>
+        <DialogClose
+          render={<Button variant="ghost" size="icon-sm" className="-mt-1 shrink-0" />}
+          aria-label={t`Close`}
+        >
+          <X aria-hidden="true" />
+        </DialogClose>
+      </div>
+      {message ? (
+        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+          <div className="flex items-baseline justify-between gap-3">
+            <span dir="auto" className="min-w-0 truncate font-medium text-foreground">
+              {message.from}
+            </span>
+            <time
+              dateTime={sent && !Number.isNaN(sent.getTime()) ? sent.toISOString() : undefined}
+              className="shrink-0 tabular-nums"
+            >
+              {sent && !Number.isNaN(sent.getTime())
+                ? sent.toLocaleString(i18n.locale || "en", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                : message.date}
+            </time>
+          </div>
+          <span dir="auto" className="truncate">
+            {t`to ${message.to}`}
+          </span>
         </div>
-      ) : (
-        <p dir="auto" className="whitespace-pre-wrap text-sm">
-          {message.text}
-        </p>
-      )}
-      {message?.attachments.length ? (
-        <InboxAttachments messageId={messageId} attachments={message.attachments} />
       ) : null}
-    </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : !message ? (
+          <Skeleton className="h-24 w-full" />
+        ) : message.html ? (
+          <div className="min-h-[50dvh] flex-1 overflow-hidden rounded-lg border border-border md:h-[min(70vh,640px)] md:flex-none">
+            <SandboxedHtmlViewer html={message.html} title={message.subject} email />
+          </div>
+        ) : (
+          <p dir="auto" className="whitespace-pre-wrap text-sm">
+            {message.text}
+          </p>
+        )}
+        {message?.attachments.length ? (
+          <InboxAttachments messageId={messageId} attachments={message.attachments} />
+        ) : null}
+      </div>
+    </>
   );
 }
 
