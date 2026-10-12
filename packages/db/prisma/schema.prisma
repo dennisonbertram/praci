@@ -23,6 +23,7 @@ model AiDataConsent {
 
 model User {
   aiDataConsents AiDataConsent[]
+  mailSearches   MailSearch[]
   id                          String                       @id
   name                        String
   email                       String
@@ -219,6 +220,7 @@ model Space {
   scratchpadItems             ScratchpadItem[]
   taughtSkills                TaughtSkill[]
   agentSkills                 AgentSkill[]
+  mailSearches                MailSearch[]
   connections                 Connection[]
   cachedMailMessages          CachedMailMessage[]
   capabilities                CapabilityInstall[]
@@ -393,6 +395,7 @@ model SpaceVoicePreference {
 
 model Bot {
   screenGeneration Int @default(0)
+  mailSearches     MailSearch[]
   id                String            @id @default(cuid())
   spaceId           String
   space             Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
@@ -859,6 +862,42 @@ model AgentSkill {
   @@index([spaceId, userId])
   // Case-insensitive unique index agent_skills_spaceId_userId_name_lower_key is created in SQL.
   @@map("agent_skills")
+}
+
+/// A saved mail_search result, readable by mail_grep until `expiresAt`. Scoped to one bot of one user.
+model MailSearch {
+  id        String          @id @default(cuid())
+  spaceId   String
+  space     Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  botId     String
+  bot       Bot             @relation(fields: [botId], references: [id], onDelete: Cascade)
+  /// The object mail_search returned, minus searchId.
+  summary   Json
+  /// [{ accountId, query, unhydratedIds, pageToken? }] for queries that stopped early; null when complete.
+  resume    Json?
+  createdAt DateTime        @default(now())
+  expiresAt DateTime
+  rows      MailSearchRow[]
+
+  @@index([spaceId, userId, botId])
+  @@index([expiresAt])
+  @@map("mail_searches")
+}
+
+model MailSearchRow {
+  searchId String
+  search   MailSearch @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  /// 1-based, oldest first.
+  line     Int
+  /// ISO 8601, so the ISO-prefix date filter is a string comparison.
+  date     String
+  /// The row line, at most about 4,500 characters.
+  text     String
+
+  @@id([searchId, line])
+  @@map("mail_search_rows")
 }
 
 model Connection {

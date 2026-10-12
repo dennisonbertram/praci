@@ -1,3 +1,4 @@
+import { BUILTIN_TOOL_NAMES } from "@rakazo/contracts";
 import { buildSkillMd, formatSkillsCatalogInstruction, parseSkillMd } from "@rakazo/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BUILTIN_AGENT_SKILLS, INBOX_SEARCH_SKILL_NAME } from "./builtin-skills.js";
@@ -235,6 +236,13 @@ describe("skill tools", () => {
     expect(
       await skillDeleteFromTool(prisma as never, owner, { name: INBOX_SEARCH_SKILL_NAME }),
     ).toEqual({ error: "Builtin and plugin skills are read-only." });
+  });
+
+  it("only names mail tools that exist in the built-in tool contract", () => {
+    const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
+    const names = new Set(skill?.content.match(/\bmail_[a-z]+\b/g));
+    expect([...names].sort()).toEqual(["mail_get", "mail_grep", "mail_search"]);
+    for (const name of names) expect(BUILTIN_TOOL_NAMES).toContain(name);
   });
 
   it("ships builtin skills as valid, readable, read-only SKILL.md records", async () => {

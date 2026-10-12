@@ -13,6 +13,7 @@ import {
   missingTurnImagesInstruction,
   parseUpdateBotPatch,
   persistentComputerInstruction,
+  READ_ONLY_AGENT_TOOLS,
   runNotificationsEnabled,
   selectBuiltinToolsForRun,
   settleSteeringAttachmentLoads,
@@ -400,6 +401,39 @@ describe("run tool selection", () => {
     expect(disabled).not.toContain("not_a_tool");
     expect(disabled).not.toContain("computer_act");
     expect(disabled).toEqual(baseline.filter((name) => name !== "web_search"));
+  });
+
+  it("offers the mail tools only when mail is enabled, and not when one is disabled", () => {
+    const offered = (mailEnabled: boolean, disabledBuiltinTools?: readonly string[]) =>
+      selectBuiltinToolsForRun({
+        graphicalToolsAllowed: false,
+        pageBrowserAllowed: false,
+        groupId: null,
+        trigger: "message",
+        semanticMemoryEnabled: false,
+        messagingChannelRun: false,
+        mailEnabled,
+        disabledBuiltinTools,
+      }).map((tool) => tool.name);
+
+    expect(offered(false)).not.toEqual(expect.arrayContaining(["mail_search"]));
+    expect(offered(false).filter((name) => name.startsWith("mail_"))).toEqual([]);
+    expect(
+      offered(true)
+        .filter((name) => name.startsWith("mail_"))
+        .sort(),
+    ).toEqual(["mail_get", "mail_grep", "mail_search"]);
+    expect(
+      offered(true, ["mail_grep"])
+        .filter((name) => name.startsWith("mail_"))
+        .sort(),
+    ).toEqual(["mail_get", "mail_search"]);
+  });
+
+  it("treats the mail tools as read-only so they need no approval", () => {
+    for (const name of ["mail_search", "mail_grep", "mail_get"]) {
+      expect(READ_ONLY_AGENT_TOOLS.has(name)).toBe(true);
+    }
   });
 
   it("keeps schedule tools in group chats and still blocks create on routines", () => {

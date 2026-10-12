@@ -498,6 +498,7 @@ export async function createApp(
     messaging: messaging ? createMessagingContextLoader(prisma) : undefined,
     web: createWebProvider(),
     cloudAgent,
+    mail,
     shutdownSignal: shutdown.signal,
   });
 
