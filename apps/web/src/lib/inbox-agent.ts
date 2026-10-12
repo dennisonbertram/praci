@@ -1,6 +1,11 @@
+import { inboxAgentSpawnKey } from "@rakazo/contracts";
+
+/** The signed-in user's own Inbox agent; another member's agent in the same space does not match. */
 export function findInboxAgent<T extends { spawnKey: string | null }>(
-  _bots: readonly T[],
-  _userId: string | null | undefined,
+  bots: readonly T[],
+  userId: string | null | undefined,
 ): T | undefined {
-  return undefined;
+  if (!userId) return undefined;
+  const key = inboxAgentSpawnKey(userId);
+  return bots.find((bot) => bot.spawnKey === key);
 }

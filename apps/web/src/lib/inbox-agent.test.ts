@@ -15,9 +15,7 @@ describe("findInboxAgent", () => {
   });
 
   it("ignores another member's Inbox agent in the same space", () => {
-    expect(
-      findInboxAgent([bot("b1", inboxAgentSpawnKey("user-2"))], "user-1"),
-    ).toBeUndefined();
+    expect(findInboxAgent([bot("b1", inboxAgentSpawnKey("user-2"))], "user-1")).toBeUndefined();
   });
 
   it("finds nothing without a user id", () => {

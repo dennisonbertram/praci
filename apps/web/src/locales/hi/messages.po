@@ -1050,6 +1050,10 @@ msgstr "कोड"
 msgid "Collapse {0}"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Collapse Inbox agent"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Color"
 msgstr "रंग"
@@ -1372,6 +1376,10 @@ msgstr "सेक्शन नहीं बनाया जा सका"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not create space"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Inbox agent"
 msgstr ""
 
 #: src/pages/Onboarding.tsx
@@ -1751,6 +1759,10 @@ msgstr "खाता बनाएं"
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "समूह बनाएं"
+
+#: src/pages/Shell.tsx
+msgid "Create Inbox agent"
+msgstr ""
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
@@ -4092,6 +4104,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Show computer"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Show Inbox agent"
 msgstr ""
 
 #: src/pages/Artifacts.tsx

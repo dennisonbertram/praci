@@ -38,12 +38,13 @@ test("the Inbox agent chats in a collapsible side panel on /app/inbox", async ({
   await captureScreenshot(page, testInfo, "inbox-agent-panel-collapsed");
   await page.reload();
   await expect(show).toBeVisible();
-  expect((await panel.boundingBox())?.width ?? 0).toBe(0);
+  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0).toBe(0);
   await show.click();
   await expect(panel.getByPlaceholder(/Message/)).toBeVisible();
   await expect(show).toHaveCount(0);
 
   // Resizing works and the width survives a reload.
+  await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(384);
   const separator = page.getByRole("separator", { name: "Resize panel" });
   const handle = (await separator.boundingBox())!;
   await page.mouse.move(handle.x + 3, handle.y + 100);

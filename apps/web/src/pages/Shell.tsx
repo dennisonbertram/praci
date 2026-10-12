@@ -106,6 +106,7 @@ import {
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
   Paperclip,
   Pencil,
   Plus,
@@ -173,7 +174,9 @@ import {
 import {
   BOTS_SIDEBAR_EDGE_DRAG_PX,
   readBotsSidebarCollapsed,
+  readInboxAgentCollapsed,
   writeBotsSidebarCollapsed,
+  writeInboxAgentCollapsed,
 } from "../lib/bots-sidebar-pref";
 import {
   deliverBrowserNotification as deliverNativeBrowserNotification,
@@ -190,6 +193,7 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
 import { scheduleFocusPrompt } from "../lib/focus-prompt";
+import { findInboxAgent } from "../lib/inbox-agent";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
 import { messageProviderLabel } from "../lib/messaging";
@@ -432,6 +436,17 @@ export function ShellPage() {
   }, [userId]);
   useEffect(() => {
     setBotsSidebarCollapsed(readBotsSidebarCollapsed(userId));
+  }, [userId]);
+  // On a phone the panel covers the Inbox list, so it starts collapsed there.
+  const [inboxAgentCollapsed, setInboxAgentCollapsed] = useState(
+    () => !window.matchMedia("(min-width: 768px)").matches,
+  );
+  const [creatingInboxAgent, setCreatingInboxAgent] = useState(false);
+  const [inboxAgentError, setInboxAgentError] = useState("");
+  useEffect(() => {
+    setInboxAgentCollapsed(
+      readInboxAgentCollapsed(userId) || !window.matchMedia("(min-width: 768px)").matches,
+    );
   }, [userId]);
   const [query, setQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
@@ -804,7 +819,11 @@ export function ShellPage() {
 
   const inGroup = Boolean(groupId);
   const inboxMode = useMatch("/app/inbox") != null;
-  const active = inGroup || inboxMode ? undefined : (bots.find((b) => b.id === botId) ?? bots[0]);
+  const active = inGroup
+    ? undefined
+    : inboxMode
+      ? findInboxAgent(bots, userId)
+      : (bots.find((b) => b.id === botId) ?? bots[0]);
   const computerBot =
     (computerBotId ? bots.find((bot) => bot.id === computerBotId) : undefined) ?? active;
   computerOpenRef.current = computerOpen;
@@ -817,12 +836,15 @@ export function ShellPage() {
   const activeRoutines = !inGroup && routinesBotId === active?.id ? routines : [];
   const panelTarget = inGroup ? activeGroup?.id : active?.id;
   const panelStorageKey =
-    userId && bootstrapMe?.spaceId && panelTarget
+    // The Inbox agent panel is not a saved bot panel: never restore or write one for it.
+    userId && bootstrapMe?.spaceId && panelTarget && !inboxMode
       ? rightPanelStorageKey(userId, bootstrapMe.spaceId, inGroup ? "group" : "bot", panelTarget)
       : null;
   panelStorageKeyRef.current = panelStorageKey;
   const activeTaughtSkills = taughtSkillsBotId === active?.id ? taughtSkills : [];
   const recordingSkill = activeTaughtSkills.find((skill) => skill.status === "recording") ?? null;
+  const routeInboxMode = useRef(inboxMode);
+  routeInboxMode.current = inboxMode;
   const routeBotId = useRef<string | undefined>(botId);
   routeBotId.current = botId;
   const routeGroupId = useRef<string | undefined>(groupId);
@@ -1003,6 +1025,8 @@ export function ShellPage() {
           }
           return;
         }
+        // /app/inbox has no bot id by design; creating the Inbox agent refreshes the roster here.
+        if (routeInboxMode.current) return;
         const currentBotId = routeBotId.current;
         if (!currentBotId || !list.some((bot) => bot.id === currentBotId)) {
           navigate(firstThreadRoute(list, groupList), { replace: true });
@@ -2381,6 +2405,24 @@ export function ShellPage() {
     focusPromptBotIdRef.current = null;
   }
 
+  function setInboxAgentCollapsedPref(collapsed: boolean) {
+    setInboxAgentCollapsed(collapsed);
+    writeInboxAgentCollapsed(userId, collapsed);
+  }
+
+  async function createInboxAgent() {
+    setCreatingInboxAgent(true);
+    setInboxAgentError("");
+    try {
+      await rpc.inbox.agent();
+      await refreshBots();
+    } catch (error) {
+      setInboxAgentError(errorText(error, t`Could not create the Inbox agent`));
+    } finally {
+      setCreatingInboxAgent(false);
+    }
+  }
+
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
     writeBotsSidebarCollapsed(userId, collapsed);
@@ -2858,6 +2900,8 @@ export function ShellPage() {
           onSlashAction={(action) => {
             if (action === "chat-settings") {
               setPanel(inGroup ? "group-settings" : "settings");
+              // Inbox mode renders no settings panel; they open on the agent's own page.
+              if (inboxMode && active) openBot(active.id);
               return;
             }
             if (action === "settings-general") {
@@ -3223,7 +3267,10 @@ export function ShellPage() {
                         const parentCollapsed =
                           hasChildren && collapsedRosterParents.has(item.chat.id);
                         const selected =
-                          (item.kind === "bot" && !inGroup && active?.id === item.chat.id) ||
+                          (item.kind === "bot" &&
+                            !inGroup &&
+                            !inboxMode &&
+                            active?.id === item.chat.id) ||
                           (item.kind === "group" && inGroup && activeGroup?.id === item.chat.id);
                         const compact = botsSidebarDensity === "compact";
                         const workStatusLabel =
@@ -3789,7 +3836,7 @@ export function ShellPage() {
             )}
           </div>
           <div className="flex items-center gap-1">
-            {!inGroup && active ? (
+            {!inGroup && !inboxMode && active ? (
               <button
                 type="button"
                 title={t`Agent computer`}
@@ -3812,6 +3859,7 @@ export function ShellPage() {
         {inboxMode ? (
           <InboxPage
             paused={pluginsOpen}
+            onShowAgent={inboxAgentCollapsed ? () => setInboxAgentCollapsedPref(false) : undefined}
             onRefreshed={refreshInboxUnread}
             onConnectMail={() => {
               setPluginsQuery("gmail");
@@ -3834,10 +3882,63 @@ export function ShellPage() {
 
       <ResizableSidePanel
         botsSidebarCollapsed={botsSidebarCollapsed}
-        open={Boolean(panel && (active || activeGroup || panel === "create"))}
-        panel={panel ?? "closed"}
+        open={
+          inboxMode
+            ? !inboxAgentCollapsed
+            : Boolean(panel && (active || activeGroup || panel === "create"))
+        }
+        panel={inboxMode ? "inbox-agent" : (panel ?? "closed")}
       >
-        {panel && (active || activeGroup || panel === "create") ? (
+        {inboxMode ? (
+          inboxAgentCollapsed ? null : (
+            <div data-testid="inbox-agent-panel" className="flex h-full min-h-0 w-full flex-col">
+              <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2">
+                {active ? (
+                  <button
+                    type="button"
+                    aria-label={active.name}
+                    onClick={() => openBot(active.id)}
+                    className="flex min-w-0 items-center gap-2 rounded-lg"
+                  >
+                    <BotAvatar
+                      color={active.color}
+                      identity={active.id}
+                      size={22}
+                      status={active.status}
+                    />
+                    <span className="truncate text-sm font-medium" dir="auto">
+                      {active.name}
+                    </span>
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t`Collapse Inbox agent`}
+                  onClick={() => setInboxAgentCollapsedPref(true)}
+                >
+                  <PanelRightClose aria-hidden="true" />
+                </Button>
+              </div>
+              {active ? (
+                threadView
+              ) : (
+                <div className="grid flex-1 place-content-center justify-items-center gap-3 px-5">
+                  <Button disabled={creatingInboxAgent} onClick={() => void createInboxAgent()}>
+                    <Trans>Create Inbox agent</Trans>
+                  </Button>
+                  {inboxAgentError ? (
+                    <p role="alert" className="text-center text-sm text-destructive">
+                      {inboxAgentError}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )
+        ) : panel && (active || activeGroup || panel === "create") ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" &&
             panel !== "create" &&
