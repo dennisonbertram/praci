@@ -3,6 +3,7 @@ import {
   type ConnectorProxyResponse,
   type MailAccount,
   type MailAddress,
+  type MailAttachment,
   type MailListRequest,
   type MailMessage,
   type MailMessagePage,
@@ -327,9 +328,14 @@ export class GmailMailProvider implements MailProvider {
       }
       if (typeof part.filename === "string" && part.filename) {
         attachments.push({
+          id: typeof part.partId === "string" ? part.partId : "",
           filename: part.filename,
           mimeType,
           size: typeof body?.size === "number" ? body.size : 0,
+          // A picture the body embeds, unless the sender marked it as an attachment.
+          inline:
+            Boolean(contentId) &&
+            !/^\s*attachment/i.test(headerOf(part, "content-disposition") ?? ""),
         });
         return;
       }
@@ -356,6 +362,47 @@ export class GmailMailProvider implements MailProvider {
     if (html !== undefined && inline.length)
       html = await this.embedInlineImages(account, id, context, html, inline);
     return { ...summary, text, ...(html === undefined ? {} : { html }), truncated, attachments };
+  }
+
+  async getAttachment(
+    account: MailAccount,
+    messageId: string,
+    attachmentId: string,
+    maxBytes: number,
+    context: AdapterContext,
+  ): Promise<MailAttachment> {
+    assertScope(account, context);
+    const message = await this.request(
+      account,
+      context,
+      `${GMAIL}/messages/${encodeURIComponent(messageId)}?format=full`,
+    );
+    const part = findNamedPart(asRecord(message)?.payload, attachmentId);
+    const body = asRecord(part?.body);
+    if (!part || !body) throw new MailProviderError("not_found", "Attachment not found");
+    const tooLarge = () => new MailProviderError("too_large", "Attachment is too large");
+    if (typeof body.size === "number" && body.size > maxBytes) throw tooLarge();
+    const data =
+      typeof body.data === "string"
+        ? body.data
+        : typeof body.attachmentId === "string"
+          ? asRecord(
+              await this.request(
+                account,
+                context,
+                `${GMAIL}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(body.attachmentId)}`,
+              ),
+            )?.data
+          : undefined;
+    if (typeof data !== "string") throw new MailProviderError("not_found", "Attachment not found");
+    const bytes = Buffer.from(data, "base64url");
+    if (bytes.length > maxBytes) throw tooLarge();
+    return {
+      filename: part.filename as string,
+      mimeType: typeof part.mimeType === "string" ? part.mimeType.toLowerCase() : "",
+      size: bytes.length,
+      bytes,
+    };
   }
 
   /**
@@ -641,6 +688,19 @@ function decodeBytes(bytes: Uint8Array, charset: string | undefined): string {
     // Unknown charset label.
     return new TextDecoder("utf-8").decode(bytes);
   }
+}
+
+/** The part with this `partId` that has a filename. */
+function findNamedPart(value: unknown, partId: string): Record<string, unknown> | undefined {
+  const part = asRecord(value);
+  if (!part) return undefined;
+  if (part.partId === partId && typeof part.filename === "string" && part.filename) return part;
+  if (!Array.isArray(part.parts)) return undefined;
+  for (const child of part.parts) {
+    const found = findNamedPart(child, partId);
+    if (found) return found;
+  }
+  return undefined;
 }
 
 function headerOf(part: Record<string, unknown>, name: string): string | undefined {

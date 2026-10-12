@@ -628,6 +628,10 @@ msgstr ""
 msgid "Attachment"
 msgstr "Ek"
 
+#: src/pages/Inbox.tsx
+msgid "Attachments"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
 msgstr "Kimlik doğrulama başarısız."
@@ -2067,6 +2071,10 @@ msgstr "Markdown olarak indir"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Download Executor"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Download failed"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx

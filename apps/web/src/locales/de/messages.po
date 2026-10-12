@@ -628,6 +628,10 @@ msgstr "{path} angehängt"
 msgid "Attachment"
 msgstr "Anhang"
 
+#: src/pages/Inbox.tsx
+msgid "Attachments"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
 msgstr "Authentifizierung fehlgeschlagen."
@@ -2067,6 +2071,10 @@ msgstr "Als Markdown herunterladen"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Download Executor"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Download failed"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx

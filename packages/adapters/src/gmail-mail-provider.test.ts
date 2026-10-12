@@ -473,9 +473,82 @@ describe("getMessage", () => {
     expect(full.html).toBe("<p>Html body</p>");
     expect(full.truncated).toBe(false);
     expect(full.attachments).toEqual([
-      { filename: "report.pdf", mimeType: "application/pdf", size: 1234 },
+      { id: "1", filename: "report.pdf", mimeType: "application/pdf", size: 1234, inline: false },
     ]);
     expect(full.subject).toBe("Hello");
+  });
+
+  it("marks cid images as inline and lists the files that carry bytes", async () => {
+    const gmail = box([
+      msg("m1", {
+        html: '<img src="cid:logo@x">',
+        inlineImages: [{ contentId: "logo@x", mimeType: "image/png", data: "iVBORw0KGgo=" }],
+        attachments: [
+          { filename: "notes.txt", mimeType: "text/plain", size: 0, data: "aGVsbG8gd29ybGQ=" },
+        ],
+      }),
+    ]);
+    const { provider } = over(gmail);
+    const full = await provider.getMessage(account(), "m1", context());
+    expect(full.attachments.map((a) => [a.filename, a.inline])).toEqual([
+      ["inline-0", true],
+      ["notes.txt", false],
+    ]);
+    expect(full.attachments[1]).toMatchObject({ size: 11, mimeType: "text/plain" });
+  });
+
+  it("downloads one attachment's bytes by its part id", async () => {
+    const gmail = box([
+      msg("m1", {
+        attachments: [
+          { filename: "a.txt", mimeType: "text/plain", size: 0, data: "YWFh" },
+          { filename: "b.txt", mimeType: "text/plain", size: 0, data: "YmJiYg==" },
+        ],
+      }),
+    ]);
+    const { provider } = over(gmail);
+    const full = await provider.getMessage(account(), "m1", context());
+    const second = full.attachments[1] as (typeof full.attachments)[number];
+    const file = await provider.getAttachment(account(), "m1", second.id, 1000, context());
+    expect(file).toMatchObject({ filename: "b.txt", mimeType: "text/plain", size: 4 });
+    expect(Buffer.from(file.bytes).toString()).toBe("bbbb");
+  });
+
+  it("refuses an attachment over the cap before fetching its bytes", async () => {
+    const gmail = box([
+      msg("m1", {
+        attachments: [
+          { filename: "big.bin", mimeType: "application/octet-stream", size: 0, data: "YWFhYQ==" },
+        ],
+      }),
+    ]);
+    const { provider } = over(gmail);
+    const [big] = (await provider.getMessage(account(), "m1", context())).attachments;
+    const error = await rejection(
+      provider.getAttachment(account(), "m1", (big as { id: string }).id, 3, context()),
+    );
+    expect(error).toMatchObject({ kind: "too_large" });
+    expect(gmail.requests.some((r) => r.url.includes("/attachments/"))).toBe(false);
+  });
+
+  it("answers not_found for an unknown part and for another account's message", async () => {
+    const gmail = box([
+      msg("m1", {
+        attachments: [{ filename: "a.txt", mimeType: "text/plain", size: 0, data: "YWFh" }],
+      }),
+    ]);
+    const { provider } = over(gmail);
+    expect(
+      await rejection(provider.getAttachment(account(), "m1", "99", 1000, context())),
+    ).toMatchObject({ kind: "not_found" });
+    expect(
+      await rejection(provider.getAttachment(account(), "nope", "1", 1000, context())),
+    ).toMatchObject({ kind: "not_found" });
+    expect(
+      await rejection(
+        provider.getAttachment(account({ userId: "other" }), "m1", "1", 1000, context()),
+      ),
+    ).toMatchObject({ kind: "auth" });
   });
 
   it("reduces an html-only body to text without style or script content", async () => {

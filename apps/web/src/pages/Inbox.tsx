@@ -24,11 +24,19 @@ import {
   TabsList,
   TabsTrigger,
 } from "@rakazo/ui-web";
-import { ListFilter, PanelRightOpen, Search, X } from "lucide-react";
+import {
+  FileArchive,
+  FileImage,
+  FileText,
+  ListFilter,
+  PanelRightOpen,
+  Search,
+  X,
+} from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
-import { rpc } from "../lib/rpc";
+import { rpc, withSpaceHeaders } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
 const ALL = "all";
@@ -631,6 +639,84 @@ function InboxMessageView({
           {message.text}
         </p>
       )}
+      {message?.attachments.length ? (
+        <InboxAttachments messageId={messageId} attachments={message.attachments} />
+      ) : null}
+    </div>
+  );
+}
+
+type MailAttachmentItem = Awaited<ReturnType<typeof rpc.inbox.get>>["attachments"][number];
+
+function AttachmentIcon({ mimeType }: { mimeType: string }) {
+  if (mimeType.startsWith("image/")) return <FileImage />;
+  if (/zip|compressed|tar/.test(mimeType)) return <FileArchive />;
+  return <FileText />;
+}
+
+function formatAttachmentSize(bytes: number): string {
+  const [unit, divisor] =
+    bytes < 1_000
+      ? (["byte", 1] as const)
+      : bytes < 1_000_000
+        ? (["kilobyte", 1_000] as const)
+        : (["megabyte", 1_000_000] as const);
+  return new Intl.NumberFormat(i18n.locale || "en", {
+    style: "unit",
+    unit,
+    unitDisplay: "narrow",
+    maximumFractionDigits: 1,
+  }).format(bytes / divisor);
+}
+
+/** Fetches with the session and space header, then saves the bytes; the file is never opened in the page. */
+async function saveAttachment(messageId: string, attachment: MailAttachmentItem) {
+  const response = await fetch(
+    `/api/inbox/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachment.id)}`,
+    { headers: withSpaceHeaders(), credentials: "include" },
+  );
+  if (!response.ok) throw new Error(`Attachment download failed (${response.status})`);
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = attachment.filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+function InboxAttachments({
+  messageId,
+  attachments,
+}: {
+  messageId: string;
+  attachments: MailAttachmentItem[];
+}) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="mt-3">
+      <ul aria-label={t`Attachments`} className="flex flex-wrap gap-2">
+        {attachments.map((attachment) => (
+          <li key={attachment.id}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFailed(false);
+                saveAttachment(messageId, attachment).catch(() => setFailed(true));
+              }}
+            >
+              <AttachmentIcon mimeType={attachment.mimeType} />
+              <span className="max-w-56 truncate">{attachment.filename}</span>
+              <span className="text-muted-foreground">{formatAttachmentSize(attachment.size)}</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {failed ? (
+        <p role="alert" className="mt-2 text-sm text-destructive">
+          <Trans>Download failed</Trans>
+        </p>
+      ) : null}
     </div>
   );
 }

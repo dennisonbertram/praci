@@ -628,6 +628,10 @@ msgstr ""
 msgid "Attachment"
 msgstr "첨부 파일"
 
+#: src/pages/Inbox.tsx
+msgid "Attachments"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
 msgstr "인증에 실패했습니다."
@@ -2067,6 +2071,10 @@ msgstr "마크다운으로 다운로드"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Download Executor"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Download failed"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx

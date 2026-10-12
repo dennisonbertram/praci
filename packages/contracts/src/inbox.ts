@@ -101,6 +101,15 @@ export const InboxMessageSchema = z.object({
   subject: z.string(),
   html: z.string().nullable(),
   text: z.string().nullable(),
+  /** Files to offer; pictures the body embeds are left out. */
+  attachments: z.array(
+    z.object({
+      id: z.string(),
+      filename: z.string(),
+      mimeType: z.string(),
+      size: z.number().int().nonnegative(),
+    }),
+  ),
 });
 
 export type InboxListInput = z.infer<typeof InboxListInputSchema>;
