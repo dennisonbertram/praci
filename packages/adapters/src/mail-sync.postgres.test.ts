@@ -379,7 +379,89 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     expect(byId.limited).toBeUndefined();
     // The incomplete list proves nothing about "earlier", so it stays in the inbox.
     expect(byId.earlier?.inInbox).toBe(true);
+  });
+
+  it("does not record an incomplete sync as a failure, and still allows an immediate retry", async () => {
+    seed("incomplete", [message("ok", 1, ["INBOX"]), message("limited", 2, ["INBOX"])]);
+    const account = await connect("incomplete");
+    gmail.failNext(429, { times: 1000, urlIncludes: "messages/limited" });
+
+    expect(await sync(account)).toBe("failed");
+
+    const after = await state(account.id);
+    expect(after.lastErrorAt).toBeNull();
+    expect(after.needsReconnect).toBe(false);
+    expect(after.lastSyncedAt).toBeNull();
+    expect(after.claimToken).toBeNull();
+    // Nothing started the 60-second throttle, so the next sync calls the provider again.
+    const before = listCalls();
+    await sync(account);
+    expect(listCalls()).toBeGreaterThan(before);
+  });
+
+  it("clears an earlier failure when a later sync is only incomplete", async () => {
+    seed("heals", [message("ok", 1, ["INBOX"]), message("limited", 2, ["INBOX"])]);
+    const account = await connect("heals");
+    gmail.failNext(401, { times: 1000 });
+    expect(await sync(account)).toBe("failed");
     expect((await state(account.id)).lastErrorAt).not.toBeNull();
+
+    gmail.failNext(429, { times: 1000, urlIncludes: "messages/limited" });
+    expect(await sync(account)).toBe("failed");
+
+    const after = await state(account.id);
+    expect(after.lastErrorAt).toBeNull();
+    expect(after.needsReconnect).toBe(false);
+  });
+
+  it("enqueues triage after an incomplete sync that stored rows, and not when it stored none", async () => {
+    seed("incomplete-enqueue", [message("ok", 1, ["INBOX"]), message("limited", 2, ["INBOX"])]);
+    const account = await connect("incomplete-enqueue");
+    gmail.failNext(429, { times: 1000, urlIncludes: "messages/limited" });
+    enqueued.length = 0;
+
+    expect(await sync(account)).toBe("failed");
+    expect(await rows(account.id)).toHaveLength(1);
+    expect(enqueued).toEqual([
+      {
+        name: "inbox.triage",
+        payload: { userId, spaceId },
+        replaceKey: `inbox.triage:${spaceId}:${userId}`,
+        maxAttempts: 3,
+      },
+    ]);
+
+    seed("incomplete-empty", [message("only", 1, ["INBOX"])]);
+    const empty = await connect("incomplete-empty");
+    gmail.failNext(429, { times: 1000, urlIncludes: "messages/only" });
+    enqueued.length = 0;
+    expect(await sync(empty)).toBe("failed");
+    expect(await rows(empty.id)).toHaveLength(0);
+    expect(enqueued).toEqual([]);
+  });
+
+  it("marks an account whose Gmail login was refused as needing a reconnect, and clears it on success", async () => {
+    seed("auth", [message("a", 1, ["INBOX"])]);
+    const account = await connect("auth");
+    gmail.failNext(401, { times: 1000 });
+
+    expect(await sync(account)).toBe("failed");
+
+    const refused = await state(account.id);
+    expect(refused.lastErrorAt).not.toBeNull();
+    expect(refused.needsReconnect).toBe(true);
+
+    gmail.failNext(503, { times: 1000 });
+    expect(await sync(account)).toBe("failed");
+    const down = await state(account.id);
+    expect(down.lastErrorAt).not.toBeNull();
+    expect(down.needsReconnect).toBe(false);
+
+    seed("auth", [message("a", 1, ["INBOX"])]);
+    expect(await sync(account)).toBe("synced");
+    const ok = await state(account.id);
+    expect(ok.lastErrorAt).toBeNull();
+    expect(ok.needsReconnect).toBe(false);
   });
 
   it("clears only rows newer than the oldest listed message when the list hits the cap", async () => {

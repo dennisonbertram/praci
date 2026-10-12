@@ -598,8 +598,9 @@ test("Inbox asks before a model sorts the mail, and Allow starts triage", async 
 
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
-  const prompt = main.getByRole("region", { name: "Let OpenRouter sort your mail" });
+  const prompt = main.getByRole("region", { name: "Let Rakazo sort your mail" });
   await expect(prompt).toBeVisible();
+  await expect(prompt).toContainText("are sent to OpenRouter.");
   await expect(main.getByRole("region", { name: "To do" })).toHaveCount(0);
   expect(allowBody).toBeUndefined();
   await captureScreenshot(page, testInfo, "inbox-consent-prompt");
@@ -636,4 +637,50 @@ test("Inbox offers no consent prompt while there is no model to allow", async ({
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
   await expect(main.getByRole("button", { name: "Allow", exact: true })).toHaveCount(0);
   await expect(main.getByRole("region", { name: "To do" })).toHaveCount(0);
+});
+
+test("Inbox says what failed when an account's sync failed, and nothing when it only came up short", async ({
+  page,
+}) => {
+  await signup(page, `inbox-failed-${Date.now()}@rakazo.test`, "password12", "Inbox Failed");
+  await completeOnboarding(page);
+
+  // The mail is the real emulated Gmail; which accounts failed is stubbed on the list.
+  let failure: { failedAccounts: string[]; reconnectAccounts: string[] } = {
+    failedAccounts: [],
+    reconnectAccounts: [],
+  };
+  await page.route("**/rpc/inbox/list", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { json: { accounts: Array<{ connectionId: string }> } };
+    const first = body.json.accounts[0]?.connectionId ?? "none";
+    await route.fulfill({
+      response,
+      json: {
+        json: {
+          ...body.json,
+          failedAccounts: failure.failedAccounts.map(() => first),
+          reconnectAccounts: failure.reconnectAccounts.map(() => first),
+        },
+      },
+    });
+  });
+
+  await page.getByTestId("sidebar-inbox").click();
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByRole("button", { name: "Close integrations" }).click();
+
+  const main = page.getByRole("main");
+  await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+  await expect(main.getByRole("alert")).toHaveCount(0);
+
+  failure = { failedAccounts: ["x"], reconnectAccounts: [] };
+  await page.reload();
+  await expect(main.getByRole("alert")).toHaveText(/Couldn't reach Gmail\./);
+  await expect(main.getByRole("button", { name: "Try again" })).toBeVisible();
+
+  failure = { failedAccounts: ["x"], reconnectAccounts: ["x"] };
+  await page.reload();
+  await expect(main.getByRole("alert")).toHaveText(/Gmail needs to be reconnected\./);
 });

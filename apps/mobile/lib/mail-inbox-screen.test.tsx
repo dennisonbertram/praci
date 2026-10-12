@@ -161,6 +161,7 @@ const inboxList = (extra: Record<string, unknown> = {}) => ({
   rows: [],
   syncedAt: null,
   failedAccounts: [],
+  reconnectAccounts: [],
   enabled: true,
   triagePending: false,
   ...extra,
