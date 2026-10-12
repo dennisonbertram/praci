@@ -379,7 +379,7 @@ describe("retries and status mapping", () => {
     expect(await rejection(provider.getMessage(account(), "missing", context()))).toMatchObject({
       kind: "not_found",
     });
-    gmail.failNext(500);
+    gmail.failNext(500, { times: 10 });
     expect(
       await rejection(provider.listMessages(account(), { query: "", pageSize: 5 }, context())),
     ).toMatchObject({ kind: "unavailable" });

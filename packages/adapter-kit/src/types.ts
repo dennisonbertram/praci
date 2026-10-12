@@ -903,6 +903,8 @@ export class MailProviderError extends Error {
     readonly kind: MailErrorKind,
     message: string,
     readonly retryAfterMs?: number,
+    /** Credential-free cause for logs. Never shown to users. */
+    readonly detail?: string,
   ) {
     super(message);
     this.name = "MailProviderError";

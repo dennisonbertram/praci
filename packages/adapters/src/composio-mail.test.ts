@@ -1,4 +1,8 @@
-import { type AdapterContext, ConnectorProxyError, MailProviderError } from "@rakazo/adapter-kit";
+import {
+  type AdapterContext,
+  type ConnectorProxyError,
+  MailProviderError,
+} from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ComposioConnector } from "./composio-connector.js";
@@ -210,8 +214,14 @@ describe("ComposioConnector.proxy", () => {
     };
     const sdkError = (name: string, message: string, extra: Record<string, unknown> = {}) =>
       Object.assign(new Error(message), { name, ...extra });
-    const failure = (connector = new ComposioConnector("test-key"), ctx = context) =>
-      connector.proxy(request, ctx).catch((error: unknown) => error as ConnectorProxyError);
+    const failure = async (connector = new ComposioConnector("test-key"), ctx = context) => {
+      try {
+        await connector.proxy(request, ctx);
+      } catch (error) {
+        return error as ConnectorProxyError;
+      }
+      throw new Error("proxy did not throw");
+    };
 
     it("marks a Composio 5xx as transient and keeps its status and class", async () => {
       class InternalServerError extends Error {
