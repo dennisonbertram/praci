@@ -244,7 +244,7 @@ async function listWindow(
 }
 
 /**
- * Deletes a connection's cached mail and sync state. `connections.revoke` only marks the row,
+ * Deletes a connection's cached mail, to-dos and sync state. `connections.revoke` only marks the row,
  * so no cascade fires; the revoke handler calls this in the same transaction.
  */
 export async function deleteMailConnectionData(
@@ -252,6 +252,8 @@ export async function deleteMailConnectionData(
   scope: { spaceId: string; userId: string; connectionId: string },
 ): Promise<void> {
   const { spaceId, userId, connectionId } = scope;
+  // Done to-dos quote the account's mail too, so every to-do goes, not just open ones.
+  await tx.inboxTodo.deleteMany({ where: { spaceId, userId, connectionId } });
   await tx.cachedMailMessage.deleteMany({ where: { connectionId, spaceId, userId } });
   await tx.mailSyncState.deleteMany({ where: { connectionId, connection: { spaceId, userId } } });
 }

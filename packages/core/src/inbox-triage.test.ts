@@ -7,8 +7,8 @@ import {
   parseTriageResponse,
   planTodoSync,
   selectTodoCandidates,
-  TRIAGE_INSTRUCTIONS,
   type TodoCandidateMessage,
+  TRIAGE_INSTRUCTIONS,
 } from "./inbox-triage.js";
 
 const item = (id: string, extra: Record<string, unknown> = {}) => ({
@@ -132,15 +132,17 @@ describe("selectTodoCandidates", () => {
       message("critical", { priority: "critical" }),
       message("important", { priority: "important" }),
     ]).map((m) => m.id);
-    expect(picked).toEqual([
-      "critical",
-      "important",
-      "normal-due-soon",
-      "normal-due-late",
-      "normal-new",
-      "normal-old",
-      "low",
-    ].slice(0, MAX_OPEN_TODOS));
+    expect(picked).toEqual(
+      [
+        "critical",
+        "important",
+        "normal-due-soon",
+        "normal-due-late",
+        "normal-new",
+        "normal-old",
+        "low",
+      ].slice(0, MAX_OPEN_TODOS),
+    );
   });
 
   it("caps the result at the limit", () => {
@@ -183,9 +185,9 @@ describe("planTodoSync", () => {
   });
 
   it("keeps a done to-do", () => {
-    expect(planTodoSync([todo("t1", "m1", { doneAt: when, touchedAt: when })], []).deleteIds).toEqual(
-      [],
-    );
+    expect(
+      planTodoSync([todo("t1", "m1", { doneAt: when, touchedAt: when })], []).deleteIds,
+    ).toEqual([]);
   });
 
   it("keeps a to-do the user touched and then unchecked", () => {
