@@ -8,13 +8,13 @@ import {
 } from "@rakazo/adapter-kit";
 import { describe, expect, it, vi } from "vitest";
 import {
-  GmailApiEmulator,
-  type EmulatedMessage,
   createMailEmulator,
+  type EmulatedMessage,
+  GmailApiEmulator,
 } from "./gmail-api-emulator.js";
 import {
-  GmailMailProvider,
   createMailProvider,
+  GmailMailProvider,
   isMailConnection,
   parseAddressList,
 } from "./gmail-mail-provider.js";
@@ -207,7 +207,7 @@ describe("listMessages", () => {
         from: '"Doe, Jane" <jane@example.test>',
         to: 'a@example.test, "Smith, Bob" <bob@example.test>',
         cc: "carol@example.test",
-        subject: "=?UTF-8?B?Q2Fmw6k=?= =?UTF-8?Q?menu_=E2=9C=93?=",
+        subject: "=?UTF-8?B?Q2Fmw6k=?= menu =?UTF-8?Q?=E2=9C=93?=",
         snippet: "It&#39;s &amp; &quot;ok&quot; &lt;3 &#x41;",
       }),
     ]);

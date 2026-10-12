@@ -1,6 +1,7 @@
 import type {
   AdapterContext,
   ConnectorCall,
+  ConnectorProxyRequest,
   ManagedConnectorProvider,
   SecretStore,
 } from "@rakazo/adapter-kit";
@@ -188,6 +189,28 @@ class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
   }
   async revoke(ref: string, context: AdapterContext) {
     return (await this.required()).revoke(ref, context);
+  }
+  async proxy(request: ConnectorProxyRequest, context: AdapterContext) {
+    const provider = await this.required();
+    if (!provider.proxy) throw new Error("This integration provider cannot proxy requests");
+    return provider.proxy(request, context);
+  }
+  /** Read by the router through a cast; forwarded so Pipedream rows resolve to real account ids. */
+  async resolveConnectedAccountId(
+    userId: string,
+    slug: string,
+    currentRef: string | null | undefined,
+    excludeIds?: string[],
+    spaceId?: string,
+  ): Promise<string | undefined> {
+    const provider = (await this.resolve()) as
+      | (ManagedConnectorProvider & {
+          resolveConnectedAccountId?: ConfiguredIntegrationProvider["resolveConnectedAccountId"];
+        })
+      | undefined;
+    return provider?.resolveConnectedAccountId
+      ? provider.resolveConnectedAccountId(userId, slug, currentRef, excludeIds, spaceId)
+      : currentRef?.trim() || undefined;
   }
   async resolveCall(call: ConnectorCall, context: AdapterContext) {
     return (await this.required()).resolveCall?.(call, context);
