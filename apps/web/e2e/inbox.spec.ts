@@ -286,7 +286,10 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
     );
     await route.fulfill({
       response,
-      json: { ...body, json: { ...body.json, rows, enabled: true, triagePending: !triaged } },
+      json: {
+        ...body,
+        json: { ...body.json, rows, enabled: true, triageBlocked: null, triagePending: !triaged },
+      },
     });
   });
   await page.route("**/rpc/inbox/todos/list", (route) =>
@@ -406,7 +409,9 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
     }
     await route.fulfill({
       response,
-      json: { json: { ...body.json, rows, enabled: true, triagePending: false } },
+      json: {
+        json: { ...body.json, rows, enabled: true, triageBlocked: null, triagePending: false },
+      },
     });
   });
   await page.route("**/rpc/inbox/feedback", (route) => {
@@ -606,4 +611,29 @@ test("Inbox asks before a model sorts the mail, and Allow starts triage", async 
   await expect(prompt).toHaveCount(0);
   expect(allowBody).toEqual({ scope: "scope-1", version: "2026-09-14", keys: ["recipient-key"] });
   expect(refreshes).toBeGreaterThan(before);
+});
+
+test("Inbox offers no consent prompt while there is no model to allow", async ({ page }) => {
+  await signup(page, `inbox-nomodel-${Date.now()}@rakazo.test`, "password12", "Inbox No Model");
+  await completeOnboarding(page);
+
+  // The list's reason is stubbed; the mail is the real emulated Gmail.
+  await page.route("**/rpc/inbox/list", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { json: Record<string, unknown> };
+    await route.fulfill({
+      response,
+      json: { json: { ...body.json, enabled: false, triageBlocked: { reason: "no_model" } } },
+    });
+  });
+
+  await page.getByTestId("sidebar-inbox").click();
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByRole("button", { name: "Close integrations" }).click();
+
+  const main = page.getByRole("main");
+  await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Allow", exact: true })).toHaveCount(0);
+  await expect(main.getByRole("region", { name: "To do" })).toHaveCount(0);
 });

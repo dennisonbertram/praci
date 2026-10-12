@@ -169,3 +169,21 @@ it("renders nothing when there are no model recipients or the status cannot load
   await render(<AiDataSharingSection key="again" />);
   expect(container.innerHTML).toBe("");
 });
+
+it("sends one grant even if Allow is pressed again while the first is in flight", async () => {
+  let finish: (value: AiConsentStatus) => void = () => {};
+  consent.allowRecipient.mockReturnValue(
+    new Promise<AiConsentStatus>((resolve) => (finish = resolve)),
+  );
+  await render(
+    <InboxConsentPrompt recipient={{ key: "model-key", name: "OpenRouter" }} onAllowed={vi.fn()} />,
+  );
+
+  await click(container.querySelector("button"));
+  await click(container.querySelector("button"));
+  expect(container.querySelector("button")?.disabled).toBe(true);
+  expect(consent.allowRecipient).toHaveBeenCalledTimes(1);
+
+  await act(async () => finish(statusOf()));
+  expect(container.querySelector("button")?.disabled).toBe(false);
+});

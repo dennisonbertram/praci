@@ -371,6 +371,21 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(body.html).toBe("<p>Body of a-star</p>");
     });
 
+    it("says why triage is off on a searched list as well, so every response carries the reason", async () => {
+      await wipe();
+      gmail = new GmailApiEmulator({
+        mailboxes: {
+          "box-a": mailbox("box-a@example.test", [
+            { id: "a-1", days: 1, labels: ["INBOX"], subject: "Budget" },
+          ]),
+          "box-b": mailbox("box-b@example.test", []),
+        },
+      });
+      const found = await inboxList(deps, a, { query: "budget" });
+      expect(found.rows).toHaveLength(1);
+      expect(found.triageBlocked).toEqual({ reason: "no_model" });
+    });
+
     it("combines the filter with the search text and searches without a filter", async () => {
       await wipe();
       gmail = new GmailApiEmulator({
