@@ -8,7 +8,10 @@ import { createMailProvider } from "./gmail-mail-provider.js";
 import { assertMailConformance } from "./testing/mail-conformance.js";
 
 const sdk = vi.hoisted(() => ({
-  proxyExecute: vi.fn<(body: Record<string, unknown>, options?: { signal?: AbortSignal }) => Promise<unknown>>(),
+  proxyExecute:
+    vi.fn<
+      (body: Record<string, unknown>, options?: { signal?: AbortSignal }) => Promise<unknown>
+    >(),
 }));
 
 vi.mock("@composio/core", () => ({
@@ -32,10 +35,7 @@ const context: AdapterContext = {
 function composioMailbox() {
   const emulator = createMailEmulator();
   sdk.proxyExecute.mockImplementation(async (body) => {
-    const response = emulator.gmail.handle(
-      String(body.connectedAccountId),
-      String(body.endpoint),
-    );
+    const response = emulator.gmail.handle(String(body.connectedAccountId), String(body.endpoint));
     return {
       status: response.status,
       data: response.data,
@@ -73,7 +73,9 @@ function composioMailbox() {
 }
 
 describe("ComposioConnector.proxy", () => {
-  beforeEach(() => sdk.proxyExecute.mockReset());
+  beforeEach(() => {
+    sdk.proxyExecute.mockReset();
+  });
 
   it("passes mail conformance when proxyExecute reaches the Gmail emulator", async () => {
     const { emulator, provider, accounts } = composioMailbox();
@@ -120,7 +122,12 @@ describe("ComposioConnector.proxy", () => {
       headers: { "retry-after": "7" },
     });
     const response = await new ComposioConnector("test-key").proxy(
-      { app: "GMAIL", accountRef: "ca-1", method: "GET", url: "https://gmail.googleapis.com/gmail/v1/users/me/profile" },
+      {
+        app: "GMAIL",
+        accountRef: "ca-1",
+        method: "GET",
+        url: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+      },
       context,
     );
     expect(response).toEqual({
@@ -131,9 +138,18 @@ describe("ComposioConnector.proxy", () => {
   });
 
   it("omits retryAfterMs when the header is missing or not a number", async () => {
-    sdk.proxyExecute.mockResolvedValue({ status: 200, data: {}, headers: { "Retry-After": "soon" } });
+    sdk.proxyExecute.mockResolvedValue({
+      status: 200,
+      data: {},
+      headers: { "Retry-After": "soon" },
+    });
     const response = await new ComposioConnector("test-key").proxy(
-      { app: "GMAIL", accountRef: "ca-1", method: "GET", url: "https://gmail.googleapis.com/gmail/v1/users/me/profile" },
+      {
+        app: "GMAIL",
+        accountRef: "ca-1",
+        method: "GET",
+        url: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+      },
       context,
     );
     expect(response.retryAfterMs).toBeUndefined();
@@ -143,7 +159,12 @@ describe("ComposioConnector.proxy", () => {
     sdk.proxyExecute.mockResolvedValue({ status: 200, data: {}, headers: {} });
     const controller = new AbortController();
     await new ComposioConnector("test-key").proxy(
-      { app: "GMAIL", accountRef: "ca-1", method: "GET", url: "https://gmail.googleapis.com/gmail/v1/users/me/profile" },
+      {
+        app: "GMAIL",
+        accountRef: "ca-1",
+        method: "GET",
+        url: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+      },
       { ...context, signal: controller.signal },
     );
     expect(sdk.proxyExecute.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
@@ -154,7 +175,12 @@ describe("ComposioConnector.proxy", () => {
     const connector = new ComposioConnector("test-key");
     const failure = await connector
       .proxy(
-        { app: "GMAIL", accountRef: "ca-1", method: "GET", url: "https://gmail.googleapis.com/gmail/v1/users/me/profile" },
+        {
+          app: "GMAIL",
+          accountRef: "ca-1",
+          method: "GET",
+          url: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+        },
         context,
       )
       .catch((error: unknown) => error);
@@ -176,29 +202,23 @@ describe("ComposioConnector.proxy", () => {
 
 describe("ComposioEmulator.proxy", () => {
   it("answers Gmail REST requests from the Gmail emulator", async () => {
-    const response = await new ComposioEmulator().proxy?.(
-      {
-        app: "GMAIL",
-        accountRef: "acct-a",
-        method: "GET",
-        url: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
-      },
-      context,
-    );
-    expect(response?.status).toBe(200);
-    expect(response?.data).toMatchObject({ emailAddress: "alice@example.test" });
+    const response = await new ComposioEmulator().proxy({
+      app: "GMAIL",
+      accountRef: "acct-a",
+      method: "GET",
+      url: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+    });
+    expect(response.status).toBe(200);
+    expect(response.data).toMatchObject({ emailAddress: "alice@example.test" });
   });
 
   it("answers 401 for an account the mailbox does not know", async () => {
-    const response = await new ComposioEmulator().proxy?.(
-      {
-        app: "GMAIL",
-        accountRef: "GMAIL:99",
-        method: "GET",
-        url: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
-      },
-      context,
-    );
-    expect(response?.status).toBe(401);
+    const response = await new ComposioEmulator().proxy({
+      app: "GMAIL",
+      accountRef: "GMAIL:99",
+      method: "GET",
+      url: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+    });
+    expect(response.status).toBe(401);
   });
 });

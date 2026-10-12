@@ -6,6 +6,8 @@ import type {
   ConnectorCatalogItem,
   ConnectorEvent,
   ConnectorProvider,
+  ConnectorProxyRequest,
+  ConnectorProxyResponse,
   ConnectorTool,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
@@ -696,6 +698,38 @@ export class ComposioConnector implements ComposioProvider {
     const ids = await this.listConnectedAccountIds(userId, slug);
     if (current && ids.includes(current) && !excluded.has(current)) return current;
     return ids.find((id) => !excluded.has(id));
+  }
+
+  /**
+   * Authenticated GET against the toolkit's own API. `endpoint` is the absolute URL, which
+   * Composio accepts when it shares the toolkit's registrable domain, so the query string
+   * (including repeated parameters) travels unchanged. Upstream status codes are returned.
+   */
+  async proxy(
+    request: ConnectorProxyRequest,
+    context: AdapterContext,
+  ): Promise<ConnectorProxyResponse> {
+    let response: Awaited<ReturnType<Composio["tools"]["proxyExecute"]>>;
+    try {
+      response = await this.sdk().tools.proxyExecute(
+        { endpoint: request.url, method: "GET", connectedAccountId: request.accountRef },
+        { signal: context.signal },
+      );
+    } catch (error) {
+      throw new Error(sanitizeComposioError(error));
+    }
+    const retryAfter = Number(
+      Object.entries(response.headers ?? {}).find(
+        ([name]) => name.toLowerCase() === "retry-after",
+      )?.[1],
+    );
+    return {
+      status: response.status,
+      data: response.data,
+      ...(Number.isFinite(retryAfter) && retryAfter >= 0
+        ? { retryAfterMs: retryAfter * 1000 }
+        : {}),
+    };
   }
 
   private sdk(): Composio {
