@@ -73,6 +73,36 @@ async function connectedMailConnections(prisma: PrismaClient, actor: Actor) {
   return rows.filter(isMailConnection);
 }
 
+/** True when the triage job would pick at least one message of these accounts (Job flow step 4). */
+async function hasUntriaged(
+  prisma: PrismaClient,
+  actor: Actor,
+  connectionIds: string[],
+): Promise<boolean> {
+  const row = await prisma.cachedMailMessage.findFirst({
+    where: {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      connectionId: { in: connectionIds },
+      inInbox: true,
+      fromSelf: false,
+      receivedAt: { gte: new Date(Date.now() - WINDOW_MS) },
+      OR: [{ triagedAt: null }, { triageVersion: { lt: TRIAGE_VERSION } }],
+    },
+    select: { id: true },
+  });
+  return row !== null;
+}
+
+/** The job key merges repeats; a lost enqueue only delays triage until the next trigger. */
+async function enqueueTriage(deps: InboxDeps, actor: Actor): Promise<void> {
+  await deps.jobs.enqueue(inboxTriageJob(actor.userId, actor.spaceId)).catch((error) => {
+    getLogger().warn("inbox triage enqueue failed", {
+      reason: error instanceof Error ? error.name : "error",
+    });
+  });
+}
+
 const PRIORITIES = ["critical", "important", "normal", "low"] as const;
 const asPriority = (value: string | null) => PRIORITIES.find((p) => p === value) ?? null;
 
@@ -172,7 +202,12 @@ async function searchMail(
   actor: Actor,
   connections: Array<{ id: string }>,
   request: { query: string; pageToken: string | undefined; signal: AbortSignal | undefined },
-): Promise<{ messages: CachedMessage[]; failed: string[]; nextPageToken: string | undefined }> {
+): Promise<{
+  messages: CachedMessage[];
+  failed: string[];
+  reconnect: string[];
+  nextPageToken: string | undefined;
+}> {
   const tokens = request.pageToken ? decodePageToken(request.pageToken) : undefined;
   const targets = connections.filter((c) => !tokens || Object.hasOwn(tokens, c.id));
   const context = mailContext(actor, "inbox.list", request.signal);
@@ -182,6 +217,7 @@ async function searchMail(
   );
   const next: Record<string, string> = {};
   const failed: string[] = [];
+  const reconnect: string[] = [];
   const pages = await Promise.all(
     targets.map(async ({ id }): Promise<CachedMessage[]> => {
       const account = accounts.find((a) => a.id === id);
@@ -211,6 +247,7 @@ async function searchMail(
         if (!(error instanceof MailProviderError)) throw error;
         getLogger().warn("inbox.list search failed", { connectionId: id, reason: error.kind });
         failed.push(id);
+        if (error.kind === "auth") reconnect.push(id);
         return [];
       }
     }),
@@ -223,6 +260,7 @@ async function searchMail(
   return {
     messages,
     failed,
+    reconnect,
     nextPageToken: Object.keys(next).length ? encodePageToken(next) : undefined,
   };
 }
@@ -274,6 +312,7 @@ export async function inboxList(
       rows: [],
       syncedAt: null,
       failedAccounts: [],
+      reconnectAccounts: [],
       enabled,
       triageBlocked,
       triagePending: false,
@@ -292,6 +331,7 @@ export async function inboxList(
       rows: result.messages.map((m) => toMailRow(m, enabled, marks)),
       syncedAt: null,
       failedAccounts: result.failed,
+      reconnectAccounts: result.reconnect,
       enabled,
       triageBlocked,
       triagePending: false,
@@ -333,19 +373,12 @@ export async function inboxList(
     prisma.mailSyncState.findMany({ where: { connectionId: { in: ids } } }),
     // The rows Job flow step 4 of the triage job would select, across all the user's accounts.
     enabled
-      ? prisma.cachedMailMessage.findFirst({
-          where: {
-            spaceId: actor.spaceId,
-            userId: actor.userId,
-            connectionId: { in: connections.map((c) => c.id) },
-            inInbox: true,
-            fromSelf: false,
-            receivedAt: { gte: new Date(Date.now() - WINDOW_MS) },
-            OR: [{ triagedAt: null }, { triageVersion: { lt: TRIAGE_VERSION } }],
-          },
-          select: { id: true },
-        })
-      : null,
+      ? hasUntriaged(
+          prisma,
+          actor,
+          connections.map((c) => c.id),
+        )
+      : false,
   ]);
 
   const rows = oneRowPerThread(messages).map((m) => toMailRow(m, enabled, marks));
@@ -356,9 +389,12 @@ export async function inboxList(
     rows,
     syncedAt: synced.length ? new Date(Math.max(...synced)).toISOString() : null,
     failedAccounts: states.filter((s) => s.lastErrorAt).map((s) => s.connectionId),
+    reconnectAccounts: states
+      .filter((s) => s.lastErrorAt && s.needsReconnect)
+      .map((s) => s.connectionId),
     enabled,
     triageBlocked,
-    triagePending: untriaged !== null,
+    triagePending: untriaged,
   };
 }
 
@@ -389,13 +425,7 @@ export async function inboxFeedbackSet(
     await deps.prisma.inboxSenderFeedback.deleteMany({ where: key });
   }
   // A triage run with nothing new to classify still re-syncs the to-dos under the new mark.
-  if (await triageEnabled(deps, actor)) {
-    await deps.jobs.enqueue(inboxTriageJob(actor.userId, actor.spaceId)).catch((error) => {
-      getLogger().warn("inbox triage enqueue failed", {
-        reason: error instanceof Error ? error.name : "error",
-      });
-    });
-  }
+  if (await triageEnabled(deps, actor)) await enqueueTriage(deps, actor);
   return { mark: input.mark };
 }
 
@@ -421,6 +451,19 @@ export async function inboxRefresh(
     }
   };
   await Promise.all(Array.from({ length: Math.min(SYNC_PARALLELISM, accounts.length) }, worker));
+
+  // A sync only queues triage when it ran. One throttled, or incomplete before the user allowed the
+  // model, would leave cached mail untriaged, so refresh queues it whenever mail is waiting.
+  if (
+    (await triageEnabled(deps, actor)) &&
+    (await hasUntriaged(
+      deps.prisma,
+      actor,
+      mine.map((a) => a.id),
+    ))
+  ) {
+    await enqueueTriage(deps, actor);
+  }
   return { ok: true };
 }
 

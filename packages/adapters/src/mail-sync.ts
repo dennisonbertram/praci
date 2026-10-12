@@ -49,7 +49,8 @@ interface Listed {
  * One conditional UPDATE is both the 60-second throttle and the in-flight claim; the write
  * transaction re-checks the claim token under a row lock, so a sync that lost its claim writes
  * nothing. Provider errors are recorded on the state row, never thrown. A successful sync, with or
- * without new mail, enqueues the user's `inbox.triage` job; the job key merges repeats.
+ * without new mail, and an incomplete one that stored rows enqueue the user's `inbox.triage` job;
+ * the job key merges repeats.
  */
 export async function syncMailbox(
   deps: MailSyncDeps,
@@ -80,9 +81,11 @@ export async function syncMailbox(
 
   const fail = async (error: unknown): Promise<"failed"> => {
     // The token check keeps a sync that lost its claim from clearing its replacement's.
+    const needsReconnect = error instanceof MailProviderError && error.kind === "auth";
     await prisma.$executeRaw`
       UPDATE mail_sync_states
-      SET "lastErrorAt" = ${DB_NOW}, "syncStartedAt" = NULL, "claimToken" = NULL
+      SET "lastErrorAt" = ${DB_NOW}, "needsReconnect" = ${needsReconnect},
+          "syncStartedAt" = NULL, "claimToken" = NULL
       WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
     getLogger().warn("mail sync failed", {
       connectionId: account.id,
@@ -189,16 +192,19 @@ export async function syncMailbox(
           where: { ...scope, inInbox: false, seenAt: { lt: windowStart } },
         });
 
+        // An incomplete sync is not an error: the mail that loaded is shown. It leaves lastSyncedAt
+        // alone, so the 60-second throttle does not start and the next sync retries at once.
         if (partial) {
           await tx.$executeRaw`
             UPDATE mail_sync_states
-            SET "lastErrorAt" = ${DB_NOW}, "syncStartedAt" = NULL, "claimToken" = NULL
+            SET "lastErrorAt" = NULL, "needsReconnect" = false,
+                "syncStartedAt" = NULL, "claimToken" = NULL
             WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
           return "failed" as const;
         }
         await tx.$executeRaw`
           UPDATE mail_sync_states
-          SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL,
+          SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL, "needsReconnect" = false,
               "syncStartedAt" = NULL, "claimToken" = NULL
           WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
         return "synced" as const;
@@ -211,7 +217,8 @@ export async function syncMailbox(
         durationMs: Date.now() - started,
       });
     }
-    if (outcome === "synced") {
+    // Rows an incomplete sync stored are usable, so they are triaged too.
+    if (outcome === "synced" || (outcome === "failed" && merged.size > 0)) {
       // The mail is already cached; a lost enqueue only delays triage until the next sync.
       await deps.jobs.enqueue(inboxTriageJob(userId, spaceId)).catch((error) => {
         getLogger().warn("inbox triage enqueue failed", {

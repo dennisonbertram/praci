@@ -1630,8 +1630,11 @@ model MailSyncState {
   lastSyncedAt  DateTime?
   /// Claim held by the process that is syncing; stale after 2 minutes.
   syncStartedAt DateTime?
-  /// Set when the last sync failed, cleared on success.
+  /// Set when the last sync failed outright (provider error, nothing stored). An incomplete sync,
+  /// where some messages could not be hydrated, is not a failure. Cleared by any sync that stored mail.
   lastErrorAt   DateTime?
+  /// The last failure was the provider refusing the login, so the account needs reconnecting.
+  needsReconnect Boolean  @default(false)
   /// Random id of the sync holding the claim; every write checks it.
   claimToken    String?
 

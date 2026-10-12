@@ -47,6 +47,7 @@ import {
   readInboxListState,
   setInboxListParam,
 } from "../lib/inbox-list-input";
+import { syncErrorText } from "../lib/inbox-sync-error";
 import { rpc, withSpaceHeaders } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -200,7 +201,7 @@ export function InboxPage({
   }, [data, more.rows, filtered]);
   const groups = useMemo(() => groupInbox(rows, new Date()), [rows]);
   const accounts = data?.accounts ?? [];
-  const failed = error || (data && data.failedAccounts.length > 0 ? errorText(undefined) : "");
+  const failed = error || (data ? syncErrorText(data) : "");
   const loading = !data || dataKey !== listKey || (!filtered && data.rows.length === 0 && !synced);
   const retry = () => {
     setError("");

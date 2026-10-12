@@ -1758,6 +1758,10 @@ msgstr ""
 msgid "Couldn't load messaging settings"
 msgstr "Impossible de charger les paramètres de messagerie"
 
+#: src/lib/inbox-sync-error.ts
+msgid "Couldn't reach Gmail."
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
 msgstr "Impossible de mettre à jour les avatars"
@@ -2384,6 +2388,10 @@ msgstr "Préparation en cours"
 msgid "Git event"
 msgstr "Événement Git"
 
+#: src/lib/inbox-sync-error.ts
+msgid "Gmail needs to be reconnected."
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 msgid "Group"
@@ -2626,7 +2634,7 @@ msgid "Leave"
 msgstr "Quitter"
 
 #: src/components/AiDataSharing.tsx
-msgid "Let {name} sort your mail"
+msgid "Let Rakazo sort your mail"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -4123,7 +4131,7 @@ msgid "Send reset link"
 msgstr "Envoyer le lien de réinitialisation"
 
 #: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews are sent to it."
+msgid "Senders, recipients, subjects and short previews are sent to {name}."
 msgstr ""
 
 #: src/components/AskCard.tsx

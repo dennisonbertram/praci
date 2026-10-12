@@ -503,7 +503,8 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       const out = await inboxList(deps, a, { filter: "unread" });
       expect(out.rows.map((r) => r.subject)).toEqual(["Subject a-1"]);
       expect(out.failedAccounts).toEqual([broken]);
-      expect(out.reconnectAccounts).toEqual([]);
+      // Gmail answers 401 for a mailbox it does not know, which the provider maps to "reconnect".
+      expect(out.reconnectAccounts).toEqual([broken]);
       await prisma.connection.delete({ where: { id: broken } });
     });
 

@@ -119,8 +119,10 @@ export const InboxListOutputSchema = z.object({
   rows: z.array(MailRowSchema),
   /** Newest lastSyncedAt; null means never synced. */
   syncedAt: z.string().nullable(),
-  /** Accounts whose last sync failed. */
+  /** Accounts whose last sync failed outright; a sync that only came up short is not a failure. */
   failedAccounts: z.array(Id),
+  /** The failed accounts whose login the provider refused: they need reconnecting. */
+  reconnectAccounts: z.array(Id),
   /** True when triage can run: a usable model the user has allowed. Clients hide triage UI otherwise. */
   enabled: z.boolean(),
   /** Why `enabled` is false; null when triage can run. */
