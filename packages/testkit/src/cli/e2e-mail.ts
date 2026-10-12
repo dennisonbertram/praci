@@ -46,6 +46,35 @@ export function e2eMailboxes(now = new Date()) {
       subject: "CI passed on main",
       text: "All checks have passed.",
     },
+    {
+      id: "e2e-a-3",
+      date: at(3 * DAY_MS),
+      labels: ["INBOX", "STARRED"],
+      from: "Dana Cho <dana@example.test>",
+      to: "first@example.test",
+      subject: "Q3 report",
+      text: "The report is attached.",
+      attachments: [{ filename: "q3-report.pdf", mimeType: "application/pdf", size: 20_480 }],
+    },
+    {
+      id: "e2e-a-4",
+      date: at(4 * DAY_MS),
+      labels: ["INBOX", "CATEGORY_PROMOTIONS"],
+      from: "Shop <shop@example.test>",
+      to: "first@example.test",
+      subject: "Weekend sale",
+      text: "Everything is 20 percent off.",
+    },
+    {
+      // Older than the 14-day sync window: only Gmail-side filters and search can find it.
+      id: "e2e-a-5",
+      date: at(40 * DAY_MS),
+      labels: ["STARRED"],
+      from: "Legal <legal@example.test>",
+      to: "first@example.test",
+      subject: "Signed contract",
+      text: "The signed contract is filed.",
+    },
   ];
   const second: EmulatedMessage[] = [
     {

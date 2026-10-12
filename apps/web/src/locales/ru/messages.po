@@ -936,6 +936,7 @@ msgstr "Выбрать файл"
 msgid "Choose which connected model Rakazo uses."
 msgstr "Выберите, какую подключенную модель использует Rakazo."
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
 msgstr "Очистить"
@@ -2259,6 +2260,10 @@ msgstr ""
 msgid "Files"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Filter"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Filter by date"
 msgstr ""
@@ -2379,6 +2384,10 @@ msgstr "Сначала повесьте трубку, затем введите 
 msgid "Hang up, then enter the code on screen."
 msgstr "Повесьте трубку, затем введите код на экране."
 
+#: src/pages/Inbox.tsx
+msgid "Has attachment"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "header"
 msgstr "заголовок"
@@ -2464,6 +2473,10 @@ msgstr "Область загрузки изображения"
 #: src/pages/PluginsOverlay.tsx
 msgid "Import OpenAPI JSON"
 msgstr "Импортировать OpenAPI JSON"
+
+#: src/pages/Inbox.tsx
+msgid "Important"
+msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "In progress"
@@ -2615,6 +2628,7 @@ msgid "Load earlier messages"
 msgstr "Загрузить более ранние сообщения"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/Inbox.tsx
 msgid "Load more"
 msgstr ""
 
@@ -3443,6 +3457,10 @@ msgstr "Предварительный просмотр {0}"
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Primary"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Priority"
 msgstr ""
@@ -3458,6 +3476,10 @@ msgstr "Приватное пространство со своими ботам
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Project ID"
 msgstr "ID проекта"
+
+#: src/pages/Inbox.tsx
+msgid "Promotions"
+msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Protected input"
@@ -3970,6 +3992,10 @@ msgstr "Поиск по домену"
 msgid "Search integrations.sh"
 msgstr "Поиск integrations.sh"
 
+#: src/pages/Inbox.tsx
+msgid "Search mail"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
 msgstr "Поиск моделей"
@@ -4200,6 +4226,10 @@ msgstr "Сообщение Slack"
 msgid "Slack not enabled"
 msgstr "Slack не включен"
 
+#: src/pages/Inbox.tsx
+msgid "Social"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "Обновление программного обеспечения"
@@ -4248,6 +4278,10 @@ msgstr "Речевая модель"
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO временно недоступен. Попробуйте снова."
+
+#: src/pages/Inbox.tsx
+msgid "Starred"
+msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
@@ -4624,6 +4658,10 @@ msgstr "Включить микрофон"
 msgid "Unpin"
 msgstr "Открепить"
 
+#: src/pages/Inbox.tsx
+msgid "Unread"
+msgstr ""
+
 #. placeholder {0}: pending.file.name
 #: src/pages/Shell.tsx
 msgid "Unsupported file type: {0}"
@@ -4667,6 +4705,7 @@ msgstr "Обновлено"
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
 msgstr "Обновления"
