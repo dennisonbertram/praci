@@ -149,7 +149,7 @@ import {
   ComputerCommandSchema,
   foldComputerCommands,
   IntegrationProviderIdSchema,
-  inboxAgentSpawnKey,
+  isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   parseTicketRef,
   usableModelId,
@@ -1601,7 +1601,7 @@ export function createRouter(deps: RouterDeps) {
       }),
       create: authed.bots.create.handler(async ({ context, input }) => {
         // inbox.agent is the only way to create an Inbox agent; reserve its key prefix.
-        if (input.spawnKey?.startsWith(inboxAgentSpawnKey(""))) {
+        if (isInboxAgentSpawnKey(input.spawnKey)) {
           throw new ORPCError("BAD_REQUEST", { message: "Reserved spawn key" });
         }
         let bot: Bot;

@@ -238,6 +238,14 @@ describe("skill tools", () => {
     ).toEqual({ error: "Builtin and plugin skills are read-only." });
   });
 
+  it("steers overview questions to the recent inbox, which the synced cache answers quickly", () => {
+    const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
+    const parsed = parseSkillMd(skill?.content ?? "");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.body).toContain("in:inbox newer_than:7d");
+    expect(parsed.body).not.toContain("default to the last 30 days");
+  });
+
   it("only names mail tools that exist in the built-in tool contract", () => {
     const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
     const names = new Set(skill?.content.match(/\bmail_[a-z]+\b/g));
