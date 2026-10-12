@@ -3,24 +3,51 @@ import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComposeMode } from "@rakazo/contracts";
 import { Button, Dialog, DialogClose, DialogContent, DialogTitle, Skeleton } from "@rakazo/ui-web";
-import { FileArchive, FileImage, FileText, Forward, Reply, ReplyAll, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  FileArchive,
+  FileImage,
+  FileText,
+  Forward,
+  Reply,
+  ReplyAll,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ComposeEmail } from "../../components/ComposeEmail";
 import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
-import { rpc, withSpaceHeaders } from "../../lib/rpc";
+import type { InboxMessageOutput } from "../../lib/inbox-message-cache";
+import {
+  loadInboxMessage,
+  peekInboxMessage,
+  prefetchInboxMessage,
+} from "../../lib/inbox-message-cache";
+import { withSpaceHeaders } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
 /** Opens one cached message in a modal; full screen on phones. Shared by the Inbox and chat email cards. */
 export function InboxMessageDialog({
   messageId,
   subject,
+  previousId,
+  nextId,
+  onNavigate,
   onClose,
 }: {
   messageId: string | null;
   /** Shown until the message loads, from the list row that was opened. */
   subject?: string;
+  /** With `onNavigate`, adds previous/next buttons and the j/k keys. */
+  previousId?: string;
+  nextId?: string;
+  onNavigate?: (messageId: string) => void;
   onClose: () => void;
 }) {
+  useEffect(() => {
+    if (previousId) prefetchInboxMessage(previousId);
+    if (nextId) prefetchInboxMessage(nextId);
+  }, [previousId, nextId]);
   return (
     <Dialog open={messageId !== null} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
@@ -28,26 +55,51 @@ export function InboxMessageDialog({
         className="top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-1/2 md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl md:ring-1"
       >
         {messageId ? (
-          <InboxMessage key={messageId} messageId={messageId} subject={subject} />
+          <InboxMessage
+            key={messageId}
+            messageId={messageId}
+            subject={subject}
+            previousId={previousId}
+            nextId={nextId}
+            onNavigate={onNavigate}
+          />
         ) : null}
       </DialogContent>
     </Dialog>
   );
 }
 
-function InboxMessage({ messageId, subject }: { messageId: string; subject?: string }) {
+const COMPOSE_KEYS: Record<string, ComposeMode> = { r: "reply", a: "replyAll", f: "forward" };
+
+function InboxMessage({
+  messageId,
+  subject,
+  previousId,
+  nextId,
+  onNavigate,
+}: {
+  messageId: string;
+  subject?: string;
+  previousId?: string;
+  nextId?: string;
+  onNavigate?: (messageId: string) => void;
+}) {
   const { t } = useLingui();
-  const [message, setMessage] = useState<Awaited<ReturnType<typeof rpc.inbox.get>> | null>(null);
+  const [message, setMessage] = useState<InboxMessageOutput | null>(
+    () => peekInboxMessage(messageId) ?? null,
+  );
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const [composing, setComposing] = useState<ComposeMode | null>(null);
   const seed = useMemo(
     () => (composing ? ({ kind: composing, messageId } as const) : null),
     [composing, messageId],
   );
   useEffect(() => {
+    if (attempt === 0 && peekInboxMessage(messageId)) return;
     let live = true;
-    rpc.inbox
-      .get({ messageId })
+    setError("");
+    loadInboxMessage(messageId)
       .then((next) => {
         if (live) setMessage(next);
       })
@@ -57,7 +109,24 @@ function InboxMessage({ messageId, subject }: { messageId: string; subject?: str
     return () => {
       live = false;
     };
-  }, [messageId]);
+  }, [messageId, attempt]);
+
+  useEffect(() => {
+    if (!onNavigate || composing) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (
+        target?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])")
+      )
+        return;
+      if (event.key === "j" && nextId) onNavigate(nextId);
+      else if (event.key === "k" && previousId) onNavigate(previousId);
+      else if (message && event.key in COMPOSE_KEYS) setComposing(COMPOSE_KEYS[event.key] ?? null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onNavigate, composing, nextId, previousId, message]);
 
   const title = message?.subject ?? subject ?? "";
   const sent = message ? new Date(message.date) : null;
@@ -67,6 +136,30 @@ function InboxMessage({ messageId, subject }: { messageId: string; subject?: str
         <DialogTitle dir="auto" className="min-w-0 flex-1 text-base leading-snug">
           {title}
         </DialogTitle>
+        {onNavigate ? (
+          <>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="-mt-1 shrink-0"
+              disabled={!previousId}
+              aria-label={t`Previous message`}
+              onClick={() => previousId && onNavigate(previousId)}
+            >
+              <ChevronUp aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="-mt-1 shrink-0"
+              disabled={!nextId}
+              aria-label={t`Next message`}
+              onClick={() => nextId && onNavigate(nextId)}
+            >
+              <ChevronDown aria-hidden="true" />
+            </Button>
+          </>
+        ) : null}
         <DialogClose
           render={<Button variant="ghost" size="icon-sm" className="-mt-1 shrink-0" />}
           aria-label={t`Close`}
@@ -96,7 +189,9 @@ function InboxMessage({ messageId, subject }: { messageId: string; subject?: str
             {t`to ${message.to}`}
           </span>
         </div>
-      ) : null}
+      ) : (
+        <Skeleton className="h-8 w-full" />
+      )}
       {message ? (
         <div className="flex flex-wrap gap-1.5">
           <Button variant="outline" size="sm" onClick={() => setComposing("reply")}>
@@ -116,9 +211,14 @@ function InboxMessage({ messageId, subject }: { messageId: string; subject?: str
       {seed ? <ComposeEmail seed={seed} accounts={[]} onClose={() => setComposing(null)} /> : null}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {error ? (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
+          <div className="flex flex-col items-start gap-2">
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => setAttempt((n) => n + 1)}>
+              <Trans>Try again</Trans>
+            </Button>
+          </div>
         ) : !message ? (
           <Skeleton className="h-24 w-full" />
         ) : message.html ? (
@@ -138,7 +238,7 @@ function InboxMessage({ messageId, subject }: { messageId: string; subject?: str
   );
 }
 
-type MailAttachmentItem = Awaited<ReturnType<typeof rpc.inbox.get>>["attachments"][number];
+type MailAttachmentItem = InboxMessageOutput["attachments"][number];
 
 function AttachmentIcon({ mimeType }: { mimeType: string }) {
   if (mimeType.startsWith("image/")) return <FileImage />;
