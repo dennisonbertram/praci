@@ -7,12 +7,20 @@ import type {
   MailAttachment,
   MailProvider,
 } from "@rakazo/adapter-kit";
-import { MailProviderError } from "@rakazo/adapter-kit";
+import { inboxTriageJob, MailProviderError } from "@rakazo/adapter-kit";
 import type { TriageReadinessDeps } from "@rakazo/adapters";
 import { isMailConnection, syncMailbox, triageReadiness } from "@rakazo/adapters";
-import type { Actor, InboxListInput, InboxListOutput, InboxTodo, MailRow } from "@rakazo/contracts";
-import { inboxAgentSpawnKey } from "@rakazo/contracts";
-import { TRIAGE_VERSION } from "@rakazo/core";
+import type {
+  Actor,
+  InboxFeedbackInput,
+  InboxListInput,
+  InboxListOutput,
+  InboxMark,
+  InboxTodo,
+  MailRow,
+} from "@rakazo/contracts";
+import { InboxCategorySchema, inboxAgentSpawnKey } from "@rakazo/contracts";
+import { applySenderMark, senderMarkMap, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -91,7 +99,30 @@ function oneRowPerThread(messages: CachedMessage[]): CachedMessage[] {
   });
 }
 
-function toMailRow(m: CachedMessage, enabled: boolean): MailRow {
+/** The caller's marks by lowercased sender address. */
+async function senderMarks(prisma: PrismaClient, actor: Actor): Promise<Map<string, InboxMark>> {
+  return senderMarkMap(
+    await prisma.inboxSenderFeedback.findMany({
+      where: { spaceId: actor.spaceId, userId: actor.userId },
+      select: { senderAddress: true, mark: true },
+    }),
+  );
+}
+
+/** Matches a sender address whatever its case; Gmail returns the address as the sender wrote it. */
+const fromAddressIs = (addresses: string[]) =>
+  addresses.map((address) => ({ fromAddress: { equals: address, mode: "insensitive" as const } }));
+
+function toMailRow(m: CachedMessage, enabled: boolean, marks: Map<string, InboxMark>): MailRow {
+  const mark = enabled ? (marks.get(m.fromAddress.toLowerCase()) ?? null) : null;
+  // Triage fields stay hidden while triage is off, and an answered thread needs no reply.
+  const triage = applySenderMark(
+    {
+      needsReply: enabled && m.needsReply !== null ? m.needsReply && !m.alreadyHandled : null,
+      priority: enabled ? asPriority(m.priority) : null,
+    },
+    mark,
+  );
   return {
     id: m.id,
     connectionId: m.connectionId,
@@ -101,10 +132,11 @@ function toMailRow(m: CachedMessage, enabled: boolean): MailRow {
     snippet: m.snippet,
     receivedAt: m.receivedAt.toISOString(),
     unread: m.unread,
-    // Triage fields stay hidden while triage is off, and an answered thread needs no reply.
-    needsReply: enabled && m.needsReply !== null ? m.needsReply && !m.alreadyHandled : null,
-    priority: enabled ? asPriority(m.priority) : null,
+    needsReply: triage.needsReply,
+    priority: asPriority(triage.priority),
     reason: enabled ? m.reason : null,
+    category: enabled ? (InboxCategorySchema.options.find((c) => c === m.category) ?? null) : null,
+    feedback: mark,
   };
 }
 
@@ -202,6 +234,18 @@ export async function inboxList(
   signal?: AbortSignal,
 ): Promise<InboxListOutput> {
   const { prisma } = deps;
+  const search = [
+    input.filter ? FILTER_QUERY[input.filter] : "",
+    input.query?.trim() ? `(${input.query.trim()})` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const important = input.view === "important";
+  if ((important || input.category) && search) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "A view or category cannot be combined with a filter or search",
+    });
+  }
   const connections = await connectedMailConnections(prisma, actor);
   if (input.connectionId && !connections.some((c) => c.id === input.connectionId)) {
     throw notFound();
@@ -221,6 +265,7 @@ export async function inboxList(
   const accounts = connections.map((c) => ({ connectionId: c.id, label: c.displayName }));
   const agentOut = agent ? { botId: agent.id, name: agent.name } : null;
   const enabled = await triageEnabled(deps, actor);
+  const marks = enabled ? await senderMarks(prisma, actor) : new Map<string, InboxMark>();
   if (ids.length === 0) {
     return {
       accounts,
@@ -233,12 +278,6 @@ export async function inboxList(
     };
   }
 
-  const search = [
-    input.filter ? FILTER_QUERY[input.filter] : "",
-    input.query?.trim() ? `(${input.query.trim()})` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
   if (search) {
     const result = await searchMail(deps, actor, selected, {
       query: search,
@@ -248,13 +287,31 @@ export async function inboxList(
     return {
       accounts,
       agent: agentOut,
-      rows: result.messages.map((m) => toMailRow(m, enabled)),
+      rows: result.messages.map((m) => toMailRow(m, enabled, marks)),
       syncedAt: null,
       failedAccounts: result.failed,
       enabled,
       triagePending: false,
       ...(result.nextPageToken ? { nextPageToken: result.nextPageToken } : {}),
     };
+  }
+
+  // The views read the whole cache window, not the newest rows of it. Triage must be on for them.
+  const narrow: Prisma.CachedMailMessageWhereInput[] = [];
+  if (enabled && input.category) narrow.push({ category: input.category });
+  if (enabled && important) {
+    const marked = (mark: InboxMark) =>
+      [...marks].flatMap(([address, value]) => (value === mark ? [address] : []));
+    // ponytail: one OR term per marked sender; fine for hundreds, use a lowercase column if it grows.
+    narrow.push({
+      OR: [
+        { priority: { in: ["critical", "important"] } },
+        { needsReply: true, alreadyHandled: false },
+        ...fromAddressIs(marked("important")),
+      ],
+    });
+    const noise = marked("noise");
+    if (noise.length > 0) narrow.push({ NOT: { OR: fromAddressIs(noise) } });
   }
 
   const [messages, states, untriaged] = await Promise.all([
@@ -265,6 +322,7 @@ export async function inboxList(
         connectionId: { in: ids },
         inInbox: true,
         receivedAt: { gte: new Date(Date.now() - WINDOW_MS) },
+        AND: narrow,
       },
       orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
       take: MAX_ROWS,
@@ -287,7 +345,7 @@ export async function inboxList(
       : null,
   ]);
 
-  const rows = oneRowPerThread(messages).map((m) => toMailRow(m, enabled));
+  const rows = oneRowPerThread(messages).map((m) => toMailRow(m, enabled, marks));
   const synced = states.flatMap((s) => (s.lastSyncedAt ? [s.lastSyncedAt.getTime()] : []));
   return {
     accounts,
@@ -298,6 +356,43 @@ export async function inboxList(
     enabled,
     triagePending: untriaged !== null,
   };
+}
+
+/**
+ * Marks or unmarks the sender of one of the caller's cached messages. The mark belongs to the
+ * sender address, so it covers all the caller's accounts. Nothing is written to Gmail.
+ */
+export async function inboxFeedbackSet(
+  deps: InboxDeps,
+  actor: Actor,
+  input: InboxFeedbackInput,
+): Promise<{ mark: InboxMark | null }> {
+  const message = await deps.prisma.cachedMailMessage.findFirst({
+    where: { id: input.messageId, spaceId: actor.spaceId, userId: actor.userId },
+    select: { fromAddress: true },
+  });
+  if (!message) throw notFound();
+  const senderAddress = message.fromAddress.trim().toLowerCase();
+  if (!senderAddress) throw new ORPCError("BAD_REQUEST", { message: "Message has no sender" });
+  const key = { spaceId: actor.spaceId, userId: actor.userId, senderAddress };
+  if (input.mark) {
+    await deps.prisma.inboxSenderFeedback.upsert({
+      where: { spaceId_userId_senderAddress: key },
+      create: { ...key, mark: input.mark },
+      update: { mark: input.mark },
+    });
+  } else {
+    await deps.prisma.inboxSenderFeedback.deleteMany({ where: key });
+  }
+  // A triage run with nothing new to classify still re-syncs the to-dos under the new mark.
+  if (await triageEnabled(deps, actor)) {
+    await deps.jobs.enqueue(inboxTriageJob(actor.userId, actor.spaceId)).catch((error) => {
+      getLogger().warn("inbox triage enqueue failed", {
+        reason: error instanceof Error ? error.name : "error",
+      });
+    });
+  }
+  return { mark: input.mark };
 }
 
 export async function inboxRefresh(

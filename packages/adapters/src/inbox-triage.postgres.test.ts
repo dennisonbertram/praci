@@ -182,6 +182,7 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
       connectionId?: string;
       snippet?: string;
       triaged?: boolean;
+      from?: string;
     } = {},
   ) {
     counter += 1;
@@ -193,7 +194,7 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
         connectionId: extra.connectionId ?? user.connectionId,
         providerMessageId: `pm-${suffix}-${counter}`,
         threadId: extra.threadId ?? `thread-${suffix}-${counter}`,
-        fromAddress: fromSelf ? user.address : "ann@example.test",
+        fromAddress: fromSelf ? user.address : (extra.from ?? "ann@example.test"),
         toAddresses: fromSelf ? ["ann@example.test"] : [user.address],
         ccAddresses: [],
         subject,
@@ -606,6 +607,73 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     ).toBeNull();
     expect(await prisma.inboxTodo.findUnique({ where: { id: staleTodo.id } })).not.toBeNull();
     expect(await todosOf(a)).toHaveLength(1);
+  });
+
+  describe("sender marks", () => {
+    const markSender = (user: TestUser, address: string, mark: "important" | "noise") =>
+      prisma.inboxSenderFeedback.create({
+        data: { spaceId, userId: user.userId, senderAddress: address, mark },
+      });
+
+    it("makes no to-do from a noise sender, whatever the model writes, and only for that user", async () => {
+      const a = await addUser();
+      const b = await addUser();
+      await markSender(a, "ann@example.test", "noise");
+      await mail(a, "From noise", { minutesAgo: 2 });
+      await mail(a, "From a person", { minutesAgo: 3, from: "sam@example.test" });
+      await mail(b, "Same sender, other user", { minutesAgo: 2 });
+
+      await run(a, fakeRuntime(answerAll()).runtime);
+      await run(b, fakeRuntime(answerAll()).runtime);
+
+      expect((await todosOf(a)).map((t) => t.text)).toEqual(["Reply to From a person"]);
+      expect((await todosOf(b)).map((t) => t.text)).toEqual(["Reply to Same sender, other user"]);
+    });
+
+    it("matches the sender address without regard to case", async () => {
+      const user = await addUser();
+      await markSender(user, "ann@example.test", "noise");
+      await mail(user, "Shouting sender", { from: "Ann@Example.TEST" });
+
+      await run(user, fakeRuntime(answerAll()).runtime);
+
+      expect(await todosOf(user)).toEqual([]);
+    });
+
+    it("removes an untouched to-do once its sender is marked noise, but not one the user finished", async () => {
+      const user = await addUser();
+      await mail(user, "Pay", { minutesAgo: 1, from: "billing@example.test" });
+      await mail(user, "Sign", { minutesAgo: 2, from: "billing@example.test" });
+      const rt = fakeRuntime(answerAll());
+      await run(user, rt.runtime);
+      const done = (await todosOf(user)).find((t) => t.text === "Reply to Sign");
+      await prisma.inboxTodo.update({
+        where: { id: done?.id },
+        data: { doneAt: new Date(), touchedAt: new Date() },
+      });
+
+      await markSender(user, "billing@example.test", "noise");
+      const modelCalls = rt.requests.length;
+      await run(user, rt.runtime);
+
+      expect(rt.requests).toHaveLength(modelCalls);
+      expect((await todosOf(user)).map((t) => t.text)).toEqual(["Reply to Sign"]);
+    });
+
+    it("gives an important sender's mail a to-do slot ahead of newer mail of the same priority", async () => {
+      const user = await addUser();
+      for (let i = 0; i < 6; i++) {
+        await mail(user, `Newer ${i}`, { minutesAgo: i + 1, from: `peer${i}@example.test` });
+      }
+      await mail(user, "Oldest", { minutesAgo: 100, from: "boss@example.test" });
+      await markSender(user, "boss@example.test", "important");
+
+      await run(user, fakeRuntime(answerAll()).runtime);
+
+      const texts = (await todosOf(user)).map((t) => t.text);
+      expect(texts).toHaveLength(MAX_OPEN_TODOS);
+      expect(texts).toContain("Reply to Oldest");
+    });
   });
 
   it("re-triages rows classified by an older prompt version", async () => {

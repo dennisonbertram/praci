@@ -1,5 +1,5 @@
 import type { InboxTodo, MailRow } from "@rakazo/contracts";
-import { dueTone, groupInbox, localDaysUntil } from "@rakazo/core";
+import { dueTone, groupInbox, isSuspiciousCategory, localDaysUntil } from "@rakazo/core";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -351,12 +351,23 @@ function TodoCard({
 }
 
 function MailListRow({ row, onPress }: { row: MailRow; onPress: () => void }) {
+  const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
   return (
     <Pressable onPress={onPress} style={styles.row}>
       <View style={[styles.unreadDot, !row.unread && styles.readDot]} />
-      <View style={styles.rowBody}>
+      <View style={[styles.rowBody, row.feedback === "noise" && styles.dimmed]}>
         <View style={styles.rowTop}>
+          {isSuspiciousCategory(row.category) ? (
+            <View accessible accessibilityRole="image" accessibilityLabel={t("Suspicious")}>
+              <NativeSymbol
+                ios="exclamationmark.triangle.fill"
+                android="warning"
+                size={14}
+                color={mobileTokens().destructive}
+              />
+            </View>
+          ) : null}
           <Text style={[styles.sender, row.unread && styles.unread]} numberOfLines={1}>
             {row.from}
           </Text>
@@ -424,6 +435,7 @@ function createStyles() {
     unread: { fontWeight: "600" },
     subject: { color: native.label, fontSize: 14 },
     meta: { color: native.secondaryLabel, fontSize: 12.5 },
+    dimmed: { opacity: 0.55 },
     headerButton: { padding: 8 },
   });
 }

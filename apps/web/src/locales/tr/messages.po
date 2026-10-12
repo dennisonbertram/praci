@@ -727,6 +727,10 @@ msgstr "Bearer token"
 msgid "Billing"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Bills"
+msgstr ""
+
 #: src/lib/ticket-status.ts
 msgid "Blocked"
 msgstr ""
@@ -2770,6 +2774,22 @@ msgstr "Okundu olarak işaretle"
 msgid "Mark as Unread"
 msgstr "Okunmadı olarak işaretle"
 
+#: src/pages/Inbox.tsx
+msgid "Mark important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Mark noise"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked noise"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -2965,6 +2985,7 @@ msgstr ""
 msgid "Monthly"
 msgstr "Aylık"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr ""
@@ -3068,6 +3089,10 @@ msgstr ""
 
 #: src/pages/Board.tsx
 msgid "New ticket"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Newsletters"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -3223,6 +3248,7 @@ msgstr "Hâlâ çalışan bir şey yok"
 msgid "Nothing remembered yet"
 msgstr "Henüz hatırlanan bir şey yok"
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "Bildirimler"
@@ -3433,6 +3459,10 @@ msgstr "API anahtarını yapıştır, sonra yeniden test et."
 msgid "Paused"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Personal"
+msgstr ""
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
@@ -3544,6 +3574,10 @@ msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Receipts"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
@@ -3973,6 +4007,10 @@ msgstr "Kaydediliyor…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "Evet ya da hayır de veya bir cümleyle yanıtla."
 
+#: src/pages/Inbox.tsx
+msgid "Scheduling"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -4031,6 +4069,10 @@ msgstr ""
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "Aranıyor…"
+
+#: src/pages/Inbox.tsx
+msgid "Security"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Select a bot"
@@ -4381,6 +4423,10 @@ msgstr "Görüntüleri destekler"
 msgid "Supports thinking"
 msgstr "Düşünmeyi destekler"
 
+#: src/pages/Inbox.tsx
+msgid "Suspicious"
+msgstr ""
+
 #: src/pages/shell/command-palette.tsx
 msgid "Switch bot"
 msgstr ""
@@ -4652,6 +4698,10 @@ msgstr "Atanmamış"
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Undo"
 msgstr ""
 
 #: src/pages/PluginsOverlay.tsx

@@ -1,14 +1,15 @@
 import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { InboxListOutput, InboxTodo, MailRow } from "@rakazo/contracts";
-import { InboxFilterSchema } from "@rakazo/contracts";
-import { dueTone, groupInbox, localDaysUntil } from "@rakazo/core";
+import type { InboxListOutput, InboxMark, InboxTodo, MailRow } from "@rakazo/contracts";
+import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
+import { dueTone, groupInbox, isSuspiciousCategory, localDaysUntil } from "@rakazo/core";
 import {
   Button,
   Card,
   Checkbox,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
@@ -23,19 +24,28 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Toggle,
 } from "@rakazo/ui-web";
 import {
+  Ellipsis,
   FileArchive,
   FileImage,
   FileText,
   ListFilter,
   PanelRightOpen,
   Search,
+  TriangleAlert,
   X,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
+import {
+  inboxListInput,
+  MAX_QUERY,
+  readInboxListState,
+  setInboxListParam,
+} from "../lib/inbox-list-input";
 import { rpc, withSpaceHeaders } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -43,9 +53,9 @@ const ALL = "all";
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 6;
-const MAX_QUERY = 500;
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
+type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
 
 /** Gmail's own labels for these filters. Search text goes to Gmail as typed. */
 const filterLabels = (): Record<InboxFilter, string> => ({
@@ -57,6 +67,17 @@ const filterLabels = (): Record<InboxFilter, string> => ({
   promotions: t`Promotions`,
   social: t`Social`,
   updates: t`Updates`,
+});
+
+/** Triage categories the filter menu offers, narrowing the cached list. */
+const categoryLabels = (): Record<InboxViewCategory, string> => ({
+  billing: t`Bills`,
+  receipt: t`Receipts`,
+  scheduling: t`Scheduling`,
+  newsletter: t`Newsletters`,
+  security: t`Security`,
+  notification: t`Notifications`,
+  personal: t`Personal`,
 });
 
 /** Time of day for today's mail, month and day otherwise. */
@@ -85,15 +106,14 @@ export function InboxPage({
 }) {
   const [params, setParams] = useSearchParams();
   const openId = params.get("mail");
-  const filterParam = InboxFilterSchema.safeParse(params.get("filter"));
-  const filter = filterParam.success ? filterParam.data : undefined;
-  const query = (params.get("q") ?? "").trim().slice(0, MAX_QUERY);
+  const listState = readInboxListState(params);
+  const { filter, query, view, category } = listState;
   const filtered = Boolean(filter || query);
   const [draft, setDraft] = useState(query);
   const [tab, setTab] = useState<string | undefined>();
   const [data, setData] = useState<InboxListOutput | null>(null);
   // Which request `data` answers, so a changed tab, filter or search shows loading, not old rows.
-  const listKey = JSON.stringify([tab, filter, query]);
+  const listKey = JSON.stringify([tab, filter, query, view, category]);
   const [dataKey, setDataKey] = useState("");
   const keyRef = useRef(listKey);
   keyRef.current = listKey;
@@ -103,6 +123,8 @@ export function InboxPage({
     busy: false,
   });
   const [error, setError] = useState("");
+  // The last mark the user made, kept so it can be undone even after the row left the list.
+  const [marked, setMarked] = useState<{ messageId: string; mark: InboxMark } | null>(null);
   const [synced, setSynced] = useState(false);
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
@@ -112,11 +134,7 @@ export function InboxPage({
     if (paused) return;
     let live = true;
     rpc.inbox
-      .list({
-        ...(tab ? { connectionId: tab } : {}),
-        ...(filter ? { filter } : {}),
-        ...(query ? { query } : {}),
-      })
+      .list(inboxListInput(listState, tab))
       .then((next) => {
         if (!live) return;
         setData(next);
@@ -132,9 +150,10 @@ export function InboxPage({
     return () => {
       live = false;
     };
-  }, [tab, filter, query, reload, paused]);
+  }, [tab, filter, query, view, category, reload, paused]);
 
   useEffect(() => setDraft(query), [query]);
+  useEffect(() => setMarked(null), [listKey]);
 
   // Triage runs after the sync returns, so refetch a few times while the list reports it pending.
   useEffect(() => {
@@ -187,23 +206,26 @@ export function InboxPage({
     setAttempt((n) => n + 1);
     setReload((n) => n + 1);
   };
-  const setParam = (name: "filter" | "q", value: string) => {
-    const next = new URLSearchParams(params);
-    if (value) next.set(name, value);
-    else next.delete(name);
-    next.delete("mail");
-    setParams(next);
+  const setParam = (name: Parameters<typeof setInboxListParam>[1], value: string) =>
+    setParams(setInboxListParam(params, name, value));
+  // The view and category buttons show only when triage can fill them in.
+  const triage = Boolean(data?.enabled);
+  const narrowed = triage && (view === "important" || Boolean(category));
+  const mark = (messageId: string, value: InboxMark | null) => {
+    setError("");
+    rpc.inbox
+      .feedback({ messageId, mark: value })
+      .then(() => {
+        setMarked(value ? { messageId, mark: value } : null);
+        setReload((n) => n + 1);
+      })
+      .catch((cause) => setError(errorText(cause)));
   };
   const loadMore = () => {
     const key = listKey;
     setMore((m) => ({ ...m, busy: true }));
     rpc.inbox
-      .list({
-        ...(tab ? { connectionId: tab } : {}),
-        ...(filter ? { filter } : {}),
-        ...(query ? { query } : {}),
-        ...(more.token ? { pageToken: more.token } : {}),
-      })
+      .list(inboxListInput(listState, tab, more.token))
       .then((page) => {
         if (keyRef.current !== key) return;
         setMore((m) => ({
@@ -231,7 +253,7 @@ export function InboxPage({
         <h1 className="text-lg font-medium">
           <Trans>Inbox</Trans>
         </h1>
-        <div className="ms-auto flex min-w-0 items-center gap-2">
+        <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
           {accounts.length > 1 ? (
             <Tabs
               value={tab ?? ALL}
@@ -290,19 +312,41 @@ export function InboxPage({
               ) : null}
             </InputGroup>
           </form>
+          {triage ? (
+            <Toggle
+              variant="outline"
+              size="sm"
+              pressed={view === "important"}
+              onPressedChange={(pressed) => setParam("view", pressed ? "important" : "")}
+            >
+              <Trans>Important</Trans>
+            </Toggle>
+          ) : null}
           <DropdownMenu>
             <DropdownMenuTrigger
               data-testid="inbox-filter"
-              render={<Button variant={filter ? "secondary" : "outline"} size="sm" />}
-              aria-label={filter ? undefined : t`Filter`}
+              render={
+                <Button
+                  variant={filter || (triage && category) ? "secondary" : "outline"}
+                  size="sm"
+                />
+              }
+              aria-label={filter || (triage && category) ? undefined : t`Filter`}
             >
               <ListFilter aria-hidden="true" />
-              {filter ? filterLabels()[filter] : null}
+              {filter
+                ? filterLabels()[filter]
+                : triage && category
+                  ? categoryLabels()[category]
+                  : null}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuRadioGroup
-                value={filter ?? ""}
-                onValueChange={(value) => setParam("filter", String(value))}
+                value={filter ?? (triage ? category : undefined) ?? ""}
+                onValueChange={(value) => {
+                  const named = InboxFilterSchema.safeParse(value);
+                  setParam(named.success ? "filter" : "category", String(value));
+                }}
               >
                 {(["unread", "starred", "important", "attachment"] as const).map((name) => (
                   <DropdownMenuRadioItem key={name} value={name} closeOnClick>
@@ -315,11 +359,21 @@ export function InboxPage({
                     {filterLabels()[name]}
                   </DropdownMenuRadioItem>
                 ))}
+                {triage ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    {InboxViewCategorySchema.options.map((name) => (
+                      <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                        {categoryLabels()[name]}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </>
+                ) : null}
               </DropdownMenuRadioGroup>
-              {filter ? (
+              {filter || (triage && category) ? (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setParam("filter", "")}>
+                  <DropdownMenuItem onClick={() => setParam(filter ? "filter" : "category", "")}>
                     <Trans>Clear</Trans>
                   </DropdownMenuItem>
                 </>
@@ -368,12 +422,27 @@ export function InboxPage({
         )
       ) : (
         <>
-          {filtered ? null : <TodoCard connectionId={tab} list={data} paused={paused} />}
+          {filtered || narrowed ? null : (
+            <TodoCard connectionId={tab} list={data} paused={paused} />
+          )}
+          {marked ? (
+            <p role="status" className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+              {marked.mark === "noise" ? (
+                <Trans>Marked noise</Trans>
+              ) : (
+                <Trans>Marked important</Trans>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => mark(marked.messageId, null)}>
+                <Trans>Undo</Trans>
+              </Button>
+            </p>
+          ) : null}
           <InboxGroup
             title={<Trans>Needs reply</Trans>}
             rows={groups.needsReply}
             openId={openId}
             onToggle={toggle}
+            onMark={triage ? mark : undefined}
             today={false}
           />
           <InboxGroup
@@ -381,6 +450,7 @@ export function InboxPage({
             rows={groups.today}
             openId={openId}
             onToggle={toggle}
+            onMark={triage ? mark : undefined}
             today
           />
           <InboxGroup
@@ -388,6 +458,7 @@ export function InboxPage({
             rows={groups.earlier}
             openId={openId}
             onToggle={toggle}
+            onMark={triage ? mark : undefined}
             today={false}
           />
           {filtered && more.token ? (
@@ -520,12 +591,15 @@ function InboxGroup({
   rows,
   openId,
   onToggle,
+  onMark,
   today,
 }: {
   title: React.ReactNode;
   rows: MailRow[];
   openId: string | null;
   onToggle: (id: string) => void;
+  /** Present only while triage is enabled. */
+  onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   today: boolean;
 }) {
   if (rows.length === 0) return null;
@@ -538,6 +612,7 @@ function InboxGroup({
           row={row}
           open={openId === row.id}
           onToggle={() => onToggle(row.id)}
+          onMark={onMark}
           today={today}
         />
       ))}
@@ -549,46 +624,88 @@ function InboxRow({
   row,
   open,
   onToggle,
+  onMark,
   today,
 }: {
   row: MailRow;
   open: boolean;
   onToggle: () => void;
+  onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   today: boolean;
 }) {
   const bodyId = useId();
+  const { t } = useLingui();
   return (
     <div className={open ? "rounded-lg bg-muted" : undefined}>
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={open ? bodyId : undefined}
-        onClick={onToggle}
-        className="grid w-full grid-cols-[8px_1fr_auto] items-baseline gap-x-3 rounded-lg px-2.5 py-2 text-start text-sm hover:bg-muted md:grid-cols-[8px_160px_1fr_auto]"
-      >
-        <span
-          aria-hidden="true"
-          className={`h-[7px] w-[7px] self-center rounded-full ${row.unread ? "bg-foreground" : "bg-transparent"}`}
-        />
-        <span dir="auto" className={`truncate ${row.unread ? "font-semibold" : ""}`}>
-          {row.from}
-          {row.unread ? (
-            <span className="sr-only">
-              <Trans> (unread)</Trans>
-            </span>
-          ) : null}
-        </span>
-        <span
-          dir="auto"
-          className="col-span-2 col-start-2 row-start-2 truncate md:col-span-1 md:col-start-auto md:row-start-auto"
+      <div className="group/row flex items-center">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={open ? bodyId : undefined}
+          onClick={onToggle}
+          className={`grid min-w-0 flex-1 grid-cols-[8px_1fr_auto] items-baseline gap-x-3 rounded-lg px-2.5 py-2 text-start text-sm hover:bg-muted md:grid-cols-[8px_160px_1fr_auto] ${row.feedback === "noise" ? "text-muted-foreground" : ""}`}
         >
-          {row.subject}
-          {row.snippet ? <span className="text-muted-foreground"> — {row.snippet}</span> : null}
-        </span>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {formatMailTime(row.receivedAt, today)}
-        </span>
-      </button>
+          <span
+            aria-hidden="true"
+            className={`h-[7px] w-[7px] self-center rounded-full ${row.unread ? "bg-foreground" : "bg-transparent"}`}
+          />
+          <span dir="auto" className={`truncate ${row.unread ? "font-semibold" : ""}`}>
+            {isSuspiciousCategory(row.category) ? (
+              <TriangleAlert
+                role="img"
+                aria-label={t`Suspicious`}
+                className="me-1 inline size-3.5 align-text-bottom text-destructive"
+              />
+            ) : null}
+            {row.from}
+            {row.unread ? (
+              <span className="sr-only">
+                <Trans> (unread)</Trans>
+              </span>
+            ) : null}
+          </span>
+          <span
+            dir="auto"
+            className="col-span-2 col-start-2 row-start-2 truncate md:col-span-1 md:col-start-auto md:row-start-auto"
+          >
+            {row.subject}
+            {row.snippet ? <span className="text-muted-foreground"> — {row.snippet}</span> : null}
+          </span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {formatMailTime(row.receivedAt, today)}
+          </span>
+        </button>
+        {onMark ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="mx-1 shrink-0 opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100 data-popup-open:opacity-100"
+                />
+              }
+              aria-label={t`More`}
+            >
+              <Ellipsis aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-44">
+              <DropdownMenuCheckboxItem
+                checked={row.feedback === "important"}
+                onCheckedChange={(checked) => onMark(row.id, checked ? "important" : null)}
+              >
+                <Trans>Mark important</Trans>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={row.feedback === "noise"}
+                onCheckedChange={(checked) => onMark(row.id, checked ? "noise" : null)}
+              >
+                <Trans>Mark noise</Trans>
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+      </div>
       {open ? <InboxMessageView id={bodyId} messageId={row.id} subject={row.subject} /> : null}
     </div>
   );

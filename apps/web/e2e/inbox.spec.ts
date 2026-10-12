@@ -337,3 +337,181 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
   await page.waitForTimeout(6_000);
   expect(lists).toBe(seen);
 });
+
+test("Inbox narrows to Important and to a category, flags suspicious mail, and takes marks with undo", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `inbox-views-${Date.now()}@rakazo.test`, "password12", "Inbox Views");
+  await completeOnboarding(page);
+
+  // Real: the Gmail emulator, the sync into Postgres, and the real inbox.list, which validates every
+  // request below (including view and category). Stubbed: the triage results and the server's view and
+  // mark logic, because the e2e stack has no allowed model so the real list reports triage disabled.
+  // The Postgres tests in apps/api cover that logic against the real endpoint.
+  type ListInput = { connectionId?: string; view?: string; category?: string; filter?: string };
+  type Row = {
+    id: string;
+    connectionId: string;
+    subject: string;
+    needsReply: boolean | null;
+    priority: string | null;
+    reason: string | null;
+    category: string | null;
+    feedback: string | null;
+  };
+  const triage: Record<string, Pick<Row, "needsReply" | "priority" | "category">> = {
+    "Offsite dates": { needsReply: true, priority: "important", category: "reply" },
+    "Invoice #1043": { needsReply: false, priority: "normal", category: "billing" },
+    "CI passed on main": { needsReply: false, priority: "low", category: "notification" },
+    "Verify your account": { needsReply: false, priority: "normal", category: "suspicious" },
+  };
+  const requests: ListInput[] = [];
+  const feedbackBodies: Array<{ messageId: string; mark: string | null }> = [];
+  const marks = new Map<string, string>();
+  const subjects = new Map<string, string>();
+  await page.route("**/rpc/inbox/list", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { json: { rows: Row[] } };
+    const input = (route.request().postDataJSON() as { json?: ListInput }).json ?? {};
+    requests.push(input);
+    let rows = body.json.rows;
+    const invoice = rows.find((row) => row.subject === "Invoice #1043");
+    if (invoice && !input.filter) {
+      rows = [...rows, { ...invoice, id: "stub-suspicious", subject: "Verify your account" }];
+    }
+    rows = rows.map((row) => {
+      subjects.set(row.id, row.subject);
+      const base = { ...row, ...triage[row.subject], reason: null };
+      const mark = marks.get(row.id) ?? null;
+      return {
+        ...base,
+        feedback: mark,
+        ...(mark === "noise"
+          ? { needsReply: base.needsReply === null ? null : false, priority: "low" }
+          : {}),
+      };
+    });
+    if (!input.filter) {
+      if (input.connectionId) rows = rows.filter((row) => row.connectionId === input.connectionId);
+      if (input.view === "important") {
+        rows = rows.filter(
+          (row) =>
+            row.feedback !== "noise" &&
+            (row.feedback === "important" ||
+              row.needsReply === true ||
+              ["critical", "important"].includes(row.priority ?? "")),
+        );
+      }
+      if (input.category) rows = rows.filter((row) => row.category === input.category);
+    }
+    await route.fulfill({
+      response,
+      json: { json: { ...body.json, rows, enabled: true, triagePending: false } },
+    });
+  });
+  await page.route("**/rpc/inbox/feedback", (route) => {
+    const input = (route.request().postDataJSON() as { json: (typeof feedbackBodies)[number] })
+      .json;
+    feedbackBodies.push(input);
+    if (input.mark) marks.set(input.messageId, input.mark);
+    else marks.delete(input.messageId);
+    return route.fulfill({ json: { json: { mark: input.mark } } });
+  });
+
+  await page.getByTestId("sidebar-inbox").click();
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByRole("button", { name: "Close integrations" }).click();
+
+  const main = page.getByRole("main");
+  const row = (name: string | RegExp) => main.getByRole("button", { name });
+  const important = main.getByRole("button", { name: "Important", exact: true });
+  await expect(row(/Offsite dates/)).toBeVisible();
+
+  // Suspicious mail carries a named warning and stays in the list.
+  const warnings = main.getByRole("img", { name: "Suspicious" });
+  await expect(row(/Verify your account/)).toBeVisible();
+  await expect(warnings).toHaveCount(1);
+  await expect(row(/Verify your account/).getByRole("img", { name: "Suspicious" })).toBeVisible();
+  await captureScreenshot(page, testInfo, "inbox-suspicious-badge");
+
+  // Important view: the server narrows the list; the URL and the account tab are kept.
+  await expect(important).toHaveAttribute("aria-pressed", "false");
+  await important.click();
+  await expect(page).toHaveURL(/[?&]view=important/);
+  await expect(important).toHaveAttribute("aria-pressed", "true");
+  await expect(row(/Offsite dates/)).toBeVisible();
+  await expect(row(/Invoice #1043/)).toHaveCount(0);
+  await expect(row(/CI passed on main/)).toHaveCount(0);
+  await expect.poll(() => requests.at(-1)).toMatchObject({ view: "important" });
+  await captureScreenshot(page, testInfo, "inbox-important-view");
+  await page.getByRole("tablist").getByRole("tab", { name: "Work" }).click();
+  await expect(row(/Offsite dates/)).toHaveCount(0);
+  await expect(main.getByText("No mail", { exact: true })).toBeVisible();
+  await expect
+    .poll(() => requests.at(-1))
+    .toMatchObject({ view: "important", connectionId: expect.any(String) });
+  await page.getByRole("tablist").getByRole("tab", { name: "All" }).click();
+  await important.click();
+  await expect(page).not.toHaveURL(/view=/);
+  await expect(row(/Invoice #1043/)).toBeVisible();
+
+  // A category from the filter menu replaces the Important view and shows in the trigger.
+  const filterMenu = page.getByTestId("inbox-filter");
+  await filterMenu.click();
+  await expect(page.getByRole("menuitemradio", { name: "Bills", exact: true })).toBeVisible();
+  await captureScreenshot(page, testInfo, "inbox-filter-menu");
+  await page.getByRole("menuitemradio", { name: "Bills", exact: true }).click();
+  await expect(page).toHaveURL(/[?&]category=billing/);
+  await expect(filterMenu).toHaveText("Bills");
+  await expect(row(/Invoice #1043/)).toBeVisible();
+  await expect(row(/Offsite dates/)).toHaveCount(0);
+  await expect.poll(() => requests.at(-1)).toMatchObject({ category: "billing" });
+  await captureScreenshot(page, testInfo, "inbox-category-bills");
+
+  // A Gmail filter replaces the category; Clear brings back the whole list.
+  await filterMenu.click();
+  await page.getByRole("menuitemradio", { name: "Unread", exact: true }).click();
+  await expect(page).toHaveURL(/[?&]filter=unread/);
+  await expect(page).not.toHaveURL(/category=/);
+  await expect.poll(() => requests.at(-1)?.filter).toBe("unread");
+  expect(requests.at(-1)?.category).toBeUndefined();
+  await filterMenu.click();
+  await page.getByRole("menuitem", { name: "Clear", exact: true }).click();
+  await expect(row(/CI passed on main/)).toBeVisible();
+
+  // Mark noise from the keyboard-reachable row menu: the row leaves Needs reply, stays listed, and
+  // Undo restores it. Nothing is deleted.
+  const needsReply = main
+    .getByRole("heading", { name: "Needs reply", level: 2 })
+    .locator("xpath=..");
+  await expect(needsReply.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+  const actions = needsReply
+    .getByRole("button", { name: /Offsite dates/ })
+    .locator("xpath=..")
+    .getByRole("button", { name: "More", exact: true });
+  await actions.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menuitemcheckbox", { name: "Mark important" })).toBeVisible();
+  await captureScreenshot(page, testInfo, "inbox-feedback-menu");
+  await page.getByRole("menuitemcheckbox", { name: "Mark noise" }).click();
+  await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: "noise" });
+  const status = main.getByRole("status");
+  await expect(status).toContainText("Marked noise");
+  await expect(main.getByRole("heading", { name: "Needs reply" })).toHaveCount(0);
+  await expect(row(/Offsite dates/)).toBeVisible();
+  await expect(row(/Offsite dates/)).toHaveClass(/text-muted-foreground/);
+  await captureScreenshot(page, testInfo, "inbox-marked-noise");
+  await status.getByRole("button", { name: "Undo" }).click();
+  await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: null });
+  await expect(status).toHaveCount(0);
+  await expect(needsReply.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+
+  // Marking a sender important from the menu shows its checked state next time.
+  await actions.focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("menuitemcheckbox", { name: "Mark important" }).click();
+  await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: "important" });
+  await actions.click();
+  await expect(page.getByRole("menuitemcheckbox", { name: "Mark important" })).toBeChecked();
+});

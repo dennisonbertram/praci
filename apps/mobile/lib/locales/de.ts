@@ -797,5 +797,6 @@ export const DE_MESSAGES: Record<string, string> = {
   All: "Alle",
   "Connect mail": "E-Mail verbinden",
   "No mail": "Keine E-Mails",
+  Suspicious: "Verdächtig",
   "To do": "Zu erledigen",
 };

@@ -727,6 +727,10 @@ msgstr "Token Bearer"
 msgid "Billing"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Bills"
+msgstr ""
+
 #: src/lib/ticket-status.ts
 msgid "Blocked"
 msgstr ""
@@ -2770,6 +2774,22 @@ msgstr "Marcar como leído"
 msgid "Mark as Unread"
 msgstr "Marcar como no leído"
 
+#: src/pages/Inbox.tsx
+msgid "Mark important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Mark noise"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked noise"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -2965,6 +2985,7 @@ msgstr ""
 msgid "Monthly"
 msgstr "Mensual"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr ""
@@ -3068,6 +3089,10 @@ msgstr "Nuevo space"
 
 #: src/pages/Board.tsx
 msgid "New ticket"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Newsletters"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -3223,6 +3248,7 @@ msgstr "No queda nada en ejecución"
 msgid "Nothing remembered yet"
 msgstr "Aún no hay recuerdos"
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "Notificaciones"
@@ -3433,6 +3459,10 @@ msgstr "Pega tu clave de API y vuelve a probar."
 msgid "Paused"
 msgstr "En pausa"
 
+#: src/pages/Inbox.tsx
+msgid "Personal"
+msgstr ""
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
@@ -3544,6 +3574,10 @@ msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Recall only"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Receipts"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
@@ -3973,6 +4007,10 @@ msgstr "Guardando…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "Di sí o no, o responde en una frase."
 
+#: src/pages/Inbox.tsx
+msgid "Scheduling"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -4031,6 +4069,10 @@ msgstr ""
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "Buscando…"
+
+#: src/pages/Inbox.tsx
+msgid "Security"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Select a bot"
@@ -4381,6 +4423,10 @@ msgstr "Admite imágenes"
 msgid "Supports thinking"
 msgstr "Admite razonamiento"
 
+#: src/pages/Inbox.tsx
+msgid "Suspicious"
+msgstr ""
+
 #: src/pages/shell/command-palette.tsx
 msgid "Switch bot"
 msgstr ""
@@ -4653,6 +4699,10 @@ msgstr "Sin asignar"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "No disponible"
+
+#: src/pages/Inbox.tsx
+msgid "Undo"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Uninstall"

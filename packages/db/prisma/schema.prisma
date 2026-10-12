@@ -36,6 +36,7 @@ model User {
   accounts                    Account[]
   cachedMailMessages          CachedMailMessage[]
   inboxTodos                  InboxTodo[]
+  inboxSenderFeedback         InboxSenderFeedback[]
   members                     Member[]
   invitations                 Invitation[]
   modelCredentials            UserModelCredential[]
@@ -225,6 +226,7 @@ model Space {
   connections                 Connection[]
   cachedMailMessages          CachedMailMessage[]
   inboxTodos                  InboxTodo[]
+  inboxSenderFeedback         InboxSenderFeedback[]
   capabilities                CapabilityInstall[]
   memoryDocuments             MemoryDocument[]
   agentHomes                  AgentHome[]
@@ -1599,6 +1601,25 @@ model InboxTodo {
   @@unique([userId, messageId])
   @@index([spaceId, userId, doneAt])
   @@map("inbox_todos")
+}
+
+/// A user's "important" or "noise" mark on one sender address. Per user and space, not per
+/// connection: it covers all the user's mail accounts and outlives disconnecting one.
+model InboxSenderFeedback {
+  id            String   @id @default(cuid())
+  spaceId       String
+  space         Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Lowercased.
+  senderAddress String
+  /// "important" | "noise".
+  mark          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([spaceId, userId, senderAddress])
+  @@map("inbox_sender_feedback")
 }
 
 /// Sync throttle and in-flight claim for one mail connection.

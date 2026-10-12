@@ -775,5 +775,6 @@ export const ZH_MESSAGES: Record<string, string> = {
   All: "全部",
   "Connect mail": "连接邮箱",
   "No mail": "没有邮件",
+  Suspicious: "可疑",
   "To do": "待办",
 };
