@@ -1,0 +1,214 @@
+import { i18n } from "@lingui/core";
+import { t } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import type { ComposeMode } from "@rakazo/contracts";
+import { Button, Dialog, DialogClose, DialogContent, DialogTitle, Skeleton } from "@rakazo/ui-web";
+import { FileArchive, FileImage, FileText, Forward, Reply, ReplyAll, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ComposeEmail } from "../../components/ComposeEmail";
+import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
+import { rpc, withSpaceHeaders } from "../../lib/rpc";
+import { errorText } from "../../lib/user-error";
+
+/** Opens one cached message in a modal; full screen on phones. Shared by the Inbox and chat email cards. */
+export function InboxMessageDialog({
+  messageId,
+  subject,
+  onClose,
+}: {
+  messageId: string | null;
+  /** Shown until the message loads, from the list row that was opened. */
+  subject?: string;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={messageId !== null} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-1/2 md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl md:ring-1"
+      >
+        {messageId ? (
+          <InboxMessage key={messageId} messageId={messageId} subject={subject} />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function InboxMessage({ messageId, subject }: { messageId: string; subject?: string }) {
+  const { t } = useLingui();
+  const [message, setMessage] = useState<Awaited<ReturnType<typeof rpc.inbox.get>> | null>(null);
+  const [error, setError] = useState("");
+  const [composing, setComposing] = useState<ComposeMode | null>(null);
+  const seed = useMemo(
+    () => (composing ? ({ kind: composing, messageId } as const) : null),
+    [composing, messageId],
+  );
+  useEffect(() => {
+    let live = true;
+    rpc.inbox
+      .get({ messageId })
+      .then((next) => {
+        if (live) setMessage(next);
+      })
+      .catch((cause) => {
+        if (live) setError(errorText(cause));
+      });
+    return () => {
+      live = false;
+    };
+  }, [messageId]);
+
+  const title = message?.subject ?? subject ?? "";
+  const sent = message ? new Date(message.date) : null;
+  return (
+    <>
+      <div className="flex items-start gap-2">
+        <DialogTitle dir="auto" className="min-w-0 flex-1 text-base leading-snug">
+          {title}
+        </DialogTitle>
+        <DialogClose
+          render={<Button variant="ghost" size="icon-sm" className="-mt-1 shrink-0" />}
+          aria-label={t`Close`}
+        >
+          <X aria-hidden="true" />
+        </DialogClose>
+      </div>
+      {message ? (
+        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+          <div className="flex items-baseline justify-between gap-3">
+            <span dir="auto" className="min-w-0 truncate font-medium text-foreground">
+              {message.from}
+            </span>
+            <time
+              dateTime={sent && !Number.isNaN(sent.getTime()) ? sent.toISOString() : undefined}
+              className="shrink-0 tabular-nums"
+            >
+              {sent && !Number.isNaN(sent.getTime())
+                ? sent.toLocaleString(i18n.locale || "en", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                : message.date}
+            </time>
+          </div>
+          <span dir="auto" className="truncate">
+            {t`to ${message.to}`}
+          </span>
+        </div>
+      ) : null}
+      {message ? (
+        <div className="flex flex-wrap gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => setComposing("reply")}>
+            <Reply aria-hidden="true" />
+            <Trans>Reply</Trans>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setComposing("replyAll")}>
+            <ReplyAll aria-hidden="true" />
+            <Trans>Reply all</Trans>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setComposing("forward")}>
+            <Forward aria-hidden="true" />
+            <Trans>Forward</Trans>
+          </Button>
+        </div>
+      ) : null}
+      {seed ? <ComposeEmail seed={seed} accounts={[]} onClose={() => setComposing(null)} /> : null}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : !message ? (
+          <Skeleton className="h-24 w-full" />
+        ) : message.html ? (
+          <div className="min-h-[50dvh] flex-1 overflow-hidden rounded-lg border border-border md:h-[min(70vh,640px)] md:flex-none">
+            <SandboxedHtmlViewer html={message.html} title={message.subject} email />
+          </div>
+        ) : (
+          <p dir="auto" className="whitespace-pre-wrap text-sm">
+            {message.text}
+          </p>
+        )}
+        {message?.attachments.length ? (
+          <InboxAttachments messageId={messageId} attachments={message.attachments} />
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+type MailAttachmentItem = Awaited<ReturnType<typeof rpc.inbox.get>>["attachments"][number];
+
+function AttachmentIcon({ mimeType }: { mimeType: string }) {
+  if (mimeType.startsWith("image/")) return <FileImage />;
+  if (/zip|compressed|tar/.test(mimeType)) return <FileArchive />;
+  return <FileText />;
+}
+
+function formatAttachmentSize(bytes: number): string {
+  const [unit, divisor] =
+    bytes < 1_000
+      ? (["byte", 1] as const)
+      : bytes < 1_000_000
+        ? (["kilobyte", 1_000] as const)
+        : (["megabyte", 1_000_000] as const);
+  return new Intl.NumberFormat(i18n.locale || "en", {
+    style: "unit",
+    unit,
+    unitDisplay: "narrow",
+    maximumFractionDigits: 1,
+  }).format(bytes / divisor);
+}
+
+/** Fetches with the session and space header, then saves the bytes; the file is never opened in the page. */
+async function saveAttachment(messageId: string, attachment: MailAttachmentItem) {
+  const response = await fetch(
+    `/api/inbox/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachment.id)}`,
+    { headers: withSpaceHeaders(), credentials: "include" },
+  );
+  if (!response.ok) throw new Error(`Attachment download failed (${response.status})`);
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = attachment.filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+function InboxAttachments({
+  messageId,
+  attachments,
+}: {
+  messageId: string;
+  attachments: MailAttachmentItem[];
+}) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="mt-3">
+      <ul aria-label={t`Attachments`} className="flex flex-wrap gap-2">
+        {attachments.map((attachment) => (
+          <li key={attachment.id}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFailed(false);
+                saveAttachment(messageId, attachment).catch(() => setFailed(true));
+              }}
+            >
+              <AttachmentIcon mimeType={attachment.mimeType} />
+              <span className="max-w-56 truncate">{attachment.filename}</span>
+              <span className="text-muted-foreground">{formatAttachmentSize(attachment.size)}</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {failed ? (
+        <p role="alert" className="mt-2 text-sm text-destructive">
+          <Trans>Download failed</Trans>
+        </p>
+      ) : null}
+    </div>
+  );
+}

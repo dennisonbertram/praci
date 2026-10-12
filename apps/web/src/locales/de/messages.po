@@ -13,7 +13,7 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (ungelesen)"
@@ -640,7 +640,7 @@ msgstr "{path} angehängt"
 msgid "Attachment"
 msgstr "Anhang"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 msgid "Attachments"
 msgstr ""
 
@@ -1006,7 +1006,7 @@ msgid "Client secret"
 msgstr ""
 
 #: src/components/ErrorBoundary.tsx
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
@@ -2139,7 +2139,7 @@ msgstr "Als Markdown herunterladen"
 msgid "Download Executor"
 msgstr ""
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 msgid "Download failed"
 msgstr ""
 
@@ -2392,7 +2392,7 @@ msgid "Forgot password?"
 msgstr "Passwort vergessen?"
 
 #: src/components/ComposeEmail.tsx
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 msgid "Forward"
 msgstr ""
 
@@ -2651,7 +2651,7 @@ msgstr "Zur neuesten Nachricht springen"
 msgid "Jump to replied message: {excerpt}"
 msgstr "Zur beantworteten Nachricht springen: {excerpt}"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Junk"
 msgstr ""
 
@@ -2859,11 +2859,11 @@ msgstr "Als gelesen markieren"
 msgid "Mark as Unread"
 msgstr "Als ungelesen markieren"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Mark important"
 msgstr ""
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Mark noise"
 msgstr ""
 
@@ -3071,7 +3071,7 @@ msgstr ""
 msgid "Monthly"
 msgstr "Monatlich"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr ""
@@ -3127,7 +3127,7 @@ msgstr ""
 msgid "Needs an answer"
 msgstr ""
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Needs attention"
 msgstr ""
 
@@ -3182,7 +3182,7 @@ msgstr ""
 msgid "New ticket"
 msgstr ""
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Newsletter"
 msgstr ""
 
@@ -3888,13 +3888,13 @@ msgid "Replace value"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "Antworten"
 
 #: src/components/ComposeEmail.tsx
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 msgid "Reply all"
 msgstr ""
 
@@ -4445,7 +4445,7 @@ msgstr "Space-Standard"
 msgid "Spaces"
 msgstr ""
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Spam"
 msgstr ""
 
@@ -4566,7 +4566,7 @@ msgstr "Unterstützt Bilder"
 msgid "Supports thinking"
 msgstr "Unterstützt Denkmodus"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Suspicious"
 msgstr ""
 
@@ -4768,7 +4768,7 @@ msgid "To"
 msgstr ""
 
 #. placeholder {0}: message.to
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 msgid "to {0}"
 msgstr ""
 
@@ -4777,8 +4777,8 @@ msgstr ""
 msgid "To {0}"
 msgstr ""
 
+#: src/components/inbox/TodoCard.tsx
 #: src/lib/ticket-status.ts
-#: src/pages/Inbox.tsx
 msgid "To do"
 msgstr ""
 
@@ -4787,6 +4787,7 @@ msgid "To:"
 msgstr "An:"
 
 #: src/components/EmailCards.tsx
+#: src/components/inbox/TodoCard.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/chat-context.tsx

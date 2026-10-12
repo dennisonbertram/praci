@@ -13,7 +13,7 @@ vi.mock("@lingui/react/macro", () => {
 });
 vi.mock("../components/SandboxedHtmlViewer", () => ({ SandboxedHtmlViewer: () => null }));
 
-import { InboxRow } from "./Inbox";
+import { InboxRow } from "../components/inbox/InboxRow";
 
 const mail = (extra: Partial<MailRow> = {}): MailRow => ({
   id: "m1",

@@ -16,7 +16,7 @@ vi.mock("@lingui/react/macro", () => {
   };
 });
 // The real message view loads the body in a sandboxed iframe; here only its inputs matter.
-vi.mock("../pages/Inbox", () => ({
+vi.mock("./inbox/InboxMessageDialog", () => ({
   InboxMessageDialog: ({ messageId, subject }: { messageId: string | null; subject?: string }) =>
     messageId ? (
       <div role="dialog">

@@ -5,7 +5,7 @@ import { Card } from "@rakazo/ui-web";
 import { Paperclip } from "lucide-react";
 import { useState } from "react";
 import { formatRelativeTime } from "../lib/relative-time";
-import { InboxMessageDialog } from "../pages/Inbox";
+import { InboxMessageDialog } from "./inbox/InboxMessageDialog";
 
 /** Mail the bot cited, grouped by urgency. Mail text is untrusted, so it only ever renders as text. */
 export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "emails" }> }) {
