@@ -1,5 +1,5 @@
 import { i18n } from "@lingui/core";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ChatMarkdown, LinkifiedText } from "@rakazo/chat-ui/web";
 import type {
@@ -98,6 +98,7 @@ import {
   LayoutGrid,
   Lock,
   LogOut,
+  Mail,
   Maximize2,
   Menu,
   Mic,
@@ -252,6 +253,7 @@ import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { HostComputerPrompt } from "./HostComputerPrompt";
+import { InboxPage } from "./Inbox";
 import { ResizableSidePanel } from "./ResizableSidePanel";
 import type { RoutineDraftState } from "./RoutineEditor";
 import {
@@ -557,6 +559,15 @@ export function ShellPage() {
     commitSnapshot(update(snapshotRef.current));
   }
   const [pluginsOpen, setPluginsOpen] = useState(false);
+  const [pluginsQuery, setPluginsQuery] = useState("");
+  const [inboxUnread, setInboxUnread] = useState(0);
+  const refreshInboxUnread = useCallback(() => {
+    void rpc.inbox
+      .unreadCount()
+      .then((result) => setInboxUnread(result.count))
+      .catch(() => undefined);
+  }, []);
+  useEffect(refreshInboxUnread, [refreshInboxUnread]);
   const [mcpOpen, setMcpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
@@ -3038,6 +3049,34 @@ export function ShellPage() {
             name="sidebar-search"
           />
         </InputGroup>
+        <button
+          type="button"
+          data-testid="sidebar-inbox"
+          aria-current={inboxMode ? "page" : undefined}
+          onClick={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/inbox");
+          }}
+          className={`mx-2.5 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-start hover:bg-sidebar-accent ${
+            inboxMode ? "bg-sidebar-accent" : ""
+          }`}
+        >
+          <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
+            <Mail size={15} strokeWidth={1.8} aria-hidden="true" />
+          </span>
+          <span className="text-[14px] font-medium text-foreground/90">
+            <Trans>Inbox</Trans>
+          </span>
+          {inboxUnread > 0 ? (
+            <span
+              role="img"
+              aria-label={plural(inboxUnread, { one: "# unread", other: "# unread" })}
+              className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
+            >
+              {inboxUnread}
+            </span>
+          ) : null}
+        </button>
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {showSpaceSearch ? (
             <SpaceSearchResults
@@ -3528,7 +3567,10 @@ export function ShellPage() {
         </div>
         <button
           type="button"
-          onClick={() => setPluginsOpen(true)}
+          onClick={() => {
+            setPluginsQuery("");
+            setPluginsOpen(true);
+          }}
           className="mx-3 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent"
         >
           <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
@@ -3682,31 +3724,38 @@ export function ShellPage() {
             className="absolute bottom-20 start-0 top-16 z-20 w-8 touch-none md:hidden"
           />
         ) : null}
-        {inboxMode ? null : (
-          <div className="app-drag flex items-center justify-between border-b border-sidebar-border px-3 py-[17px] md:px-[22px]">
-            <div className="flex min-w-0 items-center gap-2">
-              {/* Collapsed bots sidebar: this header is the leading edge for window chrome. */}
-              {botsSidebarCollapsed && desktopBridge() ? <WindowChrome /> : null}
+        {/* Inbox mode keeps only the navigation controls, so phones can still open the sidebar. */}
+        <div
+          className={`app-drag flex items-center justify-between px-3 md:px-[22px] ${
+            inboxMode
+              ? `py-2${botsSidebarCollapsed ? "" : " md:hidden"}`
+              : "border-b border-sidebar-border py-[17px]"
+          }`}
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            {/* Collapsed bots sidebar: this header is the leading edge for window chrome. */}
+            {botsSidebarCollapsed && desktopBridge() ? <WindowChrome /> : null}
+            <button
+              type="button"
+              aria-label={t`Open navigation`}
+              onClick={() => setMobileSidebarOpen(true)}
+              className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:hidden"
+            >
+              <Menu size={19} strokeWidth={1.7} />
+            </button>
+            {botsSidebarCollapsed ? (
               <button
                 type="button"
-                aria-label={t`Open navigation`}
-                onClick={() => setMobileSidebarOpen(true)}
-                className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:hidden"
+                data-testid="restore-bots-sidebar"
+                aria-label={t`Show bots`}
+                title={t`Show bots`}
+                onClick={() => setBotsSidebarCollapsedPref(false)}
+                className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:grid"
               >
-                <Menu size={19} strokeWidth={1.7} />
+                <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
               </button>
-              {botsSidebarCollapsed ? (
-                <button
-                  type="button"
-                  data-testid="restore-bots-sidebar"
-                  aria-label={t`Show bots`}
-                  title={t`Show bots`}
-                  onClick={() => setBotsSidebarCollapsedPref(false)}
-                  className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:grid"
-                >
-                  <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
-                </button>
-              ) : null}
+            ) : null}
+            {inboxMode ? null : (
               <button
                 type="button"
                 data-testid="bot-settings-trigger"
@@ -3737,30 +3786,39 @@ export function ShellPage() {
                   </span>
                 </span>
               </button>
-            </div>
-            <div className="flex items-center gap-1">
-              {!inGroup && active ? (
-                <button
-                  type="button"
-                  title={t`Agent computer`}
-                  onClick={() => {
-                    const next = panel === "computer" ? null : "computer";
-                    setPanel(next);
-                    if (next === "computer" && active) {
-                      // Refresh run/computer so Take control isn't stuck on a stale busyBotName.
-                      void refreshThread(active.id).catch(() => undefined);
-                    }
-                  }}
-                  data-active={panel === "computer" ? "" : undefined}
-                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
-                >
-                  <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
-                </button>
-              ) : null}
-            </div>
+            )}
           </div>
-        )}
-        {inboxMode ? null : !active && !activeGroup && initialBotsLoaded ? (
+          <div className="flex items-center gap-1">
+            {!inGroup && active ? (
+              <button
+                type="button"
+                title={t`Agent computer`}
+                onClick={() => {
+                  const next = panel === "computer" ? null : "computer";
+                  setPanel(next);
+                  if (next === "computer" && active) {
+                    // Refresh run/computer so Take control isn't stuck on a stale busyBotName.
+                    void refreshThread(active.id).catch(() => undefined);
+                  }
+                }}
+                data-active={panel === "computer" ? "" : undefined}
+                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+              >
+                <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {inboxMode ? (
+          <InboxPage
+            paused={pluginsOpen}
+            onRefreshed={refreshInboxUnread}
+            onConnectMail={() => {
+              setPluginsQuery("gmail");
+              setPluginsOpen(true);
+            }}
+          />
+        ) : !active && !activeGroup && initialBotsLoaded ? (
           <div className="grid flex-1 place-items-center">
             <Button onClick={() => setPanel("create")}>
               <Plus size={16} aria-hidden="true" />
@@ -4564,6 +4622,7 @@ export function ShellPage() {
         {pluginsOpen ? (
           <PluginsOverlay
             activeBotId={activeBotId.current}
+            initialQuery={pluginsQuery}
             onClose={() => setPluginsOpen(false)}
             onOpenMcp={() => {
               setPluginsOpen(false);

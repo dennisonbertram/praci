@@ -25,22 +25,35 @@ function embedScriptString(value: string): string {
     .replace(/\u2029/g, "\\u2029");
 }
 
-function withPreviewDocument(html: string): string {
-  const meta = `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}">`;
+// Without scripts, links go nowhere: the shell's frame-src rejects the navigation.
+const previewCsp = (scripts: boolean) =>
+  scripts ? PREVIEW_CSP : PREVIEW_CSP.replace("script-src 'unsafe-inline'", "script-src 'none'");
+
+function withPreviewDocument(html: string, scripts: boolean): string {
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${previewCsp(scripts)}">`;
   const referrer = `<meta name="referrer" content="no-referrer">`;
-  return `${meta}${referrer}${PREVIEW_GUARD}${html}`;
+  return `${meta}${referrer}${scripts ? PREVIEW_GUARD : ""}${html}`;
 }
 
-function shellDocument(innerHtml: string): string {
+function shellDocument(innerHtml: string, scripts: boolean): string {
   const payload = embedScriptString(innerHtml);
-  return `<!DOCTYPE html><meta http-equiv="Content-Security-Policy" content="${SHELL_CSP}"><meta name="referrer" content="no-referrer"><style>html,body{height:100%;margin:0}iframe{width:100%;height:100%;border:0;background:#fff}</style><iframe id="preview" sandbox="allow-scripts" referrerpolicy="no-referrer" csp="${PREVIEW_CSP}"></iframe><script>document.getElementById("preview").srcdoc=${payload};</script>`;
+  return `<!DOCTYPE html><meta http-equiv="Content-Security-Policy" content="${SHELL_CSP}"><meta name="referrer" content="no-referrer"><style>html,body{height:100%;margin:0}iframe{width:100%;height:100%;border:0;background:#fff}</style><iframe id="preview" sandbox="${scripts ? "allow-scripts" : ""}" referrerpolicy="no-referrer" csp="${previewCsp(scripts)}"></iframe><script>document.getElementById("preview").srcdoc=${payload};</script>`;
 }
 
-export function SandboxedHtmlViewer({ html, title }: { html: string; title: string }) {
+/** `scripts={false}` is for untrusted content such as email: the preview runs no script at all. */
+export function SandboxedHtmlViewer({
+  html,
+  title,
+  scripts = true,
+}: {
+  html: string;
+  title: string;
+  scripts?: boolean;
+}) {
   return (
     <iframe
       title={title}
-      srcDoc={shellDocument(withPreviewDocument(html))}
+      srcDoc={shellDocument(withPreviewDocument(html, scripts), scripts)}
       sandbox="allow-scripts"
       referrerPolicy="no-referrer"
       className="h-full w-full border-0 bg-white"

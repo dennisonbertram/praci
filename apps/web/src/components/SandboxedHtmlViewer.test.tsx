@@ -5,13 +5,13 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { SandboxedHtmlViewer } from "./SandboxedHtmlViewer";
 
-async function render(html: string) {
+async function render(html: string, scripts?: boolean) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   await act(async () => {
-    root.render(<SandboxedHtmlViewer title="Notes" html={html} />);
+    root.render(<SandboxedHtmlViewer title="Notes" html={html} scripts={scripts} />);
   });
   const iframe = container.querySelector("iframe");
   return {
@@ -40,6 +40,22 @@ it("keeps the preview iframe opaque and blocks remote images and fonts", async (
   expect(view.srcDoc).not.toMatch(/img-src[^;]*https:/);
   expect(view.srcDoc).not.toMatch(/font-src[^;]*https:/);
   expect(view.srcDoc).toContain("https://example.invalid/pixel.png");
+
+  await view.cleanup();
+});
+
+it("runs no scripts in the preview when scripts is off, and still blocks link navigation", async () => {
+  const view = await render(
+    '<a href="https://example.invalid/x">link</a><script>alert(1)</script>',
+    false,
+  );
+  const shell = view.srcDoc.split("srcdoc=")[0] ?? "";
+
+  expect(shell).toContain('<iframe id="preview" sandbox=""');
+  expect(shell).toMatch(/csp="[^"]*script-src 'none'/);
+  expect(shell).not.toMatch(/csp="[^"]*unsafe-inline'; style/);
+  expect(view.srcDoc).not.toContain("addEventListener");
+  expect(shellContentSecurityPolicy(view.srcDoc)).toContain("frame-src about:");
 
   await view.cleanup();
 });

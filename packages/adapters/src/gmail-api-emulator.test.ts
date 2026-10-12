@@ -237,3 +237,30 @@ describe("GmailApiEmulator", () => {
     expect(get(gmail, "acct-a", second).status).toBe(200);
   });
 });
+
+describe("alias", () => {
+  it("serves a late-minted account ref from a seeded mailbox, and rejects an unknown seed", () => {
+    const gmail = new GmailApiEmulator({
+      now: NOW,
+      mailboxes: {
+        seeded: {
+          address: "me@example.test",
+          messages: [
+            {
+              id: "m1",
+              date: NOW.toISOString(),
+              labels: ["INBOX"],
+              from: "a@example.test",
+              to: "me@example.test",
+              subject: "Hi",
+            },
+          ],
+        },
+      },
+    });
+    expect(list(gmail, "GMAIL:9").status).toBe(401);
+    gmail.alias("GMAIL:9", "seeded");
+    expect(ids(gmail, "GMAIL:9", "in:inbox")).toEqual(["m1"]);
+    expect(() => gmail.alias("GMAIL:10", "missing")).toThrow("No seeded mailbox missing");
+  });
+});

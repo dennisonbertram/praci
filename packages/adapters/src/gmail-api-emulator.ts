@@ -99,6 +99,13 @@ export class GmailApiEmulator {
     return [...this.mailboxes.keys()];
   }
 
+  /** Serves `accountRef` from the mailbox seeded under `seededRef`, for refs minted after the seed. */
+  alias(accountRef: string, seededRef: string): void {
+    const mailbox = this.mailboxes.get(seededRef);
+    if (!mailbox) throw new Error(`No seeded mailbox ${seededRef}`);
+    this.mailboxes.set(accountRef, mailbox);
+  }
+
   /** Fail the next `times` matching requests, after letting `skip` matching ones through. */
   failNext(
     status: number,

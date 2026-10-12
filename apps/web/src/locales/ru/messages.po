@@ -13,6 +13,7 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (непрочитано)"
@@ -136,6 +137,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "{hours}h ago"
 msgstr "{hours} ч назад"
+
+#: src/pages/Shell.tsx
+msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
+msgstr ""
 
 #: src/lib/relative-time.ts
 #: src/pages/ActivityList.tsx
@@ -410,6 +415,10 @@ msgstr "Подключения агента"
 #: src/pages/McpServersOverlay.tsx
 msgid "Agents:"
 msgstr "Агенты:"
+
+#: src/pages/Inbox.tsx
+msgid "All"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "All bots"
@@ -1160,6 +1169,10 @@ msgstr "Подключить API-ключ"
 #: src/pages/PluginsOverlay.tsx
 msgid "Connect Executor"
 msgstr "Подключить Executor"
+
+#: src/pages/Inbox.tsx
+msgid "Connect mail"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
@@ -2063,6 +2076,10 @@ msgstr "Дублировать"
 msgid "e.g. Hivenet Agent, Presales, Timesheets bot"
 msgstr "напр. Hivenet Agent, Presales, бот табелей"
 
+#: src/pages/Inbox.tsx
+msgid "Earlier"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Edit first"
 msgstr "Сначала отредактируйте"
@@ -2446,6 +2463,11 @@ msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+#: src/pages/Shell.tsx
+msgid "Inbox"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -2961,6 +2983,10 @@ msgstr ""
 msgid "Needs input"
 msgstr "Требуется ввод данных"
 
+#: src/pages/Inbox.tsx
+msgid "Needs reply"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "Требуется передача управления"
@@ -3051,6 +3077,10 @@ msgstr "Групповых чатов пока нет."
 #: src/components/AskCard.tsx
 msgid "No longer active"
 msgstr "Больше не активен"
+
+#: src/pages/Inbox.tsx
+msgid "No mail"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "No managed app catalog is configured on this deployment."
@@ -4494,6 +4524,7 @@ msgid "To:"
 msgstr "К:"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Today"
 msgstr "Сегодня"
@@ -4527,6 +4558,7 @@ msgid "Trial ends {day}"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 msgid "Try again"
 msgstr ""
