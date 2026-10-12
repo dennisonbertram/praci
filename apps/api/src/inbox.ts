@@ -9,7 +9,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import { inboxTriageJob, MailProviderError } from "@rakazo/adapter-kit";
 import type { TriageReadinessDeps } from "@rakazo/adapters";
-import { isMailConnection, syncMailbox, triageReadiness } from "@rakazo/adapters";
+import { isMailConnection, syncMailbox, triageReadiness, triageStatus } from "@rakazo/adapters";
 import type {
   Actor,
   InboxFeedbackInput,
@@ -264,7 +264,8 @@ export async function inboxList(
   });
   const accounts = connections.map((c) => ({ connectionId: c.id, label: c.displayName }));
   const agentOut = agent ? { botId: agent.id, name: agent.name } : null;
-  const enabled = await triageEnabled(deps, actor);
+  const { ready, blocked: triageBlocked } = await triageStatus(deps, actor);
+  const enabled = ready !== null;
   const marks = enabled ? await senderMarks(prisma, actor) : new Map<string, InboxMark>();
   if (ids.length === 0) {
     return {
@@ -274,6 +275,7 @@ export async function inboxList(
       syncedAt: null,
       failedAccounts: [],
       enabled,
+      triageBlocked,
       triagePending: false,
     };
   }
@@ -291,6 +293,7 @@ export async function inboxList(
       syncedAt: null,
       failedAccounts: result.failed,
       enabled,
+      triageBlocked,
       triagePending: false,
       ...(result.nextPageToken ? { nextPageToken: result.nextPageToken } : {}),
     };
@@ -354,6 +357,7 @@ export async function inboxList(
     syncedAt: synced.length ? new Date(Math.max(...synced)).toISOString() : null,
     failedAccounts: states.filter((s) => s.lastErrorAt).map((s) => s.connectionId),
     enabled,
+    triageBlocked,
     triagePending: untriaged !== null,
   };
 }

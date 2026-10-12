@@ -214,7 +214,17 @@ describe("triageStatus says why triage cannot run", () => {
       }),
       classify: async () => ({ model: "m", items: [] }),
     };
-    const status = await triageStatus({ ...deps, classifier }, scope);
+    const onlyModel = vi.fn(async (args: { where: { recipientKey: string } }) =>
+      args.where.recipientKey === keyFor("openrouter", "test-model") ? { userId: "user-1" } : null,
+    );
+    const status = await triageStatus(
+      {
+        ...deps,
+        classifier,
+        prisma: { ...(deps.prisma as object), aiDataConsent: { findFirst: onlyModel } } as never,
+      },
+      scope,
+    );
     expect(status.blocked).toBeNull();
     expect(status.ready?.classifier).toBeNull();
   });

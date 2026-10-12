@@ -99,6 +99,17 @@ export const InboxListInputSchema = InboxScopeInputSchema.extend({
   pageToken: z.string().max(4096).optional(),
 });
 
+/** Why triage is off: no usable model, or the user has not allowed the model's recipient yet. */
+export const TriageBlockedSchema = z.discriminatedUnion("reason", [
+  z.object({ reason: z.literal("no_model") }),
+  z.object({
+    reason: z.literal("needs_consent"),
+    /** The exact recipient `aiConsent.allow` must be given; `name` is what to show the user. */
+    recipient: z.object({ key: z.string(), name: z.string() }),
+  }),
+]);
+export type TriageBlocked = z.infer<typeof TriageBlockedSchema>;
+
 export const InboxListOutputSchema = z.object({
   /** Empty means no mail account is connected. */
   accounts: z.array(MailAccountSchema),
@@ -112,6 +123,8 @@ export const InboxListOutputSchema = z.object({
   failedAccounts: z.array(Id),
   /** True when triage can run: a usable model the user has allowed. Clients hide triage UI otherwise. */
   enabled: z.boolean(),
+  /** Why `enabled` is false; null when triage can run. */
+  triageBlocked: TriageBlockedSchema.nullable(),
   /** True while connected-account mail still waits for triage; clients refetch a few times. */
   triagePending: z.boolean(),
   /** Only on filtered or searched lists: present while Gmail has more results. */
