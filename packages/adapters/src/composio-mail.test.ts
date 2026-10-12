@@ -346,3 +346,68 @@ describe("ComposioEmulator.proxy", () => {
     expect(response.status).toBe(401);
   });
 });
+
+describe("transient Composio failures during a mail listing", () => {
+  beforeEach(() => {
+    sdk.proxyExecute.mockReset();
+  });
+  const flaky = (failCall: number, error: Error) => {
+    const { provider, accounts, emulator } = composioMailbox();
+    const forward = sdk.proxyExecute.getMockImplementation();
+    let calls = 0;
+    sdk.proxyExecute.mockImplementation(async (body, options) => {
+      if (++calls === failCall) throw error;
+      return forward?.(body, options);
+    });
+    const account = accounts[0];
+    if (!account) throw new Error("no account");
+    return { provider, account, emulator };
+  };
+
+  it("retries one failed message fetch in the middle of a page and still hydrates every message", async () => {
+    const intact = composioMailbox();
+    const expected = await intact.provider.listMessages(
+      intact.accounts[0] as never,
+      { query: "", pageSize: 5 },
+      context,
+    );
+    sdk.proxyExecute.mockReset();
+    const { provider, account } = flaky(3, new Error("Connection error."));
+    const page = await provider.listMessages(account, { query: "", pageSize: 5 }, context);
+    expect(page.unhydratedIds ?? []).toEqual([]);
+    expect(page.messages.map((m) => m.id)).toEqual(expected.messages.map((m) => m.id));
+  });
+
+  it("waits the Retry-After a thrown 429 carries before retrying", async () => {
+    const sleeps: number[] = [];
+    const { provider, accounts } = composioMailbox(sleeps);
+    const forward = sdk.proxyExecute.getMockImplementation();
+    let calls = 0;
+    sdk.proxyExecute.mockImplementation(async (body, options) => {
+      if (++calls === 1)
+        throw Object.assign(new Error("429 slow down"), {
+          status: 429,
+          headers: new Headers({ "retry-after": "2" }),
+        });
+      return forward?.(body, options);
+    });
+    await provider.listMessages(accounts[0] as never, { query: "", pageSize: 1 }, context);
+    expect(sleeps).toEqual([2000]);
+  });
+
+  it("keeps credentials out of the error detail", async () => {
+    const { provider, accounts } = composioMailbox();
+    const account = accounts[0];
+    if (!account) throw new Error("no account");
+    sdk.proxyExecute.mockRejectedValue(
+      Object.assign(new Error("502 apiKey=ck_live_supersecret Bearer abc.def"), { status: 502 }),
+    );
+    const error = (await provider
+      .listMessages(account, { query: "", pageSize: 1 }, context)
+      .catch((e: unknown) => e)) as MailProviderError;
+    expect(error.kind).toBe("unavailable");
+    expect(error.detail).toContain("502");
+    expect(error.detail).not.toContain("ck_live_supersecret");
+    expect(error.detail).not.toContain("abc.def");
+  });
+});
