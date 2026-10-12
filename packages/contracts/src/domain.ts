@@ -656,7 +656,10 @@ export function preferNativeGmail(
 ): ConnectionCatalogItem[] {
   if (!nativeGoogle) return items.filter((item) => item.connectorId !== "google");
   if (!items.some((item) => item.connectorId === "google")) return items;
-  return items.filter((item) => item.connectorId === "google" || item.slug !== "gmail");
+  // A connected managed Gmail stays listed so it can still be disconnected.
+  return items.filter(
+    (item) => item.connectorId === "google" || item.slug !== "gmail" || item.connected,
+  );
 }
 
 export const ActionApprovalRuleSchema = z.object({

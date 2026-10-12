@@ -32,6 +32,14 @@ describe("preferNativeGmail", () => {
     ]);
   });
 
+  it("keeps a connected managed Gmail entry so it can be disconnected", () => {
+    const connected = { ...composio, connected: true };
+    expect(preferNativeGmail([connected, google, pipedream], { nativeGoogle: true })).toEqual([
+      connected,
+      google,
+    ]);
+  });
+
   it("does not drop a managed non-Gmail entry whose slug merely contains gmail", () => {
     const other = item("composio", "gmail-labels");
     expect(preferNativeGmail([google, other], { nativeGoogle: true })).toEqual([google, other]);
