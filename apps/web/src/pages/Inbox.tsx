@@ -631,7 +631,7 @@ function InboxGroup({
   );
 }
 
-function InboxRow({
+export function InboxRow({
   row,
   open,
   onToggle,
