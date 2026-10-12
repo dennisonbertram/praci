@@ -6,15 +6,17 @@ import type {
   MailProvider,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
+import { inboxTriageJob } from "@rakazo/adapter-kit";
 import { aiRecipient, createMailProvider, GmailApiEmulator } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION, inboxAgentSpawnKey } from "@rakazo/contracts";
-import { TRIAGE_VERSION } from "@rakazo/core";
+import { groupInbox, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   inboxAttachment,
+  inboxFeedbackSet,
   inboxGet,
   inboxList,
   inboxRefresh,
@@ -102,6 +104,8 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       fromName: string | null;
       needsReply: boolean | null;
       priority: string | null;
+      category: string | null;
+      fromAddress: string;
       reason: string | null;
       alreadyHandled: boolean;
       triagedAt: Date | null;
@@ -116,7 +120,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         providerMessageId,
         threadId: extra.threadId ?? providerMessageId,
         fromName: extra.fromName === undefined ? "Ann Sender" : extra.fromName,
-        fromAddress: "ann@example.test",
+        fromAddress: extra.fromAddress ?? "ann@example.test",
         subject: `Subject ${providerMessageId}`,
         snippet: `Snippet ${providerMessageId}`,
         receivedAt: extra.receivedAt ?? daysAgo(1),
@@ -125,6 +129,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         fromSelf: extra.fromSelf ?? false,
         needsReply: extra.needsReply ?? null,
         priority: extra.priority ?? null,
+        category: extra.category ?? null,
         reason: extra.reason ?? null,
         alreadyHandled: extra.alreadyHandled ?? false,
         triagedAt: extra.triagedAt ?? null,
@@ -138,6 +143,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       where: { spaceId: { in: [spaceA, spaceB] } },
     });
     await prisma.inboxTodo.deleteMany({ where: { spaceId: { in: [spaceA, spaceB] } } });
+    await prisma.inboxSenderFeedback.deleteMany({ where: { spaceId: { in: [spaceA, spaceB] } } });
     await prisma.mailSyncState.deleteMany({
       where: { connection: { spaceId: { in: [spaceA, spaceB] } } },
     });
@@ -906,6 +912,356 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       );
       await wipeConsent();
     });
+
+    describe("views and relevance feedback", () => {
+      const on = () => ({ ...deps, ...ready });
+      const subjects = (out: { rows: Array<{ subject: string }> }) =>
+        out.rows.map((r) => r.subject.replace("Subject ", ""));
+      const setup = async () => {
+        await wipe();
+        await wipeConsent();
+        await allow(a);
+      };
+      const mark = async (
+        who: Actor,
+        providerMessageId: string,
+        value: "important" | "noise" | null,
+      ) => {
+        const message = await prisma.cachedMailMessage.findFirstOrThrow({
+          where: { providerMessageId, userId: who.userId, spaceId: who.spaceId },
+        });
+        return inboxFeedbackSet(on(), who, { messageId: message.id, mark: value });
+      };
+
+      it("Important view lists critical, important and needs-reply mail from the cache only", async () => {
+        await setup();
+        await cache(a, connA, "crit", { priority: "critical", receivedAt: daysAgo(1), ...triaged });
+        await cache(a, connA, "imp", { priority: "important", receivedAt: daysAgo(2), ...triaged });
+        await cache(a, connA, "reply", {
+          priority: "normal",
+          needsReply: true,
+          receivedAt: daysAgo(3),
+          ...triaged,
+        });
+        await cache(a, connA, "answered", {
+          priority: "normal",
+          needsReply: true,
+          alreadyHandled: true,
+          ...triaged,
+        });
+        await cache(a, connA, "plain", { priority: "normal", needsReply: false, ...triaged });
+        await cache(a, connA, "low", { priority: "low", needsReply: false, ...triaged });
+        await cache(a, connA, "untriaged");
+        await cache(a, revokedA, "revoked", { priority: "critical", ...triaged });
+        await cache(b, connB, "theirs", { priority: "critical", ...triaged });
+        await cache(c, connC, "elsewhere", { priority: "critical", ...triaged });
+
+        const out = await inboxList(on(), a, { view: "important" });
+
+        expect(subjects(out)).toEqual(["crit", "imp", "reply"]);
+        expect(out.enabled).toBe(true);
+        expect((await inboxList(on(), a, { view: "all" })).rows).toHaveLength(7);
+      });
+
+      it("asks the database, so mail past the 200 newest cached rows still shows in Important", async () => {
+        await setup();
+        await prisma.cachedMailMessage.createMany({
+          data: Array.from({ length: 205 }, (_, i) => ({
+            spaceId: spaceA,
+            userId: userA,
+            connectionId: connA,
+            providerMessageId: `bulk-${i}`,
+            threadId: `bulk-${i}`,
+            fromAddress: "news@example.test",
+            toAddresses: [],
+            ccAddresses: [],
+            subject: `Subject bulk-${i}`,
+            snippet: "",
+            receivedAt: daysAgo(1),
+            unread: false,
+            inInbox: true,
+            seenAt: new Date(),
+            priority: "normal",
+            needsReply: false,
+            ...triaged,
+          })),
+        });
+        await cache(a, connA, "old-critical", {
+          priority: "critical",
+          receivedAt: daysAgo(10),
+          ...triaged,
+        });
+
+        expect(subjects(await inboxList(on(), a, {}))).not.toContain("old-critical");
+        expect(subjects(await inboxList(on(), a, { view: "important" }))).toEqual(["old-critical"]);
+      });
+
+      it("combines the Important view and a category with an account tab", async () => {
+        await setup();
+        const second = await connect(a, "box-a-views");
+        await cache(a, connA, "a-imp", { priority: "important", category: "billing", ...triaged });
+        await cache(a, second, "s-imp", { priority: "critical", category: "billing", ...triaged });
+        await cache(a, second, "s-bill", { priority: "low", category: "billing", ...triaged });
+
+        expect(
+          subjects(await inboxList(on(), a, { view: "important", connectionId: second })),
+        ).toEqual(["s-imp"]);
+        expect(
+          subjects(await inboxList(on(), a, { category: "billing", connectionId: connA })),
+        ).toEqual(["a-imp"]);
+        expect(
+          (await inboxList(on(), a, { category: "billing" })).rows
+            .map((r) => r.connectionId)
+            .sort(),
+        ).toEqual([connA, second, second].sort());
+        await prisma.cachedMailMessage.deleteMany({ where: { connectionId: second } });
+        await prisma.connection.delete({ where: { id: second } });
+      });
+
+      it("a category view lists that category's mail from the cache, and rows carry their category", async () => {
+        await setup();
+        await cache(a, connA, "bill", { category: "billing", receivedAt: daysAgo(1), ...triaged });
+        await cache(a, connA, "paid", { category: "receipt", receivedAt: daysAgo(2), ...triaged });
+        await cache(a, connA, "nl", { category: "newsletter", receivedAt: daysAgo(3), ...triaged });
+        await cache(a, connA, "untriaged");
+        await cache(b, connB, "their-bill", { category: "billing", ...triaged });
+
+        const out = await inboxList(on(), a, { category: "billing" });
+
+        expect(subjects(out)).toEqual(["bill"]);
+        expect(out.rows[0]?.category).toBe("billing");
+        expect(subjects(await inboxList(on(), a, { category: "receipt" }))).toEqual(["paid"]);
+        expect(subjects(await inboxList(on(), a, { category: "security" }))).toEqual([]);
+        expect((await inboxList(on(), a, {})).rows.map((r) => r.category)).toEqual([
+          "billing",
+          "receipt",
+          "newsletter",
+          null,
+        ]);
+      });
+
+      it("ignores the view and category while triage is not enabled, and hides category and marks", async () => {
+        await setup();
+        await wipeConsent();
+        await cache(a, connA, "bill", { category: "billing", priority: "low", ...triaged });
+        await cache(a, connA, "other", { category: "fyi", priority: "low", ...triaged });
+        await prisma.inboxSenderFeedback.create({
+          data: {
+            spaceId: spaceA,
+            userId: userA,
+            senderAddress: "ann@example.test",
+            mark: "noise",
+          },
+        });
+
+        for (const input of [{ view: "important" as const }, { category: "billing" as const }]) {
+          const out = await inboxList(deps, a, input);
+          expect(out.enabled).toBe(false);
+          expect(subjects(out).sort()).toEqual(["bill", "other"]);
+          expect(out.rows.every((r) => r.category === null && r.feedback === null)).toBe(true);
+        }
+      });
+
+      it("rejects a view or category combined with a Gmail filter or search, before asking Gmail", async () => {
+        await setup();
+        const before = gmail?.requests.length ?? 0;
+        for (const input of [
+          { view: "important" as const, filter: "unread" as const },
+          { view: "important" as const, query: "from:ann" },
+          { category: "billing" as const, filter: "starred" as const },
+          { category: "billing" as const, query: "invoice" },
+        ]) {
+          await expect(inboxList(on(), a, input)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        }
+        expect(gmail?.requests.length ?? 0).toBe(before);
+      });
+
+      it("marking a sender important counts their mail as Important and ranks it up in Needs reply", async () => {
+        await setup();
+        await cache(a, connA, "vip-1", {
+          fromAddress: "Vip@Example.test",
+          priority: "low",
+          needsReply: false,
+          receivedAt: daysAgo(4),
+          ...triaged,
+        });
+        await cache(a, connA, "vip-2", {
+          fromAddress: "vip@example.test",
+          priority: "normal",
+          needsReply: true,
+          receivedAt: daysAgo(5),
+          ...triaged,
+        });
+        await cache(a, connA, "peer", {
+          fromAddress: "peer@example.test",
+          priority: "normal",
+          needsReply: true,
+          receivedAt: daysAgo(1),
+          ...triaged,
+        });
+        expect(subjects(await inboxList(on(), a, { view: "important" }))).toEqual(["peer"]);
+
+        expect(await mark(a, "vip-1", "important")).toEqual({ mark: "important" });
+
+        const important = await inboxList(on(), a, { view: "important" });
+        // Both casings of the address match; the unmarked peer is unchanged.
+        expect(subjects(important)).toEqual(["peer", "vip-1", "vip-2"]);
+        const all = await inboxList(on(), a, {});
+        const byId = (id: string) => all.rows.find((r) => r.subject === `Subject ${id}`);
+        expect(byId("vip-1")).toMatchObject({ feedback: "important", priority: "important" });
+        expect(byId("vip-2")).toMatchObject({ feedback: "important", priority: "important" });
+        expect(byId("peer")).toMatchObject({ feedback: null, priority: "normal" });
+        // Newer peer mail used to lead Needs reply; the important sender's mail now comes first.
+        expect(groupInbox(all.rows, new Date()).needsReply.map((r) => r.subject)).toEqual([
+          "Subject vip-2",
+          "Subject peer",
+        ]);
+      });
+
+      it("marking a sender noise drops their mail from Needs reply and Important but keeps it listed", async () => {
+        await setup();
+        await cache(a, connA, "spam-1", {
+          fromAddress: "loud@example.test",
+          priority: "critical",
+          needsReply: true,
+          category: "billing",
+          receivedAt: daysAgo(1),
+          ...triaged,
+        });
+        await cache(a, connA, "real", {
+          fromAddress: "real@example.test",
+          priority: "important",
+          ...triaged,
+        });
+        await mark(a, "spam-1", "noise");
+
+        const all = await inboxList(on(), a, {});
+        const noisy = all.rows.find((r) => r.subject === "Subject spam-1");
+        expect(noisy).toMatchObject({ feedback: "noise", needsReply: false, priority: "low" });
+        expect(groupInbox(all.rows, new Date()).needsReply).toEqual([]);
+        expect(subjects(await inboxList(on(), a, { view: "important" }))).toEqual(["real"]);
+        // Nothing is deleted, and a category view still shows it.
+        expect(subjects(await inboxList(on(), a, { category: "billing" }))).toEqual(["spam-1"]);
+        expect(
+          await prisma.cachedMailMessage.count({ where: { userId: userA, spaceId: spaceA } }),
+        ).toBe(2);
+      });
+
+      it("undo removes the mark and restores the original results, and removing twice is harmless", async () => {
+        await setup();
+        await cache(a, connA, "m1", {
+          priority: "critical",
+          needsReply: true,
+          category: "reply",
+          ...triaged,
+        });
+        const before = await inboxList(on(), a, {});
+        await mark(a, "m1", "noise");
+        expect((await inboxList(on(), a, {})).rows[0]?.needsReply).toBe(false);
+
+        expect(await mark(a, "m1", null)).toEqual({ mark: null });
+        expect(await mark(a, "m1", null)).toEqual({ mark: null });
+
+        expect(await inboxList(on(), a, {})).toEqual(before);
+        expect(await prisma.inboxSenderFeedback.count({ where: { spaceId: spaceA } })).toBe(0);
+      });
+
+      it("keeps one mark per sender when it changes from important to noise", async () => {
+        await setup();
+        await cache(a, connA, "m1", { priority: "normal", ...triaged });
+        await mark(a, "m1", "important");
+        await mark(a, "m1", "noise");
+
+        const rows = await prisma.inboxSenderFeedback.findMany({ where: { spaceId: spaceA } });
+        expect(rows).toMatchObject([
+          { userId: userA, senderAddress: "ann@example.test", mark: "noise" },
+        ]);
+      });
+
+      it("keeps marks private to the user and space, and refuses other people's messages", async () => {
+        await setup();
+        await allow(b);
+        await cache(a, connA, "mine", { priority: "low", needsReply: true, ...triaged });
+        await cache(b, connB, "theirs", { priority: "low", needsReply: true, ...triaged });
+        await cache(c, connC, "elsewhere", { priority: "low", ...triaged });
+        const theirs = await prisma.cachedMailMessage.findFirstOrThrow({
+          where: { providerMessageId: "theirs" },
+        });
+        const elsewhere = await prisma.cachedMailMessage.findFirstOrThrow({
+          where: { providerMessageId: "elsewhere" },
+        });
+
+        await mark(b, "theirs", "noise");
+
+        // Same sender address, same space: only the marking user sees the effect.
+        const mine = await inboxList(on(), a, {});
+        expect(mine.rows[0]).toMatchObject({ feedback: null, needsReply: true });
+        expect((await inboxList(on(), b, {})).rows[0]).toMatchObject({ feedback: "noise" });
+        for (const messageId of [theirs.id, elsewhere.id, "no-such-message"]) {
+          await expect(
+            inboxFeedbackSet(on(), a, { messageId, mark: "important" }),
+          ).rejects.toMatchObject({ code: "NOT_FOUND" });
+        }
+        expect(
+          await prisma.inboxSenderFeedback.findMany({ where: { spaceId: spaceA } }),
+        ).toMatchObject([{ userId: userB, spaceId: spaceA, mark: "noise" }]);
+        await prisma.aiDataConsent.deleteMany({ where: { userId: userB } });
+      });
+
+      it("asks the triage job to refresh to-dos when triage is enabled, and not otherwise", async () => {
+        await setup();
+        await cache(a, connA, "m1", { ...triaged });
+        const enqueued: unknown[] = [];
+        const jobs = {
+          enqueue: async (job: unknown) => void enqueued.push(job),
+        } as unknown as JobPublisher;
+        const message = await prisma.cachedMailMessage.findFirstOrThrow({
+          where: { providerMessageId: "m1" },
+        });
+
+        await inboxFeedbackSet({ ...on(), jobs }, a, { messageId: message.id, mark: "noise" });
+        expect(enqueued).toEqual([inboxTriageJob(userA, spaceA)]);
+
+        enqueued.length = 0;
+        await wipeConsent();
+        await inboxFeedbackSet({ ...deps, jobs }, a, { messageId: message.id, mark: "important" });
+        expect(enqueued).toEqual([]);
+      });
+
+      it("refuses a message with no sender address", async () => {
+        await setup();
+        await cache(a, connA, "nameless", { fromAddress: "", ...triaged });
+        await expect(mark(a, "nameless", "noise")).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        expect(await prisma.inboxSenderFeedback.count({ where: { spaceId: spaceA } })).toBe(0);
+      });
+
+      it("shows the mark and category on rows found by a live Gmail search", async () => {
+        await setup();
+        seedMailboxes();
+        const found = await inboxList(on(), a, { filter: "unread" });
+        expect(found.rows[0]).toMatchObject({ feedback: null, category: null });
+        await mark(a, "a-1", "noise");
+        expect((await inboxList(on(), a, { filter: "unread" })).rows[0]).toMatchObject({
+          feedback: "noise",
+        });
+      });
+
+      it("serves the feedback procedure through the router", async () => {
+        await setup();
+        await cache(a, connA, "m1", { ...triaged });
+        const message = await prisma.cachedMailMessage.findFirstOrThrow({
+          where: { providerMessageId: "m1" },
+        });
+        const client = createRouterClient(createRouter({ ...on() } as unknown as RouterDeps), {
+          context: { actor: a } as never,
+        });
+
+        expect(await client.inbox.feedback({ messageId: message.id, mark: "important" })).toEqual({
+          mark: "important",
+        });
+        expect((await client.inbox.list({})).rows[0]?.feedback).toBe("important");
+      });
+    });
   });
 
   describe("connections.revoke", () => {
@@ -943,6 +1299,27 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(await prisma.inboxTodo.count({ where: { connectionId: connA } })).toBe(1);
       expect(await prisma.cachedMailMessage.count({ where: { connectionId: connA } })).toBe(1);
       expect(await prisma.mailSyncState.count({ where: { connectionId: connA } })).toBe(1);
+      await prisma.connection.delete({ where: { id: doomed } });
+    });
+
+    it("keeps the user's sender marks, which belong to the sender and not to one account", async () => {
+      await wipe();
+      const doomed = await connect(a, "box-marked");
+      await prisma.inboxSenderFeedback.create({
+        data: { spaceId: spaceA, userId: userA, senderAddress: "ann@example.test", mark: "noise" },
+      });
+      const client = createRouterClient(
+        createRouter({
+          prisma,
+          mail,
+          connectors: { managed: () => connector },
+        } as unknown as RouterDeps),
+        { context: { actor: a } as never },
+      );
+
+      await client.connections.revoke({ connectionId: doomed });
+
+      expect(await prisma.inboxSenderFeedback.count({ where: { userId: userA } })).toBe(1);
       await prisma.connection.delete({ where: { id: doomed } });
     });
   });

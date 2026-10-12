@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applySenderMark,
   buildTriagePrompt,
   deriveAlreadyHandled,
   type ExistingTodo,
@@ -387,5 +388,58 @@ describe("needsLlmDetail", () => {
     for (const category of ["suspicious", "spam", "scam"]) {
       expect(needsLlmDetail({ needsReply: true, category })).toBe(false);
     }
+  });
+});
+
+describe("sender marks", () => {
+  it("never lets a noise sender need a reply, and ranks the message lowest", () => {
+    expect(applySenderMark({ needsReply: true, priority: "critical" }, "noise")).toEqual({
+      needsReply: false,
+      priority: "low",
+    });
+    // An untriaged message has nothing to override.
+    expect(applySenderMark({ needsReply: null, priority: null }, "noise")).toEqual({
+      needsReply: null,
+      priority: null,
+    });
+  });
+
+  it("raises an important sender to at least important and never lowers a critical one", () => {
+    expect(applySenderMark({ needsReply: true, priority: "low" }, "important").priority).toBe(
+      "important",
+    );
+    expect(applySenderMark({ needsReply: false, priority: null }, "important").priority).toBe(
+      "important",
+    );
+    expect(applySenderMark({ needsReply: true, priority: "critical" }, "important").priority).toBe(
+      "critical",
+    );
+  });
+
+  it("changes nothing without a mark, and keeps needsReply for an important sender", () => {
+    const row = { needsReply: false, priority: "normal" };
+    expect(applySenderMark(row, null)).toEqual(row);
+    expect(applySenderMark(row, undefined)).toEqual(row);
+    expect(applySenderMark({ needsReply: false, priority: "normal" }, "important").needsReply).toBe(
+      false,
+    );
+  });
+});
+
+describe("selectTodoCandidates with sender marks", () => {
+  it("leaves out mail from a noise sender", () => {
+    const picked = selectTodoCandidates([
+      message("noisy", { senderMark: "noise", priority: "critical" }),
+      message("fine"),
+    ]).map((m) => m.id);
+    expect(picked).toEqual(["fine"]);
+  });
+
+  it("ranks an important sender's mail ahead of other normal mail", () => {
+    const picked = selectTodoCandidates([
+      message("plain", { receivedAt: new Date("2026-03-09T00:00:00Z") }),
+      message("vip", { senderMark: "important" }),
+    ]).map((m) => m.id);
+    expect(picked).toEqual(["vip", "plain"]);
   });
 });
