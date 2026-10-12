@@ -1,17 +1,16 @@
 import { useLingui } from "@lingui/react/macro";
 import type { EmailCard, MessageBlock } from "@rakazo/contracts";
 import { groupEmailCards } from "@rakazo/core";
-import { Card, Dialog, DialogContent, DialogTitle } from "@rakazo/ui-web";
+import { Card } from "@rakazo/ui-web";
 import { Paperclip } from "lucide-react";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { formatRelativeTime } from "../lib/relative-time";
-import { InboxMessageView } from "../pages/Inbox";
+import { InboxMessageDialog } from "../pages/Inbox";
 
 /** Mail the bot cited, grouped by urgency. Mail text is untrusted, so it only ever renders as text. */
 export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "emails" }> }) {
   const { t } = useLingui();
   const [open, setOpen] = useState<EmailCard | null>(null);
-  const bodyId = useId();
   const now = new Date();
   const titles = {
     today: t`Today`,
@@ -92,18 +91,11 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
           )}
         </section>
       ))}
-      <Dialog open={open !== null} onOpenChange={(next) => !next && setOpen(null)}>
-        <DialogContent className="flex max-h-[88vh] w-[min(720px,94vw)] flex-col gap-2 overflow-y-auto sm:max-w-none">
-          {open ? (
-            <>
-              <DialogTitle dir="auto" className="pe-8">
-                {open.subject}
-              </DialogTitle>
-              <InboxMessageView id={bodyId} messageId={open.id} subject={open.subject} />
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <InboxMessageDialog
+        messageId={open?.id ?? null}
+        subject={open?.subject}
+        onClose={() => setOpen(null)}
+      />
     </div>
   );
 }

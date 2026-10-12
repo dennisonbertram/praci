@@ -71,15 +71,17 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
         : route.fulfill({ contentType: "image/svg+xml", body: bannerSvg }),
     );
 
-  // A message opens under its row, keeps ?mail= (not ?m=) in the URL, and Back closes it.
+  // A message opens in a dialog, keeps ?mail= (not ?m=) in the URL, and Back closes it.
   const row = main.getByRole("button", { name: /Offsite dates/ });
   await row.click();
-  await expect(row).toHaveAttribute("aria-expanded", "true");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Offsite dates", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/^to /)).toBeVisible();
   const url = new URL(page.url());
   expect(url.searchParams.get("mail")).toBeTruthy();
   expect(url.searchParams.has("m")).toBe(false);
   // The message carries a script that would rewrite #probe; the text staying put means it did not run.
-  const frame = page.locator('iframe[title="Offsite dates"]');
+  const frame = dialog.locator('iframe[title="Offsite dates"]');
   const body = frame.contentFrame().locator("#preview").contentFrame();
   await expect(body.locator("#probe")).toHaveText("Can you do the 14th or the 21st?");
   // Both the https image and the inline cid: image load.
@@ -105,8 +107,50 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
   await popup.close();
   await expect(body.locator("#probe")).toHaveText("Can you do the 14th or the 21st?");
   await page.goBack();
-  await expect(row).toHaveAttribute("aria-expanded", "false");
+  await expect(dialog).toHaveCount(0);
   expect(new URL(page.url()).searchParams.has("mail")).toBe(false);
+
+  // Escape closes it and clears ?mail=; the deep link opens it again.
+  await row.click();
+  await expect(dialog).toBeVisible();
+  const deepLink = page.url();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  expect(new URL(page.url()).searchParams.has("mail")).toBe(false);
+  await page.goto(deepLink);
+  await expect(dialog.getByText("Offsite dates", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(new URL(page.url()).searchParams.has("mail")).toBe(false);
+});
+
+test("an opened message covers the whole screen on a phone and fills it with the email", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `inbox-phone-${Date.now()}@rakazo.test`, "password12", "Inbox Phone");
+  await completeOnboarding(page);
+  await page.getByTestId("sidebar-inbox").click();
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByRole("button", { name: "Close integrations" }).click();
+
+  // The Inbox agent panel covers the page on a phone; collapse it first.
+  await page.getByRole("button", { name: "Collapse Inbox agent" }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: /Offsite dates/ })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Offsite dates", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Close", exact: true })).toBeVisible();
+  // Measured after the open animation settles.
+  await expect.poll(() => dialog.boundingBox()).toEqual({ x: 0, y: 0, width: 390, height: 844 });
+  expect(await dialog.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe("0px");
+  // The email frame takes the room left under the header.
+  const frame = await dialog.locator("iframe").boundingBox();
+  expect(frame?.height).toBeGreaterThan(400);
+  await captureScreenshot(page, testInfo, "inbox-message-phone");
 });
 
 test("an opened message lists its attachments and downloads one", async ({ page }, testInfo) => {
@@ -119,13 +163,14 @@ test("an opened message lists its attachments and downloads one", async ({ page 
 
   const main = page.getByRole("main");
   // A message with no attachment shows no list.
+  const dialog = page.getByRole("dialog");
   await main.getByRole("button", { name: /CI passed on main/ }).click();
-  await expect(main.getByText("All checks have passed.")).toBeVisible();
-  await expect(main.getByRole("list", { name: "Attachments" })).toHaveCount(0);
+  await expect(dialog.getByText("All checks have passed.")).toBeVisible();
+  await expect(dialog.getByRole("list", { name: "Attachments" })).toHaveCount(0);
   await page.goBack();
 
   await main.getByRole("button", { name: /Q3 report/ }).click();
-  const attachments = main.getByRole("list", { name: "Attachments" });
+  const attachments = dialog.getByRole("list", { name: "Attachments" });
   await expect(attachments.getByRole("button")).toHaveCount(2);
   await expect(attachments.getByRole("button", { name: /budget\.csv/ })).toBeVisible();
   const report = attachments.getByRole("button", { name: /q3-report\.pdf/ });
@@ -170,9 +215,9 @@ test("Inbox filters and searches the whole mailbox through Gmail", async ({ page
   expect(url.searchParams.has("mail")).toBe(false);
   await captureScreenshot(page, testInfo, "inbox-filter-starred");
 
-  // A filtered row still opens in place.
+  // A filtered row still opens in the dialog.
   await main.getByRole("button", { name: /Signed contract/ }).click();
-  await expect(main.getByText("The signed contract is filed.")).toBeVisible();
+  await expect(page.getByRole("dialog").getByText("The signed contract is filed.")).toBeVisible();
   await page.goBack();
 
   await choose("Has attachment");
@@ -517,6 +562,9 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await page.keyboard.press("Enter");
   await page.getByRole("menuitemcheckbox", { name: "Mark important" }).click();
   await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: "important" });
+  // A checkbox item leaves the menu open; close it, then reopen with the pointer.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
   await actions.click();
   await expect(page.getByRole("menuitemcheckbox", { name: "Mark important" })).toBeChecked();
 });
