@@ -76,6 +76,85 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
   expect(new URL(page.url()).searchParams.has("mail")).toBe(false);
 });
 
+test("Inbox filters and searches the whole mailbox through Gmail", async ({ page }, testInfo) => {
+  await signup(page, `inbox-filter-${Date.now()}@rakazo.test`, "password12", "Inbox Filter");
+  await completeOnboarding(page);
+  await page.getByTestId("sidebar-inbox").click();
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByRole("button", { name: "Close integrations" }).click();
+
+  const main = page.getByRole("main");
+  const tabs = page.getByRole("tablist");
+  const filterMenu = page.getByTestId("inbox-filter");
+  const choose = async (name: string) => {
+    await filterMenu.click();
+    await page.getByRole("menuitemradio", { name, exact: true }).click();
+  };
+  await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+
+  // Starred: the 40-day-old message is outside the 14-day sync window, so only Gmail has it.
+  await choose("Starred");
+  await expect(page).toHaveURL(/[?&]filter=starred/);
+  await expect(main.getByRole("button", { name: /Signed contract/ })).toBeVisible();
+  await expect(main.getByRole("button", { name: /Q3 report/ })).toBeVisible();
+  await expect(main.getByRole("button", { name: /Offsite dates/ })).toHaveCount(0);
+  await expect(main.getByRole("heading", { name: "Earlier", level: 2 })).toBeVisible();
+  await expect(filterMenu).toHaveText("Starred");
+  const url = new URL(page.url());
+  expect(url.searchParams.has("m")).toBe(false);
+  expect(url.searchParams.has("mail")).toBe(false);
+  await captureScreenshot(page, testInfo, "inbox-filter-starred");
+
+  // A filtered row still opens in place.
+  await main.getByRole("button", { name: /Signed contract/ }).click();
+  await expect(main.getByText("The signed contract is filed.")).toBeVisible();
+  await page.goBack();
+
+  await choose("Has attachment");
+  await expect(main.getByRole("button", { name: /Q3 report/ })).toBeVisible();
+  await expect(main.getByRole("button", { name: /Signed contract/ })).toHaveCount(0);
+
+  await choose("Promotions");
+  await expect(main.getByRole("button", { name: /Weekend sale/ })).toBeVisible();
+  await expect(main.getByRole("button", { name: /Q3 report/ })).toHaveCount(0);
+
+  // Unread respects the account tab.
+  await choose("Unread");
+  await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+  await expect(main.getByRole("button", { name: /Invoice #1043/ })).toBeVisible();
+  await tabs.getByRole("tab", { name: "Work" }).click();
+  await expect(main.getByRole("button", { name: /Offsite dates/ })).toHaveCount(0);
+  await expect(main.getByRole("button", { name: /Invoice #1043/ })).toBeVisible();
+  await tabs.getByRole("tab", { name: "All" }).click();
+
+  // Clearing the filter brings back the cached Inbox.
+  await filterMenu.click();
+  await page.getByRole("menuitem", { name: "Clear", exact: true }).click();
+  await expect(page).not.toHaveURL(/filter=/);
+  await expect(main.getByRole("button", { name: /CI passed on main/ })).toBeVisible();
+
+  // Search passes Gmail syntax through, alone and with a filter.
+  const search = main.getByRole("searchbox", { name: "Search mail" });
+  await search.fill("from:northwind");
+  await search.press("Enter");
+  await expect(page).toHaveURL(/[?&]q=from%3Anorthwind/);
+  await expect(main.getByRole("button", { name: /Invoice #1043/ })).toBeVisible();
+  await expect(main.getByRole("button", { name: /Offsite dates/ })).toHaveCount(0);
+  await captureScreenshot(page, testInfo, "inbox-search");
+  await choose("Starred");
+  await expect(main.getByText("No mail", { exact: true })).toBeVisible();
+  await captureScreenshot(page, testInfo, "inbox-search-empty");
+
+  // Gmail rejecting the query shows the error and its retry button, not an empty list.
+  await main.getByRole("button", { name: "Clear", exact: true }).click();
+  await expect(page).not.toHaveURL(/[?&]q=/);
+  await search.fill("has:drive");
+  await search.press("Enter");
+  await expect(main.getByRole("alert")).toBeVisible();
+  await expect(main.getByText("No mail", { exact: true })).toHaveCount(0);
+});
+
 test("on a phone the Inbox page still has a way to open the sidebar", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   await signup(page, `inbox-phone-${Date.now()}@rakazo.test`, "password12", "Inbox Phone");

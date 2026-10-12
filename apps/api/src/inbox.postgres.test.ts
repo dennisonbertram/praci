@@ -480,6 +480,17 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await prisma.connection.delete({ where: { id: broken } });
     });
 
+    it("ignores connections named in a forged page token that the caller does not own", async () => {
+      await wipe();
+      seedMailboxes();
+      const forged = Buffer.from(JSON.stringify({ [connB]: "1", [connC]: "1" })).toString(
+        "base64url",
+      );
+      const out = await inboxList(deps, a, { filter: "unread", pageToken: forged });
+      expect(out.rows).toEqual([]);
+      expect(gmail.requests).toEqual([]);
+    });
+
     it("rejects a malformed page token and treats a blank search as no search", async () => {
       await wipe();
       seedMailboxes();

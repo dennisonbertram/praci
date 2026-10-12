@@ -263,6 +263,7 @@ export function InboxPage({
                 placeholder={t`Search mail`}
                 aria-label={t`Search mail`}
                 maxLength={MAX_QUERY}
+                className="[&::-webkit-search-cancel-button]:appearance-none"
                 autoComplete="off"
               />
               {draft ? (
@@ -296,13 +297,13 @@ export function InboxPage({
                 onValueChange={(value) => setParam("filter", String(value))}
               >
                 {(["unread", "starred", "important", "attachment"] as const).map((name) => (
-                  <DropdownMenuRadioItem key={name} value={name}>
+                  <DropdownMenuRadioItem key={name} value={name} closeOnClick>
                     {filterLabels()[name]}
                   </DropdownMenuRadioItem>
                 ))}
                 <DropdownMenuSeparator />
                 {(["primary", "promotions", "social", "updates"] as const).map((name) => (
-                  <DropdownMenuRadioItem key={name} value={name}>
+                  <DropdownMenuRadioItem key={name} value={name} closeOnClick>
                     {filterLabels()[name]}
                   </DropdownMenuRadioItem>
                 ))}
