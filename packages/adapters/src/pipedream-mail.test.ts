@@ -185,4 +185,18 @@ describe("PipedreamConnector.proxy", () => {
     expect(String(error)).not.toContain("fake-client-secret");
     expect(String(error)).not.toContain("fake-access-token");
   });
+
+  it("still throws a credential-free error when the account lookup itself fails", async () => {
+    const fake = fakePipedream();
+    fake.fetch.mockImplementation(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/v1/oauth/token")
+        return Response.json({ access_token: "fake-access-token", expires_in: 3_600 });
+      return new Response("boom fake-access-token", { status: 500 });
+    });
+    const error = await fake.connector.proxy(proxyRequest("gmail"), context).catch((e) => e);
+    expect(error).toBeInstanceOf(Error);
+    expect(String(error)).toContain("HTTP 500");
+    expect(String(error)).not.toContain("fake-access-token");
+  });
 });
