@@ -628,6 +628,11 @@ msgstr ""
 msgid "Attachment"
 msgstr "Вложение"
 
+#. placeholder {0}: email.attachments
+#: src/components/EmailCards.tsx
+msgid "Attachments: {0}"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
 msgstr "Аутентификация не удалась."
@@ -2584,6 +2589,7 @@ msgid "Language"
 msgstr "Язык"
 
 #: src/components/DesktopUpdates.tsx
+#: src/components/EmailCards.tsx
 msgid "Later"
 msgstr "Позже"
 
@@ -4543,6 +4549,7 @@ msgstr "Этот сервер уже подключен. Сначала откл
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 msgstr "Вход по этой подписке пока недоступен в Rakazo. Используйте учетные данные развертывания или выберите другого поставщика."
 
+#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr ""
@@ -4574,6 +4581,7 @@ msgstr ""
 msgid "To:"
 msgstr "К:"
 
+#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/chat-context.tsx
@@ -4888,6 +4896,10 @@ msgstr "Когда использовать"
 #: src/pages/HostComputerPrompt.tsx
 msgid "Where should bots run?"
 msgstr "Где должны работать боты?"
+
+#: src/components/EmailCards.tsx
+msgid "Within 3 days"
+msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

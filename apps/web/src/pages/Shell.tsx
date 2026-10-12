@@ -150,6 +150,7 @@ import { ComputerUpdateProgress } from "../components/ComputerUpdateProgress";
 import { CallCard } from "../components/call/CallCard";
 import { VoiceChatCard } from "../components/call/VoiceChatCard";
 import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
+import { EmailCards } from "../components/EmailCards";
 import { lazyOverlay } from "../components/ErrorBoundary";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import {
@@ -7164,6 +7165,13 @@ const MessageView = memo(function MessageView({
           );
         }
         if (block.kind === "cloud_agent") return <CloudAgentCard key={i} block={block} />;
+        if (block.kind === "emails") {
+          return (
+            <div key={i} className="flex justify-start">
+              <EmailCards block={block} />
+            </div>
+          );
+        }
         if (block.kind === "skill_draft") {
           return (
             <div key={i} className="flex justify-start">

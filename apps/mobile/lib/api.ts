@@ -25,6 +25,7 @@ import {
   aiConsentTarget,
   aiDataUsesForProcedure,
   cancelResponseBody,
+  emailCardsText,
   ensureAiDataConsent,
   isRunTerminalEvent,
   isServerUnreachable,
@@ -1125,6 +1126,7 @@ export function blockText(message: MobileMessage) {
       if (block.kind === "child_bot") {
         return `${block.status === "archived" ? "Archived" : block.status === "deleted" ? "Deleted" : "Bot"} ${block.name ?? ""}`;
       }
+      if (block.kind === "emails") return emailCardsText(block.emails);
       if (block.kind === "chart") return `[chart: ${block.name ?? "chart"}]`;
       if (block.kind === "image") return `[image: ${block.name ?? "attachment"}]`;
       if (block.kind === "file") {

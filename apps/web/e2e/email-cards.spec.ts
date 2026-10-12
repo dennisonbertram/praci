@@ -50,10 +50,13 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   await expect(cards.getByTestId("email-row")).toHaveCount(2);
   await expect(cards.getByTestId("email-card").first()).toContainText("Offsite dates");
   const attached = cards.getByTestId("email-row").filter({ hasText: "Q3 report" });
-  await expect(attached.getByLabel("1 attachment")).toBeVisible();
+  await expect(attached.getByLabel("Attachments: 1")).toBeVisible();
   await expect(
-    cards.getByTestId("email-row").filter({ hasText: "Weekend sale" }),
-  ).not.toContainText("attachment");
+    cards
+      .getByTestId("email-row")
+      .filter({ hasText: "Weekend sale" })
+      .getByLabel(/Attachments/),
+  ).toHaveCount(0);
   await captureScreenshot(page, testInfo, "email-cards-in-chat");
 
   // Clicking a card opens the message in place, without leaving the Inbox.

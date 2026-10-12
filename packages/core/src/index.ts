@@ -21,6 +21,7 @@ export * from "./composer-slash.js";
 export * from "./computer-updates.js";
 export * from "./cron.js";
 export * from "./echo.js";
+export * from "./email-cards.js";
 export * from "./events.js";
 export * from "./farewell.js";
 export * from "./featured-connectors.js";

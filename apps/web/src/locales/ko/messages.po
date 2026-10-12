@@ -628,6 +628,11 @@ msgstr ""
 msgid "Attachment"
 msgstr "첨부 파일"
 
+#. placeholder {0}: email.attachments
+#: src/components/EmailCards.tsx
+msgid "Attachments: {0}"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
 msgstr "인증에 실패했습니다."
@@ -2584,6 +2589,7 @@ msgid "Language"
 msgstr "언어"
 
 #: src/components/DesktopUpdates.tsx
+#: src/components/EmailCards.tsx
 msgid "Later"
 msgstr ""
 
@@ -4543,6 +4549,7 @@ msgstr "이 서버는 이미 연결되어 있습니다. 다시 인증하려면 �
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 msgstr "이 구독 로그인 방식은 아직 Rakazo에서 지원되지 않습니다. 서버에 설정된 인증 정보를 사용하거나 다른 서비스를 선택하세요."
 
+#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr ""
@@ -4574,6 +4581,7 @@ msgstr ""
 msgid "To:"
 msgstr "받는 사람:"
 
+#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/chat-context.tsx
@@ -4888,6 +4896,10 @@ msgstr "언제 사용할지"
 #: src/pages/HostComputerPrompt.tsx
 msgid "Where should bots run?"
 msgstr "Bot을 어디에서 실행할까요?"
+
+#: src/components/EmailCards.tsx
+msgid "Within 3 days"
+msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

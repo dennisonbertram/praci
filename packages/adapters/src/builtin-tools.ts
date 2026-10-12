@@ -2,6 +2,8 @@ import type { ConnectorTool } from "@rakazo/adapter-kit";
 import {
   BotSecretName,
   botSecretDestinationSchema,
+  EmailUrgency,
+  MAX_EMAIL_CARDS,
   SecretAskPurpose,
   SecretHttpRequest,
   TICKET_PRIORITIES,
@@ -626,6 +628,30 @@ export const builtinAgentTools: ConnectorTool[] = [
         },
       },
       required: ["id"],
+    },
+    readOnly: true,
+  },
+  {
+    name: "show_emails",
+    description:
+      "Show messages in the chat as cards grouped by urgency. Call it once when you cite specific messages in an answer, with the ids from mail_grep rows. Give each message an urgency: today, within_3_days, this_week or later (later is shown as a compact list).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        emails: {
+          type: "array",
+          maxItems: MAX_EMAIL_CARDS,
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "The id: field of a mail_grep row." },
+              urgency: { type: "string", enum: [...EmailUrgency.options] },
+            },
+            required: ["id"],
+          },
+        },
+      },
+      required: ["emails"],
     },
     readOnly: true,
   },

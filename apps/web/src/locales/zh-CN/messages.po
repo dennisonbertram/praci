@@ -628,6 +628,11 @@ msgstr ""
 msgid "Attachment"
 msgstr "附件"
 
+#. placeholder {0}: email.attachments
+#: src/components/EmailCards.tsx
+msgid "Attachments: {0}"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
 msgstr "身份验证失败。"
@@ -2584,6 +2589,7 @@ msgid "Language"
 msgstr "语言"
 
 #: src/components/DesktopUpdates.tsx
+#: src/components/EmailCards.tsx
 msgid "Later"
 msgstr ""
 
@@ -4543,6 +4549,7 @@ msgstr "此服务器已连接。请先断开再重新授权。"
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 msgstr "此订阅登录在 Rakazo 中尚不可用。请使用部署凭据或选择其他提供方。"
 
+#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr ""
@@ -4574,6 +4581,7 @@ msgstr ""
 msgid "To:"
 msgstr "至:"
 
+#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/chat-context.tsx
@@ -4888,6 +4896,10 @@ msgstr "何时使用"
 #: src/pages/HostComputerPrompt.tsx
 msgid "Where should bots run?"
 msgstr "Bot 应在哪里运行？"
+
+#: src/components/EmailCards.tsx
+msgid "Within 3 days"
+msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"
