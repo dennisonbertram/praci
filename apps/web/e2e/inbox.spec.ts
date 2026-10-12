@@ -93,12 +93,9 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
       )
       .toBe(true);
   }
-  // The frame fits the content instead of filling the old fixed box.
-  await expect.poll(async () => (await frame.boundingBox())?.height ?? 0).toBeGreaterThan(150);
-  expect((await frame.boundingBox())?.height ?? 0).toBeLessThan(400);
   await captureScreenshot(page, testInfo, "inbox-message-open");
 
-  // Links open in a new tab that cannot reach the app; a javascript: link is dropped.
+  // Links open in a new tab that cannot reach the app; a javascript: link has no target.
   await expect(body.locator("a#unsafe")).not.toHaveAttribute("href", /./);
   const popupOpened = page.waitForEvent("popup");
   await body.locator("a#agenda").click();

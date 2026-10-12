@@ -568,6 +568,26 @@ describe("getMessage inline images", () => {
     expect(full.subject).toBe("Hello");
   });
 
+  it("stops embedding once the total image budget is spent", async () => {
+    const chunk = Buffer.alloc(900_000, 7).toString("base64");
+    const names = ["a", "b", "c", "d", "e"];
+    const gmail = box([
+      msg("m1", {
+        html: names.map((name) => `<img src="cid:${name}">`).join(""),
+        inlineImages: names.map((contentId) => ({
+          contentId,
+          mimeType: "image/jpeg",
+          data: chunk,
+        })),
+      }),
+    ]);
+    const { provider } = over(gmail);
+    const full = await provider.getMessage(account(), "m1", context());
+    const embedded = (full.html ?? "").match(/src="data:image\/jpeg;base64,/g) ?? [];
+    expect(embedded).toHaveLength(4);
+    expect(full.html).toContain('<img src="cid:e">');
+  });
+
   it("never fetches an image for an account outside the caller's scope", async () => {
     const gmail = box([msg("m1", { html, inlineImages: [inline] })]);
     const { provider } = over(gmail);

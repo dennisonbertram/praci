@@ -158,6 +158,23 @@ it("leaves links untouched outside email mode", async () => {
   await view.cleanup();
 });
 
+it("email mode still embeds attacker markup safely and keeps the script policy", async () => {
+  const view = await render(
+    '</script><script>location.href="https://example.invalid/nav"</script><a href="https://example.invalid/a">a</a>',
+    true,
+    true,
+  );
+
+  expect(view.srcDoc).not.toContain("</script><script>");
+  expect(view.srcDoc).not.toContain("allow-same-origin");
+  expect(view.srcDoc).not.toContain("addEventListener");
+  expect(shellContentSecurityPolicy(view.srcDoc)).toContain("frame-src about:");
+  expect(shellContentSecurityPolicy(view.srcDoc)).toContain("child-src 'none'");
+  expect(embeddedMessage(view.srcDoc).querySelector("a")?.getAttribute("target")).toBe("_blank");
+
+  await view.cleanup();
+});
+
 /** The message document the shell hands to the preview frame, parsed back from the shell's script. */
 function embeddedMessage(srcDoc: string): Document {
   const literal = /srcdoc=(".*");<\/script>$/s.exec(srcDoc)?.[1];
