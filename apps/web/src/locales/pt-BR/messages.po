@@ -804,6 +804,10 @@ msgstr ""
 msgid "Bots are working"
 msgstr "Bots estão trabalhando"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Bots lose access to its tools."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
 msgstr ""
@@ -831,6 +835,7 @@ msgstr "Não é possível acessar o servidor."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
@@ -1265,6 +1270,7 @@ msgid "Connected. Its tools are available from your next message."
 msgstr "Conectado. Suas ferramentas estão disponíveis na sua próxima mensagem."
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -1614,6 +1620,11 @@ msgstr "Não foi possível acessar o servidor do modelo."
 msgid "Could not reach the server"
 msgstr "Não foi possível acessar o servidor"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Could not reconnect"
+msgstr ""
+
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
 msgstr "Não foi possível remover."
@@ -1628,6 +1639,10 @@ msgstr "Não foi possível remover."
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Could not remove the credential"
+msgstr ""
+
+#: src/components/integrations/McpServerRow.tsx
+msgid "Could not rename"
 msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
@@ -2807,6 +2822,11 @@ msgstr "Confirme que nada ainda está em execução neste computador."
 msgid "Manage"
 msgstr ""
 
+#. placeholder {0}: server.name
+#: src/components/integrations/McpServerRow.tsx
+msgid "Manage {0}"
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Manage billing"
 msgstr ""
@@ -3080,6 +3100,7 @@ msgstr "Mover para"
 msgid "Mute"
 msgstr "Silenciar"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
 #: src/pages/GroupPanel.tsx
@@ -3354,8 +3375,8 @@ msgstr "OAuth conectado"
 msgid "OAuth connection failed"
 msgstr "Falha na conexão OAuth"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr ""
 
@@ -3663,6 +3684,10 @@ msgstr ""
 msgid "Recent"
 msgstr "Recente"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Reconnect"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Reconnect OAuth"
 msgstr "Reconectar OAuth"
@@ -3763,6 +3788,7 @@ msgid "Release interrupted computer?"
 msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
@@ -3774,6 +3800,11 @@ msgstr "Remover"
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "Remover {0}"
+
+#. placeholder {0}: server.name
+#: src/components/integrations/McpServerRow.tsx
+msgid "Remove {0}?"
+msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Remove {full}"
@@ -3820,6 +3851,10 @@ msgstr "Removido, mas a atualização da lista falhou"
 #: src/pages/PluginsOverlay.tsx
 msgid "Removing…"
 msgstr "Removendo…"
+
+#: src/components/integrations/McpServerRow.tsx
+msgid "Rename"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Shell.tsx
@@ -4700,6 +4735,7 @@ msgstr "Este link de redefinição é inválido ou expirou"
 msgid "This server cannot be assigned without a bot."
 msgstr "Este servidor não pode ser atribuído sem um bot."
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "This server did not request browser authorization."
 msgstr "Este servidor não solicitou autorização do navegador."

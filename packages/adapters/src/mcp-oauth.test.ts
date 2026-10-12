@@ -211,6 +211,29 @@ describe("MCP OAuth", () => {
     };
   }
 
+  it("hides the old token while re-authorizing and keeps it stored until a new one arrives", async () => {
+    const persisted: OAuthMaterial[] = [];
+    const material = expiringMaterial(Date.now());
+    const provider = new StoredMcpOAuthProvider(
+      "server-1",
+      material,
+      async (next) => {
+        persisted.push(next);
+      },
+      { reauthorize: true },
+    );
+
+    // The SDK must see no token, otherwise it connects without asking the user again.
+    await expect(provider.tokens()).resolves.toBeUndefined();
+    await provider.saveCodeVerifier("verifier");
+    // A cancelled attempt leaves the working token in the stored material.
+    expect(persisted.at(-1)?.oauth?.tokens?.access_token).toBe("old-access");
+
+    await provider.saveTokens({ access_token: "new-access", token_type: "Bearer" });
+    await expect(provider.tokens()).resolves.toMatchObject({ access_token: "new-access" });
+    expect(persisted.at(-1)?.oauth?.tokens?.access_token).toBe("new-access");
+  });
+
   it("renews an expired token once before handing it out", async () => {
     const persisted: { oauth?: { tokens?: { access_token?: string } } }[] = [];
     const tokenRequests: URLSearchParams[] = [];
@@ -894,6 +917,94 @@ describe("MCP OAuth", () => {
 
     expect(tracked.bytesRead()).toBe(0);
     expect(error.message).toBe("Could not start MCP OAuth");
+  });
+
+  it("re-authorizes a connected server without dropping its token until the new one is issued", async () => {
+    const mcpUrl = "https://mcp.example.test/mcp";
+    const authorizationHeaders: (string | null)[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const request = input instanceof Request ? input : new Request(input, init);
+        const url = logicalHref(input, init);
+        if (url === mcpUrl && request.method === "POST") {
+          authorizationHeaders.push(request.headers.get("authorization"));
+          return new Response(null, {
+            status: 401,
+            headers: {
+              "WWW-Authenticate":
+                'Bearer resource_metadata="https://mcp.example.test/.well-known/oauth-protected-resource/mcp"',
+            },
+          });
+        }
+        if (url === "https://auth.example.test/token" && request.method === "POST") {
+          return Response.json({ access_token: "new-access", token_type: "bearer" });
+        }
+        throw new Error(`Unexpected request: ${request.method} ${url}`);
+      }),
+    );
+    const connected = expiringMaterial(Date.now());
+    const storedPayloads: string[] = [];
+    const secrets = {
+      load: vi.fn(() => JSON.stringify(connected)),
+      put: vi.fn(async (plaintext: string) => {
+        storedPayloads.push(plaintext);
+        return {
+          id: `secret-${storedPayloads.length + 1}`,
+          ciphertext: `encrypted-${storedPayloads.length}`,
+        };
+      }),
+    };
+    const row = { id: "secret-1", ciphertext: "encrypted" };
+    const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(1),
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      mcpServer: {
+        findFirst: vi.fn().mockResolvedValue({ endpoint: mcpUrl, secretId: "secret-1" }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      secret: {
+        findFirst: vi.fn().mockResolvedValue(row),
+        create: vi.fn().mockResolvedValue({}),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const prisma = {
+      mcpServer: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ id: "server-1", endpoint: mcpUrl, secretId: "secret-1" }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      secret: { findFirst: vi.fn().mockResolvedValue(row) },
+      mcpOAuthSession: oauthSessionStore(),
+      deploymentSettings: deploymentOwner("user-1"),
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    };
+    const broker = new McpOAuthBroker(prisma as never, secrets as never, TEST_NETWORK);
+    const scope = { serverId: "server-1", spaceId: "workspace-1", userId: "user-1" };
+
+    const started = await broker.begin({
+      ...scope,
+      redirectUri: "http://127.0.0.1:5173/mcp/oauth/callback",
+      reauthorize: true,
+    });
+
+    if (started.status !== "authorization_required") throw new Error("OAuth was not requested");
+    expect(authorizationHeaders).toEqual([null]);
+    // Abandoning the popup here must leave the working token in storage.
+    expect(storedPayloads.length).toBeGreaterThan(0);
+    for (const payload of storedPayloads) expect(payload).toContain("old-access");
+
+    await broker.complete({
+      sessionId: started.sessionId,
+      code: "authorization-code",
+      state: started.sessionId,
+      spaceId: scope.spaceId,
+      userId: scope.userId,
+    });
+    expect(storedPayloads.at(-1)).toContain("new-access");
+    expect(storedPayloads.at(-1)).not.toContain("old-access");
   });
 
   it("completes a persisted OAuth session after the API process restarts", async () => {

@@ -33,6 +33,7 @@ import {
 import { ChevronDown, ChevronLeft, ChevronUp, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IntegrationSetup } from "../components/integrations/IntegrationSetup";
+import { McpServerRow } from "../components/integrations/McpServerRow";
 import { desktopBridge } from "../lib/desktop";
 import { optionalCatalogFeedProbe } from "../lib/optional-catalog-feed";
 import { PLUGIN_CONNECT_WINDOW } from "../lib/plugin-connect";
@@ -711,28 +712,11 @@ export function PluginsOverlay({
           {!detailItem && mcpServers.length > 0 ? (
             <div className="mb-6 grid grid-cols-2 gap-2" data-testid="connected-mcp-servers">
               {mcpServers.map((server) => (
-                <div
+                <McpServerRow
                   key={server.id}
-                  className="flex min-w-0 items-center gap-3 rounded-xl px-2.5 py-2"
-                >
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-sm font-semibold text-foreground">
-                    {server.name[0]}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[15px] font-medium text-foreground">
-                      {server.name}
-                    </div>
-                    <div
-                      className={`truncate text-[12.5px] ${server.oauthStatus === "reconnect" ? "text-warning" : "text-muted-foreground"}`}
-                    >
-                      {server.oauthStatus === "reconnect"
-                        ? t`OAuth expired`
-                        : server.endpoint
-                          ? new URL(server.endpoint).host
-                          : server.command}
-                    </div>
-                  </div>
-                </div>
+                  server={server}
+                  onChanged={() => void refresh().catch(() => undefined)}
+                />
               ))}
             </div>
           ) : null}
@@ -747,8 +731,7 @@ export function PluginsOverlay({
             <div className="mb-6">
               <IntegrationSetup
                 botId={activeBotId}
-                onServerConnected={() => void refresh().catch(() => undefined)}
-                onDone={() => {
+                onServerConnected={() => {
                   setSetupOpen(false);
                   void refresh().catch((err: unknown) =>
                     setCatalogError(errorText(err, t`Could not load integrations`)),

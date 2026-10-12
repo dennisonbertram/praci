@@ -4173,3 +4173,111 @@ describe("link favicons", () => {
     expect(favicon).not.toHaveBeenCalled();
   });
 });
+
+describe("MCP server rename", () => {
+  function renameDeps(updated: number) {
+    const row = {
+      id: "server-1",
+      spaceId: "workspace-1",
+      userId: "user-1",
+      slug: "brex",
+      name: "Brex",
+      description: "",
+      transport: "streamable_http",
+      endpoint: "https://api.brex.test/mcp",
+      command: null,
+      args: [],
+      env: {},
+      headers: { Authorization: true },
+      secretId: "secret-1",
+      enabled: true,
+      revision: 3,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    };
+    const updateMany = vi.fn().mockResolvedValue({ count: updated });
+    const prisma = {
+      mcpServer: { updateMany, findFirst: vi.fn().mockResolvedValue(row) },
+      secret: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
+    } as unknown as PrismaClient;
+    const deps = {
+      prisma,
+      secrets: { load: vi.fn(), put: vi.fn() },
+      env: {
+        defaultProvider: "fake",
+        defaultModel: "fake-model",
+        webOrigin: "http://127.0.0.1:5173",
+        screenProxySecret: "fake-test-secret",
+        sandboxProvider: "fake",
+      },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "workspace-1",
+      userId: "user-1",
+      email: "user@rakazo.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+    return {
+      updateMany,
+      secrets: deps.secrets as unknown as { put: ReturnType<typeof vi.fn> },
+      client: createRouterClient(createRouter(deps), { context: { actor } as never }),
+    };
+  }
+
+  it("changes only the name of a server owned by the caller and leaves its credentials alone", async () => {
+    const { client, updateMany, secrets } = renameDeps(1);
+    const server = await client.mcp.servers.rename({ id: "server-1", name: "  Brex  " });
+
+    expect(server.name).toBe("Brex");
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "server-1", spaceId: "workspace-1", userId: "user-1" },
+      data: { name: "Brex" },
+    });
+    expect(secrets.put).not.toHaveBeenCalled();
+  });
+
+  it("refuses to rename a server the caller does not own", async () => {
+    const { client } = renameDeps(0);
+    await expect(client.mcp.servers.rename({ id: "server-9", name: "Mine" })).rejects.toThrow();
+  });
+});
+
+describe("MCP OAuth reauthorization", () => {
+  it("passes the reauthorize request to the broker with the caller's space and user", async () => {
+    const begin = vi.fn().mockResolvedValue({ status: "authorization_not_requested" });
+    const deps = {
+      prisma: {} as PrismaClient,
+      mcpOAuth: { begin },
+      env: {
+        defaultProvider: "fake",
+        defaultModel: "fake-model",
+        webOrigin: "http://127.0.0.1:5173",
+        screenProxySecret: "fake-test-secret",
+        sandboxProvider: "fake",
+      },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "workspace-1",
+      userId: "user-1",
+      email: "user@rakazo.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+    const client = createRouterClient(createRouter(deps), { context: { actor } as never });
+
+    await client.mcp.oauth.begin({
+      serverId: "server-1",
+      redirectUri: "http://127.0.0.1:5173/mcp/oauth/callback",
+      reauthorize: true,
+    });
+
+    expect(begin).toHaveBeenCalledWith({
+      serverId: "server-1",
+      redirectUri: "http://127.0.0.1:5173/mcp/oauth/callback",
+      reauthorize: true,
+      spaceId: "workspace-1",
+      userId: "user-1",
+    });
+  });
+});

@@ -1,5 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { IntegrationCatalogResult, IntegrationSetupState } from "@rakazo/contracts";
+import { deriveMcpName } from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
 import { Check } from "lucide-react";
 import { useEffect, useId, useState } from "react";
@@ -312,7 +313,7 @@ export function IntegrationSetup({
               />
               <Button
                 disabled={busy || !endpoint.trim()}
-                onClick={() => void connect("MCP server", endpoint.trim())}
+                onClick={() => void connect(deriveMcpName(endpoint.trim()), endpoint.trim())}
               >
                 <Trans>Connect</Trans>
               </Button>
@@ -369,7 +370,7 @@ export function IntegrationSetup({
           {error}
         </p>
       ) : null}
-      {onDone ? (
+      {onDone && choice !== "executor" ? (
         <div className="flex gap-3">
           <Button
             disabled={

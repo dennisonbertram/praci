@@ -804,6 +804,10 @@ msgstr "Bots"
 msgid "Bots are working"
 msgstr "Bots are working"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Bots lose access to its tools."
+msgstr "Bots lose access to its tools."
+
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
 msgstr "Bots with their own computer and browser"
@@ -831,6 +835,7 @@ msgstr "Can't reach the server."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
@@ -1265,6 +1270,7 @@ msgid "Connected. Its tools are available from your next message."
 msgstr "Connected. Its tools are available from your next message."
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -1614,6 +1620,11 @@ msgstr "Could not reach the model server."
 msgid "Could not reach the server"
 msgstr "Could not reach the server"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Could not reconnect"
+msgstr "Could not reconnect"
+
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
 msgstr "Could not remove"
@@ -1629,6 +1640,10 @@ msgstr "Could not remove rule"
 #: src/pages/shell/bot-credentials.tsx
 msgid "Could not remove the credential"
 msgstr "Could not remove the credential"
+
+#: src/components/integrations/McpServerRow.tsx
+msgid "Could not rename"
+msgstr "Could not rename"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Could not rename connection"
@@ -2807,6 +2822,11 @@ msgstr "Make sure nothing is still running on this computer."
 msgid "Manage"
 msgstr "Manage"
 
+#. placeholder {0}: server.name
+#: src/components/integrations/McpServerRow.tsx
+msgid "Manage {0}"
+msgstr "Manage {0}"
+
 #: src/pages/Paywall.tsx
 msgid "Manage billing"
 msgstr "Manage billing"
@@ -3080,6 +3100,7 @@ msgstr "Move to"
 msgid "Mute"
 msgstr "Mute"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
 #: src/pages/GroupPanel.tsx
@@ -3354,8 +3375,8 @@ msgstr "OAuth connected"
 msgid "OAuth connection failed"
 msgstr "OAuth connection failed"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr "OAuth expired"
 
@@ -3663,6 +3684,10 @@ msgstr "Receipts"
 msgid "Recent"
 msgstr "Recent"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Reconnect"
+msgstr "Reconnect"
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Reconnect OAuth"
 msgstr "Reconnect OAuth"
@@ -3763,6 +3788,7 @@ msgid "Release interrupted computer?"
 msgstr "Release interrupted computer?"
 
 #: src/components/ApprovalRulesSettings.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
@@ -3774,6 +3800,11 @@ msgstr "Remove"
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "Remove {0}"
+
+#. placeholder {0}: server.name
+#: src/components/integrations/McpServerRow.tsx
+msgid "Remove {0}?"
+msgstr "Remove {0}?"
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Remove {full}"
@@ -3820,6 +3851,10 @@ msgstr "Removed, but list refresh failed"
 #: src/pages/PluginsOverlay.tsx
 msgid "Removing…"
 msgstr "Removing…"
+
+#: src/components/integrations/McpServerRow.tsx
+msgid "Rename"
+msgstr "Rename"
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Shell.tsx
@@ -4700,6 +4735,7 @@ msgstr "This reset link is invalid or expired"
 msgid "This server cannot be assigned without a bot."
 msgstr "This server cannot be assigned without a bot."
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "This server did not request browser authorization."
 msgstr "This server did not request browser authorization."

@@ -329,3 +329,26 @@ test("the Google callback page shows the failure and a way back when Google deni
   await expect(page.getByText("OAuth connection failed")).toBeVisible();
   await expect(page.getByRole("button", { name: "Return to Rakazo" })).toBeVisible();
 });
+
+test("Executor setup has Connect as its only action, without Continue or Skip", async ({
+  page,
+}) => {
+  await page.route("**/rpc/integrationSetup/get", (route) =>
+    route.fulfill({
+      json: {
+        json: {
+          canConfigure: true,
+          needsSetup: true,
+          webUrl: "https://example.test/integrations/setup",
+          providers: [],
+        },
+      },
+    }),
+  );
+  await signup(page, `executor-setup-${Date.now()}@rakazo.test`, "password12", "Executor Setup");
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Executor", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Connect", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Skip", exact: true })).toHaveCount(0);
+});
