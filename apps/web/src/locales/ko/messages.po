@@ -1178,6 +1178,7 @@ msgid "Connect Treg"
 msgstr "Treg 연결"
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1207,6 +1208,7 @@ msgid "Connected. Its tools are available from your next message."
 msgstr "연결되었습니다. 다음 메시지부터 이 도구를 사용할 수 있습니다."
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
@@ -1303,6 +1305,7 @@ msgstr "대화 내용을 비우지 못했습니다."
 msgid "Could not complete action"
 msgstr ""
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Could not complete OAuth"
 msgstr "OAuth 인증을 완료하지 못했습니다."
@@ -3163,6 +3166,7 @@ msgstr "지금"
 msgid "Now using {0}."
 msgstr "이제 {0} 모델을 사용합니다."
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth authorization was cancelled."
 msgstr "OAuth 인증이 취소되었습니다."
@@ -3171,6 +3175,7 @@ msgstr "OAuth 인증이 취소되었습니다."
 msgid "OAuth connected"
 msgstr "OAuth 연결됨"
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "OAuth 연결 실패"
@@ -3532,6 +3537,10 @@ msgstr "작동하지 않는 컴퓨터를 다시 만듭니다."
 msgid "Recreating the computer"
 msgstr ""
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Redirect URI"
+msgstr ""
+
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/pages/RoutineRunHistory.tsx
@@ -3737,6 +3746,7 @@ msgstr "지금 다시 시도"
 msgid "Retry screen"
 msgstr ""
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Rakazo"
 msgstr "Rakazo로 돌아가기"
@@ -4821,6 +4831,7 @@ msgstr "나"
 msgid "You can close this tab if it does not redirect automatically."
 msgstr "자동으로 이동하지 않으면 이 탭을 닫아도 됩니다."
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this window."
 msgstr "이 창을 닫아도 됩니다."

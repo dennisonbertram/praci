@@ -6,6 +6,7 @@ import type {
   IntegrationCatalogResult,
   IntegrationCatalogSurface,
 } from "@rakazo/contracts";
+import { preferNativeGmail } from "@rakazo/contracts";
 import {
   abortableDelay,
   buildFeaturedConnectorTiles,
@@ -31,7 +32,9 @@ import {
 import { ChevronDown, ChevronLeft, ChevronUp, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IntegrationSetup } from "../components/integrations/IntegrationSetup";
+import { desktopBridge } from "../lib/desktop";
 import { optionalCatalogFeedProbe } from "../lib/optional-catalog-feed";
+import { PLUGIN_CONNECT_WINDOW } from "../lib/plugin-connect";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -117,7 +120,7 @@ export function PluginsOverlay({
       rpc.connections.list(),
       optionalCatalogFeedProbe(rpc.capabilities.catalogSearch({ query: "" })),
     ]);
-    setCatalog(items);
+    setCatalog(preferNativeGmail(items, { nativeGoogle: !desktopBridge() }));
     setConnections(rows);
     setLabelDrafts((current) => {
       const next: Record<string, string> = {};
@@ -228,7 +231,7 @@ export function PluginsOverlay({
         displayName: nextAccountLabel(item.name, existing.length),
       });
       if (started.authorizationUrl)
-        window.open(started.authorizationUrl, "rakazo-plugin-connect", "noopener,noreferrer");
+        window.open(started.authorizationUrl, PLUGIN_CONNECT_WINDOW, "noopener,noreferrer");
       if (item.noAuth && !started.authorizationUrl) {
         if (controller.signal.aborted) return;
         setItemConnected(item, true);

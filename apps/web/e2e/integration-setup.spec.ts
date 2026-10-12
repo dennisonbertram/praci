@@ -259,7 +259,9 @@ test("configured server owners manage providers from settings", async ({ page },
   await captureScreenshot(page, testInfo, "server-integrations-configured");
 });
 
-test("owners can choose Google and see the redirect URI to register", async ({ page }, testInfo) => {
+test("owners can choose Google and see the redirect URI to register", async ({
+  page,
+}, testInfo) => {
   await page.route("**/rpc/integrationSetup/get", (route) =>
     route.fulfill({
       json: {
