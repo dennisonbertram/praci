@@ -179,8 +179,12 @@ export function ComposeEmail({
   useEffect(() => {
     if (loading || seed.kind === "new") return;
     const target = seed.kind === "forward" ? toRef.current : bodyRef.current;
-    target?.focus();
-    if (target === bodyRef.current) target?.setSelectionRange(0, 0);
+    target?.focus({ preventScroll: true });
+    if (target === bodyRef.current && target) {
+      // Filling a long quote leaves the caret at the end; put it back above the quote.
+      target.setSelectionRange(0, 0);
+      target.scrollTop = 0;
+    }
   }, [loading, seed.kind]);
 
   // Closing the page or the message view keeps what was typed.
