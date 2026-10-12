@@ -257,9 +257,8 @@ msgstr "कार्रवाई की पुष्टि"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.spaceName
-#. placeholder {0}: row.subject
+#. placeholder {0}: sectionMenu.section.name
 #: src/pages/BotContextMenu.tsx
-#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
 msgstr "{0} के लिए कार्रवाइयां"
@@ -2986,6 +2985,7 @@ msgstr ""
 msgid "Monthly"
 msgstr "मासिक"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr ""

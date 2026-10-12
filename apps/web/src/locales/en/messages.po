@@ -257,9 +257,8 @@ msgstr "Action confirmations"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.spaceName
-#. placeholder {0}: row.subject
+#. placeholder {0}: sectionMenu.section.name
 #: src/pages/BotContextMenu.tsx
-#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
 msgstr "Actions for {0}"
@@ -2986,6 +2985,7 @@ msgstr "month"
 msgid "Monthly"
 msgstr "Monthly"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr "More"

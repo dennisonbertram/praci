@@ -685,11 +685,11 @@ function InboxRow({
                   className="mx-1 shrink-0 opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100 data-popup-open:opacity-100"
                 />
               }
-              aria-label={t`Actions for ${row.subject}`}
+              aria-label={t`More`}
             >
               <Ellipsis aria-hidden="true" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="min-w-44">
               <DropdownMenuCheckboxItem
                 checked={row.feedback === "important"}
                 onCheckedChange={(checked) => onMark(row.id, checked ? "important" : null)}
