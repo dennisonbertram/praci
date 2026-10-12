@@ -1050,6 +1050,10 @@ msgstr "Code"
 msgid "Collapse {0}"
 msgstr "Réduire {0}"
 
+#: src/pages/Shell.tsx
+msgid "Collapse Inbox agent"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Color"
 msgstr "Couleur"
@@ -1373,6 +1377,10 @@ msgstr "Impossible de créer la section"
 #: src/pages/shell/dialogs.tsx
 msgid "Could not create space"
 msgstr "Impossible de créer l'espace"
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Inbox agent"
+msgstr ""
 
 #: src/pages/Onboarding.tsx
 msgid "Could not create your bot"
@@ -1751,6 +1759,10 @@ msgstr "Créer un compte"
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "Créer un groupe"
+
+#: src/pages/Shell.tsx
+msgid "Create Inbox agent"
+msgstr ""
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
@@ -4093,6 +4105,10 @@ msgstr "Afficher les bots"
 #: src/pages/Shell.tsx
 msgid "Show computer"
 msgstr "Afficher l'ordinateur"
+
+#: src/pages/Inbox.tsx
+msgid "Show Inbox agent"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "Show list"

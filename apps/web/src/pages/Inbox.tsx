@@ -1,8 +1,10 @@
 import { i18n } from "@lingui/core";
+import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { InboxListOutput, MailRow } from "@rakazo/contracts";
 import { groupInbox } from "@rakazo/core";
 import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
+import { PanelRightOpen } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
@@ -24,11 +26,14 @@ function formatMailTime(iso: string, today: boolean): string {
 export function InboxPage({
   onConnectMail,
   onRefreshed,
+  onShowAgent,
   paused,
 }: {
   onConnectMail: () => void;
   /** Called after a sync so the sidebar can refresh its unread count. */
   onRefreshed: () => void;
+  /** Set while the Inbox agent panel is collapsed; shows the button that reopens it. */
+  onShowAgent?: () => void;
   /** True while the Integrations overlay is open; the page reloads when it closes. */
   paused: boolean;
 }) {
@@ -102,27 +107,39 @@ export function InboxPage({
         <h1 className="text-lg font-medium">
           <Trans>Inbox</Trans>
         </h1>
-        {accounts.length > 1 ? (
-          <Tabs
-            value={tab ?? ALL}
-            onValueChange={(value) => setTab(value === ALL ? undefined : value)}
-          >
-            <TabsList className="ms-auto max-w-full rounded-full">
-              <TabsTrigger value={ALL} className="rounded-full px-3">
-                <Trans>All</Trans>
-              </TabsTrigger>
-              {accounts.map((account) => (
-                <TabsTrigger
-                  key={account.connectionId}
-                  value={account.connectionId}
-                  className="max-w-40 rounded-full px-3"
-                >
-                  <span className="truncate">{account.label}</span>
+        <div className="ms-auto flex min-w-0 items-center gap-2">
+          {accounts.length > 1 ? (
+            <Tabs
+              value={tab ?? ALL}
+              onValueChange={(value) => setTab(value === ALL ? undefined : value)}
+            >
+              <TabsList className="max-w-full rounded-full">
+                <TabsTrigger value={ALL} className="rounded-full px-3">
+                  <Trans>All</Trans>
                 </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        ) : null}
+                {accounts.map((account) => (
+                  <TabsTrigger
+                    key={account.connectionId}
+                    value={account.connectionId}
+                    className="max-w-40 rounded-full px-3"
+                  >
+                    <span className="truncate">{account.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          ) : null}
+          {onShowAgent ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t`Show Inbox agent`}
+              onClick={onShowAgent}
+            >
+              <PanelRightOpen aria-hidden="true" />
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {failed ? (

@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   botsSidebarCollapsedStorageKey,
   readBotsSidebarCollapsed,
+  readInboxAgentCollapsed,
   writeBotsSidebarCollapsed,
+  writeInboxAgentCollapsed,
 } from "./bots-sidebar-pref";
 
 describe("bots sidebar collapse preference", () => {
@@ -29,6 +31,32 @@ describe("bots sidebar collapse preference", () => {
     expect(readBotsSidebarCollapsed("user-1")).toBe(true);
     writeBotsSidebarCollapsed("user-1", false);
     expect(readBotsSidebarCollapsed("user-1")).toBe(false);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("Inbox agent panel collapse preference", () => {
+  it("is stored per user, apart from the bots sidebar", () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, value);
+        },
+        removeItem: (key: string) => {
+          store.delete(key);
+        },
+      },
+    });
+    expect(readInboxAgentCollapsed("user-1")).toBe(false);
+    writeInboxAgentCollapsed("user-1", true);
+    expect(store.get("rakazo:inbox-agent-collapsed:user-1")).toBe("1");
+    expect(readInboxAgentCollapsed("user-1")).toBe(true);
+    expect(readInboxAgentCollapsed("user-2")).toBe(false);
+    expect(readBotsSidebarCollapsed("user-1")).toBe(false);
+    writeInboxAgentCollapsed("user-1", false);
+    expect(store.size).toBe(0);
     vi.unstubAllGlobals();
   });
 });
