@@ -1,0 +1,412 @@
+import { createRouterClient } from "@orpc/server";
+import type {
+  AdapterContext,
+  ConnectorProxyRequest,
+  MailProvider,
+  ManagedConnectorProvider,
+} from "@rakazo/adapter-kit";
+import { createMailProvider, GmailApiEmulator } from "@rakazo/adapters";
+import type { Actor } from "@rakazo/contracts";
+import { inboxAgentSpawnKey } from "@rakazo/contracts";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb } from "@rakazo/db";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { inboxGet, inboxList, inboxRefresh, inboxUnreadCount } from "./inbox.js";
+import { createRouter, type RouterDeps } from "./router.js";
+
+const databaseUrl = process.env.DATABASE_URL;
+const describePostgres =
+  process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
+
+const DAY = 86_400_000;
+const daysAgo = (days: number) => new Date(Date.now() - days * DAY);
+
+describePostgres("inbox procedures (PostgreSQL)", () => {
+  const suffix = `${process.pid}-${Date.now()}`;
+  const id = (name: string) => `inbox-${name}-${suffix}`;
+  const orgA = id("org-a");
+  const orgB = id("org-b");
+  const spaceA = id("space-a");
+  const spaceB = id("space-b");
+  const userA = id("user-a");
+  const userB = id("user-b");
+  const userC = id("user-c");
+  const actor = (userId: string, spaceId: string): Actor => ({
+    userId,
+    spaceId,
+    email: `${userId}@rakazo.test`,
+    isDeploymentOwner: false,
+  });
+  const a = actor(userA, spaceA);
+  const b = actor(userB, spaceA);
+  const c = actor(userC, spaceB);
+
+  let prisma: PrismaClient;
+  let close: () => Promise<void>;
+  let gmail: GmailApiEmulator;
+  let mail: MailProvider;
+  let deps: { prisma: PrismaClient; mail: MailProvider };
+
+  let connA: string;
+  let connB: string;
+  let connC: string;
+  let revokedA: string;
+
+  const connector = {
+    proxy: async (request: ConnectorProxyRequest, _context: AdapterContext) =>
+      gmail.handle(request.accountRef, request.url),
+    revoke: async () => {},
+  } as unknown as ManagedConnectorProvider;
+
+  const connect = async (who: Actor, ref: string, status = "connected") =>
+    (
+      await prisma.connection.create({
+        data: {
+          spaceId: who.spaceId,
+          userId: who.userId,
+          connectorId: "emulator",
+          provider: "gmail",
+          displayName: `Mailbox ${ref}`,
+          status,
+          providerRef: ref,
+          metadata: { mailAddress: `${ref}@example.test` },
+        },
+      })
+    ).id;
+
+  const cache = (
+    who: Actor,
+    connectionId: string,
+    providerMessageId: string,
+    extra: Partial<{
+      threadId: string;
+      receivedAt: Date;
+      unread: boolean;
+      inInbox: boolean;
+      fromSelf: boolean;
+      fromName: string | null;
+    }> = {},
+  ) =>
+    prisma.cachedMailMessage.create({
+      data: {
+        spaceId: who.spaceId,
+        userId: who.userId,
+        connectionId,
+        providerMessageId,
+        threadId: extra.threadId ?? providerMessageId,
+        fromName: extra.fromName === undefined ? "Ann Sender" : extra.fromName,
+        fromAddress: "ann@example.test",
+        subject: `Subject ${providerMessageId}`,
+        snippet: `Snippet ${providerMessageId}`,
+        receivedAt: extra.receivedAt ?? daysAgo(1),
+        unread: extra.unread ?? false,
+        inInbox: extra.inInbox ?? true,
+        fromSelf: extra.fromSelf ?? false,
+        seenAt: new Date(),
+      },
+    });
+
+  const wipe = async () => {
+    await prisma.cachedMailMessage.deleteMany({
+      where: { spaceId: { in: [spaceA, spaceB] } },
+    });
+    await prisma.mailSyncState.deleteMany({
+      where: { connection: { spaceId: { in: [spaceA, spaceB] } } },
+    });
+    await prisma.bot.deleteMany({ where: { spaceId: { in: [spaceA, spaceB] } } });
+  };
+
+  beforeAll(async () => {
+    const db = createDb(databaseUrl as string);
+    prisma = db.prisma;
+    close = async () => {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    };
+    for (const userId of [userA, userB, userC]) {
+      await prisma.user.create({
+        data: { id: userId, name: userId, email: `${userId}@rakazo.test`, emailVerified: false },
+      });
+    }
+    for (const [organizationId, spaceId] of [
+      [orgA, spaceA],
+      [orgB, spaceB],
+    ] as const) {
+      await prisma.organization.create({
+        data: {
+          id: organizationId,
+          name: organizationId,
+          slug: organizationId,
+          createdAt: new Date(),
+        },
+      });
+      await prisma.space.create({
+        data: { id: spaceId, organizationId, name: "General", isDefault: true },
+      });
+    }
+    connA = await connect(a, "box-a");
+    connB = await connect(b, "box-b");
+    connC = await connect(c, "box-c");
+    revokedA = await connect(a, "box-revoked", "revoked");
+    mail = createMailProvider({
+      prisma,
+      connectors: { managed: () => connector },
+      sleep: async () => {},
+    });
+    deps = { prisma, mail };
+  });
+
+  afterAll(async () => {
+    if (!prisma) return;
+    await wipe();
+    await prisma.organization.deleteMany({ where: { id: { in: [orgA, orgB] } } });
+    await prisma.user.deleteMany({ where: { id: { in: [userA, userB, userC] } } });
+    await close();
+  });
+
+  const seedMailboxes = () => {
+    const message = (messageId: string, labels: string[]) => ({
+      id: messageId,
+      date: daysAgo(1).toISOString(),
+      labels,
+      from: "Ann Sender <ann@example.test>",
+      to: "me@example.test",
+      subject: `Subject ${messageId}`,
+      snippet: `Snippet ${messageId}`,
+      html: `<p>Body of ${messageId}</p>`,
+    });
+    gmail = new GmailApiEmulator({
+      mailboxes: {
+        "box-a": { address: "box-a@example.test", messages: [message("a-1", ["INBOX", "UNREAD"])] },
+        "box-b": { address: "box-b@example.test", messages: [message("b-1", ["INBOX"])] },
+        "box-c": { address: "box-c@example.test", messages: [message("c-1", ["INBOX"])] },
+        "box-revoked": {
+          address: "box-revoked@example.test",
+          messages: [message("r-1", ["INBOX"])],
+        },
+      },
+    });
+  };
+
+  describe("list", () => {
+    it("returns the caller's newest message per thread and nothing hidden", async () => {
+      await wipe();
+      await cache(a, connA, "old", { threadId: "t1", receivedAt: daysAgo(3) });
+      await cache(a, connA, "new", { threadId: "t1", receivedAt: daysAgo(1), unread: true });
+      await cache(a, connA, "other", { threadId: "t2", receivedAt: daysAgo(2), fromName: null });
+      await cache(a, connA, "sent-only", { inInbox: false, fromSelf: true });
+      await cache(a, connA, "search-cached", { inInbox: false });
+      await cache(a, connA, "too-old", { receivedAt: daysAgo(20) });
+      await cache(a, revokedA, "from-revoked");
+      await cache(b, connB, "b-row"); // same space, another user
+      await cache(c, connC, "c-row"); // another space
+
+      const out = await inboxList(deps, a, {});
+
+      expect(out.rows.map((row) => row.subject)).toEqual(["Subject new", "Subject other"]);
+      expect(out.rows[0]).toMatchObject({
+        connectionId: connA,
+        threadId: "t1",
+        from: "Ann Sender",
+        snippet: "Snippet new",
+        unread: true,
+        needsReply: null,
+      });
+      expect(out.rows[1]?.from).toBe("ann@example.test");
+      expect(out.accounts).toEqual([{ connectionId: connA, label: "Mailbox box-a" }]);
+      expect(out.syncedAt).toBeNull();
+      expect(out.failedAccounts).toEqual([]);
+    });
+
+    it("keeps the same thread id on two accounts as separate rows", async () => {
+      await wipe();
+      const second = await connect(a, "box-a2");
+      await cache(a, connA, "x1", { threadId: "shared" });
+      await cache(a, second, "x2", { threadId: "shared" });
+
+      const out = await inboxList(deps, a, {});
+      expect(out.rows).toHaveLength(2);
+      expect((await inboxList(deps, a, { connectionId: second })).rows).toHaveLength(1);
+      await prisma.connection.delete({ where: { id: second } });
+    });
+
+    it("reports sync time and failed accounts from the sync state", async () => {
+      await wipe();
+      await prisma.mailSyncState.create({
+        data: { connectionId: connA, lastSyncedAt: new Date("2026-10-01T10:00:00Z") },
+      });
+      const second = await connect(a, "box-a3");
+      await prisma.mailSyncState.create({
+        data: {
+          connectionId: second,
+          lastSyncedAt: new Date("2026-10-02T10:00:00Z"),
+          lastErrorAt: new Date(),
+        },
+      });
+
+      const out = await inboxList(deps, a, {});
+      expect(out.syncedAt).toBe("2026-10-02T10:00:00.000Z");
+      expect(out.failedAccounts).toEqual([second]);
+      await prisma.connection.delete({ where: { id: second } });
+    });
+
+    it("answers with an empty account list when no mail account is connected", async () => {
+      const out = await inboxList(deps, actor(userA, spaceB), {});
+      expect(out).toMatchObject({ accounts: [], rows: [], agent: null, syncedAt: null });
+    });
+
+    it.each([
+      ["another user's", () => connB],
+      ["another space's", () => connC],
+      ["a revoked", () => revokedA],
+      ["a nonexistent", () => "no-such-connection"],
+    ])("rejects %s connection id with NOT_FOUND", async (_name, target) => {
+      await expect(inboxList(deps, a, { connectionId: target() })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+    });
+  });
+
+  describe("agent", () => {
+    it("is the caller's own unarchived Inbox agent, never someone else's", async () => {
+      await wipe();
+      const bot = (who: Actor, extra: { archivedAt?: Date; spawnKey?: string } = {}) =>
+        prisma.bot.create({
+          data: {
+            spaceId: who.spaceId,
+            userId: who.userId,
+            name: "Inbox agent",
+            color: "blue",
+            spawnKey: extra.spawnKey ?? inboxAgentSpawnKey(who.userId),
+            archivedAt: extra.archivedAt,
+          },
+        });
+      const mine = await bot(a);
+      await bot(b, { spawnKey: inboxAgentSpawnKey(userB) });
+
+      expect((await inboxList(deps, a, {})).agent).toEqual({
+        botId: mine.id,
+        name: "Inbox agent",
+      });
+      expect((await inboxList(deps, b, {})).agent).toMatchObject({ name: "Inbox agent" });
+      expect((await inboxList(deps, b, {})).agent?.botId).not.toBe(mine.id);
+
+      await prisma.bot.update({ where: { id: mine.id }, data: { archivedAt: new Date() } });
+      expect((await inboxList(deps, a, {})).agent).toBeNull();
+    });
+  });
+
+  describe("unreadCount", () => {
+    it("counts unread threads, not messages, for the caller's connected accounts only", async () => {
+      await wipe();
+      await cache(a, connA, "u1", { threadId: "t1", unread: true });
+      await cache(a, connA, "u2", { threadId: "t1", unread: true }); // same thread
+      await cache(a, connA, "u3", { threadId: "t2", unread: true });
+      await cache(a, connA, "read", { threadId: "t3", unread: false });
+      await cache(a, connA, "sent", { threadId: "t4", unread: true, inInbox: false });
+      await cache(a, revokedA, "revoked", { unread: true });
+      await cache(b, connB, "b1", { unread: true });
+      await cache(c, connC, "c1", { unread: true });
+
+      expect(await inboxUnreadCount(deps, a)).toEqual({ count: 2 });
+      expect(await inboxUnreadCount(deps, b)).toEqual({ count: 1 });
+      expect(await inboxUnreadCount(deps, c)).toEqual({ count: 1 });
+    });
+  });
+
+  describe("refresh", () => {
+    it("syncs the caller's connected accounts and no one else's", async () => {
+      await wipe();
+      seedMailboxes();
+
+      expect(await inboxRefresh(deps, a, {})).toEqual({ ok: true });
+
+      const synced = await prisma.cachedMailMessage.findMany({
+        where: { spaceId: { in: [spaceA, spaceB] } },
+      });
+      expect(synced.map((row) => row.providerMessageId)).toEqual(["a-1"]);
+      expect(synced[0]).toMatchObject({ userId: userA, spaceId: spaceA, unread: true });
+      expect(gmail.accountRefs().length).toBe(4);
+      expect(gmail.requests.every((r) => r.accountRef === "box-a")).toBe(true);
+      expect((await inboxList(deps, a, {})).syncedAt).not.toBeNull();
+    });
+
+    it("rejects someone else's, a revoked or an unknown connection id with NOT_FOUND", async () => {
+      await wipe();
+      seedMailboxes();
+      for (const connectionId of [connB, connC, revokedA, "no-such-connection"]) {
+        await expect(inboxRefresh(deps, a, { connectionId })).rejects.toMatchObject({
+          code: "NOT_FOUND",
+        });
+      }
+      expect(gmail.requests).toEqual([]);
+    });
+  });
+
+  describe("get", () => {
+    it("loads the body of the caller's own message through the provider", async () => {
+      await wipe();
+      seedMailboxes();
+      await inboxRefresh(deps, a, {});
+      const row = await prisma.cachedMailMessage.findFirstOrThrow({
+        where: { providerMessageId: "a-1" },
+      });
+
+      const message = await inboxGet(deps, a, { messageId: row.id });
+
+      expect(message).toMatchObject({
+        from: "Ann Sender <ann@example.test>",
+        to: "me@example.test",
+        subject: "Subject a-1",
+        html: "<p>Body of a-1</p>",
+      });
+      expect(message.text).toContain("Body of a-1");
+      expect(new Date(message.date).toString()).not.toBe("Invalid Date");
+    });
+
+    it("answers NOT_FOUND for another user's, another space's, a revoked and an unknown id", async () => {
+      await wipe();
+      seedMailboxes();
+      const theirs = await cache(b, connB, "b-1");
+      const otherSpace = await cache(c, connC, "c-1");
+      const revoked = await cache(a, revokedA, "r-1");
+
+      for (const messageId of [theirs.id, otherSpace.id, revoked.id, "no-such-message"]) {
+        await expect(inboxGet(deps, a, { messageId })).rejects.toMatchObject({
+          code: "NOT_FOUND",
+        });
+      }
+      expect(gmail.requests).toEqual([]);
+    });
+  });
+
+  describe("connections.revoke", () => {
+    it("deletes the connection's cached mail and sync state and leaves other accounts alone", async () => {
+      await wipe();
+      const doomed = await connect(a, "box-doomed");
+      await cache(a, doomed, "d1");
+      await cache(a, connA, "keep");
+      await prisma.mailSyncState.create({ data: { connectionId: doomed } });
+      await prisma.mailSyncState.create({ data: { connectionId: connA } });
+      const client = createRouterClient(
+        createRouter({
+          prisma,
+          mail,
+          connectors: { managed: () => connector },
+        } as unknown as RouterDeps),
+        { context: { actor: a } as never },
+      );
+
+      await client.connections.revoke({ connectionId: doomed });
+
+      expect((await prisma.connection.findUniqueOrThrow({ where: { id: doomed } })).status).toBe(
+        "revoked",
+      );
+      expect(await prisma.cachedMailMessage.count({ where: { connectionId: doomed } })).toBe(0);
+      expect(await prisma.mailSyncState.count({ where: { connectionId: doomed } })).toBe(0);
+      expect(await prisma.cachedMailMessage.count({ where: { connectionId: connA } })).toBe(1);
+      expect(await prisma.mailSyncState.count({ where: { connectionId: connA } })).toBe(1);
+      await prisma.connection.delete({ where: { id: doomed } });
+    });
+  });
+});
