@@ -868,7 +868,10 @@ export interface MailMessagePage {
 export interface MailMessage extends MailMessageSummary {
   /** text/plain part, or the HTML part reduced to text. At most 40,000 characters. */
   text: string;
-  /** Raw text/html part when present, at most 200,000 characters. Untrusted. */
+  /**
+   * Raw text/html part when present, cut at 200,000 characters, then with referenced inline images
+   * embedded as data: URLs (at most 4 MiB of them). Untrusted.
+   */
   html?: string;
   truncated: boolean;
   attachments: Array<{ filename: string; mimeType: string; size: number }>;

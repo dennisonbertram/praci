@@ -23,6 +23,11 @@ const MAX_DELAY_MS = 60_000;
 const CONCURRENCY = 4;
 const MAX_TEXT = 40_000;
 const MAX_HTML = 200_000;
+// Inline `cid:` images are embedded as data: URLs, so each image and the total are capped.
+const INLINE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+const MAX_INLINE_IMAGES = 10;
+const MAX_INLINE_IMAGE_BYTES = 1_048_576;
+const MAX_INLINE_TOTAL_BYTES = 4_194_304;
 const METADATA_QUERY = ["From", "To", "Cc", "Subject", "Date"]
   .map((name) => `metadataHeaders=${name}`)
   .join("&");
@@ -302,11 +307,22 @@ export class GmailMailProvider implements MailProvider {
     let plain: string | undefined;
     let html: string | undefined;
     const attachments: MailMessage["attachments"] = [];
+    const inline: InlineImage[] = [];
     const visit = (value: unknown) => {
       const part = asRecord(value);
       if (!part) return;
       const body = asRecord(part.body);
       const mimeType = typeof part.mimeType === "string" ? part.mimeType.toLowerCase() : "";
+      const contentId = headerOf(part, "content-id")?.trim().replace(/^<|>$/g, "");
+      if (contentId && INLINE_TYPES.has(mimeType)) {
+        inline.push({
+          contentId: contentId.toLowerCase(),
+          mimeType,
+          size: typeof body?.size === "number" ? body.size : 0,
+          ...(typeof body?.data === "string" ? { data: body.data } : {}),
+          ...(typeof body?.attachmentId === "string" ? { attachmentId: body.attachmentId } : {}),
+        });
+      }
       if (typeof part.filename === "string" && part.filename) {
         attachments.push({
           filename: part.filename,
@@ -335,7 +351,61 @@ export class GmailMailProvider implements MailProvider {
       html = html.slice(0, MAX_HTML);
       truncated = true;
     }
+    if (html !== undefined && inline.length)
+      html = await this.embedInlineImages(account, id, context, html, inline);
     return { ...summary, text, ...(html === undefined ? {} : { html }), truncated, attachments };
+  }
+
+  /**
+   * Replaces `cid:` references with data: URLs, using only parts of this message. An image that is
+   * too large or fails to load keeps its `cid:` reference, which the viewer shows as a broken image.
+   */
+  private async embedInlineImages(
+    account: MailAccount,
+    messageId: string,
+    context: AdapterContext,
+    html: string,
+    inline: InlineImage[],
+  ): Promise<string> {
+    const parts = new Map<string, InlineImage>();
+    for (const image of inline) if (!parts.has(image.contentId)) parts.set(image.contentId, image);
+    const cidOf = (reference: string) => {
+      try {
+        return decodeURIComponent(reference).toLowerCase();
+      } catch {
+        return reference.toLowerCase();
+      }
+    };
+    const referenced = new Set([...html.matchAll(CID_REFERENCE)].map((m) => cidOf(m[1] as string)));
+    const urls = new Map<string, string>();
+    let budget = MAX_INLINE_TOTAL_BYTES;
+    for (const cid of referenced) {
+      const part = parts.get(cid);
+      if (!part || urls.size >= MAX_INLINE_IMAGES || part.size > MAX_INLINE_IMAGE_BYTES) continue;
+      try {
+        const data =
+          part.data ??
+          asRecord(
+            part.attachmentId
+              ? await this.request(
+                  account,
+                  context,
+                  `${GMAIL}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(part.attachmentId)}`,
+                )
+              : undefined,
+          )?.data;
+        if (typeof data !== "string") continue;
+        const bytes = Buffer.from(data, "base64url");
+        if (bytes.length > MAX_INLINE_IMAGE_BYTES || bytes.length > budget) continue;
+        budget -= bytes.length;
+        urls.set(cid, `data:${part.mimeType};base64,${bytes.toString("base64")}`);
+      } catch {
+        // The message is still readable without the picture.
+      }
+    }
+    return urls.size
+      ? html.replace(CID_REFERENCE, (all, ref: string) => urls.get(cidOf(ref)) ?? all)
+      : html;
   }
 
   /** One authenticated GET with per-account concurrency, retry and status mapping. */
@@ -390,6 +460,16 @@ export class GmailMailProvider implements MailProvider {
     }
   }
 }
+
+interface InlineImage {
+  contentId: string;
+  mimeType: string;
+  size: number;
+  data?: string;
+  attachmentId?: string;
+}
+
+const CID_REFERENCE = /\bcid:([^"'\s)>]+)/gi;
 
 export function createMailProvider(
   deps: GmailMailProviderDeps & { prisma: NonNullable<GmailMailProviderDeps["prisma"]> },
@@ -561,13 +641,18 @@ function decodeBytes(bytes: Uint8Array, charset: string | undefined): string {
   }
 }
 
-function charsetOf(part: Record<string, unknown>): string | undefined {
+function headerOf(part: Record<string, unknown>, name: string): string | undefined {
   for (const entry of Array.isArray(part.headers) ? part.headers : []) {
     const header = asRecord(entry);
-    if (typeof header?.name === "string" && header.name.toLowerCase() === "content-type")
-      return /charset="?([^";\s]+)/i.exec(String(header.value))?.[1];
+    if (typeof header?.name === "string" && header.name.toLowerCase() === name)
+      return String(header.value);
   }
   return undefined;
+}
+
+function charsetOf(part: Record<string, unknown>): string | undefined {
+  const contentType = headerOf(part, "content-type");
+  return contentType === undefined ? undefined : /charset="?([^";\s]+)/i.exec(contentType)?.[1];
 }
 
 function htmlToText(html: string): string {

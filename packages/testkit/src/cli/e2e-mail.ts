@@ -4,11 +4,21 @@ import { ComposioEmulator, GmailApiEmulator } from "@rakazo/adapters";
 const MINUTE_MS = 60_000;
 const DAY_MS = 86_400_000;
 
-/** Today's HTML message carries a script and a remote image; the page must run and load neither. */
+/**
+ * Today's HTML message carries a script that must not run, a remote image, an inline `cid:` image,
+ * and a normal and a `javascript:` link.
+ */
 const OFFSITE_HTML =
   '<p id="probe">Can you do the 14th or the 21st?</p>' +
   '<script>document.getElementById("probe").textContent = "script ran";</script>' +
-  '<img alt="" src="https://example.invalid/pixel.png">';
+  '<img id="remote" alt="Offsite banner" width="320" height="96" src="https://example.invalid/offsite-banner.svg">' +
+  '<img id="inline" alt="Inline mark" width="48" height="48" src="cid:mark@e2e">' +
+  '<p><a id="agenda" href="https://example.invalid/agenda">Agenda</a> ' +
+  '<a id="unsafe" href="javascript:document.getElementById(\'probe\').remove()">Unsafe</a></p>';
+
+/** A valid 1x1 PNG, shown at 48px by the markup above. */
+const MARK_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
 /** Two seeded mailboxes, dated against `now` so the 14-day sync window always includes them. */
 export function e2eMailboxes(now = new Date()) {
@@ -24,6 +34,7 @@ export function e2eMailboxes(now = new Date()) {
       subject: "Offsite dates",
       snippet: "Can you do the 14th or the 21st?",
       html: OFFSITE_HTML,
+      inlineImages: [{ contentId: "mark@e2e", mimeType: "image/png", data: MARK_PNG }],
     },
     {
       id: "e2e-a-2",

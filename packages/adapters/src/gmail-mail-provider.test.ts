@@ -513,6 +513,91 @@ describe("getMessage", () => {
   });
 });
 
+describe("getMessage inline images", () => {
+  const PIXEL =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  const inline = { contentId: "logo@mail", mimeType: "image/png", data: PIXEL };
+  const html = '<p>Hi</p><img alt="" src="cid:logo@mail">';
+
+  it("replaces a referenced cid: image with a data: URL fetched from the same message", async () => {
+    const gmail = box([msg("m1", { html, inlineImages: [inline] })]);
+    const { provider } = over(gmail);
+    const full = await provider.getMessage(account(), "m1", context());
+    expect(full.html).toBe(`<p>Hi</p><img alt="" src="data:image/png;base64,${PIXEL}">`);
+    expect(gmail.requests.map((r) => r.url).filter((url) => url.includes("/attachments/"))).toEqual(
+      [expect.stringContaining("/messages/m1/attachments/")],
+    );
+  });
+
+  it("matches cids case-insensitively and percent-encoded", async () => {
+    const gmail = box([
+      msg("m1", {
+        html: '<img src="CID:logo%40mail">',
+        inlineImages: [inline],
+      }),
+    ]);
+    const { provider } = over(gmail);
+    const full = await provider.getMessage(account(), "m1", context());
+    expect(full.html).toBe(`<img src="data:image/png;base64,${PIXEL}">`);
+  });
+
+  it("leaves cid: references alone for unreferenced, non-raster or oversized parts", async () => {
+    const big = Buffer.alloc(1_200_000, 1).toString("base64");
+    const gmail = box([
+      msg("m1", {
+        html: '<img src="cid:svg"><img src="cid:big"><img src="cid:missing">',
+        inlineImages: [
+          { contentId: "svg", mimeType: "image/svg+xml", data: PIXEL },
+          { contentId: "big", mimeType: "image/png", data: big },
+          { contentId: "unused", mimeType: "image/png", data: PIXEL },
+        ],
+      }),
+    ]);
+    const { provider } = over(gmail);
+    const full = await provider.getMessage(account(), "m1", context());
+    expect(full.html).toBe('<img src="cid:svg"><img src="cid:big"><img src="cid:missing">');
+    expect(gmail.requests.some((r) => r.url.includes("/attachments/"))).toBe(false);
+  });
+
+  it("still returns the message when the image fetch fails", async () => {
+    const gmail = box([msg("m1", { html, inlineImages: [inline] })]);
+    const { provider } = over(gmail);
+    gmail.failNext(404, { urlIncludes: "/attachments/" });
+    const full = await provider.getMessage(account(), "m1", context());
+    expect(full.html).toBe(html);
+    expect(full.subject).toBe("Hello");
+  });
+
+  it("stops embedding once the total image budget is spent", async () => {
+    const chunk = Buffer.alloc(900_000, 7).toString("base64");
+    const names = ["a", "b", "c", "d", "e"];
+    const gmail = box([
+      msg("m1", {
+        html: names.map((name) => `<img src="cid:${name}">`).join(""),
+        inlineImages: names.map((contentId) => ({
+          contentId,
+          mimeType: "image/jpeg",
+          data: chunk,
+        })),
+      }),
+    ]);
+    const { provider } = over(gmail);
+    const full = await provider.getMessage(account(), "m1", context());
+    const embedded = (full.html ?? "").match(/src="data:image\/jpeg;base64,/g) ?? [];
+    expect(embedded).toHaveLength(4);
+    expect(full.html).toContain('<img src="cid:e">');
+  });
+
+  it("never fetches an image for an account outside the caller's scope", async () => {
+    const gmail = box([msg("m1", { html, inlineImages: [inline] })]);
+    const { provider } = over(gmail);
+    await expect(
+      provider.getMessage(account({ userId: "someone-else" }), "m1", context()),
+    ).rejects.toMatchObject({ kind: "auth" });
+    expect(gmail.requests).toEqual([]);
+  });
+});
+
 describe("parseAddressList", () => {
   it("handles bare, named, quoted and comma-containing values", () => {
     expect(parseAddressList("a@example.test")).toEqual([{ address: "a@example.test" }]);

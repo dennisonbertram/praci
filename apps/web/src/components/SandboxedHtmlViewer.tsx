@@ -26,35 +26,69 @@ function embedScriptString(value: string): string {
 }
 
 // Without scripts, links go nowhere: the shell's frame-src rejects the navigation.
-const previewCsp = (scripts: boolean) =>
-  scripts ? PREVIEW_CSP : PREVIEW_CSP.replace("script-src 'unsafe-inline'", "script-src 'none'");
+const previewCsp = (scripts: boolean, email: boolean) => {
+  const csp = scripts
+    ? PREVIEW_CSP
+    : PREVIEW_CSP.replace("script-src 'unsafe-inline'", "script-src 'none'");
+  return email ? csp.replace("img-src data:", "img-src data: https:") : csp;
+};
 
-function withPreviewDocument(html: string, scripts: boolean): string {
-  const meta = `<meta http-equiv="Content-Security-Policy" content="${previewCsp(scripts)}">`;
+// A srcdoc frame inherits the shell's policy too, so email mode lifts the image block here as well.
+const shellCsp = (email: boolean) => (email ? `${SHELL_CSP}; img-src data: https:` : SHELL_CSP);
+
+// New-tab navigations are not covered by the shell's frame-src; the popup is not sandboxed.
+const POPUP_FLAGS = "allow-popups allow-popups-to-escape-sandbox";
+
+/**
+ * Makes http(s) links open in a new tab with no opener or referrer, and removes every other link
+ * target (javascript:, data:, in-page anchors). Done here, on an inert parsed copy, because the
+ * message frame has no script to do it and the shell cannot reach into it.
+ */
+function openLinksInNewTab(html: string): string {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  for (const link of doc.querySelectorAll("a[href], area[href]")) {
+    if (/^https?:/i.test((link.getAttribute("href") ?? "").trim())) {
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+    } else link.removeAttribute("href");
+  }
+  return doc.documentElement.outerHTML;
+}
+
+function withPreviewDocument(html: string, scripts: boolean, email: boolean): string {
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${previewCsp(scripts, email)}">`;
   const referrer = `<meta name="referrer" content="no-referrer">`;
-  return `${meta}${referrer}${scripts ? PREVIEW_GUARD : ""}${html}`;
+  return `${meta}${referrer}${scripts ? PREVIEW_GUARD : ""}${email ? openLinksInNewTab(html) : html}`;
 }
 
-function shellDocument(innerHtml: string, scripts: boolean): string {
+function shellDocument(innerHtml: string, scripts: boolean, email: boolean): string {
   const payload = embedScriptString(innerHtml);
-  return `<!DOCTYPE html><meta http-equiv="Content-Security-Policy" content="${SHELL_CSP}"><meta name="referrer" content="no-referrer"><style>html,body{height:100%;margin:0}iframe{width:100%;height:100%;border:0;background:#fff}</style><iframe id="preview" sandbox="${scripts ? "allow-scripts" : ""}" referrerpolicy="no-referrer" csp="${previewCsp(scripts)}"></iframe><script>document.getElementById("preview").srcdoc=${payload};</script>`;
+  const sandbox = email ? POPUP_FLAGS : scripts ? "allow-scripts" : "";
+  return `<!DOCTYPE html><meta http-equiv="Content-Security-Policy" content="${shellCsp(email)}"><meta name="referrer" content="no-referrer"><style>html,body{height:100%;margin:0}iframe{width:100%;height:100%;border:0;background:#fff}</style><iframe id="preview" sandbox="${sandbox}" referrerpolicy="no-referrer" csp="${previewCsp(scripts, email)}"></iframe><script>document.getElementById("preview").srcdoc=${payload};</script>`;
 }
 
-/** `scripts={false}` is for untrusted content such as email: the preview runs no script at all. */
+/**
+ * `scripts={false}` is for untrusted content such as email: the preview runs no script at all.
+ * `email` shows a whole message: https images load and links open in a new tab, still with no
+ * script. It implies `scripts={false}`.
+ */
 export function SandboxedHtmlViewer({
   html,
   title,
   scripts = true,
+  email = false,
 }: {
   html: string;
   title: string;
   scripts?: boolean;
+  email?: boolean;
 }) {
+  const runScripts = scripts && !email;
   return (
     <iframe
       title={title}
-      srcDoc={shellDocument(withPreviewDocument(html, scripts), scripts)}
-      sandbox="allow-scripts"
+      srcDoc={shellDocument(withPreviewDocument(html, runScripts, email), runScripts, email)}
+      sandbox={email ? `allow-scripts ${POPUP_FLAGS}` : "allow-scripts"}
       referrerPolicy="no-referrer"
       className="h-full w-full border-0 bg-white"
     />

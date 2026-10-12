@@ -60,6 +60,17 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
   await tabs.getByRole("tab", { name: "All" }).click();
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
 
+  // The message's remote image and link point at hosts the test serves itself, so it stays offline.
+  const bannerSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="96"><rect width="320" height="96" fill="#d97706"/><text x="16" y="56" font-size="28" fill="#fff" font-family="sans-serif">Offsite Oct 14</text></svg>';
+  await page
+    .context()
+    .route("https://example.invalid/**", (route) =>
+      route.request().url().endsWith("/agenda")
+        ? route.fulfill({ contentType: "text/html", body: "<h1>Agenda</h1>" })
+        : route.fulfill({ contentType: "image/svg+xml", body: bannerSvg }),
+    );
+
   // A message opens under its row, keeps ?mail= (not ?m=) in the URL, and Back closes it.
   const row = main.getByRole("button", { name: /Offsite dates/ });
   await row.click();
@@ -68,9 +79,31 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
   expect(url.searchParams.get("mail")).toBeTruthy();
   expect(url.searchParams.has("m")).toBe(false);
   // The message carries a script that would rewrite #probe; the text staying put means it did not run.
-  const body = page.frameLocator('iframe[title="Offsite dates"]').frameLocator("#preview");
+  const frame = page.locator('iframe[title="Offsite dates"]');
+  const body = frame.contentFrame().locator("#preview").contentFrame();
   await expect(body.locator("#probe")).toHaveText("Can you do the 14th or the 21st?");
+  // Both the https image and the inline cid: image load.
+  for (const selector of ["img#remote", "img#inline"]) {
+    await expect
+      .poll(() =>
+        body.locator(selector).evaluate((img) => {
+          const image = img as HTMLImageElement;
+          return image.complete && image.naturalWidth > 0;
+        }),
+      )
+      .toBe(true);
+  }
   await captureScreenshot(page, testInfo, "inbox-message-open");
+
+  // Links open in a new tab that cannot reach the app; a javascript: link has no target.
+  await expect(body.locator("a#unsafe")).not.toHaveAttribute("href", /./);
+  const popupOpened = page.waitForEvent("popup");
+  await body.locator("a#agenda").click();
+  const popup = await popupOpened;
+  await expect(popup).toHaveURL("https://example.invalid/agenda");
+  expect(await popup.evaluate(() => window.opener)).toBeNull();
+  await popup.close();
+  await expect(body.locator("#probe")).toHaveText("Can you do the 14th or the 21st?");
   await page.goBack();
   await expect(row).toHaveAttribute("aria-expanded", "false");
   expect(new URL(page.url()).searchParams.has("mail")).toBe(false);
