@@ -341,7 +341,7 @@ async function syncTodos(prisma: PrismaClient, { userId, spaceId }: Scope, windo
           connection: { status: "connected" },
           todoText: { not: null },
           alreadyHandled: false,
-          category: { in: [...TODO_CATEGORIES] },
+          OR: [{ needsReply: true }, { category: { in: [...TODO_CATEGORIES] } }],
         },
       }),
       tx.inboxTodo.findMany({

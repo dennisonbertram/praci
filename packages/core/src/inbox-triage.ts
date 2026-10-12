@@ -58,6 +58,7 @@ export interface TriageItem {
 export interface TodoCandidateMessage {
   id: string;
   connectionId: string;
+  needsReply?: boolean | null;
   priority: string | null;
   category: string | null;
   todoText: string | null;
@@ -178,7 +179,11 @@ export function selectTodoCandidates(
 ): TodoCandidateMessage[] {
   return messages
     .filter(
-      (m) => m.todoText !== null && !m.alreadyHandled && TODO_CATEGORIES.includes(m.category ?? ""),
+      (m) =>
+        m.todoText !== null &&
+        !m.alreadyHandled &&
+        !isNoReplyCategory(m.category ?? "") &&
+        (m.needsReply === true || TODO_CATEGORIES.includes(m.category ?? "")),
     )
     .sort(
       (a, b) =>

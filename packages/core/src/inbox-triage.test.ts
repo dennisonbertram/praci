@@ -359,6 +359,19 @@ describe("widened taxonomy", () => {
   });
 });
 
+describe("to-dos for mail a classifier says needs a reply", () => {
+  it("makes a candidate of a message that needs a reply whatever its category", () => {
+    const picked = selectTodoCandidates([
+      message("personal", { category: "personal", needsReply: true }),
+      message("personal-no-reply", { category: "personal", needsReply: false }),
+      message("scam", { category: "scam", needsReply: true }),
+      message("spam", { category: "spam", needsReply: true }),
+      message("suspicious", { category: "suspicious", needsReply: true }),
+    ]).map((m) => m.id);
+    expect(picked).toEqual(["personal"]);
+  });
+});
+
 describe("needsLlmDetail", () => {
   it("is true only for a message that needs a reply or an action", () => {
     expect(needsLlmDetail({ needsReply: true, category: "personal" })).toBe(true);
