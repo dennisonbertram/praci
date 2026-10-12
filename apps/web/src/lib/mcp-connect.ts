@@ -28,11 +28,18 @@ export type McpOauthResult =
  * The BroadcastChannel (not window.opener) is the completion signal because
  * provider login pages with COOP sever the opener link. A severed handle reads
  * as closed, so `popup.closed` cannot mean cancelled; only the timeout or a
- * failure message from the callback page does. */
-export async function connectMcpOauth(serverId: string): Promise<McpOauthResult> {
+ * failure message from the callback page does.
+ *
+ * `reauthorize` asks the API for a fresh sign-in even when a token is stored;
+ * the stored token is replaced only once the new authorization completes. */
+export async function connectMcpOauth(
+  serverId: string,
+  options: { reauthorize?: boolean } = {},
+): Promise<McpOauthResult> {
   const started = await rpc.mcp.oauth.begin({
     serverId,
     redirectUri: `${window.location.origin}/mcp/oauth/callback`,
+    ...(options.reauthorize ? { reauthorize: true } : {}),
   });
   if (started.status !== "authorization_required") return started.status;
   const popup = window.open("about:blank", MCP_OAUTH_CHANNEL, "popup,width=560,height=720");

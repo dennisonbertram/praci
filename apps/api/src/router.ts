@@ -4295,6 +4295,20 @@ export function createRouter(deps: RouterDeps) {
           }
           throw new ORPCError("CONFLICT", { message: "MCP credentials changed; retry" });
         }),
+        rename: authed.mcp.servers.rename.handler(async ({ context, input }) => {
+          const where = {
+            id: input.id,
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+          };
+          const { count } = await deps.prisma.mcpServer.updateMany({
+            where,
+            data: { name: input.name },
+          });
+          const row = count ? await deps.prisma.mcpServer.findFirst({ where }) : null;
+          if (!row) throw new IsolationError();
+          return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
+        }),
         remove: authed.mcp.servers.remove.handler(async ({ context, input }) => {
           const server = await deps.prisma.mcpServer.findFirst({
             where: {

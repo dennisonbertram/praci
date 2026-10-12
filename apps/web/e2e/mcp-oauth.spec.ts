@@ -158,9 +158,11 @@ test("manages a connected MCP server from Integrations: reconnect, rename, remov
   const removes: unknown[] = [];
   let reconnectDone = false;
 
-  await page.context().route("**/rpc/mcp/servers/list", (route) =>
-    route.fulfill({ contentType: "application/json", body: JSON.stringify({ json: servers }) }),
-  );
+  await page
+    .context()
+    .route("**/rpc/mcp/servers/list", (route) =>
+      route.fulfill({ contentType: "application/json", body: JSON.stringify({ json: servers }) }),
+    );
   await page.context().route("**/rpc/mcp/oauth/begin", async (route) => {
     begins.push(route.request().postDataJSON());
     await route.fulfill({
@@ -229,8 +231,11 @@ test("manages a connected MCP server from Integrations: reconnect, rename, remov
   await page.getByRole("menuitem", { name: "Rename" }).click();
   const nameInput = list.getByRole("textbox", { name: "Name" });
   await expect(nameInput).toHaveValue("MCP server");
-  await nameInput.fill("Brex");
-  await nameInput.press("Enter");
+  // Typing without clicking proves the menu closing did not take focus back.
+  await expect(nameInput).toBeFocused();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type("Brex");
+  await page.keyboard.press("Enter");
   await expect(list.getByText("Brex", { exact: true })).toBeVisible();
   expect(renames).toEqual([{ json: { id: "managed-server", name: "Brex" } }]);
 
@@ -252,9 +257,11 @@ test("adds an MCP server by URL under a readable name without Continue or Skip",
 
   let servers: McpServer[] = [];
   const created: unknown[] = [];
-  await page.context().route("**/rpc/mcp/servers/list", (route) =>
-    route.fulfill({ contentType: "application/json", body: JSON.stringify({ json: servers }) }),
-  );
+  await page
+    .context()
+    .route("**/rpc/mcp/servers/list", (route) =>
+      route.fulfill({ contentType: "application/json", body: JSON.stringify({ json: servers }) }),
+    );
   await page.context().route("**/rpc/mcp/servers/create", async (route) => {
     const body = route.request().postDataJSON() as { json: { name: string; endpoint: string } };
     created.push(body.json.name);
@@ -270,6 +277,12 @@ test("adds an MCP server by URL under a readable name without Continue or Skip",
       body: JSON.stringify({ json: { status: "already_connected" } }),
     }),
   );
+  // The mocked server has no database row, so the real approve call would fail.
+  await page
+    .context()
+    .route("**/rpc/mcp/assignments/approve", (route) =>
+      route.fulfill({ contentType: "application/json", body: JSON.stringify({ json: {} }) }),
+    );
 
   await page.getByText("Integrations", { exact: true }).click();
   await page.getByRole("button", { name: "Browse MCP servers" }).click();

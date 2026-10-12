@@ -804,6 +804,10 @@ msgstr ""
 msgid "Bots are working"
 msgstr "Bot 正在工作"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Bots lose access to its tools."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
 msgstr ""
@@ -831,6 +835,7 @@ msgstr "无法连接服务器。"
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
@@ -1265,6 +1270,7 @@ msgid "Connected. Its tools are available from your next message."
 msgstr "已连接，下一条消息起即可使用其工具。"
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -1614,6 +1620,11 @@ msgstr "无法连接到模型服务器。"
 msgid "Could not reach the server"
 msgstr "无法连接服务器"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Could not reconnect"
+msgstr ""
+
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
 msgstr "无法移除"
@@ -1628,6 +1639,10 @@ msgstr "无法移除规则"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Could not remove the credential"
+msgstr ""
+
+#: src/components/integrations/McpServerRow.tsx
+msgid "Could not rename"
 msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
@@ -2807,6 +2822,11 @@ msgstr "请确认这台电脑上没有仍在运行的任务。"
 msgid "Manage"
 msgstr ""
 
+#. placeholder {0}: server.name
+#: src/components/integrations/McpServerRow.tsx
+msgid "Manage {0}"
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Manage billing"
 msgstr ""
@@ -3080,6 +3100,7 @@ msgstr "移动到"
 msgid "Mute"
 msgstr "静音"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
 #: src/pages/GroupPanel.tsx
@@ -3354,8 +3375,8 @@ msgstr "OAuth 已连接"
 msgid "OAuth connection failed"
 msgstr "OAuth 连接失败"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr ""
 
@@ -3663,6 +3684,10 @@ msgstr ""
 msgid "Recent"
 msgstr "最近"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Reconnect"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Reconnect OAuth"
 msgstr "重新连接 OAuth"
@@ -3763,6 +3788,7 @@ msgid "Release interrupted computer?"
 msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
@@ -3774,6 +3800,11 @@ msgstr "移除"
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "移除 {0}"
+
+#. placeholder {0}: server.name
+#: src/components/integrations/McpServerRow.tsx
+msgid "Remove {0}?"
+msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Remove {full}"
@@ -3820,6 +3851,10 @@ msgstr "已移除，但列表刷新失败"
 #: src/pages/PluginsOverlay.tsx
 msgid "Removing…"
 msgstr "正在移除…"
+
+#: src/components/integrations/McpServerRow.tsx
+msgid "Rename"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Shell.tsx
@@ -4700,6 +4735,7 @@ msgstr "此重置链接无效或已过期"
 msgid "This server cannot be assigned without a bot."
 msgstr "没有 Bot 就无法分配此服务器。"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "This server did not request browser authorization."
 msgstr "此服务器未请求浏览器授权。"

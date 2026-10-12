@@ -697,6 +697,10 @@ export const appContract = {
           ]),
         )
         .output(McpServerSchema),
+      /** Name-only edit: unlike update, never rewrites stored credentials. */
+      rename: oc
+        .input(z.object({ id: Id, name: z.string().trim().min(1).max(120) }))
+        .output(McpServerSchema),
       remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
     },
     assignments: {
@@ -724,18 +728,28 @@ export const appContract = {
         .output(z.array(BotMcpServerSchema)),
     },
     oauth: {
-      begin: oc.input(z.object({ serverId: Id, redirectUri: z.string().url() })).output(
-        z.discriminatedUnion("status", [
+      begin: oc
+        .input(
           z.object({
-            status: z.literal("authorization_required"),
-            sessionId: Id,
-            authorizationUrl: z.string().url(),
+            serverId: Id,
+            redirectUri: z.string().url(),
+            /** Ask the user to sign in again even though a token is stored. The old
+             * token stays until the new authorization completes. */
+            reauthorize: z.boolean().optional(),
           }),
-          z.object({
-            status: z.enum(["already_connected", "authorization_not_requested"]),
-          }),
-        ]),
-      ),
+        )
+        .output(
+          z.discriminatedUnion("status", [
+            z.object({
+              status: z.literal("authorization_required"),
+              sessionId: Id,
+              authorizationUrl: z.string().url(),
+            }),
+            z.object({
+              status: z.enum(["already_connected", "authorization_not_requested"]),
+            }),
+          ]),
+        ),
       complete: oc
         .input(z.object({ sessionId: Id, code: z.string().min(1), state: z.string().min(1) }))
         .output(z.object({ ok: z.literal(true) })),
