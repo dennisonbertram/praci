@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as core from "./index.js";
 import type { MailQueryOutcome, MailResultRow, MailResultSource } from "./mail-results.js";
 import {
   budgetJson,
@@ -440,5 +441,35 @@ describe("stripQuotedReply", () => {
     );
     const quoted = "On Mon, Jana wrote:\n> everything is quoted";
     expect(stripQuotedReply(quoted)).toBe(quoted);
+  });
+});
+
+describe("regressions", () => {
+  it("does not backtrack on a catastrophic pattern against a long row", () => {
+    const rows = [row(1, { subject: `${"a".repeat(40)}!` })];
+    const started = performance.now();
+    const result = grepRows(rows, { searchId: "s1", patterns: ["(a+)+$", "(a|aa)+$"] });
+    expect(result.totalMatches).toBe(0);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it("walks every row exactly once by following afterLine through budget cuts", () => {
+    const rows = Array.from({ length: 120 }, (_, i) =>
+      row(i + 1, { snippet: "s".repeat(400), subject: "t".repeat(400) }),
+    );
+    const seen: number[] = [];
+    let afterLine = 0;
+    for (let page = 0; page < 50; page++) {
+      const result = grepRows(rows, { searchId: "s1", maxResults: 200, afterLine });
+      if (result.matches.length === 0) break;
+      seen.push(...lines(result));
+      afterLine = result.matches[result.matches.length - 1]?.line ?? afterLine;
+    }
+    expect(seen).toEqual(rows.map((r) => r.line));
+  });
+
+  it("is exported from the package entry point", () => {
+    expect(core.grepRows).toBe(grepRows);
+    expect(core.resultRow).toBe(resultRow);
   });
 });
