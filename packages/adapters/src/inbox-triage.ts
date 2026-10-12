@@ -119,13 +119,24 @@ export async function triageReadiness(
   return (await triageStatus(deps, scope)).ready;
 }
 
+/** A run that finds the user busy looks again after this, in case mail arrived since the holder read its list. */
+const BUSY_RETRY_MS = 15_000;
+/** Longer than the slowest run: five model batches, each bounded by the timeouts above. */
+const RUN_LOCK_TIMEOUT_MS = 15 * 60_000;
+
 /**
  * Classifies a user's new inbox mail and syncs their to-dos. Only metadata and snippets reach the
  * model or the optional classifier, and the model has no tools. Every query is scoped to the user
  * and space.
+ *
+ * At most one run per user and space executes at a time, across all worker processes. Adding a job
+ * while the keyed job is running does not merge with it (graphile detaches the key from a running
+ * job and queues another), so refreshes, syncs and the backlog follow-up used to start parallel
+ * runs that sent the same messages to the model. The run holds a transaction-scoped advisory lock
+ * on its own connection; model calls and writes use other pooled connections. Postgres drops the
+ * lock when the transaction ends or its connection dies, so a crashed run cannot block the user.
  */
 export async function runInboxTriage(deps: InboxTriageDeps, scope: Scope): Promise<void> {
-  const { prisma } = deps;
   const { userId, spaceId } = scope;
   const started = Date.now();
   const ready = await triageReadiness(deps, scope);
@@ -133,6 +144,41 @@ export async function runInboxTriage(deps: InboxTriageDeps, scope: Scope): Promi
     getLogger().info("inbox triage skipped: no usable model or consent");
     return;
   }
+
+  const outcome = await deps.prisma.$transaction(
+    async (lock) => {
+      const [row] = await lock.$queryRaw<
+        { ok: boolean }[]
+      >`SELECT pg_try_advisory_xact_lock(hashtext('inbox.triage.run'), hashtext(${`${spaceId}:${userId}`})) AS ok`;
+      return row?.ok ? await triagePass(deps, ready, scope) : null;
+    },
+    { timeout: RUN_LOCK_TIMEOUT_MS, maxWait: 10_000 },
+  );
+
+  if (!outcome) {
+    getLogger().info("inbox triage deferred: another run holds this user");
+    await deps.jobs.enqueue(inboxTriageJob(userId, spaceId, new Date(Date.now() + BUSY_RETRY_MS)));
+    return;
+  }
+  // Queued only after the lock is released, so the follow-up does not find the user busy.
+  // A run that classified nothing never re-enqueues, so a failing model cannot loop.
+  if (outcome.hasBacklog && outcome.classified > 0) {
+    await deps.jobs.enqueue(inboxTriageJob(userId, spaceId));
+  }
+  getLogger().info("inbox triage finished", {
+    classified: outcome.classified,
+    backlog: outcome.hasBacklog,
+    durationMs: Date.now() - started,
+  });
+}
+
+async function triagePass(
+  deps: InboxTriageDeps,
+  ready: Ready,
+  scope: Scope,
+): Promise<{ classified: number; hasBacklog: boolean }> {
+  const { prisma } = deps;
+  const { userId, spaceId } = scope;
 
   const windowStart = new Date(Date.now() - WINDOW_MS);
   await markAlreadyHandled(prisma, scope, windowStart);
@@ -185,13 +231,7 @@ export async function runInboxTriage(deps: InboxTriageDeps, scope: Scope): Promi
   // Runs even when nothing was classified: a sent reply can end a to-do with no new triage.
   await syncTodos(prisma, scope, windowStart);
 
-  // A run that classified nothing never re-enqueues, so a failing model cannot loop.
-  if (hasBacklog && classified > 0) await deps.jobs.enqueue(inboxTriageJob(userId, spaceId));
-  getLogger().info("inbox triage finished", {
-    classified,
-    backlog: hasBacklog,
-    durationMs: Date.now() - started,
-  });
+  return { classified, hasBacklog };
 }
 
 /** True for a message when the cache holds a later sent message in the same thread and account. */
