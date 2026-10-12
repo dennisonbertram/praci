@@ -209,6 +209,126 @@ describe.skipIf(!databaseAvailable)(
         }
       }
     }, 45_000);
+
+    it("gives the Inbox agent only the mail tools, while an ordinary bot with the same Gmail connection also gets the Composio tools", async () => {
+      const gmail = new GmailApiEmulator({
+        now: new Date("2026-10-01T12:00:00Z"),
+        mailboxes: { "acct-mail": { address: "me@example.test", messages: [] } },
+      });
+      const fixtureKey = "offline-inbox-agent-tools-key";
+      const offered: Record<string, string[]> = {};
+      const systemText: Record<string, string> = {};
+      const record = (label: string) => ({
+        expect(request: {
+          tools?: Array<{ function: { name: string } }>;
+          messages: Array<{ role: string; content?: unknown }>;
+        }) {
+          offered[label] = (request.tools ?? []).map((tool) => tool.function.name);
+          systemText[label] = request.messages
+            .filter((message) => message.role === "system")
+            .map((message) => JSON.stringify(message.content))
+            .join("\n");
+        },
+        response: { type: "text" as const, text: "Done." },
+      });
+      const model = await startModelEmulator({
+        apiKey: fixtureKey,
+        steps: [record("ordinary"), record("inbox")],
+      });
+      const dataDir = await mkdtemp(path.join(tmpdir(), "rakazo-inbox-agent-tools-"));
+      let stop: (() => Promise<void>) | undefined;
+      try {
+        const { createApp } = await import("../../../apps/api/src/app.ts");
+        const handles = await createApp({
+          databaseUrl: process.env.DATABASE_URL!,
+          realtimeDatabaseUrl: process.env.DATABASE_URL!,
+          authUrl: fixtureOrigin,
+          webOrigin: fixtureOrigin,
+          dataDir,
+          sandboxProvider: "fake",
+          agentRuntime: "pi",
+          wakeupDriver: "memory",
+          signupsEnabled: "true",
+          composio: new MailComposioEmulator(gmail),
+          encryptionKey: "offline-mail-fixture-encryption-key",
+        });
+        stop = handles.stop;
+        const signup = await handles.app.request("/api/auth/sign-up/email", {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: fixtureOrigin },
+          body: JSON.stringify({
+            email: `inbox-agent-tools-${randomUUID()}@rakazo.test`,
+            password: "password12",
+            name: "Inbox agent tools fixture",
+          }),
+        });
+        expect(signup.status).toBeLessThan(400);
+        const cookie = sessionCookieHeader(signup);
+        await rpc(handles.app, cookie, "models/connect", {
+          provider: model.model.provider,
+          modelId: model.model.id,
+          baseUrl: model.baseUrl,
+          apiKey: fixtureKey,
+          contextWindow: 160_000,
+          maxTokens: 4096,
+        });
+        const ordinary = await rpc<{ id: string }>(handles.app, cookie, "bots/create", {
+          name: "Ordinary",
+          title: "",
+          description: "",
+          instructions: "Help with mail.",
+          notifyOnFinish: false,
+        });
+        await discardBotIntroRun(handles, cookie, ordinary.id);
+        const inbox = await rpc<{ id: string }>(handles.app, cookie, "inbox/agent");
+        for (const botId of [ordinary.id, inbox.id]) {
+          await rpc(handles.app, cookie, "bots/update", {
+            botId,
+            modelProvider: model.model.provider,
+            modelId: model.model.id,
+          });
+        }
+        const storedBot = await handles.prisma.bot.findUniqueOrThrow({ where: { id: ordinary.id } });
+        await handles.prisma.connection.create({
+          data: {
+            spaceId: storedBot.spaceId,
+            userId: storedBot.userId,
+            connectorId: "composio",
+            provider: "gmail",
+            providerRef: "acct-mail",
+            displayName: "Gmail",
+            status: "connected",
+            metadata: { mailAddress: "me@example.test" },
+          },
+        });
+        for (const botId of [ordinary.id, inbox.id]) {
+          const sent = await rpc<{ runId: string }>(handles.app, cookie, "threads/send", {
+            botId,
+            text: "Hello, whats on my email.",
+          });
+          await expect
+            .poll(
+              async () =>
+                (await handles.prisma.run.findUniqueOrThrow({ where: { id: sent.runId } })).status,
+              { timeout: 15_000, interval: 100 },
+            )
+            .toBe("completed");
+        }
+        model.assertComplete();
+        const connectorTools = (names: string[]) => names.filter((name) => /gmail/i.test(name));
+        expect(connectorTools(offered.ordinary ?? [])).not.toEqual([]);
+        expect(offered.inbox).toEqual(expect.arrayContaining(["mail_search", "mail_grep", "mail_get"]));
+        expect(connectorTools(offered.inbox ?? [])).toEqual([]);
+        expect(systemText.inbox).not.toContain("Connected plugins");
+      } finally {
+        try {
+          await stop?.();
+        } finally {
+          await model.close();
+          await rm(dataDir, { recursive: true, force: true });
+        }
+      }
+    }, 45_000);
   },
 );
 

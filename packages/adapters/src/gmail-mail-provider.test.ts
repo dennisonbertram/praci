@@ -226,7 +226,7 @@ describe("listMessages", () => {
     expect(m?.labelIds).toEqual(["INBOX", "UNREAD"]);
   });
 
-  it("keeps at most 4 requests in flight per account, independently per account", async () => {
+  it("keeps at most 12 requests in flight per account, independently per account", async () => {
     const inflight = new Map<string, number>();
     const peak = new Map<string, number>();
     let total = 0;
@@ -237,7 +237,7 @@ describe("listMessages", () => {
         return {
           status: 200,
           data: {
-            messages: Array.from({ length: 12 }, (_, i) => ({
+            messages: Array.from({ length: 30 }, (_, i) => ({
               id: `${accountRef}${i}`,
               threadId: "t",
             })),
@@ -266,20 +266,20 @@ describe("listMessages", () => {
     const [a, b] = await Promise.all([
       provider.listMessages(
         account({ id: "c-a", accountRef: "A" }),
-        { query: "", pageSize: 12 },
+        { query: "", pageSize: 30 },
         context(),
       ),
       provider.listMessages(
         account({ id: "c-b", accountRef: "B" }),
-        { query: "", pageSize: 12 },
+        { query: "", pageSize: 30 },
         context(),
       ),
     ]);
-    expect(a.messages).toHaveLength(12);
-    expect(b.messages).toHaveLength(12);
-    expect(peak.get("A")).toBe(4);
-    expect(peak.get("B")).toBe(4);
-    expect(totalPeak).toBe(8);
+    expect(a.messages).toHaveLength(30);
+    expect(b.messages).toHaveLength(30);
+    expect(peak.get("A")).toBe(12);
+    expect(peak.get("B")).toBe(12);
+    expect(totalPeak).toBe(24);
   });
 
   it("skips malformed messages and drops a message deleted between list and get", async () => {
