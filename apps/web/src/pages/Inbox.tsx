@@ -185,18 +185,25 @@ export function InboxPage({
       live = false;
     };
   }, [tab, tabKey, todoRefresh, paused]);
-  // Refetch when a sync lands or triage finishes, not on every reload or poll.
+  // Refetch when a sync lands, triage finishes, or triage turns on or off (consent, model),
+  // not on every reload or poll.
   const syncedAt = data?.syncedAt;
   const pending = data?.triagePending;
-  const seen = useRef<{ syncedAt: unknown; pending: unknown } | null>(null);
+  const triageState = `${data?.enabled}:${data?.triageBlocked?.reason ?? ""}`;
+  const seen = useRef<{ syncedAt: unknown; pending: unknown; triageState: string } | null>(null);
   useEffect(() => {
     if (!data) return;
     const before = seen.current;
-    seen.current = { syncedAt, pending };
-    if (before && (before.syncedAt !== syncedAt || (before.pending && !pending))) {
+    seen.current = { syncedAt, pending, triageState };
+    if (
+      before &&
+      (before.syncedAt !== syncedAt ||
+        before.triageState !== triageState ||
+        (before.pending && !pending))
+    ) {
       setTodoRefresh((n) => n + 1);
     }
-  }, [data, syncedAt, pending]);
+  }, [data, syncedAt, pending, triageState]);
 
   // Triage runs after the sync returns, so refetch a few times while the list reports it pending.
   useEffect(() => {

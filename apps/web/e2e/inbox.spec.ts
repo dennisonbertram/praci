@@ -373,6 +373,8 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
   await captureScreenshot(page, testInfo, "inbox-todo-card");
 
   // Checking a to-do sends the change and keeps the item visible, struck through.
+  // A narrow container shows two open to-dos and "1 more".
+  await card.getByRole("button", { name: "1 more" }).click();
   const checkbox = card.getByRole("checkbox", { name: "Pay the October invoice" });
   await expect(checkbox).not.toBeChecked();
   await checkbox.click();
@@ -530,21 +532,18 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await page.getByRole("menuitem", { name: "Clear", exact: true }).click();
   await expect(row(/CI passed on main/)).toBeVisible();
 
-  // Mark noise from the keyboard-reachable row menu: the row leaves Needs reply, stays listed, and
+  // Mark noise with the row's hover buttons: the row leaves Needs reply, stays listed, and
   // Undo restores it. Nothing is deleted.
   const needsReply = main
     .getByRole("heading", { name: "Needs reply", level: 2 })
     .locator("xpath=..");
-  await expect(needsReply.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
-  const actions = needsReply
-    .getByRole("button", { name: /Offsite dates/ })
-    .locator("xpath=..")
-    .getByRole("button", { name: "More", exact: true });
-  await actions.focus();
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("menuitemcheckbox", { name: "Mark important" })).toBeVisible();
+  const offsite = needsReply.getByRole("button", { name: /Offsite dates/ });
+  await expect(offsite).toBeVisible();
+  const rowButtons = offsite.locator("xpath=..");
+  await offsite.hover();
+  await expect(rowButtons.getByRole("button", { name: "Mark important" })).toBeVisible();
   await captureScreenshot(page, testInfo, "inbox-feedback-menu");
-  await page.getByRole("menuitemcheckbox", { name: "Mark noise" }).click();
+  await rowButtons.getByRole("button", { name: "Mark noise" }).click();
   await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: "noise" });
   const status = main.getByRole("status");
   await expect(status).toContainText("Marked noise");
@@ -555,18 +554,18 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await status.getByRole("button", { name: "Undo" }).click();
   await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: null });
   await expect(status).toBeEmpty();
-  await expect(needsReply.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+  await expect(offsite).toBeVisible();
 
-  // Marking a sender important from the menu shows its checked state next time.
-  await actions.focus();
-  await page.keyboard.press("Enter");
-  await page.getByRole("menuitemcheckbox", { name: "Mark important" }).click();
+  // Marking a sender important shows its pressed state next time.
+  await offsite.hover();
+  await rowButtons.getByRole("button", { name: "Mark important" }).click();
   await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: "important" });
-  // A checkbox item leaves the menu open; close it, then reopen with the pointer.
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("menu")).toHaveCount(0);
-  await actions.click();
-  await expect(page.getByRole("menuitemcheckbox", { name: "Mark important" })).toBeChecked();
+  await expect(rowButtons.getByRole("button", { name: "Mark important" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // The mark triggers a list refetch; stop answering it so teardown cannot race the handler.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
 });
 
 test("Inbox asks before a model sorts the mail, and Allow starts triage", async ({
@@ -796,7 +795,8 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
 
   // One label per row, by triage; the scam row keeps its warning icon beside "Junk".
   const labelOf = (name: RegExp) => row(name).locator('[data-slot="badge"]');
-  await expect(labelOf(/Offsite dates/)).toHaveText("Needs attention");
+  // Needs reply already says it, so its rows carry no "Needs attention" label.
+  await expect(labelOf(/Offsite dates/)).toHaveCount(0);
   await expect(labelOf(/CI passed on main/)).toHaveText("Newsletter");
   await expect(labelOf(/You won a free cruise/)).toHaveText("Spam");
   await expect(labelOf(/Verify your account today/)).toHaveText("Junk");
@@ -804,7 +804,7 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
     row(/Verify your account today/).getByRole("img", { name: "Suspicious" }),
   ).toBeVisible();
   await expect(row(/Invoice #1043/).locator('[data-slot="badge"]')).toHaveCount(0);
-  await expect(main.locator('[data-slot="badge"]')).toHaveCount(4);
+  await expect(main.locator('[data-slot="badge"]')).toHaveCount(3);
 
   const box = async (locator: Locator) => {
     const found = await locator.boundingBox();
@@ -839,20 +839,20 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
       description: `${layout.scheme} pane ${Math.round(pane.width)}px`,
     });
 
-    // The header is one line: title, search, Important and the filter share a vertical center.
+    // Title, Important and the filter share a vertical center. A narrow pane moves the search to
+    // its own row under them; a wide one keeps it on the same line, left of Important.
     const title = await box(main.getByRole("heading", { name: "Inbox", level: 1 }));
-    const parts = [
-      main.getByRole("searchbox", { name: "Search mail" }),
-      main.getByRole("button", { name: "Important", exact: true }),
-      page.getByTestId("inbox-filter"),
-    ];
-    for (const part of parts) {
-      const found = await box(part);
-      expect(Math.abs(found.y + found.height / 2 - (title.y + title.height / 2))).toBeLessThan(8);
+    const center = (found: { y: number; height: number }) => found.y + found.height / 2;
+    const search = await box(main.getByRole("searchbox", { name: "Search mail" }));
+    const important = await box(main.getByRole("button", { name: "Important", exact: true }));
+    for (const found of [important, await box(page.getByTestId("inbox-filter"))]) {
+      expect(Math.abs(center(found) - center(title))).toBeLessThan(8);
     }
-    const search = await box(parts[0]);
-    const important = await box(parts[1]);
-    expect(search.x + search.width).toBeLessThanOrEqual(important.x);
+    if (Math.abs(center(search) - center(title)) < 8) {
+      expect(search.x + search.width).toBeLessThanOrEqual(important.x);
+    } else {
+      expect(search.y).toBeGreaterThanOrEqual(title.y + title.height);
+    }
 
     // Account tabs sit under the header, starting at the content's left edge.
     const tabs = await box(page.getByRole("tablist"));

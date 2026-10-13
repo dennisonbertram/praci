@@ -289,3 +289,15 @@ it("returns focus to the search field after Clear", async () => {
   await click(clear);
   expect(document.activeElement).toBe(c.querySelector("input"));
 });
+
+it("refetches the to-dos when triage turns on without a new sync", async () => {
+  rpcMock.list.mockResolvedValue(
+    list([row("a")], { enabled: false, triageBlocked: { reason: "needs_consent" } as never }),
+  );
+  await render();
+  const before = rpcMock.todos.mock.calls.length;
+  // Same syncedAt and no pending triage: only the enabled/blocked state changes.
+  rpcMock.list.mockResolvedValue(list([row("a")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  expect(rpcMock.todos.mock.calls.length).toBeGreaterThan(before);
+});
