@@ -259,3 +259,33 @@ it("closing a list-opened message goes Back, a deep link replaces", async () => 
   await click(byText(d, "close"));
   expect(location.search).toBe("");
 });
+
+it("Escape in the search field clears the text and the applied search", async () => {
+  const c = await render(["/app/inbox?q=zebra"]);
+  const input = c.querySelector("input") as HTMLInputElement;
+  expect(input.value).toBe("zebra");
+  await press("Escape", input);
+  expect(input.value).toBe("");
+  expect(location.search).toBe("");
+});
+
+it("Escape with no applied search only clears the typed text", async () => {
+  const c = await render();
+  const input = c.querySelector("input") as HTMLInputElement;
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    setter?.call(input, "draft");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(input.value).toBe("draft");
+  await press("Escape", input);
+  expect(input.value).toBe("");
+  expect(location.search).toBe("");
+});
+
+it("returns focus to the search field after Clear", async () => {
+  const c = await render(["/app/inbox?q=zebra"]);
+  const clear = c.querySelector('button[aria-label="Clear"]');
+  await click(clear);
+  expect(document.activeElement).toBe(c.querySelector("input"));
+});

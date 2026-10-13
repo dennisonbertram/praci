@@ -55,10 +55,14 @@ function openLinksInNewTab(html: string): string {
   return doc.documentElement.outerHTML;
 }
 
+// Email is laid out for a narrow frame: shrink media and tables, wrap long words, and scroll
+// sideways (never clip) when a fixed-width table is still wider than the frame.
+const EMAIL_FIT = `<meta name="viewport" content="width=device-width,initial-scale=1"><style>img,video,table{max-width:100%!important;height:auto}table{width:auto!important}body{overflow-x:auto;overflow-wrap:anywhere}</style>`;
+
 function withPreviewDocument(html: string, scripts: boolean, email: boolean): string {
   const meta = `<meta http-equiv="Content-Security-Policy" content="${previewCsp(scripts, email)}">`;
   const referrer = `<meta name="referrer" content="no-referrer">`;
-  return `${meta}${referrer}${scripts ? PREVIEW_GUARD : ""}${email ? openLinksInNewTab(html) : html}`;
+  return `${meta}${referrer}${scripts ? PREVIEW_GUARD : ""}${email ? EMAIL_FIT + openLinksInNewTab(html) : html}`;
 }
 
 function shellDocument(innerHtml: string, scripts: boolean, email: boolean): string {

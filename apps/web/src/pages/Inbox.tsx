@@ -392,6 +392,11 @@ export function InboxPage({
               name="inbox-search"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                setDraft("");
+                if (query) setParam("q", "");
+              }}
               placeholder={t`Search mail`}
               aria-label={t`Search mail`}
               maxLength={MAX_QUERY}
@@ -406,6 +411,7 @@ export function InboxPage({
                   onClick={() => {
                     setDraft("");
                     setParam("q", "");
+                    searchRef.current?.querySelector("input")?.focus();
                   }}
                 >
                   <X aria-hidden="true" />

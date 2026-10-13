@@ -228,3 +228,16 @@ function sourceAllows(source: string, url: URL): boolean {
   }
   return false;
 }
+
+it("email mode fits the frame width: viewport meta, max-width media and tables, scroll not clip", async () => {
+  const view = await render("<table width=900><tr><td>x</td></tr></table>", false, true);
+
+  expect(view.srcDoc).toContain("width=device-width");
+  expect(view.srcDoc).toContain("img,video,table{max-width:100%!important");
+  expect(view.srcDoc).toContain("overflow-x:auto");
+
+  await view.cleanup();
+  const plain = await render("<p>x</p>");
+  expect(plain.srcDoc).not.toContain("width=device-width");
+  await plain.cleanup();
+});
