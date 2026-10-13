@@ -989,8 +989,16 @@ msgstr "清空与 {0} 的对话？"
 msgid "Clear conversation"
 msgstr "清空对话"
 
+#: src/pages/Inbox.tsx
+msgid "Clear filter"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Clear filter {label}"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Clear search"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -1007,6 +1015,7 @@ msgstr ""
 
 #: src/components/ErrorBoundary.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
@@ -1132,6 +1141,7 @@ msgid "Complete"
 msgstr "完成"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/Inbox.tsx
 msgid "Compose"
 msgstr ""
@@ -2393,6 +2403,7 @@ msgstr "忘记密码？"
 
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 msgid "Forward"
 msgstr ""
 
@@ -2667,6 +2678,10 @@ msgstr "保留记忆"
 #: src/pages/RoutineEditor.tsx
 msgid "key"
 msgstr "密钥"
+
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Keyboard shortcuts"
+msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Knowledge"
@@ -3190,6 +3205,11 @@ msgstr ""
 msgid "Newsletters"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Next message"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No agent connections yet."
 msgstr "还没有 Agent 连接。"
@@ -3242,6 +3262,10 @@ msgstr "已停用"
 msgid "No mail"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "No mail matches this filter"
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "No managed app catalog is configured on this deployment."
 msgstr "此部署未配置托管应用目录。"
@@ -3286,6 +3310,10 @@ msgstr ""
 #: src/pages/SpaceSearch.tsx
 msgid "No results"
 msgstr "无结果"
+
+#: src/pages/Inbox.tsx
+msgid "No results for \"{query}\""
+msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "No runs match these filters."
@@ -3398,6 +3426,7 @@ msgstr "每月 1 日 {0}"
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
 
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -3599,6 +3628,11 @@ msgstr "预览 {0}"
 
 #: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Previous message"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3889,12 +3923,14 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "回复"
 
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 msgid "Reply all"
 msgstr ""
 
@@ -4132,6 +4168,7 @@ msgstr "回答是或否，或一句话说明。"
 msgid "Scheduling"
 msgstr ""
 
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -4822,6 +4859,7 @@ msgstr ""
 msgid "Trial ends {day}"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx

@@ -34,6 +34,7 @@ vi.mock("../lib/rpc", () => ({
     },
   },
 }));
+vi.mock("../lib/inbox-message-cache", () => ({ prefetchInboxMessage: () => {} }));
 vi.mock("../components/AiDataSharing", () => ({ InboxConsentPrompt: () => null }));
 vi.mock("../components/ComposeEmail", () => ({
   ComposeEmail: () => <div data-testid="compose" />,

@@ -38,6 +38,7 @@ import {
   readInboxListState,
   setInboxListParam,
 } from "../lib/inbox-list-input";
+import { prefetchInboxMessage } from "../lib/inbox-message-cache";
 import { syncErrorText } from "../lib/inbox-sync-error";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -347,6 +348,13 @@ export function InboxPage({
     compose: accounts.length > 0 ? () => setComposing(true) : undefined,
     help: () => setHelp(true),
   });
+  // Warm the cache so the first messages and the selected one open instantly.
+  useEffect(() => {
+    for (const id of ids.slice(0, 3)) prefetchInboxMessage(id);
+  }, [ids]);
+  useEffect(() => {
+    if (selectedId) prefetchInboxMessage(selectedId);
+  }, [selectedId]);
   // Back from a message lands on its row.
   const wasOpen = useRef(false);
   useEffect(() => {
