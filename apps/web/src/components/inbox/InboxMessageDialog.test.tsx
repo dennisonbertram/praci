@@ -112,3 +112,13 @@ it("Try again refetches after a failure", async () => {
   await flush();
   expect(document.body.textContent).toContain("Subject m9");
 });
+
+it("opens with focus on the dialog, not on the previous-message button", async () => {
+  await open();
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  });
+  const popup = document.querySelector('[data-slot="dialog-content"]');
+  expect(document.activeElement).toBe(popup);
+  expect(document.activeElement?.getAttribute("aria-label")).not.toBe("Previous message");
+});

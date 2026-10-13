@@ -133,6 +133,10 @@ msgstr "{days} дн. назад"
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr ""
 
+#: src/components/inbox/TodoCard.tsx
+msgid "{hiddenCount} more"
+msgstr ""
+
 #: src/lib/relative-time.ts
 #: src/pages/ActivityList.tsx
 msgid "{hours}h ago"
@@ -4361,6 +4365,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Show Inbox agent"
+msgstr ""
+
+#: src/components/inbox/TodoCard.tsx
+msgid "Show less"
 msgstr ""
 
 #: src/pages/Artifacts.tsx

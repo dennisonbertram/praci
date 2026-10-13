@@ -371,13 +371,13 @@ export function InboxPage({
 
   return (
     <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
-      <div className="mb-4 flex items-center gap-2">
-        <h1 className="me-1 shrink-0 text-lg font-medium">
+      <div className="mb-4 flex flex-wrap items-center gap-2 @md:flex-nowrap">
+        <h1 className="me-auto shrink-0 text-lg font-medium @md:me-1">
           <Trans>Inbox</Trans>
         </h1>
         <form
           ref={searchRef}
-          className="min-w-0 flex-1"
+          className="order-last min-w-0 basis-full @md:order-none @md:flex-1 @md:basis-auto"
           onSubmit={(event) => {
             event.preventDefault();
             setParam("q", draft.trim());
@@ -424,7 +424,7 @@ export function InboxPage({
           <Toggle
             variant="outline"
             size="sm"
-            className="aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90"
+            className="pointer-coarse:h-10 aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90"
             pressed={view === "important"}
             onPressedChange={(pressed) => setParam("view", pressed ? "important" : "")}
           >
@@ -438,6 +438,7 @@ export function InboxPage({
               <Button
                 variant={filter || (triage && category) ? "secondary" : "outline"}
                 size="sm"
+                className="pointer-coarse:h-10 pointer-coarse:min-w-10"
               />
             }
             aria-label={filter || (triage && category) ? undefined : t`Filter`}
@@ -495,6 +496,7 @@ export function InboxPage({
         <Button
           variant="outline"
           size="icon-sm"
+          className="pointer-coarse:size-10"
           aria-label={t`Compose`}
           disabled={accounts.length === 0}
           onClick={() => setComposing(true)}
@@ -505,6 +507,7 @@ export function InboxPage({
           <Button
             variant="ghost"
             size="icon-sm"
+            className="pointer-coarse:size-10"
             aria-label={t`Show Inbox agent`}
             onClick={onShowAgent}
           >

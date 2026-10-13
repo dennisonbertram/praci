@@ -1,10 +1,12 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { InboxTodo } from "@rakazo/contracts";
 import { dueTone, localDaysUntil } from "@rakazo/core";
-import { Card, Checkbox } from "@rakazo/ui-web";
+import { Button, Card, Checkbox } from "@rakazo/ui-web";
 import { useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+
+const COLLAPSED_OPEN = 2;
 
 /** The open to-dos triage keeps; the page loads them with the list. Hidden when there is nothing to do. */
 export function TodoCard({
@@ -16,9 +18,12 @@ export function TodoCard({
 }) {
   const { t, i18n: lingui } = useLingui();
   const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState(false);
   if (todos.length === 0) return null;
   const now = new Date();
   const ordered = [...todos].sort((a, b) => Number(a.doneAt !== null) - Number(b.doneAt !== null));
+  const openCount = ordered.filter((todo) => todo.doneAt === null).length;
+  const hiddenCount = Math.max(0, openCount - COLLAPSED_OPEN);
   const dueLabel = (dueOn: string, days: number) => {
     if (days === 0) return t`Today`;
     const [year = 0, month = 1, day = 1] = dueOn.split("-").map(Number);
@@ -52,20 +57,22 @@ export function TodoCard({
         </p>
       ) : null}
       <ul>
-        {ordered.map((todo) => {
+        {ordered.map((todo, index) => {
           const days = todo.dueOn ? localDaysUntil(todo.dueOn, now) : null;
           const tone = dueTone(days, todo.priority);
           const done = todo.doneAt !== null;
+          // Narrow containers show only the first few open to-dos until expanded.
+          const collapsed = !expanded && !done && index >= COLLAPSED_OPEN;
           return (
             <li
               key={todo.id}
-              className="flex items-start gap-2.5 border-t border-border py-1.5 first:border-t-0"
+              className={`items-start gap-2.5 border-t border-border py-1.5 first:border-t-0 ${collapsed ? "hidden @3xl:flex" : "flex"}`}
             >
               <Checkbox
                 aria-label={todo.text}
                 checked={done}
                 onCheckedChange={(checked) => setDone(todo, checked)}
-                className="mt-0.5"
+                className="mt-0.5 pointer-coarse:size-5"
               />
               <div
                 dir="auto"
@@ -89,6 +96,17 @@ export function TodoCard({
           );
         })}
       </ul>
+      {hiddenCount > 0 ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="@3xl:hidden self-start text-muted-foreground"
+          aria-expanded={expanded}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? <Trans>Show less</Trans> : <Trans>{hiddenCount} more</Trans>}
+        </Button>
+      ) : null}
     </Card>
   );
 }
