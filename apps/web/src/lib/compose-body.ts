@@ -19,14 +19,20 @@ function linkify(text: string): string {
 export function textToHtml(text: string): string {
   const out: string[] = [];
   let quote: string[][] | null = null;
+  let header: string[] | null = null;
   const flush = () => {
     if (!quote) return;
     out.push(`<blockquote>${quote.map((p) => `<p>${p.join("<br>")}</p>`).join("")}</blockquote>`);
     quote = null;
   };
+  const flushHeader = () => {
+    if (header) out.push(`<blockquote><p>${header.join("<br>")}</p></blockquote>`);
+    header = null;
+  };
   for (const line of text.replace(/\r\n?/g, "\n").split("\n")) {
     const quoted = /^>( ?)(.*)$/.exec(line);
     if (quoted) {
+      flushHeader();
       quote ??= [[]];
       const content = linkify(quoted[2] ?? "");
       if (content) (quote[quote.length - 1] as string[]).push(content);
@@ -34,9 +40,16 @@ export function textToHtml(text: string): string {
       continue;
     }
     flush();
-    out.push(`<p>${escapeHtml(line)}</p>`);
+    // The forwarded header block (up to its blank line) is quoted, so typing cannot merge into it.
+    if (/^-{5,} Forwarded message -{5,}$/.test(line)) header = [escapeHtml(line)];
+    else if (header && line) header.push(escapeHtml(line));
+    else {
+      flushHeader();
+      out.push(`<p>${escapeHtml(line)}</p>`);
+    }
   }
   flush();
+  flushHeader();
   return out.join("");
 }
 

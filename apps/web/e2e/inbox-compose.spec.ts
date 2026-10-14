@@ -288,12 +288,25 @@ test("forwarding keeps the original's attachments, and a removed one stays behin
   await connectTwoGmailAccounts(page);
   const before = await gmail(page);
 
-  await page.getByRole("main").getByRole("button", { name: /Q3 report/ }).click();
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: /Q3 report/ })
+    .click();
   await page.getByRole("button", { name: "Forward", exact: true }).click();
   const composer = page.getByRole("dialog", { name: "Forward" });
   const files = composer.getByRole("list", { name: "Attachments" });
   await expect(files).toContainText("q3-report.pdf");
   await expect(files).toContainText("budget.csv");
+  // To has focus; Tab moves the caret to the empty line above the quoted header.
+  await expect(composer.getByLabel("To")).toBeFocused();
+  const fwdBody = composer.getByRole("textbox", { name: "Message" });
+  await expect(fwdBody).toHaveAttribute("contenteditable", "true");
+  await composer.getByLabel("Subject").focus();
+  await page.keyboard.press("Tab");
+  await expect(fwdBody).toBeFocused();
+  await page.keyboard.type("FYI");
+  await expect(fwdBody.locator("p").first()).toHaveText("FYI");
+  await expect(fwdBody.locator("blockquote")).not.toContainText("FYI");
   await captureScreenshot(page, testInfo, "compose-forward");
   await composer.getByRole("button", { name: "Remove budget.csv" }).click();
   await composer.getByLabel("To").fill("lee@example.test,");

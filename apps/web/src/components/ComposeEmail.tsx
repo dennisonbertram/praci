@@ -301,8 +301,11 @@ export function ComposeEmail({
     };
     setFields(fieldsRef.current);
     if (restore) editor.commands.focus("end", { scrollIntoView: false });
-    else if (seed.kind === "forward") toRef.current?.focus({ preventScroll: true });
-    else editor.commands.focus("start", { scrollIntoView: false });
+    else if (seed.kind === "forward") {
+      // Focus starts at To; tabbing down lands above the forwarded block.
+      editor.commands.setTextSelection(1);
+      toRef.current?.focus({ preventScroll: true });
+    } else editor.commands.focus("start", { scrollIntoView: false });
   }, [loading, editor, seed.kind, restore]);
 
   // Closing the page or the message view keeps what was typed.
@@ -424,7 +427,10 @@ export function ComposeEmail({
   };
 
   // A reply or forward hides its quoted original until asked; it is still sent.
-  const collapsed = seed.kind !== "new" && !quoteOpen && fields.html.includes("<blockquote");
+  const collapsed =
+    (seed.kind === "reply" || seed.kind === "replyAll") &&
+    !quoteOpen &&
+    fields.html.includes("<blockquote");
 
   const title =
     seed.kind === "reply"
@@ -577,19 +583,23 @@ export function ComposeEmail({
             if (event.target === event.currentTarget) editor?.commands.focus("end");
           }}
         >
-          <div data-collapsed={collapsed} className="data-[collapsed=true]:[&_blockquote]:hidden">
+          <div
+            data-collapsed={collapsed}
+            className="data-[collapsed=true]:[&_blockquote]:hidden data-[collapsed=true]:[&_p:has(+blockquote)]:hidden data-[collapsed=true]:[&_blockquote+p:last-child:has(>br:only-child)]:hidden data-[collapsed=true]:[&_[contenteditable]]:pb-0"
+          >
             <EditorContent editor={editor} />
           </div>
           {collapsed ? (
-            <Button
-              variant="ghost"
-              size="xs"
-              className="mx-4 mb-3 px-2.5 text-base leading-none"
+            <button
+              type="button"
               aria-label={t`Show quoted text`}
+              className="group mx-4 mb-3 flex h-6 items-center rounded-full outline-none"
               onClick={() => setQuoteOpen(true)}
             >
-              …
-            </Button>
+              <span className="flex h-3 w-6 items-center justify-center rounded-full bg-muted pb-0.5 text-xs leading-none text-muted-foreground group-hover:bg-border group-focus-visible:ring-2 group-focus-visible:ring-ring/50">
+                …
+              </span>
+            </button>
           ) : null}
         </div>
 

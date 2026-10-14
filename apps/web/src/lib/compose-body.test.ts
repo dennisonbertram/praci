@@ -24,3 +24,15 @@ describe("formatBytes", () => {
     expect(formatBytes(2_500_000)).toBe("2.5 MB");
   });
 });
+
+describe("textToHtml forward header", () => {
+  it("quotes the forwarded header block up to its blank line", () => {
+    expect(
+      textToHtml(
+        "\n\n---------- Forwarded message ---------\nFrom: A <a@x.test>\nSubject: Hi\n\nBody",
+      ),
+    ).toBe(
+      "<p></p><p></p><blockquote><p>---------- Forwarded message ---------<br>From: A &lt;a@x.test&gt;<br>Subject: Hi</p></blockquote><p></p><p>Body</p>",
+    );
+  });
+});
