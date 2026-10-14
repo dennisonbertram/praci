@@ -295,6 +295,10 @@ msgstr "Ekle"
 msgid "Add a model in Settings to use this."
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Add a recipient."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Add a run time for this one-shot."
 msgstr ""
@@ -549,6 +553,10 @@ msgstr "API anahtarı üstbilgisi"
 msgid "Appearance"
 msgstr "Görünüm"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Apply"
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Approval boundaries"
 msgstr "Onay sınırları"
@@ -635,6 +643,10 @@ msgstr "saat {timeSelect}"
 msgid "Attach file"
 msgstr "Dosya ekle"
 
+#: src/components/ComposeEmail.tsx
+msgid "Attach files"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Attached {path}"
 msgstr ""
@@ -644,8 +656,14 @@ msgstr ""
 msgid "Attachment"
 msgstr "Ek"
 
+#: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Attachments"
+msgstr ""
+
+#. placeholder {0}: formatBytes(MAX_COMPOSE_ATTACHMENT_BYTES)
+#: src/components/ComposeEmail.tsx
+msgid "Attachments can't be over {0}."
 msgstr ""
 
 #. placeholder {0}: email.attachments
@@ -760,6 +778,10 @@ msgstr ""
 msgid "Board"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Bold"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Booting live desktop…"
 msgstr "Canlı masaüstü başlatılıyor…"
@@ -831,6 +853,10 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Built-in"
 msgstr "Yerleşik"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Bulleted list"
+msgstr ""
 
 #: src/App.tsx
 msgid "Can't reach the server."
@@ -1001,6 +1027,10 @@ msgstr ""
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Clear formatting"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Clear search"
 msgstr ""
@@ -1017,6 +1047,7 @@ msgstr ""
 msgid "Client secret"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -1144,7 +1175,6 @@ msgstr ""
 msgid "Complete"
 msgstr "Tamamlandı"
 
-#: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/Inbox.tsx
 msgid "Compose"
@@ -2173,6 +2203,10 @@ msgstr "Taslak beceri"
 msgid "Drag, drop, or paste an image"
 msgstr "Görüntüyü sürükleyip bırakın veya yapıştırın"
 
+#: src/components/ComposeEmail.tsx
+msgid "Drop files to attach"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
 msgstr "Çoğalt"
@@ -2397,6 +2431,10 @@ msgstr "Tamamlandı."
 msgid "Finishing MCP connection…"
 msgstr "MCP bağlantısı tamamlanıyor…"
 
+#: src/components/ComposeEmail.tsx
+msgid "Fix or remove the highlighted addresses."
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Flag unexpected actions"
 msgstr ""
@@ -2404,6 +2442,14 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "Parolanızı mı unuttunuz?"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Formatting"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Formatting options"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -2611,6 +2657,10 @@ msgstr "Varsayılanı devral"
 msgid "Inputs"
 msgstr "Girdiler"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Insert link"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Instance API key"
 msgstr "Instance API anahtarı"
@@ -2652,6 +2702,10 @@ msgstr "Yalıtılmış"
 
 #: src/pages/Artifacts.tsx
 msgid "Isolated preview — no access to your account"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Italic"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -2722,6 +2776,10 @@ msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Link address"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
@@ -2966,7 +3024,7 @@ msgstr ""
 msgid "Mentions only"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
+#: src/components/compose/RichTextEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "Mesaj"
@@ -3174,6 +3232,10 @@ msgstr "Yeni bot"
 #: src/pages/GroupPanel.tsx
 msgid "New group"
 msgstr "Yeni grup"
+
+#: src/components/ComposeEmail.tsx
+msgid "New message"
+msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
 msgid "New open-work item"
@@ -3392,6 +3454,10 @@ msgstr "Şimdi"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Now using {0}."
 msgstr "Artık {0} kullanılıyor."
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Numbered list"
+msgstr ""
 
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
@@ -3835,6 +3901,10 @@ msgid "Remove"
 msgstr "Kaldır"
 
 #. placeholder {0}: attachment.file.name
+#. placeholder {0}: file.name
+#. placeholder {0}: recipient.address
+#: src/components/compose/RecipientField.tsx
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "{0} kaldır"
@@ -3854,6 +3924,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Remove link"
 msgstr ""
 
 #. placeholder {0}: mention.name
@@ -4896,6 +4970,10 @@ msgstr "Atanmamış"
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Underline"
 msgstr ""
 
 #: src/pages/Inbox.tsx

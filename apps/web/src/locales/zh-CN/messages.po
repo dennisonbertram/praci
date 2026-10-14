@@ -295,6 +295,10 @@ msgstr "添加"
 msgid "Add a model in Settings to use this."
 msgstr "请在设置中添加模型后再使用。"
 
+#: src/components/ComposeEmail.tsx
+msgid "Add a recipient."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Add a run time for this one-shot."
 msgstr "为此一次性任务添加运行时间。"
@@ -549,6 +553,10 @@ msgstr "API 密钥请求头"
 msgid "Appearance"
 msgstr "外观"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Apply"
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Approval boundaries"
 msgstr "审批边界"
@@ -635,6 +643,10 @@ msgstr "{timeSelect}"
 msgid "Attach file"
 msgstr "附加文件"
 
+#: src/components/ComposeEmail.tsx
+msgid "Attach files"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Attached {path}"
 msgstr ""
@@ -644,8 +656,14 @@ msgstr ""
 msgid "Attachment"
 msgstr "附件"
 
+#: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Attachments"
+msgstr ""
+
+#. placeholder {0}: formatBytes(MAX_COMPOSE_ATTACHMENT_BYTES)
+#: src/components/ComposeEmail.tsx
+msgid "Attachments can't be over {0}."
 msgstr ""
 
 #. placeholder {0}: email.attachments
@@ -760,6 +778,10 @@ msgstr ""
 msgid "Board"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Bold"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Booting live desktop…"
 msgstr "正在启动实时桌面…"
@@ -831,6 +853,10 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Built-in"
 msgstr "内置"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Bulleted list"
+msgstr ""
 
 #: src/App.tsx
 msgid "Can't reach the server."
@@ -1001,6 +1027,10 @@ msgstr ""
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Clear formatting"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Clear search"
 msgstr ""
@@ -1017,6 +1047,7 @@ msgstr ""
 msgid "Client secret"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -1144,7 +1175,6 @@ msgstr ""
 msgid "Complete"
 msgstr "完成"
 
-#: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/Inbox.tsx
 msgid "Compose"
@@ -2173,6 +2203,10 @@ msgstr "技能草稿"
 msgid "Drag, drop, or paste an image"
 msgstr "拖放或粘贴图片"
 
+#: src/components/ComposeEmail.tsx
+msgid "Drop files to attach"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
 msgstr "复制"
@@ -2397,6 +2431,10 @@ msgstr "已完成。"
 msgid "Finishing MCP connection…"
 msgstr "正在完成 MCP 连接…"
 
+#: src/components/ComposeEmail.tsx
+msgid "Fix or remove the highlighted addresses."
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Flag unexpected actions"
 msgstr "标记异常操作"
@@ -2404,6 +2442,14 @@ msgstr "标记异常操作"
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "忘记密码？"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Formatting"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Formatting options"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -2611,6 +2657,10 @@ msgstr "沿用默认"
 msgid "Inputs"
 msgstr "输入"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Insert link"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Instance API key"
 msgstr "实例 API 密钥"
@@ -2652,6 +2702,10 @@ msgstr "隔离"
 
 #: src/pages/Artifacts.tsx
 msgid "Isolated preview — no access to your account"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Italic"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -2723,6 +2777,10 @@ msgstr "Linear 工单"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
 msgstr "关联聊天应用"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Link address"
+msgstr ""
 
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
@@ -2966,7 +3024,7 @@ msgstr "提及"
 msgid "Mentions only"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
+#: src/components/compose/RichTextEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "消息"
@@ -3174,6 +3232,10 @@ msgstr "新建 Bot"
 #: src/pages/GroupPanel.tsx
 msgid "New group"
 msgstr "新建群组"
+
+#: src/components/ComposeEmail.tsx
+msgid "New message"
+msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
 msgid "New open-work item"
@@ -3392,6 +3454,10 @@ msgstr "现在"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Now using {0}."
 msgstr "正在使用 {0}。"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Numbered list"
+msgstr ""
 
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
@@ -3835,6 +3901,10 @@ msgid "Remove"
 msgstr "移除"
 
 #. placeholder {0}: attachment.file.name
+#. placeholder {0}: file.name
+#. placeholder {0}: recipient.address
+#: src/components/compose/RecipientField.tsx
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "移除 {0}"
@@ -3854,6 +3924,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Remove link"
 msgstr ""
 
 #. placeholder {0}: mention.name
@@ -4897,6 +4971,10 @@ msgstr "未分配"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "不可用"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Underline"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Undo"

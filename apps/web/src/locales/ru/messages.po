@@ -295,6 +295,10 @@ msgstr "Добавить"
 msgid "Add a model in Settings to use this."
 msgstr "Чтобы использовать это, добавьте модель в настройках."
 
+#: src/components/ComposeEmail.tsx
+msgid "Add a recipient."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Add a run time for this one-shot."
 msgstr "Добавьте время выполнения для разового запуска."
@@ -549,6 +553,10 @@ msgstr "Заголовок ключа API"
 msgid "Appearance"
 msgstr "Внешний вид"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Apply"
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Approval boundaries"
 msgstr "Границы одобрения"
@@ -635,6 +643,10 @@ msgstr "в {timeSelect}"
 msgid "Attach file"
 msgstr "Прикрепить файл"
 
+#: src/components/ComposeEmail.tsx
+msgid "Attach files"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Attached {path}"
 msgstr ""
@@ -644,8 +656,14 @@ msgstr ""
 msgid "Attachment"
 msgstr "Вложение"
 
+#: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Attachments"
+msgstr ""
+
+#. placeholder {0}: formatBytes(MAX_COMPOSE_ATTACHMENT_BYTES)
+#: src/components/ComposeEmail.tsx
+msgid "Attachments can't be over {0}."
 msgstr ""
 
 #. placeholder {0}: email.attachments
@@ -760,6 +778,10 @@ msgstr ""
 msgid "Board"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Bold"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Booting live desktop…"
 msgstr "Загрузка рабочего стола…"
@@ -831,6 +853,10 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Built-in"
 msgstr "Встроенный"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Bulleted list"
+msgstr ""
 
 #: src/App.tsx
 msgid "Can't reach the server."
@@ -1001,6 +1027,10 @@ msgstr ""
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Clear formatting"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Clear search"
 msgstr ""
@@ -1017,6 +1047,7 @@ msgstr "ID клиента"
 msgid "Client secret"
 msgstr "Секрет клиента"
 
+#: src/components/ComposeEmail.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -1144,7 +1175,6 @@ msgstr ""
 msgid "Complete"
 msgstr "Завершить"
 
-#: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/Inbox.tsx
 msgid "Compose"
@@ -2173,6 +2203,10 @@ msgstr "Черновик навыка"
 msgid "Drag, drop, or paste an image"
 msgstr "Перетащите или вставьте изображение"
 
+#: src/components/ComposeEmail.tsx
+msgid "Drop files to attach"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
 msgstr "Дублировать"
@@ -2397,6 +2431,10 @@ msgstr "Завершено."
 msgid "Finishing MCP connection…"
 msgstr "Завершение подключения MCP…"
 
+#: src/components/ComposeEmail.tsx
+msgid "Fix or remove the highlighted addresses."
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Flag unexpected actions"
 msgstr "Пометить неожиданные действия"
@@ -2404,6 +2442,14 @@ msgstr "Пометить неожиданные действия"
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "Забыли пароль?"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Formatting"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Formatting options"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -2611,6 +2657,10 @@ msgstr "Наследовать значение по умолчанию"
 msgid "Inputs"
 msgstr "Входы"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Insert link"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Instance API key"
 msgstr "Ключ API экземпляра"
@@ -2652,6 +2702,10 @@ msgstr "изолированный"
 
 #: src/pages/Artifacts.tsx
 msgid "Isolated preview — no access to your account"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Italic"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -2723,6 +2777,10 @@ msgstr "Задача Linear"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
 msgstr "Связать приложение чата"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Link address"
+msgstr ""
 
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
@@ -2966,7 +3024,7 @@ msgstr "Упоминания"
 msgid "Mentions only"
 msgstr "Только упоминания"
 
-#: src/components/ComposeEmail.tsx
+#: src/components/compose/RichTextEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "Сообщение"
@@ -3174,6 +3232,10 @@ msgstr "Новый бот"
 #: src/pages/GroupPanel.tsx
 msgid "New group"
 msgstr "Новая группа"
+
+#: src/components/ComposeEmail.tsx
+msgid "New message"
+msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
 msgid "New open-work item"
@@ -3392,6 +3454,10 @@ msgstr "Сейчас"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Now using {0}."
 msgstr "Теперь используется {0}."
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Numbered list"
+msgstr ""
 
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
@@ -3835,6 +3901,10 @@ msgid "Remove"
 msgstr "Удалить"
 
 #. placeholder {0}: attachment.file.name
+#. placeholder {0}: file.name
+#. placeholder {0}: recipient.address
+#: src/components/compose/RecipientField.tsx
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "Удалить {0}"
@@ -3855,6 +3925,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"
 msgstr "Удалить событие Git"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Remove link"
+msgstr ""
 
 #. placeholder {0}: mention.name
 #: src/pages/Shell.tsx
@@ -4897,6 +4971,10 @@ msgstr "Без раздела"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "Недоступно"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Underline"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Undo"

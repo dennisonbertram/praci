@@ -104,7 +104,8 @@ export function RecipientField({
             // With Cmd or Ctrl this is Send: finish the address, then let the dialog see the key.
             if (!event.metaKey && !event.ctrlKey) event.preventDefault();
             commit(draft, true);
-          } else if (event.key === "Tab" && draft.trim()) {
+          } else if ((event.key === "Tab" || event.key === "Escape") && draft.trim()) {
+            // Escape closes the composer, which would drop an address still being typed.
             commit(draft, true);
           } else if (event.key === "Backspace" && !draft && entries.length) {
             onChange(entries.slice(0, -1));

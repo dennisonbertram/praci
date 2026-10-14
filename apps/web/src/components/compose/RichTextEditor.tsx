@@ -68,6 +68,8 @@ export function useComposeEditor({
       handleKeyDown: (_view, event) => {
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
           event.preventDefault();
+          // The app's own Cmd/Ctrl+K (command palette) listens higher up.
+          event.stopPropagation();
           latest.current.onLinkShortcut();
           return true;
         }
@@ -299,6 +301,13 @@ export function LinkButton({
             spellCheck={false}
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             onChange={(event) => setUrl(event.target.value)}
+            onKeyDown={(event) => {
+              // Submitting moves focus into the editor mid-keypress, which would add a line break.
+              if (event.key === "Enter") {
+                event.preventDefault();
+                apply();
+              }
+            }}
           />
           <div className="flex justify-end gap-1.5">
             {active ? (

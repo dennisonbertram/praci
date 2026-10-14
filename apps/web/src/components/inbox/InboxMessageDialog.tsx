@@ -135,10 +135,11 @@ function InboxMessage({
 
   const title = message?.subject ?? subject ?? "";
   const sent = message ? new Date(message.date) : null;
+  const sender = splitSender(message?.from ?? "");
   return (
     <>
       <div className="flex items-start gap-2">
-        <DialogTitle dir="auto" className="min-w-0 flex-1 text-base leading-snug">
+        <DialogTitle dir="auto" className="min-w-0 flex-1 text-xl leading-snug font-medium">
           {title}
         </DialogTitle>
         {onNavigate ? (
@@ -173,14 +174,15 @@ function InboxMessage({
         </DialogClose>
       </div>
       {message ? (
-        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+        <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
           <div className="flex items-baseline justify-between gap-3">
-            <span dir="auto" className="min-w-0 truncate font-medium text-foreground">
-              {message.from}
+            <span dir="auto" className="min-w-0 truncate">
+              <span className="font-semibold text-foreground">{sender.name}</span>
+              {sender.address ? <span className="text-xs"> {`<${sender.address}>`}</span> : null}
             </span>
             <time
               dateTime={sent && !Number.isNaN(sent.getTime()) ? sent.toISOString() : undefined}
-              className="shrink-0 tabular-nums"
+              className="shrink-0 text-xs tabular-nums"
             >
               {sent && !Number.isNaN(sent.getTime())
                 ? sent.toLocaleString(i18n.locale || "en", {
@@ -190,7 +192,7 @@ function InboxMessage({
                 : message.date}
             </time>
           </div>
-          <span dir="auto" className="truncate">
+          <span dir="auto" className="truncate text-xs">
             {t`to ${message.to}`}
           </span>
         </div>
@@ -241,6 +243,15 @@ function InboxMessage({
       </div>
     </>
   );
+}
+
+/** `Name <a@b.test>` as the server writes it; a bare address is its own name. */
+function splitSender(from: string): { name: string; address: string } {
+  const match = /^\s*"?([^<"]*?)"?\s*<([^<>]+)>\s*$/.exec(from);
+  if (!match) return { name: from, address: "" };
+  const name = (match[1] ?? "").trim();
+  const address = (match[2] ?? "").trim();
+  return name ? { name, address } : { name: address, address: "" };
 }
 
 type MailAttachmentItem = InboxMessageOutput["attachments"][number];
@@ -294,18 +305,22 @@ function InboxAttachments({
       <ul aria-label={t`Attachments`} className="flex flex-wrap gap-2">
         {attachments.map((attachment) => (
           <li key={attachment.id}>
-            <Button
-              variant="outline"
-              size="sm"
+            <button
+              type="button"
+              className="flex max-w-64 items-center gap-2 rounded-lg border border-border px-3 py-2 text-start text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
               onClick={() => {
                 setFailed(false);
                 saveAttachment(messageId, attachment).catch(() => setFailed(true));
               }}
             >
               <AttachmentIcon mimeType={attachment.mimeType} />
-              <span className="max-w-56 truncate">{attachment.filename}</span>
-              <span className="text-muted-foreground">{formatAttachmentSize(attachment.size)}</span>
-            </Button>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate">{attachment.filename}</span>
+                <span className="text-xs text-muted-foreground">
+                  {formatAttachmentSize(attachment.size)}
+                </span>
+              </span>
+            </button>
           </li>
         ))}
       </ul>
