@@ -60,8 +60,8 @@ export function useReducedMotion(): boolean {
   return useSyncExternalStore(
     (onChange) => {
       const media = window.matchMedia(reducedMotionMedia);
-      media.addEventListener("change", onChange);
-      return () => media.removeEventListener("change", onChange);
+      media.addEventListener?.("change", onChange);
+      return () => media.removeEventListener?.("change", onChange);
     },
     () => window.matchMedia(reducedMotionMedia).matches,
     () => false,
