@@ -138,6 +138,7 @@ import {
 } from "./agent-environment.js";
 import { buildApprovalAskBlock } from "./approval-ask.js";
 import {
+  advanceEffectOccurrences,
   approvalPausedToolResult,
   approvalReplayPathError,
   approvalReplayResourceError,
@@ -4481,6 +4482,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             isToolEffectIdempotencyKey(nextApprovedKey, runId, replayEffectToolName)
               ? nextApprovedKey
               : undefined;
+          if (storedMailKey) advanceEffectOccurrences(mutatingEffectOccurrences, storedMailKey);
           const effectKey =
             storedMailKey ??
             (usesApprovalKey && occurrence === 0
@@ -5395,7 +5397,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   accounts: mailAccounts,
                   publish: (blocks) => publishMessage(deps, run, "bot", blocks),
                   writesDisabled: deps.mailWritesDisabled,
-                  idempotencyKey: effectKey,
+                  // An edited approval re-emitted with its edited args is matched to its effect,
+                  // whose key is the original call's; the send record stays under that key.
+                  idempotencyKey: applied?.effect.idempotencyKey ?? effectKey,
                   scope: { spaceId: run.spaceId, userId: bot.userId, botId: bot.id },
                 },
                 context,
@@ -8549,6 +8553,24 @@ export async function recordEffect(
     return { duplicate: true, effect: existing };
   }
 
+  // An edited mail approval keeps the key of the call it was proposed as. If the model now
+  // re-emits the edited args (after a crash), the key misses, but the stored request matches.
+  if (kind === "mail_draft" || kind === "mail_send") {
+    const edited = await findEditedMailEffect(deps, run, kind, request, consumedIds);
+    if (edited) {
+      consumedIds?.add(edited.id);
+      await deps.events.append({
+        spaceId: run.spaceId,
+        threadId: run.threadId,
+        botId: run.botId,
+        type: "effect.reconciled",
+        runId: run.id,
+        payload: { executionId: edited.idempotencyKey, kind },
+      });
+      return { duplicate: true, effect: edited };
+    }
+  }
+
   // Pre-fix rows used bare provider ids or scoped keys that included the
   // ephemeral model tool-call id. Same-id unique lookup still works; a restart
   // with a new id finds the row by run, tool, and request instead.
@@ -8654,6 +8676,40 @@ export async function recordEffect(
   });
   consumedIds?.add(effect.id);
   return { duplicate: false, effect };
+}
+
+/** A mail effect of this run whose request was edited after its key was set, and equals `request`. */
+async function findEditedMailEffect(
+  deps: ExecutorDeps,
+  run: { id: string; spaceId: string },
+  kind: string,
+  request: unknown,
+  consumedIds?: Set<string>,
+) {
+  let wanted: string;
+  try {
+    wanted = stableJsonValue(request);
+  } catch {
+    return undefined;
+  }
+  const rows = await deps.prisma.externalEffect.findMany({
+    where: { runId: run.id, spaceId: run.spaceId, kind },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.find((row) => {
+    if (consumedIds?.has(row.id) || !isToolEffectIdempotencyKey(row.idempotencyKey, run.id, kind)) {
+      return false;
+    }
+    try {
+      return (
+        stableJsonValue(row.request) === wanted &&
+        approvalEffectKey(run.id, kind, row.request as Record<string, unknown>) !==
+          row.idempotencyKey.replace(/:\d+$/, "")
+      );
+    } catch {
+      return false;
+    }
+  });
 }
 
 async function completeEffect(

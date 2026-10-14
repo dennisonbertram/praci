@@ -485,3 +485,14 @@ export async function replaceCompletedExternalEffectResult(
   });
   return replaced.count === 1;
 }
+
+/**
+ * A replayed approval keeps its stored key, which may end in an occurrence suffix (`base:1`).
+ * Counts that occurrence as used so the next identical call in this attempt gets the next one.
+ */
+export function advanceEffectOccurrences(occurrences: Map<string, number>, storedKey: string) {
+  const suffixed = /^(.+):(\d+)$/.exec(storedKey);
+  if (!suffixed) return;
+  const base = suffixed[1] as string;
+  occurrences.set(base, Math.max(occurrences.get(base) ?? 0, Number(suffixed[2]) + 1));
+}
