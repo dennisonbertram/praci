@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rakazo Inbox Mockup</title>
+<style>
+:root{
+  --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#b7791f; --success:#2f855a;
+  --bot:#e8743b;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+.app{display:grid;grid-template-columns:240px 1fr 380px;height:100vh;min-height:640px}
+aside.left{background:var(--sidebar);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.search{margin:4px 4px 10px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--muted-fg);background:var(--card)}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:default}
+.row.active{background:var(--sidebar-accent);font-weight:600}
+.row .count{margin-left:auto;font-size:11px;color:var(--muted-fg)}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+.label{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.icon{width:22px;height:22px;display:grid;place-items:center;flex:none}
+main{overflow:auto;padding:20px 28px}
+h1{font-size:18px;margin:0}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tab{padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted-fg);font-size:12px}
+.tab.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.todo{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:20px}
+.todo h2,.group h2{font-size:12px;margin:0 0 8px;color:var(--muted-fg);font-weight:600}
+.t{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--border)}
+.t:first-of-type{border-top:0}
+.box{width:14px;height:14px;border:1.5px solid var(--muted-fg);border-radius:4px;margin-top:2px;flex:none}
+.t small{color:var(--muted-fg);display:block}
+.due{margin-left:auto;font-size:11px;white-space:nowrap}
+.due.warn{color:var(--warning)} .due.crit{color:var(--destructive)}
+.group{margin-bottom:18px}
+.mail{display:grid;grid-template-columns:8px 160px 1fr auto;gap:12px;align-items:baseline;padding:9px 10px;border-radius:8px}
+.mail:hover{background:var(--muted)}
+.mail.sel{background:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--primary);align-self:center}
+.dot.read{background:transparent}
+.from{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subj{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subj span{color:var(--muted-fg)}
+.when{font-size:11px;color:var(--muted-fg)}
+aside.right{border-left:1px solid var(--border);background:var(--card);display:flex;flex-direction:column}
+.rhead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600}
+.collapse{margin-left:auto;border:0;background:transparent;color:var(--muted-fg);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:6px}
+.collapse:hover{background:var(--muted)}
+.thread{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.me{align-self:flex-end;background:var(--primary);color:var(--primary-fg);padding:8px 12px;border-radius:14px 14px 4px 14px;max-width:85%}
+.bot{max-width:95%}
+.tool{border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted-fg);background:var(--background)}
+.tool b{color:var(--fg);font-weight:600}
+.tool code{font:11px ui-monospace,Menlo,monospace;color:var(--fg)}
+.cite{display:block;border:1px solid var(--border);border-radius:8px;padding:6px 8px;margin-top:6px;font-size:12px}
+.cite small{color:var(--muted-fg)}
+.composer{margin:12px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--muted-fg)}
+.note{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted-fg);background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:999px}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;height:auto}
+  aside.left,aside.right{display:none}
+  main{padding:16px}
+  .mail{grid-template-columns:8px 1fr auto}
+  .mail .subj{grid-column:2/4}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="left" aria-label="Bots">
+    <div class="search">Search</div>
+    <div class="row active"><span class="icon">✉</span>Inbox<span class="count">12</span></div>
+    <div class="label">Bots</div>
+    <div class="row"><span class="av" style="background:var(--bot)">I</span>Inbox agent</div>
+    <div class="row"><span class="av" style="background:#4a7bd0">R</span>Research</div>
+    <div class="row"><span class="av" style="background:#7a5bc9">W</span>Writer</div>
+    <div class="row"><span class="av" style="background:#3f9b8a">O</span>Ops</div>
+    <div style="flex:1"></div>
+    <div class="row" style="color:var(--muted-fg)"><span class="icon">⧉</span>Integrations</div>
+  </aside>
+
+  <main>
+    <div class="head">
+      <h1>Inbox</h1>
+      <div class="tabs" role="tablist" aria-label="Account">
+        <span class="tab on">All</span><span class="tab">work@…</span><span class="tab">personal@…</span>
+      </div>
+    </div>
+
+    <section class="todo" aria-label="To do">
+      <h2>To do</h2>
+      <div class="t"><span class="box"></span><div>Sign the vendor agreement<small>Acme Legal · DocuSign request, not completed</small></div><span class="due crit">Today</span></div>
+      <div class="t"><span class="box"></span><div>Reply to Sam about the Q4 offsite dates<small>Asked a direct question 2 days ago</small></div><span class="due warn">Wed</span></div>
+      <div class="t"><span class="box"></span><div>Pay the October invoice<small>Northwind Hosting · $240.00</small></div><span class="due">Fri</span></div>
+    </section>
+
+    <section class="group">
+      <h2>Needs reply</h2>
+      <div class="mail sel"><span class="dot"></span><span class="from">Sam Rivera</span><span class="subj">Offsite dates <span>— Can you do the 14th or the 21st? We need to book…</span></span><span class="when">9:12</span></div>
+      <div class="mail"><span class="dot"></span><span class="from">Acme Legal</span><span class="subj">Please sign: Vendor Agreement <span>— You have been sent a document to review…</span></span><span class="when">8:40</span></div>
+    </section>
+    <section class="group">
+      <h2>Today</h2>
+      <div class="mail"><span class="dot"></span><span class="from">Northwind Hosting</span><span class="subj">Invoice #1043 <span>— Your invoice for October is ready…</span></span><span class="when">7:02</span></div>
+      <div class="mail"><span class="dot read"></span><span class="from">Priya Shah</span><span class="subj">Re: hiring loop <span>— Thanks, that works for me. I'll send…</span></span><span class="when">6:15</span></div>
+    </section>
+    <section class="group">
+      <h2>Earlier</h2>
+      <div class="mail"><span class="dot read"></span><span class="from">GitHub</span><span class="subj">[rakazo] CI passed on main <span>— All checks have passed…</span></span><span class="when">Oct 10</span></div>
+      <div class="mail"><span class="dot read"></span><span class="from">The Weekly Brief</span><span class="subj">This week in AI <span>— Five things you missed…</span></span><span class="when">Oct 10</span></div>
+    </section>
+  </main>
+
+  <aside class="right" aria-label="Inbox agent">
+    <div class="rhead"><span class="av" style="background:var(--bot)">I</span>Inbox agent<button class="collapse" aria-label="Collapse panel" title="Collapse panel">⇥</button></div>
+    <div class="thread">
+      <div class="me">When did Northwind first email me, and have I ever disputed an invoice with them?</div>
+      <div class="tool"><b>Searched mail</b> · <code>from:northwind.example OR to:northwind.example</code><br>1,214 messages · 2021-03-02 → today · complete</div>
+      <div class="tool"><b>Searched the results</b> · <code>dispute|refund|overcharge|credit note</code><br>4 matches</div>
+      <div class="bot">Their first email was a welcome note on <b>2 Mar 2021</b>. You raised one dispute, in <b>June 2023</b>, about a double charge; they issued a credit two days later.
+        <span class="cite">Re: Duplicate charge on invoice #612<br><small>Jun 14, 2023 · you → billing@northwind</small></span>
+        <span class="cite">Credit note CN-88 issued<br><small>Jun 16, 2023 · billing@northwind → you</small></span>
+      </div>
+    </div>
+    <div class="composer">Ask about your mail…</div>
+  </aside>
+</div>
+<div class="note">Approved mockup (2026-10-12) · sample data</div>
+</body>
+</html>

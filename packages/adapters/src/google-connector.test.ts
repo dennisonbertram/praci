@@ -1,0 +1,674 @@
+import { createHash, createHmac } from "node:crypto";
+import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-kit";
+import { describe, expect, it } from "vitest";
+import { createMailEmulator } from "./gmail-api-emulator.js";
+import { GmailMailProvider } from "./gmail-mail-provider.js";
+import { GoogleConnector } from "./google-connector.js";
+import { EncryptedSecretStore } from "./secrets.js";
+import { assertMailConformance, assertMailWriteConformance } from "./testing/mail-conformance.js";
+
+const CLIENT_SECRET = "fake-google-client-secret";
+const IDENTITY = "fake-identity-secret";
+const REDIRECT = "https://rakazo.example.test/integrations/google/callback";
+const GMAIL_READONLY = "https://www.googleapis.com/auth/gmail.readonly";
+const GMAIL_COMPOSE = "https://www.googleapis.com/auth/gmail.compose";
+
+const context: AdapterContext = {
+  operationId: "op",
+  traceId: "trace",
+  spaceId: "space-1",
+  userId: "user-1",
+  signal: new AbortController().signal,
+};
+
+type Row = Record<string, unknown>;
+function matches(row: Row, where: Row): boolean {
+  return Object.entries(where).every(([key, want]) => {
+    if (want && typeof want === "object" && "not" in want)
+      return row[key] !== (want as { not: unknown }).not;
+    return row[key] === want;
+  });
+}
+/** In-memory stand-in for the two tables the connector touches. */
+function fakePrisma(connections: Row[] = []) {
+  const secrets: Row[] = [];
+  const prisma = {
+    connection: {
+      findFirst: async ({ where }: { where: Row }) =>
+        connections.find((row) => matches(row, where)) ?? null,
+      findMany: async ({ where }: { where: Row }) =>
+        connections.filter((row) => matches(row, where)),
+      updateMany: async ({ where, data }: { where: Row; data: Row }) => {
+        const hit = connections.filter((row) => matches(row, where));
+        for (const row of hit) Object.assign(row, data);
+        return { count: hit.length };
+      },
+    },
+    secret: {
+      create: async ({ data }: { data: Row }) => {
+        secrets.push({ ...data });
+        return data;
+      },
+      findFirst: async ({ where }: { where: Row }) =>
+        secrets.find((row) => matches(row, where)) ?? null,
+      deleteMany: async ({ where }: { where: Row }) => {
+        const before = secrets.length;
+        for (let i = secrets.length - 1; i >= 0; i--)
+          if (matches(secrets[i] as Row, where)) secrets.splice(i, 1);
+        return { count: before - secrets.length };
+      },
+    },
+  };
+  return { prisma: prisma as never, connections, secrets };
+}
+
+const verifierFor = (state: string) =>
+  createHmac("sha256", IDENTITY).update(`google-pkce:${state}`).digest("base64url");
+const challengeFor = (verifier: string) =>
+  createHash("sha256").update(verifier).digest("base64url");
+
+interface FakeGoogle {
+  fetch: typeof fetch;
+  tokenCalls: URLSearchParams[];
+  userinfoCalls: number;
+  revokeCalls: string[];
+  gmailUrls: string[];
+  /** Every Gmail call as it reached Google. */
+  gmailRequests: Array<{ url: string; method: string; body: unknown; contentType: string | null }>;
+  /** Access tokens Gmail rejects once with 401, then accepts. */
+  rejectOnce: Set<string>;
+  scope: string;
+  refreshToken: string | undefined;
+  tokenError: { status: number; body: unknown } | undefined;
+  revokeStatus: number;
+  expiresIn: number;
+  /** Maps an access token to the mailbox it opens. */
+  mailboxByToken: Map<string, string>;
+  gmail?: (
+    accountRef: string,
+    url: string,
+    request: { method: string; body: unknown },
+  ) => { status: number; data: unknown };
+}
+function fakeGoogle(): FakeGoogle {
+  let issued = 0;
+  const state: FakeGoogle = {
+    tokenCalls: [],
+    userinfoCalls: 0,
+    revokeCalls: [],
+    gmailUrls: [],
+    gmailRequests: [],
+    rejectOnce: new Set(),
+    scope: `openid https://www.googleapis.com/auth/userinfo.email ${GMAIL_READONLY}`,
+    refreshToken: "refresh-1",
+    tokenError: undefined,
+    revokeStatus: 200,
+    expiresIn: 3600,
+    mailboxByToken: new Map(),
+    fetch: (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      const headers = new Headers(init?.headers);
+      if (url === "https://oauth2.googleapis.com/token") {
+        const form = new URLSearchParams(String(init?.body));
+        state.tokenCalls.push(form);
+        if (state.tokenError)
+          return Response.json(state.tokenError.body, { status: state.tokenError.status });
+        const access = `access-${++issued}`;
+        const refreshToken = form.get("refresh_token");
+        if (refreshToken) state.mailboxByToken.set(access, refreshToken.replace("refresh-", ""));
+        return Response.json({
+          access_token: access,
+          expires_in: state.expiresIn,
+          scope: state.scope,
+          ...(form.get("grant_type") === "authorization_code" && state.refreshToken
+            ? { refresh_token: state.refreshToken }
+            : {}),
+        });
+      }
+      if (url === "https://openidconnect.googleapis.com/v1/userinfo") {
+        state.userinfoCalls++;
+        return Response.json({ sub: "sub-1", email: "ann@example.test" });
+      }
+      if (url === "https://oauth2.googleapis.com/revoke") {
+        state.revokeCalls.push(String(new URLSearchParams(String(init?.body)).get("token")));
+        return Response.json({}, { status: state.revokeStatus });
+      }
+      state.gmailUrls.push(url);
+      const method = init?.method ?? "GET";
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+      state.gmailRequests.push({ url, method, body, contentType: headers.get("content-type") });
+      const bearer = headers.get("authorization")?.replace("Bearer ", "") ?? "";
+      if (state.rejectOnce.delete(bearer)) return Response.json({}, { status: 401 });
+      const result = state.gmail?.(state.mailboxByToken.get(bearer) ?? "", url, {
+        method,
+        body,
+      }) ?? {
+        status: 200,
+        data: { ok: true },
+      };
+      return result.status === 204
+        ? new Response(null, { status: 204 })
+        : Response.json(result.data, { status: result.status });
+    }) as typeof fetch,
+  };
+  return state;
+}
+
+function setup(options: { now?: () => number; redirectUri?: string | null } = {}) {
+  const google = fakeGoogle();
+  const db = fakePrisma([
+    {
+      id: "conn-1",
+      spaceId: "space-1",
+      userId: "user-1",
+      connectorId: "google",
+      provider: "gmail",
+      providerRef: "sub-1",
+      status: "connected",
+      secretId: null,
+    },
+  ]);
+  const secrets = new EncryptedSecretStore("fake-encryption-key");
+  const connector = new GoogleConnector({
+    clientId: "fake-client-id.apps.example.test",
+    clientSecret: CLIENT_SECRET,
+    identitySecret: IDENTITY,
+    redirectUri: options.redirectUri === null ? undefined : (options.redirectUri ?? REDIRECT),
+    prisma: db.prisma,
+    secrets,
+    fetch: google.fetch,
+    now: options.now,
+  });
+  return { google, db, secrets, connector };
+}
+
+/** Connects sub-1 for real (begin, complete) and returns the secret id. */
+async function connect(s: ReturnType<typeof setup>) {
+  const begun = await s.connector.begin({ provider: "gmail", redirectUrl: "unused" }, context);
+  const done = await s.connector.complete({ state: begun.state, code: "code-1" }, context);
+  s.db.connections[0]!.secretId = done.secretId;
+  return done;
+}
+
+describe("GoogleConnector.begin", () => {
+  it("builds the authorization URL with PKCE derived from state and the deployment secret", async () => {
+    const { connector, google } = setup();
+    const { authorizationUrl, state } = await connector.begin(
+      { provider: "gmail", redirectUrl: "https://ignored.example.test/app" },
+      context,
+    );
+    const url = new URL(authorizationUrl as string);
+    expect(`${url.origin}${url.pathname}`).toBe("https://accounts.google.com/o/oauth2/v2/auth");
+    const p = url.searchParams;
+    expect(p.get("response_type")).toBe("code");
+    expect(p.get("client_id")).toBe("fake-client-id.apps.example.test");
+    expect(p.get("redirect_uri")).toBe(REDIRECT);
+    expect(p.get("scope")).toBe(`openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE}`);
+    expect(p.get("access_type")).toBe("offline");
+    expect(p.get("prompt")).toBe("consent");
+    expect(p.get("include_granted_scopes")).toBe("true");
+    expect(p.get("code_challenge_method")).toBe("S256");
+    expect(p.get("state")).toBe(state);
+    expect(state).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(p.get("code_challenge")).toBe(challengeFor(verifierFor(state)));
+    expect(url.search).not.toContain(CLIENT_SECRET);
+    expect(google.tokenCalls).toHaveLength(0);
+  });
+
+  it("uses a fresh state every time", async () => {
+    const { connector } = setup();
+    const a = await connector.begin({ provider: "gmail", redirectUrl: "" }, context);
+    const b = await connector.begin({ provider: "gmail", redirectUrl: "" }, context);
+    expect(a.state).not.toBe(b.state);
+  });
+
+  it("refuses apps other than gmail and a missing redirect URI", async () => {
+    await expect(
+      setup().connector.begin({ provider: "slack", redirectUrl: "" }, context),
+    ).rejects.toThrow(/gmail/i);
+    await expect(
+      setup({ redirectUri: null }).connector.begin({ provider: "gmail", redirectUrl: "" }, context),
+    ).rejects.toThrow(/redirect/i);
+  });
+});
+
+describe("GoogleConnector.complete", () => {
+  it("exchanges the code with the verifier recomputed from state and stores the refresh token encrypted", async () => {
+    const s = setup();
+    const { state } = await s.connector.begin({ provider: "gmail", redirectUrl: "" }, context);
+    // A different instance stands in for another API process: nothing is kept in memory.
+    const other = new GoogleConnector({
+      clientId: "fake-client-id.apps.example.test",
+      clientSecret: CLIENT_SECRET,
+      identitySecret: IDENTITY,
+      redirectUri: REDIRECT,
+      prisma: s.db.prisma,
+      secrets: s.secrets,
+      fetch: s.google.fetch,
+    });
+    const result = await other.complete({ state, code: "code-1" }, context);
+
+    const call = s.google.tokenCalls[0]!;
+    expect(call.get("grant_type")).toBe("authorization_code");
+    expect(call.get("code")).toBe("code-1");
+    expect(call.get("code_verifier")).toBe(verifierFor(state));
+    expect(call.get("redirect_uri")).toBe(REDIRECT);
+    expect(call.get("client_secret")).toBe(CLIENT_SECRET);
+    expect(result.connectionRef).toBe("sub-1");
+    expect(s.db.secrets).toHaveLength(1);
+    const row = s.db.secrets[0] as {
+      id: string;
+      userId: string;
+      spaceId: string;
+      kind: string;
+      ciphertext: string;
+    };
+    expect(result.secretId).toBe(row.id);
+    expect([row.userId, row.spaceId, row.kind]).toEqual(["user-1", "space-1", "google-oauth"]);
+    expect(row.ciphertext).not.toContain("refresh-1");
+    const stored = JSON.parse(await s.secrets.load(row.ciphertext, row.id));
+    expect(stored).toMatchObject({
+      refreshToken: "refresh-1",
+      sub: "sub-1",
+      email: "ann@example.test",
+    });
+  });
+
+  it("rejects a grant without gmail.readonly, stores nothing, and revokes what Google issued", async () => {
+    const s = setup();
+    s.google.scope = "openid https://www.googleapis.com/auth/userinfo.email";
+    const { state } = await s.connector.begin({ provider: "gmail", redirectUrl: "" }, context);
+    await expect(s.connector.complete({ state, code: "code-1" }, context)).rejects.toThrow(
+      /gmail/i,
+    );
+    expect(s.db.secrets).toHaveLength(0);
+    expect(s.google.revokeCalls).toEqual(["refresh-1"]);
+  });
+
+  it("still connects when the user unticks the compose permission; sending then asks to reconnect", async () => {
+    const s = setup();
+    s.google.scope = `openid https://www.googleapis.com/auth/userinfo.email ${GMAIL_READONLY}`;
+    const { state } = await s.connector.begin({ provider: "gmail", redirectUrl: "" }, context);
+    await expect(s.connector.complete({ state, code: "code-1" }, context)).resolves.toMatchObject({
+      connectionRef: "sub-1",
+    });
+  });
+
+  it("rejects a response with no refresh token", async () => {
+    const s = setup();
+    s.google.refreshToken = undefined;
+    const { state } = await s.connector.begin({ provider: "gmail", redirectUrl: "" }, context);
+    await expect(s.connector.complete({ state, code: "code-1" }, context)).rejects.toThrow(
+      /try connecting again/i,
+    );
+    expect(s.db.secrets).toHaveLength(0);
+  });
+
+  it("rejects a malformed state or missing code before any request", async () => {
+    const s = setup();
+    await expect(s.connector.complete({ state: "short", code: "c" }, context)).rejects.toThrow();
+    const { state } = await s.connector.begin({ provider: "gmail", redirectUrl: "" }, context);
+    await expect(s.connector.complete({ state }, context)).rejects.toThrow();
+    expect(s.google.tokenCalls).toHaveLength(0);
+  });
+
+  it("keeps the client secret and the code out of error messages", async () => {
+    const s = setup();
+    s.google.tokenError = {
+      status: 400,
+      body: { error: "invalid_grant", error_description: `bad ${CLIENT_SECRET} and code-1` },
+    };
+    const { state } = await s.connector.begin({ provider: "gmail", redirectUrl: "" }, context);
+    const error = await s.connector.complete({ state, code: "code-1" }, context).catch((e) => e);
+    expect(error).toBeInstanceOf(Error);
+    expect(String(error.message)).not.toContain(CLIENT_SECRET);
+    expect(String(error.message)).not.toContain("code-1");
+  });
+});
+
+describe("GoogleConnector.proxy", () => {
+  const request = (url: string, accountRef = "sub-1") => ({
+    app: "gmail",
+    accountRef,
+    method: "GET" as const,
+    url,
+  });
+  const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me/profile";
+
+  it("refreshes once, caches the access token, and refreshes again near expiry", async () => {
+    let now = 1_000_000;
+    const s = setup({ now: () => now });
+    await connect(s);
+    s.google.tokenCalls.length = 0;
+    expect((await s.connector.proxy(request(GMAIL), context)).status).toBe(200);
+    await s.connector.proxy(request(GMAIL), context);
+    expect(s.google.tokenCalls.map((c) => c.get("grant_type"))).toEqual(["refresh_token"]);
+    expect(s.google.tokenCalls[0]!.get("refresh_token")).toBe("refresh-1");
+    now += 3600_000 - 30_000; // under 60 seconds left
+    await s.connector.proxy(request(GMAIL), context);
+    expect(s.google.tokenCalls).toHaveLength(2);
+  });
+
+  it("shares one refresh between concurrent requests", async () => {
+    const s = setup();
+    await connect(s);
+    s.google.tokenCalls.length = 0;
+    await Promise.all([1, 2, 3, 4].map(() => s.connector.proxy(request(GMAIL), context)));
+    expect(s.google.tokenCalls).toHaveLength(1);
+  });
+
+  it("retries once with a fresh token after a 401", async () => {
+    const s = setup();
+    await connect(s);
+    s.google.tokenCalls.length = 0;
+    await s.connector.proxy(request(GMAIL), context);
+    const first = [...s.google.mailboxByToken.keys()][0] as string;
+    s.google.rejectOnce.add(first);
+    s.google.gmailUrls.length = 0;
+    const result = await s.connector.proxy(request(GMAIL), context);
+    expect(result.status).toBe(200);
+    expect(s.google.gmailUrls).toHaveLength(2);
+    expect(s.google.tokenCalls).toHaveLength(2);
+  });
+
+  it("returns 401 without calling Gmail when Google reports invalid_grant", async () => {
+    const s = setup();
+    await connect(s);
+    s.google.tokenError = { status: 400, body: { error: "invalid_grant" } };
+    const result = await s.connector.proxy(request(GMAIL), context);
+    expect(result.status).toBe(401);
+    expect(s.google.gmailUrls).toHaveLength(0);
+  });
+
+  it.each([
+    "https://evil.example.test/gmail/v1/users/me/profile",
+    "http://gmail.googleapis.com/gmail/v1/users/me/profile",
+    "https://gmail.googleapis.com.evil.example.test/gmail/v1/users/me/profile",
+    "https://gmail.googleapis.com@evil.example.test/gmail/v1/users/me/profile",
+    "https://www.googleapis.com/oauth2/v3/userinfo",
+  ])("refuses %s before any request is sent", async (url) => {
+    const s = setup();
+    await connect(s);
+    s.google.tokenCalls.length = 0;
+    await expect(s.connector.proxy(request(url), context)).rejects.toThrow(/gmail/i);
+    expect(s.google.tokenCalls).toHaveLength(0);
+    expect(s.google.gmailUrls).toHaveLength(0);
+  });
+
+  it("answers 401 for another user's account and for a revoked row, with no request", async () => {
+    const s = setup();
+    await connect(s);
+    s.google.tokenCalls.length = 0;
+    const other = await s.connector.proxy(request(GMAIL), { ...context, userId: "user-2" });
+    expect(other.status).toBe(401);
+    s.db.connections[0]!.status = "revoked";
+    expect((await s.connector.proxy(request(GMAIL), context)).status).toBe(401);
+    expect(s.google.tokenCalls).toHaveLength(0);
+    expect(s.google.gmailUrls).toHaveLength(0);
+  });
+
+  it("passes Gmail's error status through", async () => {
+    const s = setup();
+    await connect(s);
+    s.google.gmail = () => ({ status: 429, data: { error: { message: "slow down" } } });
+    const result = await s.connector.proxy(request(GMAIL), context);
+    expect(result.status).toBe(429);
+  });
+
+  it("sends POST, PUT and DELETE to Gmail with a JSON body and the bearer token", async () => {
+    const s = setup();
+    await connect(s);
+    const drafts = "https://gmail.googleapis.com/gmail/v1/users/me/drafts";
+    s.google.gmailRequests.length = 0;
+    await s.connector.proxy(
+      { ...request(drafts), method: "POST", body: { message: { raw: "abc" } } },
+      context,
+    );
+    await s.connector.proxy(
+      { ...request(`${drafts}/d1`), method: "PUT", body: { message: { raw: "def" } } },
+      context,
+    );
+    await s.connector.proxy({ ...request(`${drafts}/d1`), method: "DELETE" }, context);
+    expect(s.google.gmailRequests).toEqual([
+      {
+        url: drafts,
+        method: "POST",
+        body: { message: { raw: "abc" } },
+        contentType: "application/json",
+      },
+      {
+        url: `${drafts}/d1`,
+        method: "PUT",
+        body: { message: { raw: "def" } },
+        contentType: "application/json",
+      },
+      { url: `${drafts}/d1`, method: "DELETE", body: undefined, contentType: null },
+    ]);
+  });
+
+  it("refuses to write anywhere but the Gmail API origin, before any request", async () => {
+    const s = setup();
+    await connect(s);
+    s.google.tokenCalls.length = 0;
+    s.google.gmailRequests.length = 0;
+    for (const url of [
+      "https://evil.example.test/gmail/v1/users/me/drafts",
+      "https://gmail.googleapis.com.evil.example.test/gmail/v1/users/me/drafts",
+      "http://gmail.googleapis.com/gmail/v1/users/me/drafts",
+      "https://user:pw@gmail.googleapis.com/gmail/v1/users/me/drafts",
+    ]) {
+      await expect(
+        s.connector.proxy({ ...request(url), method: "POST", body: {} }, context),
+      ).rejects.toThrow(/Gmail API/);
+    }
+    await expect(
+      s.connector.proxy({ ...request(GMAIL), method: "PATCH" as "POST", body: {} }, context),
+    ).rejects.toThrow(/Gmail API/);
+    expect(s.google.tokenCalls).toHaveLength(0);
+    expect(s.google.gmailRequests).toHaveLength(0);
+  });
+
+  it("retries a write once with a fresh token after a 401, which proves it was not applied", async () => {
+    const s = setup();
+    await connect(s);
+    await s.connector.proxy(request(GMAIL), context);
+    s.google.rejectOnce.add("access-2");
+    s.google.gmailRequests.length = 0;
+    const drafts = "https://gmail.googleapis.com/gmail/v1/users/me/drafts";
+    const result = await s.connector.proxy(
+      { ...request(drafts), method: "POST", body: { a: 1 } },
+      context,
+    );
+    expect(result.status).toBe(200);
+    expect(s.google.gmailRequests.filter((r) => r.method === "POST")).toHaveLength(2);
+  });
+
+  it("does not repeat a write that Gmail answered with a server error", async () => {
+    const s = setup();
+    await connect(s);
+    s.google.gmail = () => ({ status: 500, data: {} });
+    s.google.gmailRequests.length = 0;
+    const result = await s.connector.proxy(
+      {
+        ...request("https://gmail.googleapis.com/gmail/v1/users/me/drafts/send"),
+        method: "POST",
+        body: { id: "d" },
+      },
+      context,
+    );
+    expect(result.status).toBe(500);
+    expect(s.google.gmailRequests).toHaveLength(1);
+  });
+});
+
+describe("GoogleConnector.revoke", () => {
+  it("posts the refresh token to Google, deletes the secret and clears the row's reference", async () => {
+    const s = setup();
+    await connect(s);
+    s.db.connections[0]!.status = "revoked"; // the router marks the row before calling revoke
+    await s.connector.revoke("sub-1", context);
+    expect(s.google.revokeCalls).toEqual(["refresh-1"]);
+    expect(s.db.secrets).toHaveLength(0);
+    expect(s.db.connections[0]!.secretId).toBeNull();
+  });
+
+  it("tolerates Google answering 400 (already revoked) but keeps the secret on a server error", async () => {
+    const s = setup();
+    await connect(s);
+    s.google.revokeStatus = 500;
+    await expect(s.connector.revoke("sub-1", context)).rejects.toThrow();
+    expect(s.db.secrets).toHaveLength(1);
+    s.google.revokeStatus = 400;
+    await s.connector.revoke("sub-1", context);
+    expect(s.db.secrets).toHaveLength(0);
+  });
+
+  it("does nothing for a pending state reference or another user's account", async () => {
+    const s = setup();
+    await connect(s);
+    await s.connector.revoke("a-pending-state-value", context);
+    await s.connector.revoke("sub-1", { ...context, userId: "user-2" });
+    expect(s.google.revokeCalls).toHaveLength(0);
+    expect(s.db.secrets).toHaveLength(1);
+  });
+});
+
+describe("GoogleConnector catalog", () => {
+  it("offers one Gmail entry, connected only when the user has a connected row", async () => {
+    const s = setup();
+    const [item] = await s.connector.catalog(context);
+    expect(item).toMatchObject({
+      connectorId: "google",
+      slug: "gmail",
+      name: "Gmail",
+      connected: true,
+    });
+    expect(await s.connector.catalog(context, "slack")).toEqual([]);
+    expect(await s.connector.listConnectedExternalIds({ ...context, userId: "user-2" })).toEqual(
+      [],
+    );
+    expect(await s.connector.connectionReady()).toBe(false);
+    expect(await s.connector.discoverTools()).toEqual([]);
+  });
+});
+
+describe("GoogleConnector as a mail connector", () => {
+  it("passes mail conformance with Gmail routed to the emulator", async () => {
+    const emulator = createMailEmulator();
+    const s = setup();
+    const owner = { spaceId: emulator.accounts[0]!.spaceId, userId: emulator.accounts[0]!.userId };
+    s.db.connections.length = 0;
+    // Each mailbox has its own refresh token; the fake token endpoint tags access tokens with it.
+    for (const account of emulator.accounts) {
+      const { secretId } = await storeSecret(s, owner, account.accountRef);
+      s.db.connections.push({
+        id: account.id,
+        ...owner,
+        connectorId: "google",
+        provider: "gmail",
+        providerRef: account.accountRef,
+        displayName: account.label,
+        status: "connected",
+        secretId,
+        metadata: { mailAddress: account.address },
+      });
+    }
+    s.google.gmail = (accountRef, url, request) =>
+      emulator.gmail.handle(accountRef, url, request.method as "GET", request.body);
+    const provider = new GmailMailProvider({
+      prisma: s.db.prisma,
+      connectors: { managed: () => s.connector as unknown as ManagedConnectorProvider },
+    });
+    // The connector retries a 401 once with a fresh token, so a lasting failure takes two.
+    const gmail = Object.assign(Object.create(emulator.gmail), {
+      failNext: (status: number, options?: object) =>
+        emulator.gmail.failNext(status, { ...options, times: 2 }),
+    }) as typeof emulator.gmail;
+    await assertMailConformance(provider, { gmail, accounts: emulator.accounts });
+    await assertMailWriteConformance(provider, { gmail, accounts: emulator.accounts });
+    const writes = s.google.gmailRequests.filter((r) => r.method !== "GET");
+    expect(writes.map((r) => r.method)).toContain("POST");
+    expect(writes.map((r) => r.method)).toContain("PUT");
+    expect(writes.map((r) => r.method)).toContain("DELETE");
+    expect(
+      writes.filter((r) => r.body !== undefined).every((r) => r.contentType === "application/json"),
+    ).toBe(true);
+  });
+
+  it("maps Google's insufficient-scope answer for an old read-only grant to a reconnect error", async () => {
+    const emulator = createMailEmulator();
+    const s = setup();
+    const owner = { spaceId: "space-1", userId: "user-1" };
+    const account = emulator.accounts[0]!;
+    s.db.connections.length = 0;
+    const { secretId } = await storeSecret(s, owner, account.accountRef);
+    s.db.connections.push({
+      id: account.id,
+      ...owner,
+      connectorId: "google",
+      provider: "gmail",
+      providerRef: account.accountRef,
+      displayName: account.label,
+      status: "connected",
+      secretId,
+      metadata: { mailAddress: account.address },
+    });
+    s.google.gmail = (_ref, url, request) =>
+      request.method === "GET"
+        ? emulator.gmail.handle(account.accountRef, url)
+        : {
+            status: 403,
+            data: {
+              error: {
+                code: 403,
+                message: "Request had insufficient authentication scopes.",
+                errors: [{ reason: "insufficientPermissions", domain: "global", message: "x" }],
+              },
+            },
+          };
+    const provider = new GmailMailProvider({
+      prisma: s.db.prisma,
+      connectors: { managed: () => s.connector as unknown as ManagedConnectorProvider },
+    });
+    const ctx = { ...context, ...owner };
+    expect(
+      (
+        await provider.listMessages(
+          { ...account, ...owner },
+          { query: "in:inbox", pageSize: 3 },
+          ctx,
+        )
+      ).messages,
+    ).toHaveLength(3);
+    await expect(
+      provider.createDraft(
+        { ...account, ...owner },
+        { to: [{ address: "p@example.test" }], cc: [], bcc: [], subject: "s", text: "t" },
+        ctx,
+      ),
+    ).rejects.toMatchObject({ kind: "auth" });
+  });
+});
+
+async function storeSecret(
+  s: ReturnType<typeof setup>,
+  owner: { spaceId: string; userId: string },
+  accountRef: string,
+) {
+  const stored = await s.secrets.put(
+    JSON.stringify({
+      refreshToken: `refresh-${accountRef}`,
+      scope: GMAIL_READONLY,
+      sub: accountRef,
+      email: "x@example.test",
+    }),
+    { operationId: "t", traceId: "t", ...owner, signal: new AbortController().signal },
+  );
+  s.db.secrets.push({
+    id: stored.id,
+    ...owner,
+    kind: "google-oauth",
+    ciphertext: stored.ciphertext,
+  });
+  return { secretId: stored.id };
+}

@@ -11,10 +11,12 @@ import { describe, expect, it, vi } from "vitest";
 import { createBackgroundJobHandlers } from "./background-job-handlers.js";
 import { createRunExecutor } from "./executor.js";
 import { compactHistory } from "./history-compaction.js";
+import { runInboxTriage } from "./inbox-triage.js";
 import { deliverMessagingOutbound, mirrorMessagingOutbound } from "./messaging-delivery.js";
 import type { EncryptedSecretStore } from "./secrets.js";
 
 vi.mock("./history-compaction.js", () => ({ compactHistory: vi.fn(async () => undefined) }));
+vi.mock("./inbox-triage.js", () => ({ runInboxTriage: vi.fn(async () => undefined) }));
 vi.mock("./messaging-delivery.js", () => ({
   deliverMessagingOutbound: vi.fn(async () => undefined),
   mirrorMessagingOutbound: vi.fn(async () => undefined),
@@ -182,5 +184,57 @@ describe("createBackgroundJobHandlers", () => {
       thinkingLevel: null,
       oauth: undefined,
     });
+  });
+
+  it("runs triage for the payload's user and space with the executor's model resolver", async () => {
+    const resolveModel = vi.fn();
+    const jobs = {} as unknown as JobPublisher;
+    const runtime = {} as unknown as AgentRuntime;
+    const prisma = {} as unknown as PrismaClient;
+    const handlers = createBackgroundJobHandlers({
+      executor: { resolveModel } as unknown as ReturnType<typeof createRunExecutor>,
+      prisma,
+      sandbox: {} as unknown as SandboxProvider,
+      home: {} as unknown as AgentHomeStore,
+      jobs,
+      events: {} as unknown as ThreadEvents,
+      workerId: "worker-1",
+      runtime,
+      secretStore: {} as unknown as EncryptedSecretStore,
+      memoryProviders: { resolve: vi.fn(async () => null) },
+    });
+
+    await handlers["inbox.triage"]({ userId: "user-1", spaceId: "space-1" });
+
+    expect(runInboxTriage).toHaveBeenCalledExactlyOnceWith(
+      { prisma, runtime, jobs, resolveModel, classifier: null },
+      { userId: "user-1", spaceId: "space-1" },
+    );
+  });
+
+  it("gives triage the TypeSafe classifier only when the deployment selects it", async () => {
+    vi.stubEnv("RAKAZO_INBOX_CLASSIFIER_PROVIDER", "typesafe");
+    vi.stubEnv("TYPESAFE_API_KEY", "ts-key");
+    try {
+      const handlers = createBackgroundJobHandlers({
+        executor: { resolveModel: vi.fn() } as unknown as ReturnType<typeof createRunExecutor>,
+        prisma: {} as unknown as PrismaClient,
+        sandbox: {} as unknown as SandboxProvider,
+        home: {} as unknown as AgentHomeStore,
+        jobs: {} as unknown as JobPublisher,
+        events: {} as unknown as ThreadEvents,
+        workerId: "worker-1",
+        runtime: {} as unknown as AgentRuntime,
+        secretStore: {} as unknown as EncryptedSecretStore,
+        memoryProviders: { resolve: vi.fn(async () => null) },
+      });
+
+      await handlers["inbox.triage"]({ userId: "user-1", spaceId: "space-1" });
+
+      const [deps] = vi.mocked(runInboxTriage).mock.lastCall ?? [];
+      expect(deps?.classifier?.describe().id).toBe("typesafe");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

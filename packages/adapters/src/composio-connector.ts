@@ -6,9 +6,12 @@ import type {
   ConnectorCatalogItem,
   ConnectorEvent,
   ConnectorProvider,
+  ConnectorProxyRequest,
+  ConnectorProxyResponse,
   ConnectorTool,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
+import { ConnectorProxyError } from "@rakazo/adapter-kit";
 import { getLogger } from "@rakazo/logging";
 import {
   composioToolkitDirectory,
@@ -696,6 +699,63 @@ export class ComposioConnector implements ComposioProvider {
     const ids = await this.listConnectedAccountIds(userId, slug);
     if (current && ids.includes(current) && !excluded.has(current)) return current;
     return ids.find((id) => !excluded.has(id));
+  }
+
+  /**
+   * Authenticated call against the toolkit's own API. `endpoint` is the absolute URL, which
+   * Composio accepts when it shares the toolkit's registrable domain, so the query string
+   * (including repeated parameters) travels unchanged. Upstream status codes are returned.
+   * The SDK never retries a proxied call, so a write is sent at most once here.
+   */
+  async proxy(
+    request: ConnectorProxyRequest,
+    context: AdapterContext,
+  ): Promise<ConnectorProxyResponse> {
+    let response: Awaited<ReturnType<Composio["tools"]["proxyExecute"]>>;
+    try {
+      response = await this.sdk().tools.proxyExecute(
+        {
+          endpoint: request.url,
+          method: request.method,
+          ...(request.body === undefined ? {} : { body: request.body }),
+          connectedAccountId: request.accountRef,
+        },
+        { signal: context.signal },
+      );
+    } catch (error) {
+      const failure = error as { status?: unknown; headers?: { get?: (name: string) => unknown } };
+      const status = typeof failure?.status === "number" ? failure.status : undefined;
+      if (status === 429) {
+        // The SDK throws on 429; hand it back as a response so callers apply their one backoff.
+        const seconds = Number(failure.headers?.get?.("retry-after"));
+        return {
+          status,
+          data: undefined,
+          ...(Number.isFinite(seconds) && seconds >= 0 ? { retryAfterMs: seconds * 1000 } : {}),
+        };
+      }
+      // Network failures have no status; 5xx and 408 are the provider's. Anything else is final.
+      const transient =
+        !context.signal.aborted && (status === undefined || status >= 500 || status === 408);
+      throw new ConnectorProxyError(
+        sanitizeComposioError(error),
+        transient,
+        status,
+        error instanceof Error ? error.constructor.name : undefined,
+      );
+    }
+    const retryAfter = Number(
+      Object.entries(response.headers ?? {}).find(
+        ([name]) => name.toLowerCase() === "retry-after",
+      )?.[1],
+    );
+    return {
+      status: response.status,
+      data: response.data,
+      ...(Number.isFinite(retryAfter) && retryAfter >= 0
+        ? { retryAfterMs: retryAfter * 1000 }
+        : {}),
+    };
   }
 
   private sdk(): Composio {

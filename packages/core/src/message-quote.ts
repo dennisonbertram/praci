@@ -172,6 +172,8 @@ function replyBlockText(block: MessageBlock): string {
     case "mcp_approval":
     case "chart":
       return block.name;
+    case "emails":
+      return block.emails[0]?.subject ?? "";
     case "image":
     case "file":
       return block.name || blocksToAgentHistoryText([block]);

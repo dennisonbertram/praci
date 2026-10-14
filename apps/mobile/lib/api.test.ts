@@ -2758,6 +2758,24 @@ describe("mobile thread event reduction", () => {
     );
   });
 
+  it("degrades an emails block to a plain list in urgency order", () => {
+    const email = (id: string, urgency: "today" | "later") => ({
+      id,
+      urgency,
+      from: `Sender ${id}`,
+      subject: `Subject ${id}`,
+      snippet: "",
+      receivedAt: "2026-10-12T09:00:00.000Z",
+    });
+    expect(
+      blockText(
+        mobileMessage("emails-1", [
+          { kind: "emails", emails: [email("late", "later"), email("now", "today")] },
+        ]),
+      ),
+    ).toBe("Sender now: Subject now\nSender late: Subject late");
+  });
+
   it("formats channel messages with their platform attribution", () => {
     expect(
       blockText(

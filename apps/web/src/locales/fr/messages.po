@@ -13,6 +13,7 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (non lu)"
@@ -136,6 +137,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "{hours}h ago"
 msgstr "il y a {hours} h"
+
+#: src/pages/Shell.tsx
+msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
+msgstr ""
 
 #: src/lib/relative-time.ts
 #: src/pages/ActivityList.tsx
@@ -411,6 +416,14 @@ msgstr "Connexions d'agent"
 msgid "Agents:"
 msgstr "Agents :"
 
+#: src/components/AiDataSharing.tsx
+msgid "AI data sharing"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "All"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "All bots"
 msgstr "Tous les bots"
@@ -427,6 +440,10 @@ msgstr ""
 msgid "All time"
 msgstr "Toute la période"
 
+#: src/components/AiDataSharing.tsx
+msgid "Allow"
+msgstr ""
+
 #. placeholder {0}: rule.matchValue
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} actions without asking"
@@ -441,6 +458,10 @@ msgstr "Autoriser le connecteur {0} sans demander"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} without asking"
 msgstr "Autoriser {0} sans demander"
+
+#: src/components/AiDataSharing.tsx
+msgid "Allow {name}"
+msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow email actions without asking"
@@ -619,6 +640,15 @@ msgstr ""
 msgid "Attachment"
 msgstr "Pièce jointe"
 
+#: src/pages/Inbox.tsx
+msgid "Attachments"
+msgstr ""
+
+#. placeholder {0}: email.attachments
+#: src/components/EmailCards.tsx
+msgid "Attachments: {0}"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
 msgstr "Échec de l'authentification."
@@ -699,6 +729,10 @@ msgstr ""
 msgid "Basic auth ({username})"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Bcc"
+msgstr ""
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -707,6 +741,10 @@ msgstr "Jeton porteur"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Bills"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -766,6 +804,10 @@ msgstr "Bots"
 msgid "Bots are working"
 msgstr "Les bots sont en cours d'exécution"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Bots lose access to its tools."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
 msgstr ""
@@ -793,6 +835,7 @@ msgstr "Impossible d'atteindre le serveur."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
@@ -829,6 +872,10 @@ msgstr "Annulé"
 #: src/pages/Artifacts.tsx
 msgid "Card view"
 msgstr "Vue en cartes"
+
+#: src/components/ComposeEmail.tsx
+msgid "Cc"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Change password"
@@ -923,6 +970,7 @@ msgstr "Choisir un fichier"
 msgid "Choose which connected model Rakazo uses."
 msgstr "Choisissez le modèle connecté utilisé par Rakazo."
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
 msgstr "Effacer"
@@ -954,6 +1002,7 @@ msgid "Client secret"
 msgstr "Secret client"
 
 #: src/components/ErrorBoundary.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
@@ -1037,6 +1086,10 @@ msgstr "Code"
 msgid "Collapse {0}"
 msgstr "Réduire {0}"
 
+#: src/pages/Shell.tsx
+msgid "Collapse Inbox agent"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Color"
 msgstr "Couleur"
@@ -1073,6 +1126,11 @@ msgstr ""
 #: src/pages/ScratchpadSection.tsx
 msgid "Complete"
 msgstr "Terminé"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Compose"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -1157,6 +1215,10 @@ msgstr "Connecter la clé API"
 msgid "Connect Executor"
 msgstr "Connecter l'exécuteur"
 
+#: src/pages/Inbox.tsx
+msgid "Connect mail"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "Connecter le serveur MCP « {name} »"
@@ -1174,6 +1236,7 @@ msgid "Connect Treg"
 msgstr "Connecter Treg"
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1203,6 +1266,8 @@ msgid "Connected. Its tools are available from your next message."
 msgstr "Connecté. Ses outils sont disponibles dès votre prochain message."
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/McpServerRow.tsx
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
@@ -1299,6 +1364,7 @@ msgstr "Impossible d'effacer la conversation"
 msgid "Could not complete action"
 msgstr "Impossible de terminer l'action"
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Could not complete OAuth"
 msgstr "Impossible de terminer OAuth"
@@ -1349,6 +1415,10 @@ msgstr "Impossible de créer la section"
 #: src/pages/shell/dialogs.tsx
 msgid "Could not create space"
 msgstr "Impossible de créer l'espace"
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Inbox agent"
+msgstr ""
 
 #: src/pages/Onboarding.tsx
 msgid "Could not create your bot"
@@ -1542,6 +1612,11 @@ msgstr "Impossible de joindre le serveur du modèle."
 msgid "Could not reach the server"
 msgstr "Impossible d'atteindre le serveur"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Could not reconnect"
+msgstr ""
+
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
 msgstr "Impossible de retirer"
@@ -1556,6 +1631,10 @@ msgstr "Impossible de retirer la règle"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Could not remove the credential"
+msgstr ""
+
+#: src/components/integrations/McpServerRow.tsx
+msgid "Could not rename"
 msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
@@ -1700,6 +1779,18 @@ msgstr ""
 msgid "Couldn't load messaging settings"
 msgstr "Impossible de charger les paramètres de messagerie"
 
+#: src/lib/inbox-sync-error.ts
+msgid "Couldn't reach Gmail."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't save the draft"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't send. Try again."
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
 msgstr "Impossible de mettre à jour les avatars"
@@ -1726,6 +1817,10 @@ msgstr "Créer un compte"
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "Créer un groupe"
+
+#: src/pages/Shell.tsx
+msgid "Create Inbox agent"
+msgstr ""
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
@@ -1940,6 +2035,10 @@ msgstr "MCP direct"
 msgid "Disabled tools"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Discard"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2026,9 +2125,17 @@ msgstr "Télécharger en markdown"
 msgid "Download Executor"
 msgstr "Télécharger l'exécuteur"
 
+#: src/pages/Inbox.tsx
+msgid "Download failed"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
 msgstr "Téléchargement en cours…"
+
+#: src/components/ComposeEmail.tsx
+msgid "Draft saved"
+msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
@@ -2045,6 +2152,10 @@ msgstr "Dupliquer"
 #: src/pages/shell/bot-panel.tsx
 msgid "e.g. Hivenet Agent, Presales, Timesheets bot"
 msgstr "ex. Agent Hivenet, Préventes, bot de feuilles de temps"
+
+#: src/pages/Inbox.tsx
+msgid "Earlier"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Edit first"
@@ -2217,6 +2328,10 @@ msgstr ""
 msgid "Files"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Filter"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Filter by date"
 msgstr "Filtrer par date"
@@ -2266,10 +2381,16 @@ msgstr "Signaler les actions inattendues"
 msgid "Forgot password?"
 msgstr "Mot de passe oublié ?"
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Forward"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Free"
 msgstr "Gratuit"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
 msgstr ""
@@ -2308,6 +2429,11 @@ msgstr "Préparation en cours"
 msgid "Git event"
 msgstr "Événement Git"
 
+#: src/components/ComposeEmail.tsx
+#: src/lib/inbox-sync-error.ts
+msgid "Gmail needs to be reconnected."
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 msgid "Group"
@@ -2336,6 +2462,10 @@ msgstr "Raccrochez d'abord, puis saisissez le code à l'écran."
 #: src/lib/call-session.ts
 msgid "Hang up, then enter the code on screen."
 msgstr "Raccrochez, puis saisissez le code à l'écran."
+
+#: src/pages/Inbox.tsx
+msgid "Has attachment"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "header"
@@ -2423,6 +2553,10 @@ msgstr "Zone de téléchargement d'image"
 msgid "Import OpenAPI JSON"
 msgstr "Importer OpenAPI JSON"
 
+#: src/pages/Inbox.tsx
+msgid "Important"
+msgstr ""
+
 #: src/lib/ticket-status.ts
 msgid "In progress"
 msgstr ""
@@ -2433,6 +2567,11 @@ msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+#: src/pages/Shell.tsx
+msgid "Inbox"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -2502,6 +2641,10 @@ msgstr "Aller au plus récent"
 msgid "Jump to replied message: {excerpt}"
 msgstr "Aller au message cité : {excerpt}"
 
+#: src/pages/Inbox.tsx
+msgid "Junk"
+msgstr ""
+
 #: src/lib/relative-time.ts
 #: src/pages/ActivityList.tsx
 msgid "just now"
@@ -2524,6 +2667,7 @@ msgid "Language"
 msgstr "Langue"
 
 #: src/components/DesktopUpdates.tsx
+#: src/components/EmailCards.tsx
 msgid "Later"
 msgstr "Plus tard"
 
@@ -2534,6 +2678,10 @@ msgstr ""
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Leave"
 msgstr "Quitter"
+
+#: src/components/AiDataSharing.tsx
+msgid "Let Rakazo sort your mail"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
@@ -2568,6 +2716,7 @@ msgid "Load earlier messages"
 msgstr "Charger les messages précédents"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/Inbox.tsx
 msgid "Load more"
 msgstr "Charger plus"
 
@@ -2663,6 +2812,11 @@ msgstr "Assurez-vous qu'aucun processus ne tourne encore sur cet ordinateur."
 msgid "Manage"
 msgstr ""
 
+#. placeholder {0}: server.name
+#: src/components/integrations/McpServerRow.tsx
+msgid "Manage {0}"
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Manage billing"
 msgstr ""
@@ -2694,6 +2848,22 @@ msgstr "Marquer comme lu"
 #: src/pages/BotContextMenu.tsx
 msgid "Mark as Unread"
 msgstr "Marquer comme non lu"
+
+#: src/pages/Inbox.tsx
+msgid "Mark important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Mark noise"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked noise"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -2767,6 +2937,7 @@ msgstr "Mentions"
 msgid "Mentions only"
 msgstr "Mentions uniquement"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "Message"
@@ -2890,6 +3061,7 @@ msgstr ""
 msgid "Monthly"
 msgstr "Mensuel"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr "Plus"
@@ -2918,6 +3090,7 @@ msgstr "Déplacer vers"
 msgid "Mute"
 msgstr "Couper le micro"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
 #: src/pages/GroupPanel.tsx
@@ -2940,9 +3113,17 @@ msgstr "Nommez cette routine"
 msgid "Needs an answer"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Needs attention"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Nécessite une saisie"
+
+#: src/pages/Inbox.tsx
+msgid "Needs reply"
+msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
@@ -2985,6 +3166,14 @@ msgstr "Nouvel espace"
 
 #: src/pages/Board.tsx
 msgid "New ticket"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Newsletter"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Newsletters"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -3034,6 +3223,10 @@ msgstr "Aucune conversation de groupe pour le moment."
 #: src/components/AskCard.tsx
 msgid "No longer active"
 msgstr "Plus actif"
+
+#: src/pages/Inbox.tsx
+msgid "No mail"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "No managed app catalog is configured on this deployment."
@@ -3116,6 +3309,10 @@ msgstr "Aucun pour le moment"
 msgid "Normal"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Not confirmed as sent. Check Sent before trying again."
+msgstr ""
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Not connected"
 msgstr "Non connecté"
@@ -3136,6 +3333,7 @@ msgstr "Rien ne tourne encore"
 msgid "Nothing remembered yet"
 msgstr "Rien n'est mémorisé pour le moment"
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "Notifications"
@@ -3149,6 +3347,7 @@ msgstr "Maintenant"
 msgid "Now using {0}."
 msgstr "Utilise maintenant {0}."
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth authorization was cancelled."
 msgstr "L'autorisation OAuth a été annulée."
@@ -3157,10 +3356,12 @@ msgstr "L'autorisation OAuth a été annulée."
 msgid "OAuth connected"
 msgstr "OAuth connecté"
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "Échec de la connexion OAuth"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
@@ -3345,6 +3546,10 @@ msgstr "Collez votre clé API, puis testez à nouveau."
 msgid "Paused"
 msgstr "En pause"
 
+#: src/pages/Inbox.tsx
+msgid "Personal"
+msgstr ""
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
@@ -3383,6 +3588,10 @@ msgstr "Aperçu de {0}"
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr "L'aperçu n'est pas disponible pour ce type de fichier — téléchargez-le pour le consulter."
 
+#: src/pages/Inbox.tsx
+msgid "Primary"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Priority"
 msgstr ""
@@ -3398,6 +3607,10 @@ msgstr "Espace de travail privé avec ses propres bots et groupes."
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Project ID"
 msgstr "ID du projet"
+
+#: src/pages/Inbox.tsx
+msgid "Promotions"
+msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Protected input"
@@ -3450,9 +3663,17 @@ msgstr "Rappel et écriture"
 msgid "Recall only"
 msgstr "Rappel uniquement"
 
+#: src/pages/Inbox.tsx
+msgid "Receipts"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Recent"
 msgstr "Récent"
+
+#: src/components/integrations/McpServerRow.tsx
+msgid "Reconnect"
+msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Reconnect OAuth"
@@ -3519,6 +3740,10 @@ msgstr "Recréer un ordinateur qui ne fonctionne pas."
 msgid "Recreating the computer"
 msgstr "Recréation de l'ordinateur"
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Redirect URI"
+msgstr ""
+
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/pages/RoutineRunHistory.tsx
@@ -3550,6 +3775,7 @@ msgid "Release interrupted computer?"
 msgstr "Libérer l'ordinateur interrompu ?"
 
 #: src/components/ApprovalRulesSettings.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
@@ -3561,6 +3787,11 @@ msgstr "Retirer"
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "Retirer {0}"
+
+#. placeholder {0}: server.name
+#: src/components/integrations/McpServerRow.tsx
+msgid "Remove {0}?"
+msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Remove {full}"
@@ -3608,6 +3839,10 @@ msgstr "Retiré, mais l'actualisation de la liste a échoué"
 msgid "Removing…"
 msgstr "Retrait en cours…"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Rename"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -3639,9 +3874,16 @@ msgstr "Remplacer la clé"
 msgid "Replace value"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "Répondre"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Reply all"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Reply cancelled"
@@ -3724,6 +3966,7 @@ msgstr "Réessayer maintenant"
 msgid "Retry screen"
 msgstr "Réessayer l'écran"
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Rakazo"
 msgstr "Retour à Rakazo"
@@ -3872,6 +4115,10 @@ msgstr "Enregistrement en cours…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "Dites oui ou non, ou répondez en une phrase."
 
+#: src/pages/Inbox.tsx
+msgid "Scheduling"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -3905,6 +4152,10 @@ msgstr "Rechercher par domaine"
 msgid "Search integrations.sh"
 msgstr "Rechercher sur integrations.sh"
 
+#: src/pages/Inbox.tsx
+msgid "Search mail"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
 msgstr "Rechercher des modèles"
@@ -3927,6 +4178,10 @@ msgstr ""
 msgid "Searching…"
 msgstr "Recherche en cours…"
 
+#: src/pages/Inbox.tsx
+msgid "Security"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Select a bot"
 msgstr "Sélectionnez un bot"
@@ -3935,6 +4190,7 @@ msgstr "Sélectionnez un bot"
 msgid "Select a connected model"
 msgstr "Sélectionnez un modèle connecté"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
 msgstr "Envoyer"
@@ -3959,9 +4215,21 @@ msgstr "L'envoyer"
 msgid "Send reset link"
 msgstr "Envoyer le lien de réinitialisation"
 
+#: src/components/AiDataSharing.tsx
+msgid "Senders, recipients, subjects and short previews are sent to {name}."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Sending is turned off."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Sending…"
 msgstr "Envoi en cours…"
+
+#: src/pages/Inbox.tsx
+msgid "Sent"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Sentry alert"
@@ -4040,6 +4308,10 @@ msgstr "Afficher les bots"
 #: src/pages/Shell.tsx
 msgid "Show computer"
 msgstr "Afficher l'ordinateur"
+
+#: src/pages/Inbox.tsx
+msgid "Show Inbox agent"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "Show list"
@@ -4131,6 +4403,10 @@ msgstr "Message Slack"
 msgid "Slack not enabled"
 msgstr "Slack non activé"
 
+#: src/pages/Inbox.tsx
+msgid "Social"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "Mise à jour logicielle"
@@ -4156,6 +4432,10 @@ msgstr "Défaut de l'espace"
 msgid "Spaces"
 msgstr "Espaces"
 
+#: src/pages/Inbox.tsx
+msgid "Spam"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Speak"
 msgstr "Parler"
@@ -4179,6 +4459,10 @@ msgstr "Modèle de parole"
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO est temporairement indisponible. Réessayez."
+
+#: src/pages/Inbox.tsx
+msgid "Starred"
+msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
@@ -4242,6 +4526,10 @@ msgstr "Diffuser les réponses"
 msgid "subagent"
 msgstr "sous-agent"
 
+#: src/components/ComposeEmail.tsx
+msgid "Subject"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
@@ -4264,6 +4552,10 @@ msgstr "Prend en charge les images"
 #: src/pages/Onboarding.tsx
 msgid "Supports thinking"
 msgstr "Prend en charge la réflexion"
+
+#: src/pages/Inbox.tsx
+msgid "Suspicious"
+msgstr ""
 
 #: src/pages/shell/command-palette.tsx
 msgid "Switch bot"
@@ -4430,6 +4722,7 @@ msgstr "Ce lien de réinitialisation est invalide ou a expiré"
 msgid "This server cannot be assigned without a bot."
 msgstr "Ce serveur ne peut pas être assigné sans bot."
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "This server did not request browser authorization."
 msgstr "Ce serveur n'a pas demandé l'autorisation du navigateur."
@@ -4442,6 +4735,7 @@ msgstr "Ce serveur est déjà connecté. Déconnectez-le d'abord pour l'autorise
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 msgstr "Cette connexion par abonnement n'est pas encore disponible dans Rakazo. Utilisez un identifiant de déploiement ou choisissez un autre fournisseur."
 
+#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr "Cette semaine"
@@ -4455,8 +4749,14 @@ msgstr "Heure de la journée"
 msgid "Title"
 msgstr "Titre"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
+msgstr ""
+
+#. placeholder {0}: message.to
+#: src/pages/Inbox.tsx
+msgid "to {0}"
 msgstr ""
 
 #. placeholder {0}: filters.dateRange.to
@@ -4465,6 +4765,7 @@ msgid "To {0}"
 msgstr ""
 
 #: src/lib/ticket-status.ts
+#: src/pages/Inbox.tsx
 msgid "To do"
 msgstr ""
 
@@ -4472,7 +4773,9 @@ msgstr ""
 msgid "To:"
 msgstr "À :"
 
+#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Today"
 msgstr "Aujourd'hui"
@@ -4506,6 +4809,7 @@ msgid "Trial ends {day}"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 msgid "Try again"
 msgstr "Réessayer"
@@ -4534,6 +4838,10 @@ msgstr "Non assigné"
 msgid "Unavailable"
 msgstr "Indisponible"
 
+#: src/pages/Inbox.tsx
+msgid "Undo"
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Uninstall"
 msgstr "Désinstaller"
@@ -4553,6 +4861,10 @@ msgstr "Réactiver le micro"
 #: src/pages/BotContextMenu.tsx
 msgid "Unpin"
 msgstr "Désépingler"
+
+#: src/pages/Inbox.tsx
+msgid "Unread"
+msgstr ""
 
 #. placeholder {0}: pending.file.name
 #: src/pages/Shell.tsx
@@ -4597,6 +4909,7 @@ msgstr "Mis à jour"
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
 msgstr "Mises à jour"
@@ -4781,6 +5094,10 @@ msgstr "Quand utiliser"
 msgid "Where should bots run?"
 msgstr "Où les bots doivent-ils s'exécuter ?"
 
+#: src/components/EmailCards.tsx
+msgid "Within 3 days"
+msgstr ""
+
 #: src/lib/ticket-status.ts
 msgid "Won't do"
 msgstr ""
@@ -4815,6 +5132,7 @@ msgstr "Vous"
 msgid "You can close this tab if it does not redirect automatically."
 msgstr "Vous pouvez fermer cet onglet s'il ne redirige pas automatiquement."
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this window."
 msgstr "Vous pouvez fermer cette fenêtre."

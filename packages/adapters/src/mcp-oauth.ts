@@ -179,6 +179,8 @@ export class McpReauthorizationRequiredError extends Error {
 }
 
 type ProviderOptions = {
+  /** Hide the stored token from the SDK so it asks the user to authorize again. */
+  reauthorize?: boolean;
   redirectUri?: string;
   state?: string;
   onAuthorization?: (url: URL) => void;
@@ -196,6 +198,7 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
   private readonly runtimeState = randomUUID();
   private persistQueue = Promise.resolve();
   private refreshing?: Promise<void>;
+  private reauthorizing: boolean;
 
   constructor(
     readonly serverId: string,
@@ -203,6 +206,7 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
     private readonly persistMaterial: (material: OAuthMaterial) => Promise<void>,
     private readonly options: ProviderOptions = {},
   ) {
+    this.reauthorizing = options.reauthorize === true;
     if (options.redirectUri) {
       this.material.oauth = { ...(this.material.oauth ?? {}), redirectUri: options.redirectUri };
     }
@@ -243,6 +247,7 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
    * expiry before returning a token that has lapsed.
    */
   async tokens(): Promise<OAuthTokens | undefined> {
+    if (this.reauthorizing) return undefined;
     if (this.options.refreshNetwork && this.accessTokenExpired()) {
       this.refreshing ??= this.refreshExpiredToken().finally(() => {
         this.refreshing = undefined;
@@ -297,6 +302,7 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
     const oauth = this.oauth();
     oauth.tokens = value;
     oauth.obtainedAt = Date.now();
+    this.reauthorizing = false;
     await this.persist();
   }
   async redirectToAuthorization(url: URL): Promise<void> {
@@ -567,6 +573,7 @@ export class McpOAuthBroker {
     spaceId: string;
     userId: string;
     redirectUri: string;
+    reauthorize?: boolean;
   }): Promise<
     | { status: "authorization_required"; sessionId: string; authorizationUrl: string }
     | { status: "already_connected" | "authorization_not_requested" }
@@ -603,6 +610,7 @@ export class McpOAuthBroker {
     const provider = this.createProvider(server, context, loaded, {
       redirectUri: input.redirectUri,
       state: sessionId,
+      reauthorize: input.reauthorize,
       onAuthorization: (url) => {
         authorizationUrl = url;
       },

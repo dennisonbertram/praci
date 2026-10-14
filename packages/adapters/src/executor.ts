@@ -16,6 +16,8 @@ import type {
   ConnectorProvider,
   ConnectorTool,
   JobPublisher,
+  MailAccount,
+  MailProvider,
   ManagedConnectorProvider,
   MemoryStore,
   ModelCredentialFailedState,
@@ -49,6 +51,7 @@ import {
   HistoryReadInputSchema,
   HistorySearchInputSchema,
   isAttachmentImageMimeType,
+  isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@rakazo/contracts";
 import type { ActionApprovalRule, ToolCallStreak } from "@rakazo/core";
@@ -66,6 +69,7 @@ import {
   createStreamingRedactor,
   endsSentence,
   expandSkillReferencesInPrompt,
+  findSkillByName,
   formatSkillRunPrompt,
   formatSkillsCatalogInstruction,
   humanizeToolName,
@@ -80,6 +84,7 @@ import {
   messagingDmSurfaceNote,
   nextCronDateAcross,
   nextFence,
+  parseSkillMd,
   planActionGate,
   promptInvokesSkill,
   redactSecrets,
@@ -190,6 +195,7 @@ import {
   browserNavigateFromTool,
   browserSnapshotFromTool,
 } from "./browser-tools.js";
+import { INBOX_SEARCH_SKILL_NAME } from "./builtin-skills.js";
 import { agentConnectionTools, builtinAgentTools, sharedMemorySaveError } from "./builtin-tools.js";
 import { archiveSpawnedBot, spawnBot } from "./child-bots.js";
 import type { CloudAgentConnection } from "./cloud-agent-factory.js";
@@ -254,6 +260,12 @@ import {
   CATALOG_EXECUTE,
   uniquifyInstalledToolName,
 } from "./lazy-tool-catalog.js";
+import {
+  MAIL_TOOL_NAMES,
+  mailToolFromTool,
+  mailToolsAllowed,
+  selectMailTools,
+} from "./mail-tools.js";
 import {
   buildMcpCredentialBlob,
   needsOAuthProbe,
@@ -385,7 +397,7 @@ import {
 import { createWebProvider } from "./web-provider-factory.js";
 import { webFetchFromTool, webSearchFromTool } from "./web-tools.js";
 
-const READ_ONLY_AGENT_TOOLS = new Set([
+export const READ_ONLY_AGENT_TOOLS = new Set([
   "computer_observe",
   "list_files",
   "read_file",
@@ -402,6 +414,11 @@ const READ_ONLY_AGENT_TOOLS = new Set([
   "skill_read",
   "web_search",
   "web_fetch",
+  "mail_search",
+  "mail_grep",
+  "mail_get",
+  "show_emails",
+  "inbox_overview",
   "browser_snapshot",
   "list_secrets",
   "cloud_agent_status",
@@ -2669,6 +2686,8 @@ export interface ExecutorDeps {
   mcpAllowPrivateEndpoint?: boolean;
   /** Remote cloud coding agents. Null/omit means tools stay uninjected. */
   cloudAgent?: CloudAgentConnection | null;
+  /** Mail tools (mail_search, mail_grep, mail_get, show_emails, inbox_overview). Null/omit means they are never offered. */
+  mail?: MailProvider | null;
   /** Optional Auto Review verifier. When omitted, the factory selects from env (llm | jev | scripted). */
   autoReview?: AutoReviewProvider;
   /**
@@ -3456,9 +3475,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const onShutdown = () => runAbortController?.abort(deps.shutdownSignal?.reason);
         deps.shutdownSignal?.addEventListener("abort", onShutdown);
         detachShutdown = () => deps.shutdownSignal?.removeEventListener("abort", onShutdown);
-        const composioRows = storedConnections.filter(
-          (connection) => connection.connectorId === "composio",
-        );
+        // The Inbox agent reads mail only through the mail tools. Offering it the Composio tools
+        // as well sent it through their search and execute round trips first (about 28s of an
+        // 89s run), so it gets none of them and skips the discovery calls.
+        const mailOnly = isInboxAgentSpawnKey(bot.spawnKey);
+        const composioRows = mailOnly
+          ? []
+          : storedConnections.filter((connection) => connection.connectorId === "composio");
         let liveSlugs: string[] = [];
         if (needsLivePluginSync(composioRows)) {
           const listing = await loadLivePluginSlugs(deps.listConnectedPluginSlugs, run.userId);
@@ -3470,10 +3493,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
         }
         const connectedComposio = mergeConnectedPlugins(composioRows, liveSlugs);
-        const connectedPlugins = selectRunConnections(
-          storedConnections,
-          connectedComposio.map((connection) => connection.provider),
-        );
+        const connectedPlugins = mailOnly
+          ? []
+          : selectRunConnections(
+              storedConnections,
+              connectedComposio.map((connection) => connection.provider),
+            );
         const context = {
           operationId: runId,
           traceId: runId,
@@ -3506,9 +3531,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           payload: { trigger: run.trigger, routineId: run.routineId },
         });
 
-        const discoveredPromise = deps.connector
-          ? deps.connector.discoverTools(context)
-          : Promise.resolve([]);
+        const discoveredPromise =
+          deps.connector && !mailOnly ? deps.connector.discoverTools(context) : Promise.resolve([]);
         const threadContext = threadContextForRun(
           run.trigger,
           {
@@ -3817,6 +3841,22 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const pageBrowserAllowed =
           graphical && browser.describe().capabilities.page && !heldForTakeover;
         const disabledBuiltinTools = disabledBuiltinToolSet(bot.disabledBuiltinTools);
+        // Connected mail accounts of the bot owner, looked up once per run and never shared.
+        let mailAccountsPromise: Promise<MailAccount[]> | undefined;
+        const mailAccounts = () => {
+          mailAccountsPromise ??= deps.mail
+            ? deps.mail.listAccounts({ spaceId: run.spaceId, userId: bot.userId }, context)
+            : Promise.resolve([]);
+          return mailAccountsPromise;
+        };
+        const mailEnabled =
+          mailToolsAllowed({
+            hasProvider: Boolean(deps.mail),
+            groupId: thread.groupId,
+            runUserId: run.userId,
+            botUserId: bot.userId,
+            messagingChannelRun,
+          }) && (await mailAccounts().catch(() => [])).length > 0;
         const builtins = [
           ...selectBuiltinToolsForRun({
             ticketBoardEnabled: deps.ticketBoardEnabled,
@@ -3827,6 +3867,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             trigger: run.trigger,
             semanticMemoryEnabled,
             cloudAgentEnabled: cloudAgentsEnabled(cloudAgent, run.spaceId),
+            mailEnabled,
             messagingChannelRun,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
@@ -5190,6 +5231,23 @@ export function createRunExecutor(deps: ExecutorDeps) {
           if (name === "web_fetch") {
             return finish(await webFetchFromTool(web, context, args));
           }
+          if (MAIL_TOOL_NAMES.has(name) && deps.mail && mailEnabled) {
+            return finish(
+              await mailToolFromTool(
+                name,
+                {
+                  mail: deps.mail,
+                  prisma: deps.prisma,
+                  jobs: deps.jobs,
+                  accounts: mailAccounts,
+                  publish: (blocks) => publishMessage(deps, run, "bot", blocks),
+                  scope: { spaceId: run.spaceId, userId: bot.userId, botId: bot.id },
+                },
+                context,
+                args,
+              ),
+            );
+          }
           if (PAGE_BROWSER_TOOL_NAMES.has(name)) {
             if (heldForTakeover) {
               return finish({ error: DESKTOP_HELD_FOR_TAKEOVER_MESSAGE });
@@ -6320,8 +6378,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
           return finish({ error: `unknown tool ${name}` });
         };
 
-        const pluginLine =
-          connectedPlugins.length > 0
+        const pluginLine = mailOnly
+          ? undefined
+          : connectedPlugins.length > 0
             ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
             : "No plugins are connected yet.";
         const taughtSkillIndex = savedSkills.slice(0, 20);
@@ -6337,7 +6396,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   "\n",
                 )}\nWhen the user asks to run a taught skill by name, follow that skill's playbook exactly. The full playbook is included in the user task when they invoke it.`
             : undefined;
-        const agentSkillsLine = formatSkillsCatalogInstruction(agentSkills);
+        const mailSkill = splitInboxSearchSkill(tools, agentSkills);
+        const agentSkillsLine = formatSkillsCatalogInstruction(mailSkill.catalog);
         const missingImagesInstruction = missingTurnImagesInstruction(
           turnBlocks,
           currentTurnImages,
@@ -6527,6 +6587,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 agentEnvironmentInstruction,
                 botDirectory,
                 pluginLine,
+                mailSearchGuidance: mailSkill.guidance,
                 agentSkillsLine,
                 taughtSkillsLine,
                 replyGuidance: runReplyGuidance(run.trigger),
@@ -7464,6 +7525,8 @@ export function selectBuiltinToolsForRun(options: {
   trigger: string;
   semanticMemoryEnabled: boolean;
   cloudAgentEnabled?: boolean;
+  /** The run's requester owns the bot and has a connected mail account. */
+  mailEnabled?: boolean;
   messagingChannelRun: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
@@ -7471,21 +7534,24 @@ export function selectBuiltinToolsForRun(options: {
   disabledBuiltinTools?: readonly string[];
 }) {
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
-  return selectCloudAgentTools(
-    selectMemoryTools(
-      filterBuiltinToolsForRun(
-        filterBuiltinToolsForThread(
-          filterPageBrowserTools(
-            filterImageReturningComputerTools(builtinAgentTools, options.graphicalToolsAllowed),
-            options.pageBrowserAllowed ?? options.graphicalToolsAllowed,
+  return selectMailTools(
+    selectCloudAgentTools(
+      selectMemoryTools(
+        filterBuiltinToolsForRun(
+          filterBuiltinToolsForThread(
+            filterPageBrowserTools(
+              filterImageReturningComputerTools(builtinAgentTools, options.graphicalToolsAllowed),
+              options.pageBrowserAllowed ?? options.graphicalToolsAllowed,
+            ),
+            options.groupId,
           ),
-          options.groupId,
+          options.trigger,
         ),
-        options.trigger,
+        options.semanticMemoryEnabled,
       ),
-      options.semanticMemoryEnabled,
+      Boolean(options.cloudAgentEnabled),
     ),
-    Boolean(options.cloudAgentEnabled),
+    Boolean(options.mailEnabled),
   ).filter(
     (tool) =>
       !disabled.has(tool.name) &&
@@ -7753,6 +7819,21 @@ function toolUsageLine(parts: {
   return `${parts.computerInstruction} ${clauses.join(" ")}`;
 }
 
+// The inbox-search recipe goes straight into the turn when the run offers mail_search, so the
+// model does not need a skill_read round trip. It never appears in the catalog line.
+export function splitInboxSearchSkill<T extends { name: string; content: string }>(
+  tools: readonly { name: string }[],
+  skills: T[],
+): { catalog: T[]; guidance: string | undefined } {
+  const skill = findSkillByName(skills, INBOX_SEARCH_SKILL_NAME);
+  const catalog = skills.filter((row) => row !== skill);
+  if (!skill || !tools.some((tool) => tool.name === "mail_search")) {
+    return { catalog, guidance: undefined };
+  }
+  const parsed = parseSkillMd(skill.content);
+  return { catalog, guidance: "error" in parsed ? undefined : parsed.body };
+}
+
 // Ordering matters: stable blocks first, volatile ones last, so the prefix stays cacheable.
 export function userTurnInstructions(parts: {
   botInstructions: string;
@@ -7770,6 +7851,7 @@ export function userTurnInstructions(parts: {
   agentEnvironmentInstruction: string | undefined;
   botDirectory: string | undefined;
   pluginLine: string | undefined;
+  mailSearchGuidance?: string | undefined;
   agentSkillsLine: string | undefined;
   taughtSkillsLine: string | undefined;
   replyGuidance: string;
@@ -7810,6 +7892,7 @@ export function userTurnInstructions(parts: {
       "archive_bot safely archives a bot this bot created, and only that bot. Use it when the user asks to remove that bot or when it is finished and unused. The user can restore it or permanently delete it later. confirm_name must exactly match its name.",
     ),
     parts.pluginLine,
+    parts.mailSearchGuidance,
     parts.agentSkillsLine,
     parts.taughtSkillsLine,
     offeredBuiltinClause(

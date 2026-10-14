@@ -645,6 +645,24 @@ export const ConnectionCatalogItemSchema = z.object({
 });
 export type ConnectionCatalogItem = z.infer<typeof ConnectionCatalogItemSchema>;
 
+/**
+ * One Gmail entry per surface. With native Google configured and usable, it
+ * replaces the managed (Composio, Pipedream) Gmail entries. Where native Google
+ * cannot work (desktop's embedded window, mobile's session-less browser) it is
+ * hidden and the managed entry stays.
+ */
+export function preferNativeGmail(
+  items: ConnectionCatalogItem[],
+  { nativeGoogle }: { nativeGoogle: boolean },
+): ConnectionCatalogItem[] {
+  if (!nativeGoogle) return items.filter((item) => item.connectorId !== "google");
+  if (!items.some((item) => item.connectorId === "google")) return items;
+  // A connected managed Gmail stays listed so it can still be disconnected.
+  return items.filter(
+    (item) => item.connectorId === "google" || item.slug !== "gmail" || item.connected,
+  );
+}
+
 export const ActionApprovalRuleSchema = z.object({
   id: Id,
   effect: z.enum(["always_allow", "require_approval"]),
@@ -817,7 +835,9 @@ export const UsageRecordSchema = z.object({
   usageSource: z.string().nullable().optional(),
   callId: z.string().nullable().optional(),
   operationId: z.string().nullable().optional(),
-  operationKind: z.enum(["answer", "setup", "retrieval", "subagent", "compaction"]).optional(),
+  operationKind: z
+    .enum(["answer", "setup", "retrieval", "subagent", "compaction", "triage"])
+    .optional(),
   parentRunId: z.string().nullable().optional(),
   agentId: z.string().nullable().optional(),
   createdAt: z.string(),

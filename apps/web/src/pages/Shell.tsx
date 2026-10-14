@@ -1,5 +1,5 @@
 import { i18n } from "@lingui/core";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ChatMarkdown, LinkifiedText } from "@rakazo/chat-ui/web";
 import type {
@@ -97,6 +97,7 @@ import {
   LayoutGrid,
   Lock,
   LogOut,
+  Mail,
   Maximize2,
   Menu,
   Mic,
@@ -104,6 +105,7 @@ import {
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
   Paperclip,
   Pencil,
   Plus,
@@ -133,7 +135,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
@@ -147,6 +149,7 @@ import { ComputerUpdateProgress } from "../components/ComputerUpdateProgress";
 import { CallCard } from "../components/call/CallCard";
 import { VoiceChatCard } from "../components/call/VoiceChatCard";
 import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
+import { EmailCards } from "../components/EmailCards";
 import { lazyOverlay } from "../components/ErrorBoundary";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import {
@@ -171,7 +174,9 @@ import {
 import {
   BOTS_SIDEBAR_EDGE_DRAG_PX,
   readBotsSidebarCollapsed,
+  readInboxAgentCollapsed,
   writeBotsSidebarCollapsed,
+  writeInboxAgentCollapsed,
 } from "../lib/bots-sidebar-pref";
 import {
   deliverBrowserNotification as deliverNativeBrowserNotification,
@@ -188,6 +193,7 @@ import {
 } from "../lib/computer-screen";
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
+import { findInboxAgent } from "../lib/inbox-agent";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
 import { messageProviderLabel } from "../lib/messaging";
@@ -253,6 +259,7 @@ import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { HostComputerPrompt } from "./HostComputerPrompt";
+import { InboxPage } from "./Inbox";
 import { ResizableSidePanel } from "./ResizableSidePanel";
 import type { RoutineDraftState } from "./RoutineEditor";
 import {
@@ -432,6 +439,17 @@ export function ShellPage() {
   useEffect(() => {
     setBotsSidebarCollapsed(readBotsSidebarCollapsed(userId));
   }, [userId]);
+  // On a phone the panel covers the Inbox list, so it starts collapsed there.
+  const [inboxAgentCollapsed, setInboxAgentCollapsed] = useState(
+    () => !window.matchMedia("(min-width: 768px)").matches,
+  );
+  const [creatingInboxAgent, setCreatingInboxAgent] = useState(false);
+  const [inboxAgentError, setInboxAgentError] = useState("");
+  useEffect(() => {
+    setInboxAgentCollapsed(
+      readInboxAgentCollapsed(userId) || !window.matchMedia("(min-width: 768px)").matches,
+    );
+  }, [userId]);
   const [query, setQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -558,6 +576,15 @@ export function ShellPage() {
     commitSnapshot(update(snapshotRef.current));
   }
   const [pluginsOpen, setPluginsOpen] = useState(false);
+  const [pluginsQuery, setPluginsQuery] = useState("");
+  const [inboxUnread, setInboxUnread] = useState(0);
+  const refreshInboxUnread = useCallback(() => {
+    void rpc.inbox
+      .unreadCount()
+      .then((result) => setInboxUnread(result.count))
+      .catch(() => undefined);
+  }, []);
+  useEffect(refreshInboxUnread, [refreshInboxUnread]);
   const [mcpOpen, setMcpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
@@ -791,7 +818,12 @@ export function ShellPage() {
   const autoSpokenBotId = useRef<string | null>(null);
 
   const inGroup = Boolean(groupId);
-  const active = inGroup ? undefined : (bots.find((b) => b.id === botId) ?? bots[0]);
+  const inboxMode = useMatch("/app/inbox") != null;
+  const active = inGroup
+    ? undefined
+    : inboxMode
+      ? findInboxAgent(bots, userId)
+      : (bots.find((b) => b.id === botId) ?? bots[0]);
   const computerBot =
     (computerBotId ? bots.find((bot) => bot.id === computerBotId) : undefined) ?? active;
   computerOpenRef.current = computerOpen;
@@ -804,12 +836,15 @@ export function ShellPage() {
   const activeRoutines = !inGroup && routinesBotId === active?.id ? routines : [];
   const panelTarget = inGroup ? activeGroup?.id : active?.id;
   const panelStorageKey =
-    userId && bootstrapMe?.spaceId && panelTarget
+    // The Inbox agent panel is not a saved bot panel: never restore or write one for it.
+    userId && bootstrapMe?.spaceId && panelTarget && !inboxMode
       ? rightPanelStorageKey(userId, bootstrapMe.spaceId, inGroup ? "group" : "bot", panelTarget)
       : null;
   panelStorageKeyRef.current = panelStorageKey;
   const activeTaughtSkills = taughtSkillsBotId === active?.id ? taughtSkills : [];
   const recordingSkill = activeTaughtSkills.find((skill) => skill.status === "recording") ?? null;
+  const routeInboxMode = useRef(inboxMode);
+  routeInboxMode.current = inboxMode;
   const routeBotId = useRef<string | undefined>(botId);
   routeBotId.current = botId;
   const routeGroupId = useRef<string | undefined>(groupId);
@@ -990,6 +1025,8 @@ export function ShellPage() {
           }
           return;
         }
+        // /app/inbox has no bot id by design; creating the Inbox agent refreshes the roster here.
+        if (routeInboxMode.current) return;
         const currentBotId = routeBotId.current;
         if (!currentBotId || !list.some((bot) => bot.id === currentBotId)) {
           navigate(firstThreadRoute(list, groupList), { replace: true });
@@ -1219,7 +1256,7 @@ export function ShellPage() {
           return;
         }
         const selectedBotId = bootstrap.thread?.botId ?? bootstrap.bots[0]?.id;
-        if (selectedBotId && selectedBotId !== botId) {
+        if (selectedBotId && selectedBotId !== botId && !inboxMode) {
           navigate(`/app/${selectedBotId}`, { replace: true });
         }
       })
@@ -1883,7 +1920,7 @@ export function ShellPage() {
     initialBotsLoaded &&
     (inGroup
       ? Boolean(activeGroup && activeSnapshot)
-      : bots.length === 0 || Boolean(active && activeSnapshot));
+      : bots.length === 0 || inboxMode || Boolean(active && activeSnapshot));
   const refreshThreadRef = useRef(refreshThread);
   refreshThreadRef.current = refreshThread;
   const refreshGroupThreadRef = useRef(refreshGroupThread);
@@ -2374,6 +2411,24 @@ export function ShellPage() {
     await refreshBots().catch(() => undefined);
   }
 
+  function setInboxAgentCollapsedPref(collapsed: boolean) {
+    setInboxAgentCollapsed(collapsed);
+    writeInboxAgentCollapsed(userId, collapsed);
+  }
+
+  async function createInboxAgent() {
+    setCreatingInboxAgent(true);
+    setInboxAgentError("");
+    try {
+      await rpc.inbox.agent();
+      await refreshBots();
+    } catch (error) {
+      setInboxAgentError(errorText(error, t`Could not create the Inbox agent`));
+    } finally {
+      setCreatingInboxAgent(false);
+    }
+  }
+
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
     writeBotsSidebarCollapsed(userId, collapsed);
@@ -2719,6 +2774,118 @@ export function ShellPage() {
     .slice(0, 2)
     .toUpperCase();
 
+  const threadView = (
+    <>
+      <Transcript
+        key={activeSnapshot?.threadId}
+        scrollRef={messageScroll}
+        scrollRequest={scrollRequest}
+        onScrollRequestHandled={clearScrollRequest}
+        artifactTarget={transcriptArtifactTarget}
+        messages={transcriptMessages}
+        showToolActivity={showToolActivity}
+        olderCursor={activeSnapshot?.olderCursor ?? null}
+        loadingOlder={loadingOlder}
+        answerableAskMessageId={answerableAskMessageId}
+        running={transcriptRunning}
+        workingBots={workingBots}
+        workingActivity={soleWorkingActivity}
+        workingStartedAt={workingStartedAt}
+        onLoadOlder={loadOlder}
+        onOpenBot={openBot}
+        onAnswer={answerMessage}
+        onReply={(message) => {
+          setReplyTarget(message);
+          setReplyQuote(null);
+        }}
+        onQuote={(message, quote) => {
+          setReplyTarget(message);
+          setReplyQuote(quote);
+        }}
+        onReact={reactToMessage}
+        onJumpToMessage={jumpToReplyMessage}
+        onOpenPeerMessages={(peer) => {
+          setPeerConversation(peer);
+        }}
+        memberName={resolveTranscriptMemberName}
+        peerBot={resolveTranscriptBot}
+        onRefresh={refreshActiveThread}
+        onBotChanged={refreshBots}
+        onAddRoutine={addSkillRoutine}
+        voiceReady={Boolean(voiceStatus?.ready)}
+        speakingMessageId={speakingMessageId}
+        onSpeak={speakMessage}
+        onOpenComputer={onOpenComputer}
+      />
+      {recordingSkill ? (
+        <div className="px-6 pb-2 text-center text-[13px] text-destructive">
+          <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
+        </div>
+      ) : null}
+      {active || activeGroup ? (
+        <Composer
+          key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
+          activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
+          running={composerRunning}
+          disabled={Boolean(recordingSkill)}
+          pendingAttachments={activePendingAttachments}
+          attachmentNotice={attachmentNotice}
+          sendError={sendError}
+          runError={displayedRunError}
+          runErrorId={displayedRunErrorId}
+          onRunErrorPresented={handleRunErrorPresented}
+          onDismissError={dismissComposerError}
+          sending={sending}
+          fileInputRef={fileInputRef}
+          onAttachmentPick={onAttachmentPick}
+          onRemoveAttachment={removeAttachment}
+          onSend={sendMessage}
+          onStop={stopRun}
+          onVoice={
+            !inGroup && active
+              ? () => {
+                  if (!voiceStatus?.ready) {
+                    openSettings("voice");
+                    return;
+                  }
+                  startCall({
+                    botId: active.id,
+                    botName: active.name,
+                    botColor: active.color,
+                    transcribe: voiceStatus ? Boolean(voiceStatus.transcribe) : undefined,
+                  });
+                }
+              : undefined
+          }
+          artifactTarget={transcriptArtifactTarget}
+          replyTarget={activeReplyTarget}
+          replyQuote={activeReplyQuote}
+          replyTargetName={replyTargetName}
+          onClearReply={clearReply}
+          mentionTargets={composerMentionTargets}
+          agentSkills={agentSkills}
+          onSlashOpen={refreshAgentSkills}
+          sentHistory={sentHistory}
+          onSlashAction={(action) => {
+            if (action === "chat-settings") {
+              setPanel(inGroup ? "group-settings" : "settings");
+              // Inbox mode renders no settings panel; they open on the agent's own page.
+              if (inboxMode && active) openBot(active.id);
+              return;
+            }
+            if (action === "settings-general") {
+              openSettings("general");
+              return;
+            }
+            if (action === "settings-usage") {
+              openSettings("usage");
+            }
+          }}
+        />
+      ) : null}
+    </>
+  );
+
   const shell = (
     <div
       data-testid="shell-root"
@@ -2895,6 +3062,34 @@ export function ShellPage() {
             name="sidebar-search"
           />
         </InputGroup>
+        <button
+          type="button"
+          data-testid="sidebar-inbox"
+          aria-current={inboxMode ? "page" : undefined}
+          onClick={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/inbox");
+          }}
+          className={`mx-2.5 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-start hover:bg-sidebar-accent ${
+            inboxMode ? "bg-sidebar-accent" : ""
+          }`}
+        >
+          <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
+            <Mail size={15} strokeWidth={1.8} aria-hidden="true" />
+          </span>
+          <span className="text-[14px] font-medium text-foreground/90">
+            <Trans>Inbox</Trans>
+          </span>
+          {inboxUnread > 0 ? (
+            <span
+              role="img"
+              aria-label={plural(inboxUnread, { one: "# unread", other: "# unread" })}
+              className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
+            >
+              {inboxUnread}
+            </span>
+          ) : null}
+        </button>
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {showSpaceSearch ? (
             <SpaceSearchResults
@@ -3041,7 +3236,10 @@ export function ShellPage() {
                         const parentCollapsed =
                           hasChildren && collapsedRosterParents.has(item.chat.id);
                         const selected =
-                          (item.kind === "bot" && !inGroup && active?.id === item.chat.id) ||
+                          (item.kind === "bot" &&
+                            !inGroup &&
+                            !inboxMode &&
+                            active?.id === item.chat.id) ||
                           (item.kind === "group" && inGroup && activeGroup?.id === item.chat.id);
                         const compact = botsSidebarDensity === "compact";
                         const workStatusLabel =
@@ -3385,7 +3583,10 @@ export function ShellPage() {
         </div>
         <button
           type="button"
-          onClick={() => setPluginsOpen(true)}
+          onClick={() => {
+            setPluginsQuery("");
+            setPluginsOpen(true);
+          }}
           className="mx-3 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent"
         >
           <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
@@ -3539,7 +3740,14 @@ export function ShellPage() {
             className="absolute bottom-20 start-0 top-16 z-20 w-8 touch-none md:hidden"
           />
         ) : null}
-        <div className="app-drag flex items-center justify-between border-b border-sidebar-border px-3 py-[17px] md:px-[22px]">
+        {/* Inbox mode keeps only the navigation controls, so phones can still open the sidebar. */}
+        <div
+          className={`app-drag flex items-center justify-between px-3 md:px-[22px] ${
+            inboxMode
+              ? `py-2${botsSidebarCollapsed ? "" : " md:hidden"}`
+              : "border-b border-sidebar-border py-[17px]"
+          }`}
+        >
           <div className="flex min-w-0 items-center gap-2">
             {/* Collapsed bots sidebar: this header is the leading edge for window chrome. */}
             {botsSidebarCollapsed && desktopBridge() ? <WindowChrome /> : null}
@@ -3563,36 +3771,41 @@ export function ShellPage() {
                 <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
               </button>
             ) : null}
-            <button
-              type="button"
-              data-testid="bot-settings-trigger"
-              onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
-              className="app-no-drag flex min-w-0 items-center gap-3"
-            >
-              {inGroup ? (
-                <GroupAvatar
-                  members={activeSnapshot?.members ?? activeGroup?.members ?? []}
-                  size={26}
-                />
-              ) : active ? (
-                <BotAvatar
-                  color={active.color}
-                  identity={active.id}
-                  size={26}
-                  status={active.status}
-                />
-              ) : null}
-              <span className="min-w-0">
-                <span className="block truncate text-[16px] font-medium text-foreground" dir="auto">
-                  {inGroup
-                    ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
-                    : (active?.name ?? t`Select a bot`)}
+            {inboxMode ? null : (
+              <button
+                type="button"
+                data-testid="bot-settings-trigger"
+                onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
+                className="app-no-drag flex min-w-0 items-center gap-3"
+              >
+                {inGroup ? (
+                  <GroupAvatar
+                    members={activeSnapshot?.members ?? activeGroup?.members ?? []}
+                    size={26}
+                  />
+                ) : active ? (
+                  <BotAvatar
+                    color={active.color}
+                    identity={active.id}
+                    size={26}
+                    status={active.status}
+                  />
+                ) : null}
+                <span className="min-w-0">
+                  <span
+                    className="block truncate text-[16px] font-medium text-foreground"
+                    dir="auto"
+                  >
+                    {inGroup
+                      ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
+                      : (active?.name ?? t`Select a bot`)}
+                  </span>
                 </span>
-              </span>
-            </button>
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-1">
-            {!inGroup && active ? (
+            {!inGroup && !inboxMode && active ? (
               <button
                 type="button"
                 title={t`Agent computer`}
@@ -3612,7 +3825,17 @@ export function ShellPage() {
             ) : null}
           </div>
         </div>
-        {!active && !activeGroup && initialBotsLoaded ? (
+        {inboxMode ? (
+          <InboxPage
+            paused={pluginsOpen}
+            onShowAgent={inboxAgentCollapsed ? () => setInboxAgentCollapsedPref(false) : undefined}
+            onRefreshed={refreshInboxUnread}
+            onConnectMail={() => {
+              setPluginsQuery("gmail");
+              setPluginsOpen(true);
+            }}
+          />
+        ) : !active && !activeGroup && initialBotsLoaded ? (
           <div className="grid flex-1 place-items-center">
             <Button onClick={() => void createBot()}>
               <Plus size={16} aria-hidden="true" />
@@ -3620,122 +3843,71 @@ export function ShellPage() {
             </Button>
           </div>
         ) : (
-          <Transcript
-            key={activeSnapshot?.threadId}
-            scrollRef={messageScroll}
-            scrollRequest={scrollRequest}
-            onScrollRequestHandled={clearScrollRequest}
-            artifactTarget={transcriptArtifactTarget}
-            messages={transcriptMessages}
-            showToolActivity={showToolActivity}
-            olderCursor={activeSnapshot?.olderCursor ?? null}
-            loadingOlder={loadingOlder}
-            answerableAskMessageId={answerableAskMessageId}
-            running={transcriptRunning}
-            workingBots={workingBots}
-            workingActivity={soleWorkingActivity}
-            workingStartedAt={workingStartedAt}
-            onLoadOlder={loadOlder}
-            onOpenBot={openBot}
-            onAnswer={answerMessage}
-            onReply={(message) => {
-              setReplyTarget(message);
-              setReplyQuote(null);
-            }}
-            onQuote={(message, quote) => {
-              setReplyTarget(message);
-              setReplyQuote(quote);
-            }}
-            onReact={reactToMessage}
-            onJumpToMessage={jumpToReplyMessage}
-            onOpenPeerMessages={(peer) => {
-              setPeerConversation(peer);
-            }}
-            memberName={resolveTranscriptMemberName}
-            peerBot={resolveTranscriptBot}
-            onRefresh={refreshActiveThread}
-            onBotChanged={refreshBots}
-            onAddRoutine={addSkillRoutine}
-            voiceReady={Boolean(voiceStatus?.ready)}
-            speakingMessageId={speakingMessageId}
-            onSpeak={speakMessage}
-            onOpenComputer={onOpenComputer}
-          />
+          threadView
         )}
-        {recordingSkill ? (
-          <div className="px-6 pb-2 text-center text-[13px] text-destructive">
-            <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
-          </div>
-        ) : null}
-        {active || activeGroup ? (
-          <Composer
-            key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
-            activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
-            running={composerRunning}
-            disabled={Boolean(recordingSkill)}
-            pendingAttachments={activePendingAttachments}
-            attachmentNotice={attachmentNotice}
-            sendError={sendError}
-            runError={displayedRunError}
-            runErrorId={displayedRunErrorId}
-            onRunErrorPresented={handleRunErrorPresented}
-            onDismissError={dismissComposerError}
-            sending={sending}
-            fileInputRef={fileInputRef}
-            onAttachmentPick={onAttachmentPick}
-            onRemoveAttachment={removeAttachment}
-            onSend={sendMessage}
-            onStop={stopRun}
-            onVoice={
-              !inGroup && active
-                ? () => {
-                    if (!voiceStatus?.ready) {
-                      openSettings("voice");
-                      return;
-                    }
-                    startCall({
-                      botId: active.id,
-                      botName: active.name,
-                      botColor: active.color,
-                      transcribe: voiceStatus ? Boolean(voiceStatus.transcribe) : undefined,
-                    });
-                  }
-                : undefined
-            }
-            artifactTarget={transcriptArtifactTarget}
-            replyTarget={activeReplyTarget}
-            replyQuote={activeReplyQuote}
-            replyTargetName={replyTargetName}
-            onClearReply={clearReply}
-            mentionTargets={composerMentionTargets}
-            agentSkills={agentSkills}
-            onSlashOpen={refreshAgentSkills}
-            sentHistory={sentHistory}
-            onSlashAction={(action) => {
-              if (action === "chat-settings") {
-                setPanel(inGroup ? "group-settings" : "settings");
-                return;
-              }
-              if (action === "settings-general") {
-                openSettings("general");
-                return;
-              }
-              if (action === "settings-usage") {
-                openSettings("usage");
-              }
-            }}
-          />
-        ) : null}
       </main>
 
       <CallCard onSettings={() => openSettings("voice")} />
 
       <ResizableSidePanel
         botsSidebarCollapsed={botsSidebarCollapsed}
-        open={Boolean(panel && (active || activeGroup))}
-        panel={panel ?? "closed"}
+        open={
+          inboxMode
+            ? !inboxAgentCollapsed
+            : Boolean(panel && (active || activeGroup))
+        }
+        panel={inboxMode ? "inbox-agent" : (panel ?? "closed")}
       >
-        {panel && (active || activeGroup) ? (
+        {inboxMode ? (
+          inboxAgentCollapsed ? null : (
+            <div data-testid="inbox-agent-panel" className="flex h-full min-h-0 w-full flex-col">
+              <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2">
+                {active ? (
+                  <button
+                    type="button"
+                    aria-label={active.name}
+                    onClick={() => openBot(active.id)}
+                    className="flex min-w-0 items-center gap-2 rounded-lg"
+                  >
+                    <BotAvatar
+                      color={active.color}
+                      identity={active.id}
+                      size={22}
+                      status={active.status}
+                    />
+                    <span className="truncate text-sm font-medium" dir="auto">
+                      {active.name}
+                    </span>
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t`Collapse Inbox agent`}
+                  onClick={() => setInboxAgentCollapsedPref(true)}
+                >
+                  <PanelRightClose aria-hidden="true" />
+                </Button>
+              </div>
+              {active ? (
+                threadView
+              ) : (
+                <div className="grid flex-1 place-content-center justify-items-center gap-3 px-5">
+                  <Button disabled={creatingInboxAgent} onClick={() => void createInboxAgent()}>
+                    <Trans>Create Inbox agent</Trans>
+                  </Button>
+                  {inboxAgentError ? (
+                    <p role="alert" className="text-center text-sm text-destructive">
+                      {inboxAgentError}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )
+        ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
               <div className="mb-4 flex items-center justify-between">
@@ -4511,6 +4683,7 @@ export function ShellPage() {
         {pluginsOpen ? (
           <PluginsOverlay
             activeBotId={activeBotId.current}
+            initialQuery={pluginsQuery}
             onClose={() => setPluginsOpen(false)}
             onOpenMcp={() => {
               setPluginsOpen(false);
@@ -7009,6 +7182,13 @@ const MessageView = memo(function MessageView({
           );
         }
         if (block.kind === "cloud_agent") return <CloudAgentCard key={i} block={block} />;
+        if (block.kind === "emails") {
+          return (
+            <div key={i} className="flex justify-start">
+              <EmailCards block={block} />
+            </div>
+          );
+        }
         if (block.kind === "skill_draft") {
           return (
             <div key={i} className="flex justify-start">

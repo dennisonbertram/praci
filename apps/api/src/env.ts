@@ -98,6 +98,8 @@ export interface AppEnv {
   mcpStdioAllowedCommands: string[];
   /** Deployment-owner escape for remote MCP on RFC1918 / Docker-network hosts. */
   mcpAllowPrivateEndpoint: boolean;
+  /** Turns off saving drafts and sending mail from every Inbox account in this deployment. */
+  mailWritesDisabled: boolean;
   port: number;
   gitSha: string | undefined;
   /** Private Compose control-network URL for the opt-in updater sidecar. */
@@ -236,6 +238,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
       .map((value) => value.trim())
       .filter(Boolean),
     mcpAllowPrivateEndpoint: source.MCP_ALLOW_PRIVATE_ENDPOINT === "true",
+    mailWritesDisabled: source.MAIL_WRITES_DISABLED === "true",
     port: Number(source.API_PORT ?? 3100),
     gitSha: optional(source.GIT_SHA) ?? optional(source.RAKAZO_GIT_SHA),
     updaterUrl,

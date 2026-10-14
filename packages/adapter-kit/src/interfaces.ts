@@ -36,8 +36,21 @@ import type {
   ConnectorCapabilities,
   ConnectorCatalogItem,
   ConnectorEvent,
+  ConnectorProxyRequest,
+  ConnectorProxyResponse,
   ConnectorTool,
   ControlLeaseRef,
+  InboxClassifierCapabilities,
+  InboxClassifierMessage,
+  InboxClassifyResult,
+  MailAccount,
+  MailAttachment,
+  MailDraftInput,
+  MailDraftRef,
+  MailListRequest,
+  MailMessage,
+  MailMessagePage,
+  MailSent,
   MemoryCapabilities,
   MemoryCommitRequest,
   MemoryExportRequest,
@@ -193,7 +206,7 @@ export interface ConnectionAuthProvider {
   complete(
     request: { state: string; code?: string },
     context: AdapterContext,
-  ): Promise<{ connectionRef: string }>;
+  ): Promise<{ connectionRef: string; secretId?: string }>;
   revoke(connectionRef: string, context: AdapterContext): Promise<void>;
 }
 
@@ -205,6 +218,51 @@ export interface ManagedConnectorProvider
   listConnectedExternalIds(context: AdapterContext): Promise<string[]>;
   connectionReady(context: AdapterContext, externalId: string): Promise<boolean>;
   warmDirectory?(): Promise<void>;
+  /** Authenticated call to the app's API as one connected account. Status codes are returned, not thrown. */
+  proxy?(request: ConnectorProxyRequest, context: AdapterContext): Promise<ConnectorProxyResponse>;
+}
+
+/** Read access to a user's mailboxes, whichever connector authenticated them. */
+export interface MailProvider {
+  listAccounts(
+    scope: { spaceId: string; userId: string },
+    context: AdapterContext,
+  ): Promise<MailAccount[]>;
+  listMessages(
+    account: MailAccount,
+    request: MailListRequest,
+    context: AdapterContext,
+  ): Promise<MailMessagePage>;
+  getMessage(account: MailAccount, id: string, context: AdapterContext): Promise<MailMessage>;
+  /**
+   * One attachment of one message, named by `MailMessage.attachments[].id`. Throws `too_large`,
+   * before fetching the bytes when the size is known, when it exceeds `maxBytes`.
+   */
+  getAttachment(
+    account: MailAccount,
+    messageId: string,
+    attachmentId: string,
+    maxBytes: number,
+    context: AdapterContext,
+  ): Promise<MailAttachment>;
+  /** Saves a new draft. Never retried after an unclear failure, so it cannot leave two drafts. */
+  createDraft(
+    account: MailAccount,
+    draft: MailDraftInput,
+    context: AdapterContext,
+  ): Promise<MailDraftRef>;
+  updateDraft(
+    account: MailAccount,
+    draftId: string,
+    draft: MailDraftInput,
+    context: AdapterContext,
+  ): Promise<MailDraftRef>;
+  /**
+   * Sends a saved draft. Never retried after an unclear failure: throws `unknown` when the send
+   * may have happened, `invalid` or `auth` when it certainly did not.
+   */
+  sendDraft(account: MailAccount, draftId: string, context: AdapterContext): Promise<MailSent>;
+  deleteDraft(account: MailAccount, draftId: string, context: AdapterContext): Promise<void>;
 }
 
 export interface MemoryStore {
@@ -492,4 +550,17 @@ export interface CloudAgentProvider {
 export interface AutoReviewProvider {
   describe(): AdapterDescriptor<AutoReviewCapabilities>;
   review(request: AutoReviewRequest, context: AdapterContext): Promise<AutoReviewResult>;
+}
+
+/**
+ * Provider-neutral first-pass mail classifier. The LLM triage path is the default adapter; an
+ * optional vendor adapter labels messages faster and leaves the rest to the LLM. A message the
+ * adapter cannot label confidently is omitted from the result, and vendor failures are not thrown.
+ */
+export interface InboxClassifierProvider {
+  describe(): AdapterDescriptor<InboxClassifierCapabilities>;
+  classify(
+    messages: InboxClassifierMessage[],
+    context: AdapterContext,
+  ): Promise<InboxClassifyResult>;
 }

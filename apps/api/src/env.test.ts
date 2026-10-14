@@ -263,4 +263,10 @@ describe("OIDC environment", () => {
       loadEnv({ ...base, ...oidc, OIDC_ALLOW_SIGNUP_BYPASS: "true" }).oidc?.allowSignupBypass,
     ).toBe(true);
   });
+
+  it("leaves Gmail writes on unless MAIL_WRITES_DISABLED is exactly true", () => {
+    expect(loadEnv(base).mailWritesDisabled).toBe(false);
+    expect(loadEnv({ ...base, MAIL_WRITES_DISABLED: "true" }).mailWritesDisabled).toBe(true);
+    expect(loadEnv({ ...base, MAIL_WRITES_DISABLED: "1" }).mailWritesDisabled).toBe(false);
+  });
 });

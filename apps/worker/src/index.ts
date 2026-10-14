@@ -1,5 +1,9 @@
 import type { JobPublisher, JobWorkerHost } from "@rakazo/adapter-kit";
-import { ComposioConnector, IntegrationProviderSettings } from "@rakazo/adapters";
+import {
+  ComposioConnector,
+  createMailProvider,
+  IntegrationProviderSettings,
+} from "@rakazo/adapters";
 import { loadRootEnv } from "@rakazo/core/node/load-root-env";
 import { createWorkerSecretStore } from "./secret-store.js";
 
@@ -226,6 +230,7 @@ async function main() {
     messaging: messaging ? createMessagingContextLoader(prisma) : undefined,
     web: createWebProvider(),
     cloudAgent,
+    mail: createMailProvider({ prisma, connectors: stack.connector }),
   });
 
   const jobHandlers = createBackgroundJobHandlers({

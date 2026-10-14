@@ -2,10 +2,13 @@ import type {
   AdapterContext,
   ConnectorCall,
   ConnectorEvent,
+  ConnectorProxyRequest,
+  ConnectorProxyResponse,
   ConnectorTool,
 } from "@rakazo/adapter-kit";
 import type { ComposioCatalogItem, ComposioProvider } from "./composio-connector.js";
 import { expandComposioMultiExecute, filterCatalog } from "./composio-connector.js";
+import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import {
   DEFAULT_RAKAZO_EMULATED_RELEASES,
   type EmulatedGithubRelease,
@@ -340,7 +343,13 @@ export class ComposioEmulator implements ComposioProvider {
     private readonly directory: ReadonlyArray<
       Omit<ComposioCatalogItem, "connected">
     > = DEFAULT_CATALOG,
+    readonly gmail: GmailApiEmulator = new GmailApiEmulator(),
   ) {}
+
+  /** Answers Gmail REST requests from the seeded Gmail emulator, keyed by account reference. */
+  async proxy(request: ConnectorProxyRequest): Promise<ConnectorProxyResponse> {
+    return this.gmail.handle(request.accountRef, request.url, request.method, request.body);
+  }
 
   describe() {
     return {

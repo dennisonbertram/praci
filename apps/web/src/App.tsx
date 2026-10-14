@@ -28,6 +28,7 @@ import {
   showSessionUnavailable,
 } from "./lib/session-gate";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
+import { GoogleOAuthCallbackPage } from "./pages/GoogleOAuthCallback";
 import { IntegrationSetupPage } from "./pages/IntegrationSetup";
 import { LocalSettingsPage } from "./pages/LocalSettings";
 import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
@@ -152,6 +153,10 @@ function SessionApp() {
             element={user ? <McpOAuthCallbackPage /> : <Navigate to="/sign-in" replace />}
           />
           <Route
+            path="/integrations/google/callback"
+            element={user ? <GoogleOAuthCallbackPage /> : <Navigate to="/sign-in" replace />}
+          />
+          <Route
             path="/integrations/setup"
             element={
               user ? (
@@ -178,6 +183,7 @@ function SessionApp() {
             <Route path="/app/artifacts" element={<ArtifactsPage />} />
             <Route path="/app/artifacts/:artifactId" element={<ArtifactsPage />} />
             {ticketBoardEnabled ? <Route path="/app/board" element={<BoardPage />} /> : null}
+            <Route path="/app/inbox" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
         </Routes>

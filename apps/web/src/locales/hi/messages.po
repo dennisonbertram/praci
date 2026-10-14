@@ -13,6 +13,7 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (अपठित)"
@@ -136,6 +137,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "{hours}h ago"
 msgstr "{hours} घंटे पहले"
+
+#: src/pages/Shell.tsx
+msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
+msgstr ""
 
 #: src/lib/relative-time.ts
 #: src/pages/ActivityList.tsx
@@ -411,6 +416,14 @@ msgstr ""
 msgid "Agents:"
 msgstr "एजेंट:"
 
+#: src/components/AiDataSharing.tsx
+msgid "AI data sharing"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "All"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "All bots"
 msgstr ""
@@ -427,6 +440,10 @@ msgstr ""
 msgid "All time"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Allow"
+msgstr ""
+
 #. placeholder {0}: rule.matchValue
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} actions without asking"
@@ -441,6 +458,10 @@ msgstr "{0} कनेक्टर को बिना पूछे अनुम�
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} without asking"
 msgstr "{0} को बिना पूछे अनुमति दें"
+
+#: src/components/AiDataSharing.tsx
+msgid "Allow {name}"
+msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow email actions without asking"
@@ -619,6 +640,15 @@ msgstr ""
 msgid "Attachment"
 msgstr "अटैचमेंट"
 
+#: src/pages/Inbox.tsx
+msgid "Attachments"
+msgstr ""
+
+#. placeholder {0}: email.attachments
+#: src/components/EmailCards.tsx
+msgid "Attachments: {0}"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Authentication failed."
 msgstr "प्रमाणीकरण विफल रहा।"
@@ -699,6 +729,10 @@ msgstr ""
 msgid "Basic auth ({username})"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Bcc"
+msgstr ""
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -707,6 +741,10 @@ msgstr "बियरर टोकन"
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Bills"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -766,6 +804,10 @@ msgstr ""
 msgid "Bots are working"
 msgstr "बॉट काम कर रहे हैं"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Bots lose access to its tools."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
 msgstr ""
@@ -793,6 +835,7 @@ msgstr "सर्वर तक नहीं पहुंचा जा सका�
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
@@ -828,6 +871,10 @@ msgstr "रद्द किया गया"
 
 #: src/pages/Artifacts.tsx
 msgid "Card view"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Cc"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -923,6 +970,7 @@ msgstr "फ़ाइल चुनें"
 msgid "Choose which connected model Rakazo uses."
 msgstr "चुनें कि Rakazo किस कनेक्टेड मॉडल का उपयोग करे।"
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
 msgstr "साफ़ करें"
@@ -954,6 +1002,7 @@ msgid "Client secret"
 msgstr ""
 
 #: src/components/ErrorBoundary.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
@@ -1037,6 +1086,10 @@ msgstr "कोड"
 msgid "Collapse {0}"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Collapse Inbox agent"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Color"
 msgstr "रंग"
@@ -1073,6 +1126,11 @@ msgstr ""
 #: src/pages/ScratchpadSection.tsx
 msgid "Complete"
 msgstr "पूर्ण"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Compose"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -1157,6 +1215,10 @@ msgstr "API कुंजी कनेक्ट करें"
 msgid "Connect Executor"
 msgstr "Executor कनेक्ट करें"
 
+#: src/pages/Inbox.tsx
+msgid "Connect mail"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "MCP सर्वर “{name}” कनेक्ट करें"
@@ -1174,6 +1236,7 @@ msgid "Connect Treg"
 msgstr "Treg कनेक्ट करें"
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1203,6 +1266,8 @@ msgid "Connected. Its tools are available from your next message."
 msgstr "कनेक्टेड। इसके टूल आपके अगले संदेश से उपलब्ध हैं।"
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/McpServerRow.tsx
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
@@ -1299,6 +1364,7 @@ msgstr "बातचीत साफ़ नहीं की जा सकी"
 msgid "Could not complete action"
 msgstr ""
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Could not complete OAuth"
 msgstr "OAuth पूरा नहीं हो सका"
@@ -1348,6 +1414,10 @@ msgstr "सेक्शन नहीं बनाया जा सका"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not create space"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Inbox agent"
 msgstr ""
 
 #: src/pages/Onboarding.tsx
@@ -1542,6 +1612,11 @@ msgstr "मॉडल सर्वर तक नहीं पहुँच सक�
 msgid "Could not reach the server"
 msgstr "सर्वर से संपर्क नहीं हो सका"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Could not reconnect"
+msgstr ""
+
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
 msgstr "हटाया नहीं जा सका"
@@ -1556,6 +1631,10 @@ msgstr "नियम हटाया नहीं जा सका"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Could not remove the credential"
+msgstr ""
+
+#: src/components/integrations/McpServerRow.tsx
+msgid "Could not rename"
 msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
@@ -1700,6 +1779,18 @@ msgstr ""
 msgid "Couldn't load messaging settings"
 msgstr ""
 
+#: src/lib/inbox-sync-error.ts
+msgid "Couldn't reach Gmail."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't save the draft"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Couldn't send. Try again."
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
 msgstr ""
@@ -1726,6 +1817,10 @@ msgstr "खाता बनाएं"
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
 msgstr "समूह बनाएं"
+
+#: src/pages/Shell.tsx
+msgid "Create Inbox agent"
+msgstr ""
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
@@ -1940,6 +2035,10 @@ msgstr ""
 msgid "Disabled tools"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Discard"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2026,8 +2125,16 @@ msgstr "मार्कडाउन के रूप में डाउनल�
 msgid "Download Executor"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Download failed"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Draft saved"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -2045,6 +2152,10 @@ msgstr "डुप्लिकेट"
 #: src/pages/shell/bot-panel.tsx
 msgid "e.g. Hivenet Agent, Presales, Timesheets bot"
 msgstr "उदा. Hivenet Agent, Presales, टाइमशीट बॉट"
+
+#: src/pages/Inbox.tsx
+msgid "Earlier"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Edit first"
@@ -2217,6 +2328,10 @@ msgstr ""
 msgid "Files"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Filter"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Filter by date"
 msgstr ""
@@ -2266,10 +2381,16 @@ msgstr ""
 msgid "Forgot password?"
 msgstr "पासवर्ड भूल गए?"
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Forward"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Free"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
 msgstr ""
@@ -2308,6 +2429,11 @@ msgstr ""
 msgid "Git event"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+#: src/lib/inbox-sync-error.ts
+msgid "Gmail needs to be reconnected."
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 msgid "Group"
@@ -2335,6 +2461,10 @@ msgstr ""
 
 #: src/lib/call-session.ts
 msgid "Hang up, then enter the code on screen."
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Has attachment"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -2423,6 +2553,10 @@ msgstr "छवि अपलोड क्षेत्र"
 msgid "Import OpenAPI JSON"
 msgstr "OpenAPI JSON इम्पोर्ट करें"
 
+#: src/pages/Inbox.tsx
+msgid "Important"
+msgstr ""
+
 #: src/lib/ticket-status.ts
 msgid "In progress"
 msgstr ""
@@ -2433,6 +2567,11 @@ msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+#: src/pages/Shell.tsx
+msgid "Inbox"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -2502,6 +2641,10 @@ msgstr "नवीनतम संदेश पर जाएँ"
 msgid "Jump to replied message: {excerpt}"
 msgstr "उत्तर दिए गए संदेश पर जाएँ: {excerpt}"
 
+#: src/pages/Inbox.tsx
+msgid "Junk"
+msgstr ""
+
 #: src/lib/relative-time.ts
 #: src/pages/ActivityList.tsx
 msgid "just now"
@@ -2524,6 +2667,7 @@ msgid "Language"
 msgstr "भाषा"
 
 #: src/components/DesktopUpdates.tsx
+#: src/components/EmailCards.tsx
 msgid "Later"
 msgstr ""
 
@@ -2533,6 +2677,10 @@ msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Leave"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Let Rakazo sort your mail"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -2568,6 +2716,7 @@ msgid "Load earlier messages"
 msgstr "पुराने संदेश लोड करें"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/Inbox.tsx
 msgid "Load more"
 msgstr ""
 
@@ -2663,6 +2812,11 @@ msgstr "सुनिश्चित करें कि इस कंप्य�
 msgid "Manage"
 msgstr ""
 
+#. placeholder {0}: server.name
+#: src/components/integrations/McpServerRow.tsx
+msgid "Manage {0}"
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Manage billing"
 msgstr ""
@@ -2694,6 +2848,22 @@ msgstr "पढ़ा हुआ चिह्नित करें"
 #: src/pages/BotContextMenu.tsx
 msgid "Mark as Unread"
 msgstr "अपठित चिह्नित करें"
+
+#: src/pages/Inbox.tsx
+msgid "Mark important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Mark noise"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked important"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked noise"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -2767,6 +2937,7 @@ msgstr ""
 msgid "Mentions only"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "संदेश"
@@ -2890,6 +3061,7 @@ msgstr ""
 msgid "Monthly"
 msgstr "मासिक"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr ""
@@ -2918,6 +3090,7 @@ msgstr "यहां ले जाएं"
 msgid "Mute"
 msgstr "म्यूट करें"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
 #: src/pages/GroupPanel.tsx
@@ -2940,9 +3113,17 @@ msgstr ""
 msgid "Needs an answer"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Needs attention"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "इनपुट चाहिए"
+
+#: src/pages/Inbox.tsx
+msgid "Needs reply"
+msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
@@ -2985,6 +3166,14 @@ msgstr ""
 
 #: src/pages/Board.tsx
 msgid "New ticket"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Newsletter"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Newsletters"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -3034,6 +3223,10 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "No longer active"
 msgstr "अब सक्रिय नहीं"
+
+#: src/pages/Inbox.tsx
+msgid "No mail"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "No managed app catalog is configured on this deployment."
@@ -3116,6 +3309,10 @@ msgstr "अभी तक कोई नहीं"
 msgid "Normal"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Not confirmed as sent. Check Sent before trying again."
+msgstr ""
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Not connected"
 msgstr "कनेक्ट नहीं है"
@@ -3136,6 +3333,7 @@ msgstr "कुछ भी नहीं चल रहा"
 msgid "Nothing remembered yet"
 msgstr "अभी तक कुछ याद नहीं किया गया"
 
+#: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "सूचनाएं"
@@ -3149,6 +3347,7 @@ msgstr "अभी"
 msgid "Now using {0}."
 msgstr "अब {0} उपयोग में है।"
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth authorization was cancelled."
 msgstr "OAuth ऑथराइज़ेशन रद्द कर दिया गया।"
@@ -3157,10 +3356,12 @@ msgstr "OAuth ऑथराइज़ेशन रद्द कर दिया �
 msgid "OAuth connected"
 msgstr "OAuth कनेक्टेड"
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "OAuth कनेक्शन विफल"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
@@ -3345,6 +3546,10 @@ msgstr "अपनी API कुंजी पेस्ट करें, फिर
 msgid "Paused"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Personal"
+msgstr ""
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
@@ -3383,6 +3588,10 @@ msgstr "{0} का प्रीव्यू"
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Primary"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Priority"
 msgstr ""
@@ -3397,6 +3606,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Project ID"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Promotions"
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -3450,9 +3663,17 @@ msgstr ""
 msgid "Recall only"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Receipts"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Recent"
 msgstr "हाल के"
+
+#: src/components/integrations/McpServerRow.tsx
+msgid "Reconnect"
+msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Reconnect OAuth"
@@ -3519,6 +3740,10 @@ msgstr "काम न कर रहे कंप्यूटर को फिर
 msgid "Recreating the computer"
 msgstr ""
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Redirect URI"
+msgstr ""
+
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/pages/RoutineRunHistory.tsx
@@ -3550,6 +3775,7 @@ msgid "Release interrupted computer?"
 msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
@@ -3561,6 +3787,11 @@ msgstr "हटाएं"
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "{0} हटाएं"
+
+#. placeholder {0}: server.name
+#: src/components/integrations/McpServerRow.tsx
+msgid "Remove {0}?"
+msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Remove {full}"
@@ -3608,6 +3839,10 @@ msgstr "हटाया गया, लेकिन सूची रिफ़्�
 msgid "Removing…"
 msgstr "हटाया जा रहा है…"
 
+#: src/components/integrations/McpServerRow.tsx
+msgid "Rename"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -3639,9 +3874,16 @@ msgstr "कुंजी बदलें"
 msgid "Replace value"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "उत्तर दें"
+
+#: src/components/ComposeEmail.tsx
+#: src/pages/Inbox.tsx
+msgid "Reply all"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Reply cancelled"
@@ -3724,6 +3966,7 @@ msgstr "अभी पुनः प्रयास करें"
 msgid "Retry screen"
 msgstr ""
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Rakazo"
 msgstr "Rakazo पर लौटें"
@@ -3872,6 +4115,10 @@ msgstr "सहेजा जा रहा है…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "हां या ना कहें, या एक वाक्य में उत्तर दें।"
 
+#: src/pages/Inbox.tsx
+msgid "Scheduling"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -3905,6 +4152,10 @@ msgstr ""
 msgid "Search integrations.sh"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Search mail"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
 msgstr ""
@@ -3927,6 +4178,10 @@ msgstr ""
 msgid "Searching…"
 msgstr "खोजा जा रहा है…"
 
+#: src/pages/Inbox.tsx
+msgid "Security"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Select a bot"
 msgstr "एक बॉट चुनें"
@@ -3935,6 +4190,7 @@ msgstr "एक बॉट चुनें"
 msgid "Select a connected model"
 msgstr "जुड़ा मॉडल चुनें"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
 msgstr "भेजें"
@@ -3959,9 +4215,21 @@ msgstr "इसे भेजें"
 msgid "Send reset link"
 msgstr "रीसेट लिंक भेजें"
 
+#: src/components/AiDataSharing.tsx
+msgid "Senders, recipients, subjects and short previews are sent to {name}."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Sending is turned off."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Sending…"
 msgstr "भेजा जा रहा है…"
+
+#: src/pages/Inbox.tsx
+msgid "Sent"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Sentry alert"
@@ -4039,6 +4307,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Show computer"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Show Inbox agent"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -4131,6 +4403,10 @@ msgstr ""
 msgid "Slack not enabled"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Social"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr ""
@@ -4156,6 +4432,10 @@ msgstr "स्पेस डिफ़ॉल्ट"
 msgid "Spaces"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Spam"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Speak"
 msgstr "बोलें"
@@ -4179,6 +4459,10 @@ msgstr "वाक् मॉडल"
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO अस्थायी रूप से उपलब्ध नहीं है। फिर कोशिश करें।"
+
+#: src/pages/Inbox.tsx
+msgid "Starred"
+msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
@@ -4242,6 +4526,10 @@ msgstr "जवाब स्ट्रीम करें"
 msgid "subagent"
 msgstr "सबएजेंट"
 
+#: src/components/ComposeEmail.tsx
+msgid "Subject"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
@@ -4264,6 +4552,10 @@ msgstr "छवियों का समर्थन"
 #: src/pages/Onboarding.tsx
 msgid "Supports thinking"
 msgstr "सोचने की क्षमता का समर्थन करता है"
+
+#: src/pages/Inbox.tsx
+msgid "Suspicious"
+msgstr ""
 
 #: src/pages/shell/command-palette.tsx
 msgid "Switch bot"
@@ -4430,6 +4722,7 @@ msgstr "यह रीसेट लिंक अमान्य है या इ
 msgid "This server cannot be assigned without a bot."
 msgstr "बॉट के बिना यह सर्वर असाइन नहीं किया जा सकता।"
 
+#: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
 msgid "This server did not request browser authorization."
 msgstr "इस सर्वर ने ब्राउज़र ऑथराइज़ेशन नहीं मांगा।"
@@ -4442,6 +4735,7 @@ msgstr "यह सर्वर पहले से कनेक्टेड ह�
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 msgstr "यह सब्सक्रिप्शन साइन-इन अभी Rakazo में उपलब्ध नहीं है। किसी डिप्लॉयमेंट क्रेडेंशियल का उपयोग करें या दूसरा प्रोवाइडर चुनें।"
 
+#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr ""
@@ -4455,8 +4749,14 @@ msgstr "दिन का समय"
 msgid "Title"
 msgstr "शीर्षक"
 
+#: src/components/ComposeEmail.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
+msgstr ""
+
+#. placeholder {0}: message.to
+#: src/pages/Inbox.tsx
+msgid "to {0}"
 msgstr ""
 
 #. placeholder {0}: filters.dateRange.to
@@ -4465,6 +4765,7 @@ msgid "To {0}"
 msgstr ""
 
 #: src/lib/ticket-status.ts
+#: src/pages/Inbox.tsx
 msgid "To do"
 msgstr ""
 
@@ -4472,7 +4773,9 @@ msgstr ""
 msgid "To:"
 msgstr "प्रति:"
 
+#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Today"
 msgstr "आज"
@@ -4506,6 +4809,7 @@ msgid "Trial ends {day}"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 msgid "Try again"
 msgstr "फिर से कोशिश करें"
@@ -4534,6 +4838,10 @@ msgstr "असाइन नहीं किया गया"
 msgid "Unavailable"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Undo"
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "Uninstall"
 msgstr ""
@@ -4553,6 +4861,10 @@ msgstr "अनम्यूट करें"
 #: src/pages/BotContextMenu.tsx
 msgid "Unpin"
 msgstr "पिन हटाएं"
+
+#: src/pages/Inbox.tsx
+msgid "Unread"
+msgstr ""
 
 #. placeholder {0}: pending.file.name
 #: src/pages/Shell.tsx
@@ -4597,6 +4909,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
 msgstr "अपडेट"
@@ -4781,6 +5094,10 @@ msgstr "कब उपयोग करें"
 msgid "Where should bots run?"
 msgstr "बॉट कहां चलने चाहिए?"
 
+#: src/components/EmailCards.tsx
+msgid "Within 3 days"
+msgstr ""
+
 #: src/lib/ticket-status.ts
 msgid "Won't do"
 msgstr ""
@@ -4815,6 +5132,7 @@ msgstr "आप"
 msgid "You can close this tab if it does not redirect automatically."
 msgstr "अगर यह अपने आप रीडायरेक्ट न हो तो आप यह टैब बंद कर सकते हैं।"
 
+#: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this window."
 msgstr "आप यह विंडो बंद कर सकते हैं।"

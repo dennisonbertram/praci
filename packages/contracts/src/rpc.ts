@@ -102,6 +102,21 @@ import {
 import { ComputerCommandSchema, ProductEventSchema } from "./events.js";
 import { Id, IsoDate } from "./ids.js";
 import {
+  ComposeClientId,
+  ComposeFieldsSchema,
+  ComposePrefillInputSchema,
+  ComposePrefillOutputSchema,
+  ComposeResultSchema,
+  InboxFeedbackInputSchema,
+  InboxFeedbackOutputSchema,
+  InboxListInputSchema,
+  InboxListOutputSchema,
+  InboxMessageSchema,
+  InboxScopeInputSchema,
+  InboxTodoSchema,
+  InboxTodosOutputSchema,
+} from "./inbox.js";
+import {
   IntegrationProviderConfigSchema,
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
@@ -682,6 +697,10 @@ export const appContract = {
           ]),
         )
         .output(McpServerSchema),
+      /** Name-only edit: unlike update, never rewrites stored credentials. */
+      rename: oc
+        .input(z.object({ id: Id, name: z.string().trim().min(1).max(120) }))
+        .output(McpServerSchema),
       remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
     },
     assignments: {
@@ -709,18 +728,28 @@ export const appContract = {
         .output(z.array(BotMcpServerSchema)),
     },
     oauth: {
-      begin: oc.input(z.object({ serverId: Id, redirectUri: z.string().url() })).output(
-        z.discriminatedUnion("status", [
+      begin: oc
+        .input(
           z.object({
-            status: z.literal("authorization_required"),
-            sessionId: Id,
-            authorizationUrl: z.string().url(),
+            serverId: Id,
+            redirectUri: z.string().url(),
+            /** Ask the user to sign in again even though a token is stored. The old
+             * token stays until the new authorization completes. */
+            reauthorize: z.boolean().optional(),
           }),
-          z.object({
-            status: z.enum(["already_connected", "authorization_not_requested"]),
-          }),
-        ]),
-      ),
+        )
+        .output(
+          z.discriminatedUnion("status", [
+            z.object({
+              status: z.literal("authorization_required"),
+              sessionId: Id,
+              authorizationUrl: z.string().url(),
+            }),
+            z.object({
+              status: z.enum(["already_connected", "authorization_not_requested"]),
+            }),
+          ]),
+        ),
       complete: oc
         .input(z.object({ sessionId: Id, code: z.string().min(1), state: z.string().min(1) }))
         .output(z.object({ ok: z.literal(true) })),
@@ -763,8 +792,22 @@ export const appContract = {
         }),
       )
       .output(z.object({ connectionId: Id, authorizationUrl: z.string().nullable() })),
+    /** Poll with `connectionId`, or finish a native OAuth callback with `state` and `code`. */
     complete: oc
-      .input(z.object({ connectionId: Id, code: z.string().optional() }))
+      .input(
+        z
+          .object({
+            connectionId: Id.optional(),
+            state: z.string().min(1).max(512).optional(),
+            code: z.string().optional(),
+          })
+          .refine(
+            (input) =>
+              (input.connectionId === undefined) !== (input.state === undefined) &&
+              (input.state === undefined || Boolean(input.code)),
+            "Provide connectionId, or state with code",
+          ),
+      )
       .output(ConnectionSchema),
     rename: oc
       .input(z.object({ connectionId: Id, displayName: z.string().trim().min(1).max(80) }))
@@ -947,6 +990,26 @@ export const appContract = {
     list: oc.output(z.array(AgentSecretSchema)),
     put: oc.input(AgentSecretInputSchema).output(AgentSecretSchema),
     remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+  },
+  inbox: {
+    agent: oc.output(BotSchema),
+    list: oc.input(InboxListInputSchema).output(InboxListOutputSchema),
+    refresh: oc.input(InboxScopeInputSchema).output(z.object({ ok: z.literal(true) })),
+    get: oc.input(z.object({ messageId: Id })).output(InboxMessageSchema),
+    unreadCount: oc.output(z.object({ count: z.number().int() })),
+    feedback: oc.input(InboxFeedbackInputSchema).output(InboxFeedbackOutputSchema),
+    compose: {
+      prefill: oc.input(ComposePrefillInputSchema).output(ComposePrefillOutputSchema),
+      draftSave: oc.input(ComposeFieldsSchema).output(ComposeResultSchema),
+      send: oc.input(ComposeFieldsSchema).output(ComposeResultSchema),
+      discard: oc
+        .input(z.object({ clientId: ComposeClientId }))
+        .output(z.object({ ok: z.literal(true) })),
+    },
+    todos: {
+      list: oc.input(InboxScopeInputSchema).output(InboxTodosOutputSchema),
+      setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoSchema),
+    },
   },
   botSecrets: {
     list: oc.input(z.object({ botId: Id })).output(z.array(BotSecretMetadata)),

@@ -5,6 +5,7 @@ import {
   EncryptedSecretStore,
   GithubWebhookEmulator,
   InfisicalSecretStore,
+  InMemoryRealtimeFanout,
 } from "@rakazo/adapters";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
@@ -1054,6 +1055,49 @@ describe("encrypted webhook cache expiry", () => {
     } finally {
       await store.close();
       vi.useRealTimers();
+    }
+  });
+  it("drops a cached secret when another process deletes it, even though notices carry only a digest", async () => {
+    const fanout = new InMemoryRealtimeFanout();
+    const writer = new ComposedSecretStore(new EncryptedSecretStore("fake-key"), undefined, fanout);
+    const reader = new ComposedSecretStore(new EncryptedSecretStore("fake-key"), undefined, fanout);
+    await writer.start();
+    await reader.start();
+    const context = {
+      operationId: "test",
+      traceId: "test",
+      spaceId: "ws-1",
+      userId: "user-1",
+      signal: new AbortController().signal,
+    };
+    const record = await writer.put("initial", context);
+    const deps = createDeps({
+      secret: {
+        id: record.id,
+        ciphertext: record.ref,
+        kind: WEBHOOK_SECRET_KIND,
+        userId: "user-1",
+        spaceId: "ws-1",
+      },
+      bot: {
+        id: "bot-1",
+        spaceId: "ws-1",
+        userId: "user-1",
+        webhookSecretId: record.id,
+        thread: { id: "thread-1" },
+      },
+    });
+    deps.secrets = reader;
+    const cache = new Map();
+    try {
+      expect((await loadWebhookTarget(deps, cache, "bot-1"))?.expected).toBe("initial");
+      expect(cache.has("bot-1")).toBe(true);
+      await writer.delete(record.ref, record.id);
+      expect(cache.has("bot-1")).toBe(false);
+    } finally {
+      await writer.close();
+      await reader.close();
+      await fanout.close();
     }
   });
 });

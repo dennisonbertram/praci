@@ -4,6 +4,8 @@ import {
   HISTORY_COMPACT_MAX_ATTEMPTS,
   historyCompactJob,
   historyCompactJobKey,
+  inboxTriageJob,
+  mailSearchExpireJob,
   messagingDeliverJob,
   parseBackgroundJob,
 } from "./background-jobs.js";
@@ -20,6 +22,8 @@ function handlers(): BackgroundJobHandlers {
     "history.compact": vi.fn(async () => undefined),
     "messaging.deliver": vi.fn(async () => undefined),
     "cloud_agent.poll": vi.fn(async () => undefined),
+    "mail.search.expire": vi.fn(async () => undefined),
+    "inbox.triage": vi.fn(async () => undefined),
   };
 }
 
@@ -38,6 +42,39 @@ describe("background job contracts", () => {
       payload: {},
       replaceKey: "messaging.deliver:drain",
     });
+  });
+
+  it("validates and dispatches mail.search.expire for one search at its expiry time", async () => {
+    const target = handlers();
+    await dispatchBackgroundJob(target, "mail.search.expire", { searchId: "search-1" });
+    expect(target["mail.search.expire"]).toHaveBeenCalledWith({ searchId: "search-1" });
+    expect(() => parseBackgroundJob("mail.search.expire", { searchId: "" })).toThrow();
+    const expiresAt = new Date("2026-10-13T12:00:00.000Z");
+    expect(mailSearchExpireJob("search-1", expiresAt)).toEqual({
+      name: "mail.search.expire",
+      payload: { searchId: "search-1" },
+      availableAt: expiresAt,
+      replaceKey: "mail.search.expire:search-1",
+    });
+  });
+
+  it("validates inbox.triage and merges repeats for one user in one space under one key", async () => {
+    const target = handlers();
+    await dispatchBackgroundJob(target, "inbox.triage", { userId: "user-1", spaceId: "space-1" });
+    expect(target["inbox.triage"]).toHaveBeenCalledWith({ userId: "user-1", spaceId: "space-1" });
+    expect(() => parseBackgroundJob("inbox.triage", { userId: "user-1" })).toThrow();
+    expect(() => parseBackgroundJob("inbox.triage", { userId: "", spaceId: "space-1" })).toThrow();
+    expect(inboxTriageJob("user-1", "space-1")).toEqual({
+      name: "inbox.triage",
+      payload: { userId: "user-1", spaceId: "space-1" },
+      replaceKey: "inbox.triage:space-1:user-1",
+      maxAttempts: 3,
+    });
+    const later = new Date("2030-01-01T00:00:00Z");
+    expect(inboxTriageJob("user-1", "space-1", later).availableAt).toBe(later);
+    expect(inboxTriageJob("user-2", "space-1").replaceKey).not.toBe(
+      inboxTriageJob("user-1", "space-1").replaceKey,
+    );
   });
 
   it("validates and dispatches a typed job", async () => {

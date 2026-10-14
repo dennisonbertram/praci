@@ -1,6 +1,7 @@
+import { triageReadiness } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./thread-target.js", () => ({
   resolveThreadTarget: async () => ({ kind: "bot", botId: "bot" }),
@@ -155,5 +156,125 @@ describe("consent grants", () => {
         },
       }),
     );
+  });
+});
+
+// The inbox page's `enabled` flag and the triage job both call triageReadiness, which looks up one
+// consent row. It must look up the key aiConsentStatus lists, or consent given in the dialog would
+// never enable triage (or would enable it for a model the user was not shown).
+describe("triage readiness uses the key the consent dialog lists", () => {
+  const readinessLookup = async (
+    model: { provider: string; id: string; baseUrl?: string },
+    actor: Actor,
+  ) => {
+    const findFirst = vi.fn(async () => ({ userId: actor.userId }));
+    const ready = await triageReadiness(
+      {
+        prisma: { bot: { findFirst: async () => null }, aiDataConsent: { findFirst } } as never,
+        resolveModel: async () => model as never,
+      },
+      actor,
+    );
+    expect(ready).not.toBeNull();
+    return (findFirst.mock.calls[0] as unknown as [{ where: { recipientKey: string } }])[0].where
+      .recipientKey;
+  };
+
+  it("matches for the deployment model", async () => {
+    const { deps, actor } = setup();
+    deps.env.agentRuntime = "pi";
+    deps.env.deploymentModelConfigured = true;
+    deps.env.defaultProvider = "openrouter";
+    deps.env.defaultModel = "vendor/small-model";
+
+    const status = await aiConsentStatus(deps, actor, { uses: ["model"] });
+    const checked = await readinessLookup(
+      { provider: "openrouter", id: "vendor/small-model" },
+      actor,
+    );
+
+    expect(status.recipients.map((r) => r.key)).toEqual([checked]);
+  });
+
+  it("matches for an OpenAI-compatible connection, whose key includes the server address", async () => {
+    const { deps, actor } = setup();
+    deps.env.agentRuntime = "pi";
+    const credential = {
+      id: "credential",
+      userId: actor.userId,
+      provider: "openai-compatible",
+      label: "Local",
+      secretId: "secret",
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    };
+    vi.mocked(deps.prisma.spaceModelPreference.findFirst).mockResolvedValue({
+      credential,
+      isDefault: true,
+      modelId: "local-model",
+      thinkingLevel: null,
+    } as never);
+    vi.mocked(deps.prisma.secret.findMany).mockResolvedValue([
+      { id: "secret", ciphertext: "sealed" },
+    ] as never);
+    deps.secrets = {
+      load: async () =>
+        JSON.stringify({ kind: "openai_compatible", baseUrl: "http://127.0.0.1:8090/v1" }),
+    } as never;
+
+    const status = await aiConsentStatus(deps, actor, { uses: ["model"] });
+    const checked = await readinessLookup(
+      { provider: "openai-compatible", id: "local-model", baseUrl: "http://127.0.0.1:8090/v1" },
+      actor,
+    );
+
+    expect(status.recipients.map((r) => r.key)).toEqual([checked]);
+    // A different server is a different recipient.
+    expect(
+      await readinessLookup(
+        { provider: "openai-compatible", id: "local-model", baseUrl: "http://127.0.0.1:9999/v1" },
+        actor,
+      ),
+    ).not.toBe(checked);
+  });
+});
+
+describe("inbox classifier recipient", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  const enable = () => {
+    vi.stubEnv("RAKAZO_INBOX_CLASSIFIER_PROVIDER", "typesafe");
+    vi.stubEnv("TYPESAFE_API_KEY", "ts-key");
+  };
+
+  it("lists TypeSafe in the settings view when the classifier is on, and lets the user allow it", async () => {
+    enable();
+    const { deps, actor, upsert } = setup();
+    deps.env.agentRuntime = "pi";
+    const status = await aiConsentStatus(deps, actor);
+    const typesafe = status.recipients.find((recipient) => recipient.name === "TypeSafe");
+    expect(typesafe).toMatchObject({ use: "model", allowed: false });
+
+    await allowAiConsent(deps, actor, {
+      scope: status.scope,
+      version: status.version,
+      keys: [typesafe?.key as string],
+    });
+    expect(upsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not make TypeSafe a gate on sending a chat message", async () => {
+    enable();
+    const { deps, actor } = setup();
+    deps.env.agentRuntime = "pi";
+    const status = await aiConsentStatus(deps, actor, { uses: ["model", "memory"] });
+    expect(status.recipients.map((recipient) => recipient.name)).not.toContain("TypeSafe");
+  });
+
+  it("lists nothing for TypeSafe when only the Auto Review key is set", async () => {
+    vi.stubEnv("TYPESAFE_API_KEY", "ts-key");
+    const { deps, actor } = setup();
+    deps.env.agentRuntime = "pi";
+    const status = await aiConsentStatus(deps, actor);
+    expect(status.recipients.map((recipient) => recipient.name)).not.toContain("TypeSafe");
   });
 });

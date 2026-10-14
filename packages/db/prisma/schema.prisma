@@ -23,6 +23,7 @@ model AiDataConsent {
 
 model User {
   aiDataConsents AiDataConsent[]
+  mailSearches   MailSearch[]
   id                          String                       @id
   name                        String
   email                       String
@@ -33,6 +34,10 @@ model User {
   avatarStyle                 String                       @default("organic")
   sessions                    Session[]
   accounts                    Account[]
+  cachedMailMessages          CachedMailMessage[]
+  inboxTodos                  InboxTodo[]
+  inboxSenderFeedback         InboxSenderFeedback[]
+  composeSends                ComposeSend[]
   members                     Member[]
   invitations                 Invitation[]
   modelCredentials            UserModelCredential[]
@@ -218,7 +223,12 @@ model Space {
   scratchpadItems             ScratchpadItem[]
   taughtSkills                TaughtSkill[]
   agentSkills                 AgentSkill[]
+  mailSearches                MailSearch[]
   connections                 Connection[]
+  cachedMailMessages          CachedMailMessage[]
+  inboxTodos                  InboxTodo[]
+  inboxSenderFeedback         InboxSenderFeedback[]
+  composeSends                ComposeSend[]
   capabilities                CapabilityInstall[]
   memoryDocuments             MemoryDocument[]
   agentHomes                  AgentHome[]
@@ -391,6 +401,7 @@ model SpaceVoicePreference {
 
 model Bot {
   screenGeneration Int @default(0)
+  mailSearches     MailSearch[]
   id                String            @id @default(cuid())
   spaceId           String
   space             Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
@@ -859,6 +870,42 @@ model AgentSkill {
   @@map("agent_skills")
 }
 
+/// A saved mail_search result, readable by mail_grep until `expiresAt`. Scoped to one bot of one user.
+model MailSearch {
+  id        String          @id @default(cuid())
+  spaceId   String
+  space     Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  botId     String
+  bot       Bot             @relation(fields: [botId], references: [id], onDelete: Cascade)
+  /// The object mail_search returned, minus searchId.
+  summary   Json
+  /// [{ accountId, query, unhydratedIds, pageToken? }] for queries that stopped early; null when complete.
+  resume    Json?
+  createdAt DateTime        @default(now())
+  expiresAt DateTime
+  rows      MailSearchRow[]
+
+  @@index([spaceId, userId, botId])
+  @@index([expiresAt])
+  @@map("mail_searches")
+}
+
+model MailSearchRow {
+  searchId String
+  search   MailSearch @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  /// 1-based, oldest first.
+  line     Int
+  /// ISO 8601, so the ISO-prefix date filter is a string comparison.
+  date     String
+  /// The row line, at most about 4,500 characters.
+  text     String
+
+  @@id([searchId, line])
+  @@map("mail_search_rows")
+}
+
 model Connection {
   id          String   @id @default(cuid())
   spaceId     String
@@ -873,6 +920,10 @@ model Connection {
   metadata    Json     @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  cachedMailMessages CachedMailMessage[]
+  inboxTodos         InboxTodo[]
+  mailSyncState      MailSyncState?
+  composeSends       ComposeSend[]
 
   @@index([spaceId, userId, connectorId])
   @@map("connections")
@@ -1475,4 +1526,147 @@ model TicketComment {
 
   @@index([ticketId, createdAt])
   @@map("ticket_comments")
+}
+
+/// Mail metadata cached for the Inbox list, the unread count and mail searches. Bodies are never stored.
+model CachedMailMessage {
+  id                String     @id @default(cuid())
+  spaceId           String
+  space             Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId      String
+  connection        Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  providerMessageId String
+  threadId          String
+  fromName          String?
+  fromAddress       String
+  toAddresses       String[]
+  ccAddresses       String[]
+  subject           String
+  snippet           String
+  receivedAt        DateTime
+  unread            Boolean
+  /// Set by sync from the in:inbox list.
+  inInbox           Boolean    @default(false)
+  /// Set by sync from the in:sent list.
+  fromSelf          Boolean    @default(false)
+  /// Null until triage has looked at the message.
+  needsReply        Boolean?
+  /// Set when triage has classified (or skipped past) the message.
+  triagedAt         DateTime?
+  /// TRIAGE_VERSION that classified the row; a bump re-triages it.
+  triageVersion     Int?
+  /// "critical" | "important" | "normal" | "low".
+  priority          String?
+  /// "reply" | "action" | "fyi" | "bulk" | "suspicious".
+  category          String?
+  /// One short line shown under the to-do.
+  reason            String?
+  /// Candidate to-do text; null when there is nothing to do.
+  todoText          String?
+  dueOn             DateTime?  @db.Date
+  /// Computed in code: the user sent a later message in the same thread.
+  alreadyHandled    Boolean    @default(false)
+  /// Last time a sync or a search wrote this row.
+  seenAt            DateTime
+  inboxTodos        InboxTodo[]
+
+  @@unique([connectionId, providerMessageId])
+  @@index([spaceId, userId, inInbox, receivedAt])
+  @@map("mail_messages")
+}
+
+/// A private to-do created by triage from one cached message. Scoped to one user in one space,
+/// never shown on the shared ticket board. Triage replaces only untouched, unfinished rows.
+model InboxTodo {
+  id           String             @id @default(cuid())
+  spaceId      String
+  space        Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId String
+  connection   Connection         @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Set null when the cache prunes the message.
+  messageId    String?
+  message      CachedMailMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  text         String
+  /// Copied from the message's reason.
+  detail       String?
+  dueOn        DateTime?          @db.Date
+  doneAt       DateTime?
+  /// Set on any user action; touched to-dos are never replaced.
+  touchedAt    DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  /// One to-do per message; Postgres allows many NULLs.
+  @@unique([userId, messageId])
+  @@index([spaceId, userId, doneAt])
+  @@map("inbox_todos")
+}
+
+/// A user's "important" or "noise" mark on one sender address. Per user and space, not per
+/// connection: it covers all the user's mail accounts and outlives disconnecting one.
+model InboxSenderFeedback {
+  id            String   @id @default(cuid())
+  spaceId       String
+  space         Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Lowercased.
+  senderAddress String
+  /// "important" | "noise".
+  mark          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([spaceId, userId, senderAddress])
+  @@map("inbox_sender_feedback")
+}
+
+/// One compose session's draft and send record, keyed by a client-generated id so a retried or
+/// double-clicked send never sends twice. Holds ids and state only, never recipients or text.
+model ComposeSend {
+  id                String     @id @default(cuid())
+  spaceId           String
+  space             Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId      String
+  connection        Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Chosen by the browser when the composer opens.
+  clientId          String
+  /// The Gmail draft, once one is saved.
+  draftId           String?
+  /// "draft" | "pending" | "sent" | "failed" | "unknown". A send that may have happened is
+  /// "unknown" and is never retried.
+  state             String     @default("draft")
+  providerMessageId String?
+  threadId          String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@unique([spaceId, userId, clientId])
+  @@index([connectionId])
+  @@map("compose_sends")
+}
+
+/// Sync throttle and in-flight claim for one mail connection.
+model MailSyncState {
+  connectionId  String     @id
+  connection    Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Last successful sync.
+  lastSyncedAt  DateTime?
+  /// Claim held by the process that is syncing; stale after 2 minutes.
+  syncStartedAt DateTime?
+  /// Set when the last sync failed outright (provider error, nothing stored). An incomplete sync,
+  /// where some messages could not be hydrated, is not a failure. Cleared by any sync that stored mail.
+  lastErrorAt   DateTime?
+  /// The last failure was the provider refusing the login, so the account needs reconnecting.
+  needsReconnect Boolean  @default(false)
+  /// Random id of the sync holding the claim; every write checks it.
+  claimToken    String?
+
+  @@map("mail_sync_states")
 }

@@ -1,6 +1,8 @@
 import type {
   CacheCapabilities as ConnectionCacheCapabilities,
   ConnectionCatalogItem,
+  InboxCategory,
+  InboxPriority,
   SandboxKind,
 } from "@rakazo/contracts";
 
@@ -521,7 +523,13 @@ export interface AgentUsage {
   usageSource?: string | null;
 }
 
-export type UsageOperationKind = "answer" | "setup" | "retrieval" | "subagent" | "compaction";
+export type UsageOperationKind =
+  | "answer"
+  | "setup"
+  | "retrieval"
+  | "subagent"
+  | "compaction"
+  | "triage";
 
 export interface ModelCallObserver {
   beforeCall(call: {
@@ -635,6 +643,10 @@ export interface BackgroundJobPayloads {
   "messaging.deliver": { runId?: string };
   /** Reconcile durable remote-agent intent; scope is loaded from the database. */
   "cloud_agent.poll": { agentId: string };
+  /** Deletes a saved mail search (and its rows) once it has expired. */
+  "mail.search.expire": { searchId: string };
+  /** Classifies a user's new inbox mail and syncs their to-dos; one queued job per user and space. */
+  "inbox.triage": { userId: string; spaceId: string };
 }
 
 export type BackgroundJobName = keyof BackgroundJobPayloads;
@@ -672,6 +684,7 @@ export interface SecretPutOptions {
   recordId?: string;
   ephemeral?: boolean;
 }
+/** `ref` is the changed ref, or its SHA-256 hex digest when the change came from another process. */
 export type SecretChangeListener = (ref: string) => void;
 
 export interface ArtifactPut {
@@ -798,6 +811,190 @@ export interface MessagingOutboundStatus {
 }
 
 export type MessagingInboundEvent = MessagingInboundMessage | MessagingOutboundStatus;
+
+/** One connected mailbox. Built from a `Connection` row whose app slug is "gmail". */
+export interface MailAccount {
+  /** Connection.id. Stable key for tabs, caches and tool arguments. */
+  id: string;
+  /** Connection.connectorId: "composio" | "pipedream" | "google". */
+  connectorId: string;
+  /** Connection.provider (app slug as stored, e.g. "GMAIL" or "gmail"). */
+  app: string;
+  /** Connection.providerRef: the remote account id the connector authenticates as. */
+  accountRef: string;
+  /** Connection.displayName. */
+  label: string;
+  /** Owner of the Connection row. Every call checks these against the AdapterContext. */
+  spaceId: string;
+  userId: string;
+  /** Mailbox address from the provider profile; null when the lookup failed. */
+  address: string | null;
+}
+
+export interface MailAddress {
+  name?: string;
+  address: string;
+}
+
+export interface MailListRequest {
+  /** Provider search syntax, passed through. Every adapter today speaks Gmail syntax. */
+  query: string;
+  /** Inclusive lower bound, YYYY-MM-DD. Translated by the provider. */
+  after?: string;
+  /** Exclusive upper bound, YYYY-MM-DD. Translated by the provider. */
+  before?: string;
+  /** 1..500 (Gmail's `maxResults` limit). Each listed message is hydrated, so this bounds quota per call. */
+  pageSize: number;
+  /** Opaque cursor from the previous page. */
+  pageToken?: string;
+  /** Resume an interrupted page: hydrate exactly these ids (a previous page's `unhydratedIds`) and skip the list call. `query`, dates and `pageToken` are ignored. */
+  ids?: string[];
+  /** Default true: reuse metadata already cached by the Inbox. Not used by the Gmail provider yet. */
+  useCache?: boolean;
+}
+
+export interface MailMessageSummary {
+  id: string;
+  threadId: string;
+  /** ISO 8601, from Gmail internalDate (more reliable than the Date header). */
+  date: string;
+  from: MailAddress | null;
+  to: MailAddress[];
+  cc: MailAddress[];
+  subject: string;
+  /** Plain text; HTML entities decoded. */
+  snippet: string;
+  unread: boolean;
+  labelIds: string[];
+}
+
+export interface MailMessagePage {
+  messages: MailMessageSummary[];
+  nextPageToken?: string;
+  resultSizeEstimate?: number;
+  /**
+   * Listed ids that were not hydrated because the caller's signal aborted or rate-limit
+   * retries ran out. Empty or absent means the page is complete. Pass them back as `ids`
+   * to finish the page; `nextPageToken` still points past the whole page.
+   */
+  unhydratedIds?: string[];
+}
+
+export interface MailMessage extends MailMessageSummary {
+  /** Reply-To header; empty when absent. */
+  replyTo: MailAddress[];
+  /** text/plain part, or the HTML part reduced to text. At most 40,000 characters. */
+  text: string;
+  /**
+   * Raw text/html part when present, cut at 200,000 characters, then with referenced inline images
+   * embedded as data: URLs (at most 4 MiB of them). Untrusted.
+   */
+  html?: string;
+  truncated: boolean;
+  attachments: MailAttachmentInfo[];
+}
+
+/** A message to save as a draft. The provider adds the HTML part and the threading headers. */
+export interface MailDraftInput {
+  to: MailAddress[];
+  cc: MailAddress[];
+  bcc: MailAddress[];
+  /** One line. */
+  subject: string;
+  /** Plain text body. */
+  text: string;
+  /** Provider id of the message this answers. Puts the draft in that thread (In-Reply-To, References). */
+  inReplyTo?: string;
+}
+
+export interface MailDraftRef {
+  draftId: string;
+  threadId: string;
+}
+
+export interface MailSent {
+  messageId: string;
+  threadId: string;
+}
+
+export interface MailAttachmentInfo {
+  /** Names this part for `MailProvider.getAttachment`; stable for the same message. */
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  /** An embedded picture that the message body shows itself, not a file to offer. */
+  inline: boolean;
+}
+
+export interface MailAttachment {
+  filename: string;
+  mimeType: string;
+  size: number;
+  bytes: Uint8Array;
+}
+
+/**
+ * `invalid`: the provider (or the caller's input) rejected a write, so nothing was saved or sent.
+ * `unknown`: a send may or may not have happened (timeout, dropped connection, provider 5xx).
+ */
+export type MailErrorKind =
+  | "auth"
+  | "rate_limited"
+  | "not_found"
+  | "unavailable"
+  | "too_large"
+  | "invalid"
+  | "unknown";
+
+export class MailProviderError extends Error {
+  constructor(
+    readonly kind: MailErrorKind,
+    message: string,
+    readonly retryAfterMs?: number,
+    /** Credential-free cause for logs. Never shown to users. */
+    readonly detail?: string,
+  ) {
+    super(message);
+    this.name = "MailProviderError";
+  }
+}
+
+/** Authenticated passthrough to an app's own API for one connected account. */
+export interface ConnectorProxyRequest {
+  /** Connection.provider (app slug). */
+  app: string;
+  /** Connection.providerRef. */
+  accountRef: string;
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  /** Absolute https URL including the query string. */
+  url: string;
+  /** JSON body for POST and PUT. */
+  body?: unknown;
+}
+
+/**
+ * A proxy call that failed before any upstream response arrived. `message` is already free of
+ * credentials. `transient` marks failures worth retrying (network, timeout, provider 5xx).
+ */
+export class ConnectorProxyError extends Error {
+  constructor(
+    message: string,
+    readonly transient: boolean,
+    readonly status?: number,
+    /** The provider SDK's error class name, kept for diagnosis. */
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "ConnectorProxyError";
+  }
+}
+
+export interface ConnectorProxyResponse {
+  status: number;
+  data: unknown;
+  retryAfterMs?: number;
+}
 
 export interface WebSearchCapabilities {
   search: boolean;
@@ -1003,6 +1200,52 @@ export interface AutoReviewResult {
   decision: AutoReviewDecision;
   reason?: string;
   model: string;
+}
+
+/** Optional first-pass mail classifier. Core runs with none configured and uses the LLM adapter. */
+export interface InboxClassifierCapabilities {
+  /** True when the adapter never leaves the process (tests). */
+  offline?: boolean;
+  /** True when a hosted vendor key is not required. */
+  keyless?: boolean;
+}
+
+export type InboxSuspiciousSignal = "phishing" | "junk" | "brand_mismatch";
+
+/** Metadata and a snippet of at most 500 characters. Bodies never reach a classifier. */
+export interface InboxClassifierMessage {
+  id: string;
+  from: string;
+  to: string[];
+  cc: string[];
+  subject: string;
+  snippet: string;
+  receivedAt: string;
+  addressedToMe: boolean;
+  threadLength: number;
+}
+
+export interface InboxClassification {
+  id: string;
+  category: InboxCategory;
+  priority: InboxPriority;
+  needsReply: boolean;
+  signals: InboxSuspiciousSignal[];
+  /** 0 to 1. The LLM adapter reports 1 because the model gives none. */
+  confidence: number;
+  /** Only the LLM adapter writes these; they stay null for a classifier that only labels. */
+  reason: string | null;
+  todo: string | null;
+  /** YYYY-MM-DD */
+  due: string | null;
+}
+
+export interface InboxClassifyResult {
+  model: string;
+  /** Messages the adapter could not classify with enough confidence are left out. */
+  items: InboxClassification[];
+  /** Vendor-reported tokens, when the adapter bills outside the agent runtime. */
+  usage?: { inputTokens: number; outputTokens: number };
 }
 
 /** Provider-neutral subscription state. Vendor-specific states map onto these. */

@@ -1,6 +1,7 @@
 import type {
   AdapterContext,
   ConnectorCall,
+  ConnectorProxyRequest,
   ManagedConnectorProvider,
   SecretStore,
 } from "@rakazo/adapter-kit";
@@ -13,7 +14,9 @@ import {
 import type { PrismaClient } from "@rakazo/db";
 import { ComposioConnector } from "./composio-connector.js";
 import { credentialDigest } from "./credential-digest.js";
+import { GoogleConnector } from "./google-connector.js";
 import { PipedreamConnector } from "./pipedream-connector.js";
+import { secretRefMatches } from "./secret-changes.js";
 
 /** Resolve persisted credentials on every operation so API and workers observe changes.
  * Cache adapters by ciphertext to preserve sessions without retaining old credentials. */
@@ -31,17 +34,28 @@ export class IntegrationProviderSettings {
       Record<IntegrationProviderId, ManagedConnectorProvider>
     > = {},
     private readonly factory?: (config: IntegrationProviderConfig) => ManagedConnectorProvider,
+    /** Where Google sends the browser back. Only API processes, which start connects, set it. */
+    private readonly googleRedirectUri?: string,
   ) {
     this.secrets.onChange?.((ref) => {
-      for (const [id, entry] of this.cache) if (entry.ciphertext === ref) this.cache.delete(id);
+      for (const [id, entry] of this.cache)
+        if (secretRefMatches(entry.ciphertext, ref)) this.cache.delete(id);
     });
   }
 
   private create(config: IntegrationProviderConfig): ManagedConnectorProvider {
     if (this.factory) return this.factory(config);
-    return config.provider === "composio"
-      ? new ComposioConnector(config.apiKey)
-      : new PipedreamConnector({ ...config, identitySecret: this.identitySecret });
+    if (config.provider === "composio") return new ComposioConnector(config.apiKey);
+    if (config.provider === "google")
+      return new GoogleConnector({
+        clientId: config.clientId,
+        clientSecret: config.clientSecret,
+        identitySecret: this.identitySecret,
+        redirectUri: this.googleRedirectUri,
+        prisma: this.prisma,
+        secrets: this.secrets,
+      });
+    return new PipedreamConnector({ ...config, identitySecret: this.identitySecret });
   }
 
   async configured(id: IntegrationProviderId): Promise<boolean> {
@@ -70,7 +84,7 @@ export class IntegrationProviderSettings {
     let invalidated = false;
     const unsubscribe =
       this.secrets.onChange?.((ref) => {
-        if (ref === row.ciphertext) invalidated = true;
+        if (secretRefMatches(row.ciphertext, ref)) invalidated = true;
       }) ?? (() => {});
     try {
       const plaintext = await this.secrets.load(row.ciphertext, `integration-provider:${id}`);
@@ -188,6 +202,28 @@ class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
   }
   async revoke(ref: string, context: AdapterContext) {
     return (await this.required()).revoke(ref, context);
+  }
+  async proxy(request: ConnectorProxyRequest, context: AdapterContext) {
+    const provider = await this.required();
+    if (!provider.proxy) throw new Error("This integration provider cannot proxy requests");
+    return provider.proxy(request, context);
+  }
+  /** Read by the router through a cast; forwarded so Pipedream rows resolve to real account ids. */
+  async resolveConnectedAccountId(
+    userId: string,
+    slug: string,
+    currentRef: string | null | undefined,
+    excludeIds?: string[],
+    spaceId?: string,
+  ): Promise<string | undefined> {
+    const provider = (await this.resolve()) as
+      | (ManagedConnectorProvider & {
+          resolveConnectedAccountId?: ConfiguredIntegrationProvider["resolveConnectedAccountId"];
+        })
+      | undefined;
+    return provider?.resolveConnectedAccountId
+      ? provider.resolveConnectedAccountId(userId, slug, currentRef, excludeIds, spaceId)
+      : currentRef?.trim() || undefined;
   }
   async resolveCall(call: ConnectorCall, context: AdapterContext) {
     return (await this.required()).resolveCall?.(call, context);

@@ -1,6 +1,7 @@
+import { BUILTIN_TOOL_NAMES } from "@rakazo/contracts";
 import { buildSkillMd, formatSkillsCatalogInstruction, parseSkillMd } from "@rakazo/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_AGENT_SKILLS } from "./builtin-skills.js";
+import { BUILTIN_AGENT_SKILLS, INBOX_SEARCH_SKILL_NAME } from "./builtin-skills.js";
 import {
   listAgentSkillRecords,
   skillCreateFromTool,
@@ -216,6 +217,60 @@ describe("skill tools", () => {
     expect(await skillDeleteFromTool(prisma as never, owner, { name: "Plugin recipe" })).toEqual({
       error: "Builtin and plugin skills are read-only.",
     });
+  });
+
+  it("ships a read-only inbox-search skill that names the mail tools and their arguments", async () => {
+    expect(INBOX_SEARCH_SKILL_NAME).toBe("inbox-search");
+    const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
+    expect(skill).toBeDefined();
+    const parsed = parseSkillMd(skill?.content ?? "");
+    if ("error" in parsed) throw new Error(parsed.error);
+    for (const term of ["mail_search", "mail_grep", "mail_get", "searchId", "continueFrom"]) {
+      expect(parsed.body).toContain(term);
+    }
+    const records = await listAgentSkillRecords(prisma as never, owner);
+    expect(records.find((row) => row.name === INBOX_SEARCH_SKILL_NAME)).toMatchObject({
+      source: "builtin",
+      readOnly: true,
+    });
+    expect(
+      await skillDeleteFromTool(prisma as never, owner, { name: INBOX_SEARCH_SKILL_NAME }),
+    ).toEqual({ error: "Builtin and plugin skills are read-only." });
+  });
+
+  it("steers overview questions to the recent inbox, which the synced cache answers quickly", () => {
+    const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
+    const parsed = parseSkillMd(skill?.content ?? "");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.body).toContain("in:inbox newer_than:7d");
+    expect(parsed.body).not.toContain("default to the last 30 days");
+  });
+
+  it("sends overview questions to inbox_overview once and keeps mail_search for history", () => {
+    const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
+    const parsed = parseSkillMd(skill?.content ?? "");
+    if ("error" in parsed) throw new Error(parsed.error);
+    const overview = parsed.body.indexOf("inbox_overview");
+    expect(overview).toBeGreaterThanOrEqual(0);
+    expect(overview).toBeLessThan(parsed.body.indexOf("mail_search"));
+    expect(parsed.body).toMatch(/what's new|what needs/i);
+    expect(parsed.body).toMatch(/history/i);
+  });
+
+  it("only names mail tools that exist in the built-in tool contract", () => {
+    const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
+    const names = new Set(skill?.content.match(/\b(?:mail_[a-z]+|inbox_overview)\b/g));
+    expect([...names].sort()).toEqual(["inbox_overview", "mail_get", "mail_grep", "mail_search"]);
+    for (const name of names) expect(BUILTIN_TOOL_NAMES).toContain(name);
+  });
+
+  it("tells the model to cite messages with show_emails, a tool that exists and is offered with the mail tools", () => {
+    const skill = BUILTIN_AGENT_SKILLS.find((row) => row.name === INBOX_SEARCH_SKILL_NAME);
+    const parsed = parseSkillMd(skill?.content ?? "");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.body).toContain("show_emails");
+    expect(parsed.body).toContain("within_3_days");
+    expect(BUILTIN_TOOL_NAMES).toContain("show_emails");
   });
 
   it("ships builtin skills as valid, readable, read-only SKILL.md records", async () => {

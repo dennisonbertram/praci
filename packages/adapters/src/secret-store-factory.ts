@@ -6,10 +6,10 @@ import type {
   SecretPutOptions,
   SecretStore,
 } from "@rakazo/adapter-kit";
-import { getLogger } from "@rakazo/logging";
+import { getLogger, serializeError } from "@rakazo/logging";
 import type { InfisicalSecretStoreOptions } from "./infisical-secret-store.js";
 import { INFISICAL_REF_PREFIX, InfisicalSecretStore } from "./infisical-secret-store.js";
-import { SecretChanges } from "./secret-changes.js";
+import { SecretChanges, secretRefDigest } from "./secret-changes.js";
 import { EncryptedSecretStore } from "./secrets.js";
 
 export function secretStoreOptionsFromEnv(
@@ -87,11 +87,12 @@ export class ComposedSecretStore extends SecretChanges implements SecretStore {
       this.unsubscribe = await this.realtime.subscribe("secret-store-change", (payload) => {
         try {
           const event = JSON.parse(payload);
-          if (event.origin !== this.origin && typeof event.ref === "string") {
+          if (event.origin === this.origin) return;
+          if (typeof event.ref === "string") {
             if (this.remote && event.ref.startsWith(INFISICAL_REF_PREFIX))
               this.remote.invalidate(event.ref);
             else this.changed(event.ref);
-          }
+          } else if (typeof event.digest === "string") this.changed(event.digest);
         } catch {
           /* Ignore malformed notifications. */
         }
@@ -99,12 +100,21 @@ export class ComposedSecretStore extends SecretChanges implements SecretStore {
   }
   private async publish(ref: string): Promise<void> {
     try {
+      // A remote ref is a short opaque id. An encrypted ref is the ciphertext, which can
+      // exceed the NOTIFY payload limit and should not be broadcast, so send its digest.
       await this.realtime?.publish(
         "secret-store-change",
-        JSON.stringify({ origin: this.origin, ref }),
+        JSON.stringify({
+          origin: this.origin,
+          ...(ref.startsWith(INFISICAL_REF_PREFIX) ? { ref } : { digest: secretRefDigest(ref) }),
+        }),
       );
-    } catch {
-      getLogger().warn("Secret change notification failed");
+    } catch (error) {
+      const { name, message } = serializeError(error);
+      getLogger().warn("Secret change notification failed", {
+        "error.name": name,
+        "error.message": message,
+      });
     }
   }
   async put(value: string, context: AdapterContext, options: SecretPutOptions = {}) {

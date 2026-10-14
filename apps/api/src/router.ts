@@ -6,6 +6,7 @@ import type {
   ArtifactStore,
   ConnectorCatalogItem,
   JobPublisher,
+  MailProvider,
   MemoryStore,
   SandboxProvider,
   SecretStore,
@@ -33,6 +34,7 @@ import type {
   PiOAuthLogins,
   RemoteConnectorDependencies,
   TicketChangeNotifier,
+  TriageReadinessDeps,
 } from "@rakazo/adapters";
 import {
   acquireComputerExecutionLease,
@@ -58,6 +60,8 @@ import {
   createTicket,
   createVoiceProvider,
   defaultCatalogModelId,
+  deleteMailConnectionData,
+  deleteMailSearches,
   deletePushToken,
   deploymentAutoReviewDefault,
   destroyBot,
@@ -70,6 +74,7 @@ import {
   hostCredentialSource,
   isAutoReviewCheckerConfigured,
   isComputerScreenUnavailable,
+  isMailConnection,
   isSandboxGoneError,
   isScratchpadStatus,
   kickModelCredentialRefresh,
@@ -144,6 +149,7 @@ import {
   ComputerCommandSchema,
   foldComputerCommands,
   IntegrationProviderIdSchema,
+  isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   parseTicketRef,
   usableModelId,
@@ -235,6 +241,23 @@ import {
   resolveBusyBotName,
   toComputerStatus,
 } from "./computer-status.js";
+import { completeNativeOAuth } from "./connection-oauth.js";
+import {
+  inboxFeedbackSet,
+  inboxGet,
+  inboxList,
+  inboxRefresh,
+  inboxTodoSetDone,
+  inboxTodosList,
+  inboxUnreadCount,
+} from "./inbox.js";
+import { ensureInboxAgent } from "./inbox-agent.js";
+import {
+  inboxComposeDiscard,
+  inboxComposeDraftSave,
+  inboxComposePrefill,
+  inboxComposeSend,
+} from "./inbox-compose.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
   dismissMcpServerApprovals,
@@ -578,6 +601,10 @@ export interface RouterDeps {
   connectors: ConnectorRegistry;
   remoteConnectors?: RemoteConnectorDependencies;
   artifacts: ArtifactStore;
+  /** Provider-neutral mail access; the Inbox handlers read and sync through it. */
+  mail: MailProvider;
+  /** The executor's model resolver; the Inbox `enabled` flag asks the same question as the triage job. */
+  resolveModel?: TriageReadinessDeps["resolveModel"];
   dataDir: string;
   /** Present when the external messaging surface is enabled. */
   messaging?: { enabled: boolean; providers: string[]; openSignup: boolean };
@@ -602,6 +629,7 @@ export interface RouterDeps {
     imageTag?: string;
     integrationsCatalogUrl?: string;
     mcpAllowPrivateEndpoint?: boolean;
+    mailWritesDisabled?: boolean;
   };
 }
 
@@ -1581,6 +1609,10 @@ export function createRouter(deps: RouterDeps) {
         return found;
       }),
       create: authed.bots.create.handler(async ({ context, input }) => {
+        // inbox.agent is the only way to create an Inbox agent; reserve its key prefix.
+        if (isInboxAgentSpawnKey(input.spawnKey)) {
+          throw new ORPCError("BAD_REQUEST", { message: "Reserved spawn key" });
+        }
         let bot: Bot;
         try {
           bot = await repos.createBot(context.actor, input);
@@ -4270,6 +4302,20 @@ export function createRouter(deps: RouterDeps) {
           }
           throw new ORPCError("CONFLICT", { message: "MCP credentials changed; retry" });
         }),
+        rename: authed.mcp.servers.rename.handler(async ({ context, input }) => {
+          const where = {
+            id: input.id,
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+          };
+          const { count } = await deps.prisma.mcpServer.updateMany({
+            where,
+            data: { name: input.name },
+          });
+          const row = count ? await deps.prisma.mcpServer.findFirst({ where }) : null;
+          if (!row) throw new IsolationError();
+          return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
+        }),
         remove: authed.mcp.servers.remove.handler(async ({ context, input }) => {
           const server = await deps.prisma.mcpServer.findFirst({
             where: {
@@ -4635,7 +4681,9 @@ export function createRouter(deps: RouterDeps) {
       begin: authed.connections.begin.handler(async ({ context, input }) => {
         const connector =
           deps.integrationSettings &&
-          (input.connectorId === "composio" || input.connectorId === "pipedream")
+          (input.connectorId === "composio" ||
+            input.connectorId === "pipedream" ||
+            input.connectorId === "google")
             ? await deps.integrationSettings.resolve(input.connectorId)
             : deps.connectors.managed(input.connectorId);
         if (!connector) {
@@ -4829,6 +4877,25 @@ export function createRouter(deps: RouterDeps) {
         }
       }),
       complete: authed.connections.complete.handler(async ({ context, input }) => {
+        if (input.state !== undefined) {
+          const connector = deps.connectors.managed("google");
+          if (!connector) {
+            throw new ORPCError("BAD_REQUEST", { message: "Connector google is not configured" });
+          }
+          return completeNativeOAuth({
+            prisma: deps.prisma,
+            actor: context.actor,
+            connector,
+            connectorId: "google",
+            state: input.state,
+            code: input.code ?? "",
+            context: connectionContext(context.actor, "connections.complete", context.signal),
+            lock: (tx, connectorId, provider) =>
+              lockProviderConnectionScope(tx, context.actor, connectorId, provider),
+          });
+        }
+        // An undefined id would match any of the caller's rows; the input schema forbids it.
+        if (!input.connectionId) throw new ORPCError("BAD_REQUEST");
         const existing = await deps.prisma.connection.findFirst({
           where: {
             id: input.connectionId,
@@ -5244,6 +5311,12 @@ export function createRouter(deps: RouterDeps) {
                 previousStatus: null as string | null,
               };
             }
+            // Revoking only marks the row, so no cascade fires; mail data goes explicitly.
+            await deleteMailConnectionData(tx, {
+              spaceId: context.actor.spaceId,
+              userId: context.actor.userId,
+              connectionId: row.id,
+            });
 
             const remaining = await tx.connection.count({
               where: {
@@ -5317,6 +5390,14 @@ export function createRouter(deps: RouterDeps) {
           },
           { timeout: 60_000 },
         );
+
+        // Revoke keeps the Connection row, so no cascade removes the saved mail searches.
+        if (snapshot && isMailConnection(snapshot)) {
+          await deleteMailSearches(deps.prisma, {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+          });
+        }
 
         if (outcome.remote) {
           const restoreLocalStatus = async () => {
@@ -5808,6 +5889,59 @@ export function createRouter(deps: RouterDeps) {
         });
         return loadAutoReviewSettings(deps, context.actor);
       }),
+    },
+    inbox: {
+      agent: authed.inbox.agent.handler(async ({ context }) =>
+        ensureInboxAgent(repos, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
+      list: authed.inbox.list.handler(({ context, input }) =>
+        inboxList(deps, context.actor, input, context.signal),
+      ),
+      refresh: authed.inbox.refresh.handler(({ context, input }) =>
+        inboxRefresh(deps, context.actor, input, context.signal),
+      ),
+      get: authed.inbox.get.handler(({ context, input }) =>
+        inboxGet(deps, context.actor, input, context.signal),
+      ),
+      unreadCount: authed.inbox.unreadCount.handler(({ context }) =>
+        inboxUnreadCount(deps, context.actor),
+      ),
+      feedback: authed.inbox.feedback.handler(({ context, input }) =>
+        inboxFeedbackSet(deps, context.actor, input),
+      ),
+      compose: {
+        prefill: authed.inbox.compose.prefill.handler(({ context, input }) =>
+          inboxComposePrefill(deps, context.actor, input, context.signal),
+        ),
+        draftSave: authed.inbox.compose.draftSave.handler(({ context, input }) =>
+          inboxComposeDraftSave(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+            context.signal,
+          ),
+        ),
+        send: authed.inbox.compose.send.handler(({ context, input }) =>
+          inboxComposeSend(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+          ),
+        ),
+        discard: authed.inbox.compose.discard.handler(({ context, input }) =>
+          inboxComposeDiscard(deps, context.actor, input, context.signal),
+        ),
+      },
+      todos: {
+        list: authed.inbox.todos.list.handler(({ context, input }) =>
+          inboxTodosList(deps, context.actor, input),
+        ),
+        setDone: authed.inbox.todos.setDone.handler(({ context, input }) =>
+          inboxTodoSetDone(deps, context.actor, input),
+        ),
+      },
     },
     artifacts: {
       list: authed.artifacts.list.handler(async ({ context, input }) => {

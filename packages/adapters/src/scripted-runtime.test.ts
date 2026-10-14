@@ -289,3 +289,28 @@ describe("inferScript save_shared_memory", () => {
     ]);
   });
 });
+
+describe("inferScript show_emails", () => {
+  it("shows the listed messages under the urgency written after each id", () => {
+    expect(
+      inferScript("show email cards e2e-a-1=today e2e-a-3=within_3_days e2e-b-1=later"),
+    ).toEqual([
+      {
+        assistant: "here are those messages.",
+        toolCalls: [
+          {
+            name: "show_emails",
+            args: {
+              emails: [
+                { id: "e2e-a-1", urgency: "today" },
+                { id: "e2e-a-3", urgency: "within_3_days" },
+                { id: "e2e-b-1", urgency: "later" },
+              ],
+            },
+          },
+        ],
+        complete: true,
+      },
+    ]);
+  });
+});

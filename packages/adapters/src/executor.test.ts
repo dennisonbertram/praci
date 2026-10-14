@@ -1,6 +1,6 @@
 import type { MessageBlock } from "@rakazo/contracts";
 import { CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE } from "@rakazo/contracts";
-import { ONCE_ROUTINE_CRON } from "@rakazo/core";
+import { expandSkillReferencesInPrompt, ONCE_ROUTINE_CRON } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -13,9 +13,11 @@ import {
   missingTurnImagesInstruction,
   parseUpdateBotPatch,
   persistentComputerInstruction,
+  READ_ONLY_AGENT_TOOLS,
   runNotificationsEnabled,
   selectBuiltinToolsForRun,
   settleSteeringAttachmentLoads,
+  splitInboxSearchSkill,
   threadContextForRun,
   toolCompletionAuditPayload,
   toolCompletionFromResult,
@@ -399,6 +401,60 @@ describe("run tool selection", () => {
     expect(disabled).not.toContain("not_a_tool");
     expect(disabled).not.toContain("computer_act");
     expect(disabled).toEqual(baseline.filter((name) => name !== "web_search"));
+  });
+
+  it("offers the mail tools only when mail is enabled, and not when one is disabled", () => {
+    const offered = (mailEnabled: boolean, disabledBuiltinTools?: readonly string[]) =>
+      selectBuiltinToolsForRun({
+        graphicalToolsAllowed: false,
+        pageBrowserAllowed: false,
+        groupId: null,
+        trigger: "message",
+        semanticMemoryEnabled: false,
+        messagingChannelRun: false,
+        mailEnabled,
+        disabledBuiltinTools,
+      }).map((tool) => tool.name);
+
+    expect(offered(false)).not.toEqual(expect.arrayContaining(["mail_search"]));
+    const mailNames = (names: string[]) =>
+      names.filter((name) => name.startsWith("mail_") || name === "inbox_overview").sort();
+    expect(mailNames(offered(false))).toEqual([]);
+    expect(mailNames(offered(true))).toEqual([
+      "inbox_overview",
+      "mail_get",
+      "mail_grep",
+      "mail_search",
+    ]);
+    expect(mailNames(offered(true, ["mail_grep", "inbox_overview"]))).toEqual([
+      "mail_get",
+      "mail_search",
+    ]);
+  });
+
+  it("offers show_emails exactly when the mail tools are offered", () => {
+    const offered = (mailEnabled: boolean, disabledBuiltinTools?: readonly string[]) =>
+      selectBuiltinToolsForRun({
+        graphicalToolsAllowed: false,
+        pageBrowserAllowed: false,
+        groupId: null,
+        trigger: "message",
+        semanticMemoryEnabled: false,
+        messagingChannelRun: false,
+        mailEnabled,
+        disabledBuiltinTools,
+      }).map((tool) => tool.name);
+
+    expect(offered(true)).toContain("show_emails");
+    expect(offered(false)).not.toContain("show_emails");
+    expect(offered(true, ["show_emails"])).not.toContain("show_emails");
+    expect(READ_ONLY_AGENT_TOOLS.has("show_emails")).toBe(true);
+  });
+
+  it("treats the mail tools as read-only so they need no approval", () => {
+    for (const name of ["mail_search", "mail_grep", "mail_get", "inbox_overview"]) {
+      expect(READ_ONLY_AGENT_TOOLS.has(name)).toBe(true);
+    }
   });
 
   it("keeps schedule tools in group chats and still blocks create on routines", () => {
@@ -1010,6 +1066,42 @@ describe("run notification preference", () => {
   });
 });
 
+describe("splitInboxSearchSkill", () => {
+  const skills = [
+    { name: "Interrogate", content: "---\nname: Interrogate\ndescription: d\n---\n\nReview it." },
+    {
+      name: "inbox-search",
+      content: "---\nname: inbox-search\ndescription: d\n---\n\nRun mail_search first.",
+    },
+  ];
+
+  it("returns the skill body and drops it from the catalog when mail_search is offered", () => {
+    const result = splitInboxSearchSkill([{ name: "web_search" }, { name: "mail_search" }], skills);
+    expect(result.guidance).toBe("Run mail_search first.");
+    expect(result.catalog.map((skill) => skill.name)).toEqual(["Interrogate"]);
+  });
+
+  it("keeps the skill in the full list so /inbox-search can still force it", () => {
+    const { catalog } = splitInboxSearchSkill([{ name: "mail_search" }], skills);
+    expect(catalog.map((skill) => skill.name)).not.toContain("inbox-search");
+    const records = skills.map((skill) => ({
+      ...skill,
+      description: "d",
+      source: "builtin" as const,
+      readOnly: true,
+    }));
+    expect(expandSkillReferencesInPrompt("/inbox-search\nfind the invoice", records)).toContain(
+      "Run mail_search first.",
+    );
+  });
+
+  it("omits both the body and the catalog entry when mail_search is not offered", () => {
+    const result = splitInboxSearchSkill([{ name: "web_search" }], skills);
+    expect(result.guidance).toBeUndefined();
+    expect(result.catalog.map((skill) => skill.name)).toEqual(["Interrogate"]);
+  });
+});
+
 describe("userTurnInstructions", () => {
   const computerInstruction = "You have a persistent computer.";
   const pageBrowserAllowed = true;
@@ -1040,6 +1132,27 @@ describe("userTurnInstructions", () => {
     workspaceInstruction: "This entire computer workspace is your private home.",
     replyGuidance,
   };
+
+  it("puts mail search guidance after the plugin line and before the skills catalog", () => {
+    const instructions = userTurnInstructions({
+      ...base,
+      groupContext: undefined,
+      messagingContext: undefined,
+      redactedMemoryContext: undefined,
+      redactedScratchpadContext: undefined,
+      hasHistoricalContext: false,
+      agentEnvironmentInstruction: undefined,
+      botDirectory: undefined,
+      pluginLine: "Connected plugins: none",
+      mailSearchGuidance: "Mail guidance",
+      agentSkillsLine: "Agent skills",
+      taughtSkillsLine: undefined,
+    }).filter(Boolean);
+
+    const at = (text: string) => instructions.indexOf(text);
+    expect(at("Mail guidance")).toBe(at("Connected plugins: none") + 1);
+    expect(at("Agent skills")).toBe(at("Mail guidance") + 1);
+  });
 
   it("places stable guidance before volatile context when every optional context is present", () => {
     const instructions = userTurnInstructions({

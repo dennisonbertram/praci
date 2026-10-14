@@ -879,6 +879,9 @@ function Home() {
               />
             ) : null}
 
+            {!searching && !query.trim() ? (
+              <MailInboxRow onPress={() => router.push("/inbox")} />
+            ) : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {spaceRecoveryId ? (
               <Pressable
@@ -1147,6 +1150,23 @@ function ConversationRow({
   );
 }
 
+function MailInboxRow({ onPress }: { onPress: () => void }) {
+  const styles = useThemedStyles(createHomeStyles);
+  const { t } = useI18n();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+    >
+      <View style={styles.mailInboxIcon}>
+        <NativeSymbol ios="tray" android="file-tray-outline" size={22} />
+      </View>
+      <Text style={styles.name}>{t("Inbox")}</Text>
+    </Pressable>
+  );
+}
+
 function HeaderButton({
   children,
   onPress,
@@ -1397,6 +1417,14 @@ function createHomeStyles() {
       paddingHorizontal: 16,
       paddingVertical: 10,
       gap: 12,
+    },
+    mailInboxIcon: {
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: native.fill,
     },
     treeToggle: {
       width: 20,

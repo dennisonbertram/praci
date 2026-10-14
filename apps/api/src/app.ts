@@ -27,6 +27,7 @@ import {
   createCloudAgentConnection,
   createConnectorStack,
   createJobReconciler,
+  createMailProvider,
   createMessagingContextLoader,
   createMessagingTeamChatSender,
   createRunExecutor,
@@ -103,6 +104,7 @@ import { mountBillingRoutes } from "./billing-webhook.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
 import { healthRoutes } from "./health.js";
+import { mountInboxAttachment } from "./inbox-attachment.js";
 import { mountLocalSettings } from "./local-settings.js";
 import {
   createMessagingInboundHandler,
@@ -362,14 +364,21 @@ export async function createApp(
     remoteConnectors,
     env.mcpAllowPrivateEndpoint,
   );
-  const integrationSettings = new IntegrationProviderSettings(prisma, secrets, env.encryptionKey, {
-    composio:
-      composioOverride ??
-      (isComposioEnabled(env.composioApiKey)
-        ? new ComposioConnector(env.composioApiKey)
-        : undefined),
-    pipedream,
-  });
+  const integrationSettings = new IntegrationProviderSettings(
+    prisma,
+    secrets,
+    env.encryptionKey,
+    {
+      composio:
+        composioOverride ??
+        (isComposioEnabled(env.composioApiKey)
+          ? new ComposioConnector(env.composioApiKey)
+          : undefined),
+      pipedream,
+    },
+    undefined,
+    new URL("/integrations/google/callback", env.webOrigin).toString(),
+  );
   const stack = createConnectorStack(false, composioOverride, [
     installed,
     ...integrationSettings
@@ -378,6 +387,8 @@ export async function createApp(
     mcp,
   ]);
   const connector = stack.destination;
+  // One instance serves the Inbox handlers (and the mail tools that reuse it later).
+  const mail = createMailProvider({ prisma, connectors: stack.connector });
   await connector.start();
   integrationSettings.warmDirectories();
   const runtime =
@@ -495,6 +506,7 @@ export async function createApp(
     messaging: messaging ? createMessagingContextLoader(prisma) : undefined,
     web: createWebProvider(),
     cloudAgent,
+    mail,
     shutdownSignal: shutdown.signal,
   });
 
@@ -550,6 +562,8 @@ export async function createApp(
     connectors: stack.connector,
     remoteConnectors,
     artifacts,
+    mail,
+    resolveModel: executor.resolveModel,
     dataDir: env.dataDir,
     billing,
     messaging: {
@@ -576,6 +590,7 @@ export async function createApp(
       imageTag: env.imageTag,
       integrationsCatalogUrl: env.integrationsCatalogUrl,
       mcpAllowPrivateEndpoint: env.mcpAllowPrivateEndpoint,
+      mailWritesDisabled: env.mailWritesDisabled,
     },
   });
   const rpc = new RPCHandler(router, {
@@ -664,6 +679,11 @@ export async function createApp(
     });
     if (matched) return c.newResponse(response.body, response);
     await next();
+  });
+  mountInboxAttachment(app, { prisma, mail }, async (request) => {
+    const actor = await sessionActor(request);
+    if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
+    return actor;
   });
   mountVoiceHttpRoutes(app, { prisma, secrets }, async (c) => {
     const actor = await sessionActor(c.req.raw);

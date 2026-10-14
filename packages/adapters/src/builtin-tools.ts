@@ -2,6 +2,8 @@ import type { ConnectorTool } from "@rakazo/adapter-kit";
 import {
   BotSecretName,
   botSecretDestinationSchema,
+  EmailUrgency,
+  MAX_EMAIL_CARDS,
   SecretAskPurpose,
   SecretHttpRequest,
   TICKET_PRIORITIES,
@@ -554,6 +556,109 @@ export const builtinAgentTools: ConnectorTool[] = [
         },
       },
       required: ["url"],
+    },
+    readOnly: true,
+  },
+  {
+    name: "inbox_overview",
+    description:
+      'One call for "what\'s on my email", "what\'s new" or "what needs me": refreshes the cache, then returns per-account unread and needs-reply counts, the messages that need a reply (by priority), open to-dos with due dates, and the latest other inbox mail from the last 14 days. Answer from it directly; use mail_search only for older mail or a specific topic.',
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+  },
+  {
+    name: "mail_search",
+    description:
+      "Search the user's connected mail and save every match, sorted oldest-first. Returns a summary and a searchId, not the messages. Then use mail_grep on the searchId and mail_get for a few bodies.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        queries: {
+          type: "array",
+          items: { type: "string" },
+          maxItems: 20,
+          description:
+            "Mail search queries (Gmail syntax), run exactly. Date-less queries cover all history.",
+        },
+        account: {
+          type: "string",
+          description: "Optional address of one connected account. Default: all.",
+        },
+        continueFrom: {
+          type: "string",
+          description:
+            "searchId of a capped search. Fetches the older matches it did not reach; queries and account are taken from that search.",
+        },
+        maxMessages: { type: "number", description: "Default 1000, max 5000." },
+      },
+    },
+    readOnly: true,
+  },
+  {
+    name: "mail_grep",
+    description:
+      "Search the rows saved by mail_search. Patterns are case-insensitive regex; patterns with quantifiers or backreferences match literally. Omit patterns to list rows.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        searchId: { type: "string", description: "From mail_search." },
+        patterns: {
+          type: "array",
+          items: { type: "string", maxLength: 200 },
+          maxItems: 20,
+        },
+        dateFrom: { type: "string", description: "ISO date prefix, e.g. 2018 or 2018-06." },
+        dateTo: { type: "string", description: "ISO date prefix, inclusive." },
+        maxResults: { type: "number", description: "Default 50, max 200." },
+        contextLines: { type: "number", description: "0-5." },
+        afterLine: { type: "number", description: "Skip rows up to this line; for paging." },
+      },
+      required: ["searchId"],
+    },
+    readOnly: true,
+  },
+  {
+    name: "mail_get",
+    description:
+      "Read one message from the user's connected mail: headers and body text. Use the id from a mail_grep row, for the few messages you need to read in full.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        account: {
+          type: "string",
+          description: "Address from the row's acct: field. Required with more than one account.",
+        },
+        maxChars: {
+          type: "number",
+          description: "Body characters. Default 12000, max 40000.",
+        },
+      },
+      required: ["id"],
+    },
+    readOnly: true,
+  },
+  {
+    name: "show_emails",
+    description:
+      "Show messages in the chat as cards grouped by urgency. Call it once when you cite specific messages in an answer, with the ids from mail_grep rows. Give each message an urgency: today, within_3_days, this_week or later (later is shown as a compact list).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        emails: {
+          type: "array",
+          maxItems: MAX_EMAIL_CARDS,
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "The id: field of a mail_grep row." },
+              urgency: { type: "string", enum: [...EmailUrgency.options] },
+            },
+            required: ["id"],
+          },
+        },
+      },
+      required: ["emails"],
     },
     readOnly: true,
   },
