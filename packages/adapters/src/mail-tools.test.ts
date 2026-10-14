@@ -53,8 +53,12 @@ function setup(
   );
   const gmail = new GmailApiEmulator({ now: new Date("2026-10-01T12:00:00Z"), mailboxes });
   const connector = {
-    proxy: async (request: { accountRef: string; url: string }) =>
-      gmail.handle(request.accountRef, request.url),
+    proxy: async (request: {
+      accountRef: string;
+      url: string;
+      method: "GET" | "POST" | "PUT" | "DELETE";
+      body?: unknown;
+    }) => gmail.handle(request.accountRef, request.url, request.method, request.body),
   } as unknown as ManagedConnectorProvider;
   const mail = createMailProvider({
     prisma: {} as never,
@@ -108,8 +112,10 @@ describe("selectMailTools", () => {
     expect(selectMailTools(tools, false).map((tool) => tool.name)).toEqual(["web_search"]);
     expect([...MAIL_TOOL_NAMES].sort()).toEqual([
       "inbox_overview",
+      "mail_draft",
       "mail_get",
       "mail_grep",
+      "mail_modify",
       "mail_search",
       "show_emails",
     ]);
@@ -366,5 +372,173 @@ describe("show_emails", () => {
       findMany.mock.calls[0] as unknown as [{ where: { providerMessageId: { in: string[] } } }]
     )[0].where;
     expect(where.providerMessageId.in).toHaveLength(20);
+  });
+});
+
+describe("mail write tools", () => {
+  const inbox: EmulatedMessage[] = [
+    {
+      ...base,
+      id: "m1",
+      threadId: "t1",
+      labels: ["INBOX", "UNREAD"],
+      date: "2026-10-01T10:00:00Z",
+      subject: "One",
+    },
+    {
+      ...base,
+      id: "m2",
+      threadId: "t1",
+      labels: ["INBOX", "UNREAD"],
+      date: "2026-10-02T10:00:00Z",
+      subject: "Two",
+    },
+    {
+      ...base,
+      id: "m3",
+      threadId: "t2",
+      labels: ["INBOX", "UNREAD"],
+      date: "2026-10-03T10:00:00Z",
+      subject: "Other",
+    },
+  ];
+  type Row = {
+    id: string;
+    spaceId: string;
+    userId: string;
+    connectionId: string;
+    providerMessageId: string;
+    threadId: string;
+    unread: boolean;
+    inInbox: boolean;
+  };
+
+  /** A cache holding the three messages above; the stub answers only the queries the tools make. */
+  function withCache(options: { writesDisabled?: boolean } = {}) {
+    const rows: Row[] = inbox.map((m) => ({
+      id: `row-${m.id}`,
+      spaceId: scope.spaceId,
+      userId: scope.userId,
+      connectionId: "conn-a",
+      providerMessageId: m.id,
+      threadId: m.threadId as string,
+      unread: true,
+      inInbox: true,
+    }));
+    const matches = (row: Row, where: Partial<Row>) =>
+      Object.entries(where).every(([key, value]) => row[key as keyof Row] === value);
+    const prisma = {
+      cachedMailMessage: {
+        findFirst: async ({ where }: { where: Partial<Row> }) =>
+          rows.find((r) => matches(r, where)) ?? null,
+        findMany: async ({ where }: { where: Partial<Row> }) =>
+          rows.filter((r) => matches(r, where)),
+        updateMany: async ({ where, data }: { where: Partial<Row>; data: Partial<Row> }) => {
+          for (const row of rows) if (matches(row, where)) Object.assign(row, data);
+          return { count: 0 };
+        },
+      },
+    };
+    const { deps, gmail } = setup({ a: inbox }, { prisma });
+    return { deps: { ...deps, writesDisabled: options.writesDisabled }, gmail, rows };
+  }
+  const labelsOf = async (deps: MailToolDeps, id: string) =>
+    (await deps.mail.getMessage((await deps.accounts())[0] as MailAccount, id, context())).labelIds;
+  const run = (deps: MailToolDeps, name: string, args: Record<string, unknown>) =>
+    mailToolFromTool(name, deps, context(), args);
+
+  it("saves a draft, never sends it, and replaces it when given its id", async () => {
+    const { deps, gmail } = withCache();
+    const created = (await run(deps, "mail_draft", {
+      to: ["Jana <jana@example.test>"],
+      subject: "Friday",
+      body: "See you then.",
+      replyToId: "m1",
+    })) as { draftId: string };
+    expect(created.draftId).toBeTruthy();
+    expect(gmail.draftsOf("a")).toHaveLength(1);
+    expect(gmail.draftsOf("a")[0]?.raw).toContain("Subject: Friday");
+
+    await run(deps, "mail_draft", {
+      draftId: created.draftId,
+      to: ["jana@example.test"],
+      subject: "Saturday",
+      body: "Changed.",
+    });
+    expect(gmail.draftsOf("a")).toHaveLength(1);
+    expect(gmail.draftsOf("a")[0]?.raw).toContain("Subject: Saturday");
+    expect(gmail.sentOf("a")).toHaveLength(0);
+  });
+
+  it("reports a bad recipient or a missing draft instead of saving", async () => {
+    const { deps, gmail } = withCache();
+    const bad = { to: ["not an address"], subject: "x", body: "y" };
+    expect(await run(deps, "mail_draft", bad)).toHaveProperty("error");
+    const gone = { draftId: "gone", to: [], subject: "x", body: "y" };
+    expect(await run(deps, "mail_draft", gone)).toHaveProperty("error");
+    expect(gmail.draftsOf("a")).toHaveLength(0);
+  });
+
+  it("marks a conversation read and archives it, in Gmail and in the cache", async () => {
+    const { deps, rows } = withCache();
+    expect(await run(deps, "mail_modify", { id: "m1", read: true, archive: true })).toEqual({
+      ok: true,
+      messages: 2,
+    });
+    for (const id of ["m1", "m2"]) expect(await labelsOf(deps, id)).toEqual([]);
+    expect(await labelsOf(deps, "m3")).toEqual(["INBOX", "UNREAD"]);
+    expect(rows.map((r) => [r.unread, r.inInbox])).toEqual([
+      [false, false],
+      [false, false],
+      [true, true],
+    ]);
+  });
+
+  it("marks one message unread and resolves a label name to its id", async () => {
+    const { deps, rows } = withCache();
+    await run(deps, "mail_modify", { id: "m1", read: true });
+    await run(deps, "mail_modify", { id: "m2", read: false, addLabels: ["receipts"] });
+    expect((await labelsOf(deps, "m2")).sort()).toEqual(["INBOX", "Label_1", "UNREAD"]);
+    expect(await labelsOf(deps, "m1")).toEqual(["INBOX"]);
+    expect(rows.map((r) => r.unread)).toEqual([false, true, true]);
+  });
+
+  it("refuses unknown labels and labels that delete or send", async () => {
+    const { deps } = withCache();
+    for (const label of ["Nope", "TRASH", "SPAM", "DRAFT", "SENT"]) {
+      expect(await run(deps, "mail_modify", { id: "m1", addLabels: [label] })).toHaveProperty(
+        "error",
+      );
+    }
+    expect(await run(deps, "mail_modify", { id: "m1" })).toHaveProperty("error");
+    expect(await labelsOf(deps, "m1")).toEqual(["INBOX", "UNREAD"]);
+  });
+
+  it("changes nothing when mail writes are turned off", async () => {
+    const { deps, gmail, rows } = withCache({ writesDisabled: true });
+    const off = { error: "Changing mail is turned off." };
+    const draft = { to: ["jana@example.test"], subject: "x", body: "y" };
+    expect(await run(deps, "mail_draft", draft)).toEqual(off);
+    expect(await run(deps, "mail_modify", { id: "m1", read: true })).toEqual(off);
+    expect(gmail.draftsOf("a")).toHaveLength(0);
+    expect(await labelsOf(deps, "m1")).toEqual(["INBOX", "UNREAD"]);
+    expect(rows.every((r) => r.unread)).toBe(true);
+  });
+
+  it("has no way to send: the provider's send is never reached", async () => {
+    const { deps, gmail } = withCache();
+    const sendDraft = vi.fn();
+    const mail = new Proxy(deps.mail, {
+      get: (target, key) => (key === "sendDraft" ? sendDraft : Reflect.get(target, key)),
+    });
+    const spy: MailToolDeps = { ...deps, mail };
+    const args = { to: ["jana@example.test"], subject: "x", body: "y", send: true, id: "m1" };
+    for (const name of MAIL_TOOL_NAMES) {
+      expect(name).not.toMatch(/send/i);
+      await run(spy, name, args).catch(() => undefined);
+    }
+    expect(await run(spy, "mail_send", args)).toHaveProperty("error");
+    expect(sendDraft).not.toHaveBeenCalled();
+    expect(gmail.sentOf("a")).toHaveLength(0);
   });
 });

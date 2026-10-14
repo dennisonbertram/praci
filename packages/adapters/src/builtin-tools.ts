@@ -663,6 +663,58 @@ export const builtinAgentTools: ConnectorTool[] = [
     readOnly: true,
   },
   {
+    name: "mail_draft",
+    description:
+      "Save an email draft in the user's mail account, or replace one you saved earlier (pass its draftId; every field is replaced). The user reviews and sends it themselves; you cannot send mail. Needs the user's approval. After saving, tell the user the draft is in their Drafts folder.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        draftId: {
+          type: "string",
+          description: "A draftId from an earlier mail_draft, to replace it.",
+        },
+        account: {
+          type: "string",
+          description: "Address of the connected account. Required with more than one account.",
+        },
+        to: {
+          type: "array",
+          items: { type: "string" },
+          description: "Addresses, e.g. Name <a@b.com>.",
+        },
+        cc: { type: "array", items: { type: "string" } },
+        bcc: { type: "array", items: { type: "string" } },
+        subject: { type: "string" },
+        body: { type: "string", description: "Plain text." },
+        replyToId: {
+          type: "string",
+          description: "Id of the message this answers, to put the draft in its conversation.",
+        },
+      },
+      required: ["subject", "body"],
+    },
+  },
+  {
+    name: "mail_modify",
+    description:
+      "Change a conversation in the user's mail: mark read or unread, archive or move back to the inbox, add or remove labels. Marking read, archiving and labels apply to every message of the conversation; marking unread applies to the one message. Use the id from a mail_grep row. Cannot delete, trash, report spam or send. Needs the user's approval.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Message id from a mail_grep row." },
+        account: {
+          type: "string",
+          description: "Address from the row's acct: field. Required with more than one account.",
+        },
+        read: { type: "boolean", description: "true marks read, false marks unread." },
+        archive: { type: "boolean", description: "true archives, false moves back to the inbox." },
+        addLabels: { type: "array", items: { type: "string" }, description: "Label names." },
+        removeLabels: { type: "array", items: { type: "string" }, description: "Label names." },
+      },
+      required: ["id"],
+    },
+  },
+  {
     name: "cloud_agent_launch",
     description:
       "Launch a remote cloud coding agent on a connected repository. Returns immediately with a tracking id and status; the agent link appears when launched. Opens a PR when openPr is true. Not the bot computer.",

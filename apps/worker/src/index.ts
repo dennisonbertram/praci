@@ -231,6 +231,7 @@ async function main() {
     web: createWebProvider(),
     cloudAgent,
     mail: createMailProvider({ prisma, connectors: stack.connector }),
+    mailWritesDisabled: process.env.MAIL_WRITES_DISABLED === "true",
   });
 
   const jobHandlers = createBackgroundJobHandlers({

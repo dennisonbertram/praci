@@ -422,12 +422,15 @@ describe("run tool selection", () => {
     expect(mailNames(offered(false))).toEqual([]);
     expect(mailNames(offered(true))).toEqual([
       "inbox_overview",
+      "mail_draft",
       "mail_get",
       "mail_grep",
+      "mail_modify",
       "mail_search",
     ]);
-    expect(mailNames(offered(true, ["mail_grep", "inbox_overview"]))).toEqual([
+    expect(mailNames(offered(true, ["mail_grep", "inbox_overview", "mail_draft"]))).toEqual([
       "mail_get",
+      "mail_modify",
       "mail_search",
     ]);
   });
@@ -454,6 +457,9 @@ describe("run tool selection", () => {
   it("treats the mail tools as read-only so they need no approval", () => {
     for (const name of ["mail_search", "mail_grep", "mail_get", "inbox_overview"]) {
       expect(READ_ONLY_AGENT_TOOLS.has(name)).toBe(true);
+    }
+    for (const name of ["mail_draft", "mail_modify"]) {
+      expect(READ_ONLY_AGENT_TOOLS.has(name)).toBe(false);
     }
   });
 

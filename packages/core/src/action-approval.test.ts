@@ -374,3 +374,11 @@ describe("applyJudgeDecision", () => {
     expect(applyJudgeDecision({ decision: "error", consequential: false })).toBe("allow");
   });
 });
+
+describe("mail write tools", () => {
+  it.each(["mail_draft", "mail_modify"])("%s needs approval, also on an unattended run", (name) => {
+    expect(toolRequiresApproval(name, false)).toBe(true);
+    expect(unattendedTriggerToolRequiresApproval("webhook", name, false)).toBe(true);
+    expect(toolRequiresExplicitApproval(name)).toBe(false);
+  });
+});

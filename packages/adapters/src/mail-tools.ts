@@ -4,6 +4,8 @@ import type {
   JobPublisher,
   MailAccount,
   MailAddress,
+  MailDraftInput,
+  MailLabelChange,
   MailMessageSummary,
   MailProvider,
 } from "@rakazo/adapter-kit";
@@ -24,6 +26,7 @@ import {
 } from "@rakazo/core";
 import { Prisma, type PrismaClient } from "@rakazo/db";
 import { inboxOverview } from "./inbox-overview.js";
+import { parseRecipients } from "./mail-compose.js";
 
 export const MAIL_TOOL_NAMES = new Set([
   "mail_search",
@@ -31,6 +34,8 @@ export const MAIL_TOOL_NAMES = new Set([
   "mail_get",
   "show_emails",
   "inbox_overview",
+  "mail_draft",
+  "mail_modify",
 ]);
 
 const SEARCH_TTL_MS = 24 * 3_600_000;
@@ -59,6 +64,8 @@ export type MailToolDeps = {
   scope: { spaceId: string; userId: string; botId: string };
   /** Puts blocks in the run's thread. Without it show_emails is unavailable. */
   publish?: (blocks: MessageBlock[]) => Promise<unknown>;
+  /** MAIL_WRITES_DISABLED: the write tools change nothing. */
+  writesDisabled?: boolean;
   deadlineMs?: number;
   now?: () => Date;
 };
@@ -104,6 +111,8 @@ export async function mailToolFromTool(
     if (name === "mail_get") return await mailGet(deps, context, args);
     if (name === "show_emails") return await showEmails(deps, context, args);
     if (name === "inbox_overview") return await inboxOverview(deps, context);
+    if (name === "mail_draft") return await mailDraft(deps, context, args);
+    if (name === "mail_modify") return await mailModify(deps, context, args);
     return { error: `Unknown mail tool ${name}` };
   } catch (error) {
     // Provider errors carry sanitized text; anything else is not shown to the model.
@@ -486,23 +495,31 @@ async function mailGrep(deps: MailToolDeps, args: Record<string, unknown>) {
 
 // --- mail_get ---
 
-async function mailGet(deps: MailToolDeps, context: AdapterContext, args: Record<string, unknown>) {
-  const id = typeof args.id === "string" ? args.id.trim() : "";
-  if (!id) return { error: "id is required" };
+/** The account named by `args.account`, or the only connected one. */
+async function resolveAccount(
+  deps: MailToolDeps,
+  args: Record<string, unknown>,
+): Promise<{ account: MailAccount } | { error: string }> {
   const accounts = await deps.accounts();
-  let account: MailAccount | undefined;
   if (typeof args.account === "string" && args.account.trim()) {
-    account = findAccount(accounts, args.account);
-    if (!account) return noAccount(args.account);
-  } else if (accounts.length > 1) {
+    const account = findAccount(accounts, args.account);
+    return account ? { account } : noAccount(args.account);
+  }
+  if (accounts.length > 1) {
     return {
       error:
         "Pass account (the address from the row's acct: field) when more than one mail account is connected",
     };
-  } else {
-    account = accounts[0];
   }
-  if (!account) return { error: "No connected mail account" };
+  return accounts[0] ? { account: accounts[0] } : { error: "No connected mail account" };
+}
+
+async function mailGet(deps: MailToolDeps, context: AdapterContext, args: Record<string, unknown>) {
+  const id = typeof args.id === "string" ? args.id.trim() : "";
+  if (!id) return { error: "id is required" };
+  const picked = await resolveAccount(deps, args);
+  if ("error" in picked) return picked;
+  const { account } = picked;
 
   let message: Awaited<ReturnType<MailProvider["getMessage"]>>;
   try {
@@ -596,4 +613,125 @@ async function showEmails(
   await deps.publish([{ kind: "emails", emails }]);
   const notFound = [...requested.keys()].filter((id) => !found.has(id));
   return { shown: emails.length, ...(notFound.length ? { notFound } : {}) };
+}
+
+// --- mail_draft, mail_modify ---
+// Both change the user's mail, so the executor asks for approval first. Nothing here sends mail.
+
+const WRITES_OFF = { error: "Changing mail is turned off." };
+/** Labels that would delete, report or fake-send a message. */
+const FIXED_LABELS = new Set(["TRASH", "SPAM", "DRAFT", "SENT"]);
+
+const strings = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+
+/** Saves a new draft, or replaces the one named by `draftId`. The user sends it from their mail. */
+async function mailDraft(
+  deps: MailToolDeps,
+  context: AdapterContext,
+  args: Record<string, unknown>,
+) {
+  if (deps.writesDisabled) return WRITES_OFF;
+  const picked = await resolveAccount(deps, args);
+  if ("error" in picked) return picked;
+  const { account } = picked;
+  const replyTo = typeof args.replyToId === "string" ? args.replyToId.trim() : "";
+  const draft: MailDraftInput = {
+    to: parseRecipients(strings(args.to).join(", ")),
+    cc: parseRecipients(strings(args.cc).join(", ")),
+    bcc: parseRecipients(strings(args.bcc).join(", ")),
+    subject: typeof args.subject === "string" ? args.subject : "",
+    text: typeof args.body === "string" ? args.body : "",
+    ...(replyTo ? { inReplyTo: replyTo } : {}),
+  };
+  const draftId = typeof args.draftId === "string" ? args.draftId.trim() : "";
+  const saved = draftId
+    ? await deps.mail.updateDraft(account, draftId, draft, context)
+    : await deps.mail.createDraft(account, draft, context);
+  return {
+    ok: true,
+    draftId: saved.draftId,
+    account: accountName(account),
+    to: draft.to.map(addressText),
+    subject: draft.subject,
+  };
+}
+
+/** Changes labels on a message, and on its conversation unless the change is marking it unread. */
+async function mailModify(
+  deps: MailToolDeps,
+  context: AdapterContext,
+  args: Record<string, unknown>,
+) {
+  if (deps.writesDisabled) return WRITES_OFF;
+  const id = typeof args.id === "string" ? args.id.trim() : "";
+  if (!id) return { error: "id is required" };
+  const picked = await resolveAccount(deps, args);
+  if ("error" in picked) return picked;
+  const { account } = picked;
+
+  const add: string[] = [];
+  const remove: string[] = [];
+  const named = [
+    { names: strings(args.addLabels), into: add },
+    { names: strings(args.removeLabels), into: remove },
+  ];
+  if (named.some(({ names }) => names.length)) {
+    const known = await deps.mail.listLabels(account, context);
+    for (const { names, into } of named) {
+      for (const name of names) {
+        const label = known.find(
+          (candidate) =>
+            candidate.id === name || candidate.name.toLowerCase() === name.toLowerCase(),
+        );
+        if (!label) return { error: `No such label ${name.slice(0, 100)}` };
+        if (FIXED_LABELS.has(label.id)) return { error: `${label.id} cannot be changed here` };
+        into.push(label.id);
+      }
+    }
+  }
+  if (typeof args.read === "boolean") (args.read ? remove : add).push("UNREAD");
+  if (typeof args.archive === "boolean") (args.archive ? remove : add).push("INBOX");
+  if (add.length + remove.length === 0) return { error: "Nothing to change" };
+  const change: MailLabelChange = { addLabelIds: add, removeLabelIds: remove };
+
+  // What the Inbox shows is kept in step without waiting for a sync.
+  const flag = (label: string) =>
+    add.includes(label) ? true : remove.includes(label) ? false : undefined;
+  const unread = flag("UNREAD");
+  const inInbox = flag("INBOX");
+  const data = {
+    ...(unread === undefined ? {} : { unread }),
+    ...(inInbox === undefined ? {} : { inInbox }),
+  };
+
+  const owner = { spaceId: deps.scope.spaceId, userId: deps.scope.userId };
+  const cache = deps.prisma.cachedMailMessage;
+  const row = await cache.findFirst({
+    where: { ...owner, connectionId: account.id, providerMessageId: id },
+    select: { id: true, threadId: true },
+  });
+  const targets = new Map<string, string | undefined>([[id, row?.id]]);
+  if (row && !add.includes("UNREAD")) {
+    const thread = await cache.findMany({
+      where: { ...owner, connectionId: account.id, threadId: row.threadId },
+      select: { id: true, providerMessageId: true },
+    });
+    for (const message of thread) targets.set(message.providerMessageId, message.id);
+  }
+
+  let messages = 0;
+  for (const [providerMessageId, rowId] of targets) {
+    try {
+      await deps.mail.modifyMessage(account, providerMessageId, change, context);
+    } catch (error) {
+      // Deleted since the last sync: nothing left to change.
+      if (error instanceof MailProviderError && error.kind === "not_found") continue;
+      throw error;
+    }
+    messages += 1;
+    if (rowId && Object.keys(data).length)
+      await cache.updateMany({ where: { id: rowId, ...owner }, data });
+  }
+  return messages ? { ok: true, messages } : { error: "Message not found" };
 }
