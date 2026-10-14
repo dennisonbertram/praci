@@ -3176,6 +3176,7 @@ msgid "OAuth connection failed"
 msgstr "OAuth कनेक्शन विफल"
 
 #: src/pages/McpServersOverlay.tsx
+#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr ""
 
@@ -4202,6 +4203,7 @@ msgid "Start recording"
 msgstr "रिकॉर्डिंग शुरू करें"
 
 #: src/pages/ActivityList.tsx
+#: src/pages/Shell.tsx
 msgid "Starting"
 msgstr "शुरू हो रहा है"
 
@@ -4368,6 +4370,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
+#: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Thinking"
 msgstr "सोच रहा है"
@@ -4679,6 +4682,11 @@ msgstr ""
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "{selectedProviderName} तक पहुँचने के लिए इस सर्वर के अपने {hostCredentialSource} क्रेडेंशियल का उपयोग करता है।"
 
+#. placeholder {0}: activity.label
+#: src/pages/Shell.tsx
+msgid "Using {0}"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
 msgstr ""
@@ -4799,6 +4807,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "काम चल रहा है…"
+
+#: src/pages/Shell.tsx
+msgid "Writing"
+msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Wrote {path}"

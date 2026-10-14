@@ -3176,6 +3176,7 @@ msgid "OAuth connection failed"
 msgstr "OAuth 연결 실패"
 
 #: src/pages/McpServersOverlay.tsx
+#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr ""
 
@@ -4202,6 +4203,7 @@ msgid "Start recording"
 msgstr "작업 녹화 시작"
 
 #: src/pages/ActivityList.tsx
+#: src/pages/Shell.tsx
 msgid "Starting"
 msgstr "시작 중"
 
@@ -4368,6 +4370,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
+#: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Thinking"
 msgstr "생각 깊이"
@@ -4679,6 +4682,11 @@ msgstr ""
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "이 서버의 자체 {hostCredentialSource} 자격 증명으로 {selectedProviderName}에 액세스합니다."
 
+#. placeholder {0}: activity.label
+#: src/pages/Shell.tsx
+msgid "Using {0}"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
 msgstr ""
@@ -4799,6 +4807,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "처리 중…"
+
+#: src/pages/Shell.tsx
+msgid "Writing"
+msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Wrote {path}"

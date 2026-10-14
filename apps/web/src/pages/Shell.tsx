@@ -182,6 +182,7 @@ import {
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
 import { newClientId } from "../lib/client-id";
+import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
   loadComputerScreen,
@@ -249,6 +250,8 @@ import {
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
 import { errorText } from "../lib/user-error";
+import type { WorkingActivity } from "../lib/working-activity";
+import { workingActivity } from "../lib/working-activity";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
@@ -1785,6 +1788,19 @@ export function ShellPage() {
     : snapshot?.botId === active?.id
       ? snapshot
       : null;
+  const sentHistory = useMemo(
+    () =>
+      (activeSnapshot?.messages ?? [])
+        .filter((message) => message.role === "user" && !message.callId)
+        .map((message) =>
+          message.blocks
+            .map((block) => (block.kind === "text" ? block.text : ""))
+            .join("\n")
+            .trim(),
+        )
+        .filter(Boolean),
+    [activeSnapshot?.messages],
+  );
   // Keep the armed reply even when its parent leaves the loaded page: the
   // server resolves a paged-out target and degrades a deleted one to a plain
   // reply instead of failing the send.
@@ -1800,6 +1816,13 @@ export function ShellPage() {
     ["running", "queued", "leased"].includes(run.status),
   );
   const transcriptRunning = workingRuns.length > 0;
+  const soleWorkingRun = workingRuns.length === 1 ? workingRuns[0] : undefined;
+  const soleWorkingActivity = soleWorkingRun
+    ? workingActivity(soleWorkingRun, activeSnapshot?.messages ?? [])
+    : undefined;
+  const workingStartedAt = soleWorkingRun
+    ? Date.parse(soleWorkingRun.startedAt ?? soleWorkingRun.createdAt)
+    : undefined;
   const composerRunning = currentRuns.some((run) => isActive(run.status));
   const runError = threadRunError(activeSnapshot, dismissedRunErrorIds);
   const displayedRunError = !sendError ? runError : null;
@@ -3669,6 +3692,8 @@ export function ShellPage() {
             answerableAskMessageId={answerableAskMessageId}
             running={transcriptRunning}
             workingBots={workingBots}
+            workingActivity={soleWorkingActivity}
+            workingStartedAt={workingStartedAt}
             onLoadOlder={loadOlder}
             onOpenBot={openBot}
             onAnswer={answerMessage}
@@ -3744,6 +3769,7 @@ export function ShellPage() {
             mentionTargets={composerMentionTargets}
             agentSkills={agentSkills}
             onSlashOpen={refreshAgentSkills}
+            sentHistory={sentHistory}
             onSlashAction={(action) => {
               if (action === "chat-settings") {
                 setPanel(inGroup ? "group-settings" : "settings");
@@ -4824,6 +4850,8 @@ const Transcript = memo(function Transcript({
   answerableAskMessageId,
   running,
   workingBots,
+  workingActivity: activity,
+  workingStartedAt,
   onLoadOlder,
   onOpenBot,
   onAnswer,
@@ -4853,6 +4881,8 @@ const Transcript = memo(function Transcript({
   answerableAskMessageId: string | null;
   running: boolean;
   workingBots: GroupAvatarMember[];
+  workingActivity?: WorkingActivity;
+  workingStartedAt?: number;
   onLoadOlder: () => void | Promise<void>;
   onOpenBot: (botId: string) => void;
   onAnswer: (message: ThreadMessage, text: string, username?: string) => Promise<void>;
@@ -4890,9 +4920,17 @@ const Transcript = memo(function Transcript({
   );
   const workingBotName = workingBots.length === 1 ? workingBots[0]?.name : undefined;
   const workingLabel =
-    workingBotName != null && workingBotName !== ""
-      ? t`${workingBotName} is working`
-      : t`Bots are working`;
+    activity?.kind === "starting"
+      ? t`Starting`
+      : activity?.kind === "thinking"
+        ? t`Thinking`
+        : activity?.kind === "writing"
+          ? t`Writing`
+          : activity?.kind === "tool"
+            ? t`Using ${activity.label}`
+            : workingBotName
+              ? t`${workingBotName} is working`
+              : t`Bots are working`;
   const [quoteDraft, setQuoteDraft] = useState<{
     message: ThreadMessage;
     text: string;
@@ -5285,7 +5323,7 @@ const Transcript = memo(function Transcript({
                 block.kind === "progress" && !isToolActivityBlock(block) && Boolean(block.text),
             ),
         ) ? (
-          <ActiveBotGlyph bots={workingBots} label={workingLabel} />
+          <ActiveBotGlyph bots={workingBots} label={workingLabel} startedAt={workingStartedAt} />
         ) : null}
       </div>
       {quoteDraft ? (
@@ -5416,6 +5454,7 @@ export const Composer = memo(function Composer({
   agentSkills,
   onSlashOpen,
   onSlashAction,
+  sentHistory = [],
 }: {
   activeName?: string;
   running: boolean;
@@ -5443,9 +5482,13 @@ export const Composer = memo(function Composer({
   agentSkills?: AgentSkillCatalogEntry[];
   onSlashOpen?: () => void;
   onSlashAction?: (action: SlashActionId) => void;
+  /** The user's sent messages in this conversation, oldest first. */
+  sentHistory?: string[];
 }) {
   const { t } = useLingui();
   const [draft, setDraft] = useState("");
+  const historyIndex = useRef<number | null>(null);
+  const historyDraft = useRef("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionHighlightIndex, setMentionHighlightIndex] = useState(0);
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
@@ -5584,7 +5627,21 @@ export const Composer = memo(function Composer({
     if (onAttachmentPick(files)) markEdited();
   }
 
+  function recallHistory(direction: "older" | "newer"): boolean {
+    const next = stepComposerHistory(sentHistory.length, historyIndex.current, direction);
+    if (next === undefined) return false;
+    if (historyIndex.current === null) historyDraft.current = draft;
+    historyIndex.current = next;
+    const value =
+      next === null ? historyDraft.current : (sentHistory[sentHistory.length - 1 - next] ?? "");
+    markEdited();
+    setDraft(value);
+    requestAnimationFrame(() => textareaRef.current?.setSelectionRange(value.length, value.length));
+    return true;
+  }
+
   function updateDraft(value: string) {
+    historyIndex.current = null;
     markEdited();
     setDraft(value);
     const mentionMatch = /(?:^|\s)@([\w-]*)$/.exec(value);
@@ -5689,6 +5746,7 @@ export const Composer = memo(function Composer({
     const clientNonce = retryNonce.current ?? newClientNonce();
     retryNonce.current = null;
     const text = serializeComposerPrompt(draft, selectedSkill, selectedMentions);
+    historyIndex.current = null;
     setDraft("");
     setMentionQuery(null);
     setMentionHighlightIndex(0);
@@ -6170,6 +6228,30 @@ export const Composer = memo(function Composer({
                 setMentionQuery(null);
                 setMentionHighlightIndex(0);
                 return;
+              }
+              if (
+                (event.key === "ArrowUp" || event.key === "ArrowDown") &&
+                action.type === "none" &&
+                slashQuery === null &&
+                !event.shiftKey &&
+                !event.altKey &&
+                !event.metaKey &&
+                !event.ctrlKey
+              ) {
+                const field = event.currentTarget;
+                const up = event.key === "ArrowUp";
+                // Start only from an empty draft; then step whenever the caret is on the edge line.
+                const canStep =
+                  field.selectionStart === field.selectionEnd &&
+                  (historyIndex.current === null
+                    ? up && draft.length === 0
+                    : up
+                      ? !draft.slice(0, field.selectionStart).includes("\n")
+                      : !draft.slice(field.selectionEnd).includes("\n"));
+                if (canStep && recallHistory(up ? "older" : "newer")) {
+                  event.preventDefault();
+                  return;
+                }
               }
               if (action.type === "send") {
                 event.preventDefault();
