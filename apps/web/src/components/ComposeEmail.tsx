@@ -25,7 +25,7 @@ import {
 import { EditorContent } from "@tiptap/react";
 import { Paperclip, Trash2, Type, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fileToBase64, formatBytes, textToHtml } from "../lib/compose-body";
+import { clientLocale, fileToBase64, formatBytes, prefillHtml, textToHtml } from "../lib/compose-body";
 import { createDraftSaver } from "../lib/compose-draft";
 import { holdSend } from "../lib/outbox";
 import { parseRecipient, takeEntries } from "../lib/recipients";
@@ -252,11 +252,11 @@ export function ComposeEmail({
     setPrefillFailed(false);
     setNotice(null);
     rpc.inbox.compose
-      .prefill({ messageId: seed.messageId, mode: seed.kind })
+      .prefill({ messageId: seed.messageId, mode: seed.kind, ...clientLocale() })
       .then((next) => {
         if (!live) return;
         replyToRef.current = next.replyToMessageId;
-        pendingContent.current = textToHtml(next.body);
+        pendingContent.current = prefillHtml(next);
         // An older server sends no attachment list.
         setForwarded(next.attachments ?? []);
         if (next.attachmentsTooLarge)

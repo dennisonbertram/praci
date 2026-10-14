@@ -53,6 +53,26 @@ export function textToHtml(text: string): string {
   return out.join("");
 }
 
+/** The browser's time zone and locale, sent with a prefill so the quoted date reads as the preview does. */
+export function clientLocale(): { timeZone: string; locale: string } {
+  return {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    locale: navigator.language,
+  };
+}
+
+/**
+ * The editor HTML for a prefill. A forward of an HTML mail keeps the original's formatting below
+ * its (quoted) header, which is the part of `body` up to its first blank line.
+ */
+export function prefillHtml(prefill: { body: string; quotedHtml?: string }): string {
+  const { body, quotedHtml } = prefill;
+  const start = body.search(/^-{5,} Forwarded message -{5,}$/m);
+  if (!quotedHtml || start < 0) return textToHtml(body);
+  const end = body.indexOf("\n\n", start);
+  return textToHtml(body.slice(0, end < 0 ? body.length : end)) + "<p></p>" + quotedHtml;
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1_000) return `${bytes} B`;
   if (bytes < 1_000_000) return `${Math.round(bytes / 1_000)} KB`;

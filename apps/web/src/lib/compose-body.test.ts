@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, textToHtml } from "./compose-body";
+import { formatBytes, prefillHtml, textToHtml } from "./compose-body";
 
 describe("textToHtml", () => {
   it("keeps the blank lines above a quoted reply and escapes markup", () => {
@@ -34,5 +34,19 @@ describe("textToHtml forward header", () => {
     ).toBe(
       "<p></p><p></p><blockquote><p>---------- Forwarded message ---------<br>From: A &lt;a@x.test&gt;<br>Subject: Hi</p></blockquote><p></p><p>Body</p>",
     );
+  });
+});
+
+describe("prefillHtml", () => {
+  const body = "\n\n---------- Forwarded message ---------\nFrom: A <a@x.test>\nSubject: Hi\n\nplain copy";
+
+  it("keeps the forwarded header quoted and puts the original's HTML below it", () => {
+    expect(prefillHtml({ body, quotedHtml: "<p><strong>Hi</strong></p>" })).toBe(
+      "<p></p><p></p><blockquote><p>---------- Forwarded message ---------<br>From: A &lt;a@x.test&gt;<br>Subject: Hi</p></blockquote><p></p><p><strong>Hi</strong></p>",
+    );
+  });
+
+  it("falls back to the plain text without HTML", () => {
+    expect(prefillHtml({ body })).toBe(textToHtml(body));
   });
 });
