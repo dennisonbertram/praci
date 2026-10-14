@@ -201,7 +201,8 @@ export const MAX_COMPOSE_HTML = 300_000;
  * Attachments travel inside the JSON request, which the API caps at 16 MB; base64 adds a third,
  * so 10 MB of files is the most that fits with the body.
  */
-export const MAX_COMPOSE_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+export const MAX_COMPOSE_ATTACHMENT_MB = 10;
+export const MAX_COMPOSE_ATTACHMENT_BYTES = MAX_COMPOSE_ATTACHMENT_MB * 1024 * 1024;
 export const MAX_COMPOSE_ATTACHMENTS = 20;
 
 export const ComposeAttachmentSchema = z.object({

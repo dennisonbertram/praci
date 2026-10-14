@@ -262,8 +262,14 @@ export function parseRecipients(text: string, lenient = false): MailAddress[] {
   return result;
 }
 
-const sameAddress = (a: MailAddress, b: MailAddress) =>
-  a.address.toLowerCase() === b.address.toLowerCase();
+/** Lower case; for Gmail also without dots and +tags in the name, with googlemail.com as gmail.com. */
+function mailbox(address: string): string {
+  const [name = "", domain = ""] = address.toLowerCase().split(/@(?=[^@]*$)/);
+  if (domain !== "gmail.com" && domain !== "googlemail.com") return `${name}@${domain}`;
+  return `${name.replace(/\+.*/, "").replace(/\./g, "")}@gmail.com`;
+}
+
+const sameAddress = (a: MailAddress, b: MailAddress) => mailbox(a.address) === mailbox(b.address);
 
 function unique(list: MailAddress[], skip: MailAddress[]): MailAddress[] {
   const kept: MailAddress[] = [];
@@ -288,9 +294,9 @@ const quote = (text: string) =>
 export function replyPrefill(
   message: MailMessage,
   mode: ComposeMode,
-  self: string | null,
+  self: string | string[] | null,
 ): ComposePrefill {
-  const me = self ? [{ address: self }] : [];
+  const me = [self ?? []].flat().map((address) => ({ address }));
   const when = Number.isNaN(Date.parse(message.date))
     ? message.date
     : new Date(message.date).toUTCString();
@@ -315,7 +321,9 @@ export function replyPrefill(
   const fromMe = Boolean(from && me.some((m) => sameAddress(m, from)));
   // Answering one's own message goes to whoever it was sent to.
   const back = fromMe ? message.to : message.replyTo.length ? message.replyTo : from ? [from] : [];
-  const to = unique(mode === "replyAll" ? [...back, ...message.to] : back, fromMe ? [] : me);
+  const kept = unique(mode === "replyAll" ? [...back, ...message.to] : back, fromMe ? [] : me);
+  // Never leave To empty: fall back to the sender.
+  const to = kept.length || !from ? kept : [from];
   const cc = mode === "replyAll" ? unique(message.cc, [...to, ...me]) : [];
   return {
     to: to.map(displayAddress).join(", "),

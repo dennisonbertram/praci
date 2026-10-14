@@ -226,6 +226,40 @@ describe("replyPrefill", () => {
     expect(out.to).toBe("Priya Shah <priya@example.test>");
   });
 
+  it("reply all treats Gmail dots, plus tags and googlemail.com as the user's own address", () => {
+    const out = replyPrefill(
+      original({
+        to: [{ address: "Al.ice+news@googlemail.com" }, { address: "carol@example.test" }],
+        cc: [],
+      }),
+      "replyAll",
+      "alice@gmail.com",
+    );
+    expect(out.to).toBe("Priya Shah <priya@example.test>, carol@example.test");
+  });
+
+  it("reply all leaves out every address the user owns, such as the other connected accounts", () => {
+    const out = replyPrefill(
+      original({
+        to: [alice, { address: "alice@other.test" }],
+        cc: [{ address: "me@third.test" }],
+      }),
+      "replyAll",
+      ["alice@example.test", "alice@other.test", "me@third.test"],
+    );
+    expect(out.to).toBe("Priya Shah <priya@example.test>");
+    expect(out.cc).toBe("");
+  });
+
+  it("reply all keeps the original sender when removing the user's address would leave To empty", () => {
+    const out = replyPrefill(
+      original({ replyTo: [alice], to: [alice], cc: [] }),
+      "replyAll",
+      "alice@example.test",
+    );
+    expect(out.to).toBe("Priya Shah <priya@example.test>");
+  });
+
   it("forwards with an Fwd: subject, no recipients and the original quoted with its headers", () => {
     const out = replyPrefill(original(), "forward", "alice@example.test");
     expect(out.to).toBe("");

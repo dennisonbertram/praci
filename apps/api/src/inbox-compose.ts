@@ -16,7 +16,7 @@ import type {
   ComposePrefillOutput,
   ComposeResult,
 } from "@rakazo/contracts";
-import { MAX_COMPOSE_ATTACHMENT_BYTES } from "@rakazo/contracts";
+import { MAX_COMPOSE_ATTACHMENT_BYTES, MAX_COMPOSE_ATTACHMENT_MB } from "@rakazo/contracts";
 import { getLogger } from "@rakazo/logging";
 import type { InboxDeps } from "./inbox.js";
 import { mailContext, notFound } from "./inbox.js";
@@ -42,19 +42,22 @@ function badRequest(error: unknown): never {
 }
 
 /** One of the caller's own connected Gmail accounts, by connection id. */
+const ownAccounts = (deps: ComposeDeps, actor: Actor, context: AdapterContext) =>
+  deps.mail.listAccounts({ spaceId: actor.spaceId, userId: actor.userId }, context);
+
+function pickAccount(accounts: MailAccount[], connectionId: string): MailAccount {
+  const account = accounts.find((a) => a.id === connectionId);
+  if (!account) throw notFound();
+  return account;
+}
+
 async function ownAccount(
   deps: ComposeDeps,
   actor: Actor,
   connectionId: string,
   context: AdapterContext,
 ): Promise<MailAccount> {
-  const accounts = await deps.mail.listAccounts(
-    { spaceId: actor.spaceId, userId: actor.userId },
-    context,
-  );
-  const account = accounts.find((a) => a.id === connectionId);
-  if (!account) throw notFound();
-  return account;
+  return pickAccount(await ownAccounts(deps, actor, context), connectionId);
 }
 
 /** The provider id of the caller's cached message on this account. */
@@ -86,10 +89,13 @@ export async function inboxComposePrefill(
   const context = mailContext(actor, "inbox.compose.prefill", signal);
   const original = await ownMessage(deps, actor, input.messageId, undefined);
   // The account comes from the actor's own connections, never from client input.
-  const account = await ownAccount(deps, actor, original.connectionId, context);
+  const accounts = await ownAccounts(deps, actor, context);
+  const account = pickAccount(accounts, original.connectionId);
   try {
     const message = await deps.mail.getMessage(account, original.providerMessageId, context);
-    const prefill = replyPrefill(message, input.mode, account.address);
+    // Every connected address is the user's own, so reply all never addresses the user.
+    const mine = accounts.flatMap((a) => (a.address ? [a.address] : []));
+    const prefill = replyPrefill(message, input.mode, mine);
     return {
       connectionId: account.id,
       ...prefill,
@@ -127,7 +133,10 @@ function draftOf(input: ComposeFields, providerMessageId: string | undefined, le
       };
     });
     if (attachments.reduce((sum, file) => sum + file.data.length, 0) > MAX_COMPOSE_ATTACHMENT_BYTES)
-      throw new MailProviderError("invalid", "Attachments are over the 10 MB limit");
+      throw new MailProviderError(
+        "invalid",
+        `Attachments are over the ${MAX_COMPOSE_ATTACHMENT_MB} MB limit`,
+      );
     const draft: MailDraftInput = {
       to: parseRecipients(input.to, lenient),
       cc: parseRecipients(input.cc, lenient),
