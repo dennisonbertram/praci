@@ -106,6 +106,11 @@ describePostgres("inbox compose (PostgreSQL)", () => {
           address: "box-a@example.test",
           messages: [
             message("a-1", ["INBOX"], { threadId: "t-a1" }),
+            message("a-html", ["INBOX"], {
+              date: "2026-09-23T15:04:05.000Z",
+              text: undefined,
+              html: '<h2>News</h2><p>Hi <b>there</b> <a href="https://e.test/x">link</a></p><script>x()</script>',
+            }),
             message("a-files", ["INBOX"], {
               attachments: [
                 { filename: "one.txt", mimeType: "text/plain", size: 5, data: b64("hello") },
@@ -247,6 +252,29 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(forward).toMatchObject({ to: "", cc: "", subject: "Fwd: Subject a-1" });
       expect(forward.replyToMessageId).toBeUndefined();
       expect(forward.body).toContain("---------- Forwarded message ---------");
+    });
+
+    it("writes the quoted date in the client's time zone, UTC without one", async () => {
+      const row = await cache(a, connA, "a-html");
+      const reply = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" });
+      expect(reply.body).toContain("On Wed, Sep 23, 2026, 3:04 PM, Ann Sender");
+      const tokyo = await inboxComposePrefill(deps(), a, {
+        messageId: row.id,
+        mode: "forward",
+        timeZone: "Asia/Tokyo",
+        locale: "en-US",
+      });
+      expect(tokyo.body).toContain("Date: Thu, Sep 24, 2026, 12:04 AM\n");
+    });
+
+    it("carries an HTML mail's formatting into a forward, not a reply", async () => {
+      const row = await cache(a, connA, "a-html");
+      const forward = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "forward" });
+      expect(forward.quotedHtml).toBe(
+        '<p><strong>News</strong></p><p>Hi <b>there</b> <a href="https://e.test/x">link</a></p>',
+      );
+      const reply = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" });
+      expect(reply.quotedHtml).toBeUndefined();
     });
 
     it("lists a forward's files, never inline pictures, and none for a reply", async () => {

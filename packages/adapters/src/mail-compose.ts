@@ -28,6 +28,14 @@ export interface ComposePrefill {
   cc: string;
   subject: string;
   body: string;
+  /** A forward of an HTML mail: the original's body as sanitized editor HTML, without the header. */
+  quotedHtml?: string;
+}
+
+/** Where the person is, for dates written into the quote. Both are optional; the default is UTC. */
+export interface PrefillLocale {
+  timeZone?: string;
+  locale?: string;
 }
 
 export const MAX_RECIPIENTS = 100;
@@ -286,20 +294,45 @@ const quote = (text: string) =>
     .map((line) => (line ? `> ${line}` : ">"))
     .join("\n");
 
+/** "Wed, Oct 14, 2026, 2:17 AM" in the person's zone; an unknown zone or locale falls back to UTC and en-US. */
+function formatWhen(date: string, { timeZone, locale }: PrefillLocale): string {
+  if (Number.isNaN(Date.parse(date))) return date;
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  };
+  const make = (l: string, tz: string) => {
+    try {
+      return new Intl.DateTimeFormat(l, { ...options, timeZone: tz });
+    } catch {
+      return null;
+    }
+  };
+  const format =
+    make(locale || "en-US", timeZone || "UTC") ??
+    make("en-US", timeZone || "UTC") ??
+    make(locale || "en-US", "UTC") ??
+    make("en-US", "UTC");
+  // Newer ICU puts a narrow no-break space before AM/PM.
+  return (format?.format(new Date(date)) ?? date).replace(/\u202f/g, " ");
+}
+
 /**
  * Recipients, subject and quoted original for answering `message`. `self` is the user's own
- * address, left out of reply-all. The date is in UTC because the server does not know the
- * user's time zone.
+ * address, left out of reply-all. Dates are written in the given time zone (default UTC).
  */
 export function replyPrefill(
   message: MailMessage,
   mode: ComposeMode,
   self: string | string[] | null,
+  where: PrefillLocale = {},
 ): ComposePrefill {
   const me = [self ?? []].flat().map((address) => ({ address }));
-  const when = Number.isNaN(Date.parse(message.date))
-    ? message.date
-    : new Date(message.date).toUTCString();
+  const when = formatWhen(message.date, where);
   const sender = message.from ? displayAddress(message.from) : "";
   if (mode === "forward") {
     const lines = [

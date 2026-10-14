@@ -22,6 +22,17 @@ describe("sanitizeComposeHtml", () => {
   });
 });
 
+describe("sanitizeComposeHtml on a received mail", () => {
+  it("turns headings into bold paragraphs and table cells into blocks, and drops styles and pictures", () => {
+    const out = sanitizeComposeHtml(
+      '<html><head><style>p{}</style><title>t</title></head><body><h1 style="x">News</h1><table><tr><td>A</td><td><a href="https://e.test">B</a></td></tr></table><blockquote>q</blockquote><img src="data:x"></body></html>',
+    );
+    expect(out).toBe(
+      '<p><strong>News</strong></p><div><div><div><div>A</div><div><a href="https://e.test">B</a></div></div></div></div><blockquote>q</blockquote>',
+    );
+  });
+});
+
 describe("htmlToText", () => {
   it("writes paragraphs, lists, links and quotes as plain text", () => {
     const text = htmlToText(

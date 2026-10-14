@@ -21,7 +21,11 @@ import type {
   ComposePrefillOutput,
   ComposeResult,
 } from "@rakazo/contracts";
-import { MAX_COMPOSE_ATTACHMENT_BYTES, MAX_COMPOSE_ATTACHMENT_MB } from "@rakazo/contracts";
+import {
+  MAX_COMPOSE_ATTACHMENT_BYTES,
+  MAX_COMPOSE_ATTACHMENT_MB,
+  MAX_COMPOSE_HTML,
+} from "@rakazo/contracts";
 import { getLogger } from "@rakazo/logging";
 import type { InboxDeps } from "./inbox.js";
 import { mailContext, notFound } from "./inbox.js";
@@ -88,7 +92,7 @@ async function ownMessage(
 export async function inboxComposePrefill(
   deps: ComposeDeps,
   actor: Actor,
-  input: { messageId: string; mode: ComposeMode },
+  input: { messageId: string; mode: ComposeMode; timeZone?: string; locale?: string },
   signal?: AbortSignal,
 ): Promise<ComposePrefillOutput> {
   const context = mailContext(actor, "inbox.compose.prefill", signal);
@@ -100,13 +104,17 @@ export async function inboxComposePrefill(
     const message = await deps.mail.getMessage(account, original.providerMessageId, context);
     // Every connected address is the user's own, so reply all never addresses the user.
     const mine = accounts.flatMap((a) => (a.address ? [a.address] : []));
-    const prefill = replyPrefill(message, input.mode, mine);
+    const prefill = replyPrefill(message, input.mode, mine, input);
+    // A forward of an HTML mail keeps its formatting; an oversized result falls back to the text.
+    const quotedHtml =
+      input.mode === "forward" && message.html ? sanitizeComposeHtml(message.html) : "";
     const files =
       input.mode === "forward" ? message.attachments.filter((file) => !file.inline) : [];
     const tooLarge = files.reduce((sum, file) => sum + file.size, 0) > MAX_COMPOSE_ATTACHMENT_BYTES;
     return {
       connectionId: account.id,
       ...prefill,
+      ...(htmlToText(quotedHtml) && quotedHtml.length <= MAX_COMPOSE_HTML / 2 ? { quotedHtml } : {}),
       attachments: tooLarge
         ? []
         : files.map(({ id, filename, mimeType, size }) => ({ id, filename, mimeType, size })),

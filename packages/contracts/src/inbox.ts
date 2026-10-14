@@ -158,6 +158,8 @@ export const InboxTodosOutputSchema = z.object({
 export const InboxMessageSchema = z.object({
   from: z.string(),
   to: z.string(),
+  /** Empty when the message has no Cc. */
+  cc: z.string(),
   date: z.string(),
   subject: z.string(),
   html: z.string().nullable(),
@@ -182,7 +184,13 @@ export const ComposeClientId = z
 
 export const ComposeModeSchema = z.enum(["reply", "replyAll", "forward"]);
 
-export const ComposePrefillInputSchema = z.object({ messageId: Id, mode: ComposeModeSchema });
+export const ComposePrefillInputSchema = z.object({
+  messageId: Id,
+  mode: ComposeModeSchema,
+  /** IANA zone and BCP 47 locale of the browser, for dates written into the quote. Default UTC, en-US. */
+  timeZone: z.string().max(64).optional(),
+  locale: z.string().max(35).optional(),
+});
 
 /** Fields are text as typed; recipients are comma-separated. The account is the one the original came from. */
 export const ComposePrefillOutputSchema = z.object({
@@ -191,6 +199,8 @@ export const ComposePrefillOutputSchema = z.object({
   cc: z.string(),
   subject: z.string(),
   body: z.string(),
+  /** A forward of an HTML mail: the original's sanitized HTML, to show below the forwarded header in `body`. */
+  quotedHtml: z.string().optional(),
   /** Present for a reply, which stays in the original's thread; absent for a forward. */
   replyToMessageId: Id.optional(),
   /** A forward's original files (not inline pictures), to be attached again on send; [] otherwise. */

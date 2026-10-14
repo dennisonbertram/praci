@@ -185,6 +185,23 @@ describe("replyPrefill", () => {
     expect(out.body).toContain("> Offsite is on the 14th.\n> Bring a laptop.");
   });
 
+  it("writes the quote date in the person's time zone and locale, UTC when none is given", () => {
+    // 15:04 UTC is 8:04 AM in Los Angeles (UTC-7 in September) and 17:04 in Berlin.
+    const la = replyPrefill(original(), "reply", null, {
+      timeZone: "America/Los_Angeles",
+      locale: "en-US",
+    });
+    expect(la.body).toContain("On Wed, Sep 23, 2026, 8:04 AM, Priya Shah");
+    const berlin = replyPrefill(original(), "forward", null, {
+      timeZone: "Europe/Berlin",
+      locale: "de-DE",
+    });
+    expect(berlin.body).toContain("Date: Mi., 23. Sept. 2026, 17:04");
+    expect(replyPrefill(original(), "reply", null).body).toContain("On Wed, Sep 23, 2026, 3:04 PM,");
+    const bad = replyPrefill(original(), "reply", null, { timeZone: "Not/AZone", locale: "x" });
+    expect(bad.body).toContain("On Wed, Sep 23, 2026, 3:04 PM,");
+  });
+
   it("replies to Reply-To when the sender set one", () => {
     const out = replyPrefill(
       original({ replyTo: [{ address: "team-replies@example.test" }] }),

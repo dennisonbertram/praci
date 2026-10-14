@@ -17,6 +17,9 @@ const KEEP = new Set([
   "blockquote",
 ]);
 const DROP = new Set(["script", "style", "head", "title", "template", "iframe", "object", "embed"]);
+/** Mail layout tags that become a block, and headings, which become a bold paragraph. */
+const AS_DIV = new Set(["table", "tbody", "thead", "tfoot", "tr", "td", "th", "section", "article", "center"]);
+const HEADING = /^h[1-6]$/;
 const SAFE_HREF = /^(https?:\/\/|mailto:)[^\s"<>]+$/i;
 
 function clean(node: Node, doc: Document): void {
@@ -33,6 +36,20 @@ function clean(node: Node, doc: Document): void {
       continue;
     }
     clean(el, doc);
+    if (HEADING.test(tag)) {
+      const strong = doc.createElement("strong");
+      strong.append(...el.childNodes);
+      const paragraph = doc.createElement("p");
+      paragraph.append(strong);
+      el.replaceWith(paragraph);
+      continue;
+    }
+    if (AS_DIV.has(tag)) {
+      const div = doc.createElement("div");
+      div.append(...el.childNodes);
+      el.replaceWith(div);
+      continue;
+    }
     if (!KEEP.has(tag)) {
       el.replaceWith(...el.childNodes);
       continue;
