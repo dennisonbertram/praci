@@ -805,10 +805,6 @@ msgstr "서버에 연결할 수 없습니다."
 msgid "Cancel"
 msgstr "취소"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Cancel new bot"
-msgstr "새 Bot 만들기 취소"
-
 #: src/pages/GroupPanel.tsx
 msgid "Cancel new group"
 msgstr "새 그룹 만들기 취소"
@@ -1342,10 +1338,6 @@ msgstr ""
 msgid "Could not continue"
 msgstr "계속 진행하지 못했습니다."
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Could not create bot"
-msgstr "Bot을 만들지 못했습니다."
-
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "그룹을 만들지 못했습니다."
@@ -1718,7 +1710,6 @@ msgstr "메시징 설정을 업데이트할 수 없습니다"
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Create"
 msgstr "만들기"
@@ -1767,7 +1758,6 @@ msgid "Created"
 msgstr "생성됨"
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Creating…"
 msgstr "만드는 중…"
@@ -1928,10 +1918,6 @@ msgstr "거부"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "서버 기본값"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Describe what this bot does"
-msgstr "이 Bot이 하는 일을 짧게 설명하세요"
 
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2201,6 +2187,10 @@ msgstr "실패"
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "실패"
+
+#: src/pages/Shell.tsx
+msgid "Failed to create bot"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Failed to send message"
@@ -2938,10 +2928,6 @@ msgstr "음소거"
 msgid "Name"
 msgstr "이름"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Name this bot"
-msgstr "Bot 이름"
-
 #: src/pages/GroupPanel.tsx
 msgid "Name this group"
 msgstr "그룹 이름"
@@ -2967,9 +2953,9 @@ msgstr "인수 필요"
 msgid "Needs you"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "New bot"
-msgstr "새 Bot 만들기"
+#: src/pages/Shell.tsx
+msgid "New Bot"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "New group"
@@ -4766,10 +4752,6 @@ msgstr "어떤 작업을 직접 보여줄까요?"
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr "이 루틴이 실행될 때마다 무엇을 해야 하나요?"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "What this bot is for"
-msgstr "이 Bot을 언제, 어떤 일에 사용할지 적어주세요"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"

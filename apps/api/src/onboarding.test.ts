@@ -1,6 +1,6 @@
 import type * as db from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
-import { chooseFocus, markAppConnected } from "./onboarding.js";
+import { chooseFocus, markAppConnected, seedBlankBotGreeting } from "./onboarding.js";
 
 const posted = vi.hoisted(() => [] as Array<{ blocks: unknown[] }>);
 vi.mock("@rakazo/db", async (original) => ({
@@ -74,5 +74,22 @@ it("marks only the authorized connector when provider slugs collide", async () =
   expect(tx.message.update).toHaveBeenCalledWith({
     where: { id: "cards" },
     data: { blocks: [blocks[0], { ...blocks[1], status: "connected" }] },
+  });
+});
+
+describe("blank bot greeting", () => {
+  it("posts a fixed greeting that names the user and the bot", async () => {
+    const { deps, actor } = fixture([]);
+    (deps.prisma as unknown as { user: unknown }).user = {
+      findUnique: vi.fn(async () => ({ name: "Ada Lovelace" })),
+    };
+    await seedBlankBotGreeting(deps, actor, { id: "bot", name: "New Bot", threadId: "thread" });
+    expect(posted).toHaveLength(1);
+    expect(posted[0]?.blocks).toEqual([
+      {
+        kind: "text",
+        text: expect.stringMatching(/^Hi Ada, I'm New Bot, and I'm a blank slate/),
+      },
+    ]);
   });
 });

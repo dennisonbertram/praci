@@ -253,6 +253,7 @@ import {
   dismissFocus,
   markAppConnected,
   promptFocus,
+  seedBlankBotGreeting,
   startOnboarding,
 } from "./onboarding.js";
 import { listRoutineRuns } from "./routine-runs.js";
@@ -1586,8 +1587,14 @@ export function createRouter(deps: RouterDeps) {
         } catch (error) {
           throw mapSpaceLifecycleError(error);
         }
-        await enqueueBotIntroRun(deps, context.actor, bot).catch((error) => {
-          getLogger().error("bot intro run enqueue", error);
+        // A bot with no profile (and not the onboarding bot) has no role to restate: greet with a fixed message instead.
+        const blank =
+          !bot.spawnKey && !bot.description.trim() && !bot.instructions.trim() && !bot.title.trim();
+        await (blank
+          ? seedBlankBotGreeting(onboardingDeps, context.actor, bot)
+          : enqueueBotIntroRun(deps, context.actor, bot)
+        ).catch((error) => {
+          getLogger().error("bot intro", error);
         });
         return bot;
       }),

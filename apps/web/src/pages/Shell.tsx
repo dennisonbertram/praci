@@ -6,7 +6,6 @@ import type {
   AgentSkillCatalogEntry,
   Bot,
   BotSection,
-  ComputerMode,
   ComputerReleaseReason,
   ComputerStatus,
   Connection,
@@ -32,7 +31,6 @@ import {
   canReactToThreadMessage,
   DEFAULT_AVATAR_STYLE,
   MESSAGE_REACTIONS,
-  normalizeCreateBotProfile,
 } from "@rakazo/contracts";
 import type { ComposerMention, SlashActionId } from "@rakazo/core";
 import {
@@ -189,7 +187,6 @@ import {
 } from "../lib/computer-screen";
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
-import { scheduleFocusPrompt } from "../lib/focus-prompt";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
 import { messageProviderLabel } from "../lib/messaging";
@@ -265,7 +262,7 @@ import {
 } from "./RoutineEditor";
 import type { SettingsSection } from "./SettingsOverlay";
 import { SpaceSearchResults } from "./SpaceSearch";
-import { BotSettings, CreateBotForm } from "./shell/bot-panel";
+import { BotSettings } from "./shell/bot-panel";
 import { BotCreatePicker } from "./shell/bot-picker";
 import { ComposerReplyPreview, ReplyLine, TimeSeparator } from "./shell/chat-context";
 import { CommandPalette, isCommandPaletteHotkey } from "./shell/command-palette";
@@ -579,8 +576,6 @@ export function ShellPage() {
   const [draggedBotId, setDraggedBotId] = useState<string | null>(null);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [botsSidebarCollapsed, setBotsSidebarCollapsed] = useState(false);
-  const focusPromptAbortRef = useRef<AbortController | null>(null);
-  const focusPromptBotIdRef = useRef<string | null>(null);
   const botsSidebarEdgeDragRef = useRef<{ startX: number; mode: "expand" | "collapse" } | null>(
     null,
   );
@@ -2109,12 +2104,6 @@ export function ShellPage() {
       sendingRef.current = true;
       setSending(true);
       setSendError(null);
-      const dropDelayedSetup = () => {
-        // Only after successful engagement so a failed upload/send keeps the setup card.
-        if (initialBotTarget && focusPromptBotIdRef.current === initialBotTarget) {
-          cancelFocusPrompt();
-        }
-      };
       // Keep the draft cleared once any part of the submission is confirmed accepted.
       let accepted = false;
       try {
@@ -2132,7 +2121,6 @@ export function ShellPage() {
           for (const run of runs) if (run.status === "rejected") throw run.reason;
         }
         if (!plan.shouldSend) {
-          dropDelayedSetup();
           clearReply();
           revokePendingAttachmentPreviews(attachments);
           setPendingAttachments((current) =>
@@ -2200,7 +2188,6 @@ export function ShellPage() {
             );
           }
         }
-        dropDelayedSetup();
         clearReply();
         revokePendingAttachmentPreviews(attachments);
         setPendingAttachments((current) =>
@@ -2364,12 +2351,6 @@ export function ShellPage() {
     await refreshBots().catch(() => undefined);
   }
 
-  function cancelFocusPrompt() {
-    focusPromptAbortRef.current?.abort();
-    focusPromptAbortRef.current = null;
-    focusPromptBotIdRef.current = null;
-  }
-
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
     writeBotsSidebarCollapsed(userId, collapsed);
@@ -2380,56 +2361,24 @@ export function ShellPage() {
     setSettingsOpen(true);
   }
 
-  async function createBot(input: {
-    name: string;
-    title: string;
-    description: string;
-    computerMode: ComputerMode;
-  }) {
-    const isFirstBot = botsRef.current.length === 0;
-    const bot = await rpc.bots.create({
-      ...normalizeCreateBotProfile(input),
-      notifyOnFinish: true,
-      computerMode: input.computerMode,
-    });
-    setBots((current) =>
-      current.some((item) => item.id === bot.id) ? current : [bot, ...current],
-    );
-    navigate(`/app/${bot.id}`);
-    setPanel(null);
-    // Register cancellation before awaiting start so leaving the bot during
-    // startup cannot miss the abort and still schedule a late focus card.
-    cancelFocusPrompt();
-    const controller = new AbortController();
-    focusPromptAbortRef.current = controller;
-    focusPromptBotIdRef.current = bot.id;
-    const started = await rpc.onboarding
-      .start({ botId: bot.id })
-      .then(() => true)
-      .catch(() => false);
-    if (!started || controller.signal.aborted || focusPromptBotIdRef.current !== bot.id) {
-      if (focusPromptAbortRef.current === controller) {
-        focusPromptAbortRef.current = null;
-        focusPromptBotIdRef.current = null;
-      }
+  async function createBot() {
+    try {
+      const bot = await rpc.bots.create({
+        name: t`New Bot`,
+        title: "",
+        description: "",
+        instructions: "",
+        notifyOnFinish: true,
+        computerMode: "team",
+      });
+      setBots((current) =>
+        current.some((item) => item.id === bot.id) ? current : [bot, ...current],
+      );
+      navigate(`/app/${bot.id}`);
       await refreshBots().catch(() => undefined);
-      return;
+    } catch (error) {
+      setSendError(errorText(error, t`Failed to create bot`));
     }
-    void scheduleFocusPrompt({
-      immediate: isFirstBot,
-      signal: controller.signal,
-      shouldSkip: () => sendingRef.current,
-      prompt: async () => {
-        if (focusPromptBotIdRef.current !== bot.id || activeBotId.current !== bot.id) return;
-        await rpc.onboarding.promptFocus({ botId: bot.id }).catch(() => undefined);
-      },
-    }).finally(() => {
-      if (focusPromptAbortRef.current === controller) {
-        focusPromptAbortRef.current = null;
-        focusPromptBotIdRef.current = null;
-      }
-    });
-    await refreshBots().catch(() => undefined);
   }
 
   async function bootComputer({
@@ -2531,14 +2480,6 @@ export function ShellPage() {
     setComputerErrorFromScreen(false);
     setComputerBotId(active?.id);
   }, [active?.id]);
-
-  useEffect(() => {
-    if (focusPromptBotIdRef.current && focusPromptBotIdRef.current !== active?.id) {
-      cancelFocusPrompt();
-    }
-  }, [active?.id]);
-
-  useEffect(() => () => cancelFocusPrompt(), []);
 
   useEffect(() => {
     if (!computer?.busyBotName) {
@@ -2883,7 +2824,7 @@ export function ShellPage() {
                     onCreateBot={() => {
                       setCreateMenuOpen(false);
                       setMobileSidebarOpen(false);
-                      setPanel("create");
+                      void createBot();
                     }}
                     onOpenBot={(id) => {
                       setCreateMenuOpen(false);
@@ -3650,7 +3591,7 @@ export function ShellPage() {
         </div>
         {!active && !activeGroup && initialBotsLoaded ? (
           <div className="grid flex-1 place-items-center">
-            <Button onClick={() => setPanel("create")}>
+            <Button onClick={() => void createBot()}>
               <Plus size={16} aria-hidden="true" />
               <Trans>Create new Bot</Trans>
             </Button>
@@ -3765,15 +3706,12 @@ export function ShellPage() {
 
       <ResizableSidePanel
         botsSidebarCollapsed={botsSidebarCollapsed}
-        open={Boolean(panel && (active || activeGroup || panel === "create"))}
+        open={Boolean(panel && (active || activeGroup))}
         panel={panel ?? "closed"}
       >
-        {panel && (active || activeGroup || panel === "create") ? (
+        {panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
-            {panel !== "routine" &&
-            panel !== "create" &&
-            panel !== "create-group" &&
-            panel !== "group-settings" ? (
+            {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
@@ -3949,12 +3887,6 @@ export function ShellPage() {
                 }}
                 onClose={() => setPanel(null)}
                 covered={computerOpen}
-              />
-            ) : null}
-            {panel === "create" ? (
-              <CreateBotForm
-                onCancel={() => setPanel(null)}
-                onCreate={(input) => createBot(input)}
               />
             ) : null}
             {panel === "settings" && active ? (

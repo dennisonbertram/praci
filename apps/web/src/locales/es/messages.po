@@ -805,10 +805,6 @@ msgstr "No se puede alcanzar el servidor."
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Cancel new bot"
-msgstr "Cancelar nuevo bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Cancel new group"
 msgstr "Cancelar nuevo grupo"
@@ -1342,10 +1338,6 @@ msgstr "No se pudo conectar a la pantalla de la computadora"
 msgid "Could not continue"
 msgstr "No se pudo continuar"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Could not create bot"
-msgstr "No se pudo crear el bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "No se pudo crear el grupo"
@@ -1718,7 +1710,6 @@ msgstr "No se pudo actualizar la configuración de mensajería"
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Create"
 msgstr "Crear"
@@ -1767,7 +1758,6 @@ msgid "Created"
 msgstr "Creado"
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Creating…"
 msgstr "Creando…"
@@ -1928,10 +1918,6 @@ msgstr "Denegar"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "Predeterminado del despliegue"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Describe what this bot does"
-msgstr "Describe qué hace este bot"
 
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2201,6 +2187,10 @@ msgstr "fallido"
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "Falló"
+
+#: src/pages/Shell.tsx
+msgid "Failed to create bot"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Failed to send message"
@@ -2938,10 +2928,6 @@ msgstr "Silenciar"
 msgid "Name"
 msgstr "Nombre"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Name this bot"
-msgstr "Nombra este bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Name this group"
 msgstr "Nombra este grupo"
@@ -2967,9 +2953,9 @@ msgstr "Necesita toma de control"
 msgid "Needs you"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "New bot"
-msgstr "Nuevo bot"
+#: src/pages/Shell.tsx
+msgid "New Bot"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "New group"
@@ -4766,10 +4752,6 @@ msgstr "¿Qué resultado demostrarás?"
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr "¿Qué debe hacer esta rutina cada vez que se ejecute?"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "What this bot is for"
-msgstr "Para qué es este bot"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"

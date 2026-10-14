@@ -805,10 +805,6 @@ msgstr "Не удаётся связаться с сервером."
 msgid "Cancel"
 msgstr "Отмена"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Cancel new bot"
-msgstr "Отменить создание бота"
-
 #: src/pages/GroupPanel.tsx
 msgid "Cancel new group"
 msgstr "Отменить создание группы"
@@ -1342,10 +1338,6 @@ msgstr "Не удалось подключиться к экрану компь�
 msgid "Could not continue"
 msgstr "Не удалось продолжить"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Could not create bot"
-msgstr "Не удалось создать бота"
-
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "Не удалось создать группу"
@@ -1718,7 +1710,6 @@ msgstr "Не удалось обновить настройки обмена с�
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Create"
 msgstr "Создать"
@@ -1767,7 +1758,6 @@ msgid "Created"
 msgstr "Создано"
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Creating…"
 msgstr "Создание…"
@@ -1928,10 +1918,6 @@ msgstr "Запретить"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "Развертывание по умолчанию"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Describe what this bot does"
-msgstr "Опишите, что делает этот бот"
 
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2201,6 +2187,10 @@ msgstr "неуспешный"
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "Ошибка"
+
+#: src/pages/Shell.tsx
+msgid "Failed to create bot"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Failed to send message"
@@ -2938,10 +2928,6 @@ msgstr "Выключить микрофон"
 msgid "Name"
 msgstr "Имя"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Name this bot"
-msgstr "Назовите этого бота"
-
 #: src/pages/GroupPanel.tsx
 msgid "Name this group"
 msgstr "Назовите эту группу"
@@ -2967,9 +2953,9 @@ msgstr "Требуется передача управления"
 msgid "Needs you"
 msgstr "Требуется ваше участие"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "New bot"
-msgstr "Новый бот"
+#: src/pages/Shell.tsx
+msgid "New Bot"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "New group"
@@ -4766,10 +4752,6 @@ msgstr "Какой результат вы продемонстрируете?"
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr "Что должна делать эта задача при каждом запуске?"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "What this bot is for"
-msgstr "Для чего нужен этот бот"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"

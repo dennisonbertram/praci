@@ -805,10 +805,6 @@ msgstr "Can't reach the server."
 msgid "Cancel"
 msgstr "Cancel"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Cancel new bot"
-msgstr "Cancel new bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Cancel new group"
 msgstr "Cancel new group"
@@ -1342,10 +1338,6 @@ msgstr "Could not connect to the computer screen"
 msgid "Could not continue"
 msgstr "Could not continue"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Could not create bot"
-msgstr "Could not create bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "Could not create group"
@@ -1718,7 +1710,6 @@ msgstr "Couldn't update messaging settings"
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Create"
 msgstr "Create"
@@ -1767,7 +1758,6 @@ msgid "Created"
 msgstr "Created"
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Creating…"
 msgstr "Creating…"
@@ -1928,10 +1918,6 @@ msgstr "Deny"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "Deployment default"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Describe what this bot does"
-msgstr "Describe what this bot does"
 
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2201,6 +2187,10 @@ msgstr "failed"
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "Failed"
+
+#: src/pages/Shell.tsx
+msgid "Failed to create bot"
+msgstr "Failed to create bot"
 
 #: src/pages/Shell.tsx
 msgid "Failed to send message"
@@ -2938,10 +2928,6 @@ msgstr "Mute"
 msgid "Name"
 msgstr "Name"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Name this bot"
-msgstr "Name this bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Name this group"
 msgstr "Name this group"
@@ -2967,9 +2953,9 @@ msgstr "Needs takeover"
 msgid "Needs you"
 msgstr "Needs you"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "New bot"
-msgstr "New bot"
+#: src/pages/Shell.tsx
+msgid "New Bot"
+msgstr "New Bot"
 
 #: src/pages/GroupPanel.tsx
 msgid "New group"
@@ -4766,10 +4752,6 @@ msgstr "What result will you demonstrate?"
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr "What should this routine do each time it runs?"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "What this bot is for"
-msgstr "What this bot is for"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"

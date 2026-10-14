@@ -805,10 +805,6 @@ msgstr "Sunucuya ulaşılamıyor."
 msgid "Cancel"
 msgstr "İptal"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Cancel new bot"
-msgstr "Yeni botu iptal et"
-
 #: src/pages/GroupPanel.tsx
 msgid "Cancel new group"
 msgstr "Yeni grubu iptal et"
@@ -1342,10 +1338,6 @@ msgstr ""
 msgid "Could not continue"
 msgstr "Devam edilemedi"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Could not create bot"
-msgstr "Bot oluşturulamadı"
-
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "Grup oluşturulamadı"
@@ -1718,7 +1710,6 @@ msgstr ""
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Create"
 msgstr "Oluştur"
@@ -1767,7 +1758,6 @@ msgid "Created"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Creating…"
 msgstr "Oluşturuluyor…"
@@ -1928,10 +1918,6 @@ msgstr "Reddet"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "Dağıtım varsayılanı"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Describe what this bot does"
-msgstr "Bu botun ne yaptığını açıkla"
 
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2201,6 +2187,10 @@ msgstr "başarısız"
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "Başarısız"
+
+#: src/pages/Shell.tsx
+msgid "Failed to create bot"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Failed to send message"
@@ -2938,10 +2928,6 @@ msgstr "Sesi kapat"
 msgid "Name"
 msgstr "Ad"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Name this bot"
-msgstr "Bota bir ad ver"
-
 #: src/pages/GroupPanel.tsx
 msgid "Name this group"
 msgstr "Gruba bir ad ver"
@@ -2967,9 +2953,9 @@ msgstr "Devralma bekliyor"
 msgid "Needs you"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "New bot"
-msgstr "Yeni bot"
+#: src/pages/Shell.tsx
+msgid "New Bot"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "New group"
@@ -4766,10 +4752,6 @@ msgstr "Hangi sonucu göstereceksin?"
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "What this bot is for"
-msgstr "Bu botun amacı"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"

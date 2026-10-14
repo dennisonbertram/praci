@@ -8,7 +8,7 @@ import {
   signup,
 } from "./helpers";
 
-test("create opens form, then empty chat; picker lists bots; sidebar collapses", async ({
+test("create opens a greeted chat; picker lists bots; sidebar collapses", async ({
   page,
 }, testInfo) => {
   const stamp = Date.now();
@@ -26,22 +26,10 @@ test("create opens form, then empty chat; picker lists bots; sidebar collapses",
   await captureScreenshot(page, testInfo, "plus-picker-bots");
 
   await picker.getByTestId("create-new-bot").click();
-  const form = page.getByTestId("create-bot-form");
-  await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "create");
-  await expect(form).toBeVisible();
-  await expect(form.locator("label:has-text('Name') input")).toBeVisible();
-  await expect(form.locator("label:has-text('Title') input")).toBeVisible();
-  await expect(form.locator("label:has-text('Description') textarea")).toBeVisible();
-  await expect(form.getByTestId("create-bot-computer")).toBeVisible();
-  await expect(form.getByTestId("create-bot-team")).toBeVisible();
-  await expect(form.getByTestId("create-bot-private")).toBeVisible();
-  await captureScreenshot(page, testInfo, "create-bot-form");
-
-  await form.locator("label:has-text('Name') input").fill("New Bot");
-  await form.getByRole("button", { name: "Create", exact: true }).click();
   await page.waitForURL(/\/app\/[^/]+$/);
   await expect(page.getByPlaceholder("Message New Bot")).toBeVisible();
-  await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "closed");
+  await expect(page.getByTestId("create-bot-form")).toHaveCount(0);
+  await expect(page.getByText(/I'm New Bot, and I'm a blank slate/)).toBeVisible();
   await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "create-chat-sidepanel-closed");
 
@@ -109,48 +97,6 @@ test("picker rows explain groups and spaces", async ({ page }, testInfo) => {
   await expect(dialog).toBeHidden();
 });
 
-test("later bot waits before showing the focus card; sending cancels it", async ({ page }) => {
-  const stamp = Date.now();
-  await signup(page, `focus-delay-${stamp}@rakazo.test`, "password12", "Focus Delay");
-  await completeOnboarding(page);
-  // First bot from onboarding shows the focus card immediately.
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toBeVisible();
-
-  await page.clock.install();
-  await createBotFromPicker(page);
-  await expect(page.getByPlaceholder("Message New Bot")).toBeVisible();
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
-
-  await page.clock.fastForward(9_000);
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
-  await page.clock.fastForward(1_500);
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toBeVisible();
-
-  await createBotFromPicker(page, { name: "Later Bot" });
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
-  // Closing the create panel can precede the new thread loading; the previous
-  // bot's composer must not receive this draft.
-  const composer = page.getByRole("combobox", { name: "Message Later Bot", exact: true });
-  await expect(composer).toBeEditable();
-  await composer.fill("I'll set this up myself");
-  // Send must finish before the delay is advanced: cancel runs after a successful
-  // RPC, and promptFocus will still post if the clock fires while send is in flight.
-  const sent = page.waitForResponse(
-    (response) => response.url().includes("/rpc/threads/send") && response.ok(),
-  );
-  await composer.press("Enter");
-  await sent;
-  // Scope to the user bubble: the assistant reply can echo this phrase as a substring.
-  await expect(
-    page
-      .getByTestId("transcript")
-      .getByTestId("message-user-bubble")
-      .getByText("I'll set this up myself", { exact: true }),
-  ).toBeVisible();
-  await page.clock.fastForward(12_000);
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
-});
-
 test("plus picker can create a Private computer bot", async ({ page }, testInfo) => {
   const stamp = Date.now();
   await signup(page, `new-bot-private-${stamp}@rakazo.test`, "password12", "New Bot Private");
@@ -167,28 +113,20 @@ test("plus picker can create a Private computer bot", async ({ page }, testInfo)
   expect(bots.find((bot) => bot.id === botId)?.computerMode).toBe("dedicated");
 });
 
-test("second bot from plus opens create form before persist", async ({ page }, testInfo) => {
+test("second bot from plus is created immediately with a greeting", async ({ page }, testInfo) => {
   const stamp = Date.now();
-  await signup(page, `second-bot-form-${stamp}@rakazo.test`, "password12", "Second Bot Form");
+  await signup(page, `second-bot-${stamp}@rakazo.test`, "password12", "Second Bot");
   await completeOnboarding(page);
   await page.goto("/app");
   await page.waitForURL(/\/app\/[^/]+$/);
 
-  await openNewBot(page);
-  const form = page.getByTestId("create-bot-form");
-  await expect(form).toBeVisible();
-  await form.locator("label:has-text('Name') input").fill("Researcher");
-  await form.locator("label:has-text('Title') input").fill("Finds sources");
-  await form.locator("label:has-text('Description') textarea").fill("Briefs from the web.");
-  await captureScreenshot(page, testInfo, "second-bot-create-form");
-
   const create = page.waitForResponse(
     (response) => response.url().includes("/rpc/bots/create") && response.ok(),
   );
-  await form.getByRole("button", { name: "Create", exact: true }).click();
+  await openNewBot(page);
   await create;
   await page.waitForURL(/\/app\/[^/]+$/);
-  await expect(page.getByPlaceholder("Message Researcher")).toBeVisible();
-  await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "closed");
+  await expect(page.getByPlaceholder("Message New Bot")).toBeVisible();
+  await expect(page.getByText(/Hi Second, I'm New Bot, and I'm a blank slate/)).toBeVisible();
   await captureScreenshot(page, testInfo, "second-bot-created");
 });

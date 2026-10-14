@@ -58,7 +58,6 @@ import {
 } from "../lib/api";
 import { mobileTokens, resolveMobileAppearance } from "../lib/appearance";
 import { mobileBotAvatarPresentation } from "../lib/bot-avatar";
-import { allowFocusPrompt, scheduleFocusPrompt } from "../lib/focus-prompt";
 import { t, useI18n } from "../lib/i18n";
 import { botTag, filterBots, formatThreadTime, userInitials } from "../lib/inbox";
 import { retainInboxValue } from "../lib/inbox-retention";
@@ -523,25 +522,13 @@ function Home() {
       return;
     creatingBotRef.current = true;
     try {
-      // Authoritative roster so a slow home fetch does not treat later bots as first.
-      // A failed list is unknown — use the delayed path rather than assuming first.
-      const existing = await rpc<MobileBot[]>("bots/list").catch(() => null);
-      const isFirstBot = existing !== null && existing.length === 0;
       const bot = await rpc<MobileBot>("bots/create", {
         ...normalizeCreateBotProfile({ name: "New Bot", title: "", description: "" }),
         notifyOnFinish: true,
         computerMode: "team",
       });
       void refreshBots().catch(() => undefined);
-      allowFocusPrompt(bot.id);
       router.push({ pathname: "/thread", params: { botId: bot.id, name: bot.name } });
-      void (async () => {
-        const started = await rpc("onboarding/start", { botId: bot.id })
-          .then(() => true)
-          .catch(() => false);
-        if (!started) return;
-        scheduleFocusPrompt(bot.id, isFirstBot);
-      })();
     } catch (err) {
       setError(errorText(err, t("Could not create bot")));
     } finally {

@@ -93,6 +93,24 @@ async function post(
   return committed.message.id;
 }
 
+/** Fixed first message for a bot created with no profile: no model call, works offline. */
+export async function seedBlankBotGreeting(
+  deps: OnboardingDeps,
+  actor: Actor,
+  bot: { id: string; name: string; threadId: string | null },
+): Promise<void> {
+  if (!bot.threadId) return;
+  const user = await deps.prisma.user.findUnique({
+    where: { id: actor.userId },
+    select: { name: true },
+  });
+  const firstName = user?.name.trim().split(/\s+/)[0];
+  const text = `${firstName ? `Hi ${firstName}, I'm` : "Hi, I'm"} ${bot.name}, and I'm a blank slate right now, so you get to decide what I become. What's the main thing you'd want me handling for you?`;
+  await post(deps, { spaceId: actor.spaceId, botId: bot.id, threadId: bot.threadId }, [
+    { kind: "text", text },
+  ]);
+}
+
 /** Sentinel answerId for a focus card the user dismissed without choosing. */
 export const FOCUS_DISMISSED_ANSWER_ID = "_dismissed";
 

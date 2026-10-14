@@ -805,10 +805,6 @@ msgstr "无法连接服务器。"
 msgid "Cancel"
 msgstr "取消"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Cancel new bot"
-msgstr "取消新建 Bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Cancel new group"
 msgstr "取消新建群组"
@@ -1342,10 +1338,6 @@ msgstr ""
 msgid "Could not continue"
 msgstr "无法继续"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Could not create bot"
-msgstr "无法创建 Bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "无法创建群组"
@@ -1718,7 +1710,6 @@ msgstr "无法更新消息设置"
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Create"
 msgstr "创建"
@@ -1767,7 +1758,6 @@ msgid "Created"
 msgstr "已创建"
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Creating…"
 msgstr "正在创建…"
@@ -1928,10 +1918,6 @@ msgstr "拒绝"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "部署默认"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Describe what this bot does"
-msgstr "描述这个 Bot 做什么"
 
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2201,6 +2187,10 @@ msgstr "失败"
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "失败"
+
+#: src/pages/Shell.tsx
+msgid "Failed to create bot"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Failed to send message"
@@ -2938,10 +2928,6 @@ msgstr "静音"
 msgid "Name"
 msgstr "名称"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Name this bot"
-msgstr "给这个 Bot 命名"
-
 #: src/pages/GroupPanel.tsx
 msgid "Name this group"
 msgstr "给这个群组命名"
@@ -2967,9 +2953,9 @@ msgstr "需要接管"
 msgid "Needs you"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "New bot"
-msgstr "新建 Bot"
+#: src/pages/Shell.tsx
+msgid "New Bot"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "New group"
@@ -4766,10 +4752,6 @@ msgstr "你要示范什么结果？"
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr "每次运行时，这个例行任务应做什么？"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "What this bot is for"
-msgstr "这个 Bot 是做什么的"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"

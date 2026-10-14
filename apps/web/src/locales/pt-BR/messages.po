@@ -805,10 +805,6 @@ msgstr "Não é possível acessar o servidor."
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Cancel new bot"
-msgstr "Cancelar novo bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Cancel new group"
 msgstr "Cancelar novo grupo"
@@ -1342,10 +1338,6 @@ msgstr ""
 msgid "Could not continue"
 msgstr "Não foi possível continuar"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Could not create bot"
-msgstr "Não foi possível criar o bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "Não foi possível criar o grupo"
@@ -1718,7 +1710,6 @@ msgstr ""
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Create"
 msgstr "Criar"
@@ -1767,7 +1758,6 @@ msgid "Created"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Creating…"
 msgstr "Criando..."
@@ -1928,10 +1918,6 @@ msgstr "Negar"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "Padrão de implantação"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Describe what this bot does"
-msgstr "Descreva o que este bot faz"
 
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2201,6 +2187,10 @@ msgstr "falhou"
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "Falha"
+
+#: src/pages/Shell.tsx
+msgid "Failed to create bot"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Failed to send message"
@@ -2938,10 +2928,6 @@ msgstr "Silenciar"
 msgid "Name"
 msgstr "Nome"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Name this bot"
-msgstr "Nomeie este bot"
-
 #: src/pages/GroupPanel.tsx
 msgid "Name this group"
 msgstr "Dar nome ao grupo"
@@ -2967,9 +2953,9 @@ msgstr "Requer assumir o controle"
 msgid "Needs you"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "New bot"
-msgstr "Novo bot"
+#: src/pages/Shell.tsx
+msgid "New Bot"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "New group"
@@ -4766,10 +4752,6 @@ msgstr "Que resultado você demonstrará?"
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "What this bot is for"
-msgstr "Para que serve este bot"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
