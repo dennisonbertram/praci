@@ -374,10 +374,12 @@ to a `GmailApiEmulator`.
 - Now also `https://www.googleapis.com/auth/gmail.compose` (drafts and sending). Accounts
   connected before it was requested only read; Google answers their writes with 403
   `insufficientPermissions`, which the provider reports as `auth` (reconnect).
-- Later: `gmail.modify` (mark read, archive, labels) and `gmail.send` or
-  `gmail.compose`. Request them with `include_granted_scopes=true`, and mark accounts
-  that lack a needed scope as needing reconnect only when that feature is used. Do not
-  invalidate working accounts when the required set changes.
+- Now also `https://www.googleapis.com/auth/gmail.modify` (mark read or unread, archive,
+  labels), through `MailProvider.listLabels` and `modifyMessage`. It is optional at connect
+  like compose: an account without it keeps reading, and only a label change gets the
+  `auth` (reconnect) error. Request scopes with `include_granted_scopes=true`, and mark
+  accounts that lack a needed scope as needing reconnect only when that feature is used. Do
+  not invalidate working accounts when the required set changes.
 
 ### Flow
 

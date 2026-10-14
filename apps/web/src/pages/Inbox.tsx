@@ -275,13 +275,37 @@ export function InboxPage({
     !shown ||
     (!filtered && shown.rows.length === 0 && !synced) ||
     (showTodos && todos === undefined);
-  const patchFeedback = (messageId: string, feedback: InboxMark | null) => {
-    const patchRows = (list: MailRow[]) =>
-      list.map((row) => (row.id === messageId ? { ...row, feedback } : row));
-    const patch = (list: InboxListOutput) => ({ ...list, rows: patchRows(list.rows) });
+  // Applies a change to every copy of the rows: the list, the pages after it and the cached lists.
+  const patchRows = (change: (rows: MailRow[]) => MailRow[]) => {
+    const patch = (list: InboxListOutput) => ({ ...list, rows: change(list.rows) });
     setData((list) => list && patch(list));
-    setMore((m) => ({ ...m, rows: patchRows(m.rows) }));
+    setMore((m) => ({ ...m, rows: change(m.rows) }));
     for (const [key, list] of cache.current) cache.current.set(key, patch(list));
+  };
+  const patchFeedback = (messageId: string, feedback: InboxMark | null) =>
+    patchRows((list) => list.map((row) => (row.id === messageId ? { ...row, feedback } : row)));
+  // The row changes at once; a failed change shows the error and reloads the real list.
+  const change = (call: Promise<unknown>) => {
+    setError("");
+    call.then(onRefreshed).catch((cause) => {
+      setError(errorText(cause));
+      setReload((n) => n + 1);
+    });
+  };
+  const setRead = (messageId: string, read: boolean) => {
+    patchRows((list) =>
+      list.map((row) => (row.id === messageId ? { ...row, unread: !read } : row)),
+    );
+    change(rpc.inbox.markRead({ messageId, read }));
+  };
+  const archive = (messageId: string) => {
+    // The selection and the open message move on to a neighbor before the row goes.
+    const index = ids.indexOf(messageId);
+    const neighbor = ids[index + 1] ?? ids[index - 1];
+    if (selectedId === messageId) setSelectedId(neighbor);
+    patchRows((list) => list.filter((row) => row.id !== messageId));
+    change(rpc.inbox.archive({ messageId }));
+    return neighbor;
   };
   // The row changes at once; a failed save puts it back.
   const mark = (messageId: string, value: InboxMark | null) => {
@@ -353,6 +377,7 @@ export function InboxPage({
     open: openMessage,
     focusSearch: () => searchRef.current?.querySelector("input")?.focus(),
     compose: accounts.length > 0 ? () => setComposing(true) : undefined,
+    archive: filtered ? undefined : archive,
     help: () => setHelp(true),
   });
   // Warm the cache so the first messages and the selected one open instantly.
@@ -622,6 +647,8 @@ export function InboxPage({
             rows={groups.needsReply}
             onOpen={openMessage}
             onMark={triage ? mark : undefined}
+            onArchive={filtered ? undefined : archive}
+            onRead={setRead}
             selectedId={selectedId}
             today={false}
           />
@@ -630,6 +657,8 @@ export function InboxPage({
             rows={groups.today}
             onOpen={openMessage}
             onMark={triage ? mark : undefined}
+            onArchive={filtered ? undefined : archive}
+            onRead={setRead}
             selectedId={selectedId}
             today
           />
@@ -638,6 +667,8 @@ export function InboxPage({
             rows={groups.earlier}
             onOpen={openMessage}
             onMark={triage ? mark : undefined}
+            onArchive={filtered ? undefined : archive}
+            onRead={setRead}
             selectedId={selectedId}
             today={false}
           />
@@ -657,6 +688,17 @@ export function InboxPage({
         previousId={openIndex > 0 ? ids[openIndex - 1] : undefined}
         nextId={openIndex >= 0 ? ids[openIndex + 1] : undefined}
         onNavigate={goToMessage}
+        unread={openRow?.unread}
+        onArchive={
+          openRow && !filtered
+            ? () => {
+                const next = archive(openRow.id);
+                if (next) goToMessage(next);
+                else closeMessage();
+              }
+            : undefined
+        }
+        onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
       />
       <InboxShortcuts open={help} onClose={() => setHelp(false)} />
       <div

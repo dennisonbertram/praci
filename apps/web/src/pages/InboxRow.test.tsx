@@ -42,6 +42,8 @@ async function render(
   props: {
     onOpen?: () => void;
     onMark?: (id: string, mark: "important" | "noise" | null) => void;
+    onArchive?: (id: string) => void;
+    onRead?: (id: string, read: boolean) => void;
     selected?: boolean;
     hideAttention?: boolean;
   } = {},
@@ -56,6 +58,8 @@ async function render(
         row={row}
         onOpen={props.onOpen ?? (() => {})}
         onMark={props.onMark}
+        onArchive={props.onArchive}
+        onRead={props.onRead}
         selected={props.selected}
         hideAttention={props.hideAttention}
         today
@@ -164,4 +168,26 @@ it("joins the subject and preview with a hyphen, both gray", async () => {
   const subject = container.querySelectorAll('span[dir="auto"]')[1];
   expect(subject?.textContent).toBe("Offsite dates - Can you do the 14th?");
   expect(subject?.className).not.toContain("text-foreground");
+});
+
+it("archives and toggles read from the row without opening it", async () => {
+  const onOpen = vi.fn();
+  const onArchive = vi.fn();
+  const onRead = vi.fn();
+  const unread = await render(mail({ unread: true }), { onOpen, onArchive, onRead });
+  const click = (c: HTMLElement, label: string) =>
+    act(async () => c.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)?.click());
+  await click(unread, "Archive");
+  expect(onArchive).toHaveBeenCalledWith("m1");
+  await click(unread, "Mark read");
+  expect(onRead).toHaveBeenLastCalledWith("m1", true);
+  const read = await render(mail({ unread: false }), { onOpen, onArchive, onRead });
+  await click(read, "Mark unread");
+  expect(onRead).toHaveBeenLastCalledWith("m1", false);
+  expect(onOpen).not.toHaveBeenCalled();
+});
+
+it("shows no row actions when the page offers none", async () => {
+  const container = await render(mail());
+  expect(container.querySelector('button[aria-label="Archive"]')).toBeNull();
 });

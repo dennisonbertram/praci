@@ -868,6 +868,19 @@ export interface MailMessageSummary {
   labelIds: string[];
 }
 
+/** A Gmail label. `id` is what `MailMessageSummary.labelIds` and `modifyMessage` use. */
+export interface MailLabel {
+  id: string;
+  name: string;
+  type: "system" | "user";
+}
+
+/** Label ids to add and remove in one change. `UNREAD` is the unread flag; removing `INBOX` archives. */
+export interface MailLabelChange {
+  addLabelIds?: string[];
+  removeLabelIds?: string[];
+}
+
 export interface MailMessagePage {
   messages: MailMessageSummary[];
   nextPageToken?: string;

@@ -8,6 +8,8 @@ import {
   type MailAttachment,
   type MailDraftInput,
   type MailDraftRef,
+  type MailLabel,
+  type MailLabelChange,
   type MailListRequest,
   type MailMessage,
   type MailMessagePage,
@@ -418,6 +420,46 @@ export class GmailMailProvider implements MailProvider {
       mimeType: typeof part.mimeType === "string" ? part.mimeType.toLowerCase() : "",
       size: bytes.length,
       bytes,
+    };
+  }
+
+  async listLabels(account: MailAccount, context: AdapterContext): Promise<MailLabel[]> {
+    assertScope(account, context);
+    const labels = asRecord(await this.request(account, context, `${GMAIL}/labels`))?.labels;
+    return (Array.isArray(labels) ? labels : []).flatMap((entry: unknown): MailLabel[] => {
+      const label = asRecord(entry);
+      if (typeof label?.id !== "string" || typeof label.name !== "string") return [];
+      return [
+        { id: label.id, name: label.name, type: label.type === "system" ? "system" : "user" },
+      ];
+    });
+  }
+
+  async modifyMessage(
+    account: MailAccount,
+    messageId: string,
+    change: MailLabelChange,
+    context: AdapterContext,
+  ): Promise<{ labelIds: string[] }> {
+    assertScope(account, context);
+    const data = asRecord(
+      await this.request(
+        account,
+        context,
+        `${GMAIL}/messages/${encodeURIComponent(messageId)}/modify`,
+        {
+          method: "POST",
+          body: {
+            addLabelIds: change.addLabelIds ?? [],
+            removeLabelIds: change.removeLabelIds ?? [],
+          },
+        },
+      ),
+    );
+    if (!Array.isArray(data?.labelIds))
+      throw new MailProviderError("unavailable", "Unexpected mail response");
+    return {
+      labelIds: data.labelIds.filter((id: unknown): id is string => typeof id === "string"),
     };
   }
 

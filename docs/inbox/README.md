@@ -77,9 +77,10 @@ Approved design: [approved-mockup.html](approved-mockup.html).
    retry backoff are what keep it correct.
 10. **Reading, plus drafts and sending.** Reversed from "read-only" for sending only: a user can
     reply, reply to all, forward and compose, and the Inbox saves Gmail drafts as they type.
-    The user's Send click is the approval; there is no extra confirmation step. Mark-as-read,
-    archive and label changes are still not allowed, and the agent has no send or draft tool.
-    Native Google asks for `gmail.compose` next to `gmail.readonly`; accounts connected before
+    The user's Send click is the approval; there is no extra confirmation step. The Inbox can
+    archive and mark a message read or unread (`gmail.modify`, same reconnect rule as sending); the
+    agent has no send, draft or label tool.
+    Native Google asks for `gmail.compose` and `gmail.modify` next to `gmail.readonly`; accounts connected before
     that only read, and a send from one shows the existing reconnect notice. A send is keyed by
     a client-generated id in `ComposeSend` (`draft`, `pending`, `sent`, `failed`, `unknown`) so a
     retry or double click never sends twice, and a send whose outcome is unclear is never

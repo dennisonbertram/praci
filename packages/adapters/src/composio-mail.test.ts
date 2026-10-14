@@ -9,7 +9,11 @@ import { ComposioConnector } from "./composio-connector.js";
 import { ComposioEmulator } from "./composio-emulator.js";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
-import { assertMailConformance, assertMailWriteConformance } from "./testing/mail-conformance.js";
+import {
+  assertMailConformance,
+  assertMailModifyConformance,
+  assertMailWriteConformance,
+} from "./testing/mail-conformance.js";
 
 const sdk = vi.hoisted(() => ({
   proxyExecute:
@@ -92,6 +96,7 @@ describe("ComposioConnector.proxy", () => {
     const { emulator, provider, accounts } = composioMailbox();
     await assertMailConformance(provider, { gmail: emulator.gmail, accounts });
     await assertMailWriteConformance(provider, { gmail: emulator.gmail, accounts });
+    await assertMailModifyConformance(provider, { gmail: emulator.gmail, accounts });
   });
 
   it("passes the method and JSON body of a write to proxyExecute", async () => {

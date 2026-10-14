@@ -8,9 +8,10 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
-import { BellOff, Ellipsis, Star, TriangleAlert } from "lucide-react";
+import { Archive, BellOff, Ellipsis, Mail, MailOpen, Star, TriangleAlert } from "lucide-react";
 
 /** Time of day for today's mail, month and day otherwise. */
 function formatMailTime(iso: string, today: boolean): string {
@@ -27,6 +28,8 @@ export function InboxGroup({
   rows,
   onOpen,
   onMark,
+  onArchive,
+  onRead,
   today,
   selectedId,
   hideAttention,
@@ -36,6 +39,8 @@ export function InboxGroup({
   onOpen: (id: string) => void;
   /** Present only while triage is enabled. */
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
+  onArchive?: (messageId: string) => void;
+  onRead?: (messageId: string, read: boolean) => void;
   today: boolean;
   selectedId?: string;
   /** Set when the group heading already says the rows need attention. */
@@ -52,6 +57,8 @@ export function InboxGroup({
             row={row}
             onOpen={() => onOpen(row.id)}
             onMark={onMark}
+            onArchive={onArchive}
+            onRead={onRead}
             today={today}
             selected={row.id === selectedId}
             hideAttention={hideAttention}
@@ -66,6 +73,8 @@ export function InboxRow({
   row,
   onOpen,
   onMark,
+  onArchive,
+  onRead,
   today,
   selected = false,
   hideAttention = false,
@@ -73,6 +82,8 @@ export function InboxRow({
   row: MailRow;
   onOpen: () => void;
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
+  onArchive?: (messageId: string) => void;
+  onRead?: (messageId: string, read: boolean) => void;
   today: boolean;
   selected?: boolean;
   hideAttention?: boolean;
@@ -87,10 +98,24 @@ export function InboxRow({
   const found = inboxLabel(row);
   const label = hideAttention && found === "attention" ? null : found;
   const muted = row.feedback === "noise";
-  const marks = [
-    { mark: "important", name: t`Mark important`, Icon: Star },
-    { mark: "noise", name: t`Mark noise`, Icon: BellOff },
-  ] as const;
+  const marks = onMark
+    ? ([
+        { mark: "important", name: t`Mark important`, Icon: Star },
+        { mark: "noise", name: t`Mark noise`, Icon: BellOff },
+      ] as const)
+    : [];
+  const actions = [
+    ...(onArchive ? [{ name: t`Archive`, Icon: Archive, run: () => onArchive(row.id) }] : []),
+    ...(onRead
+      ? [
+          {
+            name: row.unread ? t`Mark read` : t`Mark unread`,
+            Icon: row.unread ? MailOpen : Mail,
+            run: () => onRead(row.id, row.unread),
+          },
+        ]
+      : []),
+  ];
   return (
     <div className="border-b border-border">
       <div className="group/row relative">
@@ -100,7 +125,7 @@ export function InboxRow({
           aria-current={selected ? "true" : undefined}
           data-row-id={row.id}
           onClick={onOpen}
-          className={`grid h-11 w-full min-w-0 grid-cols-[8px_96px_minmax(0,1fr)_auto_4rem] items-center gap-x-3 border-s-2 ps-2.5 pe-3 text-start text-sm font-normal hover:bg-muted @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_4rem] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_4rem] @3xl:grid-cols-[8px_180px_minmax(0,1fr)_auto_4rem] ${selected ? "border-primary bg-muted" : "border-transparent"} ${onMark ? "pointer-coarse:pe-11" : ""} text-muted-foreground`}
+          className={`grid h-11 w-full min-w-0 grid-cols-[8px_96px_minmax(0,1fr)_auto_4rem] items-center gap-x-3 border-s-2 ps-2.5 pe-3 text-start text-sm font-normal hover:bg-muted @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_4rem] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_4rem] @3xl:grid-cols-[8px_180px_minmax(0,1fr)_auto_4rem] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-11" : ""} text-muted-foreground`}
         >
           <span
             aria-hidden="true"
@@ -141,11 +166,27 @@ export function InboxRow({
             {formatMailTime(row.receivedAt, today)}
           </time>
         </button>
-        {onMark ? (
+        {marks.length + actions.length ? (
           <>
             <div
               className={`absolute end-22 top-1/2 flex -translate-y-1/2 items-center gap-0.5 bg-muted pointer-coarse:hidden ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
             >
+              {actions.map(({ name, Icon, run }) => (
+                <Button
+                  key={name}
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={name}
+                  tabIndex={selected ? 0 : -1}
+                  className="text-muted-foreground"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    run();
+                  }}
+                >
+                  <Icon aria-hidden="true" />
+                </Button>
+              ))}
               {marks.map(({ mark, name, Icon }) => {
                 const pressed = row.feedback === mark;
                 return (
@@ -159,7 +200,7 @@ export function InboxRow({
                     className={pressed ? "text-foreground" : "text-muted-foreground"}
                     onClick={(event) => {
                       event.stopPropagation();
-                      onMark(row.id, pressed ? null : mark);
+                      onMark?.(row.id, pressed ? null : mark);
                     }}
                   >
                     <Icon aria-hidden="true" className={pressed ? "fill-current" : ""} />
@@ -181,11 +222,17 @@ export function InboxRow({
                 <Ellipsis aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-44">
+                {actions.map(({ name, Icon, run }) => (
+                  <DropdownMenuItem key={name} onClick={run}>
+                    <Icon aria-hidden="true" />
+                    {name}
+                  </DropdownMenuItem>
+                ))}
                 {marks.map(({ mark, name }) => (
                   <DropdownMenuCheckboxItem
                     key={mark}
                     checked={row.feedback === mark}
-                    onCheckedChange={(checked) => onMark(row.id, checked ? mark : null)}
+                    onCheckedChange={(checked) => onMark?.(row.id, checked ? mark : null)}
                   >
                     {name}
                   </DropdownMenuCheckboxItem>

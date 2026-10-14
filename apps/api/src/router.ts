@@ -258,6 +258,7 @@ import {
   inboxComposePrefill,
   inboxComposeSend,
 } from "./inbox-compose.js";
+import { inboxArchive, inboxMarkRead } from "./inbox-modify.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
   dismissMcpServerApprovals,
@@ -5910,6 +5911,22 @@ export function createRouter(deps: RouterDeps) {
       ),
       feedback: authed.inbox.feedback.handler(({ context, input }) =>
         inboxFeedbackSet(deps, context.actor, input),
+      ),
+      markRead: authed.inbox.markRead.handler(({ context, input }) =>
+        inboxMarkRead(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
+      archive: authed.inbox.archive.handler(({ context, input }) =>
+        inboxArchive(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
       ),
       compose: {
         prefill: authed.inbox.compose.prefill.handler(({ context, input }) =>

@@ -492,7 +492,7 @@ async function ownMessage(
   return { account, providerMessageId: row.providerMessageId };
 }
 
-function providerFailure(error: unknown, operation: string, connectionId: string): never {
+export function providerFailure(error: unknown, operation: string, connectionId: string): never {
   if (error instanceof MailProviderError) {
     getLogger().warn(`${operation} failed`, { connectionId, reason: error.kind });
     if (error.kind === "not_found") throw notFound();

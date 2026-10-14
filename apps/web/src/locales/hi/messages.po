@@ -570,6 +570,9 @@ msgstr "अनुमोदित करें"
 msgid "Approve this server to let your agent use its tools."
 msgstr "अपने एजेंट को इसके टूल उपयोग करने देने के लिए इस सर्वर को अनुमोदित करें।"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/BotContextMenu.tsx
 msgid "Archive"
 msgstr "आर्काइव करें"
@@ -2946,6 +2949,16 @@ msgstr ""
 msgid "Mark noise"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark read"
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark unread"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Marked important"
 msgstr ""
@@ -3477,7 +3490,6 @@ msgstr "OAuth कनेक्शन विफल"
 
 #: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr ""
 

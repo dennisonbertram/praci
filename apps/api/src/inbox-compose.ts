@@ -194,7 +194,7 @@ async function composeRow(deps: ComposeDeps, actor: Actor, input: ComposeFields)
 }
 
 /** Marks the account as needing a new login, which the Inbox already shows as a reconnect notice. */
-async function flagReconnect(deps: ComposeDeps, connectionId: string): Promise<void> {
+export async function flagReconnect(deps: ComposeDeps, connectionId: string): Promise<void> {
   const now = new Date();
   await deps.prisma.mailSyncState
     .upsert({

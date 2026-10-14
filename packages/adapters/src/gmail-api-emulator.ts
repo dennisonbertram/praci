@@ -12,6 +12,24 @@ import { parseRawMime } from "./mime-parse.js";
 const PREFIX = "/gmail/v1/users/me/";
 const DAY_MS = 86_400_000;
 const DEFAULT_NOW = new Date("2026-10-01T12:00:00Z");
+const SYSTEM_LABELS = [
+  "INBOX",
+  "SENT",
+  "DRAFT",
+  "UNREAD",
+  "STARRED",
+  "IMPORTANT",
+  "TRASH",
+  "SPAM",
+  "CATEGORY_PERSONAL",
+  "CATEGORY_SOCIAL",
+  "CATEGORY_PROMOTIONS",
+  "CATEGORY_UPDATES",
+];
+const LABELS = [
+  ...SYSTEM_LABELS.map((id) => ({ id, name: id, type: "system" })),
+  { id: "Label_1", name: "Receipts", type: "user" },
+];
 
 export interface EmulatedMessage {
   id: string;
@@ -203,7 +221,10 @@ export class GmailApiEmulator {
     const path = parsed.pathname.slice(PREFIX.length);
     if (path === "drafts" || path === "drafts/send" || path.startsWith("drafts/"))
       return this.drafts(accountRef, mailbox, path, method, body);
+    const modify = /^messages\/([^/]+)\/modify$/.exec(path);
+    if (modify) return modifyMessage(mailbox, decodeURIComponent(modify[1]!), method, body);
     if (method !== "GET") return fail(405, "methodNotAllowed", "Method not allowed");
+    if (path === "labels") return { status: 200, data: { labels: LABELS } };
     if (path === "profile")
       return {
         status: 200,
@@ -340,6 +361,31 @@ function list(mailbox: Mailbox, params: URLSearchParams): ConnectorProxyResponse
       ...(offset + size < all.length ? { nextPageToken: String(offset + size) } : {}),
       resultSizeEstimate: all.length,
     },
+  };
+}
+
+/** users.messages.modify: removes, then adds; every label id must exist. */
+function modifyMessage(
+  mailbox: Mailbox,
+  id: string,
+  method: ConnectorProxyRequest["method"],
+  body: unknown,
+): ConnectorProxyResponse {
+  if (method !== "POST") return fail(405, "methodNotAllowed", "Method not allowed");
+  const message = mailbox.messages.find((m) => m.id === id);
+  if (!message) return fail(404, "notFound", "Requested entity was not found.");
+  const { addLabelIds = [], removeLabelIds = [] } = (body ?? {}) as Record<string, unknown>;
+  const known = new Set(LABELS.map((label) => label.id));
+  const valid = (ids: unknown): ids is string[] =>
+    Array.isArray(ids) && ids.every((label) => typeof label === "string" && known.has(label));
+  if (!valid(addLabelIds) || !valid(removeLabelIds))
+    return fail(400, "invalidArgument", "Invalid label");
+  message.labelIds = [
+    ...new Set([...message.labelIds.filter((l) => !removeLabelIds.includes(l)), ...addLabelIds]),
+  ];
+  return {
+    status: 200,
+    data: { id: message.id, threadId: message.threadId, labelIds: message.labelIds },
   };
 }
 

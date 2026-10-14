@@ -9,6 +9,7 @@ export function InboxShortcuts({ open, onClose }: { open: boolean; onClose: () =
     ["Enter", <Trans key="o">Open</Trans>],
     ["/", <Trans key="s">Search</Trans>],
     ["c", <Trans key="c">Compose</Trans>],
+    ["e", <Trans key="e2">Archive</Trans>],
     ["r", <Trans key="r">Reply</Trans>],
     ["a", <Trans key="a">Reply all</Trans>],
     ["f", <Trans key="f">Forward</Trans>],

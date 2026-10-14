@@ -5,13 +5,18 @@ import { createMailEmulator } from "./gmail-api-emulator.js";
 import { GmailMailProvider } from "./gmail-mail-provider.js";
 import { GoogleConnector } from "./google-connector.js";
 import { EncryptedSecretStore } from "./secrets.js";
-import { assertMailConformance, assertMailWriteConformance } from "./testing/mail-conformance.js";
+import {
+  assertMailConformance,
+  assertMailModifyConformance,
+  assertMailWriteConformance,
+} from "./testing/mail-conformance.js";
 
 const CLIENT_SECRET = "fake-google-client-secret";
 const IDENTITY = "fake-identity-secret";
 const REDIRECT = "https://rakazo.example.test/integrations/google/callback";
 const GMAIL_READONLY = "https://www.googleapis.com/auth/gmail.readonly";
 const GMAIL_COMPOSE = "https://www.googleapis.com/auth/gmail.compose";
+const GMAIL_MODIFY = "https://www.googleapis.com/auth/gmail.modify";
 
 const context: AdapterContext = {
   operationId: "op",
@@ -203,7 +208,7 @@ describe("GoogleConnector.begin", () => {
     expect(p.get("response_type")).toBe("code");
     expect(p.get("client_id")).toBe("fake-client-id.apps.example.test");
     expect(p.get("redirect_uri")).toBe(REDIRECT);
-    expect(p.get("scope")).toBe(`openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE}`);
+    expect(p.get("scope")).toBe(`openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE} ${GMAIL_MODIFY}`);
     expect(p.get("access_type")).toBe("offline");
     expect(p.get("prompt")).toBe("consent");
     expect(p.get("include_granted_scopes")).toBe("true");
@@ -285,7 +290,7 @@ describe("GoogleConnector.complete", () => {
     expect(s.google.revokeCalls).toEqual(["refresh-1"]);
   });
 
-  it("still connects when the user unticks the compose permission; sending then asks to reconnect", async () => {
+  it("still connects when the user unticks the compose and modify permissions; writing then asks to reconnect", async () => {
     const s = setup();
     s.google.scope = `openid https://www.googleapis.com/auth/userinfo.email ${GMAIL_READONLY}`;
     const { state } = await s.connector.begin({ provider: "gmail", redirectUrl: "" }, context);
@@ -586,6 +591,7 @@ describe("GoogleConnector as a mail connector", () => {
     }) as typeof emulator.gmail;
     await assertMailConformance(provider, { gmail, accounts: emulator.accounts });
     await assertMailWriteConformance(provider, { gmail, accounts: emulator.accounts });
+    await assertMailModifyConformance(provider, { gmail, accounts: emulator.accounts });
     const writes = s.google.gmailRequests.filter((r) => r.method !== "GET");
     expect(writes.map((r) => r.method)).toContain("POST");
     expect(writes.map((r) => r.method)).toContain("PUT");
@@ -646,6 +652,9 @@ describe("GoogleConnector as a mail connector", () => {
         { to: [{ address: "p@example.test" }], cc: [], bcc: [], subject: "s", text: "t" },
         ctx,
       ),
+    ).rejects.toMatchObject({ kind: "auth" });
+    await expect(
+      provider.modifyMessage({ ...account, ...owner }, "a-01", { removeLabelIds: ["UNREAD"] }, ctx),
     ).rejects.toMatchObject({ kind: "auth" });
   });
 });
