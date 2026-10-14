@@ -242,3 +242,46 @@ describe("replyPrefill", () => {
     );
   });
 });
+
+describe("buildRawMessage with HTML and attachments", () => {
+  it("uses the given HTML for the HTML part", () => {
+    const mime = parseRawMime(buildRawMessage({ ...base, html: "<p>Hi <b>Priya</b></p>" }));
+    expect(mime.html).toBe("<p>Hi <b>Priya</b></p>");
+    expect(mime.text).toBe("Hi Priya");
+  });
+
+  it("nests the text and HTML parts in multipart/mixed with the files", () => {
+    const data = new Uint8Array([1, 2, 3, 250]);
+    const raw = buildRawMessage({
+      ...base,
+      attachments: [
+        { filename: 'plan "v2".pdf', mimeType: "application/pdf", data },
+        { filename: "résumé.txt", mimeType: "bad type", data },
+      ],
+    });
+    const mime = parseRawMime(raw);
+    expect(mime.types).toEqual([
+      "multipart/mixed",
+      "multipart/alternative",
+      "text/plain",
+      "text/html",
+      "application/pdf",
+      "application/octet-stream",
+    ]);
+    expect(mime.text).toBe("Hi Priya");
+    expect(raw).toContain('filename="plan \\"v2\\".pdf"');
+    expect(raw).toContain("filename*=UTF-8''r%C3%A9sum%C3%A9.txt");
+    expect(raw).toContain(Buffer.from(data).toString("base64"));
+  });
+
+  it("rejects an attachment name with a path or line break", () => {
+    for (const filename of ["a/b.txt", "a\r\nX: y.txt", ""]) {
+      invalid(() =>
+        buildRawMessage({
+          ...base,
+          attachments: [{ filename, mimeType: "text/plain", data: new Uint8Array() }],
+        }),
+      );
+    }
+  });
+});
