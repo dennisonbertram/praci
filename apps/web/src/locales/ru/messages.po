@@ -2074,6 +2074,10 @@ msgstr "Описание"
 msgid "Desktop app"
 msgstr "Настольное приложение"
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Desktop redirect URI"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 msgid "Desktop update"
 msgstr "Обновление настольного приложения"

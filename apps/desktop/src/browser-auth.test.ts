@@ -1,7 +1,9 @@
 import { get } from "node:http";
 import { createServer, Server } from "node:net";
+import { GOOGLE_DESKTOP_REDIRECT_URI } from "@rakazo/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { openBrowserAuth } from "./browser-auth.js";
+import { LOOPBACK_HOSTS } from "./oauth-callback.js";
 
 const controllers: AbortController[] = [];
 afterEach(() => {
@@ -216,5 +218,21 @@ describe("system browser authentication", () => {
     const second = await setup();
     await expect(openBrowserAuth(authorization.href, second.options)).rejects.toThrow();
     expect(second.options.openExternal).not.toHaveBeenCalled();
+  });
+
+  it("can listen on Google's fixed desktop redirect", () => {
+    // Same checks openBrowserAuth makes before it binds; the fixed port is not bound here so a busy
+    // port on a developer machine cannot make this test flaky.
+    const redirect = new URL(GOOGLE_DESKTOP_REDIRECT_URI);
+    expect(redirect.protocol).toBe("http:");
+    expect(LOOPBACK_HOSTS.has(redirect.hostname)).toBe(true);
+    expect(Number(redirect.port)).toBeGreaterThanOrEqual(1024);
+    expect([redirect.search, redirect.hash, redirect.username, redirect.password]).toEqual([
+      "",
+      "",
+      "",
+      "",
+    ]);
+    expect(redirect.pathname).toBe("/integrations/google/callback");
   });
 });

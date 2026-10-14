@@ -395,10 +395,9 @@ to a `GmailApiEmulator`.
    The router stores `state` in `providerRef`, as it does for the other connectors.
 2. The web client opens the URL in the existing `rakazo-plugin-connect` popup and polls
    `connections.complete({ connectionId })`, unchanged. For Google, `connectionReady`
-   returns `false`, so those polls do nothing until step 3 finishes. Native Google is
-   web-browser only in v1: desktop opens that popup in an Electron `BrowserWindow`
-   (`apps/desktop/src/main.ts:274`), and Google does not allow authorization inside an
-   embedded browser, so desktop hides the native Google entry (see Surfaces).
+   returns `false`, so those polls do nothing until step 3 finishes. Desktop does not use
+   this popup, because Google does not allow authorization inside an embedded browser.
+   It uses the system browser instead (see Surfaces).
 3. Google redirects to the new web route `/integrations/google/callback` (next to
    `/mcp/oauth/callback`, `App.tsx:151`). The page calls
    `connections.complete({ state, code })` with the user's session. Because the call
@@ -470,18 +469,28 @@ Other `ManagedConnectorProvider` members:
     the default, not a setting. It is one pure helper, `preferNativeGmail(items,
     { nativeGoogle })`, in `packages/contracts` next to the catalog item schema, so
     web, desktop and mobile apply the same rule. Web passes
-    `nativeGoogle: !desktopBridge()` (false inside Electron). Mobile passes `false`.
+    `nativeGoogle: nativeGoogleAvailable(desktopBridge())` (true in a browser, and in
+    Electron only when the shell can open the system browser). Mobile passes `false`.
     `false` hides the Google entry and keeps the managed one.
-- **Desktop (PR 2d)**: hides `connectorId: "google"` catalog items in v1, like mobile.
-  Desktop opens connect URLs in an in-app Electron `BrowserWindow`
-  (`apps/desktop/src/main.ts:274`), which Google's policy forbids for authorization.
-  The web call site passes `nativeGoogle: !desktopBridge()`, so desktop keeps the
-  managed Gmail entry when Composio or Pipedream is configured. Google accounts
-  connected in a web browser work on desktop. Follow-up: desktop already has a
-  system-browser flow with a loopback callback (`desktop.oauth.open`,
-  `apps/desktop/src/browser-auth.ts`, used for model sign-in); native Google can use
-  it once `begin` can choose a registered loopback redirect URI. That needs a second
-  redirect URI in the owner's Google client and a fixed port, so it is not in v1.
+- **Desktop**: signs in with the system browser. The system browser has no Rakazo
+  session, so the web callback in step 3 cannot finish the sign-in there. Instead:
+  1. The connect screen calls `connections.begin({ redirect: "desktop" })`. The router
+     passes `GOOGLE_DESKTOP_REDIRECT_URI` (`http://127.0.0.1:53925/integrations/google/callback`,
+     a fixed port in `packages/contracts`) to `GoogleConnector.begin` and records it in the
+     pending row's `metadata.redirectUrl`. The connector only accepts that exact value;
+     any other value falls back to the web callback.
+  2. The connect screen hands the authorization URL to `desktop.oauth.open`
+     (`apps/desktop/src/browser-auth.ts`, also used for model sign-in). The main process
+     binds a one-shot listener on `127.0.0.1`, opens the system browser, accepts one
+     request with the matching `state`, and sends `{ code, state }` back over IPC.
+  3. The Electron window, which has the user's session, calls
+     `connections.complete({ state, code })`. The router reads `metadata.redirectUrl` from
+     the pending row, so the token request repeats the redirect URI used for authorization.
+     PKCE stays server-side as before.
+  4. Native Google shows on desktop only when the shell offers `oauth.open`
+     (`nativeGoogleAvailable`); older shells keep the managed Gmail entry.
+  The owner registers both redirect URIs in the Google client; Integration setup shows
+  both. Accounts connected in a web browser keep working on desktop.
 - **Mobile (PR 2d)**:
   - Mobile opens authorization URLs with `Linking.openURL`
     (`apps/mobile/app/(settings)/integrations.tsx:387`). That browser has no Rakazo

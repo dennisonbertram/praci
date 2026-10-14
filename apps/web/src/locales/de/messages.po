@@ -2074,6 +2074,10 @@ msgstr "Beschreibung"
 msgid "Desktop app"
 msgstr ""
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Desktop redirect URI"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 msgid "Desktop update"
 msgstr ""

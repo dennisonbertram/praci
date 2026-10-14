@@ -32,7 +32,15 @@ export async function completeNativeOAuth(options: {
 
   let completed: Awaited<ReturnType<ManagedConnectorProvider["complete"]>>;
   try {
-    completed = await prepared.provider.complete({ state, code: options.code }, options.context);
+    const redirectUrl = (pending.metadata as { redirectUrl?: unknown } | null)?.redirectUrl;
+    completed = await prepared.provider.complete(
+      {
+        state,
+        code: options.code,
+        ...(typeof redirectUrl === "string" ? { redirectUrl } : {}),
+      },
+      options.context,
+    );
   } catch (error) {
     throw new ORPCError("BAD_REQUEST", { message: sanitizeComposioError(error) });
   }

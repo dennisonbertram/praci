@@ -4,10 +4,12 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   desktopOAuthCode,
+  nativeGoogleAvailable,
   oauthStateOf,
   onDesktopOAuthCallback,
   type RakazoDesktop,
   type RakazoDesktopOAuthCallback,
+  signInWithSystemBrowser,
   windowChromeKind,
 } from "./desktop.js";
 
@@ -147,5 +149,97 @@ describe("attempt correlation", () => {
     const received: string[] = [];
     expect(() => onDesktopOAuthCallback((code) => received.push(code))()).not.toThrow();
     expect(received).toEqual([]);
+  });
+});
+
+describe("nativeGoogleAvailable", () => {
+  it("is on in a browser, off in a desktop without system-browser sign-in, on with it", () => {
+    expect(nativeGoogleAvailable(undefined)).toBe(true);
+    expect(
+      nativeGoogleAvailable({ ...desktop("darwin"), oauth: { onCallback: () => () => {} } }),
+    ).toBe(false);
+    expect(
+      nativeGoogleAvailable({
+        ...desktop("darwin"),
+        oauth: { open: async () => undefined, onCallback: () => () => {} },
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("signInWithSystemBrowser", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth?state=state-1";
+
+  function bridge(open: (url: string) => Promise<void> = async () => undefined) {
+    let emit: (callback: RakazoDesktopOAuthCallback) => void = () => undefined;
+    const unsubscribe = vi.fn();
+    const cancel = vi.fn(async () => undefined);
+    vi.stubGlobal("window", {
+      rakazoDesktop: {
+        ...desktop("linux"),
+        oauth: {
+          open: vi.fn(open),
+          cancel,
+          onCallback: (listener: (callback: RakazoDesktopOAuthCallback) => void) => {
+            emit = listener;
+            return unsubscribe;
+          },
+        },
+      },
+    });
+    return { emit: (c: RakazoDesktopOAuthCallback) => emit(c), unsubscribe, cancel };
+  }
+
+  it("resolves with the callback for this attempt's state and ignores any other", async () => {
+    const b = bridge();
+    const result = signInWithSystemBrowser(AUTH_URL, new AbortController().signal);
+    await Promise.resolve();
+    b.emit({ code: "stale", state: "other" });
+    b.emit({ code: "ac_1", state: "state-1" });
+    await expect(result).resolves.toEqual({ code: "ac_1", state: "state-1" });
+    expect(b.unsubscribe).toHaveBeenCalled();
+  });
+
+  it("rejects and cancels the listener when aborted", async () => {
+    const b = bridge();
+    const controller = new AbortController();
+    const result = signInWithSystemBrowser(AUTH_URL, controller.signal);
+    await Promise.resolve();
+    controller.abort();
+    await expect(result).rejects.toThrow(/cancelled/i);
+    expect(b.cancel).toHaveBeenCalledWith(AUTH_URL);
+    expect(b.unsubscribe).toHaveBeenCalled();
+  });
+
+  it("gives up after the timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      const b = bridge();
+      const result = signInWithSystemBrowser(AUTH_URL, new AbortController().signal);
+      const settled = expect(result).rejects.toThrow(/timed out/i);
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+      await settled;
+      expect(b.cancel).toHaveBeenCalledWith(AUTH_URL);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rejects when the browser cannot be opened", async () => {
+    const b = bridge(async () => {
+      throw new Error("Could not open browser sign-in.");
+    });
+    await expect(signInWithSystemBrowser(AUTH_URL, new AbortController().signal)).rejects.toThrow(
+      /Could not open/,
+    );
+    expect(b.unsubscribe).toHaveBeenCalled();
+  });
+
+  it("refuses an authorization URL it cannot correlate", async () => {
+    bridge();
+    await expect(
+      signInWithSystemBrowser("https://accounts.google.com/o", new AbortController().signal),
+    ).rejects.toThrow(/unavailable/i);
   });
 });

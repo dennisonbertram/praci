@@ -148,6 +148,7 @@ import {
   BotSecretAuth,
   ComputerCommandSchema,
   foldComputerCommands,
+  GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
   isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -4680,6 +4681,11 @@ export function createRouter(deps: RouterDeps) {
         }));
       }),
       begin: authed.connections.begin.handler(async ({ context, input }) => {
+        if (input.redirect === "desktop" && input.connectorId !== "google") {
+          throw new ORPCError("BAD_REQUEST", { message: "Desktop sign-in is only for Google" });
+        }
+        const redirectUrl =
+          input.redirect === "desktop" ? GOOGLE_DESKTOP_REDIRECT_URI : `${deps.env.webOrigin}/app`;
         const connector =
           deps.integrationSettings &&
           (input.connectorId === "composio" ||
@@ -4731,7 +4737,7 @@ export function createRouter(deps: RouterDeps) {
         });
         try {
           const auth = await connector.begin(
-            { provider: input.provider, redirectUrl: `${deps.env.webOrigin}/app` },
+            { provider: input.provider, redirectUrl },
             connectionContext(context.actor, "connections.begin", context.signal),
           );
           // Re-take the provider lock and only advance still-pending rows so a
@@ -4748,7 +4754,11 @@ export function createRouter(deps: RouterDeps) {
               data: {
                 status: auth.authorizationUrl ? "pending" : "connected",
                 providerRef: auth.state || null,
-                metadata: { state: auth.state },
+                // complete() must repeat the redirect_uri the authorization used.
+                metadata:
+                  input.redirect === "desktop"
+                    ? { state: auth.state, redirectUrl }
+                    : { state: auth.state },
               },
             });
             return updated.count > 0;

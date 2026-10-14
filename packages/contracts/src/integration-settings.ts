@@ -25,3 +25,10 @@ export const IntegrationSetupStateSchema = z.object({
   providers: z.array(z.object({ id: IntegrationProviderIdSchema, configured: z.boolean() })),
 });
 export type IntegrationSetupState = z.infer<typeof IntegrationSetupStateSchema>;
+
+/**
+ * Google rejects sign-in inside Electron's embedded browser, so desktop signs in with the system
+ * browser and receives the code on this loopback address. The port is fixed because Google only
+ * accepts redirect URIs registered in the owner's OAuth client (shown next to the web one in setup).
+ */
+export const GOOGLE_DESKTOP_REDIRECT_URI = "http://127.0.0.1:53925/integrations/google/callback";

@@ -1,6 +1,6 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import type { ManagedConnectorProvider } from "@rakazo/adapter-kit";
-import type { Actor } from "@rakazo/contracts";
+import { type Actor, GOOGLE_DESKTOP_REDIRECT_URI } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "./router.js";
@@ -129,6 +129,19 @@ describe("connections.complete with { state, code }", () => {
     expect(result.body).not.toContain(STATE);
   });
 
+  it("finishes with the redirect recorded when the sign-in began", async () => {
+    const complete = vi.fn(async () => ({ connectionRef: "google-sub-1", secretId: "secret-1" }));
+    const h = harness(
+      [pendingGoogleRow({ metadata: { state: STATE, redirectUrl: GOOGLE_DESKTOP_REDIRECT_URI } })],
+      { complete, connectionReady: vi.fn(async () => false) },
+    );
+    expect((await h.complete({ state: STATE, code: "auth-code" })).status).toBe(200);
+    expect(complete).toHaveBeenCalledWith(
+      { state: STATE, code: "auth-code", redirectUrl: GOOGLE_DESKTOP_REDIRECT_URI },
+      expect.anything(),
+    );
+  });
+
   it("does not let another user's session finish someone else's pending connection", async () => {
     const complete = vi.fn();
     const h = harness([pendingGoogleRow()], { complete });
@@ -227,64 +240,89 @@ describe("connections.complete with { connectionId } polling", () => {
   });
 });
 
-describe("connections.begin for the native Google connector", () => {
-  it("resolves the connector from Integration setup and stores the state on the pending row", async () => {
-    const begin = vi.fn(async () => ({
-      authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth?state=fake",
-      state: STATE,
-    }));
-    const resolve = vi.fn(async () => ({ begin }) as unknown as ManagedConnectorProvider);
-    const rows: Row[] = [];
-    const created = pendingGoogleRow({ providerRef: null, metadata: {} });
-    const updateMany = vi.fn(async ({ data }: { data: Row }) => {
-      Object.assign(created, data);
-      rows.push(created);
-      return { count: 1 };
-    });
-    const tx = {
-      $executeRaw: vi.fn(async () => 0),
-      connection: {
-        findMany: vi.fn(async () => []),
-        create: vi.fn(async () => created),
-        updateMany,
-      },
-    };
-    const deps = {
-      prisma: { $transaction: vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)) },
-      integrationSettings: { resolve },
-      connectors: { managed: vi.fn(() => undefined) },
-      env: {
-        defaultProvider: "fake",
-        defaultModel: "fake-model",
-        webOrigin: "http://127.0.0.1:5173",
-        screenProxySecret: "fake-test-secret",
-        sandboxProvider: "fake",
-      },
-      dataDir: "/tmp/rakazo-router-test",
-    } as unknown as RouterDeps;
-    const handler = new RPCHandler(createRouter(deps));
+function beginHarness(connectorId = "google") {
+  const begin = vi.fn(async (_request: { provider: string; redirectUrl: string }) => ({
+    authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth?state=fake",
+    state: STATE,
+  }));
+  const resolve = vi.fn(async () => ({ begin }) as unknown as ManagedConnectorProvider);
+  const rows: Row[] = [];
+  const created = pendingGoogleRow({ providerRef: null, metadata: {}, connectorId });
+  const updateMany = vi.fn(async ({ data }: { data: Row }) => {
+    Object.assign(created, data);
+    rows.push(created);
+    return { count: 1 };
+  });
+  const tx = {
+    $executeRaw: vi.fn(async () => 0),
+    connection: {
+      findMany: vi.fn(async () => []),
+      create: vi.fn(async () => created),
+      updateMany,
+    },
+  };
+  const deps = {
+    prisma: { $transaction: vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)) },
+    integrationSettings: { resolve },
+    connectors: { managed: vi.fn(() => undefined) },
+    env: {
+      defaultProvider: "fake",
+      defaultModel: "fake-model",
+      webOrigin: "http://127.0.0.1:5173",
+      screenProxySecret: "fake-test-secret",
+      sandboxProvider: "fake",
+    },
+    dataDir: "/tmp/rakazo-router-test",
+  } as unknown as RouterDeps;
+  const handler = new RPCHandler(createRouter(deps));
+  async function post(input: Record<string, unknown>) {
     const { response } = await handler.handle(
       new Request("http://127.0.0.1/rpc/connections/begin", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          json: { connectorId: "google", provider: "gmail", displayName: "Gmail" },
-        }),
+        body: JSON.stringify({ json: { provider: "gmail", displayName: "Gmail", ...input } }),
       }),
       { prefix: "/rpc", context: { actor: owner } },
     );
-    expect(response!.status).toBe(200);
-    expect(resolve).toHaveBeenCalledWith("google");
-    expect(rows[0]).toMatchObject({
+    return response!;
+  }
+  return { begin, resolve, rows, post };
+}
+
+describe("connections.begin for the native Google connector", () => {
+  it("resolves the connector from Integration setup and stores the state on the pending row", async () => {
+    const h = beginHarness();
+    const response = await h.post({ connectorId: "google" });
+    expect(response.status).toBe(200);
+    expect(h.resolve).toHaveBeenCalledWith("google");
+    expect(h.begin.mock.calls[0]![0].redirectUrl).toBe("http://127.0.0.1:5173/app");
+    expect(h.rows[0]).toMatchObject({
       status: "pending",
       providerRef: STATE,
       metadata: { state: STATE },
     });
-    await expect(response!.json()).resolves.toMatchObject({
+    await expect(response.json()).resolves.toMatchObject({
       json: {
         connectionId: "conn-1",
         authorizationUrl: expect.stringContaining("accounts.google.com"),
       },
     });
+  });
+
+  it("asks for the desktop loopback redirect and records it on the pending row", async () => {
+    const h = beginHarness();
+    const response = await h.post({ connectorId: "google", redirect: "desktop" });
+    expect(response.status).toBe(200);
+    expect(h.begin.mock.calls[0]![0].redirectUrl).toBe(GOOGLE_DESKTOP_REDIRECT_URI);
+    expect(h.rows[0]).toMatchObject({
+      metadata: { state: STATE, redirectUrl: GOOGLE_DESKTOP_REDIRECT_URI },
+    });
+  });
+
+  it("refuses the desktop redirect for other connectors", async () => {
+    const h = beginHarness("composio");
+    const response = await h.post({ connectorId: "composio", redirect: "desktop" });
+    expect(response.status).toBe(400);
+    expect(h.begin).not.toHaveBeenCalled();
   });
 });
