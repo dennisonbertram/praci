@@ -7,6 +7,7 @@ import { GmailMailProvider } from "./gmail-mail-provider.js";
 import { GoogleConnector } from "./google-connector.js";
 import { EncryptedSecretStore } from "./secrets.js";
 import {
+  assertMailChangesConformance,
   assertMailConformance,
   assertMailModifyConformance,
   assertMailWriteConformance,
@@ -619,10 +620,12 @@ describe("GoogleConnector as a mail connector", () => {
     const gmail = Object.assign(Object.create(emulator.gmail), {
       failNext: (status: number, options?: object) =>
         emulator.gmail.failNext(status, { ...options, times: 2 }),
+      clearFailures: () => emulator.gmail.clearFailures(),
     }) as typeof emulator.gmail;
     await assertMailConformance(provider, { gmail, accounts: emulator.accounts });
     await assertMailWriteConformance(provider, { gmail, accounts: emulator.accounts });
     await assertMailModifyConformance(provider, { gmail, accounts: emulator.accounts });
+    await assertMailChangesConformance(provider, { gmail, accounts: emulator.accounts });
     const writes = s.google.gmailRequests.filter((r) => r.method !== "GET");
     expect(writes.map((r) => r.method)).toContain("POST");
     expect(writes.map((r) => r.method)).toContain("PUT");

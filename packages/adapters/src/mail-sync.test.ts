@@ -25,7 +25,7 @@ function setup(listMessages: MailProvider["listMessages"]) {
     },
     $queryRaw: async () => [{ connectionId: account.id }],
   } as unknown as PrismaClient;
-  const mail = { listMessages } as unknown as MailProvider;
+  const mail = { listMessages, getCursor: async () => "1000" } as unknown as MailProvider;
   const jobs = { enqueue: async () => {} } as unknown as JobPublisher;
   const run = (signal: AbortSignal, extra: { deadlineMs?: number } = {}) => {
     const context: AdapterContext = {

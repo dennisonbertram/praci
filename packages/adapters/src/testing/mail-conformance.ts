@@ -230,3 +230,79 @@ export async function assertMailModifyConformance(
     kind("auth"),
   );
 }
+
+/**
+ * Change-feed behavior every MailProvider must show: a cursor, added, relabelled and deleted
+ * messages since it, a message added and deleted in between, an empty feed, and an expired or
+ * unrecognized cursor. Run it last: it adds and deletes mail in the emulator.
+ */
+export async function assertMailChangesConformance(
+  provider: MailProvider,
+  emulator: Pick<MailEmulator, "gmail" | "accounts">,
+): Promise<void> {
+  const [a] = emulator.accounts;
+  assert.ok(a, "conformance needs an account");
+  const context: AdapterContext = {
+    operationId: "mail-changes-conformance",
+    traceId: "mail-changes-conformance",
+    spaceId: a.spaceId,
+    userId: a.userId,
+    signal: new AbortController().signal,
+  };
+  const arrived = (id: string, labels: string[]) => ({
+    id,
+    date: "2026-10-01T10:00:00Z",
+    labels,
+    from: "New Sender <new@example.test>",
+    to: "alice@example.test",
+    subject: `New ${id}`,
+  });
+
+  // A connector that retries may leave part of an earlier suite's injected failure unused.
+  emulator.gmail.clearFailures();
+  const start = await provider.getCursor(a, context);
+  assert.ok(start);
+  const quiet = await provider.listChanges(a, start, context);
+  assert.deepEqual(quiet, { cursor: start, changedIds: [], deletedIds: [] });
+
+  emulator.gmail.addMessage(a.accountRef, arrived("c-new", ["INBOX", "UNREAD"]));
+  emulator.gmail.addMessage(a.accountRef, arrived("c-temp", ["INBOX"]));
+  emulator.gmail.deleteMessage(a.accountRef, "c-temp");
+  await provider.modifyMessage(a, "a-03", { removeLabelIds: ["UNREAD"] }, context);
+  emulator.gmail.deleteMessage(a.accountRef, "a-05");
+
+  const changes = await provider.listChanges(a, start, context);
+  assert.ok(changes);
+  assert.deepEqual([...changes.changedIds].sort(), ["a-03", "c-new"]);
+  assert.deepEqual([...changes.deletedIds].sort(), ["a-05", "c-temp"]);
+  assert.notEqual(changes.cursor, start);
+  const hydrated = await provider.listMessages(
+    a,
+    { query: "", pageSize: 500, ids: changes.changedIds, useCache: false },
+    context,
+  );
+  assert.ok(!hydrated.messages.find((m) => m.id === "a-03")?.unread);
+  assert.ok(hydrated.messages.find((m) => m.id === "c-new")?.unread);
+
+  assert.deepEqual(await provider.listChanges(a, changes.cursor, context), {
+    cursor: changes.cursor,
+    changedIds: [],
+    deletedIds: [],
+  });
+
+  emulator.gmail.expireHistory(a.accountRef);
+  assert.equal(await provider.listChanges(a, changes.cursor, context), null, "expired cursor");
+  assert.equal(await provider.listChanges(a, "not-a-cursor", context), null, "unknown cursor");
+  const fresh = await provider.getCursor(a, context);
+  assert.deepEqual(await provider.listChanges(a, fresh, context), {
+    cursor: fresh,
+    changedIds: [],
+    deletedIds: [],
+  });
+
+  emulator.gmail.failNext(401);
+  await assert.rejects(
+    provider.listChanges(a, fresh, context),
+    (error) => error instanceof MailProviderError && error.kind === "auth",
+  );
+}

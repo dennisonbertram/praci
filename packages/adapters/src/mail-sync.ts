@@ -18,6 +18,8 @@ const MAX_MESSAGES = 200;
 const DEADLINE_MS = 90_000;
 const TEXT_CAP = 500;
 const UPSERT_CHUNK = 200;
+/** Most changes applied one by one; more than this is cheaper to take from the window lists. */
+const MAX_CHANGES = 500;
 
 /** Stored timestamps are UTC without a zone, so compare against Postgres' UTC clock. */
 const DB_NOW = Prisma.sql`timezone('utc', now())`;
@@ -45,7 +47,9 @@ interface Listed {
 }
 
 /**
- * Syncs one account's inbox and sent mail for the last 14 days into the Postgres cache.
+ * Syncs one account's inbox and sent mail for the last 14 days into the Postgres cache. With a
+ * stored change cursor it fetches only what changed since; with none, with an expired one or with
+ * too many changes it lists the 14-day window and stores a fresh cursor.
  * One conditional UPDATE is both the 60-second throttle and the in-flight claim; the write
  * transaction re-checks the claim token under a row lock, so a sync that lost its claim writes
  * nothing. Provider errors are recorded on the state row, never thrown. A successful sync, with or
@@ -68,7 +72,9 @@ export async function syncMailbox(
     WHERE id = ${account.id} AND "spaceId" = ${spaceId} AND "userId" = ${userId}
       AND status = 'connected'
     ON CONFLICT DO NOTHING`;
-  const claimed = await prisma.$queryRaw<Array<{ connectionId: string }>>`
+  const claimed = await prisma.$queryRaw<
+    Array<{ connectionId: string; changeCursor?: string | null }>
+  >`
     UPDATE mail_sync_states s
     SET "syncStartedAt" = ${DB_NOW}, "claimToken" = ${token}
     FROM connections c
@@ -76,8 +82,9 @@ export async function syncMailbox(
       AND c."spaceId" = ${spaceId} AND c."userId" = ${userId} AND c.status = 'connected'
       AND (s."lastSyncedAt" IS NULL OR s."lastSyncedAt" < ${DB_NOW} - interval '60 seconds')
       AND (s."syncStartedAt" IS NULL OR s."syncStartedAt" < ${DB_NOW} - interval '2 minutes')
-    RETURNING s."connectionId"`;
+    RETURNING s."connectionId", s."changeCursor"`;
   if (claimed.length === 0) return "skipped";
+  const previousCursor = claimed[0]?.changeCursor ?? null;
 
   const fail = async (error: unknown): Promise<"failed" | "skipped"> => {
     // The token check keeps a sync that lost its claim from clearing its replacement's.
@@ -117,29 +124,73 @@ export async function syncMailbox(
     signal: AbortSignal.any([context.signal, AbortSignal.timeout(deps.deadlineMs ?? DEADLINE_MS)]),
   };
 
-  let inbox: Listed;
-  let sent: Listed;
-  try {
-    inbox = await listWindow(deps.mail, account, timed, "in:inbox", after, windowStart);
-    sent = await listWindow(deps.mail, account, timed, "in:sent", after, windowStart);
-  } catch (error) {
-    return fail(error);
-  }
-  const partial = inbox.partial || sent.partial;
-
   const merged = new Map<
     string,
     { message: MailMessageSummary; inInbox: boolean; fromSelf: boolean }
   >();
-  for (const [listed, flag] of [
-    [inbox, "inInbox"],
-    [sent, "fromSelf"],
-  ] as const) {
-    for (const message of listed.messages) {
-      const entry = merged.get(message.id) ?? { message, inInbox: false, fromSelf: false };
-      entry[flag] = true;
-      merged.set(message.id, entry);
+  const deletedIds: string[] = [];
+  /** Stored after a complete sync; undefined keeps the stored one. */
+  let nextCursor: string | undefined;
+  /** Set only by a window sync: the inbox list that clears messages no longer in it. */
+  let inbox: Listed | undefined;
+  let partial = false;
+  try {
+    const changes = previousCursor
+      ? await deps.mail.listChanges(account, previousCursor, timed)
+      : null;
+    if (changes && changes.changedIds.length + changes.deletedIds.length <= MAX_CHANGES) {
+      // Only what changed since the last sync: fetch the new and relabelled messages.
+      const page = changes.changedIds.length
+        ? await deps.mail.listMessages(
+            account,
+            { query: "", pageSize: PAGE_SIZE, ids: changes.changedIds, useCache: false },
+            timed,
+          )
+        : { messages: [], unhydratedIds: [] };
+      const unhydrated = new Set(page.unhydratedIds ?? []);
+      const returned = new Set(page.messages.map((m) => m.id));
+      partial = unhydrated.size > 0;
+      for (const message of page.messages) {
+        // The window lists skip trash and spam, so a message moved there is gone from the cache.
+        if (message.labelIds.includes("TRASH") || message.labelIds.includes("SPAM"))
+          deletedIds.push(message.id);
+        else
+          merged.set(message.id, {
+            message,
+            inInbox: message.labelIds.includes("INBOX"),
+            fromSelf: message.labelIds.includes("SENT"),
+          });
+      }
+      // Deleted since it was listed: the provider no longer has it.
+      deletedIds.push(
+        ...changes.deletedIds,
+        ...changes.changedIds.filter((id) => !returned.has(id) && !unhydrated.has(id)),
+      );
+      nextCursor = changes.cursor;
+    } else {
+      if (previousCursor)
+        getLogger().info("mail sync is listing the window again", {
+          connectionId: account.id,
+          reason: changes ? "many changes" : "cursor expired",
+        });
+      // Taken before the lists, so mail that arrives while they run is replayed next time.
+      nextCursor = await deps.mail.getCursor(account, timed);
+      inbox = await listWindow(deps.mail, account, timed, "in:inbox", after, windowStart);
+      const sent = await listWindow(deps.mail, account, timed, "in:sent", after, windowStart);
+      partial = inbox.partial || sent.partial;
+      for (const [listed, flag] of [
+        [inbox, "inInbox"],
+        [sent, "fromSelf"],
+      ] as const) {
+        for (const message of listed.messages) {
+          const entry = merged.get(message.id) ?? { message, inInbox: false, fromSelf: false };
+          entry[flag] = true;
+          merged.set(message.id, entry);
+        }
+      }
     }
+  } catch (error) {
+    return fail(error);
   }
 
   try {
@@ -151,6 +202,11 @@ export async function syncMailbox(
           FOR UPDATE`;
         if (owned.length === 0) return "skipped" as const;
 
+        // A window sync turns the flag on here and clears it below for mail that left the list.
+        // A change sync sees every label change, so the labels are the truth.
+        const inInboxUpdate = inbox
+          ? Prisma.sql`mail_messages."inInbox" OR EXCLUDED."inInbox"`
+          : Prisma.sql`EXCLUDED."inInbox"`;
         const entries = [...merged.values()];
         for (let i = 0; i < entries.length; i += UPSERT_CHUNK) {
           const values = entries.slice(i, i + UPSERT_CHUNK).map(
@@ -178,17 +234,22 @@ export async function syncMailbox(
               snippet = EXCLUDED.snippet,
               "receivedAt" = EXCLUDED."receivedAt",
               unread = EXCLUDED.unread,
-              "inInbox" = mail_messages."inInbox" OR EXCLUDED."inInbox",
+              "inInbox" = ${inInboxUpdate},
               "fromSelf" = mail_messages."fromSelf" OR EXCLUDED."fromSelf",
               "seenAt" = EXCLUDED."seenAt"`;
         }
 
         const scope = { connectionId: account.id, spaceId, userId };
+        if (deletedIds.length) {
+          await tx.cachedMailMessage.deleteMany({
+            where: { ...scope, providerMessageId: { in: deletedIds } },
+          });
+        }
         await tx.cachedMailMessage.updateMany({
           where: { ...scope, inInbox: true, receivedAt: { lt: windowStart } },
           data: { inInbox: false },
         });
-        if (!partial) {
+        if (inbox && !partial) {
           // A capped list shows only the newest 200, so older rows cannot be judged.
           const oldest = inbox.messages.at(-1);
           await tx.cachedMailMessage.updateMany({
@@ -219,6 +280,7 @@ export async function syncMailbox(
         await tx.$executeRaw`
           UPDATE mail_sync_states
           SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL, "needsReconnect" = false,
+              "changeCursor" = COALESCE(${nextCursor ?? null}::text, "changeCursor"),
               "syncStartedAt" = NULL, "claimToken" = NULL
           WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
         return "synced" as const;

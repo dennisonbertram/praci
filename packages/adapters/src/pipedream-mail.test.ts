@@ -4,6 +4,7 @@ import { createMailEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import { PipedreamConnector } from "./pipedream-connector.js";
 import {
+  assertMailChangesConformance,
   assertMailConformance,
   assertMailModifyConformance,
   assertMailWriteConformance,
@@ -126,6 +127,7 @@ describe("PipedreamConnector.proxy", () => {
     await assertMailConformance(provider, { gmail: fake.mail.gmail, accounts });
     await assertMailWriteConformance(provider, { gmail: fake.mail.gmail, accounts });
     await assertMailModifyConformance(provider, { gmail: fake.mail.gmail, accounts });
+    await assertMailChangesConformance(provider, { gmail: fake.mail.gmail, accounts });
     expect(fake.proxied.length).toBeGreaterThan(0);
   });
 

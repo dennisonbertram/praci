@@ -93,6 +93,32 @@ describe("GmailMailProvider with the emulator", () => {
     await assertMailConformance(emulator.provider, emulator);
   });
 
+  it("collects changes across history pages and keeps the cursor of the last page", async () => {
+    const gmail = box([msg("m1")]);
+    const { provider } = over(gmail);
+    const start = await provider.getCursor(account(), context());
+    for (let i = 0; i < 520; i++) gmail.addMessage("x", msg(`n${i}`));
+    gmail.deleteMessage("x", "n0");
+
+    const changes = await provider.listChanges(account(), start, context());
+
+    expect(changes?.changedIds).toHaveLength(519);
+    expect(changes?.deletedIds).toEqual(["n0"]);
+    expect(changes?.cursor).toBe(await provider.getCursor(account(), context()));
+    expect(gmail.requests.filter((r) => r.url.includes("/history?"))).toHaveLength(2);
+  });
+
+  it("gives auth before any request when the account belongs to another user", async () => {
+    const gmail = box([msg("m1")]);
+    const { provider } = over(gmail);
+    const other = account({ userId: "user-2" });
+    expect(await rejection(provider.getCursor(other, context()))).toMatchObject({ kind: "auth" });
+    expect(await rejection(provider.listChanges(other, "1000", context()))).toMatchObject({
+      kind: "auth",
+    });
+    expect(gmail.requests).toHaveLength(0);
+  });
+
   it("lists accounts through createMailProvider scope and rejects a foreign scope", async () => {
     const emulator = createMailEmulator({ now: NOW });
     const [first] = emulator.accounts as [MailAccount];

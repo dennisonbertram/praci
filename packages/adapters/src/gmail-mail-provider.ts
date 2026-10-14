@@ -6,6 +6,7 @@ import {
   type MailAccount,
   type MailAddress,
   type MailAttachment,
+  type MailChanges,
   type MailDraftInput,
   type MailDraftRef,
   type MailLabel,
@@ -43,6 +44,7 @@ const MAX_INLINE_TOTAL_BYTES = 4_194_304;
 const METADATA_QUERY = ["From", "To", "Cc", "Subject", "Date"]
   .map((name) => `metadataHeaders=${name}`)
   .join("&");
+const HISTORY_TYPES = ["messageAdded", "messageDeleted", "labelAdded", "labelRemoved"];
 const AUTH_REASONS = new Set(["authError", "insufficientPermissions"]);
 const RATE_REASONS = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
 
@@ -462,6 +464,58 @@ export class GmailMailProvider implements MailProvider {
     return {
       labelIds: data.labelIds.filter((id: unknown): id is string => typeof id === "string"),
     };
+  }
+
+  async getCursor(account: MailAccount, context: AdapterContext): Promise<string> {
+    assertScope(account, context);
+    const id = asRecord(await this.request(account, context, `${GMAIL}/profile`))?.historyId;
+    if ((typeof id !== "string" && typeof id !== "number") || !String(id))
+      throw new MailProviderError("unavailable", "Unexpected mail response");
+    return String(id);
+  }
+
+  async listChanges(
+    account: MailAccount,
+    cursor: string,
+    context: AdapterContext,
+  ): Promise<MailChanges | null> {
+    assertScope(account, context);
+    if (!/^\d+$/.test(cursor)) return null;
+    const changed = new Set<string>();
+    const deleted = new Set<string>();
+    let latest = cursor;
+    let pageToken: string | undefined;
+    do {
+      const params = new URLSearchParams({ startHistoryId: cursor, maxResults: "500" });
+      for (const type of HISTORY_TYPES) params.append("historyTypes", type);
+      if (pageToken) params.set("pageToken", pageToken);
+      let page: Record<string, unknown> | undefined;
+      try {
+        page = asRecord(await this.request(account, context, `${GMAIL}/history?${params}`));
+      } catch (error) {
+        // Gmail answers 404 once it has dropped history that old.
+        if (error instanceof MailProviderError && error.kind === "not_found") return null;
+        throw error;
+      }
+      for (const record of Array.isArray(page?.history) ? page.history : []) {
+        const entry = asRecord(record);
+        for (const [key, into] of [
+          ["messagesAdded", changed],
+          ["labelsAdded", changed],
+          ["labelsRemoved", changed],
+          ["messagesDeleted", deleted],
+        ] as const) {
+          for (const item of Array.isArray(entry?.[key]) ? (entry[key] as unknown[]) : []) {
+            const id = asRecord(asRecord(item)?.message)?.id;
+            if (typeof id === "string" && id) into.add(id);
+          }
+        }
+      }
+      if (typeof page?.historyId === "string" && page.historyId) latest = page.historyId;
+      pageToken = typeof page?.nextPageToken === "string" ? page.nextPageToken : undefined;
+    } while (pageToken);
+    for (const id of deleted) changed.delete(id);
+    return { cursor: latest, changedIds: [...changed], deletedIds: [...deleted] };
   }
 
   async createDraft(

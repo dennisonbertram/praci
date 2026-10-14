@@ -10,6 +10,7 @@ import { createMailEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import { parseRawMime } from "./mime-parse.js";
 import {
+  assertMailChangesConformance,
   assertMailModifyConformance,
   assertMailWriteConformance,
 } from "./testing/mail-conformance.js";
@@ -95,6 +96,7 @@ describe("GmailMailProvider drafts", () => {
   it("passes the shared label conformance suite", async () => {
     const { provider, mail } = setup();
     await assertMailModifyConformance(provider, mail);
+    await assertMailChangesConformance(provider, mail);
   });
 
   it("saves a new draft without sending, then replaces it in place", async () => {

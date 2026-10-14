@@ -11,6 +11,7 @@ import { parseRawMime } from "./mime-parse.js";
 
 const PREFIX = "/gmail/v1/users/me/";
 const DAY_MS = 86_400_000;
+const HISTORY_START = 1000;
 const DEFAULT_NOW = new Date("2026-10-01T12:00:00Z");
 const SYSTEM_LABELS = [
   "INBOX",
@@ -93,10 +94,24 @@ interface Stored {
   /** attachmentId to base64url bytes, for parts the payload only references. */
   files: Map<string, string>;
 }
+/** One entry of the mailbox change log that `users.history.list` serves. */
+interface HistoryEvent {
+  id: number;
+  type: "messageAdded" | "messageDeleted" | "labelAdded" | "labelRemoved";
+  messageId: string;
+  threadId: string;
+  /** The message's labels for an add; the labels that changed for a label event. */
+  labelIds: string[];
+}
 interface Mailbox {
   address: string;
   messages: Stored[];
   drafts: Map<string, EmulatedDraft>;
+  /** Id of the latest change; what `profile` reports and `history.list` starts after. */
+  historyId: number;
+  /** History before this id has expired: a `startHistoryId` below it is a 404, as in Gmail. */
+  historyFloor: number;
+  history: HistoryEvent[];
 }
 /** A draft or sent message as the emulator holds it: the base64url-decoded RFC 2822 text. */
 export interface EmulatedDraft {
@@ -134,6 +149,9 @@ export class GmailApiEmulator {
         address: mailbox.address,
         messages: mailbox.messages.map(store).sort(newestFirst),
         drafts: new Map(),
+        historyId: HISTORY_START,
+        historyFloor: HISTORY_START,
+        history: [],
       });
     }
   }
@@ -152,6 +170,37 @@ export class GmailApiEmulator {
     const mailbox = this.mailboxes.get(seededRef);
     if (!mailbox) throw new Error(`No seeded mailbox ${seededRef}`);
     this.mailboxes.set(accountRef, mailbox);
+  }
+
+  /** Delivers a message, as if it arrived from outside. It lands in the change log. */
+  addMessage(accountRef: string, message: EmulatedMessage): void {
+    const mailbox = this.mailbox(accountRef);
+    const stored = store(message);
+    mailbox.messages.push(stored);
+    mailbox.messages.sort(newestFirst);
+    record(mailbox, "messageAdded", stored, stored.labelIds);
+  }
+
+  /** Permanently deletes a message, as if the user emptied the trash. */
+  deleteMessage(accountRef: string, id: string): void {
+    const mailbox = this.mailbox(accountRef);
+    const stored = mailbox.messages.find((m) => m.id === id);
+    if (!stored) throw new Error(`No message ${id}`);
+    mailbox.messages = mailbox.messages.filter((m) => m !== stored);
+    record(mailbox, "messageDeleted", stored, []);
+  }
+
+  /** Forgets the change log, so every cursor taken so far gets a 404 from `history.list`. */
+  expireHistory(accountRef: string): void {
+    const mailbox = this.mailbox(accountRef);
+    mailbox.historyFloor = ++mailbox.historyId;
+    mailbox.history = [];
+  }
+
+  private mailbox(accountRef: string): Mailbox {
+    const mailbox = this.mailboxes.get(accountRef);
+    if (!mailbox) throw new Error(`No seeded mailbox ${accountRef}`);
+    return mailbox;
   }
 
   /** Fail the next `times` matching requests, after letting `skip` matching ones through. */
@@ -230,10 +279,12 @@ export class GmailApiEmulator {
         status: 200,
         data: {
           emailAddress: mailbox.address,
+          historyId: String(mailbox.historyId),
           messagesTotal: mailbox.messages.length,
           threadsTotal: new Set(mailbox.messages.map((m) => m.threadId)).size,
         },
       };
+    if (path === "history") return historyList(mailbox, parsed.searchParams);
     if (path === "messages") return list(mailbox, parsed.searchParams);
     const id = /^messages\/([^/]+)$/.exec(path)?.[1];
     if (id) return get(mailbox, decodeURIComponent(id), parsed.searchParams);
@@ -281,8 +332,10 @@ export class GmailApiEmulator {
       const sentId = `sent-${++this.sequence}`;
       const key = this.keyOf(accountRef);
       this.sent.set(key, [...(this.sent.get(key) ?? []), { ...draft, id: sentId }]);
-      mailbox.messages.push(storeSent(sentId, draft, mailbox.address, this.clock()));
+      const stored = storeSent(sentId, draft, mailbox.address, this.clock());
+      mailbox.messages.push(stored);
       mailbox.messages.sort(newestFirst);
+      record(mailbox, "messageAdded", stored, stored.labelIds);
       return { status: 200, data: { id: sentId, threadId: draft.threadId, labelIds: ["SENT"] } };
     }
     const id = /^drafts\/([^/]+)$/.exec(path)?.[1];
@@ -380,12 +433,78 @@ function modifyMessage(
     Array.isArray(ids) && ids.every((label) => typeof label === "string" && known.has(label));
   if (!valid(addLabelIds) || !valid(removeLabelIds))
     return fail(400, "invalidArgument", "Invalid label");
+  const before = message.labelIds;
   message.labelIds = [
-    ...new Set([...message.labelIds.filter((l) => !removeLabelIds.includes(l)), ...addLabelIds]),
+    ...new Set([...before.filter((l) => !removeLabelIds.includes(l)), ...addLabelIds]),
   ];
+  const removed = before.filter((l) => !message.labelIds.includes(l));
+  const added = message.labelIds.filter((l) => !before.includes(l));
+  if (removed.length) record(mailbox, "labelRemoved", message, removed);
+  if (added.length) record(mailbox, "labelAdded", message, added);
   return {
     status: 200,
     data: { id: message.id, threadId: message.threadId, labelIds: message.labelIds },
+  };
+}
+
+function record(
+  mailbox: Mailbox,
+  type: HistoryEvent["type"],
+  message: Stored,
+  labelIds: string[],
+): void {
+  mailbox.history.push({
+    id: ++mailbox.historyId,
+    type,
+    messageId: message.id,
+    threadId: message.threadId,
+    labelIds: [...labelIds],
+  });
+}
+
+const HISTORY_TYPES = ["messageAdded", "messageDeleted", "labelAdded", "labelRemoved"];
+
+/** users.history.list: events after `startHistoryId` as Gmail's typed record arrays, paged. */
+function historyList(mailbox: Mailbox, params: URLSearchParams): ConnectorProxyResponse {
+  const start = params.get("startHistoryId");
+  if (start === null || !/^\d+$/.test(start))
+    return fail(400, "invalidArgument", "startHistoryId is required");
+  const types = params.getAll("historyTypes");
+  if (types.some((type) => !HISTORY_TYPES.includes(type)))
+    return fail(400, "invalidArgument", "Invalid historyTypes");
+  const rawSize = params.get("maxResults") ?? "100";
+  const size = /^\d+$/.test(rawSize) ? Number(rawSize) : 0;
+  if (size < 1 || size > 500) return fail(400, "invalidArgument", "maxResults must be 1 to 500");
+  const token = params.get("pageToken");
+  const offset = token === null ? 0 : /^\d+$/.test(token) ? Number(token) : -1;
+  if (offset < 0) return fail(400, "invalidArgument", "Invalid pageToken");
+  if (Number(start) < mailbox.historyFloor || Number(start) > mailbox.historyId)
+    return fail(404, "notFound", "Requested entity was not found.");
+  const events = mailbox.history.filter(
+    (event) => event.id > Number(start) && (!types.length || types.includes(event.type)),
+  );
+  const page = events.slice(offset, offset + size).map((event) => {
+    const message = { id: event.messageId, threadId: event.threadId, labelIds: event.labelIds };
+    return {
+      id: String(event.id),
+      messages: [{ id: event.messageId, threadId: event.threadId }],
+      ...(event.type === "messageAdded" ? { messagesAdded: [{ message }] } : {}),
+      ...(event.type === "messageDeleted" ? { messagesDeleted: [{ message }] } : {}),
+      ...(event.type === "labelAdded"
+        ? { labelsAdded: [{ message, labelIds: event.labelIds }] }
+        : {}),
+      ...(event.type === "labelRemoved"
+        ? { labelsRemoved: [{ message, labelIds: event.labelIds }] }
+        : {}),
+    };
+  });
+  return {
+    status: 200,
+    data: {
+      ...(page.length ? { history: page } : {}),
+      ...(offset + size < events.length ? { nextPageToken: String(offset + size) } : {}),
+      historyId: String(mailbox.historyId),
+    },
   };
 }
 
