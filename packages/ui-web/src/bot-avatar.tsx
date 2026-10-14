@@ -1,10 +1,11 @@
-import type { GrokColorDef } from "@rakazo/core";
+import type { AvatarMood, GrokColorDef } from "@rakazo/core";
 import {
   ACTIVE_RUN_STATUSES,
   avatarIdentitySeed,
   DEFAULT_GROK_BOT_COLOR,
   GROK_BOT_COLORS,
   GROK_COLOR_LIST,
+  moodForRunStatus,
   organicAvatarPath,
   resolvePersonaColorDef,
   SHIPPED_BOT_AVATAR_CENTER,
@@ -16,14 +17,22 @@ import {
 } from "@rakazo/core";
 import { tokens } from "@rakazo/ui-tokens";
 import type { CSSProperties } from "react";
-import { memo, useId, useMemo, useSyncExternalStore } from "react";
+import { memo, useEffect, useId, useMemo, useRef } from "react";
 import type { AvatarStyle } from "./avatar-style.js";
 import { useAvatarStyle } from "./avatar-style.js";
 import { cn } from "./lib/utils.js";
+import type { AvatarFaceGeometry } from "./use-avatar-face.js";
+import { useAvatarFace, useAvatarReaction, useReducedMotion } from "./use-avatar-face.js";
 import "./styles.css";
 
 export type { GrokColorDef };
-export { DEFAULT_GROK_BOT_COLOR, GROK_BOT_COLORS, GROK_COLOR_LIST, resolvePersonaColorDef };
+export {
+  DEFAULT_GROK_BOT_COLOR,
+  GROK_BOT_COLORS,
+  GROK_COLOR_LIST,
+  resolvePersonaColorDef,
+  useAvatarReaction,
+};
 
 export const GROK_SHAPES = SHIPPED_BOT_AVATAR_SHAPES;
 export const SHIPPED_SHAPE_KEYS = SHIPPED_BOT_AVATAR_SHAPE_KEYS;
@@ -93,7 +102,15 @@ export interface BotAvatarProps {
   identity?: string;
   className?: string;
   variant?: AvatarStyle;
+  /** Overrides the mood derived from `status`. */
+  mood?: AvatarMood;
+  /** Gaze target, -1..1 on each axis. */
+  lookAt?: { x: number; y: number };
 }
+
+/** Short emotes when a run ends: [mood, duration in ms]. */
+const COMPLETED_REACTION = ["happy", 1600] as const;
+const FAILED_REACTION = ["sad", 2000] as const;
 
 export const BotAvatar = memo(function BotAvatar({
   color,
@@ -102,9 +119,21 @@ export const BotAvatar = memo(function BotAvatar({
   identity = "",
   className,
   variant,
+  mood: moodProp,
+  lookAt,
 }: BotAvatarProps) {
   const id = useId().replace(/[^a-zA-Z0-9-_]/g, "");
   const isWorking = ACTIVE_RUN_STATUSES.some((s) => s === status);
+  const [reaction, react] = useAvatarReaction();
+  const previousStatus = useRef(status);
+  useEffect(() => {
+    const was = previousStatus.current;
+    previousStatus.current = status;
+    if (!ACTIVE_RUN_STATUSES.some((s) => s === was)) return;
+    if (status === "completed") react(...COMPLETED_REACTION);
+    else if (status === "failed") react(...FAILED_REACTION);
+  }, [status, react]);
+  const mood = moodProp ?? reaction ?? moodForRunStatus(status);
   const preferredVariant = useAvatarStyle();
 
   const parsed = useMemo(() => parseBotAvatar(color, identity), [color, identity]);
@@ -167,6 +196,8 @@ export const BotAvatar = memo(function BotAvatar({
         size={size}
         isWorking={isWorking}
         className={className}
+        mood={mood}
+        lookAt={lookAt}
       />
     );
   }
@@ -180,9 +211,62 @@ export const BotAvatar = memo(function BotAvatar({
         className={className}
         identity={effectiveId}
         gradientId={id}
+        mood={mood}
+        lookAt={lookAt}
       />
     );
   }
+
+  return (
+    <ShapeAvatar
+      colorDef={colorDef}
+      shapePath={shapePath}
+      size={size}
+      isWorking={isWorking}
+      className={className}
+      id={id}
+      seed={avatarIdentitySeed(effectiveId)}
+      mood={mood}
+      lookAt={lookAt}
+    />
+  );
+});
+
+const SHAPE_EYE = { w: 20, h: 14, dx: 29, dy: -8 };
+
+function ShapeAvatar({
+  colorDef,
+  shapePath,
+  size,
+  isWorking,
+  className,
+  id,
+  seed,
+  mood,
+  lookAt,
+}: {
+  colorDef: GrokColorDef;
+  shapePath: string;
+  size: number;
+  isWorking: boolean;
+  className?: string;
+  id: string;
+  seed: number;
+  mood: AvatarMood;
+  lookAt?: { x: number; y: number };
+}) {
+  const geometry: AvatarFaceGeometry = {
+    eyes: [
+      { cx: CENTER - SHAPE_EYE.dx, cy: CENTER + SHAPE_EYE.dy },
+      { cx: CENTER + SHAPE_EYE.dx, cy: CENTER + SHAPE_EYE.dy },
+    ],
+    w: SHAPE_EYE.w,
+    h: SHAPE_EYE.h,
+    travelX: 7,
+    travelY: 5,
+    body: { cx: CENTER, cy: CENTER, bob: 8 },
+  };
+  const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
 
   return (
     <div
@@ -195,6 +279,7 @@ export const BotAvatar = memo(function BotAvatar({
         height: size,
       }}
       data-working={isWorking}
+      data-mood={mood}
     >
       <svg
         className="rakazo-bot-avatar-ring absolute pointer-events-none"
@@ -249,21 +334,21 @@ export const BotAvatar = memo(function BotAvatar({
             <stop offset="100%" stopColor={colorDef.dark} />
           </linearGradient>
         </defs>
-        <g>
+        <g ref={face.bodyRef} transform={face.initial.body}>
           <path d={shapePath} fill={`url(#grok-ink-${id})`} />
           <g fill={colorDef.eyeColor} className="grok-character-eyes">
-            <ellipse cx={CENTER - 29} cy={CENTER - 8} rx={10} ry={7} />
-            <ellipse cx={CENTER + 29} cy={CENTER - 8} rx={10} ry={7} />
+            <path ref={face.leftRef} {...face.initial.left} />
+            <path ref={face.rightRef} {...face.initial.right} />
           </g>
         </g>
       </svg>
     </div>
   );
-});
+}
 
 const VISOR_BORDER_PX = 1;
 
-function robotFaceLayout(size: number) {
+export function robotFaceLayout(size: number) {
   const visorW = Math.round(size * 0.68);
   const visorH = Math.round(size * 0.44);
   const visorInnerW = Math.max(0, visorW - VISOR_BORDER_PX * 2);
@@ -287,6 +372,8 @@ function RobotAvatar({
   className,
   identity,
   gradientId,
+  mood,
+  lookAt,
 }: {
   colorDef: GrokColorDef;
   size: number;
@@ -294,25 +381,27 @@ function RobotAvatar({
   className?: string;
   identity: string;
   gradientId: string;
+  mood: AvatarMood;
+  lookAt?: { x: number; y: number };
 }) {
   const seed = avatarIdentitySeed(identity || colorDef.hex);
-  const eyeVariant = seed % 4;
-  const idleDuration = (4.2 + ((seed * 7) % 28) / 10).toFixed(2);
-  const idleDelay = (-(((seed * 13) % 45) / 10)).toFixed(2);
-  const { visorW, visorH, eyeW, eyeH, eyeGap, eyeRadius } = robotFaceLayout(size);
-  const eyeGlow = `0 0 4px #fff, 0 0 8px #fff, 0 0 14px ${colorDef.light}`;
-  const idleEyeAnimation = {
-    "--rakazo-eye-animation-name": `rakazo-eyes-idle-${eyeVariant}`,
-    "--rakazo-eye-animation-duration": `${idleDuration}s`,
-    "--rakazo-eye-animation-easing": "cubic-bezier(0.4, 0, 0.2, 1)",
-    "--rakazo-eye-animation-delay": `${idleDelay}s`,
-  } as CSSProperties;
-  const workingEyeAnimation = {
-    "--rakazo-eye-animation-name": "rakazo-eyes-working",
-    "--rakazo-eye-animation-duration": "1.4s",
-    "--rakazo-eye-animation-easing": "ease-in-out",
-    "--rakazo-eye-animation-delay": "0s",
-  } as CSSProperties;
+  const { visorW, visorH, eyeW, eyeH, eyeGap } = robotFaceLayout(size);
+  const innerW = visorW - VISOR_BORDER_PX * 2;
+  const innerH = visorH - VISOR_BORDER_PX * 2;
+  const centerX = innerW / 2;
+  const centerY = innerH / 2;
+  const geometry: AvatarFaceGeometry = {
+    eyes: [
+      { cx: centerX - (eyeGap + eyeW) / 2, cy: centerY },
+      { cx: centerX + (eyeGap + eyeW) / 2, cy: centerY },
+    ],
+    w: eyeW,
+    h: eyeH,
+    travelX: Math.max(0, (innerW - eyeW * 2 - eyeGap) / 2) * 0.7,
+    travelY: Math.max(0, (innerH - eyeH) / 2) * 0.7,
+  };
+  const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
+  const eyeGlow = `drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 ${Math.max(2, size * 0.1)}px ${colorDef.light})`;
 
   return (
     <div
@@ -321,6 +410,7 @@ function RobotAvatar({
         className,
       )}
       data-working={isWorking}
+      data-mood={mood}
       style={{
         width: size,
         height: size,
@@ -372,34 +462,34 @@ function RobotAvatar({
           border: "1px solid rgba(255,255,255,0.14)",
         }}
       >
-        {(["idle", "working"] as const).map((mode) => (
-          <div
-            key={mode}
-            className={`rakazo-bot-avatar-eyes rakazo-bot-avatar-eyes-${mode} absolute inset-0 z-10 flex items-center justify-center`}
-            style={{
-              gap: eyeGap,
-              ...(mode === "idle" ? idleEyeAnimation : workingEyeAnimation),
-            }}
-          >
-            {[0, 1].map((eye) => (
-              <span
-                key={eye}
-                className="block"
-                style={{
-                  width: eyeW,
-                  height: eyeH,
-                  borderRadius: eyeRadius,
-                  backgroundColor: "#fff",
-                  boxShadow: eyeGlow,
-                }}
-              />
-            ))}
-          </div>
-        ))}
+        <svg
+          className="rakazo-bot-avatar-eyes absolute inset-0 z-10 overflow-visible"
+          width="100%"
+          height="100%"
+          viewBox={`0 0 ${innerW} ${innerH}`}
+          fill="#fff"
+          style={{ filter: eyeGlow }}
+          aria-hidden="true"
+        >
+          <path ref={face.leftRef} {...face.initial.left} />
+          <path ref={face.rightRef} {...face.initial.right} />
+        </svg>
       </div>
     </div>
   );
 }
+
+const ORGANIC_FACE: AvatarFaceGeometry = {
+  eyes: [
+    { cx: -10.5, cy: 0 },
+    { cx: 10.5, cy: 0 },
+  ],
+  w: 7,
+  h: 24,
+  travelX: 6,
+  travelY: 4,
+  body: { cx: 0, cy: 0, bob: 4 },
+};
 
 function OrganicAvatar({
   color,
@@ -407,22 +497,23 @@ function OrganicAvatar({
   size,
   isWorking,
   className,
+  mood,
+  lookAt,
 }: {
   color: string;
   identity?: string;
   size: number;
   isWorking: boolean;
   className?: string;
+  mood: AvatarMood;
+  lookAt?: { x: number; y: number };
 }) {
-  const reducedMotion = useSyncExternalStore(
-    subscribeToReducedMotion,
-    reducedMotionSnapshot,
-    () => false,
-  );
+  const reducedMotion = useReducedMotion();
   const seed = avatarIdentitySeed(identity || color || DEFAULT_GROK_BOT_COLOR);
   const duration = `${4.8 + (seed % 24) / 10}s`;
   const shapeA = organicAvatarPath(seed);
   const shapeB = organicAvatarPath(seed, 0.42);
+  const face = useAvatarFace({ seed, mood, size, geometry: ORGANIC_FACE, lookAt });
 
   return (
     <svg
@@ -430,66 +521,48 @@ function OrganicAvatar({
       aria-hidden="true"
       className={cn("rakazo-organic-avatar overflow-visible select-none", className)}
       data-working={isWorking}
+      data-mood={mood}
       data-shape-family={seed % 10}
-      data-eye-pattern={seed % 4}
       style={{
         width: size,
         height: size,
         flex: "none",
       }}
     >
-      {(["idle", "working"] as const).map((mode) => (
-        <path
-          key={mode}
-          className={`rakazo-organic-avatar-body rakazo-organic-avatar-body-${mode}`}
-          d={shapeA}
-          fill={color}
-          style={
-            {
-              "--rakazo-organic-path": `path("${shapeA}")`,
-              filter:
-                mode === "working"
-                  ? `drop-shadow(0 0 ${Math.round(size * 0.16)}px ${color})`
-                  : "drop-shadow(0 2px 3px rgba(0,0,0,.34))",
-            } as CSSProperties
-          }
-        >
-          {!reducedMotion ? (
-            <animate
-              attributeName="d"
-              values={`${shapeA};${shapeB};${shapeA}`}
-              dur={duration}
-              repeatCount="indefinite"
-            />
-          ) : null}
-        </path>
-      ))}
-      <g transform={`rotate(${(seed % 9) - 4})`}>
+      <g ref={face.bodyRef} transform={face.initial.body}>
         {(["idle", "working"] as const).map((mode) => (
-          <g
+          <path
             key={mode}
-            className={`rakazo-organic-avatar-eyes rakazo-organic-avatar-eyes-${mode}`}
-            fill={tokens.background}
+            className={`rakazo-organic-avatar-body rakazo-organic-avatar-body-${mode}`}
+            d={shapeA}
+            fill={color}
+            style={
+              {
+                "--rakazo-organic-path": `path("${shapeA}")`,
+                filter:
+                  mode === "working"
+                    ? `drop-shadow(0 0 ${Math.round(size * 0.16)}px ${color})`
+                    : "drop-shadow(0 2px 3px rgba(0,0,0,.34))",
+              } as CSSProperties
+            }
           >
-            <rect x="-14" y="-12" width="7" height="24" rx="3.5" />
-            <rect x="7" y="-12" width="7" height="24" rx="3.5" />
-          </g>
+            {!reducedMotion ? (
+              <animate
+                attributeName="d"
+                values={`${shapeA};${shapeB};${shapeA}`}
+                dur={duration}
+                repeatCount="indefinite"
+              />
+            ) : null}
+          </path>
         ))}
+        <g transform={`rotate(${(seed % 9) - 4})`} fill={tokens.background}>
+          <path ref={face.leftRef} {...face.initial.left} />
+          <path ref={face.rightRef} {...face.initial.right} />
+        </g>
       </g>
     </svg>
   );
-}
-
-const reducedMotionMedia = "(prefers-reduced-motion: reduce)";
-
-function reducedMotionSnapshot(): boolean {
-  return window.matchMedia(reducedMotionMedia).matches;
-}
-
-function subscribeToReducedMotion(onChange: () => void): () => void {
-  const media = window.matchMedia(reducedMotionMedia);
-  media.addEventListener("change", onChange);
-  return () => media.removeEventListener("change", onChange);
 }
 
 export function GrokShapePreview({

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar faces test</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #0b0b0d;
+        color: #cfcfd4;
+        font: 12px ui-sans-serif, system-ui, sans-serif;
+      }
+      #root {
+        display: grid;
+        grid-template-columns: 110px repeat(10, 96px);
+        gap: 6px 4px;
+        align-items: center;
+        justify-items: center;
+      }
+      .label {
+        justify-self: start;
+      }
+      .heading {
+        color: #8a8a92;
+      }
+      .sizes {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        grid-column: span 10;
+        justify-self: start;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/e2e/fixtures/avatar-faces.tsx"></script>
+  </body>
+</html>

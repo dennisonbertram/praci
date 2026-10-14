@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./styles.css": "./src/styles.css",
+    "./avatar-ticker": "./src/avatar-ticker.ts",
     "./lib/utils": "./src/lib/utils.ts",
     "./components/ui/*": "./src/components/ui/*.tsx",
     "./hooks/*": "./src/hooks/*.ts"

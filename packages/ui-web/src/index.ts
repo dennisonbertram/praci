@@ -1,3 +1,4 @@
+export { AVATAR_MOODS, type AvatarMood, moodForRunStatus } from "@rakazo/core";
 export { type AvatarStyle, AvatarStyleProvider, useAvatarStyle } from "./avatar-style.js";
 export {
   BotAvatar,
@@ -9,6 +10,7 @@ export {
   parseBotAvatar,
   resolvePersonaColorDef,
   resolvePersonaShape,
+  useAvatarReaction,
   Wordmark,
 } from "./bot-avatar.js";
 export * from "./components/ui/alert-dialog.js";
