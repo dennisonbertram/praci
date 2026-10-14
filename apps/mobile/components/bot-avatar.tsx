@@ -1,31 +1,43 @@
 import type { AvatarStyle } from "@rakazo/contracts";
+import type { AvatarMood } from "@rakazo/core";
 import {
   ACTIVE_RUN_STATUSES,
   avatarIdentitySeed,
+  avatarRest,
+  moodForRunStatus,
   organicAvatarPath,
   SHIPPED_BOT_AVATAR_CENTER,
   SHIPPED_BOT_AVATAR_VIEWBOX,
 } from "@rakazo/core";
-import { memo, useEffect } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import { Image, View } from "react-native";
 import Animated, {
   cancelAnimation,
   Easing,
-  useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Ellipse, G, Path, Rect } from "react-native-svg";
+import Svg, { G, Path } from "react-native-svg";
+import {
+  type AvatarFaceGeometry,
+  reactionForTransition,
+  robotFaceLayout,
+} from "../lib/avatar-face";
 import { workingAvatarDuration, workingAvatarFrame } from "../lib/avatar-motion";
 import { mobileBotAvatarPresentation } from "../lib/bot-avatar";
 import { useI18n } from "../lib/i18n";
 import { useAvatarStyle } from "./avatar-style";
 import { NativeSymbol } from "./native-symbol";
+import { useAvatarFace, useAvatarReaction } from "./use-avatar-face";
 
-const AnimatedRect = Animated.createAnimatedComponent(Rect);
+export { useAvatarReaction };
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+
+type Look = { x: number; y: number };
 
 export const BotAvatar = memo(function BotAvatar({
   color,
@@ -34,6 +46,8 @@ export const BotAvatar = memo(function BotAvatar({
   identity,
   variant,
   muted = false,
+  mood: moodProp,
+  lookAt,
 }: {
   color: string;
   size?: number;
@@ -41,17 +55,28 @@ export const BotAvatar = memo(function BotAvatar({
   identity?: string;
   variant?: AvatarStyle;
   muted?: boolean;
+  /** Overrides the mood derived from `status`. */
+  mood?: AvatarMood;
+  /** Gaze target, -1..1 on each axis. */
+  lookAt?: Look;
 }) {
   const { t } = useI18n();
   const isWorking = ACTIVE_RUN_STATUSES.some((activeStatus) => activeStatus === status);
+  const [reaction, react] = useAvatarReaction();
+  const previousStatus = useRef(status);
+  useEffect(() => {
+    const was = previousStatus.current;
+    previousStatus.current = status;
+    const next = reactionForTransition(
+      ACTIVE_RUN_STATUSES.some((activeStatus) => activeStatus === was),
+      status,
+    );
+    if (next) react(next.mood, next.ms);
+  }, [status, react]);
+  const mood = moodProp ?? reaction ?? moodForRunStatus(status);
   const { avatarStyle } = useAvatarStyle();
   const parsed = mobileBotAvatarPresentation(color);
   const fillColor = parsed.kind === "shape" || parsed.kind === "color" ? parsed.color : color;
-  const visorW = Math.round(size * 0.68);
-  const visorH = Math.round(size * 0.44);
-  const eyeW = Math.max(3, Math.round(size * 0.11));
-  const eyeH = Math.max(4, Math.round(size * 0.17));
-  const gap = Math.max(3, Math.round(size * 0.11));
   const picture =
     parsed.kind === "image" && parsed.imageUrl ? (
       <View
@@ -70,45 +95,27 @@ export const BotAvatar = memo(function BotAvatar({
         eyeColor={parsed.eyeColor}
         shapePath={parsed.shapePath}
         size={size}
+        identity={identity || fillColor}
+        mood={mood}
+        lookAt={lookAt}
       />
     ) : (variant ?? avatarStyle) === "organic" ? (
-      <OrganicAvatar color={fillColor} identity={identity} size={size} isWorking={isWorking} />
+      <OrganicAvatar
+        color={fillColor}
+        identity={identity}
+        size={size}
+        isWorking={isWorking}
+        mood={mood}
+        lookAt={lookAt}
+      />
     ) : (
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: fillColor,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <View
-          style={{
-            width: visorW,
-            height: visorH,
-            borderRadius: Math.round(visorH * 0.52),
-            backgroundColor: "#0C0C0E",
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap,
-          }}
-        >
-          {[0, 1].map((eye) => (
-            <View
-              key={eye}
-              style={{
-                width: eyeW,
-                height: eyeH,
-                borderRadius: Math.max(2, Math.round(eyeW * 0.6)),
-                backgroundColor: "#fff",
-              }}
-            />
-          ))}
-        </View>
-      </View>
+      <RobotAvatar
+        color={fillColor}
+        identity={identity || fillColor}
+        size={size}
+        mood={mood}
+        lookAt={lookAt}
+      />
     );
   return (
     <View style={{ width: size, height: size }}>
@@ -158,43 +165,161 @@ export const BotAvatar = memo(function BotAvatar({
   );
 });
 
+const SHAPE_VIEWBOX_SIZE = 259;
+const SHAPE_EYE = { w: 20, h: 62, dx: 34, dy: 10 };
+
 function ShippedShapeAvatar({
   color,
   eyeColor,
   shapePath,
   size,
+  identity,
+  mood,
+  lookAt,
 }: {
   color: string;
   eyeColor: string;
   shapePath: string;
   size: number;
+  identity: string;
+  mood: AvatarMood;
+  lookAt?: Look;
 }) {
   const center = SHIPPED_BOT_AVATAR_CENTER;
+  const seed = avatarIdentitySeed(identity);
+  const geometry = useMemo<AvatarFaceGeometry>(
+    () => ({
+      eyes: [
+        { cx: center - SHAPE_EYE.dx, cy: center + SHAPE_EYE.dy },
+        { cx: center + SHAPE_EYE.dx, cy: center + SHAPE_EYE.dy },
+      ],
+      w: SHAPE_EYE.w,
+      h: SHAPE_EYE.h,
+      travelX: 10,
+      travelY: 7,
+      rest: avatarRest(seed),
+      bob: 8,
+    }),
+    [center, seed],
+  );
+  const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
+  const bodyStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: (face.frame.value.bodyY * size) / SHAPE_VIEWBOX_SIZE },
+      { scaleX: face.frame.value.bodyScaleX },
+      { scaleY: face.frame.value.bodyScaleY },
+    ],
+  }));
   return (
-    <Svg width={size} height={size} viewBox={SHIPPED_BOT_AVATAR_VIEWBOX}>
-      <Path d={shapePath} fill={color} />
-      <G fill={eyeColor}>
-        <Ellipse cx={center - 29} cy={center - 8} rx={10} ry={7} />
-        <Ellipse cx={center + 29} cy={center - 8} rx={10} ry={7} />
-      </G>
-    </Svg>
+    <Animated.View style={[{ width: size, height: size }, bodyStyle]}>
+      <Svg width={size} height={size} viewBox={SHIPPED_BOT_AVATAR_VIEWBOX}>
+        <Path d={shapePath} fill={color} />
+        <G fill={eyeColor}>
+          <AnimatedPath animatedProps={face.leftProps} d={face.initial.leftD} />
+          <AnimatedPath animatedProps={face.rightProps} d={face.initial.rightD} />
+        </G>
+      </Svg>
+    </Animated.View>
   );
 }
+
+function RobotAvatar({
+  color,
+  identity,
+  size,
+  mood,
+  lookAt,
+}: {
+  color: string;
+  identity: string;
+  size: number;
+  mood: AvatarMood;
+  lookAt?: Look;
+}) {
+  const seed = avatarIdentitySeed(identity);
+  const { visorW, visorH, innerW, innerH, eyeW, eyeH, eyeGap } = robotFaceLayout(size);
+  const geometry = useMemo<AvatarFaceGeometry>(() => {
+    const cx = innerW / 2;
+    const cy = innerH / 2;
+    return {
+      eyes: [
+        { cx: cx - (eyeGap + eyeW) / 2, cy },
+        { cx: cx + (eyeGap + eyeW) / 2, cy },
+      ],
+      w: eyeW,
+      h: eyeH,
+      travelX: Math.max(0, (innerW - eyeW * 2 - eyeGap) / 2) * 0.7,
+      travelY: Math.max(0, (innerH - eyeH) / 2) * 0.7,
+    };
+  }, [innerW, innerH, eyeW, eyeH, eyeGap]);
+  const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: color,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <View
+        style={{
+          width: visorW,
+          height: visorH,
+          borderRadius: Math.round(visorH * 0.52),
+          backgroundColor: "#0C0C0E",
+          overflow: "hidden",
+        }}
+      >
+        <Svg width={visorW} height={visorH} viewBox={`0 0 ${innerW} ${innerH}`}>
+          <G fill="#fff">
+            <AnimatedPath animatedProps={face.leftProps} d={face.initial.leftD} />
+            <AnimatedPath animatedProps={face.rightProps} d={face.initial.rightD} />
+          </G>
+        </Svg>
+      </View>
+    </View>
+  );
+}
+
+const ORGANIC_EYE = { w: 7, h: 24, dx: 10.5 };
 
 function OrganicAvatar({
   color,
   identity,
   size,
   isWorking,
+  mood,
+  lookAt,
 }: {
   color: string;
   identity?: string;
   size: number;
   isWorking: boolean;
+  mood: AvatarMood;
+  lookAt?: Look;
 }) {
   const seed = avatarIdentitySeed(identity || color || "#8B5CF6");
   const progress = useSharedValue(0);
   const reducedMotion = useReducedMotion();
+  const geometry = useMemo<AvatarFaceGeometry>(
+    () => ({
+      eyes: [
+        { cx: -ORGANIC_EYE.dx, cy: 0 },
+        { cx: ORGANIC_EYE.dx, cy: 0 },
+      ],
+      w: ORGANIC_EYE.w,
+      h: ORGANIC_EYE.h,
+      travelX: 4,
+      travelY: 3,
+      rest: avatarRest(seed),
+      bob: 4,
+    }),
+    [seed],
+  );
+  const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
 
   useEffect(() => {
     cancelAnimation(progress);
@@ -212,24 +337,17 @@ function OrganicAvatar({
   }, [isWorking, progress, reducedMotion, seed]);
 
   const bodyStyle = useAnimatedStyle(() => {
-    const frame = workingAvatarFrame(seed, progress.value);
+    const working = workingAvatarFrame(seed, progress.value);
+    const unit = size / 120;
     return {
       transform: [
-        { translateX: (frame.translationX * size) / 120 },
-        { translateY: (frame.translationY * size) / 120 },
-        { rotate: `${frame.rotation}deg` },
-        { scaleX: frame.scaleX },
-        { scaleY: frame.scaleY },
+        { translateX: working.translationX * unit },
+        { translateY: working.translationY * unit + face.frame.value.bodyY * unit },
+        { rotate: `${working.rotation}deg` },
+        { scaleX: working.scaleX * face.frame.value.bodyScaleX },
+        { scaleY: working.scaleY * face.frame.value.bodyScaleY },
       ],
     };
-  });
-  const leftEyeProps = useAnimatedProps(() => {
-    const frame = workingAvatarFrame(seed, progress.value);
-    return { x: -14 + frame.eyeOffsetX, y: -12 + frame.eyeOffsetY };
-  });
-  const rightEyeProps = useAnimatedProps(() => {
-    const frame = workingAvatarFrame(seed, progress.value);
-    return { x: 7 + frame.eyeOffsetX, y: -12 + frame.eyeOffsetY };
   });
 
   return (
@@ -237,21 +355,9 @@ function OrganicAvatar({
       <Animated.View style={[{ width: size, height: size }, bodyStyle]}>
         <Svg width={size} height={size} viewBox="-60 -60 120 120">
           <Path d={organicAvatarPath(seed)} fill={color} />
-          <G transform={`rotate(${(seed % 9) - 4})`}>
-            <AnimatedRect
-              animatedProps={leftEyeProps}
-              width={7}
-              height={24}
-              rx={3.5}
-              fill="#101014"
-            />
-            <AnimatedRect
-              animatedProps={rightEyeProps}
-              width={7}
-              height={24}
-              rx={3.5}
-              fill="#101014"
-            />
+          <G transform={`rotate(${(seed % 9) - 4})`} fill="#101014">
+            <AnimatedPath animatedProps={face.leftProps} d={face.initial.leftD} />
+            <AnimatedPath animatedProps={face.rightProps} d={face.initial.rightD} />
           </G>
         </Svg>
       </Animated.View>
