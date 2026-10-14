@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildApprovalAskBlock, normalizeMailEdits } from "./approval-ask.js";
+import { buildApprovalAskBlock, mailRequestIsValid, normalizeMailEdits } from "./approval-ask.js";
 
 describe("buildApprovalAskBlock", () => {
   it("binds the approval to its effect and redacts secrets", () => {
@@ -133,5 +133,26 @@ describe("normalizeMailEdits", () => {
     ],
   ])("rejects %s", (_name, edits) => {
     expect(normalizeMailEdits(edits)).toMatchObject({ ok: false });
+  });
+});
+
+describe("mail approval hardening", () => {
+  it("redacts run secrets in the account", () => {
+    const block = buildApprovalAskBlock(
+      "effect-1",
+      "mail_send",
+      { account: "me-token-secret@example.test", to: ["a@example.test"], subject: "s", body: "b" },
+      ["token-secret"],
+    );
+    expect(JSON.stringify(block)).not.toContain("token-secret");
+  });
+
+  it("checks the whole merged message, not only the changed fields", () => {
+    const many = Array.from({ length: 100 }, (_, i) => `u${i}@example.test`);
+    const stored = { to: many, subject: "s", body: "b" };
+    expect(mailRequestIsValid("mail_send", stored)).toBe(true);
+    expect(mailRequestIsValid("mail_send", { ...stored, cc: ["extra@example.test"] })).toBe(false);
+    expect(mailRequestIsValid("mail_send", { subject: "s", body: "b" })).toBe(false);
+    expect(mailRequestIsValid("mail_draft", { subject: "s", body: "b" })).toBe(true);
   });
 });

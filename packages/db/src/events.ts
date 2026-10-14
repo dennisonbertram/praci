@@ -17,7 +17,6 @@ import {
   resolveAskChoice,
   sanitizeJsonValue,
 } from "@rakazo/core";
-import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
 import { getLogger } from "@rakazo/logging";
 import { cancelRunsInTransaction } from "./cancel-runs.js";
 import type { Prisma, PrismaClient } from "./client.js";
@@ -219,6 +218,8 @@ export interface AnswerRunInput {
    * caller. Applied only to an "allow" answer by the run's own user.
    */
   mailEdits?: MailArgEdits;
+  /** Runs the mail tool's own checks on the merged message; false rejects the edit. */
+  checkMailRequest?: (kind: string, request: Record<string, unknown>) => boolean;
 }
 
 export interface MailArgEdits {
@@ -718,14 +719,8 @@ async function commitAnswerRunInput(
       // A send of a saved draft ignores these fields, so an edit would only mislead.
       if (approvalEffect.kind === "mail_send" && stored.draftId) return null;
       editedRequest = { ...stored, ...mailEdits };
-      const taken = await tx.externalEffect.findUnique({
-        where: {
-          idempotencyKey: approvalEffectKey(input.runId, approvalEffect.kind, editedRequest),
-        },
-        select: { id: true },
-      });
-      // The edited call is already another effect of this run; do not merge two sends.
-      if (taken && taken.id !== approvalEffect.id) return null;
+      // The whole merged message must pass the mail tool's checks before the approval is spent.
+      if (input.checkMailRequest?.(approvalEffect.kind, editedRequest) === false) return null;
     }
     if (input.answer === "always") {
       if (run.userId !== input.answeredByUserId) return null;
@@ -779,9 +774,9 @@ async function commitAnswerRunInput(
       where: { id: approvalEffect!.id },
       data: {
         status: allowed ? "approved" : "denied",
-        ...(editedRequest
-          ? mailEditedEffectData(approvalEffect!.kind, input.runId, editedRequest)
-          : {}),
+        // The idempotency key is not touched: it stays the key of the original call, so a
+        // re-emit of that call finds this effect in any status. The executor runs this request.
+        ...(editedRequest ? { request: editedRequest as Prisma.InputJsonValue } : {}),
       },
     });
     if (input.answer === "always") {
@@ -864,19 +859,6 @@ async function commitAnswerRunInput(
     payload: { messageId: message.id, role: "bot", blocks },
   });
   return { threadId: updated.threadId, seq: updated.seq };
-}
-
-/**
- * The executor replays an approved call from the stored request and looks its effect up by a key
- * derived from that request, so editing the request moves the key with it. The row (and its id)
- * stays the same, and it leaves "intended" in the same update, so a second answer cannot edit or
- * approve it again; the send record the mail tool keys on that key then exists once.
- */
-function mailEditedEffectData(kind: string, runId: string, request: Record<string, unknown>) {
-  return {
-    request: request as Prisma.InputJsonValue,
-    idempotencyKey: approvalEffectKey(runId, kind, request),
-  };
 }
 
 export async function answerRunInput(

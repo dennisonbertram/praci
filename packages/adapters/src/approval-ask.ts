@@ -118,7 +118,9 @@ function mailApproval(
   }
   return {
     tool: toolName,
-    ...(typeof args.account === "string" && args.account ? { account: args.account } : {}),
+    ...(typeof args.account === "string" && args.account
+      ? { account: redactSecrets(args.account, secrets) }
+      : {}),
     to: strings(args.to).map((item) => redactSecrets(item, secrets)),
     cc: strings(args.cc).map((item) => redactSecrets(item, secrets)),
     bcc: strings(args.bcc).map((item) => redactSecrets(item, secrets)),
@@ -169,6 +171,26 @@ export function normalizeMailEdits(
     };
   } catch (error) {
     if (error instanceof MailProviderError) return { ok: false, error: error.message };
+    throw error;
+  }
+}
+
+/** The checks the mail tools apply when they run, on a whole call's arguments. True when they pass. */
+export function mailRequestIsValid(kind: string, request: Record<string, unknown>): boolean {
+  try {
+    buildRawMessage(
+      {
+        to: parseRecipients(strings(request.to).join(", ")),
+        cc: parseRecipients(strings(request.cc).join(", ")),
+        bcc: parseRecipients(strings(request.bcc).join(", ")),
+        subject: typeof request.subject === "string" ? request.subject : "",
+        text: typeof request.body === "string" ? request.body : "",
+      },
+      { draft: kind === "mail_draft" },
+    );
+    return true;
+  } catch (error) {
+    if (error instanceof MailProviderError) return false;
     throw error;
   }
 }

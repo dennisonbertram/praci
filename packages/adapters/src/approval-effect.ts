@@ -5,11 +5,14 @@ export type ApprovalPausedToolResult = AgentToolExecutionResult & { terminate: t
 export interface ApprovedEffectReplay {
   kind: string;
   request: unknown;
+  /** The stored effect's key. Its request may have been edited, so the key is identity, not a hash of the args. */
+  idempotencyKey?: string;
 }
 
 export interface ApprovedEffectReplayQueue {
   nextToolName(): string | undefined;
   nextRequest(): unknown;
+  nextIdempotencyKey(): string | undefined;
   take(toolName: string): unknown;
   assertDrained(): void;
 }
@@ -25,6 +28,9 @@ export function createApprovedEffectReplayQueue(
     },
     nextRequest() {
       return pending[0]?.request;
+    },
+    nextIdempotencyKey() {
+      return pending[0]?.idempotencyKey;
     },
     take(toolName) {
       const next = pending[0];

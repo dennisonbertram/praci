@@ -8,6 +8,9 @@ import type {
 import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
+import { mailRequestIsValid } from "./approval-ask.js";
+import { createApprovedEffectReplayQueue } from "./approval-effect.js";
+import { recordEffect } from "./executor.js";
 import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import {
@@ -615,6 +618,8 @@ describe("mail write tools", () => {
     const original = { to: ["Jana <jana@example.test>"], subject: "Friday", body: "Draft text." };
     const effect = {
       id: "effect-1",
+      runId: "run-1",
+      spaceId: scope.spaceId,
       kind: "mail_send",
       status: "intended",
       request: original,
@@ -665,6 +670,7 @@ describe("mail write tools", () => {
         answeredByUserId: "user-1",
         answer: "allow",
         mailEdits: { subject: "Monday", body: "Edited text." },
+        checkMailRequest: mailRequestIsValid,
       });
 
     expect(await answer()).toBe(true);
@@ -672,10 +678,12 @@ describe("mail write tools", () => {
     expect(await answer()).toBe(false);
     expect(effect.request).toEqual({ ...original, subject: "Monday", body: "Edited text." });
 
-    // The executor replays the stored request and keys the tool on the effect's stored key.
-    const key = approvalEffectKey("run-1", "mail_send", effect.request);
+    // An edit never changes the effect's key; the executor runs the stored request under it.
+    const key = approvalEffectKey("run-1", "mail_send", original);
     expect(effect.idempotencyKey).toBe(key);
-    const { deps, gmail } = withSends();
+    const queue = createApprovedEffectReplayQueue([effect]);
+    expect(queue.nextIdempotencyKey()).toBe(key);
+    const { deps, gmail, sends } = withSends();
     const replay = { ...deps, idempotencyKey: key };
     expect(await run(replay, "mail_send", effect.request)).toMatchObject({
       ok: true,
@@ -684,6 +692,35 @@ describe("mail write tools", () => {
     expect(await run(replay, "mail_send", effect.request)).toEqual({ ok: true, alreadySent: true });
     expect(gmail.sentOf("a")).toHaveLength(1);
     expect(gmail.sentOf("a")[0]?.raw).toContain("Subject: Monday");
+    expect(sends.map((row) => row.clientId)).toEqual([`agent:${key}`]);
+
+    // Crash after the send, then the model re-emits the ORIGINAL args: the same effect is found
+    // by its key (here already completed), so nothing new is recorded and nothing is sent.
+    effect.status = "completed";
+    const created = vi.fn();
+    const found = await recordEffect(
+      {
+        prisma: { externalEffect: { findUnique: async () => effect, create: created } },
+        events: { append: async () => undefined },
+      } as never,
+      { id: "run-1", spaceId: scope.spaceId, threadId: "thread-1", botId: "bot-1" },
+      "mail_send",
+      approvalEffectKey("run-1", "mail_send", original),
+      original,
+    );
+    expect(found).toMatchObject({ duplicate: true, effect: { id: "effect-1" } });
+    expect(created).not.toHaveBeenCalled();
+    expect(gmail.sentOf("a")).toHaveLength(1);
+  });
+
+  it("replays an unedited approval under the key derived from its args", () => {
+    const args = { to: ["a@example.test"], subject: "s", body: "b" };
+    const key = approvalEffectKey("run-1", "mail_send", args);
+    const queue = createApprovedEffectReplayQueue([
+      { kind: "mail_send", request: args, idempotencyKey: key },
+    ]);
+    expect(queue.nextIdempotencyKey()).toBe(approvalEffectKey("run-1", "mail_send", args));
+    expect(queue.take("mail_send")).toEqual(args);
   });
 
   it("never repeats a send whose outcome is unclear", async () => {

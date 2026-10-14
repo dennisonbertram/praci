@@ -1,6 +1,5 @@
 import type { RealtimeFanout } from "@rakazo/adapter-kit";
 import { encodeLoginSecret } from "@rakazo/contracts";
-import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
 import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "./client.js";
 import {
@@ -3225,7 +3224,7 @@ describe("answerRunInput with mail edits", () => {
     kind?: string;
     request?: unknown;
     runUserId?: string;
-    taken?: { id: string } | null;
+    reject?: boolean;
   }) {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
@@ -3264,7 +3263,6 @@ describe("answerRunInput with mail edits", () => {
           status: "intended",
           request: "request" in options ? options.request : original,
         }),
-        findUnique: vi.fn().mockResolvedValue(options.taken ?? null),
         update: vi.fn().mockResolvedValue({ id: "effect-1" }),
       },
       actionApprovalRule: { upsert: vi.fn() },
@@ -3290,6 +3288,7 @@ describe("answerRunInput with mail edits", () => {
           answeredByUserId: "user-1",
           answer: "allow",
           mailEdits: { subject: "New subject", body: "New" },
+          checkMailRequest: () => !options.reject,
           ...extra,
         },
         new TestFanout(),
@@ -3297,7 +3296,7 @@ describe("answerRunInput with mail edits", () => {
     return { tx, answer };
   }
 
-  it("stores the edited request, rebinds the effect key to it, and approves in one update", async () => {
+  it("stores the edited request, keeps the original key, and approves in one update", async () => {
     const { tx, answer } = setup({});
     await expect(answer({})).resolves.toBe(true);
     const edited = { ...original, subject: "New subject", body: "New" };
@@ -3307,7 +3306,6 @@ describe("answerRunInput with mail edits", () => {
       data: {
         status: "approved",
         request: edited,
-        idempotencyKey: approvalEffectKey("run-1", "mail_send", edited),
       },
     });
     // The answered card shows what was approved.
@@ -3333,7 +3331,7 @@ describe("answerRunInput with mail edits", () => {
     ["an always-allow", {}, { answer: "always" }],
     ["another user", {}, { answeredByUserId: "user-2" }],
     ["a send of a saved draft", { request: { draftId: "d1" } }, {}],
-    ["a call that is already another effect", { taken: { id: "effect-2" } }, {}],
+    ["a merged message the mail tool would refuse", { reject: true }, {}],
     ["a missing request", { request: null }, {}],
   ])("rejects edits on %s without changing anything", async (_name, options, extra) => {
     const { tx, answer } = setup(options);

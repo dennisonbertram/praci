@@ -4024,7 +4024,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const approvedEffects = await deps.prisma.externalEffect.findMany({
           where: { runId, status: "approved" },
           orderBy: APPROVED_EFFECT_REPLAY_ORDER,
-          select: { kind: true, request: true },
+          select: { kind: true, request: true, idempotencyKey: true },
         });
         const approvedEffectReplays = createApprovedEffectReplayQueue(approvedEffects);
         const baseComputerInstruction = persistentComputerInstruction({
@@ -4303,6 +4303,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           // hit the already-approved effect instead of creating a second approval card.
           const nextApprovedTool = approvedEffectReplays.nextToolName();
           const nextApprovedRequest = approvedEffectReplays.nextRequest();
+          const nextApprovedKey = approvedEffectReplays.nextIdempotencyKey();
           const liveRoute =
             connectorCall.route?.resourceId &&
             connectorCall.route.connectorId &&
@@ -4336,6 +4337,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             };
           }
           // Drain FIFO only when the pending approval matches this path (catalog vs direct).
+          let replayedApproval = false;
           const replayEffectToolName = approvalReplayEffectToolName(
             name,
             nextApprovedTool,
@@ -4361,6 +4363,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               CATALOG_APPROVAL_TOOL,
             );
             if (resourceError) return { error: resourceError };
+            replayedApproval = true;
             const approvedRequest = approvedEffectReplays.take(nextApprovedTool)!;
             const approvedCatalog = catalogApprovalDetails(approvedRequest, CATALOG_APPROVAL_TOOL);
             if (approvedCatalog && !catalogRemapped) {
@@ -4469,10 +4472,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
             name === "request_secret"
               ? 0
               : nextMutatingEffectOccurrence(replayEffectToolName, args);
+          // A mail approval may have been edited: its args come from the stored request, but its
+          // identity stays the stored key of the original call, so no edit can open a second send.
+          const storedMailKey =
+            replayedApproval &&
+            MAIL_TOOL_NAMES.has(name) &&
+            nextApprovedKey &&
+            isToolEffectIdempotencyKey(nextApprovedKey, runId, replayEffectToolName)
+              ? nextApprovedKey
+              : undefined;
           const effectKey =
-            usesApprovalKey && occurrence === 0
+            storedMailKey ??
+            (usesApprovalKey && occurrence === 0
               ? approvalEffectKey(runId, replayEffectToolName, args)
-              : toolEffectIdempotencyKey(runId, replayEffectToolName, args, occurrence);
+              : toolEffectIdempotencyKey(runId, replayEffectToolName, args, occurrence));
           // Connector read-only hints must not bypass approval, review, or replay decisions.
           const applied = READ_ONLY_AGENT_TOOLS.has(name)
             ? undefined

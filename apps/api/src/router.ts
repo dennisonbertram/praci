@@ -87,6 +87,7 @@ import {
   listPiCatalog,
   listScratchpadItems,
   McpOAuthBroker,
+  mailRequestIsValid,
   mapScratchpadItem,
   modelCredentialAuthKindsForSpace,
   modelCredentialDto,
@@ -2616,6 +2617,7 @@ export function createRouter(deps: RouterDeps) {
           clientNonce: input.clientNonce,
           username: input.username,
           mailEdits,
+          checkMailRequest: mailRequestIsValid,
         });
         if (!answered) {
           throw new ORPCError("CONFLICT", {
