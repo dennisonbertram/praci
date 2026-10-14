@@ -257,7 +257,8 @@ export function ComposeEmail({
         if (!live) return;
         replyToRef.current = next.replyToMessageId;
         pendingContent.current = textToHtml(next.body);
-        setForwarded(next.attachments);
+        // An older server sends no attachment list.
+        setForwarded(next.attachments ?? []);
         if (next.attachmentsTooLarge)
           setNotice({
             kind: "error",
