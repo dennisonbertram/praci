@@ -338,3 +338,15 @@ describe("inferScript show_emails", () => {
     ]);
   });
 });
+
+describe("inferScript send email card", () => {
+  it("proposes one mail_send for approval", () => {
+    const [step] = inferScript("send email card");
+    expect(step?.toolCalls).toEqual([
+      expect.objectContaining({
+        name: "mail_send",
+        args: expect.objectContaining({ to: ["Sam Rivera <sam@example.test>"] }),
+      }),
+    ]);
+  });
+});
