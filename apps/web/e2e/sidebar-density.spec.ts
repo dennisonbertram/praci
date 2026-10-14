@@ -42,7 +42,7 @@ test("compact bot sidebar hides previews and preserves roster status accessibly"
   await expect(previewRow).toContainText(preview);
   await expect(previewRow).toContainText("Field notes");
   await expect(previewRow.locator("[data-roster-bot-name]")).toHaveText("Compact Sample");
-  await expect(previewRow.locator("[data-roster-preview]")).toHaveClass(/line-clamp-2/);
+  await expect(previewRow.locator("[data-roster-preview]")).toHaveClass(/\btruncate\b/);
   await expect(previewRow).toHaveAttribute("data-roster-unread", "true");
   await expect(previewRow).toHaveAccessibleName(/Compact Sample.*unread/i);
   await previewRow.scrollIntoViewIfNeeded();
