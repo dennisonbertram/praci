@@ -816,10 +816,12 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
   // The Inbox agent panel and the sidebar take about 700px of the window, so the main pane is much
   // narrower than the viewport until the panel is collapsed.
   const cases = [
-    { name: "agent-open-1396", width: 1396, height: 800, agent: "open", twoLine: true },
-    { name: "agent-open-1440", width: 1440, height: 900, agent: "open", twoLine: true },
-    { name: "agent-open-1024", width: 1024, height: 800, agent: "open", twoLine: true },
-    { name: "agent-closed-1440", width: 1440, height: 900, agent: "closed", twoLine: false },
+    { name: "agent-open-1396", width: 1396, height: 800, agent: "open" },
+    { name: "agent-open-1440", width: 1440, height: 900, agent: "open" },
+    { name: "agent-open-1024", width: 1024, height: 800, agent: "open" },
+    { name: "agent-closed-1440", width: 1440, height: 900, agent: "closed" },
+    { name: "agent-closed-768", width: 768, height: 900, agent: "closed" },
+    { name: "agent-closed-390", width: 390, height: 844, agent: "closed" },
   ] as const;
   for (const layout of cases.flatMap((item) =>
     (["light", "dark"] as const).map((scheme) => ({ ...item, scheme })),
@@ -829,7 +831,7 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
     const collapse = page.getByRole("button", { name: "Collapse Inbox agent" });
     if (layout.agent === "closed" && (await collapse.isVisible())) await collapse.click();
     // The panel animates shut; measure once the pane has taken its width.
-    if (layout.agent === "closed") {
+    if (layout.agent === "closed" && layout.width >= 1024) {
       await expect.poll(async () => (await box(main)).width).toBeGreaterThan(layout.width - 320);
     }
     await expect(row(/Offsite dates/)).toBeVisible();
@@ -875,17 +877,13 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
       expect(time.height).toBeLessThan(20);
       expect(time.x + time.width).toBeLessThanOrEqual(whole.x + whole.width);
       expect(subject.width).toBeGreaterThan(80);
-      if (layout.twoLine) {
-        // Narrow: the subject is a second line aligned under the sender.
-        expect(subject.y).toBeGreaterThan(sender.y + sender.height - 2);
-        expect(Math.abs(subject.x - sender.x)).toBeLessThanOrEqual(1);
-      } else {
-        expect(
-          Math.abs(subject.y + subject.height / 2 - (sender.y + sender.height / 2)),
-        ).toBeLessThan(8);
-        expect(subject.x).toBeGreaterThanOrEqual(sender.x + sender.width);
-        expect(subject.x + subject.width).toBeLessThanOrEqual(time.x + 1);
-      }
+      // Always one line: every row is the same fixed height, with sender and subject side by side.
+      expect(whole.height).toBe(44);
+      expect(
+        Math.abs(subject.y + subject.height / 2 - (sender.y + sender.height / 2)),
+      ).toBeLessThan(8);
+      expect(subject.x).toBeGreaterThanOrEqual(sender.x + sender.width);
+      expect(subject.x + subject.width).toBeLessThanOrEqual(time.x + 1);
       expect(Math.abs(time.y + time.height / 2 - (sender.y + sender.height / 2))).toBeLessThan(8);
     }
     await captureScreenshot(

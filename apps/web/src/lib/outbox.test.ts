@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ComposeRestore } from "../components/ComposeEmail";
-import { closeRestored, getOutbox, holdSend, UNDO_SEND_MS, undoSend } from "./outbox";
+import { closeRestored, getOutbox, holdDiscard, holdSend, UNDO_SEND_MS, undoSend } from "./outbox";
 
 const restore = { clientId: "abcdefgh" } as ComposeRestore;
 
@@ -52,4 +52,25 @@ it("sends a held message at once when another is sent", async () => {
   holdSend(first, restore);
   holdSend(vi.fn().mockResolvedValue(null), restore);
   expect(first).toHaveBeenCalledTimes(1);
+});
+
+it("runs a discard only after the undo window, with no sent notice", async () => {
+  const run = vi.fn().mockResolvedValue(undefined);
+  holdDiscard(run, restore);
+  expect(getOutbox().view).toEqual({ kind: "discarded" });
+  await vi.advanceTimersByTimeAsync(UNDO_SEND_MS - 1);
+  expect(run).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(getOutbox()).toEqual({ view: null, restoring: null });
+});
+
+it("undo of a discard reopens the composer and never discards", async () => {
+  const run = vi.fn().mockResolvedValue(undefined);
+  holdDiscard(run, restore);
+  await vi.advanceTimersByTimeAsync(1_000);
+  undoSend();
+  await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+  expect(run).not.toHaveBeenCalled();
+  expect(getOutbox()).toEqual({ view: null, restoring: restore });
 });

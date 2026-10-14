@@ -3,13 +3,13 @@ import type { ComposeRestore } from "../components/ComposeEmail";
 /** Fired on `window` after a message is sent, so the Inbox can refresh. */
 export const MAIL_SENT_EVENT = "rakazo:mail-sent";
 
-/** How long Undo stays available after Send. Closing the tab inside this window sends nothing. */
+/** How long Undo stays available after Send or Discard. Closing the tab inside this window sends nothing. */
 export const UNDO_SEND_MS = 5_000;
 const SENT_MS = 3_000;
 
 export interface OutboxSnapshot {
-  /** `sending` shows Undo until the hold ends. */
-  view: { kind: "sending"; undoable: boolean } | { kind: "sent" } | null;
+  /** `sending` and `discarded` show Undo until the hold ends. */
+  view: { kind: "sending"; undoable: boolean } | { kind: "discarded" } | { kind: "sent" } | null;
   /** A composer to reopen: after Undo, or after a send that did not go through. */
   restoring: ComposeRestore | null;
 }
@@ -18,7 +18,9 @@ export interface OutboxSnapshot {
 type Run = () => Promise<string | null>;
 
 let snapshot: OutboxSnapshot = { view: null, restoring: null };
-let held: { run: Run; restore: ComposeRestore; timer: ReturnType<typeof setTimeout> } | undefined;
+let held:
+  | { run: Run; restore: ComposeRestore; discard: boolean; timer: ReturnType<typeof setTimeout> }
+  | undefined;
 let sentTimer: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();
 
@@ -35,8 +37,13 @@ export const getOutbox = () => snapshot;
 
 async function fire() {
   if (!held) return;
-  const { run, restore } = held;
+  const { run, restore, discard } = held;
   held = undefined;
+  if (discard) {
+    set({ view: null });
+    void run().catch(() => undefined);
+    return;
+  }
   set({ view: { kind: "sending", undoable: false } });
   let problem: string | null;
   try {
@@ -54,18 +61,27 @@ async function fire() {
   }
 }
 
-/** Holds a send for `UNDO_SEND_MS`, then runs it. A send already held goes out first. */
-export function holdSend(run: Run, restore: ComposeRestore) {
+function hold(run: Run, restore: ComposeRestore, discard: boolean) {
   if (held) {
     clearTimeout(held.timer);
     void fire();
   }
   clearTimeout(sentTimer);
-  held = { run, restore, timer: setTimeout(() => void fire(), UNDO_SEND_MS) };
-  set({ view: { kind: "sending", undoable: true } });
+  held = { run, restore, discard, timer: setTimeout(() => void fire(), UNDO_SEND_MS) };
+  set({ view: discard ? { kind: "discarded" } : { kind: "sending", undoable: true } });
 }
 
-/** Cancels the held send and reopens its composer with everything in it. */
+/** Holds a send for `UNDO_SEND_MS`, then runs it. A send already held goes out first. */
+export const holdSend = (run: Run, restore: ComposeRestore) => hold(run, restore, false);
+
+/**
+ * Holds a discard for `UNDO_SEND_MS`, then runs `run` (which removes the server draft). Undo
+ * reopens the composer as it was.
+ */
+export const holdDiscard = (run: () => Promise<unknown>, restore: ComposeRestore) =>
+  hold(() => run().then(() => null), restore, true);
+
+/** Cancels the held send or discard and reopens its composer with everything in it. */
 export function undoSend() {
   if (!held) return;
   clearTimeout(held.timer);

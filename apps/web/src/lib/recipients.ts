@@ -72,3 +72,20 @@ export function takeEntries(
   }
   return { added, rest };
 }
+
+/** Entries that are not valid addresses, in order, as parsed. */
+export const invalidRecipients = (entries: string[]): Recipient[] =>
+  entries.map(parseRecipient).filter((recipient) => !recipient.valid);
+
+/**
+ * The few recipients a collapsed field names, and how many are left out. Invalid ones come first
+ * so a blocked send can still be traced to them.
+ */
+export function summarizeRecipients(
+  entries: string[],
+  shown = 2,
+): { recipients: Recipient[]; more: number } {
+  const all = entries.map(parseRecipient);
+  const ordered = [...all.filter((r) => !r.valid), ...all.filter((r) => r.valid)];
+  return { recipients: ordered.slice(0, shown), more: Math.max(0, ordered.length - shown) };
+}
