@@ -5,6 +5,7 @@ import {
   avatarIdentitySeed,
   avatarReactionForTransition,
   avatarRest,
+  avatarShapeGazeTravel,
   DEFAULT_GROK_BOT_COLOR,
   GROK_BOT_COLORS,
   GROK_COLOR_LIST,
@@ -224,6 +225,7 @@ export const BotAvatar = memo(function BotAvatar({
       className={className}
       id={id}
       seed={avatarIdentitySeed(effectiveId)}
+      shapeIndex={parsed.shapeIndex ?? 0}
       mood={mood}
       lookAt={lookAt}
     />
@@ -231,7 +233,7 @@ export const BotAvatar = memo(function BotAvatar({
 });
 
 /** Dark tall pills, about 8% x 25% of the viewBox, the pair spanning 40% of the body. */
-const SHAPE_EYE = { w: 20, h: 62, dx: 34, dy: 14 };
+const SHAPE_EYE = { w: 20, h: 62, dx: 34, dy: 12 };
 
 function ShapeAvatar({
   colorDef,
@@ -241,11 +243,13 @@ function ShapeAvatar({
   className,
   id,
   seed,
+  shapeIndex,
   mood,
   lookAt,
 }: {
   colorDef: GrokColorDef;
   shapePath: string;
+  shapeIndex: number;
   size: number;
   isWorking: boolean;
   className?: string;
@@ -261,10 +265,10 @@ function ShapeAvatar({
     ],
     w: SHAPE_EYE.w,
     h: SHAPE_EYE.h,
-    travelX: AVATAR_GAZE_TRAVEL.shape.x,
-    travelY: AVATAR_GAZE_TRAVEL.shape.y,
+    travelX: avatarShapeGazeTravel(shapeIndex).x,
+    travelY: avatarShapeGazeTravel(shapeIndex).y,
     rest: avatarRest(seed),
-    body: { cx: CENTER, cy: CENTER, bob: 8 },
+    body: { cx: CENTER, cy: CENTER, bob: 20 },
   };
   const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
 
@@ -399,6 +403,7 @@ function RobotAvatar({
     h: eyeH,
     travelX: Math.max(0, (innerW - eyeW * 2 - eyeGap) / 2) * AVATAR_GAZE_TRAVEL.robot.x,
     travelY: Math.max(0, (innerH - eyeH) / 2) * AVATAR_GAZE_TRAVEL.robot.y,
+    visorRotate: 0.6,
   };
   const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
   const eyeGlow = `drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 ${Math.max(2, size * 0.1)}px ${colorDef.light})`;
@@ -451,8 +456,10 @@ function RobotAvatar({
         </defs>
       </svg>
       <div
+        ref={face.visorRef}
         className="rakazo-bot-avatar-visor relative flex items-center justify-center overflow-hidden"
         style={{
+          transform: face.initial.visor,
           width: visorW,
           height: visorH,
           boxSizing: "border-box",
@@ -488,7 +495,7 @@ const ORGANIC_FACE: AvatarFaceGeometry = {
   h: 24,
   travelX: AVATAR_GAZE_TRAVEL.organic.x,
   travelY: AVATAR_GAZE_TRAVEL.organic.y,
-  body: { cx: 0, cy: 0, bob: 4 },
+  body: { cx: 0, cy: 0, bob: 10 },
 };
 
 function OrganicAvatar({
@@ -517,7 +524,12 @@ function OrganicAvatar({
     seed,
     mood,
     size,
-    geometry: { ...ORGANIC_FACE, rest: avatarRest(seed) },
+    geometry: {
+      ...ORGANIC_FACE,
+      rest: avatarRest(seed),
+      // The working CSS animation already moves the body.
+      body: isWorking ? undefined : ORGANIC_FACE.body,
+    },
     lookAt,
   });
 

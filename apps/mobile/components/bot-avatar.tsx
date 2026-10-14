@@ -6,6 +6,7 @@ import {
   avatarIdentitySeed,
   avatarReactionForTransition,
   avatarRest,
+  avatarShapeGazeTravel,
   moodForRunStatus,
   organicAvatarPath,
   SHIPPED_BOT_AVATAR_CENTER,
@@ -87,7 +88,7 @@ export const BotAvatar = memo(function BotAvatar({
     ) : parsed.kind === "shape" ? (
       <ShippedShapeAvatar
         color={parsed.color}
-        eyeColor={parsed.eyeColor}
+        shapeIndex={parsed.shapeIndex}
         shapePath={parsed.shapePath}
         size={size}
         identity={identity || fillColor}
@@ -161,11 +162,11 @@ export const BotAvatar = memo(function BotAvatar({
 });
 
 const SHAPE_VIEWBOX_SIZE = 259;
-const SHAPE_EYE = { w: 20, h: 62, dx: 34, dy: 14 };
+const SHAPE_EYE = { w: 20, h: 62, dx: 34, dy: 12 };
 
 function ShippedShapeAvatar({
   color,
-  eyeColor,
+  shapeIndex,
   shapePath,
   size,
   identity,
@@ -173,7 +174,7 @@ function ShippedShapeAvatar({
   lookAt,
 }: {
   color: string;
-  eyeColor: string;
+  shapeIndex: number;
   shapePath: string;
   size: number;
   identity: string;
@@ -190,17 +191,18 @@ function ShippedShapeAvatar({
       ],
       w: SHAPE_EYE.w,
       h: SHAPE_EYE.h,
-      travelX: AVATAR_GAZE_TRAVEL.shape.x,
-      travelY: AVATAR_GAZE_TRAVEL.shape.y,
+      travelX: avatarShapeGazeTravel(shapeIndex).x,
+      travelY: avatarShapeGazeTravel(shapeIndex).y,
       rest: avatarRest(seed),
-      bob: 8,
+      bob: 20,
     }),
-    [center, seed],
+    [center, seed, shapeIndex],
   );
   const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
   const bodyStyle = useAnimatedStyle(() => ({
     transform: [
       { translateY: (face.frame.value.bodyY * size) / SHAPE_VIEWBOX_SIZE },
+      { rotate: `${face.frame.value.bodyRotate}deg` },
       { scaleX: face.frame.value.bodyScaleX },
       { scaleY: face.frame.value.bodyScaleY },
     ],
@@ -209,7 +211,7 @@ function ShippedShapeAvatar({
     <Animated.View style={[{ width: size, height: size }, bodyStyle]}>
       <Svg width={size} height={size} viewBox={SHIPPED_BOT_AVATAR_VIEWBOX}>
         <Path d={shapePath} fill={color} />
-        <G fill={eyeColor}>
+        <G fill="#101014">
           <AnimatedPath animatedProps={face.leftProps} d={face.initial.leftD} />
           <AnimatedPath animatedProps={face.rightProps} d={face.initial.rightD} />
         </G>
@@ -248,6 +250,9 @@ function RobotAvatar({
     };
   }, [innerW, innerH, eyeW, eyeH, eyeGap]);
   const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
+  const visorStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${face.frame.value.bodyRotate * 0.6}deg` }],
+  }));
   return (
     <View
       style={{
@@ -259,14 +264,17 @@ function RobotAvatar({
         justifyContent: "center",
       }}
     >
-      <View
-        style={{
-          width: visorW,
-          height: visorH,
-          borderRadius: Math.round(visorH * 0.52),
-          backgroundColor: "#0C0C0E",
-          overflow: "hidden",
-        }}
+      <Animated.View
+        style={[
+          {
+            width: visorW,
+            height: visorH,
+            borderRadius: Math.round(visorH * 0.52),
+            backgroundColor: "#0C0C0E",
+            overflow: "hidden",
+          },
+          visorStyle,
+        ]}
       >
         <Svg width={visorW} height={visorH} viewBox={`0 0 ${innerW} ${innerH}`}>
           <G fill="#fff">
@@ -274,7 +282,7 @@ function RobotAvatar({
             <AnimatedPath animatedProps={face.rightProps} d={face.initial.rightD} />
           </G>
         </Svg>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -310,7 +318,7 @@ function OrganicAvatar({
       travelX: AVATAR_GAZE_TRAVEL.organic.x,
       travelY: AVATAR_GAZE_TRAVEL.organic.y,
       rest: avatarRest(seed),
-      bob: 4,
+      bob: 10,
     }),
     [seed],
   );
@@ -334,13 +342,15 @@ function OrganicAvatar({
   const bodyStyle = useAnimatedStyle(() => {
     const working = workingAvatarFrame(seed, progress.value);
     const unit = size / 120;
+    // The working choreography already moves the body; the face engine only adds idle motion.
+    const engine = isWorking ? 0 : 1;
     return {
       transform: [
         { translateX: working.translationX * unit },
-        { translateY: working.translationY * unit + face.frame.value.bodyY * unit },
-        { rotate: `${working.rotation}deg` },
-        { scaleX: working.scaleX * face.frame.value.bodyScaleX },
-        { scaleY: working.scaleY * face.frame.value.bodyScaleY },
+        { translateY: working.translationY * unit + face.frame.value.bodyY * unit * engine },
+        { rotate: `${working.rotation + face.frame.value.bodyRotate * engine}deg` },
+        { scaleX: working.scaleX * (1 + (face.frame.value.bodyScaleX - 1) * engine) },
+        { scaleY: working.scaleY * (1 + (face.frame.value.bodyScaleY - 1) * engine) },
       ],
     };
   });

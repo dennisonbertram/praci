@@ -1,6 +1,6 @@
 import type { AvatarFacePose, AvatarMood } from "@rakazo/core";
 import { avatarFacePose, blendAvatarFacePose } from "@rakazo/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type FrameInfo,
   useAnimatedProps,
@@ -30,9 +30,13 @@ export function useAvatarFace(options: {
   geometry: AvatarFaceGeometry;
   lookAt?: Look;
 }) {
-  const { seed, mood, size, geometry, lookAt } = options;
+  const { seed, mood, size, lookAt } = options;
   const reducedMotion = useReducedMotion();
   const frozen = size < MIN_ANIMATED_SIZE;
+  const geometry = useMemo(
+    () => (frozen ? { ...options.geometry, still: true } : options.geometry),
+    [frozen, options.geometry],
+  );
   const lookX = frozen ? 0 : lookAt?.x;
   const lookY = frozen ? 0 : lookAt?.y;
   const look = lookX === undefined || lookY === undefined ? null : { x: lookX, y: lookY };

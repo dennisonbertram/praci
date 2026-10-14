@@ -45,6 +45,8 @@ export interface AvatarFacePose {
   bob: number;
   /** Body scaleY delta (-0.06..0.06); scaleX = 1 - squash * 0.6. */
   squash: number;
+  /** Body rotation in degrees, positive clockwise. */
+  rotate: number;
 }
 
 interface MoodTuning {
@@ -77,11 +79,23 @@ interface MoodTuning {
   /** Slow tilt wobble amplitude, degrees. */
   wobble: number;
   scale: number;
-  /** Body bounce amplitude and speed (cycles per second). */
+  /** Gaze-driven eye roll (degrees at |x| = 1) and independent per-eye roll jitter per fixation. */
+  roll: number;
+  rollJitter: number;
+  /** Body bob amplitude and speed (cycles per second). `hop` makes it a smooth jump instead of a sine. */
   bob: number;
   bobHz: number;
-  /** Breathing squash amplitude. */
+  hop: boolean;
+  /** Constant body offset (sad droop) and a one-off jump-back after time 0 (surprised). */
+  bobRest: number;
+  jump: number;
+  /** Breathing squash amplitude (hop squash amplitude when `hop`). */
   squash: number;
+  /** Body rotation: slow sway amplitude (deg) and speed, lean toward the gaze (deg at |x| = 1), constant tilt. */
+  sway: number;
+  swayHz: number;
+  lean: number;
+  rotateRest: number;
   /** Quick horizontal shake amplitude. */
   shake: number;
 }
@@ -106,15 +120,48 @@ const BASE: MoodTuning = {
   tilt: 0,
   wobble: 0,
   scale: 1,
+  roll: 12,
+  rollJitter: 8,
   bob: 0,
   bobHz: 0.3,
+  hop: false,
+  bobRest: 0,
+  jump: 0,
   squash: 0.018,
+  sway: 0,
+  swayHz: 0.15,
+  lean: 0,
+  rotateRest: 0,
   shake: 0,
 };
 
 export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
-  idle: { ...BASE, fixMin: 900, fixMax: 2200, gx: 1, gy: 0.7, far: 0.7 },
-  listening: { ...BASE, fixMin: 1500, fixMax: 3200, gx: 0.8, gy: 0.4, far: 0.25, scale: 1.05 },
+  idle: {
+    ...BASE,
+    fixMin: 900,
+    fixMax: 2200,
+    gx: 1,
+    gy: 0.7,
+    far: 0.7,
+    roll: 20,
+    rollJitter: 14,
+    sway: 3,
+    lean: 3.5,
+  },
+  listening: {
+    ...BASE,
+    fixMin: 1500,
+    fixMax: 3200,
+    gx: 0.8,
+    gy: 0.4,
+    far: 0.25,
+    scale: 1.05,
+    roll: 8,
+    rollJitter: 6,
+    bob: 0.12,
+    bobHz: 0.5,
+    rotateRest: 2,
+  },
   thinking: {
     ...BASE,
     fixMin: 2200,
@@ -126,6 +173,10 @@ export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
     flip: true,
     openL: 0.9,
     openR: 0.9,
+    roll: 15,
+    rollJitter: 12,
+    sway: 1,
+    lean: 6,
   },
   working: {
     ...BASE,
@@ -138,6 +189,12 @@ export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
     scan: true,
     blinkMin: 3000,
     blinkMax: 6000,
+    roll: 10,
+    rollJitter: 6,
+    bob: 0.15,
+    bobHz: 2.5,
+    sway: 1.5,
+    swayHz: 1.2,
   },
   happy: {
     ...BASE,
@@ -146,8 +203,14 @@ export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
     gx: 0.3,
     gy: 0.15,
     smile: 1,
+    roll: 15,
+    rollJitter: 10,
     bob: 0.5,
-    bobHz: 2,
+    bobHz: 1.4,
+    hop: true,
+    squash: 0.04,
+    sway: 6,
+    swayHz: 0.7,
     blinkMin: 4000,
     blinkMax: 7000,
   },
@@ -162,6 +225,10 @@ export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
     openL: 0.8,
     openR: 0.8,
     blinkSlow: 1.6,
+    roll: 6,
+    rollJitter: 4,
+    bobRest: 0.3,
+    sway: 0.8,
   },
   surprised: {
     ...BASE,
@@ -171,6 +238,9 @@ export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
     gy: 0.1,
     scale: 1.25,
     noBlinkMs: 600,
+    roll: 6,
+    rollJitter: 4,
+    jump: 0.5,
   },
   sleepy: {
     ...BASE,
@@ -184,7 +254,13 @@ export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
     blinkMin: 1800,
     blinkMax: 3600,
     blinkSlow: 2.5,
+    roll: 6,
+    rollJitter: 4,
+    bob: 0.25,
+    bobHz: 0.2,
     squash: 0.03,
+    sway: 3,
+    swayHz: 0.12,
   },
   confused: {
     ...BASE,
@@ -195,6 +271,10 @@ export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
     far: 0.7,
     openL: 0.65,
     wobble: 8,
+    roll: 20,
+    rollJitter: 22,
+    sway: 8,
+    swayHz: 0.12,
   },
   error: {
     ...BASE,
@@ -206,10 +286,16 @@ export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
     openR: 0.7,
     tilt: 14,
     shake: 0.5,
+    roll: 10,
+    rollJitter: 8,
+    sway: 1,
+    swayHz: 0.8,
   },
 };
 
 /** Gaze saccade length range and eye blink timing, ms. */
+/** Duration of the surprised jump-back after time 0. */
+const JUMP_MS = 450;
 const SACCADE_MIN_MS = 90;
 const SACCADE_MAX_MS = 140;
 const BLINK_CLOSE_MS = 60;
@@ -275,7 +361,11 @@ function gazeTarget(seed: number, k: number, tune: MoodTuning): { x: number; y: 
   return { x: clamp(x, -1, 1), y: clamp(y, -1, 1) };
 }
 
-function gazeAt(seed: number, tune: MoodTuning, timeMs: number): { x: number; y: number } {
+function gazeAt(
+  seed: number,
+  tune: MoodTuning,
+  timeMs: number,
+): { x: number; y: number; jl: number; jr: number } {
   "worklet";
   const t = timeMs + rand(seed, 0, 1) * 100000;
   const spread = (tune.fixMax - tune.fixMin) * 0.8;
@@ -286,7 +376,11 @@ function gazeAt(seed: number, tune: MoodTuning, timeMs: number): { x: number; y:
   const duration = lerp(SACCADE_MIN_MS, SACCADE_MAX_MS, rand(seed, k, 22));
   const e = easeOutCubic((t - slotStart(seed, k, mean, spread, 21)) / duration);
   const drift = timeMs / 1000;
+  const jitter = (slot: number, eye: number) =>
+    (rand(seed, slot, 41 + eye) - 0.5) * 2 * tune.rollJitter;
   return {
+    jl: lerp(jitter(k - 1, 0), jitter(k, 0), e),
+    jr: lerp(jitter(k - 1, 1), jitter(k, 1), e),
     x: lerp(from.x, to.x, e) + Math.sin(drift * 1.3 + seed) * 0.03,
     y: lerp(from.y, to.y, e) + Math.sin(drift * 0.9 + seed * 2) * 0.02,
   };
@@ -339,12 +433,33 @@ export function avatarRest(seed: number): { x: number; y: number; lean: number }
   return { x: side * REST_X, y: REST_Y, lean: side * REST_LEAN };
 }
 
-/** Gaze travel in each variant's own units for gaze = +-1 (robot: fraction of the free space in the visor; less than 1 so the eyes clear its rounded corners). */
+/** Gaze travel in each variant's own units for gaze = +-1. */
 export const AVATAR_GAZE_TRAVEL = {
-  organic: { x: 9, y: 7 },
-  shape: { x: 15, y: 10 },
+  organic: { x: 12, y: 9 },
   robot: { x: 0.85, y: 0.6 },
 } as const;
+
+/** Shape mascot gaze travel by shape index; narrow shapes (the triangle) get less so the eyes stay inside. */
+const SHAPE_GAZE_TRAVEL = [
+  { x: 22, y: 16 },
+  { x: 11, y: 8 },
+  { x: 22, y: 16 },
+  { x: 22, y: 16 },
+  { x: 22, y: 16 },
+  { x: 22, y: 16 },
+  { x: 22, y: 16 },
+  { x: 22, y: 16 },
+] as const;
+
+export function avatarShapeGazeTravel(shapeIndex: number): { x: number; y: number } {
+  return SHAPE_GAZE_TRAVEL[shapeIndex % SHAPE_GAZE_TRAVEL.length] ?? SHAPE_GAZE_TRAVEL[0];
+}
+
+/** Final eye rotation in degrees: mood/roll tilt plus the resting lean, capped so the eyes stay readable. */
+export function avatarEyeRotation(tilt: number, restLean: number): number {
+  "worklet";
+  return clamp(tilt + restLean, -45, 45);
+}
 
 /** Gaze plus the resting offset, kept inside -1..1 so the eyes never travel past the extreme. */
 export function avatarGazeWithRest(gaze: number, rest: number): number {
@@ -397,30 +512,57 @@ export function avatarFacePose(
 ): AvatarFacePose {
   "worklet";
   const tune = MOOD_TUNING[mood] ?? MOOD_TUNING.idle;
-  const gaze = lookAt
-    ? { x: clamp(lookAt.x, -1, 1), y: clamp(lookAt.y, -1, 1) }
-    : gazeAt(seed, tune, timeMs);
+  const live = gazeAt(seed, tune, timeMs);
+  const gaze = lookAt ? { x: clamp(lookAt.x, -1, 1), y: clamp(lookAt.y, -1, 1) } : live;
   let x = gaze.x;
   if (tune.shake > 0) {
     const phase = timeMs % 3500;
     if (phase < 450) x += Math.sin(phase * 0.06) * tune.shake * (1 - phase / 450);
   }
+  x = clamp(x, -1, 1);
   const blinkOpen = 1 - (1 - BLINK_CLOSED_OPEN) * blinkAt(seed, tune, timeMs);
   const wobble = Math.sin(timeMs / 1100 + seed) * tune.wobble;
-  const eye = (open: number, tiltSign: number): AvatarEyePose => ({
-    x: clamp(x, -1, 1),
+  // Eyes lean toward where they look, plus an independent roll per eye. The right eye
+  // renders mirrored, so its tilt gets the opposite sign.
+  const eye = (open: number, side: 1 | -1, jitter: number): AvatarEyePose => ({
+    x,
     y: gaze.y,
     open: clamp(open * blinkOpen, 0, 1),
     smile: tune.smile,
-    tilt: tune.tilt + wobble * tiltSign,
+    tilt: tune.tilt + wobble * side + side * (tune.roll * x + jitter),
     scale: tune.scale,
   });
-  const cycle = Math.sin((timeMs / 1000) * Math.PI * 2 * tune.bobHz + seed);
+  const phase = (hz: number) => (timeMs / 1000) * hz * Math.PI * 2 + (seed % 997) * 0.1;
+  const bobCycle = Math.sin(phase(tune.bobHz));
+  let bob = tune.bobRest;
+  let squash = bobCycle * tune.squash;
+  if (tune.hop) {
+    // Smooth hop: height 0..1 with zero velocity at the ground and the apex.
+    const h = ((1 - Math.cos(phase(tune.bobHz))) / 2) ** 1.5;
+    bob -= h * tune.bob;
+    squash = tune.squash * (2 * h - 1);
+  } else {
+    bob += bobCycle * tune.bob;
+  }
+  if (tune.jump > 0 && timeMs < JUMP_MS)
+    bob -= tune.jump * Math.sin((Math.PI * timeMs) / JUMP_MS) ** 2;
+  // Lean follows a short average of the gaze so the body eases toward it.
+  let lean = 0;
+  if (tune.lean > 0) {
+    for (let i = 0; i < 8; i += 1) lean += gazeAt(seed, tune, timeMs - i * 50).x / 8;
+    if (lookAt) lean = gaze.x;
+  }
+  const rotate = clamp(
+    tune.rotateRest + Math.sin(phase(tune.swayHz)) * tune.sway + lean * tune.lean,
+    -12,
+    12,
+  );
   return {
-    left: eye(tune.openL, 1),
-    right: eye(tune.openR, -1),
-    bob: tune.bob > 0 ? -Math.abs(cycle) * tune.bob : 0,
-    squash: cycle * tune.squash,
+    left: eye(tune.openL, 1, live.jl),
+    right: eye(tune.openR, -1, live.jr),
+    bob,
+    squash,
+    rotate,
   };
 }
 
@@ -449,6 +591,7 @@ export function blendAvatarFacePose(
     right: blendEye(a.right, b.right, u),
     bob: lerp(a.bob, b.bob, u),
     squash: lerp(a.squash, b.squash, u),
+    rotate: lerp(a.rotate, b.rotate, u),
   };
 }
 

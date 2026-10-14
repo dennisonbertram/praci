@@ -1,5 +1,5 @@
 import type { AvatarEyePose, AvatarFacePose } from "@rakazo/core";
-import { avatarEyePath, avatarGazeWithRest } from "@rakazo/core";
+import { avatarEyePath, avatarEyeRotation, avatarGazeWithRest } from "@rakazo/core";
 
 /**
  * Geometry for the shared eye engine (`avatarFacePose` in `@rakazo/core`) on
@@ -19,6 +19,8 @@ export interface AvatarFaceGeometry {
   rest?: { x: number; y: number; lean: number };
   /** Bounce distance (user units) per unit of `bob`. Omit to keep the body still. */
   bob?: number;
+  /** Keep the body still (small sizes). */
+  still?: boolean;
 }
 
 export interface AvatarFaceFrame {
@@ -28,6 +30,8 @@ export interface AvatarFaceFrame {
   bodyY: number;
   bodyScaleX: number;
   bodyScaleY: number;
+  /** Body rotation in degrees, clockwise. */
+  bodyRotate: number;
 }
 
 /** Below this size gaze is frozen and the eyes only blink. */
@@ -70,7 +74,7 @@ function eyeD(pose: AvatarEyePose, g: AvatarFaceGeometry, index: 0 | 1) {
   "worklet";
   const eye = g.eyes[index];
   const rest = g.rest ?? { x: 0, y: 0, lean: 0 };
-  const tilt = (index === 0 ? pose.tilt : -pose.tilt) + rest.lean;
+  const tilt = avatarEyeRotation(index === 0 ? pose.tilt : -pose.tilt, rest.lean);
   return transformEyePath(
     avatarEyePath(g.w, g.h, pose),
     eye.cx + avatarGazeWithRest(pose.x, rest.x) * g.travelX,
@@ -84,9 +88,10 @@ export function faceFrame(pose: AvatarFacePose, g: AvatarFaceGeometry): AvatarFa
   return {
     leftD: eyeD(pose.left, g, 0),
     rightD: eyeD(pose.right, g, 1),
-    bodyY: pose.bob * (g.bob ?? 0),
-    bodyScaleX: 1 - pose.squash * 0.6,
-    bodyScaleY: 1 + pose.squash,
+    bodyY: g.still ? 0 : pose.bob * (g.bob ?? 0),
+    bodyScaleX: g.still ? 1 : 1 - pose.squash * 0.6,
+    bodyScaleY: g.still ? 1 : 1 + pose.squash,
+    bodyRotate: g.still ? 0 : pose.rotate,
   };
 }
 

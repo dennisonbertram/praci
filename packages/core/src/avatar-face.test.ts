@@ -85,6 +85,45 @@ describe("avatar face pose", () => {
   });
 });
 
+describe("avatar body motion", () => {
+  const frames = Array.from({ length: 600 }, (_, i) => (i * 1000) / 60);
+
+  it("moves smoothly in every mood, with no seam or cusp", () => {
+    for (const mood of AVATAR_MOODS) {
+      for (const seed of [1, 7, 123456]) {
+        const poses = frames.map((t) => avatarFacePose(seed, mood, t));
+        for (const key of ["bob", "squash", "rotate"] as const) {
+          const limit = { bob: 0.06, squash: 0.01, rotate: 1 }[key];
+          const accel = { bob: 0.03, squash: 0.005, rotate: 0.5 }[key];
+          const values = poses.map((p) => p[key]);
+          const deltas = values.slice(1).map((v, i) => v - values[i]!);
+          for (const d of deltas) expect(Math.abs(d)).toBeLessThan(limit);
+          for (const d of deltas.slice(1).map((v, i) => v - deltas[i]!)) {
+            expect(Math.abs(d)).toBeLessThan(accel);
+          }
+        }
+      }
+    }
+  });
+
+  it("hops: happy rises and returns to the ground each cycle", () => {
+    const bobs = frames.map((t) => avatarFacePose(1, "happy", t).bob);
+    expect(Math.min(...bobs)).toBeLessThan(-0.4);
+    expect(Math.max(...bobs)).toBeLessThanOrEqual(0.0001);
+  });
+
+  it("keeps body motion small", () => {
+    for (const mood of AVATAR_MOODS) {
+      for (const t of frames) {
+        const pose = avatarFacePose(3, mood, t);
+        expect(Math.abs(pose.rotate)).toBeLessThanOrEqual(12);
+        expect(Math.abs(pose.squash)).toBeLessThanOrEqual(0.06);
+        expect(Math.abs(pose.bob)).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+});
+
 describe("avatar eye path", () => {
   const commands = (d: string) => d.replace(/[^A-Za-z]/g, "");
 
