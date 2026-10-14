@@ -99,10 +99,10 @@ export async function createBotFromPicker(
   options: { name?: string; computerMode?: "team" | "dedicated" } = {},
 ) {
   await openNewBot(page);
-  await page.waitForURL(/\/app\/[^/]+$/);
-  const botId = page.url().split("/").pop()!;
   const name = options.name ?? "New Bot";
+  // The new bot's chat is up only once its composer shows; the URL already matches /app/<id> before that.
   await expect(page.getByPlaceholder("Message New Bot")).toBeVisible();
+  const botId = page.url().split("/").pop()!;
   if (options.name) await rpc(page, "bots/update", { botId, name });
   if (options.computerMode)
     await rpc(page, "bots/setComputer", { botId, mode: options.computerMode });

@@ -31,7 +31,7 @@ test("bot creation, editing, and deletion persist", async ({ page }, testInfo) =
   await createAborted;
   // Failed create stays on the current bot chat and shows the error.
   await expect(page.getByPlaceholder("Message Chief")).toBeVisible();
-  await expect(page.getByText("Failed to create bot")).toBeVisible();
+  await expect(page.getByTestId("composer-error")).toContainText("Could not reach the server");
   expect(createFailed).toBe(true);
   await page.unroute("**/rpc/bots/create");
 
