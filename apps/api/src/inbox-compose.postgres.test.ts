@@ -339,6 +339,51 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(gmail.draftsOf("box-a")).toHaveLength(0);
     });
 
+    it("sends sanitized HTML, a text copy made from it, and attachments", async () => {
+      const input = fields({
+        to: "a@example.test, b@example.test",
+        cc: "c@example.test",
+        bcc: "d@example.test",
+        html: '<p>Hi <strong>there</strong> <script>x()</script><a href="javascript:x()">no</a></p>',
+        attachments: [
+          {
+            filename: "note.txt",
+            mimeType: "text/plain",
+            data: Buffer.from("hello").toString("base64"),
+          },
+        ],
+      });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "sent" });
+      const mime = parseRawMime(gmail.sentOf("box-a")[0]?.raw ?? "");
+      expect(mime.header("To")).toBe("a@example.test, b@example.test");
+      expect(mime.header("Bcc")).toBe("d@example.test");
+      expect(mime.html).toBe("<p>Hi <strong>there</strong> no</p>");
+      expect(mime.text).toBe("Hi there no");
+      expect(mime.types).toContain("text/plain");
+      expect(gmail.sentOf("box-a")[0]?.raw).toContain(Buffer.from("hello").toString("base64"));
+    });
+
+    it("rejects attachments over the size limit or not base64, before any state changes", async () => {
+      const big = Buffer.alloc(10 * 1024 * 1024 + 1).toString("base64");
+      await expect(
+        inboxComposeSend(
+          deps(),
+          a,
+          fields({
+            attachments: [{ filename: "big.bin", mimeType: "application/zip", data: big }],
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      await expect(
+        inboxComposeSend(
+          deps(),
+          a,
+          fields({ attachments: [{ filename: "x.bin", mimeType: "text/plain", data: "***" }] }),
+        ),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(gmail.sentOf("box-a")).toHaveLength(0);
+    });
+
     it("syncs the mailbox afterwards so the sent message is cached", async () => {
       const input = fields();
       await inboxComposeSend(deps(), a, input);

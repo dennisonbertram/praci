@@ -1,7 +1,14 @@
 import { ORPCError } from "@orpc/server";
 import type { AdapterContext, MailAccount, MailDraftInput } from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
-import { buildRawMessage, parseRecipients, replyPrefill, syncMailbox } from "@rakazo/adapters";
+import {
+  buildRawMessage,
+  htmlToText,
+  parseRecipients,
+  replyPrefill,
+  sanitizeComposeHtml,
+  syncMailbox,
+} from "@rakazo/adapters";
 import type {
   Actor,
   ComposeFields,
@@ -9,6 +16,7 @@ import type {
   ComposePrefillOutput,
   ComposeResult,
 } from "@rakazo/contracts";
+import { MAX_COMPOSE_ATTACHMENT_BYTES } from "@rakazo/contracts";
 import { getLogger } from "@rakazo/logging";
 import type { InboxDeps } from "./inbox.js";
 import { mailContext, notFound } from "./inbox.js";
@@ -108,12 +116,26 @@ export async function inboxComposePrefill(
  */
 function draftOf(input: ComposeFields, providerMessageId: string | undefined, lenient: boolean) {
   try {
+    const html = input.html === undefined ? undefined : sanitizeComposeHtml(input.html);
+    const attachments = (input.attachments ?? []).map((file) => {
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(file.data))
+        throw new MailProviderError("invalid", "An attachment could not be read");
+      return {
+        filename: file.filename,
+        mimeType: file.mimeType,
+        data: Buffer.from(file.data, "base64"),
+      };
+    });
+    if (attachments.reduce((sum, file) => sum + file.data.length, 0) > MAX_COMPOSE_ATTACHMENT_BYTES)
+      throw new MailProviderError("invalid", "Attachments are over the 10 MB limit");
     const draft: MailDraftInput = {
       to: parseRecipients(input.to, lenient),
       cc: parseRecipients(input.cc, lenient),
       bcc: parseRecipients(input.bcc, lenient),
       subject: input.subject,
-      text: input.body,
+      text: html === undefined ? input.body : htmlToText(html),
+      ...(html === undefined ? {} : { html }),
+      ...(attachments.length ? { attachments } : {}),
       ...(providerMessageId ? { inReplyTo: providerMessageId } : {}),
     };
     // Dry run of the message build: recipients, addresses and subject are checked, nothing is sent.

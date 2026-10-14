@@ -295,6 +295,10 @@ msgstr "추가"
 msgid "Add a model in Settings to use this."
 msgstr "이 기능을 사용하려면 설정에서 모델을 추가하세요."
 
+#: src/components/ComposeEmail.tsx
+msgid "Add a recipient."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Add a run time for this one-shot."
 msgstr "이 일회성 실행의 시간을 추가하세요."
@@ -549,6 +553,10 @@ msgstr "API 키 헤더"
 msgid "Appearance"
 msgstr "모양"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Apply"
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Approval boundaries"
 msgstr "승인이 필요한 범위"
@@ -635,6 +643,10 @@ msgstr "{timeSelect}에"
 msgid "Attach file"
 msgstr "파일 첨부"
 
+#: src/components/ComposeEmail.tsx
+msgid "Attach files"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Attached {path}"
 msgstr ""
@@ -644,8 +656,14 @@ msgstr ""
 msgid "Attachment"
 msgstr "첨부 파일"
 
+#: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Attachments"
+msgstr ""
+
+#. placeholder {0}: formatBytes(MAX_COMPOSE_ATTACHMENT_BYTES)
+#: src/components/ComposeEmail.tsx
+msgid "Attachments can't be over {0}."
 msgstr ""
 
 #. placeholder {0}: email.attachments
@@ -760,6 +778,10 @@ msgstr ""
 msgid "Board"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Bold"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Booting live desktop…"
 msgstr "라이브 데스크톱 시작 중…"
@@ -831,6 +853,10 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Built-in"
 msgstr "기본 제공"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Bulleted list"
+msgstr ""
 
 #: src/App.tsx
 msgid "Can't reach the server."
@@ -1001,6 +1027,10 @@ msgstr ""
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Clear formatting"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Clear search"
 msgstr ""
@@ -1017,6 +1047,7 @@ msgstr ""
 msgid "Client secret"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -1144,7 +1175,6 @@ msgstr ""
 msgid "Complete"
 msgstr "완료"
 
-#: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/Inbox.tsx
 msgid "Compose"
@@ -2173,6 +2203,10 @@ msgstr "작업 기술 초안"
 msgid "Drag, drop, or paste an image"
 msgstr "이미지를 끌어다 놓거나 붙여넣으세요"
 
+#: src/components/ComposeEmail.tsx
+msgid "Drop files to attach"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
 msgstr "복제"
@@ -2397,6 +2431,10 @@ msgstr "완료되었습니다."
 msgid "Finishing MCP connection…"
 msgstr "MCP 연결을 마무리하는 중…"
 
+#: src/components/ComposeEmail.tsx
+msgid "Fix or remove the highlighted addresses."
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Flag unexpected actions"
 msgstr "예상하지 못한 작업 표시"
@@ -2404,6 +2442,14 @@ msgstr "예상하지 못한 작업 표시"
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "비밀번호를 잊으셨나요?"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Formatting"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Formatting options"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -2611,6 +2657,10 @@ msgstr "기본 설정 사용"
 msgid "Inputs"
 msgstr "입력값"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Insert link"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Instance API key"
 msgstr "인스턴스 API 키"
@@ -2652,6 +2702,10 @@ msgstr "이 Bot만 사용"
 
 #: src/pages/Artifacts.tsx
 msgid "Isolated preview — no access to your account"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Italic"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -2723,6 +2777,10 @@ msgstr "Linear 이슈"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
 msgstr "채팅 앱 연결"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Link address"
+msgstr ""
 
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
@@ -2966,7 +3024,7 @@ msgstr "멘션"
 msgid "Mentions only"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
+#: src/components/compose/RichTextEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "메시지"
@@ -3174,6 +3232,10 @@ msgstr "새 Bot 만들기"
 #: src/pages/GroupPanel.tsx
 msgid "New group"
 msgstr "새 그룹 만들기"
+
+#: src/components/ComposeEmail.tsx
+msgid "New message"
+msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
 msgid "New open-work item"
@@ -3392,6 +3454,10 @@ msgstr "지금"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Now using {0}."
 msgstr "이제 {0} 모델을 사용합니다."
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Numbered list"
+msgstr ""
 
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
@@ -3835,6 +3901,10 @@ msgid "Remove"
 msgstr "삭제"
 
 #. placeholder {0}: attachment.file.name
+#. placeholder {0}: file.name
+#. placeholder {0}: recipient.address
+#: src/components/compose/RecipientField.tsx
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "{0} 삭제"
@@ -3854,6 +3924,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Remove link"
 msgstr ""
 
 #. placeholder {0}: mention.name
@@ -4897,6 +4971,10 @@ msgstr "섹션 없음"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "사용할 수 없음"
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Underline"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Undo"

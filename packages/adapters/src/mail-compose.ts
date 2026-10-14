@@ -1,5 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { type MailAddress, type MailMessage, MailProviderError } from "@rakazo/adapter-kit";
+import {
+  type MailAddress,
+  type MailDraftAttachment,
+  type MailMessage,
+  MailProviderError,
+} from "@rakazo/adapter-kit";
 
 export interface ComposedMail {
   to: MailAddress[];
@@ -7,6 +12,9 @@ export interface ComposedMail {
   bcc: MailAddress[];
   subject: string;
   text: string;
+  /** Sanitized HTML for the HTML part; without it the part is the text, escaped. */
+  html?: string;
+  attachments?: MailDraftAttachment[];
   /** Message-ID header value of the message answered, with angle brackets. */
   inReplyTo?: string;
   /** References header of that message, if it had one. */
@@ -117,6 +125,12 @@ function checkSubject(subject: string): string {
   return subject;
 }
 
+function checkFilename(name: string): string {
+  if (!name || name.length > 255 || CONTROL.test(name) || /[\\/]/.test(name))
+    throw invalid("An attachment name is not valid");
+  return name;
+}
+
 function checkIds(value: string, label: string): string {
   if (!MESSAGE_IDS.test(value)) throw invalid(`${label} is not a message id list`);
   return value;
@@ -168,11 +182,35 @@ export function buildRawMessage(mail: ComposedMail, options: { draft?: boolean }
   if (mail.inReplyTo) headers.push(`In-Reply-To: ${checkIds(mail.inReplyTo, "In-Reply-To")}`);
   if (mail.references) headers.push(`References: ${checkIds(mail.references, "References")}`);
   const boundary = `rakazo-${randomBytes(12).toString("hex")}`;
-  headers.push("MIME-Version: 1.0", `Content-Type: multipart/alternative; boundary="${boundary}"`);
   const text = mail.text.replace(/\r\n|\r|\n/g, "\r\n");
   const part = (type: string, body: string) =>
     `--${boundary}\r\nContent-Type: ${type}; charset="UTF-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n${base64Lines(body)}\r\n`;
-  return `${headers.join("\r\n")}\r\n\r\n${part("text/plain", text)}${part("text/html", htmlBody(mail.text))}--${boundary}--\r\n`;
+  const alternative = `${part("text/plain", text)}${part("text/html", mail.html ?? htmlBody(mail.text))}`;
+  headers.push("MIME-Version: 1.0");
+  const files = mail.attachments ?? [];
+  if (files.length === 0) {
+    headers.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
+    return `${headers.join("\r\n")}\r\n\r\n${alternative}--${boundary}--\r\n`;
+  }
+  // multipart/mixed: the text and HTML copies as one nested multipart/alternative, then the files.
+  const inner = `rakazo-${randomBytes(12).toString("hex")}`;
+  const nested = alternative.split(`--${boundary}`).join(`--${inner}`);
+  const attachments = files.map((file) => {
+    const name = checkFilename(file.filename);
+    const quoted = /^[\x20-\x7e]*$/.test(name)
+      ? `filename="${name.replace(/[\\"]/g, "\\$&")}"`
+      : `filename*=UTF-8''${encodeURIComponent(name)}`;
+    const type = /^[\w.+-]+\/[\w.+-]+$/.test(file.mimeType)
+      ? file.mimeType
+      : "application/octet-stream";
+    const body = Buffer.from(file.data)
+      .toString("base64")
+      .replace(/.{1,76}/g, "$&\r\n")
+      .trimEnd();
+    return `--${boundary}\r\nContent-Type: ${type}\r\nContent-Disposition: attachment; ${quoted}\r\nContent-Transfer-Encoding: base64\r\n\r\n${body}\r\n`;
+  });
+  headers.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+  return `${headers.join("\r\n")}\r\n\r\n--${boundary}\r\nContent-Type: multipart/alternative; boundary="${inner}"\r\n\r\n${nested}--${inner}--\r\n\r\n${attachments.join("")}--${boundary}--\r\n`;
 }
 
 /**

@@ -6,47 +6,66 @@ import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
 const prefill = vi.hoisted(() => vi.fn());
+const send = vi.hoisted(() => vi.fn());
 
 vi.mock("../lib/rpc", () => ({
-  rpc: { inbox: { compose: { prefill, draftSave: vi.fn(), send: vi.fn(), discard: vi.fn() } } },
+  rpc: { inbox: { compose: { prefill, draftSave: vi.fn(), send, discard: vi.fn() } } },
 }));
 vi.mock("@lingui/core/macro", () => ({
-  t: (parts: TemplateStringsArray) => parts.join(""),
+  t: (parts: TemplateStringsArray, ...values: unknown[]) =>
+    parts.reduce((text, part, i) => text + part + (values[i] ?? ""), ""),
 }));
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock("@rakazo/ui-web", () => {
   const Container = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
+  const Trigger = ({ render, children }: { render?: ReactNode; children?: ReactNode }) => (
+    <span>
+      {render}
+      {children}
+    </span>
+  );
   return {
     Button: ({
       variant: _variant,
       size: _size,
       ...props
-    }: ComponentProps<"button"> & { variant?: string; size?: string }) => <button {...props} />,
+    }: ComponentProps<"button"> & { variant?: string; size?: string }) => (
+      <button type="button" {...props} />
+    ),
+    cn: (...classes: unknown[]) => classes.filter(Boolean).join(" "),
     Dialog: Container,
-    DialogContent: Container,
+    DialogClose: Container,
+    DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     DialogTitle: Container,
-    Input: (props: ComponentProps<"input">) => <input {...props} />,
     NativeSelect: Container,
     NativeSelectOption: Container,
+    Popover: Container,
+    PopoverContent: Container,
+    PopoverTrigger: Trigger,
     Spinner: () => null,
-    Textarea: (props: ComponentProps<"textarea">) => <textarea {...props} />,
+    Tooltip: Container,
+    TooltipContent: () => null,
+    TooltipTrigger: Trigger,
   };
 });
 
 import { ComposeEmail, type ComposeSeed } from "./ComposeEmail";
 
-const body = `\n\nOn Mon, Sam wrote:\n${Array.from({ length: 40 }, (_, i) => `> line ${i}`).join("\n")}`;
-const reply = (kind: "reply" | "forward"): ComposeSeed => ({ kind, messageId: "m1" });
+const body = "\n\nOn Mon, Sam wrote:\n> quoted line\n> second line";
+const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
+  kind,
+  messageId: "m1",
+});
 
 async function open(seed: ComposeSeed) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   prefill.mockResolvedValue({
     connectionId: "c1",
     replyToMessageId: "m1",
-    to: "sam@example.test",
-    cc: "",
+    to: "Sam Lee <sam@example.test>",
+    cc: "kim@example.test, lee@example.test",
     subject: "Re: Offsite",
     body,
   });
@@ -59,50 +78,94 @@ async function open(seed: ComposeSeed) {
   return { container, root };
 }
 
-const message = () =>
-  document.querySelector<HTMLTextAreaElement>("textarea") as HTMLTextAreaElement;
+const field = (label: string) =>
+  document.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`);
+const chips = () =>
+  [...document.querySelectorAll("button[aria-label^='Remove ']")].map((b) =>
+    b.getAttribute("aria-label"),
+  );
 
-// jsdom has no layout. Like a browser, focusing a long, freshly filled textarea puts the caret at
-// the end and scrolls it into view; the fix has to undo that.
-const focus = HTMLTextAreaElement.prototype.focus;
-afterEach(() => {
-  HTMLTextAreaElement.prototype.focus = focus;
-  document.body.innerHTML = "";
-  vi.unstubAllGlobals();
-});
-function focusScrollsToCaretAtEnd() {
-  HTMLTextAreaElement.prototype.focus = function (this: HTMLTextAreaElement) {
-    focus.call(this);
-    this.setSelectionRange(this.value.length, this.value.length);
-    this.scrollTop = 900;
-  };
+async function type(input: HTMLInputElement, text: string) {
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    set?.call(input, text);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 }
 
-it("opens a reply with the caret at the top of the message and scrolled to the top", async () => {
-  focusScrollsToCaretAtEnd();
-  await open(reply("reply"));
-  const textarea = message();
-  expect(textarea.value.startsWith("\n\nOn Mon")).toBe(true);
-  expect(document.activeElement).toBe(textarea);
-  expect(textarea.selectionStart).toBe(0);
-  expect(textarea.selectionEnd).toBe(0);
-  expect(textarea.scrollTop).toBe(0);
+afterEach(() => {
+  document.body.innerHTML = "";
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
-it("does not move the caret again when the composer re-renders", async () => {
-  const seed = reply("reply");
-  const { root } = await open(seed);
-  const textarea = message();
-  textarea.setSelectionRange(5, 5);
-  textarea.scrollTop = 120;
-  await act(async () =>
-    root.render(<ComposeEmail seed={seed} accounts={[]} connectionId="c1" onClose={() => {}} />),
-  );
-  expect(textarea.selectionStart).toBe(5);
-  expect(textarea.scrollTop).toBe(120);
+it("seeds a reply-all with chips, shows Cc only because it has addresses, and keeps Bcc hidden", async () => {
+  await open(reply("replyAll"));
+  expect(chips()).toEqual([
+    "Remove sam@example.test",
+    "Remove kim@example.test",
+    "Remove lee@example.test",
+  ]);
+  expect(field("Cc")).not.toBeNull();
+  expect(field("Bcc")).toBeNull();
+  const quote = document.querySelector("blockquote");
+  expect(quote?.textContent).toContain("quoted line");
 });
 
-it("starts a forward in the empty To field, not the body", async () => {
+it("starts a forward in the To field", async () => {
   await open(reply("forward"));
-  expect(document.activeElement).toBe(document.querySelector('input[aria-label="To"]'));
+  expect(document.activeElement).toBe(field("To"));
+});
+
+it("turns text before a comma into a chip, keeps invalid ones red, and refuses to send them", async () => {
+  await open({ kind: "new" });
+  const to = field("To") as HTMLInputElement;
+  await type(to, "good@example.test, nope,");
+  expect(chips()).toEqual(["Remove good@example.test", "Remove nope"]);
+  expect(to.value).toBe("");
+  const sendButton = [...document.querySelectorAll("button")].find(
+    (b) => b.textContent === "Send",
+  ) as HTMLButtonElement;
+  await act(async () => sendButton.click());
+  expect(send).not.toHaveBeenCalled();
+  expect(document.querySelector("[role=alert]")?.textContent).toMatch(/highlighted addresses/);
+});
+
+it("removes the last chip on Backspace in the empty input", async () => {
+  await open({ kind: "new" });
+  const to = field("To") as HTMLInputElement;
+  await type(to, "a@example.test; b@example.test;");
+  expect(chips()).toHaveLength(2);
+  await act(async () => {
+    to.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true }));
+  });
+  expect(chips()).toEqual(["Remove a@example.test"]);
+});
+
+it("sends joined recipients, the HTML body and attachments", async () => {
+  send.mockResolvedValue({ status: "sent" });
+  await open(reply("reply"));
+  const file = new File(["hello"], "note.txt", { type: "text/plain" });
+  const input = document.querySelector<HTMLInputElement>("input[type=file]") as HTMLInputElement;
+  await act(async () => {
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(document.body.textContent).toContain("note.txt");
+  const sendButton = [...document.querySelectorAll("button")].find(
+    (b) => b.textContent === "Send",
+  ) as HTMLButtonElement;
+  await act(async () => sendButton.click());
+  expect(send).toHaveBeenCalledTimes(1);
+  const sent = send.mock.calls[0]?.[0];
+  expect(sent).toMatchObject({
+    connectionId: "c1",
+    replyToMessageId: "m1",
+    to: "Sam Lee <sam@example.test>",
+    cc: "kim@example.test, lee@example.test",
+    subject: "Re: Offsite",
+    attachments: [{ filename: "note.txt", mimeType: "text/plain", data: btoa("hello") }],
+  });
+  expect(sent.html).toContain("<blockquote>");
+  expect(sent.body).toContain("quoted line");
 });

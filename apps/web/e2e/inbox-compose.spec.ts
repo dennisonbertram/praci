@@ -27,10 +27,15 @@ function headerOf(raw: string, name: string): string | undefined {
   const match = new RegExp(`^${name}:[ \\t]*(.*(?:\\r?\\n[ \\t].*)*)`, "im").exec(raw);
   return match?.[1]?.replace(/\r?\n[ \t]+/g, " ").trim();
 }
-function textOf(raw: string): string {
-  const part = /Content-Type: text\/plain[\s\S]*?\r?\n\r?\n([\s\S]*?)\r?\n--/i.exec(raw)?.[1] ?? "";
+function partOf(raw: string, type: "plain" | "html"): string {
+  const part =
+    new RegExp(`Content-Type: text/${type}[\\s\\S]*?\\r?\\n\\r?\\n([\\s\\S]*?)\\r?\\n--`, "i").exec(
+      raw,
+    )?.[1] ?? "";
   return Buffer.from(part.replace(/\s+/g, ""), "base64").toString("utf8");
 }
+const textOf = (raw: string) => partOf(raw, "plain");
+const htmlOf = (raw: string) => partOf(raw, "html");
 
 async function connectTwoGmailAccounts(page: Page) {
   await page.getByTestId("sidebar-inbox").click();
@@ -67,15 +72,13 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
   await page.getByRole("button", { name: "Reply", exact: true }).click();
 
   const composer = page.getByRole("dialog", { name: "Reply" });
-  await expect(composer.getByLabel("To")).toHaveValue("Sam Rivera <sam@example.test>");
+  await expect(composer.getByRole("button", { name: "Remove sam@example.test" })).toBeVisible();
   await expect(composer.getByLabel("Subject")).toHaveValue("Re: Offsite dates");
-  const body = composer.getByLabel("Message");
-  await expect(body).toHaveValue(/> Can you do the 14th or the 21st\?/);
+  const body = composer.getByRole("textbox", { name: "Message" });
+  await expect(body.locator("blockquote")).toContainText("Can you do the 14th or the 21st?");
   // The cursor starts above the quoted original.
   await expect(body).toBeFocused();
-  await expect(body).toHaveValue(/^\n\n/);
-  expect(await body.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(0);
-  expect(await body.evaluate((el: HTMLTextAreaElement) => el.scrollTop)).toBe(0);
+  await expect(body.locator("p").first()).toHaveText("");
   await captureScreenshot(page, testInfo, "compose-reply");
 
   // Typing autosaves a Gmail draft in the original thread.
@@ -133,7 +136,7 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
   const before = await gmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
-  let composer = page.getByRole("dialog", { name: "Compose" });
+  let composer = page.getByRole("dialog", { name: "New message" });
   await expect(composer.getByLabel("To")).toBeFocused();
   // Nothing typed: Escape closes without a prompt and leaves no draft behind.
   await page.keyboard.press("Escape");
@@ -143,17 +146,24 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
   );
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
-  composer = page.getByRole("dialog", { name: "Compose" });
+  composer = page.getByRole("dialog", { name: "New message" });
   await composer.getByLabel("From").selectOption({ label: "Work" });
-  await composer.getByLabel("To").fill("Priya Shah <priya@example.test>");
+  await composer.getByLabel("To").fill("Priya Shah <priya@example.test>,");
+  // Bcc stays out of sight until asked for.
+  await expect(composer.getByLabel("Bcc")).toHaveCount(0);
   await composer.getByRole("button", { name: "Cc", exact: true }).click();
-  await composer.getByLabel("Cc").fill("dev@example.test");
+  await composer.getByLabel("Cc").fill("dev@example.test,");
   await composer.getByRole("button", { name: "Bcc", exact: true }).click();
-  await composer.getByLabel("Bcc").fill("audit@example.test");
+  await composer.getByLabel("Bcc").fill("audit@example.test,");
   await composer.getByLabel("Subject").fill("Zürich plans — ünïcode");
-  await composer.getByLabel("Message").fill("Line one\n\n<b>not bold</b>");
+  const message = composer.getByRole("textbox", { name: "Message" });
+  await message.click();
+  await page.keyboard.type("Line one");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("<b>not bold</b>");
   await captureScreenshot(page, testInfo, "compose-new");
-  await composer.getByLabel("Message").press("ControlOrMeta+Enter");
+  await page.keyboard.press("ControlOrMeta+Enter");
   await expect(composer).toBeHidden();
 
   await expect
@@ -176,13 +186,69 @@ test("closing a composer with text in it keeps the draft in Gmail", async ({ pag
   const before = await gmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
-  const composer = page.getByRole("dialog", { name: "Compose" });
+  const composer = page.getByRole("dialog", { name: "New message" });
+  // An address still being typed when the composer closes is kept, not dropped.
   await composer.getByLabel("To").fill("priya@example.test");
   await composer.getByLabel("Subject").fill("Half written");
+  await composer.getByLabel("To").focus();
   await page.keyboard.press("Escape");
   await expect(composer).toBeHidden();
   await expect
     .poll(async () => count(await gmail(page), "e2e-first", "drafts"))
     .toBe(count(before, "e2e-first", "drafts") + 1);
   expect(count(await gmail(page), "e2e-first", "sent")).toBe(count(before, "e2e-first", "sent"));
+});
+
+test("several recipients, rich text, a link and an attachment arrive as one multipart message", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `compose-rich-${Date.now()}@rakazo.test`, "password12", "Compose Rich");
+  await completeOnboarding(page);
+  await connectTwoGmailAccounts(page);
+  const before = await gmail(page);
+
+  await page.getByRole("button", { name: "Compose", exact: true }).click();
+  const composer = page.getByRole("dialog", { name: "New message" });
+  const to = composer.getByLabel("To", { exact: true });
+  await to.fill("a@example.test; b@example.test, nope,");
+  await expect(composer.getByRole("button", { name: /^Remove / })).toHaveCount(3);
+  await composer.getByLabel("Subject").fill("Plan");
+  const message = composer.getByRole("textbox", { name: "Message" });
+  await message.click();
+  await page.keyboard.type("Hello ");
+  await page.keyboard.press("ControlOrMeta+b");
+  await page.keyboard.type("team");
+  await page.keyboard.press("ControlOrMeta+b");
+  await page.keyboard.type(" see https://example.test/plan ");
+  await composer.getByRole("button", { name: "Bulleted list" }).click();
+  await page.keyboard.type("first");
+  await composer.locator("input[type=file]").setInputFiles({
+    name: "notes.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("attached text"),
+  });
+  await expect(composer.getByRole("list", { name: "Attachments" })).toContainText("notes.txt");
+  await captureScreenshot(page, testInfo, "compose-rich");
+
+  // The invalid address blocks Send until it is removed.
+  await composer.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(composer.getByRole("alert")).toContainText("highlighted addresses");
+  await composer.getByRole("button", { name: "Remove nope" }).click();
+  await composer.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(composer).toBeHidden();
+
+  await expect
+    .poll(async () => count(await gmail(page), "e2e-first", "sent"))
+    .toBe(count(before, "e2e-first", "sent") + 1);
+  const raw = (await gmail(page))["e2e-first"]?.sent.at(-1)?.raw ?? "";
+  expect(headerOf(raw, "To")).toBe("a@example.test, b@example.test");
+  expect(headerOf(raw, "Content-Type")).toMatch(/^multipart\/mixed/);
+  expect(raw).toContain('filename="notes.txt"');
+  expect(raw).toContain(Buffer.from("attached text").toString("base64"));
+  expect(htmlOf(raw)).toContain("<strong>team</strong>");
+  expect(htmlOf(raw)).toContain(
+    '<a href="https://example.test/plan">https://example.test/plan</a>',
+  );
+  expect(htmlOf(raw)).toMatch(/<ul><li><p>.*first<\/p><\/li><\/ul>/);
+  expect(textOf(raw)).toMatch(/^- .*first$/m);
 });
