@@ -648,8 +648,8 @@ export type ConnectionCatalogItem = z.infer<typeof ConnectionCatalogItemSchema>;
 /**
  * One Gmail entry per surface. With native Google configured and usable, it
  * replaces the managed (Composio, Pipedream) Gmail entries. Where native Google
- * cannot work (desktop's embedded window, mobile's session-less browser) it is
- * hidden and the managed entry stays.
+ * cannot work (a desktop shell that cannot open the system browser, mobile's
+ * session-less browser) it is hidden and the managed entry stays.
  */
 export function preferNativeGmail(
   items: ConnectionCatalogItem[],

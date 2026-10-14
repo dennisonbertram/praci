@@ -1,5 +1,9 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { IntegrationCatalogResult, IntegrationSetupState } from "@rakazo/contracts";
+import {
+  GOOGLE_DESKTOP_REDIRECT_URI,
+  type IntegrationCatalogResult,
+  type IntegrationSetupState,
+} from "@rakazo/contracts";
 import { deriveMcpName } from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
 import { Check } from "lucide-react";
@@ -215,16 +219,28 @@ export function IntegrationSetup({
                 />
               </label>
               {choice === "google" ? (
-                <label htmlFor={`${fieldId}-redirect-uri`} className="block text-sm">
-                  <Trans>Redirect URI</Trans>
-                  <Input
-                    id={`${fieldId}-redirect-uri`}
-                    className="mt-2"
-                    value={googleRedirectUri}
-                    readOnly
-                    onFocus={(event) => event.target.select()}
-                  />
-                </label>
+                <>
+                  <label htmlFor={`${fieldId}-redirect-uri`} className="block text-sm">
+                    <Trans>Redirect URI</Trans>
+                    <Input
+                      id={`${fieldId}-redirect-uri`}
+                      className="mt-2"
+                      value={googleRedirectUri}
+                      readOnly
+                      onFocus={(event) => event.target.select()}
+                    />
+                  </label>
+                  <label htmlFor={`${fieldId}-desktop-redirect-uri`} className="block text-sm">
+                    <Trans>Desktop redirect URI</Trans>
+                    <Input
+                      id={`${fieldId}-desktop-redirect-uri`}
+                      className="mt-2"
+                      value={GOOGLE_DESKTOP_REDIRECT_URI}
+                      readOnly
+                      onFocus={(event) => event.target.select()}
+                    />
+                  </label>
+                </>
               ) : null}
               <a
                 className="text-sm text-muted-foreground underline"

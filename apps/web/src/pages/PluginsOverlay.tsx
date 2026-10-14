@@ -34,7 +34,7 @@ import { ChevronDown, ChevronLeft, ChevronUp, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IntegrationSetup } from "../components/integrations/IntegrationSetup";
 import { McpServerRow } from "../components/integrations/McpServerRow";
-import { desktopBridge } from "../lib/desktop";
+import { desktopBridge, nativeGoogleAvailable, signInWithSystemBrowser } from "../lib/desktop";
 import { optionalCatalogFeedProbe } from "../lib/optional-catalog-feed";
 import { PLUGIN_CONNECT_WINDOW } from "../lib/plugin-connect";
 import { rpc } from "../lib/rpc";
@@ -126,7 +126,7 @@ export function PluginsOverlay({
       optionalCatalogFeedProbe(rpc.capabilities.catalogSearch({ query: "" })),
       rpc.mcp.servers.list(),
     ]);
-    setCatalog(preferNativeGmail(items, { nativeGoogle: !desktopBridge() }));
+    setCatalog(preferNativeGmail(items, { nativeGoogle: nativeGoogleAvailable(desktopBridge()) }));
     setMcpServers(servers.filter((server) => server.enabled));
     setConnections(rows);
     setLabelDrafts((current) => {
@@ -232,11 +232,28 @@ export function PluginsOverlay({
       const existing = activeAccounts(connections, item).filter(
         (row) => row.status === "connected",
       );
+      // Google refuses embedded browsers, so desktop signs in with the system browser. That browser
+      // has no Rakazo session: the shell catches the code on loopback and this window finishes it.
+      const viaSystemBrowser = item.connectorId === "google" && Boolean(desktopBridge());
       const started = await rpc.connections.begin({
         connectorId: item.connectorId,
         provider: item.slug,
         displayName: nextAccountLabel(item.name, existing.length),
+        ...(viaSystemBrowser ? { redirect: "desktop" as const } : {}),
       });
+      if (viaSystemBrowser && started.authorizationUrl) {
+        const { code, state } = await signInWithSystemBrowser(
+          started.authorizationUrl,
+          controller.signal,
+        );
+        await rpc.connections.complete({ state, code });
+        if (controller.signal.aborted) return;
+        setItemConnected(item, true);
+        void notifyAppConnected(item);
+        await refresh().catch(() => undefined);
+        setToolsTick((tick) => tick + 1);
+        return;
+      }
       if (started.authorizationUrl)
         window.open(started.authorizationUrl, PLUGIN_CONNECT_WINDOW, "noopener,noreferrer");
       if (item.noAuth && !started.authorizationUrl) {

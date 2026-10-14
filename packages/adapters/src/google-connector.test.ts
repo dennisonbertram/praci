@@ -1,5 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
 import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-kit";
+import { GOOGLE_DESKTOP_REDIRECT_URI } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { GmailMailProvider } from "./gmail-mail-provider.js";
@@ -229,6 +230,36 @@ describe("GoogleConnector.begin", () => {
     await expect(
       setup({ redirectUri: null }).connector.begin({ provider: "gmail", redirectUrl: "" }, context),
     ).rejects.toThrow(/redirect/i);
+  });
+});
+
+describe("GoogleConnector desktop redirect", () => {
+  it("authorizes and exchanges with the fixed loopback redirect, even without a web redirect", async () => {
+    const s = setup({ redirectUri: null });
+    const { authorizationUrl, state } = await s.connector.begin(
+      { provider: "gmail", redirectUrl: GOOGLE_DESKTOP_REDIRECT_URI },
+      context,
+    );
+    expect(new URL(authorizationUrl as string).searchParams.get("redirect_uri")).toBe(
+      GOOGLE_DESKTOP_REDIRECT_URI,
+    );
+    await s.connector.complete(
+      { state, code: "code-1", redirectUrl: GOOGLE_DESKTOP_REDIRECT_URI },
+      context,
+    );
+    expect(s.google.tokenCalls[0]!.get("redirect_uri")).toBe(GOOGLE_DESKTOP_REDIRECT_URI);
+  });
+
+  it("never lets a caller pick another redirect", async () => {
+    const s = setup();
+    const evil = "http://127.0.0.1:9999/integrations/google/callback";
+    const { authorizationUrl, state } = await s.connector.begin(
+      { provider: "gmail", redirectUrl: evil },
+      context,
+    );
+    expect(new URL(authorizationUrl as string).searchParams.get("redirect_uri")).toBe(REDIRECT);
+    await s.connector.complete({ state, code: "code-1", redirectUrl: evil }, context);
+    expect(s.google.tokenCalls[0]!.get("redirect_uri")).toBe(REDIRECT);
   });
 });
 

@@ -2071,6 +2071,10 @@ msgstr "Descrição"
 msgid "Desktop app"
 msgstr ""
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Desktop redirect URI"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 msgid "Desktop update"
 msgstr ""
@@ -3477,7 +3481,6 @@ msgstr "Falha na conexão OAuth"
 
 #: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr ""
 

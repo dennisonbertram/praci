@@ -10,6 +10,7 @@ import type {
   ManagedConnectorProvider,
   SecretStore,
 } from "@rakazo/adapter-kit";
+import { GOOGLE_DESKTOP_REDIRECT_URI } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { filterCatalog } from "./composio-connector.js";
 import { asRecord, readBoundedText } from "./connector-http.js";
@@ -131,7 +132,7 @@ export class GoogleConnector implements ManagedConnectorProvider {
     const state = randomBytes(32).toString("base64url");
     const params = new URLSearchParams({
       client_id: this.config.clientId,
-      redirect_uri: this.requireRedirectUri(),
+      redirect_uri: this.redirectUriFor(request.redirectUrl),
       response_type: "code",
       scope: SCOPES.join(" "),
       state,
@@ -146,7 +147,7 @@ export class GoogleConnector implements ManagedConnectorProvider {
   }
 
   async complete(
-    request: { state: string; code?: string },
+    request: { state: string; code?: string; redirectUrl?: string },
     context: AdapterContext,
   ): Promise<{ connectionRef: string; secretId: string }> {
     if (!STATE_PATTERN.test(request.state) || !request.code)
@@ -158,7 +159,7 @@ export class GoogleConnector implements ManagedConnectorProvider {
           grant_type: "authorization_code",
           code: request.code,
           code_verifier: this.verifier(request.state),
-          redirect_uri: this.requireRedirectUri(),
+          redirect_uri: this.redirectUriFor(request.redirectUrl),
           client_id: this.config.clientId,
           client_secret: this.config.clientSecret,
         },
@@ -392,6 +393,12 @@ export class GoogleConnector implements ManagedConnectorProvider {
     return createHmac("sha256", this.config.identitySecret)
       .update(`google-pkce:${state}`)
       .digest("base64url");
+  }
+
+  /** Desktop's fixed loopback address, or the web callback. A caller cannot pick any other redirect. */
+  private redirectUriFor(requested?: string): string {
+    if (requested === GOOGLE_DESKTOP_REDIRECT_URI) return requested;
+    return this.requireRedirectUri();
   }
 
   private requireRedirectUri(): string {

@@ -2071,6 +2071,10 @@ msgstr "Описание"
 msgid "Desktop app"
 msgstr "Настольное приложение"
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Desktop redirect URI"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 msgid "Desktop update"
 msgstr "Обновление настольного приложения"
@@ -3477,7 +3481,6 @@ msgstr "Соединение OAuth не удалось"
 
 #: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr "Срок действия OAuth истек"
 

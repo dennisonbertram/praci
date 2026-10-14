@@ -789,6 +789,8 @@ export const appContract = {
           connectorId: z.string().default("composio"),
           provider: z.string(),
           displayName: z.string(),
+          /** `desktop`: Google returns to the app's loopback listener instead of the web callback. */
+          redirect: z.literal("desktop").optional(),
         }),
       )
       .output(z.object({ connectionId: Id, authorizationUrl: z.string().nullable() })),
