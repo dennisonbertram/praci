@@ -173,6 +173,22 @@ function resumeChoiceLabel(
   }
 }
 
+/**
+ * A conversational run's request and earlier answers stay in thread history, so its resumed
+ * attempt gets just the answer. A background run's prompt never reaches the thread, so it keeps
+ * its instructions and every earlier answer; otherwise the resumed attempt forgets them.
+ */
+function resumePrompt(
+  run: { trigger: string; task?: { prompt: string } | null },
+  question: string,
+  answer: string,
+): string {
+  if (isConversationalRun(run.trigger)) return answer;
+  return [run.task?.prompt.trim(), `${question.trim()}\nAnswer: ${answer}`]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export interface PauseRunForTakeover {
   spaceId: string;
   threadId: string;
@@ -616,7 +632,13 @@ async function commitAnswerRunInput(
       threadId: input.threadId,
       status: "waiting_input",
     },
-    select: { botId: true, userId: true, checkpoint: true },
+    select: {
+      botId: true,
+      userId: true,
+      checkpoint: true,
+      trigger: true,
+      task: { select: { prompt: true } },
+    },
   });
   if (!run) return null;
   const message = await tx.message.findFirst({
@@ -762,9 +784,11 @@ async function commitAnswerRunInput(
     const task = await tx.task.updateMany({
       where: { runs: { some: { id: input.runId } } },
       data: {
-        prompt: selectedChoice
-          ? `Selected choice ${selectedChoice.id}: ${resumeLabel}`
-          : input.answer,
+        prompt: resumePrompt(
+          run,
+          pendingAsk.text,
+          selectedChoice ? `Selected choice ${selectedChoice.id}: ${resumeLabel}` : input.answer,
+        ),
       },
     });
     if (task.count !== 1) throw new Error("Run task was not available to answer");
