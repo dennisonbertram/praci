@@ -86,7 +86,6 @@ export function InboxRow({
   };
   const found = inboxLabel(row);
   const label = hideAttention && found === "attention" ? null : found;
-  const weight = row.unread ? "font-semibold" : "";
   const muted = row.feedback === "noise";
   const marks = [
     { mark: "important", name: t`Mark important`, Icon: Star },
@@ -101,14 +100,14 @@ export function InboxRow({
           aria-current={selected ? "true" : undefined}
           data-row-id={row.id}
           onClick={onOpen}
-          className={`grid w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto_4rem] items-center gap-x-3 gap-y-0.5 border-s-2 py-2 ps-2.5 pe-3 text-start text-sm hover:bg-muted @3xl:h-11 @3xl:grid-cols-[8px_180px_minmax(0,1fr)_auto_4rem] @3xl:py-0 ${selected ? "border-primary bg-muted" : "border-transparent"} ${onMark ? "pointer-coarse:pe-11" : ""} ${muted ? "text-muted-foreground" : "text-foreground"}`}
+          className={`grid h-11 w-full min-w-0 grid-cols-[8px_96px_minmax(0,1fr)_auto_4rem] items-center gap-x-3 border-s-2 ps-2.5 pe-3 text-start text-sm font-normal hover:bg-muted @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_4rem] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_4rem] @3xl:grid-cols-[8px_180px_minmax(0,1fr)_auto_4rem] ${selected ? "border-primary bg-muted" : "border-transparent"} ${onMark ? "pointer-coarse:pe-11" : ""} text-muted-foreground`}
         >
           <span
             aria-hidden="true"
             data-unread-dot={row.unread ? "" : undefined}
-            className={`col-start-1 row-start-1 size-2 rounded-full ${row.unread ? "bg-primary" : ""}`}
+            className={`size-2 rounded-full ${row.unread ? "bg-primary" : ""}`}
           />
-          <span dir="auto" className={`col-start-2 row-start-1 truncate ${weight}`}>
+          <span dir="auto" className={`truncate ${row.unread && !muted ? "text-foreground" : ""}`}>
             {isSuspiciousCategory(row.category) ? (
               <TriangleAlert
                 role="img"
@@ -123,26 +122,21 @@ export function InboxRow({
               </span>
             ) : null}
           </span>
-          <span
-            dir="auto"
-            className={`col-span-3 col-start-2 row-start-2 truncate @3xl:col-span-1 @3xl:col-start-3 @3xl:row-start-1 ${weight}`}
-          >
+          <span dir="auto" className="truncate">
             {row.subject}
-            {row.snippet ? (
-              <span className="font-normal text-muted-foreground"> - {row.snippet}</span>
-            ) : null}
+            {row.snippet ? <span> - {row.snippet}</span> : null}
           </span>
           {label ? (
             <Badge
               variant={label === "newsletter" ? "outline" : "secondary"}
-              className={`col-start-3 row-start-1 @3xl:col-start-4 ${label === "spam" || label === "junk" ? "bg-warning/15 text-warning" : ""}`}
+              className={`col-start-4 ${label === "spam" || label === "junk" ? "bg-warning/15 text-warning" : ""}`}
             >
               {labelNames[label]}
             </Badge>
           ) : null}
           <time
             dateTime={row.receivedAt}
-            className={`col-start-4 row-start-1 text-end text-xs whitespace-nowrap tabular-nums @3xl:col-start-5 ${row.unread ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+            className="col-start-5 text-end text-xs whitespace-nowrap tabular-nums"
           >
             {formatMailTime(row.receivedAt, today)}
           </time>
@@ -150,7 +144,7 @@ export function InboxRow({
         {onMark ? (
           <>
             <div
-              className={`absolute end-22 top-1.5 flex items-center gap-0.5 bg-muted @3xl:top-1/2 @3xl:-translate-y-1/2 pointer-coarse:hidden ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
+              className={`absolute end-22 top-1/2 flex -translate-y-1/2 items-center gap-0.5 bg-muted pointer-coarse:hidden ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
             >
               {marks.map(({ mark, name, Icon }) => {
                 const pressed = row.feedback === mark;
@@ -179,7 +173,7 @@ export function InboxRow({
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    className="absolute end-3 top-1.5 hidden pointer-coarse:inline-flex"
+                    className="absolute end-3 top-1/2 hidden -translate-y-1/2 pointer-coarse:inline-flex"
                   />
                 }
                 aria-label={t`More`}

@@ -8,10 +8,11 @@ import { afterEach, expect, it, vi } from "vitest";
 const prefill = vi.hoisted(() => vi.fn());
 const send = vi.hoisted(() => vi.fn());
 const draftSave = vi.hoisted(() => vi.fn());
+const discardDraft = vi.hoisted(() => vi.fn());
 const requestClose = vi.hoisted(() => ({ current: () => {} }));
 
 vi.mock("../lib/rpc", () => ({
-  rpc: { inbox: { compose: { prefill, draftSave, send, discard: vi.fn() } } },
+  rpc: { inbox: { compose: { prefill, draftSave, send, discard: discardDraft } } },
 }));
 vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray, ...values: unknown[]) =>
@@ -71,6 +72,7 @@ vi.mock("@rakazo/ui-web", () => {
 
 import { closeRestored, getOutbox, UNDO_SEND_MS, undoSend } from "../lib/outbox";
 import { ComposeEmail, type ComposeSeed } from "./ComposeEmail";
+import { forgetClosed } from "./compose/draft-memory";
 
 const body = "\n\nOn Mon, Sam wrote:\n> quoted line\n> second line";
 const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
@@ -115,6 +117,7 @@ async function type(input: HTMLInputElement, text: string) {
 
 afterEach(() => {
   closeRestored();
+  for (const kind of ["reply", "replyAll", "forward"] as const) forgetClosed(reply(kind));
   document.body.innerHTML = "";
   vi.unstubAllGlobals();
   vi.clearAllMocks();
@@ -149,7 +152,9 @@ it("turns text before a comma into a chip, keeps invalid ones red, and refuses t
   ) as HTMLButtonElement;
   await act(async () => sendButton.click());
   expect(send).not.toHaveBeenCalled();
-  expect(document.querySelector("[role=alert]")?.textContent).toMatch(/highlighted addresses/);
+  expect(document.querySelector("[role=alert]")?.textContent).toBe(
+    "nope isn't a valid email address",
+  );
 });
 
 it("removes the last chip on Backspace in the empty input", async () => {
@@ -403,6 +408,115 @@ it("saves a draft once the person types", async () => {
       await vi.advanceTimersByTimeAsync(2_000);
     });
     expect(draftSave).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+const many = "a@example.test, b@example.test, c@example.test, d@example.test, e@example.test";
+
+it("folds more than three recipients into a summary until the rows are focused", async () => {
+  await open({ kind: "new" });
+  const to = field("To") as HTMLInputElement;
+  await act(async () => to.focus());
+  await type(to, `${many},`);
+  expect(chips()).toHaveLength(5);
+  await act(async () => {
+    (field("Subject") as HTMLInputElement).focus();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  });
+  expect(chips()).toEqual([]);
+  const summary = [...document.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes("+3 more"),
+  ) as HTMLButtonElement;
+  expect(summary.textContent).toBe("a@example.test, b@example.test, +3 more");
+  await act(async () => summary.focus());
+  expect(chips()).toHaveLength(5);
+  expect(document.activeElement).toBe(field("To"));
+});
+
+it("keeps Cc and Bcc ahead of the To input in tab order, so Tab from To reaches Subject", async () => {
+  await open({ kind: "new" });
+  const to = field("To") as HTMLInputElement;
+  for (const name of ["Cc", "Bcc"])
+    expect(
+      button(name).compareDocumentPosition(to) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  const subject = field("Subject") as HTMLInputElement;
+  expect(to.compareDocumentPosition(subject) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("names the one address that blocks a send", async () => {
+  await open({ kind: "new" });
+  await type(field("To") as HTMLInputElement, "josé@example.test,");
+  await act(async () => button("Send").click());
+  expect(document.querySelector("[role=alert]")?.textContent).toBe(
+    "josé@example.test isn't a valid email address",
+  );
+});
+
+it("says the message was not sent when a send fails, and keeps Send available", async () => {
+  send.mockRejectedValue(new Error("Could not reach the server"));
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(getOutbox().restoring?.notice).toMatch(/^Not sent\. /);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("discards after an undo window, and Undo brings the composer back", async () => {
+  vi.useFakeTimers();
+  draftSave.mockResolvedValue({ status: "saved" });
+  discardDraft.mockResolvedValue({});
+  try {
+    const onClose = vi.fn();
+    await open(reply("reply"), onClose);
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    await act(async () =>
+      (document.querySelector("button[aria-label='Discard']") as HTMLButtonElement).click(),
+    );
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(getOutbox().view).toEqual({ kind: "discarded" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS - 100);
+    });
+    expect(discardDraft).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    expect(discardDraft).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("opens the same reply again as it was closed, so the same draft is updated", async () => {
+  vi.useFakeTimers();
+  draftSave.mockResolvedValue({ status: "saved" });
+  try {
+    const first = await open(reply("reply"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => requestClose.current());
+    await act(async () => first.root.unmount());
+    document.body.innerHTML = "";
+    await open(reply("reply"));
+    expect(prefill).toHaveBeenCalledTimes(1);
+    expect((field("Subject") as HTMLInputElement).value).toBe("Re: Offsite!");
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!!");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    const ids = draftSave.mock.calls.map(([call]) => call.clientId);
+    expect(new Set(ids).size).toBe(1);
   } finally {
     vi.useRealTimers();
   }

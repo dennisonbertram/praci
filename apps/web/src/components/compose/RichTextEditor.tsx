@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import {
   Button,
+  cn,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -63,7 +64,7 @@ export function useComposeEditor({
         "aria-label": t`Message`,
         dir: "auto",
         class:
-          "min-h-full px-4 py-3 text-sm outline-none [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:my-1 [&_blockquote]:border-s-2 [&_blockquote]:border-border [&_blockquote]:ps-3 [&_blockquote]:text-muted-foreground [&_ol]:list-decimal [&_ol]:ps-5 [&_ul]:list-disc [&_ul]:ps-5",
+          "min-h-full px-4 py-3 text-sm outline-none [&_a]:text-link [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:my-1 [&_blockquote]:border-s-2 [&_blockquote]:border-border [&_blockquote]:ps-3 [&_blockquote]:text-muted-foreground [&_ol]:list-decimal [&_ol]:ps-5 [&_ul]:list-disc [&_ul]:ps-5",
       },
       handleKeyDown: (_view, event) => {
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -113,7 +114,7 @@ function ToolButton({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className={active ? PRESSED : undefined}
+            className={cn("pointer-coarse:size-10", active && PRESSED)}
             disabled={disabled}
             aria-label={label}
             aria-pressed={active}
@@ -290,7 +291,7 @@ export function LinkButton({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className={active ? PRESSED : undefined}
+                  className={cn("pointer-coarse:size-10", active && PRESSED)}
                   disabled={disabled}
                   aria-label={t`Insert link`}
                   onMouseDown={(event) => event.preventDefault()}

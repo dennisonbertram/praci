@@ -107,15 +107,16 @@ it("keeps the time on one line and the subject in the row", async () => {
   expect(container.textContent).toContain("Can you do the 14th?");
 });
 
-it("marks unread with a dot and semibold text, and read with neither", async () => {
+it("marks unread with a dot and a bright sender, and read with neither, never bold", async () => {
   const unread = await render(mail({ unread: true }));
   const read = await render(mail({ unread: false }));
   expect(unread.querySelector("[data-unread-dot]")).not.toBeNull();
   expect(read.querySelector("[data-unread-dot]")).toBeNull();
   const sender = (c: HTMLElement) => c.querySelectorAll('span[dir="auto"]')[0]?.className ?? "";
-  expect(sender(unread)).toContain("font-semibold");
-  expect(sender(read)).not.toContain("font-semibold");
-  expect(read.querySelector("button")?.className).toContain("text-foreground");
+  expect(sender(unread)).toContain("text-foreground");
+  expect(sender(read)).not.toContain("text-foreground");
+  expect(unread.innerHTML).not.toContain("font-semibold");
+  expect(read.querySelector("button")?.className).toContain("text-muted-foreground");
   expect(unread.textContent).toContain("(unread)");
   expect(read.textContent).not.toContain("(unread)");
   expect(unread.querySelectorAll("img")).toHaveLength(0);
@@ -158,9 +159,9 @@ it("flags the selected row and exposes its id", async () => {
   expect((await render(mail())).querySelector("button")?.hasAttribute("aria-current")).toBe(false);
 });
 
-it("joins the subject and preview with a hyphen, the preview in regular weight", async () => {
+it("joins the subject and preview with a hyphen, both gray", async () => {
   const container = await render(mail());
   const subject = container.querySelectorAll('span[dir="auto"]')[1];
   expect(subject?.textContent).toBe("Offsite dates - Can you do the 14th?");
-  expect(subject?.querySelector("span")?.className).toContain("font-normal");
+  expect(subject?.className).not.toContain("text-foreground");
 });

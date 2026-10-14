@@ -33,11 +33,13 @@ import {
   textToHtml,
 } from "../lib/compose-body";
 import { createDraftSaver } from "../lib/compose-draft";
-import { holdSend } from "../lib/outbox";
-import { parseRecipient, takeEntries } from "../lib/recipients";
+import { holdDiscard, holdSend } from "../lib/outbox";
+import { invalidRecipients, summarizeRecipients, takeEntries } from "../lib/recipients";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
-import { RecipientField } from "./compose/RecipientField";
+import { focusRestored } from "./compose/caret";
+import { forgetClosed, recallClosed, rememberClosed } from "./compose/draft-memory";
+import { invalidAddressText, RecipientField } from "./compose/RecipientField";
 import { FormatBar, ToolButton, useComposeEditor } from "./compose/RichTextEditor";
 
 const AUTOSAVE_MS = 1_500;
@@ -102,23 +104,43 @@ function problemText(status: ComposeResult["status"], sending: boolean): string 
   return sending ? t`Couldn't send. Try again.` : t`Couldn't save the draft`;
 }
 
-function Row({
-  label,
-  children,
-  end,
-}: {
-  label: string;
-  children: React.ReactNode;
-  end?: React.ReactNode;
-}) {
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex min-h-9 items-start gap-2 border-b border-border py-1">
       <span aria-hidden="true" className="w-12 shrink-0 text-sm leading-7 text-muted-foreground">
         {label}
       </span>
       {children}
-      {end ? <div className="flex h-7 shrink-0 items-center">{end}</div> : null}
     </div>
+  );
+}
+
+/** More recipients than this fold into one summary line while the recipient rows are not in use. */
+const COLLAPSE_OVER = 3;
+
+/** Not-sent wording for a failed send; "unknown" already says so and warns about a repeat. */
+const notSent = (text: string, status?: ComposeResult["status"]) =>
+  status === "unknown" ? text : t`Not sent. ${text}`;
+
+/** The recipients as one line (a few names and "+N more"); focusing it opens the rows. */
+function RecipientSummary({ entries, onOpen }: { entries: string[]; onOpen: () => void }) {
+  const { recipients, more } = summarizeRecipients(entries);
+  return (
+    <button
+      type="button"
+      onFocus={onOpen}
+      className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-sm text-start text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      <span className="truncate" dir="auto">
+        {recipients.map((recipient, index) => (
+          <span key={recipient.entry} className={cn(!recipient.valid && "text-destructive")}>
+            {recipient.name || recipient.address}
+            {index < recipients.length - 1 || more > 0 ? ", " : ""}
+          </span>
+        ))}
+      </span>
+      {more > 0 ? <span className="shrink-0 text-muted-foreground">{t`+${more} more`}</span> : null}
+    </button>
   );
 }
 
@@ -134,7 +156,7 @@ export function ComposeEmail({
   seed,
   accounts,
   connectionId,
-  restore,
+  restore: restoreProp,
   onClose,
 }: {
   seed: ComposeSeed;
@@ -146,6 +168,8 @@ export function ComposeEmail({
   restore?: ComposeRestore;
   onClose: () => void;
 }) {
+  // Reply, reply all and forward continue the composer closed last time for the same message.
+  const [restore] = useState(() => restoreProp ?? recallClosed(seed));
   const [clientId] = useState(() => restore?.clientId ?? newClientId());
   const initial: Fields = restore?.fields ?? {
     connectionId: connectionId ?? accounts[0]?.connectionId ?? "",
@@ -166,7 +190,10 @@ export function ComposeEmail({
   const [loading, setLoading] = useState(seed.kind !== "new" && !restore);
   const [showCc, setShowCc] = useState(Boolean(restore?.fields.cc.length));
   const [showBcc, setShowBcc] = useState(Boolean(restore?.fields.bcc.length));
-  const [reveal, setReveal] = useState<"cc" | "bcc" | null>(null);
+  const [reveal, setReveal] = useState<"to" | "cc" | "bcc" | null>(null);
+  // The recipient rows are open while focus is inside them; otherwise many recipients fold up.
+  const [expanded, setExpanded] = useState(false);
+  const recipientsRef = useRef<HTMLDivElement>(null);
   const [showFormat, setShowFormat] = useState(true);
   const [linkOpen, setLinkOpen] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
@@ -248,7 +275,7 @@ export function ComposeEmail({
 
   useEffect(() => {
     if (!reveal) return;
-    (reveal === "cc" ? ccRef : bccRef).current?.focus();
+    (reveal === "to" ? toRef : reveal === "cc" ? ccRef : bccRef).current?.focus();
     setReveal(null);
   }, [reveal]);
 
@@ -306,7 +333,7 @@ export function ComposeEmail({
       text: editor.getText({ blockSeparator: "\n" }),
     };
     setFields(fieldsRef.current);
-    if (restore) editor.commands.focus("end", { scrollIntoView: false });
+    if (restore) focusRestored(editor, seed.kind === "reply" || seed.kind === "replyAll");
     else if (seed.kind === "forward") {
       // Focus starts at To; tabbing down lands above the forwarded block.
       editor.commands.setTextSelection(1);
@@ -322,20 +349,48 @@ export function ComposeEmail({
     [saver],
   );
 
+  /** Everything in the composer, so it can open again as it is now. */
+  const snapshot = (kept: File[], hasDraft: boolean): ComposeRestore => ({
+    seed,
+    clientId,
+    fields: fieldsRef.current,
+    ...(replyToRef.current ? { replyToId: replyToRef.current } : {}),
+    forwarded,
+    files: kept,
+    saved: hasDraft,
+    accounts,
+  });
+
   /** Drops the Gmail draft, if one was saved, once any save in flight has finished. */
-  const discard = () => {
+  const dropDraft = () =>
+    saver.flush().then(() => (saved.current ? rpc.inbox.compose.discard({ clientId }) : undefined));
+
+  const discardNow = () => {
     done.current = true;
     saver.cancel();
-    void saver
-      .flush()
-      .then(() => (saved.current ? rpc.inbox.compose.discard({ clientId }) : undefined))
-      .catch(() => undefined);
+    forgetClosed(seed);
+    void dropDraft().catch(() => undefined);
     onClose();
   };
 
+  /** The Discard button: with something written, the draft goes after an Undo window. */
+  const discard = () => {
+    if (isBlank(fieldsRef.current) && files.length === 0) return discardNow();
+    done.current = true;
+    saver.cancel();
+    forgetClosed(seed);
+    onClose();
+    // A save still in flight may have made the draft; the server accepts a discard of none.
+    void saver.flush().then(() => holdDiscard(dropDraft, snapshot(files, true)));
+  };
+
   const closeNow = () => {
-    if (!touched.current || (isBlank(fieldsRef.current) && files.length === 0)) discard();
-    else onClose();
+    if (!touched.current || (isBlank(fieldsRef.current) && files.length === 0)) discardNow();
+    else {
+      // Closing saves a draft; attachments are not part of it, so they are not kept.
+      rememberClosed(seed, snapshot([], true));
+      onClose();
+    }
   };
 
   const close = () => {
@@ -380,8 +435,16 @@ export function ComposeEmail({
       setNotice({ kind: "error", text: t`Add a recipient.` });
       return;
     }
-    if (all.some((entry) => !parseRecipient(entry).valid)) {
-      setNotice({ kind: "error", text: t`Fix or remove the highlighted addresses.` });
+    const invalid = invalidRecipients(all);
+    if (invalid.length) {
+      const [first] = invalid as [(typeof invalid)[number]];
+      setNotice({
+        kind: "error",
+        text:
+          invalid.length === 1
+            ? invalidAddressText(first.address)
+            : t`Fix or remove the highlighted addresses.`,
+      });
       return;
     }
     setSending(true);
@@ -404,26 +467,18 @@ export function ComposeEmail({
           ? { forwardOf: { messageId: seed.messageId, attachmentIds: forwarded.map((f) => f.id) } }
           : {}),
       };
-      const reopen: ComposeRestore = {
-        seed,
-        clientId,
-        fields: current,
-        ...(replyToRef.current ? { replyToId: replyToRef.current } : {}),
-        forwarded,
-        files,
-        saved: saved.current,
-        accounts,
-      };
+      const reopen = snapshot(files, saved.current);
       // Held for a few seconds so Undo can bring this composer back; a failure does too.
       holdSend(async () => {
         try {
           const { status } = await rpc.inbox.compose.send(request);
-          return status === "sent" ? null : problemText(status, true);
+          return status === "sent" ? null : notSent(problemText(status, true), status);
         } catch (cause) {
-          return errorText(cause);
+          return notSent(errorText(cause));
         }
       }, reopen);
       done.current = true;
+      forgetClosed(seed);
       onClose();
       return;
     } catch (cause) {
@@ -506,67 +561,90 @@ export function ComposeEmail({
               </NativeSelect>
             </Row>
           ) : null}
-          <Row
-            label={t`To`}
-            end={
-              <>
-                {!showCc ? (
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => {
-                      setShowCc(true);
-                      setReveal("cc");
-                    }}
-                  >
-                    <Trans>Cc</Trans>
-                  </Button>
-                ) : null}
-                {!showBcc ? (
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => {
-                      setShowBcc(true);
-                      setReveal("bcc");
-                    }}
-                  >
-                    <Trans>Bcc</Trans>
-                  </Button>
-                ) : null}
-              </>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: the handlers only track whether focus is inside */}
+          <div
+            ref={recipientsRef}
+            className="max-h-[30dvh] overflow-y-auto"
+            onFocus={() => setExpanded(true)}
+            onBlur={() =>
+              // Wait for focus to land: moving between the rows is not leaving them.
+              setTimeout(() => {
+                if (!recipientsRef.current?.contains(document.activeElement)) setExpanded(false);
+              }, 0)
             }
           >
-            <RecipientField
-              label={t`To`}
-              inputRef={toRef}
-              entries={fields.to}
-              disabled={locked}
-              onChange={(to) => update({ to })}
-            />
-          </Row>
-          {showCc ? (
-            <Row label={t`Cc`}>
-              <RecipientField
-                label={t`Cc`}
-                inputRef={ccRef}
-                entries={fields.cc}
-                disabled={locked}
-                onChange={(cc) => update({ cc })}
-              />
-            </Row>
-          ) : null}
-          {showBcc ? (
-            <Row label={t`Bcc`}>
-              <RecipientField
-                label={t`Bcc`}
-                inputRef={bccRef}
-                entries={fields.bcc}
-                disabled={locked}
-                onChange={(bcc) => update({ bcc })}
-              />
-            </Row>
-          ) : null}
+            {!expanded &&
+            fields.to.length + fields.cc.length + fields.bcc.length > COLLAPSE_OVER ? (
+              <Row label={t`To`}>
+                <RecipientSummary
+                  entries={[...fields.to, ...fields.cc, ...fields.bcc]}
+                  onOpen={() => setReveal("to")}
+                />
+              </Row>
+            ) : (
+              <>
+                <Row label={t`To`}>
+                  <RecipientField
+                    label={t`To`}
+                    inputRef={toRef}
+                    entries={fields.to}
+                    disabled={locked}
+                    onChange={(to) => update({ to })}
+                    trailing={
+                      <>
+                        {!showCc ? (
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => {
+                              setShowCc(true);
+                              setReveal("cc");
+                            }}
+                          >
+                            <Trans>Cc</Trans>
+                          </Button>
+                        ) : null}
+                        {!showBcc ? (
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => {
+                              setShowBcc(true);
+                              setReveal("bcc");
+                            }}
+                          >
+                            <Trans>Bcc</Trans>
+                          </Button>
+                        ) : null}
+                      </>
+                    }
+                  />
+                </Row>
+                {showCc ? (
+                  <Row label={t`Cc`}>
+                    <RecipientField
+                      label={t`Cc`}
+                      inputRef={ccRef}
+                      entries={fields.cc}
+                      disabled={locked}
+                      onChange={(cc) => update({ cc })}
+                    />
+                  </Row>
+                ) : null}
+                {showBcc ? (
+                  <Row label={t`Bcc`}>
+                    <RecipientField
+                      label={t`Bcc`}
+                      inputRef={bccRef}
+                      entries={fields.bcc}
+                      disabled={locked}
+                      onChange={(bcc) => update({ bcc })}
+                    />
+                  </Row>
+                ) : null}
+              </>
+            )}
+          </div>
           <Row label={t`Subject`}>
             <input
               aria-label={t`Subject`}
@@ -612,7 +690,7 @@ export function ComposeEmail({
         {files.length + forwarded.length ? (
           <ul
             aria-label={t`Attachments`}
-            className="flex max-h-24 shrink-0 flex-wrap gap-1.5 overflow-y-auto border-t border-border px-4 py-2"
+            className="flex max-h-33 shrink-0 flex-wrap gap-1.5 overflow-y-auto overscroll-contain border-t border-border px-4 py-2"
           >
             {forwarded.map((file) => (
               <li
@@ -628,7 +706,7 @@ export function ComposeEmail({
                   type="button"
                   disabled={sending}
                   aria-label={t`Remove ${file.filename}`}
-                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none pointer-coarse:size-8"
                   onClick={() => setForwarded(forwarded.filter((other) => other.id !== file.id))}
                 >
                   <X aria-hidden="true" className="size-3" />
@@ -650,7 +728,7 @@ export function ComposeEmail({
                   type="button"
                   disabled={sending}
                   aria-label={t`Remove ${file.name}`}
-                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none pointer-coarse:size-8"
                   onClick={() => setFiles(files.filter((_, i) => i !== index))}
                 >
                   <X aria-hidden="true" className="size-3" />
@@ -669,7 +747,7 @@ export function ComposeEmail({
           />
         ) : null}
 
-        <div className="flex shrink-0 items-center gap-1 px-3 py-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-1 px-3 py-2">
           <Button
             className="rounded-full px-4"
             disabled={locked}
@@ -712,8 +790,9 @@ export function ComposeEmail({
           ) : null}
           <p
             role={notice?.kind === "error" ? "alert" : "status"}
+            title={notice?.text}
             className={cn(
-              "min-w-0 flex-1 truncate px-2 text-end text-xs",
+              "min-w-0 flex-1 px-2 text-end text-xs md:truncate max-md:order-first max-md:basis-full max-md:pb-1 max-md:text-start max-md:empty:hidden",
               notice?.kind === "error" ? "text-destructive" : "text-muted-foreground",
             )}
           >
@@ -725,6 +804,7 @@ export function ComposeEmail({
                 <Button
                   variant="ghost"
                   size="icon-sm"
+                  className="pointer-coarse:size-10"
                   disabled={sending}
                   aria-label={t`Discard`}
                   onClick={discard}

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseRecipient, splitEntries, takeEntries } from "./recipients";
+import {
+  invalidRecipients,
+  parseRecipient,
+  splitEntries,
+  summarizeRecipients,
+  takeEntries,
+} from "./recipients";
 
 describe("takeEntries", () => {
   it("turns text before a comma into an entry and keeps the tail", () => {
@@ -55,5 +61,32 @@ describe("parseRecipient", () => {
   it("marks bad addresses invalid", () => {
     for (const bad of ["plain", "a@b", "a b@x.test", "Name <nope>", "a@@x.test"])
       expect(parseRecipient(bad).valid).toBe(false);
+  });
+});
+
+describe("summarizeRecipients", () => {
+  const entries = ["Ana Ruiz <ana@x.test>", "sam@x.test", "kim@x.test", "lee@x.test"];
+
+  it("names the first two and counts the rest", () => {
+    const { recipients, more } = summarizeRecipients(entries);
+    expect(recipients.map((r) => r.name || r.address)).toEqual(["Ana Ruiz", "sam@x.test"]);
+    expect(more).toBe(2);
+  });
+
+  it("puts invalid entries first", () => {
+    const { recipients } = summarizeRecipients([...entries, "bad@"]);
+    expect(recipients[0]?.address).toBe("bad@");
+  });
+
+  it("has nothing left over for a short list", () => {
+    expect(summarizeRecipients(["a@x.test"]).more).toBe(0);
+  });
+});
+
+describe("invalidRecipients", () => {
+  it("lists invalid entries, including non-ASCII local parts the server rejects", () => {
+    expect(
+      invalidRecipients(["a@x.test", "josé@example.test", "bad@"]).map((r) => r.address),
+    ).toEqual(["josé@example.test", "bad@"]);
   });
 });

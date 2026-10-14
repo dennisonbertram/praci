@@ -23,8 +23,10 @@ export function MailOutbox() {
               className="pointer-events-none fixed inset-x-0 bottom-4 z-100 flex justify-center px-4"
             >
               <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
-                {view.kind === "sent" ? <Trans>Sent</Trans> : <Trans>Sending…</Trans>}
-                {view.kind === "sending" && view.undoable ? (
+                {view.kind === "sent" ? <Trans>Sent</Trans> : null}
+                {view.kind === "sending" ? <Trans>Sending…</Trans> : null}
+                {view.kind === "discarded" ? <Trans>Draft discarded</Trans> : null}
+                {view.kind === "discarded" || (view.kind === "sending" && view.undoable) ? (
                   <Button variant="ghost" size="sm" onClick={undoSend}>
                     <Trans>Undo</Trans>
                   </Button>
