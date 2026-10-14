@@ -272,6 +272,9 @@ export class GmailApiEmulator {
       return this.drafts(accountRef, mailbox, path, method, body);
     const modify = /^messages\/([^/]+)\/modify$/.exec(path);
     if (modify) return modifyMessage(mailbox, decodeURIComponent(modify[1]!), method, body);
+    const threadModify = /^threads\/([^/]+)\/modify$/.exec(path);
+    if (threadModify)
+      return modifyThread(mailbox, decodeURIComponent(threadModify[1]!), method, body);
     if (method !== "GET") return fail(405, "methodNotAllowed", "Method not allowed");
     if (path === "labels") return { status: 200, data: { labels: LABELS } };
     if (path === "profile")
@@ -417,6 +420,31 @@ function list(mailbox: Mailbox, params: URLSearchParams): ConnectorProxyResponse
   };
 }
 
+/** Parses a modify body; every label id must exist. */
+function labelChange(body: unknown): { add: string[]; remove: string[] } | undefined {
+  const { addLabelIds = [], removeLabelIds = [] } = (body ?? {}) as Record<string, unknown>;
+  const known = new Set(LABELS.map((label) => label.id));
+  const valid = (ids: unknown): ids is string[] =>
+    Array.isArray(ids) && ids.every((label) => typeof label === "string" && known.has(label));
+  return valid(addLabelIds) && valid(removeLabelIds)
+    ? { add: addLabelIds, remove: removeLabelIds }
+    : undefined;
+}
+
+/** Removes, then adds, and records what actually changed. */
+function applyLabels(
+  mailbox: Mailbox,
+  message: Stored,
+  { add, remove }: { add: string[]; remove: string[] },
+): void {
+  const before = message.labelIds;
+  message.labelIds = [...new Set([...before.filter((l) => !remove.includes(l)), ...add])];
+  const removed = before.filter((l) => !message.labelIds.includes(l));
+  const added = message.labelIds.filter((l) => !before.includes(l));
+  if (removed.length) record(mailbox, "labelRemoved", message, removed);
+  if (added.length) record(mailbox, "labelAdded", message, added);
+}
+
 /** users.messages.modify: removes, then adds; every label id must exist. */
 function modifyMessage(
   mailbox: Mailbox,
@@ -427,24 +455,29 @@ function modifyMessage(
   if (method !== "POST") return fail(405, "methodNotAllowed", "Method not allowed");
   const message = mailbox.messages.find((m) => m.id === id);
   if (!message) return fail(404, "notFound", "Requested entity was not found.");
-  const { addLabelIds = [], removeLabelIds = [] } = (body ?? {}) as Record<string, unknown>;
-  const known = new Set(LABELS.map((label) => label.id));
-  const valid = (ids: unknown): ids is string[] =>
-    Array.isArray(ids) && ids.every((label) => typeof label === "string" && known.has(label));
-  if (!valid(addLabelIds) || !valid(removeLabelIds))
-    return fail(400, "invalidArgument", "Invalid label");
-  const before = message.labelIds;
-  message.labelIds = [
-    ...new Set([...before.filter((l) => !removeLabelIds.includes(l)), ...addLabelIds]),
-  ];
-  const removed = before.filter((l) => !message.labelIds.includes(l));
-  const added = message.labelIds.filter((l) => !before.includes(l));
-  if (removed.length) record(mailbox, "labelRemoved", message, removed);
-  if (added.length) record(mailbox, "labelAdded", message, added);
+  const change = labelChange(body);
+  if (!change) return fail(400, "invalidArgument", "Invalid label");
+  applyLabels(mailbox, message, change);
   return {
     status: 200,
     data: { id: message.id, threadId: message.threadId, labelIds: message.labelIds },
   };
+}
+
+/** users.threads.modify: the same change on every message of the thread. */
+function modifyThread(
+  mailbox: Mailbox,
+  id: string,
+  method: ConnectorProxyRequest["method"],
+  body: unknown,
+): ConnectorProxyResponse {
+  if (method !== "POST") return fail(405, "methodNotAllowed", "Method not allowed");
+  const members = mailbox.messages.filter((m) => m.threadId === id);
+  if (members.length === 0) return fail(404, "notFound", "Requested entity was not found.");
+  const change = labelChange(body);
+  if (!change) return fail(400, "invalidArgument", "Invalid label");
+  for (const message of members) applyLabels(mailbox, message, change);
+  return { status: 200, data: { id, messages: members.map((m) => ({ id: m.id, threadId: id })) } };
 }
 
 function record(

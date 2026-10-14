@@ -1473,6 +1473,24 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       ]);
     });
 
+    it("also changes older messages of the thread that were never cached", async () => {
+      const { second } = await setup();
+      gmail.addMessage("box-a", {
+        id: "a-0",
+        threadId: "t-a",
+        date: daysAgo(30).toISOString(),
+        labels: ["INBOX", "UNREAD"],
+        from: "Ann Sender <ann@example.test>",
+        to: "me@example.test",
+        subject: "Subject a-0",
+      });
+
+      await inboxMarkRead(deps, a, { messageId: second.id, read: true });
+      await inboxArchive(deps, a, { messageId: second.id });
+
+      expect(labelsOf("a-0").labelIds).toEqual([]);
+    });
+
     it("marks every unread message of the thread read, and only the chosen one unread", async () => {
       const { second } = await setup();
 

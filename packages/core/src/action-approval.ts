@@ -37,6 +37,8 @@ const APPROVAL_REQUIRED_BUILTIN_TOOLS = new Set([
   "mail_draft",
   "mail_modify",
 ]);
+/** Built-in mail tools that write; the "email" approval category covers them. */
+const BUILTIN_MAIL_WRITE_TOOLS = new Set(["mail_draft", "mail_modify"]);
 const EXPLICIT_APPROVAL_BUILTIN_TOOLS = new Set(["create_space"]);
 
 const UNATTENDED_SAFE_BUILTIN_TOOLS = new Set([
@@ -132,6 +134,7 @@ function categoryMatches(
   const normalized = category.toLowerCase();
   const consequential = connectorToolRequiresApproval(toolName, readOnly);
   if (normalized === "email") {
+    if (BUILTIN_MAIL_WRITE_TOOLS.has(toolName)) return true;
     if (EMAIL_CONNECTOR_SLUGS.has(connectorKind.toLowerCase())) return consequential;
     return consequential && /send.*mail|gmail_send|outlook_send/i.test(toolName);
   }

@@ -39,7 +39,7 @@ async function modify(
   const scope = { spaceId: actor.spaceId, userId: actor.userId };
   const row = await deps.prisma.cachedMailMessage.findFirst({
     where: { id: messageId, ...scope },
-    select: { id: true, connectionId: true, threadId: true },
+    select: { id: true, connectionId: true, threadId: true, providerMessageId: true },
   });
   if (!row) throw notFound();
   // The account comes from the actor's own connections, never from client input.
@@ -47,30 +47,27 @@ async function modify(
   const account = accounts.find((a) => a.id === row.connectionId);
   if (!account) throw notFound();
 
-  const targets = await deps.prisma.cachedMailMessage.findMany({
+  try {
+    if (change.thread)
+      // One call reaches every message of the thread, including ones that were never cached.
+      await deps.mail.modifyThread(account, row.threadId, change.label, context);
+    else await deps.mail.modifyMessage(account, row.providerMessageId, change.label, context);
+  } catch (error) {
+    // Deleted in Gmail since the last sync: nothing left to change, and the next sync prunes it.
+    if (error instanceof MailProviderError && error.kind === "not_found") return { ok: true };
+    if (error instanceof MailProviderError && error.kind === "auth")
+      await flagReconnect(deps, account.id);
+    providerFailure(error, change.operation, account.id);
+  }
+  await deps.prisma.cachedMailMessage.updateMany({
     where: {
       ...scope,
       connectionId: row.connectionId,
       ...(change.thread ? { threadId: row.threadId } : { id: row.id }),
       ...change.pending,
     },
-    select: { id: true, providerMessageId: true },
+    data: change.cache,
   });
-  for (const target of targets) {
-    try {
-      await deps.mail.modifyMessage(account, target.providerMessageId, change.label, context);
-    } catch (error) {
-      // Deleted in Gmail since the last sync: nothing left to change, and the next sync prunes it.
-      if (error instanceof MailProviderError && error.kind === "not_found") continue;
-      if (error instanceof MailProviderError && error.kind === "auth")
-        await flagReconnect(deps, account.id);
-      providerFailure(error, change.operation, account.id);
-    }
-    await deps.prisma.cachedMailMessage.updateMany({
-      where: { id: target.id, ...scope },
-      data: change.cache,
-    });
-  }
   return { ok: true };
 }
 

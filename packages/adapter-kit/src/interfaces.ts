@@ -262,6 +262,17 @@ export interface MailProvider {
     context: AdapterContext,
   ): Promise<{ labelIds: string[] }>;
   /**
+   * Applies one label change to every message of a conversation in a single call, including
+   * messages the caller never listed. Errors are those of `modifyMessage`; an unknown thread is
+   * `not_found`.
+   */
+  modifyThread(
+    account: MailAccount,
+    threadId: string,
+    change: MailLabelChange,
+    context: AdapterContext,
+  ): Promise<void>;
+  /**
    * A cursor for the mailbox as it is now. Take it before listing mail, so changes that arrive
    * during the list are replayed by the next `listChanges`.
    */

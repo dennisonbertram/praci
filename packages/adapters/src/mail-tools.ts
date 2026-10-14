@@ -711,27 +711,29 @@ async function mailModify(
     where: { ...owner, connectionId: account.id, providerMessageId: id },
     select: { id: true, threadId: true },
   });
-  const targets = new Map<string, string | undefined>([[id, row?.id]]);
-  if (row && !add.includes("UNREAD")) {
-    const thread = await cache.findMany({
-      where: { ...owner, connectionId: account.id, threadId: row.threadId },
-      select: { id: true, providerMessageId: true },
-    });
-    for (const message of thread) targets.set(message.providerMessageId, message.id);
-  }
+  const wholeThread = !add.includes("UNREAD");
+  const update = (where: Record<string, unknown>) =>
+    Object.keys(data).length ? cache.updateMany({ where: { ...owner, ...where }, data }) : null;
 
-  let messages = 0;
-  for (const [providerMessageId, rowId] of targets) {
-    try {
-      await deps.mail.modifyMessage(account, providerMessageId, change, context);
-    } catch (error) {
-      // Deleted since the last sync: nothing left to change.
-      if (error instanceof MailProviderError && error.kind === "not_found") continue;
-      throw error;
+  try {
+    if (wholeThread) {
+      // One provider call reaches every message of the conversation, cached or not.
+      const threadId = row?.threadId ?? (await deps.mail.getMessage(account, id, context)).threadId;
+      await deps.mail.modifyThread(account, threadId, change, context);
+      const cached = await cache.findMany({
+        where: { ...owner, connectionId: account.id, threadId },
+        select: { id: true },
+      });
+      await update({ connectionId: account.id, threadId });
+      return { ok: true, messages: Math.max(cached.length, 1) };
     }
-    messages += 1;
-    if (rowId && Object.keys(data).length)
-      await cache.updateMany({ where: { id: rowId, ...owner }, data });
+    await deps.mail.modifyMessage(account, id, change, context);
+    if (row) await update({ id: row.id });
+    return { ok: true, messages: 1 };
+  } catch (error) {
+    // Deleted since the last sync: nothing left to change.
+    if (error instanceof MailProviderError && error.kind === "not_found")
+      return { error: "Message not found" };
+    throw error;
   }
-  return messages ? { ok: true, messages } : { error: "Message not found" };
 }

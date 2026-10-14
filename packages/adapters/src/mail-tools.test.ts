@@ -414,7 +414,7 @@ describe("mail write tools", () => {
   };
 
   /** A cache holding the three messages above; the stub answers only the queries the tools make. */
-  function withCache(options: { writesDisabled?: boolean } = {}) {
+  function withCache(options: { writesDisabled?: boolean; extra?: EmulatedMessage[] } = {}) {
     const rows: Row[] = inbox.map((m) => ({
       id: `row-${m.id}`,
       spaceId: scope.spaceId,
@@ -439,7 +439,7 @@ describe("mail write tools", () => {
         },
       },
     };
-    const { deps, gmail } = setup({ a: inbox }, { prisma });
+    const { deps, gmail } = setup({ a: [...inbox, ...(options.extra ?? [])] }, { prisma });
     return { deps: { ...deps, writesDisabled: options.writesDisabled }, gmail, rows };
   }
   const labelsOf = async (deps: MailToolDeps, id: string) =>
@@ -492,6 +492,20 @@ describe("mail write tools", () => {
       [false, false],
       [true, true],
     ]);
+  });
+
+  it("also changes older messages of the conversation that are not cached", async () => {
+    const older = {
+      ...base,
+      id: "m0",
+      threadId: "t1",
+      labels: ["INBOX", "UNREAD"],
+      date: "2026-09-01T10:00:00Z",
+      subject: "Older",
+    };
+    const { deps } = withCache({ extra: [older] });
+    await run(deps, "mail_modify", { id: "m1", read: true, archive: true });
+    expect(await labelsOf(deps, "m0")).toEqual([]);
   });
 
   it("marks one message unread and resolves a label name to its id", async () => {

@@ -301,6 +301,7 @@ describePostgres("mail tools (PostgreSQL + Gmail emulator)", () => {
           deleteDraft: provider.deleteDraft.bind(provider),
           listLabels: provider.listLabels.bind(provider),
           modifyMessage: provider.modifyMessage.bind(provider),
+          modifyThread: provider.modifyThread.bind(provider),
           getCursor: provider.getCursor.bind(provider),
           listChanges: provider.listChanges.bind(provider),
           listMessages: async (account, request, context) => {

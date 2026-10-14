@@ -388,6 +388,39 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       expect(listCalls()).toBe(lists + 3);
     });
 
+    it("drops a message deleted in Gmail even when too many changes sent sync back to the window", async () => {
+      seed("inc-many-del", [message("old", 13, ["INBOX"])]);
+      const account = await connect("inc-many-del");
+      await sync(account);
+      for (let i = 0; i < 501; i++)
+        gmail.addMessage("inc-many-del", message(`n${i}`, 0.5 - i / 10_000, ["INBOX"]));
+      gmail.deleteMessage("inc-many-del", "old");
+      await expireThrottle(account.id);
+
+      expect(await sync(account)).toBe("synced");
+
+      expect((await byId(account.id)).old?.inInbox ?? false).toBe(false);
+    });
+
+    it("refills the inbox from older mail when archiving leaves the cache below its cap", async () => {
+      seed(
+        "inc-refill",
+        Array.from({ length: 250 }, (_, i) => message(`b${i}`, i * 0.04, ["INBOX"])),
+      );
+      const account = await connect("inc-refill");
+      await sync(account);
+      const inInbox = () =>
+        prisma.cachedMailMessage.count({ where: { connectionId: account.id, inInbox: true } });
+      expect(await inInbox()).toBe(200);
+
+      modify("inc-refill", "b0", { removeLabelIds: ["INBOX"] });
+      await expireThrottle(account.id);
+      expect(await sync(account)).toBe("synced");
+
+      expect(await inInbox()).toBe(200);
+      expect((await byId(account.id)).b0?.inInbox).toBe(false);
+    });
+
     it("keeps the cursor when some changed messages could not be fetched, and finishes next time", async () => {
       seed("inc-partial", [message("a", 1, ["INBOX"])]);
       const account = await connect("inc-partial");

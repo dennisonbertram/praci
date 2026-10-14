@@ -131,9 +131,11 @@ export async function syncMailbox(
   const deletedIds: string[] = [];
   /** Stored after a complete sync; undefined keeps the stored one. */
   let nextCursor: string | undefined;
-  /** Set only by a window sync: the inbox list that clears messages no longer in it. */
+  /** Set when the window was listed, also to refill a full inbox: clears messages no longer in it. */
   let inbox: Listed | undefined;
   let partial = false;
+  /** True when the labels of the fetched messages are the truth, as in a change sync. */
+  let incremental = false;
   try {
     const changes = previousCursor
       ? await deps.mail.listChanges(account, previousCursor, timed)
@@ -167,6 +169,25 @@ export async function syncMailbox(
         ...changes.changedIds.filter((id) => !returned.has(id) && !unhydrated.has(id)),
       );
       nextCursor = changes.cursor;
+      incremental = true;
+      // The first sync keeps at most 200 inbox messages, so a full cache may hide older ones.
+      // When mail leaves a full inbox, list the window again to bring the next ones in.
+      const leaving = deletedIds.length > 0 || [...merged.values()].some((e) => !e.inInbox);
+      if (
+        leaving &&
+        (await deps.prisma.cachedMailMessage.count({
+          where: { connectionId: account.id, spaceId, userId, inInbox: true },
+        })) >= MAX_MESSAGES
+      ) {
+        inbox = await listWindow(deps.mail, account, timed, "in:inbox", after, windowStart);
+        partial = partial || inbox.partial;
+        for (const message of inbox.messages)
+          merged.set(message.id, {
+            message,
+            inInbox: true,
+            fromSelf: merged.get(message.id)?.fromSelf ?? false,
+          });
+      }
     } else {
       if (previousCursor)
         getLogger().info("mail sync is listing the window again", {
@@ -174,6 +195,8 @@ export async function syncMailbox(
           reason: changes ? "many changes" : "cursor expired",
         });
       // Taken before the lists, so mail that arrives while they run is replayed next time.
+      // Deletions the changes already name are not lost when the window is listed instead.
+      if (changes) deletedIds.push(...changes.deletedIds);
       nextCursor = await deps.mail.getCursor(account, timed);
       inbox = await listWindow(deps.mail, account, timed, "in:inbox", after, windowStart);
       const sent = await listWindow(deps.mail, account, timed, "in:sent", after, windowStart);
@@ -204,7 +227,7 @@ export async function syncMailbox(
 
         // A window sync turns the flag on here and clears it below for mail that left the list.
         // A change sync sees every label change, so the labels are the truth.
-        const inInboxUpdate = inbox
+        const inInboxUpdate = !incremental
           ? Prisma.sql`mail_messages."inInbox" OR EXCLUDED."inInbox"`
           : Prisma.sql`EXCLUDED."inInbox"`;
         const entries = [...merged.values()];

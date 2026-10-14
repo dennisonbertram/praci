@@ -224,6 +224,28 @@ export async function assertMailModifyConformance(
     ),
     kind("not_found"),
   );
+  // A thread change reaches every message of the thread in one call, listed or not.
+  for (const mid of ["thread-1", "thread-2"])
+    emulator.gmail.addMessage(a.accountRef, {
+      id: mid,
+      threadId: "t-modify",
+      date: "2026-10-01T10:00:00Z",
+      labels: ["INBOX", "UNREAD"],
+      from: "New Sender <new@example.test>",
+      to: "alice@example.test",
+      subject: `Thread ${mid}`,
+    });
+  await provider.modifyThread(a, "t-modify", { removeLabelIds: ["INBOX", "UNREAD"] }, context);
+  assert.deepEqual(await labelsOf("thread-1"), []);
+  assert.deepEqual(await labelsOf("thread-2"), []);
+  await assert.rejects(
+    provider.modifyThread(a, "no-such-thread", { removeLabelIds: ["UNREAD"] }, context),
+    kind("not_found"),
+  );
+  await assert.rejects(
+    provider.modifyThread(a, "t-modify", { addLabelIds: ["no-such-label"] }, context),
+    kind("invalid"),
+  );
   emulator.gmail.failNext(403, { reason: "insufficientPermissions", urlIncludes: "/modify" });
   await assert.rejects(
     provider.modifyMessage(a, id, { addLabelIds: ["STARRED"] }, context),

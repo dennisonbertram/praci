@@ -466,6 +466,27 @@ export class GmailMailProvider implements MailProvider {
     };
   }
 
+  async modifyThread(
+    account: MailAccount,
+    threadId: string,
+    change: MailLabelChange,
+    context: AdapterContext,
+  ): Promise<void> {
+    assertScope(account, context);
+    await this.request(
+      account,
+      context,
+      `${GMAIL}/threads/${encodeURIComponent(threadId)}/modify`,
+      {
+        method: "POST",
+        body: {
+          addLabelIds: change.addLabelIds ?? [],
+          removeLabelIds: change.removeLabelIds ?? [],
+        },
+      },
+    );
+  }
+
   async getCursor(account: MailAccount, context: AdapterContext): Promise<string> {
     assertScope(account, context);
     const id = asRecord(await this.request(account, context, `${GMAIL}/profile`))?.historyId;

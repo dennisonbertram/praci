@@ -218,6 +218,12 @@ describe("resolveActionApproval", () => {
     ).toBe("ask");
   });
 
+  it("applies the email category to the built-in mail write tools", () => {
+    for (const toolName of ["mail_draft", "mail_modify"])
+      expect(resolveActionApproval({ toolName, rules: requireEmail })).toBe("ask");
+    expect(resolveActionApproval({ toolName: "mail_read", rules: requireEmail })).toBe("allow");
+  });
+
   it("does not apply consequential categories to connector reads", () => {
     expect(
       resolveActionApproval({
