@@ -1,7 +1,7 @@
 import { t } from "@lingui/core/macro";
-import { cn } from "@rakazo/ui-web";
+import { cn, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web";
 import { X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { parseRecipient, takeEntries } from "../../lib/recipients";
 
 /**
@@ -24,6 +24,7 @@ export function RecipientField({
 }) {
   const [draft, setDraft] = useState("");
   const local = useRef<HTMLInputElement>(null);
+  const base = useId();
 
   const commit = (text: string, final: boolean) => {
     const { added, rest } = takeEntries(text, entries, final);
@@ -39,25 +40,32 @@ export function RecipientField({
       className="flex min-w-0 flex-1 flex-wrap items-center gap-1"
       onClick={() => local.current?.focus()}
     >
-      {entries.map((entry) => {
+      {entries.map((entry, index) => {
         const recipient = parseRecipient(entry);
-        return (
+        const reason = `${base}-${index}`;
+        const chip = (
           <span
             key={entry}
-            title={recipient.address}
+            title={recipient.valid ? recipient.address : undefined}
             className={cn(
-              "inline-flex h-6 max-w-full items-center gap-0.5 rounded-full bg-muted ps-2.5 pe-0.5 text-xs",
+              "inline-flex h-6 max-w-full items-center gap-0.5 rounded-full bg-muted ps-2.5 pe-0.5 text-xs pointer-coarse:h-8",
               !recipient.valid && "bg-destructive/10 text-destructive",
             )}
           >
             <span className="truncate" dir="auto">
               {recipient.name || recipient.address}
             </span>
+            {recipient.valid ? null : (
+              <span id={reason} className="sr-only">
+                {t`Not a valid email address`}
+              </span>
+            )}
             <button
               type="button"
               disabled={disabled}
               aria-label={t`Remove ${recipient.address}`}
-              className="inline-flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+              aria-describedby={recipient.valid ? undefined : reason}
+              className="inline-flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none pointer-coarse:size-7"
               onClick={(event) => {
                 event.stopPropagation();
                 onChange(entries.filter((other) => other !== entry));
@@ -67,6 +75,16 @@ export function RecipientField({
               <X aria-hidden="true" className="size-3" />
             </button>
           </span>
+        );
+        return recipient.valid ? (
+          <span key={entry} className="contents">
+            {chip}
+          </span>
+        ) : (
+          <Tooltip key={entry}>
+            <TooltipTrigger render={chip} />
+            <TooltipContent>{t`Not a valid email address`}</TooltipContent>
+          </Tooltip>
         );
       })}
       <input
@@ -92,7 +110,8 @@ export function RecipientField({
         }}
         onPaste={(event) => {
           const text = event.clipboardData.getData("text");
-          if (!/[,;\n\r]/.test(text)) return;
+          // One address with no separator is finished too; other text pastes as typed.
+          if (!/[,;\n\r]/.test(text) && !parseRecipient(draft + text).valid) return;
           event.preventDefault();
           commit(draft + text, true);
         }}

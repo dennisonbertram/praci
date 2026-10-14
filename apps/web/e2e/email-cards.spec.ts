@@ -66,6 +66,14 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   const body = dialog.locator("iframe").contentFrame().locator("#preview").contentFrame();
   await expect(body.locator("#probe")).toHaveText("Can you do the 14th or the 21st?");
   await captureScreenshot(page, testInfo, "email-cards-open-message");
+  // The chevrons and j/k step through the cards in the order listed.
+  const next = dialog.getByRole("button", { name: "Next message" });
+  await expect(dialog.getByRole("button", { name: "Previous message" })).toBeDisabled();
+  await next.click();
+  await expect(dialog.getByRole("button", { name: "Previous message" })).toBeEnabled();
+  await expect(dialog.getByText("Offsite dates")).toHaveCount(0);
+  await page.keyboard.press("k");
+  await expect(dialog.getByText("Offsite dates")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   expect(new URL(page.url()).pathname).toBe("/app/inbox");

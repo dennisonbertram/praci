@@ -69,16 +69,26 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
 
   const main = page.getByRole("main");
   await main.getByRole("button", { name: /Offsite dates/ }).click();
+  // Opening a reply and leaving it alone saves nothing to Gmail.
+  await page.getByRole("button", { name: "Reply", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Reply" })).toBeVisible();
+  await page.waitForTimeout(3_000);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Reply" })).toBeHidden();
+  expect(count(await gmail(page), "e2e-first", "drafts")).toBe(
+    count(before, "e2e-first", "drafts"),
+  );
   await page.getByRole("button", { name: "Reply", exact: true }).click();
 
   const composer = page.getByRole("dialog", { name: "Reply" });
   await expect(composer.getByRole("button", { name: "Remove sam@example.test" })).toBeVisible();
   await expect(composer.getByLabel("Subject")).toHaveValue("Re: Offsite dates");
   const body = composer.getByRole("textbox", { name: "Message" });
-  await expect(body.locator("blockquote")).toContainText("Can you do the 14th or the 21st?");
   // The cursor starts above the quoted original.
   await expect(body).toBeFocused();
   await expect(body.locator("p").first()).toHaveText("");
+  // The quoted original starts collapsed; it is still sent.
+  await expect(body.locator("blockquote")).toBeHidden();
   await captureScreenshot(page, testInfo, "compose-reply");
 
   // Typing autosaves a Gmail draft in the original thread.
@@ -95,6 +105,9 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
   expect(draft?.threadId).toBe("e2e-t-offsite");
   expect(count(await gmail(page), "e2e-first", "sent")).toBe(count(before, "e2e-first", "sent"));
 
+  await composer.getByRole("button", { name: "Show quoted text" }).click();
+  await expect(body.locator("blockquote")).toContainText("Can you do the 14th or the 21st?");
+
   // Dark and phone-sized renderings of the same composer.
   await page.emulateMedia({ colorScheme: "dark" });
   await captureScreenshot(page, testInfo, "compose-reply-dark");
@@ -104,9 +117,23 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // Send is the confirmation: one click sends and the composer closes.
+  // Undo brings the composer back with its text and sends nothing.
   await composer.getByRole("button", { name: "Send", exact: true }).click();
   await expect(composer).toBeHidden();
-  await expect(page.getByText("Sent", { exact: true })).toBeVisible();
+  await expect(page.getByText("Sending…")).toBeVisible();
+  await captureScreenshot(page, testInfo, "compose-undo-toast");
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  const reopened = page.getByRole("dialog", { name: "Reply" });
+  await expect(reopened.getByRole("textbox", { name: "Message" })).toContainText(
+    "Thursday the 14th works for me.",
+  );
+  await page.waitForTimeout(1_000);
+  expect(count(await gmail(page), "e2e-first", "sent")).toBe(count(before, "e2e-first", "sent"));
+
+  // Sending again delivers once and says so, above the preview.
+  await reopened.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(reopened).toBeHidden();
+  await expect(page.getByText("Sent", { exact: true })).toBeVisible({ timeout: 30_000 });
 
   await expect
     .poll(async () => count(await gmail(page), "e2e-first", "sent"))
@@ -251,4 +278,34 @@ test("several recipients, rich text, a link and an attachment arrive as one mult
   );
   expect(htmlOf(raw)).toMatch(/<ul><li><p>.*first<\/p><\/li><\/ul>/);
   expect(textOf(raw)).toMatch(/^- .*first$/m);
+});
+
+test("forwarding keeps the original's attachments, and a removed one stays behind", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `compose-fwd-${Date.now()}@rakazo.test`, "password12", "Compose Forward");
+  await completeOnboarding(page);
+  await connectTwoGmailAccounts(page);
+  const before = await gmail(page);
+
+  await page.getByRole("main").getByRole("button", { name: /Q3 report/ }).click();
+  await page.getByRole("button", { name: "Forward", exact: true }).click();
+  const composer = page.getByRole("dialog", { name: "Forward" });
+  const files = composer.getByRole("list", { name: "Attachments" });
+  await expect(files).toContainText("q3-report.pdf");
+  await expect(files).toContainText("budget.csv");
+  await captureScreenshot(page, testInfo, "compose-forward");
+  await composer.getByRole("button", { name: "Remove budget.csv" }).click();
+  await composer.getByLabel("To").fill("lee@example.test,");
+  await composer.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(composer).toBeHidden();
+
+  await expect
+    .poll(async () => count(await gmail(page), "e2e-first", "sent"), { timeout: 30_000 })
+    .toBe(count(before, "e2e-first", "sent") + 1);
+  const raw = (await gmail(page))["e2e-first"]?.sent.at(-1)?.raw ?? "";
+  expect(headerOf(raw, "Subject")).toBe("Fwd: Q3 report");
+  expect(raw).toContain('filename="q3-report.pdf"');
+  expect(raw).toContain(Buffer.from("%PDF-1.4 Q3 report").toString("base64"));
+  expect(raw).not.toContain("budget.csv");
 });

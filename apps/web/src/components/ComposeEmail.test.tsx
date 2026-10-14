@@ -7,10 +7,11 @@ import { afterEach, expect, it, vi } from "vitest";
 
 const prefill = vi.hoisted(() => vi.fn());
 const send = vi.hoisted(() => vi.fn());
+const draftSave = vi.hoisted(() => vi.fn());
 const requestClose = vi.hoisted(() => ({ current: () => {} }));
 
 vi.mock("../lib/rpc", () => ({
-  rpc: { inbox: { compose: { prefill, draftSave: vi.fn(), send, discard: vi.fn() } } },
+  rpc: { inbox: { compose: { prefill, draftSave, send, discard: vi.fn() } } },
 }));
 vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray, ...values: unknown[]) =>
@@ -68,6 +69,7 @@ vi.mock("@rakazo/ui-web", () => {
   };
 });
 
+import { closeRestored, getOutbox, UNDO_SEND_MS, undoSend } from "../lib/outbox";
 import { ComposeEmail, type ComposeSeed } from "./ComposeEmail";
 
 const body = "\n\nOn Mon, Sam wrote:\n> quoted line\n> second line";
@@ -85,6 +87,7 @@ async function open(seed: ComposeSeed, onClose = () => {}) {
     cc: "kim@example.test, lee@example.test",
     subject: "Re: Offsite",
     body,
+    attachments: [],
   });
   const container = document.createElement("div");
   document.body.append(container);
@@ -111,6 +114,7 @@ async function type(input: HTMLInputElement, text: string) {
 }
 
 afterEach(() => {
+  closeRestored();
   document.body.innerHTML = "";
   vi.unstubAllGlobals();
   vi.clearAllMocks();
@@ -172,7 +176,12 @@ it("sends joined recipients, the HTML body and attachments", async () => {
   const sendButton = [...document.querySelectorAll("button")].find(
     (b) => b.textContent === "Send",
   ) as HTMLButtonElement;
+  vi.useFakeTimers();
   await act(async () => sendButton.click());
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+  });
+  vi.useRealTimers();
   expect(send).toHaveBeenCalledTimes(1);
   const sent = send.mock.calls[0]?.[0];
   expect(sent).toMatchObject({
@@ -206,13 +215,132 @@ it("names the attachment limit the way the server does", async () => {
   );
 });
 
-it("lets Send be tried again after an unknown result", async () => {
+it("holds a send for the undo window, and Undo reopens the message untouched", async () => {
+  send.mockResolvedValue({ status: "sent" });
+  vi.useFakeTimers();
+  try {
+    const onClose = vi.fn();
+    await open(reply("reply"), onClose);
+    await act(async () => button("Send").click());
+    expect(onClose).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS - 100);
+    });
+    expect(send).not.toHaveBeenCalled();
+    undoSend();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(send).not.toHaveBeenCalled();
+    const restoring = getOutbox().restoring;
+    expect(restoring?.fields.to).toEqual(["Sam Lee <sam@example.test>"]);
+    expect(restoring?.fields.html).toContain("<blockquote>");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("reopens with the reason after a send that did not go through", async () => {
   send.mockResolvedValue({ status: "unknown" });
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(getOutbox().restoring?.notice).toMatch(/Check Sent/);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("hides the quoted original behind a button and still sends it", async () => {
+  send.mockResolvedValue({ status: "sent" });
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    const toggle = document.querySelector<HTMLButtonElement>(
+      "button[aria-label='Show quoted text']",
+    );
+    expect(toggle).not.toBeNull();
+    expect(document.querySelector("[data-collapsed=true]")).not.toBeNull();
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(send.mock.calls[0]?.[0].html).toContain("<blockquote>");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("shows the quote after the button is pressed", async () => {
   await open(reply("reply"));
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>("button[aria-label='Show quoted text']")?.click(),
+  );
+  expect(document.querySelector("[data-collapsed=true]")).toBeNull();
+  expect(document.querySelector("button[aria-label='Show quoted text']")).toBeNull();
+});
+
+it("shows a forward's attachments as removable chips and sends the ones left", async () => {
+  send.mockResolvedValue({ status: "sent" });
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  prefill.mockResolvedValue({
+    connectionId: "c1",
+    to: "",
+    cc: "",
+    subject: "Fwd: Report",
+    body,
+    attachments: [
+      { id: "2", filename: "a.pdf", mimeType: "application/pdf", size: 10 },
+      { id: "3", filename: "b.png", mimeType: "image/png", size: 10 },
+    ],
+  });
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () =>
+    createRoot(container).render(
+      <ComposeEmail seed={reply("forward")} accounts={[]} connectionId="c1" onClose={() => {}} />,
+    ),
+  );
+  expect(document.body.textContent).toContain("a.pdf");
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>("button[aria-label='Remove b.png']")?.click(),
+  );
+  await type(field("To") as HTMLInputElement, "x@example.test,");
+  vi.useFakeTimers();
   await act(async () => button("Send").click());
-  expect(button("Send").disabled).toBe(false);
-  await act(async () => button("Send").click());
-  expect(send).toHaveBeenCalledTimes(2);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+  });
+  vi.useRealTimers();
+  expect(send.mock.calls[0]?.[0].forwardOf).toEqual({ messageId: "m1", attachmentIds: ["2"] });
+});
+
+it("commits a single pasted address as a chip", async () => {
+  await open({ kind: "new" });
+  const to = field("To") as HTMLInputElement;
+  const paste = new Event("paste", { bubbles: true, cancelable: true });
+  Object.defineProperty(paste, "clipboardData", { value: { getData: () => "solo@example.test" } });
+  await act(async () => {
+    to.dispatchEvent(paste);
+  });
+  expect(chips()).toEqual(["Remove solo@example.test"]);
+});
+
+it("explains an invalid address and moves focus into a revealed Cc", async () => {
+  await open({ kind: "new" });
+  await type(field("To") as HTMLInputElement, "nope,");
+  const remove = document.querySelector("button[aria-label='Remove nope']") as HTMLButtonElement;
+  const note = document.getElementById(remove.getAttribute("aria-describedby") ?? "");
+  expect(note?.textContent).toBe("Not a valid email address");
+  await act(async () => button("Cc").click());
+  expect(document.activeElement).toBe(field("Cc"));
 });
 
 it("retries a failed reply prefill", async () => {
@@ -225,6 +353,7 @@ it("retries a failed reply prefill", async () => {
     cc: "",
     subject: "Re: Offsite",
     body,
+    attachments: [],
   });
   const container = document.createElement("div");
   document.body.append(container);
@@ -246,6 +375,35 @@ it("asks before closing with attachments", async () => {
   await act(async () => requestClose.current());
   expect(document.querySelector("[role=alertdialog]")).not.toBeNull();
   expect(onClose).not.toHaveBeenCalled();
-  await act(async () => button("Close").click());
+  await act(async () => button("Discard").click());
   expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+it("does not save a draft for a reply that was opened and left alone", async () => {
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(draftSave).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("saves a draft once the person types", async () => {
+  vi.useFakeTimers();
+  draftSave.mockResolvedValue({ status: "saved" });
+  try {
+    await open(reply("reply"));
+    const subject = field("Subject") as HTMLInputElement;
+    await type(subject, "Re: Offsite!");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(draftSave).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
 });

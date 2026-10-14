@@ -12,6 +12,9 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
   const { t } = useLingui();
   const [open, setOpen] = useState<EmailCard | null>(null);
   const now = new Date();
+  // The same order the cards are listed in, so the preview steps through them.
+  const ordered = groupEmailCards(block.emails).flatMap((group) => group.emails);
+  const at = ordered.findIndex((email) => email.id === open?.id);
   const titles = {
     today: t`Today`,
     within_3_days: t`Within 3 days`,
@@ -94,6 +97,9 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
       <InboxMessageDialog
         messageId={open?.id ?? null}
         subject={open?.subject}
+        previousId={at > 0 ? ordered[at - 1]?.id : undefined}
+        nextId={at >= 0 ? ordered[at + 1]?.id : undefined}
+        onNavigate={(id) => setOpen(ordered.find((email) => email.id === id) ?? null)}
         onClose={() => setOpen(null)}
       />
     </div>

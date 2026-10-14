@@ -27,14 +27,12 @@ import { Paperclip, Trash2, Type, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fileToBase64, formatBytes, textToHtml } from "../lib/compose-body";
 import { createDraftSaver } from "../lib/compose-draft";
+import { holdSend } from "../lib/outbox";
 import { parseRecipient, takeEntries } from "../lib/recipients";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 import { RecipientField } from "./compose/RecipientField";
-import { FormatBar, LinkButton, ToolButton, useComposeEditor } from "./compose/RichTextEditor";
-
-/** Fired on `window` after a message is sent, so the Inbox can show "Sent" and refresh. */
-export const MAIL_SENT_EVENT = "rakazo:mail-sent";
+import { FormatBar, ToolButton, useComposeEditor } from "./compose/RichTextEditor";
 
 const AUTOSAVE_MS = 1_500;
 
@@ -43,7 +41,7 @@ export type ComposeSeed = { kind: "new" } | { kind: ComposeMode; messageId: stri
 /** Pass this one object, not a new literal each render: a changed seed loads the prefill again. */
 export const NEW_MESSAGE: ComposeSeed = { kind: "new" };
 
-interface Fields {
+export interface Fields {
   connectionId: string;
   to: string[];
   cc: string[];
@@ -52,6 +50,30 @@ interface Fields {
   /** The editor's HTML; empty when the message has no text. */
   html: string;
   text: string;
+}
+
+/** An attachment of the message being forwarded; the server adds its bytes when it sends. */
+interface Forwarded {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+}
+
+type Accounts = Array<{ connectionId: string; label: string }>;
+
+/** Everything in a composer, so a held or failed send can open it again as it was. */
+export interface ComposeRestore {
+  seed: ComposeSeed;
+  clientId: string;
+  fields: Fields;
+  replyToId?: string;
+  forwarded: Forwarded[];
+  files: File[];
+  /** A Gmail draft may exist, so Discard has one to remove. */
+  saved: boolean;
+  accounts: Accounts;
+  notice?: string;
 }
 
 type Notice = { kind: "saved" | "error"; text: string };
@@ -106,17 +128,20 @@ export function ComposeEmail({
   seed,
   accounts,
   connectionId,
+  restore,
   onClose,
 }: {
   seed: ComposeSeed;
   /** The From choices for a new message; with more than one, a picker shows. */
-  accounts: Array<{ connectionId: string; label: string }>;
+  accounts: Accounts;
   /** The account a new message starts from. */
   connectionId?: string;
+  /** Opens again as it was left (after Undo or a failed send) instead of loading the seed. */
+  restore?: ComposeRestore;
   onClose: () => void;
 }) {
-  const [clientId] = useState(newClientId);
-  const initial: Fields = {
+  const [clientId] = useState(() => restore?.clientId ?? newClientId());
+  const initial: Fields = restore?.fields ?? {
     connectionId: connectionId ?? accounts[0]?.connectionId ?? "",
     to: [],
     cc: [],
@@ -127,26 +152,36 @@ export function ComposeEmail({
   };
   const [fields, setFields] = useState(initial);
   const fieldsRef = useRef(initial);
-  const replyToRef = useRef<string | undefined>(undefined);
-  const prefillBody = useRef<string | null>(null);
-  const [loading, setLoading] = useState(seed.kind !== "new");
-  const [showCc, setShowCc] = useState(false);
-  const [showBcc, setShowBcc] = useState(false);
+  const replyToRef = useRef<string | undefined>(restore?.replyToId);
+  // HTML waiting to go into the editor once it exists.
+  const pendingContent = useRef<string | null>(
+    restore ? restore.fields.html || textToHtml(restore.fields.text) : null,
+  );
+  const [loading, setLoading] = useState(seed.kind !== "new" && !restore);
+  const [showCc, setShowCc] = useState(Boolean(restore?.fields.cc.length));
+  const [showBcc, setShowBcc] = useState(Boolean(restore?.fields.bcc.length));
+  const [reveal, setReveal] = useState<"cc" | "bcc" | null>(null);
   const [showFormat, setShowFormat] = useState(true);
   const [linkOpen, setLinkOpen] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [forwarded, setForwarded] = useState<Forwarded[]>(restore?.forwarded ?? []);
+  const [files, setFiles] = useState<File[]>(restore?.files ?? []);
   const [dragging, setDragging] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [prefillAttempt, setPrefillAttempt] = useState(0);
   const [prefillFailed, setPrefillFailed] = useState(false);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(
+    restore?.notice ? { kind: "error", text: restore.notice } : null,
+  );
   // Set once the person edits; an untouched reply is not worth keeping.
-  const touched = useRef(false);
+  const touched = useRef(Boolean(restore));
   // A Gmail draft may exist once a save has succeeded.
-  const saved = useRef(false);
+  const saved = useRef(restore?.saved ?? false);
   const done = useRef(false);
   const toRef = useRef<HTMLInputElement>(null);
+  const ccRef = useRef<HTMLInputElement>(null);
+  const bccRef = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const locked = loading || sending;
 
@@ -193,12 +228,26 @@ export function ComposeEmail({
 
   const editor = useComposeEditor({
     disabled: locked,
-    onChange: ({ html, text }) => update({ html, text }),
-    onLinkShortcut: () => setLinkOpen(true),
+    onChange: ({ html, text }) => {
+      // Only a change to the text is an edit; the editor also reports seeding and normalizing.
+      if (html !== fieldsRef.current.html || text !== fieldsRef.current.text)
+        update({ html, text });
+    },
+    onLinkShortcut: () => {
+      // The link field opens from its button in the formatting bar.
+      setShowFormat(true);
+      setLinkOpen(true);
+    },
   });
 
   useEffect(() => {
-    if (seed.kind === "new") return;
+    if (!reveal) return;
+    (reveal === "cc" ? ccRef : bccRef).current?.focus();
+    setReveal(null);
+  }, [reveal]);
+
+  useEffect(() => {
+    if (seed.kind === "new" || restore) return;
     let live = true;
     setPrefillFailed(false);
     setNotice(null);
@@ -207,7 +256,13 @@ export function ComposeEmail({
       .then((next) => {
         if (!live) return;
         replyToRef.current = next.replyToMessageId;
-        prefillBody.current = next.body;
+        pendingContent.current = textToHtml(next.body);
+        setForwarded(next.attachments);
+        if (next.attachmentsTooLarge)
+          setNotice({
+            kind: "error",
+            text: t`Attachments can't be over ${MAX_COMPOSE_ATTACHMENT_MB} MB.`,
+          });
         const loaded: Fields = {
           connectionId: next.connectionId,
           to: takeEntries(next.to, [], true).added,
@@ -230,22 +285,24 @@ export function ComposeEmail({
     return () => {
       live = false;
     };
-  }, [seed, prefillAttempt]);
+  }, [seed, restore, prefillAttempt]);
 
-  // Fill the editor with the quoted original once both it and the editor exist. A reply starts
-  // above the quote; a forward starts at its empty To.
+  // Fill the editor with the quoted original (or the restored message) once both it and the editor
+  // exist. A reply starts above the quote; a forward starts at its empty To.
   useEffect(() => {
-    if (loading || !editor || prefillBody.current === null) return;
-    editor.commands.setContent(textToHtml(prefillBody.current), { emitUpdate: false });
-    prefillBody.current = null;
+    if (loading || !editor || pendingContent.current === null) return;
+    editor.commands.setContent(pendingContent.current, { emitUpdate: false });
+    pendingContent.current = null;
     fieldsRef.current = {
       ...fieldsRef.current,
       html: editor.isEmpty ? "" : editor.getHTML(),
       text: editor.getText({ blockSeparator: "\n" }),
     };
-    if (seed.kind === "forward") toRef.current?.focus({ preventScroll: true });
+    setFields(fieldsRef.current);
+    if (restore) editor.commands.focus("end", { scrollIntoView: false });
+    else if (seed.kind === "forward") toRef.current?.focus({ preventScroll: true });
     else editor.commands.focus("start", { scrollIntoView: false });
-  }, [loading, editor, seed.kind]);
+  }, [loading, editor, seed.kind, restore]);
 
   // Closing the page or the message view keeps what was typed.
   useEffect(
@@ -280,7 +337,7 @@ export function ComposeEmail({
 
   const addFiles = (incoming: File[]) => {
     if (incoming.length === 0) return;
-    let total = files.reduce((sum, file) => sum + file.size, 0);
+    let total = [...files, ...forwarded].reduce((sum, file) => sum + file.size, 0);
     const accepted: File[] = [];
     let tooBig = false;
     for (const file of incoming) {
@@ -330,22 +387,43 @@ export function ComposeEmail({
           data: await fileToBase64(file),
         })),
       );
-      const { status } = await rpc.inbox.compose.send({
+      const request = {
         ...payload(current),
         ...(attachments.length ? { attachments } : {}),
-      });
-      if (status === "sent") {
-        done.current = true;
-        window.dispatchEvent(new Event(MAIL_SENT_EVENT));
-        onClose();
-        return;
-      }
-      setNotice({ kind: "error", text: problemText(status, true) });
+        ...(forwarded.length && seed.kind === "forward"
+          ? { forwardOf: { messageId: seed.messageId, attachmentIds: forwarded.map((f) => f.id) } }
+          : {}),
+      };
+      const reopen: ComposeRestore = {
+        seed,
+        clientId,
+        fields: current,
+        ...(replyToRef.current ? { replyToId: replyToRef.current } : {}),
+        forwarded,
+        files,
+        saved: saved.current,
+        accounts,
+      };
+      // Held for a few seconds so Undo can bring this composer back; a failure does too.
+      holdSend(async () => {
+        try {
+          const { status } = await rpc.inbox.compose.send(request);
+          return status === "sent" ? null : problemText(status, true);
+        } catch (cause) {
+          return errorText(cause);
+        }
+      }, reopen);
+      done.current = true;
+      onClose();
+      return;
     } catch (cause) {
       setNotice({ kind: "error", text: errorText(cause) });
     }
     setSending(false);
   };
+
+  // A reply or forward hides its quoted original until asked; it is still sent.
+  const collapsed = seed.kind !== "new" && !quoteOpen && fields.html.includes("<blockquote");
 
   const title =
     seed.kind === "reply"
@@ -420,12 +498,26 @@ export function ComposeEmail({
             end={
               <>
                 {!showCc ? (
-                  <Button variant="ghost" size="xs" onClick={() => setShowCc(true)}>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      setShowCc(true);
+                      setReveal("cc");
+                    }}
+                  >
                     <Trans>Cc</Trans>
                   </Button>
                 ) : null}
                 {!showBcc ? (
-                  <Button variant="ghost" size="xs" onClick={() => setShowBcc(true)}>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      setShowBcc(true);
+                      setReveal("bcc");
+                    }}
+                  >
                     <Trans>Bcc</Trans>
                   </Button>
                 ) : null}
@@ -444,6 +536,7 @@ export function ComposeEmail({
             <Row label={t`Cc`}>
               <RecipientField
                 label={t`Cc`}
+                inputRef={ccRef}
                 entries={fields.cc}
                 disabled={locked}
                 onChange={(cc) => update({ cc })}
@@ -454,6 +547,7 @@ export function ComposeEmail({
             <Row label={t`Bcc`}>
               <RecipientField
                 label={t`Bcc`}
+                inputRef={bccRef}
                 entries={fields.bcc}
                 disabled={locked}
                 onChange={(bcc) => update({ bcc })}
@@ -482,14 +576,48 @@ export function ComposeEmail({
             if (event.target === event.currentTarget) editor?.commands.focus("end");
           }}
         >
-          <EditorContent editor={editor} />
+          <div data-collapsed={collapsed} className="data-[collapsed=true]:[&_blockquote]:hidden">
+            <EditorContent editor={editor} />
+          </div>
+          {collapsed ? (
+            <Button
+              variant="ghost"
+              size="xs"
+              className="mx-4 mb-3"
+              aria-label={t`Show quoted text`}
+              onClick={() => setQuoteOpen(true)}
+            >
+              …
+            </Button>
+          ) : null}
         </div>
 
-        {files.length ? (
+        {files.length + forwarded.length ? (
           <ul
             aria-label={t`Attachments`}
             className="flex max-h-24 shrink-0 flex-wrap gap-1.5 overflow-y-auto border-t border-border px-4 py-2"
           >
+            {forwarded.map((file) => (
+              <li
+                key={file.id}
+                className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-lg border border-border ps-2 pe-0.5 text-xs"
+              >
+                <Paperclip aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
+                <span className="truncate" dir="auto">
+                  {file.filename}
+                </span>
+                <span className="shrink-0 text-muted-foreground">{formatBytes(file.size)}</span>
+                <button
+                  type="button"
+                  disabled={sending}
+                  aria-label={t`Remove ${file.filename}`}
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                  onClick={() => setForwarded(forwarded.filter((other) => other.id !== file.id))}
+                >
+                  <X aria-hidden="true" className="size-3" />
+                </button>
+              </li>
+            ))}
             {files.map((file, index) => (
               <li
                 // Two files can share a name; the list only changes by add or remove.
@@ -515,7 +643,14 @@ export function ComposeEmail({
           </ul>
         ) : null}
 
-        {showFormat ? <FormatBar editor={editor} disabled={locked} /> : null}
+        {showFormat ? (
+          <FormatBar
+            editor={editor}
+            disabled={locked}
+            linkOpen={linkOpen}
+            onLinkOpenChange={setLinkOpen}
+          />
+        ) : null}
 
         <div className="flex shrink-0 items-center gap-1 px-3 py-2">
           <Button
@@ -541,12 +676,6 @@ export function ComposeEmail({
           >
             <Paperclip aria-hidden="true" />
           </ToolButton>
-          <LinkButton
-            editor={editor}
-            open={linkOpen}
-            disabled={locked}
-            onOpenChange={setLinkOpen}
-          />
           <input
             ref={fileInput}
             type="file"
@@ -606,7 +735,7 @@ export function ComposeEmail({
                   closeNow();
                 }}
               >
-                <Trans>Close</Trans>
+                <Trans>Discard</Trans>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

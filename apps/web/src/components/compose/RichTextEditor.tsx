@@ -84,7 +84,8 @@ export function useComposeEditor({
       }),
   });
   useEffect(() => {
-    editor?.setEditable(!disabled);
+    // No update event: locking or unlocking the editor is not an edit.
+    editor?.setEditable(!disabled, false);
   }, [editor, disabled]);
   return editor;
 }
@@ -110,8 +111,9 @@ function ToolButton({
         render={
           <Button
             type="button"
-            variant={active ? "secondary" : "ghost"}
+            variant="ghost"
             size="icon-sm"
+            className={active ? PRESSED : undefined}
             disabled={disabled}
             aria-label={label}
             aria-pressed={active}
@@ -130,8 +132,21 @@ function ToolButton({
 
 export { ToolButton };
 
-/** Bold, italic, underline, lists and clear formatting; links have their own button in the footer. */
-export function FormatBar({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
+/** Pressed state that stays visible in dark mode, where the secondary fill nearly matches the page. */
+const PRESSED = "bg-foreground/10 dark:bg-foreground/20";
+
+/** Bold, italic, underline, link, lists and clear formatting. */
+export function FormatBar({
+  editor,
+  disabled,
+  linkOpen,
+  onLinkOpenChange,
+}: {
+  editor: Editor | null;
+  disabled: boolean;
+  linkOpen: boolean;
+  onLinkOpenChange: (open: boolean) => void;
+}) {
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) => ({
@@ -177,6 +192,12 @@ export function FormatBar({ editor, disabled }: { editor: Editor | null; disable
       >
         <Underline aria-hidden="true" />
       </ToolButton>
+      <LinkButton
+        editor={editor}
+        open={linkOpen}
+        disabled={disabled}
+        onOpenChange={onLinkOpenChange}
+      />
       <span aria-hidden="true" className="mx-1 h-4 w-px shrink-0 bg-border" />
       <ToolButton
         label={t`Bulleted list`}
@@ -267,8 +288,9 @@ export function LinkButton({
               render={
                 <Button
                   type="button"
-                  variant={active ? "secondary" : "ghost"}
+                  variant="ghost"
                   size="icon-sm"
+                  className={active ? PRESSED : undefined}
                   disabled={disabled}
                   aria-label={t`Insert link`}
                   onMouseDown={(event) => event.preventDefault()}

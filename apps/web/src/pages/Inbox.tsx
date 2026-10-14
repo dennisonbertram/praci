@@ -26,7 +26,7 @@ import { ListFilter, PanelRightOpen, Search, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
-import { ComposeEmail, MAIL_SENT_EVENT, NEW_MESSAGE } from "../components/ComposeEmail";
+import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
 import { InboxGroup } from "../components/inbox/InboxRow";
 import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
@@ -40,6 +40,7 @@ import {
 } from "../lib/inbox-list-input";
 import { prefetchInboxMessage } from "../lib/inbox-message-cache";
 import { syncErrorText } from "../lib/inbox-sync-error";
+import { MAIL_SENT_EVENT } from "../lib/outbox";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -51,7 +52,7 @@ const STATUS_MS = 6_000;
 /** Marks the `?mail=` history entry the list pushed, so closing the message can go Back. */
 const LIST_OPEN = { inboxList: true };
 
-type Status = { kind: "sent" } | { kind: "marked"; messageId: string; mark: InboxMark };
+type Status = { kind: "marked"; messageId: string; mark: InboxMark };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
 type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
@@ -129,10 +130,9 @@ export function InboxPage({
   const polls = useRef(0);
   const [composing, setComposing] = useState(false);
 
-  // A message sent from any composer: say so and reload, since the send synced the account.
+  // A message sent from any composer: reload, since the send synced the account.
   useEffect(() => {
     const onSent = () => {
-      setStatus({ kind: "sent" });
       setReload((n) => n + 1);
       onRefreshed();
     };
@@ -665,9 +665,7 @@ export function InboxPage({
       >
         {status ? (
           <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
-            {status.kind === "sent" ? (
-              <Trans>Sent</Trans>
-            ) : status.mark === "noise" ? (
+            {status.mark === "noise" ? (
               <Trans>Marked noise</Trans>
             ) : (
               <Trans>Marked important</Trans>
