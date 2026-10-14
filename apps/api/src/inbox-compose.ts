@@ -1,5 +1,10 @@
 import { ORPCError } from "@orpc/server";
-import type { AdapterContext, MailAccount, MailDraftInput } from "@rakazo/adapter-kit";
+import type {
+  AdapterContext,
+  MailAccount,
+  MailDraftAttachment,
+  MailDraftInput,
+} from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
 import {
   buildRawMessage,
@@ -96,9 +101,16 @@ export async function inboxComposePrefill(
     // Every connected address is the user's own, so reply all never addresses the user.
     const mine = accounts.flatMap((a) => (a.address ? [a.address] : []));
     const prefill = replyPrefill(message, input.mode, mine);
+    const files =
+      input.mode === "forward" ? message.attachments.filter((file) => !file.inline) : [];
+    const tooLarge = files.reduce((sum, file) => sum + file.size, 0) > MAX_COMPOSE_ATTACHMENT_BYTES;
     return {
       connectionId: account.id,
       ...prefill,
+      attachments: tooLarge
+        ? []
+        : files.map(({ id, filename, mimeType, size }) => ({ id, filename, mimeType, size })),
+      ...(tooLarge ? { attachmentsTooLarge: true } : {}),
       ...(input.mode === "forward" ? {} : { replyToMessageId: input.messageId }),
     };
   } catch (error) {
@@ -283,6 +295,27 @@ async function settled(deps: ComposeDeps, rowId: string): Promise<ComposeResult>
   }
 }
 
+/** The original's chosen files, fetched by the server; together with the uploads they stay under the limit. */
+async function forwardedFiles(
+  deps: ComposeDeps,
+  account: MailAccount,
+  providerMessageId: string,
+  forwardOf: NonNullable<ComposeFields["forwardOf"]>,
+  draft: MailDraftInput,
+  context: AdapterContext,
+): Promise<MailDraftAttachment[]> {
+  let remaining =
+    MAX_COMPOSE_ATTACHMENT_BYTES - (draft.attachments ?? []).reduce((n, f) => n + f.data.length, 0);
+  const files: MailDraftAttachment[] = [];
+  for (const id of forwardOf.attachmentIds) {
+    const file = await deps.mail.getAttachment(account, providerMessageId, id, remaining, context);
+    remaining -= file.bytes.length;
+    if (remaining < 0) throw new MailProviderError("invalid", "Attachments are too large");
+    files.push({ filename: file.filename, mimeType: file.mimeType, data: Buffer.from(file.bytes) });
+  }
+  return files;
+}
+
 export async function inboxComposeSend(
   deps: ComposeDeps,
   actor: Actor,
@@ -294,6 +327,9 @@ export async function inboxComposeSend(
   const account = await ownAccount(deps, actor, input.connectionId, context);
   const original = input.replyToMessageId
     ? await ownMessage(deps, actor, input.replyToMessageId, input.connectionId)
+    : undefined;
+  const forwarded = input.forwardOf
+    ? await ownMessage(deps, actor, input.forwardOf.messageId, input.connectionId)
     : undefined;
   const draft = draftOf(input, original?.providerMessageId, false);
   const row = await composeRow(deps, actor, input);
@@ -307,7 +343,24 @@ export async function inboxComposeSend(
 
   let sending = false;
   try {
-    const draftId = await writeDraft(deps, account, row, draft, context);
+    const files =
+      forwarded && input.forwardOf
+        ? await forwardedFiles(
+            deps,
+            account,
+            forwarded.providerMessageId,
+            input.forwardOf,
+            draft,
+            context,
+          )
+        : [];
+    const draftId = await writeDraft(
+      deps,
+      account,
+      row,
+      files.length ? { ...draft, attachments: [...(draft.attachments ?? []), ...files] } : draft,
+      context,
+    );
     await deps.prisma.composeSend.update({ where: { id: row.id }, data: { draftId } });
     sending = true;
     const sent = await deps.mail.sendDraft(account, draftId, context);

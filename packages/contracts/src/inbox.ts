@@ -193,6 +193,17 @@ export const ComposePrefillOutputSchema = z.object({
   body: z.string(),
   /** Present for a reply, which stays in the original's thread; absent for a forward. */
   replyToMessageId: Id.optional(),
+  /** A forward's original files (not inline pictures), to be attached again on send; [] otherwise. */
+  attachments: z.array(
+    z.object({
+      id: z.string(),
+      filename: z.string(),
+      mimeType: z.string(),
+      size: z.number().int().nonnegative(),
+    }),
+  ),
+  /** The original had attachments, but together they are over the attachment limit. */
+  attachmentsTooLarge: z.boolean().optional(),
 });
 
 export const MAX_COMPOSE_BODY = 150_000;
@@ -217,6 +228,13 @@ export const ComposeFieldsSchema = z.object({
   /** The From account: one of the caller's connected Gmail accounts. */
   connectionId: Id,
   replyToMessageId: Id.optional(),
+  /** Sending a forward: the server attaches these files of the original, so they never travel from the browser. */
+  forwardOf: z
+    .object({
+      messageId: Id,
+      attachmentIds: z.array(z.string().min(1).max(100)).max(MAX_COMPOSE_ATTACHMENTS),
+    })
+    .optional(),
   to: z.string().max(4_000),
   cc: z.string().max(4_000),
   bcc: z.string().max(4_000),

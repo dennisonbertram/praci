@@ -24,6 +24,9 @@ const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
   process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
 
+const b64 = (text: string) => Buffer.from(text).toString("base64");
+const big = (mb: number) => Buffer.alloc(mb * 1024 * 1024 - 1, 1).toString("base64");
+
 const SECRET_BODY = "SECRET-BODY-TEXT-do-not-log";
 
 describePostgres("inbox compose (PostgreSQL)", () => {
@@ -101,7 +104,27 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       mailboxes: {
         "box-a": {
           address: "box-a@example.test",
-          messages: [message("a-1", ["INBOX"], { threadId: "t-a1" })],
+          messages: [
+            message("a-1", ["INBOX"], { threadId: "t-a1" }),
+            message("a-files", ["INBOX"], {
+              attachments: [
+                { filename: "one.txt", mimeType: "text/plain", size: 5, data: b64("hello") },
+                { filename: "two.bin", mimeType: "application/zip", size: 3, data: b64("zip") },
+              ],
+              inlineImages: [{ contentId: "pic", mimeType: "image/png", data: b64("png") }],
+            }),
+            message("a-big", ["INBOX"], {
+              attachments: [
+                { filename: "big.bin", mimeType: "application/zip", size: 6_000_000, data: big(6) },
+                {
+                  filename: "big2.bin",
+                  mimeType: "application/zip",
+                  size: 6_000_000,
+                  data: big(6),
+                },
+              ],
+            }),
+          ],
         },
         "box-b": { address: "box-b@example.test", messages: [message("b-1", ["INBOX"])] },
         "box-c": { address: "box-c@example.test", messages: [message("c-1", ["INBOX"])] },
@@ -224,6 +247,24 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(forward).toMatchObject({ to: "", cc: "", subject: "Fwd: Subject a-1" });
       expect(forward.replyToMessageId).toBeUndefined();
       expect(forward.body).toContain("---------- Forwarded message ---------");
+    });
+
+    it("lists a forward's files, never inline pictures, and none for a reply", async () => {
+      const row = await cache(a, connA, "a-files");
+      const forward = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "forward" });
+      expect(forward.attachments.map((f) => [f.filename, f.mimeType, f.size])).toEqual([
+        ["one.txt", "text/plain", 5],
+        ["two.bin", "application/zip", 3],
+      ]);
+      expect(forward.attachmentsTooLarge).toBeUndefined();
+      const reply = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" });
+      expect(reply.attachments).toEqual([]);
+    });
+
+    it("lists nothing and flags a forward whose files are over the limit", async () => {
+      const row = await cache(a, connA, "a-big");
+      const forward = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "forward" });
+      expect(forward).toMatchObject({ attachments: [], attachmentsTooLarge: true });
     });
 
     it("does not reveal another user's, another space's or a revoked account's message", async () => {
@@ -361,6 +402,47 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(mime.text).toBe("Hi there no");
       expect(mime.types).toContain("text/plain");
       expect(gmail.sentOf("box-a")[0]?.raw).toContain(Buffer.from("hello").toString("base64"));
+    });
+
+    it("attaches the original's chosen files to a forward, next to uploads", async () => {
+      const row = await cache(a, connA, "a-files");
+      const { attachments } = await inboxComposePrefill(deps(), a, {
+        messageId: row.id,
+        mode: "forward",
+      });
+      const one = attachments[0]?.id as string;
+      const input = fields({
+        forwardOf: { messageId: row.id, attachmentIds: [one] },
+        attachments: [{ filename: "up.txt", mimeType: "text/plain", data: b64("uploaded") }],
+      });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "sent" });
+      const raw = gmail.sentOf("box-a")[0]?.raw ?? "";
+      expect(raw).toContain('filename="one.txt"');
+      expect(raw).toContain(b64("hello"));
+      expect(raw).toContain(b64("uploaded"));
+      expect(raw).not.toContain("two.bin");
+    });
+
+    it("does not forward files of a message that is not the caller's or does not exist", async () => {
+      const theirs = await cache(b, connB, "b-1");
+      for (const messageId of [theirs.id, "nope"]) {
+        await expect(
+          inboxComposeSend(deps(), a, fields({ forwardOf: { messageId, attachmentIds: ["1"] } })),
+        ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      }
+      expect(gmail.sentOf("box-a")).toHaveLength(0);
+    });
+
+    it("sends nothing when uploads plus forwarded files are over the limit", async () => {
+      const row = await cache(a, connA, "a-big");
+      const ids = ["1", "2"];
+      const input = fields({
+        forwardOf: { messageId: row.id, attachmentIds: ids },
+        attachments: [{ filename: "up.bin", mimeType: "application/zip", data: big(1) }],
+      });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "failed" });
+      expect(gmail.sentOf("box-a")).toHaveLength(0);
+      expect(gmail.draftsOf("box-a")).toHaveLength(0);
     });
 
     it("rejects attachments over the size limit or not base64, before any state changes", async () => {
