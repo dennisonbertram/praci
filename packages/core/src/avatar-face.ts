@@ -58,6 +58,8 @@ interface MoodTuning {
   bx: number;
   by: number;
   flip: boolean;
+  /** Share of fixations that go to a far point (|x| 0.6..1 of gx); the rest return near center. */
+  far: number;
   /** Alternate left and right every fixation (reading). */
   scan: boolean;
   /** Time between blinks, ms. */
@@ -92,6 +94,7 @@ const BASE: MoodTuning = {
   bx: 0,
   by: 0,
   flip: false,
+  far: 0,
   scan: false,
   blinkMin: 2500,
   blinkMax: 5500,
@@ -110,16 +113,16 @@ const BASE: MoodTuning = {
 };
 
 export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
-  idle: { ...BASE },
-  listening: { ...BASE, fixMin: 1800, fixMax: 3600, gx: 0.12, gy: 0.1, scale: 1.05 },
+  idle: { ...BASE, fixMin: 900, fixMax: 2200, gx: 1, gy: 0.7, far: 0.7 },
+  listening: { ...BASE, fixMin: 1500, fixMax: 3200, gx: 0.8, gy: 0.4, far: 0.25, scale: 1.05 },
   thinking: {
     ...BASE,
     fixMin: 2200,
     fixMax: 4200,
-    gx: 0.2,
-    gy: 0.15,
-    bx: 0.6,
-    by: -0.7,
+    gx: 0.35,
+    gy: 0.2,
+    bx: 0.85,
+    by: -0.75,
     flip: true,
     openL: 0.9,
     openR: 0.9,
@@ -130,7 +133,7 @@ export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
     fixMax: 520,
     gx: 0.15,
     gy: 0.05,
-    bx: 0.8,
+    bx: 1,
     by: 0.2,
     scan: true,
     blinkMin: 3000,
@@ -187,8 +190,9 @@ export const MOOD_TUNING: Record<AvatarMood, MoodTuning> = {
     ...BASE,
     fixMin: 700,
     fixMax: 1600,
-    gx: 0.7,
-    gy: 0.4,
+    gx: 1,
+    gy: 0.6,
+    far: 0.7,
     openL: 0.65,
     wobble: 8,
   },
@@ -258,6 +262,10 @@ function slotIndex(seed: number, t: number, mean: number, spread: number, salt: 
 function gazeTarget(seed: number, k: number, tune: MoodTuning): { x: number; y: number } {
   "worklet";
   let x = (rand(seed, k, 11) - 0.5) * 2 * tune.gx;
+  if (tune.far > 0) {
+    const side = rand(seed, k, 16) < 0.5 ? -1 : 1;
+    x = rand(seed, k, 17) < tune.far ? side * (0.6 + 0.4 * rand(seed, k, 18)) * tune.gx : x * 0.3;
+  }
   if (tune.scan) {
     x += (k % 2 === 0 ? -1 : 1) * tune.bx * (0.7 + 0.3 * rand(seed, k, 15));
   } else {
@@ -329,6 +337,19 @@ export function avatarRest(seed: number): { x: number; y: number; lean: number }
   "worklet";
   const side = rand(seed, 0, 5) < 0.5 ? -1 : 1;
   return { x: side * REST_X, y: REST_Y, lean: side * REST_LEAN };
+}
+
+/** Gaze travel in each variant's own units for gaze = +-1 (robot: fraction of the free space in the visor; less than 1 so the eyes clear its rounded corners). */
+export const AVATAR_GAZE_TRAVEL = {
+  organic: { x: 9, y: 7 },
+  shape: { x: 15, y: 10 },
+  robot: { x: 0.85, y: 0.6 },
+} as const;
+
+/** Gaze plus the resting offset, kept inside -1..1 so the eyes never travel past the extreme. */
+export function avatarGazeWithRest(gaze: number, rest: number): number {
+  "worklet";
+  return clamp(gaze + rest, -1, 1);
 }
 
 /** Map a run status to the mood the avatar shows by default. */

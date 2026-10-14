@@ -1,6 +1,7 @@
 import type { AvatarMood, GrokColorDef } from "@rakazo/core";
 import {
   ACTIVE_RUN_STATUSES,
+  AVATAR_GAZE_TRAVEL,
   avatarIdentitySeed,
   avatarReactionForTransition,
   avatarRest,
@@ -230,7 +231,7 @@ export const BotAvatar = memo(function BotAvatar({
 });
 
 /** Dark tall pills, about 8% x 25% of the viewBox, the pair spanning 40% of the body. */
-const SHAPE_EYE = { w: 20, h: 62, dx: 34, dy: 10 };
+const SHAPE_EYE = { w: 20, h: 62, dx: 34, dy: 14 };
 
 function ShapeAvatar({
   colorDef,
@@ -260,8 +261,8 @@ function ShapeAvatar({
     ],
     w: SHAPE_EYE.w,
     h: SHAPE_EYE.h,
-    travelX: 10,
-    travelY: 7,
+    travelX: AVATAR_GAZE_TRAVEL.shape.x,
+    travelY: AVATAR_GAZE_TRAVEL.shape.y,
     rest: avatarRest(seed),
     body: { cx: CENTER, cy: CENTER, bob: 8 },
   };
@@ -396,8 +397,8 @@ function RobotAvatar({
     ],
     w: eyeW,
     h: eyeH,
-    travelX: Math.max(0, (innerW - eyeW * 2 - eyeGap) / 2) * 0.7,
-    travelY: Math.max(0, (innerH - eyeH) / 2) * 0.7,
+    travelX: Math.max(0, (innerW - eyeW * 2 - eyeGap) / 2) * AVATAR_GAZE_TRAVEL.robot.x,
+    travelY: Math.max(0, (innerH - eyeH) / 2) * AVATAR_GAZE_TRAVEL.robot.y,
   };
   const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
   const eyeGlow = `drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 ${Math.max(2, size * 0.1)}px ${colorDef.light})`;
@@ -485,8 +486,8 @@ const ORGANIC_FACE: AvatarFaceGeometry = {
   ],
   w: 7,
   h: 24,
-  travelX: 4,
-  travelY: 3,
+  travelX: AVATAR_GAZE_TRAVEL.organic.x,
+  travelY: AVATAR_GAZE_TRAVEL.organic.y,
   body: { cx: 0, cy: 0, bob: 4 },
 };
 

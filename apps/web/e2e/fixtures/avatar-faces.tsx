@@ -7,6 +7,10 @@ import { createRoot } from "react-dom/client";
 const frozen = new URLSearchParams(location.search).get("t");
 if (frozen !== null) freezeAvatarTicker(Number(frozen));
 
+// ?look=x,y points every gallery avatar's gaze there (-1..1).
+const look = new URLSearchParams(location.search).get("look")?.split(",").map(Number);
+const lookAt = look && look.length === 2 ? { x: look[0] ?? 0, y: look[1] ?? 0 } : undefined;
+
 const color = "#8B5CF6";
 const ORGANIC_COLORS = ["#F97316", "#8B5CF6", "#10B981", "#3B82F6", "#EAB308", "#EC4899"];
 const SHAPE_COLORS = [
@@ -90,6 +94,7 @@ function Row(props: {
           variant={props.variant}
           size={72}
           mood={mood}
+          lookAt={lookAt}
         />
       ))}
     </>

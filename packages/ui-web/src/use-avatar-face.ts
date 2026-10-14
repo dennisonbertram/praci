@@ -1,5 +1,10 @@
 import type { AvatarEyePose, AvatarFacePose, AvatarMood } from "@rakazo/core";
-import { avatarEyePath, avatarFacePose, blendAvatarFacePose } from "@rakazo/core";
+import {
+  avatarEyePath,
+  avatarFacePose,
+  avatarGazeWithRest,
+  blendAvatarFacePose,
+} from "@rakazo/core";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { frozenAvatarTime, subscribeAvatarTicker } from "./avatar-ticker.js";
 
@@ -30,7 +35,7 @@ export function eyeAttributes(pose: AvatarEyePose, g: AvatarFaceGeometry, index:
   const tilt = (index === 0 ? pose.tilt : -pose.tilt) + rest.lean;
   return {
     d: avatarEyePath(g.w, g.h, pose),
-    transform: `translate(${r2(eye.cx + (pose.x + rest.x) * g.travelX)} ${r2(eye.cy + (pose.y + rest.y) * g.travelY)}) rotate(${r2(tilt)})`,
+    transform: `translate(${r2(eye.cx + avatarGazeWithRest(pose.x, rest.x) * g.travelX)} ${r2(eye.cy + avatarGazeWithRest(pose.y, rest.y) * g.travelY)}) rotate(${r2(tilt)})`,
   };
 }
 

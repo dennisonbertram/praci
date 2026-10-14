@@ -1,5 +1,5 @@
 import type { AvatarEyePose, AvatarFacePose } from "@rakazo/core";
-import { avatarEyePath } from "@rakazo/core";
+import { avatarEyePath, avatarGazeWithRest } from "@rakazo/core";
 
 /**
  * Geometry for the shared eye engine (`avatarFacePose` in `@rakazo/core`) on
@@ -73,8 +73,8 @@ function eyeD(pose: AvatarEyePose, g: AvatarFaceGeometry, index: 0 | 1) {
   const tilt = (index === 0 ? pose.tilt : -pose.tilt) + rest.lean;
   return transformEyePath(
     avatarEyePath(g.w, g.h, pose),
-    eye.cx + (pose.x + rest.x) * g.travelX,
-    eye.cy + (pose.y + rest.y) * g.travelY,
+    eye.cx + avatarGazeWithRest(pose.x, rest.x) * g.travelX,
+    eye.cy + avatarGazeWithRest(pose.y, rest.y) * g.travelY,
     tilt,
   );
 }

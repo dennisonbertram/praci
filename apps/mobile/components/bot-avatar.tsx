@@ -2,6 +2,7 @@ import type { AvatarStyle } from "@rakazo/contracts";
 import type { AvatarMood } from "@rakazo/core";
 import {
   ACTIVE_RUN_STATUSES,
+  AVATAR_GAZE_TRAVEL,
   avatarIdentitySeed,
   avatarReactionForTransition,
   avatarRest,
@@ -160,7 +161,7 @@ export const BotAvatar = memo(function BotAvatar({
 });
 
 const SHAPE_VIEWBOX_SIZE = 259;
-const SHAPE_EYE = { w: 20, h: 62, dx: 34, dy: 10 };
+const SHAPE_EYE = { w: 20, h: 62, dx: 34, dy: 14 };
 
 function ShippedShapeAvatar({
   color,
@@ -189,8 +190,8 @@ function ShippedShapeAvatar({
       ],
       w: SHAPE_EYE.w,
       h: SHAPE_EYE.h,
-      travelX: 10,
-      travelY: 7,
+      travelX: AVATAR_GAZE_TRAVEL.shape.x,
+      travelY: AVATAR_GAZE_TRAVEL.shape.y,
       rest: avatarRest(seed),
       bob: 8,
     }),
@@ -242,8 +243,8 @@ function RobotAvatar({
       ],
       w: eyeW,
       h: eyeH,
-      travelX: Math.max(0, (innerW - eyeW * 2 - eyeGap) / 2) * 0.7,
-      travelY: Math.max(0, (innerH - eyeH) / 2) * 0.7,
+      travelX: Math.max(0, (innerW - eyeW * 2 - eyeGap) / 2) * AVATAR_GAZE_TRAVEL.robot.x,
+      travelY: Math.max(0, (innerH - eyeH) / 2) * AVATAR_GAZE_TRAVEL.robot.y,
     };
   }, [innerW, innerH, eyeW, eyeH, eyeGap]);
   const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
@@ -306,8 +307,8 @@ function OrganicAvatar({
       ],
       w: ORGANIC_EYE.w,
       h: ORGANIC_EYE.h,
-      travelX: 4,
-      travelY: 3,
+      travelX: AVATAR_GAZE_TRAVEL.organic.x,
+      travelY: AVATAR_GAZE_TRAVEL.organic.y,
       rest: avatarRest(seed),
       bob: 4,
     }),
