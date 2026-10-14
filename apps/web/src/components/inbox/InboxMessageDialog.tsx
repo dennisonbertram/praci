@@ -2,7 +2,15 @@ import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComposeMode } from "@rakazo/contracts";
-import { Button, Dialog, DialogClose, DialogContent, DialogTitle, Skeleton } from "@rakazo/ui-web";
+import {
+  Button,
+  cn,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  Skeleton,
+} from "@rakazo/ui-web";
 import {
   ChevronDown,
   ChevronUp,
@@ -50,6 +58,9 @@ export function InboxMessageDialog({
   }, [previousId, nextId]);
   // Focus the dialog itself so no toolbar button shows a focus ring on open.
   const popupRef = useRef<HTMLDivElement>(null);
+  // The composer is a dialog of its own; the preview hides while it is open and returns on close.
+  const [composing, setComposing] = useState<ComposeMode | null>(null);
+  useEffect(() => setComposing(null), [messageId]);
   return (
     <Dialog open={messageId !== null} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
@@ -57,7 +68,10 @@ export function InboxMessageDialog({
         initialFocus={popupRef}
         tabIndex={-1}
         showCloseButton={false}
-        className="top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-1/2 md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl md:ring-1"
+        className={cn(
+          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-1/2 md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl md:ring-1",
+          composing && "invisible",
+        )}
       >
         {messageId ? (
           <InboxMessage
@@ -67,6 +81,8 @@ export function InboxMessageDialog({
             previousId={previousId}
             nextId={nextId}
             onNavigate={onNavigate}
+            composing={composing}
+            setComposing={setComposing}
           />
         ) : null}
       </DialogContent>
@@ -82,12 +98,16 @@ function InboxMessage({
   previousId,
   nextId,
   onNavigate,
+  composing,
+  setComposing,
 }: {
   messageId: string;
   subject?: string;
   previousId?: string;
   nextId?: string;
   onNavigate?: (messageId: string) => void;
+  composing: ComposeMode | null;
+  setComposing: (mode: ComposeMode | null) => void;
 }) {
   const { t } = useLingui();
   const [message, setMessage] = useState<InboxMessageOutput | null>(
@@ -95,7 +115,6 @@ function InboxMessage({
   );
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
-  const [composing, setComposing] = useState<ComposeMode | null>(null);
   const seed = useMemo(
     () => (composing ? ({ kind: composing, messageId } as const) : null),
     [composing, messageId],
@@ -131,7 +150,7 @@ function InboxMessage({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onNavigate, composing, nextId, previousId, message]);
+  }, [onNavigate, composing, setComposing, nextId, previousId, message]);
 
   const title = message?.subject ?? subject ?? "";
   const sent = message ? new Date(message.date) : null;

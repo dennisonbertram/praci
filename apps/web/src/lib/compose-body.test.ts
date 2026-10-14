@@ -9,6 +9,14 @@ describe("textToHtml", () => {
   });
 });
 
+describe("textToHtml links", () => {
+  it("links http(s) URLs in the quote, without trailing punctuation, and escapes the rest", () => {
+    expect(textToHtml("> see https://x.test/a?b=1&c=2, or <http://y.test>. ok")).toBe(
+      '<blockquote><p>see <a href="https://x.test/a?b=1&amp;c=2">https://x.test/a?b=1&amp;c=2</a>, or &lt;<a href="http://y.test">http://y.test</a>&gt;. ok</p></blockquote>',
+    );
+  });
+});
+
 describe("formatBytes", () => {
   it("uses B, KB and MB", () => {
     expect(formatBytes(512)).toBe("512 B");

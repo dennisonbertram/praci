@@ -1,8 +1,14 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { ComposeMode, ComposeResult } from "@rakazo/contracts";
-import { MAX_COMPOSE_ATTACHMENT_BYTES } from "@rakazo/contracts";
+import { MAX_COMPOSE_ATTACHMENT_BYTES, MAX_COMPOSE_ATTACHMENT_MB } from "@rakazo/contracts";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogTitle,
   Button,
   cn,
   Dialog,
@@ -79,11 +85,11 @@ function Row({
 }) {
   return (
     <div className="flex min-h-9 items-start gap-2 border-b border-border py-1">
-      <span aria-hidden="true" className="w-12 shrink-0 pt-1.5 text-sm text-muted-foreground">
+      <span aria-hidden="true" className="w-12 shrink-0 text-sm leading-7 text-muted-foreground">
         {label}
       </span>
       {children}
-      {end ? <div className="flex shrink-0 items-center pt-0.5">{end}</div> : null}
+      {end ? <div className="flex h-7 shrink-0 items-center">{end}</div> : null}
     </div>
   );
 }
@@ -131,7 +137,9 @@ export function ComposeEmail({
   const [files, setFiles] = useState<File[]>([]);
   const [dragging, setDragging] = useState(false);
   const [sending, setSending] = useState(false);
-  const [blocked, setBlocked] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+  const [prefillAttempt, setPrefillAttempt] = useState(0);
+  const [prefillFailed, setPrefillFailed] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   // Set once the person edits; an untouched reply is not worth keeping.
   const touched = useRef(false);
@@ -192,6 +200,8 @@ export function ComposeEmail({
   useEffect(() => {
     if (seed.kind === "new") return;
     let live = true;
+    setPrefillFailed(false);
+    setNotice(null);
     rpc.inbox.compose
       .prefill({ messageId: seed.messageId, mode: seed.kind })
       .then((next) => {
@@ -215,11 +225,12 @@ export function ComposeEmail({
       .catch((cause) => {
         if (!live) return;
         setNotice({ kind: "error", text: errorText(cause) });
+        setPrefillFailed(true);
       });
     return () => {
       live = false;
     };
-  }, [seed]);
+  }, [seed, prefillAttempt]);
 
   // Fill the editor with the quoted original once both it and the editor exist. A reply starts
   // above the quote; a forward starts at its empty To.
@@ -255,10 +266,16 @@ export function ComposeEmail({
     onClose();
   };
 
-  const close = () => {
-    if (sending) return;
+  const closeNow = () => {
     if (!touched.current || (isBlank(fieldsRef.current) && files.length === 0)) discard();
     else onClose();
+  };
+
+  const close = () => {
+    if (sending) return;
+    // Autosave leaves attachments out, so closing would lose them: ask first.
+    if (files.length > 0) setConfirmClose(true);
+    else closeNow();
   };
 
   const addFiles = (incoming: File[]) => {
@@ -278,7 +295,7 @@ export function ComposeEmail({
       tooBig
         ? {
             kind: "error",
-            text: t`Attachments can't be over ${formatBytes(MAX_COMPOSE_ATTACHMENT_BYTES)}.`,
+            text: t`Attachments can't be over ${MAX_COMPOSE_ATTACHMENT_MB} MB.`,
           }
         : null,
     );
@@ -289,7 +306,7 @@ export function ComposeEmail({
   };
 
   const send = async () => {
-    if (sending || blocked || loading) return;
+    if (sending || loading) return;
     const current = fieldsRef.current;
     const all = [...current.to, ...current.cc, ...current.bcc];
     if (all.length === 0) {
@@ -323,7 +340,6 @@ export function ComposeEmail({
         onClose();
         return;
       }
-      if (status === "unknown") setBlocked(true);
       setNotice({ kind: "error", text: problemText(status, true) });
     } catch (cause) {
       setNotice({ kind: "error", text: errorText(cause) });
@@ -365,7 +381,7 @@ export function ComposeEmail({
           setDragging(false);
           if (!locked) addFiles([...event.dataTransfer.files]);
         }}
-        className="flex h-[min(680px,88vh)] w-[min(680px,94vw)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none max-sm:inset-0 max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-screen max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:pt-[env(safe-area-inset-top)] max-sm:pb-[env(safe-area-inset-bottom)]"
+        className="flex h-[min(680px,88vh)] w-[min(680px,94vw)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none max-md:inset-0 max-md:top-0 max-md:left-0 max-md:h-dvh max-md:max-h-none max-md:w-screen max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-none max-md:pt-[env(safe-area-inset-top)] max-md:pb-[env(safe-area-inset-bottom)]"
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 py-1.5 ps-4 pe-2">
           <DialogTitle className="min-w-0 flex-1 truncate text-sm leading-normal">
@@ -504,7 +520,7 @@ export function ComposeEmail({
         <div className="flex shrink-0 items-center gap-1 px-3 py-2">
           <Button
             className="rounded-full px-4"
-            disabled={locked || blocked}
+            disabled={locked}
             aria-busy={sending}
             onClick={() => void send()}
           >
@@ -543,6 +559,11 @@ export function ComposeEmail({
               event.target.value = "";
             }}
           />
+          {prefillFailed ? (
+            <Button variant="outline" size="sm" onClick={() => setPrefillAttempt((n) => n + 1)}>
+              <Trans>Try again</Trans>
+            </Button>
+          ) : null}
           <p
             role={notice?.kind === "error" ? "alert" : "status"}
             className={cn(
@@ -569,6 +590,27 @@ export function ComposeEmail({
             <TooltipContent>{t`Discard`}</TooltipContent>
           </Tooltip>
         </div>
+
+        <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
+          <AlertDialogContent size="sm">
+            <AlertDialogTitle>
+              <Trans>Discard attachments?</Trans>
+            </AlertDialogTitle>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                <Trans>Keep editing</Trans>
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setConfirmClose(false);
+                  closeNow();
+                }}
+              >
+                <Trans>Close</Trans>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {dragging ? (
           <div

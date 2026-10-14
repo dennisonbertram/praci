@@ -7,6 +7,7 @@ import { afterEach, expect, it, vi } from "vitest";
 
 const prefill = vi.hoisted(() => vi.fn());
 const send = vi.hoisted(() => vi.fn());
+const requestClose = vi.hoisted(() => ({ current: () => {} }));
 
 vi.mock("../lib/rpc", () => ({
   rpc: { inbox: { compose: { prefill, draftSave: vi.fn(), send, discard: vi.fn() } } },
@@ -27,6 +28,13 @@ vi.mock("@rakazo/ui-web", () => {
     </span>
   );
   return {
+    AlertDialog: ({ open, children }: { open?: boolean; children?: ReactNode }) =>
+      open ? <div role="alertdialog">{children}</div> : null,
+    AlertDialogAction: (props: ComponentProps<"button">) => <button type="button" {...props} />,
+    AlertDialogCancel: (props: ComponentProps<"button">) => <button type="button" {...props} />,
+    AlertDialogContent: Container,
+    AlertDialogFooter: Container,
+    AlertDialogTitle: Container,
     Button: ({
       variant: _variant,
       size: _size,
@@ -35,7 +43,16 @@ vi.mock("@rakazo/ui-web", () => {
       <button type="button" {...props} />
     ),
     cn: (...classes: unknown[]) => classes.filter(Boolean).join(" "),
-    Dialog: Container,
+    Dialog: ({
+      onOpenChange,
+      children,
+    }: {
+      onOpenChange?: (open: boolean) => void;
+      children?: ReactNode;
+    }) => {
+      requestClose.current = () => onOpenChange?.(false);
+      return <div>{children}</div>;
+    },
     DialogClose: Container,
     DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     DialogTitle: Container,
@@ -59,7 +76,7 @@ const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
   messageId: "m1",
 });
 
-async function open(seed: ComposeSeed) {
+async function open(seed: ComposeSeed, onClose = () => {}) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   prefill.mockResolvedValue({
     connectionId: "c1",
@@ -73,7 +90,7 @@ async function open(seed: ComposeSeed) {
   document.body.append(container);
   const root = createRoot(container);
   await act(async () =>
-    root.render(<ComposeEmail seed={seed} accounts={[]} connectionId="c1" onClose={() => {}} />),
+    root.render(<ComposeEmail seed={seed} accounts={[]} connectionId="c1" onClose={onClose} />),
   );
   return { container, root };
 }
@@ -168,4 +185,67 @@ it("sends joined recipients, the HTML body and attachments", async () => {
   });
   expect(sent.html).toContain("<blockquote>");
   expect(sent.body).toContain("quoted line");
+});
+
+const button = (name: string) =>
+  [...document.querySelectorAll("button")].find((b) => b.textContent === name) as HTMLButtonElement;
+
+async function attach(file: File) {
+  const input = document.querySelector<HTMLInputElement>("input[type=file]") as HTMLInputElement;
+  await act(async () => {
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+it("names the attachment limit the way the server does", async () => {
+  await open({ kind: "new" });
+  await attach(new File([new Uint8Array(11 * 1024 * 1024)], "big.bin"));
+  expect(document.querySelector("[role=alert]")?.textContent).toBe(
+    "Attachments can't be over 10 MB.",
+  );
+});
+
+it("lets Send be tried again after an unknown result", async () => {
+  send.mockResolvedValue({ status: "unknown" });
+  await open(reply("reply"));
+  await act(async () => button("Send").click());
+  expect(button("Send").disabled).toBe(false);
+  await act(async () => button("Send").click());
+  expect(send).toHaveBeenCalledTimes(2);
+});
+
+it("retries a failed reply prefill", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  prefill.mockRejectedValueOnce(new Error("down"));
+  prefill.mockResolvedValue({
+    connectionId: "c1",
+    replyToMessageId: "m1",
+    to: "sam@example.test",
+    cc: "",
+    subject: "Re: Offsite",
+    body,
+  });
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () =>
+    createRoot(container).render(
+      <ComposeEmail seed={reply("reply")} accounts={[]} connectionId="c1" onClose={() => {}} />,
+    ),
+  );
+  expect(chips()).toEqual([]);
+  await act(async () => button("Try again").click());
+  expect(prefill).toHaveBeenCalledTimes(2);
+  expect(chips()).toEqual(["Remove sam@example.test"]);
+});
+
+it("asks before closing with attachments", async () => {
+  const onClose = vi.fn();
+  await open(reply("reply"), onClose);
+  await attach(new File(["hi"], "a.txt"));
+  await act(async () => requestClose.current());
+  expect(document.querySelector("[role=alertdialog]")).not.toBeNull();
+  expect(onClose).not.toHaveBeenCalled();
+  await act(async () => button("Close").click());
+  expect(onClose).toHaveBeenCalledTimes(1);
 });

@@ -661,9 +661,8 @@ msgstr "Anexo"
 msgid "Attachments"
 msgstr ""
 
-#. placeholder {0}: formatBytes(MAX_COMPOSE_ATTACHMENT_BYTES)
 #: src/components/ComposeEmail.tsx
-msgid "Attachments can't be over {0}."
+msgid "Attachments can't be over {MAX_COMPOSE_ATTACHMENT_MB} MB."
 msgstr ""
 
 #. placeholder {0}: email.attachments
@@ -2097,6 +2096,10 @@ msgstr ""
 msgid "Discard"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Discard attachments?"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2728,6 +2731,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "just now"
 msgstr "agora mesmo"
+
+#: src/components/ComposeEmail.tsx
+msgid "Keep editing"
+msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Keep memories"
@@ -4941,6 +4948,7 @@ msgstr ""
 msgid "Trial ends {day}"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Inbox.tsx
