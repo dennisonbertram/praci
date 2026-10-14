@@ -266,13 +266,168 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       data: { needsReply: true },
     });
 
+    // A brand-new emulator has no history for the stored cursor, so this sync lists the window.
     seed("leave", [message("stay", 1, ["INBOX"]), message("gone", 2, [])]);
+    await prisma.$executeRaw`UPDATE mail_sync_states SET "changeCursor" = NULL WHERE "connectionId" = ${account.id}`;
     await expireThrottle(account.id);
     expect(await sync(account)).toBe("synced");
 
     const byId = Object.fromEntries((await rows(account.id)).map((r) => [r.providerMessageId, r]));
     expect(byId.gone?.inInbox).toBe(false);
     expect(byId.stay).toMatchObject({ inInbox: true, needsReply: true });
+  });
+
+  describe("incremental sync from the change cursor", () => {
+    const modify = (ref: string, id: string, change: object) =>
+      gmail.handle(
+        ref,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}/modify`,
+        "POST",
+        change,
+      );
+    const cursorOf = async (connectionId: string) => (await state(connectionId)).changeCursor;
+    const byId = async (connectionId: string) =>
+      Object.fromEntries((await rows(connectionId)).map((r) => [r.providerMessageId, r]));
+
+    it("stores a cursor, then applies only new, relabelled and deleted mail without listing", async () => {
+      seed("inc", [
+        message("keep", 1, ["INBOX", "UNREAD"]),
+        message("gone", 2, ["INBOX"]),
+        message("filed", 3, ["INBOX"]),
+      ]);
+      const account = await connect("inc");
+      expect(await sync(account)).toBe("synced");
+      const first = await cursorOf(account.id);
+      expect(first).not.toBeNull();
+      await prisma.cachedMailMessage.updateMany({
+        where: { connectionId: account.id, providerMessageId: "keep" },
+        data: { needsReply: true },
+      });
+
+      gmail.addMessage("inc", message("fresh", 0.5, ["INBOX", "UNREAD"]));
+      modify("inc", "keep", { removeLabelIds: ["UNREAD"] });
+      modify("inc", "filed", { removeLabelIds: ["INBOX"] });
+      gmail.deleteMessage("inc", "gone");
+      await expireThrottle(account.id);
+      const lists = listCalls();
+      enqueued.length = 0;
+
+      expect(await sync(account)).toBe("synced");
+
+      expect(listCalls()).toBe(lists);
+      const rowsNow = await byId(account.id);
+      expect(Object.keys(rowsNow).sort()).toEqual(["filed", "fresh", "keep"]);
+      expect(rowsNow.fresh).toMatchObject({ inInbox: true, unread: true });
+      expect(rowsNow.keep).toMatchObject({ inInbox: true, unread: false, needsReply: true });
+      expect(rowsNow.filed).toMatchObject({ inInbox: false });
+      expect(await cursorOf(account.id)).not.toBe(first);
+      expect(enqueued).toHaveLength(1);
+
+      // Nothing changed since: another sync costs one history call and changes nothing.
+      await expireThrottle(account.id);
+      const before = gmail.requests.length;
+      expect(await sync(account)).toBe("synced");
+      expect(gmail.requests.length - before).toBe(1);
+      expect(Object.keys(await byId(account.id)).sort()).toEqual(["filed", "fresh", "keep"]);
+    });
+
+    it("removes a message that moved to trash or spam and keeps sent mail it sees", async () => {
+      seed("inc-trash", [message("t", 1, ["INBOX"]), message("s", 2, ["INBOX"])]);
+      const account = await connect("inc-trash");
+      await sync(account);
+
+      modify("inc-trash", "t", { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] });
+      modify("inc-trash", "s", { addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] });
+      gmail.addMessage(
+        "inc-trash",
+        message("out", 0.5, ["SENT"], { from: "me@example.test", to: "ann@example.test" }),
+      );
+      await expireThrottle(account.id);
+      expect(await sync(account)).toBe("synced");
+
+      const rowsNow = await byId(account.id);
+      expect(Object.keys(rowsNow)).toEqual(["out"]);
+      expect(rowsNow.out).toMatchObject({ inInbox: false, fromSelf: true });
+    });
+
+    it("lists the window again when Gmail no longer has history that old, and stores a new cursor", async () => {
+      seed("inc-expired", [message("a", 1, ["INBOX"])]);
+      const account = await connect("inc-expired");
+      await sync(account);
+      const first = await cursorOf(account.id);
+      gmail.addMessage("inc-expired", message("b", 0.5, ["INBOX"]));
+      gmail.expireHistory("inc-expired");
+      await expireThrottle(account.id);
+      const lists = listCalls();
+
+      expect(await sync(account)).toBe("synced");
+
+      expect(listCalls()).toBe(lists + 2);
+      expect(Object.keys(await byId(account.id)).sort()).toEqual(["a", "b"]);
+      expect(await cursorOf(account.id)).not.toBe(first);
+
+      // The new cursor works: the next sync is incremental again.
+      gmail.addMessage("inc-expired", message("c", 0.4, ["INBOX"]));
+      await expireThrottle(account.id);
+      expect(await sync(account)).toBe("synced");
+      expect(listCalls()).toBe(lists + 2);
+      expect(Object.keys(await byId(account.id)).sort()).toEqual(["a", "b", "c"]);
+    });
+
+    it("lists the window instead when more than 500 things changed", async () => {
+      seed("inc-many", [message("a", 1, ["INBOX"])]);
+      const account = await connect("inc-many");
+      await sync(account);
+      for (let i = 0; i < 501; i++) gmail.addMessage("inc-many", message(`n${i}`, 0.5, ["INBOX"]));
+      await expireThrottle(account.id);
+      const lists = listCalls();
+
+      expect(await sync(account)).toBe("synced");
+
+      // Two pages of 100 for the inbox, which stops at 200 messages, and one for sent mail.
+      expect(listCalls()).toBe(lists + 3);
+    });
+
+    it("keeps the cursor when some changed messages could not be fetched, and finishes next time", async () => {
+      seed("inc-partial", [message("a", 1, ["INBOX"])]);
+      const account = await connect("inc-partial");
+      await sync(account);
+      const first = await cursorOf(account.id);
+      gmail.addMessage("inc-partial", message("ok", 0.5, ["INBOX"]));
+      gmail.addMessage("inc-partial", message("limited", 0.4, ["INBOX"]));
+      gmail.deleteMessage("inc-partial", "a");
+      gmail.failNext(429, { times: 1000, urlIncludes: "messages/limited" });
+      await expireThrottle(account.id);
+
+      expect(await sync(account)).toBe("failed");
+
+      expect(await cursorOf(account.id)).toBe(first);
+      expect(Object.keys(await byId(account.id)).sort()).toEqual(["ok"]);
+      expect((await state(account.id)).lastErrorAt).toBeNull();
+
+      gmail.clearFailures();
+      expect(await sync(account)).toBe("synced");
+      expect(Object.keys(await byId(account.id)).sort()).toEqual(["limited", "ok"]);
+      expect(await cursorOf(account.id)).not.toBe(first);
+    });
+
+    it("keeps the cursor when a change sync fails outright", async () => {
+      seed("inc-fail", [message("a", 1, ["INBOX"])]);
+      const account = await connect("inc-fail");
+      await sync(account);
+      const first = await cursorOf(account.id);
+      gmail.addMessage("inc-fail", message("b", 0.5, ["INBOX"]));
+      gmail.failNext(503, { times: 1000, urlIncludes: "/history" });
+      await expireThrottle(account.id);
+
+      expect(await sync(account)).toBe("failed");
+      expect(await cursorOf(account.id)).toBe(first);
+      expect((await state(account.id)).lastErrorAt).not.toBeNull();
+
+      gmail.clearFailures();
+      expect(await sync(account)).toBe("synced");
+      expect(Object.keys(await byId(account.id)).sort()).toEqual(["a", "b"]);
+    });
   });
 
   it("calls the provider once when two processes sync one account at the same time", async () => {

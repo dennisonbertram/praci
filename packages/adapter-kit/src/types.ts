@@ -907,6 +907,15 @@ export interface MailMessage extends MailMessageSummary {
   attachments: MailAttachmentInfo[];
 }
 
+/** Mail that changed since a cursor. */
+export interface MailChanges {
+  /** Pass to the next `listChanges`. */
+  cursor: string;
+  /** Messages added, or whose labels changed, and not deleted since. Hydrate with `listMessages({ ids })`. */
+  changedIds: string[];
+  deletedIds: string[];
+}
+
 /** A message to save as a draft. The provider adds the HTML part and the threading headers. */
 export interface MailDraftAttachment {
   filename: string;

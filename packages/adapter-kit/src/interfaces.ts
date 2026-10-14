@@ -45,6 +45,7 @@ import type {
   InboxClassifyResult,
   MailAccount,
   MailAttachment,
+  MailChanges,
   MailDraftInput,
   MailDraftRef,
   MailLabel,
@@ -260,6 +261,20 @@ export interface MailProvider {
     change: MailLabelChange,
     context: AdapterContext,
   ): Promise<{ labelIds: string[] }>;
+  /**
+   * A cursor for the mailbox as it is now. Take it before listing mail, so changes that arrive
+   * during the list are replayed by the next `listChanges`.
+   */
+  getCursor(account: MailAccount, context: AdapterContext): Promise<string>;
+  /**
+   * Changes since `cursor`. Returns null when the provider no longer keeps history that far back
+   * (or does not recognize the cursor), so the caller must list the mailbox again.
+   */
+  listChanges(
+    account: MailAccount,
+    cursor: string,
+    context: AdapterContext,
+  ): Promise<MailChanges | null>;
   /** Saves a new draft. Never retried after an unclear failure, so it cannot leave two drafts. */
   createDraft(
     account: MailAccount,

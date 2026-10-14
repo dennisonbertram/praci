@@ -189,8 +189,10 @@ These are the names items 2, 4 and 5 use; their docs are aligned to them:
   hydrated messages and stores `unhydratedIds` plus `nextPageToken` as its resume
   cursor.
 - `cc` is on the summary because item 5 classifies from metadata only.
-- There is no `changesSince`. Item 4 re-lists the 14-day window. Add Gmail
-  `history.list` later if re-listing costs too much quota.
+- `getCursor` and `listChanges(account, cursor)` return the ids added, relabelled and deleted
+  since a cursor (Gmail `profile.historyId` and `history.list`). `listChanges` returns null when
+  Gmail has dropped history that old. Item 4 stores the cursor and, when it has one, fetches only
+  the changed messages; with none, or null, or more than 500 changes, it re-lists the 14-day window.
 - There is no `querySyntax` field. Every account is Gmail. Add a field when a non-Gmail
   provider lands.
 
