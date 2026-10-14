@@ -241,3 +241,15 @@ it("email mode fits the frame width: viewport meta, max-width media and tables, 
   expect(plain.srcDoc).not.toContain("width=device-width");
   await plain.cleanup();
 });
+
+it("moves focus from an email frame to the surrounding dialog when the window regains focus", async () => {
+  const view = await render("<p>Hi</p>", false, true);
+  view.container.setAttribute("role", "dialog");
+  view.container.tabIndex = -1;
+  (view.iframe as HTMLIFrameElement).tabIndex = 0;
+  (view.iframe as HTMLIFrameElement).focus();
+  expect(document.activeElement).toBe(view.iframe);
+  window.dispatchEvent(new Event("focus"));
+  expect(document.activeElement).toBe(view.container);
+  await view.cleanup();
+});

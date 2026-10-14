@@ -38,7 +38,8 @@ describe("textToHtml forward header", () => {
 });
 
 describe("prefillHtml", () => {
-  const body = "\n\n---------- Forwarded message ---------\nFrom: A <a@x.test>\nSubject: Hi\n\nplain copy";
+  const body =
+    "\n\n---------- Forwarded message ---------\nFrom: A <a@x.test>\nSubject: Hi\n\nplain copy";
 
   it("keeps the forwarded header quoted and puts the original's HTML below it", () => {
     expect(prefillHtml({ body, quotedHtml: "<p><strong>Hi</strong></p>" })).toBe(

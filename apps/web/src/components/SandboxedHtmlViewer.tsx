@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 const PREVIEW_CSP =
   "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; form-action 'none'; base-uri 'none'";
 
@@ -88,8 +90,22 @@ export function SandboxedHtmlViewer({
   email?: boolean;
 }) {
   const runScripts = scripts && !email;
+  const frame = useRef<HTMLIFrameElement>(null);
+  // Key presses inside the sandboxed frame never reach this page, so Escape and j/k stop working
+  // after a click in it (such as on a link, which opens in a new tab). When the person comes back,
+  // focus moves from the frame to the dialog around it.
+  useEffect(() => {
+    if (!email) return;
+    const onFocus = () => {
+      if (document.activeElement === frame.current)
+        frame.current?.closest<HTMLElement>('[role="dialog"]')?.focus();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [email]);
   return (
     <iframe
+      ref={frame}
       title={title}
       srcDoc={shellDocument(withPreviewDocument(html, runScripts, email), runScripts, email)}
       sandbox={email ? `allow-scripts ${POPUP_FLAGS}` : "allow-scripts"}

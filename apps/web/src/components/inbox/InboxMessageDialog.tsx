@@ -69,7 +69,7 @@ export function InboxMessageDialog({
         tabIndex={-1}
         showCloseButton={false}
         className={cn(
-          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-1/2 md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl md:ring-1",
+          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-1/2 md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl md:ring-1 md:has-[iframe]:h-[min(85vh,820px)]",
           composing && "invisible",
         )}
       >
@@ -211,9 +211,16 @@ function InboxMessage({
                 : message.date}
             </time>
           </div>
-          <span dir="auto" className="truncate text-xs">
-            {t`to ${message.to}`}
-          </span>
+          <div className="flex gap-x-3 text-xs">
+            <span dir="auto" title={message.to} className="min-w-0 truncate">
+              {t`to ${message.to}`}
+            </span>
+            {message.cc ? (
+              <span dir="auto" title={message.cc} className="min-w-0 truncate">
+                {t`cc ${message.cc}`}
+              </span>
+            ) : null}
+          </div>
         </div>
       ) : (
         <Skeleton className="h-8 w-full" />
@@ -247,12 +254,12 @@ function InboxMessage({
           </div>
         ) : !message ? (
           <Skeleton className="h-24 w-full" />
-        ) : message.html ? (
-          <div className="min-h-[50dvh] flex-1 overflow-hidden rounded-lg border border-border md:h-[min(70vh,640px)] md:flex-none">
+        ) : message.html && hasVisibleContent(message.html) ? (
+          <div className="min-h-64 flex-1 overflow-hidden rounded-lg border border-border">
             <SandboxedHtmlViewer html={message.html} title={message.subject} email />
           </div>
         ) : (
-          <p dir="auto" className="whitespace-pre-wrap text-sm">
+          <p dir="auto" className="whitespace-pre-wrap wrap-anywhere text-sm">
             {message.text}
           </p>
         )}
@@ -262,6 +269,13 @@ function InboxMessage({
       </div>
     </>
   );
+}
+
+/** False for a mail whose HTML has no text and no picture, which would show as a blank frame. */
+function hasVisibleContent(html: string): boolean {
+  const { body } = new DOMParser().parseFromString(html, "text/html");
+  for (const node of body.querySelectorAll("style, script")) node.remove();
+  return Boolean(body.textContent?.trim()) || body.querySelector("img, svg, video") !== null;
 }
 
 /** `Name <a@b.test>` as the server writes it; a bare address is its own name. */

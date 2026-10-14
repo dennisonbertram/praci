@@ -36,6 +36,7 @@ const message = (id: string) => ({
   subject: `Subject ${id}`,
   from: "a@example.com",
   to: "b@example.com",
+  cc: "",
   date: "2026-10-10T09:00:00.000Z",
   text: "body",
   html: null,
@@ -121,4 +122,32 @@ it("opens with focus on the dialog, not on the previous-message button", async (
   const popup = document.querySelector('[data-slot="dialog-content"]');
   expect(document.activeElement).toBe(popup);
   expect(document.activeElement?.getAttribute("aria-label")).not.toBe("Previous message");
+});
+
+async function show(id: string, extra: Record<string, unknown>) {
+  get.mockImplementation(async () => ({ ...message(id), ...extra }));
+  act(() => root.render(<InboxMessageDialog messageId={id} onClose={() => {}} />));
+  await flush();
+}
+
+it("shows the Cc line with the full list as its title, and none without a Cc", async () => {
+  await show("cc1", { cc: "Team <team@example.com>, Dev" });
+  const cc = document.querySelector('[title="Team <team@example.com>, Dev"]');
+  expect(cc?.textContent).toBe("cc Team <team@example.com>, Dev");
+  expect(document.querySelector('[title="b@example.com"]')?.textContent).toBe("to b@example.com");
+  await show("cc2", {});
+  expect(document.body.textContent).not.toContain("cc ");
+});
+
+it("breaks a long unbroken URL in a plain-text body", async () => {
+  await show("long1", { text: `see https://example.com/${"a".repeat(300)}` });
+  expect(document.querySelector("p.wrap-anywhere")?.textContent).toContain("aaaa");
+});
+
+it("shows the text, not a blank frame, when the HTML has nothing visible", async () => {
+  await show("empty1", {
+    html: "<html><head><style>p{}</style></head><body><div> </div></body></html>",
+    text: "Plain copy",
+  });
+  expect(document.body.textContent).toContain("Plain copy");
 });

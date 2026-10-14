@@ -84,6 +84,27 @@ export function e2eMailboxes(now = new Date()) {
       subject: "Signed contract",
       text: "The signed contract is filed.",
     },
+    {
+      // Cc, and formatting that a forward must keep.
+      id: "e2e-a-6",
+      date: at(2 * MINUTE_MS),
+      labels: ["INBOX"],
+      from: "Lena Park <lena@example.test>",
+      to: "first@example.test, Dana Cho <dana@example.test>",
+      cc: "Team <team@example.test>",
+      subject: "Team sync notes",
+      html: '<h2>Sync notes</h2><p>We <b>agreed</b> on <a href="https://example.invalid/plan">the plan</a>.</p><ul><li>Ship Friday</li></ul>',
+    },
+    {
+      // A URL with no break opportunities, which must wrap inside the preview.
+      id: "e2e-a-7",
+      date: at(3 * MINUTE_MS),
+      labels: ["INBOX"],
+      from: "Ops <ops@example.test>",
+      to: "first@example.test",
+      subject: "Long link",
+      text: `See https://example.invalid/${"segment".repeat(40)}`,
+    },
   ];
   const second: EmulatedMessage[] = [
     {

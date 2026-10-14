@@ -114,7 +114,9 @@ export async function inboxComposePrefill(
     return {
       connectionId: account.id,
       ...prefill,
-      ...(htmlToText(quotedHtml) && quotedHtml.length <= MAX_COMPOSE_HTML / 2 ? { quotedHtml } : {}),
+      ...(htmlToText(quotedHtml) && quotedHtml.length <= MAX_COMPOSE_HTML / 2
+        ? { quotedHtml }
+        : {}),
       attachments: tooLarge
         ? []
         : files.map(({ id, filename, mimeType, size }) => ({ id, filename, mimeType, size })),

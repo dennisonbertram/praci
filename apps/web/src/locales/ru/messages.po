@@ -910,6 +910,11 @@ msgstr ""
 msgid "Cc"
 msgstr ""
 
+#. placeholder {0}: message.cc
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "cc {0}"
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Change password"
 msgstr "Изменить пароль"

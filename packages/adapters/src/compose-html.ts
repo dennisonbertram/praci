@@ -18,7 +18,18 @@ const KEEP = new Set([
 ]);
 const DROP = new Set(["script", "style", "head", "title", "template", "iframe", "object", "embed"]);
 /** Mail layout tags that become a block, and headings, which become a bold paragraph. */
-const AS_DIV = new Set(["table", "tbody", "thead", "tfoot", "tr", "td", "th", "section", "article", "center"]);
+const AS_DIV = new Set([
+  "table",
+  "tbody",
+  "thead",
+  "tfoot",
+  "tr",
+  "td",
+  "th",
+  "section",
+  "article",
+  "center",
+]);
 const HEADING = /^h[1-6]$/;
 const SAFE_HREF = /^(https?:\/\/|mailto:)[^\s"<>]+$/i;
 

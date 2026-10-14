@@ -197,7 +197,9 @@ describe("replyPrefill", () => {
       locale: "de-DE",
     });
     expect(berlin.body).toContain("Date: Mi., 23. Sept. 2026, 17:04");
-    expect(replyPrefill(original(), "reply", null).body).toContain("On Wed, Sep 23, 2026, 3:04 PM,");
+    expect(replyPrefill(original(), "reply", null).body).toContain(
+      "On Wed, Sep 23, 2026, 3:04 PM,",
+    );
     const bad = replyPrefill(original(), "reply", null, { timeZone: "Not/AZone", locale: "x" });
     expect(bad.body).toContain("On Wed, Sep 23, 2026, 3:04 PM,");
   });

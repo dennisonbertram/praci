@@ -910,6 +910,11 @@ msgstr "Card view"
 msgid "Cc"
 msgstr "Cc"
 
+#. placeholder {0}: message.cc
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "cc {0}"
+msgstr "cc {0}"
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Change password"
 msgstr "Change password"

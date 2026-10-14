@@ -25,7 +25,13 @@ import {
 import { EditorContent } from "@tiptap/react";
 import { Paperclip, Trash2, Type, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { clientLocale, fileToBase64, formatBytes, prefillHtml, textToHtml } from "../lib/compose-body";
+import {
+  clientLocale,
+  fileToBase64,
+  formatBytes,
+  prefillHtml,
+  textToHtml,
+} from "../lib/compose-body";
 import { createDraftSaver } from "../lib/compose-draft";
 import { holdSend } from "../lib/outbox";
 import { parseRecipient, takeEntries } from "../lib/recipients";
