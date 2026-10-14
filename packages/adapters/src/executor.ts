@@ -2688,6 +2688,8 @@ export interface ExecutorDeps {
   cloudAgent?: CloudAgentConnection | null;
   /** Mail tools (mail_search, mail_grep, mail_get, show_emails, inbox_overview). Null/omit means they are never offered. */
   mail?: MailProvider | null;
+  /** MAIL_WRITES_DISABLED: mail_draft and mail_modify change nothing. */
+  mailWritesDisabled?: boolean;
   /** Optional Auto Review verifier. When omitted, the factory selects from env (llm | jev | scripted). */
   autoReview?: AutoReviewProvider;
   /**
@@ -5241,6 +5243,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   jobs: deps.jobs,
                   accounts: mailAccounts,
                   publish: (blocks) => publishMessage(deps, run, "bot", blocks),
+                  writesDisabled: deps.mailWritesDisabled,
                   scope: { spaceId: run.spaceId, userId: bot.userId, botId: bot.id },
                 },
                 context,

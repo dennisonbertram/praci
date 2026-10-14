@@ -507,6 +507,7 @@ export async function createApp(
     web: createWebProvider(),
     cloudAgent,
     mail,
+    mailWritesDisabled: env.mailWritesDisabled,
     shutdownSignal: shutdown.signal,
   });
 

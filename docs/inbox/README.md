@@ -78,8 +78,10 @@ Approved design: [approved-mockup.html](approved-mockup.html).
 10. **Reading, plus drafts and sending.** Reversed from "read-only" for sending only: a user can
     reply, reply to all, forward and compose, and the Inbox saves Gmail drafts as they type.
     The user's Send click is the approval; there is no extra confirmation step. The Inbox can
-    archive and mark a message read or unread (`gmail.modify`, same reconnect rule as sending); the
-    agent has no send, draft or label tool.
+    archive and mark a message read or unread (`gmail.modify`, same reconnect rule as sending). The
+    agent has `mail_draft` (save or replace a draft) and `mail_modify` (read state, archive,
+    labels), each behind the normal tool approval; it has no send tool, so the user sends every
+    draft.
     Native Google asks for `gmail.compose` and `gmail.modify` next to `gmail.readonly`; accounts connected before
     that only read, and a send from one shows the existing reconnect notice. A send is keyed by
     a client-generated id in `ComposeSend` (`draft`, `pending`, `sent`, `failed`, `unknown`) so a

@@ -32,6 +32,8 @@ export const BUILTIN_TOOL_NAMES = [
   "mail_get",
   "show_emails",
   "inbox_overview",
+  "mail_draft",
+  "mail_modify",
   "cloud_agent_launch",
   "cloud_agent_status",
   "cloud_agent_reply",
