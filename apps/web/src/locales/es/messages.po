@@ -3424,6 +3424,10 @@ msgstr "Ninguno aún"
 msgid "Normal"
 msgstr ""
 
+#: src/components/compose/RecipientField.tsx
+msgid "Not a valid email address"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
 msgstr ""
@@ -3908,8 +3912,8 @@ msgid "Remove"
 msgstr "Quitar"
 
 #. placeholder {0}: attachment.file.name
+#. placeholder {0}: file.filename
 #. placeholder {0}: file.name
-#. placeholder {0}: recipient.address
 #: src/components/compose/RecipientField.tsx
 #: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
@@ -4359,10 +4363,11 @@ msgid "Sending is turned off."
 msgstr ""
 
 #: src/components/AskCard.tsx
+#: src/components/MailOutbox.tsx
 msgid "Sending…"
 msgstr "Enviando…"
 
-#: src/pages/Inbox.tsx
+#: src/components/MailOutbox.tsx
 msgid "Sent"
 msgstr ""
 
@@ -4463,6 +4468,10 @@ msgstr "Mostrar más"
 #: src/pages/Auth.tsx
 msgid "Show password"
 msgstr "Mostrar contraseña"
+
+#: src/components/ComposeEmail.tsx
+msgid "Show quoted text"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Show settings"
@@ -4984,6 +4993,7 @@ msgstr "No disponible"
 msgid "Underline"
 msgstr ""
 
+#: src/components/MailOutbox.tsx
 #: src/pages/Inbox.tsx
 msgid "Undo"
 msgstr ""
