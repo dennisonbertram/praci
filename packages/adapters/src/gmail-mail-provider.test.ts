@@ -66,7 +66,7 @@ function over(
 ) {
   const sleeps: number[] = [];
   const provider = new GmailMailProvider({
-    connectors: connectors(async (r) => gmail.handle(r.accountRef, r.url)),
+    connectors: connectors(async (r) => gmail.handle(r.accountRef, r.url, r.method, r.body)),
     sleep: extra.sleep ?? (async (ms) => void sleeps.push(ms)),
     random: () => 0,
   });
@@ -879,5 +879,120 @@ describe("transient transport errors", () => {
     );
     expect(error).toMatchObject({ kind: "unavailable", message: "Mail request aborted" });
     expect(calls).toBe(1);
+  });
+});
+
+describe("retry policy", () => {
+  const list = (provider: GmailMailProvider) =>
+    provider.listMessages(account(), { query: "", pageSize: 5 }, context());
+  const draft = {
+    to: [{ address: "ann@example.test" }],
+    cc: [],
+    bcc: [],
+    subject: "Hi",
+    text: "Body",
+  };
+
+  it("fails fast when Retry-After is over 30 seconds and sleeps for exactly 30", async () => {
+    const gmail = box([msg("m1")]);
+    const { provider, sleeps } = over(gmail);
+    gmail.failNext(429, { times: 5, retryAfter: 31 });
+    expect(await rejection(list(provider))).toMatchObject({
+      kind: "rate_limited",
+      retryAfterMs: 31_000,
+    });
+    expect(gmail.requests).toHaveLength(1);
+    expect(sleeps).toEqual([]);
+
+    gmail.failNext(429, { retryAfter: 30 });
+    await list(provider);
+    expect(sleeps).toEqual([30_000]);
+  });
+
+  it("honors Retry-After on a 503 and retries a 408", async () => {
+    const gmail = box([msg("m1")]);
+    const { provider, sleeps } = over(gmail);
+    gmail.failNext(503, { retryAfter: 3 });
+    await list(provider);
+    gmail.failNext(408);
+    await list(provider);
+    expect(sleeps).toEqual([3000, 500]);
+  });
+
+  it("adds jitter from the injected random source", async () => {
+    const gmail = box([msg("m1")]);
+    const sleeps: number[] = [];
+    const provider = new GmailMailProvider({
+      connectors: connectors(async (r) => gmail.handle(r.accountRef, r.url)),
+      sleep: async (ms) => void sleeps.push(ms),
+      random: () => 0.5,
+    });
+    gmail.failNext(503, { times: 2 });
+    await list(provider);
+    expect(sleeps).toEqual([625, 1125]);
+  });
+
+  it("retries a 403 whose body status is RESOURCE_EXHAUSTED", async () => {
+    const gmail = box([msg("m1")]);
+    let first = true;
+    const provider = new GmailMailProvider({
+      connectors: connectors(async (r) => {
+        if (!first) return gmail.handle(r.accountRef, r.url);
+        first = false;
+        return { status: 403, data: { error: { code: 403, status: "RESOURCE_EXHAUSTED" } } };
+      }),
+      sleep: async () => {},
+      random: () => 0,
+    });
+    expect((await list(provider)).messages).toHaveLength(1);
+  });
+
+  it("never repeats a send after a 5xx, because Google may have sent it", async () => {
+    const gmail = box([msg("m1")]);
+    const { provider, sleeps } = over(gmail);
+    const created = await provider.createDraft(account(), draft, context());
+    gmail.requests.length = 0;
+    gmail.failNext(503, { urlIncludes: "/drafts/send", times: 5 });
+    expect(
+      await rejection(provider.sendDraft(account(), created.draftId, context())),
+    ).toMatchObject({ kind: "unknown" });
+    expect(gmail.requests).toHaveLength(1);
+    expect(sleeps).toEqual([]);
+  });
+
+  it("retries a send after a 429 because Google did not process it", async () => {
+    const gmail = box([msg("m1")]);
+    const { provider, sleeps } = over(gmail);
+    const created = await provider.createDraft(account(), draft, context());
+    gmail.failNext(429, { urlIncludes: "/drafts/send" });
+    await provider.sendDraft(account(), created.draftId, context());
+    expect(sleeps).toEqual([500]);
+    expect(gmail.sentOf("x")).toHaveLength(1);
+  });
+
+  it("allows at most 12 requests in flight per account", async () => {
+    let active = 0;
+    let peak = 0;
+    const release: Array<() => void> = [];
+    const provider = new GmailMailProvider({
+      connectors: connectors(async () => {
+        peak = Math.max(peak, ++active);
+        await new Promise<void>((resolve) => release.push(resolve));
+        active--;
+        return { status: 404, data: {} };
+      }),
+      sleep: async () => {},
+      random: () => 0,
+    });
+    const calls = Array.from({ length: 30 }, () =>
+      provider.getMessage(account(), "m1", context()).catch(() => undefined),
+    );
+    await vi.waitFor(() => expect(active).toBe(12));
+    while (release.length || active) {
+      release.shift()?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    await Promise.all(calls);
+    expect(peak).toBe(12);
   });
 });

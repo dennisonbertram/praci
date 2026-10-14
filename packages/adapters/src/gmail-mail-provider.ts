@@ -28,7 +28,8 @@ const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 const MAX_PAGE_SIZE = 500;
 const MAX_ATTEMPTS = 3;
 const BASE_DELAY_MS = 500;
-const MAX_DELAY_MS = 60_000;
+// A longer Retry-After is not slept through (it would hold the caller); the error carries it instead.
+const MAX_RETRY_AFTER_MS = 30_000;
 // Measured through the Composio proxy (about 290 ms per get): 4 in flight hydrates 11 messages/s,
 // 12 gives about 30/s and more adds nothing. 30 gets/s is 150 of Gmail's 250 quota units/s per user.
 const CONCURRENCY = 12;
@@ -637,9 +638,14 @@ export class GmailMailProvider implements MailProvider {
   }
 
   /**
-   * One authenticated call with per-account concurrency, retry and status mapping. A POST is the only
-   * method that is not safe to repeat, so after an unclear failure (5xx, timeout, dropped connection)
-   * it is not retried; a rate limit proves nothing happened and is retried for every method.
+   * One authenticated call with per-account concurrency, retry and status mapping. Retried: 429, a
+   * 403 rate-limit reason, and (not for POST) 408, 5xx and transient transport errors; up to
+   * MAX_ATTEMPTS, backing off exponentially with jitter or for the server's Retry-After, and failing
+   * at once when that is over MAX_RETRY_AFTER_MS.
+   *
+   * A POST (sendDraft, createDraft) is never repeated after an unclear failure (5xx, timeout,
+   * dropped connection): the request may have reached Google, so a repeat could send twice. A rate
+   * limit proves Google did nothing, so it is retried for every method.
    */
   private async request(
     account: MailAccount,
@@ -655,7 +661,7 @@ export class GmailMailProvider implements MailProvider {
     for (let attempt = 1; ; attempt++) {
       if (context.signal.aborted)
         throw new MailProviderError("unavailable", "Mail request aborted");
-      let failure: { error: MailProviderError; retry: boolean };
+      let failure: { error: MailProviderError; retry: boolean; retryAfterMs?: number };
       try {
         const response = await this.limit(account.id, () =>
           proxy(
@@ -673,6 +679,7 @@ export class GmailMailProvider implements MailProvider {
         if (!error) return response.data;
         failure = {
           error,
+          retryAfterMs: response.retryAfterMs,
           retry:
             error.kind === "rate_limited" ||
             (repeatable && (response.status >= 500 || response.status === 408)),
@@ -692,11 +699,9 @@ export class GmailMailProvider implements MailProvider {
             };
       }
       if (!failure.retry || attempt >= MAX_ATTEMPTS || context.signal.aborted) throw failure.error;
-      const backoff = BASE_DELAY_MS * 2 ** (attempt - 1) + this.random() * 250;
-      await this.sleep(
-        Math.min(failure.error.retryAfterMs ?? backoff, MAX_DELAY_MS),
-        context.signal,
-      );
+      const wait = failure.retryAfterMs ?? BASE_DELAY_MS * 2 ** (attempt - 1) + this.random() * 250;
+      if (wait > MAX_RETRY_AFTER_MS) throw failure.error;
+      await this.sleep(wait, context.signal);
       if (context.signal.aborted) throw failure.error;
     }
   }
@@ -780,7 +785,8 @@ function mapStatus(
   });
   if (status === 401 || (status === 403 && reasons.some((r) => AUTH_REASONS.has(r))))
     return new MailProviderError("auth", "The mail account needs to be reconnected");
-  if (status === 429 || (status === 403 && reasons.some((r) => RATE_REASONS.has(r))))
+  const exhausted = asRecord(asRecord(response.data)?.error)?.status === "RESOURCE_EXHAUSTED";
+  if (status === 429 || (status === 403 && (exhausted || reasons.some((r) => RATE_REASONS.has(r)))))
     return new MailProviderError("rate_limited", "Mail rate limit reached", response.retryAfterMs);
   if (status === 404) return new MailProviderError("not_found", "Message not found");
   // For a write, Gmail refusing the message means nothing was saved or sent.
