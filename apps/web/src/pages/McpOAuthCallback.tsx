@@ -2,14 +2,9 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { MCP_OAUTH_CHANNEL } from "../lib/mcp-connect";
+import { isMcpOauthPopup, MCP_OAUTH_CHANNEL } from "../lib/mcp-connect";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
-
-// The window.open name set by the OAuth popup flow. Providers whose login
-// pages send COOP sever window.opener mid-flow, but the window name survives,
-// so it is the reliable "we are the popup" marker.
-const POPUP_NAME = MCP_OAUTH_CHANNEL;
 
 export function McpOAuthCallbackPage() {
   const { t } = useLingui();
@@ -18,11 +13,18 @@ export function McpOAuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const handledState = useRef<string | null>(null);
+  const [isPopup] = useState(isMcpOauthPopup);
   useEffect(() => {
     const code = params.get("code");
     const state = params.get("state");
+    const fail = (message: string) => {
+      const channel = new BroadcastChannel(MCP_OAUTH_CHANNEL);
+      channel.postMessage({ type: "mcp-oauth-failed" });
+      channel.close();
+      setError(message);
+    };
     if (!code || !state) {
-      setError(params.get("error_description") ?? t`OAuth authorization was cancelled.`);
+      fail(params.get("error_description") ?? t`OAuth authorization was cancelled.`);
       return;
     }
     if (handledState.current === state) return;
@@ -30,19 +32,19 @@ export function McpOAuthCallbackPage() {
     void rpc.mcp.oauth
       .complete({ sessionId: state, code, state })
       .then(() => {
-        const channel = new BroadcastChannel(POPUP_NAME);
+        const channel = new BroadcastChannel(MCP_OAUTH_CHANNEL);
         channel.postMessage({ type: "mcp-oauth-complete" });
         channel.close();
-        if (window.name === POPUP_NAME) {
+        if (isPopup) {
           setDone(true);
           window.close();
           return;
         }
         navigate("/app?mcp_oauth=connected", { replace: true });
       })
-      .catch((err: unknown) => setError(errorText(err, t`Could not complete OAuth`)));
-  }, [navigate, params, t]);
-  const showReturn = Boolean(error) && window.name !== POPUP_NAME;
+      .catch((err: unknown) => fail(errorText(err, t`Could not complete OAuth`)));
+  }, [isPopup, navigate, params, t]);
+  const showReturn = Boolean(error) && !isPopup;
   return (
     <div className="grid min-h-screen place-items-center bg-background p-6 text-center">
       <div>

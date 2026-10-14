@@ -615,6 +615,12 @@ export interface VoiceTranscribeRequest {
   audio: Uint8Array;
   mimeType: string;
   apiKey: string;
+  /**
+   * Language of the recording, as a BCP-47 tag or an ISO 639-1 code. Providers treat it
+   * as a hint: Fish Audio guesses when it is missing, and a wrong guess turns speech in
+   * one language into lookalike words of another.
+   */
+  language?: string;
   signal?: AbortSignal;
 }
 
@@ -639,6 +645,12 @@ export type BackgroundJob = {
     payload: BackgroundJobPayloads[Name];
     availableAt?: Date;
     replaceKey?: string;
+    /**
+     * Leave an existing job with `replaceKey` alone while it still has attempts
+     * left, including one waiting out backoff. An exhausted or missing job is
+     * replaced. Omit to replace, which is what an explicit continue does.
+     */
+    keepExisting?: boolean;
     /** Cap retried executions; omit to use the job queue's default. */
     maxAttempts?: number;
   };
