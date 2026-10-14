@@ -35,4 +35,22 @@ describe("workingActivity", () => {
       kind: "writing",
     });
   });
+
+  it("treats provider status chatter as thinking, not writing", () => {
+    expect(
+      workingActivity(run, [
+        botMessage([{ kind: "progress", text: "still working…", activity: true }]),
+      ]),
+    ).toEqual({ kind: "thinking" });
+    expect(
+      workingActivity(run, [botMessage([{ kind: "progress", text: "Drafting reply" }])]),
+    ).toEqual({ kind: "writing" });
+    expect(
+      workingActivity(run, [
+        botMessage([
+          { kind: "progress", text: "x", activity: true, pendingToolNames: ["get_balance"] },
+        ]),
+      ]),
+    ).toEqual({ kind: "tool", label: "Get balance" });
+  });
 });

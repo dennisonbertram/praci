@@ -23,6 +23,7 @@ export function workingActivity(
     const step = tail.steps.at(-1);
     if (step) return { kind: "tool", label: step.label };
   }
+  if (tail?.kind === "progress" && tail.activity) return { kind: "thinking" };
   if ((tail?.kind === "text" || tail?.kind === "progress") && tail.text.trim()) {
     return { kind: "writing" };
   }
