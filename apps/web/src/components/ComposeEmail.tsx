@@ -1,22 +1,31 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { ComposeMode, ComposeResult } from "@rakazo/contracts";
-import { MAX_COMPOSE_BODY } from "@rakazo/contracts";
+import { MAX_COMPOSE_ATTACHMENT_BYTES } from "@rakazo/contracts";
 import {
   Button,
+  cn,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogTitle,
-  Input,
   NativeSelect,
   NativeSelectOption,
   Spinner,
-  Textarea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@rakazo/ui-web";
+import { EditorContent } from "@tiptap/react";
+import { Paperclip, Trash2, Type, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fileToBase64, formatBytes, textToHtml } from "../lib/compose-body";
 import { createDraftSaver } from "../lib/compose-draft";
+import { parseRecipient, takeEntries } from "../lib/recipients";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
+import { RecipientField } from "./compose/RecipientField";
+import { FormatBar, LinkButton, ToolButton, useComposeEditor } from "./compose/RichTextEditor";
 
 /** Fired on `window` after a message is sent, so the Inbox can show "Sent" and refresh. */
 export const MAIL_SENT_EVENT = "rakazo:mail-sent";
@@ -30,11 +39,13 @@ export const NEW_MESSAGE: ComposeSeed = { kind: "new" };
 
 interface Fields {
   connectionId: string;
-  to: string;
-  cc: string;
-  bcc: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
   subject: string;
-  body: string;
+  /** The editor's HTML; empty when the message has no text. */
+  html: string;
+  text: string;
 }
 
 type Notice = { kind: "saved" | "error"; text: string };
@@ -47,7 +58,8 @@ function newClientId(): string {
 }
 
 const isBlank = (f: Fields) =>
-  [f.to, f.cc, f.bcc, f.subject, f.body].every((text) => text.trim() === "");
+  [f.subject, f.text].every((text) => text.trim() === "") &&
+  f.to.length + f.cc.length + f.bcc.length === 0;
 
 function problemText(status: ComposeResult["status"], sending: boolean): string {
   if (status === "reconnect") return t`Gmail needs to be reconnected.`;
@@ -56,25 +68,33 @@ function problemText(status: ComposeResult["status"], sending: boolean): string 
   return sending ? t`Couldn't send. Try again.` : t`Couldn't save the draft`;
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  children,
+  end,
+}: {
+  label: string;
+  children: React.ReactNode;
+  end?: React.ReactNode;
+}) {
   return (
-    <div className="flex items-center gap-2 border-b border-border pb-1">
-      <span aria-hidden="true" className="w-14 shrink-0 text-xs text-muted-foreground">
+    <div className="flex min-h-9 items-start gap-2 border-b border-border py-1">
+      <span aria-hidden="true" className="w-12 shrink-0 pt-1.5 text-sm text-muted-foreground">
         {label}
       </span>
       {children}
+      {end ? <div className="flex shrink-0 items-center pt-0.5">{end}</div> : null}
     </div>
   );
 }
 
-const bareInput =
-  "h-7 rounded-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent";
+const hasFiles = (event: React.DragEvent) => event.dataTransfer.types.includes("Files");
 
 /**
- * Writes a new message, or a reply, reply-all or forward of a cached one. The text is plain; the
- * server adds the HTML copy. Typing saves a Gmail draft after a pause. Send is the only
- * confirmation, and a retried or repeated send never sends twice because the server keys it by
- * `clientId`. Closing keeps the draft unless nothing was written.
+ * Writes a new message, or a reply, reply-all or forward of a cached one, with chips for
+ * recipients, a rich text body and attachments. Typing saves a Gmail draft after a pause (without
+ * attachments). Send is the only confirmation, and a retried or repeated send never sends twice
+ * because the server keys it by `clientId`. Closing keeps the draft unless nothing was written.
  */
 export function ComposeEmail({
   seed,
@@ -92,18 +112,24 @@ export function ComposeEmail({
   const [clientId] = useState(newClientId);
   const initial: Fields = {
     connectionId: connectionId ?? accounts[0]?.connectionId ?? "",
-    to: "",
-    cc: "",
-    bcc: "",
+    to: [],
+    cc: [],
+    bcc: [],
     subject: "",
-    body: "",
+    html: "",
+    text: "",
   };
   const [fields, setFields] = useState(initial);
   const fieldsRef = useRef(initial);
   const replyToRef = useRef<string | undefined>(undefined);
+  const prefillBody = useRef<string | null>(null);
   const [loading, setLoading] = useState(seed.kind !== "new");
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
+  const [showFormat, setShowFormat] = useState(true);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [dragging, setDragging] = useState(false);
   const [sending, setSending] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -112,18 +138,21 @@ export function ComposeEmail({
   // A Gmail draft may exist once a save has succeeded.
   const saved = useRef(false);
   const done = useRef(false);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const toRef = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const locked = loading || sending;
 
+  /** Autosave carries no attachments: they are re-sent with Send, and the draft stays small. */
   const payload = (f: Fields) => ({
     clientId,
     connectionId: f.connectionId,
     ...(replyToRef.current ? { replyToMessageId: replyToRef.current } : {}),
-    to: f.to,
-    cc: f.cc,
-    bcc: f.bcc,
+    to: f.to.join(", "),
+    cc: f.cc.join(", "),
+    bcc: f.bcc.join(", "),
     subject: f.subject,
-    body: f.body,
+    body: f.text,
+    ...(f.html ? { html: f.html } : {}),
   });
   type Payload = ReturnType<typeof payload>;
 
@@ -145,6 +174,21 @@ export function ComposeEmail({
     [],
   );
 
+  const update = (patch: Partial<Fields>) => {
+    touched.current = true;
+    const next = { ...fieldsRef.current, ...patch };
+    fieldsRef.current = next;
+    setFields(next);
+    if (isBlank(next) && files.length === 0) saver.cancel();
+    else saver.change(payload(next));
+  };
+
+  const editor = useComposeEditor({
+    disabled: locked,
+    onChange: ({ html, text }) => update({ html, text }),
+    onLinkShortcut: () => setLinkOpen(true),
+  });
+
   useEffect(() => {
     if (seed.kind === "new") return;
     let live = true;
@@ -153,17 +197,19 @@ export function ComposeEmail({
       .then((next) => {
         if (!live) return;
         replyToRef.current = next.replyToMessageId;
-        const loaded = {
+        prefillBody.current = next.body;
+        const loaded: Fields = {
           connectionId: next.connectionId,
-          to: next.to,
-          cc: next.cc,
-          bcc: "",
+          to: takeEntries(next.to, [], true).added,
+          cc: takeEntries(next.cc, [], true).added,
+          bcc: [],
           subject: next.subject,
-          body: next.body,
+          html: "",
+          text: next.body,
         };
         fieldsRef.current = loaded;
         setFields(loaded);
-        setShowCc(Boolean(next.cc));
+        setShowCc(loaded.cc.length > 0);
         setLoading(false);
       })
       .catch((cause) => {
@@ -175,17 +221,20 @@ export function ComposeEmail({
     };
   }, [seed]);
 
-  // A reply starts above the quoted original; a forward starts at its empty To.
+  // Fill the editor with the quoted original once both it and the editor exist. A reply starts
+  // above the quote; a forward starts at its empty To.
   useEffect(() => {
-    if (loading || seed.kind === "new") return;
-    const target = seed.kind === "forward" ? toRef.current : bodyRef.current;
-    target?.focus({ preventScroll: true });
-    if (target === bodyRef.current && target) {
-      // Filling a long quote leaves the caret at the end; put it back above the quote.
-      target.setSelectionRange(0, 0);
-      target.scrollTop = 0;
-    }
-  }, [loading, seed.kind]);
+    if (loading || !editor || prefillBody.current === null) return;
+    editor.commands.setContent(textToHtml(prefillBody.current), { emitUpdate: false });
+    prefillBody.current = null;
+    fieldsRef.current = {
+      ...fieldsRef.current,
+      html: editor.isEmpty ? "" : editor.getHTML(),
+      text: editor.getText({ blockSeparator: "\n" }),
+    };
+    if (seed.kind === "forward") toRef.current?.focus({ preventScroll: true });
+    else editor.commands.focus("start", { scrollIntoView: false });
+  }, [loading, editor, seed.kind]);
 
   // Closing the page or the message view keeps what was typed.
   useEffect(
@@ -194,15 +243,6 @@ export function ComposeEmail({
     },
     [saver],
   );
-
-  const update = (patch: Partial<Fields>) => {
-    touched.current = true;
-    const next = { ...fieldsRef.current, ...patch };
-    fieldsRef.current = next;
-    setFields(next);
-    if (isBlank(next)) saver.cancel();
-    else saver.change(payload(next));
-  };
 
   /** Drops the Gmail draft, if one was saved, once any save in flight has finished. */
   const discard = () => {
@@ -217,19 +257,66 @@ export function ComposeEmail({
 
   const close = () => {
     if (sending) return;
-    if (!touched.current || isBlank(fieldsRef.current)) discard();
+    if (!touched.current || (isBlank(fieldsRef.current) && files.length === 0)) discard();
     else onClose();
+  };
+
+  const addFiles = (incoming: File[]) => {
+    if (incoming.length === 0) return;
+    let total = files.reduce((sum, file) => sum + file.size, 0);
+    const accepted: File[] = [];
+    let tooBig = false;
+    for (const file of incoming) {
+      if (total + file.size > MAX_COMPOSE_ATTACHMENT_BYTES) {
+        tooBig = true;
+        continue;
+      }
+      total += file.size;
+      accepted.push(file);
+    }
+    setNotice(
+      tooBig
+        ? {
+            kind: "error",
+            text: t`Attachments can't be over ${formatBytes(MAX_COMPOSE_ATTACHMENT_BYTES)}.`,
+          }
+        : null,
+    );
+    if (accepted.length) {
+      touched.current = true;
+      setFiles([...files, ...accepted]);
+    }
   };
 
   const send = async () => {
     if (sending || blocked || loading) return;
+    const current = fieldsRef.current;
+    const all = [...current.to, ...current.cc, ...current.bcc];
+    if (all.length === 0) {
+      setNotice({ kind: "error", text: t`Add a recipient.` });
+      return;
+    }
+    if (all.some((entry) => !parseRecipient(entry).valid)) {
+      setNotice({ kind: "error", text: t`Fix or remove the highlighted addresses.` });
+      return;
+    }
     setSending(true);
     setNotice(null);
     // An autosave still running would race the send; the send carries the final text itself.
     saver.cancel();
     await saver.flush();
     try {
-      const { status } = await rpc.inbox.compose.send(payload(fieldsRef.current));
+      const attachments = await Promise.all(
+        files.map(async (file) => ({
+          filename: file.name,
+          mimeType: file.type || "application/octet-stream",
+          data: await fileToBase64(file),
+        })),
+      );
+      const { status } = await rpc.inbox.compose.send({
+        ...payload(current),
+        ...(attachments.length ? { attachments } : {}),
+      });
       if (status === "sent") {
         done.current = true;
         window.dispatchEvent(new Event(MAIL_SENT_EVENT));
@@ -251,23 +338,49 @@ export function ComposeEmail({
         ? t`Reply all`
         : seed.kind === "forward"
           ? t`Forward`
-          : t`Compose`;
-  const locked = loading || sending;
+          : t`New message`;
 
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
       <DialogContent
         initialFocus={seed.kind === "new" ? toRef : undefined}
+        showCloseButton={false}
         onKeyDown={(event) => {
           if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
             event.preventDefault();
             void send();
           }
         }}
-        className="flex max-h-[92vh] w-[min(680px,94vw)] flex-col gap-3 overflow-y-auto max-w-none max-sm:inset-0 max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-screen max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none"
+        onDragOver={(event) => {
+          if (!hasFiles(event)) return;
+          event.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false);
+        }}
+        onDrop={(event) => {
+          if (!hasFiles(event)) return;
+          event.preventDefault();
+          setDragging(false);
+          if (!locked) addFiles([...event.dataTransfer.files]);
+        }}
+        className="flex h-[min(680px,88vh)] w-[min(680px,94vw)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none max-sm:inset-0 max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-screen max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:pt-[env(safe-area-inset-top)] max-sm:pb-[env(safe-area-inset-bottom)]"
       >
-        <DialogTitle className="pe-8">{title}</DialogTitle>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 py-1.5 ps-4 pe-2">
+          <DialogTitle className="min-w-0 flex-1 truncate text-sm leading-normal">
+            {title}
+          </DialogTitle>
+          <DialogClose
+            render={<Button variant="ghost" size="icon-sm" />}
+            aria-label={t`Close`}
+            disabled={sending}
+          >
+            <X aria-hidden="true" />
+          </DialogClose>
+        </div>
+
+        <div className="shrink-0 px-4">
           {seed.kind === "new" && accounts.length > 1 ? (
             <Row label={t`From`}>
               <NativeSelect
@@ -286,90 +399,185 @@ export function ComposeEmail({
               </NativeSelect>
             </Row>
           ) : null}
-          <Row label={t`To`}>
-            <Input
-              ref={toRef}
-              className={bareInput}
-              aria-label={t`To`}
-              value={fields.to}
+          <Row
+            label={t`To`}
+            end={
+              <>
+                {!showCc ? (
+                  <Button variant="ghost" size="xs" onClick={() => setShowCc(true)}>
+                    <Trans>Cc</Trans>
+                  </Button>
+                ) : null}
+                {!showBcc ? (
+                  <Button variant="ghost" size="xs" onClick={() => setShowBcc(true)}>
+                    <Trans>Bcc</Trans>
+                  </Button>
+                ) : null}
+              </>
+            }
+          >
+            <RecipientField
+              label={t`To`}
+              inputRef={toRef}
+              entries={fields.to}
               disabled={locked}
-              maxLength={4_000}
-              autoComplete="off"
-              onChange={(event) => update({ to: event.target.value })}
+              onChange={(to) => update({ to })}
             />
-            {!showCc ? (
-              <Button variant="ghost" size="xs" onClick={() => setShowCc(true)}>
-                <Trans>Cc</Trans>
-              </Button>
-            ) : null}
-            {!showBcc ? (
-              <Button variant="ghost" size="xs" onClick={() => setShowBcc(true)}>
-                <Trans>Bcc</Trans>
-              </Button>
-            ) : null}
           </Row>
           {showCc ? (
             <Row label={t`Cc`}>
-              <Input
-                className={bareInput}
-                aria-label={t`Cc`}
-                value={fields.cc}
+              <RecipientField
+                label={t`Cc`}
+                entries={fields.cc}
                 disabled={locked}
-                maxLength={4_000}
-                autoComplete="off"
-                onChange={(event) => update({ cc: event.target.value })}
+                onChange={(cc) => update({ cc })}
               />
             </Row>
           ) : null}
           {showBcc ? (
             <Row label={t`Bcc`}>
-              <Input
-                className={bareInput}
-                aria-label={t`Bcc`}
-                value={fields.bcc}
+              <RecipientField
+                label={t`Bcc`}
+                entries={fields.bcc}
                 disabled={locked}
-                maxLength={4_000}
-                autoComplete="off"
-                onChange={(event) => update({ bcc: event.target.value })}
+                onChange={(bcc) => update({ bcc })}
               />
             </Row>
           ) : null}
           <Row label={t`Subject`}>
-            <Input
-              className={bareInput}
+            <input
               aria-label={t`Subject`}
               value={fields.subject}
               disabled={locked}
               maxLength={998}
+              dir="auto"
+              autoComplete="off"
+              className="h-7 min-w-0 flex-1 bg-transparent text-sm outline-none disabled:opacity-50"
               onChange={(event) => update({ subject: event.target.value })}
             />
           </Row>
         </div>
-        <Textarea
-          ref={bodyRef}
-          dir="auto"
-          aria-label={t`Message`}
-          value={fields.body}
-          disabled={locked}
-          maxLength={MAX_COMPOSE_BODY}
-          onChange={(event) => update({ body: event.target.value })}
-          className="max-h-[50vh] min-h-48 resize-none max-sm:max-h-none max-sm:flex-1"
-        />
-        <div className="flex items-center gap-2">
-          <p
-            role={notice?.kind === "error" ? "alert" : "status"}
-            className={`min-w-0 flex-1 truncate text-xs ${notice?.kind === "error" ? "text-destructive" : "text-muted-foreground"}`}
+
+        {/* biome-ignore lint/a11y/useKeyWithClickEvents: the editor itself is the keyboard target */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: a click on blank space focuses the editor */}
+        <div
+          className="min-h-0 flex-1 cursor-text overflow-y-auto"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) editor?.commands.focus("end");
+          }}
+        >
+          <EditorContent editor={editor} />
+        </div>
+
+        {files.length ? (
+          <ul
+            aria-label={t`Attachments`}
+            className="flex max-h-24 shrink-0 flex-wrap gap-1.5 overflow-y-auto border-t border-border px-4 py-2"
           >
-            {notice?.text}
-          </p>
-          <Button variant="ghost" disabled={sending} onClick={discard}>
-            <Trans>Discard</Trans>
-          </Button>
-          <Button disabled={locked || blocked} aria-busy={sending} onClick={() => void send()}>
+            {files.map((file, index) => (
+              <li
+                // Two files can share a name; the list only changes by add or remove.
+                key={`${file.name}-${index}`}
+                className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-lg border border-border ps-2 pe-0.5 text-xs"
+              >
+                <Paperclip aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
+                <span className="truncate" dir="auto">
+                  {file.name}
+                </span>
+                <span className="shrink-0 text-muted-foreground">{formatBytes(file.size)}</span>
+                <button
+                  type="button"
+                  disabled={sending}
+                  aria-label={t`Remove ${file.name}`}
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                  onClick={() => setFiles(files.filter((_, i) => i !== index))}
+                >
+                  <X aria-hidden="true" className="size-3" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {showFormat ? <FormatBar editor={editor} disabled={locked} /> : null}
+
+        <div className="flex shrink-0 items-center gap-1 px-3 py-2">
+          <Button
+            className="rounded-full px-4"
+            disabled={locked || blocked}
+            aria-busy={sending}
+            onClick={() => void send()}
+          >
             {sending ? <Spinner aria-hidden="true" role="presentation" /> : null}
             <Trans>Send</Trans>
           </Button>
+          <ToolButton
+            label={t`Formatting options`}
+            active={showFormat}
+            onClick={() => setShowFormat(!showFormat)}
+          >
+            <Type aria-hidden="true" />
+          </ToolButton>
+          <ToolButton
+            label={t`Attach files`}
+            disabled={locked}
+            onClick={() => fileInput.current?.click()}
+          >
+            <Paperclip aria-hidden="true" />
+          </ToolButton>
+          <LinkButton
+            editor={editor}
+            open={linkOpen}
+            disabled={locked}
+            onOpenChange={setLinkOpen}
+          />
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            hidden
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={(event) => {
+              addFiles([...(event.target.files ?? [])]);
+              event.target.value = "";
+            }}
+          />
+          <p
+            role={notice?.kind === "error" ? "alert" : "status"}
+            className={cn(
+              "min-w-0 flex-1 truncate px-2 text-end text-xs",
+              notice?.kind === "error" ? "text-destructive" : "text-muted-foreground",
+            )}
+          >
+            {notice?.text}
+          </p>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={sending}
+                  aria-label={t`Discard`}
+                  onClick={discard}
+                />
+              }
+            >
+              <Trash2 aria-hidden="true" />
+            </TooltipTrigger>
+            <TooltipContent>{t`Discard`}</TooltipContent>
+          </Tooltip>
         </div>
+
+        {dragging ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] border-2 border-dashed border-primary/40 bg-background/80 text-sm text-muted-foreground"
+          >
+            <Trans>Drop files to attach</Trans>
+          </div>
+        ) : null}
       </DialogContent>
     </Dialog>
   );
