@@ -3268,7 +3268,7 @@ export function ShellPage() {
                         return (
                           <div
                             key={`${item.kind}:${item.chat.id}`}
-                            className="group/row relative"
+                            className="group/row relative mb-1"
                             style={{
                               opacity:
                                 item.kind === "bot" && draggedBotId === item.chat.id ? 0.55 : 1,
@@ -3475,7 +3475,7 @@ export function ShellPage() {
                                   <div
                                     dir="auto"
                                     data-roster-preview={!workStatusLabel ? "true" : undefined}
-                                    className={`mt-1 line-clamp-2 text-[12.5px] break-words whitespace-normal ${
+                                    className={`mt-1 truncate text-[12.5px] ${
                                       workStatusLabel
                                         ? "font-semibold text-status-working"
                                         : item.chat.unread
