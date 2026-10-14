@@ -2,6 +2,7 @@ import type { AvatarMood, GrokColorDef } from "@rakazo/core";
 import {
   ACTIVE_RUN_STATUSES,
   avatarIdentitySeed,
+  avatarRest,
   DEFAULT_GROK_BOT_COLOR,
   GROK_BOT_COLORS,
   GROK_COLOR_LIST,
@@ -232,7 +233,8 @@ export const BotAvatar = memo(function BotAvatar({
   );
 });
 
-const SHAPE_EYE = { w: 20, h: 14, dx: 29, dy: -8 };
+/** Dark tall pills, about 8% x 25% of the viewBox, the pair spanning 40% of the body. */
+const SHAPE_EYE = { w: 20, h: 62, dx: 34, dy: 10 };
 
 function ShapeAvatar({
   colorDef,
@@ -262,8 +264,9 @@ function ShapeAvatar({
     ],
     w: SHAPE_EYE.w,
     h: SHAPE_EYE.h,
-    travelX: 7,
-    travelY: 5,
+    travelX: 10,
+    travelY: 7,
+    rest: avatarRest(seed),
     body: { cx: CENTER, cy: CENTER, bob: 8 },
   };
   const face = useAvatarFace({ seed, mood, size, geometry, lookAt });
@@ -336,7 +339,7 @@ function ShapeAvatar({
         </defs>
         <g ref={face.bodyRef} transform={face.initial.body}>
           <path d={shapePath} fill={`url(#grok-ink-${id})`} />
-          <g fill={colorDef.eyeColor} className="grok-character-eyes">
+          <g fill={tokens.background} className="grok-character-eyes">
             <path ref={face.leftRef} {...face.initial.left} />
             <path ref={face.rightRef} {...face.initial.right} />
           </g>
@@ -486,8 +489,8 @@ const ORGANIC_FACE: AvatarFaceGeometry = {
   ],
   w: 7,
   h: 24,
-  travelX: 6,
-  travelY: 4,
+  travelX: 4,
+  travelY: 3,
   body: { cx: 0, cy: 0, bob: 4 },
 };
 
@@ -513,7 +516,13 @@ function OrganicAvatar({
   const duration = `${4.8 + (seed % 24) / 10}s`;
   const shapeA = organicAvatarPath(seed);
   const shapeB = organicAvatarPath(seed, 0.42);
-  const face = useAvatarFace({ seed, mood, size, geometry: ORGANIC_FACE, lookAt });
+  const face = useAvatarFace({
+    seed,
+    mood,
+    size,
+    geometry: { ...ORGANIC_FACE, rest: avatarRest(seed) },
+    lookAt,
+  });
 
   return (
     <svg
@@ -556,9 +565,13 @@ function OrganicAvatar({
             ) : null}
           </path>
         ))}
-        <g transform={`rotate(${(seed % 9) - 4})`} fill={tokens.background}>
-          <path ref={face.leftRef} {...face.initial.left} />
-          <path ref={face.rightRef} {...face.initial.right} />
+        <g
+          className={`rakazo-organic-avatar-body rakazo-organic-avatar-body-${isWorking ? "working" : "idle"}`}
+        >
+          <g transform={`rotate(${(seed % 9) - 4})`} fill={tokens.background}>
+            <path ref={face.leftRef} {...face.initial.left} />
+            <path ref={face.rightRef} {...face.initial.right} />
+          </g>
         </g>
       </g>
     </svg>

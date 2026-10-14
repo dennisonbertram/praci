@@ -8,20 +8,31 @@ const frozen = new URLSearchParams(location.search).get("t");
 if (frozen !== null) freezeAvatarTicker(Number(frozen));
 
 const color = "#8B5CF6";
+const ORGANIC_COLORS = ["#F97316", "#8B5CF6", "#10B981", "#3B82F6", "#EAB308", "#EC4899"];
+const SHAPE_COLORS = [
+  "#3B82F6",
+  "#F97316",
+  "#10B981",
+  "#EC4899",
+  "#EAB308",
+  "#8B5CF6",
+  "#06B6D4",
+  "#EF4444",
+];
 const rows = [
   { label: "robot maya", variant: "robot", identity: "maya", color },
   { label: "robot github", variant: "robot", identity: "github", color: "#10B981" },
-  ...["maya", "github", "atlas", "nova", "iris", "pixel"].map((identity) => ({
+  ...["maya", "github", "atlas", "nova", "iris", "pixel"].map((identity, i) => ({
     label: `organic ${identity}`,
     variant: "organic" as const,
     identity,
-    color: "#F97316",
+    color: ORGANIC_COLORS[i] ?? "#F97316",
   })),
   ...Array.from({ length: 8 }, (_, i) => ({
     label: `shape ${i}`,
     variant: "robot" as const,
     identity: `shape-${i}`,
-    color: `#3B82F6::shape_${i}`,
+    color: `${SHAPE_COLORS[i]}::shape_${i}`,
   })),
 ];
 

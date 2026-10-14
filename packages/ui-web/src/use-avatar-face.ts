@@ -1,5 +1,5 @@
 import type { AvatarEyePose, AvatarFacePose, AvatarMood } from "@rakazo/core";
-import { avatarEyePath, avatarFacePose, blendAvatarFacePose } from "@rakazo/core";
+import { avatarEyePath, avatarFacePose, avatarRest, blendAvatarFacePose } from "@rakazo/core";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { frozenAvatarTime, subscribeAvatarTicker } from "./avatar-ticker.js";
 
@@ -12,6 +12,8 @@ export interface AvatarFaceGeometry {
   /** Gaze travel for gaze = +-1. */
   travelX: number;
   travelY: number;
+  /** Resting gaze offset and lean from `avatarRest`. Omit to rest at center. */
+  rest?: { x: number; y: number; lean: number };
   /** Body transform center and bounce distance per unit of `bob`. Omit to keep the body still. */
   body?: { cx: number; cy: number; bob: number };
 }
@@ -24,10 +26,11 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export function eyeAttributes(pose: AvatarEyePose, g: AvatarFaceGeometry, index: 0 | 1) {
   const eye = g.eyes[index];
-  const tilt = index === 0 ? pose.tilt : -pose.tilt;
+  const rest = g.rest ?? { x: 0, y: 0, lean: 0 };
+  const tilt = (index === 0 ? pose.tilt : -pose.tilt) + rest.lean;
   return {
     d: avatarEyePath(g.w, g.h, pose),
-    transform: `translate(${r2(eye.cx + pose.x * g.travelX)} ${r2(eye.cy + pose.y * g.travelY)}) rotate(${r2(tilt)})`,
+    transform: `translate(${r2(eye.cx + (pose.x + rest.x) * g.travelX)} ${r2(eye.cy + (pose.y + rest.y) * g.travelY)}) rotate(${r2(tilt)})`,
   };
 }
 

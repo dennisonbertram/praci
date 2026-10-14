@@ -314,6 +314,21 @@ function blinkAt(seed: number, tune: MoodTuning, timeMs: number): number {
   return closed;
 }
 
+/** Resting gaze offset (-1..1 of gaze travel) and eye lean (degrees) of the organic and shape mascots. */
+const REST_X = 0.6;
+const REST_Y = -0.5;
+const REST_LEAN = 17;
+
+/**
+ * The mascots' signature look: the eye pair sits up and to one side, chosen per
+ * seed, and leans that way. Gaze moves around this point.
+ */
+export function avatarRest(seed: number): { x: number; y: number; lean: number } {
+  "worklet";
+  const side = rand(seed, 0, 5) < 0.5 ? -1 : 1;
+  return { x: side * REST_X, y: REST_Y, lean: side * REST_LEAN };
+}
+
 /** Map a run status to the mood the avatar shows by default. */
 export function moodForRunStatus(status: string | null | undefined): AvatarMood {
   "worklet";
