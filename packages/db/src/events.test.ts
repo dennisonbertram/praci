@@ -1,5 +1,6 @@
 import type { RealtimeFanout } from "@rakazo/adapter-kit";
 import { encodeLoginSecret } from "@rakazo/contracts";
+import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
 import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "./client.js";
 import {
@@ -3201,5 +3202,144 @@ describe("appendEvent", () => {
     ).rejects.toThrow(RunHistoryWriteError);
     expect(tx.run.findUnique).not.toHaveBeenCalled();
     expect(tx.event.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("answerRunInput with mail edits", () => {
+  const original = {
+    to: ["a@example.test"],
+    subject: "Hi",
+    body: "Old",
+    account: "me@example.test",
+  };
+  const mailBlock = {
+    tool: "mail_send" as const,
+    to: ["a@example.test"],
+    cc: [],
+    bcc: [],
+    subject: "Hi",
+    body: "Old",
+  };
+
+  function setup(options: {
+    kind?: string;
+    request?: unknown;
+    runUserId?: string;
+    taken?: { id: string } | null;
+  }) {
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
+      message: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "message-1",
+          blocks: [
+            {
+              kind: "ask",
+              approvalEffectId: "effect-1",
+              text: "Review before mail_send",
+              mail: mailBlock,
+              status: "pending",
+              actions: [
+                { id: "allow", label: "Allow once" },
+                { id: "always", label: "Always allow this tool" },
+                { id: "deny", label: "Deny" },
+              ],
+            },
+          ],
+        }),
+        update: vi.fn().mockResolvedValue({ id: "message-1" }),
+      },
+      run: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ botId: "bot-1", userId: options.runUserId ?? "user-1" }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({ status: "queued" }),
+      },
+      task: { updateMany: vi.fn() },
+      externalEffect: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "effect-1",
+          kind: options.kind ?? "mail_send",
+          status: "intended",
+          request: "request" in options ? options.request : original,
+        }),
+        findUnique: vi.fn().mockResolvedValue(options.taken ?? null),
+        update: vi.fn().mockResolvedValue({ id: "effect-1" }),
+      },
+      actionApprovalRule: { upsert: vi.fn() },
+      thread: { update: vi.fn().mockResolvedValue({ nextEventSeq: 10 }) },
+      event: {
+        create: vi.fn(async ({ data }: { data: { seq: number; type: string } }) => ({
+          ...event(data.seq),
+          type: data.type,
+        })),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    } as unknown as PrismaClient;
+    const answer = (extra: { answer?: string; answeredByUserId?: string; mailEdits?: object }) =>
+      answerRunInput(
+        prisma,
+        {
+          spaceId: "workspace-1",
+          threadId: "thread-1",
+          runId: "run-1",
+          messageId: "message-1",
+          answeredByUserId: "user-1",
+          answer: "allow",
+          mailEdits: { subject: "New subject", body: "New" },
+          ...extra,
+        },
+        new TestFanout(),
+      );
+    return { tx, answer };
+  }
+
+  it("stores the edited request, rebinds the effect key to it, and approves in one update", async () => {
+    const { tx, answer } = setup({});
+    await expect(answer({})).resolves.toBe(true);
+    const edited = { ...original, subject: "New subject", body: "New" };
+    expect(tx.externalEffect.update).toHaveBeenCalledTimes(1);
+    expect(tx.externalEffect.update).toHaveBeenCalledWith({
+      where: { id: "effect-1" },
+      data: {
+        status: "approved",
+        request: edited,
+        idempotencyKey: approvalEffectKey("run-1", "mail_send", edited),
+      },
+    });
+    // The answered card shows what was approved.
+    const blocks = tx.message.update.mock.calls[0]?.[0].data.blocks;
+    expect(blocks[0]).toMatchObject({
+      status: "answered",
+      mail: { subject: "New subject", body: "New", to: ["a@example.test"] },
+    });
+  });
+
+  it("does not touch the request when there are no edits", async () => {
+    const { tx, answer } = setup({});
+    await expect(answer({ mailEdits: undefined })).resolves.toBe(true);
+    expect(tx.externalEffect.update).toHaveBeenCalledWith({
+      where: { id: "effect-1" },
+      data: { status: "approved" },
+    });
+  });
+
+  it.each([
+    ["a non-mail effect", { kind: "destination.write" }, {}],
+    ["a deny", {}, { answer: "deny" }],
+    ["an always-allow", {}, { answer: "always" }],
+    ["another user", {}, { answeredByUserId: "user-2" }],
+    ["a send of a saved draft", { request: { draftId: "d1" } }, {}],
+    ["a call that is already another effect", { taken: { id: "effect-2" } }, {}],
+    ["a missing request", { request: null }, {}],
+  ])("rejects edits on %s without changing anything", async (_name, options, extra) => {
+    const { tx, answer } = setup(options);
+    await expect(answer(extra)).resolves.toBe(false);
+    expect(tx.externalEffect.update).not.toHaveBeenCalled();
+    expect(tx.run.updateMany).not.toHaveBeenCalled();
+    expect(tx.message.update).not.toHaveBeenCalled();
   });
 });

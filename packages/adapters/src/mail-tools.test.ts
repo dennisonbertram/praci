@@ -5,6 +5,7 @@ import type {
   MailAccount,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
+import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
@@ -607,6 +608,82 @@ describe("mail write tools", () => {
     await run(deps, "mail_send", message);
     expect(await run(deps, "mail_send", message)).toEqual({ ok: true, alreadySent: true });
     expect(gmail.sentOf("a")).toHaveLength(1);
+  });
+
+  it("sends the edited message once when an approval is edited, replayed and answered twice", async () => {
+    const { answerRunInput } = await import("@rakazo/db");
+    const original = { to: ["Jana <jana@example.test>"], subject: "Friday", body: "Draft text." };
+    const effect = {
+      id: "effect-1",
+      kind: "mail_send",
+      status: "intended",
+      request: original,
+      idempotencyKey: approvalEffectKey("run-1", "mail_send", original),
+    };
+    const block = {
+      kind: "ask",
+      approvalEffectId: "effect-1",
+      text: "Review before mail_send",
+      status: "pending",
+      actions: [
+        { id: "allow", label: "Allow once" },
+        { id: "deny", label: "Deny" },
+      ],
+    };
+    const tx = {
+      $queryRaw: async () => [{ id: "thread-1" }],
+      message: { findFirst: async () => ({ id: "m1", blocks: [block] }), update: async () => ({}) },
+      run: {
+        findFirst: async () => ({ botId: "bot-1", userId: "user-1" }),
+        updateMany: async () => ({ count: 1 }),
+        findUnique: async () => ({ status: "queued", startedAt: null }),
+      },
+      externalEffect: {
+        // Like the database: only an "intended" effect of this run is found, and updates stick.
+        findFirst: async () => (effect.status === "intended" ? effect : null),
+        findUnique: async () => null,
+        update: async ({ data }: { data: Partial<typeof effect> }) => Object.assign(effect, data),
+      },
+      thread: { update: async () => ({ nextEventSeq: 2 }) },
+      event: {
+        create: async ({ data }: { data: object }) => ({
+          ...data,
+          id: "e1",
+          createdAt: new Date(),
+        }),
+      },
+    };
+    const prisma = {
+      $transaction: async (callback: (client: typeof tx) => unknown) => callback(tx),
+    } as unknown as PrismaClient;
+    const answer = () =>
+      answerRunInput(prisma, {
+        spaceId: scope.spaceId,
+        threadId: "thread-1",
+        runId: "run-1",
+        messageId: "m1",
+        answeredByUserId: "user-1",
+        answer: "allow",
+        mailEdits: { subject: "Monday", body: "Edited text." },
+      });
+
+    expect(await answer()).toBe(true);
+    // A second answer (double click, retry) finds nothing pending and changes nothing.
+    expect(await answer()).toBe(false);
+    expect(effect.request).toEqual({ ...original, subject: "Monday", body: "Edited text." });
+
+    // The executor replays the stored request and keys the tool on the effect's stored key.
+    const key = approvalEffectKey("run-1", "mail_send", effect.request);
+    expect(effect.idempotencyKey).toBe(key);
+    const { deps, gmail } = withSends();
+    const replay = { ...deps, idempotencyKey: key };
+    expect(await run(replay, "mail_send", effect.request)).toMatchObject({
+      ok: true,
+      subject: "Monday",
+    });
+    expect(await run(replay, "mail_send", effect.request)).toEqual({ ok: true, alreadySent: true });
+    expect(gmail.sentOf("a")).toHaveLength(1);
+    expect(gmail.sentOf("a")[0]?.raw).toContain("Subject: Monday");
   });
 
   it("never repeats a send whose outcome is unclear", async () => {

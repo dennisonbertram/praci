@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { botSecretDestinationSchema } from "./bot-secrets.js";
 import { Id } from "./ids.js";
+import { MAX_COMPOSE_BODY } from "./inbox.js";
 import { McpTransportSchema } from "./mcp.js";
 
 export const ProductEventType = z.enum([
@@ -160,6 +161,38 @@ export const FinanceCardSchema = z.discriminatedUnion("card", [
 ]);
 export type FinanceCard = z.infer<typeof FinanceCardSchema>;
 
+/** The mail a mail_draft or mail_send approval would act on, for the inline approval card. */
+export const MailApprovalSchema = z.object({
+  tool: z.enum(["mail_draft", "mail_send"]),
+  /** Connected account address, when the call named one. */
+  account: z.string().optional(),
+  to: z.array(z.string()),
+  cc: z.array(z.string()),
+  bcc: z.array(z.string()),
+  subject: z.string(),
+  body: z.string(),
+  /** The message answers another one. */
+  reply: z.boolean().optional(),
+  /** Set after the person edited it and sent it themselves: how that ended. */
+  outcome: z.enum(["sent", "saved", "unknown", "failed"]).optional(),
+  /** With a failed outcome: the connection the composer should open on. */
+  connectionId: z.string().optional(),
+});
+export type MailApproval = z.infer<typeof MailApprovalSchema>;
+
+/** What a person may change on a mail approval card. Recipients are comma-separated text. */
+export const MailEditsSchema = z
+  .object({
+    to: z.string().max(4_000),
+    cc: z.string().max(4_000),
+    bcc: z.string().max(4_000),
+    subject: z.string().max(998),
+    body: z.string().max(MAX_COMPOSE_BODY),
+  })
+  .partial()
+  .strict();
+export type MailEdits = z.infer<typeof MailEditsSchema>;
+
 export const MessageBlock = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string() }),
   z.object({
@@ -171,6 +204,7 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     text: z.string(),
     approvalEffectId: Id.optional(),
     detail: z.string().optional(),
+    mail: MailApprovalSchema.optional(),
     input: z.enum(["text", "secret"]).optional(),
     /** Why the secret is needed; drives field label on the masked card. */
     purpose: SecretAskPurpose.optional(),

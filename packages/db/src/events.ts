@@ -17,6 +17,7 @@ import {
   resolveAskChoice,
   sanitizeJsonValue,
 } from "@rakazo/core";
+import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
 import { getLogger } from "@rakazo/logging";
 import { cancelRunsInTransaction } from "./cancel-runs.js";
 import type { Prisma, PrismaClient } from "./client.js";
@@ -213,7 +214,22 @@ export interface AnswerRunInput {
   clientNonce?: string;
   /** Only for a login card; `answer` carries its password. */
   username?: string;
+  /**
+   * Mail fields the person changed on a mail_draft or mail_send approval, already checked by the
+   * caller. Applied only to an "allow" answer by the run's own user.
+   */
+  mailEdits?: MailArgEdits;
 }
+
+export interface MailArgEdits {
+  to?: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject?: string;
+  body?: string;
+}
+
+const MAIL_APPROVAL_TOOLS = new Set(["mail_draft", "mail_send"]);
 
 export interface SendUserMessageInput {
   spaceId: string;
@@ -668,8 +684,11 @@ async function commitAnswerRunInput(
     ? LoginSecretValue.safeParse({ username: input.username!.trim(), password: input.answer })
     : undefined;
   if (login && !login.success) return null;
-  let approvalEffect: { id: string; kind: string } | null = null;
+  let approvalEffect: { id: string; kind: string; request?: unknown } | null = null;
   let approvalUserId: string | null = null;
+  const mailEdits = input.mailEdits && Object.keys(input.mailEdits).length ? input.mailEdits : null;
+  if (mailEdits && !approvalAsk) return null;
+  let editedRequest: Record<string, unknown> | undefined;
 
   if (approvalAsk) {
     if (!pendingAsk.actions?.some((action) => action.id === input.answer)) return null;
@@ -682,6 +701,32 @@ async function commitAnswerRunInput(
       },
     });
     if (!approvalEffect) return null;
+    if (mailEdits) {
+      // Edits are the owner's own decision about their own mail, for exactly one allowed send.
+      if (
+        input.answer !== "allow" ||
+        run.userId !== input.answeredByUserId ||
+        !MAIL_APPROVAL_TOOLS.has(approvalEffect.kind)
+      ) {
+        return null;
+      }
+    }
+    if (mailEdits) {
+      const request = approvalEffect.request;
+      if (!request || typeof request !== "object" || Array.isArray(request)) return null;
+      const stored = request as Record<string, unknown>;
+      // A send of a saved draft ignores these fields, so an edit would only mislead.
+      if (approvalEffect.kind === "mail_send" && stored.draftId) return null;
+      editedRequest = { ...stored, ...mailEdits };
+      const taken = await tx.externalEffect.findUnique({
+        where: {
+          idempotencyKey: approvalEffectKey(input.runId, approvalEffect.kind, editedRequest),
+        },
+        select: { id: true },
+      });
+      // The edited call is already another effect of this run; do not merge two sends.
+      if (taken && taken.id !== approvalEffect.id) return null;
+    }
     if (input.answer === "always") {
       if (run.userId !== input.answeredByUserId) return null;
       approvalUserId = input.answeredByUserId;
@@ -732,7 +777,12 @@ async function commitAnswerRunInput(
     const allowed = input.answer === "allow" || input.answer === "always";
     await tx.externalEffect.update({
       where: { id: approvalEffect!.id },
-      data: { status: allowed ? "approved" : "denied" },
+      data: {
+        status: allowed ? "approved" : "denied",
+        ...(editedRequest
+          ? mailEditedEffectData(approvalEffect!.kind, input.runId, editedRequest)
+          : {}),
+      },
     });
     if (input.answer === "always") {
       await tx.actionApprovalRule.upsert({
@@ -800,6 +850,7 @@ async function commitAnswerRunInput(
           ...block,
           status: "answered" as const,
           answer: recordedAnswer,
+          ...(mailEdits && block.mail ? { mail: { ...block.mail, ...mailEdits } } : {}),
         }
       : block,
   );
@@ -813,6 +864,19 @@ async function commitAnswerRunInput(
     payload: { messageId: message.id, role: "bot", blocks },
   });
   return { threadId: updated.threadId, seq: updated.seq };
+}
+
+/**
+ * The executor replays an approved call from the stored request and looks its effect up by a key
+ * derived from that request, so editing the request moves the key with it. The row (and its id)
+ * stays the same, and it leaves "intended" in the same update, so a second answer cannot edit or
+ * approve it again; the send record the mail tool keys on that key then exists once.
+ */
+function mailEditedEffectData(kind: string, runId: string, request: Record<string, unknown>) {
+  return {
+    request: request as Prisma.InputJsonValue,
+    idempotencyKey: approvalEffectKey(runId, kind, request),
+  };
 }
 
 export async function answerRunInput(

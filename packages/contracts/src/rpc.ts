@@ -99,7 +99,7 @@ import {
   VoiceInfoSchema,
   VoiceStatusSchema,
 } from "./domain.js";
-import { ComputerCommandSchema, ProductEventSchema } from "./events.js";
+import { ComputerCommandSchema, MailEditsSchema, ProductEventSchema } from "./events.js";
 import {
   BalanceSeriesInputSchema,
   BalanceSeriesOutputSchema,
@@ -483,6 +483,8 @@ export const appContract = {
           clientNonce: z.string().min(1).max(200).optional(),
           /** Only for a login card; `answer` carries its password. */
           username: z.string().min(1).max(512).optional(),
+          /** Only with "allow" on a mail approval: fields the person changed. Recipients are comma-separated text. */
+          mail: MailEditsSchema.optional(),
         }),
       )
       .output(z.object({ ok: z.literal(true) })),

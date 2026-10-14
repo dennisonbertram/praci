@@ -90,6 +90,8 @@ import {
   mapScratchpadItem,
   modelCredentialAuthKindsForSpace,
   modelCredentialDto,
+  type NormalizedMailEdits,
+  normalizeMailEdits,
   normalizeSecretDestination,
   PageValidationError,
   PinsValidationError,
@@ -2596,6 +2598,14 @@ export function createRouter(deps: RouterDeps) {
       }),
       answer: authed.threads.answer.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
+        let mailEdits: NormalizedMailEdits | undefined;
+        if (input.mail) {
+          // The same recipient and header checks the mail tools apply; the database layer then
+          // limits edits to an "allow" answer on a pending mail approval.
+          const checked = normalizeMailEdits(input.mail);
+          if (!checked.ok) throw new ORPCError("BAD_REQUEST", { message: checked.error });
+          mailEdits = checked.edits;
+        }
         const answered = await deps.events.answerRunInput({
           spaceId: context.actor.spaceId,
           threadId: target.threadId,
@@ -2605,6 +2615,7 @@ export function createRouter(deps: RouterDeps) {
           answer: input.answer,
           clientNonce: input.clientNonce,
           username: input.username,
+          mailEdits,
         });
         if (!answered) {
           throw new ORPCError("CONFLICT", {
