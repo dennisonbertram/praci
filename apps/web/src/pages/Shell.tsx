@@ -11,6 +11,7 @@ import type {
   Connection,
   ConnectionCatalogItem,
   Group,
+  MailEdits,
   Me,
   MessageReaction,
   ProductEvent,
@@ -43,6 +44,7 @@ import {
   groupVoiceChats,
   inferAttachmentMimeType,
   isActive,
+  isApprovalAskBlock,
   isPeerReceiptBlocks,
   isRunTerminalEvent,
   isToolActivityBlock,
@@ -130,6 +132,7 @@ import {
   memo,
   Suspense,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -143,6 +146,7 @@ import { useMatch, useNavigate, useParams, useSearchParams } from "react-router-
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
+import { type BotToolControls, BotToolControlsContext } from "../components/BotToolControls";
 import { CloudAgentCard } from "../components/CloudAgentCard";
 import { ComputerMaintenanceActions } from "../components/ComputerMaintenanceActions";
 import {
@@ -156,6 +160,7 @@ import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCards } from "../components/FinanceCards";
+import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import {
   LIVE_TOOL_STEP_WINDOW,
@@ -2136,7 +2141,7 @@ export function ShellPage() {
     if (botId) void jumpToMessageRef.current({ botId, messageId }).catch(() => undefined);
   }, []);
   const answerMessage = useCallback(
-    async (message: ThreadMessage, text: string, username?: string) => {
+    async (message: ThreadMessage, text: string, username?: string, mail?: MailEdits) => {
       const botId = activeBotId.current;
       const groupId = activeGroupId.current;
       if (!botId && !groupId) return;
@@ -2146,6 +2151,7 @@ export function ShellPage() {
         messageId: message.id,
         answer: text,
         ...(username ? { username } : {}),
+        ...(mail ? { mail } : {}),
       });
       if (groupId && activeGroupId.current === groupId) {
         await refreshGroupThreadRef.current(groupId);
@@ -2153,6 +2159,21 @@ export function ShellPage() {
         await refreshThreadRef.current(botId);
       }
     },
+    [],
+  );
+  const botToolControls = useMemo<BotToolControls>(
+    () => ({
+      editableBotName: (botId) => botsRef.current.find((bot) => bot.id === botId)?.name,
+      disableTool: async (botId, tool) => {
+        const bot = botsRef.current.find((item) => item.id === botId);
+        if (!bot) return;
+        const disabledBuiltinTools = bot.disabledBuiltinTools.includes(tool)
+          ? bot.disabledBuiltinTools
+          : [...bot.disabledBuiltinTools, tool];
+        const updated = await rpc.bots.update({ botId, disabledBuiltinTools });
+        setBots((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      },
+    }),
     [],
   );
   const reactToMessage = useCallback(
@@ -2906,47 +2927,78 @@ export function ShellPage() {
       {!inGroup && !pageMode && botPins ? <PinsStrip pins={botPins} onPins={setBotPins} /> : null}
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <Transcript
-            key={activeSnapshot?.threadId}
-            scrollRef={messageScroll}
-            scrollRequest={scrollRequest}
-            onScrollRequestHandled={clearScrollRequest}
-            artifactTarget={transcriptArtifactTarget}
-            messages={transcriptMessages}
-            showToolActivity={showToolActivity}
-            olderCursor={activeSnapshot?.olderCursor ?? null}
-            loadingOlder={loadingOlder}
-            answerableAskMessageId={answerableAskMessageId}
-            running={transcriptRunning}
-            workingBots={workingBots}
-            workingActivity={soleWorkingActivity}
-            workingStartedAt={workingStartedAt}
-            onLoadOlder={loadOlder}
-            onOpenBot={openBot}
-            onAnswer={answerMessage}
-            onReply={(message) => {
-              setReplyTarget(message);
-              setReplyQuote(null);
-            }}
-            onQuote={(message, quote) => {
-              setReplyTarget(message);
-              setReplyQuote(quote);
-            }}
-            onReact={reactToMessage}
-            onJumpToMessage={jumpToReplyMessage}
-            onOpenPeerMessages={(peer) => {
-              setPeerConversation(peer);
-            }}
-            memberName={resolveTranscriptMemberName}
-            peerBot={resolveTranscriptBot}
-            onRefresh={refreshActiveThread}
-            onBotChanged={refreshBots}
-            onAddRoutine={addSkillRoutine}
-            voiceReady={Boolean(voiceStatus?.ready)}
-            speakingMessageId={speakingMessageId}
-            onSpeak={speakMessage}
-            onOpenComputer={onOpenComputer}
-          />
+          <BotToolControlsContext.Provider value={botToolControls}>
+            <Transcript
+              key={activeSnapshot?.threadId}
+              scrollRef={messageScroll}
+              scrollRequest={scrollRequest}
+              onScrollRequestHandled={clearScrollRequest}
+              artifactTarget={transcriptArtifactTarget}
+              messages={transcriptMessages}
+              showToolActivity={showToolActivity}
+              olderCursor={activeSnapshot?.olderCursor ?? null}
+              loadingOlder={loadingOlder}
+              answerableAskMessageId={answerableAskMessageId}
+              running={transcriptRunning}
+              workingBots={workingBots}
+              workingActivity={soleWorkingActivity}
+              workingStartedAt={workingStartedAt}
+              onLoadOlder={loadOlder}
+              onOpenBot={openBot}
+              onAnswer={answerMessage}
+              onReply={(message) => {
+                setReplyTarget(message);
+                setReplyQuote(null);
+              }}
+              onQuote={(message, quote) => {
+                setReplyTarget(message);
+                setReplyQuote(quote);
+              }}
+              onReact={reactToMessage}
+              onJumpToMessage={jumpToReplyMessage}
+              onOpenPeerMessages={(peer) => {
+                setPeerConversation(peer);
+              }}
+              memberName={resolveTranscriptMemberName}
+              peerBot={resolveTranscriptBot}
+              onRefresh={refreshActiveThread}
+              onBotChanged={refreshBots}
+              onAddRoutine={addSkillRoutine}
+              voiceReady={Boolean(voiceStatus?.ready)}
+              speakingMessageId={speakingMessageId}
+              onSpeak={speakMessage}
+              onOpenComputer={onOpenComputer}
+            />
+          </BotToolControlsContext.Provider>
+          {composerDraft ? (
+            <ComposeEmail
+              seed={NEW_MESSAGE}
+              accounts={[
+                { connectionId: composerDraft.connectionId, label: composerDraft.account },
+              ]}
+              connectionId={composerDraft.connectionId}
+              restore={{
+                seed: NEW_MESSAGE,
+                clientId: crypto.randomUUID().replaceAll("-", ""),
+                fields: {
+                  connectionId: composerDraft.connectionId,
+                  to: composerDraft.to,
+                  cc: composerDraft.cc,
+                  bcc: composerDraft.bcc,
+                  subject: composerDraft.subject,
+                  html: "",
+                  text: composerDraft.body,
+                },
+                forwarded: [],
+                files: [],
+                saved: false,
+                accounts: [
+                  { connectionId: composerDraft.connectionId, label: composerDraft.account },
+                ],
+              }}
+              onClose={() => setComposerDraft(null)}
+            />
+          ) : null}
           {recordingSkill ? (
             <div className="px-6 pb-2 text-center text-[13px] text-destructive">
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
@@ -5157,7 +5209,12 @@ const Transcript = memo(function Transcript({
   workingStartedAt?: number;
   onLoadOlder: () => void | Promise<void>;
   onOpenBot: (botId: string) => void;
-  onAnswer: (message: ThreadMessage, text: string, username?: string) => Promise<void>;
+  onAnswer: (
+    message: ThreadMessage,
+    text: string,
+    username?: string,
+    mail?: MailEdits,
+  ) => Promise<void>;
   onReply: (message: ThreadMessage) => void;
   onQuote: (message: ThreadMessage, quote: string) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
@@ -6875,7 +6932,12 @@ const MessageView = memo(function MessageView({
   artifactTarget: ArtifactTarget;
   canAnswer: boolean;
   message: ThreadMessage;
-  onAnswer: (message: ThreadMessage, text: string, username?: string) => Promise<void>;
+  onAnswer: (
+    message: ThreadMessage,
+    text: string,
+    username?: string,
+    mail?: MailEdits,
+  ) => Promise<void>;
   onOpenBot: (botId: string) => void;
   onOpenPeerMessages: (peer: { peerBotId: string; peerBotName: string }) => void;
   speakerName?: string;
@@ -6893,6 +6955,7 @@ const MessageView = memo(function MessageView({
   showToolActivity: boolean;
 }) {
   const { t } = useLingui();
+  const botToolControls = useContext(BotToolControlsContext);
   const isNarration =
     message.role === "bot" &&
     message.blocks.length > 0 &&
@@ -7288,6 +7351,24 @@ const MessageView = memo(function MessageView({
           );
         }
         if (block.kind === "ask") {
+          if (block.mail && isApprovalAskBlock(block)) {
+            return (
+              <MailApprovalCard
+                key={i}
+                mail={block.mail}
+                status={block.status === "answered" ? "answered" : "pending"}
+                answer={block.answer}
+                canAnswer={canAnswer}
+                botName={botToolControls?.editableBotName(message.botId)}
+                onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
+                onDisableTool={
+                  message.botId
+                    ? (tool) => botToolControls!.disableTool(message.botId!, tool)
+                    : undefined
+                }
+              />
+            );
+          }
           return (
             <AskCard
               key={i}
