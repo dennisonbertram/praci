@@ -22,6 +22,8 @@ const rpcMock = vi.hoisted(() => ({
   list: vi.fn(),
   refresh: vi.fn(),
   feedback: vi.fn(),
+  archive: vi.fn(),
+  markRead: vi.fn(),
   todos: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
@@ -30,6 +32,8 @@ vi.mock("../lib/rpc", () => ({
       list: rpcMock.list,
       refresh: rpcMock.refresh,
       feedback: rpcMock.feedback,
+      archive: rpcMock.archive,
+      markRead: rpcMock.markRead,
       todos: { list: rpcMock.todos, setDone: vi.fn() },
     },
   },
@@ -63,11 +67,15 @@ vi.mock("../components/inbox/InboxRow", () => ({
     rows,
     onOpen,
     onMark,
+    onArchive,
+    onRead,
     selectedId,
   }: {
     rows: MailRow[];
     onOpen: (id: string) => void;
     onMark?: (id: string, mark: "noise" | null) => void;
+    onArchive?: (id: string) => void;
+    onRead?: (id: string, read: boolean) => void;
     selectedId?: string;
   }) =>
     rows.map((row) => (
@@ -86,6 +94,14 @@ vi.mock("../components/inbox/InboxRow", () => ({
             noise {row.id}
           </button>
         ) : null}
+        {onArchive ? (
+          <button type="button" onClick={() => onArchive(row.id)}>
+            archive {row.id}
+          </button>
+        ) : null}
+        <button type="button" data-unread={row.unread} onClick={() => onRead?.(row.id, row.unread)}>
+          read {row.id}
+        </button>
       </div>
     )),
 }));
@@ -168,6 +184,8 @@ beforeEach(() => {
   rpcMock.refresh.mockResolvedValue({});
   rpcMock.todos.mockResolvedValue({ todos: [] });
   rpcMock.feedback.mockResolvedValue({});
+  rpcMock.archive.mockResolvedValue({ ok: true });
+  rpcMock.markRead.mockResolvedValue({ ok: true });
   rpcMock.list.mockResolvedValue(list([row("a"), row("b"), row("c")]));
 });
 afterEach(async () => {
@@ -300,4 +318,43 @@ it("refetches the to-dos when triage turns on without a new sync", async () => {
   rpcMock.list.mockResolvedValue(list([row("a")]));
   await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
   expect(rpcMock.todos.mock.calls.length).toBeGreaterThan(before);
+});
+
+it("archives the selected row with e, moves the selection on, and keeps it out of the list", async () => {
+  const c = await render();
+  await press("j");
+  await press("e");
+  expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "a" });
+  expect(c.querySelector('[data-row-id="a"]')).toBeNull();
+  expect(selected(c)).toBe("b");
+});
+
+it("archives from the row without opening it, and brings the row back when it fails", async () => {
+  rpcMock.archive.mockRejectedValue(new Error("nope"));
+  const c = await render();
+  await click(byText(c, "archive b"));
+  expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "b" });
+  expect(new URLSearchParams(location.search).get("mail")).toBeNull();
+  expect(c.querySelector('[role="alert"]')).not.toBeNull();
+  expect(c.querySelector('[data-row-id="b"]')).not.toBeNull();
+});
+
+it("marks a row read at once and unread again, saving each", async () => {
+  const c = await render();
+  const unread = () =>
+    c.querySelector("button[data-unread][data-unread]")?.getAttribute("data-unread");
+  expect(unread()).toBe("true");
+  await click(byText(c, "read a"));
+  expect(rpcMock.markRead).toHaveBeenLastCalledWith({ messageId: "a", read: true });
+  expect(unread()).toBe("false");
+  await click(byText(c, "read a"));
+  expect(rpcMock.markRead).toHaveBeenLastCalledWith({ messageId: "a", read: false });
+});
+
+it("offers no archive while a filter or search lists mail from Gmail", async () => {
+  const c = await render(["/app/inbox?filter=unread"]);
+  expect(byText(c, "archive a")).toBeUndefined();
+  await press("j");
+  await press("e");
+  expect(rpcMock.archive).not.toHaveBeenCalled();
 });

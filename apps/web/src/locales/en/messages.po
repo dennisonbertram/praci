@@ -570,6 +570,9 @@ msgstr "Approve"
 msgid "Approve this server to let your agent use its tools."
 msgstr "Approve this server to let your agent use its tools."
 
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/BotContextMenu.tsx
 msgid "Archive"
 msgstr "Archive"
@@ -2946,6 +2949,16 @@ msgstr "Mark important"
 msgid "Mark noise"
 msgstr "Mark noise"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark read"
+msgstr "Mark read"
+
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark unread"
+msgstr "Mark unread"
+
 #: src/pages/Inbox.tsx
 msgid "Marked important"
 msgstr "Marked important"
@@ -3477,7 +3490,6 @@ msgstr "OAuth connection failed"
 
 #: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr "OAuth expired"
 

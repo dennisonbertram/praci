@@ -151,3 +151,43 @@ it("shows the text, not a blank frame, when the HTML has nothing visible", async
   });
   expect(document.body.textContent).toContain("Plain copy");
 });
+
+it("archives with the button or e, and marks read or unread, when the page allows it", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const onArchive = vi.fn();
+  const onRead = vi.fn();
+  const render = (unread: boolean) =>
+    act(() =>
+      root.render(
+        <InboxMessageDialog
+          messageId="m2"
+          nextId="m3"
+          onNavigate={() => {}}
+          unread={unread}
+          onArchive={onArchive}
+          onRead={onRead}
+          onClose={() => {}}
+        />,
+      ),
+    );
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === name);
+  await render(true);
+  await flush();
+  await act(async () => button("Archive")?.click());
+  await press("e");
+  expect(onArchive).toHaveBeenCalledTimes(2);
+  await act(async () => button("Mark read")?.click());
+  expect(onRead).toHaveBeenLastCalledWith(true);
+  await render(false);
+  await act(async () => button("Mark unread")?.click());
+  expect(onRead).toHaveBeenLastCalledWith(false);
+});
+
+it("shows no archive or read buttons and ignores e without them", async () => {
+  await open();
+  await press("e");
+  const names = [...document.querySelectorAll("button")].map((b) => b.textContent);
+  expect(names).not.toContain("Archive");
+  expect(names).not.toContain("Mark read");
+});

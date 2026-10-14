@@ -24,6 +24,7 @@ import {
   inboxTodosList,
   inboxUnreadCount,
 } from "./inbox.js";
+import { inboxArchive, inboxMarkRead } from "./inbox-modify.js";
 import { createRouter, type RouterDeps } from "./router.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -71,7 +72,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
 
   const connector = {
     proxy: async (request: ConnectorProxyRequest, _context: AdapterContext) =>
-      gmail.handle(request.accountRef, request.url),
+      gmail.handle(request.accountRef, request.url, request.method, request.body),
     revoke: async () => {},
   } as unknown as ManagedConnectorProvider;
 
@@ -1409,6 +1410,130 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         });
         expect((await client.inbox.list({})).rows[0]?.feedback).toBe("important");
       });
+    });
+  });
+
+  describe("archive and mark read", () => {
+    const labelsOf = (messageId: string) =>
+      gmail.handle("box-a", `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}`)
+        .data as { labelIds: string[] };
+    const setup = async () => {
+      await wipe();
+      const inThread = (messageId: string) => ({
+        id: messageId,
+        threadId: "t-a",
+        date: daysAgo(1).toISOString(),
+        labels: ["INBOX", "UNREAD"],
+        from: "Ann Sender <ann@example.test>",
+        to: "me@example.test",
+        subject: `Subject ${messageId}`,
+      });
+      gmail = new GmailApiEmulator({
+        mailboxes: {
+          "box-a": {
+            address: "box-a@example.test",
+            messages: [inThread("a-1"), inThread("a-2")],
+          },
+          "box-b": { address: "box-b@example.test", messages: [inThread("b-1")] },
+        },
+      });
+      const first = await cache(a, connA, "a-1", { threadId: "t-a", unread: true });
+      const second = await cache(a, connA, "a-2", {
+        threadId: "t-a",
+        unread: true,
+        receivedAt: daysAgo(0.5),
+      });
+      const theirs = await cache(b, connB, "b-1", { unread: true });
+      return { first, second, theirs };
+    };
+    const cached = (userId: string) =>
+      prisma.cachedMailMessage.findMany({
+        where: { userId },
+        orderBy: { providerMessageId: "asc" },
+        select: { providerMessageId: true, unread: true, inInbox: true },
+      });
+
+    it("archives the whole thread in Gmail and the cache, and the row leaves the list", async () => {
+      const { second, theirs } = await setup();
+
+      await inboxArchive(deps, a, { messageId: second.id });
+
+      expect(labelsOf("a-1").labelIds).not.toContain("INBOX");
+      expect(labelsOf("a-2").labelIds).not.toContain("INBOX");
+      expect(await cached(userA)).toEqual([
+        { providerMessageId: "a-1", unread: true, inInbox: false },
+        { providerMessageId: "a-2", unread: true, inInbox: false },
+      ]);
+      expect((await inboxList(deps, a, {})).rows).toEqual([]);
+      await expect(inboxArchive(deps, a, { messageId: theirs.id })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+      expect(await cached(userB)).toEqual([
+        { providerMessageId: "b-1", unread: true, inInbox: true },
+      ]);
+    });
+
+    it("marks every unread message of the thread read, and only the chosen one unread", async () => {
+      const { second } = await setup();
+
+      await inboxMarkRead(deps, a, { messageId: second.id, read: true });
+
+      expect(labelsOf("a-1").labelIds).not.toContain("UNREAD");
+      expect(labelsOf("a-2").labelIds).not.toContain("UNREAD");
+      expect((await cached(userA)).map((m) => m.unread)).toEqual([false, false]);
+      expect(await inboxUnreadCount(deps, a)).toEqual({ count: 0 });
+
+      await inboxMarkRead(deps, a, { messageId: second.id, read: false });
+
+      expect(labelsOf("a-1").labelIds).not.toContain("UNREAD");
+      expect(labelsOf("a-2").labelIds).toContain("UNREAD");
+      expect((await cached(userA)).map((m) => m.unread)).toEqual([false, true]);
+      expect(await inboxUnreadCount(deps, a)).toEqual({ count: 1 });
+    });
+
+    it("asks to reconnect and changes nothing when the account lacks permission to change mail", async () => {
+      const { second } = await setup();
+      gmail.failNext(403, { reason: "insufficientPermissions", urlIncludes: "/modify" });
+
+      await expect(inboxArchive(deps, a, { messageId: second.id })).rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+      });
+
+      expect(await cached(userA)).toEqual([
+        { providerMessageId: "a-1", unread: true, inInbox: true },
+        { providerMessageId: "a-2", unread: true, inInbox: true },
+      ]);
+      const state = await prisma.mailSyncState.findUniqueOrThrow({
+        where: { connectionId: connA },
+      });
+      expect(state.needsReconnect).toBe(true);
+    });
+
+    it("does nothing while mail writes are turned off", async () => {
+      const { second } = await setup();
+
+      await expect(
+        inboxArchive({ ...deps, mailWritesDisabled: true }, a, { messageId: second.id }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+      expect(labelsOf("a-2").labelIds).toContain("INBOX");
+    });
+
+    it("serves both procedures through the router", async () => {
+      const { second } = await setup();
+      const client = createRouterClient(
+        createRouter({ ...deps, env: { mailWritesDisabled: false } } as unknown as RouterDeps),
+        { context: { actor: a } as never },
+      );
+
+      expect(await client.inbox.markRead({ messageId: second.id, read: true })).toEqual({
+        ok: true,
+      });
+      expect(await client.inbox.archive({ messageId: second.id })).toEqual({ ok: true });
+      expect(await cached(userA)).toEqual([
+        { providerMessageId: "a-1", unread: false, inInbox: false },
+        { providerMessageId: "a-2", unread: false, inInbox: false },
+      ]);
     });
   });
 

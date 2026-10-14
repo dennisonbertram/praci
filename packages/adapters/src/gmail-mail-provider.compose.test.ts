@@ -9,7 +9,10 @@ import { describe, expect, it } from "vitest";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import { parseRawMime } from "./mime-parse.js";
-import { assertMailWriteConformance } from "./testing/mail-conformance.js";
+import {
+  assertMailModifyConformance,
+  assertMailWriteConformance,
+} from "./testing/mail-conformance.js";
 
 const NOW = new Date("2026-10-01T12:00:00Z");
 const to = [{ name: "Priya Shah", address: "priya@example.test" }];
@@ -87,6 +90,11 @@ describe("GmailMailProvider drafts", () => {
   it("passes the shared write conformance suite", async () => {
     const { provider, mail } = setup();
     await assertMailWriteConformance(provider, mail);
+  });
+
+  it("passes the shared label conformance suite", async () => {
+    const { provider, mail } = setup();
+    await assertMailModifyConformance(provider, mail);
   });
 
   it("saves a new draft without sending, then replaces it in place", async () => {

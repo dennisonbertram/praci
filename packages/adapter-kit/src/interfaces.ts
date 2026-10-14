@@ -47,6 +47,8 @@ import type {
   MailAttachment,
   MailDraftInput,
   MailDraftRef,
+  MailLabel,
+  MailLabelChange,
   MailListRequest,
   MailMessage,
   MailMessagePage,
@@ -245,6 +247,19 @@ export interface MailProvider {
     maxBytes: number,
     context: AdapterContext,
   ): Promise<MailAttachment>;
+  /** The mailbox's labels, system ones first. */
+  listLabels(account: MailAccount, context: AdapterContext): Promise<MailLabel[]>;
+  /**
+   * Adds and removes labels on one message and returns its labels afterwards. Mark read removes
+   * `UNREAD`, mark unread adds it, archive removes `INBOX`. Throws `auth` when the account was
+   * connected without permission to change mail, which the UI reports as "reconnect".
+   */
+  modifyMessage(
+    account: MailAccount,
+    messageId: string,
+    change: MailLabelChange,
+    context: AdapterContext,
+  ): Promise<{ labelIds: string[] }>;
   /** Saves a new draft. Never retried after an unclear failure, so it cannot leave two drafts. */
   createDraft(
     account: MailAccount,

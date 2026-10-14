@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import { PipedreamConnector } from "./pipedream-connector.js";
-import { assertMailConformance, assertMailWriteConformance } from "./testing/mail-conformance.js";
+import {
+  assertMailConformance,
+  assertMailModifyConformance,
+  assertMailWriteConformance,
+} from "./testing/mail-conformance.js";
 
 const NOW = new Date("2026-10-01T12:00:00Z");
 const CONFIG = {
@@ -121,6 +125,7 @@ describe("PipedreamConnector.proxy", () => {
     });
     await assertMailConformance(provider, { gmail: fake.mail.gmail, accounts });
     await assertMailWriteConformance(provider, { gmail: fake.mail.gmail, accounts });
+    await assertMailModifyConformance(provider, { gmail: fake.mail.gmail, accounts });
     expect(fake.proxied.length).toBeGreaterThan(0);
   });
 

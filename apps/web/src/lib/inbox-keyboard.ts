@@ -9,6 +9,8 @@ interface InboxKeyboard {
   open: (id: string) => void;
   focusSearch: () => void;
   compose: (() => void) | undefined;
+  /** Archives the selected row. */
+  archive: ((id: string) => void) | undefined;
   help: () => void;
 }
 
@@ -17,13 +19,14 @@ const rowButton = (id: string) =>
     (el) => el.dataset.rowId === id,
   );
 
-/** List shortcuts for the Inbox: j/k and arrows move, Enter or o opens, / searches, c composes, ? lists them. */
+/** List shortcuts for the Inbox: j/k and arrows move, Enter or o opens, / searches, c composes, e archives, ? lists them. */
 export function useInboxKeyboard(options: InboxKeyboard) {
   const latest = useRef(options);
   latest.current = options;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const { ids, selectedId, enabled, select, open, focusSearch, compose, help } = latest.current;
+      const { ids, selectedId, enabled, select, open, focusSearch, compose, archive, help } =
+        latest.current;
       if (!enabled || event.defaultPrevented) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const target = event.target instanceof Element ? event.target : null;
@@ -53,6 +56,9 @@ export function useInboxKeyboard(options: InboxKeyboard) {
       } else if (key === "c" && compose) {
         event.preventDefault();
         compose();
+      } else if (key === "e" && archive && selectedId) {
+        event.preventDefault();
+        archive(selectedId);
       } else if (key === "?") {
         event.preventDefault();
         help();

@@ -111,6 +111,7 @@ import {
   InboxFeedbackOutputSchema,
   InboxListInputSchema,
   InboxListOutputSchema,
+  InboxMarkReadInputSchema,
   InboxMessageSchema,
   InboxScopeInputSchema,
   InboxTodoSchema,
@@ -998,6 +999,8 @@ export const appContract = {
     get: oc.input(z.object({ messageId: Id })).output(InboxMessageSchema),
     unreadCount: oc.output(z.object({ count: z.number().int() })),
     feedback: oc.input(InboxFeedbackInputSchema).output(InboxFeedbackOutputSchema),
+    markRead: oc.input(InboxMarkReadInputSchema).output(z.object({ ok: z.literal(true) })),
+    archive: oc.input(z.object({ messageId: Id })).output(z.object({ ok: z.literal(true) })),
     compose: {
       prefill: oc.input(ComposePrefillInputSchema).output(ComposePrefillOutputSchema),
       draftSave: oc.input(ComposeFieldsSchema).output(ComposeResultSchema),

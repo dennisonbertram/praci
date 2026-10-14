@@ -12,12 +12,15 @@ import {
   Skeleton,
 } from "@rakazo/ui-web";
 import {
+  Archive,
   ChevronDown,
   ChevronUp,
   FileArchive,
   FileImage,
   FileText,
   Forward,
+  Mail,
+  MailOpen,
   Reply,
   ReplyAll,
   X,
@@ -41,6 +44,9 @@ export function InboxMessageDialog({
   previousId,
   nextId,
   onNavigate,
+  unread,
+  onArchive,
+  onRead,
   onClose,
 }: {
   messageId: string | null;
@@ -50,6 +56,10 @@ export function InboxMessageDialog({
   previousId?: string;
   nextId?: string;
   onNavigate?: (messageId: string) => void;
+  /** With `onArchive` and `onRead`, adds Archive and Mark read or unread. Chat email cards omit them. */
+  unread?: boolean;
+  onArchive?: () => void;
+  onRead?: (read: boolean) => void;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -81,6 +91,9 @@ export function InboxMessageDialog({
             previousId={previousId}
             nextId={nextId}
             onNavigate={onNavigate}
+            unread={unread}
+            onArchive={onArchive}
+            onRead={onRead}
             composing={composing}
             setComposing={setComposing}
           />
@@ -98,6 +111,9 @@ function InboxMessage({
   previousId,
   nextId,
   onNavigate,
+  unread,
+  onArchive,
+  onRead,
   composing,
   setComposing,
 }: {
@@ -106,6 +122,9 @@ function InboxMessage({
   previousId?: string;
   nextId?: string;
   onNavigate?: (messageId: string) => void;
+  unread?: boolean;
+  onArchive?: () => void;
+  onRead?: (read: boolean) => void;
   composing: ComposeMode | null;
   setComposing: (mode: ComposeMode | null) => void;
 }) {
@@ -146,11 +165,12 @@ function InboxMessage({
         return;
       if (event.key === "j" && nextId) onNavigate(nextId);
       else if (event.key === "k" && previousId) onNavigate(previousId);
+      else if (event.key === "e" && onArchive) onArchive();
       else if (message && event.key in COMPOSE_KEYS) setComposing(COMPOSE_KEYS[event.key] ?? null);
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onNavigate, composing, setComposing, nextId, previousId, message]);
+  }, [onNavigate, composing, setComposing, nextId, previousId, message, onArchive]);
 
   const title = message?.subject ?? subject ?? "";
   const sent = message ? new Date(message.date) : null;
@@ -239,6 +259,18 @@ function InboxMessage({
             <Forward aria-hidden="true" />
             <Trans>Forward</Trans>
           </Button>
+          {onArchive ? (
+            <Button variant="outline" size="sm" onClick={onArchive}>
+              <Archive aria-hidden="true" />
+              <Trans>Archive</Trans>
+            </Button>
+          ) : null}
+          {onRead && unread !== undefined ? (
+            <Button variant="outline" size="sm" onClick={() => onRead(unread)}>
+              {unread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
+              {unread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {seed ? <ComposeEmail seed={seed} accounts={[]} onClose={() => setComposing(null)} /> : null}

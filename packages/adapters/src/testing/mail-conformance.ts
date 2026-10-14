@@ -144,3 +144,89 @@ export async function assertMailWriteConformance(
     (error) => error instanceof MailProviderError && error.kind === "not_found",
   );
 }
+
+/**
+ * Label behavior every MailProvider must show: list labels, mark read and unread, archive, and the
+ * errors for an unknown message, an unknown label and an account without permission to change mail.
+ * Run it after `assertMailConformance`.
+ */
+export async function assertMailModifyConformance(
+  provider: MailProvider,
+  emulator: Pick<MailEmulator, "gmail" | "accounts">,
+): Promise<void> {
+  const [a, b] = emulator.accounts;
+  assert.ok(a && b, "conformance needs two accounts");
+  const context: AdapterContext = {
+    operationId: "mail-modify-conformance",
+    traceId: "mail-modify-conformance",
+    spaceId: a.spaceId,
+    userId: a.userId,
+    signal: new AbortController().signal,
+  };
+  const labelsOf = async (id: string) => (await provider.getMessage(a, id, context)).labelIds;
+
+  const labels = await provider.listLabels(a, context);
+  assert.deepEqual(
+    labels.find((label) => label.id === "INBOX"),
+    { id: "INBOX", name: "INBOX", type: "system" },
+  );
+  assert.ok(labels.some((label) => label.type === "user"));
+
+  const unread = await provider.listMessages(
+    a,
+    { query: "in:inbox is:unread", pageSize: 1, useCache: false },
+    context,
+  );
+  const id = unread.messages[0]?.id as string;
+  assert.ok(id, "the seed has an unread inbox message");
+
+  const read = await provider.modifyMessage(a, id, { removeLabelIds: ["UNREAD"] }, context);
+  assert.ok(!read.labelIds.includes("UNREAD") && read.labelIds.includes("INBOX"));
+  assert.deepEqual(await labelsOf(id), read.labelIds);
+
+  const again = await provider.modifyMessage(a, id, { addLabelIds: ["UNREAD"] }, context);
+  assert.ok(again.labelIds.includes("UNREAD"));
+
+  await provider.modifyMessage(
+    a,
+    id,
+    { removeLabelIds: ["INBOX"], addLabelIds: ["Label_1"] },
+    context,
+  );
+  assert.deepEqual(
+    (await labelsOf(id)).filter((label) => label === "INBOX" || label === "Label_1"),
+    ["Label_1"],
+  );
+  const inbox = await provider.listMessages(
+    a,
+    { query: "in:inbox", pageSize: 500, useCache: false },
+    context,
+  );
+  assert.ok(!inbox.messages.some((m) => m.id === id), "an archived message leaves the inbox");
+
+  const kind = (expected: string) => (error: unknown) =>
+    error instanceof MailProviderError && error.kind === expected;
+  await assert.rejects(
+    provider.modifyMessage(a, "no-such-message", { removeLabelIds: ["UNREAD"] }, context),
+    kind("not_found"),
+  );
+  await assert.rejects(
+    provider.modifyMessage(a, id, { addLabelIds: ["no-such-label"] }, context),
+    kind("invalid"),
+  );
+  const others = await provider.listMessages(b, { query: "", pageSize: 1 }, context);
+  await assert.rejects(
+    provider.modifyMessage(
+      a,
+      others.messages[0]?.id as string,
+      { addLabelIds: ["STARRED"] },
+      context,
+    ),
+    kind("not_found"),
+  );
+  emulator.gmail.failNext(403, { reason: "insufficientPermissions", urlIncludes: "/modify" });
+  await assert.rejects(
+    provider.modifyMessage(a, id, { addLabelIds: ["STARRED"] }, context),
+    kind("auth"),
+  );
+}

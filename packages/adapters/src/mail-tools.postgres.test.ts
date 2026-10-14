@@ -299,6 +299,8 @@ describePostgres("mail tools (PostgreSQL + Gmail emulator)", () => {
           updateDraft: provider.updateDraft.bind(provider),
           sendDraft: provider.sendDraft.bind(provider),
           deleteDraft: provider.deleteDraft.bind(provider),
+          listLabels: provider.listLabels.bind(provider),
+          modifyMessage: provider.modifyMessage.bind(provider),
           listMessages: async (account, request, context) => {
             if (account.accountRef === "b")
               throw new MailProviderError("unavailable", "Mail provider returned 500");

@@ -570,6 +570,9 @@ msgstr "Onayla"
 msgid "Approve this server to let your agent use its tools."
 msgstr "Agent'ının bu sunucunun araçlarını kullanabilmesi için sunucuyu onayla."
 
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/BotContextMenu.tsx
 msgid "Archive"
 msgstr "Arşivle"
@@ -2946,6 +2949,16 @@ msgstr ""
 msgid "Mark noise"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark read"
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark unread"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Marked important"
 msgstr ""
@@ -3477,7 +3490,6 @@ msgstr "OAuth bağlantısı başarısız"
 
 #: src/components/integrations/McpServerRow.tsx
 #: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
 msgid "OAuth expired"
 msgstr ""
 

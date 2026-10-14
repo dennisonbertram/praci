@@ -272,10 +272,14 @@ export const InboxFeedbackInputSchema = z.object({
 });
 export const InboxFeedbackOutputSchema = z.object({ mark: InboxMarkSchema.nullable() });
 
+/** `read: false` marks only this message unread; `read: true` marks the whole thread read. */
+export const InboxMarkReadInputSchema = z.object({ messageId: Id, read: z.boolean() });
+
 export type ComposeFields = z.infer<typeof ComposeFieldsSchema>;
 export type ComposeMode = z.infer<typeof ComposeModeSchema>;
 export type ComposePrefillOutput = z.infer<typeof ComposePrefillOutputSchema>;
 export type ComposeResult = z.infer<typeof ComposeResultSchema>;
+export type InboxMarkReadInput = z.infer<typeof InboxMarkReadInputSchema>;
 export type InboxFeedbackInput = z.infer<typeof InboxFeedbackInputSchema>;
 export type InboxListInput = z.infer<typeof InboxListInputSchema>;
 export type InboxMessage = z.infer<typeof InboxMessageSchema>;

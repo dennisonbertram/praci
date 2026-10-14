@@ -23,7 +23,9 @@ const GMAIL_ORIGIN = "https://gmail.googleapis.com";
 const GMAIL_READONLY = "https://www.googleapis.com/auth/gmail.readonly";
 // gmail.compose adds drafts and sending. It cannot read mail, so gmail.readonly stays.
 const GMAIL_COMPOSE = "https://www.googleapis.com/auth/gmail.compose";
-const SCOPES = ["openid", "email", GMAIL_READONLY, GMAIL_COMPOSE];
+// gmail.modify adds labels: mark read or unread and archive. Like compose it is optional at connect.
+const GMAIL_MODIFY = "https://www.googleapis.com/auth/gmail.modify";
+const SCOPES = ["openid", "email", GMAIL_READONLY, GMAIL_COMPOSE, GMAIL_MODIFY];
 const GMAIL_METHODS = new Set(["GET", "POST", "PUT", "DELETE"]);
 const SECRET_KIND = "google-oauth";
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -63,9 +65,10 @@ class GoogleAuthError extends Error {
 }
 
 /**
- * Rakazo's own Google OAuth client. Reads mail, and saves and sends drafts. Accounts connected
- * before gmail.compose was requested only have read access, and Google answers 403
- * insufficientPermissions to their writes, which the mail provider reports as "reconnect".
+ * Rakazo's own Google OAuth client. Reads mail, saves and sends drafts, and changes labels.
+ * Accounts connected before gmail.compose or gmail.modify was requested lack that access, and
+ * Google answers 403 insufficientPermissions to those writes, which the mail provider reports as
+ * "reconnect". Reading keeps working.
  */
 export class GoogleConnector implements ManagedConnectorProvider {
   /** ponytail: per-process access-token cache; each process refreshes on its own, which Google allows. */
@@ -167,7 +170,7 @@ export class GoogleConnector implements ManagedConnectorProvider {
       secrets.push(token.accessToken);
       if (token.refreshToken) secrets.push(token.refreshToken);
       // Google lets the user untick individual scopes on the consent screen. Reading is required.
-      // Without gmail.compose the account still reads mail, and sending asks the user to reconnect.
+      // Without gmail.compose or gmail.modify the account still reads mail; those writes ask the user to reconnect.
       if (!token.scope.split(" ").includes(GMAIL_READONLY)) {
         await this.revokeToken(token.refreshToken ?? token.accessToken, context.signal).catch(
           () => undefined,
