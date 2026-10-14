@@ -130,11 +130,11 @@ describe("mobile session storage", () => {
   });
 
   it("forgets the cached avatar style on sign-out", async () => {
-    await saveAvatarStyle("organic");
+    await saveAvatarStyle("robot");
     await clearSessionToken();
 
     expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(AVATAR_STYLE_KEY);
-    expect(getCachedAvatarStyle()).toBe("robot");
+    expect(getCachedAvatarStyle()).toBe("organic");
   });
 
   it("ignores an avatar style response from a session that was cleared", async () => {
@@ -142,9 +142,9 @@ describe("mobile session storage", () => {
     await clearSessionToken();
     vi.mocked(SecureStore.setItemAsync).mockClear();
 
-    await expect(saveAvatarStyleIfCurrent(generation, "organic")).resolves.toBe(false);
-    expect(SecureStore.setItemAsync).not.toHaveBeenCalledWith(AVATAR_STYLE_KEY, "organic");
-    expect(getCachedAvatarStyle()).toBe("robot");
+    await expect(saveAvatarStyleIfCurrent(generation, "robot")).resolves.toBe(false);
+    expect(SecureStore.setItemAsync).not.toHaveBeenCalledWith(AVATAR_STYLE_KEY, "robot");
+    expect(getCachedAvatarStyle()).toBe("organic");
   });
 
   it("does not let an in-flight style write land after sign-out", async () => {
@@ -163,7 +163,7 @@ describe("mobile session storage", () => {
 
     try {
       const generation = currentSessionGeneration();
-      const saving = saveAvatarStyleIfCurrent(generation, "organic");
+      const saving = saveAvatarStyleIfCurrent(generation, "robot");
       await Promise.resolve();
       const clearing = clearSessionToken();
       releaseWrite();
@@ -171,7 +171,7 @@ describe("mobile session storage", () => {
       await clearing;
 
       expect(disk.has(AVATAR_STYLE_KEY)).toBe(false);
-      expect(getCachedAvatarStyle()).toBe("robot");
+      expect(getCachedAvatarStyle()).toBe("organic");
     } finally {
       releaseWrite();
       vi.mocked(SecureStore.setItemAsync).mockReset();
@@ -187,7 +187,7 @@ describe("mobile session storage", () => {
     vi.mocked(SecureStore.deleteItemAsync).mockImplementation(async (key) => {
       disk.delete(key);
     });
-    await saveAvatarStyle("organic");
+    await saveAvatarStyle("robot");
     vi.mocked(SecureStore.deleteItemAsync).mockImplementation(async (key) => {
       if (key === AVATAR_STYLE_KEY) throw new Error("device locked");
       disk.delete(key);
@@ -200,7 +200,7 @@ describe("mobile session storage", () => {
     try {
       await expect(clearSessionToken()).resolves.toBe(true);
       expect(disk.has("rakazo.session_token")).toBe(false);
-      expect(disk.get(AVATAR_STYLE_KEY)).toBe("organic");
+      expect(disk.get(AVATAR_STYLE_KEY)).toBe("robot");
     } finally {
       vi.mocked(SecureStore.setItemAsync).mockReset();
       vi.mocked(SecureStore.deleteItemAsync).mockReset();

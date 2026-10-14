@@ -1,4 +1,5 @@
 import type { AvatarStyle, Me } from "@rakazo/contracts";
+import { DEFAULT_AVATAR_STYLE } from "@rakazo/contracts";
 import { usePathname } from "expo-router";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
@@ -10,7 +11,7 @@ const AvatarStyleContext = createContext<{
   avatarStyle: AvatarStyle;
   updateAvatarStyle: (avatarStyle: AvatarStyle) => Promise<void>;
 }>({
-  avatarStyle: "robot",
+  avatarStyle: DEFAULT_AVATAR_STYLE,
   updateAvatarStyle: async () => undefined,
 });
 

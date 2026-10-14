@@ -1,5 +1,6 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { AvatarStyleProvider } from "./avatar-style.js";
 import { GroupAvatar } from "./group-avatar.js";
 
 describe("GroupAvatar", () => {
@@ -9,7 +10,11 @@ describe("GroupAvatar", () => {
   });
 
   it("renders single BotAvatar when 1 member", () => {
-    const html = renderToString(<GroupAvatar members={[{ name: "Harry", color: "#8B5CF6" }]} />);
+    const html = renderToString(
+      <AvatarStyleProvider value="robot">
+        <GroupAvatar members={[{ name: "Harry", color: "#8B5CF6" }]} />
+      </AvatarStyleProvider>,
+    );
     expect(html).toContain("rakazo-bot-avatar");
   });
 
@@ -29,12 +34,14 @@ describe("GroupAvatar", () => {
 
   it("renders a working member inside a group avatar", () => {
     const html = renderToString(
-      <GroupAvatar
-        members={[
-          { name: "Sherlock", color: "#8B5CF6", status: "running" },
-          { name: "Elon", color: "#06B6D4", status: "idle" },
-        ]}
-      />,
+      <AvatarStyleProvider value="robot">
+        <GroupAvatar
+          members={[
+            { name: "Sherlock", color: "#8B5CF6", status: "running" },
+            { name: "Elon", color: "#06B6D4", status: "idle" },
+          ]}
+        />
+      </AvatarStyleProvider>,
     );
     expect(html).toContain('data-working="true"');
     expect(html).toContain("rakazo-bot-avatar");

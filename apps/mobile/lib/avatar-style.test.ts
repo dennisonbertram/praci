@@ -23,41 +23,41 @@ describe("mobile avatar style cache", () => {
     const { AVATAR_STYLE_KEY, clearAvatarStyle, loadAvatarStyle, saveAvatarStyle } = await import(
       "./avatar-style"
     );
-    await saveAvatarStyle("organic");
+    await saveAvatarStyle("robot");
     vi.mocked(SecureStore.deleteItemAsync).mockRejectedValueOnce(new Error("locked"));
 
     await clearAvatarStyle();
 
-    expect(store.get(AVATAR_STYLE_KEY)).toBe("robot");
-    await expect(loadAvatarStyle()).resolves.toBe("robot");
+    expect(store.get(AVATAR_STYLE_KEY)).toBe("organic");
+    await expect(loadAvatarStyle()).resolves.toBe("organic");
   });
 
-  it("defaults to robot and ignores an unknown stored value", async () => {
+  it("defaults to organic and ignores an unknown stored value", async () => {
     const { AVATAR_STYLE_KEY, getCachedAvatarStyle, loadAvatarStyle } = await import(
       "./avatar-style"
     );
-    expect(getCachedAvatarStyle()).toBe("robot");
+    expect(getCachedAvatarStyle()).toBe("organic");
     store.set(AVATAR_STYLE_KEY, "pixel");
-    await expect(loadAvatarStyle()).resolves.toBe("robot");
+    await expect(loadAvatarStyle()).resolves.toBe("organic");
   });
 
   it("starts from the last confirmed style on the next launch", async () => {
     const first = await import("./avatar-style");
-    await first.saveAvatarStyle("organic");
-    expect(store.get(first.AVATAR_STYLE_KEY)).toBe("organic");
+    await first.saveAvatarStyle("robot");
+    expect(store.get(first.AVATAR_STYLE_KEY)).toBe("robot");
 
     vi.resetModules();
     const next = await import("./avatar-style");
-    expect(next.getCachedAvatarStyle()).toBe("robot");
-    await expect(next.loadAvatarStyle()).resolves.toBe("organic");
     expect(next.getCachedAvatarStyle()).toBe("organic");
+    await expect(next.loadAvatarStyle()).resolves.toBe("robot");
+    expect(next.getCachedAvatarStyle()).toBe("robot");
   });
 
   it("keeps the default when SecureStore cannot be read", async () => {
     const SecureStore = await import("expo-secure-store");
     const { loadAvatarStyle } = await import("./avatar-style");
     vi.mocked(SecureStore.getItemAsync).mockRejectedValueOnce(new Error("device locked"));
-    await expect(loadAvatarStyle()).resolves.toBe("robot");
+    await expect(loadAvatarStyle()).resolves.toBe("organic");
   });
 
   it("retries a style whose save failed", async () => {
@@ -66,21 +66,21 @@ describe("mobile avatar style cache", () => {
       "./avatar-style"
     );
     vi.mocked(SecureStore.setItemAsync).mockRejectedValueOnce(new Error("device locked"));
-    await saveAvatarStyle("organic");
+    await saveAvatarStyle("robot");
     expect(store.has(AVATAR_STYLE_KEY)).toBe(false);
-    expect(getCachedAvatarStyle()).toBe("organic");
+    expect(getCachedAvatarStyle()).toBe("robot");
 
-    await saveAvatarStyle("organic");
-    expect(store.get(AVATAR_STYLE_KEY)).toBe("organic");
+    await saveAvatarStyle("robot");
+    expect(store.get(AVATAR_STYLE_KEY)).toBe("robot");
   });
 
   it("clears the cached style", async () => {
     const { AVATAR_STYLE_KEY, clearAvatarStyle, getCachedAvatarStyle, saveAvatarStyle } =
       await import("./avatar-style");
-    await saveAvatarStyle("organic");
+    await saveAvatarStyle("robot");
     await clearAvatarStyle();
     expect(store.has(AVATAR_STYLE_KEY)).toBe(false);
-    expect(getCachedAvatarStyle()).toBe("robot");
+    expect(getCachedAvatarStyle()).toBe("organic");
   });
 
   it("discards a late save that finishes after clear", async () => {
@@ -97,14 +97,14 @@ describe("mobile avatar style cache", () => {
       store.set(key, value);
     });
 
-    const save = saveAvatarStyle("organic");
+    const save = saveAvatarStyle("robot");
     await Promise.resolve();
     const clearing = clearAvatarStyle();
     finishSave();
     await Promise.all([save, clearing]);
 
     expect(store.has(AVATAR_STYLE_KEY)).toBe(false);
-    expect(getCachedAvatarStyle()).toBe("robot");
+    expect(getCachedAvatarStyle()).toBe("organic");
   });
 
   it("keeps the newer style when an older save finishes last", async () => {
@@ -124,14 +124,14 @@ describe("mobile avatar style cache", () => {
     });
 
     try {
-      const first = saveAvatarStyle("organic");
+      const first = saveAvatarStyle("robot");
       await Promise.resolve();
-      const second = saveAvatarStyle("robot");
+      const second = saveAvatarStyle("organic");
       releaseFirst();
       await Promise.all([first, second]);
 
-      expect(getCachedAvatarStyle()).toBe("robot");
-      expect(store.get(AVATAR_STYLE_KEY)).toBe("robot");
+      expect(getCachedAvatarStyle()).toBe("organic");
+      expect(store.get(AVATAR_STYLE_KEY)).toBe("organic");
     } finally {
       releaseFirst();
       vi.mocked(SecureStore.setItemAsync).mockImplementation(async (key: string, value: string) => {
@@ -144,14 +144,14 @@ describe("mobile avatar style cache", () => {
     const SecureStore = await import("expo-secure-store");
     const { AVATAR_STYLE_KEY, clearAvatarStyle, getCachedAvatarStyle, saveAvatarStyle } =
       await import("./avatar-style");
-    await saveAvatarStyle("organic");
+    await saveAvatarStyle("robot");
     vi.mocked(SecureStore.deleteItemAsync).mockRejectedValue(new Error("device locked"));
     vi.mocked(SecureStore.setItemAsync).mockRejectedValue(new Error("device locked"));
 
     try {
       await expect(clearAvatarStyle()).resolves.toBe(false);
-      expect(store.get(AVATAR_STYLE_KEY)).toBe("organic");
-      expect(getCachedAvatarStyle()).toBe("organic");
+      expect(store.get(AVATAR_STYLE_KEY)).toBe("robot");
+      expect(getCachedAvatarStyle()).toBe("robot");
     } finally {
       vi.mocked(SecureStore.deleteItemAsync).mockImplementation(async (key: string) => {
         store.delete(key);
@@ -182,8 +182,8 @@ describe("avatar style refresh and update", () => {
 
   it("does not let a foreground read replace a newer in-flight update", async () => {
     const { createAvatarStyleClient } = await import("./avatar-style");
-    const read = deferred<"robot" | "organic">();
-    const write = deferred<"robot" | "organic">();
+    const read = deferred<"organic" | "robot">();
+    const write = deferred<"organic" | "robot">();
     const published: string[] = [];
     const generation = 1;
     const client = createAvatarStyleClient({
@@ -195,23 +195,23 @@ describe("avatar style refresh and update", () => {
     });
 
     client.refresh();
-    const update = client.update("organic");
+    const update = client.update("robot");
     client.refresh();
-    read.resolve("robot");
+    read.resolve("organic");
     await afterMicrotasks();
     expect(published).toEqual([]);
 
-    write.resolve("organic");
+    write.resolve("robot");
     await update;
     await afterMicrotasks();
     // The refresh queued during the update runs afterward with the shared read.
-    expect(published).toEqual(["organic", "robot"]);
+    expect(published).toEqual(["robot", "organic"]);
   });
 
   it("applies a refresh that starts after the update has finished", async () => {
     const { createAvatarStyleClient } = await import("./avatar-style");
-    const write = deferred<"robot" | "organic">();
-    const read = deferred<"robot" | "organic">();
+    const write = deferred<"organic" | "robot">();
+    const read = deferred<"organic" | "robot">();
     const published: string[] = [];
     const client = createAvatarStyleClient({
       read: () => read.promise,
@@ -221,25 +221,25 @@ describe("avatar style refresh and update", () => {
       save: async () => true,
     });
 
-    const update = client.update("organic");
-    write.resolve("organic");
+    const update = client.update("robot");
+    write.resolve("robot");
     await update;
     client.refresh();
-    read.resolve("robot");
+    read.resolve("organic");
     await afterMicrotasks();
 
-    expect(published).toEqual(["organic", "robot"]);
+    expect(published).toEqual(["robot", "organic"]);
   });
 
   it("drops a style response after the session generation changes", async () => {
     const { createAvatarStyleClient } = await import("./avatar-style");
-    const read = deferred<"robot" | "organic">();
+    const read = deferred<"organic" | "robot">();
     const published: string[] = [];
     const saved: string[] = [];
     let generation = 1;
     const client = createAvatarStyleClient({
       read: () => read.promise,
-      write: async () => "organic",
+      write: async () => "robot",
       publish: (style) => published.push(style),
       generation: () => generation,
       save: async (seen, style) => {
@@ -251,7 +251,7 @@ describe("avatar style refresh and update", () => {
 
     client.refresh();
     generation = 2;
-    read.resolve("organic");
+    read.resolve("robot");
     await afterMicrotasks();
 
     expect(saved).toEqual([]);
@@ -260,8 +260,8 @@ describe("avatar style refresh and update", () => {
 
   it("runs a deferred refresh after an in-flight update finishes", async () => {
     const { createAvatarStyleClient } = await import("./avatar-style");
-    const write = deferred<"robot" | "organic">();
-    const read = deferred<"robot" | "organic">();
+    const write = deferred<"organic" | "robot">();
+    const read = deferred<"organic" | "robot">();
     const published: string[] = [];
     let reads = 0;
     const client = createAvatarStyleClient({
@@ -275,17 +275,17 @@ describe("avatar style refresh and update", () => {
       save: async () => true,
     });
 
-    const update = client.update("organic");
+    const update = client.update("robot");
     client.refresh();
     expect(reads).toBe(0);
 
-    write.resolve("organic");
+    write.resolve("robot");
     await update;
     await afterMicrotasks();
     expect(reads).toBe(1);
 
-    read.resolve("robot");
+    read.resolve("organic");
     await afterMicrotasks();
-    expect(published).toEqual(["organic", "robot"]);
+    expect(published).toEqual(["robot", "organic"]);
   });
 });

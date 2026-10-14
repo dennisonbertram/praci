@@ -190,7 +190,7 @@ export function GeneralSettingsPanels({
           <Trans>Avatars</Trans>
         </h3>
         <div className="mt-3 grid grid-cols-2 gap-3">
-          {(["robot", "organic"] as const).map((style) => (
+          {(["organic", "robot"] as const).map((style) => (
             <Toggle
               key={style}
               variant="outline"

@@ -20,6 +20,7 @@ export type MemoryScopeValue = z.infer<typeof MemoryScopeSchema>;
 
 export const AvatarStyleSchema = z.enum(["robot", "organic"]);
 export type AvatarStyle = z.infer<typeof AvatarStyleSchema>;
+export const DEFAULT_AVATAR_STYLE: AvatarStyle = "organic";
 
 export const ThinkingLevelSchema = z.enum([
   "off",

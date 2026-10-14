@@ -395,7 +395,7 @@ export default function Account() {
         <View accessibilityLabel={t("Avatar style")} style={styles.section}>
           <SettingsLabel>{t("Avatars")}</SettingsLabel>
           <View style={[styles.options, stackOptions && styles.optionsStacked]}>
-            {(["robot", "organic"] as const).map((style) => {
+            {(["organic", "robot"] as const).map((style) => {
               const selected = avatarStyle === style;
               const styleLabel = style === "robot" ? t("Robot") : t("Organic");
               return (
