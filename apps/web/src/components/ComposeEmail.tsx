@@ -583,7 +583,7 @@ export function ComposeEmail({
             <Button
               variant="ghost"
               size="xs"
-              className="mx-4 mb-3"
+              className="mx-4 mb-3 px-2.5 text-base leading-none"
               aria-label={t`Show quoted text`}
               onClick={() => setQuoteOpen(true)}
             >
