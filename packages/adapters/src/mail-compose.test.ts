@@ -185,6 +185,25 @@ describe("replyPrefill", () => {
     expect(out.body).toContain("> Offsite is on the 14th.\n> Bring a laptop.");
   });
 
+  it("writes the quote date in the person's time zone and locale, UTC when none is given", () => {
+    // 15:04 UTC is 8:04 AM in Los Angeles (UTC-7 in September) and 17:04 in Berlin.
+    const la = replyPrefill(original(), "reply", null, {
+      timeZone: "America/Los_Angeles",
+      locale: "en-US",
+    });
+    expect(la.body).toContain("On Wed, Sep 23, 2026, 8:04 AM, Priya Shah");
+    const berlin = replyPrefill(original(), "forward", null, {
+      timeZone: "Europe/Berlin",
+      locale: "de-DE",
+    });
+    expect(berlin.body).toContain("Date: Mi., 23. Sept. 2026, 17:04");
+    expect(replyPrefill(original(), "reply", null).body).toContain(
+      "On Wed, Sep 23, 2026, 3:04 PM,",
+    );
+    const bad = replyPrefill(original(), "reply", null, { timeZone: "Not/AZone", locale: "x" });
+    expect(bad.body).toContain("On Wed, Sep 23, 2026, 3:04 PM,");
+  });
+
   it("replies to Reply-To when the sender set one", () => {
     const out = replyPrefill(
       original({ replyTo: [{ address: "team-replies@example.test" }] }),
@@ -226,6 +245,40 @@ describe("replyPrefill", () => {
     expect(out.to).toBe("Priya Shah <priya@example.test>");
   });
 
+  it("reply all treats Gmail dots, plus tags and googlemail.com as the user's own address", () => {
+    const out = replyPrefill(
+      original({
+        to: [{ address: "Al.ice+news@googlemail.com" }, { address: "carol@example.test" }],
+        cc: [],
+      }),
+      "replyAll",
+      "alice@gmail.com",
+    );
+    expect(out.to).toBe("Priya Shah <priya@example.test>, carol@example.test");
+  });
+
+  it("reply all leaves out every address the user owns, such as the other connected accounts", () => {
+    const out = replyPrefill(
+      original({
+        to: [alice, { address: "alice@other.test" }],
+        cc: [{ address: "me@third.test" }],
+      }),
+      "replyAll",
+      ["alice@example.test", "alice@other.test", "me@third.test"],
+    );
+    expect(out.to).toBe("Priya Shah <priya@example.test>");
+    expect(out.cc).toBe("");
+  });
+
+  it("reply all keeps the original sender when removing the user's address would leave To empty", () => {
+    const out = replyPrefill(
+      original({ replyTo: [alice], to: [alice], cc: [] }),
+      "replyAll",
+      "alice@example.test",
+    );
+    expect(out.to).toBe("Priya Shah <priya@example.test>");
+  });
+
   it("forwards with an Fwd: subject, no recipients and the original quoted with its headers", () => {
     const out = replyPrefill(original(), "forward", "alice@example.test");
     expect(out.to).toBe("");
@@ -240,5 +293,48 @@ describe("replyPrefill", () => {
     expect(replyPrefill(original({ subject: "Fwd: Plans" }), "forward", null).subject).toBe(
       "Fwd: Plans",
     );
+  });
+});
+
+describe("buildRawMessage with HTML and attachments", () => {
+  it("uses the given HTML for the HTML part", () => {
+    const mime = parseRawMime(buildRawMessage({ ...base, html: "<p>Hi <b>Priya</b></p>" }));
+    expect(mime.html).toBe("<p>Hi <b>Priya</b></p>");
+    expect(mime.text).toBe("Hi Priya");
+  });
+
+  it("nests the text and HTML parts in multipart/mixed with the files", () => {
+    const data = new Uint8Array([1, 2, 3, 250]);
+    const raw = buildRawMessage({
+      ...base,
+      attachments: [
+        { filename: 'plan "v2".pdf', mimeType: "application/pdf", data },
+        { filename: "résumé.txt", mimeType: "bad type", data },
+      ],
+    });
+    const mime = parseRawMime(raw);
+    expect(mime.types).toEqual([
+      "multipart/mixed",
+      "multipart/alternative",
+      "text/plain",
+      "text/html",
+      "application/pdf",
+      "application/octet-stream",
+    ]);
+    expect(mime.text).toBe("Hi Priya");
+    expect(raw).toContain('filename="plan \\"v2\\".pdf"');
+    expect(raw).toContain("filename*=UTF-8''r%C3%A9sum%C3%A9.txt");
+    expect(raw).toContain(Buffer.from(data).toString("base64"));
+  });
+
+  it("rejects an attachment name with a path or line break", () => {
+    for (const filename of ["a/b.txt", "a\r\nX: y.txt", ""]) {
+      invalid(() =>
+        buildRawMessage({
+          ...base,
+          attachments: [{ filename, mimeType: "text/plain", data: new Uint8Array() }],
+        }),
+      );
+    }
   });
 });

@@ -13,7 +13,7 @@ vi.mock("@lingui/react/macro", () => {
 });
 vi.mock("../components/SandboxedHtmlViewer", () => ({ SandboxedHtmlViewer: () => null }));
 
-import { InboxRow } from "./Inbox";
+import { InboxRow } from "../components/inbox/InboxRow";
 
 const mail = (extra: Partial<MailRow> = {}): MailRow => ({
   id: "m1",
@@ -37,13 +37,30 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
 });
 
-async function render(row: MailRow) {
+async function render(
+  row: MailRow,
+  props: {
+    onOpen?: () => void;
+    onMark?: (id: string, mark: "important" | "noise" | null) => void;
+    selected?: boolean;
+    hideAttention?: boolean;
+  } = {},
+) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   await act(async () =>
-    root.render(<InboxRow row={row} onOpen={() => {}} onMark={undefined} today />),
+    root.render(
+      <InboxRow
+        row={row}
+        onOpen={props.onOpen ?? (() => {})}
+        onMark={props.onMark}
+        selected={props.selected}
+        hideAttention={props.hideAttention}
+        today
+      />,
+    ),
   );
   cleanups.push(async () => {
     await act(async () => root.unmount());
@@ -81,42 +98,64 @@ it("keeps the warning icon beside the Junk label on a scam row", async () => {
   expect(badge(container)?.textContent).toBe("Junk");
 });
 
-it("keeps the time on one line, right after the label, and the subject in the row", async () => {
+it("keeps the time on one line and the subject in the row", async () => {
   const container = await render(mail({ category: "newsletter" }));
   const time = container.querySelector("time");
   expect(time?.className).toContain("whitespace-nowrap");
   expect(time?.className).toContain("tabular-nums");
   expect(container.textContent).toContain("Offsite dates");
   expect(container.textContent).toContain("Can you do the 14th?");
-  // Label and time share one right-aligned cell so neither can wrap onto the other.
-  expect(time?.parentElement).toBe(badge(container)?.parentElement);
 });
 
-it("shows the sender's first initial in an avatar chip and loads no image", async () => {
-  const container = await render(mail({ from: "dana Reyes" }));
-  const chip = container.querySelector("span[aria-hidden='true']");
-  expect(chip?.textContent).toBe("D");
-  expect(chip?.className).toContain("rounded-full");
-  expect(container.querySelectorAll("img")).toHaveLength(0);
-});
-
-it("reads unread as semibold and read as regular and muted", async () => {
+it("marks unread with a dot and semibold text, and read with neither", async () => {
   const unread = await render(mail({ unread: true }));
   const read = await render(mail({ unread: false }));
-  const classes = (c: HTMLElement) => ({
-    sender: c.querySelectorAll('span[dir="auto"]')[0]?.className ?? "",
-    subject: c.querySelectorAll('span[dir="auto"]')[1]?.className ?? "",
-    time: c.querySelector("time")?.className ?? "",
-    row: c.querySelector("button")?.className ?? "",
-  });
-  for (const part of ["sender", "subject", "time"] as const) {
-    expect(classes(unread)[part]).toContain("font-semibold");
-    expect(classes(read)[part]).not.toContain("font-semibold");
-  }
-  expect(classes(unread).row).toContain("text-foreground");
-  expect(classes(read).row).toContain("text-muted-foreground");
-  expect(read.textContent).not.toContain("(unread)");
+  expect(unread.querySelector("[data-unread-dot]")).not.toBeNull();
+  expect(read.querySelector("[data-unread-dot]")).toBeNull();
+  const sender = (c: HTMLElement) => c.querySelectorAll('span[dir="auto"]')[0]?.className ?? "";
+  expect(sender(unread)).toContain("font-semibold");
+  expect(sender(read)).not.toContain("font-semibold");
+  expect(read.querySelector("button")?.className).toContain("text-foreground");
   expect(unread.textContent).toContain("(unread)");
+  expect(read.textContent).not.toContain("(unread)");
+  expect(unread.querySelectorAll("img")).toHaveLength(0);
+});
+
+it("hides only the attention label when hideAttention is set", async () => {
+  const attention = mail({ needsReply: true, priority: "important", category: "reply" });
+  expect(badge(await render(attention, { hideAttention: true }))).toBeNull();
+  expect(
+    badge(await render(mail({ category: "newsletter" }), { hideAttention: true }))?.textContent,
+  ).toBe("Newsletter");
+});
+
+it("keeps the date rendered when triage is on", async () => {
+  const container = await render(mail(), { onMark: () => {} });
+  expect(container.querySelector("time")?.textContent).not.toBe("");
+});
+
+it("marks without opening, and a second click clears the mark", async () => {
+  const onOpen = vi.fn();
+  const onMark = vi.fn();
+  const container = await render(mail(), { onOpen, onMark });
+  const star = container.querySelector<HTMLButtonElement>('button[aria-label="Mark important"]');
+  expect(star?.getAttribute("aria-pressed")).toBe("false");
+  await act(async () => star?.click());
+  expect(onMark).toHaveBeenCalledWith("m1", "important");
+  expect(onOpen).not.toHaveBeenCalled();
+  const pressed = await render(mail({ feedback: "important" }), { onOpen, onMark });
+  const again = pressed.querySelector<HTMLButtonElement>('button[aria-label="Mark important"]');
+  expect(again?.getAttribute("aria-pressed")).toBe("true");
+  await act(async () => again?.click());
+  expect(onMark).toHaveBeenLastCalledWith("m1", null);
+});
+
+it("flags the selected row and exposes its id", async () => {
+  const container = await render(mail(), { selected: true });
+  const main = container.querySelector("button[data-row-id]");
+  expect(main?.getAttribute("data-row-id")).toBe("m1");
+  expect(main?.getAttribute("aria-current")).toBe("true");
+  expect((await render(mail())).querySelector("button")?.hasAttribute("aria-current")).toBe(false);
 });
 
 it("joins the subject and preview with a hyphen, the preview in regular weight", async () => {

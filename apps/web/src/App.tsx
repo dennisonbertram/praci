@@ -15,6 +15,7 @@ import {
 import { Navigate, Outlet, Route, Routes, useSearchParams } from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { MailOutbox } from "./components/MailOutbox";
 import { SubscriptionGate } from "./components/SubscriptionGate";
 import { authClient } from "./lib/auth";
 import { getTicketBoardEnabled, subscribeTicketBoardEnabled } from "./lib/bootstrap";
@@ -171,6 +172,7 @@ function SessionApp() {
               user ? (
                 <SubscriptionGate fallback={<GateFallback />}>
                   <Outlet />
+                  <MailOutbox />
                 </SubscriptionGate>
               ) : (
                 <Navigate to="/sign-in" replace />

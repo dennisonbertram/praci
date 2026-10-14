@@ -158,6 +158,8 @@ export const InboxTodosOutputSchema = z.object({
 export const InboxMessageSchema = z.object({
   from: z.string(),
   to: z.string(),
+  /** Empty when the message has no Cc. */
+  cc: z.string(),
   date: z.string(),
   subject: z.string(),
   html: z.string().nullable(),
@@ -182,7 +184,13 @@ export const ComposeClientId = z
 
 export const ComposeModeSchema = z.enum(["reply", "replyAll", "forward"]);
 
-export const ComposePrefillInputSchema = z.object({ messageId: Id, mode: ComposeModeSchema });
+export const ComposePrefillInputSchema = z.object({
+  messageId: Id,
+  mode: ComposeModeSchema,
+  /** IANA zone and BCP 47 locale of the browser, for dates written into the quote. Default UTC, en-US. */
+  timeZone: z.string().max(64).optional(),
+  locale: z.string().max(35).optional(),
+});
 
 /** Fields are text as typed; recipients are comma-separated. The account is the one the original came from. */
 export const ComposePrefillOutputSchema = z.object({
@@ -191,22 +199,61 @@ export const ComposePrefillOutputSchema = z.object({
   cc: z.string(),
   subject: z.string(),
   body: z.string(),
+  /** A forward of an HTML mail: the original's sanitized HTML, to show below the forwarded header in `body`. */
+  quotedHtml: z.string().optional(),
   /** Present for a reply, which stays in the original's thread; absent for a forward. */
   replyToMessageId: Id.optional(),
+  /** A forward's original files (not inline pictures), to be attached again on send; [] otherwise. */
+  attachments: z.array(
+    z.object({
+      id: z.string(),
+      filename: z.string(),
+      mimeType: z.string(),
+      size: z.number().int().nonnegative(),
+    }),
+  ),
+  /** The original had attachments, but together they are over the attachment limit. */
+  attachmentsTooLarge: z.boolean().optional(),
 });
 
 export const MAX_COMPOSE_BODY = 150_000;
+export const MAX_COMPOSE_HTML = 300_000;
+/**
+ * Attachments travel inside the JSON request, which the API caps at 16 MB; base64 adds a third,
+ * so 10 MB of files is the most that fits with the body.
+ */
+export const MAX_COMPOSE_ATTACHMENT_MB = 10;
+export const MAX_COMPOSE_ATTACHMENT_BYTES = MAX_COMPOSE_ATTACHMENT_MB * 1024 * 1024;
+export const MAX_COMPOSE_ATTACHMENTS = 20;
+
+export const ComposeAttachmentSchema = z.object({
+  filename: z.string().min(1).max(255),
+  mimeType: z.string().max(255),
+  /** The file's bytes, base64. */
+  data: z.string().max(Math.ceil((MAX_COMPOSE_ATTACHMENT_BYTES * 4) / 3) + 4),
+});
 
 export const ComposeFieldsSchema = z.object({
   clientId: ComposeClientId,
   /** The From account: one of the caller's connected Gmail accounts. */
   connectionId: Id,
   replyToMessageId: Id.optional(),
+  /** Sending a forward: the server attaches these files of the original, so they never travel from the browser. */
+  forwardOf: z
+    .object({
+      messageId: Id,
+      attachmentIds: z.array(z.string().min(1).max(100)).max(MAX_COMPOSE_ATTACHMENTS),
+    })
+    .optional(),
   to: z.string().max(4_000),
   cc: z.string().max(4_000),
   bcc: z.string().max(4_000),
   subject: z.string().max(998),
+  /** Plain text; used when `html` is absent. With `html`, the server writes the text from it. */
   body: z.string().max(MAX_COMPOSE_BODY),
+  /** The editor's HTML. The server keeps only basic formatting and links. */
+  html: z.string().max(MAX_COMPOSE_HTML).optional(),
+  attachments: z.array(ComposeAttachmentSchema).max(MAX_COMPOSE_ATTACHMENTS).optional(),
 });
 
 /**

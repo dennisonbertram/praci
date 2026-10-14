@@ -1,13 +1,30 @@
 import { ORPCError } from "@orpc/server";
-import type { AdapterContext, MailAccount, MailDraftInput } from "@rakazo/adapter-kit";
+import type {
+  AdapterContext,
+  MailAccount,
+  MailDraftAttachment,
+  MailDraftInput,
+} from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
-import { buildRawMessage, parseRecipients, replyPrefill, syncMailbox } from "@rakazo/adapters";
+import {
+  buildRawMessage,
+  htmlToText,
+  parseRecipients,
+  replyPrefill,
+  sanitizeComposeHtml,
+  syncMailbox,
+} from "@rakazo/adapters";
 import type {
   Actor,
   ComposeFields,
   ComposeMode,
   ComposePrefillOutput,
   ComposeResult,
+} from "@rakazo/contracts";
+import {
+  MAX_COMPOSE_ATTACHMENT_BYTES,
+  MAX_COMPOSE_ATTACHMENT_MB,
+  MAX_COMPOSE_HTML,
 } from "@rakazo/contracts";
 import { getLogger } from "@rakazo/logging";
 import type { InboxDeps } from "./inbox.js";
@@ -34,19 +51,22 @@ function badRequest(error: unknown): never {
 }
 
 /** One of the caller's own connected Gmail accounts, by connection id. */
+const ownAccounts = (deps: ComposeDeps, actor: Actor, context: AdapterContext) =>
+  deps.mail.listAccounts({ spaceId: actor.spaceId, userId: actor.userId }, context);
+
+function pickAccount(accounts: MailAccount[], connectionId: string): MailAccount {
+  const account = accounts.find((a) => a.id === connectionId);
+  if (!account) throw notFound();
+  return account;
+}
+
 async function ownAccount(
   deps: ComposeDeps,
   actor: Actor,
   connectionId: string,
   context: AdapterContext,
 ): Promise<MailAccount> {
-  const accounts = await deps.mail.listAccounts(
-    { spaceId: actor.spaceId, userId: actor.userId },
-    context,
-  );
-  const account = accounts.find((a) => a.id === connectionId);
-  if (!account) throw notFound();
-  return account;
+  return pickAccount(await ownAccounts(deps, actor, context), connectionId);
 }
 
 /** The provider id of the caller's cached message on this account. */
@@ -72,19 +92,35 @@ async function ownMessage(
 export async function inboxComposePrefill(
   deps: ComposeDeps,
   actor: Actor,
-  input: { messageId: string; mode: ComposeMode },
+  input: { messageId: string; mode: ComposeMode; timeZone?: string; locale?: string },
   signal?: AbortSignal,
 ): Promise<ComposePrefillOutput> {
   const context = mailContext(actor, "inbox.compose.prefill", signal);
   const original = await ownMessage(deps, actor, input.messageId, undefined);
   // The account comes from the actor's own connections, never from client input.
-  const account = await ownAccount(deps, actor, original.connectionId, context);
+  const accounts = await ownAccounts(deps, actor, context);
+  const account = pickAccount(accounts, original.connectionId);
   try {
     const message = await deps.mail.getMessage(account, original.providerMessageId, context);
-    const prefill = replyPrefill(message, input.mode, account.address);
+    // Every connected address is the user's own, so reply all never addresses the user.
+    const mine = accounts.flatMap((a) => (a.address ? [a.address] : []));
+    const prefill = replyPrefill(message, input.mode, mine, input);
+    // A forward of an HTML mail keeps its formatting; an oversized result falls back to the text.
+    const quotedHtml =
+      input.mode === "forward" && message.html ? sanitizeComposeHtml(message.html) : "";
+    const files =
+      input.mode === "forward" ? message.attachments.filter((file) => !file.inline) : [];
+    const tooLarge = files.reduce((sum, file) => sum + file.size, 0) > MAX_COMPOSE_ATTACHMENT_BYTES;
     return {
       connectionId: account.id,
       ...prefill,
+      ...(htmlToText(quotedHtml) && quotedHtml.length <= MAX_COMPOSE_HTML / 2
+        ? { quotedHtml }
+        : {}),
+      attachments: tooLarge
+        ? []
+        : files.map(({ id, filename, mimeType, size }) => ({ id, filename, mimeType, size })),
+      ...(tooLarge ? { attachmentsTooLarge: true } : {}),
       ...(input.mode === "forward" ? {} : { replyToMessageId: input.messageId }),
     };
   } catch (error) {
@@ -108,12 +144,29 @@ export async function inboxComposePrefill(
  */
 function draftOf(input: ComposeFields, providerMessageId: string | undefined, lenient: boolean) {
   try {
+    const html = input.html === undefined ? undefined : sanitizeComposeHtml(input.html);
+    const attachments = (input.attachments ?? []).map((file) => {
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(file.data))
+        throw new MailProviderError("invalid", "An attachment could not be read");
+      return {
+        filename: file.filename,
+        mimeType: file.mimeType,
+        data: Buffer.from(file.data, "base64"),
+      };
+    });
+    if (attachments.reduce((sum, file) => sum + file.data.length, 0) > MAX_COMPOSE_ATTACHMENT_BYTES)
+      throw new MailProviderError(
+        "invalid",
+        `Attachments are over the ${MAX_COMPOSE_ATTACHMENT_MB} MB limit`,
+      );
     const draft: MailDraftInput = {
       to: parseRecipients(input.to, lenient),
       cc: parseRecipients(input.cc, lenient),
       bcc: parseRecipients(input.bcc, lenient),
       subject: input.subject,
-      text: input.body,
+      text: html === undefined ? input.body : htmlToText(html),
+      ...(html === undefined ? {} : { html }),
+      ...(attachments.length ? { attachments } : {}),
       ...(providerMessageId ? { inReplyTo: providerMessageId } : {}),
     };
     // Dry run of the message build: recipients, addresses and subject are checked, nothing is sent.
@@ -252,6 +305,27 @@ async function settled(deps: ComposeDeps, rowId: string): Promise<ComposeResult>
   }
 }
 
+/** The original's chosen files, fetched by the server; together with the uploads they stay under the limit. */
+async function forwardedFiles(
+  deps: ComposeDeps,
+  account: MailAccount,
+  providerMessageId: string,
+  forwardOf: NonNullable<ComposeFields["forwardOf"]>,
+  draft: MailDraftInput,
+  context: AdapterContext,
+): Promise<MailDraftAttachment[]> {
+  let remaining =
+    MAX_COMPOSE_ATTACHMENT_BYTES - (draft.attachments ?? []).reduce((n, f) => n + f.data.length, 0);
+  const files: MailDraftAttachment[] = [];
+  for (const id of forwardOf.attachmentIds) {
+    const file = await deps.mail.getAttachment(account, providerMessageId, id, remaining, context);
+    remaining -= file.bytes.length;
+    if (remaining < 0) throw new MailProviderError("invalid", "Attachments are too large");
+    files.push({ filename: file.filename, mimeType: file.mimeType, data: Buffer.from(file.bytes) });
+  }
+  return files;
+}
+
 export async function inboxComposeSend(
   deps: ComposeDeps,
   actor: Actor,
@@ -263,6 +337,9 @@ export async function inboxComposeSend(
   const account = await ownAccount(deps, actor, input.connectionId, context);
   const original = input.replyToMessageId
     ? await ownMessage(deps, actor, input.replyToMessageId, input.connectionId)
+    : undefined;
+  const forwarded = input.forwardOf
+    ? await ownMessage(deps, actor, input.forwardOf.messageId, input.connectionId)
     : undefined;
   const draft = draftOf(input, original?.providerMessageId, false);
   const row = await composeRow(deps, actor, input);
@@ -276,7 +353,24 @@ export async function inboxComposeSend(
 
   let sending = false;
   try {
-    const draftId = await writeDraft(deps, account, row, draft, context);
+    const files =
+      forwarded && input.forwardOf
+        ? await forwardedFiles(
+            deps,
+            account,
+            forwarded.providerMessageId,
+            input.forwardOf,
+            draft,
+            context,
+          )
+        : [];
+    const draftId = await writeDraft(
+      deps,
+      account,
+      row,
+      files.length ? { ...draft, attachments: [...(draft.attachments ?? []), ...files] } : draft,
+      context,
+    );
     await deps.prisma.composeSend.update({ where: { id: row.id }, data: { draftId } });
     sending = true;
     const sent = await deps.mail.sendDraft(account, draftId, context);

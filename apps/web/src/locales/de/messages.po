@@ -13,7 +13,7 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (ungelesen)"
@@ -131,6 +131,10 @@ msgstr "vor {days} T."
 
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
+msgstr ""
+
+#: src/components/inbox/TodoCard.tsx
+msgid "{hiddenCount} more"
 msgstr ""
 
 #: src/lib/relative-time.ts
@@ -289,6 +293,10 @@ msgstr "Hinzufügen"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Add a model in Settings to use this."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Add a recipient."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -545,6 +553,10 @@ msgstr "API-Schlüssel-Header"
 msgid "Appearance"
 msgstr "Erscheinungsbild"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Apply"
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Approval boundaries"
 msgstr "Bestätigungsgrenzen"
@@ -631,6 +643,10 @@ msgstr "um {timeSelect}"
 msgid "Attach file"
 msgstr "Datei anhängen"
 
+#: src/components/ComposeEmail.tsx
+msgid "Attach files"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Attached {path}"
 msgstr "{path} angehängt"
@@ -640,8 +656,13 @@ msgstr "{path} angehängt"
 msgid "Attachment"
 msgstr "Anhang"
 
-#: src/pages/Inbox.tsx
+#: src/components/ComposeEmail.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 msgid "Attachments"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Attachments can't be over {MAX_COMPOSE_ATTACHMENT_MB} MB."
 msgstr ""
 
 #. placeholder {0}: email.attachments
@@ -756,6 +777,10 @@ msgstr ""
 msgid "Board"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Bold"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Booting live desktop…"
 msgstr "Live-Desktop wird gestartet…"
@@ -828,6 +853,10 @@ msgstr "Browser"
 msgid "Built-in"
 msgstr "Integriert"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Bulleted list"
+msgstr ""
+
 #: src/App.tsx
 msgid "Can't reach the server."
 msgstr "Server nicht erreichbar."
@@ -875,6 +904,11 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Cc"
+msgstr ""
+
+#. placeholder {0}: message.cc
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "cc {0}"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -985,8 +1019,20 @@ msgstr "Unterhaltung mit {0} leeren?"
 msgid "Clear conversation"
 msgstr "Unterhaltung leeren"
 
+#: src/pages/Inbox.tsx
+msgid "Clear filter"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Clear filter {label}"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Clear formatting"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Clear search"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -1001,8 +1047,10 @@ msgstr ""
 msgid "Client secret"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
 #: src/components/ErrorBoundary.tsx
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
@@ -1127,7 +1175,7 @@ msgstr ""
 msgid "Complete"
 msgstr "Abschließen"
 
-#: src/components/ComposeEmail.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/Inbox.tsx
 msgid "Compose"
 msgstr ""
@@ -2039,6 +2087,10 @@ msgstr ""
 msgid "Discard"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Discard attachments?"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2125,7 +2177,7 @@ msgstr "Als Markdown herunterladen"
 msgid "Download Executor"
 msgstr ""
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 msgid "Download failed"
 msgstr ""
 
@@ -2144,6 +2196,10 @@ msgstr "Skill-Entwurf"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Drag, drop, or paste an image"
 msgstr "Bild ziehen, ablegen oder einfügen"
+
+#: src/components/ComposeEmail.tsx
+msgid "Drop files to attach"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
@@ -2373,6 +2429,10 @@ msgstr "Fertig."
 msgid "Finishing MCP connection…"
 msgstr "MCP-Verbindung wird abgeschlossen…"
 
+#: src/components/ComposeEmail.tsx
+msgid "Fix or remove the highlighted addresses."
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Flag unexpected actions"
 msgstr ""
@@ -2381,8 +2441,17 @@ msgstr ""
 msgid "Forgot password?"
 msgstr "Passwort vergessen?"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Formatting"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
-#: src/pages/Inbox.tsx
+msgid "Formatting options"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 msgid "Forward"
 msgstr ""
 
@@ -2586,6 +2655,10 @@ msgstr "Standard übernehmen"
 msgid "Inputs"
 msgstr "Eingaben"
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Insert link"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Instance API key"
 msgstr "Instanz-API-Schlüssel"
@@ -2629,6 +2702,10 @@ msgstr "Isoliert"
 msgid "Isolated preview — no access to your account"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Italic"
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "Seine Unterhaltung, Dateien und Routinen werden dauerhaft gelöscht. Von ihm erstellte Bots bleiben in deiner Liste."
@@ -2641,7 +2718,7 @@ msgstr "Zur neuesten Nachricht springen"
 msgid "Jump to replied message: {excerpt}"
 msgstr "Zur beantworteten Nachricht springen: {excerpt}"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Junk"
 msgstr ""
 
@@ -2650,12 +2727,20 @@ msgstr ""
 msgid "just now"
 msgstr "gerade eben"
 
+#: src/components/ComposeEmail.tsx
+msgid "Keep editing"
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Keep memories"
 msgstr "Erinnerungen behalten"
 
 #: src/pages/RoutineEditor.tsx
 msgid "key"
+msgstr ""
+
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Keyboard shortcuts"
 msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
@@ -2693,6 +2778,10 @@ msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Link address"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
@@ -2849,11 +2938,11 @@ msgstr "Als gelesen markieren"
 msgid "Mark as Unread"
 msgstr "Als ungelesen markieren"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Mark important"
 msgstr ""
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Mark noise"
 msgstr ""
 
@@ -2937,7 +3026,7 @@ msgstr ""
 msgid "Mentions only"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
+#: src/components/compose/RichTextEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "Nachricht"
@@ -3061,7 +3150,7 @@ msgstr ""
 msgid "Monthly"
 msgstr "Monatlich"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr ""
@@ -3113,7 +3202,7 @@ msgstr ""
 msgid "Needs an answer"
 msgstr ""
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Needs attention"
 msgstr ""
 
@@ -3142,6 +3231,10 @@ msgstr ""
 msgid "New group"
 msgstr "Neue Gruppe"
 
+#: src/components/ComposeEmail.tsx
+msgid "New message"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "New open-work item"
 msgstr "Neuer offener Arbeitspunkt"
@@ -3168,12 +3261,17 @@ msgstr ""
 msgid "New ticket"
 msgstr ""
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Newsletter"
 msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Next message"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -3228,6 +3326,10 @@ msgstr "Nicht mehr aktiv"
 msgid "No mail"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "No mail matches this filter"
+msgstr ""
+
 #: src/pages/PluginsOverlay.tsx
 msgid "No managed app catalog is configured on this deployment."
 msgstr "Für diese Bereitstellung ist kein verwalteter App-Katalog konfiguriert."
@@ -3273,6 +3375,10 @@ msgstr ""
 msgid "No results"
 msgstr "Keine Ergebnisse"
 
+#: src/pages/Inbox.tsx
+msgid "No results for \"{query}\""
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "No runs match these filters."
 msgstr ""
@@ -3307,6 +3413,10 @@ msgstr "Noch keine"
 
 #: src/lib/ticket-priority.ts
 msgid "Normal"
+msgstr ""
+
+#: src/components/compose/RecipientField.tsx
+msgid "Not a valid email address"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -3347,6 +3457,10 @@ msgstr "Jetzt"
 msgid "Now using {0}."
 msgstr "Jetzt wird {0} verwendet."
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Numbered list"
+msgstr ""
+
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth authorization was cancelled."
@@ -3385,6 +3499,7 @@ msgstr "am 1. um {0}"
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
 
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -3588,6 +3703,11 @@ msgstr "Vorschau von {0}"
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Previous message"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Primary"
 msgstr ""
@@ -3784,6 +3904,10 @@ msgid "Remove"
 msgstr "Entfernen"
 
 #. placeholder {0}: attachment.file.name
+#. placeholder {0}: file.filename
+#. placeholder {0}: file.name
+#: src/components/compose/RecipientField.tsx
+#: src/components/ComposeEmail.tsx
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "{0} entfernen"
@@ -3803,6 +3927,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"
+msgstr ""
+
+#: src/components/compose/RichTextEditor.tsx
+msgid "Remove link"
 msgstr ""
 
 #. placeholder {0}: mention.name
@@ -3875,13 +4003,15 @@ msgid "Replace value"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "Antworten"
 
 #: src/components/ComposeEmail.tsx
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 msgid "Reply all"
 msgstr ""
 
@@ -4119,6 +4249,7 @@ msgstr "Antworte mit Ja oder Nein oder in einem Satz."
 msgid "Scheduling"
 msgstr ""
 
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -4224,10 +4355,11 @@ msgid "Sending is turned off."
 msgstr ""
 
 #: src/components/AskCard.tsx
+#: src/components/MailOutbox.tsx
 msgid "Sending…"
 msgstr "Wird gesendet…"
 
-#: src/pages/Inbox.tsx
+#: src/components/MailOutbox.tsx
 msgid "Sent"
 msgstr ""
 
@@ -4313,6 +4445,10 @@ msgstr ""
 msgid "Show Inbox agent"
 msgstr ""
 
+#: src/components/inbox/TodoCard.tsx
+msgid "Show less"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Show list"
 msgstr ""
@@ -4323,6 +4459,10 @@ msgstr "Mehr anzeigen"
 
 #: src/pages/Auth.tsx
 msgid "Show password"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Show quoted text"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4432,7 +4572,7 @@ msgstr "Space-Standard"
 msgid "Spaces"
 msgstr ""
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Spam"
 msgstr ""
 
@@ -4553,7 +4693,7 @@ msgstr "Unterstützt Bilder"
 msgid "Supports thinking"
 msgstr "Unterstützt Denkmodus"
 
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxRow.tsx
 msgid "Suspicious"
 msgstr ""
 
@@ -4755,7 +4895,7 @@ msgid "To"
 msgstr ""
 
 #. placeholder {0}: message.to
-#: src/pages/Inbox.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 msgid "to {0}"
 msgstr ""
 
@@ -4764,8 +4904,8 @@ msgstr ""
 msgid "To {0}"
 msgstr ""
 
+#: src/components/inbox/TodoCard.tsx
 #: src/lib/ticket-status.ts
-#: src/pages/Inbox.tsx
 msgid "To do"
 msgstr ""
 
@@ -4774,6 +4914,7 @@ msgid "To:"
 msgstr "An:"
 
 #: src/components/EmailCards.tsx
+#: src/components/inbox/TodoCard.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/chat-context.tsx
@@ -4808,6 +4949,8 @@ msgstr ""
 msgid "Trial ends {day}"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
@@ -4838,6 +4981,11 @@ msgstr "Nicht zugewiesen"
 msgid "Unavailable"
 msgstr ""
 
+#: src/components/compose/RichTextEditor.tsx
+msgid "Underline"
+msgstr ""
+
+#: src/components/MailOutbox.tsx
 #: src/pages/Inbox.tsx
 msgid "Undo"
 msgstr ""

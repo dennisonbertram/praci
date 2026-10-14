@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 const PREVIEW_CSP =
   "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; form-action 'none'; base-uri 'none'";
 
@@ -55,10 +57,14 @@ function openLinksInNewTab(html: string): string {
   return doc.documentElement.outerHTML;
 }
 
+// Email is laid out for a narrow frame: cap media and tables at the frame width, wrap long words, and scroll
+// sideways (never clip) when a fixed-width table is still wider than the frame.
+const EMAIL_FIT = `<meta name="viewport" content="width=device-width,initial-scale=1"><style>img,video,table{max-width:100%!important;height:auto}body{overflow-x:auto;overflow-wrap:anywhere}</style>`;
+
 function withPreviewDocument(html: string, scripts: boolean, email: boolean): string {
   const meta = `<meta http-equiv="Content-Security-Policy" content="${previewCsp(scripts, email)}">`;
   const referrer = `<meta name="referrer" content="no-referrer">`;
-  return `${meta}${referrer}${scripts ? PREVIEW_GUARD : ""}${email ? openLinksInNewTab(html) : html}`;
+  return `${meta}${referrer}${scripts ? PREVIEW_GUARD : ""}${email ? EMAIL_FIT + openLinksInNewTab(html) : html}`;
 }
 
 function shellDocument(innerHtml: string, scripts: boolean, email: boolean): string {
@@ -84,8 +90,22 @@ export function SandboxedHtmlViewer({
   email?: boolean;
 }) {
   const runScripts = scripts && !email;
+  const frame = useRef<HTMLIFrameElement>(null);
+  // Key presses inside the sandboxed frame never reach this page, so Escape and j/k stop working
+  // after a click in it (such as on a link, which opens in a new tab). When the person comes back,
+  // focus moves from the frame to the dialog around it.
+  useEffect(() => {
+    if (!email) return;
+    const onFocus = () => {
+      if (document.activeElement === frame.current)
+        frame.current?.closest<HTMLElement>('[role="dialog"]')?.focus();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [email]);
   return (
     <iframe
+      ref={frame}
       title={title}
       srcDoc={shellDocument(withPreviewDocument(html, runScripts, email), runScripts, email)}
       sandbox={email ? `allow-scripts ${POPUP_FLAGS}` : "allow-scripts"}

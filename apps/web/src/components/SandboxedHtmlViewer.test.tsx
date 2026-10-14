@@ -228,3 +228,28 @@ function sourceAllows(source: string, url: URL): boolean {
   }
   return false;
 }
+
+it("email mode fits the frame width: viewport meta, max-width media and tables, scroll not clip", async () => {
+  const view = await render("<table width=900><tr><td>x</td></tr></table>", false, true);
+
+  expect(view.srcDoc).toContain("width=device-width");
+  expect(view.srcDoc).toContain("img,video,table{max-width:100%!important");
+  expect(view.srcDoc).toContain("overflow-x:auto");
+
+  await view.cleanup();
+  const plain = await render("<p>x</p>");
+  expect(plain.srcDoc).not.toContain("width=device-width");
+  await plain.cleanup();
+});
+
+it("moves focus from an email frame to the surrounding dialog when the window regains focus", async () => {
+  const view = await render("<p>Hi</p>", false, true);
+  view.container.setAttribute("role", "dialog");
+  view.container.tabIndex = -1;
+  (view.iframe as HTMLIFrameElement).tabIndex = 0;
+  (view.iframe as HTMLIFrameElement).focus();
+  expect(document.activeElement).toBe(view.iframe);
+  window.dispatchEvent(new Event("focus"));
+  expect(document.activeElement).toBe(view.container);
+  await view.cleanup();
+});

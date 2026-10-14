@@ -1,5 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { type MailAddress, type MailMessage, MailProviderError } from "@rakazo/adapter-kit";
+import {
+  type MailAddress,
+  type MailDraftAttachment,
+  type MailMessage,
+  MailProviderError,
+} from "@rakazo/adapter-kit";
 
 export interface ComposedMail {
   to: MailAddress[];
@@ -7,6 +12,9 @@ export interface ComposedMail {
   bcc: MailAddress[];
   subject: string;
   text: string;
+  /** Sanitized HTML for the HTML part; without it the part is the text, escaped. */
+  html?: string;
+  attachments?: MailDraftAttachment[];
   /** Message-ID header value of the message answered, with angle brackets. */
   inReplyTo?: string;
   /** References header of that message, if it had one. */
@@ -20,6 +28,14 @@ export interface ComposePrefill {
   cc: string;
   subject: string;
   body: string;
+  /** A forward of an HTML mail: the original's body as sanitized editor HTML, without the header. */
+  quotedHtml?: string;
+}
+
+/** Where the person is, for dates written into the quote. Both are optional; the default is UTC. */
+export interface PrefillLocale {
+  timeZone?: string;
+  locale?: string;
 }
 
 export const MAX_RECIPIENTS = 100;
@@ -117,6 +133,12 @@ function checkSubject(subject: string): string {
   return subject;
 }
 
+function checkFilename(name: string): string {
+  if (!name || name.length > 255 || CONTROL.test(name) || /[\\/]/.test(name))
+    throw invalid("An attachment name is not valid");
+  return name;
+}
+
 function checkIds(value: string, label: string): string {
   if (!MESSAGE_IDS.test(value)) throw invalid(`${label} is not a message id list`);
   return value;
@@ -168,11 +190,35 @@ export function buildRawMessage(mail: ComposedMail, options: { draft?: boolean }
   if (mail.inReplyTo) headers.push(`In-Reply-To: ${checkIds(mail.inReplyTo, "In-Reply-To")}`);
   if (mail.references) headers.push(`References: ${checkIds(mail.references, "References")}`);
   const boundary = `rakazo-${randomBytes(12).toString("hex")}`;
-  headers.push("MIME-Version: 1.0", `Content-Type: multipart/alternative; boundary="${boundary}"`);
   const text = mail.text.replace(/\r\n|\r|\n/g, "\r\n");
   const part = (type: string, body: string) =>
     `--${boundary}\r\nContent-Type: ${type}; charset="UTF-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n${base64Lines(body)}\r\n`;
-  return `${headers.join("\r\n")}\r\n\r\n${part("text/plain", text)}${part("text/html", htmlBody(mail.text))}--${boundary}--\r\n`;
+  const alternative = `${part("text/plain", text)}${part("text/html", mail.html ?? htmlBody(mail.text))}`;
+  headers.push("MIME-Version: 1.0");
+  const files = mail.attachments ?? [];
+  if (files.length === 0) {
+    headers.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
+    return `${headers.join("\r\n")}\r\n\r\n${alternative}--${boundary}--\r\n`;
+  }
+  // multipart/mixed: the text and HTML copies as one nested multipart/alternative, then the files.
+  const inner = `rakazo-${randomBytes(12).toString("hex")}`;
+  const nested = alternative.split(`--${boundary}`).join(`--${inner}`);
+  const attachments = files.map((file) => {
+    const name = checkFilename(file.filename);
+    const quoted = /^[\x20-\x7e]*$/.test(name)
+      ? `filename="${name.replace(/[\\"]/g, "\\$&")}"`
+      : `filename*=UTF-8''${encodeURIComponent(name)}`;
+    const type = /^[\w.+-]+\/[\w.+-]+$/.test(file.mimeType)
+      ? file.mimeType
+      : "application/octet-stream";
+    const body = Buffer.from(file.data)
+      .toString("base64")
+      .replace(/.{1,76}/g, "$&\r\n")
+      .trimEnd();
+    return `--${boundary}\r\nContent-Type: ${type}\r\nContent-Disposition: attachment; ${quoted}\r\nContent-Transfer-Encoding: base64\r\n\r\n${body}\r\n`;
+  });
+  headers.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+  return `${headers.join("\r\n")}\r\n\r\n--${boundary}\r\nContent-Type: multipart/alternative; boundary="${inner}"\r\n\r\n${nested}--${inner}--\r\n\r\n${attachments.join("")}--${boundary}--\r\n`;
 }
 
 /**
@@ -224,8 +270,14 @@ export function parseRecipients(text: string, lenient = false): MailAddress[] {
   return result;
 }
 
-const sameAddress = (a: MailAddress, b: MailAddress) =>
-  a.address.toLowerCase() === b.address.toLowerCase();
+/** Lower case; for Gmail also without dots and +tags in the name, with googlemail.com as gmail.com. */
+function mailbox(address: string): string {
+  const [name = "", domain = ""] = address.toLowerCase().split(/@(?=[^@]*$)/);
+  if (domain !== "gmail.com" && domain !== "googlemail.com") return `${name}@${domain}`;
+  return `${name.replace(/\+.*/, "").replace(/\./g, "")}@gmail.com`;
+}
+
+const sameAddress = (a: MailAddress, b: MailAddress) => mailbox(a.address) === mailbox(b.address);
 
 function unique(list: MailAddress[], skip: MailAddress[]): MailAddress[] {
   const kept: MailAddress[] = [];
@@ -242,20 +294,45 @@ const quote = (text: string) =>
     .map((line) => (line ? `> ${line}` : ">"))
     .join("\n");
 
+/** "Wed, Oct 14, 2026, 2:17 AM" in the person's zone; an unknown zone or locale falls back to UTC and en-US. */
+function formatWhen(date: string, { timeZone, locale }: PrefillLocale): string {
+  if (Number.isNaN(Date.parse(date))) return date;
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  };
+  const make = (l: string, tz: string) => {
+    try {
+      return new Intl.DateTimeFormat(l, { ...options, timeZone: tz });
+    } catch {
+      return null;
+    }
+  };
+  const format =
+    make(locale || "en-US", timeZone || "UTC") ??
+    make("en-US", timeZone || "UTC") ??
+    make(locale || "en-US", "UTC") ??
+    make("en-US", "UTC");
+  // Newer ICU puts a narrow no-break space before AM/PM.
+  return (format?.format(new Date(date)) ?? date).replace(/\u202f/g, " ");
+}
+
 /**
  * Recipients, subject and quoted original for answering `message`. `self` is the user's own
- * address, left out of reply-all. The date is in UTC because the server does not know the
- * user's time zone.
+ * address, left out of reply-all. Dates are written in the given time zone (default UTC).
  */
 export function replyPrefill(
   message: MailMessage,
   mode: ComposeMode,
-  self: string | null,
+  self: string | string[] | null,
+  where: PrefillLocale = {},
 ): ComposePrefill {
-  const me = self ? [{ address: self }] : [];
-  const when = Number.isNaN(Date.parse(message.date))
-    ? message.date
-    : new Date(message.date).toUTCString();
+  const me = [self ?? []].flat().map((address) => ({ address }));
+  const when = formatWhen(message.date, where);
   const sender = message.from ? displayAddress(message.from) : "";
   if (mode === "forward") {
     const lines = [
@@ -277,7 +354,9 @@ export function replyPrefill(
   const fromMe = Boolean(from && me.some((m) => sameAddress(m, from)));
   // Answering one's own message goes to whoever it was sent to.
   const back = fromMe ? message.to : message.replyTo.length ? message.replyTo : from ? [from] : [];
-  const to = unique(mode === "replyAll" ? [...back, ...message.to] : back, fromMe ? [] : me);
+  const kept = unique(mode === "replyAll" ? [...back, ...message.to] : back, fromMe ? [] : me);
+  // Never leave To empty: fall back to the sender.
+  const to = kept.length || !from ? kept : [from];
   const cc = mode === "replyAll" ? unique(message.cc, [...to, ...me]) : [];
   return {
     to: to.map(displayAddress).join(", "),

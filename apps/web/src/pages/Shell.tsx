@@ -3377,8 +3377,8 @@ export function ShellPage() {
                               }}
                               className={`flex w-full items-center ${
                                 compact
-                                  ? "min-h-11 gap-2 rounded-xl px-2.5 py-1.5"
-                                  : "gap-3 rounded-xl px-2.5 py-[10px]"
+                                  ? "gap-2.5 rounded-xl px-2.5 py-1"
+                                  : "gap-3 rounded-xl px-2.5 py-2"
                               } text-start ${
                                 item.kind === "bot" ? "cursor-grab active:cursor-grabbing" : ""
                               } ${
@@ -3394,7 +3394,7 @@ export function ShellPage() {
                                 <BotAvatar
                                   color={item.chat.color}
                                   identity={item.chat.id}
-                                  size={compact ? 28 : 38}
+                                  size={36}
                                   status={item.chat.status}
                                 />
                               ) : (
@@ -3404,7 +3404,7 @@ export function ShellPage() {
                                       ? (activeSnapshot.members ?? item.chat.members)
                                       : item.chat.members
                                   }
-                                  size={compact ? 28 : 38}
+                                  size={36}
                                 />
                               )}
                               <div className="min-w-0 flex-1">
@@ -3413,8 +3413,8 @@ export function ShellPage() {
                                     <span
                                       dir="auto"
                                       data-roster-bot-name={item.kind === "bot" ? "" : undefined}
-                                      className={`min-w-0 truncate text-[14px] text-foreground ${
-                                        item.chat.unread ? "font-semibold" : "font-medium"
+                                      className={`min-w-0 truncate text-[14.5px] leading-[18px] font-normal text-foreground ${
+                                        item.chat.unread ? "font-medium" : ""
                                       }`}
                                     >
                                       {item.chat.name}
@@ -3427,7 +3427,7 @@ export function ShellPage() {
                                   </div>
                                   <div className="flex shrink-0 items-center gap-1.5">
                                     {!compact ? (
-                                      <span className="text-[11.5px] text-muted-foreground/60 tabular-nums">
+                                      <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
                                         {formatRosterTime(item.chat.updatedAt)}
                                       </span>
                                     ) : null}
@@ -3439,13 +3439,6 @@ export function ShellPage() {
                                     ) : null}
                                   </div>
                                 </div>
-                                {!compact && item.kind === "bot" && item.chat.title ? (
-                                  <div className="mt-1 flex">
-                                    <span className="max-w-full truncate rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">
-                                      {item.chat.title}
-                                    </span>
-                                  </div>
-                                ) : null}
                                 {compact ? (
                                   compactStatusLabel ? (
                                     <div
@@ -3457,7 +3450,7 @@ export function ShellPage() {
                                             ? item.chat.status
                                             : undefined
                                       }
-                                      className={`mt-0.5 flex items-center gap-1 text-[11.5px] ${
+                                      className={`flex items-center gap-1 text-[12px] leading-[18px] ${
                                         rowError
                                           ? "font-medium text-destructive"
                                           : workStatusLabel
@@ -3475,12 +3468,12 @@ export function ShellPage() {
                                   <div
                                     dir="auto"
                                     data-roster-preview={!workStatusLabel ? "true" : undefined}
-                                    className={`mt-1 truncate text-[12.5px] ${
+                                    className={`truncate text-[12px] leading-[18px] ${
                                       workStatusLabel
                                         ? "font-semibold text-status-working"
                                         : item.chat.unread
                                           ? "font-medium text-foreground/75"
-                                          : "text-muted-foreground/60"
+                                          : "text-muted-foreground"
                                     }`}
                                   >
                                     {rosterLine}

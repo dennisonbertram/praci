@@ -520,6 +520,7 @@ export async function inboxGet(
     return {
       from: formatAddress(message.from),
       to: message.to.map(formatAddress).join(", "),
+      cc: message.cc.map(formatAddress).join(", "),
       date: message.date,
       subject: message.subject,
       html: message.html ?? null,

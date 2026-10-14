@@ -529,6 +529,8 @@ export class GmailMailProvider implements MailProvider {
         bcc: draft.bcc,
         subject: draft.subject,
         text: draft.text,
+        ...(draft.html ? { html: draft.html } : {}),
+        ...(draft.attachments ? { attachments: draft.attachments } : {}),
         ...(inReplyTo ? { inReplyTo } : {}),
         ...(references ? { references } : {}),
       },

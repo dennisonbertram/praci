@@ -895,6 +895,12 @@ export interface MailMessage extends MailMessageSummary {
 }
 
 /** A message to save as a draft. The provider adds the HTML part and the threading headers. */
+export interface MailDraftAttachment {
+  filename: string;
+  mimeType: string;
+  data: Uint8Array;
+}
+
 export interface MailDraftInput {
   to: MailAddress[];
   cc: MailAddress[];
@@ -903,6 +909,9 @@ export interface MailDraftInput {
   subject: string;
   /** Plain text body. */
   text: string;
+  /** Already-sanitized HTML copy of the body; without it the HTML part is the text, escaped. */
+  html?: string;
+  attachments?: MailDraftAttachment[];
   /** Provider id of the message this answers. Puts the draft in that thread (In-Reply-To, References). */
   inReplyTo?: string;
 }

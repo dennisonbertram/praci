@@ -24,6 +24,9 @@ const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
   process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
 
+const b64 = (text: string) => Buffer.from(text).toString("base64");
+const big = (mb: number) => Buffer.alloc(mb * 1024 * 1024 - 1, 1).toString("base64");
+
 const SECRET_BODY = "SECRET-BODY-TEXT-do-not-log";
 
 describePostgres("inbox compose (PostgreSQL)", () => {
@@ -101,7 +104,32 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       mailboxes: {
         "box-a": {
           address: "box-a@example.test",
-          messages: [message("a-1", ["INBOX"], { threadId: "t-a1" })],
+          messages: [
+            message("a-1", ["INBOX"], { threadId: "t-a1" }),
+            message("a-html", ["INBOX"], {
+              date: "2026-09-23T15:04:05.000Z",
+              text: undefined,
+              html: '<h2>News</h2><p>Hi <b>there</b> <a href="https://e.test/x">link</a></p><script>x()</script>',
+            }),
+            message("a-files", ["INBOX"], {
+              attachments: [
+                { filename: "one.txt", mimeType: "text/plain", size: 5, data: b64("hello") },
+                { filename: "two.bin", mimeType: "application/zip", size: 3, data: b64("zip") },
+              ],
+              inlineImages: [{ contentId: "pic", mimeType: "image/png", data: b64("png") }],
+            }),
+            message("a-big", ["INBOX"], {
+              attachments: [
+                { filename: "big.bin", mimeType: "application/zip", size: 6_000_000, data: big(6) },
+                {
+                  filename: "big2.bin",
+                  mimeType: "application/zip",
+                  size: 6_000_000,
+                  data: big(6),
+                },
+              ],
+            }),
+          ],
         },
         "box-b": { address: "box-b@example.test", messages: [message("b-1", ["INBOX"])] },
         "box-c": { address: "box-c@example.test", messages: [message("c-1", ["INBOX"])] },
@@ -226,6 +254,47 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(forward.body).toContain("---------- Forwarded message ---------");
     });
 
+    it("writes the quoted date in the client's time zone, UTC without one", async () => {
+      const row = await cache(a, connA, "a-html");
+      const reply = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" });
+      expect(reply.body).toContain("On Wed, Sep 23, 2026, 3:04 PM, Ann Sender");
+      const tokyo = await inboxComposePrefill(deps(), a, {
+        messageId: row.id,
+        mode: "forward",
+        timeZone: "Asia/Tokyo",
+        locale: "en-US",
+      });
+      expect(tokyo.body).toContain("Date: Thu, Sep 24, 2026, 12:04 AM\n");
+    });
+
+    it("carries an HTML mail's formatting into a forward, not a reply", async () => {
+      const row = await cache(a, connA, "a-html");
+      const forward = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "forward" });
+      expect(forward.quotedHtml).toBe(
+        '<p><strong>News</strong></p><p>Hi <b>there</b> <a href="https://e.test/x">link</a></p>',
+      );
+      const reply = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" });
+      expect(reply.quotedHtml).toBeUndefined();
+    });
+
+    it("lists a forward's files, never inline pictures, and none for a reply", async () => {
+      const row = await cache(a, connA, "a-files");
+      const forward = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "forward" });
+      expect(forward.attachments.map((f) => [f.filename, f.mimeType, f.size])).toEqual([
+        ["one.txt", "text/plain", 5],
+        ["two.bin", "application/zip", 3],
+      ]);
+      expect(forward.attachmentsTooLarge).toBeUndefined();
+      const reply = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" });
+      expect(reply.attachments).toEqual([]);
+    });
+
+    it("lists nothing and flags a forward whose files are over the limit", async () => {
+      const row = await cache(a, connA, "a-big");
+      const forward = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "forward" });
+      expect(forward).toMatchObject({ attachments: [], attachmentsTooLarge: true });
+    });
+
     it("does not reveal another user's, another space's or a revoked account's message", async () => {
       const theirs = await cache(b, connB, "b-1");
       const otherSpace = await cache(c, connC, "c-1");
@@ -337,6 +406,92 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(mime.header("In-Reply-To")).toBe("<a-1@mail.example.test>");
       expect(mime.text).toBe(SECRET_BODY);
       expect(gmail.draftsOf("box-a")).toHaveLength(0);
+    });
+
+    it("sends sanitized HTML, a text copy made from it, and attachments", async () => {
+      const input = fields({
+        to: "a@example.test, b@example.test",
+        cc: "c@example.test",
+        bcc: "d@example.test",
+        html: '<p>Hi <strong>there</strong> <script>x()</script><a href="javascript:x()">no</a></p>',
+        attachments: [
+          {
+            filename: "note.txt",
+            mimeType: "text/plain",
+            data: Buffer.from("hello").toString("base64"),
+          },
+        ],
+      });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "sent" });
+      const mime = parseRawMime(gmail.sentOf("box-a")[0]?.raw ?? "");
+      expect(mime.header("To")).toBe("a@example.test, b@example.test");
+      expect(mime.header("Bcc")).toBe("d@example.test");
+      expect(mime.html).toBe("<p>Hi <strong>there</strong> no</p>");
+      expect(mime.text).toBe("Hi there no");
+      expect(mime.types).toContain("text/plain");
+      expect(gmail.sentOf("box-a")[0]?.raw).toContain(Buffer.from("hello").toString("base64"));
+    });
+
+    it("attaches the original's chosen files to a forward, next to uploads", async () => {
+      const row = await cache(a, connA, "a-files");
+      const { attachments } = await inboxComposePrefill(deps(), a, {
+        messageId: row.id,
+        mode: "forward",
+      });
+      const one = attachments[0]?.id as string;
+      const input = fields({
+        forwardOf: { messageId: row.id, attachmentIds: [one] },
+        attachments: [{ filename: "up.txt", mimeType: "text/plain", data: b64("uploaded") }],
+      });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "sent" });
+      const raw = gmail.sentOf("box-a")[0]?.raw ?? "";
+      expect(raw).toContain('filename="one.txt"');
+      expect(raw).toContain(b64("hello"));
+      expect(raw).toContain(b64("uploaded"));
+      expect(raw).not.toContain("two.bin");
+    });
+
+    it("does not forward files of a message that is not the caller's or does not exist", async () => {
+      const theirs = await cache(b, connB, "b-1");
+      for (const messageId of [theirs.id, "nope"]) {
+        await expect(
+          inboxComposeSend(deps(), a, fields({ forwardOf: { messageId, attachmentIds: ["1"] } })),
+        ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      }
+      expect(gmail.sentOf("box-a")).toHaveLength(0);
+    });
+
+    it("sends nothing when uploads plus forwarded files are over the limit", async () => {
+      const row = await cache(a, connA, "a-big");
+      const ids = ["1", "2"];
+      const input = fields({
+        forwardOf: { messageId: row.id, attachmentIds: ids },
+        attachments: [{ filename: "up.bin", mimeType: "application/zip", data: big(1) }],
+      });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "failed" });
+      expect(gmail.sentOf("box-a")).toHaveLength(0);
+      expect(gmail.draftsOf("box-a")).toHaveLength(0);
+    });
+
+    it("rejects attachments over the size limit or not base64, before any state changes", async () => {
+      const big = Buffer.alloc(10 * 1024 * 1024 + 1).toString("base64");
+      await expect(
+        inboxComposeSend(
+          deps(),
+          a,
+          fields({
+            attachments: [{ filename: "big.bin", mimeType: "application/zip", data: big }],
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      await expect(
+        inboxComposeSend(
+          deps(),
+          a,
+          fields({ attachments: [{ filename: "x.bin", mimeType: "text/plain", data: "***" }] }),
+        ),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(gmail.sentOf("box-a")).toHaveLength(0);
     });
 
     it("syncs the mailbox afterwards so the sent message is cached", async () => {
