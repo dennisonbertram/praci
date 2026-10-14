@@ -47,7 +47,7 @@ test("a mail send waits in the chat as an editable card and approving it runs th
   await captureScreenshot(page, testInfo, "mail-approval-card-editing");
 
   await card.getByRole("button", { name: "Send", exact: true }).click();
-  await expect(card.getByText("Approved", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(card.getByText("Sent", { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(card).toContainText("Offsite dates, confirmed");
   await expect(card.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "mail-approval-card-approved");

@@ -52,6 +52,7 @@ export function MailApprovalCard({
   botName,
   onAnswer,
   onDisableTool,
+  onOpenComposer,
 }: {
   mail: MailApproval;
   status: "pending" | "answered";
@@ -61,6 +62,8 @@ export function MailApprovalCard({
   botName?: string;
   onAnswer: (text: string, username?: string, mail?: MailEdits) => Promise<void>;
   onDisableTool?: (tool: MailApproval["tool"]) => Promise<void>;
+  /** Offered when the person's own edited send did not go out. */
+  onOpenComposer?: (mail: MailApproval) => void;
 }) {
   const initial = toFields(mail);
   const [fields, setFields] = useState<Fields>(initial);
@@ -137,7 +140,25 @@ export function MailApprovalCard({
         </h3>
         {answered ? (
           <Badge variant="secondary">
-            {answer === "deny" ? <Trans>Discarded</Trans> : <Trans>Approved</Trans>}
+            {mail.outcome === "sent" ? (
+              <Trans>Sent</Trans>
+            ) : mail.outcome === "saved" ? (
+              <Trans>Draft saved</Trans>
+            ) : mail.outcome === "failed" ? (
+              <Trans>Not sent</Trans>
+            ) : mail.outcome === "unknown" ? (
+              <Trans>Unknown</Trans>
+            ) : answer === "deny" && mail.connectionId ? (
+              draft ? (
+                <Trans>Saving…</Trans>
+              ) : (
+                <Trans>Sending…</Trans>
+              )
+            ) : answer === "deny" ? (
+              <Trans>Discarded</Trans>
+            ) : (
+              <Trans>Approved</Trans>
+            )}
           </Badge>
         ) : !canAnswer ? (
           <Badge variant="secondary">
@@ -281,6 +302,18 @@ export function MailApprovalCard({
       ) : (
         <div className="h-3" />
       )}
+      {mail.outcome === "unknown" ? (
+        <p className="px-4 pb-3 text-[13px] text-muted-foreground">
+          <Trans>Not confirmed as sent. Check Sent before trying again.</Trans>
+        </p>
+      ) : null}
+      {mail.outcome === "failed" && onOpenComposer ? (
+        <div className="px-4 pb-3">
+          <Button variant="outline" size="sm" onClick={() => onOpenComposer(mail)}>
+            <Trans>Open in composer</Trans>
+          </Button>
+        </div>
+      ) : null}
       {error ? <p className="px-4 pb-3 text-[13px] text-destructive">{error}</p> : null}
     </div>
   );

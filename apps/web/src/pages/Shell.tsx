@@ -146,8 +146,13 @@ import { useMatch, useNavigate, useParams, useSearchParams } from "react-router-
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
-import { type BotToolControls, BotToolControlsContext } from "../components/BotToolControls";
+import {
+  type BotToolControls,
+  BotToolControlsContext,
+  type ComposerDraft,
+} from "../components/BotToolControls";
 import { CloudAgentCard } from "../components/CloudAgentCard";
+import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { ComputerMaintenanceActions } from "../components/ComputerMaintenanceActions";
 import {
   ComputersUnavailableHint,
@@ -2161,8 +2166,10 @@ export function ShellPage() {
     },
     [],
   );
+  const [composerDraft, setComposerDraft] = useState<ComposerDraft | null>(null);
   const botToolControls = useMemo<BotToolControls>(
     () => ({
+      openComposer: setComposerDraft,
       editableBotName: (botId) => botsRef.current.find((bot) => bot.id === botId)?.name,
       disableTool: async (botId, tool) => {
         const bot = botsRef.current.find((item) => item.id === botId);
@@ -7361,6 +7368,19 @@ const MessageView = memo(function MessageView({
                 canAnswer={canAnswer}
                 botName={botToolControls?.editableBotName(message.botId)}
                 onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
+                onOpenComposer={(failed) =>
+                  failed.connectionId
+                    ? botToolControls?.openComposer({
+                        connectionId: failed.connectionId,
+                        account: failed.account ?? "",
+                        to: failed.to,
+                        cc: failed.cc,
+                        bcc: failed.bcc,
+                        subject: failed.subject,
+                        body: failed.body,
+                      })
+                    : undefined
+                }
                 onDisableTool={
                   message.botId
                     ? (tool) => botToolControls!.disableTool(message.botId!, tool)

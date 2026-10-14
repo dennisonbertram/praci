@@ -5,14 +5,11 @@ export type ApprovalPausedToolResult = AgentToolExecutionResult & { terminate: t
 export interface ApprovedEffectReplay {
   kind: string;
   request: unknown;
-  /** The stored effect's key. Its request may have been edited, so the key is identity, not a hash of the args. */
-  idempotencyKey?: string;
 }
 
 export interface ApprovedEffectReplayQueue {
   nextToolName(): string | undefined;
   nextRequest(): unknown;
-  nextIdempotencyKey(): string | undefined;
   take(toolName: string): unknown;
   assertDrained(): void;
 }
@@ -28,9 +25,6 @@ export function createApprovedEffectReplayQueue(
     },
     nextRequest() {
       return pending[0]?.request;
-    },
-    nextIdempotencyKey() {
-      return pending[0]?.idempotencyKey;
     },
     take(toolName) {
       const next = pending[0];
@@ -365,6 +359,9 @@ export function resolveDuplicateEffectGate(
     return { action: "return", result: effect.result ?? { duplicate: true } };
   }
   if (effect.status === "denied") {
+    // A denial can carry its own note (the user sent an edited copy themselves).
+    const note = (effect.result as { note?: unknown } | null | undefined)?.note;
+    if (typeof note === "string" && note) return { action: "return", result: { error: note } };
     return {
       action: "return",
       result: {
@@ -484,15 +481,4 @@ export async function replaceCompletedExternalEffectResult(
     data: { result: result as never },
   });
   return replaced.count === 1;
-}
-
-/**
- * A replayed approval keeps its stored key, which may end in an occurrence suffix (`base:1`).
- * Counts that occurrence as used so the next identical call in this attempt gets the next one.
- */
-export function advanceEffectOccurrences(occurrences: Map<string, number>, storedKey: string) {
-  const suffixed = /^(.+):(\d+)$/.exec(storedKey);
-  if (!suffixed) return;
-  const base = suffixed[1] as string;
-  occurrences.set(base, Math.max(occurrences.get(base) ?? 0, Number(suffixed[2]) + 1));
 }

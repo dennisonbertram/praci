@@ -239,3 +239,31 @@ it("shows the outcome and no buttons once answered", async () => {
   await render({ status: "answered", answer: "deny" });
   expect(host.querySelector("[data-testid=pill]")?.textContent).toBe("Discarded");
 });
+
+it("shows what became of the person's own edited send", async () => {
+  const edited = { ...mail, connectionId: "conn-1" };
+  const pill = () => host.querySelector("[data-testid=pill]")?.textContent;
+  await render({ status: "answered", answer: "deny", mail: edited });
+  expect(pill()).toBe("Sending…");
+  await render({ status: "answered", answer: "deny", mail: { ...edited, outcome: "sent" } });
+  expect(pill()).toBe("Sent");
+  await render({
+    status: "answered",
+    answer: "deny",
+    mail: { ...edited, tool: "mail_draft", outcome: "saved" },
+  });
+  expect(pill()).toBe("Draft saved");
+  await render({ status: "answered", answer: "deny", mail: { ...edited, outcome: "unknown" } });
+  expect(pill()).toBe("Unknown");
+  expect(host.textContent).toContain("Check Sent before trying again");
+  expect(button("Open in composer")).toBeUndefined();
+});
+
+it("offers the composer when the edited send did not go out", async () => {
+  const onOpenComposer = vi.fn();
+  const failed = { ...mail, connectionId: "conn-1", outcome: "failed" as const };
+  await render({ status: "answered", answer: "deny", mail: failed, onOpenComposer });
+  expect(host.querySelector("[data-testid=pill]")?.textContent).toBe("Not sent");
+  await click(button("Open in composer"));
+  expect(onOpenComposer).toHaveBeenCalledWith(failed);
+});

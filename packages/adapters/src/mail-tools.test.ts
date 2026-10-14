@@ -5,12 +5,8 @@ import type {
   MailAccount,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
-import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
-import { mailRequestIsValid } from "./approval-ask.js";
-import { advanceEffectOccurrences, createApprovedEffectReplayQueue } from "./approval-effect.js";
-import { recordEffect } from "./executor.js";
 import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import {
@@ -613,171 +609,6 @@ describe("mail write tools", () => {
     expect(gmail.sentOf("a")).toHaveLength(1);
   });
 
-  it("sends the edited message once when an approval is edited, replayed and answered twice", async () => {
-    const { answerRunInput } = await import("@rakazo/db");
-    const original = { to: ["Jana <jana@example.test>"], subject: "Friday", body: "Draft text." };
-    const effect = {
-      id: "effect-1",
-      runId: "run-1",
-      spaceId: scope.spaceId,
-      kind: "mail_send",
-      status: "intended",
-      request: original,
-      idempotencyKey: approvalEffectKey("run-1", "mail_send", original),
-    };
-    const block = {
-      kind: "ask",
-      approvalEffectId: "effect-1",
-      text: "Review before mail_send",
-      status: "pending",
-      actions: [
-        { id: "allow", label: "Allow once" },
-        { id: "deny", label: "Deny" },
-      ],
-    };
-    const tx = {
-      $queryRaw: async () => [{ id: "thread-1" }],
-      message: { findFirst: async () => ({ id: "m1", blocks: [block] }), update: async () => ({}) },
-      run: {
-        findFirst: async () => ({ botId: "bot-1", userId: "user-1" }),
-        updateMany: async () => ({ count: 1 }),
-        findUnique: async () => ({ status: "queued", startedAt: null }),
-      },
-      externalEffect: {
-        // Like the database: only an "intended" effect of this run is found, and updates stick.
-        findFirst: async () => (effect.status === "intended" ? effect : null),
-        findUnique: async () => null,
-        update: async ({ data }: { data: Partial<typeof effect> }) => Object.assign(effect, data),
-      },
-      thread: { update: async () => ({ nextEventSeq: 2 }) },
-      event: {
-        create: async ({ data }: { data: object }) => ({
-          ...data,
-          id: "e1",
-          createdAt: new Date(),
-        }),
-      },
-    };
-    const prisma = {
-      $transaction: async (callback: (client: typeof tx) => unknown) => callback(tx),
-    } as unknown as PrismaClient;
-    const answer = () =>
-      answerRunInput(prisma, {
-        spaceId: scope.spaceId,
-        threadId: "thread-1",
-        runId: "run-1",
-        messageId: "m1",
-        answeredByUserId: "user-1",
-        answer: "allow",
-        mailEdits: { subject: "Monday", body: "Edited text." },
-        checkMailRequest: mailRequestIsValid,
-      });
-
-    expect(await answer()).toBe(true);
-    // A second answer (double click, retry) finds nothing pending and changes nothing.
-    expect(await answer()).toBe(false);
-    expect(effect.request).toEqual({ ...original, subject: "Monday", body: "Edited text." });
-
-    // An edit never changes the effect's key; the executor runs the stored request under it.
-    const key = approvalEffectKey("run-1", "mail_send", original);
-    expect(effect.idempotencyKey).toBe(key);
-    const queue = createApprovedEffectReplayQueue([effect]);
-    expect(queue.nextIdempotencyKey()).toBe(key);
-    const { deps, gmail, sends } = withSends();
-    const replay = { ...deps, idempotencyKey: key };
-    expect(await run(replay, "mail_send", effect.request)).toMatchObject({
-      ok: true,
-      subject: "Monday",
-    });
-    expect(await run(replay, "mail_send", effect.request)).toEqual({ ok: true, alreadySent: true });
-    expect(gmail.sentOf("a")).toHaveLength(1);
-    expect(gmail.sentOf("a")[0]?.raw).toContain("Subject: Monday");
-    expect(sends.map((row) => row.clientId)).toEqual([`agent:${key}`]);
-
-    // Crash after the send, then the model re-emits the ORIGINAL args: the same effect is found
-    // by its key (here already completed), so nothing new is recorded and nothing is sent.
-    effect.status = "completed";
-    const created = vi.fn();
-    const found = await recordEffect(
-      {
-        prisma: { externalEffect: { findUnique: async () => effect, create: created } },
-        events: { append: async () => undefined },
-      } as never,
-      { id: "run-1", spaceId: scope.spaceId, threadId: "thread-1", botId: "bot-1" },
-      "mail_send",
-      approvalEffectKey("run-1", "mail_send", original),
-      original,
-    );
-    expect(found).toMatchObject({ duplicate: true, effect: { id: "effect-1" } });
-    expect(created).not.toHaveBeenCalled();
-    expect(gmail.sentOf("a")).toHaveLength(1);
-
-    // The model re-emits the EDITED args instead: the key (derived from them) misses, but the
-    // stored request matches an edited mail effect of this run, so it is the same effect.
-    const editedKey = approvalEffectKey("run-1", "mail_send", effect.request);
-    const byKey = async ({ where }: { where: { idempotencyKey: string } }) =>
-      where.idempotencyKey === effect.idempotencyKey ? effect : null;
-    const foundEdited = await recordEffect(
-      {
-        prisma: {
-          externalEffect: { findUnique: byKey, findMany: async () => [effect], create: created },
-        },
-        events: { append: async () => undefined },
-      } as never,
-      { id: "run-1", spaceId: scope.spaceId, threadId: "thread-1", botId: "bot-1" },
-      "mail_send",
-      editedKey,
-      effect.request,
-    );
-    expect(foundEdited).toMatchObject({ duplicate: true, effect: { id: "effect-1" } });
-    expect(created).not.toHaveBeenCalled();
-    // Run under the effect's key, the send record is the one that already says "sent".
-    expect(
-      await run(
-        { ...deps, idempotencyKey: foundEdited.effect.idempotencyKey },
-        "mail_send",
-        effect.request,
-      ),
-    ).toEqual({
-      ok: true,
-      alreadySent: true,
-    });
-    expect(gmail.sentOf("a")).toHaveLength(1);
-  });
-
-  it("replays an unedited approval under the key derived from its args", () => {
-    const args = { to: ["a@example.test"], subject: "s", body: "b" };
-    const key = approvalEffectKey("run-1", "mail_send", args);
-    const queue = createApprovedEffectReplayQueue([
-      { kind: "mail_send", request: args, idempotencyKey: key },
-    ]);
-    expect(queue.nextIdempotencyKey()).toBe(approvalEffectKey("run-1", "mail_send", args));
-    expect(queue.take("mail_send")).toEqual(args);
-  });
-
-  it("sends identical calls once each under their occurrence keys", async () => {
-    const { deps, gmail } = withSends();
-    const occurrences = new Map<string, number>();
-    const base = approvalEffectKey("run-1", "mail_send", message);
-    const next = () => {
-      const n = occurrences.get(base) ?? 0;
-      occurrences.set(base, n + 1);
-      return n > 0 ? `${base}:${n}` : base;
-    };
-    const first = next();
-    // The second identical call awaited approval; on resume it runs under its stored key.
-    const second = `${base}:1`;
-    advanceEffectOccurrences(occurrences, second);
-    const third = next();
-    expect(third).toBe(`${base}:2`);
-    for (const key of [first, second, third]) {
-      expect(await run({ ...deps, idempotencyKey: key }, "mail_send", message)).toMatchObject({
-        ok: true,
-      });
-    }
-    expect(gmail.sentOf("a")).toHaveLength(3);
-  });
-
   it("never repeats a send whose outcome is unclear", async () => {
     const { deps, gmail, sends } = withSends();
     gmail.failNext(500, { urlIncludes: "drafts/send", times: 5 });
@@ -811,16 +642,5 @@ describe("mail write tools", () => {
     });
     expect(off.gmail.sentOf("a")).toHaveLength(0);
     expect(gmail.sentOf("a")).toHaveLength(0);
-  });
-});
-
-describe("replayed approval occurrences", () => {
-  it("counts a stored suffix as used so the next identical call gets the next key", () => {
-    const occurrences = new Map<string, number>();
-    advanceEffectOccurrences(occurrences, "run-1:mail_send:abc:1");
-    expect(occurrences.get("run-1:mail_send:abc")).toBe(2);
-    advanceEffectOccurrences(occurrences, "run-1:mail_send:abc");
-    advanceEffectOccurrences(occurrences, "run-1:mail_send:abc:0");
-    expect(occurrences.get("run-1:mail_send:abc")).toBe(2);
   });
 });

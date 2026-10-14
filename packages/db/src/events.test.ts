@@ -3204,13 +3204,7 @@ describe("appendEvent", () => {
   });
 });
 
-describe("answerRunInput with mail edits", () => {
-  const original = {
-    to: ["a@example.test"],
-    subject: "Hi",
-    body: "Old",
-    account: "me@example.test",
-  };
+describe("answerRunInput with a mail denial", () => {
   const mailBlock = {
     tool: "mail_send" as const,
     to: ["a@example.test"],
@@ -3219,13 +3213,12 @@ describe("answerRunInput with mail edits", () => {
     subject: "Hi",
     body: "Old",
   };
+  const mailDenial = {
+    note: "The user sent it themselves.",
+    mail: { subject: "New subject", body: "New", connectionId: "conn-1" },
+  };
 
-  function setup(options: {
-    kind?: string;
-    request?: unknown;
-    runUserId?: string;
-    reject?: boolean;
-  }) {
+  function setup(options: { kind?: string; runUserId?: string; effectFound?: boolean } = {}) {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
@@ -3257,12 +3250,13 @@ describe("answerRunInput with mail edits", () => {
       },
       task: { updateMany: vi.fn() },
       externalEffect: {
-        findFirst: vi.fn().mockResolvedValue({
-          id: "effect-1",
-          kind: options.kind ?? "mail_send",
-          status: "intended",
-          request: "request" in options ? options.request : original,
-        }),
+        findFirst: vi
+          .fn()
+          .mockResolvedValue(
+            options.effectFound === false
+              ? null
+              : { id: "effect-1", kind: options.kind ?? "mail_send", status: "intended" },
+          ),
         update: vi.fn().mockResolvedValue({ id: "effect-1" }),
       },
       actionApprovalRule: { upsert: vi.fn() },
@@ -3277,7 +3271,7 @@ describe("answerRunInput with mail edits", () => {
     const prisma = {
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
     } as unknown as PrismaClient;
-    const answer = (extra: { answer?: string; answeredByUserId?: string; mailEdits?: object }) =>
+    const answer = (extra: { answer?: string; answeredByUserId?: string } = {}) =>
       answerRunInput(
         prisma,
         {
@@ -3286,9 +3280,8 @@ describe("answerRunInput with mail edits", () => {
           runId: "run-1",
           messageId: "message-1",
           answeredByUserId: "user-1",
-          answer: "allow",
-          mailEdits: { subject: "New subject", body: "New" },
-          checkMailRequest: () => !options.reject,
+          answer: "deny",
+          mailDenial,
           ...extra,
         },
         new TestFanout(),
@@ -3296,44 +3289,28 @@ describe("answerRunInput with mail edits", () => {
     return { tx, answer };
   }
 
-  it("stores the edited request, keeps the original key, and approves in one update", async () => {
-    const { tx, answer } = setup({});
-    await expect(answer({})).resolves.toBe(true);
-    const edited = { ...original, subject: "New subject", body: "New" };
-    expect(tx.externalEffect.update).toHaveBeenCalledTimes(1);
+  it("denies the effect with the note and shows the edited mail on the card", async () => {
+    const { tx, answer } = setup();
+    await expect(answer()).resolves.toBe(true);
     expect(tx.externalEffect.update).toHaveBeenCalledWith({
       where: { id: "effect-1" },
-      data: {
-        status: "approved",
-        request: edited,
-      },
+      data: { status: "denied", result: { note: "The user sent it themselves." } },
     });
-    // The answered card shows what was approved.
     const blocks = tx.message.update.mock.calls[0]?.[0].data.blocks;
     expect(blocks[0]).toMatchObject({
       status: "answered",
-      mail: { subject: "New subject", body: "New", to: ["a@example.test"] },
-    });
-  });
-
-  it("does not touch the request when there are no edits", async () => {
-    const { tx, answer } = setup({});
-    await expect(answer({ mailEdits: undefined })).resolves.toBe(true);
-    expect(tx.externalEffect.update).toHaveBeenCalledWith({
-      where: { id: "effect-1" },
-      data: { status: "approved" },
+      answer: "deny",
+      mail: { subject: "New subject", body: "New", connectionId: "conn-1", to: ["a@example.test"] },
     });
   });
 
   it.each([
-    ["a non-mail effect", { kind: "destination.write" }, {}],
-    ["a deny", {}, { answer: "deny" }],
+    ["an allow", {}, { answer: "allow" }],
     ["an always-allow", {}, { answer: "always" }],
     ["another user", {}, { answeredByUserId: "user-2" }],
-    ["a send of a saved draft", { request: { draftId: "d1" } }, {}],
-    ["a merged message the mail tool would refuse", { reject: true }, {}],
-    ["a missing request", { request: null }, {}],
-  ])("rejects edits on %s without changing anything", async (_name, options, extra) => {
+    ["a non-mail effect", { kind: "destination.write" }, {}],
+    ["an effect that is no longer waiting", { effectFound: false }, {}],
+  ])("rejects a mail denial on %s without changing anything", async (_name, options, extra) => {
     const { tx, answer } = setup(options);
     await expect(answer(extra)).resolves.toBe(false);
     expect(tx.externalEffect.update).not.toHaveBeenCalled();

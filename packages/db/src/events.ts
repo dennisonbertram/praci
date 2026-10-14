@@ -3,6 +3,7 @@ import {
   type BotSecretDestination,
   encodeLoginSecret,
   LoginSecretValue,
+  type MailApproval,
   type MessageBlock,
   MessageBlock as MessageBlockSchema,
   type ProductEvent,
@@ -46,6 +47,8 @@ export interface AppendEventInput {
 
 export interface ThreadEvents {
   answerRunInput(input: AnswerRunInput): Promise<boolean>;
+  findMailApprovalForEdit(input: FindMailApprovalInput): Promise<PendingMailApproval | null>;
+  setMailApprovalOutcome(input: SetMailApprovalOutcomeInput): Promise<void>;
   append(input: AppendEventInput): Promise<ProductEvent>;
   claimSteering(input: ClaimSteeringInput): Promise<ClaimedSteeringMessage[]>;
   clearThread(input: ClearThreadInput): Promise<ClearThreadResult>;
@@ -214,20 +217,11 @@ export interface AnswerRunInput {
   /** Only for a login card; `answer` carries its password. */
   username?: string;
   /**
-   * Mail fields the person changed on a mail_draft or mail_send approval, already checked by the
-   * caller. Applied only to an "allow" answer by the run's own user.
+   * The person edited a mail approval and sends it themselves, through the compose path, after
+   * this denial. Only a "deny" by the run's own user on a pending mail approval takes it: `note`
+   * becomes the denied tool's result, and `mail` is what the card then shows.
    */
-  mailEdits?: MailArgEdits;
-  /** Runs the mail tool's own checks on the merged message; false rejects the edit. */
-  checkMailRequest?: (kind: string, request: Record<string, unknown>) => boolean;
-}
-
-export interface MailArgEdits {
-  to?: string[];
-  cc?: string[];
-  bcc?: string[];
-  subject?: string;
-  body?: string;
+  mailDenial?: { note: string; mail: Partial<MailApproval> };
 }
 
 const MAIL_APPROVAL_TOOLS = new Set(["mail_draft", "mail_send"]);
@@ -285,6 +279,8 @@ export function createThreadEvents(
 ): ThreadEvents {
   return {
     answerRunInput: (input) => answerRunInput(prisma, input, realtime, options.runSecretWriter),
+    findMailApprovalForEdit: (input) => findMailApprovalForEdit(prisma, input),
+    setMailApprovalOutcome: (input) => setMailApprovalOutcome(prisma, input, realtime),
     append: (input) => appendEvent(prisma, input, realtime),
     claimSteering: (input) => claimSteering(prisma, input),
     clearThread: (input) => clearThread(prisma, input, realtime),
@@ -687,9 +683,7 @@ async function commitAnswerRunInput(
   if (login && !login.success) return null;
   let approvalEffect: { id: string; kind: string; request?: unknown } | null = null;
   let approvalUserId: string | null = null;
-  const mailEdits = input.mailEdits && Object.keys(input.mailEdits).length ? input.mailEdits : null;
-  if (mailEdits && !approvalAsk) return null;
-  let editedRequest: Record<string, unknown> | undefined;
+  if (input.mailDenial && (!approvalAsk || input.answer !== "deny")) return null;
 
   if (approvalAsk) {
     if (!pendingAsk.actions?.some((action) => action.id === input.answer)) return null;
@@ -702,25 +696,11 @@ async function commitAnswerRunInput(
       },
     });
     if (!approvalEffect) return null;
-    if (mailEdits) {
-      // Edits are the owner's own decision about their own mail, for exactly one allowed send.
-      if (
-        input.answer !== "allow" ||
-        run.userId !== input.answeredByUserId ||
-        !MAIL_APPROVAL_TOOLS.has(approvalEffect.kind)
-      ) {
-        return null;
-      }
-    }
-    if (mailEdits) {
-      const request = approvalEffect.request;
-      if (!request || typeof request !== "object" || Array.isArray(request)) return null;
-      const stored = request as Record<string, unknown>;
-      // A send of a saved draft ignores these fields, so an edit would only mislead.
-      if (approvalEffect.kind === "mail_send" && stored.draftId) return null;
-      editedRequest = { ...stored, ...mailEdits };
-      // The whole merged message must pass the mail tool's checks before the approval is spent.
-      if (input.checkMailRequest?.(approvalEffect.kind, editedRequest) === false) return null;
+    if (
+      input.mailDenial &&
+      (run.userId !== input.answeredByUserId || !MAIL_APPROVAL_TOOLS.has(approvalEffect.kind))
+    ) {
+      return null;
     }
     if (input.answer === "always") {
       if (run.userId !== input.answeredByUserId) return null;
@@ -774,9 +754,7 @@ async function commitAnswerRunInput(
       where: { id: approvalEffect!.id },
       data: {
         status: allowed ? "approved" : "denied",
-        // The idempotency key is not touched: it stays the key of the original call, so a
-        // re-emit of that call finds this effect in any status. The executor runs this request.
-        ...(editedRequest ? { request: editedRequest as Prisma.InputJsonValue } : {}),
+        ...(input.mailDenial ? { result: { note: input.mailDenial.note } } : {}),
       },
     });
     if (input.answer === "always") {
@@ -845,7 +823,9 @@ async function commitAnswerRunInput(
           ...block,
           status: "answered" as const,
           answer: recordedAnswer,
-          ...(mailEdits && block.mail ? { mail: { ...block.mail, ...mailEdits } } : {}),
+          ...(input.mailDenial && block.mail
+            ? { mail: { ...block.mail, ...input.mailDenial.mail } }
+            : {}),
         }
       : block,
   );
@@ -859,6 +839,110 @@ async function commitAnswerRunInput(
     payload: { messageId: message.id, role: "bot", blocks },
   });
   return { threadId: updated.threadId, seq: updated.seq };
+}
+
+export interface FindMailApprovalInput {
+  spaceId: string;
+  threadId: string;
+  runId: string;
+  messageId: string;
+  answeredByUserId: string;
+}
+
+export interface PendingMailApproval {
+  effectId: string;
+  kind: "mail_draft" | "mail_send";
+  request: Record<string, unknown>;
+}
+
+/**
+ * The pending mail_draft or mail_send approval on this message, when the person answering owns
+ * the run and the effect is still waiting. A read: the approval is spent by `answerRunInput`.
+ */
+export async function findMailApprovalForEdit(
+  prisma: PrismaClient,
+  input: FindMailApprovalInput,
+): Promise<PendingMailApproval | null> {
+  const run = await prisma.run.findFirst({
+    where: {
+      id: input.runId,
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      userId: input.answeredByUserId,
+      status: "waiting_input",
+    },
+    select: { id: true },
+  });
+  if (!run) return null;
+  const message = await prisma.message.findFirst({
+    where: { id: input.messageId, threadId: input.threadId, runId: input.runId, role: "bot" },
+  });
+  const parsed = MessageBlockSchema.array().safeParse(message?.blocks);
+  if (!parsed.success) return null;
+  const ask = parsed.data.find((block) => block.kind === "ask" && block.status !== "answered");
+  if (ask?.kind !== "ask" || !ask.mail || !isApprovalAskBlock(ask)) return null;
+  const effect = await prisma.externalEffect.findFirst({
+    where: {
+      id: ask.approvalEffectId,
+      spaceId: input.spaceId,
+      runId: input.runId,
+      status: "intended",
+    },
+  });
+  if (!effect || !MAIL_APPROVAL_TOOLS.has(effect.kind)) return null;
+  const request = effect.request;
+  if (!request || typeof request !== "object" || Array.isArray(request)) return null;
+  return {
+    effectId: effect.id,
+    kind: effect.kind as PendingMailApproval["kind"],
+    request: request as Record<string, unknown>,
+  };
+}
+
+export interface SetMailApprovalOutcomeInput {
+  spaceId: string;
+  threadId: string;
+  messageId: string;
+  effectId: string;
+  outcome: NonNullable<MailApproval["outcome"]>;
+}
+
+/** Records how the person's own send of an edited mail approval ended, for the card to show. */
+export async function setMailApprovalOutcome(
+  prisma: PrismaClient,
+  input: SetMailApprovalOutcomeInput,
+  realtime?: RealtimeFanout,
+): Promise<void> {
+  const committed = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.$queryRaw`SELECT id FROM threads WHERE id = ${input.threadId} FOR UPDATE`;
+    const message = await tx.message.findFirst({
+      where: { id: input.messageId, threadId: input.threadId, role: "bot" },
+    });
+    const parsed = MessageBlockSchema.array().safeParse(message?.blocks);
+    if (!message?.runId || !parsed.success) return null;
+    const run = await tx.run.findUnique({ where: { id: message.runId }, select: { botId: true } });
+    if (!run) return null;
+    let changed = false;
+    const blocks = parsed.data.map((block) => {
+      if (block.kind !== "ask" || block.approvalEffectId !== input.effectId || !block.mail) {
+        return block;
+      }
+      changed = true;
+      return { ...block, mail: { ...block.mail, outcome: input.outcome } };
+    });
+    if (!changed) return null;
+    await tx.message.update({ where: { id: message.id }, data: { blocks } });
+    const event = await appendEventInTransaction(tx, {
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      botId: run.botId,
+      type: "thread.message.updated",
+      runId: message.runId,
+      payload: { messageId: message.id, role: "bot", blocks },
+    });
+    return { threadId: event.threadId, seq: event.seq };
+  });
+  if (committed) await notifyRealtime(realtime, committed.threadId, committed.seq);
 }
 
 export async function answerRunInput(
