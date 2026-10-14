@@ -1,5 +1,5 @@
 import type { AvatarEyePose, AvatarFacePose, AvatarMood } from "@rakazo/core";
-import { avatarEyePath, avatarFacePose, avatarRest, blendAvatarFacePose } from "@rakazo/core";
+import { avatarEyePath, avatarFacePose, blendAvatarFacePose } from "@rakazo/core";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { frozenAvatarTime, subscribeAvatarTicker } from "./avatar-ticker.js";
 

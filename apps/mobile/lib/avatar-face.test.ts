@@ -1,6 +1,6 @@
 import { avatarEyePath, avatarFacePose } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
-import { faceFrame, reactionForTransition, robotFaceLayout, transformEyePath } from "./avatar-face";
+import { faceFrame, robotFaceLayout, transformEyePath } from "./avatar-face";
 
 const pose = avatarFacePose(3, "idle", 0);
 
@@ -47,14 +47,5 @@ describe("avatar face geometry", () => {
       expect(l.eyeW * 2 + l.eyeGap).toBeLessThanOrEqual(l.innerW);
       expect(l.eyeH).toBeLessThanOrEqual(l.innerH);
     }
-  });
-});
-
-describe("avatar reactions", () => {
-  it("reacts only when an active run ends", () => {
-    expect(reactionForTransition(true, "completed")).toEqual({ mood: "happy", ms: 1600 });
-    expect(reactionForTransition(true, "failed")).toEqual({ mood: "sad", ms: 2000 });
-    expect(reactionForTransition(true, "cancelled")).toBeUndefined();
-    expect(reactionForTransition(false, "completed")).toBeUndefined();
   });
 });

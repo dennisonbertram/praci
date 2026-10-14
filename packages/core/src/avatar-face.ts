@@ -8,6 +8,8 @@
  * AVATAR_MOODS and giving it a row.
  */
 
+import { ACTIVE_RUN_STATUSES } from "./run-state.js";
+
 export const AVATAR_MOODS = [
   "idle",
   "listening",
@@ -346,6 +348,23 @@ export function moodForRunStatus(status: string | null | undefined): AvatarMood 
     default:
       return "idle";
   }
+}
+
+/**
+ * One-shot emote when a run leaves an active status: sad if it failed, happy for
+ * any other end except cancelled. Undefined means no reaction.
+ */
+export function avatarReactionForTransition(
+  previousStatus: string | null | undefined,
+  status: string | null | undefined,
+): { mood: AvatarMood; ms: number } | undefined {
+  "worklet";
+  const isActive = (value: string | null | undefined) =>
+    ACTIVE_RUN_STATUSES.some((active) => active === value);
+  if (!isActive(previousStatus) || isActive(status)) return undefined;
+  if (status === "failed") return { mood: "sad", ms: 2000 };
+  if (status === "cancelled") return undefined;
+  return { mood: "happy", ms: 1600 };
 }
 
 /** Face pose at `timeMs`. `lookAt` (-1..1) replaces the gaze target. */

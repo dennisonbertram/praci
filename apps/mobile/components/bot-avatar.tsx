@@ -3,6 +3,7 @@ import type { AvatarMood } from "@rakazo/core";
 import {
   ACTIVE_RUN_STATUSES,
   avatarIdentitySeed,
+  avatarReactionForTransition,
   avatarRest,
   moodForRunStatus,
   organicAvatarPath,
@@ -21,11 +22,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Svg, { G, Path } from "react-native-svg";
-import {
-  type AvatarFaceGeometry,
-  reactionForTransition,
-  robotFaceLayout,
-} from "../lib/avatar-face";
+import { type AvatarFaceGeometry, robotFaceLayout } from "../lib/avatar-face";
 import { workingAvatarDuration, workingAvatarFrame } from "../lib/avatar-motion";
 import { mobileBotAvatarPresentation } from "../lib/bot-avatar";
 import { useI18n } from "../lib/i18n";
@@ -67,10 +64,7 @@ export const BotAvatar = memo(function BotAvatar({
   useEffect(() => {
     const was = previousStatus.current;
     previousStatus.current = status;
-    const next = reactionForTransition(
-      ACTIVE_RUN_STATUSES.some((activeStatus) => activeStatus === was),
-      status,
-    );
+    const next = avatarReactionForTransition(was, status);
     if (next) react(next.mood, next.ms);
   }, [status, react]);
   const mood = moodProp ?? reaction ?? moodForRunStatus(status);

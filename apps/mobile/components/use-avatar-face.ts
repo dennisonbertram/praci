@@ -2,6 +2,7 @@ import type { AvatarFacePose, AvatarMood } from "@rakazo/core";
 import { avatarFacePose, blendAvatarFacePose } from "@rakazo/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  type FrameInfo,
   useAnimatedProps,
   useFrameCallback,
   useReducedMotion,
@@ -80,20 +81,24 @@ export function useAvatarFace(options: {
     frame,
   ]);
 
-  useFrameCallback((info) => {
-    "worklet";
-    const t = info.timeSinceFirstFrame;
-    let pose = avatarFacePose(seedValue.value, moodValue.value, t, lookValue.value ?? undefined);
-    const previous = from.value;
-    if (previous) {
-      if (startedAt.value < 0) startedAt.value = t;
-      const u = (t - startedAt.value) / MOOD_BLEND_MS;
-      if (u >= 1) from.value = null;
-      else pose = blendAvatarFacePose(previous, pose, 1 - (1 - u) ** 3);
-    }
-    last.value = pose;
-    frame.value = faceFrame(pose, geometryValue.value);
-  }, !reducedMotion);
+  const onFrame = useCallback(
+    (info: FrameInfo) => {
+      "worklet";
+      const t = info.timeSinceFirstFrame;
+      let pose = avatarFacePose(seedValue.value, moodValue.value, t, lookValue.value ?? undefined);
+      const previous = from.value;
+      if (previous) {
+        if (startedAt.value < 0) startedAt.value = t;
+        const u = (t - startedAt.value) / MOOD_BLEND_MS;
+        if (u >= 1) from.value = null;
+        else pose = blendAvatarFacePose(previous, pose, 1 - (1 - u) ** 3);
+      }
+      last.value = pose;
+      frame.value = faceFrame(pose, geometryValue.value);
+    },
+    [seedValue, moodValue, lookValue, from, startedAt, last, frame, geometryValue],
+  );
+  useFrameCallback(onFrame, !reducedMotion);
 
   const leftProps = useAnimatedProps(() => ({ d: frame.value.leftD }));
   const rightProps = useAnimatedProps(() => ({ d: frame.value.rightD }));

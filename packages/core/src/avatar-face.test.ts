@@ -3,6 +3,7 @@ import {
   AVATAR_MOODS,
   avatarEyePath,
   avatarFacePose,
+  avatarReactionForTransition,
   blendAvatarFacePose,
   moodForRunStatus,
 } from "./avatar-face.js";
@@ -101,5 +102,21 @@ describe("avatar eye path", () => {
     expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(0);
     expect(Math.max(...ys) - Math.min(...ys)).toBeLessThan(1.5);
     expect(d).not.toMatch(/\.\d{3}/);
+  });
+});
+
+describe("avatarReactionForTransition", () => {
+  it("is happy when an active run ends without failing", () => {
+    for (const next of ["idle", "completed", undefined])
+      expect(avatarReactionForTransition("running", next)).toEqual({ mood: "happy", ms: 1600 });
+  });
+  it("is sad when an active run fails", () => {
+    expect(avatarReactionForTransition("queued", "failed")).toEqual({ mood: "sad", ms: 2000 });
+  });
+  it("does nothing for cancelled, active-to-active, or non-active starts", () => {
+    expect(avatarReactionForTransition("running", "cancelled")).toBeUndefined();
+    expect(avatarReactionForTransition("queued", "running")).toBeUndefined();
+    expect(avatarReactionForTransition("idle", "completed")).toBeUndefined();
+    expect(avatarReactionForTransition(undefined, "idle")).toBeUndefined();
   });
 });

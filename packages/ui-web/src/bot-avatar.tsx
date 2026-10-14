@@ -2,6 +2,7 @@ import type { AvatarMood, GrokColorDef } from "@rakazo/core";
 import {
   ACTIVE_RUN_STATUSES,
   avatarIdentitySeed,
+  avatarReactionForTransition,
   avatarRest,
   DEFAULT_GROK_BOT_COLOR,
   GROK_BOT_COLORS,
@@ -109,10 +110,6 @@ export interface BotAvatarProps {
   lookAt?: { x: number; y: number };
 }
 
-/** Short emotes when a run ends: [mood, duration in ms]. */
-const COMPLETED_REACTION = ["happy", 1600] as const;
-const FAILED_REACTION = ["sad", 2000] as const;
-
 export const BotAvatar = memo(function BotAvatar({
   color,
   size = 36,
@@ -130,9 +127,8 @@ export const BotAvatar = memo(function BotAvatar({
   useEffect(() => {
     const was = previousStatus.current;
     previousStatus.current = status;
-    if (!ACTIVE_RUN_STATUSES.some((s) => s === was)) return;
-    if (status === "completed") react(...COMPLETED_REACTION);
-    else if (status === "failed") react(...FAILED_REACTION);
+    const next = avatarReactionForTransition(was, status);
+    if (next) react(next.mood, next.ms);
   }, [status, react]);
   const mood = moodProp ?? reaction ?? moodForRunStatus(status);
   const preferredVariant = useAvatarStyle();

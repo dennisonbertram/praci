@@ -1,4 +1,4 @@
-import type { AvatarEyePose, AvatarFacePose, AvatarMood } from "@rakazo/core";
+import type { AvatarEyePose, AvatarFacePose } from "@rakazo/core";
 import { avatarEyePath } from "@rakazo/core";
 
 /**
@@ -34,21 +34,10 @@ export interface AvatarFaceFrame {
 export const MIN_ANIMATED_SIZE = 24;
 export const MOOD_BLEND_MS = 220;
 
-const COMPLETED_REACTION = { mood: "happy", ms: 1600 } as const;
-const FAILED_REACTION = { mood: "sad", ms: 2000 } as const;
-
-/** Short emote when a run leaves an active status, or undefined for no reaction. */
-export function reactionForTransition(
-  wasActive: boolean,
-  status: string | undefined,
-): { mood: AvatarMood; ms: number } | undefined {
-  if (!wasActive) return undefined;
-  if (status === "completed") return COMPLETED_REACTION;
-  if (status === "failed") return FAILED_REACTION;
-  return undefined;
+function r2(n: number) {
+  "worklet";
+  return Math.round(n * 100) / 100;
 }
-
-const r2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * Applies translate + rotate to an absolute `M..C..Z` eye path by moving its
