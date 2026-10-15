@@ -133,6 +133,10 @@ export function FinanceCryptoPage() {
   const q = useFinanceQuery(() => rpc.finance.crypto(), []);
   const history = useFinanceQuery(() => rpc.finance.cryptoHistory({ days: 90 }), []);
   const trend = history.data?.points ?? [];
+  const reloadAll = () => {
+    q.reload();
+    history.reload();
+  };
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<FinanceWallet | null>(null);
   const [removing, setRemoving] = useState<FinanceWallet | null>(null);
@@ -162,7 +166,7 @@ export function FinanceCryptoPage() {
             </div>
           )}
           {connecting ? (
-            <BlockscoutConnectDialog onConnected={q.reload} onClose={() => setConnecting(false)} />
+            <BlockscoutConnectDialog onConnected={reloadAll} onClose={() => setConnecting(false)} />
           ) : null}
           {data.lastError ? (
             <p role="alert" className="text-sm text-destructive">
@@ -260,16 +264,16 @@ export function FinanceCryptoPage() {
             key={adding ? "add" : "closed"}
             open={adding}
             onClose={() => setAdding(false)}
-            onSaved={q.reload}
+            onSaved={reloadAll}
           />
           <WalletDialog
             key={editing?.id ?? "none"}
             wallet={editing ?? undefined}
             open={editing !== null}
             onClose={() => setEditing(null)}
-            onSaved={q.reload}
+            onSaved={reloadAll}
           />
-          <RemoveDialog wallet={removing} onClose={() => setRemoving(null)} onSaved={q.reload} />
+          <RemoveDialog wallet={removing} onClose={() => setRemoving(null)} onSaved={reloadAll} />
         </>
       ) : null}
     </DetailPage>
