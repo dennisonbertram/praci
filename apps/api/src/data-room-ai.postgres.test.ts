@@ -222,7 +222,10 @@ describePostgres("Data room search, consent and embedding model (PostgreSQL)", (
       const theirs = await addItem(other, "theirs", "someone else's", false);
       // An image whose vision was skipped has an empty text; a text file with empty text is not an image.
       const image = await addItem(a, "scan", "x", false);
-      await prisma.dataRoomItem.update({ where: { id: image.id }, data: { mimeType: "image/png" } });
+      await prisma.dataRoomItem.update({
+        where: { id: image.id },
+        data: { mimeType: "image/png" },
+      });
       await prisma.dataRoomItemText.update({ where: { itemId: image.id }, data: { text: "" } });
       await prisma.dataRoomChunk.deleteMany({ where: { itemId: image.id } });
       ai = {

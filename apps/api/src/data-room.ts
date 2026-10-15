@@ -246,7 +246,8 @@ export function createDataRoomService(deps: DataRoomDeps) {
           await deps.jobs.enqueue(dataRoomStepJob(`dataroom.${step}`, actor, id));
         }
       };
-      const visionReady = ai.model && modelAcceptsImageInput(ai.model.provider, ai.model.id, ai.model.acceptsImages);
+      const visionReady =
+        ai.model && modelAcceptsImageInput(ai.model.provider, ai.model.id, ai.model.acceptsImages);
       if (visionReady) await queue("ingest");
       await queue("classify");
       if (ai.embeddingModel) await queue("index", ai.embeddingModel);
