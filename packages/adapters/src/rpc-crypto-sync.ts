@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { CRYPTO_CHAINS } from "@rakazo/contracts";
-import { usdValueCents } from "@rakazo/core";
+import { holdingParts, usdValueCents } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -229,6 +229,22 @@ export async function syncCryptoHoldings(
                 usdValueCents: usdValueCents(h.rawBalance, h.decimals, h.usdPrice),
                 syncedAt,
               })),
+            });
+          }
+          // One row per wallet and UTC day: later syncs that day overwrite it. Taken from the stored
+          // rows, so a chain that failed this time still counts at its old value.
+          if (read.snapshots.size > 0) {
+            const parts = holdingParts(
+              await tx.financeCryptoHolding.findMany({
+                where: { spaceId, userId, walletId: read.id },
+                select: { chainId: true, tokenAddress: true, usdValueCents: true },
+              }),
+            );
+            const day = syncedAt.toISOString().slice(0, 10);
+            await tx.financeCryptoSnapshot.upsert({
+              where: { walletId_day: { walletId: read.id, day } },
+              create: { spaceId, userId, walletId: read.id, day, ...parts },
+              update: parts,
             });
           }
           // Safe details only fill in; the user's chosen type is never changed here.

@@ -4,6 +4,7 @@ import type {
   FinanceCard,
   FinanceTransaction,
   MessageBlock,
+  RunwayCryptoScope,
 } from "@rakazo/contracts";
 import {
   CRYPTO_CHAINS,
@@ -11,11 +12,13 @@ import {
   financeProviderForEndpoint,
   isCryptoEndpoint,
   isFinanceAgentSpawnKey,
+  RunwayCryptoScopeSchema,
 } from "@rakazo/contracts";
 import {
   breakdown,
   cashSummary,
   categorySlug,
+  countedCash,
   countsTowardTotals,
   detectRecurring,
   monthlyBurn,
@@ -70,6 +73,7 @@ export type FinanceToolDeps = {
     | "financeSyncState"
     | "financeWallet"
     | "financeCryptoHolding"
+    | "financePreference"
   >;
   /** From the run (the bot owner), never from model input. */
   scope: Scope;
@@ -91,6 +95,19 @@ export async function hasFinanceSource(
     (server) =>
       financeProviderForEndpoint(server.endpoint) !== null || isCryptoEndpoint(server.endpoint),
   );
+}
+
+/** The saved choice of what counts as cash for runway; bank only until the user picks one. */
+export async function loadRunwayCrypto(
+  prisma: Pick<PrismaClient, "financePreference">,
+  scope: Scope,
+): Promise<RunwayCryptoScope> {
+  const row = await prisma.financePreference.findFirst({
+    where: { spaceId: scope.spaceId, userId: scope.userId },
+    select: { runwayCrypto: true },
+  });
+  const parsed = RunwayCryptoScopeSchema.safeParse(row?.runwayCrypto);
+  return parsed.success ? parsed.data : "bank";
 }
 
 // ---- Row mapping (shared with the API's Finance pages) ----
@@ -307,11 +324,17 @@ export async function financeToolFromTool(
   }
 }
 
+const COUNTED_CRYPTO: Record<RunwayCryptoScope, string> = {
+  bank: "no crypto",
+  stablecoins: "stablecoins (USDC, USDT, DAI at their canonical contracts, at synced prices)",
+  all: "all priced crypto at current prices",
+};
+
 async function financeOverview(deps: FinanceToolDeps) {
   const now = nowOf(deps);
   // The metrics reach back to the start of last year (year-over-year spend) at most.
   const windowStart = `${Number(dayOf(now).slice(0, 4)) - 1}-01-01`;
-  const [accounts, txns, since, states, holdingRows] = await Promise.all([
+  const [accounts, txns, since, states, holdingRows, scope] = await Promise.all([
     loadAccounts(deps),
     loadTxns(deps, windowStart),
     earliestTxnDay(deps),
@@ -319,11 +342,19 @@ async function financeOverview(deps: FinanceToolDeps) {
       where: { spaceId: deps.scope.spaceId, userId: deps.scope.userId },
     }),
     deps.prisma.financeCryptoHolding.findMany({ where: scopeWhere(deps) }),
+    loadRunwayCrypto(deps.prisma, deps.scope),
   ]);
   const crypto = summarizeCrypto(holdingRows.map(toHolding));
   const stablecoinCents = crypto.stablecoinCents ?? 0;
-  const cash = cashSummary(accounts, stablecoinCents);
   const otherCryptoCents = crypto.totalCents - stablecoinCents;
+  const bank = cashSummary(accounts, stablecoinCents);
+  const cash = {
+    ...bank,
+    cashCents: countedCash(
+      { bankCents: bank.bankCashCents ?? 0, stablecoinCents, otherCryptoCents },
+      scope,
+    ),
+  };
   const burn = monthlyBurn(txns, now);
   const rw = runway(cash.cashCents, burn.monthlyCents, now);
   const bankRunway = runway(cash.bankCashCents ?? 0, burn.monthlyCents, now);
@@ -363,8 +394,9 @@ async function financeOverview(deps: FinanceToolDeps) {
       bankOnly: dollars(cash.bankCashCents ?? 0),
       stablecoins: dollars(stablecoinCents),
       otherCrypto: dollars(otherCryptoCents),
-      totalInclOtherCrypto: dollars(cash.cashCents + otherCryptoCents),
-      note: "total includes stablecoins (USDC, USDT, DAI at their canonical contracts, at synced prices). Other crypto is not cash and not in runway.",
+      totalInclOtherCrypto: dollars((cash.bankCashCents ?? 0) + stablecoinCents + otherCryptoCents),
+      runwayCrypto: scope,
+      note: `total and runway are bank cash plus ${COUNTED_CRYPTO[scope]}, as the user chose.`,
     },
     monthlyBurn: dollars(burn.monthlyCents),
     burnMonths: burn.months,
@@ -608,7 +640,7 @@ function toHolding(row: {
   };
 }
 
-/** Wallet balances at DefiLlama prices. Read-only; only the canonical stablecoins are part of cash and runway. */
+/** Wallet balances at DefiLlama prices. Read-only; what counts as cash and runway is the user's saved choice (see finance_overview). */
 async function financeCrypto(deps: FinanceToolDeps) {
   const where = scopeWhere(deps);
   const [walletRows, holdingRows] = await Promise.all([
@@ -650,7 +682,7 @@ async function financeCrypto(deps: FinanceToolDeps) {
             : {}),
         };
       }),
-      note: "USD at DefiLlama prices; holdings with usd null have no price and are not in the total. Not part of cash, burn or runway.",
+      note: "USD at DefiLlama prices; holdings with usd null have no price and are not in the total. Whether this counts as cash is the user's saved choice (finance_overview cash.runwayCrypto); it never changes burn.",
     },
     "wallets",
   );

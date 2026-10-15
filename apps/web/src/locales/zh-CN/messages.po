@@ -579,6 +579,10 @@ msgstr ""
 msgid "All bots"
 msgstr ""
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "All crypto"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "All providers"
 msgstr ""
@@ -928,11 +932,16 @@ msgstr "备用模型已保存。"
 msgid "Balance"
 msgstr ""
 
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Balance over time"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Balance owed"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
 msgstr ""
 
@@ -1279,8 +1288,20 @@ msgstr "请查看邮箱"
 msgid "Checking + Savings + Treasury"
 msgstr ""
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Checking + Savings + Treasury + Crypto"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Checking + Savings + Treasury + Stablecoins"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Checking + Treasury"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Checking + Treasury + Crypto"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1325,6 +1346,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Choose which connected model Rakazo uses."
 msgstr "选择 Rakazo 使用的已连接模型。"
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Choose which crypto counts"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2193,8 +2218,16 @@ msgstr "无法更新头像"
 msgid "Couldn't update messaging settings"
 msgstr "无法更新消息设置"
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Count crypto"
+msgstr ""
+
 #: src/components/finance/ui.tsx
 msgid "Counterparty"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Counting crypto"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -4028,6 +4061,10 @@ msgstr ""
 msgid "Not counted in cash"
 msgstr ""
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Not counting crypto"
+msgstr ""
+
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"
 msgstr ""
@@ -4229,6 +4266,7 @@ msgid "Other connection types"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Other crypto"
 msgstr ""
 
@@ -5431,7 +5469,12 @@ msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO 暂时不可用，请重试。"
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Stablecoins only"
 msgstr ""
 
 #: src/pages/Inbox.tsx

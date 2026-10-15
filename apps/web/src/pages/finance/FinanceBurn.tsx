@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import { Link, useNavigate } from "react-router-dom";
+import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
 import { BurnBars, LineChart, StackBar } from "../../components/finance/charts";
 import {
   BreakdownRows,
@@ -225,6 +226,8 @@ export function FinanceRunwayPage() {
   const ahead = data?.projection.filter((p) => p.month > lastKnown) ?? [];
   const points = [...(data?.history ?? []), ...ahead];
   const runMonths = data?.runway.months?.toFixed(1);
+  const parts = data?.breakdown;
+  const hasCrypto = !!parts && (parts.stablecoinCents > 0 || parts.otherCryptoCents > 0);
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Runway` }]}
@@ -258,6 +261,18 @@ export function FinanceRunwayPage() {
               endMarker={ahead.length > 0 && (ahead.at(-1)?.balanceCents ?? 1) <= 0}
             />
           </Section>
+          {hasCrypto && parts ? (
+            <Section
+              title={<Trans>Cash</Trans>}
+              action={<CountCryptoButton scope={data.runwayCrypto} onSaved={q.reload} />}
+            >
+              <Kv>
+                <KvRow label={t`Bank`}>{money(parts.bankCents)}</KvRow>
+                <KvRow label={t`Stablecoins`}>{money(parts.stablecoinCents)}</KvRow>
+                <KvRow label={t`Other crypto`}>{money(parts.otherCryptoCents)}</KvRow>
+              </Kv>
+            </Section>
+          ) : null}
           <Section>
             <Kv>
               <KvRow label={t`Burn`}>{t`3-mo avg`}</KvRow>

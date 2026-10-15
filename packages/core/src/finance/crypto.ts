@@ -1,4 +1,9 @@
-import type { CryptoHolding, CryptoSummary } from "@rakazo/contracts";
+import type {
+  CryptoBalancePoint,
+  CryptoHolding,
+  CryptoSummary,
+  RunwayCryptoScope,
+} from "@rakazo/contracts";
 import { isStablecoin } from "./stablecoins.js";
 
 // Pure crypto helpers. Money is BigInt end to end here; no float ever touches a balance or a price.
@@ -79,4 +84,71 @@ export function summarizeCrypto(holdings: readonly CryptoHolding[]): CryptoSumma
     lastSyncedAt: oldest,
     unpricedTokenCount: unpriced,
   };
+}
+
+export interface CryptoParts {
+  stablecoinCents: number;
+  otherCryptoCents: number;
+}
+
+/**
+ * The one cash rule: bank cash plus the crypto that `scope` counts (none, stablecoins, or all priced
+ * crypto). Runway, the overview and the Finance agent all call this.
+ */
+export function countedCash(
+  parts: CryptoParts & { bankCents: number },
+  scope: RunwayCryptoScope,
+): number {
+  if (scope === "bank") return parts.bankCents;
+  const crypto =
+    scope === "stablecoins"
+      ? parts.stablecoinCents
+      : parts.stablecoinCents + parts.otherCryptoCents;
+  return parts.bankCents + crypto;
+}
+
+/** Stablecoin and other priced crypto of stored holdings (unpriced ones count for nothing). */
+export function holdingParts(
+  holdings: readonly { chainId: number; tokenAddress: string; usdValueCents: bigint | null }[],
+): { stablecoinCents: bigint; otherCryptoCents: bigint } {
+  let stablecoinCents = 0n;
+  let otherCryptoCents = 0n;
+  for (const h of holdings) {
+    if (h.usdValueCents === null) continue;
+    if (isStablecoin(h.chainId, h.tokenAddress)) stablecoinCents += h.usdValueCents;
+    else otherCryptoCents += h.usdValueCents;
+  }
+  return { stablecoinCents, otherCryptoCents };
+}
+
+export interface CryptoSnapshotRow extends CryptoParts {
+  walletId: string;
+  /** UTC YYYY-MM-DD. */
+  day: string;
+}
+
+/** Crypto value on `day`: each wallet's latest snapshot on or before it, added up (zero before any). */
+export function cryptoPartsOn(rows: readonly CryptoSnapshotRow[], day: string): CryptoParts {
+  const latest = new Map<string, CryptoSnapshotRow>();
+  for (const row of rows) {
+    const seen = latest.get(row.walletId);
+    if (row.day <= day && (!seen || row.day > seen.day)) latest.set(row.walletId, row);
+  }
+  let stablecoinCents = 0;
+  let otherCryptoCents = 0;
+  for (const row of latest.values()) {
+    stablecoinCents += row.stablecoinCents;
+    otherCryptoCents += row.otherCryptoCents;
+  }
+  return { stablecoinCents, otherCryptoCents };
+}
+
+/** One point per day in `[from, to]` that has a snapshot, with other wallets carried forward. */
+export function cryptoHistoryPoints(
+  rows: readonly CryptoSnapshotRow[],
+  from: string,
+  to: string,
+): CryptoBalancePoint[] {
+  const days = [...new Set(rows.map((r) => r.day))].filter((d) => d >= from && d <= to).sort();
+  return days.map((day) => ({ day, ...cryptoPartsOn(rows, day) }));
 }
