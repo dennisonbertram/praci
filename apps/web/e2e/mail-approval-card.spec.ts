@@ -1,18 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
-
-async function connectTwoGmailAccounts(page: Page) {
-  const gmailRow = page
-    .getByRole("dialog")
-    .getByText("Gmail", { exact: true })
-    .first()
-    .locator("xpath=ancestor::*[.//button][1]");
-  await gmailRow.getByRole("button", { name: "Add", exact: true }).click();
-  await gmailRow.getByRole("button", { name: "Added", exact: true }).click();
-  const detail = page.getByTestId("connection-detail");
-  await detail.getByRole("button", { name: "Add another", exact: true }).click();
-  await expect(detail.getByLabel("Account label")).toHaveCount(2);
-}
+import { captureScreenshot, completeOnboarding, connectTwoGmailAccounts, rpc, signup } from "./helpers";
 
 test("a mail send waits in the chat as an editable card and approving it runs the edited call", async ({
   page,
@@ -24,12 +11,18 @@ test("a mail send waits in the chat as an editable card and approving it runs th
   await page.goto("/app/inbox");
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
-  await page.getByTestId("side-panel").getByRole("button", { name: "Create Inbox agent" }).click();
-  await page.locator("[data-roster-bot-id]").filter({ hasText: "Inbox agent" }).click();
-  await expect(page).toHaveURL(/\/app\/(?!inbox$)[^/?]+$/);
+  // Actions run without asking by default; the card appears once the person asks to review email.
+  await rpc(page, "approvalRules/set", {
+    effect: "require_approval",
+    matchKind: "category",
+    matchValue: "email",
+  });
+  await page.getByTestId("sidebar-inbox").click();
+  const panel = page.getByTestId("side-panel");
+  await page.getByRole("main").getByRole("button", { name: "Show Inbox agent" }).click();
+  await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
 
-  await page.getByPlaceholder(/Message/).fill("send email card");
+  await panel.getByPlaceholder(/Message/).fill("send email card");
   await page.keyboard.press("Enter");
 
   const card = page.getByTestId("mail-approval-card");
