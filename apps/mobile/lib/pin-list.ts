@@ -15,7 +15,7 @@ export const toggleItem = (list: PinList, id: string): PinList =>
 
 /** Blank text keeps the old text: the contract requires at least one character. */
 export function editItem(list: PinList, id: string, text: string): PinList {
-  const next = text.trim().slice(0, 300);
+  const next = text.trim().slice(0, 60);
   return next ? mapItem(list, id, (item) => ({ ...item, text: next })) : list;
 }
 
@@ -25,7 +25,7 @@ export const deleteItem = (list: PinList, id: string): PinList => ({
 });
 
 export function addItem(list: PinList, id: string, text: string): PinList {
-  const next = text.trim().slice(0, 300);
+  const next = text.trim().slice(0, 60);
   if (!next || list.items.length >= BOT_PINS_MAX_ITEMS) return list;
   return { ...list, items: [...list.items, { id, text: next, done: false }] };
 }

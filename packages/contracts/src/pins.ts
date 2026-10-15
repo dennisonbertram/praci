@@ -41,7 +41,7 @@ export type PinStat = z.infer<typeof PinStatSchema>;
 
 export const PinItemSchema = z.object({
   id: z.string().min(1).max(40),
-  text: z.string().min(1).max(300),
+  text: z.string().min(1).max(60),
   done: z.boolean(),
 });
 export type PinItem = z.infer<typeof PinItemSchema>;
