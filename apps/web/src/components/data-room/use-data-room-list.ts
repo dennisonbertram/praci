@@ -73,6 +73,8 @@ async function fetchPage(q: ListQuery, cursor?: string) {
 }
 
 type State = {
+  /** The query the rows answer; it lags `q` until the response arrives. */
+  key: string;
   rows: Row[];
   nextCursor: string | null;
   loading: boolean;
@@ -83,6 +85,7 @@ type State = {
 export function useDataRoomList(q: ListQuery) {
   const key = JSON.stringify(q);
   const [state, setState] = useState<State>({
+    key: "",
     rows: [],
     nextCursor: null,
     loading: true,
@@ -103,12 +106,12 @@ export function useDataRoomList(q: ListQuery) {
     setState((s) =>
       sameQuery
         ? { ...s, loading: true, error: "" }
-        : { rows: [], nextCursor: null, loading: true, loadingMore: false, error: "" },
+        : { key: "", rows: [], nextCursor: null, loading: true, loadingMore: false, error: "" },
     );
     fetchPage(latest.current)
       .then((page) => {
         if (id !== generation.current) return;
-        setState({ ...page, loading: false, loadingMore: false, error: "" });
+        setState({ ...page, key, loading: false, loadingMore: false, error: "" });
       })
       .catch((cause) => {
         if (id !== generation.current) return;

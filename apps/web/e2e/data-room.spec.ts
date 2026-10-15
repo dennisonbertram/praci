@@ -233,4 +233,46 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
     });
     await captureScreenshot(page, testInfo, `data-room-${layout.name}-${layout.scheme}`);
   }
+
+  // A pinned item that is not in the search results gives way to the first result; the Source menu
+  // closes when a file is dragged in, and the overlay covers the page; the toast's link is visible.
+  const searchbox = main.getByRole("searchbox", { name: "Search documents" });
+  for (const width of [1440, 960]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 800 });
+    await rows.nth(1).click();
+    await expect(preview.getByRole("heading", { level: 3 })).toHaveText(
+      "Series A term sheet v3.pdf",
+    );
+    await searchbox.fill("notice");
+    await expect(list.locator("mark")).toHaveText("90 days");
+    await expect(preview.getByRole("heading", { level: 3 })).toContainText("Example HQ lease");
+    await captureScreenshot(page, testInfo, `v2-search-${width}`);
+    await searchbox.fill("");
+    await expect(rows).toHaveCount(4);
+
+    await page.getByRole("button", { name: "Filter by Source" }).click();
+    await expect(page.getByRole("menuitemradio", { name: "Gmail" })).toBeVisible();
+    await dragFile(page, "dragenter");
+    await expect(page.getByTestId("data-room-drop-overlay")).toBeVisible();
+    await expect(page.getByRole("menuitemradio", { name: "Gmail" })).toHaveCount(0);
+    // The overlay uses the app's top layer, above menus and dialogs (z-50).
+    const layer = await page
+      .getByTestId("data-room-drop-overlay")
+      .evaluate((el) => Number(getComputedStyle(el).zIndex));
+    expect(layer).toBeGreaterThan(50);
+    await captureScreenshot(page, testInfo, `v2-overlay-${width}`);
+    await dragFile(page, "dragleave");
+
+    await dragFile(page, "dragenter");
+    await dragFile(page, "drop");
+    const link = page.getByTestId("data-room-toasts").getByRole("link", { name: "View" }).last();
+    await expect(link).toBeVisible();
+    const at = await box(link);
+    const viewport = page.viewportSize();
+    expect(at.x + at.width).toBeLessThanOrEqual(viewport?.width ?? 0);
+    expect(at.y + at.height).toBeLessThanOrEqual(viewport?.height ?? 0);
+    await link.focus();
+    await expect(link).toBeFocused();
+    await captureScreenshot(page, testInfo, `v2-toast-${width}`);
+  }
 });

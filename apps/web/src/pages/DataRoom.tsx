@@ -124,8 +124,28 @@ export function DataRoomPage() {
   useEffect(() => {
     if (autoPinned.current || !firstItem || linkedItem) return;
     autoPinned.current = true;
-    if ((body.current?.clientWidth ?? 0) >= PREVIEW_BESIDE_PX) setPinned(firstItem);
+    const width = body.current?.clientWidth ?? 0;
+    if (!(width > 0 && width < PREVIEW_BESIDE_PX)) setPinned(firstItem);
   }, [firstItem, linkedItem]);
+
+  // When a new search, filter, folder or sort answers, keep the pinned item only if it is in the
+  // results; otherwise pin the first result, or close the preview when there are none.
+  const queryKey = JSON.stringify({ query, filters, sort });
+  const appliedKey = useRef<string | null>(null);
+  const resultIds = list.rows.map((row) => row.item.id).join(",");
+  useEffect(() => {
+    if (list.loading || list.key !== queryKey || appliedKey.current === queryKey) return;
+    const first = appliedKey.current === null;
+    appliedKey.current = queryKey;
+    if (first || (pinned && resultIds.split(",").includes(pinned.id))) return;
+    setHovered(null);
+    const width = body.current?.clientWidth ?? 0;
+    setPinned(
+      previewOpen && !(width > 0 && width < PREVIEW_BESIDE_PX)
+        ? (list.rows[0]?.item ?? null)
+        : null,
+    );
+  }, [list.loading, list.key, list.rows, queryKey, resultIds, pinned, previewOpen]);
 
   const fresh = (item: DataRoomApiItem | null) =>
     item ? (list.rows.find((row) => row.item.id === item.id)?.item ?? item) : null;
