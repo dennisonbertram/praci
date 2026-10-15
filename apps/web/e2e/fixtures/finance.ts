@@ -3,6 +3,7 @@ import type {
   FinanceAccountOutput,
   FinanceCryptoOutput,
   FinanceOverview,
+  FinanceRunwayOutput,
   FinanceTransaction,
   FinanceTransactionOutput,
   FinanceVendorOutput,
@@ -99,6 +100,9 @@ export const connectedOverview: FinanceOverview = {
   agent: null,
   cash: {
     cashCents: 7_500_000,
+    bankCashCents: 7_500_000,
+    stablecoinCents: 0,
+    otherCryptoCents: 0,
     checkingCents: 1_200_000,
     savingsCents: 300_000,
     treasuryCents: 6_000_000,
@@ -334,4 +338,30 @@ export const cryptoData: FinanceCryptoOutput = {
     lastSyncedAt: "2026-10-14T10:00:00.000Z",
     unpricedTokenCount: 1,
   },
+};
+
+// Invented runway figures with crypto, and a short balance history.
+export const runwayData: FinanceRunwayOutput = {
+  runwayCrypto: "stablecoins",
+  cashCents: 9_000_000,
+  breakdown: { bankCents: 7_500_000, stablecoinCents: 1_500_000, otherCryptoCents: 800_000 },
+  monthlyBurnCents: 900_000,
+  runway: { months: 10, runOutDate: "2027-08-15" },
+  history: [
+    { month: "2026-08", balanceCents: 8_700_000 },
+    { month: "2026-09", balanceCents: 8_900_000 },
+    { month: "2026-10", balanceCents: 9_000_000 },
+  ],
+  projection: [
+    { month: "2026-11", balanceCents: 8_100_000 },
+    { month: "2026-12", balanceCents: 7_200_000 },
+  ],
+};
+
+export const cryptoHistoryData = {
+  points: [
+    { day: "2026-10-12", stablecoinCents: 1_400_000, otherCryptoCents: 750_000 },
+    { day: "2026-10-13", stablecoinCents: 1_450_000, otherCryptoCents: 780_000 },
+    { day: "2026-10-14", stablecoinCents: 1_500_000, otherCryptoCents: 800_000 },
+  ],
 };

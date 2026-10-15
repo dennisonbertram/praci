@@ -928,12 +928,25 @@ msgstr "Резервные модели сохранены."
 msgid "Balance"
 msgstr ""
 
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Balance over time"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Balance owed"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Bank + all crypto"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Bank + stablecoins"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1281,6 +1294,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Checking + Treasury"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Checking + Treasury + Crypto"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -2192,6 +2209,10 @@ msgstr "Не удалось обновить аватары"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't update messaging settings"
 msgstr "Не удалось обновить настройки обмена сообщениями."
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Counted in runway"
+msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Counterparty"
@@ -4229,6 +4250,7 @@ msgid "Other connection types"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Other crypto"
 msgstr ""
 
@@ -5431,6 +5453,7 @@ msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO временно недоступен. Попробуйте снова."
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins"
 msgstr ""
 

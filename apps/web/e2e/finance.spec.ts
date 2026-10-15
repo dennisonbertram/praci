@@ -2,8 +2,10 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   connectedOverview,
   cryptoData,
+  cryptoHistoryData,
   emptyOverview,
   receiptPng,
+  runwayData,
   transactionOf,
   vendor,
   withoutReceipt,
@@ -358,4 +360,42 @@ test("Blockscout tile: a keyless server is not connected, Connect opens the key 
   await expect(tile).toContainText("Connected");
   await expect(tile.getByRole("link", { name: "Open" })).toBeVisible();
   await captureScreenshot(page, testInfo, "blockscout-tile-connected");
+});
+
+test("Finance runway shows crypto and switches what counts", async ({ page }) => {
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  await mockFinance(page, { ...connectedOverview, crypto: cryptoData.summary });
+  let scope = runwayData.runwayCrypto;
+  const reply = (name: string, body: () => unknown) =>
+    page.route(`**/rpc/finance/${name}`, (route) =>
+      route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ json: body(), meta: [] }),
+      }),
+    );
+  await reply("runway", () => ({
+    ...runwayData,
+    runwayCrypto: scope,
+    cashCents: scope === "all" ? 9_800_000 : runwayData.cashCents,
+  }));
+  await reply("preferences", () => ({ runwayCrypto: scope }));
+  await page.route("**/rpc/finance/setPreferences", (route) => {
+    const input = route.request().postDataJSON() as { json: { runwayCrypto: typeof scope } };
+    scope = input.json.runwayCrypto;
+    return route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ json: input.json, meta: [] }),
+    });
+  });
+  await reply("cryptoHistory", () => cryptoHistoryData);
+  await signup(page, `finance-runway-${Date.now()}@rakazo.test`, "password12", "Finance Runway");
+  await completeOnboarding(page);
+  await page.goto("/app/finance/runway");
+  const main = page.getByRole("main");
+  await expect(main.getByText("$75,000", { exact: true })).toBeVisible();
+  await expect(main.getByText("$15,000", { exact: true })).toBeVisible();
+  await expect(main.getByText("$8,000", { exact: true })).toBeVisible();
+  await expect(main.getByText("$90,000")).toBeVisible();
+  await main.getByRole("tab", { name: "Bank + all crypto" }).click();
+  await expect(main.getByText("$98,000")).toBeVisible();
 });

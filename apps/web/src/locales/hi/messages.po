@@ -928,12 +928,25 @@ msgstr "बैकअप मॉडल सहेजे गए।"
 msgid "Balance"
 msgstr ""
 
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Balance over time"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Balance owed"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Bank + all crypto"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Bank + stablecoins"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1281,6 +1294,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Checking + Treasury"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Checking + Treasury + Crypto"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -2191,6 +2208,10 @@ msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't update messaging settings"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Counted in runway"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -4229,6 +4250,7 @@ msgid "Other connection types"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Other crypto"
 msgstr ""
 
@@ -5431,6 +5453,7 @@ msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO अस्थायी रूप से उपलब्ध नहीं है। फिर कोशिश करें।"
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins"
 msgstr ""
 

@@ -928,13 +928,26 @@ msgstr "Backup models saved."
 msgid "Balance"
 msgstr "Balance"
 
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Balance over time"
+msgstr "Balance over time"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Balance owed"
 msgstr "Balance owed"
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
 msgstr "Bank"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Bank + all crypto"
+msgstr "Bank + all crypto"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Bank + stablecoins"
+msgstr "Bank + stablecoins"
 
 #: src/pages/Finance.tsx
 msgid "Bank only: {bankRunwayMonths} mo"
@@ -1282,6 +1295,10 @@ msgstr "Checking + Savings + Treasury"
 #: src/pages/Finance.tsx
 msgid "Checking + Treasury"
 msgstr "Checking + Treasury"
+
+#: src/pages/Finance.tsx
+msgid "Checking + Treasury + Crypto"
+msgstr "Checking + Treasury + Crypto"
 
 #: src/pages/Finance.tsx
 msgid "Checking + Treasury + Stablecoins"
@@ -2192,6 +2209,10 @@ msgstr "Couldn't update avatars"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't update messaging settings"
 msgstr "Couldn't update messaging settings"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Counted in runway"
+msgstr "Counted in runway"
 
 #: src/components/finance/ui.tsx
 msgid "Counterparty"
@@ -4229,6 +4250,7 @@ msgid "Other connection types"
 msgstr "Other connection types"
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Other crypto"
 msgstr "Other crypto"
 
@@ -5431,6 +5453,7 @@ msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO is temporarily unavailable. Try again."
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins"
 msgstr "Stablecoins"
 
