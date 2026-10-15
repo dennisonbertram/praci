@@ -28,6 +28,9 @@ export interface DataRoomFilters {
 }
 
 const MAX_LIMIT = 50;
+/** Items each search leg keeps before fusion, and the reciprocal rank fusion constant. */
+const LEG_SQL = Prisma.raw("100");
+const RRF_SQL = Prisma.raw("60");
 const DEFAULT_LIMIT = 10;
 /** Highlight markers in search snippets. replaceChunks strips them from stored text. */
 const HIGHLIGHT_START = "\u0001";
@@ -487,15 +490,22 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     },
 
     /**
-     * Keyword search, one page. Matching items are ordered in SQL, best chunk per item, then cut to
-     * the limit: by relevance (keyset on score desc, item id) or by `sort` (same rules as
+     * Search, one page. Matching items are ordered in SQL, best chunk per item, then cut to the
+     * limit: by relevance (keyset on score desc, item id) or by `sort` (same rules as
      * listItemsPage). The cursor is only valid with the same query, filters and sort.
-     * ponytail: scans every matching chunk of one owner; add a vector/top-N stage if that grows.
+     *
+     * Without `vector` this is keyword search over every matching chunk. With one (and the
+     * `embeddingModel` that produced it) a second leg ranks the owner's chunks embedded by that
+     * same model by exact cosine distance. Each leg keeps its best 100 items; they are fused by
+     * reciprocal rank fusion (k = 60) and the score is the fused score.
+     * ponytail: scans every eligible chunk of one owner; add a vector/top-N stage if that grows.
      */
     async searchPage(
       actor: Actor,
       input: {
         query: string;
+        vector?: number[];
+        embeddingModel?: string;
         filters?: DataRoomFilters;
         sort?: DataRoomSort;
         limit?: number;
@@ -522,6 +532,49 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         }
         order = Prisma.sql`r.rank DESC, r."itemId" ASC`;
       }
+      const eligible = eligibleSql(actor, input.filters);
+      const keywordBest = Prisma.sql`
+        SELECT DISTINCT ON (c."itemId") c."itemId", c.ordinal, c.text,
+          ts_rank_cd(c.tsv, q.tsq)::float8 AS rank
+        FROM data_room_chunks c
+        JOIN data_room_items i ON i.id = c."itemId", q
+        WHERE c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
+          AND ${eligible}
+          AND c.tsv @@ q.tsq
+        ORDER BY c."itemId", rank DESC, c.ordinal`;
+      const vectorLiteral =
+        input.vector && input.embeddingModel && input.vector.every(Number.isFinite)
+          ? `[${input.vector.join(",")}]`
+          : null;
+      const best = vectorLiteral
+        ? Prisma.sql`
+          kw AS (
+            SELECT b.*, row_number() OVER (ORDER BY b.rank DESC, b."itemId") AS pos
+            FROM (${keywordBest}) b
+            ORDER BY pos LIMIT ${LEG_SQL}
+          ),
+          vec AS (
+            SELECT d.*, row_number() OVER (ORDER BY d.dist, d."itemId") AS pos
+            FROM (
+              SELECT DISTINCT ON (c."itemId") c."itemId", c.ordinal, c.text,
+                (c.embedding <=> ${vectorLiteral}::vector)::float8 AS dist
+              FROM data_room_chunks c
+              JOIN data_room_items i ON i.id = c."itemId"
+              WHERE c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
+                AND ${eligible}
+                AND c.embedding IS NOT NULL AND c."embeddingModel" = ${input.embeddingModel}
+              ORDER BY c."itemId", dist, c.ordinal
+            ) d
+            ORDER BY pos LIMIT ${LEG_SQL}
+          ),
+          best AS (
+            SELECT COALESCE(k."itemId", v."itemId") AS "itemId",
+              COALESCE(k.ordinal, v.ordinal) AS ordinal, COALESCE(k.text, v.text) AS text,
+              (COALESCE(1.0 / (${RRF_SQL} + k.pos), 0) + COALESCE(1.0 / (${RRF_SQL} + v.pos), 0))::float8
+                AS rank
+            FROM kw k FULL JOIN vec v ON k."itemId" = v."itemId"
+          )`
+        : Prisma.sql`best AS (${keywordBest})`;
       const rows = await prisma.$queryRaw<
         {
           itemId: string;
@@ -532,16 +585,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         }[]
       >`
         WITH q AS (SELECT websearch_to_tsquery('english', ${query}) AS tsq),
-        best AS (
-          SELECT DISTINCT ON (c."itemId") c."itemId", c.ordinal, c.text,
-            ts_rank_cd(c.tsv, q.tsq)::float8 AS rank
-          FROM data_room_chunks c
-          JOIN data_room_items i ON i.id = c."itemId", q
-          WHERE c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
-            AND ${eligibleSql(actor, input.filters)}
-            AND c.tsv @@ q.tsq
-          ORDER BY c."itemId", rank DESC, c.ordinal
-        ),
+        ${best},
         r AS (
           SELECT b.*, i."docDate", i."name", i."docType", i."createdAt"
           FROM best b JOIN data_room_items i ON i.id = b."itemId"
@@ -579,10 +623,196 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       };
     },
 
+    // --- Pipeline writes. Each takes the revision the step read and writes only if it still holds.
+
+    /** The item, or null when it is gone or not the actor's. Jobs use this instead of throwing. */
+    findItem: (actor: Actor, id: string) =>
+      prisma.dataRoomItem.findFirst({ where: { id, ...eligibleWhere(actor) } }),
+
+    async getItemText(actor: Actor, id: string): Promise<string | null> {
+      const row = await prisma.dataRoomItemText.findFirst({
+        where: { itemId: id, spaceId: actor.spaceId, userId: actor.userId },
+        select: { text: true },
+      });
+      return row?.text ?? null;
+    },
+
+    /**
+     * Applies `data` and bumps the revision when the item still has `revision`. Returns false when
+     * it was changed or deleted since, in which case nothing is written.
+     */
+    async stepWrite(
+      actor: Actor,
+      id: string,
+      revision: number,
+      data: Partial<Pick<DataRoomItemRecord, "status" | "error" | "failures">>,
+    ): Promise<boolean> {
+      const { count } = await prisma.dataRoomItem.updateMany({
+        where: { id, ...eligibleWhere(actor), revision },
+        data: { ...data, revision: { increment: 1 } },
+      });
+      return count === 1;
+    },
+
+    /** Saves the extracted text and moves the item on to classification. */
+    async finishExtraction(actor: Actor, id: string, revision: number, text: string) {
+      return prisma.$transaction(async (tx) => {
+        const { count } = await tx.dataRoomItem.updateMany({
+          where: { id, ...eligibleWhere(actor), revision },
+          data: {
+            status: "classifying",
+            error: null,
+            failures: 0,
+            revision: { increment: 1 },
+          },
+        });
+        if (count !== 1) return false;
+        await tx.dataRoomItemText.upsert({
+          where: { itemId: id },
+          create: { itemId: id, spaceId: actor.spaceId, userId: actor.userId, text },
+          update: { text },
+        });
+        return true;
+      });
+    },
+
+    /**
+     * Writes the facets and moves the item on to indexing. `folderPath` files an item that sits in
+     * no folder: each missing folder on the path is created (`createdBy: "agent"`) under the folder
+     * lock. An item already in a folder stays there.
+     */
+    async finishClassification(
+      actor: Actor,
+      id: string,
+      revision: number,
+      result: {
+        facets: Partial<
+          Pick<
+            DataRoomItemRecord,
+            "docType" | "docDate" | "parties" | "amountCents" | "currency" | "tags" | "summary"
+          >
+        >;
+        folderPath?: string[];
+      },
+    ) {
+      return inFolderLock(actor, async (tx) => {
+        const { count } = await tx.dataRoomItem.updateMany({
+          where: { id, ...eligibleWhere(actor), revision },
+          data: {
+            ...result.facets,
+            classifiedAt: new Date(),
+            status: "indexing",
+            error: null,
+            failures: 0,
+            revision: { increment: 1 },
+          },
+        });
+        if (count !== 1) return false;
+        const item = await tx.dataRoomItem.findFirst({
+          where: { id, ...eligibleWhere(actor) },
+          select: { folderId: true },
+        });
+        if (item?.folderId === null && result.folderPath?.length) {
+          let parentId: string | null = null;
+          for (const name of result.folderPath) {
+            const existing: { id: string } | null = await tx.dataRoomFolder.findFirst({
+              where: { spaceId: actor.spaceId, userId: actor.userId, parentId, name },
+              select: { id: true },
+            });
+            parentId =
+              existing?.id ??
+              (
+                await tx.dataRoomFolder.create({
+                  data: {
+                    spaceId: actor.spaceId,
+                    userId: actor.userId,
+                    parentId,
+                    name,
+                    createdBy: "agent",
+                  },
+                })
+              ).id;
+          }
+          await tx.dataRoomItem.updateMany({
+            where: { id, ...eligibleWhere(actor), folderId: null },
+            data: { folderId: parentId },
+          });
+        }
+        return true;
+      });
+    },
+
+    /** Chunks of the item that have no embedding yet, in order. */
+    async unembeddedChunks(actor: Actor, itemId: string) {
+      return prisma.$queryRaw<{ ordinal: number; text: string; contentHash: string }[]>`
+        SELECT ordinal, text, "contentHash" FROM data_room_chunks
+        WHERE "itemId" = ${itemId} AND "spaceId" = ${actor.spaceId} AND "userId" = ${actor.userId}
+          AND embedding IS NULL
+        ORDER BY ordinal`;
+    },
+
+    /** Stores vectors for chunks whose text is still the text that was embedded. */
+    async saveEmbeddings(
+      actor: Actor,
+      itemId: string,
+      model: string,
+      embeddings: { ordinal: number; contentHash: string; vector: number[] }[],
+    ) {
+      for (const e of embeddings) {
+        await prisma.$executeRaw`
+          UPDATE data_room_chunks SET embedding = ${`[${e.vector.join(",")}]`}::vector,
+            "embeddingModel" = ${model}
+          WHERE "itemId" = ${itemId} AND "spaceId" = ${actor.spaceId} AND "userId" = ${actor.userId}
+            AND ordinal = ${e.ordinal} AND "contentHash" = ${e.contentHash}`;
+      }
+    },
+
+    /**
+     * Sends ready items back to a pipeline step and returns their ids. "classify": items whose
+     * classification was skipped. "index": items with a chunk that has no embedding, or (when
+     * `embeddingModel` is given) one embedded by another model.
+     */
+    async requeueReady(
+      actor: Actor,
+      step: "classify" | "index",
+      embeddingModel?: string,
+    ): Promise<string[]> {
+      const rows =
+        step === "classify"
+          ? await prisma.$queryRaw<{ id: string }[]>`
+              SELECT i.id FROM data_room_items i
+              WHERE ${eligibleSql(actor, { status: "ready" })} AND i."classifiedAt" IS NULL
+                AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
+                  AND t.text <> '')`
+          : await prisma.$queryRaw<{ id: string }[]>`
+              SELECT i.id FROM data_room_items i
+              WHERE ${eligibleSql(actor, { status: "ready" })}
+                AND EXISTS (SELECT 1 FROM data_room_chunks c WHERE c."itemId" = i.id
+                  AND (c.embedding IS NULL
+                    OR (${embeddingModel ?? null}::text IS NOT NULL
+                      AND c."embeddingModel" IS DISTINCT FROM ${embeddingModel ?? null}::text)))`;
+      if (!rows.length) return [];
+      await prisma.dataRoomItem.updateMany({
+        where: { id: { in: rows.map((r) => r.id) }, ...eligibleWhere(actor), status: "ready" },
+        data: {
+          status: step === "classify" ? "classifying" : "indexing",
+          failures: 0,
+          revision: { increment: 1 },
+        },
+      });
+      return rows.map((r) => r.id);
+    },
+
     /** The best matches without paging. */
     async searchKeyword(
       actor: Actor,
-      input: { query: string; filters?: DataRoomFilters; limit?: number },
+      input: {
+        query: string;
+        vector?: number[];
+        embeddingModel?: string;
+        filters?: DataRoomFilters;
+        limit?: number;
+      },
     ): Promise<DataRoomSearchResult[]> {
       return (await this.searchPage(actor, input)).results;
     },
