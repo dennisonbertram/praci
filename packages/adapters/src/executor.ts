@@ -325,6 +325,7 @@ import {
   serializeModelSecret,
   withModelCredentialLock,
 } from "./pi-oauth.js";
+import { pinsToolFromTool } from "./pins.js";
 import type { PlotSpec } from "./plot-tool.js";
 import {
   assertPlotDataWithinLimits,
@@ -5039,6 +5040,16 @@ export function createRunExecutor(deps: ExecutorDeps) {
               ),
             );
           }
+          if (name === "pins_read" || name === "pins_write") {
+            return finish(
+              await pinsToolFromTool(
+                name,
+                { prisma: deps.prisma, events: deps.events },
+                { spaceId: run.spaceId, botId: bot.id, userId: bot.userId, runId },
+                args,
+              ),
+            );
+          }
           if (name === "attach_file") {
             const filePath = String(args.path ?? "");
             const failAttach = async (error: string) => {
@@ -8076,6 +8087,11 @@ export function userTurnInstructions(parts: {
       parts.disabledBuiltinTools,
       "page_write",
       'You have one persistent page. Put durable output the user will revisit there (a summary, tracker, or dashboard); keep ordinary replies in chat. Call page_read first, then page_write (whole page) or page_edit (one unique piece; prefer it for small changes). Charts are a ```chart fence holding one line of JSON {"name", "spec", "data"}, where spec is {title?, x?, y?, marks: [{type, options}]} and data holds the rows. Scale settings go in the spec\'s x and y objects and channels in the mark options; use ISO dates (YYYY-MM-DD) with x: {type: "utc"} for time series, and x: {domain: [...]} listing ordered categories in order.',
+    ),
+    offeredBuiltinClause(
+      parts.disabledBuiltinTools,
+      "pins_write",
+      "Use pins for numbers the user checks often (stats) and for an ongoing list. Call pins_read first, then pins_write. When asked to update your pinned numbers, rewrite them with pins_write.",
     ),
     offeredBuiltinClause(
       parts.disabledBuiltinTools,

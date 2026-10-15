@@ -232,6 +232,7 @@ model Space {
   capabilities                CapabilityInstall[]
   memoryDocuments             MemoryDocument[]
   botPages                    BotPage[]
+  botPins                     BotPins[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
   artifacts                   Artifact[]
@@ -443,6 +444,7 @@ model Bot {
   taughtSkills      TaughtSkill[]
   memoryDocuments   MemoryDocument[]
   page              BotPage?
+  pins              BotPins?
   agentHome         AgentHome?
   browserProfile    BrowserProfile?
   artifacts         Artifact[]
@@ -1020,6 +1022,27 @@ model BotPage {
 
   @@index([spaceId])
   @@map("bot_pages")
+}
+
+/// A bot's numbers strip (stats) and one sidebar list; separate from the page so refreshes never conflict with page edits.
+model BotPins {
+  id          String    @id @default(cuid())
+  spaceId     String
+  space       Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  botId       String    @unique
+  bot         Bot       @relation(fields: [botId], references: [id], onDelete: Cascade)
+  userId      String
+  stats       Json
+  list        Json?
+  revision    Int       @default(1)
+  /// "bot" or "user"
+  updatedBy   String
+  refreshedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([spaceId])
+  @@map("bot_pins")
 }
 
 model BotPageRevision {
