@@ -2191,6 +2191,10 @@ msgstr "목소리를 저장하지 못했습니다."
 msgid "Could not save the credential"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Could not save the embedding model"
+msgstr ""
+
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Could not save the page."
 msgstr ""
@@ -2789,6 +2793,10 @@ msgstr "이 이메일은 가입이 허용되지 않습니다"
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "이메일 인증이 필요합니다"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Embedding model"
+msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Ends {day}"
