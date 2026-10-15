@@ -57,7 +57,7 @@ export function FinanceCards({
           aria-label={t`Ask about this`}
           title={t`Ask about this`}
           onClick={() => onAsk(financeCardQuote(block.card))}
-          className="absolute end-1 top-0 rounded-md bg-background/90 p-1 text-muted-foreground opacity-0 shadow-sm hover:text-foreground focus-visible:opacity-100 group-hover/fcard:opacity-100 [@media(hover:none)]:opacity-100"
+          className="absolute -end-1.5 -top-0.5 rounded-full border border-border bg-background p-1 text-muted-foreground opacity-0 shadow-sm hover:text-foreground focus-visible:opacity-100 group-hover/fcard:opacity-100 [@media(hover:none)]:opacity-100"
         >
           <MessageSquareQuote className="size-3.5" aria-hidden="true" />
         </button>
