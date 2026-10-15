@@ -192,6 +192,8 @@ const holdings: Row[] = [
   holding("w-2", THEIRS, { symbol: "LEAK", usdValueCents: 99_999_900n }),
 ];
 
+const preferences: Row[] = [];
+
 function fakePrisma(rows: { txns: Row[]; accounts: Row[] }) {
   const table = (model: string, list: Row[]) => {
     const find = (where: Where, isList = false) => {
@@ -221,6 +223,7 @@ function fakePrisma(rows: { txns: Row[]; accounts: Row[] }) {
         }
         return args.take ? found.slice(0, args.take) : found;
       },
+      findFirst: async (args: { where: Where }) => find(args.where)[0] ?? null,
       count: async (args: { where: Where }) => find(args.where).length,
       aggregate: async (args: { where: Where; _min?: Record<string, true> }) => {
         const found = find(args.where);
@@ -244,6 +247,7 @@ function fakePrisma(rows: { txns: Row[]; accounts: Row[] }) {
     financeSyncState: table("sync", []),
     financeWallet: table("wallet", wallets),
     financeCryptoHolding: table("holding", holdings),
+    financePreference: table("preference", preferences),
   } as unknown as FinanceToolDeps["prisma"];
 }
 
@@ -481,6 +485,38 @@ describe("finance_overview stablecoins", () => {
     } finally {
       holdings.pop();
     }
+  });
+});
+
+describe("finance_overview runway scope", () => {
+  const overview = async (runwayCrypto: string) => {
+    preferences.push({ ...MINE, runwayCrypto });
+    try {
+      const result = await financeToolFromTool("finance_overview", setup().deps, {});
+      return result as { cash: { total: number; runwayCrypto: string }; runwayMonths: number };
+    } finally {
+      preferences.pop();
+    }
+  };
+
+  it("counts bank cash only under bank", async () => {
+    const result = await overview("bank");
+    // The fixture has no canonical stablecoin held by this user, so only "all" differs.
+    expect(result.cash).toMatchObject({ total: 10_000, runwayCrypto: "bank" });
+  });
+
+  it("counts all priced crypto under all, and raises runway", async () => {
+    const base = await overview("stablecoins");
+    const all = await overview("all");
+    expect(all.cash).toMatchObject({ total: 13_002.5, runwayCrypto: "all" });
+    expect(all.runwayMonths).toBeGreaterThan(base.runwayMonths);
+  });
+
+  it("defaults to stablecoins without a saved preference", async () => {
+    const result = (await financeToolFromTool("finance_overview", setup().deps, {})) as {
+      cash: { runwayCrypto: string };
+    };
+    expect(result.cash.runwayCrypto).toBe("stablecoins");
   });
 });
 

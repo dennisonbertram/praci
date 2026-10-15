@@ -1,6 +1,14 @@
 import type { CryptoHolding } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import { parseWalletInput, summarizeCrypto, usdValueCents } from "./crypto.js";
+import {
+  countedCash,
+  cryptoHistoryPoints,
+  cryptoPartsOn,
+  holdingParts,
+  parseWalletInput,
+  summarizeCrypto,
+  usdValueCents,
+} from "./crypto.js";
 
 const DEAD = "0x000000000000000000000000000000000000dEaD";
 
@@ -143,5 +151,58 @@ describe("summarizeCrypto stablecoins", () => {
       holding({ tokenAddress: USDC, usdPrice: "0.9", usdValueCents: 900 }),
     ]);
     expect(s.stablecoinCents).toBe(900);
+  });
+});
+
+describe("countedCash", () => {
+  const parts = { bankCents: 1_000, stablecoinCents: 200, otherCryptoCents: 30 };
+  it("counts the crypto the scope allows", () => {
+    expect(countedCash(parts, "bank")).toBe(1_000);
+    expect(countedCash(parts, "stablecoins")).toBe(1_200);
+    expect(countedCash(parts, "all")).toBe(1_230);
+  });
+});
+
+describe("holdingParts", () => {
+  it("splits priced holdings into stablecoins and other, ignoring unpriced ones", () => {
+    const usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+    expect(
+      holdingParts([
+        { chainId: 1, tokenAddress: usdc, usdValueCents: 500n },
+        { chainId: 1, tokenAddress: "", usdValueCents: 70n },
+        { chainId: 1, tokenAddress: "0xdead", usdValueCents: null },
+      ]),
+    ).toEqual({ stablecoinCents: 500n, otherCryptoCents: 70n });
+  });
+});
+
+describe("crypto snapshot series", () => {
+  const row = (walletId: string, day: string, stablecoinCents: number, otherCryptoCents = 0) => ({
+    walletId,
+    day,
+    stablecoinCents,
+    otherCryptoCents,
+  });
+  const rows = [
+    row("w1", "2026-10-01", 100, 10),
+    row("w1", "2026-10-03", 150, 10),
+    row("w2", "2026-10-02", 40),
+  ];
+  it("sums each wallet's latest snapshot on or before the day, zero before any", () => {
+    expect(cryptoPartsOn(rows, "2026-09-30")).toEqual({ stablecoinCents: 0, otherCryptoCents: 0 });
+    expect(cryptoPartsOn(rows, "2026-10-02")).toEqual({
+      stablecoinCents: 140,
+      otherCryptoCents: 10,
+    });
+    expect(cryptoPartsOn(rows, "2026-10-31")).toEqual({
+      stablecoinCents: 190,
+      otherCryptoCents: 10,
+    });
+  });
+  it("returns snapshot days in the window, carrying other wallets forward", () => {
+    expect(cryptoHistoryPoints(rows, "2026-10-02", "2026-10-31")).toEqual([
+      { day: "2026-10-02", stablecoinCents: 140, otherCryptoCents: 10 },
+      { day: "2026-10-03", stablecoinCents: 190, otherCryptoCents: 10 },
+    ]);
   });
 });

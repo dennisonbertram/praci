@@ -5,6 +5,7 @@ import type { FinanceSyncDeps, McpOAuthBroker } from "@rakazo/adapters";
 import {
   createBrexFinanceSource,
   createMercuryFinanceSource,
+  loadRunwayCrypto,
   syncFinanceForUser,
   toFinanceAccount,
   toFinanceBill,
@@ -13,6 +14,7 @@ import {
 import type {
   Actor,
   Bot,
+  CryptoBalancePoint,
   FinanceAccount,
   FinanceAccountOutput,
   FinanceAccountsOutput,
@@ -22,6 +24,7 @@ import type {
   FinanceConnectOutput,
   FinanceMonthOutput,
   FinanceOverview,
+  FinancePreferences,
   FinanceReceiptUrlOutput,
   FinanceRecurringOutput,
   FinanceRunwayOutput,
@@ -39,6 +42,7 @@ import {
   FinanceProviderSchema,
   financeAgentSpawnKey,
   financeProviderForEndpoint,
+  RunwayCryptoScopeSchema,
 } from "@rakazo/contracts";
 import {
   balanceHistory,
@@ -47,6 +51,9 @@ import {
   cashSeries,
   cashSummary,
   categorySlug,
+  countedCash,
+  cryptoHistoryPoints,
+  cryptoPartsOn,
   detectRecurring,
   earliestDay,
   excludedNonUsdCount,
@@ -130,6 +137,21 @@ const newest = (txns: FinanceTransaction[], count: number) =>
   [...txns].sort((a, b) => Date.parse(b.postedAt) - Date.parse(a.postedAt)).slice(0, count);
 /** The last 90 days including today, as a half-open range. */
 const last90 = (now: Date) => ({ start: addDays(dayOf(now), -89), end: addDays(dayOf(now), 1) });
+/** Bank cash and the crypto held, before the scope picks what counts. */
+const cashParts = (
+  accounts: FinanceAccount[],
+  crypto: { totalCents: number; stablecoinCents?: number } | null,
+) => {
+  const stablecoinCents = crypto?.stablecoinCents ?? 0;
+  return {
+    bankCents: cashSummary(accounts).bankCashCents ?? 0,
+    stablecoinCents,
+    otherCryptoCents: (crypto?.totalCents ?? 0) - stablecoinCents,
+  };
+};
+/** Last day of a `YYYY-MM` month. */
+const monthEndOf = (month: string) =>
+  addDays(monthStartOf(new Date(`${month}-01T00:00:00Z`), 1), -1);
 const accountKey = (provider: string, externalId: string) => `${provider}:${externalId}`;
 
 // ---- Loading ----
@@ -370,11 +392,18 @@ export async function financeOverview(
     });
   }
 
-  const stablecoinCents = crypto?.stablecoinCents ?? 0;
+  const scope = await loadRunwayCrypto(deps.prisma, actor);
+  const parts = cashParts(accounts, crypto);
+  // `stablecoinCents` and `otherCryptoCents` are the crypto counted in `cashCents` under the saved
+  // scope (zero when it does not count), so cashCents = bankCashCents + stablecoinCents + otherCryptoCents.
+  const counted = {
+    stablecoinCents: scope === "bank" ? 0 : parts.stablecoinCents,
+    otherCryptoCents: scope === "all" ? parts.otherCryptoCents : 0,
+  };
   const cash = {
-    ...cashSummary(accounts, stablecoinCents),
-    // Priced crypto that is not a stablecoin: shown in the Cash card's total only.
-    otherCryptoCents: (crypto?.totalCents ?? 0) - stablecoinCents,
+    ...cashSummary(accounts, counted.stablecoinCents),
+    cashCents: countedCash(parts, scope),
+    ...counted,
   };
   const hasCashAccounts = accounts.some((a) => a.kind !== "card");
   const burn = monthlyBurn(txns, now);
@@ -394,7 +423,7 @@ export async function financeOverview(
       ? runway(cash.cashCents, burn.monthlyCents, now)
       : { months: null, runOutDate: null },
     bankRunway: hasCashAccounts
-      ? runway(cash.cashCents - stablecoinCents, burn.monthlyCents, now)
+      ? runway(cash.bankCashCents ?? 0, burn.monthlyCents, now)
       : { months: null, runOutDate: null },
     spendTotals: {
       week: spendTotals(txns, "week", now, since),
@@ -464,7 +493,11 @@ export async function financeAccounts(
     loadCryptoSummary(deps, actor),
   ]);
   const yields = yieldRows.map(toYield);
-  const summary = cashSummary(accounts, crypto?.stablecoinCents ?? 0);
+  const scope = await loadRunwayCrypto(deps.prisma, actor);
+  const summary = {
+    ...cashSummary(accounts),
+    cashCents: countedCash(cashParts(accounts, crypto), scope),
+  };
   const row = (account: FinanceAccount) => ({
     ...account,
     annualYieldPct: annualYieldPct(account, yields, now),
@@ -573,20 +606,90 @@ export async function financeMonth(
 
 export async function financeRunway(deps: FinanceDeps, actor: Actor): Promise<FinanceRunwayOutput> {
   const now = nowOf(deps);
-  const [accounts, txns, crypto] = await Promise.all([
+  const [accounts, txns, crypto, scope, snapshots] = await Promise.all([
     loadAccounts(deps, actor),
     loadTransactions(deps, actor),
     loadCryptoSummary(deps, actor),
+    loadRunwayCrypto(deps.prisma, actor),
+    loadSnapshots(deps, actor),
   ]);
-  const { cashCents } = cashSummary(accounts, crypto?.stablecoinCents ?? 0);
+  const parts = cashParts(accounts, crypto);
+  const cashCents = countedCash(parts, scope);
   const { monthlyCents } = monthlyBurn(txns, now);
+  const currentMonth = monthOf(now);
   return {
+    runwayCrypto: scope,
     cashCents,
+    breakdown: {
+      bankCents: parts.bankCents,
+      stablecoinCents: parts.stablecoinCents,
+      otherCryptoCents: parts.otherCryptoCents,
+    },
     monthlyBurnCents: monthlyCents,
     runway: runway(cashCents, monthlyCents, now),
-    history: cashHistory(accounts, txns, now),
+    // Past crypto comes from the daily snapshots (zero before the first); this month uses today's holdings.
+    history: cashHistory(accounts, txns, now).map((p) => ({
+      month: p.month,
+      balanceCents: countedCash(
+        {
+          ...(p.month === currentMonth ? parts : cryptoPartsOn(snapshots, monthEndOf(p.month))),
+          bankCents: p.balanceCents,
+        },
+        scope,
+      ),
+    })),
     projection: projectCash(cashCents, monthlyCents, now),
   };
+}
+
+async function loadSnapshots(deps: FinanceDeps, actor: Actor, walletId?: string) {
+  const rows = await deps.prisma.financeCryptoSnapshot.findMany({
+    where: { ...scopeOf(actor), ...(walletId ? { walletId } : {}) },
+  });
+  // ponytail: reads every snapshot (wallets x days); bound by a day window if it grows large.
+  return rows.map((r) => ({
+    walletId: r.walletId,
+    day: r.day,
+    stablecoinCents: Number(r.stablecoinCents),
+    otherCryptoCents: Number(r.otherCryptoCents),
+  }));
+}
+
+export async function financeCryptoHistory(
+  deps: FinanceDeps,
+  actor: Actor,
+  input: { days: number; walletId?: string },
+): Promise<{ points: CryptoBalancePoint[] }> {
+  if (input.walletId) {
+    const wallet = await deps.prisma.financeWallet.findFirst({
+      where: { id: input.walletId, ...scopeOf(actor) },
+      select: { id: true },
+    });
+    if (!wallet) throw notFound();
+  }
+  const today = dayOf(nowOf(deps));
+  const rows = await loadSnapshots(deps, actor, input.walletId);
+  return { points: cryptoHistoryPoints(rows, addDays(today, 1 - input.days), today) };
+}
+
+export async function financePreferences(
+  deps: FinanceDeps,
+  actor: Actor,
+): Promise<FinancePreferences> {
+  return { runwayCrypto: await loadRunwayCrypto(deps.prisma, actor) };
+}
+
+export async function financeSetPreferences(
+  deps: FinanceDeps,
+  actor: Actor,
+  input: FinancePreferences,
+): Promise<FinancePreferences> {
+  const row = await deps.prisma.financePreference.upsert({
+    where: { spaceId_userId: scopeOf(actor) },
+    create: { ...scopeOf(actor), runwayCrypto: input.runwayCrypto },
+    update: { runwayCrypto: input.runwayCrypto },
+  });
+  return { runwayCrypto: RunwayCryptoScopeSchema.parse(row.runwayCrypto) };
 }
 
 export async function financeSpend(

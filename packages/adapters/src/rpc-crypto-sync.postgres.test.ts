@@ -144,6 +144,13 @@ describePostgres("crypto sync (PostgreSQL)", () => {
         .lastSyncedAt,
     ).not.toBeNull();
 
+    const today = new Date().toISOString().slice(0, 10);
+    const snapshots = () => prisma.financeCryptoSnapshot.findMany({ where: { spaceId, userId } });
+    let [first, ...rest] = await snapshots();
+    expect(rest).toHaveLength(0);
+    expect(first).toMatchObject({ day: today });
+    expect((first?.stablecoinCents ?? 0n) + (first?.otherCryptoCents ?? 0n)).toBe(500_250n);
+
     const calls = fake.calls.length;
     expect(await sync()).toMatchObject({ outcome: "skipped" });
     expect(fake.calls).toHaveLength(calls);
@@ -166,6 +173,10 @@ describePostgres("crypto sync (PostgreSQL)", () => {
       [1, "", 200000n],
       [8453, "", 200000n],
     ]);
+    // The same day's snapshot is overwritten with what is stored now, Base's old row included.
+    [first, ...rest] = await snapshots();
+    expect(rest).toHaveLength(0);
+    expect((first?.stablecoinCents ?? 0n) + (first?.otherCryptoCents ?? 0n)).toBe(400_000n);
     const state = await prisma.financeSyncState.findUniqueOrThrow({
       where: { mcpServerId: server.id },
     });
