@@ -496,6 +496,71 @@ describePostgres("bank statement import (PostgreSQL)", () => {
       expect(await names()).toEqual([]);
     });
 
+    describe("CSVs with no account identity", () => {
+      const monthly = (day: string, desc: string, balance: string) =>
+        `Date,Description,Amount,Balance\n${day},${desc},-5.00,${balance}\n`;
+      const cashCents = async (who: Actor) => (await client(who).finance.overview()).cash.cashCents;
+
+      it("puts monthly exports with dated names on one account, cash at the newest closing", async () => {
+        const before = await cashCents(b);
+        const july = await importFile(
+          b,
+          "monthly-2026-07.csv",
+          monthly("2026-07-02", "Monthly July", "95.00"),
+        );
+        const aug = await importFile(
+          b,
+          "monthly-2026-08.csv",
+          monthly("2026-08-02", "Monthly Aug", "90.00"),
+        );
+        expect(aug.accountId).toBe(july.accountId);
+        expect(await cashCents(b)).toBe(before + 9_000);
+      });
+
+      it("keeps clearly different stems on separate accounts", async () => {
+        const one = await importFile(
+          b,
+          "stemone-2026-07.csv",
+          monthly("2026-07-02", "Stem One", "10.00"),
+        );
+        const two = await importFile(
+          b,
+          "stemtwo-2026-07.csv",
+          monthly("2026-07-02", "Stem Two", "20.00"),
+        );
+        expect(two.accountId).not.toBe(one.accountId);
+      });
+
+      it("attaches a dated file to an existing account stored under an old raw-stem key", async () => {
+        const old = await prisma.financeAccount.create({
+          data: {
+            spaceId,
+            userId: userB,
+            mcpServerId: null,
+            provider: "statement",
+            externalId: "stmt:oldstem-2026-06:account",
+            name: "oldstem 2026 06",
+            kind: "checking",
+            balanceCents: 0n,
+            currency: "USD",
+          },
+        });
+        const reviewed = await upload(
+          b,
+          "oldstem-2026-07.csv",
+          monthly("2026-07-02", "Old Stem", "5.00"),
+        );
+        expect(reviewed).toMatchObject({ createsAccount: false, accountId: old.id });
+        const done = await client(b).finance.statementConfirm({ id: reviewed.id });
+        expect(done.accountId).toBe(old.id);
+        expect(
+          await prisma.financeAccount.count({
+            where: { spaceId, userId: userB, name: { startsWith: "oldstem" } },
+          }),
+        ).toBe(1);
+      });
+    });
+
     it("imports a card statement as a card, owed and not cash", async () => {
       const before = (await client(a).finance.overview()).cash;
       const ofx = `<OFX><CREDITCARDMSGSRSV1><CCSTMTTRNRS><CCSTMTRS><CURDEF>USD<CCACCTFROM><ACCTID>4111111111119999</ACCTID></CCACCTFROM>

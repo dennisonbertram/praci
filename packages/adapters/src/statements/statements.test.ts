@@ -98,12 +98,31 @@ describe("CSV", () => {
       'Posting Date,Description,Amount,Balance\n2026-03-02,EXAMPLE COFFEE,-5.50,94.50\n2026-03-03,EXAMPLE PAYROLL,"1,000.00",1094.50\n',
     );
     expect(statement).toMatchObject({
-      institution: "example bank march",
+      institution: "example bank",
       openingBalanceCents: 10000,
       closingBalanceCents: 109450,
     });
     expect(statement.warnings.join()).toContain("file name");
     expect(check).toEqual({ balances: "match", differenceCents: 0 });
+  });
+
+  it("names the institution from the file name without dates or copy markers", async () => {
+    const body = "Date,Description,Amount\n2026-03-02,Coffee,-5.00\n";
+    const names = [
+      "checking-2026-07.csv",
+      "checking_2026-08-31.csv",
+      "Checking (1).csv",
+      "checking copy.csv",
+      "Checking July 2026.csv",
+      "checking 08-2026.csv",
+      "checking-20260731.csv",
+    ];
+    for (const name of names) {
+      expect((await parse(name, body)).statement.institution).toBe("checking");
+    }
+    expect((await parse("savings-2026-07.csv", body)).statement.institution).toBe("savings");
+    // A name that is only a date keeps something to show.
+    expect((await parse("2026-07.csv", body)).statement.institution).toBeTruthy();
   });
 
   it("maps Debit/Credit columns with semicolons and flips newest-first files", async () => {
@@ -229,7 +248,7 @@ describe("model-read PDF", () => {
   const pdf = (extract: (t: string, s: object) => Promise<unknown>) =>
     parseStatement(
       { fileName: "other.pdf", bytes: bytes("%PDF-1.7") },
-      { pdfText: async () => "Some Other Bank statement", extract },
+      { pdfText: async () => "Some Other Bank statement\nBalance $900.00", extract },
     );
   const read = {
     institution: "Other Bank",
@@ -260,6 +279,26 @@ describe("model-read PDF", () => {
     expect(statement.parser).toBe("model-pdf");
     expect(statement.warnings[0]).toContain("AI model");
     expect(check).toEqual({ balances: "mismatch", differenceCents: -50 });
+  });
+
+  it("rejects a statement the model reports in another currency", async () => {
+    await expect(pdf(async () => ({ ...read, currency: "eur" }))).rejects.toThrow(
+      "This statement is in EUR. Only USD statements can be imported.",
+    );
+    const usd = await pdf(async () => ({ ...read, currency: "USD" }));
+    expect(usd.statement.currency).toBe("USD");
+  });
+
+  it("without a model currency, needs a $ or USD in the text", async () => {
+    const noSign = (text: string) =>
+      parseStatement(
+        { fileName: "o.pdf", bytes: bytes("%PDF-1.7") },
+        { pdfText: async () => text, extract: async () => read },
+      );
+    await expect(noSign("Some Other Bank\nBalance 900,00 EUR")).rejects.toThrow("USD");
+    await expect(noSign("Some Other Bank\nBalance 900.00")).rejects.toThrow("USD");
+    await expect(noSign("Some Other Bank\nBalance USD 900.00")).resolves.toBeTruthy();
+    await expect(noSign("Some Other Bank\nBalance $900.00")).resolves.toBeTruthy();
   });
 
   it("fails clearly on invalid model output or a missing model", async () => {

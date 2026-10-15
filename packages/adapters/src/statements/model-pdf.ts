@@ -9,6 +9,9 @@ const ModelStatementSchema = ParsedStatementSchema.omit({
   parser: true,
   currency: true,
   warnings: true,
+}).extend({
+  /** ISO 4217 code of the statement's currency, or null when it does not say. */
+  currency: z.string().max(8).nullish(),
 });
 
 export const MODEL_STATEMENT_JSON_SCHEMA = z.toJSONSchema(ModelStatementSchema);
@@ -27,8 +30,18 @@ export const modelPdfParser: StatementParser = {
       throw new Error(
         `The model's reading of the PDF was invalid: ${read.error.issues[0]?.message}`,
       );
+    const { currency, ...data } = read.data;
+    const code = currency?.trim().toUpperCase();
+    // The product is USD-only. Without a stated currency, a $ sign or "USD" in the text must vouch.
+    if (code ? code !== "USD" : !/\$|\bUSD\b/i.test(text)) {
+      throw new Error(
+        code
+          ? `This statement is in ${code.slice(0, 3)}. Only USD statements can be imported.`
+          : "This statement does not say it is in USD. Only USD statements can be imported.",
+      );
+    }
     return {
-      ...read.data,
+      ...data,
       parser: "model-pdf",
       currency: "USD",
       warnings: ["Read by an AI model, not a bank format; review every line before importing."],
@@ -39,7 +52,7 @@ export const modelPdfParser: StatementParser = {
 const INSTRUCTIONS = [
   "You extract a bank statement into JSON. Reply with one JSON object only, no prose, matching the given JSON Schema.",
   "Amounts are integer cents: money out is negative, money in is positive. Dates are YYYY-MM-DD.",
-  "accountLast4 is only the last four digits. Use null for anything the statement does not print. Do not invent lines.",
+  "currency is the ISO 4217 code printed on the statement, e.g. USD, or null. accountLast4 is only the last four digits. Use null for anything the statement does not print. Do not invent lines.",
 ].join("\n");
 
 /** Builds `deps.extract` on the app's provider-neutral agent runtime, with no tools. */
