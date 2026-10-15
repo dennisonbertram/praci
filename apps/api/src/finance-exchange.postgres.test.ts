@@ -120,9 +120,14 @@ describePostgres("exchange connections (PostgreSQL)", () => {
   it("counts exchange cash in the overview and runway through the saved scope", async () => {
     const overview = await financeOverview(deps, a);
     expect(overview.crypto).toMatchObject({ totalCents: 60_050, stablecoinCents: 10_050 });
-    expect(overview.cash.cashCents).toBe(10_050); // default scope: stablecoins
+    expect(overview.cash.cashCents).toBe(0); // default scope: bank only, no bank accounts here
     await prisma.financePreference.create({
-      data: { spaceId, userId: userA, runwayCrypto: "all" },
+      data: { spaceId, userId: userA, runwayCrypto: "stablecoins" },
+    });
+    expect((await financeOverview(deps, a)).cash.cashCents).toBe(10_050);
+    await prisma.financePreference.update({
+      where: { spaceId_userId: { spaceId, userId: userA } },
+      data: { runwayCrypto: "all" },
     });
     expect((await financeRunway(deps, a)).cashCents).toBe(60_050);
   });

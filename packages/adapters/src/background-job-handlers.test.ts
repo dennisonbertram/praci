@@ -55,7 +55,7 @@ describe("createBackgroundJobHandlers", () => {
       { spaceId: "space-1", userId: "user-1" },
     );
     expect(syncCryptoHoldings).toHaveBeenCalledWith(
-      { prisma: base.prisma },
+      { prisma: base.prisma, secrets: base.secretStore },
       { spaceId: "space-1", userId: "user-1" },
     );
     expect(syncExchanges).toHaveBeenCalledWith(
