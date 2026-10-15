@@ -80,6 +80,9 @@ const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
   messageId: "m1",
 });
 
+// Roots still mounted when a test ends would fire their autosave timers during a later test.
+const mounted: Array<ReturnType<typeof createRoot>> = [];
+
 async function open(seed: ComposeSeed, onClose = () => {}) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   prefill.mockResolvedValue({
@@ -94,6 +97,7 @@ async function open(seed: ComposeSeed, onClose = () => {}) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
+  mounted.push(root);
   await act(async () =>
     root.render(<ComposeEmail seed={seed} accounts={[]} connectionId="c1" onClose={onClose} />),
   );
@@ -115,7 +119,10 @@ async function type(input: HTMLInputElement, text: string) {
   });
 }
 
-afterEach(() => {
+afterEach(async () => {
+  await act(async () => {
+    for (const root of mounted.splice(0)) root.unmount();
+  });
   closeRestored();
   for (const kind of ["reply", "replyAll", "forward"] as const) forgetClosed(reply(kind));
   document.body.innerHTML = "";
