@@ -57,6 +57,7 @@ const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 const same = (a: string[], b: string[]) =>
   a.length === b.length && a.every((s, i) => norm(s) === norm(b[i] ?? ""));
 
+const CURRENCIES = new Set(Intl.supportedValuesOf("currency"));
 type Obj = Record<string, unknown>;
 const strings = (v: unknown, max: number): unknown =>
   Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x.trim().slice(0, max) : x)) : v;
@@ -72,7 +73,11 @@ export function cleanClassification(raw: unknown): unknown {
   const o: Obj = { ...raw };
   if (typeof o.title === "string") o.title = o.title.trim().slice(0, 200);
   if (typeof o.summary === "string") o.summary = o.summary.slice(0, 600);
-  if (typeof o.currency === "string") o.currency = o.currency.trim().toUpperCase();
+  if (typeof o.currency === "string") {
+    const code = o.currency.trim().toUpperCase();
+    // Currency is optional metadata: an unknown code is dropped, not an error.
+    o.currency = CURRENCIES.has(code) ? code : null;
+  }
   if (typeof o.confidence === "number") o.confidence = Math.min(1, Math.max(0, o.confidence));
   o.parties = uniq(strings(o.parties, 120), 20);
   o.tags = uniq(strings(o.tags, 40), 12, true);
@@ -89,7 +94,7 @@ export function cleanClassification(raw: unknown): unknown {
 function cleanPlan(raw: unknown): unknown {
   if (typeof raw !== "object" || raw === null) return raw;
   const o = raw as { filters?: unknown };
-  if (typeof o.filters !== "object" || o.filters === null) return raw;
+  if (typeof o.filters !== "object" || o.filters === null || Array.isArray(o.filters)) return raw;
   const f: Obj = { ...o.filters };
   if (f.parties !== undefined) f.parties = uniq(strings(f.parties, 120), 20);
   return { ...o, filters: f };
@@ -117,7 +122,10 @@ export class LlmDataRoomClassifier implements DataRoomClassifier {
       context,
     );
     const existing = input.folders.find((f) => same(f, result.folderPath));
-    return existing ? { ...result, folderPath: existing } : result;
+    if (!existing) return result;
+    // Keep the model's path if the existing one would not validate (e.g. over-long segments).
+    const snapped = DataRoomClassificationSchema.safeParse({ ...result, folderPath: existing });
+    return snapped.success ? snapped.data : result;
   }
 
   planQuery(
