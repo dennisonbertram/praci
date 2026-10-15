@@ -53,6 +53,10 @@ export class GraphileJobPublisher implements JobPublisher {
     return this.utils;
   }
 
+  // keepExisting dedupes onto a waiting job that still has attempts left. It must not
+  // dedupe onto a locked job: a dead worker keeps its lock for 4 hours, and dedupe would
+  // drop the retry. Replace clears the key from a locked job and inserts a new one; run
+  // claims are fenced by lease state, so a live worker's run is not started twice.
   private async keepExistingMode(
     utils: WorkerUtils,
     job: BackgroundJob,
@@ -60,13 +64,22 @@ export class GraphileJobPublisher implements JobPublisher {
     const key = job.replaceKey;
     if (!job.keepExisting || !key) return undefined;
     const existing = await utils.withPgClient(async (client) => {
-      const found = await client.query<{ attempts: number; max_attempts: number }>(
-        "select attempts, max_attempts from graphile_worker._private_jobs where key = $1",
+      const found = await client.query<{
+        attempts: number;
+        max_attempts: number;
+        locked_at: Date | null;
+      }>(
+        "select attempts, max_attempts, locked_at from graphile_worker._private_jobs where key = $1",
         [key],
       );
       return found.rows[0];
     });
-    if (!existing || Number(existing.attempts) >= Number(existing.max_attempts)) return undefined;
+    if (
+      !existing ||
+      existing.locked_at ||
+      Number(existing.attempts) >= Number(existing.max_attempts)
+    )
+      return undefined;
     return "unsafe_dedupe";
   }
 }
