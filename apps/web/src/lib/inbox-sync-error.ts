@@ -4,9 +4,12 @@ import { t } from "@lingui/core/macro";
 export function syncErrorText(list: {
   failedAccounts: readonly string[];
   reconnectAccounts: readonly string[];
+  rateLimitedAccounts?: readonly string[] | undefined;
 }): string {
   if (list.failedAccounts.length === 0) return "";
-  return list.reconnectAccounts.length > 0
-    ? t`Gmail needs to be reconnected.`
-    : t`Couldn't reach Gmail.`;
+  if (list.reconnectAccounts.length > 0) return t`Gmail needs to be reconnected.`;
+  if (list.rateLimitedAccounts?.length) {
+    return t`Gmail is limiting requests right now. Try again in a minute.`;
+  }
+  return t`Couldn't reach Gmail.`;
 }
