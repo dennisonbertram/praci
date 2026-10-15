@@ -860,4 +860,26 @@ describe("runway crypto scope", () => {
       notFound(),
     );
   });
+
+  it("keeps 12 history months for a wallet-only user, bank counted as zero", async () => {
+    const wallet = {
+      id: "w1",
+      ...scope(a),
+      address: `0x${"0".repeat(40)}`,
+      type: "personal",
+      createdAt: new Date(),
+    };
+    const { deps } = setup({
+      financeWallet: [wallet],
+      financeCryptoHolding: [holding({ usdValueCents: 500n })],
+      financeCryptoSnapshot: [snap("w1", "2026-09-20", 0n, 400n)],
+      financePreference: [{ ...scope(a), runwayCrypto: "all" }],
+    });
+    const out = await financeRunway(deps, a);
+    expect(out.cashCents).toBe(500);
+    expect(out.history).toHaveLength(12);
+    expect(out.history[0]).toEqual({ month: "2025-11", balanceCents: 0 });
+    expect(out.history.at(-2)).toEqual({ month: "2026-09", balanceCents: 400 });
+    expect(out.history.at(-1)).toEqual({ month: "2026-10", balanceCents: 500 });
+  });
 });

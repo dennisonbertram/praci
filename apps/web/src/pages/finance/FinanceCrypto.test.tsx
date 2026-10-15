@@ -166,6 +166,33 @@ it("shows no history chart with fewer than 2 points", async () => {
   expect(container.textContent).not.toContain("Balance over time");
 });
 
+it("reloads the balance history after removing a wallet", async () => {
+  rpcMock.crypto.mockResolvedValue(data());
+  rpcMock.walletRemove.mockResolvedValue({});
+  await show();
+  expect(rpcMock.cryptoHistory).toHaveBeenCalledTimes(1);
+  await act(async () =>
+    (container.querySelector('[aria-label="Actions for Treasury"]') as HTMLElement).click(),
+  );
+  await act(async () =>
+    (
+      [...document.body.querySelectorAll('[role="menuitem"]')].find(
+        (i) => i.textContent === "Remove",
+      ) as HTMLElement
+    ).click(),
+  );
+  await act(async () =>
+    (
+      [...document.body.querySelectorAll("button")].find(
+        (b) => b.textContent === "Remove",
+      ) as HTMLElement
+    ).click(),
+  );
+  await flush();
+  expect(rpcMock.walletRemove).toHaveBeenCalledWith({ id: "w1" });
+  expect(rpcMock.cryptoHistory).toHaveBeenCalledTimes(2);
+});
+
 it("shows the sync error only when there is one", async () => {
   rpcMock.crypto.mockResolvedValue(data({ lastError: "Rate limited" }));
   await show();
