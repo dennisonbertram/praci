@@ -151,10 +151,16 @@ export async function fetchAlchemyHoldings(
       },
       opts.signal,
     );
-    for (const e of body.error?.partialErrors ?? []) if (e.network) failedNames.add(e.network);
-    for (const entry of body.data?.tokens ?? []) {
-      const chainId = NETWORKS[entry.network ?? ""];
-      const holding = chainId === undefined ? null : toHolding(chainId, entry);
+    // A reply without a token list is not an empty wallet. Treating it as one would erase the stored
+    // holdings, so it counts as Alchemy being unavailable and the sync falls back to public RPC.
+    const tokens = body?.data?.tokens;
+    if (!Array.isArray(tokens)) throw new AlchemyError("unavailable");
+    const partial = body.error?.partialErrors;
+    for (const e of Array.isArray(partial) ? partial : [])
+      if (e?.network) failedNames.add(e.network);
+    for (const entry of tokens) {
+      const chainId = NETWORKS[entry?.network ?? ""];
+      const holding = chainId === undefined || !entry ? null : toHolding(chainId, entry);
       if (holding) holdings.get(chainId as number)?.push(holding);
     }
     pageKey = body.data?.pageKey || undefined;

@@ -224,6 +224,31 @@ describePostgres("crypto sync with an Alchemy key (PostgreSQL)", () => {
     ]);
   });
 
+  it("keeps holdings and the snapshot when Alchemy answers 200 with a malformed body", async () => {
+    rpc = fakeRpc({
+      prices: { "coingecko:ethereum": { price: 1000, confidence: 0.99 } },
+      chains: { 1: { balances: { [WALLET_A]: 1_000_000_000_000_000_000n } } },
+    });
+    alchemyReply = () => json({}, 503);
+    await sync();
+    // The fallback re-reads the same balances, so compare values, not write timestamps.
+    const values = async () =>
+      (await rows()).map((r) => [r.chainId, r.tokenAddress, r.rawBalance, r.usdValueCents]);
+    const before = await values();
+    expect(before.length).toBeGreaterThan(0);
+    const snapshot = () =>
+      prisma.financeCryptoSnapshot
+        .findMany({ where: { spaceId, userId } })
+        .then((all) => all.map((x) => [x.day, x.stablecoinCents, x.otherCryptoCents]));
+    const snapshotBefore = await snapshot();
+    for (const body of [{}, { data: { tokens: "nope" } }]) {
+      alchemyReply = () => json(body);
+      await sync();
+      expect(await values()).toEqual(before);
+    }
+    expect(await snapshot()).toEqual(snapshotBefore);
+  });
+
   it("does not use one user's key for another user, and never calls Alchemy without a key", async () => {
     alchemyCalls = [];
     alchemyReply = () => json({ data: { tokens: [holding("eth-mainnet", null, "0x1", "1")] } });
