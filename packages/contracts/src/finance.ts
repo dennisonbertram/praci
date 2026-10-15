@@ -542,8 +542,8 @@ export const FinanceMonthOutputSchema = z.object({
 });
 
 /**
- * What counts as cash for runway, burn-down and the dashboard: bank only, bank plus stablecoins
- * (the default), or bank plus all priced crypto at current prices.
+ * What counts as cash for runway, the accounts total and the dashboard: bank only (the default),
+ * bank plus stablecoins, or bank plus all priced crypto at current prices.
  */
 export const RunwayCryptoScopeSchema = z.enum(["bank", "stablecoins", "all"]);
 export type RunwayCryptoScope = z.infer<typeof RunwayCryptoScopeSchema>;
