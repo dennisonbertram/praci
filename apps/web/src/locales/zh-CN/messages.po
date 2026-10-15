@@ -1297,6 +1297,10 @@ msgid "Checking + Treasury"
 msgstr ""
 
 #: src/pages/Finance.tsx
+msgid "Checking + Treasury + Crypto"
+msgstr ""
+
+#: src/pages/Finance.tsx
 msgid "Checking + Treasury + Stablecoins"
 msgstr ""
 
