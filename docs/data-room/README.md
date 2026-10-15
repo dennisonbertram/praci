@@ -181,9 +181,12 @@ Design: [mockup.html](mockup.html) (sample data only).
   files upload to the current space's Data room and show progress in a toast that
   links to the filed item. Size cap TBD (the chat attachment cap of 10 MB is too
   small for contracts and statements).
-- **Data room page.** Folder tree, list and grid views, search with facet filters,
-  a preview pane, move, rename and delete. Built from the existing shadcn
-  components.
+- **Data room page.** Folder tree, list and grid views, and one bar holding search,
+  facet filters and sort. Search, filtering, sorting and pagination all run on the
+  server; the client never sorts or filters a fetched page. Hovering or moving the
+  keyboard focus over a row updates the preview pane, and a click pins it. The
+  preview has its own Ask agent, which opens the agent panel with that document
+  attached. Move, rename and delete. Built from the existing shadcn components.
 - **Data room agent.** A per-space agent (spawn-key pattern of the Inbox agent) that
   reviews newly filed items, fixes misfiled ones, flags duplicates and answers
   questions in a side panel on the Data room page.
