@@ -4814,6 +4814,9 @@ export function createRouter(deps: RouterDeps) {
             userId: context.actor.userId,
             status: { in: ["connected", "pending", "error"] },
           },
+          // Without an order Postgres returns rows in storage order, which changes when a row is
+          // updated, so the accounts of one app swapped places between loads.
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         });
         return rows.map((row) => ({
           id: row.id,
