@@ -1,3 +1,5 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import type { AdapterContext } from "@rakazo/adapter-kit";
 import { DATA_ROOM_EMBEDDING_DIMENSIONS, EmbedderMisconfiguredError } from "@rakazo/adapter-kit";
 import { describe, expect, it, vi } from "vitest";
@@ -92,5 +94,25 @@ describe("OpenAICompatibleEmbedder", () => {
     expect(
       () => new OpenAICompatibleEmbedder({ ...base, baseUrl: "https://api.example.com" }),
     ).toThrow("Public model endpoints are blocked");
+  });
+
+  it("defaults to the guarded fetch, which refuses redirects", async () => {
+    let hits = 0;
+    const server = createServer((_req, res) => {
+      hits++;
+      res.writeHead(302, {
+        location: `http://127.0.0.1:${(server.address() as AddressInfo).port}/x`,
+      });
+      res.end();
+    }).listen(0, "127.0.0.1");
+    await new Promise((r) => server.once("listening", r));
+    try {
+      const port = (server.address() as AddressInfo).port;
+      const e = new OpenAICompatibleEmbedder({ ...base, baseUrl: `http://127.0.0.1:${port}` });
+      await expect(e.embed(["1"], ctx())).rejects.toThrow();
+      expect(hits).toBe(1);
+    } finally {
+      server.close();
+    }
   });
 });

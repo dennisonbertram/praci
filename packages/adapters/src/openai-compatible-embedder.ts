@@ -10,6 +10,7 @@ import {
   assertHttpsForKeyedOpenAiCompatibleUrl,
   normalizeOpenAiCompatibleBaseUrl,
 } from "./openai-compatible-url.js";
+import { createOpenAiCompatibleFetch } from "./pi-openai-compatible-provider.js";
 
 const MAX_BATCH = 64;
 
@@ -34,7 +35,7 @@ export class OpenAICompatibleEmbedder implements Embedder {
     const url = assertAllowedOpenAiCompatibleUrl(config.baseUrl);
     assertHttpsForKeyedOpenAiCompatibleUrl(url, config.apiKey);
     this.url = `${normalizeOpenAiCompatibleBaseUrl(config.baseUrl)}/embeddings`;
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? createOpenAiCompatibleFetch();
   }
 
   describe(): AdapterDescriptor<{ dimensions: number; maxBatch: number }> {
