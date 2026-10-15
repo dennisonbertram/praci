@@ -806,4 +806,11 @@ export const DE_MESSAGES: Record<string, string> = {
   "Could not load this page.": "Diese Seite konnte nicht geladen werden.",
   "No page yet.": "Noch keine Seite.",
   Page: "Seite",
+  Refresh: "Aktualisieren",
+  List: "Liste",
+  "Add item": "Element hinzufügen",
+  "The bot changed this list. Your last edit wasn't saved.":
+    "Der Bot hat diese Liste geändert. Deine letzte Änderung wurde nicht gespeichert.",
+  "Could not load this list.": "Diese Liste konnte nicht geladen werden.",
+  "Could not save this list.": "Diese Liste konnte nicht gespeichert werden.",
 };
