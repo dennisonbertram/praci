@@ -13,6 +13,7 @@ import {
 } from "@rakazo/adapters";
 import type {
   Actor,
+  BalanceRange,
   Bot,
   CryptoBalancePoint,
   FinanceAccount,
@@ -46,8 +47,10 @@ import {
   RunwayCryptoScopeSchema,
 } from "@rakazo/contracts";
 import {
+  balanceGrid,
   balanceHistory,
   breakdown,
+  cashAtDays,
   cashHistory,
   cashSeries,
   cashSummary,
@@ -655,6 +658,36 @@ export async function financeRunway(deps: FinanceDeps, actor: Actor): Promise<Fi
     runway: runway(cashCents, monthlyCents, now),
     history: scopedCashHistory(accounts, txns, now, parts, snapshots, scope),
     projection: projectCash(cashCents, monthlyCents, now),
+  };
+}
+
+/** Total cash on each day of the range's grid: bank at that day's end plus crypto counted under the saved scope. */
+export async function financeBalanceSeries(
+  deps: FinanceDeps,
+  actor: Actor,
+  input: { range: BalanceRange },
+): Promise<{ range: BalanceRange; points: { day: string; balanceCents: number }[] }> {
+  const now = nowOf(deps);
+  const [accounts, txns, crypto, scope, snapshots] = await Promise.all([
+    loadAccounts(deps, actor),
+    loadTransactions(deps, actor),
+    loadCryptoSummary(deps, actor),
+    loadRunwayCrypto(deps.prisma, actor),
+    loadSnapshots(deps, actor),
+  ]);
+  const parts = cashParts(accounts, crypto);
+  const today = dayOf(now);
+  const days = balanceGrid(input.range, now);
+  const bank = cashAtDays(accounts, txns, days, now);
+  return {
+    range: input.range,
+    points: days.map((day, i) => ({
+      day,
+      balanceCents: countedCash(
+        { ...(day === today ? parts : cryptoPartsOn(snapshots, day)), bankCents: bank[i] ?? 0 },
+        scope,
+      ),
+    })),
   };
 }
 
