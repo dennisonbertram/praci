@@ -1,5 +1,6 @@
 import type { AdapterContext, AdapterDescriptor, Embedder } from "@rakazo/adapter-kit";
 import { DATA_ROOM_EMBEDDING_DIMENSIONS, EmbedderMisconfiguredError } from "@rakazo/adapter-kit";
+import { readBoundedText } from "./connector-http.js";
 import {
   assertAllowedOpenAiCompatibleUrl,
   assertHttpsForKeyedOpenAiCompatibleUrl,
@@ -8,6 +9,12 @@ import {
 import { createOpenAiCompatibleFetch } from "./pi-openai-compatible-provider.js";
 
 const MAX_BATCH = 64;
+/** 64 inputs x 1024 floats is about 1.5 MB of JSON; this leaves wide margin. */
+const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
+/** The endpoint refuses the request shape for this model; retrying cannot help. */
+const REJECTED_STATUSES = new Set([400, 404, 422]);
+
+class TooLarge extends Error {}
 
 export interface OpenAICompatibleEmbedderConfig {
   baseUrl: string;
@@ -79,12 +86,20 @@ export class OpenAICompatibleEmbedder implements Embedder {
     if (!res.ok) {
       // Report only the status; the response body may echo request headers.
       await res.body?.cancel().catch(() => {});
+      if (REJECTED_STATUSES.has(res.status)) {
+        throw new EmbedderMisconfiguredError(
+          `Embeddings endpoint rejected the request for model ${this.config.model} (HTTP ${res.status})`,
+        );
+      }
       throw new Error(`Embeddings request failed with HTTP ${res.status}`);
     }
     let body: EmbeddingsResponse;
     try {
-      body = (await res.json()) as EmbeddingsResponse;
+      const { text, truncated } = await readBoundedText(res, MAX_RESPONSE_BYTES);
+      if (truncated) throw new TooLarge();
+      body = JSON.parse(text) as EmbeddingsResponse;
     } catch (error) {
+      if (error instanceof TooLarge) throw new Error("Embeddings response is too large");
       if (signal.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
       throw new Error("Embeddings response is not valid JSON");
     }

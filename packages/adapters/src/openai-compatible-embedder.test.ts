@@ -195,4 +195,49 @@ describe("OpenAICompatibleEmbedder", () => {
     await expect(e.embed(["1"], ctx())).rejects.toThrow("500");
     expect(cancel).toHaveBeenCalled();
   });
+
+  it.each([400, 404, 422])(
+    "maps HTTP %i to EmbedderMisconfiguredError without body or key",
+    async (status) => {
+      const e = new OpenAICompatibleEmbedder({
+        ...base,
+        apiKey: "sk-secret",
+        fetch: vi.fn(async () => new Response("rejected sk-secret", { status })),
+      });
+      const err = await e.embed(["1"], ctx()).catch((x) => x);
+      expect(err).toBeInstanceOf(EmbedderMisconfiguredError);
+      expect(err.message).toBe(
+        `Embeddings endpoint rejected the request for model m1 (HTTP ${status})`,
+      );
+    },
+  );
+
+  it("keeps the generic error for other statuses", async () => {
+    const e = new OpenAICompatibleEmbedder({
+      ...base,
+      fetch: vi.fn(async () => new Response("", { status: 503 })),
+    });
+    const err = await e.embed(["1"], ctx()).catch((x) => x);
+    expect(err).not.toBeInstanceOf(EmbedderMisconfiguredError);
+  });
+
+  it("stops reading and cancels an oversized body", async () => {
+    const cancel = vi.fn();
+    const chunk = new Uint8Array(1024 * 1024);
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        sent++;
+        controller.enqueue(chunk);
+      },
+      cancel,
+    });
+    const e = new OpenAICompatibleEmbedder({
+      ...base,
+      fetch: vi.fn(async () => new Response(stream)),
+    });
+    await expect(e.embed(["1"], ctx())).rejects.toThrow("Embeddings response is too large");
+    expect(cancel).toHaveBeenCalled();
+    expect(sent).toBeLessThan(40);
+  });
 });
