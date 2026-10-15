@@ -15,7 +15,8 @@ import { NativeSymbol } from "../components/native-symbol";
 import { getPins, savePins } from "../lib/agent-pins";
 import { useI18n } from "../lib/i18n";
 import { native, useThemedStyles } from "../lib/native";
-import { addItem, deleteItem, editItem, toggleItem } from "../lib/pin-list";
+import type { PinOp } from "../lib/pin-list";
+import { addItem, deleteItem, editItem, rebasePins, toggleItem } from "../lib/pin-list";
 import { errorText } from "../lib/user-error";
 
 const newId = () =>
@@ -28,15 +29,20 @@ export default function AgentListScreen() {
   const [list, setList] = useState<PinList | null>(null);
   const [failed, setFailed] = useState(false);
   const [draft, setDraft] = useState("");
-  // The latest list and revision, read by the save queue after earlier saves finish.
+  // The latest list (with unsaved edits), the last list the server accepted, and its revision.
   const listRef = useRef<PinList | null>(null);
+  const savedRef = useRef<PinList | null>(null);
   const revision = useRef(0);
+  // Edits not yet saved, oldest first. A conflict replays the rest onto the server list.
+  const pending = useRef<PinOp[]>([]);
   const queue = useRef<Promise<void>>(Promise.resolve());
 
   function adopt(pins: BotPins) {
     revision.current = pins.revision;
-    listRef.current = pins.list;
-    setList(pins.list);
+    savedRef.current = pins.list;
+    const next = pins.list && rebasePins(pins.list, pending.current);
+    listRef.current = next;
+    setList(next);
   }
 
   useEffect(() => {
@@ -45,18 +51,25 @@ export default function AgentListScreen() {
       .catch(() => setFailed(true));
   }, [botId]);
 
-  function change(edit: (current: PinList) => PinList) {
+  function change(op: PinOp) {
     const current = listRef.current;
     if (!current) return;
-    const next = edit(current);
+    const next = op(current);
     if (next === current) return;
     listRef.current = next;
     setList(next);
+    pending.current.push(op);
     queue.current = queue.current.then(async () => {
+      const mine = pending.current.shift();
+      const saved = savedRef.current;
+      if (!mine || !saved) return;
       try {
-        const result = await savePins(botId, listRef.current, revision.current);
-        if (result.ok) revision.current = result.pins.revision;
-        else {
+        const candidate = mine(saved);
+        const result = await savePins(botId, candidate, revision.current);
+        if (result.ok) {
+          revision.current = result.pins.revision;
+          savedRef.current = candidate;
+        } else {
           adopt(result.pins);
           Alert.alert(t("The bot changed this list. Your last edit wasn't saved."));
         }
