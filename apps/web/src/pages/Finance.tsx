@@ -11,7 +11,7 @@ import { Button, Skeleton } from "@rakazo/ui-web";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { AddAccountDialog } from "../components/finance/AddAccountDialog";
+import { AddAccountDialog, type CryptoChoice } from "../components/finance/AddAccountDialog";
 import { type BarGranularity, BurnBars, Sparkline } from "../components/finance/charts";
 import { StatementReminderBanner } from "../components/finance/StatementReminderBanner";
 import {
@@ -28,7 +28,9 @@ import {
   useFinanceQuery,
   useRowNavigate,
 } from "../components/finance/ui";
+import { WalletDialog } from "../components/finance/WalletDialog";
 import { AppLogo } from "../components/integrations/AppLogo";
+import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnectDialog";
 import {
   changeText,
   dayRange,
@@ -145,7 +147,8 @@ function Dashboard() {
   if (overview.error) return <ErrorNotice message={overview.error} onRetry={overview.retry} />;
   if (!data) return <DashboardSkeleton />;
   // Accounts fed by uploaded statements have no source to connect, but they are data.
-  if (!connected && !data.hasCashAccounts) return <EmptyState hasCrypto={Boolean(data.crypto)} />;
+  if (!connected && !data.hasCashAccounts)
+    return <EmptyState hasCrypto={Boolean(data.crypto)} onChanged={overview.reload} />;
   return (
     <Overview
       data={data}
@@ -157,7 +160,9 @@ function Dashboard() {
   );
 }
 
-function EmptyState({ hasCrypto }: { hasCrypto: boolean }) {
+function EmptyState({ hasCrypto, onChanged }: { hasCrypto: boolean; onChanged: () => void }) {
+  const [adding, setAdding] = useState(false);
+  const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
   return (
     <div className="flex h-full min-h-72 flex-col items-center justify-center gap-4 text-center">
       <div className="flex gap-3">
@@ -169,15 +174,34 @@ function EmptyState({ hasCrypto }: { hasCrypto: boolean }) {
         <Trans>Finance</Trans>
       </h1>
       <p className="max-w-sm text-sm text-muted-foreground">
-        <Trans>Connect Mercury, Brex or both to see cash, burn, runway and spend.</Trans>
+        <Trans>Add an account to see cash, burn, runway and spend.</Trans>
       </p>
-      <Button render={<Link to={CONNECT_PATH} />}>
-        <Trans>Connect accounts</Trans>
+      <Button onClick={() => setAdding(true)}>
+        <Trans>Add account</Trans>
       </Button>
       {hasCrypto ? (
         <Button variant="outline" render={<Link to={financePath.accounts()} />}>
           <Trans>Accounts</Trans>
         </Button>
+      ) : null}
+      {adding ? (
+        <AddAccountDialog
+          onPickCrypto={setCrypto}
+          onImported={onChanged}
+          onClose={() => setAdding(false)}
+        />
+      ) : null}
+      <WalletDialog
+        open={crypto === "wallet"}
+        onClose={() => setCrypto(null)}
+        onSaved={onChanged}
+      />
+      {crypto && crypto !== "wallet" ? (
+        <ExchangeConnectDialog
+          provider={crypto}
+          onConnected={onChanged}
+          onClose={() => setCrypto(null)}
+        />
       ) : null}
     </div>
   );
