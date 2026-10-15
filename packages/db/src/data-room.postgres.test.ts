@@ -385,4 +385,129 @@ describePostgres("data room repository (PostgreSQL)", () => {
     await expect(dr.deleteFolder(a, parent.id)).rejects.toThrow(DataRoomConflictError);
     expect(await prisma.dataRoomFolder.count({ where: { parentId: parent.id } })).toBe(1);
   });
+
+  describe("hybrid search", () => {
+    const MODEL = `hyb-model-${run}`;
+    /** A 1024-number vector that is `weight` along axis `axis` and 0 elsewhere. */
+    const unit = (axis: number, weight = 1, axis2 = -1, weight2 = 0) =>
+      Array.from({ length: 1024 }, (_, k) => (k === axis ? weight : k === axis2 ? weight2 : 0));
+    const put = async (
+      actor: Actor,
+      label: string,
+      text: string,
+      vector: number[] | null,
+      model = MODEL,
+    ) => {
+      const { item } = await upload(actor, `${label}.txt`, `hyb-${label}-${run}`);
+      const contentHash = `hash-${label}-${run}`;
+      await dr.replaceChunks(actor, item.id, [{ ordinal: 0, text, contentHash }]);
+      if (vector)
+        await dr.saveEmbeddings(actor, item.id, model, [{ ordinal: 0, contentHash, vector }]);
+      return item;
+    };
+    const ids = (results: { item: { id: string } }[]) => results.map((r) => r.item.id);
+
+    it("ranks the nearest chunk first when no keyword matches", async () => {
+      const near = await put(a, "near", "alpha one", unit(0));
+      const mid = await put(a, "mid", "alpha two", unit(0, 0.5, 1, 1));
+      const far = await put(a, "far", "alpha three", unit(7));
+      const page = await dr.searchPage(a, {
+        query: `nosuchword${run}`,
+        vector: unit(0, 1, 1, 0.1),
+        embeddingModel: MODEL,
+        limit: 10,
+      });
+      expect(ids(page.results)).toEqual([near.id, mid.id, far.id]);
+    });
+
+    it("fuses the keyword and vector legs by reciprocal rank", async () => {
+      const q = `fusion${run}`;
+      const both = await put(a, "both", `${q} ${q} ${q}`, unit(20, 1, 21, 0.2));
+      const keywordOnly = await put(a, "kw", `${q} and some padding words`, unit(30));
+      const vectorOnly = await put(a, "vec", "unrelated text", unit(20));
+      const { results } = await dr.searchPage(a, {
+        query: q,
+        vector: unit(20),
+        embeddingModel: MODEL,
+        limit: 10,
+      });
+      // both: keyword rank 1 + vector rank 2; vector-only: vector rank 1; keyword-only: keyword rank 2.
+      expect(ids(results).slice(0, 3)).toEqual([both.id, keywordOnly.id, vectorOnly.id]);
+      expect(results[0]?.score).toBeCloseTo(1 / 61 + 1 / 62, 10);
+      expect(results[2]?.score).toBeCloseTo(1 / 61, 10);
+    });
+
+    it("compares only chunks embedded by the given model", async () => {
+      const stale = await put(a, "stale", "stalechunk", unit(40), `other-${run}`);
+      const current = await put(a, "current", "currentchunk", unit(41));
+      const { results } = await dr.searchPage(a, {
+        query: `nosuchword${run}`,
+        vector: unit(40),
+        embeddingModel: MODEL,
+      });
+      expect(ids(results)).toContain(current.id);
+      expect(ids(results)).not.toContain(stale.id);
+    });
+
+    it("never returns another member's or another space's chunks, even when nearer", async () => {
+      const own = await put(a, "own", "ownchunk", unit(50, 1, 51, 1));
+      const member = await put(a2, "member", "memberchunk", unit(50));
+      const space = await put(b, "space", "spacechunk", unit(50));
+      const { results } = await dr.searchPage(a, {
+        query: `nosuchword${run}`,
+        vector: unit(50),
+        embeddingModel: MODEL,
+      });
+      expect(ids(results)).toContain(own.id);
+      expect(ids(results)).not.toContain(member.id);
+      expect(ids(results)).not.toContain(space.id);
+    });
+
+    it("pages fused relevance results without gaps or repeats", async () => {
+      const q = `paging${run}`;
+      for (let i = 0; i < 7; i++) {
+        await put(a, `page${i}`, i % 2 ? `${q} word` : "plain words", unit(60, 1, 61 + i, i / 10));
+      }
+      const input = { query: q, vector: unit(60), embeddingModel: MODEL };
+      const whole = ids((await dr.searchPage(a, { ...input, limit: 50 })).results).filter(
+        (id) => id,
+      );
+      const collected: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await dr.searchPage(a, { ...input, limit: 3, cursor });
+        collected.push(...ids(page.results));
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
+      expect(collected).toEqual(whole);
+      expect(new Set(collected).size).toBe(collected.length);
+      expect(collected.length).toBeGreaterThanOrEqual(7);
+    });
+
+    it("still searches by keyword alone, and when the vector finds nothing embedded", async () => {
+      const q = `lonely${run}`;
+      const only = await put(a, "lonely", `${q} text`, null);
+      const keyword = await dr.searchPage(a, { query: q });
+      expect(ids(keyword.results)).toEqual([only.id]);
+      const withVector = await dr.searchPage(a, {
+        query: q,
+        vector: unit(900),
+        embeddingModel: `empty-${run}`,
+      });
+      expect(ids(withVector.results)).toEqual([only.id]);
+    });
+
+    it("moves ready items back to a step only when they need it", async () => {
+      const skipped = await put(a, "skipped", "needs classify", null);
+      await prisma.dataRoomItem.update({ where: { id: skipped.id }, data: { status: "ready" } });
+      await prisma.dataRoomItemText.create({
+        data: { itemId: skipped.id, spaceId: a.spaceId, userId: a.userId, text: "body" },
+      });
+      expect(await dr.requeueReady(a, "classify")).toContain(skipped.id);
+      expect(
+        (await prisma.dataRoomItem.findUniqueOrThrow({ where: { id: skipped.id } })).status,
+      ).toBe("classifying");
+      expect(await dr.requeueReady(b, "classify")).not.toContain(skipped.id);
+    });
+  });
 });
