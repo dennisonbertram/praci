@@ -132,6 +132,64 @@ describe("S3ArtifactStore", () => {
   });
 });
 
+describe("endpoint and cancellation rules", () => {
+  it("uses path-style for dotted buckets and keeps the endpoint path", () => {
+    const base = { ...config(), endpoint: "https://s3.example.test/base/", forcePathStyle: false };
+    expect(new S3ArtifactStore({ ...base, bucket: "a.b" }).url("k")).toBe(
+      "https://s3.example.test/base/a.b/k",
+    );
+    expect(new S3ArtifactStore(base).url("k")).toBe("https://bkt.s3.example.test/base/k");
+    expect(new S3ArtifactStore({ ...base, forcePathStyle: true }).url("k")).toBe(
+      "https://s3.example.test/base/bkt/k",
+    );
+  });
+
+  it("allows http only for local and private hosts", () => {
+    const env = (endpoint: string) => ({
+      RAKAZO_S3_ENDPOINT: endpoint,
+      RAKAZO_S3_BUCKET: "bkt",
+      RAKAZO_S3_ACCESS_KEY_ID: "id",
+      RAKAZO_S3_SECRET_ACCESS_KEY: "secret",
+    });
+    for (const ok of [
+      "http://localhost:9000",
+      "http://127.0.0.1:9000",
+      "http://[::1]:9000",
+      "http://10.1.2.3",
+      "http://172.20.0.1",
+      "http://192.168.1.5",
+      "http://[fd12::1]",
+      "http://minio:9000",
+      "https://s3.example.test",
+    ]) {
+      expect(s3ArtifactConfigFromEnv(env(ok))).not.toBeNull();
+    }
+    for (const bad of [
+      "http://s3.example.test",
+      "http://172.32.0.1",
+      "http://8.8.8.8",
+      "http://11.0.0.1",
+    ]) {
+      expect(() => s3ArtifactConfigFromEnv(env(bad))).toThrow("RAKAZO_S3_ENDPOINT must use https");
+    }
+  });
+
+  it("passes the run signal to the store and propagates AbortError", async () => {
+    const store = new S3ArtifactStore(config());
+    const controller = new AbortController();
+    controller.abort();
+    const signalCtx = { spaceId: "space-a", signal: controller.signal } as never;
+    for (const run of [
+      () => store.put(artifact, signalCtx),
+      () => store.get("x", signalCtx),
+      () => store.remove("x", signalCtx),
+    ]) {
+      await expect(run()).rejects.toMatchObject({ name: "AbortError" });
+    }
+    expect(seen).toHaveLength(0);
+  });
+});
+
 describe("transport failures", () => {
   it("do not leak the key id or signature, and keep AbortError", async () => {
     const store = new S3ArtifactStore({ ...config(), endpoint: "http://127.0.0.1:1" });

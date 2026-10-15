@@ -428,7 +428,7 @@ variables together; any `RAKAZO_S3_*` variable that is set turns object storage 
 - `RAKAZO_S3_FORCE_PATH_STYLE`: set to `true` for MinIO and other stores without bucket subdomains.
 - `RAKAZO_S3_PREFIX`: optional key prefix.
 
-Existing local files are not copied to the bucket.
+Plain `http` endpoints are accepted only for localhost, private network addresses and single-word hostnames such as `minio`; use `https` for anything else. Existing local files are not copied to the bucket.
 
 ## Backup
 

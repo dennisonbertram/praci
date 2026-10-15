@@ -28,6 +28,18 @@ const REQUIRED = [
   ["RAKAZO_S3_SECRET_ACCESS_KEY", "secretAccessKey"],
 ] as const;
 
+/** Plain http is allowed only where traffic stays on the machine or private network. */
+function isLocalHost(host: string) {
+  if (host === "localhost" || host === "[::1]") return true;
+  if (/^[a-z0-9_-]+$/i.test(host) && !/^\d+$/.test(host)) return true; // single label, e.g. a Docker service
+  const ip = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(host);
+  if (ip) {
+    const [a, b] = [Number(ip[1]), Number(ip[2])];
+    return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+  return /^\[f[cd][0-9a-f]{2}:/i.test(host);
+}
+
 /** Returns null when no S3 variable is set; throws naming the missing variable on partial config. */
 export function s3ArtifactConfigFromEnv(
   env: Record<string, string | undefined>,
@@ -49,6 +61,9 @@ export function s3ArtifactConfigFromEnv(
     "RAKAZO_S3_ENDPOINT",
     URL.canParse(endpoint) && /^https?:$/.test(new URL(endpoint).protocol),
   );
+  if (new URL(endpoint).protocol === "http:" && !isLocalHost(new URL(endpoint).hostname)) {
+    throw new Error("RAKAZO_S3_ENDPOINT must use https");
+  }
   const bucket = value("RAKAZO_S3_BUCKET");
   check("RAKAZO_S3_BUCKET", /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket));
   const region = value("RAKAZO_S3_REGION") || "us-east-1";
@@ -114,10 +129,12 @@ export class S3ArtifactStore implements ArtifactStore {
   url(key: string) {
     const base = new URL(this.config.endpoint);
     const path = key.split("/").map(encodeURIComponent).join("/");
-    if (this.config.forcePathStyle) {
-      return `${base.origin}${base.pathname.replace(/\/+$/, "")}/${this.config.bucket}/${path}`;
+    const root = base.pathname.replace(/\/+$/, "");
+    // A dotted bucket name cannot match a wildcard TLS certificate, so it always uses path-style.
+    if (this.config.forcePathStyle || this.config.bucket.includes(".")) {
+      return `${base.origin}${root}/${this.config.bucket}/${path}`;
     }
-    return `${base.protocol}//${this.config.bucket}.${base.host}/${path}`;
+    return `${base.protocol}//${this.config.bucket}.${base.host}${root}/${path}`;
   }
 
   key(id: string, context: AdapterContext) {
@@ -125,9 +142,18 @@ export class S3ArtifactStore implements ArtifactStore {
     return (this.config.prefix ? [this.config.prefix, ...parts] : parts).join("/");
   }
 
-  private async send(method: "PUT" | "GET" | "DELETE", key: string, body?: Uint8Array) {
+  private async send(
+    method: "PUT" | "GET" | "DELETE",
+    key: string,
+    context: AdapterContext,
+    body?: Uint8Array,
+  ) {
     try {
-      return await this.client.fetch(this.url(key), { method, body: body as BodyInit | undefined });
+      return await this.client.fetch(this.url(key), {
+        method,
+        body: body as BodyInit | undefined,
+        signal: context.signal,
+      });
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") throw error;
       // Signing and transport errors can carry the key id, signature or URL; report none of them.
@@ -143,20 +169,20 @@ export class S3ArtifactStore implements ArtifactStore {
 
   async put(artifact: ArtifactPut, context: AdapterContext) {
     const id = randomUUID();
-    const response = await this.send("PUT", this.key(id, context), artifact.bytes);
+    const response = await this.send("PUT", this.key(id, context), context, artifact.bytes);
     if (!response.ok) await this.fail("put", response);
     return { id, hash: createHash("sha256").update(artifact.bytes).digest("hex") };
   }
 
   async get(id: string, context: AdapterContext) {
-    const response = await this.send("GET", this.key(id, context));
+    const response = await this.send("GET", this.key(id, context), context);
     if (response.status === 404) throw new ArtifactNotFoundError(id);
     if (!response.ok) await this.fail("get", response);
     return new Uint8Array(await response.arrayBuffer());
   }
 
   async remove(id: string, context: AdapterContext) {
-    const response = await this.send("DELETE", this.key(id, context));
+    const response = await this.send("DELETE", this.key(id, context), context);
     if (!response.ok && response.status !== 404) await this.fail("remove", response);
   }
 }
