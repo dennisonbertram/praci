@@ -21,8 +21,10 @@ import {
   type CategoryFilter,
   type ConnectedApp,
   FINANCE_PROVIDERS,
+  FIRST_PARTY_MCP,
   filterCatalog,
   groupConnections,
+  isMcpEndpointHost,
   mcpStatus,
   popularApps,
 } from "../../lib/integrations";
@@ -279,6 +281,15 @@ export function IntegrationsHome({
   const showFinance =
     (category === "all" || category === "finance") &&
     financeNames.some((name) => name.includes(query.trim().toLowerCase()));
+  const firstPartyMcp = FIRST_PARTY_MCP.filter(
+    (entry) =>
+      category === "all" &&
+      entry.name.toLowerCase().includes(query.trim().toLowerCase()) &&
+      !data.servers.some(
+        (server) => "endpoint" in server && isMcpEndpointHost(server.endpoint, entry.endpoint),
+      ),
+  );
+  const otherMatches = showFinance || firstPartyMcp.length > 0;
   const financeServerIds = data.financeSources.flatMap((source) =>
     source.serverId ? [source.serverId] : [],
   );
@@ -447,12 +458,12 @@ export function IntegrationsHome({
                 </button>
               ))}
             </fieldset>
-            {results.length === 0 && showFinance ? null : (
+            {results.length === 0 && otherMatches ? null : (
               <>
                 <SectionTitle>
                   {filtering ? <Trans>Apps</Trans> : <Trans>Popular</Trans>}
                 </SectionTitle>
-                {results.length === 0 && !showFinance ? (
+                {results.length === 0 && !otherMatches ? (
                   <p className="py-2 text-muted-foreground" data-testid="no-apps">
                     <Trans>No apps match.</Trans>
                   </p>
@@ -494,6 +505,25 @@ export function IntegrationsHome({
               <Trans>Finance</Trans>
             </SectionTitle>
             <FinanceSection sources={data.financeSources} onChanged={() => void data.refresh()} />
+          </div>
+        ) : null}
+
+        {firstPartyMcp.length > 0 ? (
+          <div>
+            <SectionTitle>
+              <Trans>Social</Trans>
+            </SectionTitle>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
+              {firstPartyMcp.map((entry) => (
+                <AppTile
+                  key={entry.id}
+                  name={entry.name}
+                  logo={entry.logo}
+                  description={t`Post and schedule to social accounts`}
+                  onConnect={() => setCustom({ url: entry.endpoint })}
+                />
+              ))}
+            </div>
           </div>
         ) : null}
 

@@ -98,6 +98,26 @@ export const FINANCE_PROVIDERS = [
   { provider: "brex", name: "Brex", logo: "https://cdn.simpleicons.org/brex" },
 ] as const;
 
+/** First-party hosted MCP servers: the tile opens the custom connection dialog prefilled with `endpoint`. */
+export const FIRST_PARTY_MCP = [
+  {
+    id: "zernio",
+    name: "Zernio",
+    logo: "/logos/zernio.svg",
+    endpoint: "https://mcp.zernio.com/mcp",
+  },
+] as const;
+
+/** True when an MCP server endpoint is the https server at the same host as `endpoint`. */
+export function isMcpEndpointHost(candidate: string | null | undefined, endpoint: string): boolean {
+  try {
+    const url = new URL(candidate ?? "");
+    return url.protocol === "https:" && url.host === new URL(endpoint).host;
+  } catch {
+    return false;
+  }
+}
+
 /** Exchanges connect with a read-only API key; `keyUrl` is the vendor page where the user creates it. */
 export const EXCHANGES = [
   {

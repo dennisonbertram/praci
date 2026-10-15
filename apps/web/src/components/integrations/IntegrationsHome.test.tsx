@@ -102,3 +102,23 @@ it("shows search and categories once a managed provider is configured", async ()
   expect(container.querySelector('[data-testid="catalog-not-set-up"]')).toBeNull();
   expect(container.querySelector('input[type="search"]')).not.toBeNull();
 });
+
+const zernioServer = {
+  id: "s1",
+  name: "Zernio",
+  endpoint: "https://mcp.zernio.com/mcp",
+} as unknown as IntegrationsData["servers"][number];
+
+it("offers Zernio even without an app catalog and prefills the custom dialog", async () => {
+  await show(data(true, false));
+  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Zernio"]');
+  expect(connect).not.toBeNull();
+  await act(async () => connect?.click());
+  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
+  expect(input?.value).toBe("https://mcp.zernio.com/mcp");
+});
+
+it("hides the Zernio tile once its server is connected", async () => {
+  await show({ ...data(true, true), servers: [zernioServer] });
+  expect(container.querySelector('[aria-label="Connect Zernio"]')).toBeNull();
+});
