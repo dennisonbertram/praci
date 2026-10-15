@@ -412,8 +412,5 @@ test("Finance runway shows crypto and switches what counts", async ({ page }) =>
   );
   await main.getByRole("button", { name: "Count crypto" }).click();
   await expect(main.getByText("$98,000", { exact: true })).toBeVisible();
-  await expect(main.getByRole("button", { name: "Counting crypto" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(main.getByRole("button", { name: "Counting all crypto" })).toBeVisible();
 });

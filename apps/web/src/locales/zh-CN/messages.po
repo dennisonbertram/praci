@@ -1347,10 +1347,6 @@ msgstr ""
 msgid "Choose which connected model Rakazo uses."
 msgstr "选择 Rakazo 使用的已连接模型。"
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Choose which crypto counts"
-msgstr ""
-
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
@@ -2227,7 +2223,11 @@ msgid "Counterparty"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
-msgid "Counting crypto"
+msgid "Counting all crypto"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Counting stablecoins"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -2577,6 +2577,10 @@ msgstr "Docker 限制对你电脑的访问，以提高安全性。使用{hostLab
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Don't count crypto"
 msgstr ""
 
 #: src/pages/Auth.tsx
@@ -4059,10 +4063,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
-msgstr ""
-
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Not counting crypto"
 msgstr ""
 
 #: src/pages/finance/FinanceNotFound.tsx

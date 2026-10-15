@@ -258,6 +258,11 @@ export function FinanceRunwayPage() {
               value={data.runway.runOutDate ? fullDay(data.runway.runOutDate) : "—"}
             />
           </div>
+          {hasCrypto ? (
+            <div>
+              <CountCryptoButton scope={data.runwayCrypto} onSaved={q.reload} />
+            </div>
+          ) : null}
           <Section title={<Trans>Projected cash</Trans>}>
             <LineChart
               values={points.map((p) => p.balanceCents)}
@@ -269,10 +274,7 @@ export function FinanceRunwayPage() {
             />
           </Section>
           {hasCrypto && parts ? (
-            <Section
-              title={<Trans>Cash</Trans>}
-              action={<CountCryptoButton scope={data.runwayCrypto} onSaved={q.reload} />}
-            >
+            <Section title={<Trans>Cash</Trans>}>
               <Kv>
                 <KvRow label={t`Bank`}>{money(parts.bankCents)}</KvRow>
                 <KvRow label={t`Stablecoins`}>{money(parts.stablecoinCents)}</KvRow>
