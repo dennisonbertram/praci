@@ -23,6 +23,12 @@ describePostgres("bot pins (PostgreSQL)", () => {
   }));
   const events = { append, sendUserMessage };
   const jobs = { enqueue: vi.fn(async () => undefined) };
+  const mcp = {
+    listServerTools: vi.fn(
+      async () =>
+        ["get_balance", "delete_account", "listAccounts"].map((name) => ({ name })) as never,
+    ),
+  };
   let prisma: PrismaClient;
   let close: () => Promise<void>;
   let scope: { spaceId: string; botId: string; userId: string };
@@ -78,6 +84,9 @@ describePostgres("bot pins (PostgreSQL)", () => {
       });
     serverId = (await server(spaceId, "bank")).id;
     otherServerId = (await server(otherSpaceId, "other")).id;
+    await prisma.botMcpServer.create({
+      data: { spaceId, userId, botId: bot.id, serverId, allowAllTools: true },
+    });
   });
   afterAll(async () => {
     if (!prisma) return;
@@ -125,7 +134,7 @@ describePostgres("bot pins (PostgreSQL)", () => {
   });
 
   it("rejects a source on another space's server and a non-read-only tool", async () => {
-    const deps = { prisma, events };
+    const deps = { prisma, events, mcp };
     const write = (s: PinStat) =>
       pinsToolFromTool(
         "pins_write",
@@ -137,7 +146,7 @@ describePostgres("bot pins (PostgreSQL)", () => {
         },
       );
     expect(await write(stat({ source: source(otherServerId) }))).toMatchObject({
-      error: expect.stringContaining("not available"),
+      error: expect.stringContaining("not assigned"),
     });
     expect(await write(stat({ source: source(serverId, "delete_account") }))).toMatchObject({
       error: expect.stringContaining("not read-only"),
@@ -153,13 +162,13 @@ describePostgres("bot pins (PostgreSQL)", () => {
   it("keeps the old value and sets error when a source fails, then clears it on success", async () => {
     const stats = [stat({ source: source(serverId) })];
     const current = await prisma.botPins.findUniqueOrThrow({ where: { botId: scope.botId } });
-    await saveBotPins({ prisma, events }, scope, {
+    await saveBotPins({ prisma, events, mcp }, scope, {
       stats,
       baseRevision: current.revision,
       updatedBy: "bot",
     });
     const callServerTool = vi.fn().mockRejectedValueOnce(new Error("upstream down"));
-    const deps = { prisma, events, jobs, mcp: { callServerTool } };
+    const deps = { prisma, events, jobs, mcp: { ...mcp, callServerTool } };
     const failed = await refreshBotPins(deps, scope);
     expect(failed).toMatchObject({
       botRun: false,
@@ -193,5 +202,22 @@ describePostgres("bot pins (PostgreSQL)", () => {
         trigger: "user",
       }),
     );
+  });
+
+  it("keeps the old value with an error when the server is disabled, and still messages the bot", async () => {
+    const current = await prisma.botPins.findUniqueOrThrow({ where: { botId: scope.botId } });
+    await saveBotPins({ prisma, events, mcp }, scope, {
+      stats: [stat({ source: source(serverId) }), stat({ id: "free", label: "Mood", value: "ok" })],
+      baseRevision: current.revision,
+      updatedBy: "bot",
+    });
+    await prisma.mcpServer.update({ where: { id: serverId }, data: { enabled: false } });
+    sendUserMessage.mockClear();
+    const result = await refreshBotPins(
+      { prisma, events, jobs, mcp: { ...mcp, callServerTool: vi.fn() } },
+      scope,
+    );
+    expect(result?.pins.stats[0]).toMatchObject({ value: "$1", error: expect.any(String) });
+    expect(sendUserMessage).toHaveBeenCalledTimes(1);
   });
 });

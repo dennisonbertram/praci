@@ -3015,8 +3015,9 @@ export function ShellPage() {
             />
           ) : null}
         </div>
-        {pinsList ? (
-          <aside className="rk-scroll hidden w-72 shrink-0 overflow-y-auto border-s border-border px-4 py-3 lg:block">
+        {pinsList && panel === null ? (
+          // 316px sidebar + 288px column leaves 676px of transcript at 1280px; at lg (1024px) only 420px.
+          <aside className="rk-scroll hidden w-72 shrink-0 overflow-y-auto border-s border-border px-4 py-3 xl:block">
             <PinsList pins={pinsList} onPins={setBotPins} />
           </aside>
         ) : null}
@@ -3961,7 +3962,7 @@ export function ShellPage() {
                 aria-label={t`List`}
                 onClick={() => setPanel(panel === "list" ? null : "list")}
                 data-active={panel === "list" ? "" : undefined}
-                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent lg:hidden"
+                className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent ${panel === null ? "xl:hidden" : ""}`}
               >
                 <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
               </button>

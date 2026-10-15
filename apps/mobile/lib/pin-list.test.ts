@@ -1,6 +1,7 @@
 import type { PinList } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import { addItem, deleteItem, editItem, toggleItem } from "./pin-list";
+import type { PinOp } from "./pin-list";
+import { addItem, deleteItem, editItem, rebasePins, toggleItem } from "./pin-list";
 
 const list = (): PinList => ({
   title: "Todo",
@@ -35,5 +36,25 @@ describe("pin list editing", () => {
       items: Array.from({ length: 50 }, (_, i) => ({ id: `i${i}`, text: "x", done: false })),
     };
     expect(addItem(full, "z", "y").items).toHaveLength(50);
+  });
+});
+
+describe("rebasePins", () => {
+  const server = (): PinList => ({
+    title: "Todo",
+    items: [
+      { id: "a", text: "one", done: true },
+      { id: "b", text: "two", done: false },
+    ],
+  });
+
+  it("reapplies a later queued edit onto the server list after an earlier conflict", () => {
+    const queued: PinOp[] = [(l) => toggleItem(l, "b")];
+    expect(rebasePins(server(), queued).items.map((i) => i.done)).toEqual([true, true]);
+  });
+  it("skips operations on an item the server deleted", () => {
+    const gone = deleteItem(server(), "b");
+    const queued: PinOp[] = [(l) => toggleItem(l, "b"), (l) => editItem(l, "b", "x")];
+    expect(rebasePins(gone, queued)).toEqual(gone);
   });
 });

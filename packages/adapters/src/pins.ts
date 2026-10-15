@@ -1,5 +1,6 @@
+import { isDeepStrictEqual } from "node:util";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { JobPublisher } from "@rakazo/adapter-kit";
+import type { AdapterContext, JobPublisher } from "@rakazo/adapter-kit";
 import { runContinueJob } from "@rakazo/adapter-kit";
 import type {
   BotPins,
@@ -16,6 +17,7 @@ import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { unwrapToolResult } from "./finance-call-tool.js";
 import type { McpConnector } from "./mcp-connector.js";
+import { assignmentAllowsTool } from "./mcp-connector.js";
 
 export const PIN_SOURCE_TIMEOUT_MS = 15_000;
 const REFRESH_PROMPT = "Update your pinned numbers.";
@@ -23,12 +25,14 @@ const REFRESH_PROMPT = "Update your pinned numbers.";
 export interface PinsDeps {
   prisma: PrismaClient;
   events: Pick<ThreadEvents, "append">;
+  /** Lists a server's tools so a source can be checked against the tool's annotations. */
+  mcp?: Pick<McpConnector, "listServerTools">;
 }
 
 export interface PinsRefreshDeps extends PinsDeps {
   events: Pick<ThreadEvents, "append" | "sendUserMessage">;
   jobs: Pick<JobPublisher, "enqueue">;
-  mcp?: Pick<McpConnector, "callServerTool">;
+  mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
 }
 
 export interface PinsScope {
@@ -136,37 +140,72 @@ export async function getBotPins(
 }
 
 /** MCP tools often use camelCase (getAccounts); the approval name check expects snake_case. */
-function toolIsReadOnly(tool: string): boolean {
+function toolNameIsReadOnly(tool: string): boolean {
   return !connectorToolRequiresApproval(tool.replace(/([a-z0-9])([A-Z])/g, "$1_$2"));
+}
+
+function pinContext(scope: PinsScope): AdapterContext {
+  return {
+    operationId: `pins:${scope.botId}`,
+    traceId: `pins:${scope.botId}`,
+    spaceId: scope.spaceId,
+    userId: scope.userId,
+    botId: scope.botId,
+    signal: AbortSignal.timeout(PIN_SOURCE_TIMEOUT_MS),
+  };
 }
 
 /**
  * Looks up the source's server and checks the call is safe to rerun without a model. The server
- * must be enabled and belong to the bot's space and owner. The tool must pass the same name check
- * connectors use for approval (the server's readOnlyHint is not available outside a bot run, so a
- * tool whose name does not read as a get/list/search/find/read is refused).
+ * must be enabled and belong to the bot's space and owner, the bot must still be assigned to it,
+ * and the assignment must allow the tool (the rule a bot run uses). The server must list the tool.
+ * The tool's annotations decide read-only: readOnlyHint false or destructiveHint true refuses,
+ * readOnlyHint true accepts, and with no hint the tool name must read as a get/list/search/read.
  */
-async function checkSource(prisma: PrismaClient, scope: PinsScope, source: PinSource) {
-  const server = await prisma.mcpServer.findFirst({
-    where: { id: source.serverId, spaceId: scope.spaceId, userId: scope.userId, enabled: true },
+async function checkSource(deps: PinsDeps, scope: PinsScope, source: PinSource) {
+  const { prisma } = deps;
+  const assignment = await prisma.botMcpServer.findFirst({
+    where: {
+      botId: scope.botId,
+      serverId: source.serverId,
+      spaceId: scope.spaceId,
+      userId: scope.userId,
+      server: { enabled: true, spaceId: scope.spaceId, userId: scope.userId },
+    },
+    include: { server: true, bot: { select: { spawnKey: true } } },
   });
-  if (!server)
-    throw new Error(`MCP server ${source.serverId} is not available to this bot's owner`);
-  if (!toolIsReadOnly(source.tool)) {
+  if (!assignment || !assignmentAllowsTool(assignment, source.tool)) {
+    throw new Error(`MCP tool ${source.tool} is not assigned to this bot`);
+  }
+  if (!deps.mcp) throw new Error("MCP is not available");
+  const tools = await deps.mcp.listServerTools(assignment.server, pinContext(scope));
+  const meta = tools.find((tool) => tool.name === source.tool);
+  if (!meta) throw new Error(`Tool ${source.tool} is not offered by the server`);
+  const hints = meta.annotations;
+  const readOnly =
+    hints?.readOnlyHint === false || hints?.destructiveHint === true
+      ? false
+      : (hints?.readOnlyHint ?? toolNameIsReadOnly(source.tool));
+  if (!readOnly) {
     throw new Error(`Tool ${source.tool} is not read-only, so it cannot be a pin source`);
   }
-  return server;
+  return assignment.server;
 }
 
-async function validateInput(prisma: PrismaClient, scope: PinsScope, input: PinsSaveInput) {
+async function validateInput(
+  deps: PinsDeps,
+  scope: PinsScope,
+  input: PinsSaveInput,
+  checkSources: boolean,
+) {
   if (input.stats !== undefined) {
     const parsed = BotPinsSchema.shape.stats.safeParse(input.stats);
     if (!parsed.success) throw new PinsValidationError(zodMessage("stats", parsed.error));
     const ids = new Set(input.stats.map((stat) => stat.id));
     if (ids.size !== input.stats.length) throw new PinsValidationError("Stat ids must be unique.");
     for (const stat of input.stats) {
-      if (!stat.source) continue;
-      await checkSource(prisma, scope, stat.source).catch((error) => {
+      if (!stat.source || !checkSources) continue;
+      await checkSource(deps, scope, stat.source).catch((error) => {
         throw new PinsValidationError(`Stat "${stat.id}": ${(error as Error).message}`);
       });
     }
@@ -192,13 +231,23 @@ function zodMessage(
  * Validate and save a bot's pins, then announce it on the bot's thread. A stale baseRevision
  * writes nothing and returns the current pins. Shared by the pins RPC, refresh and the pins tools.
  */
-export async function saveBotPins(
+export function saveBotPins(
   deps: PinsDeps,
   scope: PinsScope,
   input: PinsSaveInput,
 ): Promise<PinsSaveResult> {
+  return savePins(deps, scope, input, true);
+}
+
+/** Refresh passes false: its stats come from the stored row, and a source that went bad must still get its error marker. */
+async function savePins(
+  deps: PinsDeps,
+  scope: PinsScope,
+  input: PinsSaveInput,
+  checkSources: boolean,
+): Promise<PinsSaveResult> {
   const { prisma } = deps;
-  await validateInput(prisma, scope, input);
+  await validateInput(deps, scope, input, checkSources);
   const where = { spaceId: scope.spaceId, botId: scope.botId };
   let saved: PinsRow | null;
   try {
@@ -318,17 +367,10 @@ async function readSource(
   source: PinSource,
 ): Promise<StatOutcome> {
   try {
-    const server = await checkSource(deps.prisma, scope, source);
+    const server = await checkSource(deps, scope, source);
     if (!deps.mcp) throw new Error("MCP is not available");
-    const signal = AbortSignal.timeout(PIN_SOURCE_TIMEOUT_MS);
-    const context = {
-      operationId: `pins:${scope.botId}`,
-      traceId: `pins:${scope.botId}`,
-      spaceId: scope.spaceId,
-      userId: scope.userId,
-      botId: scope.botId,
-      signal,
-    };
+    const context = pinContext(scope);
+    const { signal } = context;
     const timedOut = new Promise<never>((_, reject) =>
       signal.addEventListener("abort", () => reject(new Error("Timed out")), { once: true }),
     );
@@ -355,32 +397,42 @@ export async function refreshBotPins(
 ): Promise<{ pins: BotPins; botRun: boolean } | null> {
   let pins = await getBotPins(deps.prisma, scope);
   if (!pins) return null;
-  const outcomes = new Map<string, StatOutcome>(
+  const outcomes = new Map<string, { source: PinSource; outcome: StatOutcome }>(
     await Promise.all(
-      pins.stats.flatMap((stat) =>
-        stat.source
-          ? [readSource(deps, scope, stat.source).then((o): [string, StatOutcome] => [stat.id, o])]
-          : [],
-      ),
+      pins.stats.flatMap((stat) => {
+        const { source } = stat;
+        return source
+          ? [
+              readSource(deps, scope, source).then(
+                (outcome): [string, { source: PinSource; outcome: StatOutcome }] => [
+                  stat.id,
+                  { source, outcome },
+                ],
+              ),
+            ]
+          : [];
+      }),
     ),
   );
   if (outcomes.size > 0) {
     // Apply onto the latest stats; a user list save in the meantime only bumps the revision.
     for (let attempt = 0; attempt < 3 && pins; attempt += 1) {
       const stats = pins.stats.map((stat): PinStat => {
-        const outcome = outcomes.get(stat.id);
-        if (!outcome) return stat;
+        const called = outcomes.get(stat.id);
+        // A stat whose source changed since the call keeps what it has.
+        if (!called || !isDeepStrictEqual(stat.source, called.source)) return stat;
+        const { outcome } = called;
         const { error: _cleared, ...rest } = stat;
         return outcome.error === undefined
           ? { ...rest, value: outcome.value }
           : { ...rest, error: outcome.error };
       });
-      const saved = await saveBotPins(deps, scope, {
-        stats,
-        baseRevision: pins.revision,
-        updatedBy: "bot",
-        refreshedAt: new Date(),
-      });
+      const saved = await savePins(
+        deps,
+        scope,
+        { stats, baseRevision: pins.revision, updatedBy: "bot", refreshedAt: new Date() },
+        false,
+      );
       pins = saved.pins;
       if (saved.ok || !pins) break;
     }
