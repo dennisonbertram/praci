@@ -234,6 +234,10 @@ msgstr "{minutes}m ago"
 msgid "{monthlyTotal}/mo"
 msgstr "{monthlyTotal}/mo"
 
+#: src/pages/Finance.tsx
+msgid "{name} accounts"
+msgstr "{name} accounts"
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -1361,6 +1365,10 @@ msgstr "Clear"
 #: src/pages/shell/dialogs.tsx
 msgid "Clear {0}’s conversation?"
 msgstr "Clear {0}’s conversation?"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Clear {sourceName} filter"
+msgstr "Clear {sourceName} filter"
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/shell/bot-panel.tsx

@@ -1,7 +1,12 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { FinanceAccountsOutput, FinanceCryptoOutput } from "@rakazo/contracts";
+import type {
+  FinanceAccountsOutput,
+  FinanceCryptoOutput,
+  FinanceProvider,
+} from "@rakazo/contracts";
 import {
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +31,7 @@ import {
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { money, moneyExact, monthLabel, monthShort } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
+import { FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 
 type AccountRow = FinanceAccountsOutput["cash"][number];
@@ -107,7 +113,7 @@ function CryptoGroup({ crypto }: { crypto: FinanceCryptoOutput }) {
   );
 }
 
-export function FinanceAccountsPage() {
+export function FinanceAccountsPage({ source = null }: { source?: FinanceProvider | null }) {
   const q = useFinanceQuery(() => rpc.finance.accounts(), []);
   const cryptoQuery = useFinanceQuery(() => rpc.finance.crypto(), []);
   const prefs = useFinanceQuery(() => rpc.finance.preferences(), []);
@@ -115,6 +121,10 @@ export function FinanceAccountsPage() {
   const crypto = cryptoQuery.data;
   const data = q.data;
   const scope = prefs.data?.runwayCrypto ?? "bank";
+  const sourceName = FINANCE_PROVIDERS.find((p) => p.provider === source)?.name;
+  // Cash accounts and cards both carry a provider; the total and chart stay unfiltered.
+  const fromSource = (rows: AccountRow[]) =>
+    source ? rows.filter((a) => a.provider === source) : rows;
   const cashSub = {
     bank: t`Checking + Savings + Treasury`,
     stablecoins: t`Checking + Savings + Treasury + Stablecoins`,
@@ -123,7 +133,22 @@ export function FinanceAccountsPage() {
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Accounts` }]}
-      title={<Trans>Accounts</Trans>}
+      title={
+        <>
+          <Trans>Accounts</Trans>
+          {sourceName ? (
+            <Badge
+              variant="outline"
+              className="ms-2 align-middle"
+              render={
+                <Link to={financePath.accounts()} aria-label={t`Clear ${sourceName} filter`} />
+              }
+            >
+              {sourceName} ×
+            </Badge>
+          ) : null}
+        </>
+      }
       action={
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
@@ -183,11 +208,11 @@ export function FinanceAccountsPage() {
             />
           </Section>
           <Section title={<Trans>Cash accounts</Trans>}>
-            <AccountTable rows={data.cash} />
+            <AccountTable rows={fromSource(data.cash)} />
           </Section>
-          {data.cards.length > 0 ? (
+          {fromSource(data.cards).length > 0 ? (
             <Section title={<Trans>Card balance owed</Trans>}>
-              <AccountTable rows={data.cards} owed />
+              <AccountTable rows={fromSource(data.cards)} owed />
             </Section>
           ) : null}
           {crypto && crypto.wallets.length > 0 ? <CryptoGroup crypto={crypto} /> : null}

@@ -196,3 +196,54 @@ it("reloads accounts after a wallet is added, since crypto can count in total ca
   expect(rpcMock.walletAdd).toHaveBeenCalled();
   expect(rpcMock.accounts).toHaveBeenCalledTimes(2);
 });
+
+const mixed = {
+  ...accounts,
+  cardOwedCents: 120_000,
+  cash: [{ ...accounts.cash[0], provider: "mercury" }],
+  cards: [
+    {
+      id: "c1",
+      provider: "brex",
+      name: "Brex Card",
+      lastFour: "9",
+      balanceCents: 120_000,
+      annualYieldPct: null,
+    },
+  ],
+};
+async function showSource(source: "mercury" | "brex" | null) {
+  rpcMock.accounts.mockResolvedValue(mixed);
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountsPage source={source} />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+}
+const rows = () =>
+  [...container.querySelectorAll("tbody td.font-semibold")].map((td) => td.textContent);
+
+it("shows only the source's accounts, for cash and for cards", async () => {
+  await showSource("brex");
+  expect(rows().join(" ")).toContain("Brex Card");
+  expect(rows().join(" ")).not.toContain("Checking");
+  await showSource("mercury");
+  expect(rows().join(" ")).toContain("Checking");
+  expect(rows().join(" ")).not.toContain("Brex Card");
+});
+
+it("clears the filter from the chip near the title, and shows everything with no source", async () => {
+  await showSource("mercury");
+  const clear = container.querySelector('a[aria-label="Clear Mercury filter"]');
+  expect(clear?.textContent).toBe("Mercury ×");
+  expect(clear?.getAttribute("href")).toBe("/app/finance/accounts");
+  await showSource(null);
+  expect(container.querySelector('a[aria-label^="Clear"]')).toBeNull();
+  expect(rows().join(" ")).toContain("Checking");
+  expect(rows().join(" ")).toContain("Brex Card");
+});

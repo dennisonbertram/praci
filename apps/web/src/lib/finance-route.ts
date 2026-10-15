@@ -1,12 +1,12 @@
-import type { SpendPeriod } from "@rakazo/contracts";
-import { SpendPeriodSchema } from "@rakazo/contracts";
+import type { FinanceProvider, SpendPeriod } from "@rakazo/contracts";
+import { FinanceProviderSchema, SpendPeriodSchema } from "@rakazo/contracts";
 
 /** Inclusive days, from a chart bar. */
 export type SpendRange = { from: string; to: string };
 
 export type FinanceRoute =
   | { page: "dashboard" }
-  | { page: "accounts" }
+  | { page: "accounts"; source: FinanceProvider | null }
   | { page: "account"; id: string }
   | { page: "burn" }
   | { page: "month"; month: string }
@@ -26,7 +26,8 @@ const enc = encodeURIComponent;
 /** Every Finance URL in one place, so links and the route parser agree. */
 export const financePath = {
   dashboard: () => BASE,
-  accounts: () => `${BASE}/accounts`,
+  accounts: (source?: FinanceProvider | null) =>
+    `${BASE}/accounts${source ? `?source=${source}` : ""}`,
   account: (id: string) => `${BASE}/account/${enc(id)}`,
   burn: () => `${BASE}/burn`,
   month: (month: string) => `${BASE}/month/${enc(month)}`,
@@ -60,8 +61,12 @@ export function parseFinanceRoute(pathname: string, search = ""): FinanceRoute {
   const [name] = parts;
   if (name === undefined) return { page: "dashboard" };
   if (arg === undefined) {
-    if (name === "accounts" || name === "burn" || name === "runway" || name === "crypto")
-      return { page: name };
+    if (name === "accounts") {
+      // An unknown source parses to null, so the page lists every account.
+      const source = FinanceProviderSchema.safeParse(new URLSearchParams(search).get("source"));
+      return { page: "accounts", source: source.success ? source.data : null };
+    }
+    if (name === "burn" || name === "runway" || name === "crypto") return { page: name };
     if (name === "spend") {
       const params = new URLSearchParams(search);
       const period = SpendPeriodSchema.safeParse(params.get("period"));
