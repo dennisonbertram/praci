@@ -26,6 +26,8 @@ describePostgres("Data room API (PostgreSQL)", () => {
   let root: string;
   let app: Hono;
   const enqueued: BackgroundJob[] = [];
+  /** Whether the item row still existed when each job was queued. */
+  const rowAtEnqueue: boolean[] = [];
   const actors: Record<string, Actor> = {};
   const spaceIds: string[] = [];
 
@@ -37,7 +39,15 @@ describePostgres("Data room API (PostgreSQL)", () => {
       createRouter({
         prisma,
         env: { webOrigin: "https://app.example.com" },
-        jobs: { enqueue: async (job: BackgroundJob) => void enqueued.push(job) },
+        jobs: {
+          enqueue: async (job: BackgroundJob) => {
+            const key = (job.payload as { storageKey: string }).storageKey;
+            rowAtEnqueue.push(
+              (await prisma.dataRoomItem.count({ where: { storageKey: key } })) > 0,
+            );
+            enqueued.push(job);
+          },
+        },
         artifacts: new LocalArtifactStore(root),
       } as unknown as RouterDeps),
       { context: { actor: who } as never },
@@ -428,6 +438,9 @@ describePostgres("Data room API (PostgreSQL)", () => {
     expect(await prisma.dataRoomItem.count({ where: { id: item.id } })).toBe(0);
     expect(await prisma.dataRoomChunk.count({ where: { itemId: item.id } })).toBe(0);
     expect(enqueued).toHaveLength(1);
+    // Queued before the row was deleted, and not to run immediately.
+    expect(rowAtEnqueue.at(-1)).toBe(true);
+    expect(enqueued[0]?.availableAt?.getTime()).toBeGreaterThan(Date.now() + 30_000);
     expect(enqueued[0]).toMatchObject({
       name: "dataroom.blob.delete",
       payload: { spaceId: actors.A.spaceId, storageKey },

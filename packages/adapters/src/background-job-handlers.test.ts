@@ -286,6 +286,7 @@ describe("createBackgroundJobHandlers", () => {
 
 describe("dataroom.blob.delete", () => {
   it("removes the blob in the job's space and treats a missing blob as success", async () => {
+    let rowExists = true;
     const root = await mkdtemp(path.join(tmpdir(), "dr-blob-"));
     const artifacts = new LocalArtifactStore(root);
     const stored = await artifacts.put(
@@ -300,7 +301,7 @@ describe("dataroom.blob.delete", () => {
     );
     const base = {
       executor: {},
-      prisma: {},
+      prisma: { dataRoomItem: { findFirst: async () => (rowExists ? { id: "i" } : null) } },
       sandbox: {},
       home: {},
       jobs: {},
@@ -312,6 +313,10 @@ describe("dataroom.blob.delete", () => {
     } as unknown as Parameters<typeof createBackgroundJobHandlers>[0];
     const handlers = createBackgroundJobHandlers({ ...base, artifacts });
     const payload = { spaceId: "space-1", storageKey: stored.id };
+    // The row delete failed or rolled back: the blob stays.
+    await handlers["dataroom.blob.delete"](payload);
+    expect(await readdir(path.join(root, "artifacts", "space-1"))).toHaveLength(1);
+    rowExists = false;
     await handlers["dataroom.blob.delete"](payload);
     expect(await readdir(path.join(root, "artifacts", "space-1"))).toEqual([]);
     await expect(handlers["dataroom.blob.delete"](payload)).resolves.toBeUndefined();

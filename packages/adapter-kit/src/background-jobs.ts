@@ -210,8 +210,13 @@ export function financeSyncJob(userId: string, spaceId: string, availableAt?: Da
 }
 
 /** One cleanup per blob: a double enqueue replaces the first job instead of adding a second. */
-export function dataRoomBlobDeleteJob(spaceId: string, storageKey: string): BackgroundJob {
+export function dataRoomBlobDeleteJob(
+  spaceId: string,
+  storageKey: string,
+  availableAt?: Date,
+): BackgroundJob {
   return {
+    ...(availableAt ? { availableAt } : {}),
     name: "dataroom.blob.delete",
     payload: { spaceId, storageKey },
     replaceKey: `dataroom.blob.delete:${spaceId}:${storageKey}`,

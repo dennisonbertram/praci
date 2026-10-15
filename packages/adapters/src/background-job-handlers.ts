@@ -117,6 +117,12 @@ export function createBackgroundJobHandlers(deps: {
     },
     "dataroom.blob.delete": async (payload) => {
       if (!deps.artifacts) throw new Error("Artifact store is not configured");
+      // The job is queued before the row is deleted. Keep the blob if the row is still there.
+      const live = await deps.prisma.dataRoomItem.findFirst({
+        where: { spaceId: payload.spaceId, storageKey: payload.storageKey },
+        select: { id: true },
+      });
+      if (live) return;
       const operationId = `dataroom.blob.delete:${payload.storageKey}`;
       await deps.artifacts.remove(payload.storageKey, {
         operationId,
