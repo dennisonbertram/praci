@@ -7,12 +7,8 @@ import type {
   AgentRuntimeEvent,
   DataRoomClassifier,
 } from "@rakazo/adapter-kit";
-import {
-  type DataRoomClassification,
-  DataRoomClassificationSchema,
-  type DataRoomQueryPlan,
-  DataRoomQueryPlanSchema,
-} from "@rakazo/contracts";
+import type { DataRoomClassification, DataRoomQueryPlan } from "@rakazo/contracts";
+import { DataRoomClassificationSchema, DataRoomQueryPlanSchema } from "@rakazo/contracts";
 import type { UsageAttribution } from "@rakazo/db";
 import type { z } from "zod";
 
