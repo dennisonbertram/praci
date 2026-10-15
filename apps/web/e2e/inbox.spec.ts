@@ -115,8 +115,7 @@ test("an opened message covers the whole screen on a phone and fills it with the
   await connectTwoGmailAccounts(page);
   await page.getByTestId("sidebar-inbox").click();
 
-  // The Inbox agent panel covers the page on a phone; collapse it first.
-  await page.getByRole("button", { name: "Collapse Inbox agent" }).click();
+  // The Inbox agent panel starts collapsed, so nothing covers the page on a phone.
   await page.setViewportSize({ width: 390, height: 844 });
   await page
     .getByRole("main")
@@ -809,7 +808,14 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
   )) {
     await page.setViewportSize({ width: layout.width, height: layout.height });
     await page.emulateMedia({ colorScheme: layout.scheme });
+    // The panel starts collapsed: open it for the "open" cases and shut it again for the others.
     const collapse = page.getByRole("button", { name: "Collapse Inbox agent" });
+    const show = main.getByRole("button", { name: "Show Inbox agent" });
+    if (layout.agent === "open" && (await show.isVisible())) await show.click();
+    // The panel animates open; measure once the pane has given up its width.
+    if (layout.agent === "open") {
+      await expect.poll(async () => (await box(main)).width).toBeLessThan(layout.width - 600);
+    }
     if (layout.agent === "closed" && (await collapse.isVisible())) await collapse.click();
     // The panel animates shut; measure once the pane has taken its width.
     if (layout.agent === "closed" && layout.width >= 1024) {
