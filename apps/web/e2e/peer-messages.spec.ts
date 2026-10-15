@@ -5,6 +5,8 @@ test("shows peer chips in transcript and opens view-only peer chat", async ({ pa
   const stamp = Date.now();
   await signup(page, `peer-msg-${stamp}@rakazo.test`, "password12", "Peer Msg");
   await completeOnboarding(page);
+  // These assertions target the robot avatar markup; organic is the default style.
+  await rpc(page, "preferences/update", { avatarStyle: "robot" });
   await page.goto("/app");
   await page.waitForURL(/\/app\/[^/]+$/);
 
