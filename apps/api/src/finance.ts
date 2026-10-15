@@ -71,6 +71,11 @@ import type { createRepos, Prisma, PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { assignFinanceServers, ensureFinanceAgent } from "./finance-agent.js";
 import { loadCryptoSummary, syncCryptoQuietly } from "./finance-crypto.js";
+import {
+  exchangesDue,
+  loadExchangeSnapshotRows,
+  syncExchangesQuietly,
+} from "./finance-exchange.js";
 import { notFound } from "./inbox.js";
 
 export interface FinanceDeps {
@@ -93,6 +98,8 @@ export interface FinanceDeps {
   secrets: SecretStore;
   /** Crypto sync and ENS lookup, injected from the adapters. Unset where they are not wired (tests). */
   crypto?: FinanceCryptoDeps;
+  /** Test seam for Coinbase, Kraken and price requests. */
+  exchangeFetch?: typeof fetch;
   /** Overrides global fetch for the Alchemy key check (tests). */
   fetch?: typeof fetch;
   now?: () => Date;
@@ -343,6 +350,7 @@ export async function financeRefresh(
     { force: true, signal },
   );
   await syncCryptoQuietly(deps, actor, { signal });
+  await syncExchangesQuietly(deps, actor, signal);
   return { ok: true };
 }
 
@@ -413,7 +421,7 @@ export async function financeOverview(
       }),
       loadCryptoSummary(deps, actor),
     ]);
-  if (syncDue) {
+  if (syncDue || (await exchangesDue(deps, actor))) {
     // The job key merges repeats; a lost enqueue only delays the sync until the next page load.
     await deps.jobs.enqueue(financeSyncJob(actor.userId, actor.spaceId)).catch((error) => {
       getLogger().warn("finance sync enqueue failed", {
@@ -665,12 +673,14 @@ async function loadSnapshots(deps: FinanceDeps, actor: Actor, walletId?: string)
     where: { ...scopeOf(actor), ...(walletId ? { walletId } : {}) },
   });
   // ponytail: reads every snapshot (wallets x days); bound by a day window if it grows large.
-  return rows.map((r) => ({
+  const wallets = rows.map((r) => ({
     walletId: r.walletId,
     day: r.day,
     stablecoinCents: Number(r.stablecoinCents),
     otherCryptoCents: Number(r.otherCryptoCents),
   }));
+  // Exchange connections are sources like wallets; a wallet filter excludes them.
+  return walletId ? wallets : [...wallets, ...(await loadExchangeSnapshotRows(deps, actor))];
 }
 
 export async function financeCryptoHistory(

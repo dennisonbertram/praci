@@ -410,6 +410,7 @@ msgstr "Подтверждения действий"
 msgid "Actions for {0}"
 msgstr "Действия для {0}"
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Actions for {name}"
 msgstr ""
@@ -703,6 +704,7 @@ msgstr "API вернулся, но обновление не завершило�
 #: src/components/AskCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -714,6 +716,10 @@ msgstr "API-ключ"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "Заголовок ключа API"
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "API key name"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "App connections aren't set up on this server yet."
@@ -814,6 +820,10 @@ msgstr "Попросите владельца сервера настроить 
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
+msgstr ""
+
+#: src/components/finance/ExchangeGroup.tsx
+msgid "Asset"
 msgstr ""
 
 #. placeholder {0}: preset.time
@@ -932,6 +942,7 @@ msgstr "Порядок резервных моделей"
 msgid "Backup models saved."
 msgstr "Резервные модели сохранены."
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Balance"
@@ -1111,6 +1122,7 @@ msgstr "Не удаётся связаться с сервером."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectionDialog.tsx
@@ -1578,6 +1590,7 @@ msgstr "Убедитесь, что URL доступен из этого сеан
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1588,8 +1601,11 @@ msgstr "Убедитесь, что URL доступен из этого сеан
 msgid "Connect"
 msgstr "Подключить"
 
+#. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 msgid "Connect {0}"
 msgstr ""
 
@@ -2250,6 +2266,14 @@ msgstr ""
 msgid "Create"
 msgstr "Создать"
 
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Create a key with only Query Funds"
+msgstr ""
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Create a read-only key"
+msgstr ""
+
 #. placeholder {0}: bot.name
 #: src/pages/shell/dialogs.tsx
 msgid "Create a section and move {0} into it."
@@ -2803,6 +2827,7 @@ msgid "Every week"
 msgstr "Каждую неделю"
 
 #: src/components/finance/WalletDialog.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "Exchange"
 msgstr ""
 
@@ -4460,6 +4485,10 @@ msgstr ""
 msgid "Private"
 msgstr "Личный"
 
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Private key"
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Private workspace with its own bots and groups."
 msgstr "Приватное пространство со своими ботами и группами."
@@ -4524,6 +4553,10 @@ msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read cards, expenses and bills"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Read exchange balances"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -4673,6 +4706,7 @@ msgid "Release interrupted computer?"
 msgstr "Освободить прерванный компьютер?"
 
 #: src/components/ApprovalRulesSettings.tsx
+#: src/components/finance/ExchangeGroup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -4708,6 +4742,10 @@ msgstr ""
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Remove {full}"
 msgstr "Удалить {full}"
+
+#: src/components/finance/ExchangeGroup.tsx
+msgid "Remove {name}?"
+msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
@@ -4792,6 +4830,7 @@ msgstr "Открыть заново"
 msgid "Replace API key"
 msgstr "Заменить ключ API"
 
+#: src/components/integrations/FinanceSection.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "Заменить ключ"
@@ -6117,6 +6156,7 @@ msgstr "Использует собственные учётные данные 
 msgid "Using {0}"
 msgstr ""
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"

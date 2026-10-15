@@ -17,6 +17,7 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { LineChart } from "../../components/finance/charts";
+import { ExchangeGroup } from "../../components/finance/ExchangeGroup";
 import { DetailPage, Section, Th, useFinanceQuery } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { BlockscoutConnectDialog } from "../../components/integrations/BlockscoutConnectDialog";
@@ -132,10 +133,12 @@ export function FinanceCryptoPage() {
   const { t } = useLingui();
   const q = useFinanceQuery(() => rpc.finance.crypto(), []);
   const history = useFinanceQuery(() => rpc.finance.cryptoHistory({ days: 90 }), []);
+  const exchanges = useFinanceQuery(() => rpc.finance.exchanges(), []);
   const trend = history.data?.points ?? [];
   const reloadAll = () => {
     q.reload();
     history.reload();
+    exchanges.reload();
   };
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<FinanceWallet | null>(null);
@@ -197,6 +200,9 @@ export function FinanceCryptoPage() {
               </>
             ) : null}
           </Section>
+          {(exchanges.data ?? []).map((exchange) => (
+            <ExchangeGroup key={exchange.id} exchange={exchange} onChanged={reloadAll} />
+          ))}
           {trend.length >= 2 ? (
             <Section title={<Trans>Balance over time</Trans>}>
               <LineChart

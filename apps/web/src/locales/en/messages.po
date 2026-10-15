@@ -410,6 +410,7 @@ msgstr "Action confirmations"
 msgid "Actions for {0}"
 msgstr "Actions for {0}"
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Actions for {name}"
 msgstr "Actions for {name}"
@@ -703,6 +704,7 @@ msgstr "API is back, but the update did not finish. Check the host logs."
 #: src/components/AskCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -714,6 +716,10 @@ msgstr "API key"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "API key header"
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "API key name"
+msgstr "API key name"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "App connections aren't set up on this server yet."
@@ -815,6 +821,10 @@ msgstr "Ask the server owner to configure this provider."
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
 msgstr "Ask the server owner to set up the app catalog."
+
+#: src/components/finance/ExchangeGroup.tsx
+msgid "Asset"
+msgstr "Asset"
 
 #. placeholder {0}: preset.time
 #: src/pages/RoutineSchedule.tsx
@@ -932,6 +942,7 @@ msgstr "Backup models order"
 msgid "Backup models saved."
 msgstr "Backup models saved."
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Balance"
@@ -1111,6 +1122,7 @@ msgstr "Can't reach the server."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectionDialog.tsx
@@ -1578,6 +1590,7 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1588,8 +1601,11 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 msgid "Connect"
 msgstr "Connect"
 
+#. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 msgid "Connect {0}"
 msgstr "Connect {0}"
 
@@ -2250,6 +2266,14 @@ msgstr "Counting crypto"
 msgid "Create"
 msgstr "Create"
 
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Create a key with only Query Funds"
+msgstr "Create a key with only Query Funds"
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Create a read-only key"
+msgstr "Create a read-only key"
+
 #. placeholder {0}: bot.name
 #: src/pages/shell/dialogs.tsx
 msgid "Create a section and move {0} into it."
@@ -2803,6 +2827,7 @@ msgid "Every week"
 msgstr "Every week"
 
 #: src/components/finance/WalletDialog.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "Exchange"
 msgstr "Exchange"
 
@@ -4460,6 +4485,10 @@ msgstr "Priority"
 msgid "Private"
 msgstr "Private"
 
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Private key"
+msgstr "Private key"
+
 #: src/pages/shell/dialogs.tsx
 msgid "Private workspace with its own bots and groups."
 msgstr "Private workspace with its own bots and groups."
@@ -4525,6 +4554,10 @@ msgstr "Read balances and transactions"
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read cards, expenses and bills"
 msgstr "Read cards, expenses and bills"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Read exchange balances"
+msgstr "Read exchange balances"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
@@ -4673,6 +4706,7 @@ msgid "Release interrupted computer?"
 msgstr "Release interrupted computer?"
 
 #: src/components/ApprovalRulesSettings.tsx
+#: src/components/finance/ExchangeGroup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -4708,6 +4742,10 @@ msgstr "Remove {0}?"
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Remove {full}"
 msgstr "Remove {full}"
+
+#: src/components/finance/ExchangeGroup.tsx
+msgid "Remove {name}?"
+msgstr "Remove {name}?"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
@@ -4792,6 +4830,7 @@ msgstr "Reopen"
 msgid "Replace API key"
 msgstr "Replace API key"
 
+#: src/components/integrations/FinanceSection.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "Replace key"
@@ -6117,6 +6156,7 @@ msgstr "Uses this server's own {hostCredentialSource} credentials to access {sel
 msgid "Using {0}"
 msgstr "Using {0}"
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"

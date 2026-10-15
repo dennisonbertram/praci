@@ -114,6 +114,10 @@ import {
   FinanceCryptoOutputSchema,
   FinanceCryptoProviderConnectInputSchema,
   FinanceCryptoProviderRemoveInputSchema,
+  FinanceExchangeConnectInputSchema,
+  FinanceExchangeRemoveInputSchema,
+  FinanceExchangeSchema,
+  FinanceExchangesOutputSchema,
   FinanceMonthOutputSchema,
   FinanceOverviewSchema,
   FinancePreferencesSchema,
@@ -130,6 +134,7 @@ import {
   FinanceWalletsOutputSchema,
   FinanceWalletUpdateInputSchema,
 } from "./finance.js";
+
 import { Id, IsoDate } from "./ids.js";
 import {
   ComposeClientId,
@@ -1103,6 +1108,11 @@ export const appContract = {
     cryptoConnect: oc
       .input(FinanceCryptoConnectInputSchema)
       .output(FinanceCryptoConnectOutputSchema),
+    exchanges: oc.output(FinanceExchangesOutputSchema),
+    exchangeConnect: oc.input(FinanceExchangeConnectInputSchema).output(FinanceExchangeSchema),
+    exchangeRemove: oc
+      .input(FinanceExchangeRemoveInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
     cryptoProviderConnect: oc
       .input(FinanceCryptoProviderConnectInputSchema)
       .output(z.object({ ok: z.literal(true) })),

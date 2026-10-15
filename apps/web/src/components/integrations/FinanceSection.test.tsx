@@ -11,6 +11,8 @@ const connect = vi.hoisted(() => vi.fn());
 const cryptoRpc = vi.hoisted(() => ({
   crypto: vi.fn(),
   cryptoConnect: vi.fn(),
+  exchanges: vi.fn(),
+  exchangeConnect: vi.fn(),
   cryptoProviderConnect: vi.fn(),
   cryptoProviderRemove: vi.fn(),
 }));
@@ -57,6 +59,7 @@ const press = (p: string) =>
   });
 beforeEach(() => {
   cryptoRpc.crypto.mockResolvedValue({ connected: false, hasApiKey: false });
+  cryptoRpc.exchanges.mockResolvedValue([]);
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -145,6 +148,71 @@ it("shows the server's error inside the modal", async () => {
   expect(document.body.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain(
     "Invalid API key",
   );
+});
+
+const exchange = (provider: string, connected: boolean) => ({
+  id: `x-${provider}`,
+  provider,
+  connected,
+  lastSyncedAt: connected ? "2026-10-15T12:00:00.000Z" : null,
+  lastError: null,
+  totalCents: 0,
+  balances: [],
+});
+
+it("shows an exchange as Connected only after its first sync", async () => {
+  cryptoRpc.exchanges.mockResolvedValue([exchange("coinbase", false), exchange("kraken", true)]);
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  expect(tile("coinbase")?.textContent).toContain("Not connected");
+  expect(tile("kraken")?.textContent).toContain("Connected");
+  expect(tile("kraken")?.textContent).toContain("Replace key");
+});
+
+it("connects Kraken from a dialog with the key help link, then shows Connected", async () => {
+  let saved = false;
+  cryptoRpc.exchanges.mockImplementation(async () => (saved ? [exchange("kraken", true)] : []));
+  cryptoRpc.exchangeConnect.mockImplementation(async () => {
+    saved = true;
+    return exchange("kraken", true);
+  });
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  await press2(tile("kraken") as Element, "Connect");
+  const dialog = document.body.querySelector('[role="dialog"]') as Element;
+  expect(dialog.querySelector("a")?.getAttribute("href")).toBe(
+    "https://www.kraken.com/u/security/api",
+  );
+  const [key, secret] = [...dialog.querySelectorAll("input")] as HTMLInputElement[];
+  expect(secret?.type).toBe("password");
+  for (const [input, value] of [
+    [key, "kk"],
+    [secret, "ss"],
+  ] as const)
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  await press2(dialog, "Connect");
+  expect(cryptoRpc.exchangeConnect).toHaveBeenCalledWith({
+    provider: "kraken",
+    key: "kk",
+    secret: "ss",
+  });
+  expect(tile("kraken")?.textContent).toContain("Connected");
+});
+
+it("shows the exchange's error inside the dialog and stays not connected", async () => {
+  cryptoRpc.exchangeConnect.mockRejectedValue(new Error("This key can't read balances"));
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  await press2(tile("kraken") as Element, "Connect");
+  const dialog = document.body.querySelector('[role="dialog"]') as Element;
+  for (const input of dialog.querySelectorAll("input"))
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "x");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  await press2(dialog, "Connect");
+  expect(dialog.querySelector('[role="alert"]')?.textContent).toContain("can't read balances");
+  expect(tile("kraken")?.textContent).toContain("Not connected");
 });
 
 const alchemy = () => container.querySelector('[data-testid="finance-tile-alchemy"]') as Element;

@@ -19,6 +19,7 @@ vi.mock("@lingui/react/macro", () => ({
 const rpcMock = vi.hoisted(() => ({
   accounts: vi.fn(),
   crypto: vi.fn(),
+  exchanges: vi.fn(),
   walletAdd: vi.fn(),
   preferences: vi.fn(),
   setPreferences: vi.fn(),
@@ -76,6 +77,17 @@ const flush = () => act(async () => {});
 async function show(scope: "bank" | "stablecoins" | "all" = "bank", cryptoData = crypto) {
   rpcMock.accounts.mockResolvedValue(accounts);
   rpcMock.crypto.mockResolvedValue(cryptoData);
+  rpcMock.exchanges.mockResolvedValue([
+    {
+      id: "x1",
+      provider: "kraken",
+      connected: true,
+      lastSyncedAt: "2026-10-15T12:00:00.000Z",
+      lastError: null,
+      totalCents: 25_000,
+      balances: [],
+    },
+  ]);
   rpcMock.preferences.mockResolvedValue({ runwayCrypto: scope });
   await act(async () =>
     root.render(
@@ -109,6 +121,12 @@ it("lists wallets in their own Crypto group and keeps them out of total cash", (
   expect(page).not.toContain("$1,062,654");
 });
 
+it("lists connected exchanges in the Crypto group, outside total cash", () => {
+  const row = [...container.querySelectorAll("tr")].find((r) => r.textContent?.includes("Kraken"));
+  expect(row?.textContent).toContain("$250.00");
+  expect(container.textContent).not.toContain("$75,250");
+});
+
 it("opens the Add wallet dialog from the Add account menu", async () => {
   expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   const trigger = [...container.querySelectorAll("button")].find(
@@ -119,7 +137,7 @@ it("opens the Add wallet dialog from the Add account menu", async () => {
     trigger?.click();
   });
   const items = [...document.body.querySelectorAll('[role="menuitem"]')];
-  expect(items.map((i) => i.textContent)).toEqual(["Crypto wallet"]);
+  expect(items.map((i) => i.textContent)).toEqual(["Crypto wallet", "Coinbase", "Kraken"]);
   await act(async () => (items[0] as HTMLElement).click());
   expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Add wallet");
 });

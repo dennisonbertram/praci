@@ -1,16 +1,22 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { FinanceProvider, FinanceSource } from "@rakazo/contracts";
+import type {
+  ExchangeProvider,
+  FinanceExchange,
+  FinanceProvider,
+  FinanceSource,
+} from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { connectFinanceProvider } from "../../lib/finance-connect";
 import { financePath } from "../../lib/finance-route";
-import { FINANCE_PROVIDERS } from "../../lib/integrations";
+import { EXCHANGES, FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { AlchemyConnectDialog } from "./AlchemyConnectDialog";
 import { AppLogo } from "./AppLogo";
 import { BlockscoutConnectDialog } from "./BlockscoutConnectDialog";
+import { ExchangeConnectDialog } from "./ExchangeConnectDialog";
 import { StatusBadge } from "./parts";
 
 /** Blockscout needs a PRO API key: a server without one does not count as connected. */
@@ -157,6 +163,80 @@ function AlchemyTile() {
   );
 }
 
+/** Connected only after the first successful balance read, so a key the exchange refused never shows as connected. */
+function ExchangeTile({ provider }: { provider: ExchangeProvider }) {
+  const { t } = useLingui();
+  const exchange = EXCHANGES.find((e) => e.provider === provider) ?? EXCHANGES[0];
+  const [found, setFound] = useState<FinanceExchange | null | undefined>(undefined);
+  const [dialog, setDialog] = useState(false);
+
+  const load = () =>
+    rpc.finance
+      .exchanges()
+      .then((all) => setFound(all.find((e) => e.provider === provider) ?? null))
+      .catch(() => setFound(null));
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const connected = found?.connected === true;
+  return (
+    <div
+      data-testid={`finance-tile-${provider}`}
+      className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <AppLogo name={exchange.name} logo={exchange.logo} />
+        <div className="min-w-0">
+          <div className="truncate font-semibold">{exchange.name}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            <Trans>Read exchange balances</Trans>
+          </div>
+        </div>
+      </div>
+      <div className="mt-auto flex items-center gap-2">
+        {connected ? (
+          <>
+            <StatusBadge status="connected" />
+            <Button size="sm" variant="ghost" className="ms-auto" onClick={() => setDialog(true)}>
+              <Trans>Replace key</Trans>
+            </Button>
+            <Link
+              to={financePath.crypto()}
+              className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+            >
+              <Trans>Open</Trans>
+            </Link>
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-muted-foreground">
+              <Trans>Not connected</Trans>
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ms-auto"
+              disabled={found === undefined}
+              aria-label={t`Connect ${exchange.name}`}
+              onClick={() => setDialog(true)}
+            >
+              <Trans>Connect</Trans>
+            </Button>
+          </>
+        )}
+      </div>
+      {dialog ? (
+        <ExchangeConnectDialog
+          provider={provider}
+          onConnected={() => void load()}
+          onClose={() => setDialog(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 /** Mercury and Brex tiles. They connect through the Finance API so the server treats them as
  * finance sources and the Finance agent gets its read-only assignment. */
 export function FinanceSection({
@@ -262,6 +342,9 @@ export function FinanceSection({
       })}
       <CryptoTile />
       <AlchemyTile />
+      {EXCHANGES.map(({ provider }) => (
+        <ExchangeTile key={provider} provider={provider} />
+      ))}
     </div>
   );
 }
