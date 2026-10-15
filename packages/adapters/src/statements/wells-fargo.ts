@@ -104,7 +104,9 @@ export const wellsFargoParser: StatementParser = {
         }
         const isDebit = Math.abs(first.end - debitEnd) < Math.abs(first.end - creditEnd);
         const check = /^(\d{3,6})\s{2,}/.exec(rest);
+        // "<" is a footnote marker (legend: "< Business to Business ACH: ..."), not part of the text.
         const description = (check ? `Check ${check[1]} ${rest.slice(check[0].length)}` : rest)
+          .replace(/^<\s*/, "")
           .replace(/\s+/g, " ")
           .trim();
         current = {
@@ -115,7 +117,11 @@ export const wellsFargoParser: StatementParser = {
           externalId: null,
         };
         transactions.push(current);
-      } else if (SKIP.test(line) || (accountName && line.includes(accountName))) {
+      } else if (
+        SKIP.test(line) ||
+        /^\s*<\s/.test(line) ||
+        (accountName && line.includes(accountName))
+      ) {
       } else if (current && /^\s{10,}\S/.test(line)) {
         current.description = `${current.description} ${line.trim()}`.slice(0, 500);
       } else unread++;
