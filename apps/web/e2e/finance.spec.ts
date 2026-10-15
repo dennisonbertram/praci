@@ -27,6 +27,7 @@ async function mockFinance(page: Page, overview = connectedOverview) {
     const answers: Record<string, unknown> = {
       overview,
       refresh: { ok: true },
+      preferences: { runwayCrypto: "bank" },
       vendor,
       transaction: transactionOf(String(input?.id)),
       receiptUrl: { url: "https://files.example.test/receipt.png", mimeType: "image/png" },
@@ -291,6 +292,7 @@ test("Finance Accounts lists wallets apart from cash and adds one from the menu"
   const main = page.getByRole("main");
   await expect(main.getByText("Mercury Checking")).toBeVisible();
   await expect(main.getByRole("heading", { name: "Crypto" })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Count crypto" })).toBeVisible();
   await expect(main.locator('a[href="/app/finance/crypto"]').first()).toHaveText("Treasury");
   await expect(main.getByText("$75,000", { exact: true }).first()).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-accounts-crypto-group");

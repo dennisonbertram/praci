@@ -89,3 +89,15 @@ it("shows the server error and does not reload when saving fails", async () => {
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not save");
   expect(onSaved).not.toHaveBeenCalled();
 });
+
+it("keeps Counting crypto right after turning on, until focus leaves and returns", async () => {
+  await show("bank");
+  await act(async () => main().focus());
+  await act(async () => main().click());
+  await flush();
+  await show("all");
+  expect(main().textContent).toBe("Counting crypto");
+  await act(async () => main().blur());
+  await act(async () => main().focus());
+  expect(main().textContent).toBe("Not counting crypto");
+});

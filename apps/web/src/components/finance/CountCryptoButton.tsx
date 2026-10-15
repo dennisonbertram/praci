@@ -25,6 +25,8 @@ export function CountCryptoButton({
   onSaved: () => void;
 }) {
   const [active, setActive] = useState(false);
+  // After a toggle the button keeps its new label until the pointer or focus leaves.
+  const [justToggled, setJustToggled] = useState(false);
   const [error, setError] = useState("");
   const on = scope !== "bank";
   async function save(runwayCrypto: RunwayCryptoScope) {
@@ -45,12 +47,25 @@ export function CountCryptoButton({
           aria-pressed={on}
           aria-label={on ? t`Counting crypto` : t`Count crypto`}
           onMouseEnter={() => setActive(true)}
-          onMouseLeave={() => setActive(false)}
+          onMouseLeave={() => {
+            setActive(false);
+            setJustToggled(false);
+          }}
           onFocus={() => setActive(true)}
-          onBlur={() => setActive(false)}
-          onClick={() => void save(on ? "bank" : "all")}
+          onBlur={() => {
+            setActive(false);
+            setJustToggled(false);
+          }}
+          onClick={() => {
+            setJustToggled(true);
+            void save(on ? "bank" : "all");
+          }}
         >
-          {on ? (active ? t`Not counting crypto` : t`Counting crypto`) : t`Count crypto`}
+          {on
+            ? active && !justToggled
+              ? t`Not counting crypto`
+              : t`Counting crypto`
+            : t`Count crypto`}
         </Button>
         {on ? (
           <DropdownMenu>
