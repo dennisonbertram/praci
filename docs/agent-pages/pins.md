@@ -57,9 +57,11 @@ The full draft of the zod file is at the end of this document.
 
   It follows `saveBotPage` and `pageToolFromTool` in `pages.ts`.
 - Validating a source:
-  - The server must belong to the bot's space and owner.
-  - The tool must be read-only, meaning either its `readOnlyHint` is set or
-    `connectorToolRequiresApproval` returns false.
+  - The server must belong to the bot's space and owner, the bot must still be assigned to
+    it, and the assignment's tool allowlist must allow the tool.
+  - The server must list the tool, no annotation may declare a write (`readOnlyHint: false`
+    or `destructiveHint: true`), and `connectorToolRequiresApproval` must return false for
+    its name. Refresh never runs a tool a bot run would need approval for.
   - These checks run both on write and again on refresh.
 - Refresh:
   - Each sourced stat is called through `McpConnector.callServerTool`, following

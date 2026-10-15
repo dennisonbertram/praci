@@ -159,8 +159,8 @@ function pinContext(scope: PinsScope): AdapterContext {
  * Looks up the source's server and checks the call is safe to rerun without a model. The server
  * must be enabled and belong to the bot's space and owner, the bot must still be assigned to it,
  * and the assignment must allow the tool (the rule a bot run uses). The server must list the tool.
- * The tool's annotations decide read-only: readOnlyHint false or destructiveHint true refuses,
- * readOnlyHint true accepts, and with no hint the tool name must read as a get/list/search/read.
+ * A tool is read-only only when no annotation declares a write (readOnlyHint false, destructiveHint
+ * true) and its name reads as a get/list/search/read, the same rule that exempts a run from approval.
  */
 async function checkSource(deps: PinsDeps, scope: PinsScope, source: PinSource) {
   const { prisma } = deps;
@@ -182,10 +182,11 @@ async function checkSource(deps: PinsDeps, scope: PinsScope, source: PinSource) 
   const meta = tools.find((tool) => tool.name === source.tool);
   if (!meta) throw new Error(`Tool ${source.tool} is not offered by the server`);
   const hints = meta.annotations;
+  // Never rerun what a bot run would need approval for: the name rule applies whatever the server claims.
   const readOnly =
-    hints?.readOnlyHint === false || hints?.destructiveHint === true
-      ? false
-      : (hints?.readOnlyHint ?? toolNameIsReadOnly(source.tool));
+    hints?.readOnlyHint !== false &&
+    hints?.destructiveHint !== true &&
+    toolNameIsReadOnly(source.tool);
   if (!readOnly) {
     throw new Error(`Tool ${source.tool} is not read-only, so it cannot be a pin source`);
   }

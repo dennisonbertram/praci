@@ -3,6 +3,7 @@
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 import type { BotPins } from "@rakazo/contracts";
+import type { ReactNode } from "react";
 import { act } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
@@ -12,6 +13,11 @@ const rpcMock = vi.hoisted(() => ({
   pins: { get: vi.fn(), save: vi.fn(), refresh: vi.fn() },
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: rpcMock }));
+vi.mock("@lingui/react/macro", () => {
+  const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
+    parts.reduce((text, part, index) => `${text}${index > 0 ? values[index - 1] : ""}${part}`, "");
+  return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
+});
 
 import { PinsList, PinsStrip } from "./bot-pins";
 

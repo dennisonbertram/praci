@@ -127,14 +127,16 @@ describe("pin source authorization", () => {
     await expect(save(ok, src())).resolves.toMatchObject({ ok: true });
   });
 
-  it("uses tool annotations over the name, and refuses a tool the server does not list", async () => {
+  it("needs both the annotations and the name to read as read-only, and the server to list the tool", async () => {
     const tool = (annotations?: Row, name = "get_balance") =>
       fakeWorld({ tools: [{ name, annotations }] });
     await expect(save(tool({ readOnlyHint: false }), src())).rejects.toThrow(/not read-only/);
     await expect(save(tool({ destructiveHint: true }), src())).rejects.toThrow(/not read-only/);
+    // A bot run would need approval for delete_all whatever the server claims.
     await expect(
       save(tool({ readOnlyHint: true }, "delete_all"), src("delete_all")),
-    ).resolves.toMatchObject({ ok: true });
+    ).rejects.toThrow(/not read-only/);
+    await expect(save(tool({ readOnlyHint: true }), src())).resolves.toMatchObject({ ok: true });
     await expect(save(tool(undefined, "delete_all"), src("delete_all"))).rejects.toThrow(
       /not read-only/,
     );
