@@ -31,6 +31,8 @@ export const ProductEventType = z.enum([
   "memory.revised",
   /** payload: { revision, updatedBy } */
   "page.updated",
+  /** payload: { revision, updatedBy } */
+  "pins.updated",
   "routine.created",
   "routine.updated",
   "routine.fired",

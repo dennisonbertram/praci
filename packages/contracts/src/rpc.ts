@@ -170,6 +170,14 @@ import {
   BotPageSaveOutputSchema,
   BotPageSchema,
 } from "./pages.js";
+import {
+  BotPinsGetInputSchema,
+  BotPinsRefreshInputSchema,
+  BotPinsRefreshOutputSchema,
+  BotPinsSaveInputSchema,
+  BotPinsSaveOutputSchema,
+  BotPinsSchema,
+} from "./pins.js";
 import { MessageReactionSchema } from "./reactions.js";
 import { RoutineHistorySchema, RoutineRunCursorSchema, RunsListOutputSchema } from "./runs.js";
 import { SearchQueryOutputSchema } from "./search.js";
@@ -564,6 +572,11 @@ export const appContract = {
   pages: {
     get: oc.input(BotPageGetInputSchema).output(BotPageSchema.nullable()),
     save: oc.input(BotPageSaveInputSchema).output(BotPageSaveOutputSchema),
+  },
+  pins: {
+    get: oc.input(BotPinsGetInputSchema).output(BotPinsSchema.nullable()),
+    save: oc.input(BotPinsSaveInputSchema).output(BotPinsSaveOutputSchema),
+    refresh: oc.input(BotPinsRefreshInputSchema).output(BotPinsRefreshOutputSchema),
   },
   routines: {
     list: oc.input(botId).output(z.array(RoutineSchema)),
