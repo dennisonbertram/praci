@@ -294,13 +294,94 @@ describePostgres("bank statement import (PostgreSQL)", () => {
     expect(await prisma.financeStatement.count({ where: { id: mine.id } })).toBe(0);
   });
 
-  it("only discards statements that are not imported", async () => {
-    const imported = (await client(a).finance.statements()).statements.find(
-      (s) => s.status === "imported",
-    );
-    await expect(
-      client(a).finance.statementDiscard({ id: imported?.id as string }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  describe("undoing an imported statement", () => {
+    const undoFake = (
+      last4: string,
+      periodStart: string,
+      periodEnd: string,
+      closing: number,
+      transactions: ParsedStatement["transactions"],
+    ) => {
+      const base = fake(periodStart, periodEnd, closing, transactions);
+      return {
+        ...base,
+        statement: { ...base.statement, institution: "Undo Bank", accountLast4: last4 },
+      };
+    };
+    const importFile = async (who: Actor, name: string) => {
+      const reviewed = await upload(who, name);
+      return client(who).finance.statementConfirm({ id: reviewed.id });
+    };
+    const state = async (last4: string) => ({
+      account: await prisma.financeAccount.findFirst({ where: { spaceId, lastFour: last4 } }),
+      txns: (
+        await prisma.financeTransaction.findMany({
+          where: { spaceId, userId: userA, counterparty: { startsWith: `Undo ${last4}` } },
+        })
+      )
+        .map((t) => t.counterparty)
+        .sort(),
+    });
+    const setup = (last4: string) => {
+      const t1 = line("2026-03-02", `Undo ${last4} Coffee`, -500);
+      const t2 = line("2026-03-10", `Undo ${last4} Payroll`, 11_000);
+      const t3 = line("2026-03-20", `Undo ${last4} Rent`, -1_000);
+      fakes[`${last4}-1.csv`] = undoFake(last4, "2026-03-01", "2026-03-15", 10_000, [t1, t2]);
+      fakes[`${last4}-2.csv`] = undoFake(last4, "2026-03-10", "2026-03-31", 20_000, [t2, t3]);
+    };
+
+    it("restores the previous closing balance when the newest statement is undone", async () => {
+      setup("1111");
+      const first = await importFile(a, "1111-1.csv");
+      const second = await importFile(a, "1111-2.csv");
+      expect((await state("1111")).account?.balanceCents).toBe(20_000n);
+      await client(a).finance.statementDiscard({ id: second.id });
+      const after = await state("1111");
+      expect(after.account?.balanceCents).toBe(10_000n);
+      // The payroll line is also in the first statement, so it stays; the rent line goes.
+      expect(after.txns).toEqual(["Undo 1111 Coffee", "Undo 1111 Payroll"]);
+      expect(await prisma.financeStatement.count({ where: { id: second.id } })).toBe(0);
+      expect(await prisma.financeStatement.count({ where: { id: first.id } })).toBe(1);
+    });
+
+    it("removes the account the import created when its only statement is undone", async () => {
+      // Continues from above: the first statement is the only one left for this account.
+      const [only] = await prisma.financeStatement.findMany({
+        where: { spaceId, institution: "Undo Bank", accountLast4: "1111" },
+      });
+      await client(a).finance.statementDiscard({ id: only?.id as string });
+      expect(await state("1111")).toEqual({ account: null, txns: [] });
+    });
+
+    it("removes exactly that statement's own transactions, keeping the balance of the newest", async () => {
+      setup("2222");
+      const first = await importFile(a, "2222-1.csv");
+      await importFile(a, "2222-2.csv");
+      await client(a).finance.statementDiscard({ id: first.id });
+      const after = await state("2222");
+      // Coffee was only in the first statement; Payroll is shared and stays with the second.
+      expect(after.txns).toEqual(["Undo 2222 Payroll", "Undo 2222 Rent"]);
+      expect(after.account?.balanceCents).toBe(20_000n);
+      // Other accounts of the user are untouched.
+      expect(
+        await prisma.financeAccount.count({ where: { spaceId, userId: userA } }),
+      ).toBeGreaterThan(1);
+    });
+
+    it("gives another user NOT_FOUND and changes nothing", async () => {
+      const mine = (await state("2222")).account;
+      const statement = await prisma.financeStatement.findFirstOrThrow({
+        where: { spaceId, accountLast4: "2222", status: "imported" },
+      });
+      await expect(client(b).finance.statementDiscard({ id: statement.id })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+      expect(await state("2222")).toMatchObject({
+        account: { id: mine?.id },
+        txns: expect.any(Array),
+      });
+      expect((await state("2222")).txns).toHaveLength(2);
+    });
   });
 
   it("enforces the size limit and allowed file types", async () => {

@@ -1,65 +1,78 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { FinanceStatement } from "@rakazo/contracts";
-import { Button } from "@rakazo/ui-web";
+import { Badge, Button } from "@rakazo/ui-web";
 import { fullDay, moneyExact } from "../../lib/finance-format";
 
 /** The parser marks a model-read PDF with this opening; it is the one warning shown in bold. */
 const MODEL_READ = "Read by an AI model";
 
-/** One uploaded statement before it is imported: what it is, what it will do, and the balance check. */
-export function StatementReviewCard({
-  statement,
-  busy,
-  onImport,
-  onDiscard,
-}: {
+export type StatementRow = {
+  key: number;
   statement: FinanceStatement;
   busy: boolean;
-  onImport: () => void;
-  onDiscard: () => void;
-}) {
+  error?: string;
+};
+
+/** The account a statement belongs to; statements without a name or number stand alone. */
+export function statementAccountKey(row: StatementRow): string {
+  const { institution, accountLast4 } = row.statement;
+  return institution || accountLast4
+    ? `${institution ?? ""}|${accountLast4 ?? ""}`
+    : `file:${row.key}`;
+}
+
+/**
+ * The balance check line. The parser checks opening + transactions = closing, and reports the
+ * closing balance minus what the transactions add up to.
+ */
+function CheckLine({ statement }: { statement: FinanceStatement }) {
   const { t } = useLingui();
   const { check } = statement;
-  const mismatch = check?.balances === "mismatch";
-  const name = [
-    statement.institution,
-    statement.accountLast4 ? `••${statement.accountLast4}` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  if (check?.balances === "match") {
+    return (
+      <div className="text-success">
+        <Trans>Transactions add up to the closing balance</Trans>
+      </div>
+    );
+  }
+  if (check?.balances === "mismatch" && check.differenceCents != null) {
+    return (
+      <div role="alert" className="text-destructive">
+        {t`Transactions are ${moneyExact(Math.abs(check.differenceCents))} off the closing balance`}
+      </div>
+    );
+  }
+  return null;
+}
+
+function Row({ row, onRemove }: { row: StatementRow; onRemove: () => void }) {
+  const { t } = useLingui();
+  const { statement } = row;
   const money = (cents: number | null) => (cents === null ? "—" : moneyExact(cents));
   return (
-    <li className="flex flex-col gap-1.5 rounded-lg border border-border p-3 text-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{name || statement.fileName}</span>
-        {statement.createsAccount ? (
-          <span className="rounded-full border border-border px-1.5 text-[10px] text-muted-foreground">
-            <Trans>New account</Trans>
+    <li className="flex flex-col gap-1 border-t border-border py-2 text-sm first:border-t-0">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium">
+          {statement.periodStart && statement.periodEnd
+            ? `${fullDay(statement.periodStart)} – ${fullDay(statement.periodEnd)}`
+            : statement.fileName}
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="text-success">
+            <Trans>Imported</Trans>
           </span>
-        ) : null}
+          <Button type="button" variant="ghost" size="xs" disabled={row.busy} onClick={onRemove}>
+            <Trans>Remove</Trans>
+          </Button>
+        </span>
       </div>
-      {statement.periodStart && statement.periodEnd ? (
-        <div className="text-muted-foreground">
-          {fullDay(statement.periodStart)} – {fullDay(statement.periodEnd)}
-        </div>
-      ) : null}
-      <div className="tabular-nums">
+      <div className="tabular-nums text-muted-foreground">
         {money(statement.openingBalanceCents)} → {money(statement.closingBalanceCents)}
-      </div>
-      <div className="text-muted-foreground">
+        {" · "}
         {t`${statement.transactionCount} transactions`}
         {statement.duplicateCount > 0 ? t`, ${statement.duplicateCount} already imported` : ""}
       </div>
-      {check?.balances === "match" ? (
-        <div className="text-success">
-          <Trans>Balances match</Trans>
-        </div>
-      ) : null}
-      {mismatch && check?.differenceCents != null ? (
-        <div role="alert" className="text-destructive">
-          {t`Balances differ by ${moneyExact(Math.abs(check.differenceCents))}`}
-        </div>
-      ) : null}
+      <CheckLine statement={statement} />
       {statement.warnings.map((warning) => (
         <div
           key={warning}
@@ -70,14 +83,43 @@ export function StatementReviewCard({
           {warning}
         </div>
       ))}
-      <div className="mt-1 flex justify-end gap-2">
-        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onDiscard}>
-          <Trans>Discard</Trans>
-        </Button>
-        <Button type="button" size="sm" disabled={busy} onClick={onImport}>
-          {mismatch ? <Trans>Import anyway</Trans> : <Trans>Import</Trans>}
-        </Button>
+      {row.error ? (
+        <p role="alert" className="text-destructive">
+          {row.error}
+        </p>
+      ) : null}
+    </li>
+  );
+}
+
+/** Imported statements of one account: one header, then a compact row per statement period. */
+export function StatementGroup({
+  rows,
+  onRemove,
+}: {
+  rows: StatementRow[];
+  onRemove: (row: StatementRow) => void;
+}) {
+  const first = rows[0]?.statement;
+  if (!first) return null;
+  const name = [first.institution, first.accountLast4 ? `••${first.accountLast4}` : null]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <li className="rounded-lg border border-border px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold">{name || first.fileName}</span>
+        {rows.some((r) => r.statement.createsAccount) ? (
+          <Badge variant="outline">
+            <Trans>New account</Trans>
+          </Badge>
+        ) : null}
       </div>
+      <ul>
+        {rows.map((row) => (
+          <Row key={row.key} row={row} onRemove={() => onRemove(row)} />
+        ))}
+      </ul>
     </li>
   );
 }

@@ -23,6 +23,7 @@ const rpcMock = vi.hoisted(() => ({
   walletAdd: vi.fn(),
   preferences: vi.fn(),
   balanceSeries: vi.fn(),
+  overview: vi.fn(),
   setPreferences: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
@@ -77,6 +78,7 @@ let root: ReturnType<typeof createRoot>;
 const flush = () => act(async () => {});
 async function show(scope: "bank" | "stablecoins" | "all" = "bank", cryptoData = crypto) {
   rpcMock.accounts.mockResolvedValue(accounts);
+  rpcMock.overview.mockResolvedValue({ sources: [] });
   rpcMock.balanceSeries.mockImplementation(async ({ range }: { range: string }) => ({
     range,
     points: [
@@ -142,27 +144,28 @@ const clickButton = (label: string, scope: ParentNode = document.body) =>
     ).click(),
   );
 
-it("opens a modal from Add account and reaches the Add wallet dialog through Crypto", async () => {
+it("opens the Add account modal and reaches the Add wallet dialog through Wallet", async () => {
   expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   await clickButton("Add account", container);
   expect(document.body.querySelector('[role="menu"]')).toBeNull();
   const dialog = () => document.body.querySelector('[role="dialog"]');
-  expect([...(dialog()?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
-    "Crypto",
-    "Bank account",
-    "Cancel",
-    "Close",
-  ]);
-  await clickButton("Crypto");
-  expect([...(dialog()?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
-    "Crypto wallet",
+  const titles = () =>
+    [...(dialog()?.querySelectorAll("[data-option-title]") ?? [])].map((n) => n.textContent);
+  expect(titles()).toEqual([
+    "Mercury",
+    "Brex",
+    "Upload statements",
+    "Wallet",
     "Coinbase",
     "Kraken",
-    "Back",
-    "Cancel",
-    "Close",
   ]);
-  await clickButton("Crypto wallet");
+  await act(async () =>
+    (
+      [...(dialog()?.querySelectorAll("button") ?? [])].find(
+        (b) => b.querySelector("[data-option-title]")?.textContent === "Wallet",
+      ) as HTMLElement
+    ).click(),
+  );
   expect(dialog()?.textContent).toContain("Add wallet");
 });
 
@@ -207,8 +210,13 @@ it("hides the button when no crypto is held", async () => {
 it("reloads accounts after a wallet is added, since crypto can count in total cash", async () => {
   rpcMock.walletAdd.mockResolvedValue({});
   await clickButton("Add account", container);
-  await clickButton("Crypto");
-  await clickButton("Crypto wallet");
+  await act(async () =>
+    (
+      [...document.body.querySelectorAll('[role="dialog"] button')].find(
+        (b) => b.querySelector("[data-option-title]")?.textContent === "Wallet",
+      ) as HTMLElement
+    ).click(),
+  );
   const input = document.body.querySelector('[aria-label="Address or ENS"]') as HTMLInputElement;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(

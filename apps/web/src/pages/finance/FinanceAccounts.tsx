@@ -35,7 +35,6 @@ import {
   moneyExact,
   monthAxisLabels,
   monthLabel,
-  monthShort,
 } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { FINANCE_PROVIDERS } from "../../lib/integrations";

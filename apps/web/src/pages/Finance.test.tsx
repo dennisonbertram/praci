@@ -225,7 +225,7 @@ it("shows the dashboard, not the connect prompt, for a user with only statement 
   expect(rpcMock.refresh).not.toHaveBeenCalled();
   await act(async () => button("Upload")?.click());
   const dialog = document.body.querySelector('[role="dialog"]');
-  expect(dialog?.textContent).toContain("Bank account");
+  expect(dialog?.textContent).toContain("Upload statements");
   expect(dialog?.querySelector('input[type="file"]')).not.toBeNull();
 });
 
