@@ -8091,7 +8091,7 @@ export function userTurnInstructions(parts: {
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
       "pins_write",
-      "Use pins for numbers the user checks often (stats) and for an ongoing list. Call pins_read first, then pins_write. When asked to update your pinned numbers, rewrite them with pins_write.",
+      "Use pins for numbers the user checks often (stats) and for an ongoing list. Call pins_read first, then pins_write. When asked to update your pinned numbers, recheck the data each one came from with your tools and rewrite them with pins_write; if a number has no data you can recheck, keep it and say so in one line. Give a stat a source when a single read-only MCP tool call returns it, so it refreshes without you.",
     ),
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
