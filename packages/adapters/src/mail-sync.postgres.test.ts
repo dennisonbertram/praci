@@ -644,12 +644,14 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     const down = await state(account.id);
     expect(down.lastErrorAt).not.toBeNull();
     expect(down.needsReconnect).toBe(false);
+    expect(down.lastErrorKind).toBe("unavailable");
 
     seed("auth", [message("a", 1, ["INBOX"])]);
     expect(await sync(account)).toBe("synced");
     const ok = await state(account.id);
     expect(ok.lastErrorAt).toBeNull();
     expect(ok.needsReconnect).toBe(false);
+    expect(ok.lastErrorKind).toBeNull();
   });
 
   it("clears only rows newer than the oldest listed message when the list hits the cap", async () => {

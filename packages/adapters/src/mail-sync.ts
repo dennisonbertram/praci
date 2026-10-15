@@ -101,9 +101,11 @@ export async function syncMailbox(
       return "skipped";
     }
     const needsReconnect = error instanceof MailProviderError && error.kind === "auth";
+    const lastErrorKind = error instanceof MailProviderError ? error.kind : "unknown";
     await prisma.$executeRaw`
       UPDATE mail_sync_states
       SET "lastErrorAt" = ${DB_NOW}, "needsReconnect" = ${needsReconnect},
+          "lastErrorKind" = ${lastErrorKind},
           "syncStartedAt" = NULL, "claimToken" = NULL
       WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
     getLogger().warn("mail sync failed", {
@@ -295,14 +297,14 @@ export async function syncMailbox(
         if (partial) {
           await tx.$executeRaw`
             UPDATE mail_sync_states
-            SET "lastErrorAt" = NULL, "needsReconnect" = false,
+            SET "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL,
                 "syncStartedAt" = NULL, "claimToken" = NULL
             WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
           return "failed" as const;
         }
         await tx.$executeRaw`
           UPDATE mail_sync_states
-          SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL, "needsReconnect" = false,
+          SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL,
               "changeCursor" = COALESCE(${nextCursor ?? null}::text, "changeCursor"),
               "syncStartedAt" = NULL, "claimToken" = NULL
           WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
