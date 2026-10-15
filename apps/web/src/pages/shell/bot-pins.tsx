@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { BotPins, PinItem } from "@rakazo/contracts";
+import { BOT_PINS_MAX_ITEMS } from "@rakazo/contracts";
 import { Button, Card, Checkbox, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web";
 import { RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -173,6 +174,8 @@ function ItemRow({
 export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPins) => void }) {
   const [added, setAdded] = useState("");
   const [lost, setLost] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const adding = useRef(false);
   const latest = useRef(pins);
   latest.current = pins;
   const queue = useRef<Promise<void>>(Promise.resolve());
@@ -181,9 +184,9 @@ export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPi
 
   // Saves run one at a time and apply the change to the newest items and revision.
   const change = (edit: (items: PinItem[]) => PinItem[]) => {
-    queue.current = queue.current.then(async () => {
+    const saved = queue.current.then(async () => {
       const current = latest.current;
-      if (!current.list) return;
+      if (!current.list) return false;
       try {
         const result = await rpc.pins.save({
           botId: current.botId,
@@ -193,17 +196,26 @@ export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPi
         latest.current = result.pins;
         onPins(result.pins);
         setLost(!result.ok);
+        setFailed(false);
+        return true;
       } catch (cause) {
         console.error("Could not save the list", cause);
+        setFailed(true);
+        return false;
       }
     });
+    queue.current = saved.then(() => {});
+    return saved;
   };
-  const commitAdded = () => {
+  // The draft stays in the box until the save succeeds.
+  const commitAdded = async () => {
     const text = added.trim();
-    setAdded("");
-    if (!text) return;
+    if (!text) return setAdded("");
+    if (adding.current) return;
+    adding.current = true;
     const id = crypto.randomUUID().slice(0, 12);
-    change((items) => [...items, { id, text, done: false }]);
+    if (await change((items) => [...items, { id, text, done: false }])) setAdded("");
+    adding.current = false;
   };
 
   return (
@@ -226,19 +238,26 @@ export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPi
           />
         ))}
       </ul>
-      <input
-        dir="auto"
-        aria-label={t`Add item`}
-        placeholder={t`Add item`}
-        maxLength={300}
-        value={added}
-        onChange={(event) => setAdded(event.target.value)}
-        onBlur={commitAdded}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") commitAdded();
-        }}
-        className="rounded-sm bg-transparent px-1 py-1 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-      />
+      {list.items.length < BOT_PINS_MAX_ITEMS ? (
+        <input
+          dir="auto"
+          aria-label={t`Add item`}
+          placeholder={t`Add item`}
+          maxLength={300}
+          value={added}
+          onChange={(event) => setAdded(event.target.value)}
+          onBlur={() => void commitAdded()}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") void commitAdded();
+          }}
+          className="rounded-sm bg-transparent px-1 py-1 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      ) : null}
+      {failed ? (
+        <p role="alert" className="text-xs text-destructive">
+          <Trans>Couldn't save. Try again.</Trans>
+        </p>
+      ) : null}
       {lost ? (
         <p role="status" className="text-xs text-muted-foreground">
           <Trans>The bot changed this list. Your last edit wasn't saved.</Trans>
