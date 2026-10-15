@@ -18,6 +18,11 @@ msgstr ""
 msgid " (unread)"
 msgstr " (okunmadı)"
 
+#. placeholder {0}: statement.duplicateCount
+#: src/components/finance/StatementReviewCard.tsx
+msgid ", {0} already imported"
+msgstr ""
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -143,6 +148,8 @@ msgid "{0} runs · {1} tokens"
 msgstr "{0} çalıştırma · {1} token"
 
 #. placeholder {0}: card.count
+#. placeholder {0}: statement.transactionCount
+#: src/components/finance/StatementReviewCard.tsx
 #: src/components/FinanceCards.tsx
 msgid "{0} transactions"
 msgstr ""
@@ -234,6 +241,10 @@ msgstr "{minutes} dk önce"
 msgid "{monthlyTotal}/mo"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "{name} accounts"
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -323,6 +334,7 @@ msgid "* So far"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
 msgstr ""
 
@@ -406,6 +418,7 @@ msgstr "İşlem onayları"
 msgid "Actions for {0}"
 msgstr "{0} için işlemler"
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Actions for {name}"
 msgstr ""
@@ -473,8 +486,14 @@ msgstr ""
 msgid "Add a schedule, webhook, GitHub, or message trigger to run this routine."
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Add account"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Add an account to see cash, burn, runway and spend."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -522,6 +541,7 @@ msgstr ""
 msgid "Add wallet"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 msgid "Address or ENS"
 msgstr ""
@@ -697,7 +717,9 @@ msgid "API is back, but the update did not finish. Check the host logs."
 msgstr ""
 
 #: src/components/AskCard.tsx
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -709,6 +731,10 @@ msgstr "API anahtarı"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "API anahtarı üstbilgisi"
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "API key name"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "App connections aren't set up on this server yet."
@@ -811,6 +837,10 @@ msgstr ""
 msgid "Ask the server owner to set up the app catalog."
 msgstr ""
 
+#: src/components/finance/ExchangeGroup.tsx
+msgid "Asset"
+msgstr ""
+
 #. placeholder {0}: preset.time
 #: src/pages/RoutineSchedule.tsx
 msgid "at {0}"
@@ -905,6 +935,7 @@ msgid "Avatars"
 msgstr ""
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
 #: src/pages/RoutineEditor.tsx
@@ -927,6 +958,7 @@ msgstr "Yedek model sırası"
 msgid "Backup models saved."
 msgstr "Yedek modeller kaydedildi."
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Balance"
@@ -940,6 +972,7 @@ msgstr ""
 msgid "Balance owed"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
@@ -1106,6 +1139,8 @@ msgstr "Sunucuya ulaşılamıyor."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/finance/AddAccountDialog.tsx
+#: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectionDialog.tsx
@@ -1347,10 +1382,6 @@ msgstr ""
 msgid "Choose which connected model Rakazo uses."
 msgstr "Rakazo'nun hangi bağlı modeli kullanacağını seç."
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Choose which crypto counts"
-msgstr ""
-
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
@@ -1360,6 +1391,10 @@ msgstr "Temizle"
 #: src/pages/shell/dialogs.tsx
 msgid "Clear {0}’s conversation?"
 msgstr "{0} sohbeti temizlensin mi?"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Clear {sourceName} filter"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -1569,6 +1604,7 @@ msgstr "URL'nin bu tarayıcı oturumundan erişilebilir olduğunu doğrula, sonr
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1579,8 +1615,11 @@ msgstr "URL'nin bu tarayıcı oturumundan erişilebilir olduğunu doğrula, sonr
 msgid "Connect"
 msgstr "Bağlan"
 
+#. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 msgid "Connect {0}"
 msgstr ""
 
@@ -1601,8 +1640,9 @@ msgstr "Model bağla"
 msgid "Connect a provider to add backups."
 msgstr "Yedek eklemek için bir sağlayıcı bağlayın."
 
-#: src/pages/Finance.tsx
-msgid "Connect accounts"
+#: src/components/integrations/AlchemyConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
+msgid "Connect Alchemy"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1630,10 +1670,6 @@ msgstr ""
 msgid "Connect MCP server “{name}”"
 msgstr "“{name}” MCP sunucusunu bağla"
 
-#: src/pages/Finance.tsx
-msgid "Connect Mercury, Brex or both to see cash, burn, runway and spend."
-msgstr ""
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your agents can read and act in them. You choose which agents get access to each one."
 msgstr ""
@@ -1646,6 +1682,7 @@ msgstr "Kişisel modelin olarak kullanmak için bu sağlayıcıyı bağla."
 msgid "Connect Treg"
 msgstr "Treg'i bağla"
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/parts.tsx
@@ -1791,6 +1828,7 @@ msgstr "OAuth tamamlanamadı"
 msgid "Could not complete the update. Try again."
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2028,6 +2066,10 @@ msgstr "Model sunucusuna ulaşılamadı."
 msgid "Could not reach the server"
 msgstr "Sunucuya ulaşılamadı"
 
+#: src/components/finance/StatementImport.tsx
+msgid "Could not read this file"
+msgstr ""
+
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
 msgstr ""
@@ -2227,7 +2269,11 @@ msgid "Counterparty"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
-msgid "Counting crypto"
+msgid "Counting all crypto"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Counting stablecoins"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -2235,6 +2281,14 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Create"
 msgstr "Oluştur"
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Create a key with only Query Funds"
+msgstr ""
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Create a read-only key"
+msgstr ""
 
 #. placeholder {0}: bot.name
 #: src/pages/shell/dialogs.tsx
@@ -2308,14 +2362,11 @@ msgstr "Cron"
 msgid "Cron expression"
 msgstr "Cron ifadesi"
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Crypto"
-msgstr ""
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Crypto wallet"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
@@ -2542,6 +2593,7 @@ msgid "Disconnecting…"
 msgstr "Bağlantı kesiliyor…"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
@@ -2579,10 +2631,15 @@ msgstr "Docker, ek güvenlik için bilgisayarına erişimi sınırlar. {hostLabe
 msgid "Docs & files"
 msgstr ""
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Don't count crypto"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Don’t have an account?"
 msgstr "Hesabın yok mu?"
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/lib/ticket-status.ts
@@ -2641,6 +2698,10 @@ msgstr "Görüntüyü sürükleyip bırakın veya yapıştırın"
 
 #: src/components/ComposeEmail.tsx
 msgid "Drop files to attach"
+msgstr ""
+
+#: src/components/finance/StatementImport.tsx
+msgid "Drop statements here or choose files"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -2789,6 +2850,7 @@ msgid "Every week"
 msgstr "Her hafta"
 
 #: src/components/finance/WalletDialog.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "Exchange"
 msgstr ""
 
@@ -3000,6 +3062,7 @@ msgstr "Ağ geçidi kimliği"
 msgid "General"
 msgstr "Genel"
 
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Get an API key"
 msgstr ""
@@ -3157,6 +3220,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Important"
+msgstr ""
+
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Imported"
 msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
@@ -3843,6 +3910,10 @@ msgstr ""
 msgid "Never changes your account"
 msgstr ""
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "New account"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "New Bot"
 msgstr ""
@@ -4059,10 +4130,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
-msgstr ""
-
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Not counting crypto"
 msgstr ""
 
 #: src/pages/finance/FinanceNotFound.tsx
@@ -4363,6 +4430,10 @@ msgstr "API anahtarını yapıştır, sonra yeniden test et."
 msgid "Paused"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
+msgid "PDF, CSV, OFX or QFX"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "pending"
 msgstr ""
@@ -4445,6 +4516,10 @@ msgstr ""
 msgid "Private"
 msgstr "Özel"
 
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Private key"
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Private workspace with its own bots and groups."
 msgstr ""
@@ -4503,12 +4578,18 @@ msgstr "Tepkiler"
 msgid "Read"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read balances and transactions"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read cards, expenses and bills"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Read exchange balances"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -4517,6 +4598,14 @@ msgstr "Yanıtları sesli oku"
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read wallet balances"
+msgstr ""
+
+#: src/components/finance/AddAccountDialog.tsx
+msgid "Read-only API key"
+msgstr ""
+
+#: src/components/finance/StatementImport.tsx
+msgid "Reading…"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4658,7 +4747,10 @@ msgid "Release interrupted computer?"
 msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
+#: src/components/finance/ExchangeGroup.tsx
+#: src/components/finance/StatementReviewCard.tsx
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -4692,6 +4784,10 @@ msgstr ""
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Remove {full}"
 msgstr "{full} modelini kaldır"
+
+#: src/components/finance/ExchangeGroup.tsx
+msgid "Remove {name}?"
+msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
@@ -4776,6 +4872,7 @@ msgstr "Yeniden aç"
 msgid "Replace API key"
 msgstr "API anahtarını değiştir"
 
+#: src/components/integrations/FinanceSection.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "Anahtarı değiştir"
@@ -4978,6 +5075,7 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
@@ -5353,6 +5451,7 @@ msgstr ""
 msgid "Sign-in failed"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Sign-in was cancelled or did not finish. Try again."
@@ -5500,6 +5599,10 @@ msgstr "Başlıyor"
 #: src/pages/Onboarding.tsx
 msgid "Starting…"
 msgstr "Başlatılıyor…"
+
+#: src/components/finance/StatementImport.tsx
+msgid "Statement files"
+msgstr ""
 
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
@@ -5678,6 +5781,10 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "Bağlantı zaman aşımına uğradı."
+
+#: src/components/finance/StatementImport.tsx
+msgid "The file is too large"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
@@ -5861,6 +5968,15 @@ msgstr ""
 msgid "Transactions"
 msgstr ""
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Transactions add up to the closing balance"
+msgstr ""
+
+#. placeholder {0}: moneyExact(Math.abs(check.differenceCents))
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Transactions are {0} off the closing balance"
+msgstr ""
+
 #: src/components/call/CallCard.tsx
 msgid "Transcript"
 msgstr "Döküm"
@@ -6033,9 +6149,23 @@ msgid "Updating…"
 msgstr ""
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
 msgstr "Yükle"
+
+#: src/components/finance/StatementImport.tsx
+msgid "Upload a PDF, CSV, OFX or QFX file"
+msgstr ""
+
+#: src/components/finance/AddAccountDialog.tsx
+msgid "Upload statements"
+msgstr ""
+
+#. placeholder {0}: first.accountName
+#: src/components/finance/StatementReminderBanner.tsx
+msgid "Upload the {month} statement for {0}"
+msgstr ""
 
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
@@ -6100,6 +6230,7 @@ msgstr "{selectedProviderName} erişimi için bu sunucunun kendi {hostCredential
 msgid "Using {0}"
 msgstr ""
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
@@ -6191,6 +6322,10 @@ msgstr "Sırada bekleniyor…"
 #: src/pages/shell/message-cards.tsx
 msgid "Waiting…"
 msgstr "Bekleniyor…"
+
+#: src/components/finance/AddAccountDialog.tsx
+msgid "Wallet"
+msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Wallets"

@@ -48,7 +48,10 @@ async function show() {
   );
   await flush();
 }
-const toggle = () => container.querySelector("button[aria-pressed]") as HTMLButtonElement | null;
+const toggle = () =>
+  [...container.querySelectorAll("button")].find((b) =>
+    /^(Count crypto|Counting)/.test(b.textContent ?? ""),
+  ) as HTMLButtonElement | undefined;
 beforeEach(() => {
   container = document.createElement("div");
   document.body.append(container);
@@ -67,25 +70,25 @@ it("breaks cash into bank, stablecoins and other crypto, with the saved scope se
   expect(page).toContain("Bank$100,000");
   expect(page).toContain("Stablecoins$25,000");
   expect(page).toContain("Other crypto$30,000");
-  expect(toggle()?.textContent).toBe("Counting crypto");
+  expect(toggle()?.textContent).toBe("Counting stablecoins");
 });
 
 it("saves the chosen scope and reloads the runway", async () => {
-  rpcMock.runway.mockResolvedValueOnce(runway());
-  rpcMock.setPreferences.mockResolvedValue({ runwayCrypto: "bank" });
+  rpcMock.runway.mockResolvedValueOnce(runway({ runwayCrypto: "bank", cashCents: 100_000_00 }));
+  rpcMock.setPreferences.mockResolvedValue({ runwayCrypto: "all" });
   await show();
   rpcMock.runway.mockResolvedValueOnce(
     runway({
-      runwayCrypto: "bank",
-      cashCents: 100_000_00,
-      runway: { months: 10, runOutDate: null },
+      runwayCrypto: "all",
+      cashCents: 155_000_00,
+      runway: { months: 15.5, runOutDate: null },
     }),
   );
   await act(async () => toggle()?.click());
   await flush();
-  expect(rpcMock.setPreferences).toHaveBeenCalledWith({ runwayCrypto: "bank" });
+  expect(rpcMock.setPreferences).toHaveBeenCalledWith({ runwayCrypto: "all" });
   expect(rpcMock.runway).toHaveBeenCalledTimes(2);
-  expect(container.textContent).toContain("$100,000");
+  expect(container.textContent).toContain("$155,000");
 });
 
 it("hides the scope control when there is no crypto", async () => {
@@ -93,6 +96,6 @@ it("hides the scope control when there is no crypto", async () => {
     runway({ breakdown: { bankCents: 100_000_00, stablecoinCents: 0, otherCryptoCents: 0 } }),
   );
   await show();
-  expect(toggle()).toBeNull();
+  expect(toggle()).toBeUndefined();
   expect(container.textContent).not.toContain("Other crypto");
 });

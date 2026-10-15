@@ -101,6 +101,8 @@ import {
 } from "./domain.js";
 import { ComputerCommandSchema, ProductEventSchema } from "./events.js";
 import {
+  BalanceSeriesInputSchema,
+  BalanceSeriesOutputSchema,
   FinanceAccountOutputSchema,
   FinanceAccountsOutputSchema,
   FinanceBurnOutputSchema,
@@ -112,6 +114,12 @@ import {
   FinanceCryptoHistoryInputSchema,
   FinanceCryptoHistoryOutputSchema,
   FinanceCryptoOutputSchema,
+  FinanceCryptoProviderConnectInputSchema,
+  FinanceCryptoProviderRemoveInputSchema,
+  FinanceExchangeConnectInputSchema,
+  FinanceExchangeRemoveInputSchema,
+  FinanceExchangeSchema,
+  FinanceExchangesOutputSchema,
   FinanceMonthOutputSchema,
   FinanceOverviewSchema,
   FinancePreferencesSchema,
@@ -128,6 +136,13 @@ import {
   FinanceWalletsOutputSchema,
   FinanceWalletUpdateInputSchema,
 } from "./finance.js";
+import {
+  FinanceStatementConfirmInputSchema,
+  FinanceStatementDiscardInputSchema,
+  FinanceStatementSchema,
+  FinanceStatementsOutputSchema,
+  FinanceStatementUploadInputSchema,
+} from "./finance-statements.js";
 import { Id, IsoDate } from "./ids.js";
 import {
   ComposeClientId,
@@ -1068,6 +1083,7 @@ export const appContract = {
     refresh: oc.output(z.object({ ok: z.literal(true) })),
     connect: oc.input(FinanceConnectInputSchema).output(FinanceConnectOutputSchema),
     accounts: oc.output(FinanceAccountsOutputSchema),
+    balanceSeries: oc.input(BalanceSeriesInputSchema).output(BalanceSeriesOutputSchema),
     account: oc.input(z.object({ id: Id })).output(FinanceAccountOutputSchema),
     burn: oc.output(FinanceBurnOutputSchema),
     month: oc
@@ -1101,6 +1117,23 @@ export const appContract = {
     cryptoConnect: oc
       .input(FinanceCryptoConnectInputSchema)
       .output(FinanceCryptoConnectOutputSchema),
+    exchanges: oc.output(FinanceExchangesOutputSchema),
+    exchangeConnect: oc.input(FinanceExchangeConnectInputSchema).output(FinanceExchangeSchema),
+    exchangeRemove: oc
+      .input(FinanceExchangeRemoveInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    cryptoProviderConnect: oc
+      .input(FinanceCryptoProviderConnectInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    cryptoProviderRemove: oc
+      .input(FinanceCryptoProviderRemoveInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    statements: oc.output(FinanceStatementsOutputSchema),
+    statementUpload: oc.input(FinanceStatementUploadInputSchema).output(FinanceStatementSchema),
+    statementConfirm: oc.input(FinanceStatementConfirmInputSchema).output(FinanceStatementSchema),
+    statementDiscard: oc
+      .input(FinanceStatementDiscardInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
   },
   botSecrets: {
     list: oc.input(z.object({ botId: Id })).output(z.array(BotSecretMetadata)),

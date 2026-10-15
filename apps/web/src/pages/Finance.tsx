@@ -11,7 +11,9 @@ import { Button, Skeleton } from "@rakazo/ui-web";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AddAccountDialog, type CryptoChoice } from "../components/finance/AddAccountDialog";
 import { type BarGranularity, BurnBars, Sparkline } from "../components/finance/charts";
+import { StatementReminderBanner } from "../components/finance/StatementReminderBanner";
 import {
   AskAgentButton,
   BreakdownRows,
@@ -26,7 +28,9 @@ import {
   useFinanceQuery,
   useRowNavigate,
 } from "../components/finance/ui";
+import { WalletDialog } from "../components/finance/WalletDialog";
 import { AppLogo } from "../components/integrations/AppLogo";
+import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnectDialog";
 import {
   changeText,
   dayRange,
@@ -79,7 +83,7 @@ export function FinancePage({ onAskAgent }: { onAskAgent?: () => void }) {
         {route.page === "dashboard" ? (
           <Dashboard />
         ) : route.page === "accounts" ? (
-          <FinanceAccountsPage />
+          <FinanceAccountsPage source={route.source} />
         ) : route.page === "account" ? (
           <FinanceAccountPage id={route.id} />
         ) : route.page === "burn" ? (
@@ -142,11 +146,23 @@ function Dashboard() {
   const data = overview.data;
   if (overview.error) return <ErrorNotice message={overview.error} onRetry={overview.retry} />;
   if (!data) return <DashboardSkeleton />;
-  if (!connected) return <EmptyState hasCrypto={Boolean(data.crypto)} />;
-  return <Overview data={data} syncing={syncing} error={syncError} onRefresh={sync} />;
+  // Accounts fed by uploaded statements have no source to connect, but they are data.
+  if (!connected && !data.hasCashAccounts)
+    return <EmptyState hasCrypto={Boolean(data.crypto)} onChanged={overview.reload} />;
+  return (
+    <Overview
+      data={data}
+      syncing={syncing}
+      error={syncError}
+      onRefresh={sync}
+      onReload={overview.reload}
+    />
+  );
 }
 
-function EmptyState({ hasCrypto }: { hasCrypto: boolean }) {
+function EmptyState({ hasCrypto, onChanged }: { hasCrypto: boolean; onChanged: () => void }) {
+  const [adding, setAdding] = useState(false);
+  const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
   return (
     <div className="flex h-full min-h-72 flex-col items-center justify-center gap-4 text-center">
       <div className="flex gap-3">
@@ -158,15 +174,34 @@ function EmptyState({ hasCrypto }: { hasCrypto: boolean }) {
         <Trans>Finance</Trans>
       </h1>
       <p className="max-w-sm text-sm text-muted-foreground">
-        <Trans>Connect Mercury, Brex or both to see cash, burn, runway and spend.</Trans>
+        <Trans>Add an account to see cash, burn, runway and spend.</Trans>
       </p>
-      <Button render={<Link to={CONNECT_PATH} />}>
-        <Trans>Connect accounts</Trans>
+      <Button onClick={() => setAdding(true)}>
+        <Trans>Add account</Trans>
       </Button>
       {hasCrypto ? (
         <Button variant="outline" render={<Link to={financePath.accounts()} />}>
           <Trans>Accounts</Trans>
         </Button>
+      ) : null}
+      {adding ? (
+        <AddAccountDialog
+          onPickCrypto={setCrypto}
+          onImported={onChanged}
+          onClose={() => setAdding(false)}
+        />
+      ) : null}
+      <WalletDialog
+        open={crypto === "wallet"}
+        onClose={() => setCrypto(null)}
+        onSaved={onChanged}
+      />
+      {crypto && crypto !== "wallet" ? (
+        <ExchangeConnectDialog
+          provider={crypto}
+          onConnected={onChanged}
+          onClose={() => setCrypto(null)}
+        />
       ) : null}
     </div>
   );
@@ -204,7 +239,11 @@ function SourceChip({ source }: { source: FinanceSource }) {
       {name}
     </Link>
   ) : (
-    <Link to={financePath.accounts()} className={chip}>
+    <Link
+      to={financePath.accounts(source.provider)}
+      className={chip}
+      aria-label={t`${name} accounts`}
+    >
       {dotEl}
       {name}
     </Link>
@@ -216,13 +255,16 @@ function Overview({
   syncing,
   error,
   onRefresh,
+  onReload,
 }: {
   data: FinanceOverview;
   syncing: boolean;
   error: string;
   onRefresh: () => void;
+  onReload: () => void;
 }) {
   const navigate = useNavigate();
+  const [uploading, setUploading] = useState(false);
   const [period, setPeriod] = useState<SpendPeriod>("month");
   const [by, setBy] = useState<"category" | "vendor">("category");
   const [allBreakdown, setAllBreakdown] = useState(false);
@@ -316,6 +358,17 @@ function Overview({
           <AskAgentButton />
         </div>
       </div>
+      <StatementReminderBanner
+        reminders={data.statementReminders ?? []}
+        onUpload={() => setUploading(true)}
+      />
+      {uploading ? (
+        <AddAccountDialog
+          initialStep="bank"
+          onImported={onReload}
+          onClose={() => setUploading(false)}
+        />
+      ) : null}
       {error ? <ErrorNotice message={error} onRetry={onRefresh} /> : null}
       {showSkeleton ? (
         <DashboardSkeleton />

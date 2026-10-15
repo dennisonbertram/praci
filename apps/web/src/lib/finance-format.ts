@@ -89,6 +89,26 @@ const monthFormat = (
 /** `Oct` */
 export const monthShort = (month: string, locale?: string) =>
   monthFormat(month, { month: "short" }, locale);
+const yearTick = (iso: string) => `'${iso.slice(2, 4)}`;
+
+/** Month axis ticks: `Oct`, with the year (`Nov '25`) on the first tick and on every January. */
+export const monthAxisLabels = (months: string[], locale?: string): string[] =>
+  months.map((month, i) =>
+    i === 0 || month.endsWith("-01")
+      ? `${monthShort(month, locale)} ${yearTick(month)}`
+      : monthShort(month, locale),
+  );
+
+/** Day axis ticks: `Oct 9`, with the year on the first tick and on each new year when the range crosses one. */
+export function dayAxisLabels(days: string[], locale?: string): string[] {
+  const crosses = days.length > 0 && days[0]?.slice(0, 4) !== days.at(-1)?.slice(0, 4);
+  return days.map((day, i) =>
+    crosses && (i === 0 || day.slice(0, 4) !== days[i - 1]?.slice(0, 4))
+      ? `${dayMonth(day, locale)} ${yearTick(day)}`
+      : dayMonth(day, locale),
+  );
+}
+
 /** `Oct 2026` */
 export const monthLabel = (month: string, locale?: string) =>
   monthFormat(month, { month: "short", year: "numeric" }, locale);

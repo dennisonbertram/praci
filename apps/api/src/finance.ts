@@ -13,6 +13,7 @@ import {
 } from "@rakazo/adapters";
 import type {
   Actor,
+  BalanceRange,
   Bot,
   CryptoBalancePoint,
   FinanceAccount,
@@ -46,8 +47,10 @@ import {
   RunwayCryptoScopeSchema,
 } from "@rakazo/contracts";
 import {
+  balanceGrid,
   balanceHistory,
   breakdown,
+  cashAtDays,
   cashHistory,
   cashSeries,
   cashSummary,
@@ -71,6 +74,13 @@ import type { createRepos, Prisma, PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { assignFinanceServers, ensureFinanceAgent } from "./finance-agent.js";
 import { loadCryptoSummary, syncCryptoQuietly } from "./finance-crypto.js";
+import {
+  exchangesDue,
+  loadExchangeSnapshotRows,
+  syncExchangesQuietly,
+} from "./finance-exchange.js";
+import type { ParseStatement } from "./finance-statements.js";
+import { loadStatementReminders } from "./finance-statements.js";
 import { notFound } from "./inbox.js";
 
 export interface FinanceDeps {
@@ -93,6 +103,12 @@ export interface FinanceDeps {
   secrets: SecretStore;
   /** Crypto sync and ENS lookup, injected from the adapters. Unset where they are not wired (tests). */
   crypto?: FinanceCryptoDeps;
+  /** Reads an uploaded bank statement. Unset where the parsers are not wired. */
+  parseStatement?: ParseStatement;
+  /** Test seam for Coinbase, Kraken and price requests. */
+  exchangeFetch?: typeof fetch;
+  /** Overrides global fetch for the Alchemy key check (tests). */
+  fetch?: typeof fetch;
   now?: () => Date;
 }
 
@@ -341,6 +357,7 @@ export async function financeRefresh(
     { force: true, signal },
   );
   await syncCryptoQuietly(deps, actor, { signal });
+  await syncExchangesQuietly(deps, actor, signal);
   return { ok: true };
 }
 
@@ -411,7 +428,7 @@ export async function financeOverview(
       }),
       loadCryptoSummary(deps, actor),
     ]);
-  if (syncDue) {
+  if (syncDue || (await exchangesDue(deps, actor))) {
     // The job key merges repeats; a lost enqueue only delays the sync until the next page load.
     await deps.jobs.enqueue(financeSyncJob(actor.userId, actor.spaceId)).catch((error) => {
       getLogger().warn("finance sync enqueue failed", {
@@ -440,6 +457,7 @@ export async function financeOverview(
   const recurring = detectRecurring(txns, now, accounts);
   const lastMonth = monthOf(now, -1);
   const lastMonthYields = yields.filter((y) => y.month === lastMonth);
+  const statementReminders = await loadStatementReminders(deps, actor, dayOf(now));
   return {
     sources,
     agent: agent ? { botId: agent.id, name: agent.name } : null,
@@ -488,6 +506,7 @@ export async function financeOverview(
     excludedNonUsdCount: excludedNonUsdCount(txns),
     // Its own card. What counts as cash follows the saved scope.
     crypto,
+    ...(statementReminders.length > 0 ? { statementReminders } : {}),
   };
 }
 
@@ -556,8 +575,12 @@ export async function financeAccountDetail(
   };
   const [txnRows, yieldRows] = await Promise.all([
     deps.prisma.financeTransaction.findMany({ where: own, orderBy: { postedAt: "desc" } }),
-    account.kind === "treasury"
-      ? deps.prisma.financeTreasuryYield.findMany({ where: own, orderBy: { month: "desc" } })
+    // Statement accounts have no server and no Treasury yield.
+    account.kind === "treasury" && found.mcpServerId
+      ? deps.prisma.financeTreasuryYield.findMany({
+          where: { ...own, mcpServerId: found.mcpServerId },
+          orderBy: { month: "desc" },
+        })
       : [],
   ]);
   const txns = txnRows.map(toTransaction);
@@ -658,17 +681,49 @@ export async function financeRunway(deps: FinanceDeps, actor: Actor): Promise<Fi
   };
 }
 
+/** Total cash on each day of the range's grid: bank at that day's end plus crypto counted under the saved scope. */
+export async function financeBalanceSeries(
+  deps: FinanceDeps,
+  actor: Actor,
+  input: { range: BalanceRange },
+): Promise<{ range: BalanceRange; points: { day: string; balanceCents: number }[] }> {
+  const now = nowOf(deps);
+  const [accounts, txns, crypto, scope, snapshots] = await Promise.all([
+    loadAccounts(deps, actor),
+    loadTransactions(deps, actor),
+    loadCryptoSummary(deps, actor),
+    loadRunwayCrypto(deps.prisma, actor),
+    loadSnapshots(deps, actor),
+  ]);
+  const parts = cashParts(accounts, crypto);
+  const today = dayOf(now);
+  const days = balanceGrid(input.range, now);
+  const bank = cashAtDays(accounts, txns, days, now);
+  return {
+    range: input.range,
+    points: days.map((day, i) => ({
+      day,
+      balanceCents: countedCash(
+        { ...(day === today ? parts : cryptoPartsOn(snapshots, day)), bankCents: bank[i] ?? 0 },
+        scope,
+      ),
+    })),
+  };
+}
+
 async function loadSnapshots(deps: FinanceDeps, actor: Actor, walletId?: string) {
   const rows = await deps.prisma.financeCryptoSnapshot.findMany({
     where: { ...scopeOf(actor), ...(walletId ? { walletId } : {}) },
   });
   // ponytail: reads every snapshot (wallets x days); bound by a day window if it grows large.
-  return rows.map((r) => ({
+  const wallets = rows.map((r) => ({
     walletId: r.walletId,
     day: r.day,
     stablecoinCents: Number(r.stablecoinCents),
     otherCryptoCents: Number(r.otherCryptoCents),
   }));
+  // Exchange connections are sources like wallets; a wallet filter excludes them.
+  return walletId ? wallets : [...wallets, ...(await loadExchangeSnapshotRows(deps, actor))];
 }
 
 export async function financeCryptoHistory(
@@ -873,7 +928,7 @@ export async function financeReceiptUrl(
     where: { id: input.transactionId, ...scopeOf(actor) },
   });
   // Mercury's listing never says whether a row has attachments, so only the vendor lookup can tell.
-  if (!row || (!row.hasReceipt && row.provider !== "mercury")) throw notFound();
+  if (!row?.mcpServerId || (!row.hasReceipt && row.provider !== "mercury")) throw notFound();
   const server = await deps.prisma.mcpServer.findFirst({
     where: { id: row.mcpServerId, ...scopeOf(actor), enabled: true },
   });

@@ -98,6 +98,23 @@ export const FINANCE_PROVIDERS = [
   { provider: "brex", name: "Brex", logo: "https://cdn.simpleicons.org/brex" },
 ] as const;
 
+/** Exchanges connect with a read-only API key; `keyUrl` is the vendor page where the user creates it. */
+export const EXCHANGES = [
+  {
+    provider: "coinbase",
+    name: "Coinbase",
+    logo: "https://cdn.simpleicons.org/coinbase",
+    keyUrl: "https://portal.cdp.coinbase.com/access/api",
+  },
+  {
+    provider: "kraken",
+    name: "Kraken",
+    // No Simple Icons mark exists for Kraken, so the tile shows its first letter.
+    logo: null,
+    keyUrl: "https://www.kraken.com/u/security/api",
+  },
+] as const;
+
 export function appKey(item: Pick<ConnectionCatalogItem, "connectorId" | "slug">) {
   return `${item.connectorId}:${item.slug}`;
 }

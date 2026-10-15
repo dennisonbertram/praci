@@ -13,6 +13,8 @@ import type { FinanceDeps } from "./finance.js";
 import {
   financeCrypto,
   financeCryptoConnect,
+  financeCryptoProviderConnect,
+  financeCryptoProviderRemove,
   financeWalletAdd,
   financeWalletRemove,
   financeWallets,
@@ -73,11 +75,19 @@ function table(rows: Row[], prefix: string) {
 }
 
 function setup(
-  data: { wallets?: Row[]; holdings?: Row[]; servers?: Row[]; bots?: Row[]; states?: Row[] } = {},
+  data: {
+    wallets?: Row[];
+    holdings?: Row[];
+    servers?: Row[];
+    bots?: Row[];
+    states?: Row[];
+    exchange?: Row[];
+  } = {},
 ) {
   const prisma = {
     financeWallet: table(data.wallets ?? [], "w"),
     financeCryptoHolding: table(data.holdings ?? [], "h"),
+    financeExchangeBalance: table(data.exchange ?? [], "xb"),
     mcpServer: table(data.servers ?? [], "srv"),
     bot: table(data.bots ?? [], "bot"),
     botMcpServer: table([], "bms"),
@@ -352,5 +362,104 @@ describe("finance.cryptoConnect", () => {
         }),
       }),
     );
+  });
+});
+
+describe("Alchemy key", () => {
+  const ok = () => new Response(JSON.stringify({ data: { tokens: [] } }), { status: 200 });
+  const withFetch = (deps: FinanceDeps, status: number) =>
+    ({
+      ...deps,
+      fetch: vi.fn(async () => (status === 200 ? ok() : new Response("{}", { status }))),
+    }) as unknown as FinanceDeps;
+
+  it("validates, stores the key as a secret, forces a sync, and never returns it", async () => {
+    const { prisma, deps, sync, put } = setup();
+    expect(
+      await financeCryptoProviderConnect(withFetch(deps, 200), a, {
+        provider: "alchemy",
+        apiKey: "alch-key",
+      }),
+    ).toEqual({ ok: true });
+    expect(put).toHaveBeenCalledWith("alch-key", expect.objectContaining({ userId: "user-a" }));
+    expect(prisma.secret.rows).toMatchObject([
+      { kind: "finance-alchemy", userId: "user-a", spaceId: "space-1" },
+    ]);
+    expect(sync).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ force: true }));
+    const out = await financeCrypto(deps, a);
+    expect(out.alchemy).toEqual({ connected: true, lastError: null });
+    expect(JSON.stringify(out)).not.toContain("alch-key");
+  });
+
+  it("rejects a bad key without storing it", async () => {
+    const { prisma, deps, put } = setup();
+    await expect(
+      financeCryptoProviderConnect(withFetch(deps, 401), a, { provider: "alchemy", apiKey: "bad" }),
+    ).rejects.toThrow("Alchemy rejected the API key");
+    expect(put).not.toHaveBeenCalled();
+    expect(prisma.secret.rows).toHaveLength(0);
+  });
+
+  it("scopes connection state and removal to the user, and shows the fallback reason", async () => {
+    const { prisma, deps } = setup({
+      servers: [
+        {
+          id: "srv-1",
+          spaceId: "space-1",
+          userId: "user-a",
+          enabled: true,
+          endpoint: CRYPTO_MCP_ENDPOINT,
+        },
+      ],
+      states: [
+        {
+          mcpServerId: "srv-1",
+          spaceId: "space-1",
+          userId: "user-a",
+          lastError: "Alchemy is unavailable; using public RPC",
+        },
+      ],
+    });
+    await financeCryptoProviderConnect(withFetch(deps, 200), a, {
+      provider: "alchemy",
+      apiKey: "k",
+    });
+    expect((await financeCrypto(deps, a)).alchemy).toEqual({
+      connected: true,
+      lastError: "Alchemy is unavailable; using public RPC",
+    });
+    expect((await financeCrypto(deps, b)).alchemy.connected).toBe(false);
+    await financeCryptoProviderRemove(deps, b);
+    expect(prisma.secret.rows).toHaveLength(1);
+    await financeCryptoProviderRemove(deps, a);
+    expect(prisma.secret.rows).toHaveLength(0);
+    expect((await financeCrypto(deps, a)).alchemy).toEqual({ connected: false, lastError: null });
+  });
+});
+
+describe("finance.crypto summary with exchanges", () => {
+  const balance = (spaceId: string, userId: string, bucket: string, cents: bigint | null) => ({
+    spaceId,
+    userId,
+    asset: "X",
+    bucket,
+    usdValueCents: cents,
+  });
+
+  it("counts an exchange-only user's balances in the totals, and keeps another user's out", async () => {
+    const { deps } = setup({
+      exchange: [
+        balance(a.spaceId, a.userId, "stablecoin", 5_000n),
+        balance(a.spaceId, a.userId, "other", 20_000n),
+        balance(a.spaceId, a.userId, "other", null),
+        balance(b.spaceId, b.userId, "stablecoin", 99_999n),
+      ],
+    });
+    const { summary } = await financeCrypto(deps, a);
+    expect(summary.totalCents).toBe(25_000);
+    expect(summary.stablecoinCents).toBe(5_000);
+    expect(summary.unpricedTokenCount).toBe(1);
+    expect(summary.byWallet).toEqual([]);
+    expect(summary.byChain).toEqual([]);
   });
 });

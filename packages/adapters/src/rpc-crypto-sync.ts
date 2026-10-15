@@ -1,13 +1,21 @@
 import { randomUUID } from "node:crypto";
+import type { SecretStore } from "@rakazo/adapter-kit";
 import { CRYPTO_CHAINS } from "@rakazo/contracts";
 import { holdingParts, usdValueCents } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { loadAlchemyKey } from "./alchemy-crypto-key.js";
+import {
+  AlchemyError,
+  alchemyFailureMessage,
+  fetchAlchemyHoldings,
+} from "./alchemy-crypto-source.js";
 import { findCryptoServer } from "./blockscout-crypto-call-tool.js";
 import type { TokenRow } from "./crypto-token-list.js";
 import type {
   ChainSnapshot,
+  RpcClient,
   RpcClientOptions,
   RpcFailureKind,
   SafeDetails,
@@ -24,6 +32,8 @@ import {
 
 export interface CryptoSyncDeps extends Pick<RpcClientOptions, "fetch" | "urls"> {
   prisma: PrismaClient;
+  /** Needed to read the user's Alchemy key; without it the RPC source is always used. */
+  secrets?: SecretStore;
   now?: () => Date;
   /** Minimum gap between requests to one RPC host (default 200 ms). */
   callGapMs?: number;
@@ -53,7 +63,9 @@ const DEADLINE_MS = 100_000;
  * `finance_sync_states`, which is keyed by an McpServer id, so the user's Blockscout server row
  * (created with the first wallet) is reused as that key; Blockscout itself is never called. A chain
  * that fails keeps its previous rows and is listed in `failedChains`; the sync fails only when no
- * chain could be read. Without that row it returns `not_connected`.
+ * chain could be read. Without that row it returns `not_connected`. A user who saved an Alchemy API
+ * key gets holdings and prices from Alchemy instead; if Alchemy fails (bad key, rate limit, outage)
+ * that run uses the RPC source and records why. Safe details and ENS always come from RPC.
  */
 export async function syncCryptoHoldings(
   deps: CryptoSyncDeps,
@@ -122,10 +134,20 @@ export async function syncCryptoHoldings(
     snapshots: Map<number, ChainSnapshot>;
     failed: number[];
     safe: SafeDetails | null;
+    viaAlchemy: boolean;
   };
   const reads: WalletRead[] = [];
   const problems: Array<{ chainId: number; kind: RpcFailureKind }> = [];
+  let alchemyProblem: string | null = null;
   try {
+    let alchemyKey: string | null = null;
+    if (deps.secrets) {
+      try {
+        alchemyKey = await loadAlchemyKey(prisma, deps.secrets, scope);
+      } catch {
+        alchemyProblem = alchemyFailureMessage("unavailable");
+      }
+    }
     // Tokens already stored for a wallet are always re-read, even when the bundled list lacks them.
     const stored = await prisma.financeCryptoHolding.findMany({
       where: {
@@ -144,25 +166,52 @@ export async function syncCryptoHoldings(
       },
     });
     for (const wallet of wallets) {
-      const read: WalletRead = { id: wallet.id, snapshots: new Map(), failed: [], safe: null };
+      const read: WalletRead = {
+        id: wallet.id,
+        snapshots: new Map(),
+        failed: [],
+        safe: null,
+        viaAlchemy: false,
+      };
+      if (alchemyKey) {
+        try {
+          const res = await fetchAlchemyHoldings(alchemyKey, wallet.address, {
+            fetch: deps.fetch,
+            signal,
+          });
+          for (const [chainId, holdings] of res.holdings)
+            read.snapshots.set(chainId, { holdings, isContract: false });
+          read.failed.push(...res.failed);
+          for (const chainId of res.failed) problems.push({ chainId, kind: "failed" });
+          read.viaAlchemy = true;
+        } catch (error) {
+          if (!(error instanceof AlchemyError)) throw error;
+          alchemyProblem = alchemyFailureMessage(error.kind);
+          alchemyKey = null; // the remaining wallets of this run go straight to RPC
+        }
+      }
       // Chains are started together; requests to one host still run one at a time.
-      await Promise.all(
-        CRYPTO_CHAINS.map(async ({ id }) => {
-          const extra: TokenRow[] = stored
-            .filter((s) => s.walletId === wallet.id && s.chainId === id)
-            .map((s) => [s.tokenAddress, s.symbol, s.name, s.decimals]);
-          try {
-            read.snapshots.set(id, await fetchChainSnapshot(rpc, id, wallet.address, extra));
-          } catch (error) {
-            read.failed.push(id);
-            problems.push({ chainId: id, kind: classifyRpcError(error) });
-          }
-        }),
-      );
+      if (!read.viaAlchemy)
+        await Promise.all(
+          CRYPTO_CHAINS.map(async ({ id }) => {
+            const extra: TokenRow[] = stored
+              .filter((s) => s.walletId === wallet.id && s.chainId === id)
+              .map((s) => [s.tokenAddress, s.symbol, s.name, s.decimals]);
+            try {
+              read.snapshots.set(id, await fetchChainSnapshot(rpc, id, wallet.address, extra));
+            } catch (error) {
+              read.failed.push(id);
+              problems.push({ chainId: id, kind: classifyRpcError(error) });
+            }
+          }),
+        );
       signal.throwIfAborted();
       if (wallet.type !== "exchange") {
         for (const [chainId, snapshot] of read.snapshots) {
-          if (!snapshot.isContract) continue;
+          if (
+            read.viaAlchemy ? !(await hasCode(rpc, chainId, wallet.address)) : !snapshot.isContract
+          )
+            continue;
           try {
             read.safe = await fetchSafeDetails(rpc, chainId, wallet.address);
           } catch (error) {
@@ -176,20 +225,31 @@ export async function syncCryptoHoldings(
   } catch (error) {
     return fail(rpcFailureMessage(classifyRpcError(error), []));
   }
-  const problem = describeProblems(problems);
+  const problem = [alchemyProblem, describeProblems(problems)].filter(Boolean).join("; ") || null;
   if (reads.every((r) => r.snapshots.size === 0))
     return fail(problem ?? rpcFailureMessage("failed", []));
 
-  // One price request for everything held. Without prices the sync fails and the old rows stay.
+  // One price request for everything RPC found, and for what Alchemy left unpriced. Without prices
+  // an RPC sync fails and the old rows stay. ponytail: Alchemy wallets look up at most 100 unpriced
+  // tokens (the URL carries every key), and a failed lookup there only leaves them unpriced.
+  const viaAlchemy = reads.some((r) => r.viaAlchemy);
   try {
     const keys = reads.flatMap((r) =>
-      [...r.snapshots.values()].flatMap((s) => s.holdings.map((h) => h.llamaKey)),
+      [...r.snapshots.values()].flatMap((s) =>
+        s.holdings.filter((h) => h.usdPrice === null).map((h) => h.llamaKey),
+      ),
     );
-    const prices = await fetchPrices(rpc, keys);
+    const prices = await fetchPrices(
+      rpc,
+      viaAlchemy ? [...new Set(keys)].slice(0, 100) : keys,
+    ).catch((error) => {
+      if (!viaAlchemy) throw error;
+      return new Map<string, string>();
+    });
     for (const read of reads)
       for (const snapshot of read.snapshots.values())
         for (const h of snapshot.holdings)
-          h.usdPrice = prices.get(h.llamaKey.toLowerCase()) ?? null;
+          h.usdPrice ??= prices.get(h.llamaKey.toLowerCase()) ?? null;
   } catch (error) {
     return fail(rpcFailureMessage(classifyRpcError(error), ["Prices"], "the price service"));
   }
@@ -281,4 +341,13 @@ function describeProblems(
     kind,
     CRYPTO_CHAINS.filter((c) => failed.has(c.id)).map((c) => c.name),
   );
+}
+
+/** Whether an address has contract code on a chain; a read that fails counts as no code. */
+async function hasCode(rpc: RpcClient, chainId: number, address: string): Promise<boolean> {
+  try {
+    return ((await rpc.call(chainId, "eth_getCode", [address, "latest"])) as string).length > 2;
+  } catch {
+    return false;
+  }
 }

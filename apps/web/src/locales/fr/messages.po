@@ -18,6 +18,11 @@ msgstr ""
 msgid " (unread)"
 msgstr " (non lu)"
 
+#. placeholder {0}: statement.duplicateCount
+#: src/components/finance/StatementReviewCard.tsx
+msgid ", {0} already imported"
+msgstr ""
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -143,6 +148,8 @@ msgid "{0} runs · {1} tokens"
 msgstr "{0} exécutions · {1} jetons"
 
 #. placeholder {0}: card.count
+#. placeholder {0}: statement.transactionCount
+#: src/components/finance/StatementReviewCard.tsx
 #: src/components/FinanceCards.tsx
 msgid "{0} transactions"
 msgstr ""
@@ -234,6 +241,10 @@ msgstr "il y a {minutes} min"
 msgid "{monthlyTotal}/mo"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "{name} accounts"
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -323,6 +334,7 @@ msgid "* So far"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
 msgstr ""
 
@@ -406,6 +418,7 @@ msgstr "Confirmations d'action"
 msgid "Actions for {0}"
 msgstr "Actions pour {0}"
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Actions for {name}"
 msgstr ""
@@ -473,8 +486,14 @@ msgstr "Ajoutez une planification, un webhook, GitHub ou un déclencheur de mess
 msgid "Add a schedule, webhook, GitHub, or message trigger to run this routine."
 msgstr "Ajoutez une planification, un webhook, GitHub ou un déclencheur de message pour exécuter cette routine."
 
+#: src/components/finance/AddAccountDialog.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Add account"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Add an account to see cash, burn, runway and spend."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -522,6 +541,7 @@ msgstr "Ajouter un déclencheur"
 msgid "Add wallet"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 msgid "Address or ENS"
 msgstr ""
@@ -697,7 +717,9 @@ msgid "API is back, but the update did not finish. Check the host logs."
 msgstr "L'API est de retour, mais la mise à jour n'est pas terminée. Vérifiez les journaux de l'hôte."
 
 #: src/components/AskCard.tsx
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -709,6 +731,10 @@ msgstr "Clé API"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "En-tête de clé API"
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "API key name"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "App connections aren't set up on this server yet."
@@ -811,6 +837,10 @@ msgstr "Demandez au propriétaire du serveur de configurer ce fournisseur."
 msgid "Ask the server owner to set up the app catalog."
 msgstr ""
 
+#: src/components/finance/ExchangeGroup.tsx
+msgid "Asset"
+msgstr ""
+
 #. placeholder {0}: preset.time
 #: src/pages/RoutineSchedule.tsx
 msgid "at {0}"
@@ -905,6 +935,7 @@ msgid "Avatars"
 msgstr "Avatars"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
 #: src/pages/RoutineEditor.tsx
@@ -927,6 +958,7 @@ msgstr "Ordre des modèles de secours"
 msgid "Backup models saved."
 msgstr "Modèles de secours enregistrés."
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Balance"
@@ -940,6 +972,7 @@ msgstr ""
 msgid "Balance owed"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
@@ -1106,6 +1139,8 @@ msgstr "Impossible d'atteindre le serveur."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/finance/AddAccountDialog.tsx
+#: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectionDialog.tsx
@@ -1347,10 +1382,6 @@ msgstr ""
 msgid "Choose which connected model Rakazo uses."
 msgstr "Choisissez le modèle connecté utilisé par Rakazo."
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Choose which crypto counts"
-msgstr ""
-
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
@@ -1360,6 +1391,10 @@ msgstr "Effacer"
 #: src/pages/shell/dialogs.tsx
 msgid "Clear {0}’s conversation?"
 msgstr "Effacer la conversation de {0} ?"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Clear {sourceName} filter"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -1569,6 +1604,7 @@ msgstr "Confirmez que l'URL est accessible depuis cette session du navigateur, p
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1579,8 +1615,11 @@ msgstr "Confirmez que l'URL est accessible depuis cette session du navigateur, p
 msgid "Connect"
 msgstr "Connecter"
 
+#. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 msgid "Connect {0}"
 msgstr ""
 
@@ -1601,8 +1640,9 @@ msgstr "Connecter un modèle"
 msgid "Connect a provider to add backups."
 msgstr "Connectez un fournisseur pour ajouter des modèles de secours."
 
-#: src/pages/Finance.tsx
-msgid "Connect accounts"
+#: src/components/integrations/AlchemyConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
+msgid "Connect Alchemy"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1630,10 +1670,6 @@ msgstr ""
 msgid "Connect MCP server “{name}”"
 msgstr "Connecter le serveur MCP « {name} »"
 
-#: src/pages/Finance.tsx
-msgid "Connect Mercury, Brex or both to see cash, burn, runway and spend."
-msgstr ""
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your agents can read and act in them. You choose which agents get access to each one."
 msgstr ""
@@ -1646,6 +1682,7 @@ msgstr "Connectez ce fournisseur pour l'utiliser comme modèle personnel."
 msgid "Connect Treg"
 msgstr "Connecter Treg"
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/parts.tsx
@@ -1791,6 +1828,7 @@ msgstr "Impossible de terminer OAuth"
 msgid "Could not complete the update. Try again."
 msgstr "Impossible de terminer la mise à jour. Réessayez."
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2028,6 +2066,10 @@ msgstr "Impossible de joindre le serveur du modèle."
 msgid "Could not reach the server"
 msgstr "Impossible d'atteindre le serveur"
 
+#: src/components/finance/StatementImport.tsx
+msgid "Could not read this file"
+msgstr ""
+
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
 msgstr ""
@@ -2227,7 +2269,11 @@ msgid "Counterparty"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
-msgid "Counting crypto"
+msgid "Counting all crypto"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Counting stablecoins"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -2235,6 +2281,14 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Create"
 msgstr "Créer"
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Create a key with only Query Funds"
+msgstr ""
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Create a read-only key"
+msgstr ""
 
 #. placeholder {0}: bot.name
 #: src/pages/shell/dialogs.tsx
@@ -2308,14 +2362,11 @@ msgstr "Cron"
 msgid "Cron expression"
 msgstr "Expression Cron"
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Crypto"
-msgstr ""
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Crypto wallet"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
@@ -2542,6 +2593,7 @@ msgid "Disconnecting…"
 msgstr "Déconnexion en cours…"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
@@ -2579,10 +2631,15 @@ msgstr "Docker limite l'accès à votre ordinateur pour une sécurité renforcé
 msgid "Docs & files"
 msgstr ""
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Don't count crypto"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Don’t have an account?"
 msgstr "Vous n'avez pas de compte ?"
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/lib/ticket-status.ts
@@ -2641,6 +2698,10 @@ msgstr "Glissez, déposez ou collez une image"
 
 #: src/components/ComposeEmail.tsx
 msgid "Drop files to attach"
+msgstr ""
+
+#: src/components/finance/StatementImport.tsx
+msgid "Drop statements here or choose files"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -2789,6 +2850,7 @@ msgid "Every week"
 msgstr "Chaque semaine"
 
 #: src/components/finance/WalletDialog.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "Exchange"
 msgstr ""
 
@@ -3000,6 +3062,7 @@ msgstr "ID de passerelle"
 msgid "General"
 msgstr "Général"
 
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Get an API key"
 msgstr ""
@@ -3157,6 +3220,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Important"
+msgstr ""
+
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Imported"
 msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
@@ -3843,6 +3910,10 @@ msgstr ""
 msgid "Never changes your account"
 msgstr ""
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "New account"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "New Bot"
 msgstr ""
@@ -4059,10 +4130,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
-msgstr ""
-
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Not counting crypto"
 msgstr ""
 
 #: src/pages/finance/FinanceNotFound.tsx
@@ -4363,6 +4430,10 @@ msgstr "Collez votre clé API, puis testez à nouveau."
 msgid "Paused"
 msgstr "En pause"
 
+#: src/components/finance/AddAccountDialog.tsx
+msgid "PDF, CSV, OFX or QFX"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "pending"
 msgstr ""
@@ -4445,6 +4516,10 @@ msgstr ""
 msgid "Private"
 msgstr "Privé"
 
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Private key"
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Private workspace with its own bots and groups."
 msgstr "Espace de travail privé avec ses propres bots et groupes."
@@ -4503,12 +4578,18 @@ msgstr "Réactions"
 msgid "Read"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read balances and transactions"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read cards, expenses and bills"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Read exchange balances"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -4517,6 +4598,14 @@ msgstr "Lire les réponses à voix haute"
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read wallet balances"
+msgstr ""
+
+#: src/components/finance/AddAccountDialog.tsx
+msgid "Read-only API key"
+msgstr ""
+
+#: src/components/finance/StatementImport.tsx
+msgid "Reading…"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4658,7 +4747,10 @@ msgid "Release interrupted computer?"
 msgstr "Libérer l'ordinateur interrompu ?"
 
 #: src/components/ApprovalRulesSettings.tsx
+#: src/components/finance/ExchangeGroup.tsx
+#: src/components/finance/StatementReviewCard.tsx
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -4692,6 +4784,10 @@ msgstr ""
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Remove {full}"
 msgstr "Supprimer {full}"
+
+#: src/components/finance/ExchangeGroup.tsx
+msgid "Remove {name}?"
+msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
@@ -4776,6 +4872,7 @@ msgstr "Rouvrir"
 msgid "Replace API key"
 msgstr "Remplacer la clé API"
 
+#: src/components/integrations/FinanceSection.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "Remplacer la clé"
@@ -4978,6 +5075,7 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
@@ -5353,6 +5451,7 @@ msgstr ""
 msgid "Sign-in failed"
 msgstr ""
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Sign-in was cancelled or did not finish. Try again."
@@ -5500,6 +5599,10 @@ msgstr "Démarrage"
 #: src/pages/Onboarding.tsx
 msgid "Starting…"
 msgstr "Démarrage en cours…"
+
+#: src/components/finance/StatementImport.tsx
+msgid "Statement files"
+msgstr ""
 
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
@@ -5678,6 +5781,10 @@ msgstr "L'API n'est pas revenue. Actualisez cette page."
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "La connexion a expiré."
+
+#: src/components/finance/StatementImport.tsx
+msgid "The file is too large"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
@@ -5861,6 +5968,15 @@ msgstr ""
 msgid "Transactions"
 msgstr ""
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Transactions add up to the closing balance"
+msgstr ""
+
+#. placeholder {0}: moneyExact(Math.abs(check.differenceCents))
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Transactions are {0} off the closing balance"
+msgstr ""
+
 #: src/components/call/CallCard.tsx
 msgid "Transcript"
 msgstr "Transcription"
@@ -6033,9 +6149,23 @@ msgid "Updating…"
 msgstr "Mise à jour en cours…"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
 msgstr "Télécharger"
+
+#: src/components/finance/StatementImport.tsx
+msgid "Upload a PDF, CSV, OFX or QFX file"
+msgstr ""
+
+#: src/components/finance/AddAccountDialog.tsx
+msgid "Upload statements"
+msgstr ""
+
+#. placeholder {0}: first.accountName
+#: src/components/finance/StatementReminderBanner.tsx
+msgid "Upload the {month} statement for {0}"
+msgstr ""
 
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
@@ -6100,6 +6230,7 @@ msgstr "Utilise les identifiants {hostCredentialSource} propres à ce serveur po
 msgid "Using {0}"
 msgstr ""
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
@@ -6191,6 +6322,10 @@ msgstr "En attente dans la file…"
 #: src/pages/shell/message-cards.tsx
 msgid "Waiting…"
 msgstr "En attente…"
+
+#: src/components/finance/AddAccountDialog.tsx
+msgid "Wallet"
+msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Wallets"

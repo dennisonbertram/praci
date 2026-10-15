@@ -19,8 +19,11 @@ vi.mock("@lingui/react/macro", () => ({
 const rpcMock = vi.hoisted(() => ({
   accounts: vi.fn(),
   crypto: vi.fn(),
+  exchanges: vi.fn(),
   walletAdd: vi.fn(),
   preferences: vi.fn(),
+  balanceSeries: vi.fn(),
+  overview: vi.fn(),
   setPreferences: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
@@ -75,7 +78,26 @@ let root: ReturnType<typeof createRoot>;
 const flush = () => act(async () => {});
 async function show(scope: "bank" | "stablecoins" | "all" = "bank", cryptoData = crypto) {
   rpcMock.accounts.mockResolvedValue(accounts);
+  rpcMock.overview.mockResolvedValue({ sources: [] });
+  rpcMock.balanceSeries.mockImplementation(async ({ range }: { range: string }) => ({
+    range,
+    points: [
+      { day: "2026-09-30", balanceCents: 7_000_000 },
+      { day: "2026-10-14", balanceCents: 7_500_000 },
+    ],
+  }));
   rpcMock.crypto.mockResolvedValue(cryptoData);
+  rpcMock.exchanges.mockResolvedValue([
+    {
+      id: "x1",
+      provider: "kraken",
+      connected: true,
+      lastSyncedAt: "2026-10-15T12:00:00.000Z",
+      lastError: null,
+      totalCents: 25_000,
+      balances: [],
+    },
+  ]);
   rpcMock.preferences.mockResolvedValue({ runwayCrypto: scope });
   await act(async () =>
     root.render(
@@ -109,22 +131,48 @@ it("lists wallets in their own Crypto group and keeps them out of total cash", (
   expect(page).not.toContain("$1,062,654");
 });
 
-it("opens the Add wallet dialog from the Add account menu", async () => {
-  expect(document.body.querySelector('[role="dialog"]')).toBeNull();
-  const trigger = [...container.querySelectorAll("button")].find(
-    (b) => b.textContent === "Add account",
-  );
-  await act(async () => {
-    trigger?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
-    trigger?.click();
-  });
-  const items = [...document.body.querySelectorAll('[role="menuitem"]')];
-  expect(items.map((i) => i.textContent)).toEqual(["Crypto wallet"]);
-  await act(async () => (items[0] as HTMLElement).click());
-  expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Add wallet");
+it("lists connected exchanges in the Crypto group, outside total cash", () => {
+  const row = [...container.querySelectorAll("tr")].find((r) => r.textContent?.includes("Kraken"));
+  expect(row?.textContent).toContain("$250.00");
+  expect(container.textContent).not.toContain("$75,250");
 });
 
-const toggle = () => container.querySelector("button[aria-pressed]") as HTMLButtonElement | null;
+const clickButton = (label: string, scope: ParentNode = document.body) =>
+  act(async () =>
+    (
+      [...scope.querySelectorAll("button")].find((b) => b.textContent === label) as HTMLElement
+    ).click(),
+  );
+
+it("opens the Add account modal and reaches the Add wallet dialog through Wallet", async () => {
+  expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+  await clickButton("Add account", container);
+  expect(document.body.querySelector('[role="menu"]')).toBeNull();
+  const dialog = () => document.body.querySelector('[role="dialog"]');
+  const titles = () =>
+    [...(dialog()?.querySelectorAll("[data-option-title]") ?? [])].map((n) => n.textContent);
+  expect(titles()).toEqual([
+    "Mercury",
+    "Brex",
+    "Upload statements",
+    "Wallet",
+    "Coinbase",
+    "Kraken",
+  ]);
+  await act(async () =>
+    (
+      [...(dialog()?.querySelectorAll("button") ?? [])].find(
+        (b) => b.querySelector("[data-option-title]")?.textContent === "Wallet",
+      ) as HTMLElement
+    ).click(),
+  );
+  expect(dialog()?.textContent).toContain("Add wallet");
+});
+
+const toggle = () =>
+  [...container.querySelectorAll("button")].find((b) =>
+    /^(Count crypto|Counting)/.test(b.textContent ?? ""),
+  ) as HTMLButtonElement | undefined;
 const subtitle = () =>
   [...container.querySelectorAll("h2")].find((h) => h.textContent === "Total cash")
     ?.nextElementSibling?.nextElementSibling?.textContent;
@@ -138,7 +186,7 @@ it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
   await act(async () => root.unmount());
   root = createRoot(container);
   await show("stablecoins");
-  expect(toggle()?.textContent).toBe("Counting crypto");
+  expect(toggle()?.textContent).toBe("Counting stablecoins");
   expect(subtitle()).toBe("Checking + Savings + Treasury + Stablecoins");
   await act(async () => root.unmount());
   root = createRoot(container);
@@ -159,27 +207,18 @@ it("hides the button when no crypto is held", async () => {
   await act(async () => root.unmount());
   root = createRoot(container);
   await show("bank", { ...crypto, wallets: [], summary: { ...crypto.summary, totalCents: 0 } });
-  expect(toggle()).toBeNull();
+  expect(toggle()).toBeUndefined();
 });
 
 it("reloads accounts after a wallet is added, since crypto can count in total cash", async () => {
   rpcMock.walletAdd.mockResolvedValue({});
+  await clickButton("Add account", container);
   await act(async () =>
     (
-      [...container.querySelectorAll("button")].find(
-        (b) => b.textContent === "Add account",
-      ) as HTMLElement
-    ).dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })),
-  );
-  await act(async () =>
-    (
-      [...container.querySelectorAll("button")].find(
-        (b) => b.textContent === "Add account",
+      [...document.body.querySelectorAll('[role="dialog"] button')].find(
+        (b) => b.querySelector("[data-option-title]")?.textContent === "Wallet",
       ) as HTMLElement
     ).click(),
-  );
-  await act(async () =>
-    ([...document.body.querySelectorAll('[role="menuitem"]')][0] as HTMLElement).click(),
   );
   const input = document.body.querySelector('[aria-label="Address or ENS"]') as HTMLInputElement;
   await act(async () => {
@@ -195,4 +234,78 @@ it("reloads accounts after a wallet is added, since crypto can count in total ca
   await flush();
   expect(rpcMock.walletAdd).toHaveBeenCalled();
   expect(rpcMock.accounts).toHaveBeenCalledTimes(2);
+});
+
+const mixed = {
+  ...accounts,
+  cardOwedCents: 120_000,
+  cash: [{ ...accounts.cash[0], provider: "mercury" }],
+  cards: [
+    {
+      id: "c1",
+      provider: "brex",
+      name: "Brex Card",
+      lastFour: "9",
+      balanceCents: 120_000,
+      annualYieldPct: null,
+    },
+  ],
+};
+async function showSource(source: "mercury" | "brex" | null) {
+  rpcMock.accounts.mockResolvedValue(mixed);
+  rpcMock.balanceSeries.mockResolvedValue({ range: "year", points: [] });
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountsPage source={source} />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+}
+const rows = () =>
+  [...container.querySelectorAll("tbody td.font-semibold")].map((td) => td.textContent);
+
+it("shows only the source's accounts, for cash and for cards", async () => {
+  await showSource("brex");
+  expect(rows().join(" ")).toContain("Brex Card");
+  expect(rows().join(" ")).not.toContain("Checking");
+  await showSource("mercury");
+  expect(rows().join(" ")).toContain("Checking");
+  expect(rows().join(" ")).not.toContain("Brex Card");
+});
+
+it("clears the filter from the chip near the title, and shows everything with no source", async () => {
+  await showSource("mercury");
+  const clear = container.querySelector('a[aria-label="Clear Mercury filter"]');
+  expect(clear?.textContent).toBe("Mercury ×");
+  expect(clear?.getAttribute("href")).toBe("/app/finance/accounts");
+  await showSource(null);
+  expect(container.querySelector('a[aria-label^="Clear"]')).toBeNull();
+  expect(rows().join(" ")).toContain("Checking");
+  expect(rows().join(" ")).toContain("Brex Card");
+});
+
+it("charts the year first and refetches when another range is chosen", async () => {
+  expect(rpcMock.balanceSeries).toHaveBeenCalledTimes(1);
+  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "year" });
+  const tab = (name: string) =>
+    [...container.querySelectorAll('[role="tab"]')].find((b) => b.textContent === name);
+  expect(tab("Year")?.getAttribute("aria-selected")).toBe("true");
+  await act(async () => (tab("Quarter") as HTMLElement).click());
+  await flush();
+  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "quarter" });
+  await act(async () => (tab("Week") as HTMLElement).click());
+  await flush();
+  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "week" });
+});
+
+it("reloads the chart after the crypto scope is saved", async () => {
+  rpcMock.setPreferences.mockResolvedValue({ runwayCrypto: "all" });
+  await act(async () => toggle()?.click());
+  await flush();
+  expect(rpcMock.balanceSeries).toHaveBeenCalledTimes(2);
+  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "year" });
 });
