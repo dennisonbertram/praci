@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rakazo Data room Mockup</title>
+<style>
+:root{
+  --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#b7791f; --success:#2f855a;
+  --bot:#e8743b; --ink2:#8a8a8a; --hl:rgba(183,121,31,.22); --scrim:rgba(250,250,250,.78);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323; --ink2:#7a7a7a; --scrim:rgba(15,15,15,.78);
+  }
+}
+:root[data-theme="dark"]{
+  --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+  --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+  --sidebar:#141414; --sidebar-accent:#232323; --ink2:#7a7a7a; --scrim:rgba(15,15,15,.78);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+button{font:inherit;color:inherit}
+svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app{display:grid;grid-template-columns:220px 1fr;height:100vh;min-height:640px}
+aside.left{background:var(--sidebar);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.search{margin:4px 4px 10px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--muted-fg);background:var(--card)}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px}
+.row.active{background:var(--sidebar-accent);font-weight:600}
+.row .count{margin-left:auto;font-size:11px;color:var(--muted-fg)}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+.label{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.icon{width:22px;height:22px;display:grid;place-items:center;flex:none}
+.icon svg{width:16px;height:16px}
+main{min-width:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+h1{font-size:18px;margin:0}
+.ib{border:0;background:transparent;color:var(--muted-fg);cursor:pointer;padding:4px 6px;border-radius:6px;display:grid;place-items:center}
+.ib:hover,.ib.on{background:var(--muted);color:var(--fg)}
+.btn{padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn.p{background:var(--primary);color:var(--primary-fg);border-color:var(--primary);font-weight:600}
+.btn:focus-visible,.ib:focus-visible,.trow:focus-visible,.fi:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.mute{color:var(--muted-fg)}
+.tag{font-size:10px;color:var(--muted-fg);border:1px solid var(--border);border-radius:999px;padding:0 7px;white-space:nowrap;display:inline-block}
+.chip{padding:3px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted-fg);font-size:12px;display:inline-flex;align-items:center;gap:6px;background:transparent;cursor:pointer}
+.chip.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.chip svg{width:10px;height:10px}
+
+/* page */
+.page{display:flex;flex-direction:column;flex:1;min-height:0}
+.head{display:flex;align-items:center;gap:12px;padding:16px 20px 10px}
+.sf{flex:1;max-width:460px;display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--card);border-radius:8px;padding:6px 10px;color:var(--muted-fg)}
+.sf .q{color:var(--fg)}
+.sf .caret{width:1px;height:14px;background:var(--fg);margin-left:-6px}
+.seg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-left:auto}
+.seg .ib{border-radius:0;padding:5px 8px}
+.facets{display:flex;gap:6px;padding:0 20px 10px;align-items:center;flex-wrap:wrap}
+.body{display:flex;flex:1;min-height:0;border-top:1px solid var(--border)}
+.tree{width:184px;flex:none;padding:10px 8px;border-right:1px solid var(--border);overflow:auto}
+.fi{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;cursor:pointer;color:var(--fg)}
+.fi:hover{background:var(--muted)}
+.fi.on{background:var(--sidebar-accent);font-weight:600}
+.fi .count{margin-left:auto;font-size:11px;color:var(--muted-fg);font-weight:400}
+.fi.l1{padding-left:26px}
+.fi svg{color:var(--muted-fg)}
+.list{flex:1;min-width:0;overflow:auto;padding:0 12px 56px}
+.trow{display:grid;grid-template-columns:minmax(0,1fr) 96px 64px 120px 28px 28px;gap:10px;align-items:center;padding:7px 8px;border-bottom:1px solid var(--border);cursor:pointer;position:relative}
+.trow.hd{cursor:default;font-size:11px;color:var(--muted-fg);padding:8px 8px 6px;position:sticky;top:0;background:var(--background);z-index:1}
+.list.cmp .trow{grid-template-columns:minmax(0,1fr) 84px 52px 24px 24px}
+.list.cmp .trow>:nth-child(4){display:none}
+.trow .span2{grid-column:span 2}
+.trow:not(.hd):hover{background:var(--muted)}
+.trow.sel{background:var(--sidebar-accent)}
+.nm{display:flex;align-items:center;gap:8px;min-width:0;font-weight:500}
+.nm span.t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nm svg{color:var(--muted-fg)}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.src{color:var(--muted-fg);display:grid;place-items:center}
+.kebab{opacity:0}
+.trow:hover .kebab,.trow.sel .kebab,.kebab.pin{opacity:1}
+.pend{height:2px;position:absolute;left:8px;right:8px;bottom:-1px;overflow:hidden;border-radius:2px;background:var(--muted)}
+.pend::after{content:"";position:absolute;inset:0;width:40%;background:var(--ink2);animation:sh 1.4s ease-in-out infinite}
+@keyframes sh{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+.spin{width:12px;height:12px;border:1.5px solid var(--border);border-top-color:var(--fg);border-radius:50%;animation:rot .8s linear infinite;flex:none}
+@keyframes rot{to{transform:rotate(360deg)}}
+.stat{display:flex;align-items:center;gap:6px;color:var(--muted-fg);font-size:12px}
+.fail{color:var(--destructive)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--destructive);flex:none}
+.trow.failed .nm span.t{color:var(--fg)}
+.menu{position:absolute;right:8px;top:100%;z-index:6;min-width:150px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.menu div{padding:5px 10px;border-radius:6px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.menu div:hover{background:var(--muted)}
+.menu .danger{color:var(--destructive)}
+.menu hr{border:0;border-top:1px solid var(--border);margin:4px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:12px 8px}
+.gc{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:8px;cursor:pointer}
+.gc.sel{border-color:var(--fg)}
+.gc .th{height:84px;background:var(--muted);border-radius:8px;display:grid;place-items:center;color:var(--muted-fg);margin-bottom:8px}
+.gc .th svg{width:22px;height:22px}
+
+/* right panels */
+aside.right{width:340px;flex:none;border-left:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;min-height:0;overflow:auto}
+.rhead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600}
+.rhead .ib{margin-left:auto}
+.pv{margin:14px;height:190px;border:1px solid var(--border);border-radius:8px;background:var(--muted);padding:16px 22px;display:flex;flex-direction:column;gap:7px}
+.pv i{display:block;height:5px;border-radius:3px;background:var(--border)}
+.pv i.h{height:8px;width:55%;background:var(--ink2);margin-bottom:6px}
+.pvb{padding:0 14px 14px;display:flex;flex-direction:column;gap:12px}
+.pvb h3{margin:0;font-size:14px;overflow-wrap:anywhere}
+.kv{display:grid;grid-template-columns:70px 1fr;gap:6px 10px;font-size:12px}
+.kv dt{color:var(--muted-fg)} .kv dd{margin:0;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.kv a,.pvb a{color:var(--fg);text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:2px}
+.rel{position:relative}
+
+/* search results */
+.res{padding:4px 8px}
+.rs{padding:12px 8px;border-bottom:1px solid var(--border)}
+.rs .top{display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:6px}
+.rs .meta{margin-left:auto;font-weight:400;font-size:11px;color:var(--muted-fg)}
+.sn{display:flex;gap:10px;padding:3px 0 3px 26px;color:var(--muted-fg)}
+.sn .cite{flex:none;width:76px;font-size:11px;padding-top:1px}
+.sn p{margin:0;color:var(--fg)}
+mark{background:var(--hl);color:inherit;border-radius:3px;padding:0 1px}
+.rcount{font-size:12px;color:var(--muted-fg);padding:8px 8px 0}
+
+/* agent */
+.thread{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.me{align-self:flex-end;background:var(--primary);color:var(--primary-fg);padding:8px 12px;border-radius:14px 14px 4px 14px;max-width:85%}
+.bot{max-width:96%}
+.cite-c{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:5px;border:1px solid var(--border);background:var(--muted);font-size:10px;font-weight:600;vertical-align:1px;margin:0 1px}
+.srcs{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.srcs div{display:flex;gap:8px;align-items:center;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:8px}
+.srcs b{font-weight:600}
+.notice{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted-fg)}
+.notice .av{width:18px;height:18px;font-size:10px}
+.notice b{color:var(--fg);font-weight:600}
+.notice .acts{margin-top:6px;display:flex;gap:6px}
+.notice .btn{padding:2px 9px;font-size:12px}
+.composer{margin:12px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--muted-fg)}
+
+/* drop */
+.chat{flex:1;display:flex;flex-direction:column;min-height:0}
+.chat .thread{padding:20px 14%}
+.chat .composer{margin:12px 14% 18px}
+.over{position:absolute;inset:0;z-index:20;background:var(--scrim);display:none;padding:14px}
+.over div{height:100%;border:2px dashed var(--fg);border-radius:16px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:16px;font-weight:600}
+.over svg{width:20px;height:20px}
+.toasts{position:absolute;right:20px;bottom:56px;z-index:21;display:none;flex-direction:column;gap:8px}
+.toast{width:280px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.14);font-size:12px}
+.toast .tt{display:flex;justify-content:space-between;gap:8px}
+.bar{height:3px;background:var(--muted);border-radius:2px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--fg)}
+.toast a{color:var(--fg);text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+.toast .ok{color:var(--success)}
+body[data-view="drop"][data-step="drag"] .over{display:block}
+body[data-view="drop"][data-step="up"] .toasts,body[data-view="drop"][data-step="done"] .toasts{display:flex}
+body[data-step="up"] .t-done,body[data-step="done"] .t-up{display:none}
+body[data-step="drag"] .toasts{display:none}
+
+/* empty */
+.empty{flex:1;display:flex;align-items:center;justify-content:center}
+.dz{width:480px;height:260px;border:1.5px dashed var(--ink2);border-radius:16px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.dz svg.big{width:26px;height:26px;color:var(--muted-fg)}
+.dz .t{font-size:15px;font-weight:600}
+
+/* switcher */
+.note{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted-fg);background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:999px;display:flex;gap:6px;z-index:50;white-space:nowrap;align-items:center}
+.note button{border:0;background:transparent;cursor:pointer;padding:2px 6px;border-radius:6px;color:var(--muted-fg)}
+.note button.on{color:var(--fg);font-weight:600;background:var(--muted)}
+.note .sep{border-left:1px solid var(--border);height:14px;margin:0 4px}
+.hide{display:none!important}
+.mainwrap{position:relative;min-width:0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+</style>
+</head>
+<body data-view="library" data-step="drag">
+<div class="app">
+  <aside class="left" aria-label="Navigation">
+    <div class="search">Search</div>
+    <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2 4.5h12v8H2zM2.5 5l5.5 4 5.5-4"/></svg></span>Inbox<span class="count">12</span></div>
+    <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2 13.5h12M4 11V7.5M8 11V3.5M12 11V6"/></svg></span>Finance</div>
+    <div class="row" id="nav-dr"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg></span>Data room</div>
+    <div class="label">Bots</div>
+    <div class="row"><span class="av" style="background:var(--bot)">I</span>Inbox agent</div>
+    <div class="row"><span class="av" style="background:#2f7f6f">D</span>Data room agent</div>
+    <div class="row" id="nav-ops"><span class="av" style="background:#3f9b8a">O</span>Ops</div>
+    <div class="row"><span class="av" style="background:#4a7bd0">R</span>Research</div>
+    <div style="flex:1"></div>
+    <div class="row mute"><span class="icon"><svg viewBox="0 0 16 16"><path d="M6 3H3.5v3.5H6zM12.5 3H10v3.5h2.5zM6 9.5H3.5V13H6zM12.5 9.5H10V13h2.5z"/></svg></span>Integrations</div>
+  </aside>
+  <div class="mainwrap" id="root"></div>
+</div>
+<div class="note" id="sw"></div>
+<script>
+(()=>{
+const ic={
+ folder:'<svg viewBox="0 0 16 16"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>',
+ doc:'<svg viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3M6 8.5h4M6 11h4"/></svg>',
+ upload:'<svg viewBox="0 0 16 16"><path d="M8 11V3M5 6l3-3 3 3M3 13h10"/></svg>',
+ drive:'<svg viewBox="0 0 16 16"><path d="M5.5 2.5h5l4 7-2.5 4h-8l-2.5-4zM5.5 2.5l4 7h5M9.5 9.5l-2.5 4"/></svg>',
+ mail:'<svg viewBox="0 0 16 16"><path d="M2 4.5h12v8H2zM2.5 5l5.5 4 5.5-4"/></svg>',
+ list:'<svg viewBox="0 0 16 16"><path d="M5 4h8M5 8h8M5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>',
+ grid:'<svg viewBox="0 0 16 16"><path d="M2.5 2.5h4.5v4.5H2.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5H2.5zM9 9h4.5v4.5H9z"/></svg>',
+ search:'<svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>',
+ more:'<svg viewBox="0 0 16 16"><path d="M3.5 8h.01M8 8h.01M12.5 8h.01"/></svg>',
+ x:'<svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+ chev:'<svg viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>',
+ chat:'<svg viewBox="0 0 16 16"><path d="M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z"/></svg>',
+ ext:'<svg viewBox="0 0 16 16"><path d="M9 3h4v4M13 3L7.5 8.5M11 9v4H3V5h4"/></svg>',
+ move:'<svg viewBox="0 0 16 16"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1zM6 9h5M9 7l2 2-2 2"/></svg>',
+ edit:'<svg viewBox="0 0 16 16"><path d="M10.5 3.5l2 2L6 12l-2.5.5L4 10z"/></svg>',
+ trash:'<svg viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 8.5h6l.5-8.5"/></svg>',
+ retry:'<svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg>',
+ side:'<svg viewBox="0 0 16 16"><path d="M2.5 3h11v10h-11zM10 3v10"/></svg>'
+};
+const SRC={upload:ic.upload,drive:ic.drive,gmail:ic.mail};
+const SRCN={upload:'Upload',drive:'Google Drive',gmail:'Gmail'};
+const TREE=[['Legal',14,0],['Contracts',9,1],['Finance',31,0],['Statements',18,1],['Receipts',13,1],['HR',8,0],['Investors',6,0],['Product',11,0]];
+const DOCS=[
+ {id:1,n:'Northwind HQ lease renewal 2027.pdf',t:'Contract',d:'Oct 3',p:['Northwind Labs','Harbor Property'],s:'drive',f:'Legal / Contracts',amt:'$24,000 / mo',tags:['lease','renewal','office'],sum:'Five-year renewal of the Harbor Street office. Rent rises 3% a year; either side may end the term with 90 days notice after year two.'},
+ {id:2,n:'Series A term sheet v3.pdf',t:'Contract',d:'Sep 28',p:['Northwind Labs','Cedar Capital'],s:'gmail',f:'Investors',amt:'$5,000,000',tags:['funding','term sheet'],sum:'Draft term sheet for a $5M Series A at a $20M pre-money valuation, with a 1x non-participating preference.'},
+ {id:3,n:'Checking statement Sep 2026.pdf',t:'Statement',d:'Sep 30',p:['Mercury'],s:'drive',f:'Finance / Statements',amt:'$118,400',tags:['bank','monthly'],sum:'Monthly checking statement. Closing balance $118,400.'},
+ {id:4,n:'Offer letter A. Rivera.pdf',t:'HR',d:'Sep 21',p:['A. Rivera','Northwind Labs'],s:'upload',f:'HR',amt:'$150,000',tags:['hire','offer'],sum:'Offer for a senior engineer. Base salary $150,000 with a standard equity grant.'},
+ {id:5,n:'Cloud invoice 4471.pdf',t:'Receipt',d:'Sep 18',p:['Skyline Cloud'],s:'gmail',f:'Finance / Receipts',amt:'$3,200',tags:['hosting'],sum:'September hosting invoice for production servers.'},
+ {id:6,n:'Mutual NDA Orchid Partners.pdf',t:'Contract',d:'Aug 30',p:['Northwind Labs','Orchid Partners'],s:'upload',f:'Legal / Contracts',amt:'',tags:['nda'],sum:'Two-way confidentiality agreement with a three-year term.'},
+ {id:7,n:'Roadmap Q4 2026.md',t:'Note',d:'Aug 12',p:['Northwind Labs'],s:'drive',f:'Product',amt:'',tags:['roadmap','planning'],sum:'Priorities for the fourth quarter: onboarding, billing and the mobile app.'},
+ {id:8,n:'Cap table Oct 2026.csv',t:'Spreadsheet',d:'Oct 1',p:['Northwind Labs'],s:'drive',f:'Investors',amt:'',tags:['equity'],sum:'Current ownership by holder, including the option pool.'}
+];
+const PROC=[
+ {n:'scan_0192.pdf',st:'Reading',s:'upload'},
+ {n:'Vendor agreement Maple Co.pdf',st:'Filing',s:'drive'},
+ {n:'Receipt Sep 14.jpg',st:'Pending',s:'gmail'}
+];
+const FAILED={n:'Board minutes Q2.pdf',s:'drive',err:'Could not read this file'};
+
+const $=s=>document.querySelector(s);
+const root=$('#root');
+const chip=(l,on,x)=>`<button class="chip ${on?'on':''}" aria-label="${x?'Remove filter '+l:'Filter by '+l}">${l}${x?ic.x:ic.chev}</button>`;
+const fi=(l,n,lv,on)=>`<div class="fi ${lv?'l1':''} ${on?'on':''}" tabindex="0">${lv?'':ic.folder}${l}<span class="count">${n}</span></div>`;
+const tree=(on)=>`<div class="tree" role="navigation" aria-label="Folders">${fi('All items',82,0,on==='all')}${TREE.map(([l,n,lv])=>fi(l,n,lv,on===l)).join('')}</div>`;
+const sicon=s=>`<span class="src" title="${SRCN[s]}" aria-label="${SRCN[s]}">${SRC[s]}</span>`;
+const kebab=(pin)=>`<button class="ib kebab ${pin?'pin':''}" aria-label="More actions">${ic.more}</button>`;
+const menu=(items)=>`<div class="menu" role="menu">${items.map(i=>i==='-'?'<hr>':`<div role="menuitem" class="${i[2]||''}">${i[0]}${i[1]}</div>`).join('')}</div>`;
+const hd=`<div class="trow hd"><span>Name</span><span>Type</span><span>Date</span><span>Parties</span><span></span><span></span></div>`;
+const row=(d,sel)=>`<div class="trow ${sel?'sel':''}" tabindex="0" data-id="${d.id}"><span class="nm">${ic.doc}<span class="t">${d.n}</span></span><span class="mute">${d.t}</span><span class="mute">${d.d}</span><span class="ell mute" title="${d.p.join(', ')}">${d.p.join(', ')}</span>${sicon(d.s)}${kebab()}</div>`;
+const procRow=p=>`<div class="trow" tabindex="0"><span class="nm">${ic.doc}<span class="t mute">${p.n}</span></span><span class="stat"><span class="spin"></span>${p.st}</span><span></span><span></span>${sicon(p.s)}<span></span><div class="pend"></div></div>`;
+const failRow=(open)=>`<div class="trow failed" tabindex="0"><span class="nm"><span class="dot" aria-hidden="true"></span><span class="t">${FAILED.n}</span></span><span class="stat fail">Failed</span><span class="mute ell span2">${FAILED.err}</span>${sicon(FAILED.s)}${kebab(open)}${open?menu([[ic.retry,'Retry'],[ic.edit,'Rename'],'-',[ic.trash,'Delete','danger']]):''}</div>`;
+
+function header(q,viewMode){
+ return `<div class="head"><h1>Data room</h1>
+  <div class="sf" role="search">${ic.search}${q?`<span class="q">${q}</span><span class="caret"></span>`:'<span>Search documents</span>'}</div>
+  <div class="seg" role="group" aria-label="View"><button class="ib ${viewMode!=='grid'?'on':''}" aria-label="List view">${ic.list}</button><button class="ib ${viewMode==='grid'?'on':''}" aria-label="Grid view">${ic.grid}</button></div>
+  <button class="btn p" data-go="agent">${ic.chat}Ask agent</button></div>`;
+}
+const fac=(a)=>`<div class="facets">${[['Type',a.type],['Party',a.party],['Date',a.date],['Source',a.source]].map(([l,v])=>chip(v?`${l}: ${v}`:l,!!v,!!v)).join('')}</div>`;
+
+function preview(d){
+ return `<aside class="right" aria-label="Preview"><div class="rhead">${ic.doc}<span class="ell">Preview</span>
+  <div class="rel" style="margin-left:auto;display:flex;gap:2px"><button class="ib" aria-label="More actions" id="pvmore">${ic.more}</button><button class="ib" aria-label="Close preview" id="pvx">${ic.x}</button>
+  <div class="menu hide" id="pvmenu" style="top:100%;right:0">${[[ic.move,'Move'],[ic.edit,'Rename'],'-',[ic.trash,'Delete','danger']].map(i=>i==='-'?'<hr>':`<div role="menuitem" class="${i[2]||''}">${i[0]}${i[1]}</div>`).join('')}</div></div></div>
+  <div class="pv" aria-label="Document preview"><i class="h"></i><i></i><i></i><i style="width:88%"></i><i></i><i style="width:70%"></i><i></i><i style="width:80%"></i><i style="width:40%"></i></div>
+  <div class="pvb"><h3>${d.n}</h3><p style="margin:0">${d.sum}</p>
+  <dl class="kv"><dt>Type</dt><dd>${d.t}</dd><dt>Date</dt><dd>${d.d}, 2026</dd><dt>Parties</dt><dd>${d.p.map(p=>`<span class="tag">${p}</span>`).join('')}</dd>${d.amt?`<dt>Amount</dt><dd>${d.amt}</dd>`:''}<dt>Tags</dt><dd>${d.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</dd><dt>Folder</dt><dd>${d.f}</dd><dt>Source</dt><dd><a href="#" onclick="return false">${SRCN[d.s]}</a> ${ic.ext}</dd></dl></div></aside>`;
+}
+
+let sel=1,mode='list',pvOpen=true,menuOpen=false;
+function library(){
+ const d=DOCS.find(x=>x.id===sel);
+ const lst=mode==='grid'
+  ?`<div class="grid">${DOCS.map(x=>`<div class="gc ${x.id===sel&&pvOpen?'sel':''}" tabindex="0" data-id="${x.id}"><div class="th">${ic.doc}</div><div class="ell" style="font-weight:500">${x.n}</div><div class="mute" style="font-size:11px">${x.t} · ${x.d}</div></div>`).join('')}</div>`
+  :hd+DOCS.map(x=>row(x,x.id===sel&&pvOpen)).join('');
+ return `<div class="page">${header('',mode)}${fac({})}<div class="body">${tree('Legal'==='x'?'':'all')}<div class="list ${pvOpen?'cmp':''}">${lst}</div>${pvOpen?preview(d):''}</div></div>`;
+}
+function states(){
+ return `<div class="page">${header('')}${fac({})}<div class="body">${tree('all')}<div class="list">${hd}${PROC.map(procRow).join('')}${failRow(true)}${DOCS.slice(0,3).map(x=>row(x,false)).join('')}</div></div></div>`;
+}
+function results(){
+ const R=[
+  {d:DOCS[0],m:'3 matches',sn:[['p. 4, §3.2','Either party may end the term by giving <mark>90 days</mark> written notice after the second year. The <mark>renewal</mark> <mark>terms</mark> apply from January 1, 2027.'],['p. 7, §5.1','Base rent for the <mark>renewal</mark> period is $24,000 per month, rising 3% each year.']]},
+  {d:{...DOCS[5],n:'Harbor Property side letter.pdf',s:'gmail',f:'Legal / Contracts'},m:'1 match',sn:[['p. 1, ¶2','Harbor Property agrees to hold the <mark>lease</mark> <mark>renewal</mark> offer open until November 15.']]},
+  {d:{...DOCS[1],n:'Board update Sep 2026.md',s:'drive',f:'Investors'},m:'1 match',sn:[['§ Facilities','We expect to sign the office <mark>lease renewal</mark> this quarter on the <mark>terms</mark> described above.']]}
+ ];
+ return `<div class="page">${header('lease renewal terms','list')}${fac({type:'Contract',party:'Harbor Property',date:'',source:''})}<div class="body">${tree('all')}<div class="list"><div class="rcount">3 documents</div><div class="res">${R.map(r=>`<div class="rs"><div class="top">${ic.doc}<span>${r.d.n}</span><span class="meta">${r.d.f} · ${SRCN[r.d.s]}</span></div>${r.sn.map(s=>`<div class="sn"><span class="cite">${s[0]}</span><p>${s[1]}</p></div>`).join('')}</div>`).join('')}</div></div></div></div>`;
+}
+function agent(){
+ return `<div class="page">${header('')}${fac({})}<div class="body">${tree('all')}<div class="list cmp">${hd}${DOCS.map(x=>row(x,false)).join('')}</div>
+ <aside class="right" style="width:380px" aria-label="Data room agent"><div class="rhead"><span class="av" style="background:#2f7f6f">D</span>Data room agent<button class="ib" aria-label="Collapse panel">${ic.side}</button></div>
+  <div class="thread">
+   <div class="notice"><span class="av" style="background:#2f7f6f">D</span><div><b>Moved</b> Mutual NDA Orchid Partners.pdf to Legal / Contracts.<div class="acts"><button class="btn">Undo</button></div></div></div>
+   <div class="me">When can we end the office lease early?</div>
+   <div class="bot">After the second year, with <b>90 days</b> written notice<span class="cite-c">1</span>. A side letter keeps the renewal offer open until <b>Nov 15</b><span class="cite-c">2</span>.
+    <div class="srcs"><div><span class="cite-c">1</span>${ic.doc}<b class="ell">Northwind HQ lease renewal 2027.pdf</b><span class="mute" style="margin-left:auto;white-space:nowrap">p. 4</span></div><div><span class="cite-c">2</span>${ic.doc}<b class="ell">Harbor Property side letter.pdf</b><span class="mute" style="margin-left:auto;white-space:nowrap">p. 1</span></div></div></div>
+   <div class="notice"><span class="av" style="background:#2f7f6f">D</span><div><b>Duplicate</b> Checking statement Sep 2026 (1).pdf matches Checking statement Sep 2026.pdf.<div class="acts"><button class="btn">Delete copy</button><button class="btn">Keep both</button></div></div></div>
+  </div><div class="composer">Ask about your documents…</div></aside></div></div>`;
+}
+function empty(){
+ return `<div class="page"><div class="head"><h1>Data room</h1></div><div class="empty"><div class="dz">${ic.upload.replace('<svg','<svg class="big"')}<div class="t">Drop files here</div><div style="display:flex;gap:8px"><button class="btn p">Choose files</button><button class="btn">Connect Google Drive</button></div></div></div></div>`;
+}
+function drop(){
+ return `<div class="chat"><div class="head"><span class="av" style="background:#3f9b8a">O</span><h1>Ops</h1></div><div class="thread">
+  <div class="me">Can you draft a summary of this week's vendor spend?</div>
+  <div class="bot">Vendor spend was <b>$18,300</b> this week, up 6% from last week. Hosting and software make up most of it.</div>
+  <div class="me">Thanks. Pull anything unusual.</div>
+  <div class="bot">Nothing unusual. The largest single charge was <b>$3,200</b> from Skyline Cloud, which matches last month.</div></div>
+  <div class="composer">Message Ops…</div>
+  <div class="over"><div>${ic.upload}Drop to add to Data room</div></div>
+  <div class="toasts"><div class="toast t-up"><div class="tt"><span class="ell">Mutual NDA Orchid Partners.pdf</span><span class="mute">62%</span></div><div class="bar"><i style="width:62%"></i></div></div>
+  <div class="toast t-done"><div class="tt"><span class="ok">Filed in Legal / Contracts</span><a href="#" onclick="return false">View</a></div></div></div></div>`;
+}
+const V={library,results,drop,states,agent,empty};
+const NAMES={library:'Data room',results:'Search',drop:'Drop',states:'States',agent:'Agent',empty:'Empty'};
+function render(){
+ const v=document.body.dataset.view;
+ root.innerHTML=V[v]();
+ $('#nav-dr').classList.toggle('active',v!=='drop');
+ $('#nav-ops').classList.toggle('active',v==='drop');
+ $('#nav-dr').style.fontWeight=v!=='drop'?'600':'';
+ sw();
+ root.querySelectorAll('[data-id]').forEach(e=>e.onclick=()=>{const id=+e.dataset.id;if(sel===id&&pvOpen)pvOpen=false;else{sel=id;pvOpen=true}render()});
+ root.querySelectorAll('[data-id]').forEach(e=>e.onkeydown=k=>{if(k.key==='Enter')e.click()});
+ root.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>go(e.dataset.go));
+ root.querySelectorAll('.seg .ib').forEach((b,i)=>b.onclick=()=>{mode=i?'grid':'list';render()});
+ const x=$('#pvx');if(x)x.onclick=()=>{pvOpen=false;render()};
+ const m=$('#pvmore');if(m)m.onclick=()=>$('#pvmenu').classList.toggle('hide');
+}
+function go(v){document.body.dataset.view=v;render()}
+function sw(){
+ const v=document.body.dataset.view,s=document.body.dataset.step;
+ $('#sw').innerHTML=Object.keys(V).map(k=>`<button data-v="${k}" class="${k===v?'on':''}">${NAMES[k]}</button>`).join('')
+  +(v==='drop'?`<span class="sep"></span>${[['drag','Dragging'],['up','Uploading'],['done','Filed']].map(([k,l])=>`<button data-s="${k}" class="${k===s?'on':''}">${l}</button>`).join('')}`:'')
+  +`<span class="sep"></span><button data-t="1">Theme</button><span>· sample data</span>`;
+ $('#sw').querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>go(b.dataset.v));
+ $('#sw').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{document.body.dataset.step=b.dataset.s;sw()});
+ $('#sw [data-t]').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=dark?'light':'dark'};
+}
+const h=location.hash.slice(1).split('/');if(V[h[0]])document.body.dataset.view=h[0];if(h[1])document.body.dataset.step=h[1];
+if(new URLSearchParams(location.search).get('theme'))document.documentElement.dataset.theme=new URLSearchParams(location.search).get('theme');
+render();
+})();
+</script>
+</body>
+</html>

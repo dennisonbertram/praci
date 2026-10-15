@@ -154,6 +154,8 @@ Latency target: TBD, set and measured once real-sized synthetic data exists.
 
 ## Surfaces
 
+Design: [mockup.html](mockup.html) (sample data only).
+
 - **Drop anywhere.** A drop zone over the whole web and Electron app shell. Dropped
   files upload to the current space's Data room and show progress in a toast that
   links to the filed item. Size cap TBD (the chat attachment cap of 10 MB is too
