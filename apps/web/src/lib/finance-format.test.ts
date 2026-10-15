@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   axisMoney,
   changeText,
+  dayAxisLabels,
   fullDay,
   money,
   moneyExact,
+  monthAxisLabels,
   monthFull,
   monthLabel,
   monthShort,
@@ -70,5 +72,34 @@ describe("finance formatting", () => {
       ]),
     ).toBe("Brex · 2 cards: ••0003, ••0004");
     expect(paidWithLabel([])).toBe("");
+  });
+});
+
+describe("axis labels", () => {
+  it("puts the year on the first month and on every January", () => {
+    expect(monthAxisLabels(["2025-11", "2025-12", "2026-01", "2026-02", "2026-03"], en)).toEqual([
+      "Nov '25",
+      "Dec",
+      "Jan '26",
+      "Feb",
+      "Mar",
+    ]);
+  });
+
+  it("marks the first month even inside one year", () => {
+    expect(monthAxisLabels(["2026-02", "2026-03"], en)).toEqual(["Feb '26", "Mar"]);
+  });
+
+  it("shows short dates, with no year inside one year", () => {
+    expect(dayAxisLabels(["2026-10-09", "2026-10-10"], en)).toEqual(["Oct 9", "Oct 10"]);
+  });
+
+  it("adds the year at the start and at a new year when the range crosses one", () => {
+    expect(dayAxisLabels(["2025-12-30", "2025-12-31", "2026-01-01", "2026-01-02"], en)).toEqual([
+      "Dec 30 '25",
+      "Dec 31",
+      "Jan 1 '26",
+      "Jan 2",
+    ]);
   });
 });

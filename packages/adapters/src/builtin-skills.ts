@@ -65,6 +65,7 @@ Use the steps below for history questions: mail older than two weeks, a person, 
 
 Rules for every finance answer:
 - Use the finance_* tools first. They read the user's synced Mercury and Brex data in one fast call and give the same numbers as the Finance page, with transfers between the user's own accounts and Brex card payments already left out so nothing is counted twice. Use the Mercury and Brex tools (such as Mercury getTransaction and listTransactions, Brex get_expense_by_id and list_bills) only for details the sync does not have: receipts, memos, cards, bills, or a charge from the last few minutes.
+- If finance_overview lists statementsDue, tell the user once, briefly, which monthly statements to upload.
 - Compute totals, averages and percentages with code, never in your head. Do not add up rows by hand.
 - Say which accounts and dates you used.
 
@@ -86,9 +87,10 @@ Rules for every finance answer:
     body: `Use this when the user asks about their crypto: what they hold, what it is worth, how it is spread across wallets or chains, or what changed. You only read and report. All crypto tools are read-only: never move, swap, approve or send funds, and say so if asked to.
 
 - Call finance_crypto first. It reads the synced wallet balances in one call and matches the Crypto page: total value, value by chain and wallet, each wallet's top holdings, tokens without a price, and when it last synced. Use the Blockscout tools (such as get_address_info, get_tokens_by_address and read_contract) only for details it does not have, such as a fresh balance, a token's contract, or a Safe's owners.
-- Crypto is valued at DefiLlama prices in US dollars, and holdings come from a curated token list, so tokens outside it are not shown. Those are indicative, not what a sale would fetch. Say when the data is old (lastSyncedAt).
+- Crypto is valued in US dollars, and holdings come from Alchemy when the user has connected it (every token the wallet holds, priced by Alchemy then DefiLlama), otherwise from a curated token list priced by DefiLlama, so tokens outside that list are not shown. Those are indicative, not what a sale would fetch. Say when the data is old (lastSyncedAt).
 - What counts as cash follows the runway scope the user saved: bank only, plus stablecoins (USDC, USDT, DAI at their canonical contracts), or plus all priced crypto. finance_overview reports it as cash.runwayCrypto, and its cash and runway already use it, so do not add crypto again. Crypto never affects burn. If a scenario needs a different scope or a sale (for example, "if I sold half of it"), state the assumption.
 - Holdings with a null usd have no price, often spam or dust tokens. They are not in the total; report how many there are instead of guessing a value.
+- finance_crypto also lists Coinbase and Kraken balances under exchanges (read-only API-key balances; USD and USD stablecoins there count as stablecoins).
 - Compute totals, shares and changes with code, never in your head.
 - For suspicious tokens or lookalike addresses, follow crypto-scams.
 - Answer with the total, the largest wallets, chains and holdings, and what you could not tell (unpriced tokens, a stale sync, chains that failed).`,

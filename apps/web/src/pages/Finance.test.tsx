@@ -29,6 +29,7 @@ vi.mock("@lingui/react/macro", () => ({
 
 const rpcMock = vi.hoisted(() => ({
   overview: vi.fn(),
+  exchanges: vi.fn(),
   refresh: vi.fn(),
   vendor: vi.fn(),
   spend: vi.fn(),
@@ -153,6 +154,7 @@ const emptyOverview = (): FinanceOverview =>
       { provider: "mercury", serverId: null, status: "not_connected", lastSyncedAt: null },
       { provider: "brex", serverId: null, status: "not_connected", lastSyncedAt: null },
     ],
+    hasCashAccounts: false,
     lastSyncedAt: null,
   });
 
@@ -188,19 +190,45 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
-it("shows one Connect accounts link to Integrations when nothing is connected", async () => {
+it("offers Add account when nothing is connected, opening the dialog with Upload statements", async () => {
   rpcMock.overview.mockResolvedValue(emptyOverview());
+  rpcMock.exchanges.mockResolvedValue([]);
   await show("/app/finance");
-  expect(container.textContent).toContain(
-    "Connect Mercury, Brex or both to see cash, burn, runway and spend.",
-  );
+  expect(container.textContent).toContain("Add an account to see cash, burn, runway and spend.");
   expect(container.querySelectorAll('[data-testid="app-logo"]').length).toBe(2);
-  const link = [...container.querySelectorAll("a")].find(
-    (a) => a.textContent === "Connect accounts",
-  );
-  expect(link?.getAttribute("href")).toBe("/app/integrations?category=finance");
   expect(container.textContent).not.toContain("Ask agent");
+  const add = button("Add account");
+  await act(async () => add?.click());
+  await flush();
+  const dialog = document.body.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("Upload statements");
+  expect(dialog?.textContent).toContain("Wallet");
   expect(rpcMock.connect).not.toHaveBeenCalled();
+});
+
+it("shows the dashboard, not the connect prompt, for a user with only statement accounts", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...emptyOverview(),
+    hasCashAccounts: true,
+    lastSyncedAt: null,
+    statementReminders: [
+      {
+        accountId: "a1",
+        accountName: "Example Bank ••1234",
+        coveredThrough: "2026-09-30",
+        dueFor: "2026-10-31",
+      },
+    ],
+  });
+  await show("/app/finance");
+  await flush();
+  expect(container.textContent).not.toContain("Add an account to see");
+  expect(container.textContent).toContain("Upload the October statement for Example Bank ••1234");
+  expect(rpcMock.refresh).not.toHaveBeenCalled();
+  await act(async () => button("Upload")?.click());
+  const dialog = document.body.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("Upload statements");
+  expect(dialog?.querySelector('input[type="file"]')).not.toBeNull();
 });
 
 it("notes non-USD transactions only when some are left out", async () => {
@@ -230,6 +258,24 @@ it("sends the Reconnect chip to Integrations instead of connecting", async () =>
   const chip = container.querySelector('a[aria-label="Reconnect Mercury"]');
   expect(chip?.getAttribute("href")).toBe("/app/integrations?category=finance");
   expect(rpcMock.connect).not.toHaveBeenCalled();
+});
+
+it("links each source chip to Accounts filtered to that source", async () => {
+  const base = connectedOverview();
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    sources: base.sources.map((s) => ({ ...s, status: "ok" as const, serverId: "s" })),
+  });
+  await show("/app/finance");
+  await flush();
+  const hrefs = [...container.querySelectorAll('a[aria-label$=" accounts"]')].map((a) => [
+    a.getAttribute("aria-label"),
+    a.getAttribute("href"),
+  ]);
+  expect(hrefs).toEqual([
+    ["Mercury accounts", "/app/finance/accounts?source=mercury"],
+    ["Brex accounts", "/app/finance/accounts?source=brex"],
+  ]);
 });
 
 it("links the header to Accounts and offers Add Brex when only Mercury is connected", async () => {

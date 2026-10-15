@@ -5,11 +5,27 @@ describe("parseFinanceRoute", () => {
   it("reads the dashboard and the list pages", () => {
     expect(parseFinanceRoute("/app/finance")).toEqual({ page: "dashboard" });
     expect(parseFinanceRoute("/app/finance/")).toEqual({ page: "dashboard" });
-    expect(parseFinanceRoute("/app/finance/accounts")).toEqual({ page: "accounts" });
+    expect(parseFinanceRoute("/app/finance/accounts")).toEqual({
+      page: "accounts",
+      source: null,
+    });
     expect(parseFinanceRoute("/app/finance/burn")).toEqual({ page: "burn" });
     expect(parseFinanceRoute("/app/finance/runway")).toEqual({ page: "runway" });
     expect(parseFinanceRoute(financePath.crypto())).toEqual({ page: "crypto" });
     expect(parseFinanceRoute("/app/finance/crypto/x")).toEqual({ page: "not-found" });
+  });
+
+  it("builds and reads the accounts source filter, ignoring unknown sources", () => {
+    expect(financePath.accounts()).toBe("/app/finance/accounts");
+    expect(financePath.accounts("brex")).toBe("/app/finance/accounts?source=brex");
+    expect(parseFinanceRoute("/app/finance/accounts", "?source=mercury")).toEqual({
+      page: "accounts",
+      source: "mercury",
+    });
+    expect(parseFinanceRoute("/app/finance/accounts", "?source=plaid")).toEqual({
+      page: "accounts",
+      source: null,
+    });
   });
 
   it("round-trips every detail path it builds", () => {

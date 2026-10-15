@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  balanceGrid,
   balanceHistory,
   breakdown,
+  cashAtDays,
   cashHistory,
   cashSeries,
   cashSummary,
@@ -512,6 +514,74 @@ describe("cashHistory", () => {
     );
     expect(history.find((p) => p.month === "2026-08")?.balanceCents).toBe(100_000);
     expect(history.at(-1)?.balanceCents).toBe(100_000);
+  });
+});
+
+describe("balanceGrid", () => {
+  it("plots 7 or 30 daily points ending today, UTC", () => {
+    const week = balanceGrid("week", NOW);
+    expect(week).toHaveLength(7);
+    expect([week[0], week[6]]).toEqual(["2026-10-08", "2026-10-14"]);
+    const month = balanceGrid("month", NOW);
+    expect(month).toHaveLength(30);
+    expect([month[0], month[29]]).toEqual(["2026-09-15", "2026-10-14"]);
+    // The 30 days cross a month boundary and a leap-free February.
+    expect(balanceGrid("month", new Date("2026-03-05T01:00:00Z"))[0]).toBe("2026-02-04");
+  });
+  it("plots 13 weekly points back from today", () => {
+    const quarter = balanceGrid("quarter", NOW);
+    expect(quarter).toHaveLength(13);
+    expect([quarter[0], quarter[1], quarter[12]]).toEqual([
+      "2026-07-22",
+      "2026-07-29",
+      "2026-10-14",
+    ]);
+  });
+  it("plots 11 month-ends plus today, across the year change", () => {
+    const year = balanceGrid("year", NOW);
+    expect(year).toHaveLength(12);
+    expect([year[0], year[10], year[11]]).toEqual(["2025-11-30", "2026-09-30", "2026-10-14"]);
+    expect(year.slice(0, 3)).toEqual(["2025-11-30", "2025-12-31", "2026-01-31"]);
+    const early = balanceGrid("year", new Date("2026-01-10T00:00:00Z"));
+    expect(early[0]).toBe("2025-02-28");
+    expect(early.slice(-3)).toEqual(["2025-11-30", "2025-12-31", "2026-01-10"]);
+  });
+});
+
+describe("cashAtDays", () => {
+  const checking = account({ balanceCents: 90_000 });
+  const treasury = account({
+    id: "a2",
+    externalId: "acct-treasury",
+    kind: "treasury",
+    balanceCents: 10_000,
+  });
+  const txns = [
+    txn("2026-10-12", -20), // spent: undone before the 12th
+    txn("2026-10-10", 50, "Client", as("revenue")),
+    txn("2026-10-11", -100, "Treasury", as("internal_transfer")),
+    txn("2026-10-09", -5, "Failed", { status: "other" }),
+  ];
+  it("undoes later transactions per day, skipping internal transfers and failed ones", () => {
+    expect(
+      cashAtDays(
+        [checking, treasury],
+        txns,
+        ["2026-10-14", "2026-10-12", "2026-10-11", "2026-10-09"],
+        NOW,
+      ),
+    ).toEqual([100_000, 100_000, 102_000, 97_000]);
+  });
+  it("leaves out cards and is zero without cash accounts", () => {
+    const card = account({ id: "a3", externalId: "card", kind: "card", balanceCents: 5_000 });
+    expect(cashAtDays([card], txns, ["2026-10-14"], NOW)).toEqual([0]);
+    expect(cashAtDays([], txns, ["2026-10-14"], NOW)).toEqual([0]);
+  });
+  it("matches cashHistory at the month ends", () => {
+    const months = cashHistory([checking, treasury], txns, NOW);
+    const days = balanceGrid("year", NOW);
+    const values = cashAtDays([checking, treasury], txns, days, NOW);
+    expect(values).toEqual(months.map((m) => m.balanceCents));
   });
 });
 

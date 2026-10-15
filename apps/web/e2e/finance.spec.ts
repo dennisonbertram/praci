@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import {
+  balanceSeriesOf,
   connectedOverview,
   cryptoData,
   cryptoHistoryData,
@@ -28,6 +29,7 @@ async function mockFinance(page: Page, overview = connectedOverview) {
       overview,
       refresh: { ok: true },
       preferences: { runwayCrypto: "bank" },
+      balanceSeries: balanceSeriesOf(String(input?.range)),
       vendor,
       transaction: transactionOf(String(input?.id)),
       receiptUrl: { url: "https://files.example.test/receipt.png", mimeType: "image/png" },
@@ -144,20 +146,17 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect.poll(() => calls.filter((c) => c === "refresh").length).toBeGreaterThan(1);
 });
 
-test("Finance with nothing connected links to Integrations", async ({ page }, testInfo) => {
+test("Finance with nothing connected offers Add account", async ({ page }, testInfo) => {
   await mockFinance(page, emptyOverview);
   await signup(page, `finance-empty-${Date.now()}@rakazo.test`, "password12", "Finance Empty");
   await completeOnboarding(page);
   await page.getByTestId("sidebar-finance").click();
   const main = page.getByRole("main");
-  await expect(
-    main.getByText("Connect Mercury, Brex or both to see cash, burn, runway and spend."),
-  ).toBeVisible();
+  await expect(main.getByText("Add an account to see cash, burn, runway and spend.")).toBeVisible();
   await expect(main.getByRole("button", { name: "Ask agent" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "finance-empty");
-  await main.getByRole("link", { name: "Connect accounts" }).click();
-  await expect(page).toHaveURL(/\/app\/integrations\?category=finance$/);
-  await expect(page.getByTestId("finance-section")).toBeVisible();
+  await main.getByRole("button", { name: "Add account" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Upload statements");
 });
 
 test("Finance fits a phone and works in dark mode", async ({ page }, testInfo) => {
@@ -293,14 +292,21 @@ test("Finance Accounts lists wallets apart from cash and adds one from the menu"
   await expect(main.getByText("Mercury Checking")).toBeVisible();
   await expect(main.getByRole("heading", { name: "Crypto" })).toBeVisible();
   await expect(main.getByRole("button", { name: "Count crypto" })).toBeVisible();
+  await expect(main.getByRole("img", { name: "Total balance" })).toBeVisible();
+  const quarterRequest = page.waitForRequest(
+    (r) => r.url().includes("/rpc/finance/balanceSeries") && !!r.postData()?.includes("quarter"),
+  );
+  await main.getByRole("tab", { name: "Quarter" }).click();
+  await quarterRequest;
   await expect(main.locator('a[href="/app/finance/crypto"]').first()).toHaveText("Treasury");
   await expect(main.getByText("$75,000", { exact: true }).first()).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-accounts-crypto-group");
 
   await main.getByRole("button", { name: "Add account" }).click();
-  await expect(page.getByRole("menuitem")).toHaveText(["Crypto wallet"]);
+  const options = page.getByRole("dialog");
+  await expect(options).toContainText("Upload statements");
   await captureScreenshot(page, testInfo, "finance-accounts-add-menu");
-  await page.getByRole("menuitem", { name: "Crypto wallet" }).click();
+  await options.getByRole("button", { name: /^Wallet/ }).click();
   await expect(page.getByRole("dialog")).toContainText("Add wallet");
   await captureScreenshot(page, testInfo, "finance-accounts-add-wallet");
 });
@@ -404,8 +410,5 @@ test("Finance runway shows crypto and switches what counts", async ({ page }) =>
   );
   await main.getByRole("button", { name: "Count crypto" }).click();
   await expect(main.getByText("$98,000", { exact: true })).toBeVisible();
-  await expect(main.getByRole("button", { name: "Counting crypto" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(main.getByRole("button", { name: "Counting all crypto" })).toBeVisible();
 });

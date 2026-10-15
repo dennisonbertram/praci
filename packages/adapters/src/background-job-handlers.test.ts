@@ -9,6 +9,7 @@ import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { describe, expect, it, vi } from "vitest";
 import { createBackgroundJobHandlers } from "./background-job-handlers.js";
+import { syncExchanges } from "./exchange-sync.js";
 import { createRunExecutor } from "./executor.js";
 import { syncFinanceForUser } from "./finance-sync.js";
 import { compactHistory } from "./history-compaction.js";
@@ -21,6 +22,7 @@ vi.mock("./history-compaction.js", () => ({ compactHistory: vi.fn(async () => un
 vi.mock("./rpc-crypto-sync.js", () => ({
   syncCryptoHoldings: vi.fn(async () => ({ ok: true })),
 }));
+vi.mock("./exchange-sync.js", () => ({ syncExchanges: vi.fn(async () => []) }));
 vi.mock("./finance-sync.js", () => ({ syncFinanceForUser: vi.fn(async () => ({})) }));
 vi.mock("./inbox-triage.js", () => ({ runInboxTriage: vi.fn(async () => undefined) }));
 vi.mock("./messaging-delivery.js", () => ({
@@ -53,7 +55,11 @@ describe("createBackgroundJobHandlers", () => {
       { spaceId: "space-1", userId: "user-1" },
     );
     expect(syncCryptoHoldings).toHaveBeenCalledWith(
-      { prisma: base.prisma },
+      { prisma: base.prisma, secrets: base.secretStore },
+      { spaceId: "space-1", userId: "user-1" },
+    );
+    expect(syncExchanges).toHaveBeenCalledWith(
+      { prisma: base.prisma, secrets: base.secretStore },
       { spaceId: "space-1", userId: "user-1" },
     );
   });

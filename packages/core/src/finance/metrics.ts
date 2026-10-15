@@ -1,6 +1,7 @@
 // Pure finance calculations. Every dashboard and detail number comes from here, on synthetic-testable
 // inputs; nothing reads the database or the clock (callers pass `now`). All dates are UTC calendar days.
 // Money is whole cents. Transactions with status "other" (failed, cancelled, reversed) never count.
+import type { BalanceRange } from "@rakazo/contracts";
 import type {
   BalancePoint,
   BreakdownMode,
@@ -478,6 +479,54 @@ export function cashHistory(
   return [...totals]
     .map(([month, balanceCents]) => ({ month, balanceCents }))
     .sort((a, b) => a.month.localeCompare(b.month));
+}
+
+/**
+ * Total bank cash at the end of each of `days` (UTC, any order), built like `cashHistory`: from the
+ * current balances, undoing every counted transaction posted after that day, internal transfers
+ * left out. A day on or after today is the current balance.
+ */
+export function cashAtDays(
+  accounts: FinanceAccount[],
+  txns: FinanceTransaction[],
+  days: Day[],
+  now: Date,
+): number[] {
+  const today = dayOf(now.toISOString());
+  const external = txns.filter((t) => t.classification !== "internal_transfer" && counts(t));
+  return days.map((day) => {
+    let total = 0;
+    for (const account of accounts) {
+      if (account.kind === "card") continue;
+      let after = 0;
+      if (day < today) {
+        for (const t of external) {
+          if (
+            t.provider === account.provider &&
+            t.accountExternalId === account.externalId &&
+            dayOf(t.postedAt) > day
+          ) {
+            after += t.amountCents;
+          }
+        }
+      }
+      total += account.balanceCents - after;
+    }
+    return total;
+  });
+}
+
+/** The days a balance chart plots, oldest first, always ending today: 7 or 30 daily, 13 weekly, or 11 month-ends plus today. */
+export function balanceGrid(range: BalanceRange, now: Date): Day[] {
+  const today = dayOf(now.toISOString());
+  const back = (count: number, step: number) =>
+    Array.from({ length: count }, (_, i) => addDays(today, -(count - 1 - i) * step));
+  if (range === "week") return back(7, 1);
+  if (range === "month") return back(30, 1);
+  if (range === "quarter") return back(13, 7);
+  const monthEnd = (m: Month) => addDays(`${addMonths(m, 1)}-01`, -1);
+  const thisMonth = monthOf(today);
+  return [...Array.from({ length: 11 }, (_, i) => monthEnd(addMonths(thisMonth, i - 11))), today];
 }
 
 // ---- Recurring charges ----

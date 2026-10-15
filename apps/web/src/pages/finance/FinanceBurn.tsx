@@ -17,7 +17,14 @@ import {
   useFinanceQuery,
   useRowNavigate,
 } from "../../components/finance/ui";
-import { fullDay, money, monthFull, monthLabel, monthShort } from "../../lib/finance-format";
+import {
+  fullDay,
+  money,
+  monthAxisLabels,
+  monthFull,
+  monthLabel,
+  monthShort,
+} from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { rpc } from "../../lib/rpc";
 
@@ -251,10 +258,15 @@ export function FinanceRunwayPage() {
               value={data.runway.runOutDate ? fullDay(data.runway.runOutDate) : "—"}
             />
           </div>
+          {hasCrypto ? (
+            <div>
+              <CountCryptoButton scope={data.runwayCrypto} onSaved={q.reload} />
+            </div>
+          ) : null}
           <Section title={<Trans>Projected cash</Trans>}>
             <LineChart
               values={points.map((p) => p.balanceCents)}
-              labels={points.map((p) => monthShort(p.month))}
+              labels={monthAxisLabels(points.map((p) => p.month))}
               height={240}
               label={t`Projected cash`}
               solidUntil={Math.max(data.history.length - 1, 0)}
@@ -262,10 +274,7 @@ export function FinanceRunwayPage() {
             />
           </Section>
           {hasCrypto && parts ? (
-            <Section
-              title={<Trans>Cash</Trans>}
-              action={<CountCryptoButton scope={data.runwayCrypto} onSaved={q.reload} />}
-            >
+            <Section title={<Trans>Cash</Trans>}>
               <Kv>
                 <KvRow label={t`Bank`}>{money(parts.bankCents)}</KvRow>
                 <KvRow label={t`Stablecoins`}>{money(parts.stablecoinCents)}</KvRow>

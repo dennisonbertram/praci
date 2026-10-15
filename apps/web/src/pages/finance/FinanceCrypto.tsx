@@ -17,6 +17,7 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { LineChart } from "../../components/finance/charts";
+import { ExchangeGroup } from "../../components/finance/ExchangeGroup";
 import { DetailPage, Section, Th, useFinanceQuery } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { BlockscoutConnectDialog } from "../../components/integrations/BlockscoutConnectDialog";
@@ -132,10 +133,12 @@ export function FinanceCryptoPage() {
   const { t } = useLingui();
   const q = useFinanceQuery(() => rpc.finance.crypto(), []);
   const history = useFinanceQuery(() => rpc.finance.cryptoHistory({ days: 90 }), []);
+  const exchanges = useFinanceQuery(() => rpc.finance.exchanges(), []);
   const trend = history.data?.points ?? [];
   const reloadAll = () => {
     q.reload();
     history.reload();
+    exchanges.reload();
   };
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<FinanceWallet | null>(null);
@@ -143,10 +146,16 @@ export function FinanceCryptoPage() {
   const [connecting, setConnecting] = useState(false);
   const data = q.data;
   const updated = data?.summary.lastSyncedAt ? formatRelativeTime(data.summary.lastSyncedAt) : "";
-  const unpriced = data?.summary.unpricedTokenCount ?? 0;
   const holdings = [...(data?.holdings ?? [])].sort(
     (a, b) => (b.usdValueCents ?? -1) - (a.usdValueCents ?? -1),
   );
+  // The Wallets section is wallet-only: the summary's totals also include exchanges.
+  const walletCents = (data?.summary.byWallet ?? []).reduce((sum, w) => sum + w.cents, 0);
+  const exchangeUnpriced = (exchanges.data ?? []).reduce(
+    (sum, x) => sum + x.balances.filter((b) => b.usdValueCents === null).length,
+    0,
+  );
+  const unpriced = Math.max(0, (data?.summary.unpricedTokenCount ?? 0) - exchangeUnpriced);
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Crypto` }]}
@@ -185,7 +194,7 @@ export function FinanceCryptoPage() {
               <>
                 <div>
                   <div className="text-[22px] font-semibold leading-tight tabular-nums">
-                    {moneyExact(data.summary.totalCents)}
+                    {moneyExact(walletCents)}
                   </div>
                   {unpriced > 0 ? (
                     <div className="text-[11px] text-muted-foreground">
@@ -197,6 +206,9 @@ export function FinanceCryptoPage() {
               </>
             ) : null}
           </Section>
+          {(exchanges.data ?? []).map((exchange) => (
+            <ExchangeGroup key={exchange.id} exchange={exchange} onChanged={reloadAll} />
+          ))}
           {trend.length >= 2 ? (
             <Section title={<Trans>Balance over time</Trans>}>
               <LineChart
