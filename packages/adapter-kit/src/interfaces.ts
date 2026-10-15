@@ -1,3 +1,4 @@
+import type { DataRoomClassification, DataRoomQueryPlan } from "@rakazo/contracts";
 import type {
   AdapterContext,
   AdapterDescriptor,
@@ -611,4 +612,22 @@ export interface InboxClassifierProvider {
     messages: InboxClassifierMessage[],
     context: AdapterContext,
   ): Promise<InboxClassifyResult>;
+}
+
+// --- Data room classifier ---
+
+/**
+ * Provider-neutral document classifier for the data room. Throws on unusable model output; the
+ * job queue owns retries.
+ */
+export interface DataRoomClassifier {
+  describe(): AdapterDescriptor<Record<string, never>>;
+  classify(
+    input: { name: string; mimeType: string; text: string; folders: string[][] },
+    context: AdapterContext,
+  ): Promise<DataRoomClassification>;
+  planQuery(
+    input: { question: string; today: string },
+    context: AdapterContext,
+  ): Promise<DataRoomQueryPlan>;
 }
