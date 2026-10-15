@@ -291,7 +291,7 @@ async function main() {
   process.on("SIGINT", requestStop);
   process.on("SIGTERM", requestStop);
   try {
-    postgres = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
+    postgres = await new PostgreSqlContainer("pgvector/pgvector:pg16-trixie").start();
     const databaseUrl = postgres.getConnectionUri();
     Object.assign(process.env, {
       DATABASE_URL: databaseUrl,

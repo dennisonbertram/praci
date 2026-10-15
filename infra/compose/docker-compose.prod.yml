@@ -10,7 +10,7 @@ x-logging: &logging
 
 services:
   postgres:
-    image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a}
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg16-trixie@sha256:40d828eda66737aaacb934387a337babf1455ebd56e9bdd13fc08e211257c972}
     restart: unless-stopped
     logging: *logging
     security_opt:

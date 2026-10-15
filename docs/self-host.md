@@ -157,7 +157,7 @@ the data is disposable); `docker compose down -v` deletes all Postgres state. Fo
 add `infra/compose/docker-compose.postgres-host.yml` so Postgres is published on loopback
 `127.0.0.1:5433`, or use
 `docker compose --env-file .env -f infra/compose/docker-compose.yml exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'`.
-Do not publish Postgres on a public interface. The Postgres image now includes the pgvector extension (same Postgres 16 major on Debian, so an existing `pgdata` volume stays compatible).
+Do not publish Postgres on a public interface. The Postgres image now includes the pgvector extension: it is Postgres 16.15 on the same Debian trixie base as the previous image, so existing data volumes keep their collation. Moving an existing deployment to it needs one extra step; see [Upgrade](#upgrade).
 
 The Docker supervisor is not published as its own image and is not exposed on the host. It runs from
 the app image, stays on the internal Compose network, and holds the Docker socket because access to
@@ -610,6 +610,21 @@ production snapshot's custom-format `rakazo.dump` or `appdata.tgz`.
 ```
 
 ## Upgrade
+
+**Required once, before the release that adds the Data room:** that release's migration runs
+`CREATE EXTENSION vector`, which needs the Postgres image to include pgvector. The updater and the
+commands below recreate only `api`, `worker`, and `web`, so switch Postgres first. Update the checkout
+(or `docker-compose.prod.yml`) so `POSTGRES_IMAGE` resolves to the new pgvector image, then:
+
+```bash
+docker compose --env-file .env -f infra/compose/docker-compose.prod.yml pull postgres
+docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
+  up -d --wait --pull never postgres
+```
+
+This restarts Postgres briefly; the data volume is reused. If you skip it, the migration fails with
+"the database image must include pgvector" and the API stays unhealthy until you do this.
+Updater-managed hosts do this step by hand once; the sidecar never touches Postgres.
 
 A Compose deployment on a published release tag upgrades by moving that tag:
 

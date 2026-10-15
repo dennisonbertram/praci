@@ -1,3 +1,11 @@
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') THEN
+    RAISE EXCEPTION 'The database image must include pgvector (the pgvector/pgvector Postgres image). See docs/self-host.md, section Upgrade.';
+  END IF;
+END
+$$;
+
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE "data_room_folders" (

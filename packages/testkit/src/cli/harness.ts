@@ -45,7 +45,7 @@ async function main() {
   const mode = integration ? "integration" : "e2e";
   const reportDir = path.resolve("test-report", mode);
   await mkdir(reportDir, { recursive: true });
-  const container = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
+  const container = await new PostgreSqlContainer("pgvector/pgvector:pg16-trixie").start();
   try {
     const databaseUrl = container.getConnectionUri();
     const apiPort = Number(process.env.API_PORT ?? 3110);

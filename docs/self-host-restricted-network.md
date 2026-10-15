@@ -86,7 +86,7 @@ Run `bash install-images.sh --prepare-only` in the installation directory first 
 for pre-copied files). This prepares the Compose file and validates the required secrets without
 starting containers.
 
-Treat a mirror as a transport, not as the source of truth. Obtain the expected `pgvector/pgvector:pg16` and
+Treat a mirror as a transport, not as the source of truth. Obtain the expected `pgvector/pgvector:pg16-trixie` and
 `busybox:1` digests from a trusted upstream or an out-of-band trusted workstation. Put the digest in
 each mirrored image reference, then pull, compare the local repository digests, and start without
 pulling again. Replace every example value below before running it:

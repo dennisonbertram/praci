@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { Actor } from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createDb, type PrismaClient } from "./client.js";
+import type { PrismaClient } from "./client.js";
+import { createDb } from "./client.js";
 import { createDataRoomRepos, DataRoomConflictError } from "./data-room.js";
 import { IsolationError } from "./scope.js";
 
@@ -291,5 +292,39 @@ describePostgres("data room repository (PostgreSQL)", () => {
     expect(hit!.snippet).not.toContain("<b>");
     expect(hit!.snippet.split("\u0001")).toHaveLength(2);
     expect(hit!.snippet.split("\u0002")).toHaveLength(2);
+  });
+
+  it("never forms a folder cycle under concurrent moves", async () => {
+    const x = await dr.createFolder(a, { name: `cyc-x-${run}` });
+    const y = await dr.createFolder(a, { name: `cyc-y-${run}` });
+    const results = await Promise.allSettled([
+      dr.moveFolder(a, x.id, y.id),
+      dr.moveFolder(a, y.id, x.id),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const fx = await prisma.dataRoomFolder.findUniqueOrThrow({ where: { id: x.id } });
+    const fy = await prisma.dataRoomFolder.findUniqueOrThrow({ where: { id: y.id } });
+    expect(fx.parentId === y.id && fy.parentId === x.id).toBe(false);
+  });
+
+  it("does not lose a child created while its parent is deleted", async () => {
+    for (let i = 0; i < 5; i++) {
+      const parent = await dr.createFolder(a, { name: `race-${i}-${run}` });
+      const [del, add] = await Promise.allSettled([
+        dr.deleteFolder(a, parent.id),
+        dr.createFolder(a, { name: "child", parentId: parent.id }),
+      ]);
+      const children = await prisma.dataRoomFolder.count({ where: { parentId: parent.id } });
+      const parentExists = (await prisma.dataRoomFolder.count({ where: { id: parent.id } })) === 1;
+      if (add.status === "fulfilled") {
+        // Child exists, so the delete must have been refused and the parent kept.
+        expect(del.status).toBe("rejected");
+        expect(parentExists && children === 1).toBe(true);
+      } else {
+        // Child refused (parent already gone): no orphan row remains.
+        expect(del.status).toBe("fulfilled");
+        expect(children).toBe(0);
+      }
+    }
   });
 });

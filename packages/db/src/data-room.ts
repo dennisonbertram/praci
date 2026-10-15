@@ -95,8 +95,12 @@ function eligibleSql(actor: Actor, filters: DataRoomFilters = {}): Prisma.Sql {
 }
 
 export function createDataRoomRepos(prisma: PrismaClient) {
-  async function requireFolder(actor: Actor, id: string): Promise<DataRoomFolderRecord> {
-    const folder = await prisma.dataRoomFolder.findFirst({
+  async function requireFolder(
+    actor: Actor,
+    id: string,
+    db: Pick<PrismaClient, "dataRoomFolder"> = prisma,
+  ): Promise<DataRoomFolderRecord> {
+    const folder = await db.dataRoomFolder.findFirst({
       where: { id, spaceId: actor.spaceId, userId: actor.userId },
     });
     if (!folder) throw new IsolationError();
@@ -107,6 +111,21 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     const item = await prisma.dataRoomItem.findFirst({ where: { id, ...eligibleWhere(actor) } });
     if (!item) throw new IsolationError();
     return item;
+  }
+
+  /**
+   * Runs `fn` in a transaction holding one lock per (space, user) folder tree, so folder creates,
+   * moves and deletes serialize. Without it, two moves could each pass the cycle check and then
+   * form a cycle, and a child could be added while its parent is being deleted.
+   */
+  function inFolderLock<T>(
+    actor: Actor,
+    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`data-room-folders:${actor.spaceId}:${actor.userId}`}, 0))`;
+      return fn(tx);
+    });
   }
 
   async function folderWrite<T>(write: () => Promise<T>): Promise<T> {
@@ -131,16 +150,18 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       actor: Actor,
       input: { name: string; parentId?: string | null; createdBy?: "user" | "agent" },
     ) {
-      if (input.parentId) await requireFolder(actor, input.parentId);
       return folderWrite(() =>
-        prisma.dataRoomFolder.create({
-          data: {
-            spaceId: actor.spaceId,
-            userId: actor.userId,
-            parentId: input.parentId ?? null,
-            name: input.name,
-            createdBy: input.createdBy ?? "user",
-          },
+        inFolderLock(actor, async (tx) => {
+          if (input.parentId) await requireFolder(actor, input.parentId, tx);
+          return tx.dataRoomFolder.create({
+            data: {
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+              parentId: input.parentId ?? null,
+              name: input.name,
+              createdBy: input.createdBy ?? "user",
+            },
+          });
         }),
       );
     },
@@ -151,35 +172,42 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     },
 
     async moveFolder(actor: Actor, id: string, parentId: string | null) {
-      await requireFolder(actor, id);
-      if (parentId) {
-        await requireFolder(actor, parentId);
-        // The new parent must not be the folder itself or one of its descendants.
-        const cycle = await prisma.$queryRaw<{ id: string }[]>`
-          WITH RECURSIVE sub AS (
-            SELECT id FROM data_room_folders WHERE id = ${id} AND "spaceId" = ${actor.spaceId}
-              AND "userId" = ${actor.userId}
-            UNION ALL
-            SELECT f.id FROM data_room_folders f JOIN sub ON f."parentId" = sub.id
-            WHERE f."spaceId" = ${actor.spaceId}
-          ) SELECT id FROM sub WHERE id = ${parentId}`;
-        if (cycle.length) throw new DataRoomConflictError("A folder cannot move into itself");
-      }
-      return folderWrite(() => prisma.dataRoomFolder.update({ where: { id }, data: { parentId } }));
+      return folderWrite(() =>
+        inFolderLock(actor, async (tx) => {
+          await requireFolder(actor, id, tx);
+          if (parentId) {
+            await requireFolder(actor, parentId, tx);
+            // The new parent must not be the folder itself or one of its descendants. UNION (not
+            // UNION ALL) stops the walk on any pre-existing cycle.
+            const cycle = await tx.$queryRaw<{ id: string }[]>`
+              WITH RECURSIVE sub AS (
+                SELECT id FROM data_room_folders WHERE id = ${id} AND "spaceId" = ${actor.spaceId}
+                  AND "userId" = ${actor.userId}
+                UNION
+                SELECT f.id FROM data_room_folders f JOIN sub ON f."parentId" = sub.id
+                WHERE f."spaceId" = ${actor.spaceId} AND f."userId" = ${actor.userId}
+              ) SELECT id FROM sub WHERE id = ${parentId}`;
+            if (cycle.length) throw new DataRoomConflictError("A folder cannot move into itself");
+          }
+          return tx.dataRoomFolder.update({ where: { id }, data: { parentId } });
+        }),
+      );
     },
 
     /** Refuses when the folder still holds folders or items; the caller moves or deletes them first. */
     async deleteFolder(actor: Actor, id: string) {
-      await requireFolder(actor, id);
-      const [items, children] = await Promise.all([
-        prisma.dataRoomItem.count({ where: eligibleWhere(actor, { folderId: id }) }),
-        prisma.dataRoomFolder.count({
-          where: { spaceId: actor.spaceId, userId: actor.userId, parentId: id },
-        }),
-      ]);
-      if (items || children) throw new DataRoomConflictError("Folder is not empty");
-      await prisma.dataRoomFolder.deleteMany({
-        where: { id, spaceId: actor.spaceId, userId: actor.userId },
+      await inFolderLock(actor, async (tx) => {
+        await requireFolder(actor, id, tx);
+        const [items, children] = await Promise.all([
+          tx.dataRoomItem.count({ where: eligibleWhere(actor, { folderId: id }) }),
+          tx.dataRoomFolder.count({
+            where: { spaceId: actor.spaceId, userId: actor.userId, parentId: id },
+          }),
+        ]);
+        if (items || children) throw new DataRoomConflictError("Folder is not empty");
+        await tx.dataRoomFolder.deleteMany({
+          where: { id, spaceId: actor.spaceId, userId: actor.userId },
+        });
       });
     },
 
@@ -212,7 +240,6 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         const existing = await findExisting();
         if (existing) return { item: existing, created: false };
       }
-      if (input.folderId) await requireFolder(actor, input.folderId);
       if (input.sourceConnectionId) {
         const connection = await prisma.connection.findFirst({
           where: { id: input.sourceConnectionId, spaceId: actor.spaceId, userId: actor.userId },
@@ -221,8 +248,11 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         if (!connection) throw new IsolationError();
       }
       try {
-        const item = await prisma.dataRoomItem.create({
-          data: { ...input, spaceId: actor.spaceId, userId: actor.userId },
+        const item = await inFolderLock(actor, async (tx) => {
+          if (input.folderId) await requireFolder(actor, input.folderId, tx);
+          return tx.dataRoomItem.create({
+            data: { ...input, spaceId: actor.spaceId, userId: actor.userId },
+          });
         });
         return { item, created: true };
       } catch (error) {
@@ -268,8 +298,10 @@ export function createDataRoomRepos(prisma: PrismaClient) {
 
     async moveItem(actor: Actor, id: string, folderId: string | null) {
       await requireItem(actor, id);
-      if (folderId) await requireFolder(actor, folderId);
-      return prisma.dataRoomItem.update({ where: { id }, data: { folderId } });
+      return inFolderLock(actor, async (tx) => {
+        if (folderId) await requireFolder(actor, folderId, tx);
+        return tx.dataRoomItem.update({ where: { id }, data: { folderId } });
+      });
     },
 
     /** Deletes the item and (by cascade) its chunks. The caller deletes the blob at storageKey. */
