@@ -327,4 +327,62 @@ describePostgres("data room repository (PostgreSQL)", () => {
       }
     }
   });
+
+  it("serializes concurrent chunk replacements into one complete set", async () => {
+    const { item } = await upload(a, "race-chunks.txt", `race-chunks-${run}`);
+    const setA = [0, 1, 2, 3].map((n) => ({
+      ordinal: n,
+      text: `from a ${n}`,
+      contentHash: `a${n}`,
+    }));
+    const setB = [0, 1].map((n) => ({ ordinal: n, text: `from b ${n}`, contentHash: `b${n}` }));
+    await Promise.all([dr.replaceChunks(a, item.id, setA), dr.replaceChunks(a, item.id, setB)]);
+    const rows = await prisma.$queryRaw<{ ordinal: number; contentHash: string }[]>`
+      SELECT ordinal, "contentHash" FROM data_room_chunks WHERE "itemId" = ${item.id}
+      ORDER BY ordinal`;
+    const expected = (set: typeof setA) =>
+      set.map((c) => ({ ordinal: c.ordinal, contentHash: c.contentHash }));
+    expect([expected(setA), expected(setB)]).toContainEqual(rows);
+  });
+
+  it("dedupes external ids per owner, including with no connection", async () => {
+    const external = (actor: Actor, sha: string) =>
+      dr.createItem(actor, {
+        source: "chat",
+        sha256: sha,
+        name: "msg",
+        mimeType: "text/plain",
+        size: 1,
+        externalId: `ext-${run}`,
+      });
+    await external(a, "e1");
+    await expect(external(a, "e2")).rejects.toThrow();
+    // The same external id for another member or space is a different item.
+    await expect(external(a2, "e3")).resolves.toMatchObject({ created: true });
+    await expect(external(b, "e4")).resolves.toMatchObject({ created: true });
+  });
+
+  it("writes only to the caller's own rows", async () => {
+    const { item } = await upload(a, "mine2.txt", `mine2-${run}`);
+    const folder = await dr.createFolder(a, { name: `own-${run}` });
+    const mine = await dr.createFolder(a2, { name: `a2-${run}` });
+    await expect(dr.updateItem(a2, item.id, { name: "hacked" })).rejects.toThrow(IsolationError);
+    await expect(dr.moveItem(a2, item.id, mine.id)).rejects.toThrow(IsolationError);
+    await expect(dr.renameFolder(a2, folder.id, "hacked")).rejects.toThrow(IsolationError);
+    await expect(dr.moveFolder(a2, folder.id, mine.id)).rejects.toThrow(IsolationError);
+    await expect(dr.deleteItem(a2, item.id)).rejects.toThrow(IsolationError);
+    expect((await dr.getItem(a, item.id)).name).toBe("mine2.txt");
+    expect((await dr.getItem(a, item.id)).folderId).toBeNull();
+    const after = await prisma.dataRoomFolder.findUniqueOrThrow({ where: { id: folder.id } });
+    expect(after).toMatchObject({ name: `own-${run}`, parentId: null });
+  });
+
+  it("refuses to delete a folder that holds another owner's child row", async () => {
+    const parent = await dr.createFolder(a, { name: `foreign-parent-${run}` });
+    await prisma.$executeRaw`
+      INSERT INTO data_room_folders (id, "spaceId", "userId", "parentId", name, "createdBy", "updatedAt")
+      VALUES (${randomUUID()}, ${a.spaceId}, ${a2.userId}, ${parent.id}, 'foreign', 'user', now())`;
+    await expect(dr.deleteFolder(a, parent.id)).rejects.toThrow(DataRoomConflictError);
+    expect(await prisma.dataRoomFolder.count({ where: { parentId: parent.id } })).toBe(1);
+  });
 });

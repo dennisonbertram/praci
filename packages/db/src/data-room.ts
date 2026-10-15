@@ -167,14 +167,19 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     },
 
     async renameFolder(actor: Actor, id: string, name: string) {
-      await requireFolder(actor, id);
-      return folderWrite(() => prisma.dataRoomFolder.update({ where: { id }, data: { name } }));
+      return folderWrite(async () => {
+        const { count } = await prisma.dataRoomFolder.updateMany({
+          where: { id, spaceId: actor.spaceId, userId: actor.userId },
+          data: { name },
+        });
+        if (!count) throw new IsolationError();
+        return requireFolder(actor, id);
+      });
     },
 
     async moveFolder(actor: Actor, id: string, parentId: string | null) {
       return folderWrite(() =>
         inFolderLock(actor, async (tx) => {
-          await requireFolder(actor, id, tx);
           if (parentId) {
             await requireFolder(actor, parentId, tx);
             // The new parent must not be the folder itself or one of its descendants. UNION (not
@@ -189,7 +194,12 @@ export function createDataRoomRepos(prisma: PrismaClient) {
               ) SELECT id FROM sub WHERE id = ${parentId}`;
             if (cycle.length) throw new DataRoomConflictError("A folder cannot move into itself");
           }
-          return tx.dataRoomFolder.update({ where: { id }, data: { parentId } });
+          const { count } = await tx.dataRoomFolder.updateMany({
+            where: { id, spaceId: actor.spaceId, userId: actor.userId },
+            data: { parentId },
+          });
+          if (!count) throw new IsolationError();
+          return requireFolder(actor, id, tx);
         }),
       );
     },
@@ -198,11 +208,10 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     async deleteFolder(actor: Actor, id: string) {
       await inFolderLock(actor, async (tx) => {
         await requireFolder(actor, id, tx);
+        // Deliberately not owner-filtered: a row of any owner would be cascaded or orphaned.
         const [items, children] = await Promise.all([
-          tx.dataRoomItem.count({ where: eligibleWhere(actor, { folderId: id }) }),
-          tx.dataRoomFolder.count({
-            where: { spaceId: actor.spaceId, userId: actor.userId, parentId: id },
-          }),
+          tx.dataRoomItem.count({ where: { folderId: id } }),
+          tx.dataRoomFolder.count({ where: { parentId: id } }),
         ]);
         if (items || children) throw new DataRoomConflictError("Folder is not empty");
         await tx.dataRoomFolder.deleteMany({
@@ -292,24 +301,33 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         >
       >,
     ) {
-      await requireItem(actor, id);
-      return prisma.dataRoomItem.update({ where: { id }, data: patch });
+      const { count } = await prisma.dataRoomItem.updateMany({
+        where: { id, ...eligibleWhere(actor) },
+        data: patch,
+      });
+      if (!count) throw new IsolationError();
+      return requireItem(actor, id);
     },
 
     async moveItem(actor: Actor, id: string, folderId: string | null) {
-      await requireItem(actor, id);
       return inFolderLock(actor, async (tx) => {
         if (folderId) await requireFolder(actor, folderId, tx);
-        return tx.dataRoomItem.update({ where: { id }, data: { folderId } });
+        const { count } = await tx.dataRoomItem.updateMany({
+          where: { id, ...eligibleWhere(actor) },
+          data: { folderId },
+        });
+        if (!count) throw new IsolationError();
+        return requireItem(actor, id);
       });
     },
 
     /** Deletes the item and (by cascade) its chunks. The caller deletes the blob at storageKey. */
     async deleteItem(actor: Actor, id: string): Promise<{ storageKey: string | null }> {
       const item = await requireItem(actor, id);
-      await prisma.dataRoomItem.deleteMany({
-        where: { id, spaceId: actor.spaceId, userId: actor.userId },
+      const { count } = await prisma.dataRoomItem.deleteMany({
+        where: { id, ...eligibleWhere(actor) },
       });
+      if (!count) throw new IsolationError();
       return { storageKey: item.storageKey };
     },
 
@@ -324,9 +342,14 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       chunks: { ordinal: number; text: string; contentHash: string }[],
       options: { embeddingModel?: string } = {},
     ) {
-      await requireItem(actor, itemId);
       const model = options.embeddingModel ?? null;
       return prisma.$transaction(async (tx) => {
+        // Lock the item so concurrent replacements run one after the other, each seeing a whole set.
+        const locked = await tx.$queryRaw<{ id: string }[]>`
+          SELECT id FROM data_room_items
+          WHERE id = ${itemId} AND "spaceId" = ${actor.spaceId} AND "userId" = ${actor.userId}
+          FOR UPDATE`;
+        if (!locked.length) throw new IsolationError();
         const keep = chunks.map((chunk) => chunk.ordinal);
         const removed = await tx.dataRoomChunk.deleteMany({
           where: { itemId, spaceId: actor.spaceId, userId: actor.userId, ordinal: { notIn: keep } },
