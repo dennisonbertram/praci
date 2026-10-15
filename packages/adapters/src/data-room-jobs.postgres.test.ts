@@ -77,7 +77,9 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
     return item;
   };
   const reload = (id: string) => prisma.dataRoomItem.findUniqueOrThrow({ where: { id } });
-  const chunksOf = (id: string) =>
+  const chunksOf = async (id: string) =>
+    (await allChunksOf(id)).filter((c) => c.ordinal >= 0);
+  const allChunksOf = (id: string) =>
     prisma.$queryRaw<{ ordinal: number; embedded: boolean; model: string | null }[]>`
       SELECT ordinal, embedding IS NOT NULL AS embedded, "embeddingModel" AS model
       FROM data_room_chunks WHERE "itemId" = ${id} ORDER BY ordinal`;
@@ -215,6 +217,7 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
     expect(await repo.getItemText(actor, item.id)).toBe("");
     expect(classifier.calls).toEqual([]);
     expect(await chunksOf(item.id)).toEqual([]);
+    expect(await allChunksOf(item.id)).toHaveLength(1); // the metadata chunk
   });
 
   it("keeps unchanged chunks' embeddings and re-embeds after the model changes", async () => {
@@ -304,11 +307,12 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
     expect(jobs.queue.map((j) => j.name)).toEqual(["dataroom.classify"]);
   });
 
-  it("records each failure, then marks the item failed after the last attempt", async () => {
+  it("records each classify failure, then gives up on facets and still indexes the item", async () => {
     reset();
     classifier.failWith = new Error("model said no");
-    const item = await addItem("will fail");
+    const item = await addItem("will fail to classify");
     await runDataRoomIngest(deps(), { ...scope(), itemId: item.id });
+    jobs.take();
     const classify = () => runDataRoomClassify(deps(), { ...scope(), itemId: item.id });
     await expect(classify()).rejects.toThrow("model said no");
     expect(await reload(item.id)).toMatchObject({
@@ -317,11 +321,59 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
       error: "Error: model said no",
     });
     await expect(classify()).rejects.toThrow();
-    await expect(classify()).rejects.toThrow();
-    expect(await reload(item.id)).toMatchObject({ status: "failed", failures: 3 });
-    // The queue is out of attempts, but a stray delivery must not run the model again.
+    // The last attempt does not throw: it queues index.
+    await classify();
+    expect(await reload(item.id)).toMatchObject({
+      status: "indexing",
+      failures: 0,
+      error: "Error: model said no",
+    });
+    expect(jobs.queue.map((j) => j.name)).toEqual(["dataroom.index"]);
+    await drain();
+    // Ready, searchable by text and name, and still showing why it was not filed.
+    expect(await reload(item.id)).toMatchObject({
+      status: "ready",
+      failures: 0,
+      error: "Error: model said no",
+      docType: null,
+    });
+    expect(await allChunksOf(item.id)).toHaveLength(2);
+    // A stray delivery after that must not call the model again.
     await classify();
     expect(classifier.calls).toHaveLength(3);
+  });
+
+  it("finds a document with no text by a word from its file name", async () => {
+    reset();
+    const item = await addItem("PK fake docx", {
+      name: "zephyrquartz-budget.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+    await drain();
+    expect(await repo.getItemText(actor, item.id)).toBe("");
+    const hits = await repo.searchPage(actor, { query: "zephyrquartz" });
+    expect(hits.results.map((r) => r.item.id)).toEqual([item.id]);
+    expect(hits.results[0]?.ordinal).toBe(-1);
+  });
+
+  it("rewrites the metadata chunk and re-embeds it when the facets change", async () => {
+    reset();
+    const item = await addItem("some text");
+    await drain();
+    const before = await prisma.dataRoomChunk.findFirstOrThrow({
+      where: { itemId: item.id, ordinal: -1 },
+    });
+    await prisma.dataRoomItem.update({
+      where: { id: item.id },
+      data: { status: "indexing", summary: "Totally new summary" },
+    });
+    await runDataRoomIndex(deps(), { ...scope(), itemId: item.id });
+    const after = await prisma.dataRoomChunk.findFirstOrThrow({
+      where: { itemId: item.id, ordinal: -1 },
+    });
+    expect(after.text).toContain("Totally new summary");
+    expect(after.contentHash).not.toBe(before.contentHash);
+    expect((await allChunksOf(item.id)).find((c) => c.ordinal === -1)?.embedded).toBe(true);
   });
 
   it("returns a failed ingest to failed after the last attempt", async () => {

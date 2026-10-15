@@ -115,6 +115,19 @@ async function runStep(
   } catch (error) {
     if (error instanceof IsolationError) return;
     const failures = item.failures + 1;
+    if (step === "classify" && failures >= DATA_ROOM_JOB_ATTEMPTS) {
+      // Facets are a bonus: keep the item searchable by text and name, and show why they are missing.
+      if (
+        await repo.stepWrite(actor, item.id, revision, {
+          error: failureText(error),
+          failures: 0,
+          status: STEPS.classify.next,
+        })
+      ) {
+        await queueNext();
+      }
+      return;
+    }
     await repo.stepWrite(actor, item.id, revision, {
       error: failureText(error),
       failures,
@@ -383,6 +396,38 @@ function breakPoint(text: string, from: number, to: number): number {
   return space >= 0 ? from + space + 1 : to;
 }
 
+/** Chunk ordinal of the item's name and facets; text chunks start at 0. */
+export const METADATA_ORDINAL = -1;
+
+function folderPathOf(
+  folderId: string | null,
+  folders: { id: string; parentId: string | null; name: string }[],
+): string[] {
+  const byId = new Map(folders.map((f) => [f.id, f]));
+  const path: string[] = [];
+  for (let node = folderId ? byId.get(folderId) : undefined; node && path.length < 10; ) {
+    path.unshift(node.name);
+    node = node.parentId ? byId.get(node.parentId) : undefined;
+  }
+  return path;
+}
+
+/** What is known about the item besides its text, so every item can be found by name and facets. */
+export function metadataText(item: DataRoomItemRecord, folderPath: string[]): string {
+  return [
+    item.name,
+    // The text search keeps "a_b-c.docx" as one token; the words let a part of the name match.
+    item.name.replace(/[._\-/]+/g, " "),
+    item.summary,
+    item.docType,
+    item.parties.join(", "),
+    item.tags.join(", "),
+    folderPath.join(" / "),
+  ]
+    .filter((line): line is string => Boolean(line?.trim()))
+    .join("\n");
+}
+
 export async function runDataRoomIndex(deps: DataRoomJobDeps, payload: Payload): Promise<void> {
   const repo = createDataRoomRepos(deps.prisma);
   const actor = actorOf(payload);
@@ -390,10 +435,11 @@ export async function runDataRoomIndex(deps: DataRoomJobDeps, payload: Payload):
     const text = (await repo.getItemText(actor, item.id)) ?? "";
     const ai = await deps.resolveAi(payload);
     const embedder = ai.allowed && ai.embeddingModel ? ai.embedder : null;
-    const chunks = chunkText(text).map((chunkText, ordinal) => ({
-      ordinal,
-      text: chunkText,
-      contentHash: createHash("sha256").update(chunkText).digest("hex"),
+    const metadata = metadataText(item, folderPathOf(item.folderId, await repo.listFolders(actor)));
+    const chunks = [metadata, ...chunkText(text)].map((chunk, i) => ({
+      ordinal: i === 0 ? METADATA_ORDINAL : i - 1,
+      text: chunk,
+      contentHash: createHash("sha256").update(chunk).digest("hex"),
     }));
     await repo.replaceChunks(actor, item.id, chunks, {
       ...(embedder && ai.embeddingModel ? { embeddingModel: ai.embeddingModel } : {}),
@@ -428,6 +474,12 @@ export async function runDataRoomIndex(deps: DataRoomJobDeps, payload: Payload):
         if (!(error instanceof EmbedderMisconfiguredError)) throw error;
       }
     }
-    return repo.stepWrite(actor, item.id, revision, { status: "ready", error: null, failures: 0 });
+    // A classify step that gave up left its reason with failures at 0; every other path has
+    // failures > 0 or no error. Keep that reason on the ready item.
+    return repo.stepWrite(actor, item.id, revision, {
+      status: "ready",
+      error: item.failures === 0 ? item.error : null,
+      failures: 0,
+    });
   });
 }
