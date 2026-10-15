@@ -303,6 +303,7 @@ describe("finance overview stablecoins as cash", () => {
       financeAccount: [bank],
       financeWallet: [wallet],
       financeCryptoHolding: holdings,
+      financePreference: [{ ...scope(a), runwayCrypto: "stablecoins" }],
     });
     metrics.runway.mockClear();
     const overview = await financeOverview(deps, a);
@@ -767,9 +768,9 @@ describe("runway crypto scope", () => {
     return Object.fromEntries(out.history.map((p) => [p.month, p.balanceCents]));
   };
 
-  it("defaults to stablecoins and saves a choice per user", async () => {
+  it("defaults to bank and saves a choice per user", async () => {
     const { deps, prisma } = setup(data());
-    expect(await financePreferences(deps, a)).toEqual({ runwayCrypto: "stablecoins" });
+    expect(await financePreferences(deps, a)).toEqual({ runwayCrypto: "bank" });
     expect(await financeSetPreferences(deps, a, { runwayCrypto: "all" })).toEqual({
       runwayCrypto: "all",
     });
@@ -778,7 +779,7 @@ describe("runway crypto scope", () => {
       runwayCrypto: "bank",
     });
     expect(prisma.financePreference.rows).toHaveLength(1);
-    expect(await financePreferences(deps, b)).toEqual({ runwayCrypto: "stablecoins" });
+    expect(await financePreferences(deps, b)).toEqual({ runwayCrypto: "bank" });
   });
 
   it("reports cash and every part under each scope", async () => {
@@ -803,7 +804,7 @@ describe("runway crypto scope", () => {
     expect(all["2026-09"]).toBe(100_250);
     // The current month uses today's holdings, not a snapshot.
     expect(all["2026-10"]).toBe(100_370);
-    const stable = await history();
+    const stable = await history("stablecoins");
     expect(stable["2026-09"]).toBe(100_200);
     expect(stable["2026-10"]).toBe(100_300);
     expect((await history("bank"))["2026-09"]).toBe(100_000);
@@ -875,5 +876,21 @@ describe("runway crypto scope", () => {
     expect(out.history[0]).toEqual({ month: "2025-11", balanceCents: 0 });
     expect(out.history.at(-2)).toEqual({ month: "2026-09", balanceCents: 400 });
     expect(out.history.at(-1)).toEqual({ month: "2026-10", balanceCents: 500 });
+  });
+
+  it("makes the accounts chart follow the scope, also without bank accounts", async () => {
+    const { deps } = setup(data("all"));
+    const { history: chart } = await financeAccounts(deps, a);
+    const byMonth = Object.fromEntries(chart.map((p) => [p.month, p.balanceCents]));
+    expect(byMonth["2026-09"]).toBe(100_250);
+    expect(byMonth["2026-10"]).toBe(100_370);
+    expect((await financeAccounts(setup(data("bank")).deps, a)).history.at(-1)?.balanceCents).toBe(
+      100_000,
+    );
+    const walletOnly = setup({ ...data("all"), financeAccount: [] });
+    const lone = (await financeAccounts(walletOnly.deps, a)).history;
+    expect(lone).toHaveLength(12);
+    expect(lone.at(-2)?.balanceCents).toBe(250);
+    expect(lone.at(-1)?.balanceCents).toBe(370);
   });
 });
