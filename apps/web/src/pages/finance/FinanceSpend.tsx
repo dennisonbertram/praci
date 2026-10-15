@@ -25,8 +25,8 @@ import {
   dayMonth,
   money,
   moneyExact,
+  monthAxisLabels,
   monthLabel,
-  monthShort,
   paidWithLabel,
   shortDay,
 } from "../../lib/finance-format";
@@ -259,7 +259,10 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
           </div>
           <Section title={<Trans>Monthly spend</Trans>}>
             <MonthBars
-              items={data.monthly.map((m) => ({ label: monthShort(m.month), cents: m.cents }))}
+              items={data.monthly.map((m, i) => ({
+                label: monthAxisLabels(data.monthly.map((x) => x.month))[i] ?? "",
+                cents: m.cents,
+              }))}
               label={t`Monthly spend`}
             />
           </Section>

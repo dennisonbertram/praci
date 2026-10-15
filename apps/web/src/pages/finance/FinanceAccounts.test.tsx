@@ -21,6 +21,7 @@ const rpcMock = vi.hoisted(() => ({
   crypto: vi.fn(),
   walletAdd: vi.fn(),
   preferences: vi.fn(),
+  balanceSeries: vi.fn(),
   setPreferences: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
@@ -75,6 +76,13 @@ let root: ReturnType<typeof createRoot>;
 const flush = () => act(async () => {});
 async function show(scope: "bank" | "stablecoins" | "all" = "bank", cryptoData = crypto) {
   rpcMock.accounts.mockResolvedValue(accounts);
+  rpcMock.balanceSeries.mockImplementation(async ({ range }: { range: string }) => ({
+    range,
+    points: [
+      { day: "2026-09-30", balanceCents: 7_000_000 },
+      { day: "2026-10-14", balanceCents: 7_500_000 },
+    ],
+  }));
   rpcMock.crypto.mockResolvedValue(cryptoData);
   rpcMock.preferences.mockResolvedValue({ runwayCrypto: scope });
   await act(async () =>
@@ -195,4 +203,26 @@ it("reloads accounts after a wallet is added, since crypto can count in total ca
   await flush();
   expect(rpcMock.walletAdd).toHaveBeenCalled();
   expect(rpcMock.accounts).toHaveBeenCalledTimes(2);
+});
+
+it("charts the year first and refetches when another range is chosen", async () => {
+  expect(rpcMock.balanceSeries).toHaveBeenCalledTimes(1);
+  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "year" });
+  const tab = (name: string) =>
+    [...container.querySelectorAll('[role="tab"]')].find((b) => b.textContent === name);
+  expect(tab("Year")?.getAttribute("aria-selected")).toBe("true");
+  await act(async () => (tab("Quarter") as HTMLElement).click());
+  await flush();
+  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "quarter" });
+  await act(async () => (tab("Week") as HTMLElement).click());
+  await flush();
+  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "week" });
+});
+
+it("reloads the chart after the crypto scope is saved", async () => {
+  rpcMock.setPreferences.mockResolvedValue({ runwayCrypto: "all" });
+  await act(async () => toggle()?.click());
+  await flush();
+  expect(rpcMock.balanceSeries).toHaveBeenCalledTimes(2);
+  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "year" });
 });
