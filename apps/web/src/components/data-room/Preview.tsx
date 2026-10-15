@@ -2,7 +2,7 @@ import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
-import { Badge, Button } from "@rakazo/ui-web";
+import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
 import { Download, FileText, X } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { saveDataRoomItem } from "../../lib/data-room";
@@ -61,7 +61,10 @@ export function Preview({
   folderPath,
   onAction,
   onClose,
+  inDialog = false,
 }: {
+  /** Shown inside a Dialog, which brings its own close button and title. */
+  inDialog?: boolean;
   item: DataRoomApiItem;
   folderPath: string;
   onAction: (action: ItemAction, item: DataRoomApiItem) => void;
@@ -74,17 +77,29 @@ export function Preview({
     <aside
       aria-label={t`Preview`}
       data-testid="data-room-preview"
-      className="z-10 flex w-80 shrink-0 flex-col gap-3 overflow-y-auto border-s border-border bg-background p-3 @max-[559px]/bd:absolute @max-[559px]/bd:inset-0 @max-[559px]/bd:w-auto"
+      className={
+        inDialog
+          ? "flex flex-col gap-3 p-4 pe-12"
+          : "flex w-80 shrink-0 flex-col gap-3 overflow-y-auto border-s border-border bg-background p-3"
+      }
     >
       <div className="flex items-center gap-1">
         <FileText aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-        <h2 className="min-w-0 flex-1 truncate text-sm font-medium">
-          <Trans>Preview</Trans>
-        </h2>
+        {inDialog ? (
+          <DialogTitle className="min-w-0 flex-1 truncate text-sm font-medium">
+            <Trans>Preview</Trans>
+          </DialogTitle>
+        ) : (
+          <h2 className="min-w-0 flex-1 truncate text-sm font-medium">
+            <Trans>Preview</Trans>
+          </h2>
+        )}
         <ItemMenu item={item} onAction={onAction} />
-        <Button variant="ghost" size="icon-sm" aria-label={t`Close preview`} onClick={onClose}>
-          <X aria-hidden="true" />
-        </Button>
+        {inDialog ? null : (
+          <Button variant="ghost" size="icon-sm" aria-label={t`Close preview`} onClick={onClose}>
+            <X aria-hidden="true" />
+          </Button>
+        )}
       </div>
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
       {item.status === "failed" ? (

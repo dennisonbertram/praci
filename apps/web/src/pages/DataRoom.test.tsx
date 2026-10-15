@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -35,6 +35,7 @@ vi.mock("../lib/rpc", () => ({
     },
   },
   withSpaceHeaders: () => new Headers(),
+  selectedSpaceId: () => "s1",
 }));
 
 import { Snippet } from "../components/data-room/ItemRows";
@@ -84,15 +85,38 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function renderPage() {
+function GoToB() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" data-testid="go-b" onClick={() => navigate("/?item=B")}>
+      go
+    </button>
+  );
+}
+
+async function renderPage(entry = "/") {
   await act(async () => {
     root.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[entry]}>
         <DataRoomPage />
+        <GoToB />
       </MemoryRouter>,
     );
   });
 }
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+const settle = () =>
+  act(async () => {
+    await vi.advanceTimersByTimeAsync(10);
+  });
 
 const names = () =>
   Array.from(container.querySelectorAll("li[data-item-id] span[title]"))
@@ -238,4 +262,116 @@ it("marks only failed items as failed; a ready item with an error gets a muted p
   expect(container.querySelector('[data-testid="data-room-preview"]')?.textContent).not.toContain(
     "classifier timeout",
   );
+});
+
+it("disables Load more while a refresh is in flight", async () => {
+  rpcMock.list.mockResolvedValueOnce({
+    items: [item("a.txt")],
+    nextCursor: "c000000000000000000000001",
+  });
+  await renderPage();
+  const more = () =>
+    Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Load more");
+  expect(more()?.disabled).toBe(false);
+  const refresh = deferred<unknown>();
+  rpcMock.list.mockReturnValueOnce(refresh.promise);
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  expect(more()?.disabled).toBe(true);
+  refresh.resolve({ items: [item("fresh.txt")], nextCursor: null });
+  await settle();
+  expect(names()).toEqual(["fresh.txt"]);
+});
+
+it("does not let a late status poll overwrite a newer list", async () => {
+  rpcMock.list.mockResolvedValueOnce({
+    items: [{ ...item("p.txt"), status: "pending" }],
+    nextCursor: null,
+  });
+  await renderPage();
+  const poll = deferred<DataRoomApiItem>();
+  rpcMock.item.mockReturnValueOnce(poll.promise);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(3_100);
+  });
+  expect(rpcMock.item).toHaveBeenCalledTimes(1);
+  // The item is renamed and ready before the poll answers.
+  rpcMock.list.mockResolvedValueOnce({
+    items: [{ ...item("renamed.txt"), id: "id-p.txt" }],
+    nextCursor: null,
+  });
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  await settle();
+  expect(names()).toEqual(["renamed.txt"]);
+  poll.resolve({ ...item("p.txt"), id: "id-p.txt", status: "pending" });
+  await settle();
+  expect(names()).toEqual(["renamed.txt"]);
+});
+
+it("applies a deep-link item only while it is still the one in the URL", async () => {
+  const a = deferred<DataRoomApiItem>();
+  const b = deferred<DataRoomApiItem>();
+  rpcMock.item.mockImplementation(({ id }: { id: string }) => (id === "A" ? a.promise : b.promise));
+  await renderPage("/?item=A");
+  await act(async () => {
+    container.querySelector<HTMLElement>('[data-testid="go-b"]')?.click();
+  });
+  b.resolve({ ...item("b-doc.txt"), id: "B" });
+  await settle();
+  a.resolve({ ...item("a-doc.txt"), id: "A" });
+  await settle();
+  expect(container.querySelector('[data-testid="data-room-preview"] h3')?.textContent).toBe(
+    "b-doc.txt",
+  );
+});
+
+it("offers a folder picker that chooses and clears a folder at any width", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage();
+  const trigger = () =>
+    container.querySelector<HTMLElement>('[data-testid="data-room-folder-picker"]');
+  const choose = async (label: string) => {
+    await act(async () => {
+      trigger()?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const option = Array.from(document.querySelectorAll('[role="menuitemradio"]')).find(
+      (el) => el.textContent === label,
+    );
+    await act(async () => {
+      (option as HTMLElement).click();
+    });
+    await settle();
+  };
+  await choose("Legal");
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f1" }));
+  expect(trigger()?.textContent).toContain("Legal");
+  await choose("All items");
+  expect(rpcMock.list.mock.lastCall?.[0]).not.toHaveProperty("folderId", "f1");
+});
+
+it("on a narrow page opens the preview in a dialog only on click, not on hover", async () => {
+  Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, value: 400 });
+  await renderPage();
+  const row = container.querySelectorAll<HTMLElement>("li[data-item-id]")[1];
+  await act(async () => {
+    row?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    row?.dispatchEvent(new MouseEvent("mouseenter"));
+    await vi.advanceTimersByTimeAsync(300);
+  });
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(container.querySelector('[data-testid="data-room-preview"]')).toBeNull();
+  await act(async () => {
+    row?.focus();
+    row?.click();
+    await vi.advanceTimersByTimeAsync(50);
+  });
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("a.txt");
+  expect(dialog?.contains(document.activeElement)).toBe(true);
+  delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
 });

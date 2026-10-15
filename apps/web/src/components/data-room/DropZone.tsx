@@ -8,6 +8,7 @@ import { dataRoomItemPath, dragHasFiles } from "../../lib/data-room";
 import {
   dismissUploadToast,
   getUploadToasts,
+  setUploadScope,
   subscribeUploadToasts,
   type UploadFailure,
   uploadFilesToDataRoom,
@@ -21,9 +22,14 @@ const failureText = (reason: UploadFailure) =>
       : t`Upload failed`;
 
 /** A full-window drop target for files, plus one toast per upload. Mounted once for every signed-in page. */
-export function DataRoomDropZone() {
+export function DataRoomDropZone({ userId }: { userId: string | null }) {
   const [dragging, setDragging] = useState(false);
   const toasts = useSyncExternalStore(subscribeUploadToasts, getUploadToasts);
+
+  useEffect(() => {
+    setUploadScope(userId);
+    return () => setUploadScope(null);
+  }, [userId]);
 
   useEffect(() => {
     // dragenter and dragleave also fire for children, so count them.
@@ -41,8 +47,13 @@ export function DataRoomDropZone() {
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     };
     const over = (event: DragEvent) => {
+      if (!dragHasFiles(event)) return;
+      // A drop target that wants these files (composer, statement import, ...) has already
+      // accepted the drag by now. Leave it to that target and take the overlay down.
+      if (event.defaultPrevented) return setDragging(false);
       // Without this the browser would open the dropped file.
-      if (dragHasFiles(event)) event.preventDefault();
+      event.preventDefault();
+      if (depth > 0) setDragging(true);
     };
     const leave = (event: DragEvent) => {
       if (!dragHasFiles(event)) return;
@@ -51,8 +62,10 @@ export function DataRoomDropZone() {
     };
     const drop = (event: DragEvent) => {
       if (!dragHasFiles(event)) return;
-      event.preventDefault();
       end();
+      // Already handled by a drop target on the page.
+      if (event.defaultPrevented) return;
+      event.preventDefault();
       uploadFilesToDataRoom(Array.from(event.dataTransfer?.files ?? []));
     };
     window.addEventListener("dragenter", enter);
