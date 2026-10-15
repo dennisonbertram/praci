@@ -1125,7 +1125,9 @@ export const appContract = {
       .input(z.object({ id: Id, parentId: Id.nullable() }))
       .output(DataRoomApiFolderSchema),
     folderDelete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
-    items: oc.input(DataRoomApiItemListInputSchema).output(DataRoomApiItemListOutputSchema),
+    items: {
+      list: oc.input(DataRoomApiItemListInputSchema).output(DataRoomApiItemListOutputSchema),
+    },
     item: oc.input(z.object({ id: Id })).output(DataRoomApiItemSchema),
     itemRename: oc.input(z.object({ id: Id, name: DataRoomApiName })).output(DataRoomApiItemSchema),
     itemMove: oc.input(z.object({ id: Id, folderId: Id.nullable() })).output(DataRoomApiItemSchema),

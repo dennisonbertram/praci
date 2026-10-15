@@ -49,6 +49,31 @@ export interface DataRoomSearchResult {
   score: number;
 }
 
+const DATE_SORTS = new Set<DataRoomSortField>(["date", "createdAt"]);
+
+function encodeCursor(value: Date | string | null, id: string) {
+  const v = value instanceof Date ? value.toISOString() : value;
+  return Buffer.from(JSON.stringify([v, id])).toString("base64url");
+}
+
+function decodeCursor(
+  cursor: string,
+  field: DataRoomSortField,
+): { value: Date | string | null; id: string } {
+  try {
+    const [v, id] = JSON.parse(Buffer.from(cursor, "base64url").toString()) as [
+      string | null,
+      string,
+    ];
+    if (typeof id !== "string" || (v !== null && typeof v !== "string")) throw new Error();
+    const value = v !== null && DATE_SORTS.has(field) ? new Date(v) : v;
+    if (value instanceof Date && Number.isNaN(value.getTime())) throw new Error();
+    return { value, id };
+  } catch {
+    throw new DataRoomConflictError("Invalid cursor");
+  }
+}
+
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
@@ -94,6 +119,21 @@ function eligibleSql(actor: Actor, filters: DataRoomFilters = {}): Prisma.Sql {
   return Prisma.join(parts, " AND ");
 }
 
+export type DataRoomSortField = "date" | "name" | "type" | "createdAt";
+export interface DataRoomSort {
+  field: DataRoomSortField;
+  direction: "asc" | "desc";
+}
+const SORT_COLUMN = {
+  date: "docDate",
+  name: "name",
+  type: "docType",
+  createdAt: "createdAt",
+} as const;
+/** docDate and docType may be null; those rows sort after the others in both directions. */
+const SORT_NULLABLE = { date: true, name: false, type: true, createdAt: false } as const;
+
+/** Where `getItem`-style lookups, lists and search all start, so visibility is defined once. */
 export function createDataRoomRepos(prisma: PrismaClient) {
   async function requireFolder(
     actor: Actor,
@@ -278,6 +318,53 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     },
 
     getItem: (actor: Actor, id: string) => requireItem(actor, id),
+
+    /**
+     * One page ordered in SQL by `sort`, ties broken by id ascending, with a keyset cursor that
+     * stays correct under every sort. The cursor is opaque and only valid with the same sort.
+     */
+    async listItemsPage(
+      actor: Actor,
+      filters: DataRoomFilters,
+      options: { sort?: DataRoomSort; limit?: number; cursor?: string } = {},
+    ): Promise<{ items: DataRoomItemRecord[]; nextCursor: string | null }> {
+      const sort = options.sort ?? { field: "createdAt", direction: "desc" };
+      const limit = Math.min(Math.max(Math.trunc(options.limit ?? DEFAULT_LIMIT), 1), 100);
+      const column = Prisma.raw(`i."${SORT_COLUMN[sort.field]}"`);
+      const nullable = SORT_NULLABLE[sort.field];
+      const after = sort.direction === "asc" ? Prisma.raw(">") : Prisma.raw("<");
+      const parts = [eligibleSql(actor, filters)];
+      if (options.cursor) {
+        const cursor = decodeCursor(options.cursor, sort.field);
+        const value = cursor.value;
+        parts.push(
+          value === null
+            ? Prisma.sql`(${column} IS NULL AND i.id > ${cursor.id})`
+            : Prisma.sql`(${column} ${after} ${value} OR (${column} = ${value} AND i.id > ${cursor.id})${
+                nullable ? Prisma.sql` OR ${column} IS NULL` : Prisma.empty
+              })`,
+        );
+      }
+      const direction = Prisma.raw(sort.direction === "asc" ? "ASC" : "DESC");
+      const order = nullable
+        ? Prisma.sql`${column} ${direction} NULLS LAST, i.id ASC`
+        : Prisma.sql`${column} ${direction}, i.id ASC`;
+      const rows = await prisma.$queryRaw<{ id: string; sortValue: Date | string | null }[]>`
+        SELECT i.id, ${column} AS "sortValue" FROM data_room_items i
+        WHERE ${Prisma.join(parts, " AND ")}
+        ORDER BY ${order}
+        LIMIT ${limit + 1}`;
+      const pageRows = rows.slice(0, limit);
+      const records = await prisma.dataRoomItem.findMany({
+        where: { id: { in: pageRows.map((row) => row.id) }, ...eligibleWhere(actor) },
+      });
+      const byId = new Map(records.map((record) => [record.id, record]));
+      const last = pageRows.at(-1);
+      return {
+        items: pageRows.flatMap((row) => byId.get(row.id) ?? []),
+        nextCursor: rows.length > limit && last ? encodeCursor(last.sortValue, last.id) : null,
+      };
+    },
 
     listItems: (actor: Actor, filters: DataRoomFilters, page: { limit?: number } = {}) =>
       prisma.dataRoomItem.findMany({

@@ -61,9 +61,16 @@ export const DataRoomApiFiltersSchema = z.object({
   source: z.string().min(1).optional(),
 });
 
+export const DataRoomApiSortSchema = z.object({
+  /** "date" is the document date; items without one sort last in both directions. */
+  field: z.enum(["date", "name", "type", "createdAt"]),
+  direction: z.enum(["asc", "desc"]),
+});
+
 export const DataRoomApiItemListInputSchema = DataRoomApiFiltersSchema.extend({
+  sort: DataRoomApiSortSchema.default({ field: "createdAt", direction: "desc" }),
   limit: z.number().int().min(1).max(100).default(50),
-  /** The `nextCursor` of the previous page. */
+  /** The `nextCursor` (valid only with the same sort and filters) of the previous page. */
   cursor: Id.optional(),
 });
 export const DataRoomApiItemListOutputSchema = z.object({
@@ -74,6 +81,8 @@ export const DataRoomApiItemListOutputSchema = z.object({
 export const DataRoomApiSearchInputSchema = z.object({
   query: z.string().trim().min(1).max(500),
   filters: DataRoomApiFiltersSchema.optional(),
+  /** Omit to order by relevance. The sort applies to the bounded set of best matches. */
+  sort: DataRoomApiSortSchema.optional(),
   limit: z.number().int().min(1).max(50).default(10),
 });
 export const DataRoomApiSearchResultSchema = z.object({

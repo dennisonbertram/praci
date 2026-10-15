@@ -9,7 +9,12 @@ import type {
   DataRoomApiUploadResponse,
 } from "@rakazo/contracts";
 import { DATA_ROOM_UPLOAD_MAX_BYTES, DataRoomApiName } from "@rakazo/contracts";
-import type { DataRoomFilters, DataRoomFolderRecord, DataRoomItemRecord } from "@rakazo/db";
+import type {
+  DataRoomFilters,
+  DataRoomFolderRecord,
+  DataRoomItemRecord,
+  DataRoomSort,
+} from "@rakazo/db";
 import {
   createDataRoomRepos,
   DataRoomConflictError,
@@ -95,6 +100,27 @@ const toFilters = (input: {
   };
 };
 
+const sortKey = (item: DataRoomApiItem, field: DataRoomSort["field"]) =>
+  ({
+    date: item.facets.docDate,
+    name: item.name,
+    type: item.facets.docType,
+    createdAt: item.createdAt,
+  })[field];
+
+/** Orders an already bounded set of search hits like the item list: nulls last, ties by id. */
+function sortHits<T extends { item: DataRoomApiItem }>(hits: T[], sort: DataRoomSort): T[] {
+  const sign = sort.direction === "asc" ? 1 : -1;
+  return [...hits].sort((a, b) => {
+    const x = sortKey(a.item, sort.field);
+    const y = sortKey(b.item, sort.field);
+    if (x === y) return a.item.id < b.item.id ? -1 : 1;
+    if (x === null) return 1;
+    if (y === null) return -1;
+    return (x < y ? -1 : 1) * sign;
+  });
+}
+
 /** Procedure bodies for `dataRoom.*`; the router adds the Actor. */
 export function createDataRoomService(deps: DataRoomDeps) {
   const repo = createDataRoomRepos(deps.prisma);
@@ -112,22 +138,17 @@ export function createDataRoomService(deps: DataRoomDeps) {
         return { ok: true as const };
       }),
 
-    // ponytail: the repository has no cursor, so paging walks the newest 500 matches.
-    // Add a keyset cursor to listItems if a Data room needs more than 500 items per filter.
-    async items(
+    items: (
       actor: Actor,
-      input: { limit: number; cursor?: string } & Parameters<typeof toFilters>[0],
-    ) {
-      const { limit, cursor, ...filters } = input;
-      const all = await repo.listItems(actor, toFilters(filters), { limit: 500 });
-      const start = cursor ? all.findIndex((item) => item.id === cursor) + 1 : 0;
-      const page = all.slice(start, start + limit);
-      const more = start + limit < all.length;
-      return {
-        items: page.map(itemDto),
-        nextCursor: more ? (page.at(-1)?.id ?? null) : null,
-      };
-    },
+      input: { limit: number; cursor?: string; sort: DataRoomSort } & Parameters<
+        typeof toFilters
+      >[0],
+    ) =>
+      dataRoomCall(async () => {
+        const { limit, cursor, sort, ...filters } = input;
+        const page = await repo.listItemsPage(actor, toFilters(filters), { sort, limit, cursor });
+        return { items: page.items.map(itemDto), nextCursor: page.nextCursor };
+      }),
     item: (actor: Actor, id: string) =>
       dataRoomCall(async () => itemDto(await repo.getItem(actor, id))),
     renameItem: (actor: Actor, input: { id: string; name: string }) =>
@@ -144,17 +165,23 @@ export function createDataRoomService(deps: DataRoomDeps) {
       }),
     search: (
       actor: Actor,
-      input: { query: string; limit: number; filters?: Parameters<typeof toFilters>[0] },
+      input: {
+        query: string;
+        limit: number;
+        filters?: Parameters<typeof toFilters>[0];
+        sort?: DataRoomSort;
+      },
     ) =>
-      dataRoomCall(async () =>
-        (
+      dataRoomCall(async () => {
+        const hits = (
           await repo.searchKeyword(actor, {
             query: input.query,
             limit: input.limit,
             filters: input.filters && toFilters(input.filters),
           })
-        ).map((hit) => ({ ...hit, item: itemDto(hit.item) })),
-      ),
+        ).map((hit) => ({ ...hit, item: itemDto(hit.item) }));
+        return input.sort ? sortHits(hits, input.sort) : hits;
+      }),
   };
 }
 

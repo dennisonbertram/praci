@@ -90,6 +90,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await make("a", "A");
     await make("a2", "A"); // second member of space A
     await make("b", "B");
+    await make("s", "S");
     app = new Hono();
     mountDataRoomRoutes(
       app,
@@ -212,7 +213,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
     ).toBe(item.id);
     for (const who of ["b", "a2"]) {
       const c = client(actors[who]);
-      expect((await c.dataRoom.items({ limit: 50 })).items).toEqual([]);
+      expect((await c.dataRoom.items.list({ limit: 50 })).items).toEqual([]);
       expect(await c.dataRoom.search({ query: "quokka", limit: 10 })).toEqual([]);
       await expect(c.dataRoom.item({ id: item.id })).rejects.toMatchObject({ code: "NOT_FOUND" });
       await expect(c.dataRoom.itemRename({ id: item.id, name: "x" })).rejects.toMatchObject({
@@ -240,7 +241,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
       folder.id,
     );
     expect(
-      (await c.dataRoom.items({ limit: 50, folderId: folder.id })).items.map((i) => i.id),
+      (await c.dataRoom.items.list({ limit: 50, folderId: folder.id })).items.map((i) => i.id),
     ).toEqual([item.id]);
     expect((await c.dataRoom.folders()).map((f) => f.id)).toContain(folder.id);
     await expect(c.dataRoom.folderDelete({ id: folder.id })).rejects.toMatchObject({
@@ -254,16 +255,167 @@ describePostgres("Data room API (PostgreSQL)", () => {
     const c = client(actors.a);
     await upload("a", "name=p1.txt", "page one");
     await upload("a", "name=p2.txt", "page two");
-    const first = await c.dataRoom.items({ limit: 2 });
+    const first = await c.dataRoom.items.list({ limit: 2 });
     expect(first.items).toHaveLength(2);
     expect(first.nextCursor).toBeTruthy();
-    const second = await c.dataRoom.items({ limit: 2, cursor: first.nextCursor as string });
+    const second = await c.dataRoom.items.list({ limit: 2, cursor: first.nextCursor as string });
     expect(second.items).toHaveLength(1);
     expect(second.nextCursor).toBeNull();
     for (const i of [...first.items, ...second.items].filter((i) => i.name.startsWith("p"))) {
       await c.dataRoom.itemDelete({ id: i.id });
     }
     enqueued.length = 0;
+  });
+
+  describe("server-side sort and cursor paging", () => {
+    type Row = {
+      id: string;
+      name: string;
+      docDate: Date | null;
+      docType: string | null;
+      createdAt: Date;
+    };
+    let rows: Row[];
+    const day = (n: number) => new Date(Date.UTC(2026, 0, n));
+
+    beforeAll(async () => {
+      // Ties on name, docDate, docType and createdAt; nulls in docDate and docType.
+      const spec: [string, number | null, string | null, number][] = [
+        ["b.txt", 3, "invoice", 1],
+        ["a.txt", 3, "contract", 2],
+        ["b.txt", null, "invoice", 2],
+        ["c.txt", 1, null, 1],
+        ["a.txt", null, null, 3],
+        ["d.txt", 2, "contract", 3],
+        ["b.txt", 3, "invoice", 1],
+      ];
+      rows = [];
+      for (const [i, [name, d, type, created]] of spec.entries()) {
+        const created_ = await prisma.dataRoomItem.create({
+          data: {
+            spaceId: actors.S.spaceId,
+            userId: actors.S.userId,
+            source: "upload",
+            sha256: `sort-${run}-${i}`,
+            name,
+            mimeType: "text/plain",
+            size: 1,
+            docType: type,
+            docDate: d === null ? null : day(d),
+            createdAt: day(created),
+          },
+        });
+        rows.push({
+          id: created_.id,
+          name,
+          docDate: d === null ? null : day(d),
+          docType: type,
+          createdAt: day(created),
+        });
+      }
+    });
+
+    const column = {
+      date: "docDate",
+      name: "name",
+      type: "docType",
+      createdAt: "createdAt",
+    } as const;
+    const expected = (field: keyof typeof column, direction: "asc" | "desc", pool = rows) => {
+      const key = (r: Row) => {
+        const v = r[column[field]];
+        return v instanceof Date ? v.getTime() : v;
+      };
+      return [...pool]
+        .sort((x, y) => {
+          const a = key(x);
+          const b = key(y);
+          if (a !== b) {
+            if (a === null) return 1;
+            if (b === null) return -1;
+            return (a < b ? -1 : 1) * (direction === "asc" ? 1 : -1);
+          }
+          return x.id < y.id ? -1 : 1;
+        })
+        .map((r) => r.id);
+    };
+    const walk = async (input: Record<string, unknown>, limit = 2) => {
+      const c = client(actors.S);
+      const ids: string[] = [];
+      let cursor: string | undefined;
+      for (let guard = 0; guard < 20; guard += 1) {
+        const page = await c.dataRoom.items.list({ ...input, limit, cursor } as never);
+        ids.push(...page.items.map((i) => i.id));
+        if (!page.nextCursor) return ids;
+        cursor = page.nextCursor;
+      }
+      throw new Error("cursor never ended");
+    };
+
+    for (const field of ["date", "name", "type", "createdAt"] as const) {
+      for (const direction of ["asc", "desc"] as const) {
+        it(`orders by ${field} ${direction} (nulls last, id ties) across cursor pages`, async () => {
+          expect(await walk({ sort: { field, direction } })).toEqual(expected(field, direction));
+          expect(await walk({ sort: { field, direction } }, 100)).toEqual(
+            expected(field, direction),
+          );
+        });
+      }
+    }
+
+    it("defaults to createdAt descending", async () => {
+      expect(await walk({})).toEqual(expected("createdAt", "desc"));
+    });
+
+    it("applies filters in SQL together with sort and paging", async () => {
+      const contracts = rows.filter((r) => r.docType === "contract");
+      expect(
+        await walk({ docType: "contract", sort: { field: "name", direction: "desc" } }, 1),
+      ).toEqual(expected("name", "desc", contracts));
+      const ranged = rows.filter((r) => r.docDate && r.docDate >= day(2));
+      expect(
+        await walk(
+          { docDateFrom: day(2).toISOString(), sort: { field: "date", direction: "asc" } },
+          2,
+        ),
+      ).toEqual(expected("date", "asc", ranged));
+    });
+
+    it("rejects a malformed cursor", async () => {
+      await expect(
+        client(actors.S).dataRoom.items.list({ limit: 2, cursor: "not-a-cursor" }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+    });
+
+    it("sorts search hits on request and keeps relevance order by default", async () => {
+      const repo = createDataRoomRepos(prisma);
+      for (const r of rows) {
+        await repo.replaceChunks(actors.S, r.id, [
+          { ordinal: 0, text: "zebra stripes", contentHash: "z" },
+        ]);
+      }
+      const c = client(actors.S);
+      const sorted = await c.dataRoom.search({
+        query: "zebra",
+        limit: 50,
+        sort: { field: "date", direction: "desc" },
+      });
+      expect(sorted.map((h) => h.item.id)).toEqual(expected("date", "desc"));
+      const filtered = await c.dataRoom.search({
+        query: "zebra",
+        limit: 50,
+        filters: { docType: "invoice" },
+        sort: { field: "name", direction: "asc" },
+      });
+      expect(filtered.map((h) => h.item.id)).toEqual(
+        expected(
+          "name",
+          "asc",
+          rows.filter((r) => r.docType === "invoice"),
+        ),
+      );
+      expect((await c.dataRoom.search({ query: "zebra", limit: 3 })).length).toBe(3);
+    });
   });
 
   it("deletes the row and chunks and enqueues exactly one blob cleanup", async () => {
