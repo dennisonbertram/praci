@@ -96,6 +96,10 @@ msgstr "{0} répondra toujours aux mentions directes."
 msgid "{0}'s screen"
 msgstr "Écran de {0}"
 
+#: src/components/compose/RecipientField.tsx
+msgid "{address} isn't a valid email address"
+msgstr ""
+
 #: src/lib/billing.ts
 msgid "{amount} / {period}"
 msgstr ""
@@ -202,6 +206,10 @@ msgstr "{workingBotName} est en cours d'exécution"
 #: src/pages/Shell.tsx
 msgid "@{0}"
 msgstr "@{0}"
+
+#: src/components/ComposeEmail.tsx
+msgid "+{more} more"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
@@ -2192,6 +2200,10 @@ msgstr ""
 msgid "Downloading…"
 msgstr "Téléchargement en cours…"
 
+#: src/components/MailOutbox.tsx
+msgid "Draft discarded"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Draft saved"
 msgstr ""
@@ -3451,6 +3463,10 @@ msgstr "Pas dans le catalogue de plugins"
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "Pas maintenant"
+
+#: src/components/ComposeEmail.tsx
+msgid "Not sent. {text}"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Nothing is still running"
