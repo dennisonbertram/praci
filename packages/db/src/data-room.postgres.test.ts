@@ -253,7 +253,8 @@ describePostgres("data room repository (PostgreSQL)", () => {
     const all = await dr.searchKeyword(a, { query: "zorblax" });
     expect(all.map((r) => r.item.id)).toEqual([strong.item.id, weak.item.id]);
     expect(all[0]).toMatchObject({ ordinal: 0 });
-    expect(all[0]!.snippet).toContain("<b>zorblax</b>");
+    expect(all[0]!.snippet).toContain("\u0001zorblax\u0002");
+    expect(all[0]!.snippet).not.toContain("<b>");
 
     const byType = await dr.searchKeyword(a, { query: "zorblax", filters: { docType: "memo" } });
     expect(byType.map((r) => r.item.id)).toEqual([weak.item.id]);
@@ -274,5 +275,21 @@ describePostgres("data room repository (PostgreSQL)", () => {
     expect(
       (await dr.searchKeyword(a, { query: "zorblax", limit: 5000 })).length,
     ).toBeLessThanOrEqual(50);
+  });
+
+  it("marks highlights with control characters and strips forged markers", async () => {
+    const { item } = await upload(a, "hostile.txt", `hostile-${run}`);
+    await dr.replaceChunks(a, item.id, [
+      { ordinal: 0, text: "plinth \u0001forged\u0002 <script>alert(1)</script>", contentHash: "s" },
+    ]);
+    const stored = await prisma.$queryRaw<{ text: string }[]>`
+      SELECT text FROM data_room_chunks WHERE "itemId" = ${item.id}`;
+    expect(stored[0]!.text).toBe("plinth forged <script>alert(1)</script>");
+    const [hit] = await dr.searchKeyword(a, { query: "plinth" });
+    // Our markers are the only highlight syntax; the document's own text stays literal text.
+    expect(hit!.snippet).toContain("\u0001plinth\u0002");
+    expect(hit!.snippet).not.toContain("<b>");
+    expect(hit!.snippet.split("\u0001")).toHaveLength(2);
+    expect(hit!.snippet.split("\u0002")).toHaveLength(2);
   });
 });

@@ -31,6 +31,23 @@ const MAX_LIMIT = 50;
 const DEFAULT_LIMIT = 10;
 /** Chunks each search leg fetches before grouping by item. */
 const OVER_FETCH = 100;
+/** Highlight markers in search snippets. replaceChunks strips them from stored text. */
+const HIGHLIGHT_START = "\u0001";
+const HIGHLIGHT_STOP = "\u0002";
+const HEADLINE_OPTIONS = `StartSel=${HIGHLIGHT_START}, StopSel=${HIGHLIGHT_STOP}, MaxFragments=1`;
+const stripMarkers = (text: string) =>
+  text.replaceAll(HIGHLIGHT_START, "").replaceAll(HIGHLIGHT_STOP, "");
+
+export interface DataRoomSearchResult {
+  item: DataRoomItemRecord;
+  ordinal: number;
+  /**
+   * Plain text. U+0001 and U+0002 mark the start and end of each highlight. The text is untrusted
+   * document content: the UI must render it as text, never as HTML.
+   */
+  snippet: string;
+  score: number;
+}
 
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
@@ -287,7 +304,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
           written += await tx.$executeRaw`
             INSERT INTO data_room_chunks (id, "spaceId", "userId", "itemId", ordinal, text, "contentHash")
             VALUES (${randomUUID()}, ${actor.spaceId}, ${actor.userId}, ${itemId}, ${chunk.ordinal},
-              ${chunk.text}, ${chunk.contentHash})
+              ${stripMarkers(chunk.text)}, ${chunk.contentHash})
             ON CONFLICT ("itemId", ordinal) DO UPDATE
               SET text = EXCLUDED.text, "contentHash" = EXCLUDED."contentHash",
                   embedding = NULL, "embeddingModel" = NULL
@@ -306,7 +323,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     async searchKeyword(
       actor: Actor,
       input: { query: string; filters?: DataRoomFilters; limit?: number },
-    ) {
+    ): Promise<DataRoomSearchResult[]> {
       const query = input.query.trim();
       if (!query) return [];
       const limit = Math.min(Math.max(Math.trunc(input.limit ?? DEFAULT_LIMIT), 1), MAX_LIMIT);
@@ -329,7 +346,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
           FROM keyword ORDER BY "itemId", rank DESC, ordinal
         )
         SELECT b."itemId", b.ordinal, b.rank,
-          ts_headline('english', b.text, q.tsq, 'StartSel=<b>, StopSel=</b>, MaxFragments=1') AS snippet
+          ts_headline('english', b.text, q.tsq, ${HEADLINE_OPTIONS}::text) AS snippet
         FROM best b, q
         ORDER BY b.rank DESC, b."itemId"
         LIMIT ${limit}`;
