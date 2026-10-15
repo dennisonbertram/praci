@@ -188,6 +188,8 @@ export async function runTrial(
         select: { id: true },
       });
       seededThreadId = thread.id;
+      // Bot creation seeds a fixed greeting at seq 0; the fixture history owns the whole thread.
+      await prisma.message.deleteMany({ where: { threadId: thread.id } });
       // Direct synthetic fixture setup, never pay a model to author filler.
       for (let offset = 0; offset < scenario.history.messages.length; offset += 500) {
         await prisma.message.createMany({
