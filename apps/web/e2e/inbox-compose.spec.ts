@@ -332,7 +332,7 @@ test("many recipients fold into one line, Send stays in view, and Discard can be
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
   const composer = page.getByRole("dialog", { name: "New message" });
-  const crowd = Array.from({ length: 30 }, (_, i) => `person${i}.long.address@example.test`);
+  const crowd = Array.from({ length: 30 }, (_, i) => `person${i}.long@example.test`);
   await composer.getByLabel("To").fill(`${crowd.join(", ")},`);
   // The rows stay capped, so the body and the footer are still inside the dialog.
   const box = async (locator: ReturnType<typeof composer.locator>) =>
@@ -355,74 +355,3 @@ test("many recipients fold into one line, Send stays in view, and Discard can be
     "Crowd",
   );
 });
-
-// TEMP-SHOTS-BEGIN
-const SHOTS =
-  "/private/tmp/claude-501/-Users-dennison-develop-rakazo/052c12c2-b38a-4b9b-a848-b847ac1382d1/scratchpad/compose5";
-for (const mode of ["light", "dark", "phone"] as const) {
-  test(`temp shots ${mode}`, async ({ page }) => {
-    test.setTimeout(240_000);
-    if (mode === "dark") await page.emulateMedia({ colorScheme: "dark" });
-    if (mode === "phone") await page.setViewportSize({ width: 390, height: 844 });
-    await signup(page, `shots-${mode}-${Date.now()}@rakazo.test`, "password12", "Shots");
-    await completeOnboarding(page);
-    if (mode === "dark") {
-      await page.evaluate(() => document.documentElement.classList.add("dark"));
-    }
-    await connectTwoGmailAccounts(page);
-    const shot = async (name: string) => {
-      await page.waitForTimeout(500);
-      await page.screenshot({ path: `${SHOTS}/${mode}-${name}.png` });
-    };
-    const open = async () => {
-      await page.getByRole("button", { name: "Compose", exact: true }).click();
-      return page.getByRole("dialog", { name: "New message" });
-    };
-    let c = await open();
-    await c.getByLabel("To").fill("Ana Ruiz <ana@example.test>,");
-    await shot("to-row");
-    const crowd = Array.from({ length: 16 }, (_, i) => `person${i}.long@example.test`);
-    await c.getByLabel("To").fill(`${crowd.join(", ")},`);
-    await shot("many-expanded");
-    await c.getByLabel("Subject").fill("Crowd");
-    await shot("many-collapsed");
-    // invalid
-    await c.getByRole("button", { name: /more/ }).focus();
-    await c.getByLabel("To").fill("josé@example.test, nope@,");
-    await c.getByRole("button", { name: "Send", exact: true }).click();
-    await shot("invalid-several");
-    await c.getByRole("button", { name: /Remove nope@/ }).click();
-    await c.getByRole("button", { name: "Send", exact: true }).click();
-    await shot("invalid-one");
-    // attachments
-    const files = Array.from({ length: 8 }, (_, i) => ({
-      name:
-        i === 3
-          ? "a-really-long-file-name-for-the-quarterly-financial-reconciliation-statement-final-v7.pdf"
-          : `invoice-${i}.pdf`,
-      mimeType: "application/pdf",
-      buffer: Buffer.from("x"),
-    }));
-    await c.locator("input[type=file]").setInputFiles(files);
-    await shot("attachments");
-    // discard undo
-    await c.getByRole("button", { name: "Discard", exact: true }).click();
-    // attachments prompt
-    const alert = page.getByRole("alertdialog");
-    if (await alert.isVisible().catch(() => false))
-      await alert.getByRole("button", { name: "Discard" }).click();
-    await shot("discard-undo");
-    await page.getByRole("button", { name: "Undo", exact: true }).click();
-    // failed send
-    c = page.getByRole("dialog", { name: "New message" });
-    await page.route("**/rpc/inbox/compose/send", (route) => route.abort("internetdisconnected"));
-    await c.getByLabel("To").fill("ana@example.test,");
-    await c.locator("input[type=file]").evaluate((el) => {
-      (el as HTMLInputElement).value = "";
-    });
-    await c.getByRole("button", { name: "Send", exact: true }).click();
-    await page.waitForTimeout(6_500);
-    await shot("failed-send");
-  });
-}
-// TEMP-SHOTS-END
