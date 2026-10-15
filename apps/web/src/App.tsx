@@ -14,6 +14,7 @@ import {
 } from "react";
 import { Navigate, Outlet, Route, Routes, useSearchParams } from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
+import { DataRoomDropZone } from "./components/data-room/DropZone";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MailOutbox } from "./components/MailOutbox";
 import { SubscriptionGate } from "./components/SubscriptionGate";
@@ -173,6 +174,7 @@ function SessionApp() {
                 <SubscriptionGate fallback={<GateFallback />}>
                   <Outlet />
                   <MailOutbox />
+                  <DataRoomDropZone />
                 </SubscriptionGate>
               ) : (
                 <Navigate to="/sign-in" replace />
@@ -188,6 +190,7 @@ function SessionApp() {
             <Route path="/app/inbox" element={<ShellPage />} />
             <Route path="/app/integrations/*" element={<ShellPage />} />
             <Route path="/app/finance/*" element={<ShellPage />} />
+            <Route path="/app/data-room" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
         </Routes>
