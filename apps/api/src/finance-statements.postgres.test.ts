@@ -442,6 +442,7 @@ describePostgres("bank statement import (PostgreSQL)", () => {
 
     it("still matches and undoes transactions stored under legacy (account-keyed) ids", async () => {
       const { statementTxnIds, statementAccountKey } = await import("./finance-statements.js");
+      const { createHash } = await import("node:crypto");
       const t1 = line("2026-03-02", "Legacy Coffee", -500);
       const t2 = line("2026-03-10", "Legacy Payroll", 11_000);
       const t3 = line("2026-03-20", "Legacy Rent", -1_000);
@@ -458,13 +459,21 @@ describePostgres("bank statement import (PostgreSQL)", () => {
       // Rewrite the first import's rows the way the old code stored them.
       const stmt = fakes["8888-1.csv"]!.statement;
       const key = statementAccountKey(stmt);
-      const oldIds = statementTxnIds(stmt.transactions, key);
+      // The old scheme, written out here: sha256 of "key|date|amount|description|occurrence".
+      const oldIds = stmt.transactions.map(
+        (t) =>
+          `h:${createHash("sha256")
+            .update(`${key}|${t.date}|${t.amountCents}|${t.description.toLowerCase()}|0`)
+            .digest("hex")
+            .slice(0, 32)}`,
+      );
       const newIds = statementTxnIds(stmt.transactions);
       for (const [i, id] of newIds.entries()) {
-        await prisma.financeTransaction.updateMany({
+        const { count } = await prisma.financeTransaction.updateMany({
           where: { spaceId, userId: userA, accountExternalId: key, externalId: id },
           data: { externalId: oldIds[i] as string },
         });
+        expect(count).toBe(1);
       }
       const reviewed = await upload(a, "8888-2.csv");
       expect(reviewed.duplicateCount).toBe(1);
