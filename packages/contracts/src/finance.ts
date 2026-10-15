@@ -193,7 +193,25 @@ export const FinanceCryptoOutputSchema = z.object({
   wallets: z.array(FinanceWalletSchema),
   /** Short reason the last crypto sync failed; null when fine. */
   lastError: z.string().nullable(),
+  /** Whether holdings come from the user's Alchemy key, and why the last sync fell back from it. */
+  alchemy: z.object({ connected: z.boolean(), lastError: z.string().nullable() }),
 });
+
+/** A balance provider the user can connect with an API key. The key is stored encrypted, never returned. */
+export const FinanceCryptoProviderSchema = z.enum(["alchemy"]);
+export const FinanceCryptoProviderConnectInputSchema = z.object({
+  provider: FinanceCryptoProviderSchema,
+  apiKey: z.string().trim().min(1).max(500),
+});
+export const FinanceCryptoProviderRemoveInputSchema = z.object({
+  provider: FinanceCryptoProviderSchema,
+});
+export type FinanceCryptoProviderConnectInput = z.infer<
+  typeof FinanceCryptoProviderConnectInputSchema
+>;
+export type FinanceCryptoProviderRemoveInput = z.infer<
+  typeof FinanceCryptoProviderRemoveInputSchema
+>;
 
 /** Creates or updates the Blockscout McpServer; the key is optional (shared stricter rate limit without it). */
 export const FinanceCryptoConnectInputSchema = z.object({
@@ -576,8 +594,8 @@ export const FinanceMonthOutputSchema = z.object({
 });
 
 /**
- * What counts as cash for runway, burn-down and the dashboard: bank only, bank plus stablecoins
- * (the default), or bank plus all priced crypto at current prices.
+ * What counts as cash for runway, the accounts total and the dashboard: bank only (the default),
+ * bank plus stablecoins, or bank plus all priced crypto at current prices.
  */
 export const RunwayCryptoScopeSchema = z.enum(["bank", "stablecoins", "all"]);
 export type RunwayCryptoScope = z.infer<typeof RunwayCryptoScopeSchema>;

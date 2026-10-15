@@ -13,6 +13,8 @@ const cryptoRpc = vi.hoisted(() => ({
   cryptoConnect: vi.fn(),
   exchanges: vi.fn(),
   exchangeConnect: vi.fn(),
+  cryptoProviderConnect: vi.fn(),
+  cryptoProviderRemove: vi.fn(),
 }));
 vi.mock("../../lib/finance-connect", () => ({ connectFinanceProvider: connect }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: cryptoRpc } }));
@@ -211,4 +213,37 @@ it("shows the exchange's error inside the dialog and stays not connected", async
   await press2(dialog, "Connect");
   expect(dialog.querySelector('[role="alert"]')?.textContent).toContain("can't read balances");
   expect(tile("kraken")?.textContent).toContain("Not connected");
+});
+
+const alchemy = () => container.querySelector('[data-testid="finance-tile-alchemy"]') as Element;
+
+it("connects Alchemy only after the server accepts the key, and shows its error inline", async () => {
+  const off = {
+    connected: false,
+    hasApiKey: false,
+    alchemy: { connected: false, lastError: null },
+  };
+  cryptoRpc.crypto
+    .mockResolvedValueOnce(off)
+    .mockResolvedValueOnce(off)
+    .mockResolvedValue({ ...off, alchemy: { connected: true, lastError: null } });
+  cryptoRpc.cryptoProviderConnect
+    .mockRejectedValueOnce(new Error("Alchemy rejected the API key"))
+    .mockResolvedValue({ ok: true });
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  expect(alchemy().querySelector("img")?.getAttribute("src")).toBe("/logos/alchemy.svg");
+  await press2(alchemy(), "Connect");
+  const dialog = document.body.querySelector('[role="dialog"]') as Element;
+  expect(dialog.querySelector("a")?.getAttribute("href")).toContain("alchemy.com");
+  await typeKey("bad");
+  await press2(dialog, "Save");
+  expect(dialog.querySelector('[role="alert"]')?.textContent).toContain("Alchemy rejected");
+  expect(alchemy().textContent).toContain("Not connected");
+  await typeKey("good");
+  await press2(dialog, "Save");
+  expect(cryptoRpc.cryptoProviderConnect).toHaveBeenLastCalledWith({
+    provider: "alchemy",
+    apiKey: "good",
+  });
+  expect(alchemy().textContent).toContain("Connected");
 });

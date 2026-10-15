@@ -580,6 +580,10 @@ msgstr "All agents can use {0}."
 msgid "All bots"
 msgstr "All bots"
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "All crypto"
+msgstr "All crypto"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "All providers"
 msgstr "All providers"
@@ -694,6 +698,7 @@ msgid "API is back, but the update did not finish. Check the host logs."
 msgstr "API is back, but the update did not finish. Check the host logs."
 
 #: src/components/AskCard.tsx
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -951,14 +956,6 @@ msgstr "Balance owed"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
 msgstr "Bank"
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Bank + all crypto"
-msgstr "Bank + all crypto"
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Bank + stablecoins"
-msgstr "Bank + stablecoins"
 
 #: src/pages/Finance.tsx
 msgid "Bank only: {bankRunwayMonths} mo"
@@ -1304,6 +1301,14 @@ msgstr "Check your email"
 msgid "Checking + Savings + Treasury"
 msgstr "Checking + Savings + Treasury"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Checking + Savings + Treasury + Crypto"
+msgstr "Checking + Savings + Treasury + Crypto"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Checking + Savings + Treasury + Stablecoins"
+msgstr "Checking + Savings + Treasury + Stablecoins"
+
 #: src/pages/Finance.tsx
 msgid "Checking + Treasury"
 msgstr "Checking + Treasury"
@@ -1354,6 +1359,10 @@ msgstr "Choose the account to connect, then come back here."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Choose which connected model Rakazo uses."
 msgstr "Choose which connected model Rakazo uses."
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Choose which crypto counts"
+msgstr "Choose which crypto counts"
 
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1612,6 +1621,11 @@ msgstr "Connect a provider to add backups."
 #: src/pages/Finance.tsx
 msgid "Connect accounts"
 msgstr "Connect accounts"
+
+#: src/components/integrations/AlchemyConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
+msgid "Connect Alchemy"
+msgstr "Connect Alchemy"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect any app that offers an MCP server URL."
@@ -2226,13 +2240,17 @@ msgstr "Couldn't update avatars"
 msgid "Couldn't update messaging settings"
 msgstr "Couldn't update messaging settings"
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Counted in runway"
-msgstr "Counted in runway"
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Count crypto"
+msgstr "Count crypto"
 
 #: src/components/finance/ui.tsx
 msgid "Counterparty"
 msgstr "Counterparty"
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Counting crypto"
+msgstr "Counting crypto"
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
@@ -3013,6 +3031,7 @@ msgstr "Gateway ID"
 msgid "General"
 msgstr "General"
 
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Get an API key"
 msgstr "Get an API key"
@@ -4074,6 +4093,10 @@ msgstr "Not counted"
 msgid "Not counted in cash"
 msgstr "Not counted in cash"
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Not counting crypto"
+msgstr "Not counting crypto"
+
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"
 msgstr "Not found"
@@ -4677,6 +4700,7 @@ msgstr "Release interrupted computer?"
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -5001,6 +5025,7 @@ msgstr "Sales & CRM"
 
 #: src/components/AskCard.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
@@ -5495,6 +5520,10 @@ msgstr "SSO is temporarily unavailable. Try again."
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins"
 msgstr "Stablecoins"
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Stablecoins only"
+msgstr "Stablecoins only"
 
 #: src/pages/Inbox.tsx
 msgid "Starred"

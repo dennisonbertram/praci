@@ -120,7 +120,7 @@ export function createBackgroundJobHandlers(deps: {
       );
       // Wallets ride the same periodic job; with no wallets this is a no-op.
       await syncCryptoHoldings(
-        { prisma: deps.prisma },
+        { prisma: deps.prisma, secrets: deps.secretStore },
         { spaceId: payload.spaceId, userId: payload.userId },
       );
       // Exchange API-key connections ride the same job; with none this is a no-op.

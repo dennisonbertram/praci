@@ -580,6 +580,10 @@ msgstr ""
 msgid "All bots"
 msgstr ""
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "All crypto"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "All providers"
 msgstr ""
@@ -694,6 +698,7 @@ msgid "API is back, but the update did not finish. Check the host logs."
 msgstr "API가 다시 작동하지만 업데이트가 완료되지 않았습니다. 호스트 로그를 확인하세요."
 
 #: src/components/AskCard.tsx
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -950,14 +955,6 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
-msgstr ""
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Bank + all crypto"
-msgstr ""
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Bank + stablecoins"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1304,6 +1301,14 @@ msgstr "이메일을 확인하세요"
 msgid "Checking + Savings + Treasury"
 msgstr ""
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Checking + Savings + Treasury + Crypto"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Checking + Savings + Treasury + Stablecoins"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Checking + Treasury"
 msgstr ""
@@ -1354,6 +1359,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Choose which connected model Rakazo uses."
 msgstr "Rakazo에서 기본으로 사용할 연결된 모델을 선택하세요."
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Choose which crypto counts"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1611,6 +1620,11 @@ msgstr "백업을 추가하려면 제공업체를 연결하세요."
 
 #: src/pages/Finance.tsx
 msgid "Connect accounts"
+msgstr ""
+
+#: src/components/integrations/AlchemyConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
+msgid "Connect Alchemy"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2226,12 +2240,16 @@ msgstr "아바타를 업데이트할 수 없습니다"
 msgid "Couldn't update messaging settings"
 msgstr "메시징 설정을 업데이트할 수 없습니다"
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Counted in runway"
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Count crypto"
 msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Counterparty"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Counting crypto"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -3013,6 +3031,7 @@ msgstr "게이트웨이 ID"
 msgid "General"
 msgstr "일반"
 
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Get an API key"
 msgstr ""
@@ -4074,6 +4093,10 @@ msgstr ""
 msgid "Not counted in cash"
 msgstr ""
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Not counting crypto"
+msgstr ""
+
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"
 msgstr ""
@@ -4677,6 +4700,7 @@ msgstr ""
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -5001,6 +5025,7 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
@@ -5494,6 +5519,10 @@ msgstr "SSO를 일시적으로 사용할 수 없습니다. 다시 시도하세�
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Stablecoins only"
 msgstr ""
 
 #: src/pages/Inbox.tsx

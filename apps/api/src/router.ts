@@ -276,6 +276,8 @@ import {
 import {
   financeCrypto,
   financeCryptoConnect,
+  financeCryptoProviderConnect,
+  financeCryptoProviderRemove,
   financeWalletAdd,
   financeWalletRemove,
   financeWallets,
@@ -6153,6 +6155,12 @@ export function createRouter(deps: RouterDeps) {
       ),
       exchangeRemove: authed.finance.exchangeRemove.handler(({ context, input }) =>
         financeExchangeRemove(financeDeps, context.actor, input),
+      ),
+      cryptoProviderConnect: authed.finance.cryptoProviderConnect.handler(({ context, input }) =>
+        financeCryptoProviderConnect(financeDeps, context.actor, input),
+      ),
+      cryptoProviderRemove: authed.finance.cryptoProviderRemove.handler(({ context }) =>
+        financeCryptoProviderRemove(financeDeps, context.actor),
       ),
       accounts: authed.finance.accounts.handler(({ context }) =>
         financeAccounts(financeDeps, context.actor),

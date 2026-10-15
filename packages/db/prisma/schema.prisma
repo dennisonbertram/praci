@@ -1916,12 +1916,12 @@ model FinanceCryptoHolding {
   @@map("finance_crypto_holdings")
 }
 
-/// Per user and space: what counts as cash for runway. "bank" | "stablecoins" (default) | "all".
+/// Per user and space: what counts as cash for runway. "bank" (default) | "stablecoins" | "all".
 model FinancePreference {
   id           String   @id @default(cuid())
   spaceId      String
   userId       String
-  runwayCrypto String   @default("stablecoins")
+  runwayCrypto String   @default("bank")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

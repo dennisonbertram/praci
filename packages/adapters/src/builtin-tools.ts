@@ -842,7 +842,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "finance_crypto",
     description:
-      "The user's crypto wallets: total value in dollars at DefiLlama prices, value by chain and wallet, each wallet's top holdings, tokens without a price, and when it last synced. Only stablecoins count as cash; other crypto is not part of cash, burn or runway.",
+      "The user's crypto wallets: total value in dollars at DefiLlama prices, value by chain and wallet, each wallet's top holdings, tokens without a price, and when it last synced. Whether crypto counts as cash follows the user's saved runway scope; it never affects burn.",
     inputSchema: { type: "object", properties: {} },
     readOnly: true,
   },

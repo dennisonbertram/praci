@@ -27,6 +27,7 @@ async function mockFinance(page: Page, overview = connectedOverview) {
     const answers: Record<string, unknown> = {
       overview,
       refresh: { ok: true },
+      preferences: { runwayCrypto: "bank" },
       vendor,
       transaction: transactionOf(String(input?.id)),
       receiptUrl: { url: "https://files.example.test/receipt.png", mimeType: "image/png" },
@@ -291,6 +292,7 @@ test("Finance Accounts lists wallets apart from cash and adds one from the menu"
   const main = page.getByRole("main");
   await expect(main.getByText("Mercury Checking")).toBeVisible();
   await expect(main.getByRole("heading", { name: "Crypto" })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Count crypto" })).toBeVisible();
   await expect(main.locator('a[href="/app/finance/crypto"]').first()).toHaveText("Treasury");
   await expect(main.getByText("$75,000", { exact: true }).first()).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-accounts-crypto-group");
@@ -376,7 +378,7 @@ test("Finance runway shows crypto and switches what counts", async ({ page }) =>
   await reply("runway", () => ({
     ...runwayData,
     runwayCrypto: scope,
-    cashCents: scope === "all" ? 9_800_000 : runwayData.cashCents,
+    cashCents: { bank: 7_500_000, stablecoins: 9_000_000, all: 9_800_000 }[scope],
   }));
   await reply("preferences", () => ({ runwayCrypto: scope }));
   await page.route("**/rpc/finance/setPreferences", (route) => {
@@ -395,7 +397,14 @@ test("Finance runway shows crypto and switches what counts", async ({ page }) =>
   await expect(main.getByText("$75,000", { exact: true })).toBeVisible();
   await expect(main.getByText("$15,000", { exact: true })).toBeVisible();
   await expect(main.getByText("$8,000", { exact: true })).toBeVisible();
-  await expect(main.getByText("$90,000")).toBeVisible();
-  await main.getByRole("tab", { name: "Bank + all crypto" }).click();
+  await expect(main.getByRole("button", { name: "Count crypto" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await main.getByRole("button", { name: "Count crypto" }).click();
   await expect(main.getByText("$98,000")).toBeVisible();
+  await expect(main.getByRole("button", { name: "Counting crypto" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });

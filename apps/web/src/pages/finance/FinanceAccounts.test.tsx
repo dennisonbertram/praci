@@ -21,6 +21,8 @@ const rpcMock = vi.hoisted(() => ({
   crypto: vi.fn(),
   exchanges: vi.fn(),
   walletAdd: vi.fn(),
+  preferences: vi.fn(),
+  setPreferences: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
@@ -72,12 +74,9 @@ const accounts = {
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 const flush = () => act(async () => {});
-beforeEach(async () => {
-  container = document.createElement("div");
-  document.body.append(container);
-  root = createRoot(container);
+async function show(scope: "bank" | "stablecoins" | "all" = "bank", cryptoData = crypto) {
   rpcMock.accounts.mockResolvedValue(accounts);
-  rpcMock.crypto.mockResolvedValue(crypto);
+  rpcMock.crypto.mockResolvedValue(cryptoData);
   rpcMock.exchanges.mockResolvedValue([
     {
       id: "x1",
@@ -89,6 +88,7 @@ beforeEach(async () => {
       balances: [],
     },
   ]);
+  rpcMock.preferences.mockResolvedValue({ runwayCrypto: scope });
   await act(async () =>
     root.render(
       <MemoryRouter>
@@ -97,6 +97,12 @@ beforeEach(async () => {
     ),
   );
   await flush();
+}
+beforeEach(async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await show();
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -134,4 +140,77 @@ it("opens the Add wallet dialog from the Add account menu", async () => {
   expect(items.map((i) => i.textContent)).toEqual(["Crypto wallet", "Coinbase", "Kraken"]);
   await act(async () => (items[0] as HTMLElement).click());
   expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Add wallet");
+});
+
+const toggle = () => container.querySelector("button[aria-pressed]") as HTMLButtonElement | null;
+const subtitle = () =>
+  [...container.querySelectorAll("h2")].find((h) => h.textContent === "Total cash")
+    ?.nextElementSibling?.nextElementSibling?.textContent;
+
+it("offers Count crypto, off under the bank scope, and keeps the plain subtitle", () => {
+  expect(toggle()?.textContent).toBe("Count crypto");
+  expect(subtitle()).toBe("Checking + Savings + Treasury");
+});
+
+it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await show("stablecoins");
+  expect(toggle()?.textContent).toBe("Counting crypto");
+  expect(subtitle()).toBe("Checking + Savings + Treasury + Stablecoins");
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await show("all");
+  expect(subtitle()).toBe("Checking + Savings + Treasury + Crypto");
+});
+
+it("saves the scope and reloads accounts and the scope", async () => {
+  rpcMock.setPreferences.mockResolvedValue({ runwayCrypto: "all" });
+  await act(async () => toggle()?.click());
+  await flush();
+  expect(rpcMock.setPreferences).toHaveBeenCalledWith({ runwayCrypto: "all" });
+  expect(rpcMock.accounts).toHaveBeenCalledTimes(2);
+  expect(rpcMock.preferences).toHaveBeenCalledTimes(2);
+});
+
+it("hides the button when no crypto is held", async () => {
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await show("bank", { ...crypto, wallets: [], summary: { ...crypto.summary, totalCents: 0 } });
+  expect(toggle()).toBeNull();
+});
+
+it("reloads accounts after a wallet is added, since crypto can count in total cash", async () => {
+  rpcMock.walletAdd.mockResolvedValue({});
+  await act(async () =>
+    (
+      [...container.querySelectorAll("button")].find(
+        (b) => b.textContent === "Add account",
+      ) as HTMLElement
+    ).dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })),
+  );
+  await act(async () =>
+    (
+      [...container.querySelectorAll("button")].find(
+        (b) => b.textContent === "Add account",
+      ) as HTMLElement
+    ).click(),
+  );
+  await act(async () =>
+    ([...document.body.querySelectorAll('[role="menuitem"]')][0] as HTMLElement).click(),
+  );
+  const input = document.body.querySelector('[aria-label="Address or ENS"]') as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+      input,
+      "alice.eth",
+    );
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () =>
+    (document.body.querySelector('button[type="submit"]') as HTMLButtonElement).click(),
+  );
+  await flush();
+  expect(rpcMock.walletAdd).toHaveBeenCalled();
+  expect(rpcMock.accounts).toHaveBeenCalledTimes(2);
 });

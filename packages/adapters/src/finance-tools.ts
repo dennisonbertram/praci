@@ -100,7 +100,7 @@ export async function hasFinanceSource(
   );
 }
 
-/** The saved choice of what counts as cash for runway; stablecoins until the user picks one. */
+/** The saved choice of what counts as cash for runway; bank only until the user picks one. */
 export async function loadRunwayCrypto(
   prisma: Pick<PrismaClient, "financePreference">,
   scope: Scope,
@@ -110,7 +110,7 @@ export async function loadRunwayCrypto(
     select: { runwayCrypto: true },
   });
   const parsed = RunwayCryptoScopeSchema.safeParse(row?.runwayCrypto);
-  return parsed.success ? parsed.data : "stablecoins";
+  return parsed.success ? parsed.data : "bank";
 }
 
 // ---- Row mapping (shared with the API's Finance pages) ----

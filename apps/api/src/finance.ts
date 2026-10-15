@@ -35,6 +35,7 @@ import type {
   FinanceTransactionOutput,
   FinanceVendorOutput,
   PaidWithEntry,
+  RunwayCryptoScope,
   TreasuryYieldMonth,
 } from "@rakazo/contracts";
 import {
@@ -99,6 +100,8 @@ export interface FinanceDeps {
   crypto?: FinanceCryptoDeps;
   /** Test seam for Coinbase, Kraken and price requests. */
   exchangeFetch?: typeof fetch;
+  /** Overrides global fetch for the Alchemy key check (tests). */
+  fetch?: typeof fetch;
   now?: () => Date;
 }
 
@@ -156,6 +159,33 @@ const cashParts = (
     otherCryptoCents: (crypto?.totalCents ?? 0) - stablecoinCents,
   };
 };
+/**
+ * Cash at each of the last 12 month-ends under `scope`: bank history plus counted crypto (daily
+ * snapshots for past months, today's holdings for this one). Without bank accounts bank is zero.
+ */
+function scopedCashHistory(
+  accounts: FinanceAccount[],
+  txns: FinanceTransaction[],
+  now: Date,
+  parts: ReturnType<typeof cashParts>,
+  snapshots: Parameters<typeof cryptoPartsOn>[0],
+  scope: RunwayCryptoScope,
+) {
+  const currentMonth = monthOf(now);
+  const bankByMonth = new Map(
+    cashHistory(accounts, txns, now).map((p) => [p.month, p.balanceCents]),
+  );
+  return Array.from({ length: 12 }, (_, i) => monthOf(now, i - 11)).map((month) => ({
+    month,
+    balanceCents: countedCash(
+      {
+        ...(month === currentMonth ? parts : cryptoPartsOn(snapshots, monthEndOf(month))),
+        bankCents: bankByMonth.get(month) ?? 0,
+      },
+      scope,
+    ),
+  }));
+}
 /** Last day of a `YYYY-MM` month. */
 const monthEndOf = (month: string) =>
   addDays(monthStartOf(new Date(`${month}-01T00:00:00Z`), 1), -1);
@@ -466,7 +496,7 @@ export async function financeOverview(
         : null,
     lastSyncedAt,
     excludedNonUsdCount: excludedNonUsdCount(txns),
-    // Its own card. Only its stablecoins are inside cash and runway.
+    // Its own card. What counts as cash follows the saved scope.
     crypto,
   };
 }
@@ -494,18 +524,17 @@ export async function financeAccounts(
   actor: Actor,
 ): Promise<FinanceAccountsOutput> {
   const now = nowOf(deps);
-  const [accounts, txns, yieldRows, crypto] = await Promise.all([
+  const [accounts, txns, yieldRows, crypto, scope, snapshots] = await Promise.all([
     loadAccounts(deps, actor),
     loadTransactions(deps, actor),
     deps.prisma.financeTreasuryYield.findMany({ where: scopeOf(actor) }),
     loadCryptoSummary(deps, actor),
+    loadRunwayCrypto(deps.prisma, actor),
+    loadSnapshots(deps, actor),
   ]);
   const yields = yieldRows.map(toYield);
-  const scope = await loadRunwayCrypto(deps.prisma, actor);
-  const summary = {
-    ...cashSummary(accounts),
-    cashCents: countedCash(cashParts(accounts, crypto), scope),
-  };
+  const parts = cashParts(accounts, crypto);
+  const summary = { ...cashSummary(accounts), cashCents: countedCash(parts, scope) };
   const row = (account: FinanceAccount) => ({
     ...account,
     annualYieldPct: annualYieldPct(account, yields, now),
@@ -513,7 +542,7 @@ export async function financeAccounts(
   return {
     totalCashCents: summary.cashCents,
     cardOwedCents: summary.cardOwedCents,
-    history: cashHistory(accounts, txns, now),
+    history: scopedCashHistory(accounts, txns, now, parts, snapshots, scope),
     cash: accounts.filter((a) => a.kind !== "card").map(row),
     cards: accounts.filter((a) => a.kind === "card").map(row),
   };
@@ -624,10 +653,6 @@ export async function financeRunway(deps: FinanceDeps, actor: Actor): Promise<Fi
   const parts = cashParts(accounts, crypto);
   const cashCents = countedCash(parts, scope);
   const { monthlyCents } = monthlyBurn(txns, now);
-  const currentMonth = monthOf(now);
-  const bankByMonth = new Map(
-    cashHistory(accounts, txns, now).map((p) => [p.month, p.balanceCents]),
-  );
   return {
     runwayCrypto: scope,
     cashCents,
@@ -638,18 +663,7 @@ export async function financeRunway(deps: FinanceDeps, actor: Actor): Promise<Fi
     },
     monthlyBurnCents: monthlyCents,
     runway: runway(cashCents, monthlyCents, now),
-    // Past crypto comes from the daily snapshots (zero before the first); this month uses today's holdings.
-    // The 12 months do not depend on bank accounts: without any, bank is zero for every month.
-    history: Array.from({ length: 12 }, (_, i) => monthOf(now, i - 11)).map((month) => ({
-      month,
-      balanceCents: countedCash(
-        {
-          ...(month === currentMonth ? parts : cryptoPartsOn(snapshots, monthEndOf(month))),
-          bankCents: bankByMonth.get(month) ?? 0,
-        },
-        scope,
-      ),
-    })),
+    history: scopedCashHistory(accounts, txns, now, parts, snapshots, scope),
     projection: projectCash(cashCents, monthlyCents, now),
   };
 }

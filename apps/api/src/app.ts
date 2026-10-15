@@ -571,7 +571,7 @@ export async function createApp(
     mail,
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
     financeCrypto: {
-      sync: (scope, opts) => syncCryptoHoldings({ prisma }, scope, opts),
+      sync: (scope, opts) => syncCryptoHoldings({ prisma, secrets }, scope, opts),
       resolveEns: (_scope, name, signal) => resolveEnsName(createRpcClient({ signal }), name),
     },
     resolveModel: executor.resolveModel,

@@ -13,6 +13,7 @@ import { financePath } from "../../lib/finance-route";
 import { EXCHANGES, FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { AlchemyConnectDialog } from "./AlchemyConnectDialog";
 import { AppLogo } from "./AppLogo";
 import { BlockscoutConnectDialog } from "./BlockscoutConnectDialog";
 import { ExchangeConnectDialog } from "./ExchangeConnectDialog";
@@ -81,6 +82,82 @@ function CryptoTile() {
       </div>
       {dialog ? (
         <BlockscoutConnectDialog onConnected={() => void load()} onClose={() => setDialog(false)} />
+      ) : null}
+    </div>
+  );
+}
+
+/** Optional: with an Alchemy key, holdings come from Alchemy instead of the public RPC source. */
+function AlchemyTile() {
+  const { t } = useLingui();
+  const [state, setState] = useState<{ connected: boolean; lastError: string | null } | null>(null);
+  const [dialog, setDialog] = useState(false);
+
+  const load = () =>
+    rpc.finance
+      .crypto()
+      .then((crypto) => setState(crypto.alchemy))
+      .catch(() => setState({ connected: false, lastError: null }));
+  useEffect(() => {
+    void load();
+  }, []);
+
+  return (
+    <div
+      data-testid="finance-tile-alchemy"
+      className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <AppLogo name="Alchemy" logo="/logos/alchemy.svg" />
+        <div className="min-w-0">
+          <div className="truncate font-semibold">Alchemy</div>
+          <div className="truncate text-xs text-muted-foreground">
+            <Trans>Read wallet balances</Trans>
+          </div>
+        </div>
+      </div>
+      <div className="mt-auto flex items-center gap-2">
+        {state?.connected ? (
+          <>
+            <StatusBadge status="connected" />
+            <Button size="sm" variant="ghost" className="ms-auto" onClick={() => setDialog(true)}>
+              <Trans>Replace API key</Trans>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                void rpc.finance.cryptoProviderRemove({ provider: "alchemy" }).then(load, load)
+              }
+            >
+              <Trans>Remove</Trans>
+            </Button>
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-muted-foreground">
+              <Trans>Not connected</Trans>
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ms-auto"
+              disabled={state === null}
+              aria-label={t`Connect Alchemy`}
+              onClick={() => setDialog(true)}
+            >
+              <Trans>Connect</Trans>
+            </Button>
+          </>
+        )}
+      </div>
+      {state?.lastError ? (
+        <p role="alert" className="text-xs text-destructive">
+          {state.lastError}
+        </p>
+      ) : null}
+      {dialog ? (
+        <AlchemyConnectDialog onConnected={() => void load()} onClose={() => setDialog(false)} />
       ) : null}
     </div>
   );
@@ -264,6 +341,7 @@ export function FinanceSection({
         );
       })}
       <CryptoTile />
+      <AlchemyTile />
       {EXCHANGES.map(({ provider }) => (
         <ExchangeTile key={provider} provider={provider} />
       ))}

@@ -580,6 +580,10 @@ msgstr ""
 msgid "All bots"
 msgstr ""
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "All crypto"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "All providers"
 msgstr ""
@@ -694,6 +698,7 @@ msgid "API is back, but the update did not finish. Check the host logs."
 msgstr ""
 
 #: src/components/AskCard.tsx
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -950,14 +955,6 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
-msgstr ""
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Bank + all crypto"
-msgstr ""
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Bank + stablecoins"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1304,6 +1301,14 @@ msgstr "अपना ईमेल देखें"
 msgid "Checking + Savings + Treasury"
 msgstr ""
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Checking + Savings + Treasury + Crypto"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Checking + Savings + Treasury + Stablecoins"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Checking + Treasury"
 msgstr ""
@@ -1354,6 +1359,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Choose which connected model Rakazo uses."
 msgstr "चुनें कि Rakazo किस कनेक्टेड मॉडल का उपयोग करे।"
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Choose which crypto counts"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1611,6 +1620,11 @@ msgstr "बैकअप जोड़ने के लिए किसी प्�
 
 #: src/pages/Finance.tsx
 msgid "Connect accounts"
+msgstr ""
+
+#: src/components/integrations/AlchemyConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
+msgid "Connect Alchemy"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2226,12 +2240,16 @@ msgstr ""
 msgid "Couldn't update messaging settings"
 msgstr ""
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Counted in runway"
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Count crypto"
 msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Counterparty"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Counting crypto"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -3013,6 +3031,7 @@ msgstr "गेटवे आईडी"
 msgid "General"
 msgstr "सामान्य"
 
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Get an API key"
 msgstr ""
@@ -4074,6 +4093,10 @@ msgstr ""
 msgid "Not counted in cash"
 msgstr ""
 
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Not counting crypto"
+msgstr ""
+
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"
 msgstr ""
@@ -4677,6 +4700,7 @@ msgstr ""
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -5001,6 +5025,7 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
@@ -5494,6 +5519,10 @@ msgstr "SSO अस्थायी रूप से उपलब्ध नही�
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Stablecoins only"
 msgstr ""
 
 #: src/pages/Inbox.tsx
