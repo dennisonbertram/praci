@@ -1181,6 +1181,10 @@ msgstr "cancelled"
 msgid "Cancelled"
 msgstr "Cancelled"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Cap table, equity and investors"
+msgstr "Cap table, equity and investors"
+
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Card balance owed"
@@ -2804,6 +2808,10 @@ msgstr "Enter the server URL, starting with https://."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Enter the URL, starting with https://."
 msgstr "Enter the URL, starting with https://."
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Equity"
+msgstr "Equity"
 
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx

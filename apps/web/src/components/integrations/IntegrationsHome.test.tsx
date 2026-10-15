@@ -131,3 +131,23 @@ it("hides the Zernio tile once its server is connected", async () => {
   await show({ ...data(true, true), servers: [zernioServer] });
   expect(container.querySelector('[aria-label="Connect Zernio"]')).toBeNull();
 });
+
+it("offers Carta and prefills the custom dialog", async () => {
+  await show(data(true, false));
+  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Carta"]');
+  expect(connect).not.toBeNull();
+  await act(async () => connect?.click());
+  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
+  expect(input?.value).toBe("https://mcp.app.carta.com/mcp");
+});
+
+it("shows Carta but not Zernio under the Finance chip", async () => {
+  await show(data(true, true));
+  const chip = [...container.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")].find(
+    (b) => b.textContent === "Finance",
+  );
+  expect(chip).toBeDefined();
+  await act(async () => chip?.click());
+  expect(container.querySelector('[aria-label="Connect Carta"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Connect Zernio"]')).toBeNull();
+});

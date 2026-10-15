@@ -105,6 +105,16 @@ export const FIRST_PARTY_MCP = [
     name: "Zernio",
     logo: "/logos/zernio.svg",
     endpoint: "https://mcp.zernio.com/mcp",
+    section: "social",
+    category: null,
+  },
+  {
+    id: "carta",
+    name: "Carta",
+    logo: null,
+    endpoint: "https://mcp.app.carta.com/mcp",
+    section: "equity",
+    category: "finance",
   },
 ] as const;
 

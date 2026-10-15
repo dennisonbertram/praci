@@ -277,13 +277,18 @@ export function IntegrationsHome({
     () => filterCatalog(popularApps(data.catalog, data.connections), { query, category }),
     [data.catalog, data.connections, query, category],
   );
+  const firstPartySections = { social: t`Social`, equity: t`Equity` };
+  const firstPartyDescription = {
+    zernio: t`Post and schedule to social accounts`,
+    carta: t`Cap table, equity and investors`,
+  };
   const financeNames = FINANCE_PROVIDERS.map((entry) => entry.name.toLowerCase());
   const showFinance =
     (category === "all" || category === "finance") &&
     financeNames.some((name) => name.includes(query.trim().toLowerCase()));
   const firstPartyMcp = FIRST_PARTY_MCP.filter(
     (entry) =>
-      category === "all" &&
+      (category === "all" || category === entry.category) &&
       entry.name.toLowerCase().includes(query.trim().toLowerCase()) &&
       !data.servers.some(
         (server) => "endpoint" in server && isMcpEndpointHost(server.endpoint, entry.endpoint),
@@ -511,24 +516,25 @@ export function IntegrationsHome({
           </div>
         ) : null}
 
-        {firstPartyMcp.length > 0 ? (
-          <div>
-            <SectionTitle>
-              <Trans>Social</Trans>
-            </SectionTitle>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
-              {firstPartyMcp.map((entry) => (
-                <AppTile
-                  key={entry.id}
-                  name={entry.name}
-                  logo={entry.logo}
-                  description={t`Post and schedule to social accounts`}
-                  onConnect={() => setCustom({ url: entry.endpoint })}
-                />
-              ))}
+        {(["social", "equity"] as const).map((section) => {
+          const entries = firstPartyMcp.filter((entry) => entry.section === section);
+          return entries.length > 0 ? (
+            <div key={section}>
+              <SectionTitle>{firstPartySections[section]}</SectionTitle>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
+                {entries.map((entry) => (
+                  <AppTile
+                    key={entry.id}
+                    name={entry.name}
+                    logo={entry.logo}
+                    description={firstPartyDescription[entry.id]}
+                    onConnect={() => setCustom({ url: entry.endpoint })}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null;
+        })}
 
         <SectionTitle>
           <Trans>Anything else</Trans>
