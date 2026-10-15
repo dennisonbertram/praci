@@ -99,7 +99,7 @@ describe("the updater compose service", () => {
     expect(updater.image).toContain("ghcr.io/elie222/rakazo/updater");
     expect(compose.services.api?.image).toContain("ghcr.io/elie222/rakazo/app");
     expect(compose.services.postgres?.image).toMatch(
-      /^\$\{POSTGRES_IMAGE:-postgres:16@sha256:e17e86066e5ef83e0952a9347f5c792b7ece00972e2aa787a6986f471b3dd3d5\}$/,
+      /^\$\{POSTGRES_IMAGE:-pgvector\/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a\}$/,
     );
     expect(compose.services.caddy?.image).toMatch(
       /^\$\{CADDY_IMAGE:-caddy:2@sha256:df7f1c2fb114453b951de51a98efc010db1655a92c2e86be6706714e2417a78d\}$/,

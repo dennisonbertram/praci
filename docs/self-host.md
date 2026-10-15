@@ -157,7 +157,7 @@ the data is disposable); `docker compose down -v` deletes all Postgres state. Fo
 add `infra/compose/docker-compose.postgres-host.yml` so Postgres is published on loopback
 `127.0.0.1:5433`, or use
 `docker compose --env-file .env -f infra/compose/docker-compose.yml exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'`.
-Do not publish Postgres on a public interface.
+Do not publish Postgres on a public interface. The Postgres image now includes the pgvector extension (same Postgres 16 major on Debian, so an existing `pgdata` volume stays compatible).
 
 The Docker supervisor is not published as its own image and is not exposed on the host. It runs from
 the app image, stays on the internal Compose network, and holds the Docker socket because access to
