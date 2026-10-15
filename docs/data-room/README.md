@@ -50,15 +50,19 @@ providers sit behind interfaces instead of one hard-coded vendor.
   filters by `spaceId`, and every request goes through `requireMembership`. Nothing
   is ever visible across spaces, organizations or owners, including through search
   ranking, counts, dedupe or embeddings.
-- **V1 assumes one owner per space.** Everything in a space's Data room is visible
-  to its owner and to every agent in that space.
+- **V1 shows each item only to the person who added or connected it,** and to
+  that person's agents. Spaces can already have several members and Inbox data is
+  private to its owner, so space-wide visibility would weaken today's rules. For a
+  founder alone in a space this is everything. Synced items also keep their
+  connection's agent limits (`allAgents`, `BotConnectionAccess`).
 - **Keep later roles possible without building them.** Later a space gains members
   (a spouse, children, employees) and agents gain limits. To keep that a small
   change, all reads go through one query helper that takes an `Actor` and returns
-  the eligible items. V2 adds a visibility rule inside that helper (per-member and
-  per-agent, in the style of `BotConnectionAccess`) instead of touching every
-  caller.
-- Dedupe is per space: the same file in two spaces is two items with two blobs.
+  the eligible items. The helper filters by `spaceId` and `userId` and applies connection agent
+  limits; V2 adds explicit sharing with other members inside it instead of
+  touching every caller. Counts, snippets, previews and downloads all use it.
+- Dedupe is per owner within a space: the same file added by two people, or in two
+  spaces, is two items with two blobs.
 
 ## Decisions
 
@@ -69,17 +73,22 @@ providers sit behind interfaces instead of one hard-coded vendor.
    and worker processes. Add an S3-protocol adapter (works with AWS S3, R2, MinIO,
    or any compatible store), configured by generic endpoint, bucket and credential
    settings with no vendor-specific variables. The local adapter stays for
-   single-process development. Keys are `dataroom/<spaceId>/<sha256>`. Encryption
-   at rest beyond the store's own is V2.
+   single-process development. Each stored blob gets its own random key under
+   `artifacts/<spaceId>/`, so deleting one item can never remove another item's
+   bytes. Buckets must not retain object versions, or deletion must purge them.
+   Encryption at rest beyond the store's own is V2.
 3. **Postgres holds metadata, text, tags and the index.** Keyword search uses a
-   `tsvector` column with a GIN index. Vector search uses pgvector with an HNSW
-   index. This changes the Postgres image to `pgvector/pgvector:pg16` in compose,
+   `tsvector` column with a GIN index. Vector search uses pgvector as an exact scan over the
+   owner's eligible chunks. A shared approximate (HNSW) index filters after the
+   index scan, so other spaces' rows would change recall; per-space partitioned
+   indexes can be added if exact scans get too slow. This changes the Postgres image to `pgvector/pgvector:pg16` in compose,
    CI and the self-host docs.
 4. **Embeddings sit behind a new `Embedder` interface** in adapter-kit, with one
    adapter for the OpenAI-compatible `/embeddings` endpoint reached through the
    shared model connection settings. Without an embedder configured, search is
-   keyword-only and still works. Each chunk stores the model that embedded it, and
-   changing models re-embeds in the background.
+   keyword-only and still works. Each chunk stores the embedding model that produced it. Search only
+   compares vectors from the space's current model; chunks from another model fall
+   back to keyword-only until a background job re-embeds them.
 5. **Classification sits behind a `DataRoomClassifier` interface.** It runs once on
    ingest (document type, parties, dates, amounts, summary, proposed folder, tags)
    and once on search (turning a question into filters plus a query). The first
@@ -91,13 +100,21 @@ providers sit behind interfaces instead of one hard-coded vendor.
    `scheduling`, `security` or `personal`. `newsletter`, `bulk`, `notification`,
    `suspicious`, `spam`, `scam` and senders marked `noise` are never indexed. This
    reuses the existing Inbox triage (`InboxCategorySchema`, `InboxMarkSchema`)
-   instead of a second classifier.
-7. **Deletion is real.** Removing an item deletes its chunks, vectors and blob.
-   Disconnecting a source deletes everything that source contributed. No soft
-   delete that leaves data on disk.
-8. **AI consent applies.** Sending document text to an embedding or classifier
-   provider is gated by the existing `AiDataConsent` rules
-   (`docs/ai-data-sharing-review.md`).
+   instead of a second classifier. Triage and sender marks change locally after a
+   message is synced, so a change to either re-checks the affected messages and
+   adds or purges them. Exclusions win when rules disagree.
+7. **Deletion is real.** Removing an item deletes its row, chunks and vectors in
+   one transaction and queues a job that deletes the blob, so a crash between the
+   two leaves a retried cleanup job rather than an orphaned file. Running jobs for a
+   deleted item stop at their next write. Deleting a synced item keeps a small
+   record (source and external id only, no content) so the next sync does not
+   bring it back. Disconnecting a source deletes everything that source
+   contributed.
+8. **AI consent needs its own disclosure.** The current Inbox consent covers short
+   previews, not full documents. The Data room adds a disclosure that names what is
+   sent (full document text, page images for vision) and to which providers, and
+   the backend checks it before every vision, classification and embedding call,
+   including background re-embedding.
 
 ## Data model
 
@@ -110,7 +127,7 @@ All tables carry `spaceId` (cascade on space delete) and `userId`.
   the source keeps the bytes), `name`, `mimeType`, `size`, `sourceUrl`,
   `sourceUpdatedAt`, `status` (`pending`, `extracting`, `classifying`, `indexing`,
   `ready`, `failed`), `error`, plus the facets below. Unique on (`spaceId`,
-  `sha256`) for uploads and (`spaceId`, `sourceConnectionId`, `externalId`) for
+  `userId`, `sha256`) for uploads and (`spaceId`, `sourceConnectionId`, `externalId`) for
   synced items.
 - **Facets** are columns, not free JSON, so filters use indexes: `docType`,
   `docDate`, `parties text[]`, `amountCents bigint`, `currency`, `tags text[]`,
@@ -118,8 +135,8 @@ All tables carry `spaceId` (cascade on space delete) and `userId`.
   predictable; anything else goes in `tags`.
 - `DataRoomChunk`: `id`, `itemId`, `ordinal`, `text`, `contentHash`, `tsv`
   (generated), `embedding vector`, `embeddingModel`. Chunks are about 800 tokens
-  with overlap and a hard cap, so long pages split. Re-indexing skips chunks whose
-  `contentHash` did not change.
+  with overlap and a hard cap, so long pages split. Re-indexing skips a chunk only
+  when both its `contentHash` and `embeddingModel` are unchanged.
 - `DataRoomSyncState`: one row per source connection with a cursor, throttle and
   claim token, following `MailSyncState` and `FinanceSyncState`.
 
@@ -138,14 +155,18 @@ payload map and `background-job-handlers.ts`):
 4. `dataroom.sync`: one job per source connection, incremental by cursor (Drive
    changes page token, Gmail `historyId`).
 
-Each step records its outcome on the item, so a retried job does not repeat a
-model call. A job that exhausts its retries leaves the item `failed` with the
-error shown on the item.
+Each step saves its outcome on the item, so a job retried after the save does not
+repeat the model call. A worker that crashes after the provider answers but
+before saving repeats that one call, so model calls are at least once and
+bounded by the retry limit. Each step writes only if the item has not changed
+since the step started, so a stale job cannot overwrite newer results. A job
+that exhausts its retries leaves the item `failed` with the error shown on the
+item.
 
 ## Search
 
 One SQL query: a keyword leg (`websearch_to_tsquery`, ranked by `ts_rank_cd`) and a
-vector leg (HNSW nearest neighbours), each over-fetching about 100 chunks from the
+vector leg (exact cosine distance over eligible chunks from the current model), each over-fetching about 100 chunks from the
 eligible set, merged with reciprocal rank fusion (k = 60) and grouped by item.
 Facet filters from the classifier narrow the eligible set before either leg runs.
 Results carry citations: item, chunk ordinal, snippet, source link.
