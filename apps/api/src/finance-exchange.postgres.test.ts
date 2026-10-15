@@ -1,5 +1,5 @@
 import { generateKeyPairSync } from "node:crypto";
-import { EncryptedSecretStore } from "@rakazo/adapters";
+import { EncryptedSecretStore, syncExchanges } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createRepos } from "@rakazo/db";
@@ -58,6 +58,8 @@ describePostgres("exchange connections (PostgreSQL)", () => {
         ],
         has_next: false,
       });
+    if (url.includes("/0/private/GetApiKeyInfo"))
+      return json({ error: [], result: { permissions: ["query-funds", "query-ledger"] } });
     if (url.includes("/0/private/Balance"))
       return json({ error: krakenError, result: krakenResult });
     if (url.includes("coins.llama.fi"))
@@ -183,6 +185,38 @@ describePostgres("exchange connections (PostgreSQL)", () => {
     const kraken = (await financeExchanges(deps, a)).find((x) => x.provider === "kraken");
     expect(kraken?.lastError).toBe("Kraken rate limit reached, try again shortly");
     expect(kraken?.balances).toHaveLength(2);
+  });
+
+  it("drops a stalled sync of the old key when the account was reconnected meanwhile", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const stalled = (async (url: string, init?: RequestInit) => {
+      if (url.includes("/0/private/Balance")) {
+        await gate;
+        return json({ error: [], result: { ZUSD: "999" } });
+      }
+      return fakeFetch(url, init);
+    }) as unknown as typeof fetch;
+    krakenError = [];
+    krakenResult = { ZUSD: "7" };
+    const syncing = syncExchanges(
+      { prisma, secrets: deps.secrets, fetch: stalled, now: () => NOW },
+      { spaceId, userId: userA },
+      { force: true },
+    );
+    await new Promise((r) => setTimeout(r, 200));
+    await financeExchangeConnect(deps, a, {
+      provider: "kraken",
+      key: "new-key",
+      secret: Buffer.from("s2").toString("base64"),
+    });
+    release();
+    await syncing;
+    const kraken = (await financeExchanges(deps, a)).find((x) => x.provider === "kraken");
+    expect(kraken?.balances.map((x) => [x.asset, x.amount])).toEqual([["USD", "7"]]);
+    expect(kraken?.lastError).toBeNull();
   });
 
   it("removes the connection, its balances and its stored key", async () => {

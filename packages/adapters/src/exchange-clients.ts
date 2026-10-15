@@ -9,6 +9,7 @@ import type { ExchangeProvider } from "@rakazo/contracts";
 export const EXCHANGE_ALLOWED_REQUESTS = [
   "GET api.coinbase.com/api/v3/brokerage/key_permissions",
   "GET api.coinbase.com/api/v3/brokerage/accounts",
+  "POST api.kraken.com/0/private/GetApiKeyInfo",
   "POST api.kraken.com/0/private/Balance",
 ] as const;
 
@@ -229,14 +230,21 @@ function krakenFailure(errors: string[]): ExchangeError {
 
 const KRAKEN_HOST = "api.kraken.com";
 
-export async function fetchKrakenBalances(
+/** Kraken permissions that only read. Anything else (trade, withdraw, earn, address changes, ...) is refused. */
+const KRAKEN_READ_PERMISSIONS = new Set([
+  "query-funds",
+  "query-open-trades",
+  "query-closed-trades",
+  "query-ledger",
+  "export-data",
+]);
+
+async function krakenPrivate(
   creds: ExchangeCredentials,
-  opts: { fetch?: Fetch; now?: () => Date; signal?: AbortSignal } = {},
-): Promise<RawExchangeBalance[]> {
-  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(creds.secret.trim()))
-    throw new ExchangeError("kraken", "invalid_key");
-  const path = "/0/private/Balance";
-  const nonce = String((opts.now?.() ?? new Date()).getTime());
+  path: "/0/private/GetApiKeyInfo" | "/0/private/Balance",
+  nonce: string,
+  opts: { fetch?: Fetch; signal?: AbortSignal },
+): Promise<Record<string, unknown>> {
   const body = new URLSearchParams({ nonce }).toString();
   const res = await call(
     opts.fetch ?? fetch,
@@ -264,10 +272,25 @@ export async function fetchKrakenBalances(
   }
   const errors = Array.isArray(json.error) ? json.error.map(String) : [];
   if (errors.length) throw krakenFailure(errors);
-  return Object.entries((json.result ?? {}) as Record<string, unknown>).map(([code, amount]) => ({
-    code,
-    amount: String(amount),
-  }));
+  return (json.result ?? {}) as Record<string, unknown>;
+}
+
+export async function fetchKrakenBalances(
+  creds: ExchangeCredentials,
+  opts: { fetch?: Fetch; now?: () => Date; signal?: AbortSignal } = {},
+): Promise<RawExchangeBalance[]> {
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(creds.secret.trim()))
+    throw new ExchangeError("kraken", "invalid_key");
+  // Docs: https://docs.kraken.com/api-reference/account-data/get-api-key-info (needs no permission).
+  const nonce = (opts.now?.() ?? new Date()).getTime();
+  const info = await krakenPrivate(creds, "/0/private/GetApiKeyInfo", String(nonce), opts);
+  const permissions = info.permissions;
+  if (!Array.isArray(permissions)) throw new ExchangeError("kraken", "unavailable");
+  if (permissions.some((p) => !KRAKEN_READ_PERMISSIONS.has(String(p))))
+    throw new ExchangeError("kraken", "can_trade");
+  // Kraken nonces must increase per key, so the balance call uses the next one.
+  const result = await krakenPrivate(creds, "/0/private/Balance", String(nonce + 1), opts);
+  return Object.entries(result).map(([code, amount]) => ({ code, amount: String(amount) }));
 }
 
 export const fetchExchangeBalances = (
