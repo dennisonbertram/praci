@@ -172,3 +172,29 @@ describe("PinsList", () => {
     expect(container.textContent).toContain("Your last edit wasn't saved.");
   });
 });
+
+describe("PinsList save failures", () => {
+  it("keeps the draft and shows an error when the save fails", async () => {
+    rpcMock.pins.save.mockRejectedValue(new Error("boom"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await render(<PinsList pins={listPins} onPins={vi.fn()} />);
+    const input = $('input[aria-label="Add item"]') as HTMLInputElement;
+    await act(async () => type(input, "Keep me"));
+    await key(input, "Enter");
+    await flush();
+    expect(
+      (container.querySelector('input[aria-label="Add item"]') as HTMLInputElement).value,
+    ).toBe("Keep me");
+    expect(container.textContent).toContain("Couldn't save. Try again.");
+  });
+
+  it("hides the add row at the item limit", async () => {
+    const items = Array.from({ length: 50 }, (_, i) => ({
+      id: `i${i}`,
+      text: `t${i}`,
+      done: false,
+    }));
+    await render(<PinsList pins={base({ list: { title: "Full", items } })} onPins={vi.fn()} />);
+    expect(container.querySelector('input[aria-label="Add item"]')).toBeNull();
+  });
+});

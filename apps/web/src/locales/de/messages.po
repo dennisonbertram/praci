@@ -2249,6 +2249,10 @@ msgstr ""
 msgid "Couldn't save the draft"
 msgstr ""
 
+#: src/pages/shell/bot-pins.tsx
+msgid "Couldn't save. Try again."
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Couldn't send. Try again."
 msgstr ""
