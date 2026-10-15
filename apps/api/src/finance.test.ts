@@ -1,6 +1,7 @@
 import type { Actor } from "@rakazo/contracts";
 import { FINANCE_MCP_ENDPOINTS, financeAgentSpawnKey } from "@rakazo/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { notFound } from "./inbox.js";
 
 // The calculations are tested in @rakazo/core. Here they are stand-ins that record what they were
 // given, so these tests are about what the handlers load, scope and pass on.
@@ -56,13 +57,18 @@ vi.mock("@rakazo/adapters", async (importOriginal) => ({
 import {
   type FinanceDeps,
   financeAccountDetail,
+  financeAccounts,
   financeCategory,
   financeConnect,
+  financeCryptoHistory,
   financeMonth,
   financeOverview,
+  financePreferences,
   financeReceiptUrl,
   financeRecurring,
   financeRefresh,
+  financeRunway,
+  financeSetPreferences,
   financeSpend,
   financeTransaction,
   financeVendor,
@@ -101,7 +107,18 @@ function table(rows: Row[]) {
       rows.push(row);
       return row;
     }),
-    upsert: vi.fn(async () => ({})),
+    upsert: vi.fn(async ({ where, create, update }: { where: Row; create: Row; update: Row }) => {
+      // A compound key such as { spaceId_userId: {...} } is flattened to its fields.
+      const flat = Object.assign(
+        {},
+        ...Object.values(where).map((v) => (v && typeof v === "object" ? v : {})),
+      );
+      const row = rows.find((r) => matches(r, flat));
+      if (row) return Object.assign(row, update);
+      const made = { id: `row-${rows.length + 1}`, ...create };
+      rows.push(made);
+      return made;
+    }),
     update: vi.fn(async ({ where, data }: { where: Row; data: Row }) => {
       const row = rows.find((r) => matches(r, where));
       const { revision: _revision, ...rest } = data;
@@ -170,7 +187,9 @@ function setup(
       | "bot"
       | "botMcpServer"
       | "financeWallet"
-      | "financeCryptoHolding",
+      | "financeCryptoHolding"
+      | "financePreference"
+      | "financeCryptoSnapshot",
       Row[]
     >
   > = {},
@@ -188,6 +207,8 @@ function setup(
     botMcpServer: t("botMcpServer"),
     financeWallet: t("financeWallet"),
     financeCryptoHolding: t("financeCryptoHolding"),
+    financePreference: t("financePreference"),
+    financeCryptoSnapshot: t("financeCryptoSnapshot"),
   };
   const enqueue = vi.fn(async () => undefined);
   const beginMcpOAuth = vi.fn(async (input: { serverId: string }) => ({
@@ -298,10 +319,10 @@ describe("finance overview stablecoins as cash", () => {
       cashCents: 125_000,
       bankCashCents: 100_000,
       stablecoinCents: 25_000,
-      otherCryptoCents: 40_000,
+      // ETH is held but not counted under the default scope; the crypto card still shows it.
+      otherCryptoCents: 0,
     });
-    // Total including crypto is cash plus other crypto.
-    expect(overview.cash.cashCents + (overview.cash.otherCryptoCents ?? 0)).toBe(165_000);
+    expect(overview.crypto?.totalCents).toBe(65_000);
     // Runway sees stablecoins but not ETH; the bank-only runway sees neither.
     expect(cashInputs).toEqual([125_000, 100_000]);
   });
@@ -693,5 +714,144 @@ describe("finance refresh and receipts", () => {
     await expect(financeReceiptUrl(has.deps, a, { transactionId: "t-1" })).rejects.toMatchObject({
       code: "BAD_GATEWAY",
     });
+  });
+});
+
+describe("runway crypto scope", () => {
+  const wallet = (actor: Actor, id: string) => ({
+    id,
+    ...scope(actor),
+    address: `0x${id.padEnd(40, "0")}`,
+    type: "personal",
+    createdAt: new Date(),
+  });
+  const holding = (over: Row) => ({
+    ...scope(a),
+    walletId: "w1",
+    chainId: 1,
+    tokenAddress: "",
+    symbol: "ETH",
+    name: "Ether",
+    decimals: 6,
+    rawBalance: "1",
+    usdPrice: "1",
+    usdValueCents: 70n,
+    syncedAt: new Date("2026-10-14T00:00:00Z"),
+    ...over,
+  });
+  const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+  const snap = (walletId: string, day: string, stable: bigint, other = 0n, actor = a) => ({
+    ...scope(actor),
+    walletId,
+    day,
+    stablecoinCents: stable,
+    otherCryptoCents: other,
+  });
+  const data = (pref?: string) => ({
+    financeAccount: [account(a, { balanceCents: 100_000n })],
+    financeWallet: [wallet(a, "w1"), wallet(a, "w2"), wallet(b, "wb")],
+    financeCryptoHolding: [
+      holding({ tokenAddress: USDC, symbol: "USDC", usdValueCents: 300n }),
+      holding({}),
+    ],
+    financeCryptoSnapshot: [
+      snap("w1", "2026-08-15", 100n),
+      snap("w1", "2026-09-20", 200n),
+      snap("w2", "2026-09-10", 0n, 50n),
+      snap("wb", "2026-09-10", 999n, 0n, b),
+    ],
+    financePreference: pref ? [{ ...scope(a), runwayCrypto: pref }] : [],
+  });
+  const history = async (pref?: string) => {
+    const out = await financeRunway(setup(data(pref)).deps, a);
+    return Object.fromEntries(out.history.map((p) => [p.month, p.balanceCents]));
+  };
+
+  it("defaults to stablecoins and saves a choice per user", async () => {
+    const { deps, prisma } = setup(data());
+    expect(await financePreferences(deps, a)).toEqual({ runwayCrypto: "stablecoins" });
+    expect(await financeSetPreferences(deps, a, { runwayCrypto: "all" })).toEqual({
+      runwayCrypto: "all",
+    });
+    expect(await financePreferences(deps, a)).toEqual({ runwayCrypto: "all" });
+    expect(await financeSetPreferences(deps, a, { runwayCrypto: "bank" })).toEqual({
+      runwayCrypto: "bank",
+    });
+    expect(prisma.financePreference.rows).toHaveLength(1);
+    expect(await financePreferences(deps, b)).toEqual({ runwayCrypto: "stablecoins" });
+  });
+
+  it("reports cash and every part under each scope", async () => {
+    for (const [pref, cashCents] of [
+      ["bank", 100_000],
+      ["stablecoins", 100_300],
+      ["all", 100_370],
+    ] as const) {
+      const out = await financeRunway(setup(data(pref)).deps, a);
+      expect(out).toMatchObject({
+        runwayCrypto: pref,
+        cashCents,
+        breakdown: { bankCents: 100_000, stablecoinCents: 300, otherCryptoCents: 70 },
+      });
+    }
+  });
+
+  it("builds history from bank history and the latest snapshots, bank only before the first", async () => {
+    const all = await history("all");
+    expect(all["2026-07"]).toBe(100_000);
+    expect(all["2026-08"]).toBe(100_100);
+    expect(all["2026-09"]).toBe(100_250);
+    // The current month uses today's holdings, not a snapshot.
+    expect(all["2026-10"]).toBe(100_370);
+    const stable = await history();
+    expect(stable["2026-09"]).toBe(100_200);
+    expect(stable["2026-10"]).toBe(100_300);
+    expect((await history("bank"))["2026-09"]).toBe(100_000);
+  });
+
+  it("makes the overview and the accounts total follow the same scope", async () => {
+    for (const [pref, stable, other, cashCents] of [
+      ["bank", 0, 0, 100_000],
+      ["stablecoins", 300, 0, 100_300],
+      ["all", 300, 70, 100_370],
+    ] as const) {
+      const { deps } = setup(data(pref));
+      const overview = await financeOverview(deps, a);
+      // The crypto fields are what is counted in cashCents, so they add up under every scope.
+      expect(overview.cash).toMatchObject({
+        cashCents,
+        bankCashCents: 100_000,
+        stablecoinCents: stable,
+        otherCryptoCents: other,
+      });
+      expect((await financeAccounts(deps, a)).totalCashCents).toBe(cashCents);
+    }
+  });
+
+  it("returns crypto history with each wallet carried forward", async () => {
+    const { deps } = setup(data());
+    const { points } = await financeCryptoHistory(deps, a, { days: 61 });
+    expect(points).toEqual([
+      { day: "2026-08-15", stablecoinCents: 100, otherCryptoCents: 0 },
+      { day: "2026-09-10", stablecoinCents: 100, otherCryptoCents: 50 },
+      { day: "2026-09-20", stablecoinCents: 200, otherCryptoCents: 50 },
+    ]);
+    const one = await financeCryptoHistory(deps, a, { days: 61, walletId: "w1" });
+    expect(one.points.map((p) => p.stablecoinCents)).toEqual([100, 200]);
+    // A window that starts after a snapshot still carries that wallet's last value in.
+    const late = await financeCryptoHistory(deps, a, { days: 30 });
+    expect(late.points).toEqual([
+      { day: "2026-09-20", stablecoinCents: 200, otherCryptoCents: 50 },
+    ]);
+  });
+
+  it("does not reveal another user's wallet", async () => {
+    const { deps } = setup(data());
+    await expect(financeCryptoHistory(deps, a, { days: 30, walletId: "wb" })).rejects.toThrow(
+      notFound(),
+    );
+    await expect(financeCryptoHistory(deps, a, { days: 30, walletId: "nope" })).rejects.toThrow(
+      notFound(),
+    );
   });
 });
