@@ -468,6 +468,7 @@ msgid "Add a model in Settings to use this."
 msgstr "Ajoutez un modèle dans les Paramètres pour utiliser cette fonctionnalité."
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Add a recipient."
 msgstr ""
 
@@ -759,6 +760,10 @@ msgstr "Approuver"
 msgid "Approve this server to let your agent use its tools."
 msgstr "Approuvez ce serveur pour permettre à votre agent d'utiliser ses outils."
 
+#: src/components/MailApprovalCard.tsx
+msgid "Approved"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Apps"
 msgstr ""
@@ -993,6 +998,7 @@ msgid "Basic auth ({username})"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Bcc"
 msgstr ""
 
@@ -1231,6 +1237,7 @@ msgid "Category"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Cc"
 msgstr ""
 
@@ -2213,6 +2220,7 @@ msgid "Could not start teaching"
 msgstr "Impossible de démarrer l'enseignement"
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Could not submit this answer"
 msgstr "Impossible de soumettre cette réponse"
 
@@ -2565,16 +2573,29 @@ msgstr ""
 msgid "Direct MCP"
 msgstr "MCP direct"
 
+#: src/components/MailApprovalCard.tsx
+msgid "Disable drafts for {botName}"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Disable sending for {botName}"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Disabled tools"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Discard"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Discard attachments?"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Discarded"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
@@ -2660,6 +2681,7 @@ msgstr "Vous n'avez pas de compte ?"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -2703,6 +2725,7 @@ msgid "Draft discarded"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Draft saved"
 msgstr ""
 
@@ -2734,6 +2757,7 @@ msgstr "ex. Agent Hivenet, Préventes, bot de feuilles de temps"
 msgid "Earlier"
 msgstr ""
 
+#: src/components/MailApprovalCard.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Edit"
 msgstr ""
@@ -3062,6 +3086,7 @@ msgid "Free"
 msgstr "Gratuit"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
 msgstr ""
@@ -3701,6 +3726,7 @@ msgid "Merchant"
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "Message"
@@ -3905,6 +3931,10 @@ msgstr "Nommez cette routine"
 msgid "Needs an answer"
 msgstr ""
 
+#: src/components/MailApprovalCard.tsx
+msgid "Needs approval"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Needs attention"
 msgstr ""
@@ -3945,6 +3975,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "New Bot"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "New email"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
@@ -4048,6 +4082,7 @@ msgid "No group chats yet."
 msgstr "Aucune conversation de groupe pour le moment."
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "No longer active"
 msgstr "Plus actif"
 
@@ -4145,6 +4180,7 @@ msgid "Not a valid email address"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
 msgstr ""
 
@@ -4168,6 +4204,10 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "Pas maintenant"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Not sent"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not sent. {text}"
@@ -4274,6 +4314,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open in Brex"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Open in composer"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4922,6 +4966,7 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "Répondre"
@@ -5135,6 +5180,10 @@ msgstr "Enregistrer les modèles de secours"
 msgid "Save credential"
 msgstr ""
 
+#: src/components/MailApprovalCard.tsx
+msgid "Save draft"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Save limits"
 msgstr ""
@@ -5174,6 +5223,7 @@ msgid "Saving..."
 msgstr "Enregistrement..."
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -5277,6 +5327,7 @@ msgid "Select a connected model"
 msgstr "Sélectionnez un modèle connecté"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
 msgstr "Envoyer"
@@ -5310,10 +5361,12 @@ msgid "Sending is turned off."
 msgstr ""
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sending…"
 msgstr "Envoi en cours…"
 
+#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
 msgstr ""
@@ -5405,6 +5458,7 @@ msgid "Show Inbox agent"
 msgstr ""
 
 #: src/components/inbox/TodoCard.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Finance.tsx
 msgid "Show less"
 msgstr ""
@@ -5414,6 +5468,7 @@ msgid "Show list"
 msgstr "Afficher la liste"
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "Afficher plus"
 
@@ -5696,6 +5751,7 @@ msgid "subagent"
 msgstr "sous-agent"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Subject"
 msgstr ""
 
@@ -5953,6 +6009,7 @@ msgid "Title"
 msgstr "Titre"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
 msgstr ""
@@ -6098,6 +6155,10 @@ msgstr ""
 #: src/components/MailOutbox.tsx
 #: src/pages/Inbox.tsx
 msgid "Undo"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Unknown"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
