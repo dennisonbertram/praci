@@ -1,5 +1,11 @@
-import { expect, type Page, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, connectTwoGmailAccounts, rpc, signup } from "./helpers";
+import { expect, test } from "@playwright/test";
+import {
+  captureScreenshot,
+  completeOnboarding,
+  connectTwoGmailAccounts,
+  rpc,
+  signup,
+} from "./helpers";
 
 test("a mail send waits in the chat as an editable card and approving it runs the edited call", async ({
   page,
