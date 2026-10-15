@@ -33,6 +33,8 @@ export const ParsedStatementSchema = z.object({
     .regex(/^\d{4}$/)
     .nullable(),
   currency: z.literal("USD"),
+  /** What the file says the account is; a missing value (older rows, CSV, PDF) means checking. */
+  accountKind: z.enum(["checking", "savings", "card"]).optional(),
   periodStart: Day,
   periodEnd: Day,
   openingBalanceCents: Cents.nullable(),
