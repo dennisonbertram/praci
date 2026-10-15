@@ -277,10 +277,11 @@ export function IntegrationsHome({
     () => filterCatalog(popularApps(data.catalog, data.connections), { query, category }),
     [data.catalog, data.connections, query, category],
   );
-  const firstPartySections = { social: t`Social`, equity: t`Equity` };
+  const firstPartySections = { social: t`Social`, equity: t`Equity`, tools: t`Tools` };
   const firstPartyDescription = {
     zernio: t`Post and schedule to social accounts`,
     carta: t`Cap table, equity and investors`,
+    treg: t`Live data, enrichment and generation tools`,
   };
   const financeNames = FINANCE_PROVIDERS.map((entry) => entry.name.toLowerCase());
   const showFinance =
@@ -292,7 +293,8 @@ export function IntegrationsHome({
       entry.name.toLowerCase().includes(query.trim().toLowerCase()) &&
       !data.servers.some(
         (server) => "endpoint" in server && isMcpEndpointHost(server.endpoint, entry.endpoint),
-      ),
+      ) &&
+      !data.sources.some((source) => isMcpEndpointHost(source.source, entry.endpoint)),
   );
   const otherMatches = showFinance || firstPartyMcp.length > 0;
   const financeServerIds = data.financeSources.flatMap((source) =>
@@ -516,7 +518,7 @@ export function IntegrationsHome({
           </div>
         ) : null}
 
-        {(["social", "equity"] as const).map((section) => {
+        {(["social", "equity", "tools"] as const).map((section) => {
           const entries = firstPartyMcp.filter((entry) => entry.section === section);
           return entries.length > 0 ? (
             <div key={section}>

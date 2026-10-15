@@ -3449,6 +3449,10 @@ msgstr "Écouter"
 msgid "Listening"
 msgstr "Écoute"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Live data, enrichment and generation tools"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Load earlier messages"
 msgstr "Charger les messages précédents"
@@ -5971,6 +5975,7 @@ msgid "Token"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "Tools"
 msgstr "Outils"
 

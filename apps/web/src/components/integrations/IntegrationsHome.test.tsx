@@ -151,3 +151,28 @@ it("shows Carta but not Zernio under the Finance chip", async () => {
   expect(container.querySelector('[aria-label="Connect Carta"]')).not.toBeNull();
   expect(container.querySelector('[aria-label="Connect Zernio"]')).toBeNull();
 });
+
+it("offers Treg and prefills the custom dialog", async () => {
+  await show(data(true, false));
+  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Treg"]');
+  expect(connect).not.toBeNull();
+  await act(async () => connect?.click());
+  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
+  expect(input?.value).toBe("https://treg.to/mcp/");
+});
+
+it("hides the Treg tile once the token preset source is installed", async () => {
+  const source = {
+    id: "src1",
+    kind: "mcp",
+    name: "Treg",
+    source: "https://treg.to/mcp/",
+    version: null,
+    digest: null,
+    secretConfigured: true,
+    config: {},
+    createdAt: "2026-01-01T00:00:00.000Z",
+  } as IntegrationsData["sources"][number];
+  await show({ ...data(true, false), sources: [source] });
+  expect(container.querySelector('[aria-label="Connect Treg"]')).toBeNull();
+});

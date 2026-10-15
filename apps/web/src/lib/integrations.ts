@@ -116,6 +116,14 @@ export const FIRST_PARTY_MCP = [
     section: "equity",
     category: "finance",
   },
+  {
+    id: "treg",
+    name: "Treg",
+    logo: null,
+    endpoint: "https://treg.to/mcp/",
+    section: "tools",
+    category: "developer",
+  },
 ] as const;
 
 /** True when an MCP server endpoint is the https server at the same host as `endpoint`. */
