@@ -170,3 +170,16 @@ describe("refreshBotPins", () => {
     expect(w.events.sendUserMessage).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("pin list validation", () => {
+  it("returns a validation error the model can act on for an item over 60 characters", async () => {
+    const w = fakeWorld({});
+    await expect(
+      saveBotPins(w, scope, {
+        list: { title: "T", items: [{ id: "a", text: "x".repeat(61), done: false }] },
+        baseRevision: 1,
+        updatedBy: "bot",
+      }),
+    ).rejects.toThrow(/Invalid list at list.items.0.text.*<=60/);
+  });
+});

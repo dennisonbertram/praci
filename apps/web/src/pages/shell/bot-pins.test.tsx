@@ -175,17 +175,63 @@ describe("PinsList", () => {
 
 describe("PinsList save failures", () => {
   it("keeps the draft and shows an error when the save fails", async () => {
+    vi.useFakeTimers();
     rpcMock.pins.save.mockRejectedValue(new Error("boom"));
     vi.spyOn(console, "error").mockImplementation(() => {});
     await render(<PinsList pins={listPins} onPins={vi.fn()} />);
     const input = $('input[aria-label="Add item"]') as HTMLInputElement;
     await act(async () => type(input, "Keep me"));
     await key(input, "Enter");
-    await flush();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    vi.useRealTimers();
     expect(
       (container.querySelector('input[aria-label="Add item"]') as HTMLInputElement).value,
     ).toBe("Keep me");
     expect(container.textContent).toContain("Couldn't save. Try again.");
+  });
+
+  it("shows the error when a tick fails twice, and keeps the item", async () => {
+    vi.useFakeTimers();
+    try {
+      rpcMock.pins.save.mockRejectedValue(new Error("ECONNREFUSED"));
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      await render(<PinsList pins={listPins} onPins={vi.fn()} />);
+      await act(async () => $('[role="checkbox"][aria-label="Write copy"]').click());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(rpcMock.pins.save).toHaveBeenCalledTimes(2);
+      expect(container.textContent).toContain("Couldn't save. Try again.");
+      expect($('[role="checkbox"][aria-label="Write copy"]').getAttribute("aria-checked")).toBe(
+        "false",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("saves without an error when the retry succeeds", async () => {
+    vi.useFakeTimers();
+    try {
+      const next = base({ revision: 2 });
+      rpcMock.pins.save
+        .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+        .mockResolvedValue({ ok: true, pins: next });
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const onPins = vi.fn();
+      await render(<PinsList pins={listPins} onPins={onPins} />);
+      await act(async () => $('[role="checkbox"][aria-label="Write copy"]').click());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(rpcMock.pins.save).toHaveBeenCalledTimes(2);
+      expect(onPins).toHaveBeenCalledWith(next);
+      expect(container.textContent).not.toContain("Couldn't save. Try again.");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("hides the add row at the item limit", async () => {

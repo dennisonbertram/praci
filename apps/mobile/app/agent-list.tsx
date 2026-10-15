@@ -126,7 +126,7 @@ export default function AgentListScreen() {
             // Remounting on a saved change drops a rejected blank edit.
             key={`${item.id}:${item.text}`}
             defaultValue={item.text}
-            maxLength={300}
+            maxLength={60}
             multiline
             blurOnSubmit
             returnKeyType="done"
@@ -142,7 +142,7 @@ export default function AgentListScreen() {
           onChangeText={setDraft}
           placeholder={t("Add item")}
           placeholderTextColor={native.secondaryLabel}
-          maxLength={300}
+          maxLength={60}
           returnKeyType="done"
           blurOnSubmit={false}
           onSubmitEditing={() => {

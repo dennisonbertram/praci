@@ -147,7 +147,7 @@ function ItemRow({
           ref={(el) => el?.focus()}
           dir="auto"
           aria-label={item.text}
-          maxLength={300}
+          maxLength={60}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={() => end(true)}
@@ -171,6 +171,8 @@ function ItemRow({
   );
 }
 
+const SAVE_RETRY_MS = 1500;
+
 export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPins) => void }) {
   const [added, setAdded] = useState("");
   const [lost, setLost] = useState(false);
@@ -187,11 +189,17 @@ export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPi
     const saved = queue.current.then(async () => {
       const current = latest.current;
       if (!current.list) return false;
+      const request = {
+        botId: current.botId,
+        list: { ...current.list, items: edit(current.list.items) },
+        baseRevision: current.revision,
+      };
       try {
-        const result = await rpc.pins.save({
-          botId: current.botId,
-          list: { ...current.list, items: edit(current.list.items) },
-          baseRevision: current.revision,
+        // A thrown error is a network or server failure; a conflict comes back as ok: false.
+        const result = await rpc.pins.save(request).catch(async (cause) => {
+          console.error("Could not save the list, retrying", cause);
+          await new Promise((resolve) => setTimeout(resolve, SAVE_RETRY_MS));
+          return rpc.pins.save(request);
         });
         latest.current = result.pins;
         onPins(result.pins);
@@ -243,7 +251,7 @@ export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPi
           dir="auto"
           aria-label={t`Add item`}
           placeholder={t`Add item`}
-          maxLength={300}
+          maxLength={60}
           value={added}
           onChange={(event) => setAdded(event.target.value)}
           onBlur={() => void commitAdded()}

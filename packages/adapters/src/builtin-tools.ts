@@ -494,7 +494,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "pins_write",
     description:
-      "Replace this bot's pins. stats is the strip of numbers the user checks often; list is the one sidebar list (for example a to-do list). Only the sections you give are replaced. Give a stat a source when one read-only MCP tool call returns the number, so a refresh can update it without you. baseRevision is the revision from pins_read (0 for new pins). A stale revision saves nothing and returns the current pins.",
+      "Replace this bot's pins. stats is the strip of numbers the user checks often; list is the one sidebar list (for example a to-do list); each item is a short imperative of at most 60 characters, with details kept in chat. Only the sections you give are replaced. Give a stat a source when one read-only MCP tool call returns the number, so a refresh can update it without you. baseRevision is the revision from pins_read (0 for new pins). A stale revision saves nothing and returns the current pins.",
     inputSchema: {
       type: "object",
       properties: {
@@ -540,7 +540,7 @@ export const builtinAgentTools: ConnectorTool[] = [
                 type: "object",
                 properties: {
                   id: { type: "string" },
-                  text: { type: "string" },
+                  text: { type: "string", description: "At most 60 characters." },
                   done: { type: "boolean" },
                 },
                 required: ["id", "text", "done"],
