@@ -154,7 +154,7 @@ export const CryptoHoldingSchema = z.object({
   syncedAt: IsoDate,
 });
 
-/** Priced holdings only. Only the stablecoin part counts as cash; the rest never enters cash, burn or runway. */
+/** Priced holdings only, as held. How much counts as cash follows the saved `runwayCrypto` scope; crypto never affects burn. */
 export const CryptoSummarySchema = z.object({
   totalCents: Cents,
   /** Priced holdings at the canonical stablecoin contracts; part of `totalCents`. */
@@ -283,13 +283,13 @@ export const FinanceBillSchema = z.object({
 export const SpendPeriodSchema = z.enum(["week", "month", "quarter", "year"]);
 
 export const CashSummarySchema = z.object({
-  /** Bank cash (Mercury checking + savings + Treasury) plus stablecoins. */
+  /** Bank cash (Mercury checking + savings + Treasury) plus the crypto the saved `runwayCrypto` scope counts. */
   cashCents: Cents,
   /** Bank cash alone, without stablecoins. Absent from older payloads. */
   bankCashCents: Cents.optional(),
-  /** Priced stablecoins held in the tracked wallets; already inside `cashCents`. */
+  /** Stablecoins counted in `cashCents` (0 under the "bank" scope). Held amounts are in `crypto`. */
   stablecoinCents: Cents.optional(),
-  /** Other priced crypto. Never in `cashCents` or runway; only for the Cash card's total. */
+  /** Other priced crypto counted in `cashCents`; non-zero only under the "all" scope. Held amounts are in `crypto`. */
   otherCryptoCents: Cents.optional(),
   checkingCents: Cents,
   savingsCents: Cents,
@@ -471,7 +471,7 @@ export const FinanceOverviewSchema = z.object({
   lastSyncedAt: IsoDate.nullable(),
   /** Transactions left out of every total because they are not in USD (v1 is USD only). */
   excludedNonUsdCount: z.number().int().nonnegative(),
-  /** Crypto holdings for the separate card; null or absent when no wallet is added. Never part of cash, burn or runway. */
+  /** Crypto holdings as held; null or absent when no wallet is added. Counted in cash per the saved scope; never in burn. */
   crypto: CryptoSummarySchema.nullable().optional(),
 });
 
