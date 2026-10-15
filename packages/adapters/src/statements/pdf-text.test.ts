@@ -22,7 +22,12 @@ const run = () => extractPdfText(new Uint8Array([1]));
 
 describe("extractPdfText limits", () => {
   it("clamps a huge x coordinate to a bounded run of spaces", async () => {
-    doc.pages = [[{ str: "a", x: 0 }, { str: "b", x: 4_500_000 }]];
+    doc.pages = [
+      [
+        { str: "a", x: 0 },
+        { str: "b", x: 4_500_000 },
+      ],
+    ];
     const text = await run();
     expect(text.length).toBeLessThan(300);
     expect(text.startsWith("a")).toBe(true);
@@ -30,7 +35,12 @@ describe("extractPdfText limits", () => {
   });
 
   it("survives NaN and negative coordinates", async () => {
-    doc.pages = [[{ str: "a", x: Number.NaN }, { str: "b", x: -9e9 }]];
+    doc.pages = [
+      [
+        { str: "a", x: Number.NaN },
+        { str: "b", x: -9e9 },
+      ],
+    ];
     expect(await run()).toBe("a b");
   });
 

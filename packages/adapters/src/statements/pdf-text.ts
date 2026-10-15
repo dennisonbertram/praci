@@ -14,7 +14,9 @@ const MAX_COLUMN = 200;
 export async function extractPdfText(bytes: Uint8Array): Promise<string> {
   const pdf = await getDocumentProxy(new Uint8Array(bytes));
   if (pdf.numPages > MAX_PAGES) {
-    throw new Error(`This PDF has too many pages (limit ${MAX_PAGES}). Upload a smaller statement.`);
+    throw new Error(
+      `This PDF has too many pages (limit ${MAX_PAGES}). Upload a smaller statement.`,
+    );
   }
   const pages: string[] = [];
   let total = 0;

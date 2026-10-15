@@ -56,21 +56,35 @@ const accountName = (s: ParsedStatement) => {
 
 /**
  * A stable id per line so overlapping statements do not import a line twice: the bank's own id when
- * the file has one, otherwise a hash of (account, date, amount, description, occurrence of that
- * same key within the statement).
+ * the file has one, otherwise a hash of (date, amount, description, occurrence of that same key
+ * within the statement). The account is not part of the hash: ids are only compared within one
+ * account, and the institution can come from a file name that changes between uploads.
  */
-export function statementTxnIds(
-  accountKey: string,
-  txns: ParsedStatement["transactions"],
-): string[] {
+export function statementTxnIds(txns: ParsedStatement["transactions"]): string[] {
   const seen = new Map<string, number>();
   return txns.map((t) => {
     if (t.externalId) return `x:${t.externalId}`;
-    const key = [accountKey, t.date, t.amountCents, norm(t.description)].join("|");
+    const key = [t.date, t.amountCents, norm(t.description)].join("|");
     const occurrence = seen.get(key) ?? 0;
     seen.set(key, occurrence + 1);
     return `h:${createHash("sha256").update(`${key}|${occurrence}`).digest("hex").slice(0, 32)}`;
   });
+}
+
+/** A card's balance is what is owed; OFX prints it negative. Other accounts keep the printed sign. */
+const storedBalance = (kind: string, cents: number | bigint) =>
+  BigInt(kind === "card" ? -Number(cents) : cents);
+
+/** The closing balance, or opening plus the lines, or the last running balance; null if none. */
+function knownClosing(statement: ParsedStatement): number | null {
+  if (statement.closingBalanceCents !== null) return statement.closingBalanceCents;
+  if (statement.openingBalanceCents !== null) {
+    return statement.transactions.reduce(
+      (n, t) => n + t.amountCents,
+      statement.openingBalanceCents,
+    );
+  }
+  return statement.transactions.findLast((t) => t.balanceCents !== null)?.balanceCents ?? null;
 }
 
 type ListRow = Prisma.FinanceStatementGetPayload<{ omit: { fileBytes: true; parsed: true } }>;
@@ -140,6 +154,18 @@ export async function financeStatementUpload(
     fileBytes: bytes,
   };
 
+  const sameFile = await deps.prisma.financeStatement.findFirst({
+    where: {
+      ...scopeOf(actor),
+      fileSha256: base.fileSha256,
+      status: { in: ["review", "imported"] },
+    },
+    select: { id: true },
+  });
+  if (sameFile) {
+    throw new ORPCError("BAD_REQUEST", { message: "This file was already uploaded" });
+  }
+
   let parsed: { statement: ParsedStatement; check: StatementCheck };
   try {
     const result = await deps.parseStatement({ fileName: input.fileName, bytes }, scopeOf(actor));
@@ -169,7 +195,7 @@ export async function financeStatementUpload(
     select: { id: true },
   });
   const known = account ? await existingTxnIds(deps.prisma, actor, key) : new Set<string>();
-  const duplicateCount = statementTxnIds(key, statement.transactions).filter((id) =>
+  const duplicateCount = statementTxnIds(statement.transactions).filter((id) =>
     known.has(id),
   ).length;
   const row = await deps.prisma.financeStatement.create({
@@ -203,7 +229,7 @@ export async function financeStatementConfirm(
   const scope = scopeOf(actor);
   const found = await deps.prisma.financeStatement.findFirst({
     where: { id: input.id, ...scope },
-    select: { id: true, status: true, check: true, parsed: true },
+    select: { id: true, status: true, check: true, parsed: true, fileSha256: true },
   });
   if (!found) throw notFound();
   if (found.status !== "review") {
@@ -215,7 +241,8 @@ export async function financeStatementConfirm(
   }
   const statement = ParsedStatementSchema.parse(found.parsed);
   const key = statementAccountKey(statement);
-  const ids = statementTxnIds(key, statement.transactions);
+  const ids = statementTxnIds(statement.transactions);
+  const kind = statement.accountKind ?? "checking";
   const context = await loadClassifyContext(deps.prisma, scope);
   const now = deps.now?.() ?? new Date();
 
@@ -230,6 +257,19 @@ export async function financeStatementConfirm(
       if (claimed.count === 0) {
         throw new ORPCError("BAD_REQUEST", { message: "This statement was already handled" });
       }
+      const sameFile = found.fileSha256
+        ? await tx.financeStatement.count({
+            where: {
+              ...scope,
+              fileSha256: found.fileSha256,
+              status: "imported",
+              id: { not: found.id },
+            },
+          })
+        : 0;
+      if (sameFile > 0) {
+        throw new ORPCError("BAD_REQUEST", { message: "This file was already imported" });
+      }
       const account =
         (await tx.financeAccount.findFirst({
           where: { ...scope, provider: PROVIDER, externalId: key },
@@ -242,7 +282,7 @@ export async function financeStatementConfirm(
             externalId: key,
             name: accountName(statement),
             lastFour: statement.accountLast4,
-            kind: "checking",
+            kind,
             balanceCents: 0n,
             currency: statement.currency,
           },
@@ -305,7 +345,7 @@ export async function financeStatementConfirm(
       if (newest?.closingBalanceCents != null) {
         await tx.financeAccount.update({
           where: { id: account.id },
-          data: { balanceCents: newest.closingBalanceCents },
+          data: { balanceCents: storedBalance(account.kind, newest.closingBalanceCents) },
         });
       }
       return tx.financeStatement.findFirstOrThrow({ where: { id: found.id }, omit: omitBulk });
@@ -319,7 +359,7 @@ export async function financeStatementConfirm(
  * Removes a statement. One not yet imported is just deleted. An imported one is undone in one
  * transaction: transactions are not linked to their statement, so the ones to delete are this
  * statement's line ids (deterministic, see `statementTxnIds`) that no other imported statement of
- * the account also has. The balance falls back to the newest remaining statement's closing balance,
+ * the account also has. The balance becomes the newest remaining statement's closing balance,
  * and the account goes when no imported statement remains.
  */
 export async function financeStatementDiscard(
@@ -348,12 +388,12 @@ export async function financeStatementDiscard(
             id: { not: found.id },
           },
           orderBy: [{ periodEnd: "desc" }, { uploadedAt: "desc" }],
-          select: { parsed: true, closingBalanceCents: true },
+          select: { parsed: true },
         });
         if (account) {
           const idsOf = (parsed: unknown) => {
             const statement = ParsedStatementSchema.parse(parsed);
-            return statementTxnIds(statementAccountKey(statement), statement.transactions);
+            return statementTxnIds(statement.transactions);
           };
           const kept = new Set(others.flatMap((o) => (o.parsed ? idsOf(o.parsed) : [])));
           const doomed = idsOf(found.parsed).filter((id) => !kept.has(id));
@@ -365,7 +405,11 @@ export async function financeStatementDiscard(
               externalId: { in: doomed },
             },
           });
-          const closing = others.find((o) => o.closingBalanceCents !== null)?.closingBalanceCents;
+          // The newest remaining statement sets the balance. When it states none, it is derived from
+          // its lines; when that is impossible the balance is unknown and the model has no null, so 0.
+          const closing = others[0]?.parsed
+            ? knownClosing(ParsedStatementSchema.parse(others[0].parsed))
+            : null;
           if (others.length === 0) {
             // A statement still in review that pointed at this account will create it again.
             await tx.financeStatement.updateMany({
@@ -373,10 +417,10 @@ export async function financeStatementDiscard(
               data: { accountId: null, createsAccount: true },
             });
             await tx.financeAccount.deleteMany({ where: { id: account.id, ...scope } });
-          } else if (closing != null) {
+          } else {
             await tx.financeAccount.update({
               where: { id: account.id },
-              data: { balanceCents: closing },
+              data: { balanceCents: storedBalance(account.kind, closing ?? 0) },
             });
           }
         }
