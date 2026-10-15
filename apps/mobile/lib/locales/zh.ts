@@ -784,4 +784,11 @@ export const ZH_MESSAGES: Record<string, string> = {
   "Could not load this page.": "无法加载此页面。",
   "No page yet.": "还没有页面。",
   Page: "页面",
+  Refresh: "刷新",
+  List: "列表",
+  "Add item": "添加项目",
+  "The bot changed this list. Your last edit wasn't saved.":
+    "Bot 修改了此列表，你的上次编辑未保存。",
+  "Could not load this list.": "无法加载此列表。",
+  "Could not save this list.": "无法保存此列表。",
 };
