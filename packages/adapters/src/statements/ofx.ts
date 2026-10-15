@@ -50,6 +50,19 @@ export const ofxParser: StatementParser = {
         externalId: tag(block, "FITID")?.slice(0, 200) ?? null,
       });
     }
+    // The product is USD-only: refuse any other currency rather than import it as dollars.
+    const currencies = [
+      tag(text, "CURDEF"),
+      ...[...text.matchAll(/<(?:ORIG)?CURRENCY>([\s\S]*?)(?=<\/|<STMTTRN>|<TRN|$)/gi)].map((c) =>
+        tag(c[1]!, "CURSYM"),
+      ),
+    ];
+    const foreign = currencies.find((c) => c && c.toUpperCase() !== "USD");
+    if (foreign) {
+      throw new Error(
+        `This statement is in ${foreign.toUpperCase().slice(0, 3)}. Only USD statements can be imported.`,
+      );
+    }
     if (skipped) warnings.push(`${skipped} transaction(s) could not be read.`);
     const dates = transactions.map((t) => t.date).sort();
     const periodStart = day(tag(text, "DTSTART")) ?? dates[0];
@@ -61,6 +74,13 @@ export const ofxParser: StatementParser = {
     const closing = ledger ? parseCents(tag(ledger[1]!, "BALAMT") ?? "") : null;
     const acct = /<(?:BANK|CC)ACCTFROM>([\s\S]*?)(?=<\/(?:BANK|CC)ACCTFROM>|$)/i.exec(text);
     const acctId = acct ? (tag(acct[1]!, "ACCTID") ?? "").replace(/\D/g, "") : "";
+    const acctType = acct ? tag(acct[1]!, "ACCTTYPE")?.toUpperCase() : undefined;
+    const accountKind =
+      /<CCACCTFROM>/i.test(text) || acctType === "CREDITLINE"
+        ? "card"
+        : acctType === "SAVINGS" || acctType === "MONEYMRKT"
+          ? "savings"
+          : "checking";
     const institution = tag(text, "ORG") ?? tag(text, "FID");
     if (!institution) warnings.push("The file does not name its institution; used the file name.");
     warnings.push("OFX files carry no opening balance, so the balance check is unavailable.");
@@ -70,6 +90,7 @@ export const ofxParser: StatementParser = {
       accountName: null,
       accountLast4: acctId.length >= 4 ? acctId.slice(-4) : null,
       currency: "USD",
+      accountKind,
       periodStart,
       periodEnd,
       openingBalanceCents: null,

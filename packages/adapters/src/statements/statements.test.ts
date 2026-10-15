@@ -53,11 +53,34 @@ describe("OFX", () => {
     ]);
     expect(JSON.stringify(statement)).not.toContain("9876543210");
     expect(check.balances).toBe("unavailable");
+    expect(statement.accountKind).toBe("checking");
+  });
+
+  it("reads savings accounts as savings", async () => {
+    const { statement } = await parse("s.ofx", OFX1.replace("CHECKING", "SAVINGS"));
+    expect(statement.accountKind).toBe("savings");
+  });
+
+  it("rejects a non-USD statement, by CURDEF or by a transaction's currency", async () => {
+    await expect(parse("eur.ofx", OFX1.replace("<CURDEF>USD", "<CURDEF>EUR"))).rejects.toThrow(
+      "Only USD",
+    );
+    const foreignTxn = OFX1.replace(
+      "<TRNAMT>-12.34",
+      "<TRNAMT>-12.34<CURRENCY><CURRATE>0.9<CURSYM>EUR</CURRENCY>",
+    );
+    await expect(parse("eur2.ofx", foreignTxn)).rejects.toThrow("EUR");
+    const usdTxn = OFX1.replace(
+      "<TRNAMT>-12.34",
+      "<TRNAMT>-12.34<CURRENCY><CURRATE>1<CURSYM>USD</CURRENCY>",
+    );
+    await expect(parse("usd.ofx", usdTxn)).resolves.toBeTruthy();
   });
 
   it("reads 2.x XML credit card statements", async () => {
     const { statement } = await parse("card.qfx", OFX2);
     expect(statement.accountLast4).toBe("4321");
+    expect(statement.accountKind).toBe("card");
     expect(statement.closingBalanceCents).toBe(-2500);
     expect(statement.transactions.map((t) => [t.amountCents, t.externalId, t.description])).toEqual(
       [

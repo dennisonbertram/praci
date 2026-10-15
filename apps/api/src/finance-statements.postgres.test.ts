@@ -117,7 +117,7 @@ describePostgres("bank statement import (PostgreSQL)", () => {
       } as unknown as RouterDeps),
       { context: { actor: who } as never },
     );
-  const upload = (who: Actor, fileName: string, body = "x") =>
+  const upload = (who: Actor, fileName: string, body = fileName) =>
     client(who).finance.statementUpload({ fileName, contentBase64: b64(body) });
 
   beforeAll(async () => {
@@ -268,7 +268,8 @@ describePostgres("bank statement import (PostgreSQL)", () => {
   });
 
   it("refuses to import the same statement twice", async () => {
-    const one = await upload(a, "march.pdf", "%PDF-1.7 1,150.25");
+    // Different bytes (a trailing newline), same lines: an overlapping statement, not the same file.
+    const one = await upload(a, "march.pdf", "%PDF-1.7 1,150.25\n");
     expect(one.duplicateCount).toBe(4);
     await client(a).finance.statementConfirm({ id: one.id });
     await expect(client(a).finance.statementConfirm({ id: one.id })).rejects.toMatchObject({
@@ -399,5 +400,177 @@ describePostgres("bank statement import (PostgreSQL)", () => {
     expect(failed.error).toBeTruthy();
     expect(failed.error).not.toContain("not,a,statement");
     await client(a).finance.statementDiscard({ id: failed.id });
+  });
+
+  describe("identical files, card accounts and balances without a closing line", () => {
+    const csv = (desc: string) =>
+      `Date,Description,Amount\n2026-05-02,${desc},-5.00\n2026-05-03,${desc} Two,-7.00\n`;
+    const importFile = async (who: Actor, name: string, body?: string) => {
+      const reviewed = await upload(who, name, body);
+      return client(who).finance.statementConfirm({ id: reviewed.id });
+    };
+
+    it("refuses the same content under another file name, and keeps different files", async () => {
+      const first = await importFile(a, "dupcheck.csv", csv("Dup Alpha"));
+      expect(first.status).toBe("imported");
+      await expect(upload(a, "dupcheck (1).csv", csv("Dup Alpha"))).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+      });
+      expect(
+        await prisma.financeAccount.count({
+          where: { spaceId, userId: userA, name: "dupcheck 1" },
+        }),
+      ).toBe(0);
+      expect(
+        await prisma.financeTransaction.count({ where: { spaceId, counterparty: "Dup Alpha" } }),
+      ).toBe(1);
+      // Different content under a different name is still fine.
+      const other = await upload(a, "dupcheck-other.csv", csv("Dup Beta"));
+      expect(other.status).toBe("review");
+      // Another user may upload the same bytes.
+      expect((await upload(b, "dupcheck.csv", csv("Dup Alpha"))).status).toBe("review");
+    });
+
+    it("keeps transaction ids the same when only the file-name institution differs", async () => {
+      const [x] = await prisma.financeTransaction.findMany({
+        where: { spaceId, userId: userA, counterparty: "Dup Alpha" },
+      });
+      expect(x?.externalId).toMatch(/^h:/);
+      const { statementTxnIds } = await import("./finance-statements.js");
+      expect(statementTxnIds([line("2026-05-02", "Dup Alpha", -500)])[0]).toBe(x?.externalId);
+    });
+
+    it("still matches and undoes transactions stored under legacy (account-keyed) ids", async () => {
+      const { statementTxnIds, statementAccountKey } = await import("./finance-statements.js");
+      const { createHash } = await import("node:crypto");
+      const t1 = line("2026-03-02", "Legacy Coffee", -500);
+      const t2 = line("2026-03-10", "Legacy Payroll", 11_000);
+      const t3 = line("2026-03-20", "Legacy Rent", -1_000);
+      const legacy = (start: string, end: string, closing: number, t: (typeof t1)[]) => {
+        const base = fake(start, end, closing, t);
+        return {
+          ...base,
+          statement: { ...base.statement, institution: "Legacy Bank", accountLast4: "8888" },
+        };
+      };
+      fakes["8888-1.csv"] = legacy("2026-03-01", "2026-03-15", 10_000, [t1, t2]);
+      fakes["8888-2.csv"] = legacy("2026-03-10", "2026-03-31", 20_000, [t2, t3]);
+      const first = await importFile(a, "8888-1.csv");
+      // Rewrite the first import's rows the way the old code stored them.
+      const stmt = fakes["8888-1.csv"]!.statement;
+      const key = statementAccountKey(stmt);
+      // The old scheme, written out here: sha256 of "key|date|amount|description|occurrence".
+      const oldIds = stmt.transactions.map(
+        (t) =>
+          `h:${createHash("sha256")
+            .update(`${key}|${t.date}|${t.amountCents}|${t.description.toLowerCase()}|0`)
+            .digest("hex")
+            .slice(0, 32)}`,
+      );
+      const newIds = statementTxnIds(stmt.transactions);
+      for (const [i, id] of newIds.entries()) {
+        const { count } = await prisma.financeTransaction.updateMany({
+          where: { spaceId, userId: userA, accountExternalId: key, externalId: id },
+          data: { externalId: oldIds[i] as string },
+        });
+        expect(count).toBe(1);
+      }
+      const reviewed = await upload(a, "8888-2.csv");
+      expect(reviewed.duplicateCount).toBe(1);
+      const second = await client(a).finance.statementConfirm({ id: reviewed.id });
+      expect(second.duplicateCount).toBe(1);
+      const names = async () =>
+        (
+          await prisma.financeTransaction.findMany({
+            where: { spaceId, userId: userA, accountExternalId: key },
+          })
+        )
+          .map((t) => t.counterparty)
+          .sort();
+      expect(await names()).toEqual(["Legacy Coffee", "Legacy Payroll", "Legacy Rent"]);
+      // Undo the newest: only Rent goes; the legacy-stored shared Payroll stays.
+      await client(a).finance.statementDiscard({ id: second.id });
+      expect(await names()).toEqual(["Legacy Coffee", "Legacy Payroll"]);
+      // Undo the legacy-imported statement: nothing is left behind.
+      await client(a).finance.statementDiscard({ id: first.id });
+      expect(await names()).toEqual([]);
+    });
+
+    it("imports a card statement as a card, owed and not cash", async () => {
+      const before = (await client(a).finance.overview()).cash;
+      const ofx = `<OFX><CREDITCARDMSGSRSV1><CCSTMTTRNRS><CCSTMTRS><CURDEF>USD<CCACCTFROM><ACCTID>4111111111119999</ACCTID></CCACCTFROM>
+<BANKTRANLIST><DTSTART>20260401</DTSTART><DTEND>20260430</DTEND>
+<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20260405<TRNAMT>-30.00<FITID>C1<NAME>Card Shop</STMTTRN>
+</BANKTRANLIST><LEDGERBAL><BALAMT>-30.00</BALAMT><DTASOF>20260430</DTASOF></LEDGERBAL></CCSTMTRS></CCSTMTTRNRS></CREDITCARDMSGSRSV1></OFX>`;
+      await importFile(a, "card.ofx", ofx);
+      const account = await prisma.financeAccount.findFirstOrThrow({
+        where: { spaceId, userId: userA, lastFour: "9999" },
+      });
+      expect(account).toMatchObject({ kind: "card", balanceCents: 3000n });
+      const after = (await client(a).finance.overview()).cash;
+      expect(after.cashCents).toBe(before.cashCents);
+      expect(after.cardOwedCents).toBe(3000);
+    });
+
+    it("rejects a EUR statement with a readable error", async () => {
+      const eur = `<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><CURDEF>EUR<BANKACCTFROM><ACCTID>1</ACCTID></BANKACCTFROM>
+<BANKTRANLIST><STMTTRN><DTPOSTED>20260405<TRNAMT>-3.00<FITID>E1<NAME>Cafe</STMTTRN></BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>`;
+      const failed = await upload(a, "eur.ofx", eur);
+      expect(failed).toMatchObject({ status: "failed" });
+      expect(failed.error).toContain("USD");
+    });
+
+    describe("undo when the remaining statement has no closing balance", () => {
+      const nobal = (
+        last4: string,
+        start: string,
+        end: string,
+        opening: number | null,
+        closing: number | null,
+        txns: ParsedStatement["transactions"],
+      ) => {
+        const base = fake(start, end, closing, txns);
+        return {
+          ...base,
+          statement: {
+            ...base.statement,
+            institution: "Nobal Bank",
+            accountLast4: last4,
+            openingBalanceCents: opening,
+          },
+        };
+      };
+      const balanceOf = async (last4: string) =>
+        (await prisma.financeAccount.findFirstOrThrow({ where: { spaceId, lastFour: last4 } }))
+          .balanceCents;
+
+      it("derives it from opening plus lines when possible", async () => {
+        fakes["5551-1.csv"] = nobal("5551", "2026-03-01", "2026-03-15", 1_000, null, [
+          line("2026-03-02", "Nobal One", -200),
+        ]);
+        fakes["5551-2.csv"] = nobal("5551", "2026-03-16", "2026-03-31", null, 9_999, [
+          line("2026-03-20", "Nobal Two", 500),
+        ]);
+        await importFile(a, "5551-1.csv");
+        const second = await importFile(a, "5551-2.csv");
+        expect(await balanceOf("5551")).toBe(9_999n);
+        await client(a).finance.statementDiscard({ id: second.id });
+        expect(await balanceOf("5551")).toBe(800n);
+      });
+
+      it("resets it to zero when nothing is derivable instead of keeping the undone balance", async () => {
+        fakes["5552-1.csv"] = nobal("5552", "2026-03-01", "2026-03-15", null, null, [
+          line("2026-03-02", "Nobal Three", -200),
+        ]);
+        fakes["5552-2.csv"] = nobal("5552", "2026-03-16", "2026-03-31", null, 7_777, [
+          line("2026-03-20", "Nobal Four", 500),
+        ]);
+        await importFile(a, "5552-1.csv");
+        const second = await importFile(a, "5552-2.csv");
+        expect(await balanceOf("5552")).toBe(7_777n);
+        await client(a).finance.statementDiscard({ id: second.id });
+        expect(await balanceOf("5552")).toBe(0n);
+      });
+    });
   });
 });
