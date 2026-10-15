@@ -419,7 +419,7 @@ By default Rakazo keeps uploaded and generated files on the local disk under `da
 only safe when a single API or worker process runs. To run several processes, point Rakazo at any
 S3-compatible store (AWS S3, Cloudflare R2, MinIO). Files are stored under
 `<prefix>/artifacts/<space id>/<id>`, so one bucket can serve many spaces. Set the first four
-variables together; a partial set stops startup and names the missing variable.
+variables together; any `RAKAZO_S3_*` variable that is set turns object storage on, and a partial set stops startup and names the missing variable.
 
 - `RAKAZO_S3_ENDPOINT`: the store's URL, for example `https://s3.us-east-1.amazonaws.com`.
 - `RAKAZO_S3_BUCKET`: an existing bucket.

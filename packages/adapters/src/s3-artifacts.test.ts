@@ -132,6 +132,21 @@ describe("S3ArtifactStore", () => {
   });
 });
 
+describe("transport failures", () => {
+  it("do not leak the key id or signature, and keep AbortError", async () => {
+    const store = new S3ArtifactStore({ ...config(), endpoint: "http://127.0.0.1:1" });
+    const error = (await store.get("x", ctx("space-a")).catch((e: Error) => e)) as Error;
+    expect(error.message).toBe("S3 request failed");
+    expect(error.cause).toBeUndefined();
+  });
+
+  it("rejects dot ids", async () => {
+    await expect(new S3ArtifactStore(config()).get(".", ctx("s"))).rejects.toThrow(
+      "Invalid artifact id",
+    );
+  });
+});
+
 describe("s3ArtifactConfigFromEnv", () => {
   const full = {
     RAKAZO_S3_ENDPOINT: "https://s3.example.test",
@@ -162,6 +177,34 @@ describe("s3ArtifactConfigFromEnv", () => {
     expect(s3ArtifactConfigFromEnv({})).toBeNull();
     expect(createArtifactStore({}, "/tmp/x")).toBeInstanceOf(LocalArtifactStore);
     expect(createArtifactStore(full, "/tmp/x")).toBeInstanceOf(S3ArtifactStore);
+  });
+
+  it("treats any S3 variable as activation", () => {
+    expect(() => s3ArtifactConfigFromEnv({ RAKAZO_S3_FORCE_PATH_STYLE: "true" })).toThrow(
+      "RAKAZO_S3_ENDPOINT is required",
+    );
+    expect(() => s3ArtifactConfigFromEnv({ RAKAZO_S3_REGION: "us-east-1" })).toThrow(
+      "RAKAZO_S3_ENDPOINT is required",
+    );
+    expect(s3ArtifactConfigFromEnv({ RAKAZO_S3_REGION: "  " })).toBeNull();
+  });
+
+  it("rejects invalid values with value-free messages", () => {
+    const bad = (extra: Record<string, string>, name: string) => {
+      const run = () => s3ArtifactConfigFromEnv({ ...full, ...extra });
+      expect(run).toThrow(`${name} is invalid`);
+      expect(run).not.toThrow(/secret|evil|\.\./);
+    };
+    bad({ RAKAZO_S3_REGION: "us-east-1\nevil" }, "RAKAZO_S3_REGION");
+    bad({ RAKAZO_S3_BUCKET: "Bad_Bucket" }, "RAKAZO_S3_BUCKET");
+    bad({ RAKAZO_S3_BUCKET: "a" }, "RAKAZO_S3_BUCKET");
+    bad({ RAKAZO_S3_ACCESS_KEY_ID: "id\nevil" }, "RAKAZO_S3_ACCESS_KEY_ID");
+    bad({ RAKAZO_S3_SECRET_ACCESS_KEY: "secret\u0000" }, "RAKAZO_S3_SECRET_ACCESS_KEY");
+    bad({ RAKAZO_S3_ENDPOINT: "ftp://evil.test" }, "RAKAZO_S3_ENDPOINT");
+    bad({ RAKAZO_S3_ENDPOINT: "not a url evil" }, "RAKAZO_S3_ENDPOINT");
+    for (const prefix of ["../other", "a/../b", "./a", "a//b", "."]) {
+      bad({ RAKAZO_S3_FORCE_PATH_STYLE: "true", RAKAZO_S3_PREFIX: prefix }, "RAKAZO_S3_PREFIX");
+    }
   });
 
   it("names the missing variable on partial config without leaking values", () => {

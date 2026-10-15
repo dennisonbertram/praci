@@ -33,19 +33,42 @@ export function s3ArtifactConfigFromEnv(
   env: Record<string, string | undefined>,
 ): S3ArtifactConfig | null {
   const value = (name: string) => env[name]?.trim() ?? "";
-  if (![...REQUIRED.map(([name]) => name), "RAKAZO_S3_PREFIX"].some(value)) return null;
+  if (!Object.keys(env).some((name) => name.startsWith("RAKAZO_S3_") && value(name))) return null;
   const missing = REQUIRED.find(([name]) => !value(name));
   if (missing) {
     throw new Error(`${missing[0]} is required when object storage is configured`);
   }
+  const invalid = (name: string): never => {
+    throw new Error(`${name} is invalid`);
+  };
+  const check = (name: string, ok: boolean) => {
+    if (!ok) invalid(name);
+  };
+  const endpoint = value("RAKAZO_S3_ENDPOINT");
+  check(
+    "RAKAZO_S3_ENDPOINT",
+    URL.canParse(endpoint) && /^https?:$/.test(new URL(endpoint).protocol),
+  );
+  const bucket = value("RAKAZO_S3_BUCKET");
+  check("RAKAZO_S3_BUCKET", /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket));
+  const region = value("RAKAZO_S3_REGION") || "us-east-1";
+  check("RAKAZO_S3_REGION", /^[a-z0-9-]+$/.test(region));
+  for (const name of ["RAKAZO_S3_ACCESS_KEY_ID", "RAKAZO_S3_SECRET_ACCESS_KEY"]) {
+    check(name, /^[\x21-\x7e]+$/.test(value(name)));
+  }
+  const prefix = value("RAKAZO_S3_PREFIX").replace(/^\/+|\/+$/g, "");
+  check(
+    "RAKAZO_S3_PREFIX",
+    !prefix || prefix.split("/").every((part) => part && part !== "." && part !== ".."),
+  );
   return {
-    endpoint: value("RAKAZO_S3_ENDPOINT"),
-    bucket: value("RAKAZO_S3_BUCKET"),
-    region: value("RAKAZO_S3_REGION") || "us-east-1",
+    endpoint,
+    bucket,
+    region,
     accessKeyId: value("RAKAZO_S3_ACCESS_KEY_ID"),
     secretAccessKey: value("RAKAZO_S3_SECRET_ACCESS_KEY"),
     forcePathStyle: /^(1|true|yes)$/i.test(value("RAKAZO_S3_FORCE_PATH_STYLE")),
-    prefix: value("RAKAZO_S3_PREFIX").replace(/^\/+|\/+$/g, ""),
+    prefix,
   };
 }
 
@@ -59,7 +82,7 @@ export function createArtifactStore(
 }
 
 function segment(value: string, label: string) {
-  if (!value || value === ".." || value.includes("/") || value.includes("\\")) {
+  if (!value || value === ".." || value === "." || value.includes("/") || value.includes("\\")) {
     throw new Error(`Invalid ${label}`);
   }
   return value;
@@ -103,7 +126,13 @@ export class S3ArtifactStore implements ArtifactStore {
   }
 
   private async send(method: "PUT" | "GET" | "DELETE", key: string, body?: Uint8Array) {
-    return this.client.fetch(this.url(key), { method, body: body as BodyInit | undefined });
+    try {
+      return await this.client.fetch(this.url(key), { method, body: body as BodyInit | undefined });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      // Signing and transport errors can carry the key id, signature or URL; report none of them.
+      throw new Error("S3 request failed");
+    }
   }
 
   private async fail(op: string, response: Response): Promise<never> {
