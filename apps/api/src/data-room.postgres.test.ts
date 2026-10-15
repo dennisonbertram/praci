@@ -11,7 +11,8 @@ import { createDataRoomRepos, createDb } from "@rakazo/db";
 import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDataRoomService, mountDataRoomRoutes } from "./data-room.js";
-import { createRouter, type RouterDeps } from "./router.js";
+import type { RouterDeps } from "./router.js";
+import { createRouter } from "./router.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -219,12 +220,12 @@ describePostgres("Data room API (PostgreSQL)", () => {
       { ordinal: 0, text: "confidential quokka report", contentHash: "h" },
     ]);
     expect(
-      (await client(actors.a).dataRoom.search({ query: "quokka", limit: 10 }))[0]?.item.id,
+      (await client(actors.a).dataRoom.search({ query: "quokka", limit: 10 })).results[0]?.item.id,
     ).toBe(item.id);
     for (const who of ["b", "a2"]) {
       const c = client(actors[who]);
       expect((await c.dataRoom.items.list({ limit: 50 })).items).toEqual([]);
-      expect(await c.dataRoom.search({ query: "quokka", limit: 10 })).toEqual([]);
+      expect((await c.dataRoom.search({ query: "quokka", limit: 10 })).results).toEqual([]);
       await expect(c.dataRoom.item({ id: item.id })).rejects.toMatchObject({ code: "NOT_FOUND" });
       await expect(c.dataRoom.itemRename({ id: item.id, name: "x" })).rejects.toMatchObject({
         code: "NOT_FOUND",
@@ -397,34 +398,62 @@ describePostgres("Data room API (PostgreSQL)", () => {
       ).rejects.toMatchObject({ code: "CONFLICT" });
     });
 
-    it("sorts search hits on request and keeps relevance order by default", async () => {
-      const repo = createDataRoomRepos(prisma);
-      for (const r of rows) {
-        await repo.replaceChunks(actors.S, r.id, [
-          { ordinal: 0, text: "zebra stripes", contentHash: "z" },
-        ]);
-      }
+    const searchWalk = async (input: Record<string, unknown>, limit: number) => {
       const c = client(actors.S);
-      const sorted = await c.dataRoom.search({
-        query: "zebra",
-        limit: 50,
-        sort: { field: "date", direction: "desc" },
+      const ids: string[] = [];
+      let cursor: string | undefined;
+      for (let guard = 0; guard < 20; guard += 1) {
+        const page = await c.dataRoom.search({ query: "zebra", ...input, limit, cursor } as never);
+        ids.push(...page.results.map((h) => h.item.id));
+        if (!page.nextCursor) return ids;
+        cursor = page.nextCursor;
+      }
+      throw new Error("cursor never ended");
+    };
+
+    describe("search paging", () => {
+      beforeAll(async () => {
+        const repo = createDataRoomRepos(prisma);
+        for (const [i, r] of rows.entries()) {
+          // Different match strengths, with ties, so relevance order has something to do.
+          const text = `zebra ${"zebra ".repeat(i % 3)}stripes`;
+          await repo.replaceChunks(actors.S, r.id, [{ ordinal: 0, text, contentHash: `z${i}` }]);
+        }
       });
-      expect(sorted.map((h) => h.item.id)).toEqual(expected("date", "desc"));
-      const filtered = await c.dataRoom.search({
-        query: "zebra",
-        limit: 50,
-        filters: { docType: "invoice" },
-        sort: { field: "name", direction: "asc" },
+
+      for (const field of ["date", "name", "type", "createdAt"] as const) {
+        for (const direction of ["asc", "desc"] as const) {
+          it(`pages search by ${field} ${direction} in global order`, async () => {
+            const want = expected(field, direction);
+            expect(await searchWalk({ sort: { field, direction } }, 2)).toEqual(want);
+            expect(await searchWalk({ sort: { field, direction } }, 50)).toEqual(want);
+          });
+        }
+      }
+
+      it("pages relevance order without repeats or gaps", async () => {
+        const whole = await searchWalk({}, 50);
+        expect(whole).toHaveLength(rows.length);
+        const scores = (
+          await client(actors.S).dataRoom.search({ query: "zebra", limit: 50 })
+        ).results.map((h) => h.score);
+        expect(scores).toEqual([...scores].sort((a, b) => b - a));
+        expect(await searchWalk({}, 2)).toEqual(whole);
+        expect(await searchWalk({}, 1)).toEqual(whole);
       });
-      expect(filtered.map((h) => h.item.id)).toEqual(
-        expected(
-          "name",
-          "asc",
-          rows.filter((r) => r.docType === "invoice"),
-        ),
-      );
-      expect((await c.dataRoom.search({ query: "zebra", limit: 3 })).length).toBe(3);
+
+      it("combines filters with sort across pages and rejects a bad cursor", async () => {
+        const invoices = rows.filter((r) => r.docType === "invoice");
+        expect(
+          await searchWalk(
+            { filters: { docType: "invoice" }, sort: { field: "name", direction: "asc" } },
+            1,
+          ),
+        ).toEqual(expected("name", "asc", invoices));
+        await expect(
+          client(actors.S).dataRoom.search({ query: "zebra", limit: 2, cursor: "bad" }),
+        ).rejects.toMatchObject({ code: "CONFLICT" });
+      });
     });
   });
 
@@ -485,7 +514,9 @@ describePostgres("Data room API (PostgreSQL)", () => {
       prisma,
       artifacts: new LocalArtifactStore(root),
     } as unknown as Parameters<typeof createBackgroundJobHandlers>[0]);
-    await handlers["dataroom.blob.delete"](queued[0]?.payload as never);
+    await expect(handlers["dataroom.blob.delete"](queued[0]?.payload as never)).rejects.toThrow(
+      "still references",
+    );
     await expect(
       new LocalArtifactStore(root).get(row.storageKey as string, {
         operationId: "t",

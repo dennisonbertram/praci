@@ -14,13 +14,9 @@ import type {
   DataRoomFolderRecord,
   DataRoomItemRecord,
   DataRoomSort,
+  PrismaClient,
 } from "@rakazo/db";
-import {
-  createDataRoomRepos,
-  DataRoomConflictError,
-  IsolationError,
-  type PrismaClient,
-} from "@rakazo/db";
+import { createDataRoomRepos, DataRoomConflictError, IsolationError } from "@rakazo/db";
 import type { Hono } from "hono";
 import { cancelBody } from "./http-body.js";
 import { contentDisposition, downloadType } from "./inbox-attachment.js";
@@ -102,27 +98,6 @@ const toFilters = (input: {
   };
 };
 
-const sortKey = (item: DataRoomApiItem, field: DataRoomSort["field"]) =>
-  ({
-    date: item.facets.docDate,
-    name: item.name,
-    type: item.facets.docType,
-    createdAt: item.createdAt,
-  })[field];
-
-/** Orders an already bounded set of search hits like the item list: nulls last, ties by id. */
-function sortHits<T extends { item: DataRoomApiItem }>(hits: T[], sort: DataRoomSort): T[] {
-  const sign = sort.direction === "asc" ? 1 : -1;
-  return [...hits].sort((a, b) => {
-    const x = sortKey(a.item, sort.field);
-    const y = sortKey(b.item, sort.field);
-    if (x === y) return a.item.id < b.item.id ? -1 : 1;
-    if (x === null) return 1;
-    if (y === null) return -1;
-    return (x < y ? -1 : 1) * sign;
-  });
-}
-
 /** Procedure bodies for `dataRoom.*`; the router adds the Actor. */
 export function createDataRoomService(deps: DataRoomDeps) {
   const repo = createDataRoomRepos(deps.prisma);
@@ -175,19 +150,20 @@ export function createDataRoomService(deps: DataRoomDeps) {
       input: {
         query: string;
         limit: number;
+        cursor?: string;
         filters?: Parameters<typeof toFilters>[0];
         sort?: DataRoomSort;
       },
     ) =>
       dataRoomCall(async () => {
-        const hits = (
-          await repo.searchKeyword(actor, {
-            query: input.query,
-            limit: input.limit,
-            filters: input.filters && toFilters(input.filters),
-          })
-        ).map((hit) => ({ ...hit, item: itemDto(hit.item) }));
-        return input.sort ? sortHits(hits, input.sort) : hits;
+        const page = await repo.searchPage(actor, {
+          ...input,
+          filters: input.filters && toFilters(input.filters),
+        });
+        return {
+          results: page.results.map((hit) => ({ ...hit, item: itemDto(hit.item) })),
+          nextCursor: page.nextCursor,
+        };
       }),
   };
 }

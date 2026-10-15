@@ -313,8 +313,10 @@ describe("dataroom.blob.delete", () => {
     } as unknown as Parameters<typeof createBackgroundJobHandlers>[0];
     const handlers = createBackgroundJobHandlers({ ...base, artifacts });
     const payload = { spaceId: "space-1", storageKey: stored.id };
-    // The row delete failed or rolled back: the blob stays.
-    await handlers["dataroom.blob.delete"](payload);
+    // The row is still there: fail so the queue retries, and keep the blob.
+    await expect(handlers["dataroom.blob.delete"](payload)).rejects.toThrow(
+      "Data room item still references this blob",
+    );
     expect(await readdir(path.join(root, "artifacts", "space-1"))).toHaveLength(1);
     rowExists = false;
     await handlers["dataroom.blob.delete"](payload);
