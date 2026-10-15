@@ -36,6 +36,9 @@ export function DataRoomDropZone() {
       if (!dragHasFiles(event)) return;
       depth += 1;
       setDragging(true);
+      // Close any open menu or popover (not a dialog); they would stay open under the overlay.
+      if (depth === 1 && !document.querySelector('[role="dialog"], [role="alertdialog"]'))
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     };
     const over = (event: DragEvent) => {
       // Without this the browser would open the dropped file.
@@ -71,7 +74,7 @@ export function DataRoomDropZone() {
       {dragging ? (
         <div
           data-testid="data-room-drop-overlay"
-          className="pointer-events-none fixed inset-0 z-[70] grid place-items-center bg-background/80"
+          className="pointer-events-none fixed inset-0 z-100 grid place-items-center bg-background/80"
         >
           <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-foreground/40 bg-card px-6 py-5 text-sm font-medium">
             <Upload aria-hidden="true" className="size-4" />
@@ -84,7 +87,7 @@ export function DataRoomDropZone() {
           role="status"
           aria-live="polite"
           data-testid="data-room-toasts"
-          className="fixed end-4 bottom-4 z-[70] flex w-72 flex-col gap-2"
+          className="fixed end-4 bottom-20 z-100 flex w-72 flex-col gap-2"
         >
           {toasts.map(({ id, name, state }) => (
             <div key={id} className="rounded-lg border border-border bg-card p-3 text-sm shadow-md">

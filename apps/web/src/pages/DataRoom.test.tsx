@@ -150,3 +150,37 @@ it("sends the chosen sort to the server and keeps the order it returns", async (
   );
   expect(names()).toEqual(["b.txt", "a.txt"]);
 });
+
+it("keeps a pinned item only while it is in the results, else pins the first or closes", async () => {
+  await renderPage();
+  const preview = () =>
+    container.querySelector('[data-testid="data-room-preview"] h3')?.textContent;
+  // b.txt is pinned first; pin a.txt by clicking it.
+  await act(async () => {
+    container.querySelectorAll<HTMLElement>("li[data-item-id]")[1]?.click();
+  });
+  expect(preview()).toBe("a.txt");
+
+  const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  const search = async (value: string, results: DataRoomApiItem[]) => {
+    rpcMock.search.mockResolvedValue({
+      results: results.map((hit) => ({ item: hit, ordinal: 0, snippet: "x", score: 1 })),
+      nextCursor: null,
+    });
+    await act(async () => {
+      set?.call(input, value);
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+  };
+  await search("one", [item("c.txt")]);
+  expect(preview()).toBe("c.txt");
+  // Still in the results: stays pinned.
+  await search("two", [item("d.txt"), item("c.txt")]);
+  expect(preview()).toBe("c.txt");
+  await search("none", []);
+  expect(container.querySelector('[data-testid="data-room-preview"]')).toBeNull();
+});
