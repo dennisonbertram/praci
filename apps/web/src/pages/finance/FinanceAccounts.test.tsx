@@ -169,7 +169,10 @@ it("opens the Add account modal and reaches the Add wallet dialog through Wallet
   expect(dialog()?.textContent).toContain("Add wallet");
 });
 
-const toggle = () => container.querySelector("button[aria-pressed]") as HTMLButtonElement | null;
+const toggle = () =>
+  [...container.querySelectorAll("button")].find((b) =>
+    /^(Count crypto|Counting)/.test(b.textContent ?? ""),
+  ) as HTMLButtonElement | undefined;
 const subtitle = () =>
   [...container.querySelectorAll("h2")].find((h) => h.textContent === "Total cash")
     ?.nextElementSibling?.nextElementSibling?.textContent;
@@ -183,7 +186,7 @@ it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
   await act(async () => root.unmount());
   root = createRoot(container);
   await show("stablecoins");
-  expect(toggle()?.textContent).toBe("Counting crypto");
+  expect(toggle()?.textContent).toBe("Counting stablecoins");
   expect(subtitle()).toBe("Checking + Savings + Treasury + Stablecoins");
   await act(async () => root.unmount());
   root = createRoot(container);
@@ -204,7 +207,7 @@ it("hides the button when no crypto is held", async () => {
   await act(async () => root.unmount());
   root = createRoot(container);
   await show("bank", { ...crypto, wallets: [], summary: { ...crypto.summary, totalCents: 0 } });
-  expect(toggle()).toBeNull();
+  expect(toggle()).toBeUndefined();
 });
 
 it("reloads accounts after a wallet is added, since crypto can count in total cash", async () => {

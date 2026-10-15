@@ -1377,10 +1377,6 @@ msgstr ""
 msgid "Choose which connected model Rakazo uses."
 msgstr "Выберите, какую подключенную модель использует Rakazo."
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Choose which crypto counts"
-msgstr ""
-
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
@@ -2276,7 +2272,11 @@ msgid "Counterparty"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
-msgid "Counting crypto"
+msgid "Counting all crypto"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Counting stablecoins"
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -2632,6 +2632,10 @@ msgstr "Docker ограничивает доступ к вашему компь�
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
+msgstr ""
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Don't count crypto"
 msgstr ""
 
 #: src/pages/Auth.tsx
@@ -4129,10 +4133,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
-msgstr ""
-
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Not counting crypto"
 msgstr ""
 
 #: src/pages/finance/FinanceNotFound.tsx
