@@ -652,6 +652,10 @@ export interface BackgroundJobPayloads {
   "finance.sync": { userId: string; spaceId: string };
   /** Removes a deleted Data room item's blob. Idempotent: a missing blob is success. */
   "dataroom.blob.delete": { spaceId: string; storageKey: string };
+  /** Pipeline steps for one Data room item, in order; each queues the next. */
+  "dataroom.ingest": { spaceId: string; userId: string; itemId: string };
+  "dataroom.classify": { spaceId: string; userId: string; itemId: string };
+  "dataroom.index": { spaceId: string; userId: string; itemId: string };
 }
 
 export type BackgroundJobName = keyof BackgroundJobPayloads;

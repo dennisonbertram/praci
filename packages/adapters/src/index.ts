@@ -57,6 +57,8 @@ export * from "./computer-workspace.js";
 export * from "./createos-sandbox.js";
 export * from "./current-time.js";
 export * from "./cursor-cloud-agent.js";
+export * from "./data-room-jobs.js";
+export * from "./data-room-models.js";
 export * from "./daytona-emulator.js";
 export * from "./daytona-sandbox.js";
 export * from "./deployment-model.js";
