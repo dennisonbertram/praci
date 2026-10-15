@@ -16,7 +16,13 @@ vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
-const rpcMock = vi.hoisted(() => ({ accounts: vi.fn(), crypto: vi.fn(), walletAdd: vi.fn() }));
+const rpcMock = vi.hoisted(() => ({
+  accounts: vi.fn(),
+  crypto: vi.fn(),
+  walletAdd: vi.fn(),
+  preferences: vi.fn(),
+  setPreferences: vi.fn(),
+}));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
 import { FinanceAccountsPage } from "./FinanceAccounts";
@@ -67,12 +73,10 @@ const accounts = {
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 const flush = () => act(async () => {});
-beforeEach(async () => {
-  container = document.createElement("div");
-  document.body.append(container);
-  root = createRoot(container);
+async function show(scope: "bank" | "stablecoins" | "all" = "bank", cryptoData = crypto) {
   rpcMock.accounts.mockResolvedValue(accounts);
-  rpcMock.crypto.mockResolvedValue(crypto);
+  rpcMock.crypto.mockResolvedValue(cryptoData);
+  rpcMock.preferences.mockResolvedValue({ runwayCrypto: scope });
   await act(async () =>
     root.render(
       <MemoryRouter>
@@ -81,6 +85,12 @@ beforeEach(async () => {
     ),
   );
   await flush();
+}
+beforeEach(async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await show();
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -112,4 +122,42 @@ it("opens the Add wallet dialog from the Add account menu", async () => {
   expect(items.map((i) => i.textContent)).toEqual(["Crypto wallet"]);
   await act(async () => (items[0] as HTMLElement).click());
   expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Add wallet");
+});
+
+const toggle = () => container.querySelector("button[aria-pressed]") as HTMLButtonElement | null;
+const subtitle = () =>
+  [...container.querySelectorAll("h2")].find((h) => h.textContent === "Total cash")
+    ?.nextElementSibling?.nextElementSibling?.textContent;
+
+it("offers Count crypto, off under the bank scope, and keeps the plain subtitle", () => {
+  expect(toggle()?.textContent).toBe("Count crypto");
+  expect(subtitle()).toBe("Checking + Savings + Treasury");
+});
+
+it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await show("stablecoins");
+  expect(toggle()?.textContent).toBe("Counting crypto");
+  expect(subtitle()).toBe("Checking + Savings + Treasury + Stablecoins");
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await show("all");
+  expect(subtitle()).toBe("Checking + Savings + Treasury + Crypto");
+});
+
+it("saves the scope and reloads accounts and the scope", async () => {
+  rpcMock.setPreferences.mockResolvedValue({ runwayCrypto: "all" });
+  await act(async () => toggle()?.click());
+  await flush();
+  expect(rpcMock.setPreferences).toHaveBeenCalledWith({ runwayCrypto: "all" });
+  expect(rpcMock.accounts).toHaveBeenCalledTimes(2);
+  expect(rpcMock.preferences).toHaveBeenCalledTimes(2);
+});
+
+it("hides the button when no crypto is held", async () => {
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await show("bank", { ...crypto, wallets: [], summary: { ...crypto.summary, totalCents: 0 } });
+  expect(toggle()).toBeNull();
 });

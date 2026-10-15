@@ -1,9 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { RunwayCryptoScope } from "@rakazo/contracts";
-import { Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
 import { BurnBars, LineChart, StackBar } from "../../components/finance/charts";
 import {
   BreakdownRows,
@@ -22,7 +20,6 @@ import {
 import { fullDay, money, monthFull, monthLabel, monthShort } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { rpc } from "../../lib/rpc";
-import { errorText } from "../../lib/user-error";
 
 const burnCrumbs = () => [
   { label: t`Finance`, to: financePath.dashboard() },
@@ -221,32 +218,7 @@ export function FinanceMonthPage({ month }: { month: string }) {
   );
 }
 
-function RunwayScopeTabs({
-  value,
-  onChange,
-}: {
-  value: RunwayCryptoScope;
-  onChange: (scope: RunwayCryptoScope) => void;
-}) {
-  return (
-    <Tabs value={value} onValueChange={(next) => onChange(next as RunwayCryptoScope)}>
-      <TabsList className="rounded-full" aria-label={t`Counted in runway`}>
-        <TabsTrigger value="bank" className="rounded-full px-3">
-          {t`Bank`}
-        </TabsTrigger>
-        <TabsTrigger value="stablecoins" className="rounded-full px-3">
-          {t`Bank + stablecoins`}
-        </TabsTrigger>
-        <TabsTrigger value="all" className="rounded-full px-3">
-          {t`Bank + all crypto`}
-        </TabsTrigger>
-      </TabsList>
-    </Tabs>
-  );
-}
-
 export function FinanceRunwayPage() {
-  const [saveError, setSaveError] = useState("");
   const q = useFinanceQuery(() => rpc.finance.runway(), []);
   const data = q.data;
   // The projection may repeat the current month; the line continues from the last known balance.
@@ -256,15 +228,6 @@ export function FinanceRunwayPage() {
   const runMonths = data?.runway.months?.toFixed(1);
   const parts = data?.breakdown;
   const hasCrypto = !!parts && (parts.stablecoinCents > 0 || parts.otherCryptoCents > 0);
-  async function chooseScope(runwayCrypto: RunwayCryptoScope) {
-    try {
-      await rpc.finance.setPreferences({ runwayCrypto });
-      setSaveError("");
-      q.reload();
-    } catch (cause) {
-      setSaveError(errorText(cause));
-    }
-  }
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Runway` }]}
@@ -301,23 +264,13 @@ export function FinanceRunwayPage() {
           {hasCrypto && parts ? (
             <Section
               title={<Trans>Cash</Trans>}
-              action={
-                <RunwayScopeTabs
-                  value={data.runwayCrypto}
-                  onChange={(scope) => void chooseScope(scope)}
-                />
-              }
+              action={<CountCryptoButton scope={data.runwayCrypto} onSaved={q.reload} />}
             >
               <Kv>
                 <KvRow label={t`Bank`}>{money(parts.bankCents)}</KvRow>
                 <KvRow label={t`Stablecoins`}>{money(parts.stablecoinCents)}</KvRow>
                 <KvRow label={t`Other crypto`}>{money(parts.otherCryptoCents)}</KvRow>
               </Kv>
-              {saveError ? (
-                <p role="alert" className="text-[13px] text-destructive">
-                  {saveError}
-                </p>
-              ) : null}
             </Section>
           ) : null}
           <Section>
