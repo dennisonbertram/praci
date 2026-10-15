@@ -463,6 +463,7 @@ describe("finance_overview stablecoins", () => {
       usdValueCents: 500n,
     });
     holdings.push(canonical);
+    preferences.push({ ...MINE, runwayCrypto: "stablecoins" });
     try {
       const { deps } = setup();
       const result = (await financeToolFromTool("finance_overview", deps, {})) as {
@@ -484,6 +485,7 @@ describe("finance_overview stablecoins", () => {
       });
     } finally {
       holdings.pop();
+      preferences.pop();
     }
   });
 });
@@ -512,11 +514,11 @@ describe("finance_overview runway scope", () => {
     expect(all.runwayMonths).toBeGreaterThan(base.runwayMonths);
   });
 
-  it("defaults to stablecoins without a saved preference", async () => {
+  it("defaults to bank without a saved preference", async () => {
     const result = (await financeToolFromTool("finance_overview", setup().deps, {})) as {
       cash: { runwayCrypto: string };
     };
-    expect(result.cash.runwayCrypto).toBe("stablecoins");
+    expect(result.cash.runwayCrypto).toBe("bank");
   });
 });
 
