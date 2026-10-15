@@ -2,8 +2,10 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   connectedOverview,
   cryptoData,
+  cryptoHistoryData,
   emptyOverview,
   receiptPng,
+  runwayData,
   transactionOf,
   vendor,
   withoutReceipt,
@@ -25,6 +27,7 @@ async function mockFinance(page: Page, overview = connectedOverview) {
     const answers: Record<string, unknown> = {
       overview,
       refresh: { ok: true },
+      preferences: { runwayCrypto: "bank" },
       vendor,
       transaction: transactionOf(String(input?.id)),
       receiptUrl: { url: "https://files.example.test/receipt.png", mimeType: "image/png" },
@@ -289,6 +292,7 @@ test("Finance Accounts lists wallets apart from cash and adds one from the menu"
   const main = page.getByRole("main");
   await expect(main.getByText("Mercury Checking")).toBeVisible();
   await expect(main.getByRole("heading", { name: "Crypto" })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Count crypto" })).toBeVisible();
   await expect(main.locator('a[href="/app/finance/crypto"]').first()).toHaveText("Treasury");
   await expect(main.getByText("$75,000", { exact: true }).first()).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-accounts-crypto-group");
@@ -358,4 +362,50 @@ test("Blockscout tile: a keyless server is not connected, Connect opens the key 
   await expect(tile).toContainText("Connected");
   await expect(tile.getByRole("link", { name: "Open" })).toBeVisible();
   await captureScreenshot(page, testInfo, "blockscout-tile-connected");
+});
+
+test("Finance runway shows crypto and switches what counts", async ({ page }) => {
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  await mockFinance(page, { ...connectedOverview, crypto: cryptoData.summary });
+  let scope = runwayData.runwayCrypto;
+  const reply = (name: string, body: () => unknown) =>
+    page.route(`**/rpc/finance/${name}`, (route) =>
+      route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ json: body(), meta: [] }),
+      }),
+    );
+  await reply("runway", () => ({
+    ...runwayData,
+    runwayCrypto: scope,
+    cashCents: { bank: 7_500_000, stablecoins: 9_000_000, all: 9_800_000 }[scope],
+  }));
+  await reply("preferences", () => ({ runwayCrypto: scope }));
+  await page.route("**/rpc/finance/setPreferences", (route) => {
+    const input = route.request().postDataJSON() as { json: { runwayCrypto: typeof scope } };
+    scope = input.json.runwayCrypto;
+    return route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ json: input.json, meta: [] }),
+    });
+  });
+  await reply("cryptoHistory", () => cryptoHistoryData);
+  await signup(page, `finance-runway-${Date.now()}@rakazo.test`, "password12", "Finance Runway");
+  await completeOnboarding(page);
+  await page.goto("/app/finance/runway");
+  const main = page.getByRole("main");
+  // Bank only: the Cash card and the Bank breakdown row both read $75,000.
+  await expect(main.getByText("$75,000", { exact: true })).toHaveCount(2);
+  await expect(main.getByText("$15,000", { exact: true })).toBeVisible();
+  await expect(main.getByText("$8,000", { exact: true })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Count crypto" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await main.getByRole("button", { name: "Count crypto" }).click();
+  await expect(main.getByText("$98,000", { exact: true })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Counting crypto" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });

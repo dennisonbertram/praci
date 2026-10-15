@@ -109,9 +109,12 @@ import {
   FinanceConnectOutputSchema,
   FinanceCryptoConnectInputSchema,
   FinanceCryptoConnectOutputSchema,
+  FinanceCryptoHistoryInputSchema,
+  FinanceCryptoHistoryOutputSchema,
   FinanceCryptoOutputSchema,
   FinanceMonthOutputSchema,
   FinanceOverviewSchema,
+  FinancePreferencesSchema,
   FinanceReceiptUrlOutputSchema,
   FinanceRecurringOutputSchema,
   FinanceRunwayOutputSchema,
@@ -1071,6 +1074,11 @@ export const appContract = {
       .input(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }))
       .output(FinanceMonthOutputSchema),
     runway: oc.output(FinanceRunwayOutputSchema),
+    preferences: oc.output(FinancePreferencesSchema),
+    setPreferences: oc.input(FinancePreferencesSchema).output(FinancePreferencesSchema),
+    cryptoHistory: oc
+      .input(FinanceCryptoHistoryInputSchema)
+      .output(FinanceCryptoHistoryOutputSchema),
     spend: oc.input(FinanceSpendInputSchema).output(FinanceSpendOutputSchema),
     category: oc
       .input(z.object({ slug: z.string().min(1).max(200) }))

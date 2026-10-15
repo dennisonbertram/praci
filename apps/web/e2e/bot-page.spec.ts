@@ -4,7 +4,7 @@ import { activeBotId, captureScreenshot, completeOnboarding, rpc, signup } from 
 const chart = {
   name: "Weekly sales",
   spec: {
-    marks: [{ type: "barY", x: "week", y: "sales" }],
+    marks: [{ type: "barY", options: { x: "week", y: "sales" } }],
   },
   data: [
     { week: "W1", sales: 4 },

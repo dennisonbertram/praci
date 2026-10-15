@@ -19,6 +19,7 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 const rpcMock = vi.hoisted(() => ({
   crypto: vi.fn(),
+  cryptoHistory: vi.fn(),
   walletAdd: vi.fn(),
   walletUpdate: vi.fn(),
   walletRemove: vi.fn(),
@@ -117,6 +118,7 @@ beforeEach(() => {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
+  rpcMock.cryptoHistory.mockResolvedValue({ points: [] });
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -140,6 +142,55 @@ it("renders totals, wallets, chains and holdings from the data", async () => {
   expect(page).toContain("2.5");
   expect(page).toContain("Updated");
   expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+const points = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({
+    day: `2026-10-${String(i + 1).padStart(2, "0")}`,
+    stablecoinCents: 1_000_00 + i * 100_00,
+    otherCryptoCents: 2_000_00,
+  }));
+
+it("charts crypto balance over time from 2 or more daily points", async () => {
+  rpcMock.crypto.mockResolvedValue(data());
+  rpcMock.cryptoHistory.mockResolvedValue({ points: points(3) });
+  await show();
+  expect(rpcMock.cryptoHistory).toHaveBeenCalledWith({ days: 90 });
+  expect(container.textContent).toContain("Balance over time");
+});
+
+it("shows no history chart with fewer than 2 points", async () => {
+  rpcMock.crypto.mockResolvedValue(data());
+  rpcMock.cryptoHistory.mockResolvedValue({ points: points(1) });
+  await show();
+  expect(container.textContent).not.toContain("Balance over time");
+});
+
+it("reloads the balance history after removing a wallet", async () => {
+  rpcMock.crypto.mockResolvedValue(data());
+  rpcMock.walletRemove.mockResolvedValue({});
+  await show();
+  expect(rpcMock.cryptoHistory).toHaveBeenCalledTimes(1);
+  await act(async () =>
+    (container.querySelector('[aria-label="Actions for Treasury"]') as HTMLElement).click(),
+  );
+  await act(async () =>
+    (
+      [...document.body.querySelectorAll('[role="menuitem"]')].find(
+        (i) => i.textContent === "Remove",
+      ) as HTMLElement
+    ).click(),
+  );
+  await act(async () =>
+    (
+      [...document.body.querySelectorAll("button")].find(
+        (b) => b.textContent === "Remove",
+      ) as HTMLElement
+    ).click(),
+  );
+  await flush();
+  expect(rpcMock.walletRemove).toHaveBeenCalledWith({ id: "w1" });
+  expect(rpcMock.cryptoHistory).toHaveBeenCalledTimes(2);
 });
 
 it("shows the sync error only when there is one", async () => {

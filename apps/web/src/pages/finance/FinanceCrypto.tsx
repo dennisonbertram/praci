@@ -16,11 +16,12 @@ import {
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
+import { LineChart } from "../../components/finance/charts";
 import { DetailPage, Section, Th, useFinanceQuery } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { BlockscoutConnectDialog } from "../../components/integrations/BlockscoutConnectDialog";
 import { chainName, tokenAmount } from "../../lib/crypto-format";
-import { moneyExact } from "../../lib/finance-format";
+import { dayMonth, moneyExact } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { rpc } from "../../lib/rpc";
@@ -130,6 +131,12 @@ function WalletRows({
 export function FinanceCryptoPage() {
   const { t } = useLingui();
   const q = useFinanceQuery(() => rpc.finance.crypto(), []);
+  const history = useFinanceQuery(() => rpc.finance.cryptoHistory({ days: 90 }), []);
+  const trend = history.data?.points ?? [];
+  const reloadAll = () => {
+    q.reload();
+    history.reload();
+  };
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<FinanceWallet | null>(null);
   const [removing, setRemoving] = useState<FinanceWallet | null>(null);
@@ -159,7 +166,7 @@ export function FinanceCryptoPage() {
             </div>
           )}
           {connecting ? (
-            <BlockscoutConnectDialog onConnected={q.reload} onClose={() => setConnecting(false)} />
+            <BlockscoutConnectDialog onConnected={reloadAll} onClose={() => setConnecting(false)} />
           ) : null}
           {data.lastError ? (
             <p role="alert" className="text-sm text-destructive">
@@ -190,6 +197,16 @@ export function FinanceCryptoPage() {
               </>
             ) : null}
           </Section>
+          {trend.length >= 2 ? (
+            <Section title={<Trans>Balance over time</Trans>}>
+              <LineChart
+                values={trend.map((p) => p.stablecoinCents + p.otherCryptoCents)}
+                labels={trend.map((p) => dayMonth(p.day))}
+                height={200}
+                label={t`Balance over time`}
+              />
+            </Section>
+          ) : null}
           {data.summary.byChain.length > 0 ? (
             <Section title={<Trans>Chains</Trans>}>
               <table className="w-full border-collapse">
@@ -247,16 +264,16 @@ export function FinanceCryptoPage() {
             key={adding ? "add" : "closed"}
             open={adding}
             onClose={() => setAdding(false)}
-            onSaved={q.reload}
+            onSaved={reloadAll}
           />
           <WalletDialog
             key={editing?.id ?? "none"}
             wallet={editing ?? undefined}
             open={editing !== null}
             onClose={() => setEditing(null)}
-            onSaved={q.reload}
+            onSaved={reloadAll}
           />
-          <RemoveDialog wallet={removing} onClose={() => setRemoving(null)} onSaved={q.reload} />
+          <RemoveDialog wallet={removing} onClose={() => setRemoving(null)} onSaved={reloadAll} />
         </>
       ) : null}
     </DetailPage>

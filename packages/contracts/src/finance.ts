@@ -154,7 +154,7 @@ export const CryptoHoldingSchema = z.object({
   syncedAt: IsoDate,
 });
 
-/** Priced holdings only. Only the stablecoin part counts as cash; the rest never enters cash, burn or runway. */
+/** Priced holdings only, as held. How much counts as cash follows the saved `runwayCrypto` scope; crypto never affects burn. */
 export const CryptoSummarySchema = z.object({
   totalCents: Cents,
   /** Priced holdings at the canonical stablecoin contracts; part of `totalCents`. */
@@ -283,13 +283,13 @@ export const FinanceBillSchema = z.object({
 export const SpendPeriodSchema = z.enum(["week", "month", "quarter", "year"]);
 
 export const CashSummarySchema = z.object({
-  /** Bank cash (Mercury checking + savings + Treasury) plus stablecoins. */
+  /** Bank cash (Mercury checking + savings + Treasury) plus the crypto the saved `runwayCrypto` scope counts. */
   cashCents: Cents,
   /** Bank cash alone, without stablecoins. Absent from older payloads. */
   bankCashCents: Cents.optional(),
-  /** Priced stablecoins held in the tracked wallets; already inside `cashCents`. */
+  /** Stablecoins counted in `cashCents` (0 under the "bank" scope). Held amounts are in `crypto`. */
   stablecoinCents: Cents.optional(),
-  /** Other priced crypto. Never in `cashCents` or runway; only for the Cash card's total. */
+  /** Other priced crypto counted in `cashCents`; non-zero only under the "all" scope. Held amounts are in `crypto`. */
   otherCryptoCents: Cents.optional(),
   checkingCents: Cents,
   savingsCents: Cents,
@@ -471,7 +471,7 @@ export const FinanceOverviewSchema = z.object({
   lastSyncedAt: IsoDate.nullable(),
   /** Transactions left out of every total because they are not in USD (v1 is USD only). */
   excludedNonUsdCount: z.number().int().nonnegative(),
-  /** Crypto holdings for the separate card; null or absent when no wallet is added. Never part of cash, burn or runway. */
+  /** Crypto holdings as held; null or absent when no wallet is added. Counted in cash per the saved scope; never in burn. */
   crypto: CryptoSummarySchema.nullable().optional(),
 });
 
@@ -541,11 +541,48 @@ export const FinanceMonthOutputSchema = z.object({
   transactions: z.array(FinanceTransactionSchema),
 });
 
+/**
+ * What counts as cash for runway, the accounts total and the dashboard: bank only (the default),
+ * bank plus stablecoins, or bank plus all priced crypto at current prices.
+ */
+export const RunwayCryptoScopeSchema = z.enum(["bank", "stablecoins", "all"]);
+export type RunwayCryptoScope = z.infer<typeof RunwayCryptoScopeSchema>;
+
+export const FinancePreferencesSchema = z.object({ runwayCrypto: RunwayCryptoScopeSchema });
+export type FinancePreferences = z.infer<typeof FinancePreferencesSchema>;
+
+/** End-of-day crypto value from stored daily snapshots; days before the first snapshot are absent. */
+export const CryptoBalancePointSchema = z.object({
+  day: DayId,
+  stablecoinCents: Cents,
+  otherCryptoCents: Cents,
+});
+export type CryptoBalancePoint = z.infer<typeof CryptoBalancePointSchema>;
+
+export const FinanceCryptoHistoryInputSchema = z.object({
+  days: z.number().int().min(7).max(366).default(90),
+  /** One wallet; all wallets when absent. */
+  walletId: Id.optional(),
+});
+
+export const FinanceCryptoHistoryOutputSchema = z.object({
+  points: z.array(CryptoBalancePointSchema),
+});
+
 export const FinanceRunwayOutputSchema = z.object({
+  /** The scope the figures below were computed with (the saved preference). */
+  runwayCrypto: RunwayCryptoScopeSchema,
+  /** Cash under `runwayCrypto`. */
   cashCents: Cents,
+  /** Every part, whether or not it counts under `runwayCrypto`. */
+  breakdown: z.object({
+    bankCents: Cents,
+    stablecoinCents: Cents,
+    otherCryptoCents: Cents,
+  }),
   monthlyBurnCents: Cents,
   runway: RunwaySchema,
-  /** Past total cash, 12 months. */
+  /** Past cash under `runwayCrypto`, 12 months; crypto from daily snapshots, so months before the first snapshot are bank only. */
   history: z.array(BalancePointSchema),
   /** From this month forward, one point a month, until cash reaches zero or 24 months; [] when not burning. */
   projection: z.array(BalancePointSchema),

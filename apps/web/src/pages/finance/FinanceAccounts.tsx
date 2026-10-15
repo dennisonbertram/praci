@@ -10,6 +10,7 @@ import {
 } from "@rakazo/ui-web";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
 import { LineChart } from "../../components/finance/charts";
 import {
   Chevron,
@@ -109,9 +110,16 @@ function CryptoGroup({ crypto }: { crypto: FinanceCryptoOutput }) {
 export function FinanceAccountsPage() {
   const q = useFinanceQuery(() => rpc.finance.accounts(), []);
   const cryptoQuery = useFinanceQuery(() => rpc.finance.crypto(), []);
+  const prefs = useFinanceQuery(() => rpc.finance.preferences(), []);
   const [adding, setAdding] = useState(false);
   const crypto = cryptoQuery.data;
   const data = q.data;
+  const scope = prefs.data?.runwayCrypto ?? "bank";
+  const cashSub = {
+    bank: t`Checking + Savings + Treasury`,
+    stablecoins: t`Checking + Savings + Treasury + Stablecoins`,
+    all: t`Checking + Savings + Treasury + Crypto`,
+  }[scope];
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Accounts` }]}
@@ -139,14 +147,13 @@ export function FinanceAccountsPage() {
             key={adding ? "add" : "closed"}
             open={adding}
             onClose={() => setAdding(false)}
-            onSaved={cryptoQuery.reload}
+            onSaved={() => {
+              cryptoQuery.reload();
+              q.reload();
+            }}
           />
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
-            <Kpi
-              title={t`Total cash`}
-              value={money(data.totalCashCents)}
-              sub={t`Checking + Savings + Treasury`}
-            />
+            <Kpi title={t`Total cash`} value={money(data.totalCashCents)} sub={cashSub} />
             {data.cardOwedCents !== null ? (
               <Kpi
                 title={t`Card balance owed`}
@@ -156,6 +163,17 @@ export function FinanceAccountsPage() {
               />
             ) : null}
           </div>
+          {prefs.data && crypto && crypto.summary.totalCents > 0 ? (
+            <div className="flex justify-end">
+              <CountCryptoButton
+                scope={scope}
+                onSaved={() => {
+                  q.reload();
+                  prefs.reload();
+                }}
+              />
+            </div>
+          ) : null}
           <Section title={<Trans>Total balance</Trans>}>
             <LineChart
               values={data.history.map((p) => p.balanceCents)}

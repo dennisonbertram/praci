@@ -260,12 +260,15 @@ import {
   financeBurn,
   financeCategory,
   financeConnect,
+  financeCryptoHistory,
   financeMonth,
   financeOverview,
+  financePreferences,
   financeReceiptUrl,
   financeRecurring,
   financeRefresh,
   financeRunway,
+  financeSetPreferences,
   financeSpend,
   financeTransaction,
   financeVendor,
@@ -6149,6 +6152,15 @@ export function createRouter(deps: RouterDeps) {
       ),
       runway: authed.finance.runway.handler(({ context }) =>
         financeRunway(financeDeps, context.actor),
+      ),
+      preferences: authed.finance.preferences.handler(({ context }) =>
+        financePreferences(financeDeps, context.actor),
+      ),
+      setPreferences: authed.finance.setPreferences.handler(({ context, input }) =>
+        financeSetPreferences(financeDeps, context.actor, input),
+      ),
+      cryptoHistory: authed.finance.cryptoHistory.handler(({ context, input }) =>
+        financeCryptoHistory(financeDeps, context.actor, input),
       ),
       spend: authed.finance.spend.handler(({ context, input }) =>
         financeSpend(financeDeps, context.actor, input),

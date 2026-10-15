@@ -245,6 +245,10 @@ function Overview({
   );
   const runwayMonths = data.runway.months?.toFixed(1);
   const stablecoins = data.cash.stablecoinCents ?? 0;
+  const otherCounted = data.cash.otherCryptoCents ?? 0;
+  const bankCash = data.cash.bankCashCents ?? data.cash.cashCents - stablecoins - otherCounted;
+  const heldStablecoins = data.crypto?.stablecoinCents ?? 0;
+  const heldTotal = data.crypto?.totalCents ?? 0;
   const bankRunwayMonths = data.bankRunway?.months?.toFixed(1);
   const runOutMonth = data.runway.runOutDate ? monthFull(data.runway.runOutDate.slice(0, 7)) : "";
   const previousSpend = month.previousCents === null ? null : money(month.previousCents);
@@ -333,25 +337,23 @@ function Overview({
                 title={t`Cash`}
                 value={money(data.cash.cashCents)}
                 sub={
-                  stablecoins > 0 ? t`Checking + Treasury + Stablecoins` : t`Checking + Treasury`
+                  otherCounted > 0
+                    ? t`Checking + Treasury + Crypto`
+                    : stablecoins > 0
+                      ? t`Checking + Treasury + Stablecoins`
+                      : t`Checking + Treasury`
                 }
                 to={financePath.accounts()}
                 hover={
                   data.crypto ? (
                     <>
-                      <HoverRow
-                        label={t`Bank`}
-                        value={money(data.cash.bankCashCents ?? data.cash.cashCents - stablecoins)}
-                      />
-                      <HoverRow label={t`Stablecoins`} value={money(stablecoins)} />
+                      <HoverRow label={t`Bank`} value={money(bankCash)} />
+                      <HoverRow label={t`Stablecoins`} value={money(heldStablecoins)} />
                       <HoverRow
                         label={t`Other crypto`}
-                        value={money(data.cash.otherCryptoCents ?? 0)}
+                        value={money(heldTotal - heldStablecoins)}
                       />
-                      <HoverRow
-                        label={t`Total incl. crypto`}
-                        value={money(data.cash.cashCents + (data.cash.otherCryptoCents ?? 0))}
-                      />
+                      <HoverRow label={t`Total incl. crypto`} value={money(bankCash + heldTotal)} />
                     </>
                   ) : undefined
                 }
@@ -370,7 +372,7 @@ function Overview({
                 sub={runOutMonth ? t`Until ${runOutMonth}` : undefined}
                 to={financePath.runway()}
                 hover={
-                  stablecoins > 0 && bankRunwayMonths !== undefined ? (
+                  stablecoins + otherCounted > 0 && bankRunwayMonths !== undefined ? (
                     <span>{t`Bank only: ${bankRunwayMonths} mo`}</span>
                   ) : undefined
                 }
