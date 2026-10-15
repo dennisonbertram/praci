@@ -207,7 +207,10 @@ async function main() {
         }
         if (new URL(request.url).pathname === "/__e2e/gmail") {
           // What the Gmail emulator holds, so a browser test can check the drafts and mail it sent.
-          return Response.json(composio.gmail.snapshot(), {
+          // With ?userId= only that user's accounts, under the seeded names, so parallel specs
+          // do not count each other's drafts and sent mail.
+          const userId = new URL(request.url).searchParams.get("userId");
+          return Response.json(userId ? composio.gmailFor(userId) : composio.gmail.snapshot(), {
             headers: { "cache-control": "no-store" },
           });
         }

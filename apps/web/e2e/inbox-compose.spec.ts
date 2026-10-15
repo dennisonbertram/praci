@@ -1,5 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, connectTwoGmailAccounts, signup } from "./helpers";
+import {
+  captureScreenshot,
+  completeOnboarding,
+  connectTwoGmailAccounts,
+  rpc,
+  signup,
+} from "./helpers";
 
 const api = () => process.env.API_URL ?? "http://127.0.0.1:3110";
 
@@ -15,10 +21,11 @@ const count = (snapshot: Snapshot, ref: string, kind: "drafts" | "sent") =>
 
 /**
  * What the Gmail emulator behind the API holds. No real mailbox is involved anywhere in this spec.
- * The emulator lives as long as the test run, so each test counts against what it found at the start.
+ * Each user has their own accounts, so a test counts against what it found at the start.
  */
 async function gmail(page: Page): Promise<Snapshot> {
-  const response = await page.request.get(`${api()}/__e2e/gmail`);
+  const { userId } = await rpc<{ userId: string }>(page, "me", {});
+  const response = await page.request.get(`${api()}/__e2e/gmail?userId=${userId}`);
   return (await response.json()) as Snapshot;
 }
 

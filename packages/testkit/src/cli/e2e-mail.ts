@@ -124,29 +124,47 @@ export function e2eMailboxes(now = new Date()) {
   };
 }
 
+/** What the Gmail emulator holds for one account: its drafts and the mail it sent. */
+export type E2eGmailSnapshot = ReturnType<GmailApiEmulator["snapshot"]>;
+
 /**
  * ComposioEmulator mints connection refs like `GMAIL:7`, which GmailApiEmulator's seeded
- * mailboxes do not match. Map each user's first Gmail connection to the first seeded mailbox,
- * the second to the second, so a spec knows which account holds which mail.
+ * mailboxes do not match. Each user's first Gmail connection gets its own copy of the first seeded
+ * mailbox, the second of the second, so a spec knows which account holds which mail and no other
+ * user's spec can change it. `gmailFor` returns one user's accounts under the seeded names.
  */
-export function createE2eComposio(): ComposioEmulator {
+export function createE2eComposio(): ComposioEmulator & {
+  gmailFor(userId: string): E2eGmailSnapshot;
+} {
   const gmail = new GmailApiEmulator({ mailboxes: e2eMailboxes() });
   const seeded = gmail.accountRefs();
-  const connectedByUser = new Map<string, number>();
+  const refsByUser = new Map<string, string[]>();
   return new (class extends ComposioEmulator {
     override async begin(...args: Parameters<ComposioEmulator["begin"]>) {
       const result = await super.begin(...args);
       if (args[0].provider === "GMAIL") {
-        const userId = args[1].userId;
-        const index = connectedByUser.get(userId) ?? 0;
-        connectedByUser.set(userId, index + 1);
-        const target = seeded[index];
-        // Each connection gets its own copy of the mail, so a spec that reads, archives or labels a
-        // message does not change what another user's spec sees. Drafts and sent mail stay shared.
+        const refs = refsByUser.get(args[1].userId) ?? [];
+        const target = seeded[refs.length];
         const fresh = target ? e2eMailboxes()[target] : undefined;
-        if (target && fresh) gmail.isolate(result.state, target, fresh);
+        if (target && fresh) {
+          gmail.isolate(result.state, target, fresh);
+          refs.push(result.state);
+          refsByUser.set(args[1].userId, refs);
+        }
       }
       return result;
+    }
+
+    gmailFor(userId: string): E2eGmailSnapshot {
+      const all = gmail.snapshot();
+      const refs = refsByUser.get(userId) ?? [];
+      return Object.fromEntries(
+        refs.flatMap((ref, index) => {
+          const name = seeded[index];
+          const own = all[ref];
+          return name && own ? [[name, own] as const] : [];
+        }),
+      );
     }
   })(undefined, gmail);
 }
