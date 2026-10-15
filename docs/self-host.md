@@ -413,6 +413,23 @@ The Electron desktop app is a client of the same API. Docker and E2B still apply
 
 For provider configuration and health checks, see the [provider setup guide](./self-host-sandbox-providers.md).
 
+## Object storage for artifacts
+
+By default Rakazo keeps uploaded and generated files on the local disk under `data/`, which is
+only safe when a single API or worker process runs. To run several processes, point Rakazo at any
+S3-compatible store (AWS S3, Cloudflare R2, MinIO). Files are stored under
+`<prefix>/artifacts/<space id>/<id>`, so one bucket can serve many spaces. Set the first four
+variables together; a partial set stops startup and names the missing variable.
+
+- `RAKAZO_S3_ENDPOINT`: the store's URL, for example `https://s3.us-east-1.amazonaws.com`.
+- `RAKAZO_S3_BUCKET`: an existing bucket.
+- `RAKAZO_S3_ACCESS_KEY_ID` and `RAKAZO_S3_SECRET_ACCESS_KEY`: credentials with read, write and delete access to the bucket.
+- `RAKAZO_S3_REGION`: defaults to `us-east-1`, which AWS, R2 and MinIO all accept.
+- `RAKAZO_S3_FORCE_PATH_STYLE`: set to `true` for MinIO and other stores without bucket subdomains.
+- `RAKAZO_S3_PREFIX`: optional key prefix.
+
+Existing local files are not copied to the bucket.
+
 ## Backup
 
 ```bash
