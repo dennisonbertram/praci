@@ -98,7 +98,7 @@ describe("LlmDataRoomClassifier.classify", () => {
     expect(out.tags).toEqual(["services"]);
     expect(out.currency).toBe("USD");
     expect(out.confidence).toBe(1);
-    expect(out.folderPath).toEqual(["Contracts-2025"]);
+    expect(out.folderPath).toEqual(["Contracts", "2025"]);
   });
 
   it("still fails on an unknown docType or an empty folder path", async () => {
@@ -108,6 +108,12 @@ describe("LlmDataRoomClassifier.classify", () => {
         DataRoomClassifierError,
       );
     }
+  });
+
+  it("splits a slash path and snaps it to the existing folder", async () => {
+    const { classifier } = make(JSON.stringify({ ...valid, folderPath: ["finance/Statements"] }));
+    const out = await classifier.classify(input({ folders: [["Finance", "Statements"]] }), context);
+    expect(out.folderPath).toEqual(["Finance", "Statements"]);
   });
 
   it("allows a brand-new folder path", async () => {
