@@ -178,9 +178,10 @@ export function InboxRow({
               {labelNames[label]}
             </Badge>
           ) : null}
+          {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
           <time
             dateTime={row.receivedAt}
-            className="col-start-4 row-start-1 text-end text-xs @md:col-start-5 whitespace-nowrap tabular-nums"
+            className={`col-start-4 row-start-1 text-end text-xs @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
           >
             {formatMailTime(row.receivedAt, isToday)}
           </time>
@@ -233,7 +234,7 @@ export function InboxRow({
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    className="absolute end-3 top-1/2 hidden -translate-y-1/2 pointer-coarse:inline-flex"
+                    className={`absolute end-3 top-1/2 hidden -translate-y-1/2 bg-muted pointer-coarse:inline-flex @max-md:inline-flex aria-expanded:opacity-100 pointer-coarse:opacity-100 ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
                   />
                 }
                 aria-label={t`More`}
