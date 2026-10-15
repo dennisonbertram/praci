@@ -18,6 +18,11 @@ msgstr ""
 msgid " (unread)"
 msgstr " (unread)"
 
+#. placeholder {0}: statement.duplicateCount
+#: src/components/finance/StatementReviewCard.tsx
+msgid ", {0} already imported"
+msgstr ", {0} already imported"
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -143,6 +148,8 @@ msgid "{0} runs · {1} tokens"
 msgstr "{0} runs · {1} tokens"
 
 #. placeholder {0}: card.count
+#. placeholder {0}: statement.transactionCount
+#: src/components/finance/StatementReviewCard.tsx
 #: src/components/FinanceCards.tsx
 msgid "{0} transactions"
 msgstr "{0} transactions"
@@ -327,6 +334,7 @@ msgid "* So far"
 msgstr "* So far"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
 msgstr "+{more} more"
 
@@ -478,6 +486,7 @@ msgstr "Add a schedule, webhook, GitHub, or message trigger"
 msgid "Add a schedule, webhook, GitHub, or message trigger to run this routine."
 msgstr "Add a schedule, webhook, GitHub, or message trigger to run this routine."
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Add account"
 msgstr "Add account"
@@ -920,6 +929,7 @@ msgid "Avatars"
 msgstr "Avatars"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
 #: src/pages/RoutineEditor.tsx
@@ -956,10 +966,23 @@ msgstr "Balance over time"
 msgid "Balance owed"
 msgstr "Balance owed"
 
+#. placeholder {0}: moneyExact(Math.abs(check.differenceCents))
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Balances differ by {0}"
+msgstr "Balances differ by {0}"
+
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Balances match"
+msgstr "Balances match"
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
 msgstr "Bank"
+
+#: src/components/finance/AddAccountDialog.tsx
+msgid "Bank account"
+msgstr "Bank account"
 
 #: src/pages/Finance.tsx
 msgid "Bank only: {bankRunwayMonths} mo"
@@ -1122,6 +1145,7 @@ msgstr "Can't reach the server."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
@@ -2058,6 +2082,10 @@ msgstr "Could not reach the model server."
 msgid "Could not reach the server"
 msgstr "Could not reach the server"
 
+#: src/components/finance/StatementImport.tsx
+msgid "Could not read this file"
+msgstr "Could not read this file"
+
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
 msgstr "Could not reconnect"
@@ -2346,13 +2374,14 @@ msgstr "Cron"
 msgid "Cron expression"
 msgstr "Cron expression"
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Crypto"
 msgstr "Crypto"
 
-#: src/pages/finance/FinanceAccounts.tsx
+#: src/components/finance/AddAccountDialog.tsx
 msgid "Crypto wallet"
 msgstr "Crypto wallet"
 
@@ -2539,6 +2568,7 @@ msgid "Disabled tools"
 msgstr "Disabled tools"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/finance/StatementReviewCard.tsx
 msgid "Discard"
 msgstr "Discard"
 
@@ -2580,6 +2610,7 @@ msgid "Disconnecting…"
 msgstr "Disconnecting…"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
@@ -2621,6 +2652,7 @@ msgstr "Docs & files"
 msgid "Don’t have an account?"
 msgstr "Don’t have an account?"
 
+#: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/lib/ticket-status.ts
@@ -2680,6 +2712,10 @@ msgstr "Drag, drop, or paste an image"
 #: src/components/ComposeEmail.tsx
 msgid "Drop files to attach"
 msgstr "Drop files to attach"
+
+#: src/components/finance/StatementImport.tsx
+msgid "Drop statements here or choose files"
+msgstr "Drop statements here or choose files"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
@@ -3191,13 +3227,25 @@ msgstr "Ignore"
 msgid "Image upload area"
 msgstr "Image upload area"
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Import"
+msgstr "Import"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Import an OpenAPI description"
 msgstr "Import an OpenAPI description"
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Import anyway"
+msgstr "Import anyway"
+
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr "Important"
+
+#: src/components/finance/StatementImport.tsx
+msgid "Imported"
+msgstr "Imported"
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In"
@@ -3883,6 +3931,10 @@ msgstr "Net"
 msgid "Never changes your account"
 msgstr "Never changes your account"
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "New account"
+msgstr "New account"
+
 #: src/pages/Shell.tsx
 msgid "New Bot"
 msgstr "New Bot"
@@ -4566,6 +4618,10 @@ msgstr "Read replies aloud"
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read wallet balances"
 msgstr "Read wallet balances"
+
+#: src/components/finance/StatementImport.tsx
+msgid "Reading…"
+msgstr "Reading…"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5557,6 +5613,10 @@ msgstr "Starting"
 msgid "Starting…"
 msgstr "Starting…"
 
+#: src/components/finance/StatementImport.tsx
+msgid "Statement files"
+msgstr "Statement files"
+
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
@@ -5734,6 +5794,10 @@ msgstr "The API did not come back. Refresh this page."
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "The connection timed out."
+
+#: src/components/finance/StatementImport.tsx
+msgid "The file is too large"
+msgstr "The file is too large"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
@@ -6089,9 +6153,19 @@ msgid "Updating…"
 msgstr "Updating…"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
 msgstr "Upload"
+
+#: src/components/finance/StatementImport.tsx
+msgid "Upload a PDF, CSV, OFX or QFX file"
+msgstr "Upload a PDF, CSV, OFX or QFX file"
+
+#. placeholder {0}: first.accountName
+#: src/components/finance/StatementReminderBanner.tsx
+msgid "Upload the {month} statement for {0}"
+msgstr "Upload the {month} statement for {0}"
 
 #: src/lib/ticket-priority.ts
 msgid "Urgent"

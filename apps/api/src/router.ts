@@ -284,6 +284,11 @@ import {
   financeWallets,
   financeWalletUpdate,
 } from "./finance-crypto.js";
+import {
+  financeExchangeConnect,
+  financeExchangeRemove,
+  financeExchanges,
+} from "./finance-exchange.js";
 import type { ParseStatement } from "./finance-statements.js";
 import {
   financeStatementConfirm,
@@ -291,11 +296,6 @@ import {
   financeStatements,
   financeStatementUpload,
 } from "./finance-statements.js";
-import {
-  financeExchangeConnect,
-  financeExchangeRemove,
-  financeExchanges,
-} from "./finance-exchange.js";
 import {
   inboxFeedbackSet,
   inboxGet,

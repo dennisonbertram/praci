@@ -74,13 +74,13 @@ import type { createRepos, Prisma, PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { assignFinanceServers, ensureFinanceAgent } from "./finance-agent.js";
 import { loadCryptoSummary, syncCryptoQuietly } from "./finance-crypto.js";
-import type { ParseStatement } from "./finance-statements.js";
-import { loadStatementReminders } from "./finance-statements.js";
 import {
   exchangesDue,
   loadExchangeSnapshotRows,
   syncExchangesQuietly,
 } from "./finance-exchange.js";
+import type { ParseStatement } from "./finance-statements.js";
+import { loadStatementReminders } from "./finance-statements.js";
 import { notFound } from "./inbox.js";
 
 export interface FinanceDeps {
@@ -928,7 +928,7 @@ export async function financeReceiptUrl(
     where: { id: input.transactionId, ...scopeOf(actor) },
   });
   // Mercury's listing never says whether a row has attachments, so only the vendor lookup can tell.
-  if (!row || !row.mcpServerId || (!row.hasReceipt && row.provider !== "mercury")) throw notFound();
+  if (!row?.mcpServerId || (!row.hasReceipt && row.provider !== "mercury")) throw notFound();
   const server = await deps.prisma.mcpServer.findFirst({
     where: { id: row.mcpServerId, ...scopeOf(actor), enabled: true },
   });

@@ -258,7 +258,9 @@ describePostgres("bank statement import (PostgreSQL)", () => {
     await expect(client(b).finance.statementConfirm({ id: bad.id })).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
-    expect((await client(b).finance.statements()).statements.find((s) => s.id === bad.id)).toMatchObject({
+    expect(
+      (await client(b).finance.statements()).statements.find((s) => s.id === bad.id),
+    ).toMatchObject({
       status: "review",
     });
     const done = await client(b).finance.statementConfirm({ id: bad.id, acceptMismatch: true });
@@ -283,7 +285,9 @@ describePostgres("bank statement import (PostgreSQL)", () => {
     await expect(client(b).finance.statementDiscard({ id: mine.id })).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
-    expect((await client(b).finance.statements()).statements.map((s) => s.id)).not.toContain(mine.id);
+    expect((await client(b).finance.statements()).statements.map((s) => s.id)).not.toContain(
+      mine.id,
+    );
     // A's pending upload does not match or touch B's account of the same institution and last 4.
     expect(mine.createsAccount).toBe(true);
     await client(a).finance.statementDiscard({ id: mine.id });

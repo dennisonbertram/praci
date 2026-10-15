@@ -8,16 +8,10 @@ import type {
   FinanceExchange,
   FinanceProvider,
 } from "@rakazo/contracts";
-import {
-  Badge,
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@rakazo/ui-web";
+import { Badge, Button } from "@rakazo/ui-web";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { AddAccountDialog } from "../../components/finance/AddAccountDialog";
 import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
 import { LineChart } from "../../components/finance/charts";
 import { exchangeName } from "../../components/finance/ExchangeGroup";
@@ -163,7 +157,7 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
   const cryptoQuery = useFinanceQuery(() => rpc.finance.crypto(), []);
   const prefs = useFinanceQuery(() => rpc.finance.preferences(), []);
   const exchangeQuery = useFinanceQuery(() => rpc.finance.exchanges(), []);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<"type" | "wallet" | null>(null);
   const [connecting, setConnecting] = useState<ExchangeProvider | null>(null);
   const exchanges = exchangeQuery.data ?? [];
   const crypto = cryptoQuery.data;
@@ -203,19 +197,9 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
         </>
       }
       action={
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-            <Trans>Add account</Trans>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {/* One line per account type: add the next one here. */}
-            <DropdownMenuItem onClick={() => setAdding(true)}>
-              <Trans>Crypto wallet</Trans>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setConnecting("coinbase")}>Coinbase</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setConnecting("kraken")}>Kraken</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button variant="outline" size="sm" onClick={() => setAdding("type")}>
+          <Trans>Add account</Trans>
+        </Button>
       }
       loading={!data}
       error={q.error}
@@ -223,10 +207,19 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
     >
       {data ? (
         <>
+          {adding === "type" ? (
+            <AddAccountDialog
+              onPickCrypto={(choice) =>
+                choice === "wallet" ? setAdding("wallet") : setConnecting(choice)
+              }
+              onImported={() => q.reload()}
+              onClose={() => setAdding(null)}
+            />
+          ) : null}
           <WalletDialog
-            key={adding ? "add" : "closed"}
-            open={adding}
-            onClose={() => setAdding(false)}
+            key={adding === "wallet" ? "add" : "closed"}
+            open={adding === "wallet"}
+            onClose={() => setAdding(null)}
             onSaved={() => {
               cryptoQuery.reload();
               q.reload();

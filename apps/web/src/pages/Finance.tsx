@@ -11,7 +11,9 @@ import { Button, Skeleton } from "@rakazo/ui-web";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AddAccountDialog } from "../components/finance/AddAccountDialog";
 import { type BarGranularity, BurnBars, Sparkline } from "../components/finance/charts";
+import { StatementReminderBanner } from "../components/finance/StatementReminderBanner";
 import {
   AskAgentButton,
   BreakdownRows,
@@ -142,8 +144,17 @@ function Dashboard() {
   const data = overview.data;
   if (overview.error) return <ErrorNotice message={overview.error} onRetry={overview.retry} />;
   if (!data) return <DashboardSkeleton />;
-  if (!connected) return <EmptyState hasCrypto={Boolean(data.crypto)} />;
-  return <Overview data={data} syncing={syncing} error={syncError} onRefresh={sync} />;
+  // Accounts fed by uploaded statements have no source to connect, but they are data.
+  if (!connected && !data.hasCashAccounts) return <EmptyState hasCrypto={Boolean(data.crypto)} />;
+  return (
+    <Overview
+      data={data}
+      syncing={syncing}
+      error={syncError}
+      onRefresh={sync}
+      onReload={overview.reload}
+    />
+  );
 }
 
 function EmptyState({ hasCrypto }: { hasCrypto: boolean }) {
@@ -220,13 +231,16 @@ function Overview({
   syncing,
   error,
   onRefresh,
+  onReload,
 }: {
   data: FinanceOverview;
   syncing: boolean;
   error: string;
   onRefresh: () => void;
+  onReload: () => void;
 }) {
   const navigate = useNavigate();
+  const [uploading, setUploading] = useState(false);
   const [period, setPeriod] = useState<SpendPeriod>("month");
   const [by, setBy] = useState<"category" | "vendor">("category");
   const [allBreakdown, setAllBreakdown] = useState(false);
@@ -320,6 +334,17 @@ function Overview({
           <AskAgentButton />
         </div>
       </div>
+      <StatementReminderBanner
+        reminders={data.statementReminders ?? []}
+        onUpload={() => setUploading(true)}
+      />
+      {uploading ? (
+        <AddAccountDialog
+          initialStep="bank"
+          onImported={onReload}
+          onClose={() => setUploading(false)}
+        />
+      ) : null}
       {error ? <ErrorNotice message={error} onRetry={onRefresh} /> : null}
       {showSkeleton ? (
         <DashboardSkeleton />

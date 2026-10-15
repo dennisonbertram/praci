@@ -135,19 +135,35 @@ it("lists connected exchanges in the Crypto group, outside total cash", () => {
   expect(container.textContent).not.toContain("$75,250");
 });
 
-it("opens the Add wallet dialog from the Add account menu", async () => {
-  expect(document.body.querySelector('[role="dialog"]')).toBeNull();
-  const trigger = [...container.querySelectorAll("button")].find(
-    (b) => b.textContent === "Add account",
+const clickButton = (label: string, scope: ParentNode = document.body) =>
+  act(async () =>
+    (
+      [...scope.querySelectorAll("button")].find((b) => b.textContent === label) as HTMLElement
+    ).click(),
   );
-  await act(async () => {
-    trigger?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
-    trigger?.click();
-  });
-  const items = [...document.body.querySelectorAll('[role="menuitem"]')];
-  expect(items.map((i) => i.textContent)).toEqual(["Crypto wallet", "Coinbase", "Kraken"]);
-  await act(async () => (items[0] as HTMLElement).click());
-  expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Add wallet");
+
+it("opens a modal from Add account and reaches the Add wallet dialog through Crypto", async () => {
+  expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+  await clickButton("Add account", container);
+  expect(document.body.querySelector('[role="menu"]')).toBeNull();
+  const dialog = () => document.body.querySelector('[role="dialog"]');
+  expect([...(dialog()?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
+    "Crypto",
+    "Bank account",
+    "Cancel",
+    "Close",
+  ]);
+  await clickButton("Crypto");
+  expect([...(dialog()?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
+    "Crypto wallet",
+    "Coinbase",
+    "Kraken",
+    "Back",
+    "Cancel",
+    "Close",
+  ]);
+  await clickButton("Crypto wallet");
+  expect(dialog()?.textContent).toContain("Add wallet");
 });
 
 const toggle = () => container.querySelector("button[aria-pressed]") as HTMLButtonElement | null;
@@ -190,23 +206,9 @@ it("hides the button when no crypto is held", async () => {
 
 it("reloads accounts after a wallet is added, since crypto can count in total cash", async () => {
   rpcMock.walletAdd.mockResolvedValue({});
-  await act(async () =>
-    (
-      [...container.querySelectorAll("button")].find(
-        (b) => b.textContent === "Add account",
-      ) as HTMLElement
-    ).dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })),
-  );
-  await act(async () =>
-    (
-      [...container.querySelectorAll("button")].find(
-        (b) => b.textContent === "Add account",
-      ) as HTMLElement
-    ).click(),
-  );
-  await act(async () =>
-    ([...document.body.querySelectorAll('[role="menuitem"]')][0] as HTMLElement).click(),
-  );
+  await clickButton("Add account", container);
+  await clickButton("Crypto");
+  await clickButton("Crypto wallet");
   const input = document.body.querySelector('[aria-label="Address or ENS"]') as HTMLInputElement;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(

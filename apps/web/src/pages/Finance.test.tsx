@@ -153,6 +153,7 @@ const emptyOverview = (): FinanceOverview =>
       { provider: "mercury", serverId: null, status: "not_connected", lastSyncedAt: null },
       { provider: "brex", serverId: null, status: "not_connected", lastSyncedAt: null },
     ],
+    hasCashAccounts: false,
     lastSyncedAt: null,
   });
 
@@ -201,6 +202,31 @@ it("shows one Connect accounts link to Integrations when nothing is connected", 
   expect(link?.getAttribute("href")).toBe("/app/integrations?category=finance");
   expect(container.textContent).not.toContain("Ask agent");
   expect(rpcMock.connect).not.toHaveBeenCalled();
+});
+
+it("shows the dashboard, not the connect prompt, for a user with only statement accounts", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...emptyOverview(),
+    hasCashAccounts: true,
+    lastSyncedAt: null,
+    statementReminders: [
+      {
+        accountId: "a1",
+        accountName: "Example Bank ••1234",
+        coveredThrough: "2026-09-30",
+        dueFor: "2026-10-31",
+      },
+    ],
+  });
+  await show("/app/finance");
+  await flush();
+  expect(container.textContent).not.toContain("Connect Mercury, Brex or both");
+  expect(container.textContent).toContain("Upload the October statement for Example Bank ••1234");
+  expect(rpcMock.refresh).not.toHaveBeenCalled();
+  await act(async () => button("Upload")?.click());
+  const dialog = document.body.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("Bank account");
+  expect(dialog?.querySelector('input[type="file"]')).not.toBeNull();
 });
 
 it("notes non-USD transactions only when some are left out", async () => {

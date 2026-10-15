@@ -133,7 +133,10 @@ export async function syncFinanceForUser(
  * What `classify` needs for the user right now, for rows that do not come from a sync (statement
  * imports). Matches what `reclassify` uses, so a later sync does not change their classification.
  */
-export async function loadClassifyContext(prisma: PrismaClient, scope: Scope): Promise<ClassifyContext> {
+export async function loadClassifyContext(
+  prisma: PrismaClient,
+  scope: Scope,
+): Promise<ClassifyContext> {
   const { spaceId, userId } = scope;
   const rows = await prisma.mcpServer.findMany({
     where: { spaceId, userId, enabled: true },
@@ -149,7 +152,11 @@ export async function loadClassifyContext(prisma: PrismaClient, scope: Scope): P
   ).map((a) => a.name);
   return {
     brexConnected: brex
-      ? await brexHasSynced(prisma, { id: brex.id, provider: "brex", endpoint: brex.endpoint ?? "" })
+      ? await brexHasSynced(prisma, {
+          id: brex.id,
+          provider: "brex",
+          endpoint: brex.endpoint ?? "",
+        })
       : false,
     ownAccountNames,
   };

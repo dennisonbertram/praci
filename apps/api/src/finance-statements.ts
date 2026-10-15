@@ -1,12 +1,10 @@
 import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
-import { loadClassifyContext, loadStatementReminders as loadStatementRemindersFor } from "@rakazo/adapters";
-import type {
-  Actor,
-  FinanceStatement,
-  ParsedStatement,
-  StatementCheck,
-} from "@rakazo/contracts";
+import {
+  loadClassifyContext,
+  loadStatementReminders as loadStatementRemindersFor,
+} from "@rakazo/adapters";
+import type { Actor, FinanceStatement, ParsedStatement, StatementCheck } from "@rakazo/contracts";
 import {
   ParsedStatementSchema,
   STATEMENT_EXTENSIONS,
@@ -36,11 +34,15 @@ const LIST_LIMIT = 200;
 const FORMATS = { pdf: "pdf", csv: "csv", ofx: "ofx", qfx: "ofx" } as const;
 
 const norm = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
-const slug = (text: string) => norm(text).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const slug = (text: string) =>
+  norm(text)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 
 /** The account a statement belongs to: institution plus last 4 (or the account name without one). */
-export const statementAccountKey = (s: Pick<ParsedStatement, "institution" | "accountLast4" | "accountName">) =>
-  `stmt:${slug(s.institution)}:${s.accountLast4 ?? (slug(s.accountName ?? "") || "account")}`;
+export const statementAccountKey = (
+  s: Pick<ParsedStatement, "institution" | "accountLast4" | "accountName">,
+) => `stmt:${slug(s.institution)}:${s.accountLast4 ?? (slug(s.accountName ?? "") || "account")}`;
 
 const accountName = (s: ParsedStatement) => {
   const own = s.accountName?.trim();
@@ -57,7 +59,10 @@ const accountName = (s: ParsedStatement) => {
  * the file has one, otherwise a hash of (account, date, amount, description, occurrence of that
  * same key within the statement).
  */
-export function statementTxnIds(accountKey: string, txns: ParsedStatement["transactions"]): string[] {
+export function statementTxnIds(
+  accountKey: string,
+  txns: ParsedStatement["transactions"],
+): string[] {
   const seen = new Map<string, number>();
   return txns.map((t) => {
     if (t.externalId) return `x:${t.externalId}`;
@@ -287,7 +292,10 @@ export async function financeStatementConfirm(
       // later transactions from it) stays right whatever order statements arrive in.
       await tx.financeStatement.update({
         where: { id: found.id },
-        data: { accountId: account.id, duplicateCount: statement.transactions.length - fresh.length },
+        data: {
+          accountId: account.id,
+          duplicateCount: statement.transactions.length - fresh.length,
+        },
       });
       const newest = await tx.financeStatement.findFirst({
         where: { accountId: account.id, status: "imported" },

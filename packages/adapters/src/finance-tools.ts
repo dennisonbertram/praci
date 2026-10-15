@@ -94,7 +94,12 @@ export async function hasFinanceSource(
   prisma: Pick<PrismaClient, "mcpServer" | "financeAccount">,
   scope: Scope,
 ): Promise<boolean> {
-  if (await prisma.financeAccount.findFirst({ where: { ...scope, provider: "statement" }, select: { id: true } }))
+  if (
+    await prisma.financeAccount.findFirst({
+      where: { ...scope, provider: "statement" },
+      select: { id: true },
+    })
+  )
     return true;
   const servers = await prisma.mcpServer.findMany({
     where: { spaceId: scope.spaceId, userId: scope.userId, enabled: true },
@@ -429,7 +434,9 @@ async function financeOverview(deps: FinanceToolDeps) {
     lastSyncedAt,
     // Accounts fed by uploaded statements whose next monthly statement is overdue.
     ...(statementsDue.length > 0
-      ? { statementsDue: statementsDue.map((r) => ({ account: r.accountName, monthEnd: r.dueFor })) }
+      ? {
+          statementsDue: statementsDue.map((r) => ({ account: r.accountName, monthEnd: r.dueFor })),
+        }
       : {}),
     cash: {
       total: dollars(cash.cashCents),

@@ -16,7 +16,12 @@ describe("statement reminders", () => {
     // covered through Oct 31 -> due Nov 30; remind only after Dec 5
     expect(statementReminders(acct("2026-10-31"), "2026-12-05")).toEqual([]);
     expect(statementReminders(acct("2026-10-31"), "2026-12-06")).toEqual([
-      { accountId: "a", accountName: "Bank ••1234", coveredThrough: "2026-10-31", dueFor: "2026-11-30" },
+      {
+        accountId: "a",
+        accountName: "Bank ••1234",
+        coveredThrough: "2026-10-31",
+        dueFor: "2026-11-30",
+      },
     ]);
   });
   it("is quiet for a current account and an account with no statements", () => {
