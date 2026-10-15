@@ -174,7 +174,7 @@ function SessionApp() {
                 <SubscriptionGate fallback={<GateFallback />}>
                   <Outlet />
                   <MailOutbox />
-                  <DataRoomDropZone />
+                  <DataRoomDropZone userId={user?.id ?? null} />
                 </SubscriptionGate>
               ) : (
                 <Navigate to="/sign-in" replace />

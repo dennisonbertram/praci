@@ -15,8 +15,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@rakazo/ui-web";
-import { ArrowDown, ArrowUp, ChevronDown, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Folder, Search, X } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
+import type { FolderNode } from "./folders";
 import type { Filters, Sort, SortField } from "./use-data-room-list";
 
 export const sourceLabels = () => ({
@@ -245,7 +246,14 @@ export function FilterBar({
   onSort,
   typeSuggestions,
   partySuggestions,
+  folders,
+  folderId,
+  onFolder,
 }: {
+  /** Where the folder tree is hidden (a narrow page), this picker chooses the folder. */
+  folders: FolderNode[];
+  folderId: string | undefined;
+  onFolder: (id: string | undefined) => void;
   query: string;
   onQuery: (query: string) => void;
   searching: boolean;
@@ -279,6 +287,35 @@ export function FilterBar({
           name="data-room-search"
         />
       </InputGroup>
+      <div className="@min-[800px]/bd:hidden">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            data-testid="data-room-folder-picker"
+            render={<Button variant="outline" size="sm" className="max-w-44 rounded-full" />}
+          >
+            <Folder aria-hidden="true" />
+            <span className="truncate">
+              {folders.find(({ folder }) => folder.id === folderId)?.path ?? t`All items`}
+            </span>
+            <ChevronDown aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-40">
+            <DropdownMenuRadioGroup
+              value={folderId ?? ""}
+              onValueChange={(next) => onFolder(String(next) || undefined)}
+            >
+              <DropdownMenuRadioItem value="" closeOnClick>
+                <Trans>All items</Trans>
+              </DropdownMenuRadioItem>
+              {folders.map(({ folder, path }) => (
+                <DropdownMenuRadioItem key={folder.id} value={folder.id} closeOnClick>
+                  {path}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <TextFilter
         label={t`Type`}
         value={filters.docType}

@@ -95,6 +95,10 @@ export function useDataRoomList(q: ListQuery) {
   });
   const [attempt, setAttempt] = useState(0);
   const generation = useRef(0);
+  /** The cursor of the next page of the rows on screen. */
+  const cursorRef = useRef<string | null>(null);
+  /** Per item, the newest status read; an older answer is dropped. */
+  const pollSeq = useRef(new Map<string, number>());
   const loadedKey = useRef(key);
   const latest = useRef(q);
   latest.current = q;
@@ -112,6 +116,7 @@ export function useDataRoomList(q: ListQuery) {
     fetchPage(latest.current)
       .then((page) => {
         if (id !== generation.current) return;
+        cursorRef.current = page.nextCursor;
         setState({ ...page, key, loading: false, loadingMore: false, error: "" });
       })
       .catch((cause) => {
@@ -122,12 +127,14 @@ export function useDataRoomList(q: ListQuery) {
 
   const loadMore = useCallback(async () => {
     const id = generation.current;
-    const cursor = state.nextCursor;
-    if (!cursor || state.loadingMore) return;
+    const cursor = cursorRef.current;
+    if (!cursor || state.loadingMore || state.loading) return;
     setState((s) => ({ ...s, loadingMore: true }));
     try {
       const page = await fetchPage(latest.current, cursor);
-      if (id !== generation.current) return;
+      // Only the page that follows the rows now on screen, for the query now asked.
+      if (id !== generation.current || cursorRef.current !== cursor) return;
+      cursorRef.current = page.nextCursor;
       setState((s) => ({
         ...s,
         rows: mergeRows(s.rows, page.rows),
@@ -144,7 +151,7 @@ export function useDataRoomList(q: ListQuery) {
       }
       setState((s) => ({ ...s, loadingMore: false, error: errorText(cause) }));
     }
-  }, [state.nextCursor, state.loadingMore]);
+  }, [state.loadingMore, state.loading]);
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
 
@@ -156,15 +163,25 @@ export function useDataRoomList(q: ListQuery) {
   useEffect(() => {
     if (!pendingIds) return;
     const timer = setInterval(() => {
-      for (const id of pendingIds.split(",")) {
+      const id = generation.current;
+      for (const itemId of pendingIds.split(",")) {
+        const mine = (pollSeq.current.get(itemId) ?? 0) + 1;
+        pollSeq.current.set(itemId, mine);
         rpc.dataRoom
-          .item({ id })
-          .then((item) =>
+          .item({ id: itemId })
+          .then((item) => {
+            // Not if the list was reloaded or re-queried since, or a newer poll was sent.
+            if (id !== generation.current || pollSeq.current.get(itemId) !== mine) return;
             setState((s) => ({
               ...s,
-              rows: s.rows.map((row) => (row.item.id === id ? { ...row, item } : row)),
-            })),
-          )
+              rows: s.rows.map((row) =>
+                // A finished item never goes back to in progress.
+                row.item.id === itemId && !(isInProgress(item) && !isInProgress(row.item))
+                  ? { ...row, item }
+                  : row,
+              ),
+            }));
+          })
           .catch(() => undefined);
       }
     }, POLL_MS);

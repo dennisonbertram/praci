@@ -66,7 +66,20 @@ async function mockDataRoom(page: Page) {
       (route.request().postDataJSON() as { json?: Record<string, unknown> } | null)?.json ?? {};
     calls.push({ name, input });
     const answers: Record<string, unknown> = {
-      folders: [],
+      folders: [
+        {
+          id: "c0000000000000000000000f1",
+          name: "Legal",
+          parentId: null,
+          createdAt: "2026-10-01T00:00:00.000Z",
+        },
+        {
+          id: "c0000000000000000000000f2",
+          name: "Contracts",
+          parentId: "c0000000000000000000000f1",
+          createdAt: "2026-10-01T00:00:00.000Z",
+        },
+      ],
       "items/list": { items: [...items, ...uploaded], nextCursor: null },
       search: {
         results: [
@@ -275,4 +288,33 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
     await expect(link).toBeFocused();
     await captureScreenshot(page, testInfo, `v2-toast-${width}`);
   }
+
+  // A narrow page: the folder picker replaces the tree, and the preview opens in a dialog only on
+  // click, with focus inside it and back on the row afterwards.
+  await page.setViewportSize({ width: 480, height: 800 });
+  await page.reload();
+  await expect(rows).toHaveCount(4);
+  const picker = page.getByTestId("data-room-folder-picker");
+  await expect(picker).toBeVisible();
+  await expect(page.getByRole("tree", { name: "Folders" })).toBeHidden();
+  await picker.click();
+  await expect(page.getByRole("menuitemradio", { name: "Legal / Contracts" })).toBeVisible();
+  await captureScreenshot(page, testInfo, "v3-folder-picker-480");
+  await page.getByRole("menuitemradio", { name: "Legal / Contracts" }).click();
+  await expect(picker).toContainText("Legal / Contracts");
+  await expect
+    .poll(() => calls.some((c) => c.input.folderId === "c0000000000000000000000f2"))
+    .toBe(true);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await rows.nth(1).hover();
+  await page.waitForTimeout(400);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await rows.nth(1).click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toContainText("Series A term sheet v3.pdf");
+  await expect(sheet.locator(":focus")).toHaveCount(1);
+  await captureScreenshot(page, testInfo, "v3-preview-sheet-480");
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  await expect(rows.nth(1)).toBeFocused();
 });

@@ -1,7 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
-import { Button, Skeleton, Toggle } from "@rakazo/ui-web";
+import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web";
 import { LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -102,21 +102,39 @@ export function DataRoomPage() {
   const [hovered, setHovered] = useState<DataRoomApiItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(true);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const body = useRef<HTMLDivElement>(null);
+  // Narrow: the preview has no room beside the list, so a click opens it in a dialog.
+  const [narrow, setNarrow] = useState(false);
+  const [bodyEl, setBodyEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!bodyEl) return;
+    const measure = () =>
+      setNarrow(bodyEl.clientWidth > 0 && bodyEl.clientWidth < PREVIEW_BESIDE_PX);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(bodyEl);
+    return () => observer.disconnect();
+  }, [bodyEl]);
   const autoPinned = useRef(false);
   useEffect(() => () => clearTimeout(timer.current), []);
 
   useEffect(() => {
     if (!linkedItem) return;
+    // Only the item that is still in the URL when the answer arrives may be shown.
+    let current = true;
     rpc.dataRoom
       .item({ id: linkedItem })
       .then((item) => {
+        if (!current || item.id !== linkedItem) return;
         autoPinned.current = true;
         setPinned(item);
         setHovered(null);
         setPreviewOpen(true);
       })
       .catch(() => undefined);
+    return () => {
+      current = false;
+    };
   }, [linkedItem]);
 
   // The first item is pinned once, when there is room for the preview beside the list.
@@ -124,9 +142,8 @@ export function DataRoomPage() {
   useEffect(() => {
     if (autoPinned.current || !firstItem || linkedItem) return;
     autoPinned.current = true;
-    const width = body.current?.clientWidth ?? 0;
-    if (!(width > 0 && width < PREVIEW_BESIDE_PX)) setPinned(firstItem);
-  }, [firstItem, linkedItem]);
+    if (!narrow) setPinned(firstItem);
+  }, [firstItem, linkedItem, narrow]);
 
   // When a new search, filter, folder or sort answers, keep the pinned item only if it is in the
   // results; otherwise pin the first result, or close the preview when there are none.
@@ -139,13 +156,8 @@ export function DataRoomPage() {
     appliedKey.current = queryKey;
     if (first || (pinned && resultIds.split(",").includes(pinned.id))) return;
     setHovered(null);
-    const width = body.current?.clientWidth ?? 0;
-    setPinned(
-      previewOpen && !(width > 0 && width < PREVIEW_BESIDE_PX)
-        ? (list.rows[0]?.item ?? null)
-        : null,
-    );
-  }, [list.loading, list.key, list.rows, queryKey, resultIds, pinned, previewOpen]);
+    setPinned(previewOpen && !narrow ? (list.rows[0]?.item ?? null) : null);
+  }, [list.loading, list.key, list.rows, queryKey, resultIds, pinned, previewOpen, narrow]);
 
   const fresh = (item: DataRoomApiItem | null) =>
     item ? (list.rows.find((row) => row.item.id === item.id)?.item ?? item) : null;
@@ -154,14 +166,17 @@ export function DataRoomPage() {
   const interaction: RowInteraction = {
     shownId: shown?.id,
     onHover: (item) => {
+      if (narrow) return;
       clearTimeout(timer.current);
       timer.current = setTimeout(() => setHovered(item), HOVER_MS);
     },
     onLeave: () => {
+      if (narrow) return;
       clearTimeout(timer.current);
       timer.current = setTimeout(() => setHovered(null), HOVER_MS);
     },
     onFocusItem: (item) => {
+      if (narrow) return;
       clearTimeout(timer.current);
       setHovered(item);
     },
@@ -201,7 +216,7 @@ export function DataRoomPage() {
   const uniq = (values: string[]) => [...new Set(values)].sort();
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center gap-2 px-3 pt-2 pb-3 md:px-5 md:pt-4">
         <h1 className="me-auto text-lg font-semibold">
           <Trans>Data room</Trans>
@@ -257,11 +272,11 @@ export function DataRoomPage() {
             onSort={(next) => (searching ? setSearchSort(next) : next && setListSort(next))}
             typeSuggestions={uniq(rows.flatMap(({ item }) => item.facets.docType ?? []))}
             partySuggestions={uniq(rows.flatMap(({ item }) => item.facets.parties))}
+            folders={nodes}
+            folderId={filters.folderId}
+            onFolder={(folderId) => setFilters({ ...filters, folderId })}
           />
-          <div
-            ref={body}
-            className="@container/bd relative flex min-h-0 flex-1 border-t border-border"
-          >
+          <div ref={setBodyEl} className="relative flex min-h-0 flex-1 border-t border-border">
             <div className="hidden @min-[800px]/bd:flex">
               <FolderTree
                 nodes={nodes}
@@ -303,7 +318,7 @@ export function DataRoomPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={list.loadingMore}
+                    disabled={list.loadingMore || list.loading}
                     onClick={() => void list.loadMore()}
                   >
                     <Trans>Load more</Trans>
@@ -311,7 +326,7 @@ export function DataRoomPage() {
                 </div>
               ) : null}
             </div>
-            {shown ? (
+            {shown && !narrow ? (
               <Preview
                 item={shown}
                 folderPath={folderPath(shown.folderId)}
@@ -322,6 +337,19 @@ export function DataRoomPage() {
           </div>
         </>
       )}
+      {shown && narrow ? (
+        <Dialog open onOpenChange={(open) => !open && closePreview()}>
+          <DialogContent className="max-h-[85dvh] overflow-y-auto p-0">
+            <Preview
+              inDialog
+              item={shown}
+              folderPath={folderPath(shown.folderId)}
+              onAction={interaction.onAction}
+              onClose={closePreview}
+            />
+          </DialogContent>
+        </Dialog>
+      ) : null}
       {action ? (
         <ItemDialog
           action={action.kind}
