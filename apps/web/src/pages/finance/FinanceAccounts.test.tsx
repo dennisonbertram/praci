@@ -161,3 +161,38 @@ it("hides the button when no crypto is held", async () => {
   await show("bank", { ...crypto, wallets: [], summary: { ...crypto.summary, totalCents: 0 } });
   expect(toggle()).toBeNull();
 });
+
+it("reloads accounts after a wallet is added, since crypto can count in total cash", async () => {
+  rpcMock.walletAdd.mockResolvedValue({});
+  await act(async () =>
+    (
+      [...container.querySelectorAll("button")].find(
+        (b) => b.textContent === "Add account",
+      ) as HTMLElement
+    ).dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })),
+  );
+  await act(async () =>
+    (
+      [...container.querySelectorAll("button")].find(
+        (b) => b.textContent === "Add account",
+      ) as HTMLElement
+    ).click(),
+  );
+  await act(async () =>
+    ([...document.body.querySelectorAll('[role="menuitem"]')][0] as HTMLElement).click(),
+  );
+  const input = document.body.querySelector('[aria-label="Address or ENS"]') as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+      input,
+      "alice.eth",
+    );
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () =>
+    (document.body.querySelector('button[type="submit"]') as HTMLButtonElement).click(),
+  );
+  await flush();
+  expect(rpcMock.walletAdd).toHaveBeenCalled();
+  expect(rpcMock.accounts).toHaveBeenCalledTimes(2);
+});

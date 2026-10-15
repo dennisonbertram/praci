@@ -28,14 +28,19 @@ export function CountCryptoButton({
   // After a toggle the button keeps its new label until the pointer or focus leaves.
   const [justToggled, setJustToggled] = useState(false);
   const [error, setError] = useState("");
+  // One save at a time, so a slow earlier save cannot overwrite a later choice.
+  const [saving, setSaving] = useState(false);
   const on = scope !== "bank";
   async function save(runwayCrypto: RunwayCryptoScope) {
+    setSaving(true);
     try {
       await rpc.finance.setPreferences({ runwayCrypto });
       setError("");
       onSaved();
     } catch (cause) {
       setError(errorText(cause));
+    } finally {
+      setSaving(false);
     }
   }
   return (
@@ -45,6 +50,7 @@ export function CountCryptoButton({
           size="sm"
           variant="outline"
           aria-pressed={on}
+          disabled={saving}
           aria-label={on ? t`Counting crypto` : t`Count crypto`}
           onMouseEnter={() => setActive(true)}
           onMouseLeave={() => {
@@ -74,6 +80,7 @@ export function CountCryptoButton({
                 <Button
                   size="icon-sm"
                   variant="outline"
+                  disabled={saving}
                   aria-label={t`Choose which crypto counts`}
                 />
               }
