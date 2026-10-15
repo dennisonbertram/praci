@@ -121,7 +121,9 @@ providers sit behind interfaces instead of one hard-coded vendor.
 All tables carry `spaceId` (cascade on space delete) and `userId`.
 
 - `DataRoomFolder`: `id`, `parentId`, `name`, `createdBy` (`user` or `agent`).
-  Unique on (`spaceId`, `parentId`, `name`).
+  Folders belong to their owner like items do. Unique on (`spaceId`, `userId`,
+  `parentId`, `name`), so one member's folder names never collide with, or
+  reveal, another member's.
 - `DataRoomItem`: `id`, `folderId`, `source` (`upload`, `drive`, `gmail`, `chat`,
   `finance`), `sourceConnectionId`, `externalId`, `sha256`, `storageKey` (null when
   the source keeps the bytes), `name`, `mimeType`, `size`, `sourceUrl`,
@@ -187,7 +189,8 @@ Design: [mockup.html](mockup.html) (sample data only).
   keyboard focus over a row updates the preview pane, and a click pins it. The
   preview has its own Ask agent, which opens the agent panel with that document
   attached. Move, rename and delete. Built from the existing shadcn components.
-- **Data room agent.** A per-space agent (spawn-key pattern of the Inbox agent) that
+- **Data room agent.** One agent per owner in a space (the per-user spawn-key
+  pattern of the Inbox agent), reading only that owner's items, that
   reviews newly filed items, fixes misfiled ones, flags duplicates and answers
   questions in a side panel on the Data room page.
 - **Agent tools.** `search_data_room` and `read_data_room_item`, both read-only,
