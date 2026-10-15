@@ -5559,7 +5559,9 @@ const Transcript = memo(function Transcript({
                         : `relative w-fit min-w-0 ${
                             message.role === "user"
                               ? "max-w-[min(84%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[84%]"
-                              : "max-w-[min(88%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[88%]"
+                              : message.blocks.some((block) => block.kind === "ask" && block.mail)
+                                ? "max-w-[calc(100%_-_5rem)] [@media(hover:none)]:max-w-full"
+                                : "max-w-[min(88%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[88%]"
                           }`
                     }
                   >

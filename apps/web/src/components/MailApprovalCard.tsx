@@ -31,8 +31,11 @@ const toFields = (mail: MailApproval): Fields => ({
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex min-h-9 items-start gap-2 px-3 py-1">
-      <span aria-hidden="true" className="w-12 shrink-0 text-sm leading-7 text-muted-foreground">
+    <div className="flex min-h-9 flex-col px-3 py-1 @sm:flex-row @sm:items-start @sm:gap-2">
+      <span
+        aria-hidden="true"
+        className="shrink-0 text-xs leading-5 text-muted-foreground @sm:w-12 @sm:text-sm @sm:leading-7"
+      >
         {label}
       </span>
       <div className="min-w-0 flex-1 break-words text-sm leading-7 text-foreground">{children}</div>
@@ -130,7 +133,7 @@ export function MailApprovalCard({
       data-testid="mail-approval-card"
       data-editing={editing || undefined}
       className={cn(
-        "w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-card",
+        "@container w-xl max-w-full overflow-hidden rounded-2xl border border-border bg-card",
         editing && "ring-2 ring-primary",
       )}
     >
@@ -192,7 +195,7 @@ export function MailApprovalCard({
             {editing ? (
               <Input
                 aria-label={label}
-                className="h-7 bg-background"
+                className="h-7 w-full bg-background"
                 disabled={busy}
                 value={fields[key.toLowerCase() as "to" | "cc" | "bcc"]}
                 onChange={(event) =>
@@ -208,7 +211,7 @@ export function MailApprovalCard({
           {editing ? (
             <Input
               aria-label={t`Subject`}
-              className="h-7 bg-background"
+              className="h-7 w-full bg-background"
               disabled={busy}
               value={fields.subject}
               onChange={(event) => set("subject")(event.target.value)}
@@ -263,7 +266,7 @@ export function MailApprovalCard({
         )}
       </div>
       {interactive ? (
-        <div className="flex items-center justify-between gap-2 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
           <div className="flex gap-2">
             <Button disabled={busy} onClick={() => void submit("allow")}>
               {pendingAction === "allow" ? (
