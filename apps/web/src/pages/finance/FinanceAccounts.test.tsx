@@ -16,7 +16,12 @@ vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
-const rpcMock = vi.hoisted(() => ({ accounts: vi.fn(), crypto: vi.fn(), walletAdd: vi.fn() }));
+const rpcMock = vi.hoisted(() => ({
+  accounts: vi.fn(),
+  crypto: vi.fn(),
+  exchanges: vi.fn(),
+  walletAdd: vi.fn(),
+}));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
 import { FinanceAccountsPage } from "./FinanceAccounts";
@@ -73,6 +78,17 @@ beforeEach(async () => {
   root = createRoot(container);
   rpcMock.accounts.mockResolvedValue(accounts);
   rpcMock.crypto.mockResolvedValue(crypto);
+  rpcMock.exchanges.mockResolvedValue([
+    {
+      id: "x1",
+      provider: "kraken",
+      connected: true,
+      lastSyncedAt: "2026-10-15T12:00:00.000Z",
+      lastError: null,
+      totalCents: 25_000,
+      balances: [],
+    },
+  ]);
   await act(async () =>
     root.render(
       <MemoryRouter>
@@ -99,6 +115,12 @@ it("lists wallets in their own Crypto group and keeps them out of total cash", (
   expect(page).not.toContain("$1,062,654");
 });
 
+it("lists connected exchanges in the Crypto group, outside total cash", () => {
+  const row = [...container.querySelectorAll("tr")].find((r) => r.textContent?.includes("Kraken"));
+  expect(row?.textContent).toContain("$250.00");
+  expect(container.textContent).not.toContain("$75,250");
+});
+
 it("opens the Add wallet dialog from the Add account menu", async () => {
   expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   const trigger = [...container.querySelectorAll("button")].find(
@@ -109,7 +131,7 @@ it("opens the Add wallet dialog from the Add account menu", async () => {
     trigger?.click();
   });
   const items = [...document.body.querySelectorAll('[role="menuitem"]')];
-  expect(items.map((i) => i.textContent)).toEqual(["Crypto wallet"]);
+  expect(items.map((i) => i.textContent)).toEqual(["Crypto wallet", "Coinbase", "Kraken"]);
   await act(async () => (items[0] as HTMLElement).click());
   expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Add wallet");
 });

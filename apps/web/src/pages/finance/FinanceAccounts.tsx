@@ -1,6 +1,11 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { FinanceAccountsOutput, FinanceCryptoOutput } from "@rakazo/contracts";
+import type {
+  ExchangeProvider,
+  FinanceAccountsOutput,
+  FinanceCryptoOutput,
+  FinanceExchange,
+} from "@rakazo/contracts";
 import {
   Button,
   DropdownMenu,
@@ -11,6 +16,7 @@ import {
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { LineChart } from "../../components/finance/charts";
+import { exchangeName } from "../../components/finance/ExchangeGroup";
 import {
   Chevron,
   DetailPage,
@@ -23,6 +29,7 @@ import {
   useRowNavigate,
 } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
+import { ExchangeConnectDialog } from "../../components/integrations/ExchangeConnectDialog";
 import { money, moneyExact, monthLabel, monthShort } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { rpc } from "../../lib/rpc";
@@ -75,7 +82,13 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
 }
 
 /** The wallets, apart from the cash accounts and never part of their totals. */
-function CryptoGroup({ crypto }: { crypto: FinanceCryptoOutput }) {
+function CryptoGroup({
+  crypto,
+  exchanges,
+}: {
+  crypto: FinanceCryptoOutput;
+  exchanges: FinanceExchange[];
+}) {
   const typeNames = useTypeNames();
   const rowProps = useRowNavigate();
   const cents = new Map(crypto.summary.byWallet.map((row) => [row.walletId, row.cents]));
@@ -100,6 +113,23 @@ function CryptoGroup({ crypto }: { crypto: FinanceCryptoOutput }) {
               <Chevron />
             </tr>
           ))}
+          {exchanges.map((exchange) => (
+            <tr key={exchange.id} className={rowClass} {...rowProps(financePath.crypto())}>
+              <td className="font-semibold">
+                <Link
+                  to={financePath.crypto()}
+                  className="outline-none hover:underline focus-visible:underline"
+                >
+                  {exchangeName(exchange.provider)}
+                </Link>
+                <span className="ms-1.5 font-normal text-muted-foreground">
+                  <Trans>Exchange</Trans>
+                </span>
+              </td>
+              <td className="text-end tabular-nums">{moneyExact(exchange.totalCents)}</td>
+              <Chevron />
+            </tr>
+          ))}
         </tbody>
       </table>
     </Section>
@@ -109,8 +139,11 @@ function CryptoGroup({ crypto }: { crypto: FinanceCryptoOutput }) {
 export function FinanceAccountsPage() {
   const q = useFinanceQuery(() => rpc.finance.accounts(), []);
   const cryptoQuery = useFinanceQuery(() => rpc.finance.crypto(), []);
+  const exchangeQuery = useFinanceQuery(() => rpc.finance.exchanges(), []);
   const [adding, setAdding] = useState(false);
+  const [connecting, setConnecting] = useState<ExchangeProvider | null>(null);
   const crypto = cryptoQuery.data;
+  const exchanges = exchangeQuery.data ?? [];
   const data = q.data;
   return (
     <DetailPage
@@ -126,6 +159,8 @@ export function FinanceAccountsPage() {
             <DropdownMenuItem onClick={() => setAdding(true)}>
               <Trans>Crypto wallet</Trans>
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setConnecting("coinbase")}>Coinbase</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setConnecting("kraken")}>Kraken</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       }
@@ -141,6 +176,16 @@ export function FinanceAccountsPage() {
             onClose={() => setAdding(false)}
             onSaved={cryptoQuery.reload}
           />
+          {connecting ? (
+            <ExchangeConnectDialog
+              provider={connecting}
+              onConnected={() => {
+                cryptoQuery.reload();
+                exchangeQuery.reload();
+              }}
+              onClose={() => setConnecting(null)}
+            />
+          ) : null}
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
             <Kpi
               title={t`Total cash`}
@@ -172,7 +217,9 @@ export function FinanceAccountsPage() {
               <AccountTable rows={data.cards} owed />
             </Section>
           ) : null}
-          {crypto && crypto.wallets.length > 0 ? <CryptoGroup crypto={crypto} /> : null}
+          {crypto && (crypto.wallets.length > 0 || exchanges.length > 0) ? (
+            <CryptoGroup crypto={crypto} exchanges={exchanges} />
+          ) : null}
         </>
       ) : null}
     </DetailPage>

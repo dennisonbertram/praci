@@ -115,11 +115,15 @@ describe("Coinbase JWT", () => {
     expect(
       createVerify("SHA256")
         .update(`${h}.${p}`)
-        .verify(
-          { key: publicKey, dsaEncoding: "ieee-p1363" },
-          Buffer.from(s, "base64url"),
-        ),
+        .verify({ key: publicKey, dsaEncoding: "ieee-p1363" }, Buffer.from(s, "base64url")),
     ).toBe(true);
+  });
+
+  it("accepts a key whose newlines were dropped by a single-line input", () => {
+    const flat = pem.trim().replace(/\n/g, "");
+    expect(() =>
+      coinbaseJwt({ ...coinbaseCreds, secret: flat }, "GET", "h", "/p", 1),
+    ).not.toThrow();
   });
 
   it("accepts a key pasted on one line with literal \\n", () => {

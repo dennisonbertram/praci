@@ -93,6 +93,17 @@ async function call(
 
 const base64url = (input: Buffer | string) => Buffer.from(input).toString("base64url");
 
+/**
+ * Keys pasted on one line carry literal "\n" sequences, and a single-line input drops real newlines;
+ * rebuild a PEM from the header, footer and base64 body so either form works.
+ */
+function normalizePem(text: string): string {
+  const m = /-----BEGIN ([A-Z ]+)-----([\s\S]*?)-----END \1-----/.exec(text.replace(/\\n/g, "\n"));
+  if (!m) return text.trim();
+  const body = (m[2] ?? "").replace(/[^A-Za-z0-9+/=]/g, "");
+  return `-----BEGIN ${m[1]}-----\n${body.match(/.{1,64}/g)?.join("\n") ?? ""}\n-----END ${m[1]}-----\n`;
+}
+
 /** A CDP JWT for one request. Exported for tests; the token is valid two minutes and used once. */
 export function coinbaseJwt(
   creds: ExchangeCredentials,
@@ -103,7 +114,7 @@ export function coinbaseJwt(
   nonce = randomBytes(16).toString("hex"),
 ): string {
   // Keys pasted on one line carry literal "\n" sequences.
-  const pem = creds.secret.replace(/\\n/g, "\n").trim();
+  const pem = normalizePem(creds.secret);
   const key = createPrivateKey(pem);
   const header = { alg: "ES256", kid: creds.key, nonce, typ: "JWT" };
   const payload = {
