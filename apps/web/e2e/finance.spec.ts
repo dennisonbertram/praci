@@ -303,9 +303,10 @@ test("Finance Accounts lists wallets apart from cash and adds one from the menu"
   await captureScreenshot(page, testInfo, "finance-accounts-crypto-group");
 
   await main.getByRole("button", { name: "Add account" }).click();
-  await expect(page.getByRole("menuitem")).toHaveText(["Crypto wallet"]);
+  const options = page.getByRole("dialog");
+  await expect(options).toContainText("Upload statements");
   await captureScreenshot(page, testInfo, "finance-accounts-add-menu");
-  await page.getByRole("menuitem", { name: "Crypto wallet" }).click();
+  await options.getByRole("button", { name: /^Wallet/ }).click();
   await expect(page.getByRole("dialog")).toContainText("Add wallet");
   await captureScreenshot(page, testInfo, "finance-accounts-add-wallet");
 });

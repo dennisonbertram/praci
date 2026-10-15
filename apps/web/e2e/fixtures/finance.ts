@@ -192,6 +192,7 @@ export const connectedOverview: FinanceOverview = {
 
 export const emptyOverview: FinanceOverview = {
   ...connectedOverview,
+  hasCashAccounts: false,
   sources: [
     { provider: "mercury", serverId: null, status: "not_connected", lastSyncedAt: null },
     { provider: "brex", serverId: null, status: "not_connected", lastSyncedAt: null },
