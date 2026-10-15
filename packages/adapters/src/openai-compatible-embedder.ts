@@ -1,10 +1,5 @@
-import {
-  type AdapterContext,
-  type AdapterDescriptor,
-  DATA_ROOM_EMBEDDING_DIMENSIONS,
-  type Embedder,
-  EmbedderMisconfiguredError,
-} from "@rakazo/adapter-kit";
+import type { AdapterContext, AdapterDescriptor, Embedder } from "@rakazo/adapter-kit";
+import { DATA_ROOM_EMBEDDING_DIMENSIONS, EmbedderMisconfiguredError } from "@rakazo/adapter-kit";
 import {
   assertAllowedOpenAiCompatibleUrl,
   assertHttpsForKeyedOpenAiCompatibleUrl,
@@ -35,7 +30,7 @@ export class OpenAICompatibleEmbedder implements Embedder {
     const url = assertAllowedOpenAiCompatibleUrl(config.baseUrl);
     assertHttpsForKeyedOpenAiCompatibleUrl(url, config.apiKey);
     this.url = `${normalizeOpenAiCompatibleBaseUrl(config.baseUrl)}/embeddings`;
-    this.fetchFn = config.fetch ?? createOpenAiCompatibleFetch();
+    this.fetchFn = createOpenAiCompatibleFetch(config.fetch);
   }
 
   describe(): AdapterDescriptor<{ dimensions: number; maxBatch: number }> {
@@ -63,23 +58,37 @@ export class OpenAICompatibleEmbedder implements Embedder {
   private async embedBatch(input: string[], signal: AbortSignal): Promise<number[][]> {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.config.apiKey) headers.authorization = `Bearer ${this.config.apiKey}`;
-    const res = await this.fetchFn(this.url, {
-      method: "POST",
-      headers,
-      signal,
-      body: JSON.stringify({
-        model: this.config.model,
-        input,
-        dimensions: DATA_ROOM_EMBEDDING_DIMENSIONS,
-        encoding_format: "float",
-      }),
-    });
+    let res: Response;
+    try {
+      res = await this.fetchFn(this.url, {
+        method: "POST",
+        headers,
+        signal,
+        body: JSON.stringify({
+          model: this.config.model,
+          input,
+          dimensions: DATA_ROOM_EMBEDDING_DIMENSIONS,
+          encoding_format: "float",
+        }),
+      });
+    } catch (error) {
+      if (signal.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
+      // Transport errors can carry request headers; throw a fixed message with no cause.
+      throw new Error("Embeddings request failed");
+    }
     if (!res.ok) {
       // Report only the status; the response body may echo request headers.
+      await res.body?.cancel().catch(() => {});
       throw new Error(`Embeddings request failed with HTTP ${res.status}`);
     }
-    const body = (await res.json()) as EmbeddingsResponse;
-    const data = body.data ?? [];
+    let body: EmbeddingsResponse;
+    try {
+      body = (await res.json()) as EmbeddingsResponse;
+    } catch (error) {
+      if (signal.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
+      throw new Error("Embeddings response is not valid JSON");
+    }
+    const data = Array.isArray(body?.data) ? body.data : [];
     if (data.length !== input.length) {
       throw new Error(
         `Embeddings response returned ${data.length} vectors for ${input.length} inputs`,
@@ -87,8 +96,16 @@ export class OpenAICompatibleEmbedder implements Embedder {
     }
     const out: number[][] = new Array(input.length);
     for (const item of data) {
-      const vector = item.embedding;
-      if (!vector || item.index === undefined || item.index < 0 || item.index >= input.length) {
+      const index = item?.index;
+      const vector = item?.embedding;
+      if (
+        typeof index !== "number" ||
+        !Number.isInteger(index) ||
+        index < 0 ||
+        index >= input.length ||
+        out[index] !== undefined ||
+        !Array.isArray(vector)
+      ) {
         throw new Error("Embeddings response is malformed");
       }
       if (vector.length !== DATA_ROOM_EMBEDDING_DIMENSIONS) {
@@ -96,7 +113,10 @@ export class OpenAICompatibleEmbedder implements Embedder {
           `Embedding model ${this.config.model} returned ${vector.length} dimensions; ${DATA_ROOM_EMBEDDING_DIMENSIONS} required`,
         );
       }
-      out[item.index] = vector;
+      if (!vector.every((n) => typeof n === "number" && Number.isFinite(n))) {
+        throw new Error("Embeddings response is malformed");
+      }
+      out[index] = vector;
     }
     return out;
   }

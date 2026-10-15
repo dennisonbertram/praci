@@ -24,7 +24,7 @@ function fakeFetch(size = D) {
   });
 }
 
-const base = { baseUrl: "http://localhost:11434", model: "m1" };
+const base = { baseUrl: "http://127.0.0.1:11434", model: "m1" };
 
 describe("OpenAICompatibleEmbedder", () => {
   it("sends model, dimensions and auth to /embeddings", async () => {
@@ -32,7 +32,7 @@ describe("OpenAICompatibleEmbedder", () => {
     const e = new OpenAICompatibleEmbedder({ ...base, apiKey: "sk-secret", fetch });
     await e.embed(["1"], ctx());
     const [url, init] = fetch.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("http://localhost:11434/v1/embeddings");
+    expect(String(url)).toBe("http://127.0.0.1:11434/v1/embeddings");
     expect((init.headers as Record<string, string>).authorization).toBe("Bearer sk-secret");
     expect(JSON.parse(String(init.body))).toMatchObject({
       model: "m1",
@@ -114,5 +114,85 @@ describe("OpenAICompatibleEmbedder", () => {
     } finally {
       server.close();
     }
+  });
+
+  it("routes an injected fetch through the guard", async () => {
+    const fetch = fakeFetch();
+    const e = new OpenAICompatibleEmbedder({ ...base, fetch });
+    // guard sets redirect: "error" on the injected transport
+    await e.embed(["1"], ctx());
+    const init = fetch.mock.calls[0]?.[1] as RequestInit | undefined;
+    expect(init?.redirect).toBe("error");
+  });
+
+  it("hides the key on a malformed 2xx body", async () => {
+    const e = new OpenAICompatibleEmbedder({
+      ...base,
+      apiKey: "sk-secret",
+      fetch: vi.fn(async () => new Response("not json sk-secret")),
+    });
+    const err = await e.embed(["1"], ctx()).catch((x) => x);
+    expect(err.message).toBe("Embeddings response is not valid JSON");
+    expect(String(err.message) + String(err.cause)).not.toContain("sk-secret");
+    expect(err.cause).toBeUndefined();
+  });
+
+  it("hides the key on a transport error but keeps AbortError", async () => {
+    const e = new OpenAICompatibleEmbedder({
+      ...base,
+      apiKey: "sk-secret",
+      fetch: vi.fn(async () => {
+        throw new Error("boom authorization: Bearer sk-secret");
+      }),
+    });
+    const err = await e.embed(["1"], ctx()).catch((x) => x);
+    expect(err.message).toBe("Embeddings request failed");
+    expect(err.cause).toBeUndefined();
+    const abort = new OpenAICompatibleEmbedder({
+      ...base,
+      fetch: vi.fn(async () => {
+        throw new DOMException("aborted", "AbortError");
+      }),
+    });
+    await expect(abort.embed(["1"], ctx())).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it.each([
+    ["duplicate index", [0, 0]],
+    ["out of range", [0, 2]],
+    ["negative", [0, -1]],
+    ["fractional", [0, 1.5]],
+  ])("rejects %s indexes", async (_n, indexes) => {
+    const e = new OpenAICompatibleEmbedder({
+      ...base,
+      fetch: vi.fn(async () =>
+        Response.json({ data: indexes.map((index) => ({ index, embedding: vec(1) })) }),
+      ),
+    });
+    await expect(e.embed(["1", "2"], ctx())).rejects.toThrow("malformed");
+  });
+
+  it.each([
+    ["NaN-like string", () => [...vec(1, D - 1), "x"]],
+    ["null", () => [...vec(1, D - 1), null]],
+    ["not an array", () => "abc"],
+  ])("rejects a vector with %s", async (_n, make) => {
+    const e = new OpenAICompatibleEmbedder({
+      ...base,
+      fetch: vi.fn(async () => Response.json({ data: [{ index: 0, embedding: make() }] })),
+    });
+    await expect(e.embed(["1"], ctx())).rejects.toThrow("malformed");
+  });
+
+  it("cancels the body of a non-2xx response", async () => {
+    const cancel = vi.fn(async () => {});
+    const e = new OpenAICompatibleEmbedder({
+      ...base,
+      fetch: vi.fn(
+        async () => ({ ok: false, status: 500, body: { cancel } }) as unknown as Response,
+      ),
+    });
+    await expect(e.embed(["1"], ctx())).rejects.toThrow("500");
+    expect(cancel).toHaveBeenCalled();
   });
 });
