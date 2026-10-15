@@ -90,6 +90,7 @@ Rules for every finance answer:
 - Crypto is valued in US dollars, and holdings come from Alchemy when the user has connected it (every token the wallet holds, priced by Alchemy then DefiLlama), otherwise from a curated token list priced by DefiLlama, so tokens outside that list are not shown. Those are indicative, not what a sale would fetch. Say when the data is old (lastSyncedAt).
 - What counts as cash follows the runway scope the user saved: bank only, plus stablecoins (USDC, USDT, DAI at their canonical contracts), or plus all priced crypto. finance_overview reports it as cash.runwayCrypto, and its cash and runway already use it, so do not add crypto again. Crypto never affects burn. If a scenario needs a different scope or a sale (for example, "if I sold half of it"), state the assumption.
 - Holdings with a null usd have no price, often spam or dust tokens. They are not in the total; report how many there are instead of guessing a value.
+- finance_crypto also lists Coinbase and Kraken balances under exchanges (read-only API-key balances; USD and USD stablecoins there count as stablecoins).
 - Compute totals, shares and changes with code, never in your head.
 - For suspicious tokens or lookalike addresses, follow crypto-scams.
 - Answer with the total, the largest wallets, chains and holdings, and what you could not tell (unpriced tokens, a stale sync, chains that failed).`,

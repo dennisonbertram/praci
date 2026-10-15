@@ -193,6 +193,8 @@ const holdings: Row[] = [
 ];
 
 const preferences: Row[] = [];
+const exchangeConnections: Row[] = [];
+const exchangeBalances: Row[] = [];
 
 function fakePrisma(rows: { txns: Row[]; accounts: Row[] }) {
   const table = (model: string, list: Row[]) => {
@@ -248,6 +250,8 @@ function fakePrisma(rows: { txns: Row[]; accounts: Row[] }) {
     financeWallet: table("wallet", wallets),
     financeCryptoHolding: table("holding", holdings),
     financePreference: table("preference", preferences),
+    financeExchangeConnection: table("connection", exchangeConnections),
+    financeExchangeBalance: table("exchange", exchangeBalances),
   } as unknown as FinanceToolDeps["prisma"];
 }
 
@@ -571,6 +575,65 @@ describe("finance_crypto", () => {
   it("says so when there are no wallets", async () => {
     const { deps } = setup({ spaceId: "space-1", userId: "nobody" });
     expect(await financeToolFromTool("finance_crypto", deps, {})).toMatchObject({ wallets: [] });
+  });
+});
+
+describe("exchange balances in the Finance tools", () => {
+  it("count by asset code in cash and are listed by finance_crypto, never another user's", async () => {
+    exchangeConnections.push(
+      { id: "x-1", ...MINE, provider: "kraken" },
+      { id: "x-2", ...THEIRS, provider: "coinbase" },
+    );
+    const balance = (
+      connectionId: string,
+      scope: Row,
+      asset: string,
+      bucket: string,
+      cents: bigint | null,
+    ) => ({
+      id: `${connectionId}-${asset}`,
+      ...scope,
+      connectionId,
+      asset,
+      amount: "1",
+      bucket,
+      usdValueCents: cents,
+    });
+    exchangeBalances.push(
+      balance("x-1", MINE, "USD", "stablecoin", 5_000n),
+      balance("x-1", MINE, "BTC", "other", 20_000n),
+      balance("x-1", MINE, "ZZZ", "other", null),
+      balance("x-2", THEIRS, "USD", "stablecoin", 99_999n),
+    );
+    try {
+      const { deps } = setup();
+      const overview = (await financeToolFromTool("finance_overview", deps, {})) as {
+        cash: { total: number; stablecoins: number; otherCrypto: number };
+      };
+      // Exchange USD 50 is stablecoin cash; exchange BTC 200 joins the wallet's 3002.5 of other crypto.
+      expect(overview.cash).toMatchObject({ total: 10_000, stablecoins: 50, otherCrypto: 3202.5 });
+      const crypto = (await financeToolFromTool("finance_crypto", deps, {})) as {
+        exchanges: Array<{
+          exchange: string;
+          totalUsd: number;
+          balances: Array<{ asset: string; usd: number | null }>;
+        }>;
+      };
+      expect(crypto.exchanges).toEqual([
+        {
+          exchange: "kraken",
+          totalUsd: 250,
+          balances: [
+            { asset: "BTC", amount: "1", usd: 200 },
+            { asset: "USD", amount: "1", usd: 50 },
+            { asset: "ZZZ", amount: "1", usd: null },
+          ],
+        },
+      ]);
+    } finally {
+      exchangeConnections.length = 0;
+      exchangeBalances.length = 0;
+    }
   });
 });
 

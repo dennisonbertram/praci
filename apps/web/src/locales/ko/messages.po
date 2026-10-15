@@ -234,6 +234,10 @@ msgstr "{minutes}분 전"
 msgid "{monthlyTotal}/mo"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "{name} accounts"
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -406,6 +410,7 @@ msgstr "작업 실행 전 확인"
 msgid "Actions for {0}"
 msgstr "{0} 작업 메뉴"
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Actions for {name}"
 msgstr ""
@@ -699,6 +704,7 @@ msgstr "API가 다시 작동하지만 업데이트가 완료되지 않았습니�
 #: src/components/AskCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -710,6 +716,10 @@ msgstr "API 키"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "API 키 헤더"
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "API key name"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "App connections aren't set up on this server yet."
@@ -810,6 +820,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
+msgstr ""
+
+#: src/components/finance/ExchangeGroup.tsx
+msgid "Asset"
 msgstr ""
 
 #. placeholder {0}: preset.time
@@ -928,6 +942,7 @@ msgstr "백업 모델 순서"
 msgid "Backup models saved."
 msgstr "백업 모델을 저장했습니다."
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Balance"
@@ -1107,6 +1122,7 @@ msgstr "서버에 연결할 수 없습니다."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectionDialog.tsx
@@ -1362,6 +1378,10 @@ msgstr "비우기"
 msgid "Clear {0}’s conversation?"
 msgstr "{0}와의 대화 내용을 비울까요?"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Clear {sourceName} filter"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Clear conversation"
@@ -1570,6 +1590,7 @@ msgstr "이 브라우저 세션에서 URL에 연결할 수 있는지 확인한 �
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1580,8 +1601,11 @@ msgstr "이 브라우저 세션에서 URL에 연결할 수 있는지 확인한 �
 msgid "Connect"
 msgstr "연결"
 
+#. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/ExchangeConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 msgid "Connect {0}"
 msgstr ""
 
@@ -2242,6 +2266,14 @@ msgstr ""
 msgid "Create"
 msgstr "만들기"
 
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Create a key with only Query Funds"
+msgstr ""
+
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Create a read-only key"
+msgstr ""
+
 #. placeholder {0}: bot.name
 #: src/pages/shell/dialogs.tsx
 msgid "Create a section and move {0} into it."
@@ -2795,6 +2827,7 @@ msgid "Every week"
 msgstr "매주"
 
 #: src/components/finance/WalletDialog.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "Exchange"
 msgstr ""
 
@@ -4452,6 +4485,10 @@ msgstr ""
 msgid "Private"
 msgstr "Bot 전용"
 
+#: src/components/integrations/ExchangeConnectDialog.tsx
+msgid "Private key"
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Private workspace with its own bots and groups."
 msgstr ""
@@ -4516,6 +4553,10 @@ msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read cards, expenses and bills"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Read exchange balances"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -4665,6 +4706,7 @@ msgid "Release interrupted computer?"
 msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
+#: src/components/finance/ExchangeGroup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -4700,6 +4742,10 @@ msgstr ""
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Remove {full}"
 msgstr "{full} 삭제"
+
+#: src/components/finance/ExchangeGroup.tsx
+msgid "Remove {name}?"
+msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
@@ -4784,6 +4830,7 @@ msgstr "다시 열기"
 msgid "Replace API key"
 msgstr "API 키 교체"
 
+#: src/components/integrations/FinanceSection.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "키 교체"
@@ -6109,6 +6156,7 @@ msgstr "이 서버의 자체 {hostCredentialSource} 자격 증명으로 {selecte
 msgid "Using {0}"
 msgstr ""
 
+#: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"

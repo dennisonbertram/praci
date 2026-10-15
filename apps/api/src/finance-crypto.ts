@@ -26,7 +26,7 @@ import {
   financeAgentSpawnKey,
   isCryptoEndpoint,
 } from "@rakazo/contracts";
-import { parseWalletInput, summarizeCrypto } from "@rakazo/core";
+import { exchangeParts, parseWalletInput, summarizeCrypto } from "@rakazo/core";
 import type { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { FinanceDeps } from "./finance.js";
@@ -82,13 +82,38 @@ async function cryptoServer(deps: FinanceDeps, actor: Actor) {
   return own.find((row) => row.enabled) ?? own[0];
 }
 
-/** The card for the overview: null with no wallet, so the page shows no crypto card at all. */
+/**
+ * Adds exchange balances to a wallet summary's totals only. `byWallet` and `byChain` stay
+ * wallet-only because they feed the per-wallet and per-chain rows.
+ */
+function withExchanges(
+  summary: ReturnType<typeof summarizeCrypto>,
+  exchange: readonly { bucket: string; usdValueCents: bigint | null }[],
+) {
+  if (exchange.length === 0) return summary;
+  const parts = exchangeParts(exchange);
+  return {
+    ...summary,
+    totalCents: summary.totalCents + Number(parts.stablecoinCents + parts.otherCryptoCents),
+    stablecoinCents: (summary.stablecoinCents ?? 0) + Number(parts.stablecoinCents),
+    unpricedTokenCount:
+      summary.unpricedTokenCount + exchange.filter((b) => b.usdValueCents === null).length,
+  };
+}
+
+/**
+ * The card for the overview: null with no wallet and no exchange, so the page shows no crypto card
+ * at all. Exchange balances are added to the totals here, so every reader of this summary (overview,
+ * runway, history's today) counts them through the same cash rule.
+ */
 export async function loadCryptoSummary(deps: FinanceDeps, actor: Actor) {
-  const [wallets, holdings] = await Promise.all([
+  const [wallets, holdings, exchange] = await Promise.all([
     loadWallets(deps, actor),
     loadHoldings(deps, actor),
+    deps.prisma.financeExchangeBalance.findMany({ where: scopeOf(actor) }),
   ]);
-  return wallets.length > 0 ? summarizeCrypto(holdings) : null;
+  if (wallets.length === 0 && exchange.length === 0) return null;
+  return withExchanges(summarizeCrypto(holdings), exchange);
 }
 
 /** Best effort: a failed sync never fails the call that asked for it; the error is on the crypto page. */
@@ -198,11 +223,12 @@ export async function financeWalletRemove(
 }
 
 export async function financeCrypto(deps: FinanceDeps, actor: Actor): Promise<FinanceCryptoOutput> {
-  const [wallets, holdings, server, alchemyConnected] = await Promise.all([
+  const [wallets, holdings, server, alchemyConnected, exchange] = await Promise.all([
     loadWallets(deps, actor),
     loadHoldings(deps, actor),
     cryptoServer(deps, actor),
     hasAlchemyKey(deps.prisma, scopeOf(actor)),
+    deps.prisma.financeExchangeBalance.findMany({ where: scopeOf(actor) }),
   ]);
   const state = server
     ? await deps.prisma.financeSyncState.findFirst({
@@ -216,7 +242,7 @@ export async function financeCrypto(deps: FinanceDeps, actor: Actor): Promise<Fi
     hasApiKey: Boolean(
       (server?.headers as Record<string, unknown> | null)?.[CRYPTO_API_KEY_HEADER],
     ),
-    summary: summarizeCrypto(holdings),
+    summary: withExchanges(summarizeCrypto(holdings), exchange),
     holdings,
     wallets,
     lastError: state?.lastError ?? null,

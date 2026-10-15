@@ -15,6 +15,7 @@ import { pollCloudAgent } from "./cloud-agent-poll.js";
 import { expireComputerControl } from "./computer-control.js";
 import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
+import { syncExchanges } from "./exchange-sync.js";
 import type { createRunExecutor } from "./executor.js";
 import type { FinanceSyncDeps } from "./finance-sync.js";
 import { syncFinanceForUser } from "./finance-sync.js";
@@ -119,6 +120,11 @@ export function createBackgroundJobHandlers(deps: {
       );
       // Wallets ride the same periodic job; with no wallets this is a no-op.
       await syncCryptoHoldings(
+        { prisma: deps.prisma, secrets: deps.secretStore },
+        { spaceId: payload.spaceId, userId: payload.userId },
+      );
+      // Exchange API-key connections ride the same job; with none this is a no-op.
+      await syncExchanges(
         { prisma: deps.prisma, secrets: deps.secretStore },
         { spaceId: payload.spaceId, userId: payload.userId },
       );

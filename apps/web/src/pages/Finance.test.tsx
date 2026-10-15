@@ -232,6 +232,24 @@ it("sends the Reconnect chip to Integrations instead of connecting", async () =>
   expect(rpcMock.connect).not.toHaveBeenCalled();
 });
 
+it("links each source chip to Accounts filtered to that source", async () => {
+  const base = connectedOverview();
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    sources: base.sources.map((s) => ({ ...s, status: "ok" as const, serverId: "s" })),
+  });
+  await show("/app/finance");
+  await flush();
+  const hrefs = [...container.querySelectorAll('a[aria-label$=" accounts"]')].map((a) => [
+    a.getAttribute("aria-label"),
+    a.getAttribute("href"),
+  ]);
+  expect(hrefs).toEqual([
+    ["Mercury accounts", "/app/finance/accounts?source=mercury"],
+    ["Brex accounts", "/app/finance/accounts?source=brex"],
+  ]);
+});
+
 it("links the header to Accounts and offers Add Brex when only Mercury is connected", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance", vi.fn());

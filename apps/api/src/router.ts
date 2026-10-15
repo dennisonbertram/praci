@@ -257,6 +257,7 @@ import {
   financeAccountDetail,
   financeAccounts,
   financeAgent,
+  financeBalanceSeries,
   financeBurn,
   financeCategory,
   financeConnect,
@@ -290,6 +291,11 @@ import {
   financeStatements,
   financeStatementUpload,
 } from "./finance-statements.js";
+import {
+  financeExchangeConnect,
+  financeExchangeRemove,
+  financeExchanges,
+} from "./finance-exchange.js";
 import {
   inboxFeedbackSet,
   inboxGet,
@@ -6152,6 +6158,15 @@ export function createRouter(deps: RouterDeps) {
       cryptoConnect: authed.finance.cryptoConnect.handler(({ context, input }) =>
         financeCryptoConnect(financeDeps, context.actor, input),
       ),
+      exchanges: authed.finance.exchanges.handler(({ context }) =>
+        financeExchanges(financeDeps, context.actor),
+      ),
+      exchangeConnect: authed.finance.exchangeConnect.handler(({ context, input }) =>
+        financeExchangeConnect(financeDeps, context.actor, input, context.signal),
+      ),
+      exchangeRemove: authed.finance.exchangeRemove.handler(({ context, input }) =>
+        financeExchangeRemove(financeDeps, context.actor, input),
+      ),
       cryptoProviderConnect: authed.finance.cryptoProviderConnect.handler(({ context, input }) =>
         financeCryptoProviderConnect(financeDeps, context.actor, input),
       ),
@@ -6182,6 +6197,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       runway: authed.finance.runway.handler(({ context }) =>
         financeRunway(financeDeps, context.actor),
+      ),
+      balanceSeries: authed.finance.balanceSeries.handler(({ context, input }) =>
+        financeBalanceSeries(financeDeps, context.actor, input),
       ),
       preferences: authed.finance.preferences.handler(({ context }) =>
         financePreferences(financeDeps, context.actor),

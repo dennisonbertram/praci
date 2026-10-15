@@ -101,6 +101,8 @@ import {
 } from "./domain.js";
 import { ComputerCommandSchema, ProductEventSchema } from "./events.js";
 import {
+  BalanceSeriesInputSchema,
+  BalanceSeriesOutputSchema,
   FinanceAccountOutputSchema,
   FinanceAccountsOutputSchema,
   FinanceBurnOutputSchema,
@@ -114,6 +116,10 @@ import {
   FinanceCryptoOutputSchema,
   FinanceCryptoProviderConnectInputSchema,
   FinanceCryptoProviderRemoveInputSchema,
+  FinanceExchangeConnectInputSchema,
+  FinanceExchangeRemoveInputSchema,
+  FinanceExchangeSchema,
+  FinanceExchangesOutputSchema,
   FinanceMonthOutputSchema,
   FinanceOverviewSchema,
   FinancePreferencesSchema,
@@ -1077,6 +1083,7 @@ export const appContract = {
     refresh: oc.output(z.object({ ok: z.literal(true) })),
     connect: oc.input(FinanceConnectInputSchema).output(FinanceConnectOutputSchema),
     accounts: oc.output(FinanceAccountsOutputSchema),
+    balanceSeries: oc.input(BalanceSeriesInputSchema).output(BalanceSeriesOutputSchema),
     account: oc.input(z.object({ id: Id })).output(FinanceAccountOutputSchema),
     burn: oc.output(FinanceBurnOutputSchema),
     month: oc
@@ -1110,6 +1117,11 @@ export const appContract = {
     cryptoConnect: oc
       .input(FinanceCryptoConnectInputSchema)
       .output(FinanceCryptoConnectOutputSchema),
+    exchanges: oc.output(FinanceExchangesOutputSchema),
+    exchangeConnect: oc.input(FinanceExchangeConnectInputSchema).output(FinanceExchangeSchema),
+    exchangeRemove: oc
+      .input(FinanceExchangeRemoveInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
     cryptoProviderConnect: oc
       .input(FinanceCryptoProviderConnectInputSchema)
       .output(z.object({ ok: z.literal(true) })),

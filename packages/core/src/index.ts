@@ -28,6 +28,7 @@ export * from "./events.js";
 export * from "./farewell.js";
 export * from "./featured-connectors.js";
 export * from "./finance/crypto.js";
+export * from "./finance/exchange.js";
 export * from "./finance/metrics.js";
 export * from "./finance/stablecoins.js";
 export * from "./finance/statements.js";

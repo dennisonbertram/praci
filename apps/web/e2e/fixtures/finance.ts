@@ -365,3 +365,13 @@ export const cryptoHistoryData = {
     { day: "2026-10-14", stablecoinCents: 1_500_000, otherCryptoCents: 800_000 },
   ],
 };
+
+/** Invented total-balance points for a range; the last point is today. */
+export const balanceSeriesOf = (range: string) => ({
+  range,
+  points: [
+    { day: "2026-08-31", balanceCents: 6_800_000 },
+    { day: "2026-09-30", balanceCents: 7_100_000 },
+    { day: "2026-10-14", balanceCents: 7_500_000 },
+  ],
+});

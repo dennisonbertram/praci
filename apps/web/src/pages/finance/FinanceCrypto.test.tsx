@@ -20,6 +20,8 @@ vi.mock("@lingui/react/macro", () => ({
 const rpcMock = vi.hoisted(() => ({
   crypto: vi.fn(),
   cryptoHistory: vi.fn(),
+  exchanges: vi.fn(),
+  exchangeRemove: vi.fn(),
   walletAdd: vi.fn(),
   walletUpdate: vi.fn(),
   walletRemove: vi.fn(),
@@ -120,6 +122,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   rpcMock.cryptoHistory.mockResolvedValue({ points: [] });
+  rpcMock.exchanges.mockResolvedValue([]);
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -242,4 +245,89 @@ it("offers Connect, opening the modal, only when there is no API key", async () 
   expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain(
     "Connect Blockscout",
   );
+});
+
+it("shows each exchange as its own group and reloads everything after removing one", async () => {
+  rpcMock.crypto.mockResolvedValue(data());
+  rpcMock.exchanges.mockResolvedValue([
+    {
+      id: "x1",
+      provider: "kraken",
+      connected: true,
+      lastSyncedAt: "2026-10-15T12:00:00.000Z",
+      lastError: "Kraken rate limit reached, try again shortly",
+      totalCents: 25_000,
+      balances: [
+        { asset: "BTC", amount: "0.004", usdPrice: "50000", usdValueCents: 20_000 },
+        { asset: "ZZZ", amount: "5", usdPrice: null, usdValueCents: null },
+      ],
+    },
+  ]);
+  rpcMock.exchangeRemove.mockResolvedValue({ ok: true });
+  await show();
+  const page = container.textContent ?? "";
+  expect(page).toContain("Kraken");
+  expect(page).toContain("0.004");
+  expect(page).toContain("$200.00");
+  expect(page).toContain("$250.00");
+  expect(page).toContain("rate limit reached");
+  expect(rpcMock.exchanges).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    (document.body.querySelector('[aria-label="Actions for Kraken"]') as HTMLElement).click();
+  });
+  await flush();
+  await act(async () => {
+    (
+      [...document.body.querySelectorAll('[role="menuitem"]')].find(
+        (n) => n.textContent === "Remove",
+      ) as HTMLElement
+    ).click();
+  });
+  await flush();
+  await act(async () => {
+    (
+      [...document.body.querySelectorAll("button")]
+        .filter((b) => b.textContent === "Remove")
+        .at(-1) as HTMLElement
+    ).click();
+  });
+  await flush();
+  expect(rpcMock.exchangeRemove).toHaveBeenCalledWith({ id: "x1" });
+  expect(rpcMock.exchanges).toHaveBeenCalledTimes(2);
+});
+
+it("shows wallet-only totals in the Wallets section when exchanges add to the summary", async () => {
+  const base = data();
+  rpcMock.crypto.mockResolvedValue(
+    data({
+      summary: {
+        ...base.summary,
+        totalCents: base.summary.totalCents + 25_000,
+        unpricedTokenCount: base.summary.unpricedTokenCount + 3,
+      },
+    }),
+  );
+  rpcMock.exchanges.mockResolvedValue([
+    {
+      id: "x1",
+      provider: "kraken",
+      connected: true,
+      lastSyncedAt: null,
+      lastError: null,
+      totalCents: 25_000,
+      balances: [1, 2, 3].map((n) => ({
+        asset: `Z${n}`,
+        amount: "1",
+        usdPrice: null,
+        usdValueCents: null,
+      })),
+    },
+  ]);
+  await show();
+  const heading = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Wallets");
+  const wallets = heading?.parentElement?.parentElement;
+  expect(wallets?.textContent).toContain("$3,002.50");
+  expect(wallets?.textContent).not.toContain("$3,252.50");
+  expect(wallets?.textContent).toContain("1 unpriced");
+  expect(wallets?.textContent).not.toContain("4 unpriced");
 });

@@ -79,7 +79,7 @@ export function FinancePage({ onAskAgent }: { onAskAgent?: () => void }) {
         {route.page === "dashboard" ? (
           <Dashboard />
         ) : route.page === "accounts" ? (
-          <FinanceAccountsPage />
+          <FinanceAccountsPage source={route.source} />
         ) : route.page === "account" ? (
           <FinanceAccountPage id={route.id} />
         ) : route.page === "burn" ? (
@@ -204,7 +204,11 @@ function SourceChip({ source }: { source: FinanceSource }) {
       {name}
     </Link>
   ) : (
-    <Link to={financePath.accounts()} className={chip}>
+    <Link
+      to={financePath.accounts(source.provider)}
+      className={chip}
+      aria-label={t`${name} accounts`}
+    >
       {dotEl}
       {name}
     </Link>

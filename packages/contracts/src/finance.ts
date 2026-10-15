@@ -228,6 +228,40 @@ export const FinanceCryptoConnectInputSchema = z.object({
 });
 export const FinanceCryptoConnectOutputSchema = z.object({ serverId: Id, hasApiKey: z.boolean() });
 
+// ---- Exchange connections (Coinbase, Kraken; read-only API keys) ----
+
+export const ExchangeProviderSchema = z.enum(["coinbase", "kraken"]);
+
+export const ExchangeBalanceSchema = z.object({
+  asset: z.string(),
+  /** Decimal string, never a float. */
+  amount: z.string().regex(/^\d+(\.\d+)?$/),
+  usdPrice: z.string().nullable(),
+  /** Whole USD cents; null when unpriced. */
+  usdValueCents: Cents.nullable(),
+});
+
+export const FinanceExchangeSchema = z.object({
+  id: Id,
+  provider: ExchangeProviderSchema,
+  /** True after the first successful sync. */
+  connected: z.boolean(),
+  lastSyncedAt: IsoDate.nullable(),
+  /** Short reason the last sync failed; null when fine. */
+  lastError: z.string().nullable(),
+  totalCents: Cents,
+  balances: z.array(ExchangeBalanceSchema),
+});
+
+/** Coinbase: `key` is the CDP key name, `secret` the EC private key. Kraken: the API key and its private key. Never returned. */
+export const FinanceExchangeConnectInputSchema = z.object({
+  provider: ExchangeProviderSchema,
+  key: z.string().trim().min(1).max(500),
+  secret: z.string().trim().min(1).max(4000),
+});
+export const FinanceExchangeRemoveInputSchema = z.object({ id: Id });
+export const FinanceExchangesOutputSchema = z.array(FinanceExchangeSchema);
+
 // ---- Normalized records (what sync stores and the pure calculations read) ----
 
 export const FinanceAccountKindSchema = z.enum(["checking", "savings", "treasury", "card"]);
@@ -531,6 +565,21 @@ const AccountRowSchema = FinanceAccountSchema.extend({
   annualYieldPct: z.number().nullable(),
 });
 
+/** Lookback for the Total balance chart: week and month are daily, quarter weekly, year monthly. */
+export const BalanceRangeSchema = z.enum(["week", "month", "quarter", "year"]);
+export type BalanceRange = z.infer<typeof BalanceRangeSchema>;
+
+export const BalanceSeriesInputSchema = z.object({ range: BalanceRangeSchema });
+
+/**
+ * Total cash under the saved `runwayCrypto` scope, oldest first. Each point is the balance at the
+ * end of `day`; the last point is today. Crypto before the first daily snapshot counts as zero.
+ */
+export const BalanceSeriesOutputSchema = z.object({
+  range: BalanceRangeSchema,
+  points: z.array(z.object({ day: DayId, balanceCents: Cents })),
+});
+
 export const FinanceAccountsOutputSchema = z.object({
   totalCashCents: Cents,
   cardOwedCents: Cents.nullable(),
@@ -695,6 +744,9 @@ export type CryptoSummary = z.infer<typeof CryptoSummarySchema>;
 export type FinanceWalletAddInput = z.infer<typeof FinanceWalletAddInputSchema>;
 export type FinanceWalletUpdateInput = z.infer<typeof FinanceWalletUpdateInputSchema>;
 export type FinanceWalletRemoveInput = z.infer<typeof FinanceWalletRemoveInputSchema>;
+export type ExchangeProvider = z.infer<typeof ExchangeProviderSchema>;
+export type FinanceExchange = z.infer<typeof FinanceExchangeSchema>;
+export type FinanceExchangeConnectInput = z.infer<typeof FinanceExchangeConnectInputSchema>;
 export type FinanceCryptoOutput = z.infer<typeof FinanceCryptoOutputSchema>;
 export type FinanceCryptoConnectInput = z.infer<typeof FinanceCryptoConnectInputSchema>;
 export type FinanceCryptoConnectOutput = z.infer<typeof FinanceCryptoConnectOutputSchema>;

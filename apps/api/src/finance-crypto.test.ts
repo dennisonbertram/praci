@@ -75,11 +75,19 @@ function table(rows: Row[], prefix: string) {
 }
 
 function setup(
-  data: { wallets?: Row[]; holdings?: Row[]; servers?: Row[]; bots?: Row[]; states?: Row[] } = {},
+  data: {
+    wallets?: Row[];
+    holdings?: Row[];
+    servers?: Row[];
+    bots?: Row[];
+    states?: Row[];
+    exchange?: Row[];
+  } = {},
 ) {
   const prisma = {
     financeWallet: table(data.wallets ?? [], "w"),
     financeCryptoHolding: table(data.holdings ?? [], "h"),
+    financeExchangeBalance: table(data.exchange ?? [], "xb"),
     mcpServer: table(data.servers ?? [], "srv"),
     bot: table(data.bots ?? [], "bot"),
     botMcpServer: table([], "bms"),
@@ -426,5 +434,32 @@ describe("Alchemy key", () => {
     await financeCryptoProviderRemove(deps, a);
     expect(prisma.secret.rows).toHaveLength(0);
     expect((await financeCrypto(deps, a)).alchemy).toEqual({ connected: false, lastError: null });
+  });
+});
+
+describe("finance.crypto summary with exchanges", () => {
+  const balance = (spaceId: string, userId: string, bucket: string, cents: bigint | null) => ({
+    spaceId,
+    userId,
+    asset: "X",
+    bucket,
+    usdValueCents: cents,
+  });
+
+  it("counts an exchange-only user's balances in the totals, and keeps another user's out", async () => {
+    const { deps } = setup({
+      exchange: [
+        balance(a.spaceId, a.userId, "stablecoin", 5_000n),
+        balance(a.spaceId, a.userId, "other", 20_000n),
+        balance(a.spaceId, a.userId, "other", null),
+        balance(b.spaceId, b.userId, "stablecoin", 99_999n),
+      ],
+    });
+    const { summary } = await financeCrypto(deps, a);
+    expect(summary.totalCents).toBe(25_000);
+    expect(summary.stablecoinCents).toBe(5_000);
+    expect(summary.unpricedTokenCount).toBe(1);
+    expect(summary.byWallet).toEqual([]);
+    expect(summary.byChain).toEqual([]);
   });
 });
