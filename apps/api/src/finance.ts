@@ -619,6 +619,9 @@ export async function financeRunway(deps: FinanceDeps, actor: Actor): Promise<Fi
   const cashCents = countedCash(parts, scope);
   const { monthlyCents } = monthlyBurn(txns, now);
   const currentMonth = monthOf(now);
+  const bankByMonth = new Map(
+    cashHistory(accounts, txns, now).map((p) => [p.month, p.balanceCents]),
+  );
   return {
     runwayCrypto: scope,
     cashCents,
@@ -630,12 +633,13 @@ export async function financeRunway(deps: FinanceDeps, actor: Actor): Promise<Fi
     monthlyBurnCents: monthlyCents,
     runway: runway(cashCents, monthlyCents, now),
     // Past crypto comes from the daily snapshots (zero before the first); this month uses today's holdings.
-    history: cashHistory(accounts, txns, now).map((p) => ({
-      month: p.month,
+    // The 12 months do not depend on bank accounts: without any, bank is zero for every month.
+    history: Array.from({ length: 12 }, (_, i) => monthOf(now, i - 11)).map((month) => ({
+      month,
       balanceCents: countedCash(
         {
-          ...(p.month === currentMonth ? parts : cryptoPartsOn(snapshots, monthEndOf(p.month))),
-          bankCents: p.balanceCents,
+          ...(month === currentMonth ? parts : cryptoPartsOn(snapshots, monthEndOf(month))),
+          bankCents: bankByMonth.get(month) ?? 0,
         },
         scope,
       ),
