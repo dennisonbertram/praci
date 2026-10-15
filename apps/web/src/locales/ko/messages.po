@@ -487,8 +487,13 @@ msgid "Add a schedule, webhook, GitHub, or message trigger to run this routine."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Add account"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Add an account to see cash, burn, runway and spend."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1635,10 +1640,6 @@ msgstr "AI 모델 연결"
 msgid "Connect a provider to add backups."
 msgstr "백업을 추가하려면 제공업체를 연결하세요."
 
-#: src/pages/Finance.tsx
-msgid "Connect accounts"
-msgstr ""
-
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Alchemy"
@@ -1668,10 +1669,6 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "MCP 서버 ‘{name}’ 연결"
-
-#: src/pages/Finance.tsx
-msgid "Connect Mercury, Brex or both to see cash, burn, runway and spend."
-msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your agents can read and act in them. You choose which agents get access to each one."

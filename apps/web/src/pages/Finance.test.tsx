@@ -29,6 +29,7 @@ vi.mock("@lingui/react/macro", () => ({
 
 const rpcMock = vi.hoisted(() => ({
   overview: vi.fn(),
+  exchanges: vi.fn(),
   refresh: vi.fn(),
   vendor: vi.fn(),
   spend: vi.fn(),
@@ -189,18 +190,19 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
-it("shows one Connect accounts link to Integrations when nothing is connected", async () => {
+it("offers Add account when nothing is connected, opening the dialog with Upload statements", async () => {
   rpcMock.overview.mockResolvedValue(emptyOverview());
+  rpcMock.exchanges.mockResolvedValue([]);
   await show("/app/finance");
-  expect(container.textContent).toContain(
-    "Connect Mercury, Brex or both to see cash, burn, runway and spend.",
-  );
+  expect(container.textContent).toContain("Add an account to see cash, burn, runway and spend.");
   expect(container.querySelectorAll('[data-testid="app-logo"]').length).toBe(2);
-  const link = [...container.querySelectorAll("a")].find(
-    (a) => a.textContent === "Connect accounts",
-  );
-  expect(link?.getAttribute("href")).toBe("/app/integrations?category=finance");
   expect(container.textContent).not.toContain("Ask agent");
+  const add = button("Add account");
+  await act(async () => add?.click());
+  await flush();
+  const dialog = document.body.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("Upload statements");
+  expect(dialog?.textContent).toContain("Wallet");
   expect(rpcMock.connect).not.toHaveBeenCalled();
 });
 
@@ -220,7 +222,7 @@ it("shows the dashboard, not the connect prompt, for a user with only statement 
   });
   await show("/app/finance");
   await flush();
-  expect(container.textContent).not.toContain("Connect Mercury, Brex or both");
+  expect(container.textContent).not.toContain("Add an account to see");
   expect(container.textContent).toContain("Upload the October statement for Example Bank ••1234");
   expect(rpcMock.refresh).not.toHaveBeenCalled();
   await act(async () => button("Upload")?.click());

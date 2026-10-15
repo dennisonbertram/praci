@@ -146,20 +146,17 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect.poll(() => calls.filter((c) => c === "refresh").length).toBeGreaterThan(1);
 });
 
-test("Finance with nothing connected links to Integrations", async ({ page }, testInfo) => {
+test("Finance with nothing connected offers Add account", async ({ page }, testInfo) => {
   await mockFinance(page, emptyOverview);
   await signup(page, `finance-empty-${Date.now()}@rakazo.test`, "password12", "Finance Empty");
   await completeOnboarding(page);
   await page.getByTestId("sidebar-finance").click();
   const main = page.getByRole("main");
-  await expect(
-    main.getByText("Connect Mercury, Brex or both to see cash, burn, runway and spend."),
-  ).toBeVisible();
+  await expect(main.getByText("Add an account to see cash, burn, runway and spend.")).toBeVisible();
   await expect(main.getByRole("button", { name: "Ask agent" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "finance-empty");
-  await main.getByRole("link", { name: "Connect accounts" }).click();
-  await expect(page).toHaveURL(/\/app\/integrations\?category=finance$/);
-  await expect(page.getByTestId("finance-section")).toBeVisible();
+  await main.getByRole("button", { name: "Add account" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Upload statements");
 });
 
 test("Finance fits a phone and works in dark mode", async ({ page }, testInfo) => {

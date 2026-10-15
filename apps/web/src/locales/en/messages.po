@@ -487,9 +487,14 @@ msgid "Add a schedule, webhook, GitHub, or message trigger to run this routine."
 msgstr "Add a schedule, webhook, GitHub, or message trigger to run this routine."
 
 #: src/components/finance/AddAccountDialog.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Add account"
 msgstr "Add account"
+
+#: src/pages/Finance.tsx
+msgid "Add an account to see cash, burn, runway and spend."
+msgstr "Add an account to see cash, burn, runway and spend."
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Add another account"
@@ -1635,10 +1640,6 @@ msgstr "Connect a model"
 msgid "Connect a provider to add backups."
 msgstr "Connect a provider to add backups."
 
-#: src/pages/Finance.tsx
-msgid "Connect accounts"
-msgstr "Connect accounts"
-
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Alchemy"
@@ -1668,10 +1669,6 @@ msgstr "Connect mail"
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "Connect MCP server “{name}”"
-
-#: src/pages/Finance.tsx
-msgid "Connect Mercury, Brex or both to see cash, burn, runway and spend."
-msgstr "Connect Mercury, Brex or both to see cash, burn, runway and spend."
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your agents can read and act in them. You choose which agents get access to each one."

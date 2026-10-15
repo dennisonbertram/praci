@@ -487,8 +487,13 @@ msgid "Add a schedule, webhook, GitHub, or message trigger to run this routine."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Add account"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Add an account to see cash, burn, runway and spend."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1635,10 +1640,6 @@ msgstr "连接模型"
 msgid "Connect a provider to add backups."
 msgstr "连接提供商后即可添加备用模型。"
 
-#: src/pages/Finance.tsx
-msgid "Connect accounts"
-msgstr ""
-
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Alchemy"
@@ -1668,10 +1669,6 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "连接 MCP 服务器“{name}”"
-
-#: src/pages/Finance.tsx
-msgid "Connect Mercury, Brex or both to see cash, burn, runway and spend."
-msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your agents can read and act in them. You choose which agents get access to each one."
