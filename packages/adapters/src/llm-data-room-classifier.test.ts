@@ -82,6 +82,34 @@ describe("LlmDataRoomClassifier.classify", () => {
     expect(out.folderPath).toEqual(["Contracts", "Northwind Labs"]);
   });
 
+  it("repairs a long summary, uppercase tags, a slash and an out-of-range confidence", async () => {
+    const { classifier } = make(
+      JSON.stringify({
+        ...valid,
+        summary: "s".repeat(700),
+        tags: ["Services", " services ", ""],
+        currency: "usd",
+        confidence: 1.4,
+        folderPath: ["Contracts/2025"],
+      }),
+    );
+    const out = await classifier.classify(input(), context);
+    expect(out.summary).toHaveLength(600);
+    expect(out.tags).toEqual(["services"]);
+    expect(out.currency).toBe("USD");
+    expect(out.confidence).toBe(1);
+    expect(out.folderPath).toEqual(["Contracts-2025"]);
+  });
+
+  it("still fails on an unknown docType or an empty folder path", async () => {
+    for (const bad of [{ docType: "poem" }, { folderPath: [" ", ""] }]) {
+      const { classifier } = make(JSON.stringify({ ...valid, ...bad }));
+      await expect(classifier.classify(input(), context)).rejects.toBeInstanceOf(
+        DataRoomClassifierError,
+      );
+    }
+  });
+
   it("allows a brand-new folder path", async () => {
     const { classifier } = make(JSON.stringify({ ...valid, folderPath: ["Legal", "NDAs"] }));
     const out = await classifier.classify(input({ folders: [["Contracts"]] }), context);
