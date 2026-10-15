@@ -502,6 +502,21 @@ const AccountRowSchema = FinanceAccountSchema.extend({
   annualYieldPct: z.number().nullable(),
 });
 
+/** Lookback for the Total balance chart: week and month are daily, quarter weekly, year monthly. */
+export const BalanceRangeSchema = z.enum(["week", "month", "quarter", "year"]);
+export type BalanceRange = z.infer<typeof BalanceRangeSchema>;
+
+export const BalanceSeriesInputSchema = z.object({ range: BalanceRangeSchema });
+
+/**
+ * Total cash under the saved `runwayCrypto` scope, oldest first. Each point is the balance at the
+ * end of `day`; the last point is today. Crypto before the first daily snapshot counts as zero.
+ */
+export const BalanceSeriesOutputSchema = z.object({
+  range: BalanceRangeSchema,
+  points: z.array(z.object({ day: DayId, balanceCents: Cents })),
+});
+
 export const FinanceAccountsOutputSchema = z.object({
   totalCashCents: Cents,
   cardOwedCents: Cents.nullable(),
