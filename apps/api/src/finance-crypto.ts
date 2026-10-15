@@ -16,7 +16,7 @@ import {
   financeAgentSpawnKey,
   isCryptoEndpoint,
 } from "@rakazo/contracts";
-import { parseWalletInput, summarizeCrypto } from "@rakazo/core";
+import { exchangeParts, parseWalletInput, summarizeCrypto } from "@rakazo/core";
 import type { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { FinanceDeps } from "./finance.js";
@@ -72,13 +72,28 @@ async function cryptoServer(deps: FinanceDeps, actor: Actor) {
   return own.find((row) => row.enabled) ?? own[0];
 }
 
-/** The card for the overview: null with no wallet, so the page shows no crypto card at all. */
+/**
+ * The card for the overview: null with no wallet and no exchange, so the page shows no crypto card
+ * at all. Exchange balances are added to the totals here, so every reader of this summary (overview,
+ * runway, history's today) counts them through the same cash rule.
+ */
 export async function loadCryptoSummary(deps: FinanceDeps, actor: Actor) {
-  const [wallets, holdings] = await Promise.all([
+  const [wallets, holdings, exchange] = await Promise.all([
     loadWallets(deps, actor),
     loadHoldings(deps, actor),
+    deps.prisma.financeExchangeBalance.findMany({ where: scopeOf(actor) }),
   ]);
-  return wallets.length > 0 ? summarizeCrypto(holdings) : null;
+  if (wallets.length === 0 && exchange.length === 0) return null;
+  const summary = summarizeCrypto(holdings);
+  if (exchange.length === 0) return summary;
+  const parts = exchangeParts(exchange);
+  return {
+    ...summary,
+    totalCents: summary.totalCents + Number(parts.stablecoinCents + parts.otherCryptoCents),
+    stablecoinCents: (summary.stablecoinCents ?? 0) + Number(parts.stablecoinCents),
+    unpricedTokenCount:
+      summary.unpricedTokenCount + exchange.filter((b) => b.usdValueCents === null).length,
+  };
 }
 
 /** Best effort: a failed sync never fails the call that asked for it; the error is on the crypto page. */

@@ -189,7 +189,10 @@ function setup(
       | "financeWallet"
       | "financeCryptoHolding"
       | "financePreference"
-      | "financeCryptoSnapshot",
+      | "financeCryptoSnapshot"
+      | "financeExchangeConnection"
+      | "financeExchangeBalance"
+      | "financeExchangeSnapshot",
       Row[]
     >
   > = {},
@@ -209,6 +212,9 @@ function setup(
     financeCryptoHolding: t("financeCryptoHolding"),
     financePreference: t("financePreference"),
     financeCryptoSnapshot: t("financeCryptoSnapshot"),
+    financeExchangeConnection: t("financeExchangeConnection"),
+    financeExchangeBalance: t("financeExchangeBalance"),
+    financeExchangeSnapshot: t("financeExchangeSnapshot"),
   };
   const enqueue = vi.fn(async () => undefined);
   const beginMcpOAuth = vi.fn(async (input: { serverId: string }) => ({

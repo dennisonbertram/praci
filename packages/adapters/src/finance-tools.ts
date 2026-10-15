@@ -21,6 +21,7 @@ import {
   countedCash,
   countsTowardTotals,
   detectRecurring,
+  exchangeParts,
   monthlyBurn,
   runway,
   spendTotals,
@@ -73,6 +74,8 @@ export type FinanceToolDeps = {
     | "financeSyncState"
     | "financeWallet"
     | "financeCryptoHolding"
+    | "financeExchangeConnection"
+    | "financeExchangeBalance"
     | "financePreference"
   >;
   /** From the run (the bot owner), never from model input. */
@@ -334,7 +337,7 @@ async function financeOverview(deps: FinanceToolDeps) {
   const now = nowOf(deps);
   // The metrics reach back to the start of last year (year-over-year spend) at most.
   const windowStart = `${Number(dayOf(now).slice(0, 4)) - 1}-01-01`;
-  const [accounts, txns, since, states, holdingRows, scope] = await Promise.all([
+  const [accounts, txns, since, states, holdingRows, exchangeRows, scope] = await Promise.all([
     loadAccounts(deps),
     loadTxns(deps, windowStart),
     earliestTxnDay(deps),
@@ -342,11 +345,16 @@ async function financeOverview(deps: FinanceToolDeps) {
       where: { spaceId: deps.scope.spaceId, userId: deps.scope.userId },
     }),
     deps.prisma.financeCryptoHolding.findMany({ where: scopeWhere(deps) }),
+    deps.prisma.financeExchangeBalance.findMany({ where: scopeWhere(deps) }),
     loadRunwayCrypto(deps.prisma, deps.scope),
   ]);
   const crypto = summarizeCrypto(holdingRows.map(toHolding));
-  const stablecoinCents = crypto.stablecoinCents ?? 0;
-  const otherCryptoCents = crypto.totalCents - stablecoinCents;
+  // Exchange balances are classified by asset code (see core exchange.ts) and join the same parts.
+  const exchange = exchangeParts(exchangeRows);
+  const walletStablecoinCents = crypto.stablecoinCents ?? 0;
+  const stablecoinCents = walletStablecoinCents + Number(exchange.stablecoinCents);
+  const otherCryptoCents =
+    crypto.totalCents - walletStablecoinCents + Number(exchange.otherCryptoCents);
   const bank = cashSummary(accounts, stablecoinCents);
   const cash = {
     ...bank,
@@ -640,14 +648,41 @@ function toHolding(row: {
   };
 }
 
+const sumCents = (rows: readonly { usdValueCents: bigint | null }[]) =>
+  rows.reduce((total, r) => total + (r.usdValueCents ?? 0n), 0n);
+
 /** Wallet balances at DefiLlama prices. Read-only; what counts as cash and runway is the user's saved choice (see finance_overview). */
 async function financeCrypto(deps: FinanceToolDeps) {
   const where = scopeWhere(deps);
-  const [walletRows, holdingRows] = await Promise.all([
+  const [walletRows, holdingRows, connections, exchangeBalances] = await Promise.all([
     deps.prisma.financeWallet.findMany({ where, orderBy: { createdAt: "asc" } }),
     deps.prisma.financeCryptoHolding.findMany({ where }),
+    deps.prisma.financeExchangeConnection.findMany({ where, orderBy: { createdAt: "asc" } }),
+    deps.prisma.financeExchangeBalance.findMany({ where }),
   ]);
-  if (walletRows.length === 0) return { wallets: [], note: "No crypto wallets are added." };
+  const exchanges = connections.map((c) => {
+    const own = exchangeBalances.filter((b) => b.connectionId === c.id);
+    return {
+      exchange: c.provider,
+      totalUsd: dollars(Number(sumCents(own))),
+      balances: own
+        .sort((a, b) => Number((b.usdValueCents ?? -1n) - (a.usdValueCents ?? -1n)))
+        .map((b) => ({
+          asset: b.asset,
+          amount: b.amount,
+          usd: b.usdValueCents === null ? null : dollars(Number(b.usdValueCents)),
+        })),
+    };
+  });
+  if (walletRows.length === 0) {
+    return exchanges.length
+      ? {
+          wallets: [],
+          exchanges,
+          note: "Exchange balances are read-only; usd null means no price.",
+        }
+      : { wallets: [], note: "No crypto wallets or exchanges are added." };
+  }
   const holdings = holdingRows.map(toHolding);
   const summary = summarizeCrypto(holdings);
   const walletCents = new Map(summary.byWallet.map((w) => [w.walletId, w.cents]));
@@ -662,6 +697,7 @@ async function financeCrypto(deps: FinanceToolDeps) {
         chainId: c.chainId,
         usd: dollars(c.cents),
       })),
+      ...(exchanges.length ? { exchanges } : {}),
       wallets: walletRows.map((wallet) => {
         const own = holdings
           .filter((h) => h.walletId === wallet.id && BigInt(h.rawBalance) > 0n)

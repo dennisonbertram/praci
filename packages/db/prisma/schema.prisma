@@ -1946,3 +1946,62 @@ model FinanceCryptoSnapshot {
   @@index([spaceId, userId, day])
   @@map("finance_crypto_snapshots")
 }
+
+/// A read-only Coinbase or Kraken API-key connection. The key lives encrypted in `secrets` (secretId).
+model FinanceExchangeConnection {
+  id           String                    @id @default(cuid())
+  spaceId      String
+  userId       String
+  /// "coinbase" | "kraken"
+  provider     String
+  secretId     String
+  /// Last successful sync; null until the first one, so the connection is not yet "connected".
+  lastSyncedAt DateTime?
+  lastError    String?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  balances     FinanceExchangeBalance[]
+  snapshots    FinanceExchangeSnapshot[]
+
+  @@unique([spaceId, userId, provider])
+  @@map("finance_exchange_connections")
+}
+
+/// One asset balance on one exchange, replaced on every sync. Amount and price are decimal strings.
+model FinanceExchangeBalance {
+  id            String                    @id @default(cuid())
+  spaceId       String
+  userId        String
+  connectionId  String
+  connection    FinanceExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  asset         String
+  amount        String
+  usdPrice      String?
+  /// Whole USD cents; null when unpriced.
+  usdValueCents BigInt?
+  /// "stablecoin" (USD stablecoins and USD cash) | "other"
+  bucket        String
+  syncedAt      DateTime
+
+  @@unique([connectionId, asset])
+  @@index([spaceId, userId])
+  @@map("finance_exchange_balances")
+}
+
+/// Daily exchange value per connection, like finance_crypto_snapshots is for wallets.
+model FinanceExchangeSnapshot {
+  id               String                    @id @default(cuid())
+  spaceId          String
+  userId           String
+  connectionId     String
+  connection       FinanceExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// UTC day, YYYY-MM-DD.
+  day              String
+  stablecoinCents  BigInt
+  otherCryptoCents BigInt
+  updatedAt        DateTime                  @updatedAt
+
+  @@unique([connectionId, day])
+  @@index([spaceId, userId, day])
+  @@map("finance_exchange_snapshots")
+}

@@ -89,6 +89,7 @@ Rules for every finance answer:
 - Crypto is valued at DefiLlama prices in US dollars, and holdings come from a curated token list, so tokens outside it are not shown. Those are indicative, not what a sale would fetch. Say when the data is old (lastSyncedAt).
 - Stablecoins (USDC, USDT, DAI at their canonical contracts) count as cash and are already in the overview's cash and runway. Other crypto does not: never add it to cash, burn or runway, and do not use it in runway scenarios unless the user asks and states the assumption (for example, "if I sold half of it").
 - Holdings with a null usd have no price, often spam or dust tokens. They are not in the total; report how many there are instead of guessing a value.
+- finance_crypto also lists Coinbase and Kraken balances under exchanges (read-only API-key balances; USD and USD stablecoins there count as stablecoins).
 - Compute totals, shares and changes with code, never in your head.
 - For suspicious tokens or lookalike addresses, follow crypto-scams.
 - Answer with the total, the largest wallets, chains and holdings, and what you could not tell (unpriced tokens, a stale sync, chains that failed).`,
