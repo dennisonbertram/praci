@@ -248,8 +248,8 @@ describe("truncateQuoteExcerpt", () => {
   });
 
   it("does not split a surrogate pair at the boundary", () => {
-    const excerpt = "x".repeat(REPLY_QUOTE_MAX_LENGTH - 1) + "😀";
-    const truncated = truncateQuoteExcerpt(excerpt + "tail");
+    const excerpt = `${"x".repeat(REPLY_QUOTE_MAX_LENGTH - 1)}😀`;
+    const truncated = truncateQuoteExcerpt(`${excerpt}tail`);
     expect(truncated).toHaveLength(REPLY_QUOTE_MAX_LENGTH - 1);
     expect(truncated).toBe("x".repeat(REPLY_QUOTE_MAX_LENGTH - 1));
   });

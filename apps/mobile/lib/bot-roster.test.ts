@@ -95,7 +95,7 @@ describe("thread bot roster", () => {
   it("keeps focus independent of reply observation and removes the duplicate mount load", () => {
     const thread = readFileSync(new URL("../app/thread.tsx", import.meta.url), "utf8");
     const focus = thread.match(
-      /useFocusEffect\(\s*useCallback\(\(\) => \{([\s\S]*?)\}, \[([^\]]*)\]\)/,
+      /useFocusEffect\(\s*useCallback\(\(\) => \{((?:(?!useFocusEffect)[\s\S])*?speakFinishedReplyRef\.current\(\)[\s\S]*?)\}, \[([^\]]*)\]\)/,
     );
     expect(focus?.[2]).toBe("botId, readOnly, markReadIfVisible, refreshMentionBots");
     expect(focus?.[1]).toContain("speakFinishedReplyRef.current()");

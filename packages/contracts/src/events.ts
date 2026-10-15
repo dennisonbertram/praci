@@ -29,6 +29,8 @@ export const ProductEventType = z.enum([
   "computer.takeover.released",
   "computer.command",
   "memory.revised",
+  /** payload: { revision, updatedBy } */
+  "page.updated",
   "routine.created",
   "routine.updated",
   "routine.fired",

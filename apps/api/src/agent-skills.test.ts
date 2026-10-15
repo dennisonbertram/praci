@@ -25,10 +25,13 @@ function savedSkill(name: string, source = "user") {
   };
 }
 
-// Every actor sees the always-on inbox-search and finance builtins; these tests are about Interrogate.
+// Every actor sees the always-on inbox-search, finance and crypto builtins; these tests are about Interrogate.
 const withoutInboxSearch = <T extends { id: string }>(skills: T[]) =>
   skills.filter(
-    (skill) => skill.id !== "builtin:inbox-search" && !skill.id.startsWith("builtin:finance-"),
+    (skill) =>
+      skill.id !== "builtin:inbox-search" &&
+      !skill.id.startsWith("builtin:finance-") &&
+      !skill.id.startsWith("builtin:crypto-"),
   );
 
 function setup(rows: ReturnType<typeof savedSkill>[] = []) {

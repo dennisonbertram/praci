@@ -93,6 +93,7 @@ import {
   CircleAlert,
   Clock,
   Copy,
+  FileText,
   FolderOpen,
   Gauge,
   LayoutGrid,
@@ -277,6 +278,7 @@ import {
 } from "./RoutineEditor";
 import type { SettingsSection } from "./SettingsOverlay";
 import { SpaceSearchResults } from "./SpaceSearch";
+import { BotPagePanel, type PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { BotCreatePicker } from "./shell/bot-picker";
 import { ComposerReplyPreview, ReplyLine, TimeSeparator } from "./shell/chat-context";
@@ -524,6 +526,9 @@ export function ShellPage() {
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [panel, setPanelState] = useState<Panel>(null);
+  // The bot whose page exists (the Page control shows only then), and its latest page.updated event.
+  const [pageBotId, setPageBotId] = useState<string | null>(null);
+  const [pageRemote, setPageRemote] = useState<PageRemoteUpdate | null>(null);
   const [restoredPanelKey, setRestoredPanelKey] = useState<string | null>(null);
   const panelStorageKeyRef = useRef<string | null>(null);
   const observedPanelKey = useRef<string | null>(null);
@@ -1479,6 +1484,11 @@ export function ShellPage() {
           currentBot?.notifyOnFinish ?? false,
           false,
         );
+        if (event.type === "page.updated") {
+          const { revision, updatedBy } = event.payload as PageRemoteUpdate;
+          setPageBotId(active.id);
+          setPageRemote({ revision, updatedBy, seq: event.seq });
+        }
         if (event.type === "thread.cleared") {
           expandedHistoryThread.current = null;
           pinnedAroundRef.current = null;
@@ -1519,6 +1529,21 @@ export function ShellPage() {
       abort.abort();
     };
   }, [active?.id, markBotReadIfVisible, notifyBrowserForEvent]);
+
+  useEffect(() => {
+    setPageBotId(null);
+    setPageRemote(null);
+    if (!active?.id) return;
+    const botId = active.id;
+    let live = true;
+    void rpc.pages
+      .get({ botId })
+      .then((page) => live && page && setPageBotId(botId))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [active?.id]);
 
   useEffect(() => {
     if (!groupId || !activeGroup) return;
@@ -3901,6 +3926,18 @@ export function ShellPage() {
             )}
           </div>
           <div className="flex items-center gap-1">
+            {!inGroup && !pageMode && active && pageBotId === active.id ? (
+              <button
+                type="button"
+                title={t`Page`}
+                aria-label={t`Page`}
+                onClick={() => setPanel(panel === "page" ? null : "page")}
+                data-active={panel === "page" ? "" : undefined}
+                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+              >
+                <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
+              </button>
+            ) : null}
             {!inGroup && !pageMode && active ? (
               <button
                 type="button"
@@ -4018,6 +4055,8 @@ export function ShellPage() {
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     <Trans>Settings</Trans>
+                  ) : panel === "page" ? (
+                    <Trans>Page</Trans>
                   ) : active ? (
                     (computer?.state ?? active.status)
                   ) : (
@@ -4058,6 +4097,9 @@ export function ShellPage() {
                   </Button>
                 </div>
               </div>
+            ) : null}
+            {panel === "page" && active ? (
+              <BotPagePanel key={active.id} botId={active.id} remote={pageRemote} />
             ) : null}
             {panel === "computer" && active ? (
               <div>

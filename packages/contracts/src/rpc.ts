@@ -146,6 +146,12 @@ import {
   IntegrationProviderConfigSchema,
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
+import {
+  BotPageGetInputSchema,
+  BotPageSaveInputSchema,
+  BotPageSaveOutputSchema,
+  BotPageSchema,
+} from "./pages.js";
 import { MessageReactionSchema } from "./reactions.js";
 import { RoutineHistorySchema, RoutineRunCursorSchema, RunsListOutputSchema } from "./runs.js";
 import { SearchQueryOutputSchema } from "./search.js";
@@ -536,6 +542,10 @@ export const appContract = {
       .input(z.object({ defaultMemoryScope: MemoryScopeSchema }))
       .output(SpaceMemoryConfigSchema),
     disconnectProvider: oc.output(z.object({ ok: z.literal(true) })),
+  },
+  pages: {
+    get: oc.input(BotPageGetInputSchema).output(BotPageSchema.nullable()),
+    save: oc.input(BotPageSaveInputSchema).output(BotPageSaveOutputSchema),
   },
   routines: {
     list: oc.input(botId).output(z.array(RoutineSchema)),

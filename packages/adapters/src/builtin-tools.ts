@@ -452,6 +452,39 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "page_read",
+    description: "Read this bot's page (Markdown with chart blocks): its content and revision.",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+  },
+  {
+    name: "page_write",
+    description:
+      "Replace this bot's page. baseRevision is the revision from page_read (0 for a new page). A stale revision saves nothing and returns the current page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        content: { type: "string", description: "The whole page as Markdown." },
+        baseRevision: { type: "number" },
+      },
+      required: ["content", "baseRevision"],
+    },
+  },
+  {
+    name: "page_edit",
+    description:
+      "Replace one exact piece of this bot's page. old_string must appear exactly once. baseRevision is the revision from page_read.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        old_string: { type: "string" },
+        new_string: { type: "string" },
+        baseRevision: { type: "number" },
+      },
+      required: ["old_string", "new_string", "baseRevision"],
+    },
+  },
+  {
     name: "add_mcp_server",
     description:
       "Connect an MCP tool server to this Space when the user asks you to add one and provides the details (URL or command, optional token/headers/env). The server is created immediately and assigned to you. If it needs browser OAuth authorization, an approval card appears in the chat for the user to complete — tell them to click Authorize. Do not invent endpoints; only use details the user provided.",

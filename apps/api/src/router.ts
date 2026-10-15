@@ -71,6 +71,7 @@ import {
   ensureComputerWorkspaceLayout,
   expireComputerControl,
   forgetBotSecret,
+  getBotPage,
   hasActiveComputerControl,
   hostCredentialSource,
   isAutoReviewCheckerConfigured,
@@ -88,6 +89,7 @@ import {
   modelCredentialAuthKindsForSpace,
   modelCredentialDto,
   normalizeSecretDestination,
+  PageValidationError,
   PushSessionEndedError,
   parseModelSecret,
   persistPreparedSecret,
@@ -102,6 +104,7 @@ import {
   provisionComputer,
   queueComputerUpdate,
   releaseComputerExecutionLease,
+  renderPageChartSvg,
   replaceComputer,
   resolveAutoReviewChecker,
   resolveBotUploadPath,
@@ -110,6 +113,7 @@ import {
   revokeScreenControl,
   routineRunModelPin,
   sanitizeComposioError,
+  saveBotPage,
   savePushToken,
   scheduleComputerControlExpiry,
   scheduleComputerSleep,
@@ -169,6 +173,7 @@ import {
   hasMixedOneShotSchedule,
   isOneShotRoutineCrons,
   nextCronDateAcrossStrict,
+  splitPage,
   withAppDirectory,
 } from "@rakazo/core";
 import type { BoardEvents, Board as BoardRow, PrismaClient, ThreadEvents } from "@rakazo/db";
@@ -3371,6 +3376,45 @@ export function createRouter(deps: RouterDeps) {
       disconnectProvider: authed.memory.disconnectProvider.handler(async ({ context }) =>
         disconnectMemoryProvider(deps, context.actor),
       ),
+    },
+    pages: {
+      get: authed.pages.get.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        const page = await getBotPage(deps.prisma, { spaceId: bot.spaceId, botId: bot.id });
+        if (!page || !input.chartSvgs) return page;
+        const chartSvgs = await Promise.all(
+          splitPage(page.content).flatMap((segment) =>
+            segment.kind === "chart" ? [renderPageChartSvg(segment.chart)] : [],
+          ),
+        );
+        return { ...page, chartSvgs };
+      }),
+      save: authed.pages.save.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        try {
+          const result = await saveBotPage(
+            { prisma: deps.prisma, events: deps.events },
+            {
+              spaceId: bot.spaceId,
+              botId: bot.id,
+              userId: bot.userId,
+              content: input.content,
+              baseRevision: input.baseRevision,
+              updatedBy: "user",
+            },
+          );
+          if (result.ok) return result;
+          if (!result.page) {
+            throw new ORPCError("CONFLICT", { message: "The page was changed or removed." });
+          }
+          return { ok: false as const, reason: "conflict" as const, page: result.page };
+        } catch (error) {
+          if (error instanceof PageValidationError) {
+            throw new ORPCError("BAD_REQUEST", { message: error.message });
+          }
+          throw error;
+        }
+      }),
     },
     routines: {
       history: authed.routines.history.handler(async ({ context, input }) =>

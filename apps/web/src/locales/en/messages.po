@@ -2104,6 +2104,10 @@ msgstr "Could not save that voice"
 msgid "Could not save the credential"
 msgstr "Could not save the credential"
 
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Could not save the page."
+msgstr "Could not save the page."
+
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
 msgstr "Could not save this choice"
@@ -2387,6 +2391,10 @@ msgstr "Delete {0}?"
 #: src/components/AccountAccess.tsx
 msgid "Delete account"
 msgstr "Delete account"
+
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Delete chart"
+msgstr "Delete chart"
 
 #: src/pages/GroupPanel.tsx
 msgid "Delete group"
@@ -4241,6 +4249,15 @@ msgstr "overlaps"
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr "Owner"
+
+#: src/pages/Shell.tsx
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Page"
+msgstr "Page"
+
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Page changed. Reload"
+msgstr "Page changed. Reload"
 
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"

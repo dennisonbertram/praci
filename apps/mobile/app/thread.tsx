@@ -448,6 +448,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const tokens = mobileTokens();
   const styles = useThemedStyles(createThreadHeaderStyles);
   const [botActionsOpen, setBotActionsOpen] = useState(false);
+  const [hasPage, setHasPage] = useState(false);
   const { t, locale } = useI18n();
   const navigation = useNavigation();
   const router = useRouter();
@@ -863,6 +864,16 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       ...(iosAtLeast(26)
         ? {
             unstable_headerRightItems: () => [
+              ...(hasPage && !inGroup && botId
+                ? [
+                    {
+                      type: "button" as const,
+                      accessibilityLabel: t("Page"),
+                      icon: { type: "sfSymbol" as const, name: "doc.text" },
+                      onPress: openPage,
+                    },
+                  ]
+                : []),
               {
                 type: "button" as const,
                 accessibilityLabel: inGroup ? t("Group settings") : t("Bot actions"),
@@ -899,19 +910,36 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
             />
           </Pressable>
         ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("Bot actions")}
-            hitSlop={8}
-            onPress={showBotActions}
-          >
-            <NativeSymbol
-              ios="ellipsis"
-              android="ellipsis-horizontal"
-              size={21}
-              color={tokens.foreground}
-            />
-          </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+            {hasPage && botId ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("Page")}
+                hitSlop={8}
+                onPress={openPage}
+              >
+                <NativeSymbol
+                  ios="doc.text"
+                  android="document-text-outline"
+                  size={21}
+                  color={tokens.foreground}
+                />
+              </Pressable>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("Bot actions")}
+              hitSlop={8}
+              onPress={showBotActions}
+            >
+              <NativeSymbol
+                ios="ellipsis"
+                android="ellipsis-horizontal"
+                size={21}
+                color={tokens.foreground}
+              />
+            </Pressable>
+          </View>
         ),
       ...(readOnly
         ? trailingHeaderOptions(t("Restore"), () => void restoreConversation(), restoring)
@@ -926,6 +954,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     displayName,
     groupId,
     inGroup,
+    hasPage,
     navigation,
     router,
     t,
@@ -933,6 +962,24 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     colorScheme,
     styles,
   ]);
+
+  function openPage() {
+    if (botId) router.push({ pathname: "/agent-page", params: { botId } });
+  }
+
+  // The page header item shows only when the bot has a page; re-check on every focus.
+  useFocusEffect(
+    useCallback(() => {
+      if (!botId || inGroup) return;
+      let cancelled = false;
+      rpc<unknown>("pages/get", { botId })
+        .then((page) => !cancelled && setHasPage(page != null))
+        .catch(() => undefined);
+      return () => {
+        cancelled = true;
+      };
+    }, [botId, inGroup]),
+  );
 
   async function restoreConversation() {
     if (!botId || restoring) return;
@@ -1419,6 +1466,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                 }
                 commitSnap(applyMobileThreadEvent(snapRef.current, event));
               }
+              if (event.type === "page.updated") setHasPage(true);
               if (event.type === "bot.updated") {
                 void refreshMentionBots();
               }

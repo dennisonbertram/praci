@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { FinanceCryptoOutput, FinanceWallet, WalletType } from "@rakazo/contracts";
+import type { FinanceCryptoOutput, FinanceWallet } from "@rakazo/contracts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,25 +9,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Input,
-  NativeSelect,
-  NativeSelectOption,
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
 import { DetailPage, Section, Th, useFinanceQuery } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { BlockscoutConnectDialog } from "../../components/integrations/BlockscoutConnectDialog";
-import { chainName, shortAddress, tokenAmount } from "../../lib/crypto-format";
+import { chainName, tokenAmount } from "../../lib/crypto-format";
 import { moneyExact } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { formatRelativeTime } from "../../lib/relative-time";

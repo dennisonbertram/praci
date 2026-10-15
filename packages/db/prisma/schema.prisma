@@ -231,6 +231,7 @@ model Space {
   composeSends                ComposeSend[]
   capabilities                CapabilityInstall[]
   memoryDocuments             MemoryDocument[]
+  botPages                    BotPage[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
   artifacts                   Artifact[]
@@ -441,6 +442,7 @@ model Bot {
   scratchpadItems   ScratchpadItem[]
   taughtSkills      TaughtSkill[]
   memoryDocuments   MemoryDocument[]
+  page              BotPage?
   agentHome         AgentHome?
   browserProfile    BrowserProfile?
   artifacts         Artifact[]
@@ -998,6 +1000,40 @@ model MemoryRevision {
 
   @@unique([documentId, revision])
   @@map("memory_revisions")
+}
+
+/// One Markdown page per bot, written by the bot's tools and edited by its owner.
+model BotPage {
+  id        String            @id @default(cuid())
+  spaceId   String
+  space     Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  botId     String            @unique
+  bot       Bot               @relation(fields: [botId], references: [id], onDelete: Cascade)
+  userId    String
+  content   String
+  revision  Int               @default(1)
+  /// "bot" or "user"
+  updatedBy String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  revisions BotPageRevision[]
+
+  @@index([spaceId])
+  @@map("bot_pages")
+}
+
+model BotPageRevision {
+  id          String   @id @default(cuid())
+  pageId      String
+  page        BotPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  revision    Int
+  content     String
+  updatedBy   String
+  sourceRunId String?
+  createdAt   DateTime @default(now())
+
+  @@unique([pageId, revision])
+  @@map("bot_page_revisions")
 }
 
 model AgentHome {

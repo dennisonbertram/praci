@@ -271,7 +271,7 @@ function slackAuthorizedBotUserId(root: Record<string, unknown>): string | undef
   if (!Array.isArray(authorizations)) return undefined;
   for (const entry of authorizations) {
     const record = asRecord(entry);
-    if (!record || record.is_bot !== true) continue;
+    if (record?.is_bot !== true) continue;
     const userId = stringField(record, "user_id");
     if (userId) return userId;
   }
