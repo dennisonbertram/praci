@@ -60,16 +60,31 @@ const accountName = (s: ParsedStatement) => {
  * within the statement). The account is not part of the hash: ids are only compared within one
  * account, and the institution can come from a file name that changes between uploads.
  */
-export function statementTxnIds(txns: ParsedStatement["transactions"]): string[] {
+export function statementTxnIds(
+  txns: ParsedStatement["transactions"],
+  /** Set only to compute the legacy ids, which hashed the account key in as well. */
+  legacyAccountKey?: string,
+): string[] {
   const seen = new Map<string, number>();
   return txns.map((t) => {
     if (t.externalId) return `x:${t.externalId}`;
-    const key = [t.date, t.amountCents, norm(t.description)].join("|");
+    const key = [
+      ...(legacyAccountKey ? [legacyAccountKey] : []),
+      t.date,
+      t.amountCents,
+      norm(t.description),
+    ].join("|");
     const occurrence = seen.get(key) ?? 0;
     seen.set(key, occurrence + 1);
     return `h:${createHash("sha256").update(`${key}|${occurrence}`).digest("hex").slice(0, 32)}`;
   });
 }
+
+/** Ids a statement's lines may be stored under: current, and legacy (account key hashed in). */
+const knownIdsOf = (statement: ParsedStatement) => [
+  ...statementTxnIds(statement.transactions),
+  ...statementTxnIds(statement.transactions, statementAccountKey(statement)),
+];
 
 /** A card's balance is what is owed; OFX prints it negative. Other accounts keep the printed sign. */
 const storedBalance = (kind: string, cents: number | bigint) =>
@@ -195,8 +210,9 @@ export async function financeStatementUpload(
     select: { id: true },
   });
   const known = account ? await existingTxnIds(deps.prisma, actor, key) : new Set<string>();
-  const duplicateCount = statementTxnIds(statement.transactions).filter((id) =>
-    known.has(id),
+  const legacy = statementTxnIds(statement.transactions, key);
+  const duplicateCount = statementTxnIds(statement.transactions).filter(
+    (id, i) => known.has(id) || known.has(legacy[i] as string),
   ).length;
   const row = await deps.prisma.financeStatement.create({
     data: {
@@ -242,6 +258,7 @@ export async function financeStatementConfirm(
   const statement = ParsedStatementSchema.parse(found.parsed);
   const key = statementAccountKey(statement);
   const ids = statementTxnIds(statement.transactions);
+  const legacyIds = statementTxnIds(statement.transactions, key);
   const kind = statement.accountKind ?? "checking";
   const context = await loadClassifyContext(deps.prisma, scope);
   const now = deps.now?.() ?? new Date();
@@ -297,7 +314,7 @@ export async function financeStatementConfirm(
       );
       const fresh = statement.transactions.flatMap((t, i) => {
         const externalId = ids[i] as string;
-        if (known.has(externalId)) return [];
+        if (known.has(externalId) || known.has(legacyIds[i] as string)) return [];
         known.add(externalId);
         return [
           {
@@ -391,10 +408,7 @@ export async function financeStatementDiscard(
           select: { parsed: true },
         });
         if (account) {
-          const idsOf = (parsed: unknown) => {
-            const statement = ParsedStatementSchema.parse(parsed);
-            return statementTxnIds(statement.transactions);
-          };
+          const idsOf = (parsed: unknown) => knownIdsOf(ParsedStatementSchema.parse(parsed));
           const kept = new Set(others.flatMap((o) => (o.parsed ? idsOf(o.parsed) : [])));
           const doomed = idsOf(found.parsed).filter((id) => !kept.has(id));
           await tx.financeTransaction.deleteMany({

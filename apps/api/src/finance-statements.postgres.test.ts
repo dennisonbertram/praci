@@ -440,6 +440,53 @@ describePostgres("bank statement import (PostgreSQL)", () => {
       expect(statementTxnIds([line("2026-05-02", "Dup Alpha", -500)])[0]).toBe(x?.externalId);
     });
 
+    it("still matches and undoes transactions stored under legacy (account-keyed) ids", async () => {
+      const { statementTxnIds, statementAccountKey } = await import("./finance-statements.js");
+      const t1 = line("2026-03-02", "Legacy Coffee", -500);
+      const t2 = line("2026-03-10", "Legacy Payroll", 11_000);
+      const t3 = line("2026-03-20", "Legacy Rent", -1_000);
+      const legacy = (start: string, end: string, closing: number, t: (typeof t1)[]) => {
+        const base = fake(start, end, closing, t);
+        return {
+          ...base,
+          statement: { ...base.statement, institution: "Legacy Bank", accountLast4: "8888" },
+        };
+      };
+      fakes["8888-1.csv"] = legacy("2026-03-01", "2026-03-15", 10_000, [t1, t2]);
+      fakes["8888-2.csv"] = legacy("2026-03-10", "2026-03-31", 20_000, [t2, t3]);
+      const first = await importFile(a, "8888-1.csv");
+      // Rewrite the first import's rows the way the old code stored them.
+      const stmt = fakes["8888-1.csv"]!.statement;
+      const key = statementAccountKey(stmt);
+      const oldIds = statementTxnIds(stmt.transactions, key);
+      const newIds = statementTxnIds(stmt.transactions);
+      for (const [i, id] of newIds.entries()) {
+        await prisma.financeTransaction.updateMany({
+          where: { spaceId, userId: userA, accountExternalId: key, externalId: id },
+          data: { externalId: oldIds[i] as string },
+        });
+      }
+      const reviewed = await upload(a, "8888-2.csv");
+      expect(reviewed.duplicateCount).toBe(1);
+      const second = await client(a).finance.statementConfirm({ id: reviewed.id });
+      expect(second.duplicateCount).toBe(1);
+      const names = async () =>
+        (
+          await prisma.financeTransaction.findMany({
+            where: { spaceId, userId: userA, accountExternalId: key },
+          })
+        )
+          .map((t) => t.counterparty)
+          .sort();
+      expect(await names()).toEqual(["Legacy Coffee", "Legacy Payroll", "Legacy Rent"]);
+      // Undo the newest: only Rent goes; the legacy-stored shared Payroll stays.
+      await client(a).finance.statementDiscard({ id: second.id });
+      expect(await names()).toEqual(["Legacy Coffee", "Legacy Payroll"]);
+      // Undo the legacy-imported statement: nothing is left behind.
+      await client(a).finance.statementDiscard({ id: first.id });
+      expect(await names()).toEqual([]);
+    });
+
     it("imports a card statement as a card, owed and not cash", async () => {
       const before = (await client(a).finance.overview()).cash;
       const ofx = `<OFX><CREDITCARDMSGSRSV1><CCSTMTTRNRS><CCSTMTRS><CURDEF>USD<CCACCTFROM><ACCTID>4111111111119999</ACCTID></CCACCTFROM>
