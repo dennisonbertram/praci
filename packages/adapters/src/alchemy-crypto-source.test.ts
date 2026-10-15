@@ -128,6 +128,28 @@ describe("fetchAlchemyHoldings", () => {
     expect(read.holdings.get(1)).toHaveLength(1);
   });
 
+  it.each([
+    ["an empty object", {}],
+    ["a null data field", { data: null }],
+    ["tokens that are not a list", { data: { tokens: "nope" } }],
+    ["a body that is not an object", []],
+  ])("treats %s as an unavailable Alchemy, never as empty wallets", async (_n, body) => {
+    const f = fakeFetch(json(body));
+    await expect(fetchAlchemyHoldings(KEY, WALLET, { fetch: f.fetch })).rejects.toMatchObject({
+      kind: "unavailable",
+    });
+  });
+
+  it("treats a malformed later page as unavailable too", async () => {
+    const f = fakeFetch(
+      json({ data: { tokens: [entry("eth-mainnet", null, "0x1")], pageKey: "p2" } }),
+      json({ data: {} }),
+    );
+    await expect(fetchAlchemyHoldings(KEY, WALLET, { fetch: f.fetch })).rejects.toMatchObject({
+      kind: "unavailable",
+    });
+  });
+
   it("keeps spam as unpriced rather than dropping it, and skips tokens with unreadable decimals", async () => {
     const f = fakeFetch(
       json({
