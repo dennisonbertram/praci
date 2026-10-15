@@ -315,15 +315,78 @@ export async function financeStatementConfirm(
   return toStatement(row);
 }
 
+/**
+ * Removes a statement. One not yet imported is just deleted. An imported one is undone in one
+ * transaction: transactions are not linked to their statement, so the ones to delete are this
+ * statement's line ids (deterministic, see `statementTxnIds`) that no other imported statement of
+ * the account also has. The balance falls back to the newest remaining statement's closing balance,
+ * and the account goes when no imported statement remains.
+ */
 export async function financeStatementDiscard(
   deps: FinanceDeps,
   actor: Actor,
   input: { id: string },
 ): Promise<{ ok: true }> {
-  const removed = await deps.prisma.financeStatement.deleteMany({
-    where: { id: input.id, ...scopeOf(actor), status: { in: ["review", "failed"] } },
-  });
-  if (removed.count === 0) throw notFound();
+  const scope = scopeOf(actor);
+  await deps.prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`finance-statement:${actor.spaceId}:${actor.userId}`}))`;
+      const found = await tx.financeStatement.findFirst({
+        where: { id: input.id, ...scope },
+        select: { id: true, status: true, accountId: true, parsed: true },
+      });
+      if (!found) throw notFound();
+      if (found.status === "imported" && found.accountId) {
+        const account = await tx.financeAccount.findFirst({
+          where: { id: found.accountId, ...scope },
+        });
+        const others = await tx.financeStatement.findMany({
+          where: {
+            ...scope,
+            accountId: found.accountId,
+            status: "imported",
+            id: { not: found.id },
+          },
+          orderBy: [{ periodEnd: "desc" }, { uploadedAt: "desc" }],
+          select: { parsed: true, closingBalanceCents: true },
+        });
+        if (account) {
+          const idsOf = (parsed: unknown) => {
+            const statement = ParsedStatementSchema.parse(parsed);
+            return statementTxnIds(statementAccountKey(statement), statement.transactions);
+          };
+          const kept = new Set(others.flatMap((o) => (o.parsed ? idsOf(o.parsed) : [])));
+          const doomed = idsOf(found.parsed).filter((id) => !kept.has(id));
+          await tx.financeTransaction.deleteMany({
+            where: {
+              ...scope,
+              provider: PROVIDER,
+              accountExternalId: account.externalId,
+              externalId: { in: doomed },
+            },
+          });
+          const closing = others.find((o) => o.closingBalanceCents !== null)?.closingBalanceCents;
+          if (others.length === 0) {
+            // A statement still in review that pointed at this account will create it again.
+            await tx.financeStatement.updateMany({
+              where: { ...scope, accountId: account.id, id: { not: found.id } },
+              data: { accountId: null, createsAccount: true },
+            });
+            await tx.financeAccount.deleteMany({ where: { id: account.id, ...scope } });
+          } else if (closing != null) {
+            await tx.financeAccount.update({
+              where: { id: account.id },
+              data: { balanceCents: closing },
+            });
+          }
+        }
+      } else if (found.status === "imported") {
+        throw notFound();
+      }
+      await tx.financeStatement.deleteMany({ where: { id: found.id, ...scope } });
+    },
+    { timeout: 30_000 },
+  );
   return { ok: true };
 }
 
