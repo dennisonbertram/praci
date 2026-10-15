@@ -402,7 +402,8 @@ test("Finance runway shows crypto and switches what counts", async ({ page }) =>
   await completeOnboarding(page);
   await page.goto("/app/finance/runway");
   const main = page.getByRole("main");
-  await expect(main.getByText("$75,000", { exact: true })).toBeVisible();
+  // Bank only: the Cash card and the Bank breakdown row both read $75,000.
+  await expect(main.getByText("$75,000", { exact: true })).toHaveCount(2);
   await expect(main.getByText("$15,000", { exact: true })).toBeVisible();
   await expect(main.getByText("$8,000", { exact: true })).toBeVisible();
   await expect(main.getByRole("button", { name: "Count crypto" })).toHaveAttribute(
@@ -410,7 +411,7 @@ test("Finance runway shows crypto and switches what counts", async ({ page }) =>
     "false",
   );
   await main.getByRole("button", { name: "Count crypto" }).click();
-  await expect(main.getByText("$98,000")).toBeVisible();
+  await expect(main.getByText("$98,000", { exact: true })).toBeVisible();
   await expect(main.getByRole("button", { name: "Counting crypto" })).toHaveAttribute(
     "aria-pressed",
     "true",
