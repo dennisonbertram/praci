@@ -9,6 +9,7 @@ import type {
 import {
   CRYPTO_CHAINS,
   FinanceProviderSchema,
+  FinanceRecordProviderSchema,
   financeProviderForEndpoint,
   isCryptoEndpoint,
   isFinanceAgentSpawnKey,
@@ -82,11 +83,13 @@ export type FinanceToolDeps = {
   now?: () => Date;
 };
 
-/** True when the user has an enabled Mercury, Brex or Blockscout (crypto) MCP server. */
+/** True when the user has an enabled Mercury, Brex or Blockscout (crypto) MCP server, or a statement account. */
 export async function hasFinanceSource(
-  prisma: Pick<PrismaClient, "mcpServer">,
+  prisma: Pick<PrismaClient, "mcpServer" | "financeAccount">,
   scope: Scope,
 ): Promise<boolean> {
+  if (await prisma.financeAccount.findFirst({ where: { ...scope, provider: "statement" }, select: { id: true } }))
+    return true;
   const servers = await prisma.mcpServer.findMany({
     where: { spaceId: scope.spaceId, userId: scope.userId, enabled: true },
     select: { endpoint: true },
@@ -114,7 +117,7 @@ export async function loadRunwayCrypto(
 
 export const toFinanceAccount = (row: Prisma.FinanceAccountGetPayload<object>): FinanceAccount => ({
   id: row.id,
-  provider: FinanceProviderSchema.parse(row.provider),
+  provider: FinanceRecordProviderSchema.parse(row.provider),
   externalId: row.externalId,
   name: row.name,
   lastFour: row.lastFour,
@@ -127,7 +130,7 @@ export const toFinanceTransaction = (
   row: Prisma.FinanceTransactionGetPayload<object>,
 ): FinanceTransaction => ({
   id: row.id,
-  provider: FinanceProviderSchema.parse(row.provider),
+  provider: FinanceRecordProviderSchema.parse(row.provider),
   externalId: row.externalId,
   accountExternalId: row.accountExternalId,
   postedAt: row.postedAt.toISOString(),

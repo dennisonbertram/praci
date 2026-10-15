@@ -1744,9 +1744,10 @@ model FinanceAccount {
   id           String    @id @default(cuid())
   spaceId      String
   userId       String
-  mcpServerId  String
-  server       McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
-  /// "mercury" | "brex"
+  /// Null for an account fed by uploaded statements (provider "statement").
+  mcpServerId  String?
+  server       McpServer? @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  /// "mercury" | "brex" | "statement"
   provider     String
   externalId   String
   name         String
@@ -1758,9 +1759,48 @@ model FinanceAccount {
   currency     String
   updatedAt    DateTime  @updatedAt
 
+  statements   FinanceStatement[]
+
+  // finance_accounts_statement_key is raw SQL (partial unique on spaceId, userId, externalId where provider = 'statement').
   @@unique([mcpServerId, externalId])
   @@index([spaceId, userId])
   @@map("finance_accounts")
+}
+
+/// A bank statement the user uploaded. The original file is kept in Postgres (10 MB cap enforced by the API).
+model FinanceStatement {
+  id                  String          @id @default(cuid())
+  spaceId             String
+  userId              String
+  accountId           String?
+  account             FinanceAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  fileName            String
+  /// "csv" | "ofx" | "pdf"
+  format              String
+  fileSha256          String
+  fileSize            Int
+  fileBytes           Bytes
+  /// The ParsedStatement, as the parser returned it.
+  parsed              Json?
+  /// "review" | "imported" | "failed"
+  status              String
+  check               Json?
+  warnings            Json
+  error               String?
+  institution         String?
+  accountLast4        String?
+  periodStart         String?
+  periodEnd           String?
+  openingBalanceCents BigInt?
+  closingBalanceCents BigInt?
+  transactionCount    Int             @default(0)
+  createsAccount      Boolean         @default(false)
+  duplicateCount      Int             @default(0)
+  uploadedAt          DateTime        @default(now())
+
+  @@index([spaceId, userId, uploadedAt])
+  @@index([accountId, status])
+  @@map("finance_statements")
 }
 
 /// One provider transaction or Brex expense, normalized.
@@ -1768,8 +1808,9 @@ model FinanceTransaction {
   id                String    @id @default(cuid())
   spaceId           String
   userId            String
-  mcpServerId       String
-  server            McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  /// Null for a transaction imported from a statement (provider "statement").
+  mcpServerId       String?
+  server            McpServer? @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
   provider          String
   externalId        String
   accountExternalId String
@@ -1797,6 +1838,7 @@ model FinanceTransaction {
   dashboardUrl      String?
   updatedAt         DateTime  @updatedAt
 
+  // finance_transactions_statement_key is raw SQL (partial unique where provider = 'statement').
   @@unique([mcpServerId, externalId])
   @@index([spaceId, userId, postedAt])
   @@index([spaceId, userId, vendorKey])

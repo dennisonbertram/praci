@@ -130,6 +130,13 @@ import {
   FinanceWalletsOutputSchema,
   FinanceWalletUpdateInputSchema,
 } from "./finance.js";
+import {
+  FinanceStatementConfirmInputSchema,
+  FinanceStatementDiscardInputSchema,
+  FinanceStatementSchema,
+  FinanceStatementsOutputSchema,
+  FinanceStatementUploadInputSchema,
+} from "./finance-statements.js";
 import { Id, IsoDate } from "./ids.js";
 import {
   ComposeClientId,
@@ -1108,6 +1115,12 @@ export const appContract = {
       .output(z.object({ ok: z.literal(true) })),
     cryptoProviderRemove: oc
       .input(FinanceCryptoProviderRemoveInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    statements: oc.output(FinanceStatementsOutputSchema),
+    statementUpload: oc.input(FinanceStatementUploadInputSchema).output(FinanceStatementSchema),
+    statementConfirm: oc.input(FinanceStatementConfirmInputSchema).output(FinanceStatementSchema),
+    statementDiscard: oc
+      .input(FinanceStatementDiscardInputSchema)
       .output(z.object({ ok: z.literal(true) })),
   },
   botSecrets: {

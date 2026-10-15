@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { StatementReminderSchema } from "./finance-statements.js";
 import { Id, IsoDate } from "./ids.js";
 
 /** The one place the Finance agent's spawn key is built. */
@@ -9,6 +10,14 @@ export const isFinanceAgentSpawnKey = (spawnKey: string | null | undefined) =>
 
 export const FinanceProviderSchema = z.enum(["mercury", "brex"]);
 export type FinanceProvider = z.infer<typeof FinanceProviderSchema>;
+
+/**
+ * Where a stored account or transaction came from: a synced MCP provider, or an uploaded bank
+ * statement. Deliberately separate from FinanceProviderSchema, which is iterated for sync, sources
+ * and connect; "statement" must never appear there.
+ */
+export const FinanceRecordProviderSchema = z.enum([...FinanceProviderSchema.options, "statement"]);
+export type FinanceRecordProvider = z.infer<typeof FinanceRecordProviderSchema>;
 
 /** The vendors' official remote MCP servers. A server counts as a finance source by its endpoint. */
 export const FINANCE_MCP_ENDPOINTS = {
@@ -226,7 +235,7 @@ export const FinanceAccountKindSchema = z.enum(["checking", "savings", "treasury
 /** For a `card` account, `balanceCents` is the balance owed (positive) and is not cash. */
 export const FinanceAccountSchema = z.object({
   id: Id,
-  provider: FinanceProviderSchema,
+  provider: FinanceRecordProviderSchema,
   externalId: z.string(),
   name: z.string(),
   lastFour: z.string().nullable(),
@@ -251,7 +260,7 @@ export const FinanceClassificationSchema = z.enum([
 
 export const FinanceTransactionSchema = z.object({
   id: Id,
-  provider: FinanceProviderSchema,
+  provider: FinanceRecordProviderSchema,
   externalId: z.string(),
   accountExternalId: z.string(),
   /** ISO datetime. */
@@ -374,7 +383,7 @@ export const RecurrenceCadenceSchema = z.enum(["weekly", "biweekly", "monthly", 
 
 /** One entry per paying account or card. Brex entries are cards (kind "card"). */
 export const PaidWithEntrySchema = z.object({
-  provider: FinanceProviderSchema,
+  provider: FinanceRecordProviderSchema,
   kind: z.enum(["account", "card"]),
   name: z.string(),
   lastFour: z.string().nullable(),
@@ -491,6 +500,8 @@ export const FinanceOverviewSchema = z.object({
   excludedNonUsdCount: z.number().int().nonnegative(),
   /** Crypto holdings as held; null or absent when no wallet is added. Counted in cash per the saved scope; never in burn. */
   crypto: CryptoSummarySchema.nullable().optional(),
+  /** Statement accounts whose newest statement is getting old. Absent from older payloads. */
+  statementReminders: z.array(StatementReminderSchema).optional(),
 });
 
 /** `redirectUri` is the web app's /mcp/oauth/callback, as for `mcp.oauth.begin`. */

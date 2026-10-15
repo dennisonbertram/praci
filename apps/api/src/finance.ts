@@ -71,6 +71,8 @@ import type { createRepos, Prisma, PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { assignFinanceServers, ensureFinanceAgent } from "./finance-agent.js";
 import { loadCryptoSummary, syncCryptoQuietly } from "./finance-crypto.js";
+import type { ParseStatement } from "./finance-statements.js";
+import { loadStatementReminders } from "./finance-statements.js";
 import { notFound } from "./inbox.js";
 
 export interface FinanceDeps {
@@ -93,6 +95,8 @@ export interface FinanceDeps {
   secrets: SecretStore;
   /** Crypto sync and ENS lookup, injected from the adapters. Unset where they are not wired (tests). */
   crypto?: FinanceCryptoDeps;
+  /** Reads an uploaded bank statement. Unset where the parsers are not wired. */
+  parseStatement?: ParseStatement;
   /** Overrides global fetch for the Alchemy key check (tests). */
   fetch?: typeof fetch;
   now?: () => Date;
@@ -442,6 +446,7 @@ export async function financeOverview(
   const recurring = detectRecurring(txns, now, accounts);
   const lastMonth = monthOf(now, -1);
   const lastMonthYields = yields.filter((y) => y.month === lastMonth);
+  const statementReminders = await loadStatementReminders(deps, actor, dayOf(now));
   return {
     sources,
     agent: agent ? { botId: agent.id, name: agent.name } : null,
@@ -490,6 +495,7 @@ export async function financeOverview(
     excludedNonUsdCount: excludedNonUsdCount(txns),
     // Its own card. What counts as cash follows the saved scope.
     crypto,
+    ...(statementReminders.length > 0 ? { statementReminders } : {}),
   };
 }
 
@@ -558,8 +564,12 @@ export async function financeAccountDetail(
   };
   const [txnRows, yieldRows] = await Promise.all([
     deps.prisma.financeTransaction.findMany({ where: own, orderBy: { postedAt: "desc" } }),
-    account.kind === "treasury"
-      ? deps.prisma.financeTreasuryYield.findMany({ where: own, orderBy: { month: "desc" } })
+    // Statement accounts have no server and no Treasury yield.
+    account.kind === "treasury" && found.mcpServerId
+      ? deps.prisma.financeTreasuryYield.findMany({
+          where: { ...own, mcpServerId: found.mcpServerId },
+          orderBy: { month: "desc" },
+        })
       : [],
   ]);
   const txns = txnRows.map(toTransaction);
@@ -875,7 +885,7 @@ export async function financeReceiptUrl(
     where: { id: input.transactionId, ...scopeOf(actor) },
   });
   // Mercury's listing never says whether a row has attachments, so only the vendor lookup can tell.
-  if (!row || (!row.hasReceipt && row.provider !== "mercury")) throw notFound();
+  if (!row || !row.mcpServerId || (!row.hasReceipt && row.provider !== "mercury")) throw notFound();
   const server = await deps.prisma.mcpServer.findFirst({
     where: { id: row.mcpServerId, ...scopeOf(actor), enabled: true },
   });

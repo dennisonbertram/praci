@@ -11,6 +11,7 @@ export type {
   FinanceBill,
   FinanceClassification,
   FinanceProvider,
+  FinanceRecordProvider,
   FinanceTransaction,
   FinanceTxnStatus,
   MonthCents,
@@ -29,11 +30,11 @@ export type {
   UpcomingItem,
 } from "@rakazo/contracts";
 
-import type { FinanceProvider } from "@rakazo/contracts";
+import type { FinanceRecordProvider } from "@rakazo/contracts";
 
 /** What `classify` reads from one provider transaction, before it has a classification. */
 export interface FinanceRawTxn {
-  provider: FinanceProvider;
+  provider: FinanceRecordProvider;
   /** Signed cents; negative means money out. */
   amountCents: number;
   counterparty: string;

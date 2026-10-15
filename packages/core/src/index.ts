@@ -30,6 +30,7 @@ export * from "./featured-connectors.js";
 export * from "./finance/crypto.js";
 export * from "./finance/metrics.js";
 export * from "./finance/stablecoins.js";
+export * from "./finance/statements.js";
 export * from "./finance/types.js";
 export * from "./finance/vendor.js";
 export * from "./format-file-size.js";

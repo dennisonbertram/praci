@@ -105,3 +105,8 @@ export const FinanceStatementsOutputSchema = z.object({
   statements: z.array(FinanceStatementSchema),
   reminders: z.array(StatementReminderSchema),
 });
+
+/** Upload limits, shared by the API check and the picker. */
+export const STATEMENT_MAX_BYTES = 10 * 1024 * 1024;
+export const STATEMENT_EXTENSIONS = ["pdf", "csv", "ofx", "qfx"] as const;
+export const FinanceStatementDiscardInputSchema = z.object({ id: z.string() });

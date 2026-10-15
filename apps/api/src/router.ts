@@ -283,6 +283,13 @@ import {
   financeWallets,
   financeWalletUpdate,
 } from "./finance-crypto.js";
+import type { ParseStatement } from "./finance-statements.js";
+import {
+  financeStatementConfirm,
+  financeStatementDiscard,
+  financeStatements,
+  financeStatementUpload,
+} from "./finance-statements.js";
 import {
   inboxFeedbackSet,
   inboxGet,
@@ -660,6 +667,8 @@ export interface RouterDeps {
   mcpOAuth?: McpOAuthBroker;
   /** Builds the read-tool caller for finance servers (refresh, receipts); unset where finance sync is off. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Reads an uploaded bank statement; wired in app.ts. */
+  parseStatement?: ParseStatement;
   financeCrypto?: FinanceCryptoDeps;
   connectors: ConnectorRegistry;
   remoteConnectors?: RemoteConnectorDependencies;
@@ -876,6 +885,7 @@ export function createRouter(deps: RouterDeps) {
     callToolFor: deps.financeCallToolFor,
     secrets: deps.secrets,
     crypto: deps.financeCrypto,
+    parseStatement: deps.parseStatement,
   };
   const codexCatalog = deps.codexCatalog ?? new CodexCatalogCache();
   const favicons = deps.favicons ?? createFaviconResolver();
@@ -6144,6 +6154,18 @@ export function createRouter(deps: RouterDeps) {
       ),
       cryptoProviderConnect: authed.finance.cryptoProviderConnect.handler(({ context, input }) =>
         financeCryptoProviderConnect(financeDeps, context.actor, input),
+      ),
+      statements: authed.finance.statements.handler(({ context }) =>
+        financeStatements(financeDeps, context.actor),
+      ),
+      statementUpload: authed.finance.statementUpload.handler(({ context, input }) =>
+        financeStatementUpload(financeDeps, context.actor, input),
+      ),
+      statementConfirm: authed.finance.statementConfirm.handler(({ context, input }) =>
+        financeStatementConfirm(financeDeps, context.actor, input),
+      ),
+      statementDiscard: authed.finance.statementDiscard.handler(({ context, input }) =>
+        financeStatementDiscard(financeDeps, context.actor, input),
       ),
       cryptoProviderRemove: authed.finance.cryptoProviderRemove.handler(({ context }) =>
         financeCryptoProviderRemove(financeDeps, context.actor),

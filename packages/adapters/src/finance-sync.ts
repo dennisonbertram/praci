@@ -7,6 +7,7 @@ import type {
   TreasuryYieldMonth,
 } from "@rakazo/contracts";
 import { financeProviderForEndpoint } from "@rakazo/contracts";
+import type { ClassifyContext } from "@rakazo/core";
 import { classify } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
@@ -23,10 +24,12 @@ import { createMercuryFinanceSource } from "./mercury-finance-source.js";
 export type FinanceCallTool = (name: string, args: Record<string, unknown>) => Promise<unknown>;
 
 /** An account as a source reports it; sync assigns the id. */
-export type SourceAccount = Omit<FinanceAccount, "id">;
+export type SourceAccount = Omit<FinanceAccount, "id" | "provider"> & { provider: FinanceProvider };
 
 /** A transaction as a source reports it; sync assigns the id and, from `classify`, the classification. */
-export type SourceTransaction = Omit<FinanceTransaction, "id" | "classification">;
+export type SourceTransaction = Omit<FinanceTransaction, "id" | "classification" | "provider"> & {
+  provider: FinanceProvider;
+};
 
 export interface FinanceReceiptLink {
   url: string;
@@ -124,6 +127,32 @@ export async function syncFinanceForUser(
   if (Object.values(result).includes("synced"))
     await reclassify(deps.prisma, scope, await brexHasSynced(deps.prisma, servers.get("brex")));
   return result;
+}
+
+/**
+ * What `classify` needs for the user right now, for rows that do not come from a sync (statement
+ * imports). Matches what `reclassify` uses, so a later sync does not change their classification.
+ */
+export async function loadClassifyContext(prisma: PrismaClient, scope: Scope): Promise<ClassifyContext> {
+  const { spaceId, userId } = scope;
+  const rows = await prisma.mcpServer.findMany({
+    where: { spaceId, userId, enabled: true },
+    select: { id: true, endpoint: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const brex = rows.find((r) => financeProviderForEndpoint(r.endpoint) === "brex");
+  const ownAccountNames = (
+    await prisma.financeAccount.findMany({
+      where: { spaceId, userId, provider: "mercury" },
+      select: { name: true },
+    })
+  ).map((a) => a.name);
+  return {
+    brexConnected: brex
+      ? await brexHasSynced(prisma, { id: brex.id, provider: "brex", endpoint: brex.endpoint ?? "" })
+      : false,
+    ownAccountNames,
+  };
 }
 
 /** A Brex server whose sign-in never finished, or that needs a reconnect, is not a connected Brex. */

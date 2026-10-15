@@ -570,6 +570,10 @@ export async function createApp(
     artifacts,
     mail,
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
+    // The lead swaps this for the real parser (packages/adapters/src/statements) when that branch merges.
+    parseStatement: async () => {
+      throw new Error("parsers not installed");
+    },
     financeCrypto: {
       sync: (scope, opts) => syncCryptoHoldings({ prisma, secrets }, scope, opts),
       resolveEns: (_scope, name, signal) => resolveEnsName(createRpcClient({ signal }), name),
