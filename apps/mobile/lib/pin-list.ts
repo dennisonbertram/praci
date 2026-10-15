@@ -29,3 +29,10 @@ export function addItem(list: PinList, id: string, text: string): PinList {
   if (!next || list.items.length >= BOT_PINS_MAX_ITEMS) return list;
   return { ...list, items: [...list.items, { id, text: next, done: false }] };
 }
+
+/** A queued edit, applied to whatever list is current when it runs. */
+export type PinOp = (list: PinList) => PinList;
+
+/** Replays queued edits, in order, onto a list. Edits on items that no longer exist do nothing. */
+export const rebasePins = (base: PinList, ops: readonly PinOp[]): PinList =>
+  ops.reduce((list, op) => op(list), base);
