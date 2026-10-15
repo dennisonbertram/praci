@@ -213,16 +213,28 @@ export async function syncExchanges(
         creds,
         opts.signal,
       );
-      await deps.prisma.$transaction((tx) => storeBalances(tx, scope, c.id, rows, now), {
-        timeout: 30_000,
-      });
-      results.push({ ok: true });
+      // The connection row is the version: reconnecting swaps secretId. The guarded update locks the
+      // row until commit, so a reconnect cannot slip in between this check and the balance write.
+      const kept = await deps.prisma.$transaction(
+        async (tx) => {
+          const own = await tx.financeExchangeConnection.updateMany({
+            where: { id: c.id, secretId: c.secretId, ...scopeOf(scope) },
+            data: { lastError: null },
+          });
+          if (own.count === 0) return false;
+          await storeBalances(tx, scope, c.id, rows, now);
+          return true;
+        },
+        { timeout: 30_000 },
+      );
+      // The key was replaced while we fetched; the result belongs to the old account, so drop it.
+      if (kept) results.push({ ok: true });
     } catch (error) {
       if (opts.signal?.aborted) continue;
       const message = messageOf(error);
       getLogger().warn("exchange sync failed", { provider: c.provider, reason: message });
       await deps.prisma.financeExchangeConnection.updateMany({
-        where: { id: c.id, ...scopeOf(scope) },
+        where: { id: c.id, secretId: c.secretId, ...scopeOf(scope) },
         data: { lastError: message },
       });
       results.push({ ok: false, message });

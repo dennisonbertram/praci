@@ -31,11 +31,15 @@ describe("Kraken signing", () => {
   });
 });
 
+const READ_ONLY = ["query-funds", "query-ledger", "query-open-trades", "export-data"];
+
 describe("Kraken balances", () => {
   const creds = { key: "fake-key", secret: Buffer.from("fake-secret").toString("base64") };
   it("posts only to the Balance path with a signed body and returns raw codes, suffixes included", async () => {
-    const fetchMock = vi.fn(async () =>
-      json({ error: [], result: { XXBT: "0.5", "XBT.F": "0.1", ZUSD: "12.34", "DOT.S": "3" } }),
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith("/GetApiKeyInfo")
+        ? json({ error: [], result: { permissions: READ_ONLY } })
+        : json({ error: [], result: { XXBT: "0.5", "XBT.F": "0.1", ZUSD: "12.34", "DOT.S": "3" } }),
     );
     const out = await fetchKrakenBalances(creds, { fetch: fetchMock as never, now: () => NOW });
     expect(out.map((b) => [b.code, b.amount])).toEqual([
@@ -44,7 +48,17 @@ describe("Kraken balances", () => {
       ["ZUSD", "12.34"],
       ["DOT.S", "3"],
     ]);
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const [infoUrl, infoInit] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(infoUrl).toBe("https://api.kraken.com/0/private/GetApiKeyInfo");
+    expect((infoInit.headers as Record<string, string>)["API-Sign"]).toBe(
+      krakenSignature(
+        creds.secret,
+        "/0/private/GetApiKeyInfo",
+        String(NOW.getTime()),
+        infoInit.body as string,
+      ),
+    );
+    const [url, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.kraken.com/0/private/Balance");
     expect(init.method).toBe("POST");
     const headers = init.headers as Record<string, string>;
@@ -53,7 +67,7 @@ describe("Kraken balances", () => {
       krakenSignature(
         creds.secret,
         "/0/private/Balance",
-        String(NOW.getTime()),
+        String(NOW.getTime() + 1),
         init.body as string,
       ),
     );
@@ -69,6 +83,29 @@ describe("Kraken balances", () => {
     await expect(
       fetchKrakenBalances(creds, { fetch: fetchMock as never, now: () => NOW }),
     ).rejects.toThrow(message);
+  });
+
+  it.each([
+    ["trading", ["query-funds", "modify-trades"]],
+    ["withdrawal", ["query-funds", "withdraw-funds"]],
+    ["address changes", ["query-funds", "add-withdraw-address"]],
+    ["an unknown permission", ["query-funds", "something-new"]],
+  ])("refuses a key with %s rights before reading balances", async (_name, permissions) => {
+    const fetchMock = vi.fn(async () => json({ error: [], result: { permissions } }));
+    await expect(
+      fetchKrakenBalances(creds, { fetch: fetchMock as never, now: () => NOW }),
+    ).rejects.toMatchObject({
+      kind: "can_trade",
+      message: "This key can trade or transfer. Create a view-only key",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats a key-info reply without a permission list as unavailable", async () => {
+    const fetchMock = vi.fn(async () => json({ error: [], result: {} }));
+    await expect(
+      fetchKrakenBalances(creds, { fetch: fetchMock as never, now: () => NOW }),
+    ).rejects.toMatchObject({ kind: "unavailable" });
   });
 
   it("maps HTTP 5xx and network failure to unavailable, and a non-base64 secret to an invalid key", async () => {
