@@ -1,3 +1,4 @@
+import { ORPCError } from "@orpc/client";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isInProgress } from "../../lib/data-room";
@@ -134,9 +135,14 @@ export function useDataRoomList(q: ListQuery) {
         loadingMore: false,
       }));
     } catch (cause) {
-      if (id === generation.current) {
-        setState((s) => ({ ...s, loadingMore: false, error: errorText(cause) }));
+      if (id !== generation.current) return;
+      // The cursor no longer fits (for example search fell back to keywords): start again, silently.
+      if (cause instanceof ORPCError && cause.code === "CONFLICT" && latest.current.query) {
+        setState((s) => ({ ...s, loadingMore: false, nextCursor: null }));
+        setAttempt((n) => n + 1);
+        return;
       }
+      setState((s) => ({ ...s, loadingMore: false, error: errorText(cause) }));
     }
   }, [state.nextCursor, state.loadingMore]);
 
