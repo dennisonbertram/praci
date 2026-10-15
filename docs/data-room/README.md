@@ -13,6 +13,36 @@ Web and desktop (Electron hosts the web UI) ship first. Mobile follows with a
 native document picker and share-sheet upload, plus a read-only browse view; until
 then mobile shows nothing new, which is safe because no existing workflow changes.
 
+## Prior art: Shoebox
+
+Shoebox, a separate single-user, local-first document archive by the same author,
+already runs this pipeline end to end and is the working reference for the design.
+Its source is private, so this section records what carries over:
+
+- Files are deduplicated by SHA-256 and stored once under their hash, and the
+  database row points at the blob.
+- Each item moves through persisted states (discovered, ingested, read,
+  understood, organized, indexed), and each step's outcome is saved so a retried
+  job never repeats a model call.
+- One structured model call per document extracts type, title, date, parties,
+  amounts, due date, summary, keywords and a proposed folder.
+- Chunks are keyed by (document, ordinal) with a content hash, so re-indexing only
+  touches changed text, and an index version forces a full rebuild.
+- Search runs a BM25 keyword leg and a vector leg, over-fetches 100 candidates
+  each, merges them with reciprocal rank fusion (k = 60), groups by document and
+  returns citations (document, page, snippet).
+- Facet filters resolve to an eligible set first, and both legs search only
+  inside it.
+- The chat tools are read-only; a change the model proposes needs the user's
+  confirmation.
+
+What the Data room does differently, because Shoebox does not need it or got it
+wrong: every row is scoped to a space and checked on every read; Postgres and
+pgvector replace SQLite so several API and worker processes share one store;
+chunks have a size cap (Shoebox chunks by page with no cap); facets are typed
+columns instead of JSON strings; deletion removes data instead of hiding it; and
+providers sit behind interfaces instead of one hard-coded vendor.
+
 ## Tenancy
 
 - **The space is the boundary.** A company is a space; a family is a space. Every
@@ -155,13 +185,16 @@ Latency target: TBD, set and measured once real-sized synthetic data exists.
 V2: encryption at rest, per-agent and per-member access, members and roles inside
 a space.
 
+## Defaults chosen for the first build
+
+- Uploads go through the API, streamed to the store, with a 50 MB cap per file.
+  Presigned direct uploads can follow if large files become common.
+- Vectors have a fixed 1024 dimensions for the deployment. The embedder asks for
+  1024 dimensions where the endpoint supports it, and an embedder that returns
+  another size is reported as misconfigured and search stays keyword-only.
+
 ## Open questions
 
-- Upload size cap and whether uploads go through the API or straight to the store
-  with presigned URLs.
-- Embedding model and dimension for the default deployment. pgvector indexes need
-  a fixed dimension, so a model change needs either a fixed dimension for all
-  models or one index per model.
 - Which Drive files to index: everything the account can read, or only chosen
   folders.
 - Retention for Gmail bodies once indexed.
