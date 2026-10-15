@@ -1,6 +1,12 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { ExchangeProvider } from "@rakazo/contracts";
+import type {
+  ExchangeProvider,
+  FinanceExchange,
+  FinanceProvider,
+  FinanceSource,
+} from "@rakazo/contracts";
 import {
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -8,16 +14,66 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@rakazo/ui-web";
-import { useState } from "react";
+import { FileText, Wallet } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { connectFinanceProvider } from "../../lib/finance-connect";
+import { EXCHANGES, FINANCE_PROVIDERS } from "../../lib/integrations";
+import { rpc } from "../../lib/rpc";
+import { errorText } from "../../lib/user-error";
+import { AppLogo } from "../integrations/AppLogo";
 import { StatementImport } from "./StatementImport";
 
 export type CryptoChoice = "wallet" | ExchangeProvider;
-type Step = "type" | "crypto" | "bank";
+type Step = "type" | "bank";
+
+function Option({
+  icon,
+  title,
+  line,
+  connected,
+  disabled,
+  onClick,
+}: {
+  icon: ReactNode;
+  title: string;
+  line: string;
+  connected?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled || connected}
+      onClick={onClick}
+      className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-3 text-start transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-default disabled:opacity-70 disabled:hover:bg-card"
+    >
+      {icon}
+      <span className="min-w-0 flex-1">
+        <span data-option-title className="block truncate font-semibold">
+          {title}
+        </span>
+        <span className="block truncate text-xs text-muted-foreground">{line}</span>
+      </span>
+      {connected ? (
+        <Badge variant="secondary">
+          <Trans>Connected</Trans>
+        </Badge>
+      ) : null}
+    </button>
+  );
+}
+
+const iconTile = (icon: ReactNode) => (
+  <span className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-border bg-muted text-muted-foreground">
+    {icon}
+  </span>
+);
 
 /**
- * The one place accounts are added. Crypto hands the choice to `onPickCrypto` (the page opens that
- * dialog); a bank account is added by uploading statements, which creates the account on import.
- * `initialStep="bank"` opens straight on the upload, for the reminder.
+ * The one place accounts are added: every way in as option cards. Crypto choices go to
+ * `onPickCrypto` (the page opens that dialog); Mercury and Brex connect here; statements upload
+ * here and create the account on import. `initialStep="bank"` opens straight on the upload.
  */
 export function AddAccountDialog({
   initialStep = "type",
@@ -32,67 +88,121 @@ export function AddAccountDialog({
 }) {
   const { t } = useLingui();
   const [step, setStep] = useState<Step>(initialStep);
-  const option = (label: string, onClick: () => void) => (
-    <Button type="button" variant="outline" className="justify-start" onClick={onClick}>
-      {label}
-    </Button>
-  );
-  const crypto: [string, CryptoChoice][] = [
-    [t`Crypto wallet`, "wallet"],
-    ["Coinbase", "coinbase"],
-    ["Kraken", "kraken"],
-  ];
+  const [sources, setSources] = useState<FinanceSource[]>([]);
+  const [exchanges, setExchanges] = useState<FinanceExchange[]>([]);
+  const [busy, setBusy] = useState<FinanceProvider | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (initialStep !== "type") return;
+    rpc.finance
+      .overview()
+      .then((overview) => setSources(overview.sources))
+      .catch(() => {});
+    rpc.finance
+      .exchanges()
+      .then(setExchanges)
+      .catch(() => {});
+  }, [initialStep]);
+
+  async function connect(provider: FinanceProvider) {
+    setBusy(provider);
+    setError("");
+    try {
+      const result = await connectFinanceProvider(provider);
+      if (result === "cancelled") {
+        setError(t`Sign-in was cancelled or did not finish. Try again.`);
+      } else {
+        onImported();
+        onClose();
+      }
+    } catch (cause) {
+      setError(errorText(cause, t`Could not connect`));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const bankLine = {
+    mercury: t`Read balances and transactions`,
+    brex: t`Read cards, expenses and bills`,
+  };
+  const exchangeLine = t`Read-only API key`;
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {step === "crypto" ? (
-              <Trans>Crypto</Trans>
-            ) : step === "bank" ? (
-              <Trans>Bank account</Trans>
-            ) : (
-              <Trans>Add account</Trans>
-            )}
+            {step === "bank" ? <Trans>Upload statements</Trans> : <Trans>Add account</Trans>}
           </DialogTitle>
         </DialogHeader>
         {step === "type" ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
+            <section className="flex flex-col gap-2">
+              <h3 className="text-xs font-semibold text-muted-foreground">
+                <Trans>Bank</Trans>
+              </h3>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
+                  <Option
+                    key={provider}
+                    icon={<AppLogo name={name} logo={logo} />}
+                    title={name}
+                    line={bankLine[provider]}
+                    connected={sources.find((s) => s.provider === provider)?.status === "ok"}
+                    disabled={busy !== null}
+                    onClick={() => void connect(provider)}
+                  />
+                ))}
+                <Option
+                  icon={iconTile(<FileText className="size-5" aria-hidden="true" />)}
+                  title={t`Upload statements`}
+                  line={t`PDF, CSV, OFX or QFX`}
+                  onClick={() => setStep("bank")}
+                />
+              </div>
+              {error ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
+            </section>
             {onPickCrypto ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="justify-start"
-                onClick={() => setStep("crypto")}
-              >
-                <Trans>Crypto</Trans>
-              </Button>
+              <section className="flex flex-col gap-2">
+                <h3 className="text-xs font-semibold text-muted-foreground">
+                  <Trans>Crypto</Trans>
+                </h3>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Option
+                    icon={iconTile(<Wallet className="size-5" aria-hidden="true" />)}
+                    title={t`Wallet`}
+                    line={t`Address or ENS`}
+                    onClick={() => {
+                      onClose();
+                      onPickCrypto("wallet");
+                    }}
+                  />
+                  {EXCHANGES.map(({ provider, name, logo }) => (
+                    <Option
+                      key={provider}
+                      icon={<AppLogo name={name} logo={logo} />}
+                      title={name}
+                      line={exchangeLine}
+                      connected={exchanges.some((e) => e.provider === provider && e.connected)}
+                      onClick={() => {
+                        onClose();
+                        onPickCrypto(provider);
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
             ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              className="justify-start"
-              onClick={() => setStep("bank")}
-            >
-              <Trans>Bank account</Trans>
-            </Button>
           </div>
-        ) : null}
-        {step === "crypto" ? (
-          <div className="flex flex-col gap-2">
-            {crypto.map(([label, choice]) => (
-              <span key={choice} className="contents">
-                {option(label, () => {
-                  onClose();
-                  onPickCrypto?.(choice);
-                })}
-              </span>
-            ))}
-          </div>
-        ) : null}
-        {step === "bank" ? <StatementImport onImported={onImported} /> : null}
+        ) : (
+          <StatementImport onImported={onImported} />
+        )}
         <DialogFooter>
-          {step !== "type" && initialStep === "type" ? (
+          {step === "bank" && initialStep === "type" ? (
             <Button type="button" variant="ghost" onClick={() => setStep("type")}>
               <Trans>Back</Trans>
             </Button>

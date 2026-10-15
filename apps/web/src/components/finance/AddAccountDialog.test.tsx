@@ -20,8 +20,12 @@ const rpcMock = vi.hoisted(() => ({
   statementUpload: vi.fn(),
   statementConfirm: vi.fn(),
   statementDiscard: vi.fn(),
+  overview: vi.fn(),
+  exchanges: vi.fn(),
 }));
+const connectMock = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
+vi.mock("../../lib/finance-connect", () => ({ connectFinanceProvider: connectMock }));
 
 import { AddAccountDialog } from "./AddAccountDialog";
 
@@ -55,13 +59,18 @@ const onPickCrypto = vi.fn();
 const onImported = vi.fn();
 const onClose = vi.fn();
 const dialog = () => document.body.querySelector('[role="dialog"]') as HTMLElement;
-const labels = () => [...dialog().querySelectorAll("button")].map((b) => b.textContent);
+const card = (title: string) =>
+  [...dialog().querySelectorAll("button")].find(
+    (b) => b.querySelector("[data-option-title]")?.textContent === title,
+  ) as HTMLButtonElement;
 const click = (label: string) =>
   act(async () =>
-    ([...dialog().querySelectorAll("button")].find((b) => b.textContent === label) as HTMLElement).click(),
+    (
+      [...dialog().querySelectorAll("button")].find((b) => b.textContent === label) as HTMLElement
+    ).click(),
   );
-const open = (initialStep?: "bank") =>
-  act(async () =>
+const open = async (initialStep?: "bank") => {
+  await act(async () =>
     root.render(
       <AddAccountDialog
         initialStep={initialStep}
@@ -71,6 +80,8 @@ const open = (initialStep?: "bank") =>
       />,
     ),
   );
+  await act(async () => {});
+};
 const choose = async (...files: File[]) => {
   const input = dialog().querySelector('input[type="file"]') as HTMLInputElement;
   Object.defineProperty(input, "files", { value: files, configurable: true });
@@ -84,84 +95,147 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   rpcMock.statementDiscard.mockResolvedValue({ ok: true });
+  rpcMock.overview.mockResolvedValue({ sources: [] });
+  rpcMock.exchanges.mockResolvedValue([]);
 });
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
   vi.resetAllMocks();
-  onPickCrypto.mockReset();
 });
 
-it("offers Crypto and Bank account, then the three crypto choices", async () => {
+it("shows every way to add an account at once, in Bank and Crypto groups", async () => {
   await open();
-  expect(labels()).toEqual(["Crypto", "Bank account", "Cancel", "Close"]);
-  await click("Crypto");
-  expect(labels()).toEqual(["Crypto wallet", "Coinbase", "Kraken", "Back", "Cancel", "Close"]);
-  await click("Kraken");
+  const titles = [...dialog().querySelectorAll("[data-option-title]")].map((n) => n.textContent);
+  expect(titles).toEqual(["Mercury", "Brex", "Upload statements", "Wallet", "Coinbase", "Kraken"]);
+  expect([...dialog().querySelectorAll("h3")].map((h) => h.textContent)).toEqual([
+    "Bank",
+    "Crypto",
+  ]);
+  expect(dialog().textContent).toContain("Address or ENS");
+  expect(dialog().textContent).toContain("Read-only API key");
+});
+
+it("routes wallet and exchange cards to the crypto flows", async () => {
+  await open();
+  await act(async () => card("Kraken").click());
   expect(onPickCrypto).toHaveBeenCalledWith("kraken");
-  expect(onClose).toHaveBeenCalled();
+  expect(onClose).toHaveBeenCalledTimes(1);
+  await act(async () => card("Wallet").click());
+  expect(onPickCrypto).toHaveBeenCalledWith("wallet");
 });
 
-it("uploads several files, shows each review, and imports one", async () => {
-  rpcMock.statementUpload
-    .mockResolvedValueOnce(statement())
-    .mockResolvedValueOnce(
-      statement({
-        id: "s2",
-        fileName: "feb.pdf",
-        createsAccount: false,
-        duplicateCount: 2,
-        warnings: ["Read by an AI model, not a bank format; review every line before importing."],
-      }),
-    );
-  rpcMock.statementConfirm.mockResolvedValue(statement({ status: "imported" }));
+it("connects Mercury through the finance flow and reloads", async () => {
+  connectMock.mockResolvedValue("connected");
   await open();
-  await click("Bank account");
+  await act(async () => card("Mercury").click());
+  expect(connectMock).toHaveBeenCalledWith("mercury");
+  expect(onImported).toHaveBeenCalled();
+});
+
+it("shows why a connect did not finish", async () => {
+  connectMock.mockResolvedValue("cancelled");
+  await open();
+  await act(async () => card("Brex").click());
+  expect(dialog().querySelector('[role="alert"]')?.textContent).toContain("cancelled");
+  expect(onClose).not.toHaveBeenCalled();
+});
+
+it("badges connected sources and disables their cards", async () => {
+  rpcMock.overview.mockResolvedValue({
+    sources: [{ provider: "mercury", serverId: null, status: "ok", lastSyncedAt: null }],
+  });
+  rpcMock.exchanges.mockResolvedValue([{ provider: "coinbase", connected: true }]);
+  await open();
+  expect(card("Mercury").textContent).toContain("Connected");
+  expect(card("Mercury").disabled).toBe(true);
+  expect(card("Coinbase").textContent).toContain("Connected");
+  expect(card("Coinbase").disabled).toBe(true);
+  expect(card("Brex").textContent).not.toContain("Connected");
+  expect(card("Kraken").disabled).toBe(false);
+  expect(card("Wallet").disabled).toBe(false);
+});
+
+it("opens the upload from its card, with Back to the options", async () => {
+  await open();
+  await act(async () => card("Upload statements").click());
+  expect(dialog().querySelector('input[type="file"]')).not.toBeNull();
+  await click("Back");
+  expect(card("Mercury")).toBeTruthy();
+});
+
+it("imports each file as soon as it is read, grouped under one account", async () => {
+  rpcMock.statementUpload.mockResolvedValueOnce(statement()).mockResolvedValueOnce(
+    statement({
+      id: "s2",
+      fileName: "feb.pdf",
+      periodStart: "2026-02-01",
+      periodEnd: "2026-02-28",
+      createsAccount: false,
+      duplicateCount: 2,
+      warnings: ["Read by an AI model, not a bank format; review every line before importing."],
+    }),
+  );
+  rpcMock.statementConfirm.mockResolvedValue(statement({ status: "imported" }));
+  await open("bank");
   await choose(new File(["x"], "march.pdf"), new File(["y"], "feb.pdf"));
-  expect(rpcMock.statementUpload).toHaveBeenCalledTimes(2);
+  expect(rpcMock.statementConfirm).toHaveBeenCalledTimes(2);
+  expect(rpcMock.statementConfirm).toHaveBeenCalledWith({ id: "s1" });
+  expect(onImported).toHaveBeenCalled();
   const text = dialog().textContent ?? "";
-  expect(text).toContain("Example Bank ••1234");
-  expect(text).toContain("New account");
+  // One header for the account, one row per period.
+  expect(text.match(/Example Bank ••1234/g)).toHaveLength(1);
+  expect(text.match(/New account/g)).toHaveLength(1);
   expect(text).toContain("$1,000.00 → $1,150.25");
   expect(text).toContain("4 transactions, 2 already imported");
-  expect(text).toContain("Balances match");
+  expect(text).toContain("Transactions add up to the closing balance");
   expect(text).toContain("Read by an AI model");
-
-  await click("Import");
-  expect(rpcMock.statementConfirm).toHaveBeenCalledWith({ id: "s1" });
-  expect(onImported).toHaveBeenCalledTimes(1);
-  expect(dialog().textContent).toContain("Imported");
+  expect(text.match(/Imported/g)).toHaveLength(2);
+  expect(labelsOf()).not.toContain("Import");
 });
 
-it("makes a balance mismatch an explicit Import anyway", async () => {
+const labelsOf = () => [...dialog().querySelectorAll("button")].map((b) => b.textContent);
+
+it("still imports a balance mismatch and keeps the warning on the row", async () => {
   rpcMock.statementUpload.mockResolvedValue(
-    statement({ check: { balances: "mismatch", differenceCents: -1_000 } }),
+    statement({ check: { balances: "mismatch", differenceCents: -1_240 } }),
   );
   rpcMock.statementConfirm.mockResolvedValue(statement({ status: "imported" }));
   await open("bank");
   await choose(new File(["x"], "march.pdf"));
-  expect(dialog().textContent).toContain("Balances differ by $10.00");
-  expect(labels()).not.toContain("Import");
-  await click("Import anyway");
   expect(rpcMock.statementConfirm).toHaveBeenCalledWith({ id: "s1", acceptMismatch: true });
+  expect(dialog().textContent).toContain("Transactions are $12.40 off the closing balance");
 });
 
-it("shows an unreadable file's reason and a wrong file type without uploading it", async () => {
+it("removes an imported statement and reloads", async () => {
+  rpcMock.statementUpload.mockResolvedValue(statement());
+  rpcMock.statementConfirm.mockResolvedValue(statement({ status: "imported" }));
+  await open("bank");
+  await choose(new File(["x"], "march.pdf"));
+  onImported.mockClear();
+  await click("Remove");
+  expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "s1" });
+  expect(onImported).toHaveBeenCalledTimes(1);
+  expect(dialog().textContent).not.toContain("Example Bank");
+});
+
+it("shows an unreadable file's reason and a wrong file type on that file's row", async () => {
   rpcMock.statementUpload.mockResolvedValue(
     statement({ status: "failed", error: "No model is configured to read this PDF" }),
   );
   await open("bank");
   await choose(new File(["x"], "other.pdf"), new File(["x"], "notes.txt"));
   expect(rpcMock.statementUpload).toHaveBeenCalledTimes(1);
+  expect(rpcMock.statementConfirm).not.toHaveBeenCalled();
   expect(dialog().textContent).toContain("No model is configured to read this PDF");
   expect(dialog().textContent).toContain("Upload a PDF, CSV, OFX or QFX file");
 });
 
-it("discards a statement left in review when the dialog closes", async () => {
+it("shows a rejected import (for example a duplicate) on its row and discards the upload", async () => {
   rpcMock.statementUpload.mockResolvedValue(statement());
+  rpcMock.statementConfirm.mockRejectedValue(new Error("This statement is already imported"));
   await open("bank");
   await choose(new File(["x"], "march.pdf"));
-  await act(async () => root.unmount());
+  expect(dialog().textContent).toContain("This statement is already imported");
   expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "s1" });
-  root = createRoot(container);
 });
