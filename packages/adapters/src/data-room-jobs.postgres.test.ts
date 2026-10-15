@@ -6,7 +6,12 @@ import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { DataRoomJobDeps } from "./data-room-jobs.js";
-import { runDataRoomClassify, runDataRoomIndex, runDataRoomIngest } from "./data-room-jobs.js";
+import {
+  reconcileDataRoom,
+  runDataRoomClassify,
+  runDataRoomIndex,
+  runDataRoomIngest,
+} from "./data-room-jobs.js";
 import {
   FakeClassifier,
   FakeEmbedder,
@@ -382,5 +387,90 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
     const ingest = () => runDataRoomIngest(deps(), { ...scope(), itemId: item.id });
     for (let i = 0; i < 3; i++) await expect(ingest()).rejects.toThrow("missing blob");
     expect(await reload(item.id)).toMatchObject({ status: "failed", failures: 3 });
+  });
+
+  it("lets exactly one of two overlapping index runs embed, and the loser writes nothing", async () => {
+    reset();
+    const item = await addItem("overlap text");
+    await runDataRoomIngest(deps(), { ...scope(), itemId: item.id });
+    await runDataRoomClassify(deps(), { ...scope(), itemId: item.id });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const embed = embedder.embed.bind(embedder);
+    let started = 0;
+    embedder.embed = async (texts, ctx) => {
+      started += 1;
+      await gate;
+      return embed(texts, ctx);
+    };
+    const first = runDataRoomIndex(deps(), { ...scope(), itemId: item.id });
+    while (started === 0) await new Promise((r) => setTimeout(r, 5));
+    const before = await reload(item.id);
+    await runDataRoomIndex(deps(), { ...scope(), itemId: item.id }); // loses the claim at once
+    expect(started).toBe(1);
+    expect(await reload(item.id)).toMatchObject({
+      revision: before.revision,
+      status: "indexing",
+    });
+    release();
+    await first;
+    expect(embedder.calls).toHaveLength(1);
+    const done = await reload(item.id);
+    expect(done).toMatchObject({ status: "ready", leaseUntil: null });
+    expect((await chunksOf(item.id))[0]?.embedded).toBe(true);
+  });
+
+  it("leaves a leased item to its holder and takes over once the lease expires", async () => {
+    reset();
+    const item = await addItem("lease text");
+    await runDataRoomIngest(deps(), { ...scope(), itemId: item.id });
+    await runDataRoomClassify(deps(), { ...scope(), itemId: item.id });
+    await prisma.dataRoomItem.update({
+      where: { id: item.id },
+      data: { leaseUntil: new Date(Date.now() + 60_000) },
+    });
+    await runDataRoomIndex(deps(), { ...scope(), itemId: item.id });
+    expect(await reload(item.id)).toMatchObject({ status: "indexing" });
+    expect(embedder.calls).toEqual([]);
+    await prisma.dataRoomItem.update({
+      where: { id: item.id },
+      data: { leaseUntil: new Date(Date.now() - 1000) },
+    });
+    await runDataRoomIndex(deps(), { ...scope(), itemId: item.id });
+    expect((await reload(item.id)).status).toBe("ready");
+  });
+
+  it("re-queues stranded items and leaves leased or recent ones alone", async () => {
+    reset();
+    const old = new Date(Date.now() - 60 * 60_000);
+    const make = async (status: string, lease: Date | null, updatedAt: Date) => {
+      const item = await addItem(`stranded ${status}`);
+      jobs.take();
+      await prisma.dataRoomItem.update({
+        where: { id: item.id },
+        data: { status, leaseUntil: lease },
+      });
+      await prisma.$executeRaw`UPDATE data_room_items SET "updatedAt" = ${updatedAt} WHERE id = ${item.id}`;
+      return item.id;
+    };
+    const indexing = await make("indexing", null, old);
+    const extracting = await make("extracting", new Date(Date.now() - 1000), old);
+    const classifying = await make("classifying", null, old);
+    const leased = await make("indexing", new Date(Date.now() + 60_000), old);
+    const recent = await make("indexing", null, new Date());
+    const ready = await make("ready", null, old);
+    await reconcileDataRoom(deps());
+    const queued = jobs.take().map((j) => `${j.name}:${(j.payload as { itemId: string }).itemId}`);
+    expect(queued).toContain(`dataroom.index:${indexing}`);
+    expect(queued).toContain(`dataroom.ingest:${extracting}`);
+    expect(queued).toContain(`dataroom.classify:${classifying}`);
+    for (const id of [leased, recent, ready])
+      expect(queued.some((q) => q.endsWith(id))).toBe(false);
+    expect(jobs.all.at(-1)).toMatchObject({ keepExisting: true });
+    // Other tests' stranded leftovers aside, running the queued index job finishes the item.
+    await runDataRoomIndex(deps(), { ...scope(), itemId: indexing });
+    expect((await reload(indexing)).status).toBe("ready");
   });
 });

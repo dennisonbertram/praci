@@ -117,6 +117,7 @@ const toFilters = (input: {
 };
 
 const QUERY_EMBED_TIMEOUT_MS = 10_000;
+const REINDEX_BATCH = 200;
 
 /** Procedure bodies for `dataRoom.*`; the router adds the Actor. */
 export function createDataRoomService(deps: DataRoomDeps) {
@@ -153,6 +154,23 @@ export function createDataRoomService(deps: DataRoomDeps) {
     }
   }
 
+  /** The name and folder path live in the item's metadata chunk, so a change re-indexes it. */
+  const enqueueIndex = async (actor: Actor, ids: string[]) => {
+    for (const id of ids) {
+      await deps.jobs
+        .enqueue(dataRoomStepJob("dataroom.index", actor, id))
+        .catch((error: unknown) => getLogger().error("data room index enqueue failed", error));
+    }
+  };
+  // ponytail: runs in the request, one queued job per item in batches; a dedicated fan-out job if folders get huge.
+  const reindexFolder = async (actor: Actor, folderId: string) => {
+    for (;;) {
+      const ids = await repo.reindexFolder(actor, folderId, REINDEX_BATCH);
+      await enqueueIndex(actor, ids);
+      if (ids.length < REINDEX_BATCH) return;
+    }
+  };
+
   async function consentStatus(actor: Actor): Promise<DataRoomConsentStatus & { ai?: DataRoomAi }> {
     const ai = await deps.resolveAi?.(actor);
     return {
@@ -170,9 +188,17 @@ export function createDataRoomService(deps: DataRoomDeps) {
     createFolder: (actor: Actor, input: { name: string; parentId?: string | null }) =>
       dataRoomCall(async () => folderDto(await repo.createFolder(actor, input))),
     renameFolder: (actor: Actor, input: { id: string; name: string }) =>
-      dataRoomCall(async () => folderDto(await repo.renameFolder(actor, input.id, input.name))),
+      dataRoomCall(async () => {
+        const folder = await repo.renameFolder(actor, input.id, input.name);
+        await reindexFolder(actor, folder.id);
+        return folderDto(folder);
+      }),
     moveFolder: (actor: Actor, input: { id: string; parentId: string | null }) =>
-      dataRoomCall(async () => folderDto(await repo.moveFolder(actor, input.id, input.parentId))),
+      dataRoomCall(async () => {
+        const folder = await repo.moveFolder(actor, input.id, input.parentId);
+        await reindexFolder(actor, folder.id);
+        return folderDto(folder);
+      }),
     deleteFolder: (actor: Actor, id: string) =>
       dataRoomCall(async () => {
         await repo.deleteFolder(actor, id);
@@ -193,11 +219,17 @@ export function createDataRoomService(deps: DataRoomDeps) {
     item: (actor: Actor, id: string) =>
       dataRoomCall(async () => itemDto(await repo.getItem(actor, id))),
     renameItem: (actor: Actor, input: { id: string; name: string }) =>
-      dataRoomCall(async () =>
-        itemDto(await repo.updateItem(actor, input.id, { name: input.name })),
-      ),
+      dataRoomCall(async () => {
+        const item = await repo.updateItem(actor, input.id, { name: input.name });
+        await enqueueIndex(actor, await repo.reindexItems(actor, [item.id]));
+        return itemDto(item);
+      }),
     moveItem: (actor: Actor, input: { id: string; folderId: string | null }) =>
-      dataRoomCall(async () => itemDto(await repo.moveItem(actor, input.id, input.folderId))),
+      dataRoomCall(async () => {
+        const item = await repo.moveItem(actor, input.id, input.folderId);
+        await enqueueIndex(actor, await repo.reindexItems(actor, [item.id]));
+        return itemDto(item);
+      }),
     deleteItem: (actor: Actor, id: string) =>
       dataRoomCall(async () => {
         const { storageKey } = await repo.getItem(actor, id);

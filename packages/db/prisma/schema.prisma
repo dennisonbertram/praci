@@ -2138,6 +2138,8 @@ model DataRoomItem {
   failures           Int             @default(0)
   /// Set when the classifier filled the facets. Null on a ready item means classification was skipped.
   classifiedAt       DateTime?
+  /// Held by the pipeline step that claimed the item; a step starts only when this is null or past.
+  leaseUntil         DateTime?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
   chunks             DataRoomChunk[]
