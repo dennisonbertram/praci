@@ -1,0 +1,286 @@
+import { randomUUID } from "node:crypto";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { createRouterClient } from "@orpc/server";
+import type { BackgroundJob } from "@rakazo/adapter-kit";
+import { LocalArtifactStore } from "@rakazo/adapters";
+import type { Actor, DataRoomApiItem } from "@rakazo/contracts";
+import type { PrismaClient } from "@rakazo/db";
+import { createDataRoomRepos, createDb } from "@rakazo/db";
+import { Hono } from "hono";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { mountDataRoomRoutes } from "./data-room.js";
+import { createRouter, type RouterDeps } from "./router.js";
+
+const databaseUrl = process.env.DATABASE_URL;
+const describePostgres =
+  process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
+
+const CAP = 64;
+
+describePostgres("Data room API (PostgreSQL)", () => {
+  const run = randomUUID().slice(0, 8);
+  let prisma: PrismaClient;
+  let close: () => Promise<void>;
+  let root: string;
+  let app: Hono;
+  const enqueued: BackgroundJob[] = [];
+  const actors: Record<string, Actor> = {};
+  const spaceIds: string[] = [];
+
+  const blobCount = async (spaceId: string) =>
+    (await readdir(path.join(root, "artifacts", spaceId)).catch(() => [])).length;
+
+  const client = (who: Actor | null) =>
+    createRouterClient(
+      createRouter({
+        prisma,
+        env: { webOrigin: "https://app.example.com" },
+        jobs: { enqueue: async (job: BackgroundJob) => void enqueued.push(job) },
+        artifacts: new LocalArtifactStore(root),
+      } as unknown as RouterDeps),
+      { context: { actor: who } as never },
+    );
+
+  const send = (who: string | null, url: string, init: RequestInit = {}) =>
+    app.request(url, {
+      ...init,
+      headers: { ...(who ? { "x-test-actor": who } : {}), ...(init.headers as object) },
+    });
+  const upload = (
+    who: string | null,
+    query: string,
+    body: string | Uint8Array,
+    type = "text/plain",
+  ) =>
+    send(who, `/api/data-room/upload?${query}`, {
+      method: "POST",
+      body: body as BodyInit,
+      headers: { "content-type": type },
+    });
+
+  beforeAll(async () => {
+    const db = createDb(databaseUrl as string);
+    prisma = db.prisma;
+    close = async () => {
+      await prisma.$disconnect();
+      await db.pool.end();
+    };
+    root = await mkdtemp(path.join(tmpdir(), "dr51-"));
+    const make = async (label: string, spaceLabel: string) => {
+      const userId = `dra-user-${label}-${run}`;
+      if (!actors[spaceLabel]) {
+        const orgId = `dra-org-${spaceLabel}-${run}`;
+        const spaceId = `dra-space-${spaceLabel}-${run}`;
+        await prisma.organization.create({
+          data: { id: orgId, name: spaceLabel, slug: orgId, createdAt: new Date() },
+        });
+        await prisma.space.create({
+          data: { id: spaceId, organizationId: orgId, name: spaceLabel, isDefault: true },
+        });
+        spaceIds.push(spaceId);
+        actors[spaceLabel] = { userId, spaceId, email: "x@rakazo.test", isDeploymentOwner: false };
+      }
+      await prisma.user.create({
+        data: { id: userId, name: label, email: `${userId}@rakazo.test`, emailVerified: false },
+      });
+      actors[label] = { ...actors[spaceLabel], userId, email: `${userId}@rakazo.test` };
+    };
+    await make("a", "A");
+    await make("a2", "A"); // second member of space A
+    await make("b", "B");
+    app = new Hono();
+    mountDataRoomRoutes(
+      app,
+      {
+        prisma,
+        artifacts: new LocalArtifactStore(root),
+        jobs: { enqueue: async (j) => void enqueued.push(j) },
+        maxUploadBytes: CAP,
+      },
+      async (request) => actors[request.headers.get("x-test-actor") ?? ""] ?? null,
+    );
+  });
+
+  afterAll(async () => {
+    if (!prisma) return;
+    await prisma.space.deleteMany({ where: { id: { in: spaceIds } } });
+    await prisma.organization.deleteMany({
+      where: { id: { startsWith: "dra-org-" }, slug: { endsWith: run } },
+    });
+    await prisma.user.deleteMany({ where: { id: { startsWith: "dra-user-", endsWith: run } } });
+    await rm(root, { recursive: true, force: true });
+    await close();
+  });
+
+  let item: DataRoomApiItem;
+
+  it("rejects unauthenticated upload, download and procedures", async () => {
+    expect((await upload(null, "name=x.txt", "hi")).status).toBe(401);
+    expect((await send(null, "/api/data-room/items/anything/content")).status).toBe(401);
+    await expect(client(null).dataRoom.folders()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(client(null).dataRoom.search({ query: "x", limit: 10 })).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
+  it("stores an upload as a pending item without exposing the storage key", async () => {
+    const res = await upload("a", "name=notes.txt", "quokka report");
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { item: DataRoomApiItem; duplicate: boolean };
+    expect(body.duplicate).toBe(false);
+    item = body.item;
+    expect(item).toMatchObject({
+      name: "notes.txt",
+      mimeType: "text/plain",
+      size: 13,
+      status: "pending",
+      source: "upload",
+      folderId: null,
+    });
+    expect(JSON.stringify(body)).not.toContain("storageKey");
+    expect(await blobCount(actors.A.spaceId)).toBe(1);
+    expect(enqueued).toEqual([]);
+  });
+
+  it("returns the existing item for the same bytes and stores no second blob", async () => {
+    const res = await upload("a", "name=renamed.txt", "quokka report");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { item: DataRoomApiItem; duplicate: boolean };
+    expect(body).toMatchObject({ duplicate: true, item: { id: item.id } });
+    expect(await blobCount(actors.A.spaceId)).toBe(1);
+  });
+
+  it("refuses an upload over the cap with 413 and stores no blob", async () => {
+    const before = await blobCount(actors.A.spaceId);
+    expect((await upload("a", "name=big.bin", new Uint8Array(CAP + 1))).status).toBe(413);
+    // No content-length: the cap is enforced while reading the stream.
+    const stream = new ReadableStream({
+      start(c) {
+        c.enqueue(new Uint8Array(CAP));
+        c.enqueue(new Uint8Array(CAP));
+        c.close();
+      },
+    });
+    const res = await send("a", "/api/data-room/upload?name=big2.bin", {
+      method: "POST",
+      body: stream,
+      duplex: "half",
+    } as RequestInit);
+    expect(res.status).toBe(413);
+    expect(await blobCount(actors.A.spaceId)).toBe(before);
+  });
+
+  it("rejects invalid names and a folder that is not the actor's", async () => {
+    for (const name of ["", "a/b.txt", "a\\b.txt", "x".repeat(256)]) {
+      expect((await upload("a", `name=${encodeURIComponent(name)}`, "z")).status).toBe(400);
+    }
+    expect((await upload("a", "", "z")).status).toBe(400);
+    const folderB = await client(actors.b).dataRoom.folderCreate({ name: "B only" });
+    expect((await upload("a", `name=f.txt&folderId=${folderB.id}`, "z")).status).toBe(404);
+    expect((await upload("a", "name=f.txt&folderId=nope", "z")).status).toBe(404);
+    expect(await blobCount(actors.A.spaceId)).toBe(1);
+  });
+
+  it("downloads only as an attachment with sandboxing headers", async () => {
+    const evil = await upload(
+      "a",
+      `name=${encodeURIComponent('"x".html')}`,
+      "<script>alert(1)</script>",
+      "text/html",
+    );
+    const { item: html } = (await evil.json()) as { item: DataRoomApiItem };
+    const res = await send("a", `/api/data-room/items/${html.id}/content`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("<script>alert(1)</script>");
+    expect(res.headers.get("content-disposition")).toMatch(/^attachment; filename=/);
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("content-security-policy")).toMatch(/^sandbox/);
+    expect(res.headers.get("content-type")).toBe("application/octet-stream");
+    await client(actors.a).dataRoom.itemDelete({ id: html.id });
+    enqueued.length = 0;
+  });
+
+  it("hides the item from another space and from another member of the same space", async () => {
+    await prisma.dataRoomChunk.count(); // table exists
+    await createDataRoomRepos(prisma).replaceChunks(actors.a, item.id, [
+      { ordinal: 0, text: "confidential quokka report", contentHash: "h" },
+    ]);
+    expect(
+      (await client(actors.a).dataRoom.search({ query: "quokka", limit: 10 }))[0]?.item.id,
+    ).toBe(item.id);
+    for (const who of ["b", "a2"]) {
+      const c = client(actors[who]);
+      expect((await c.dataRoom.items({ limit: 50 })).items).toEqual([]);
+      expect(await c.dataRoom.search({ query: "quokka", limit: 10 })).toEqual([]);
+      await expect(c.dataRoom.item({ id: item.id })).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(c.dataRoom.itemRename({ id: item.id, name: "x" })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+      await expect(c.dataRoom.itemMove({ id: item.id, folderId: null })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+      await expect(c.dataRoom.itemDelete({ id: item.id })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+      expect((await send(who, `/api/data-room/items/${item.id}/content`)).status).toBe(404);
+    }
+    expect(enqueued).toEqual([]);
+  });
+
+  it("lists, renames, moves and manages folders for the owner", async () => {
+    const c = client(actors.a);
+    const folder = await c.dataRoom.folderCreate({ name: "Contracts" });
+    await expect(c.dataRoom.folderCreate({ name: "Contracts" })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    expect((await c.dataRoom.itemRename({ id: item.id, name: "q.txt" })).name).toBe("q.txt");
+    expect((await c.dataRoom.itemMove({ id: item.id, folderId: folder.id })).folderId).toBe(
+      folder.id,
+    );
+    expect(
+      (await c.dataRoom.items({ limit: 50, folderId: folder.id })).items.map((i) => i.id),
+    ).toEqual([item.id]);
+    expect((await c.dataRoom.folders()).map((f) => f.id)).toContain(folder.id);
+    await expect(c.dataRoom.folderDelete({ id: folder.id })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    await c.dataRoom.itemMove({ id: item.id, folderId: null });
+    await c.dataRoom.folderDelete({ id: folder.id });
+  });
+
+  it("pages items with a cursor", async () => {
+    const c = client(actors.a);
+    await upload("a", "name=p1.txt", "page one");
+    await upload("a", "name=p2.txt", "page two");
+    const first = await c.dataRoom.items({ limit: 2 });
+    expect(first.items).toHaveLength(2);
+    expect(first.nextCursor).toBeTruthy();
+    const second = await c.dataRoom.items({ limit: 2, cursor: first.nextCursor as string });
+    expect(second.items).toHaveLength(1);
+    expect(second.nextCursor).toBeNull();
+    for (const i of [...first.items, ...second.items].filter((i) => i.name.startsWith("p"))) {
+      await c.dataRoom.itemDelete({ id: i.id });
+    }
+    enqueued.length = 0;
+  });
+
+  it("deletes the row and chunks and enqueues exactly one blob cleanup", async () => {
+    const [{ storageKey }] = await prisma.dataRoomItem.findMany({
+      where: { id: item.id },
+      select: { storageKey: true },
+    });
+    expect(await prisma.dataRoomChunk.count({ where: { itemId: item.id } })).toBe(1);
+    await client(actors.a).dataRoom.itemDelete({ id: item.id });
+    expect(await prisma.dataRoomItem.count({ where: { id: item.id } })).toBe(0);
+    expect(await prisma.dataRoomChunk.count({ where: { itemId: item.id } })).toBe(0);
+    expect(enqueued).toHaveLength(1);
+    expect(enqueued[0]).toMatchObject({
+      name: "dataroom.blob.delete",
+      payload: { spaceId: actors.A.spaceId, storageKey },
+      replaceKey: expect.stringContaining(storageKey as string),
+    });
+    expect((await send("a", `/api/data-room/items/${item.id}/content`)).status).toBe(404);
+  });
+});

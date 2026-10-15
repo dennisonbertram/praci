@@ -1,3 +1,6 @@
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import type {
   AgentHomeStore,
   AgentRuntime,
@@ -8,6 +11,7 @@ import type {
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { describe, expect, it, vi } from "vitest";
+import { LocalArtifactStore } from "./artifacts.js";
 import { createBackgroundJobHandlers } from "./background-job-handlers.js";
 import { syncExchanges } from "./exchange-sync.js";
 import { createRunExecutor } from "./executor.js";
@@ -277,5 +281,43 @@ describe("createBackgroundJobHandlers", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe("dataroom.blob.delete", () => {
+  it("removes the blob in the job's space and treats a missing blob as success", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "dr-blob-"));
+    const artifacts = new LocalArtifactStore(root);
+    const stored = await artifacts.put(
+      { name: "a.txt", mimeType: "text/plain", bytes: new Uint8Array([1]) },
+      {
+        operationId: "t",
+        traceId: "t",
+        spaceId: "space-1",
+        userId: "u",
+        signal: new AbortController().signal,
+      },
+    );
+    const base = {
+      executor: {},
+      prisma: {},
+      sandbox: {},
+      home: {},
+      jobs: {},
+      events: {},
+      workerId: "w",
+      runtime: {},
+      secretStore: {},
+      memoryProviders: { resolve: vi.fn(async () => null) },
+    } as unknown as Parameters<typeof createBackgroundJobHandlers>[0];
+    const handlers = createBackgroundJobHandlers({ ...base, artifacts });
+    const payload = { spaceId: "space-1", storageKey: stored.id };
+    await handlers["dataroom.blob.delete"](payload);
+    expect(await readdir(path.join(root, "artifacts", "space-1"))).toEqual([]);
+    await expect(handlers["dataroom.blob.delete"](payload)).resolves.toBeUndefined();
+    await expect(
+      createBackgroundJobHandlers(base)["dataroom.blob.delete"](payload),
+    ).rejects.toThrow("not configured");
+    await rm(root, { recursive: true, force: true });
   });
 });
