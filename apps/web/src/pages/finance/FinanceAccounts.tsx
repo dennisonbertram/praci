@@ -147,7 +147,10 @@ export function FinanceAccountsPage() {
             key={adding ? "add" : "closed"}
             open={adding}
             onClose={() => setAdding(false)}
-            onSaved={cryptoQuery.reload}
+            onSaved={() => {
+              cryptoQuery.reload();
+              q.reload();
+            }}
           />
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
             <Kpi title={t`Total cash`} value={money(data.totalCashCents)} sub={cashSub} />
