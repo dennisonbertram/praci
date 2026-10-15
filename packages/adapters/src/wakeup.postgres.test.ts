@@ -32,6 +32,9 @@ function handlers(overrides: Partial<BackgroundJobHandlers> = {}): BackgroundJob
     "inbox.triage": vi.fn(async () => undefined),
     "finance.sync": vi.fn(async () => undefined),
     "dataroom.blob.delete": vi.fn(async () => undefined),
+    "dataroom.ingest": vi.fn(async () => undefined),
+    "dataroom.classify": vi.fn(async () => undefined),
+    "dataroom.index": vi.fn(async () => undefined),
     ...overrides,
   };
 }

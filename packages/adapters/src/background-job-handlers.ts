@@ -16,6 +16,9 @@ import { pollCloudAgent } from "./cloud-agent-poll.js";
 import { expireComputerControl } from "./computer-control.js";
 import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
+import type { DataRoomJobDeps } from "./data-room-jobs.js";
+import { runDataRoomClassify, runDataRoomIndex, runDataRoomIngest } from "./data-room-jobs.js";
+import { resolveDataRoomAi } from "./data-room-models.js";
 import { syncExchanges } from "./exchange-sync.js";
 import type { createRunExecutor } from "./executor.js";
 import type { FinanceSyncDeps } from "./finance-sync.js";
@@ -46,7 +49,7 @@ export function createBackgroundJobHandlers(deps: {
   cloudAgent?: CloudAgentConnection | null;
   /** Read-tool caller for the user's Mercury and Brex servers; see `createFinanceCallToolFor`. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
-  /** Deletes the blobs of removed Data room items. */
+  /** Deletes the blobs of removed Data room items and reads them for ingest. */
   artifacts?: ArtifactStore;
 }): BackgroundJobHandlers {
   const deliverMessaging = async (runId?: string) => {
@@ -62,6 +65,18 @@ export function createBackgroundJobHandlers(deps: {
         signal: new AbortController().signal,
       },
     );
+  };
+
+  const dataRoomDeps = (): DataRoomJobDeps => {
+    if (!deps.artifacts) throw new Error("Artifact store is not configured");
+    return {
+      prisma: deps.prisma,
+      jobs: deps.jobs,
+      artifacts: deps.artifacts,
+      runtime: deps.runtime,
+      resolveAi: (scope) =>
+        resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.executor.resolveModel }, scope),
+    };
   };
 
   return {
@@ -135,6 +150,9 @@ export function createBackgroundJobHandlers(deps: {
         signal: new AbortController().signal,
       });
     },
+    "dataroom.ingest": (payload) => runDataRoomIngest(dataRoomDeps(), payload),
+    "dataroom.classify": (payload) => runDataRoomClassify(dataRoomDeps(), payload),
+    "dataroom.index": (payload) => runDataRoomIndex(dataRoomDeps(), payload),
     "finance.sync": async (payload) => {
       if (!deps.financeCallToolFor) throw new Error("Finance sync is not configured");
       await syncFinanceForUser(
