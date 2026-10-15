@@ -77,8 +77,7 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
     return item;
   };
   const reload = (id: string) => prisma.dataRoomItem.findUniqueOrThrow({ where: { id } });
-  const chunksOf = async (id: string) =>
-    (await allChunksOf(id)).filter((c) => c.ordinal >= 0);
+  const chunksOf = async (id: string) => (await allChunksOf(id)).filter((c) => c.ordinal >= 0);
   const allChunksOf = (id: string) =>
     prisma.$queryRaw<{ ordinal: number; embedded: boolean; model: string | null }[]>`
       SELECT ordinal, embedding IS NOT NULL AS embedded, "embeddingModel" AS model

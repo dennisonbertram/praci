@@ -783,12 +783,12 @@ export function createDataRoomRepos(prisma: PrismaClient) {
                 AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
                   AND t.text = '')`
           : step === "classify"
-          ? await prisma.$queryRaw<{ id: string }[]>`
+            ? await prisma.$queryRaw<{ id: string }[]>`
               SELECT i.id FROM data_room_items i
               WHERE ${eligibleSql(actor, { status: "ready" })} AND i."classifiedAt" IS NULL
                 AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
                   AND t.text <> '')`
-          : await prisma.$queryRaw<{ id: string }[]>`
+            : await prisma.$queryRaw<{ id: string }[]>`
               SELECT i.id FROM data_room_items i
               WHERE ${eligibleSql(actor, { status: "ready" })}
                 AND EXISTS (SELECT 1 FROM data_room_chunks c WHERE c."itemId" = i.id
