@@ -468,7 +468,9 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
     expect(queued).toContain(`dataroom.classify:${classifying}`);
     for (const id of [leased, recent, ready])
       expect(queued.some((q) => q.endsWith(id))).toBe(false);
-    expect(jobs.all.at(-1)).toMatchObject({ keepExisting: true });
+    // Replace, never keep: the job that holds the key may be locked by a worker that died.
+    expect(jobs.all.at(-1)?.keepExisting).toBeUndefined();
+    expect(jobs.all.at(-1)?.replaceKey).toMatch(/^dataroom\./);
     // Other tests' stranded leftovers aside, running the queued index job finishes the item.
     await runDataRoomIndex(deps(), { ...scope(), itemId: indexing });
     expect((await reload(indexing)).status).toBe("ready");
