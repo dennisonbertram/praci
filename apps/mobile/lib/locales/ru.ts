@@ -805,4 +805,8 @@ export const RU_MESSAGES: Record<string, string> = {
   Spam: "Спам",
   Junk: "Нежелательное",
   "To do": "К выполнению",
+  "Chart could not be drawn.": "Не удалось построить диаграмму.",
+  "Could not load this page.": "Не удалось загрузить эту страницу.",
+  "No page yet.": "Страницы пока нет.",
+  Page: "Страница",
 };

@@ -16,6 +16,8 @@ function item(slug: string, name: string, connected = false): ConnectionCatalogI
     logo: null,
     connected,
     noAuth: false,
+    description: null,
+    category: "other" as const,
   };
 }
 

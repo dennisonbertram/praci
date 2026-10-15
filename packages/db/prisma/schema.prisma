@@ -231,6 +231,7 @@ model Space {
   composeSends                ComposeSend[]
   capabilities                CapabilityInstall[]
   memoryDocuments             MemoryDocument[]
+  botPages                    BotPage[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
   artifacts                   Artifact[]
@@ -441,6 +442,7 @@ model Bot {
   scratchpadItems   ScratchpadItem[]
   taughtSkills      TaughtSkill[]
   memoryDocuments   MemoryDocument[]
+  page              BotPage?
   agentHome         AgentHome?
   browserProfile    BrowserProfile?
   artifacts         Artifact[]
@@ -448,6 +450,7 @@ model Bot {
   runs              Run[]
   steeringMessages  SteeringMessage[]
   mcpServers        BotMcpServer[]
+  connectionAccess  BotConnectionAccess[]
   groupMembers      ChatGroupMember[]
   botSecrets BotSecret[]
   assignedTickets   Ticket[]          @relation("TicketAssigneeBot")
@@ -924,9 +927,27 @@ model Connection {
   inboxTodos         InboxTodo[]
   mailSyncState      MailSyncState?
   composeSends       ComposeSend[]
+  /// false: only bots with a BotConnectionAccess row may use this connection's tools.
+  allAgents          Boolean  @default(true)
+  botAccess          BotConnectionAccess[]
 
   @@index([spaceId, userId, connectorId])
   @@map("connections")
+}
+
+model BotConnectionAccess {
+  id           String     @id @default(cuid())
+  spaceId      String
+  userId       String
+  connectionId String
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  botId        String
+  bot          Bot        @relation(fields: [botId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([connectionId, botId])
+  @@index([botId])
+  @@map("bot_connection_access")
 }
 
 model CapabilityInstall {
@@ -979,6 +1000,40 @@ model MemoryRevision {
 
   @@unique([documentId, revision])
   @@map("memory_revisions")
+}
+
+/// One Markdown page per bot, written by the bot's tools and edited by its owner.
+model BotPage {
+  id        String            @id @default(cuid())
+  spaceId   String
+  space     Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  botId     String            @unique
+  bot       Bot               @relation(fields: [botId], references: [id], onDelete: Cascade)
+  userId    String
+  content   String
+  revision  Int               @default(1)
+  /// "bot" or "user"
+  updatedBy String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  revisions BotPageRevision[]
+
+  @@index([spaceId])
+  @@map("bot_pages")
+}
+
+model BotPageRevision {
+  id          String   @id @default(cuid())
+  pageId      String
+  page        BotPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  revision    Int
+  content     String
+  updatedBy   String
+  sourceRunId String?
+  createdAt   DateTime @default(now())
+
+  @@unique([pageId, revision])
+  @@map("bot_page_revisions")
 }
 
 model AgentHome {
@@ -1222,6 +1277,11 @@ model McpServer {
   updatedAt     DateTime          @updatedAt
   assignments   BotMcpServer[]
   oauthSessions McpOAuthSession[]
+  financeAccounts       FinanceAccount[]
+  financeTransactions   FinanceTransaction[]
+  financeTreasuryYields FinanceTreasuryYield[]
+  financeBills          FinanceBill[]
+  financeSyncState      FinanceSyncState?
 
   @@unique([spaceId, userId, slug])
   @@index([spaceId, userId])
@@ -1672,4 +1732,185 @@ model MailSyncState {
   changeCursor  String?
 
   @@map("mail_sync_states")
+}
+
+// Finance (Mercury and Brex). Each row belongs to the McpServer it was synced from, so removing the
+// server deletes its finance data. spaceId and userId repeat the server's; every query filters on both.
+// Money is whole cents in BigInt (a wire or a Treasury balance can pass the Int range); code converts
+// to number at the repository edge.
+
+/// A bank or card account as of the last sync.
+model FinanceAccount {
+  id           String    @id @default(cuid())
+  spaceId      String
+  userId       String
+  mcpServerId  String
+  server       McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  /// "mercury" | "brex"
+  provider     String
+  externalId   String
+  name         String
+  lastFour     String?
+  /// "checking" | "savings" | "treasury" | "card"
+  kind         String
+  /// For a card: the balance owed, positive.
+  balanceCents BigInt
+  currency     String
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([mcpServerId, externalId])
+  @@index([spaceId, userId])
+  @@map("finance_accounts")
+}
+
+/// One provider transaction or Brex expense, normalized.
+model FinanceTransaction {
+  id                String    @id @default(cuid())
+  spaceId           String
+  userId            String
+  mcpServerId       String
+  server            McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  provider          String
+  externalId        String
+  accountExternalId String
+  postedAt          DateTime
+  /// Brex purchase date; spend is counted by it.
+  purchasedAt       DateTime?
+  /// Signed; negative is money out.
+  amountCents       BigInt
+  currency          String
+  counterparty      String
+  /// Normalized counterparty; the vendor, recurring and subscription grouping key.
+  vendorKey         String
+  category          String?
+  /// "pending" | "posted" | "other"
+  status            String
+  /// The provider's own kind or expense type.
+  kind              String
+  /// "spend" | "revenue" | "financing" | "internal_transfer" | "card_payment". Depends on whether
+  /// Brex is connected, so every sync recomputes it for all of the user's rows.
+  classification    String
+  cardLastFour      String?
+  cardholder        String?
+  memo              String?
+  hasReceipt        Boolean   @default(false)
+  dashboardUrl      String?
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([mcpServerId, externalId])
+  @@index([spaceId, userId, postedAt])
+  @@index([spaceId, userId, vendorKey])
+  @@map("finance_transactions")
+}
+
+/// Mercury Treasury net return for one account and month.
+model FinanceTreasuryYield {
+  id                String    @id @default(cuid())
+  spaceId           String
+  userId            String
+  mcpServerId       String
+  server            McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  accountExternalId String
+  /// YYYY-MM
+  month             String
+  dividendsCents    BigInt
+  feeCents          BigInt
+  netCents          BigInt
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([mcpServerId, accountExternalId, month])
+  @@index([spaceId, userId, month])
+  @@map("finance_treasury_yields")
+}
+
+/// A Brex bill not yet paid. The set is replaced on every sync; used for Upcoming.
+model FinanceBill {
+  id          String    @id @default(cuid())
+  spaceId     String
+  userId      String
+  mcpServerId String
+  server      McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  provider    String
+  externalId  String
+  vendorName  String
+  vendorKey   String
+  dueAt       DateTime
+  amountCents BigInt
+  status      String
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([mcpServerId, externalId])
+  @@index([spaceId, userId, dueAt])
+  @@map("finance_bills")
+}
+
+/// Sync throttle and in-flight claim for one finance MCP server (the MailSyncState pattern).
+model FinanceSyncState {
+  mcpServerId    String    @id
+  server         McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  spaceId        String
+  userId         String
+  /// Last successful sync; null means the 13-month backfill has not completed.
+  lastSyncedAt   DateTime?
+  /// Claim held by the process that is syncing; stale after 2 minutes.
+  syncStartedAt  DateTime?
+  /// Random id of the sync holding the claim; every write checks it.
+  claimToken     String?
+  /// Set when the last sync failed; cleared by the next success.
+  lastErrorAt    DateTime?
+  /// Short failure reason for the page; never a vendor payload or credential.
+  lastError      String?
+  /// The vendor refused the login, so the user must reconnect.
+  needsReconnect Boolean   @default(false)
+
+  @@map("finance_sync_states")
+}
+
+/// An EVM wallet the user tracks on the Crypto page. Not tied to an McpServer; read-only, never signs.
+model FinanceWallet {
+  id            String                 @id @default(cuid())
+  spaceId       String
+  userId        String
+  /// Lowercase 0x address.
+  address       String
+  ensName       String?
+  label         String?
+  /// "personal" | "safe" | "exchange" | "contract"
+  type          String
+  /// Safe only: lowercase owner addresses.
+  safeOwners    Json?
+  safeThreshold Int?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  holdings      FinanceCryptoHolding[]
+
+  @@unique([spaceId, userId, address])
+  @@index([spaceId, userId])
+  @@map("finance_wallets")
+}
+
+/// One token balance of one wallet on one chain. Replaced on every crypto sync; not cash.
+model FinanceCryptoHolding {
+  id            String        @id @default(cuid())
+  spaceId       String
+  userId        String
+  walletId      String
+  wallet        FinanceWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  chainId       Int
+  /// Lowercase contract address; "" for the chain's native coin.
+  tokenAddress  String
+  symbol        String
+  name          String
+  decimals      Int
+  /// uint256 as a decimal string; never a float.
+  rawBalance    String
+  /// USD per whole token as a decimal string; null when Blockscout has no price.
+  usdPrice      String?
+  /// rawBalance x usdPrice in whole cents, rounded half up; null when unpriced.
+  usdValueCents BigInt?
+  syncedAt      DateTime
+
+  @@unique([walletId, chainId, tokenAddress])
+  @@index([spaceId, userId])
+  @@map("finance_crypto_holdings")
 }

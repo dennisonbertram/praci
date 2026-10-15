@@ -241,7 +241,7 @@ export function AppConnectCard({
   );
 }
 
-function ChartCanvas({
+export function ChartCanvas({
   spec,
   data,
   width,

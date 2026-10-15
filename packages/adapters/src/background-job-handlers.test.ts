@@ -10,12 +10,18 @@ import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { describe, expect, it, vi } from "vitest";
 import { createBackgroundJobHandlers } from "./background-job-handlers.js";
 import { createRunExecutor } from "./executor.js";
+import { syncFinanceForUser } from "./finance-sync.js";
 import { compactHistory } from "./history-compaction.js";
 import { runInboxTriage } from "./inbox-triage.js";
 import { deliverMessagingOutbound, mirrorMessagingOutbound } from "./messaging-delivery.js";
+import { syncCryptoHoldings } from "./rpc-crypto-sync.js";
 import type { EncryptedSecretStore } from "./secrets.js";
 
 vi.mock("./history-compaction.js", () => ({ compactHistory: vi.fn(async () => undefined) }));
+vi.mock("./rpc-crypto-sync.js", () => ({
+  syncCryptoHoldings: vi.fn(async () => ({ ok: true })),
+}));
+vi.mock("./finance-sync.js", () => ({ syncFinanceForUser: vi.fn(async () => ({})) }));
 vi.mock("./inbox-triage.js", () => ({ runInboxTriage: vi.fn(async () => undefined) }));
 vi.mock("./messaging-delivery.js", () => ({
   deliverMessagingOutbound: vi.fn(async () => undefined),
@@ -23,6 +29,35 @@ vi.mock("./messaging-delivery.js", () => ({
 }));
 
 describe("createBackgroundJobHandlers", () => {
+  it("runs the finance sync for the user and space in the job, and refuses without a tool caller", async () => {
+    const base = {
+      executor: {} as unknown as ReturnType<typeof createRunExecutor>,
+      prisma: {} as unknown as PrismaClient,
+      sandbox: {} as unknown as SandboxProvider,
+      home: {} as unknown as AgentHomeStore,
+      jobs: {} as unknown as JobPublisher,
+      events: {} as unknown as ThreadEvents,
+      workerId: "worker-1",
+      runtime: {} as unknown as AgentRuntime,
+      secretStore: {} as unknown as EncryptedSecretStore,
+      memoryProviders: { resolve: vi.fn(async () => null) },
+    };
+    const payload = { userId: "user-1", spaceId: "space-1" };
+    await expect(createBackgroundJobHandlers(base)["finance.sync"](payload)).rejects.toThrow(
+      "not configured",
+    );
+    const financeCallToolFor = vi.fn();
+    await createBackgroundJobHandlers({ ...base, financeCallToolFor })["finance.sync"](payload);
+    expect(syncFinanceForUser).toHaveBeenCalledWith(
+      { prisma: base.prisma, callToolFor: financeCallToolFor },
+      { spaceId: "space-1", userId: "user-1" },
+    );
+    expect(syncCryptoHoldings).toHaveBeenCalledWith(
+      { prisma: base.prisma },
+      { spaceId: "space-1", userId: "user-1" },
+    );
+  });
+
   it("delivers directly when shutdown rejects a completed run's mirror job", async () => {
     const enqueueError = new Error("Background job publisher is closing");
     const jobs = {

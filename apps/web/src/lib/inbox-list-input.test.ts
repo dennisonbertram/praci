@@ -77,11 +77,10 @@ describe("setInboxListParam", () => {
     expect(set("filter=starred", "q", "ann")).toBe("filter=starred&q=ann");
   });
 
-  it("choosing a view or category replaces the Gmail filter and search, and keeps the other of the two", () => {
+  it("choosing a view or category replaces the Gmail filter, search and the other of the two", () => {
     expect(set("filter=starred&q=ann", "view", "important")).toBe("view=important");
-    expect(set("view=important&q=ann", "category", "billing")).toBe(
-      "view=important&category=billing",
-    );
-    expect(set("view=important&category=billing", "view", "")).toBe("category=billing");
+    expect(set("view=important&q=ann", "category", "billing")).toBe("category=billing");
+    expect(set("category=billing", "view", "important")).toBe("view=important");
+    expect(set("view=important", "category", "")).toBe("view=important");
   });
 });

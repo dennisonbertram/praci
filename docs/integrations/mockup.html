@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rakazo Integrations Mockup</title>
+<!--
+LAYOUT CHOICE: Integrations home and App detail are full main-pane pages, not a large dialog.
+Reason: the catalog is a browsing surface (search, chips, grids, 20+ apps) and the detail page holds
+accounts, agent toggles and a long tool list. A dialog would force nested scroll and cannot be deep-linked
+(/integrations, /integrations/gmail). Only short, single-purpose steps are dialogs: connect flow,
+custom connection, disconnect confirm.
+Logos: Simple Icons (pinned simple-icons@13.21.0) drawn in ink on a white tile; letter-mark when absent or broken.
+-->
+<style>
+:root{
+  --background:#fafafa; --card:#fff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#b7791f; --success:#2f855a;
+  --bot:#e8743b; --tile:#fff; --scrim:rgba(0,0,0,.35); --logo-filter:none;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323; --tile:#1f1f1f; --scrim:rgba(0,0,0,.6); --logo-filter:invert(1);
+    --destructive:#e5645a; --warning:#d9a441; --success:#4fb37f;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.app{display:grid;grid-template-columns:240px 1fr;height:calc(100vh - 44px);min-height:600px}
+aside.left{background:var(--sidebar);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+.search-s{margin:4px 4px 10px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--muted-fg);background:var(--card)}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px}
+.row.active{background:var(--sidebar-accent);font-weight:600}
+.row .count{margin-left:auto;font-size:11px;color:var(--muted-fg)}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+.av.s{width:20px;height:20px;font-size:10px;border:2px solid var(--card)}
+.label{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.icon{width:22px;height:22px;display:grid;place-items:center;flex:none}
+/* frame switcher (mockup-only) */
+.switch{height:44px;display:flex;gap:6px;align-items:center;padding:0 12px;border-bottom:1px solid var(--border);background:var(--card);overflow-x:auto;white-space:nowrap}
+.switch b{font-size:11px;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.pill{padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--muted-fg);font-size:12px}
+.pill.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.frame{display:none;position:relative}
+.frame.on{display:block}
+main{overflow:auto;padding:28px 36px 60px;position:relative;height:calc(100vh - 44px)}
+.wrap{max-width:1040px;margin:0 auto}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:12px;margin:26px 0 10px;color:var(--muted-fg);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.sub{color:var(--muted-fg);margin:0 0 18px;max-width:640px}
+.btn{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:6px 12px;font-weight:500}
+.btn:hover{background:var(--muted)}
+.btn.pri{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn.pri:hover{opacity:.9}
+.btn.bad{color:var(--destructive);border-color:var(--destructive);background:transparent}
+.btn.bad.fill{background:var(--destructive);color:#fff}
+.btn.sm{padding:3px 10px;font-size:12px}
+.link{background:none;border:0;padding:0;color:var(--fg);text-decoration:underline;text-underline-offset:2px}
+input.f{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card)}
+.searchbar{position:relative;max-width:420px;margin-bottom:12px}
+.searchbar input{padding-left:30px}
+.searchbar span{position:absolute;left:10px;top:7px;color:var(--muted-fg)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.chip{padding:4px 11px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--muted-fg);font-size:12px}
+.chip.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card .top{display:flex;gap:12px;align-items:center;min-width:0}
+.card .nm{font-weight:600}
+.card .ds{color:var(--muted-fg);font-size:12px;overflow-wrap:anywhere}
+.card .bottom{display:flex;align-items:center;gap:8px;margin-top:auto}
+.card .bottom .btn{margin-left:auto}
+.card .top>div{min-width:0}
+/* logos */
+.logo{width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:var(--tile);display:grid;place-items:center;flex:none;font-weight:700;font-size:16px;overflow:hidden}
+.logo img{width:22px;height:22px;filter:var(--logo-filter)}
+.logo.l{width:56px;height:56px;border-radius:14px}.logo.l img{width:32px;height:32px}.logo.l{font-size:22px}
+.logo.xl{width:48px;height:48px}.logo.xl img{width:26px;height:26px}
+.logo.fb{background:var(--muted);color:var(--muted-fg)}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge.ok{color:var(--success)}.badge.warn{color:var(--warning)}.badge.err{color:var(--destructive)}.badge.pend{color:var(--muted-fg)}
+.badge.pend::before{animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.stack{display:flex}.stack .av+.av{margin-left:-6px}
+.used{font-size:11px;color:var(--muted-fg);display:flex;align-items:center;gap:8px}
+.callout{border:1px dashed var(--border);border-radius:12px;padding:14px;display:flex;gap:14px;align-items:center;background:var(--card)}
+.callout .t{flex:1;min-width:0}.callout .t b{display:block}.callout .t span{color:var(--muted-fg)}
+.empty{color:var(--muted-fg);padding:10px 0}
+/* dialogs */
+.scrim{position:absolute;inset:0;background:var(--scrim);display:grid;place-items:center;padding:16px;z-index:5}
+.dlg{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:440px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:100%;overflow:auto}
+.dlg h3{margin:0 0 4px;font-size:16px}
+.dlg p{margin:0 0 14px;color:var(--muted-fg)}
+.dlg .foot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;align-items:center}
+.dlg .steps{font-size:11px;color:var(--muted-fg);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em}
+.spin{width:36px;height:36px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--primary);animation:sp 1s linear infinite;margin:6px auto 14px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.center{text-align:center}.center .logo{margin:0 auto 12px}
+.msg{border-radius:10px;padding:10px 12px;margin-bottom:12px;border:1px solid}
+.msg.warn{border-color:var(--warning);color:var(--fg);background:color-mix(in srgb,var(--warning) 10%,transparent)}
+.msg.err{border-color:var(--destructive);background:color-mix(in srgb,var(--destructive) 8%,transparent)}
+.opt{display:flex;gap:10px;align-items:center;padding:9px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px}
+.opt label{flex:1;display:flex;gap:8px;align-items:center}
+.opt small{color:var(--muted-fg);margin-left:auto}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary)}
+.list{display:flex;flex-direction:column;gap:6px;margin:10px 0 0;padding:0;list-style:none;color:var(--muted-fg)}
+.list li::before{content:"✓ ";color:var(--success);font-weight:700}
+.list.bad li::before{content:"• ";color:var(--destructive)}
+details{border-top:1px solid var(--border);margin-top:14px;padding-top:10px}
+summary{cursor:pointer;color:var(--muted-fg)}
+.fld{margin:10px 0 0}.fld span{display:block;font-size:12px;color:var(--muted-fg);margin-bottom:4px}
+.quick{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;color:var(--muted-fg);font-size:12px}
+.quick .chip{display:inline-flex;gap:6px;align-items:center;padding:3px 10px 3px 4px}
+.quick .logo{width:20px;height:20px;border-radius:6px;font-size:10px}.quick .logo img{width:12px;height:12px}
+/* detail */
+.back{margin-bottom:14px;color:var(--muted-fg);background:none;border:0;padding:0}
+.dhead{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.dhead .meta{display:flex;gap:10px;align-items:center;color:var(--muted-fg);flex-wrap:wrap}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:12px}
+.pr{display:flex;gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--border);flex-wrap:wrap}
+.pr:first-child{border-top:0}
+.pr .grow{flex:1;min-width:160px}.pr small{color:var(--muted-fg);display:block}
+.tgl{width:34px;height:20px;border-radius:999px;background:var(--border);border:0;position:relative;flex:none}
+.tgl::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.tgl[aria-checked=true]{background:var(--primary)}
+.tgl[aria-checked=true]::after{left:16px;background:var(--primary-fg)}
+.tool-row{display:flex;gap:12px;padding:9px 14px;border-top:1px solid var(--border);align-items:baseline;flex-wrap:wrap}
+.tool-row code{font:12px ui-monospace,Menlo,monospace;min-width:150px}
+.tool-row span{color:var(--muted-fg);flex:1;min-width:200px}
+.grp{padding:8px 14px;background:var(--muted);font-size:12px;font-weight:600;border-top:1px solid var(--border);display:flex;justify-content:space-between}
+.grp:first-child{border-top:0;border-radius:12px 12px 0 0}
+.ibtn{border:0;background:transparent;border-radius:6px;padding:3px 7px;color:var(--muted-fg)}
+.ibtn:hover{background:var(--muted)}
+.danger{margin-top:26px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.danger span{color:var(--muted-fg)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mono{font:12px ui-monospace,Menlo,monospace}
+.sub-sw{position:absolute;top:10px;right:14px;z-index:9;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  aside.left{display:none}
+  main{padding:16px;height:auto;min-height:calc(100vh - 44px)}
+  .grid{grid-template-columns:1fr}
+  .callout{flex-direction:column;align-items:stretch}
+  .cols{grid-template-columns:1fr}
+  .scrim{position:fixed;inset:44px 0 0 0}
+  .sub-sw{position:static;justify-content:flex-start;margin-bottom:10px}
+}
+</style>
+</head>
+<body>
+<nav class="switch" aria-label="Mockup frames">
+  <b>Frame</b>
+  <button class="pill" data-f="home">1 Integrations home</button>
+  <button class="pill" data-f="connect">2 Connect flow</button>
+  <button class="pill" data-f="detail">3 App detail</button>
+  <button class="pill" data-f="custom">4 Custom connection</button>
+  <button class="pill" data-f="empty">5 Not set up</button>
+</nav>
+
+<!-- Shared app chrome is cloned into each frame by JS -->
+<template id="chrome">
+<div class="app">
+  <aside class="left" aria-label="Sidebar">
+    <div class="search-s">Search</div>
+    <div class="row"><span class="icon">✉</span>Inbox<span class="count">12</span></div>
+    <div class="label">Bots</div>
+    <div class="row"><span class="av" style="background:var(--bot)">I</span>Inbox agent</div>
+    <div class="row"><span class="av" style="background:#4a7bd0">R</span>Research</div>
+    <div class="row"><span class="av" style="background:#7a5bc9">W</span>Writer</div>
+    <div class="row"><span class="av" style="background:#3f9b8a">O</span>Ops</div>
+    <div style="flex:1"></div>
+    <div class="row active"><span class="icon">⧉</span>Integrations</div>
+  </aside>
+  <main><div class="wrap" data-slot></div></main>
+</div>
+</template>
+
+<!-- 1. HOME -->
+<section class="frame" id="f-home"><template data-body>
+  <h1>Integrations</h1>
+  <p class="sub">Connect the apps you use so your agents can read and act in them. You choose which agents get access to each one.</p>
+
+  <h2>Connected</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="top"><div data-logo="gmail|Gmail"></div><div><div class="nm">Gmail</div><div class="ds">work@acme.example</div></div></div>
+      <div class="bottom"><span class="badge ok">Connected</span></div>
+      <div class="used">Used by <span class="stack"><span class="av s" style="background:var(--bot)" title="Inbox agent">I</span><span class="av s" style="background:#4a7bd0" title="Research">R</span></span></div>
+    </div>
+    <div class="card">
+      <div class="top"><div data-logo="slack|Slack"></div><div><div class="nm">Slack</div><div class="ds">acme-team.slack.com</div></div></div>
+      <div class="bottom"><span class="badge warn">Needs reconnect</span><button class="btn sm pri">Reconnect</button></div>
+      <div class="used">Used by <span class="stack"><span class="av s" style="background:#3f9b8a" title="Ops">O</span></span></div>
+    </div>
+    <div class="card">
+      <div class="top"><div data-logo="github|GitHub"></div><div><div class="nm">GitHub</div><div class="ds">acme-eng</div></div></div>
+      <div class="bottom"><span class="badge err">Failed</span><button class="btn sm">Try again</button></div>
+      <div class="used">Access was denied during sign-in. No agents use it yet.</div>
+    </div>
+    <div class="card">
+      <div class="top"><div data-logo="notion|Notion"></div><div><div class="nm">Notion</div><div class="ds">Acme workspace</div></div></div>
+      <div class="bottom"><span class="badge pend">Connecting…</span></div>
+      <div class="used">Waiting for you to finish signing in.</div>
+    </div>
+  </div>
+
+  <h2>Find an app</h2>
+  <div class="searchbar"><span aria-hidden="true">⌕</span><input class="f" type="search" placeholder="Search apps" aria-label="Search apps"></div>
+  <div class="chips" role="group" aria-label="Category">
+    <button class="chip on">All</button><button class="chip">Email &amp; calendar</button><button class="chip">Chat</button><button class="chip">Docs &amp; files</button><button class="chip">Finance</button><button class="chip">Developer</button><button class="chip">Sales &amp; CRM</button>
+  </div>
+
+  <h2>Popular</h2>
+  <div class="grid" id="popular"></div>
+
+  <h2>Finance</h2>
+  <div class="grid" id="finance"></div>
+
+  <h2>Anything else</h2>
+  <div class="callout">
+    <div data-logo="|+" data-cls="fb"></div>
+    <div class="t"><b>Add a custom connection</b><span>Connect any app that offers an MCP server URL.</span></div>
+    <button class="btn" data-go="custom">Add custom connection</button>
+  </div>
+</template></section>
+
+<!-- 2. CONNECT -->
+<section class="frame" id="f-connect"><template data-body>
+  <h1>Integrations</h1>
+  <p class="sub">Connect the apps you use so your agents can read and act in them.</p>
+  <div class="grid" id="popular2"></div>
+  <div class="sub-sw" role="group" aria-label="Connect step">
+    <button class="pill on" data-s="wait">1 Sign in</button>
+    <button class="pill" data-s="blocked">1 Popup blocked</button>
+    <button class="pill" data-s="failed">1 Failed</button>
+    <button class="pill" data-s="agents">2 Agents</button>
+    <button class="pill" data-s="done">3 Done</button>
+  </div>
+  <div class="scrim">
+    <div class="dlg" role="dialog" aria-label="Connect Gmail">
+      <div data-sub="wait">
+        <div class="steps">Step 1 of 3</div>
+        <div class="center"><div data-logo="gmail|Gmail" data-cls="l"></div></div>
+        <h3 class="center">Sign in to Google in the new window</h3>
+        <p class="center">Rakazo opened a Google window. Choose the account to connect, then come back here.</p>
+        <div class="spin" role="status" aria-label="Waiting for sign-in"></div>
+        <p class="center">Didn't open? <button class="link">Open again</button></p>
+        <div class="foot"><button class="btn">Cancel</button></div>
+      </div>
+      <div data-sub="blocked" hidden>
+        <div class="steps">Step 1 of 3</div>
+        <h3>Your browser blocked the sign-in window</h3>
+        <p>Allow pop-ups for this site, or open the sign-in page in a new tab.</p>
+        <div class="msg warn">The sign-in window did not open.</div>
+        <div class="foot"><button class="btn">Cancel</button><button class="btn pri">Open sign-in page</button></div>
+      </div>
+      <div data-sub="failed" hidden>
+        <div class="steps">Step 1 of 3</div>
+        <h3>Gmail was not connected</h3>
+        <p>Google reported that access was denied. Nothing was changed.</p>
+        <div class="msg err">Google sign-in was cancelled or access was denied.</div>
+        <div class="foot"><button class="btn">Close</button><button class="btn pri">Try again</button></div>
+      </div>
+      <div data-sub="agents" hidden>
+        <div class="steps">Step 2 of 3</div>
+        <h3>Which agents can use Gmail?</h3>
+        <p>Selected agents can read and draft email in work@acme.example. You can change this later.</p>
+        <div class="opt"><label><input type="checkbox" checked><span class="av" style="background:var(--bot)">I</span>Inbox agent</label><small>Recommended</small></div>
+        <div class="opt"><label><input type="checkbox"><span class="av" style="background:#4a7bd0">R</span>Research</label></div>
+        <div class="opt"><label><input type="checkbox"><span class="av" style="background:#7a5bc9">W</span>Writer</label></div>
+        <div class="opt"><label><input type="checkbox"><span class="av" style="background:#3f9b8a">O</span>Ops</label></div>
+        <div class="foot"><button class="btn">Skip</button><button class="btn pri">Continue</button></div>
+      </div>
+      <div data-sub="done" hidden>
+        <div class="center"><div data-logo="gmail|Gmail" data-cls="l"></div></div>
+        <h3 class="center">Gmail connected</h3>
+        <p class="center">work@acme.example is ready.</p>
+        <ul class="list"><li>Inbox agent can search, read and draft email.</li><li>Sending email still asks you first.</li><li>Gmail now appears under Connected.</li></ul>
+        <div class="foot"><button class="btn pri">Done</button></div>
+      </div>
+    </div>
+  </div>
+</template></section>
+
+<!-- 3. DETAIL -->
+<section class="frame" id="f-detail"><template data-body>
+  <div class="sub-sw"><button class="pill" data-s="confirm">Show disconnect confirm</button></div>
+  <button class="back" data-go="home">← Integrations</button>
+  <div class="dhead">
+    <div data-logo="gmail|Gmail" data-cls="xl"></div>
+    <div><h1 style="margin:0">Gmail</h1><div class="meta"><span class="badge ok">Connected</span><span>via Composio</span></div></div>
+  </div>
+  <p class="sub" style="margin-top:12px">Agents can search, read and draft email, and send it with your approval.</p>
+
+  <h2>Accounts</h2>
+  <div class="panel">
+    <div class="pr"><div class="grow"><b>work@acme.example</b><small>Connected Oct 10</small></div><button class="btn sm">Rename</button><button class="btn sm bad">Remove</button></div>
+    <div class="pr"><div class="grow"><b>personal@example.org</b><small>Connected Oct 12</small></div><button class="btn sm">Rename</button><button class="btn sm bad">Remove</button></div>
+  </div>
+  <p style="margin:10px 0 0"><button class="btn">Add another account</button></p>
+
+  <h2>Used by</h2>
+  <div class="panel">
+    <div class="pr"><span class="av" style="background:var(--bot)">I</span><div class="grow">Inbox agent</div><button class="tgl" role="switch" aria-checked="true" aria-label="Inbox agent can use Gmail"></button></div>
+    <div class="pr"><span class="av" style="background:#4a7bd0">R</span><div class="grow">Research</div><button class="tgl" role="switch" aria-checked="true" aria-label="Research can use Gmail"></button></div>
+    <div class="pr"><span class="av" style="background:#7a5bc9">W</span><div class="grow">Writer</div><button class="tgl" role="switch" aria-checked="false" aria-label="Writer can use Gmail"></button></div>
+    <div class="pr"><span class="av" style="background:#3f9b8a">O</span><div class="grow">Ops</div><button class="tgl" role="switch" aria-checked="false" aria-label="Ops can use Gmail"></button></div>
+  </div>
+
+  <h2>Tools · 9</h2>
+  <div class="panel">
+    <div class="grp"><span>Read</span><span style="font-weight:400;color:var(--muted-fg)">Never changes your mailbox</span></div>
+    <div class="tool-row"><code>search_threads</code><span>Find conversations by sender, subject, date or label.</span></div>
+    <div class="tool-row"><code>get_thread</code><span>Read every message in a conversation.</span></div>
+    <div class="tool-row"><code>get_message</code><span>Read one message, including its attachments list.</span></div>
+    <div class="tool-row"><code>list_labels</code><span>List your labels so agents can file mail correctly.</span></div>
+    <div class="grp"><span>Write</span><span style="font-weight:400;color:var(--muted-fg)">Changes your mailbox</span></div>
+    <div class="tool-row"><code>create_draft</code><span>Save a draft reply or new message without sending it.</span></div>
+    <div class="tool-row"><code>send_message</code><span>Send an email from this account. Asks you to approve first.</span></div>
+    <div class="tool-row"><code>label_thread</code><span>Apply or remove a label on a conversation.</span></div>
+    <div class="tool-row"><code>trash_thread</code><span>Move a conversation to Trash. Can be undone for 30 days.</span></div>
+    <div class="tool-row"><code>mark_thread_spam</code><span>Report a conversation as spam and move it out of the inbox.</span></div>
+  </div>
+
+  <div class="danger"><button class="btn bad" data-s="confirm">Disconnect Gmail</button><span>Removes both accounts and agent access.</span></div>
+
+  <div class="scrim" data-sub="confirm" hidden>
+    <div class="dlg" role="alertdialog" aria-label="Disconnect Gmail">
+      <h3>Disconnect Gmail?</h3>
+      <p>This removes both accounts from Rakazo.</p>
+      <ul class="list bad" style="color:var(--fg)">
+        <li>Inbox agent and Research lose access to work@acme.example and personal@example.org.</li>
+        <li>The Inbox page stops showing new mail until you reconnect.</li>
+        <li>Your mail in Google is not deleted.</li>
+      </ul>
+      <div class="foot"><button class="btn" data-s="close">Cancel</button><button class="btn bad fill">Disconnect Gmail</button></div>
+    </div>
+  </div>
+</template></section>
+
+<!-- 4. CUSTOM -->
+<section class="frame" id="f-custom"><template data-body>
+  <h1>Integrations</h1>
+  <p class="sub">Connect the apps you use so your agents can read and act in them.</p>
+  <div class="grid" id="finance2"></div>
+  <div class="sub-sw" role="group" aria-label="Custom step">
+    <button class="pill on" data-s="form">Form</button>
+    <button class="pill" data-s="adv">Advanced open</button>
+    <button class="pill" data-s="oauth">OAuth step</button>
+  </div>
+  <div class="scrim">
+    <div class="dlg" role="dialog" aria-label="Add a custom connection">
+      <div data-sub="form adv">
+        <h3>Add a custom connection</h3>
+        <p>Paste the MCP server URL from the app's documentation.</p>
+        <label class="fld" style="display:block"><span>Server URL</span><input class="f mono" value="https://mcp.mercury.com/mcp" aria-label="Server URL"></label>
+        <div class="quick">Examples
+          <button class="chip"><span data-logo="|M" data-cls="fb"></span>Mercury</button>
+          <button class="chip"><span data-logo="brex|Brex"></span>Brex</button>
+        </div>
+        <details data-adv>
+          <summary>Advanced</summary>
+          <label class="fld" style="display:block"><span>Auth header</span><input class="f mono" placeholder="Authorization" aria-label="Auth header"></label>
+          <label class="fld" style="display:block"><span>Token</span><input class="f mono" type="password" placeholder="Only if the server does not use sign-in" aria-label="Token"></label>
+          <div class="fld"><span>Other connection types</span>
+            <div class="quick" style="margin:0"><button class="chip" style="padding:3px 10px">OpenAPI</button><button class="chip" style="padding:3px 10px">GraphQL</button><button class="chip" style="padding:3px 10px">Executor</button><button class="chip" style="padding:3px 10px">Treg</button></div>
+          </div>
+        </details>
+        <div class="foot"><button class="btn">Cancel</button><button class="btn pri">Connect</button></div>
+      </div>
+      <div data-sub="oauth" hidden>
+        <div class="steps">Step 1 of 3</div>
+        <div class="center"><div data-logo="|M" data-cls="l fb"></div></div>
+        <h3 class="center">Sign in to Mercury in the new window</h3>
+        <p class="center">Rakazo opened Mercury's sign-in page. Approve access, then come back here.</p>
+        <div class="spin" role="status" aria-label="Waiting for sign-in"></div>
+        <p class="center">Didn't open? <button class="link">Open again</button></p>
+        <div class="foot"><button class="btn">Cancel</button></div>
+      </div>
+    </div>
+  </div>
+</template></section>
+
+<!-- 5. EMPTY -->
+<section class="frame" id="f-empty"><template data-body>
+  <div class="sub-sw" role="group" aria-label="Viewer"><button class="pill on" data-s="member">Member view</button><button class="pill" data-s="owner">Owner view</button></div>
+  <h1>Integrations</h1>
+  <p class="sub">Connect the apps you use so your agents can read and act in them. You choose which agents get access to each one.</p>
+  <div class="panel" style="padding:22px;margin-bottom:12px">
+    <div class="empty" style="padding:0">
+      <b style="color:var(--fg);display:block;margin-bottom:4px">App connections aren't set up on this server yet.</b>
+      Custom connections still work.
+      <div data-sub="member" style="margin-top:6px">Ask the server owner to set up the app catalog.</div>
+      <div data-sub="owner" hidden style="margin-top:12px"><a class="btn pri" href="#" style="text-decoration:none;display:inline-block" onclick="return false">Set up app catalog</a> <span class="mono" style="margin-left:8px;color:var(--muted-fg)">/integrations/setup</span></div>
+    </div>
+  </div>
+  <div class="callout">
+    <div data-logo="|+" data-cls="fb"></div>
+    <div class="t"><b>Add a custom connection</b><span>Connect any app that offers an MCP server URL.</span></div>
+    <button class="btn" data-go="custom">Add custom connection</button>
+  </div>
+</template></section>
+
+<script>
+const V='https://cdn.jsdelivr.net/npm/simple-icons@13.21.0/icons/';
+const APPS={
+ gmail:['Gmail','Read, search and draft email','gmail'],
+ gcal:['Google Calendar','See your schedule and create events','googlecalendar'],
+ gdrive:['Google Drive','Find, read and organize files','googledrive'],
+ slack:['Slack','Read channels and post messages','slack'],
+ notion:['Notion','Search, read and edit pages and databases','notion'],
+ github:['GitHub','Read issues and pull requests, comment on them','github'],
+ linear:['Linear','Create and update issues and projects','linear'],
+ stripe:['Stripe','Look up customers, payments and invoices','stripe'],
+ hubspot:['HubSpot','Read and update contacts and deals','hubspot'],
+ figma:['Figma','Read files and comments on designs','figma'],
+ mercury:['Mercury','Read balances and transactions','' ],
+ brex:['Brex','Read cards, expenses and bills','brex']
+};
+function logo(slug,name,cls){
+  const l=document.createElement('span');
+  const fb=()=>{l.className='logo fb '+(cls||'').replace('fb','');l.textContent=(name||'?').trim()[0].toUpperCase();};
+  l.className='logo '+(cls||'');
+  if(!slug){fb();l.className='logo fb '+(cls||'').replace(/\bfb\b/,'');l.textContent=name;l.title='';return l}
+  const i=new Image();i.alt='';i.src=V+slug+'.svg';
+  i.onerror=()=>{l.textContent='';fb();l.dataset.fallback='1'};
+  l.appendChild(i);return l;
+}
+function tile(k,btn){
+  const [n,d,s]=APPS[k];
+  const c=document.createElement('div');c.className='card';
+  c.innerHTML='<div class="top"><span data-l></span><div><div class="nm"></div><div class="ds"></div></div></div><div class="bottom"><button class="btn">Connect</button></div>';
+  c.querySelector('.nm').textContent=n;c.querySelector('.ds').textContent=d;
+  c.querySelector('[data-l]').replaceWith(logo(s,n[0]));
+  c.querySelector('.btn').setAttribute('aria-label','Connect '+n);
+  if(k==='gmail')c.querySelector('.btn').dataset.go='connect';
+  return c;
+}
+function fill(id,keys){const e=document.getElementById(id);if(e)keys.forEach(k=>e.appendChild(tile(k)))}
+// build frames
+const chrome=document.getElementById('chrome');
+document.querySelectorAll('.frame').forEach(f=>{
+  const c=chrome.content.cloneNode(true);
+  const body=f.querySelector('template[data-body]').content.cloneNode(true);
+  c.querySelector('[data-slot]').appendChild(body);
+  f.appendChild(c);
+});
+fill('popular',['gcal','gdrive','linear','hubspot','figma','stripe']);
+fill('finance',['mercury','brex']);
+fill('popular2',['gmail','gcal','gdrive','slack']);
+fill('finance2',['mercury','brex','stripe']);
+document.querySelectorAll('[data-logo]').forEach(e=>{
+  const [s,n]=e.dataset.logo.split('|');
+  const x=logo(s,n,e.dataset.cls);
+  if(!s){x.className='logo fb '+(e.dataset.cls||'').replace(/\bfb\b/,'');x.textContent=n}
+  e.replaceWith(x);
+});
+// switching
+function show(f){
+  if(!document.getElementById('f-'+f))f='home';
+  document.querySelectorAll('.frame').forEach(e=>e.classList.toggle('on',e.id==='f-'+f));
+  document.querySelectorAll('.switch .pill').forEach(b=>b.classList.toggle('on',b.dataset.f===f));
+  if(location.hash!=='#'+f)history.replaceState(null,'','#'+f);
+}
+function sub(frame,s){
+  const f=frame.closest('.frame');
+  f.querySelectorAll('[data-sub]').forEach(e=>{
+    const m=e.dataset.sub.split(' ');
+    if(['wait','blocked','failed','agents','done','form','adv','oauth','member','owner'].some(x=>m.includes(x))||m.includes('confirm'))e.hidden=!m.includes(s)&&!(s==='close'&&false);
+  });
+  if(s==='confirm'||s==='close'){f.querySelectorAll('[data-sub=confirm]').forEach(e=>e.hidden=s==='close')}
+  f.querySelectorAll('.sub-sw .pill').forEach(p=>p.classList.toggle('on',p.dataset.s===s));
+  const d=f.querySelector('details[data-adv]');if(d)d.open=(s==='adv');
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button,a');if(!b)return;
+  if(b.dataset.f)show(b.dataset.f);
+  else if(b.dataset.go)show(b.dataset.go);
+  else if(b.dataset.s)sub(b,b.dataset.s);
+  else if(b.classList.contains('tgl'))b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true');
+  else if(b.classList.contains('chip')&&!b.closest('.quick')){b.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===b))}
+});
+show(location.hash.slice(1)||'home');
+</script>
+</body>
+</html>

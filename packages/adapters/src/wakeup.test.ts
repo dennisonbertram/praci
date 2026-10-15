@@ -15,6 +15,7 @@ function handlers(): BackgroundJobHandlers {
     "cloud_agent.poll": vi.fn(async () => undefined),
     "mail.search.expire": vi.fn(async () => undefined),
     "inbox.triage": vi.fn(async () => undefined),
+    "finance.sync": vi.fn(async () => undefined),
   };
 }
 

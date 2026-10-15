@@ -70,7 +70,7 @@ export function prefillHtml(prefill: { body: string; quotedHtml?: string }): str
   const start = body.search(/^-{5,} Forwarded message -{5,}$/m);
   if (!quotedHtml || start < 0) return textToHtml(body);
   const end = body.indexOf("\n\n", start);
-  return textToHtml(body.slice(0, end < 0 ? body.length : end)) + "<p></p>" + quotedHtml;
+  return `${textToHtml(body.slice(0, end < 0 ? body.length : end))}<p></p>${quotedHtml}`;
 }
 
 export function formatBytes(bytes: number): string {

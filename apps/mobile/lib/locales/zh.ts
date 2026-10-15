@@ -780,4 +780,8 @@ export const ZH_MESSAGES: Record<string, string> = {
   Spam: "垃圾邮件",
   Junk: "垃圾内容",
   "To do": "待办",
+  "Chart could not be drawn.": "图表无法绘制。",
+  "Could not load this page.": "无法加载此页面。",
+  "No page yet.": "还没有页面。",
+  Page: "页面",
 };

@@ -160,7 +160,7 @@ describe("plainTextFromMarkdown", () => {
   });
 
   it("still closes a fence that ends inside a long reply", () => {
-    const source = "```\nkeep *stars*\n```\n**after** " + "z".repeat(6_000);
+    const source = `\`\`\`\nkeep *stars*\n\`\`\`\n**after** ${"z".repeat(6_000)}`;
     const preview = plainTextFromMarkdown(source);
     expect(preview.startsWith("keep *stars* after")).toBe(true);
     expect(preview).not.toContain("```");
@@ -168,8 +168,7 @@ describe("plainTextFromMarkdown", () => {
   });
 
   it("preserves a code block when the preview cap cuts off its closing fence", () => {
-    const source =
-      "```ts\nkeep *stars* and <tag> and | a | b |\n" + "y".repeat(6_000) + "\n```\nAFTER";
+    const source = `\`\`\`ts\nkeep *stars* and <tag> and | a | b |\n${"y".repeat(6_000)}\n\`\`\`\nAFTER`;
     const preview = plainTextFromMarkdown(source);
     expect(preview.startsWith("keep *stars* and <tag> and | a | b |")).toBe(true);
     expect(preview).not.toContain("```");

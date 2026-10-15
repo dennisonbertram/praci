@@ -13,6 +13,7 @@ test("the Inbox agent chats in a collapsible side panel on /app/inbox", async ({
   await expect(page.getByRole("heading", { name: "Inbox", level: 1 })).toBeVisible();
   expect(new URL(page.url()).pathname).toBe("/app/inbox");
   const panel = page.getByTestId("side-panel");
+  await page.getByRole("main").getByRole("button", { name: "Show Inbox agent" }).click();
   await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
   const composer = panel.getByPlaceholder(/Message/);
   await expect(composer).toBeVisible();
@@ -70,6 +71,7 @@ test("a reload on /app/inbox shows the existing Inbox agent, not the first bot",
   await completeOnboarding(page);
   await page.goto("/app/inbox");
   const panel = page.getByTestId("side-panel");
+  await page.getByRole("main").getByRole("button", { name: "Show Inbox agent" }).click();
   await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
   await expect(panel.getByPlaceholder("Message Inbox agent")).toBeVisible();
 

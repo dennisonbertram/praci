@@ -1,6 +1,5 @@
 import {
   type AdapterContext,
-  ConnectorProxyError,
   type ConnectorProxyRequest,
   type ConnectorProxyResponse,
   type MailAccount,
@@ -23,17 +22,19 @@ import {
 import type { PrismaClient } from "@rakazo/db";
 import { JSDOM } from "jsdom";
 import { asRecord } from "./connector-http.js";
+import {
+  GOOGLE_API_CONCURRENCY,
+  GoogleApiClient,
+  GoogleApiError,
+  type GoogleApiSleep,
+  isGoogleAuthFailure,
+  isGoogleRateLimited,
+} from "./google-api-request.js";
 import { buildRawMessage } from "./mail-compose.js";
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 const MAX_PAGE_SIZE = 500;
-const MAX_ATTEMPTS = 3;
-const BASE_DELAY_MS = 500;
-// A longer Retry-After is not slept through (it would hold the caller); the error carries it instead.
-const MAX_RETRY_AFTER_MS = 30_000;
-// Measured through the Composio proxy (about 290 ms per get): 4 in flight hydrates 11 messages/s,
-// 12 gives about 30/s and more adds nothing. 30 gets/s is 150 of Gmail's 250 quota units/s per user.
-const CONCURRENCY = 12;
+const CONCURRENCY = GOOGLE_API_CONCURRENCY;
 const MAX_TEXT = 40_000;
 const MAX_HTML = 200_000;
 // Inline `cid:` images are embedded as data: URLs, so each image and the total are capped.
@@ -45,10 +46,8 @@ const METADATA_QUERY = ["From", "To", "Cc", "Subject", "Date"]
   .map((name) => `metadataHeaders=${name}`)
   .join("&");
 const HISTORY_TYPES = ["messageAdded", "messageDeleted", "labelAdded", "labelRemoved"];
-const AUTH_REASONS = new Set(["authError", "insufficientPermissions"]);
-const RATE_REASONS = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
 
-export type MailSleep = (ms: number, signal: AbortSignal) => Promise<void>;
+export type MailSleep = GoogleApiSleep;
 
 export interface GmailMailProviderDeps {
   /**
@@ -61,18 +60,6 @@ export interface GmailMailProviderDeps {
   sleep?: MailSleep;
   random?: () => number;
 }
-
-const defaultSleep: MailSleep = (ms, signal) =>
-  new Promise((resolve) => {
-    if (signal.aborted) return resolve();
-    const done = () => {
-      clearTimeout(timer);
-      signal.removeEventListener("abort", done);
-      resolve();
-    };
-    const timer = setTimeout(done, ms);
-    signal.addEventListener("abort", done, { once: true });
-  });
 
 /** True for a connected Gmail connection that has a remote account id, whichever connector made it. */
 export function isMailConnection(row: {
@@ -89,13 +76,10 @@ export function isMailConnection(row: {
 
 /** Gmail implementation of `MailProvider`, written once on top of `ManagedConnectorProvider.proxy`. */
 export class GmailMailProvider implements MailProvider {
-  private readonly slots = new Map<string, { active: number; queue: Array<() => void> }>();
-  private readonly sleep: MailSleep;
-  private readonly random: () => number;
+  private readonly google: GoogleApiClient;
 
   constructor(private readonly deps: GmailMailProviderDeps) {
-    this.sleep = deps.sleep ?? defaultSleep;
-    this.random = deps.random ?? Math.random;
+    this.google = new GoogleApiClient({ sleep: deps.sleep, random: deps.random });
   }
 
   async listAccounts(
@@ -712,16 +696,7 @@ export class GmailMailProvider implements MailProvider {
       : html;
   }
 
-  /**
-   * One authenticated call with per-account concurrency, retry and status mapping. Retried: 429, a
-   * 403 rate-limit reason, and (not for POST) 408, 5xx and transient transport errors; up to
-   * MAX_ATTEMPTS, backing off exponentially with jitter or for the server's Retry-After, and failing
-   * at once when that is over MAX_RETRY_AFTER_MS.
-   *
-   * A POST (sendDraft, createDraft) is never repeated after an unclear failure (5xx, timeout,
-   * dropped connection): the request may have reached Google, so a repeat could send twice. A rate
-   * limit proves Google did nothing, so it is retried for every method.
-   */
+  /** One authenticated call through the shared Google request helper, with errors mapped to mail errors. */
   private async request(
     account: MailAccount,
     context: AdapterContext,
@@ -729,74 +704,29 @@ export class GmailMailProvider implements MailProvider {
     init: { method?: ConnectorProxyRequest["method"]; body?: unknown } = {},
   ): Promise<unknown> {
     const method = init.method ?? "GET";
-    const repeatable = method !== "POST";
     const connector = this.deps.connectors.managed(account.connectorId);
-    const proxy = connector?.proxy?.bind(connector);
-    if (!proxy) throw new MailProviderError("unavailable", "This mail connection cannot be read");
-    for (let attempt = 1; ; attempt++) {
-      if (context.signal.aborted)
-        throw new MailProviderError("unavailable", "Mail request aborted");
-      let failure: { error: MailProviderError; retry: boolean; retryAfterMs?: number };
-      try {
-        const response = await this.limit(account.id, () =>
-          proxy(
-            {
-              app: account.app,
-              accountRef: account.accountRef,
-              method,
-              url,
-              ...(init.body === undefined ? {} : { body: init.body }),
-            },
-            context,
-          ),
-        );
-        const error = mapStatus(response, method);
-        if (!error) return response.data;
-        failure = {
-          error,
-          retryAfterMs: response.retryAfterMs,
-          retry:
-            error.kind === "rate_limited" ||
-            (repeatable && (response.status >= 500 || response.status === 408)),
-        };
-      } catch (cause) {
-        // Only the connector's sanitized error is kept: other transport errors can carry credentials.
-        failure = context.signal.aborted
-          ? { error: new MailProviderError("unavailable", "Mail request aborted"), retry: false }
-          : {
-              error: new MailProviderError(
-                "unavailable",
-                "Mail request failed",
-                undefined,
-                describeProxyError(cause),
-              ),
-              retry: repeatable && cause instanceof ConnectorProxyError && cause.transient,
-            };
-      }
-      if (!failure.retry || attempt >= MAX_ATTEMPTS || context.signal.aborted) throw failure.error;
-      const wait = failure.retryAfterMs ?? BASE_DELAY_MS * 2 ** (attempt - 1) + this.random() * 250;
-      if (wait > MAX_RETRY_AFTER_MS) throw failure.error;
-      await this.sleep(wait, context.signal);
-      if (context.signal.aborted) throw failure.error;
-    }
-  }
-
-  // ponytail: per-process limiter; move to a Postgres-backed limit per connection if 429s become common.
-  private async limit<T>(key: string, run: () => Promise<T>): Promise<T> {
-    let slot = this.slots.get(key);
-    if (!slot) {
-      slot = { active: 0, queue: [] };
-      this.slots.set(key, slot);
-    }
-    const mine = slot;
-    if (mine.active >= CONCURRENCY) await new Promise<void>((resolve) => mine.queue.push(resolve));
-    else mine.active++;
+    if (!connector?.proxy)
+      throw new MailProviderError("unavailable", "This mail connection cannot be read");
     try {
-      return await run();
-    } finally {
-      const waiting = mine.queue.shift();
-      if (waiting) waiting();
-      else if (--mine.active === 0) this.slots.delete(key);
+      const response = await this.google.request({
+        connector,
+        account: {
+          connectorId: account.connectorId,
+          providerRef: account.accountRef,
+          app: account.app,
+        },
+        method,
+        url,
+        ...(init.body === undefined ? {} : { body: init.body }),
+        context,
+      });
+      return response.data;
+    } catch (cause) {
+      if (!(cause instanceof GoogleApiError)) throw cause;
+      if (cause.response) throw mapStatus(cause.response, method);
+      if (cause.kind === "aborted")
+        throw new MailProviderError("unavailable", "Mail request aborted");
+      throw new MailProviderError("unavailable", "Mail request failed", undefined, cause.detail);
     }
   }
 }
@@ -838,14 +768,6 @@ function buildQuery(request: MailListRequest): string {
     .join(" ");
 }
 
-/** Log text for a failed proxy call: the sanitized connector error, or only the class of any other. */
-function describeProxyError(cause: unknown): string {
-  if (!(cause instanceof ConnectorProxyError))
-    return cause instanceof Error ? cause.name : "unknown";
-  const status = cause.status === undefined ? "" : ` status=${cause.status}`;
-  return `${cause.code ?? cause.name}${status}: ${cause.message.slice(0, 300)}`;
-}
-
 /** The single place HTTP statuses become typed errors. Returns undefined for 2xx. */
 function mapStatus(
   response: ConnectorProxyResponse,
@@ -853,15 +775,9 @@ function mapStatus(
 ): MailProviderError | undefined {
   const { status } = response;
   if (status >= 200 && status < 300) return undefined;
-  const errors = asRecord(asRecord(response.data)?.error)?.errors;
-  const reasons = (Array.isArray(errors) ? errors : []).flatMap((entry: unknown) => {
-    const reason = asRecord(entry)?.reason;
-    return typeof reason === "string" ? [reason] : [];
-  });
-  if (status === 401 || (status === 403 && reasons.some((r) => AUTH_REASONS.has(r))))
+  if (isGoogleAuthFailure(response))
     return new MailProviderError("auth", "The mail account needs to be reconnected");
-  const exhausted = asRecord(asRecord(response.data)?.error)?.status === "RESOURCE_EXHAUSTED";
-  if (status === 429 || (status === 403 && (exhausted || reasons.some((r) => RATE_REASONS.has(r)))))
+  if (isGoogleRateLimited(response))
     return new MailProviderError("rate_limited", "Mail rate limit reached", response.retryAfterMs);
   if (status === 404) return new MailProviderError("not_found", "Message not found");
   // For a write, Gmail refusing the message means nothing was saved or sent.

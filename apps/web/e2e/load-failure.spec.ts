@@ -1,32 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 
-test("a failed overlay chunk keeps the shell and the draft, and Refresh loads it", async ({
+test("a failed Integrations chunk keeps the shell, and a reload loads it", async ({
   page,
 }, testInfo) => {
   const stamp = Date.now();
-  await signup(page, `overlay-load-${stamp}@rakazo.test`, "password12", "Overlay Load");
+  await signup(page, `integrations-load-${stamp}@rakazo.test`, "password12", "Integrations Load");
   await completeOnboarding(page);
 
-  const composer = page.getByRole("combobox", { name: "Message Chief" });
-  await composer.fill("Keep this draft");
+  const integrationsChunk = /\/pages\/Integrations\.tsx/;
+  await page.route(integrationsChunk, (route) => route.fulfill({ status: 404 }));
+  await page.getByTestId("sidebar-integrations").click();
 
-  const pluginsChunk = /\/pages\/PluginsOverlay\.tsx/;
-  await page.route(pluginsChunk, (route) => route.fulfill({ status: 404 }));
-  await page.getByText("Integrations", { exact: true }).click();
+  await expect(page.getByText("Could not load", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("sidebar-integrations")).toBeVisible();
+  await captureScreenshot(page, testInfo, "integrations-load-failed");
 
-  const failed = page.getByRole("alertdialog", { name: "Could not load" });
-  await expect(failed).toBeVisible();
-  await captureScreenshot(page, testInfo, "overlay-load-failed");
-
-  await failed.getByRole("button", { name: "Close", exact: true }).click();
-  await expect(failed).toHaveCount(0);
-  await expect(composer).toHaveValue("Keep this draft");
-
-  await page.unroute(pluginsChunk);
-  await page.getByText("Integrations", { exact: true }).click();
-  await failed.getByRole("button", { name: "Refresh", exact: true }).click();
-  await page.getByText("Integrations", { exact: true }).click();
+  await page.unroute(integrationsChunk);
+  await page.reload();
   await expect(page.getByPlaceholder("Search apps")).toBeVisible();
 });
 

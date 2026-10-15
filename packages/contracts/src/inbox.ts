@@ -59,6 +59,8 @@ export const MailRowSchema = z.object({
   snippet: z.string(),
   receivedAt: z.string(),
   unread: z.boolean(),
+  /** False for search results already archived; only inbox mail can be archived. */
+  inInbox: z.boolean(),
   /** Null until triaged, and while triage is not enabled. Already-answered threads are false. */
   needsReply: z.boolean().nullable(),
   priority: InboxPrioritySchema.nullable(),

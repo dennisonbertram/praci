@@ -26,10 +26,12 @@ import {
   createBackgroundJobHandlers,
   createCloudAgentConnection,
   createConnectorStack,
+  createFinanceCallToolFor,
   createJobReconciler,
   createMailProvider,
   createMessagingContextLoader,
   createMessagingTeamChatSender,
+  createRpcClient,
   createRunExecutor,
   createRunSandbox,
   createRunSecretWriter,
@@ -63,12 +65,14 @@ import {
   reconcileCloudAgents,
   reconcileComputerUpdates,
   removePiUserSessions,
+  resolveEnsName,
   ScriptedAgentRuntime,
   SmtpEmailProvider,
   SpaceMemoryProviderResolver,
   StripeBillingProvider,
   sandboxProviderOptionsFromEnv,
   stripeBillingConfigFromEnv,
+  syncCryptoHoldings,
   toTeamChatInbound,
   withSecretPersistence,
 } from "@rakazo/adapters";
@@ -526,6 +530,7 @@ export async function createApp(
     deploymentModelConfigured: env.deploymentModelConfigured,
     messaging,
     cloudAgent,
+    financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
   });
   if (inMemoryJobs) {
     await inMemoryJobs.start(jobHandlers);
@@ -564,6 +569,11 @@ export async function createApp(
     remoteConnectors,
     artifacts,
     mail,
+    financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
+    financeCrypto: {
+      sync: (scope, opts) => syncCryptoHoldings({ prisma }, scope, opts),
+      resolveEns: (_scope, name, signal) => resolveEnsName(createRpcClient({ signal }), name),
+    },
     resolveModel: executor.resolveModel,
     dataDir: env.dataDir,
     billing,
