@@ -541,11 +541,48 @@ export const FinanceMonthOutputSchema = z.object({
   transactions: z.array(FinanceTransactionSchema),
 });
 
+/**
+ * What counts as cash for runway, burn-down and the dashboard: bank only, bank plus stablecoins
+ * (the default), or bank plus all priced crypto at current prices.
+ */
+export const RunwayCryptoScopeSchema = z.enum(["bank", "stablecoins", "all"]);
+export type RunwayCryptoScope = z.infer<typeof RunwayCryptoScopeSchema>;
+
+export const FinancePreferencesSchema = z.object({ runwayCrypto: RunwayCryptoScopeSchema });
+export type FinancePreferences = z.infer<typeof FinancePreferencesSchema>;
+
+/** End-of-day crypto value from stored daily snapshots; days before the first snapshot are absent. */
+export const CryptoBalancePointSchema = z.object({
+  day: DayId,
+  stablecoinCents: Cents,
+  otherCryptoCents: Cents,
+});
+export type CryptoBalancePoint = z.infer<typeof CryptoBalancePointSchema>;
+
+export const FinanceCryptoHistoryInputSchema = z.object({
+  days: z.number().int().min(7).max(366).default(90),
+  /** One wallet; all wallets when absent. */
+  walletId: Id.optional(),
+});
+
+export const FinanceCryptoHistoryOutputSchema = z.object({
+  points: z.array(CryptoBalancePointSchema),
+});
+
 export const FinanceRunwayOutputSchema = z.object({
+  /** The scope the figures below were computed with (the saved preference). */
+  runwayCrypto: RunwayCryptoScopeSchema,
+  /** Cash under `runwayCrypto`. */
   cashCents: Cents,
+  /** Every part, whether or not it counts under `runwayCrypto`. */
+  breakdown: z.object({
+    bankCents: Cents,
+    stablecoinCents: Cents,
+    otherCryptoCents: Cents,
+  }),
   monthlyBurnCents: Cents,
   runway: RunwaySchema,
-  /** Past total cash, 12 months. */
+  /** Past cash under `runwayCrypto`, 12 months; crypto from daily snapshots, so months before the first snapshot are bank only. */
   history: z.array(BalancePointSchema),
   /** From this month forward, one point a month, until cash reaches zero or 24 months; [] when not burning. */
   projection: z.array(BalancePointSchema),
