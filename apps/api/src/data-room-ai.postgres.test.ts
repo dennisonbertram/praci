@@ -220,6 +220,15 @@ describePostgres("Data room search, consent and embedding model (PostgreSQL)", (
         data: { classifiedAt: new Date() },
       });
       const theirs = await addItem(other, "theirs", "someone else's", false);
+      // An image whose vision was skipped has an empty text; a text file with empty text is not an image.
+      const image = await addItem(a, "scan", "x", false);
+      await prisma.dataRoomItem.update({ where: { id: image.id }, data: { mimeType: "image/png" } });
+      await prisma.dataRoomItemText.update({ where: { itemId: image.id }, data: { text: "" } });
+      await prisma.dataRoomChunk.deleteMany({ where: { itemId: image.id } });
+      ai = {
+        ...ai,
+        model: { provider: "openai-compatible", id: "vis", acceptsImages: true } as never,
+      };
 
       const granted = await service().consentGrant(a, {
         key: ai.consentKey,
@@ -234,6 +243,8 @@ describePostgres("Data room search, consent and embedding model (PostgreSQL)", (
       const queued = enqueued.map((j) => `${j.name}:${(j.payload as { itemId: string }).itemId}`);
       expect(queued).toContain(`dataroom.classify:${skipped.id}`);
       expect(queued).toContain(`dataroom.index:${unembedded.id}`);
+      expect(queued).toContain(`dataroom.ingest:${image.id}`);
+      expect(queued).not.toContain(`dataroom.classify:${image.id}`);
       expect(queued.some((q) => q.endsWith(done.id))).toBe(false);
       expect(queued.some((q) => q.endsWith(theirs.id))).toBe(false);
       const status = async (id: string) =>

@@ -43,6 +43,7 @@ export const DataRoomApiItemSchema = z.object({
   folderId: NullableId,
   source: z.string(),
   status: z.string(),
+  /** Why the last step failed. A `ready` item can carry one (for example, filing was skipped). */
   error: z.string().nullable(),
   facets: DataRoomApiFacetsSchema,
   createdAt: z.string().datetime(),

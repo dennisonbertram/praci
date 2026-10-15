@@ -742,6 +742,18 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       });
     },
 
+    /**
+     * Starts a stuck upload over: a `pending` or `failed` item goes back to `pending` with its
+     * failure count cleared. Returns false for any other status.
+     */
+    async restartItem(actor: Actor, id: string): Promise<boolean> {
+      const { count } = await prisma.dataRoomItem.updateMany({
+        where: { id, ...eligibleWhere(actor), status: { in: ["pending", "failed"] } },
+        data: { status: "pending", error: null, failures: 0, revision: { increment: 1 } },
+      });
+      return count === 1;
+    },
+
     /** Chunks of the item that have no embedding yet, in order. */
     async unembeddedChunks(actor: Actor, itemId: string) {
       return prisma.$queryRaw<{ ordinal: number; text: string; contentHash: string }[]>`
@@ -768,17 +780,24 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     },
 
     /**
-     * Sends ready items back to a pipeline step and returns their ids. "classify": items whose
+     * Sends ready items back to a pipeline step and returns their ids. "ingest": image items with
+     * no text (vision was skipped). "classify": items whose
      * classification was skipped. "index": items with a chunk that has no embedding, or (when
      * `embeddingModel` is given) one embedded by another model.
      */
     async requeueReady(
       actor: Actor,
-      step: "classify" | "index",
+      step: "ingest" | "classify" | "index",
       embeddingModel?: string,
     ): Promise<string[]> {
       const rows =
-        step === "classify"
+        step === "ingest"
+          ? await prisma.$queryRaw<{ id: string }[]>`
+              SELECT i.id FROM data_room_items i
+              WHERE ${eligibleSql(actor, { status: "ready" })} AND i."mimeType" LIKE 'image/%'
+                AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
+                  AND t.text = '')`
+          : step === "classify"
           ? await prisma.$queryRaw<{ id: string }[]>`
               SELECT i.id FROM data_room_items i
               WHERE ${eligibleSql(actor, { status: "ready" })} AND i."classifiedAt" IS NULL
@@ -795,7 +814,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       await prisma.dataRoomItem.updateMany({
         where: { id: { in: rows.map((r) => r.id) }, ...eligibleWhere(actor), status: "ready" },
         data: {
-          status: step === "classify" ? "classifying" : "indexing",
+          status: { ingest: "pending", classify: "classifying", index: "indexing" }[step],
           failures: 0,
           revision: { increment: 1 },
         },

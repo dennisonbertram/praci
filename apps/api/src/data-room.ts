@@ -7,6 +7,7 @@ import {
   dataRoomStepJob,
 } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
+import { modelAcceptsImageInput } from "@rakazo/adapters";
 import type {
   Actor,
   DataRoomApiFolder,
@@ -240,11 +241,13 @@ export function createDataRoomService(deps: DataRoomDeps) {
         },
         update: { version: status.version, grantedAt: new Date() },
       });
-      const queue = async (step: "classify" | "index", embeddingModel?: string) => {
+      const queue = async (step: "ingest" | "classify" | "index", embeddingModel?: string) => {
         for (const id of await repo.requeueReady(actor, step, embeddingModel)) {
           await deps.jobs.enqueue(dataRoomStepJob(`dataroom.${step}`, actor, id));
         }
       };
+      const visionReady = ai.model && modelAcceptsImageInput(ai.model.provider, ai.model.id, ai.model.acceptsImages);
+      if (visionReady) await queue("ingest");
       await queue("classify");
       if (ai.embeddingModel) await queue("index", ai.embeddingModel);
       return { ...status, allowed: true };
@@ -339,6 +342,14 @@ export function mountDataRoomRoutes(
   const repo = createDataRoomRepos(deps.prisma);
   const max = deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES;
 
+  /** A duplicate of an item stuck in `pending` or `failed` runs ingest again. */
+  const requeueStuck = async (actor: Actor, item: DataRoomItemRecord) => {
+    if (!(await repo.restartItem(actor, item.id))) return;
+    await deps.jobs
+      .enqueue(dataRoomStepJob("dataroom.ingest", actor, item.id))
+      .catch((error: unknown) => getLogger().error("data room ingest enqueue failed", error));
+  };
+
   app.post("/api/data-room/upload", async (c) => {
     const actor = await authenticate(c.req.raw);
     if (!actor) return c.json({ error: "Unauthorized" }, 401);
@@ -379,7 +390,10 @@ export function mountDataRoomRoutes(
         sha256: body.sha256,
       },
     });
-    if (existing) return respond(existing, true);
+    if (existing) {
+      await requeueStuck(actor, existing);
+      return respond(existing, true);
+    }
 
     const stored = await deps.artifacts.put(
       { name: name.data, mimeType: type, bytes: body.bytes },
@@ -400,8 +414,10 @@ export function mountDataRoomRoutes(
       throw error;
     });
     // Lost a race with a concurrent identical upload: drop the blob this request stored.
-    if (!created) await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
-    else {
+    if (!created) {
+      await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
+      await requeueStuck(actor, item);
+    } else {
       // The upload itself succeeded; a queue outage must not turn it into a failed upload.
       await deps.jobs
         .enqueue(dataRoomStepJob("dataroom.ingest", actor, item.id))
