@@ -1,11 +1,21 @@
 import { ORPCError } from "@orpc/server";
-import { buildMcpCredentialBlob, persistPreparedSecret } from "@rakazo/adapters";
+import {
+  ALCHEMY_MESSAGE_PREFIX,
+  AlchemyError,
+  buildMcpCredentialBlob,
+  hasAlchemyKey,
+  persistPreparedSecret,
+  removeAlchemyKey,
+  storeAlchemyKey,
+  validateAlchemyKey,
+} from "@rakazo/adapters";
 import type {
   Actor,
   CryptoHolding,
   FinanceCryptoConnectInput,
   FinanceCryptoConnectOutput,
   FinanceCryptoOutput,
+  FinanceCryptoProviderConnectInput,
   FinanceWallet,
   FinanceWalletAddInput,
   FinanceWalletUpdateInput,
@@ -188,10 +198,11 @@ export async function financeWalletRemove(
 }
 
 export async function financeCrypto(deps: FinanceDeps, actor: Actor): Promise<FinanceCryptoOutput> {
-  const [wallets, holdings, server] = await Promise.all([
+  const [wallets, holdings, server, alchemyConnected] = await Promise.all([
     loadWallets(deps, actor),
     loadHoldings(deps, actor),
     cryptoServer(deps, actor),
+    hasAlchemyKey(deps.prisma, scopeOf(actor)),
   ]);
   const state = server
     ? await deps.prisma.financeSyncState.findFirst({
@@ -209,7 +220,49 @@ export async function financeCrypto(deps: FinanceDeps, actor: Actor): Promise<Fi
     holdings,
     wallets,
     lastError: state?.lastError ?? null,
+    // The sync records its Alchemy fallback reason in the shared lastError, always starting "Alchemy".
+    alchemy: {
+      connected: alchemyConnected,
+      lastError:
+        alchemyConnected && state?.lastError?.startsWith(ALCHEMY_MESSAGE_PREFIX)
+          ? state.lastError
+          : null,
+    },
   };
+}
+
+const ALCHEMY_REJECTION: Record<string, string> = {
+  rejected: "Alchemy rejected the API key",
+  rate_limit: "Alchemy rate limit reached, try again shortly",
+  unavailable: "Could not reach Alchemy, try again shortly",
+};
+
+/** Checks the key with one request, stores it encrypted (replacing any earlier key), then re-syncs. */
+export async function financeCryptoProviderConnect(
+  deps: FinanceDeps,
+  actor: Actor,
+  input: FinanceCryptoProviderConnectInput,
+): Promise<{ ok: true }> {
+  try {
+    await validateAlchemyKey(input.apiKey, { fetch: deps.fetch });
+  } catch (error) {
+    if (!(error instanceof AlchemyError)) throw error;
+    throw new ORPCError(error.kind === "rejected" ? "BAD_REQUEST" : "BAD_GATEWAY", {
+      message: ALCHEMY_REJECTION[error.kind] ?? "Could not check the Alchemy key",
+    });
+  }
+  await storeAlchemyKey(deps.prisma, deps.secrets, scopeOf(actor), input.apiKey);
+  await syncCryptoQuietly(deps, actor);
+  return { ok: true };
+}
+
+export async function financeCryptoProviderRemove(
+  deps: FinanceDeps,
+  actor: Actor,
+): Promise<{ ok: true }> {
+  await removeAlchemyKey(deps.prisma, scopeOf(actor));
+  await syncCryptoQuietly(deps, actor);
+  return { ok: true };
 }
 
 /**

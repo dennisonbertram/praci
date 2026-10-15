@@ -109,15 +109,17 @@ import {
   FinanceConnectOutputSchema,
   FinanceCryptoConnectInputSchema,
   FinanceCryptoConnectOutputSchema,
+  FinanceCryptoHistoryInputSchema,
+  FinanceCryptoHistoryOutputSchema,
   FinanceCryptoOutputSchema,
+  FinanceCryptoProviderConnectInputSchema,
+  FinanceCryptoProviderRemoveInputSchema,
   FinanceMonthOutputSchema,
   FinanceOverviewSchema,
+  FinancePreferencesSchema,
   FinanceReceiptUrlOutputSchema,
   FinanceRecurringOutputSchema,
   FinanceRunwayOutputSchema,
-  FinanceCryptoHistoryInputSchema,
-  FinanceCryptoHistoryOutputSchema,
-  FinancePreferencesSchema,
   FinanceSpendInputSchema,
   FinanceSpendOutputSchema,
   FinanceTransactionOutputSchema,
@@ -1101,6 +1103,12 @@ export const appContract = {
     cryptoConnect: oc
       .input(FinanceCryptoConnectInputSchema)
       .output(FinanceCryptoConnectOutputSchema),
+    cryptoProviderConnect: oc
+      .input(FinanceCryptoProviderConnectInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    cryptoProviderRemove: oc
+      .input(FinanceCryptoProviderRemoveInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
   },
   botSecrets: {
     list: oc.input(z.object({ botId: Id })).output(z.array(BotSecretMetadata)),

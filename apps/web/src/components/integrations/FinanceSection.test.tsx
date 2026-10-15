@@ -8,7 +8,12 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const connect = vi.hoisted(() => vi.fn());
-const cryptoRpc = vi.hoisted(() => ({ crypto: vi.fn(), cryptoConnect: vi.fn() }));
+const cryptoRpc = vi.hoisted(() => ({
+  crypto: vi.fn(),
+  cryptoConnect: vi.fn(),
+  cryptoProviderConnect: vi.fn(),
+  cryptoProviderRemove: vi.fn(),
+}));
 vi.mock("../../lib/finance-connect", () => ({ connectFinanceProvider: connect }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: cryptoRpc } }));
 vi.mock("@lingui/react/macro", () => ({
@@ -140,4 +145,37 @@ it("shows the server's error inside the modal", async () => {
   expect(document.body.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain(
     "Invalid API key",
   );
+});
+
+const alchemy = () => container.querySelector('[data-testid="finance-tile-alchemy"]') as Element;
+
+it("connects Alchemy only after the server accepts the key, and shows its error inline", async () => {
+  const off = {
+    connected: false,
+    hasApiKey: false,
+    alchemy: { connected: false, lastError: null },
+  };
+  cryptoRpc.crypto
+    .mockResolvedValueOnce(off)
+    .mockResolvedValueOnce(off)
+    .mockResolvedValue({ ...off, alchemy: { connected: true, lastError: null } });
+  cryptoRpc.cryptoProviderConnect
+    .mockRejectedValueOnce(new Error("Alchemy rejected the API key"))
+    .mockResolvedValue({ ok: true });
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  expect(alchemy().querySelector("img")?.getAttribute("src")).toBe("/logos/alchemy.svg");
+  await press2(alchemy(), "Connect");
+  const dialog = document.body.querySelector('[role="dialog"]') as Element;
+  expect(dialog.querySelector("a")?.getAttribute("href")).toContain("alchemy.com");
+  await typeKey("bad");
+  await press2(dialog, "Save");
+  expect(dialog.querySelector('[role="alert"]')?.textContent).toContain("Alchemy rejected");
+  expect(alchemy().textContent).toContain("Not connected");
+  await typeKey("good");
+  await press2(dialog, "Save");
+  expect(cryptoRpc.cryptoProviderConnect).toHaveBeenLastCalledWith({
+    provider: "alchemy",
+    apiKey: "good",
+  });
+  expect(alchemy().textContent).toContain("Connected");
 });

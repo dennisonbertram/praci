@@ -13,7 +13,10 @@ export const DEFAULT_RPC_URLS: Record<number, string> = {
 };
 
 /** DefiLlama's key for the chain, and the coin that prices its native balance. */
-const LLAMA: Record<number, { chain: string; native: string; symbol: string; name: string }> = {
+export const LLAMA: Record<
+  number,
+  { chain: string; native: string; symbol: string; name: string }
+> = {
   1: { chain: "ethereum", native: "coingecko:ethereum", symbol: "ETH", name: "Ether" },
   8453: { chain: "base", native: "coingecko:ethereum", symbol: "ETH", name: "Ether" },
   42161: { chain: "arbitrum", native: "coingecko:ethereum", symbol: "ETH", name: "Ether" },

@@ -13,6 +13,8 @@ import type { FinanceDeps } from "./finance.js";
 import {
   financeCrypto,
   financeCryptoConnect,
+  financeCryptoProviderConnect,
+  financeCryptoProviderRemove,
   financeWalletAdd,
   financeWalletRemove,
   financeWallets,
@@ -352,5 +354,77 @@ describe("finance.cryptoConnect", () => {
         }),
       }),
     );
+  });
+});
+
+describe("Alchemy key", () => {
+  const ok = () => new Response(JSON.stringify({ data: { tokens: [] } }), { status: 200 });
+  const withFetch = (deps: FinanceDeps, status: number) =>
+    ({
+      ...deps,
+      fetch: vi.fn(async () => (status === 200 ? ok() : new Response("{}", { status }))),
+    }) as unknown as FinanceDeps;
+
+  it("validates, stores the key as a secret, forces a sync, and never returns it", async () => {
+    const { prisma, deps, sync, put } = setup();
+    expect(
+      await financeCryptoProviderConnect(withFetch(deps, 200), a, {
+        provider: "alchemy",
+        apiKey: "alch-key",
+      }),
+    ).toEqual({ ok: true });
+    expect(put).toHaveBeenCalledWith("alch-key", expect.objectContaining({ userId: "user-a" }));
+    expect(prisma.secret.rows).toMatchObject([
+      { kind: "finance-alchemy", userId: "user-a", spaceId: "space-1" },
+    ]);
+    expect(sync).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ force: true }));
+    const out = await financeCrypto(deps, a);
+    expect(out.alchemy).toEqual({ connected: true, lastError: null });
+    expect(JSON.stringify(out)).not.toContain("alch-key");
+  });
+
+  it("rejects a bad key without storing it", async () => {
+    const { prisma, deps, put } = setup();
+    await expect(
+      financeCryptoProviderConnect(withFetch(deps, 401), a, { provider: "alchemy", apiKey: "bad" }),
+    ).rejects.toThrow("Alchemy rejected the API key");
+    expect(put).not.toHaveBeenCalled();
+    expect(prisma.secret.rows).toHaveLength(0);
+  });
+
+  it("scopes connection state and removal to the user, and shows the fallback reason", async () => {
+    const { prisma, deps } = setup({
+      servers: [
+        {
+          id: "srv-1",
+          spaceId: "space-1",
+          userId: "user-a",
+          enabled: true,
+          endpoint: CRYPTO_MCP_ENDPOINT,
+        },
+      ],
+      states: [
+        {
+          mcpServerId: "srv-1",
+          spaceId: "space-1",
+          userId: "user-a",
+          lastError: "Alchemy is unavailable; using public RPC",
+        },
+      ],
+    });
+    await financeCryptoProviderConnect(withFetch(deps, 200), a, {
+      provider: "alchemy",
+      apiKey: "k",
+    });
+    expect((await financeCrypto(deps, a)).alchemy).toEqual({
+      connected: true,
+      lastError: "Alchemy is unavailable; using public RPC",
+    });
+    expect((await financeCrypto(deps, b)).alchemy.connected).toBe(false);
+    await financeCryptoProviderRemove(deps, b);
+    expect(prisma.secret.rows).toHaveLength(1);
+    await financeCryptoProviderRemove(deps, a);
+    expect(prisma.secret.rows).toHaveLength(0);
+    expect((await financeCrypto(deps, a)).alchemy).toEqual({ connected: false, lastError: null });
   });
 });

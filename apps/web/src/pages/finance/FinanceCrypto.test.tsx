@@ -37,6 +37,7 @@ const data = (over: Partial<FinanceCryptoOutput> = {}): FinanceCryptoOutput => (
   connected: true,
   hasApiKey: false,
   lastError: null,
+  alchemy: { connected: false, lastError: null },
   wallets: [
     {
       id: "w1",

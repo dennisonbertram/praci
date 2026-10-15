@@ -92,6 +92,8 @@ export interface FinanceDeps {
   secrets: SecretStore;
   /** Crypto sync and ENS lookup, injected from the adapters. Unset where they are not wired (tests). */
   crypto?: FinanceCryptoDeps;
+  /** Overrides global fetch for the Alchemy key check (tests). */
+  fetch?: typeof fetch;
   now?: () => Date;
 }
 

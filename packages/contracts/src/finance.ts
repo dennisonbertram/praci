@@ -193,7 +193,25 @@ export const FinanceCryptoOutputSchema = z.object({
   wallets: z.array(FinanceWalletSchema),
   /** Short reason the last crypto sync failed; null when fine. */
   lastError: z.string().nullable(),
+  /** Whether holdings come from the user's Alchemy key, and why the last sync fell back from it. */
+  alchemy: z.object({ connected: z.boolean(), lastError: z.string().nullable() }),
 });
+
+/** A balance provider the user can connect with an API key. The key is stored encrypted, never returned. */
+export const FinanceCryptoProviderSchema = z.enum(["alchemy"]);
+export const FinanceCryptoProviderConnectInputSchema = z.object({
+  provider: FinanceCryptoProviderSchema,
+  apiKey: z.string().trim().min(1).max(500),
+});
+export const FinanceCryptoProviderRemoveInputSchema = z.object({
+  provider: FinanceCryptoProviderSchema,
+});
+export type FinanceCryptoProviderConnectInput = z.infer<
+  typeof FinanceCryptoProviderConnectInputSchema
+>;
+export type FinanceCryptoProviderRemoveInput = z.infer<
+  typeof FinanceCryptoProviderRemoveInputSchema
+>;
 
 /** Creates or updates the Blockscout McpServer; the key is optional (shared stricter rate limit without it). */
 export const FinanceCryptoConnectInputSchema = z.object({
