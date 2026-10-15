@@ -29,7 +29,7 @@ import {
   DataRoomApiItemSchema,
   DataRoomApiName,
   DataRoomApiSearchInputSchema,
-  DataRoomApiSearchResultSchema,
+  DataRoomApiSearchOutputSchema,
 } from "./data-room-api.js";
 import {
   ActionApprovalRuleSchema,
@@ -1123,7 +1123,7 @@ export const appContract = {
     itemRename: oc.input(z.object({ id: Id, name: DataRoomApiName })).output(DataRoomApiItemSchema),
     itemMove: oc.input(z.object({ id: Id, folderId: Id.nullable() })).output(DataRoomApiItemSchema),
     itemDelete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
-    search: oc.input(DataRoomApiSearchInputSchema).output(z.array(DataRoomApiSearchResultSchema)),
+    search: oc.input(DataRoomApiSearchInputSchema).output(DataRoomApiSearchOutputSchema),
   },
   finance: {
     agent: oc.output(BotSchema),

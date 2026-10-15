@@ -81,9 +81,11 @@ export const DataRoomApiItemListOutputSchema = z.object({
 export const DataRoomApiSearchInputSchema = z.object({
   query: z.string().trim().min(1).max(500),
   filters: DataRoomApiFiltersSchema.optional(),
-  /** Omit to order by relevance. The sort applies to the bounded set of best matches. */
+  /** Omit to order by relevance. */
   sort: DataRoomApiSortSchema.optional(),
   limit: z.number().int().min(1).max(50).default(10),
+  /** The `nextCursor` of the previous page (valid only with the same query, filters and sort). */
+  cursor: Id.optional(),
 });
 export const DataRoomApiSearchResultSchema = z.object({
   item: DataRoomApiItemSchema,
@@ -91,6 +93,11 @@ export const DataRoomApiSearchResultSchema = z.object({
   /** Plain text. U+0001 and U+0002 mark highlight start and end. Render as text, never HTML. */
   snippet: z.string(),
   score: z.number(),
+});
+
+export const DataRoomApiSearchOutputSchema = z.object({
+  results: z.array(DataRoomApiSearchResultSchema),
+  nextCursor: Id.nullable(),
 });
 
 export const DataRoomApiUploadResponseSchema = z.object({

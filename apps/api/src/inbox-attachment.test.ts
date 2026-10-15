@@ -4,7 +4,7 @@ import { createMailProvider, GmailApiEmulator } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
-import { mountInboxAttachment } from "./inbox-attachment.js";
+import { contentDisposition, mountInboxAttachment } from "./inbox-attachment.js";
 
 const actor = (userId: string): Actor => ({
   userId,
@@ -216,5 +216,16 @@ describe("GET /api/inbox/messages/:messageId/attachments/:attachmentId", () => {
     expect(response.status).toBe(413);
     expect(response.headers.get("content-disposition")).toBeNull();
     expect(gmail.requests.some((r) => r.url.includes("/attachments/"))).toBe(false);
+  });
+});
+
+describe("contentDisposition", () => {
+  it("cuts long names by code point instead of splitting a surrogate pair", () => {
+    const header = contentDisposition(`${"a".repeat(149)}\u{1F600}.txt`);
+    expect(header).toContain("filename*=UTF-8''");
+    expect(decodeURIComponent(header.split("UTF-8''")[1] ?? "")).toBe(
+      `${"a".repeat(149)}\u{1F600}.txt`.slice(0, 151),
+    );
+    expect(() => contentDisposition("bad\ud83dname.txt")).not.toThrow();
   });
 });
