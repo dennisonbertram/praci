@@ -4,13 +4,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRouterClient } from "@orpc/server";
 import type { BackgroundJob } from "@rakazo/adapter-kit";
-import { LocalArtifactStore } from "@rakazo/adapters";
+import { createBackgroundJobHandlers, LocalArtifactStore } from "@rakazo/adapters";
 import type { Actor, DataRoomApiItem } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb } from "@rakazo/db";
 import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { mountDataRoomRoutes } from "./data-room.js";
+import { createDataRoomService, mountDataRoomRoutes } from "./data-room.js";
 import { createRouter, type RouterDeps } from "./router.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -447,5 +447,55 @@ describePostgres("Data room API (PostgreSQL)", () => {
       replaceKey: expect.stringContaining(storageKey as string),
     });
     expect((await send("a", `/api/data-room/items/${item.id}/content`)).status).toBe(404);
+  });
+
+  it("keeps the blob when the row delete fails after the cleanup was queued", async () => {
+    const res = await upload("a", "name=fail.txt", "delete will fail");
+    const { item: target } = (await res.json()) as { item: DataRoomApiItem };
+    const row = await prisma.dataRoomItem.findFirstOrThrow({ where: { id: target.id } });
+    const failing = new Proxy(prisma, {
+      get(real, key) {
+        const value = Reflect.get(real, key);
+        if (key !== "dataRoomItem") return typeof value === "function" ? value.bind(real) : value;
+        return new Proxy(value, {
+          get(model, method) {
+            if (method === "deleteMany") {
+              return async () => {
+                throw new Error("row delete failed");
+              };
+            }
+            const fn = Reflect.get(model, method);
+            return typeof fn === "function" ? fn.bind(model) : fn;
+          },
+        });
+      },
+    });
+    const queued: BackgroundJob[] = [];
+    const service = createDataRoomService({
+      prisma: failing,
+      artifacts: new LocalArtifactStore(root),
+      jobs: { enqueue: async (job: BackgroundJob) => void queued.push(job) },
+    });
+    await expect(service.deleteItem(actors.a, target.id)).rejects.toThrow("row delete failed");
+    expect(queued).toHaveLength(1);
+    expect(queued[0]?.name).toBe("dataroom.blob.delete");
+    expect(await prisma.dataRoomItem.count({ where: { id: target.id } })).toBe(1);
+
+    const handlers = createBackgroundJobHandlers({
+      prisma,
+      artifacts: new LocalArtifactStore(root),
+    } as unknown as Parameters<typeof createBackgroundJobHandlers>[0]);
+    await handlers["dataroom.blob.delete"](queued[0]?.payload as never);
+    await expect(
+      new LocalArtifactStore(root).get(row.storageKey as string, {
+        operationId: "t",
+        traceId: "t",
+        spaceId: actors.A.spaceId,
+        userId: actors.a.userId,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toBeInstanceOf(Uint8Array);
+    await client(actors.a).dataRoom.itemDelete({ id: target.id });
+    enqueued.length = 0;
   });
 });
