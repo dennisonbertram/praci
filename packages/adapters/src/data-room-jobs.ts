@@ -498,7 +498,8 @@ const STEP_JOB_FOR_STATUS = {
 /**
  * Queues the step of every item a crashed or lost job left behind: in a working status, its lease
  * expired or never set, and untouched for 15 minutes. The leader-elected job reconciler calls this.
- * `keepExisting` leaves a job that is still queued or retrying alone.
+ * The enqueue replaces any job with the same key: after 15 minutes of silence that job is either
+ * waiting out a backoff or still locked by a worker that died, and keeping it would strand the item.
  */
 export async function reconcileDataRoom(
   deps: Pick<DataRoomJobDeps, "prisma" | "jobs">,
@@ -517,7 +518,7 @@ export async function reconcileDataRoom(
   });
   for (const item of stranded) {
     const name = STEP_JOB_FOR_STATUS[item.status as keyof typeof STEP_JOB_FOR_STATUS];
-    await deps.jobs.enqueue({ ...dataRoomStepJob(name, item, item.id), keepExisting: true });
+    await deps.jobs.enqueue(dataRoomStepJob(name, item, item.id));
   }
   return stranded.length;
 }
