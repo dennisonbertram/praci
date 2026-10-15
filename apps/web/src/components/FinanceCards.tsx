@@ -1,15 +1,112 @@
-import { Trans, useLingui } from "@lingui/react/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { FinanceCard, MessageBlock } from "@rakazo/contracts";
 import { Card } from "@rakazo/ui-web";
+import { ChevronRight, MessageSquareQuote } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { money, shortDay, transactionAmount } from "../lib/finance-format";
 import { financePath } from "../lib/finance-route";
 
+type FinanceBlock = Extract<MessageBlock, { kind: "finance" }>;
+
+const plain = (text: string) => text.replace(/\s+/g, " ").trim();
+
+/** Plain-text summary of one card, used as the quoted context when the user asks about it. Names are untrusted, so this stays text. */
+export function financeCardQuote(card: FinanceCard): string {
+  if (card.card === "overview") {
+    const runway = card.runwayMonths === null ? "–" : `${Math.round(card.runwayMonths)} mo`;
+    return `Finance overview: Cash ${money(card.cashCents)}; Burn / mo ${money(card.burnCents)}; Runway ${runway}; Spend this month ${money(card.monthSpendCents)}`;
+  }
+  if (card.card === "breakdown") {
+    const rows = card.rows.map((row) => `${plain(row.label)} ${money(row.cents)}`).join("; ");
+    const title = `${card.by === "vendor" ? "Vendors" : "Categories"} · ${plain(card.range)}`;
+    return `${title}: ${money(card.totalCents)}${rows ? ` — ${rows}` : ""}`;
+  }
+  if (card.card === "transactions") {
+    const rows = card.rows
+      .map((row) => `${plain(row.label)} (${shortDay(row.day)}) ${transactionAmount(row.cents)}`)
+      .join("; ");
+    return `${card.count} transactions: ${transactionAmount(card.totalCents)}${rows ? ` — ${rows}` : ""}`;
+  }
+  const rows = card.rows.map((row) => `${plain(row.label)} ${money(row.cents)}`).join("; ");
+  return `Subscriptions / mo: ${money(card.monthlyCents)}${rows ? ` — ${rows}` : ""}; next 30 days ${money(card.upcomingCents)}`;
+}
+
 /** A compact preview of what a finance tool read, so the chat shows the agent is looking at real data. Names are untrusted text. */
-export function FinanceCards({ block }: { block: Extract<MessageBlock, { kind: "finance" }> }) {
+export function FinanceCards({
+  block,
+  onAsk,
+  tiled,
+}: {
+  block: FinanceBlock;
+  /** Called with the card's plain-text summary when the user chooses "Ask about this". */
+  onAsk?: (quote: string) => void;
+  /** Inside a group the card fills its grid cell instead of using the fixed width. */
+  tiled?: boolean;
+}) {
+  const { t } = useLingui();
   return (
-    <div data-testid="finance-card" className="w-80 max-w-full py-1">
+    <div
+      data-testid="finance-card"
+      className={`group/fcard relative max-w-full py-1 ${tiled ? "min-w-0" : "w-80"}`}
+    >
       <Preview card={block.card} />
+      {onAsk ? (
+        <button
+          type="button"
+          aria-label={t`Ask about this`}
+          title={t`Ask about this`}
+          onClick={() => onAsk(financeCardQuote(block.card))}
+          className="absolute -end-1.5 -top-0.5 rounded-full border border-border bg-background p-1 text-muted-foreground opacity-0 shadow-sm hover:text-foreground focus-visible:opacity-100 group-hover/fcard:opacity-100 [@media(hover:none)]:opacity-100"
+        >
+          <MessageSquareQuote className="size-3.5" aria-hidden="true" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Several finance lookups from one turn, tiled in a grid. Three or more start collapsed. */
+export function FinanceCardGroup({
+  items,
+  onAsk,
+}: {
+  items: readonly { id: string; block: FinanceBlock }[];
+  onAsk?: (id: string, quote: string) => void;
+}) {
+  const [open, setOpen] = useState(items.length < 3);
+  if (items.length === 1) {
+    const [item] = items;
+    return item ? (
+      <FinanceCards block={item.block} onAsk={onAsk && ((q) => onAsk(item.id, q))} />
+    ) : null;
+  }
+  return (
+    <div className="w-full min-w-0" data-testid="finance-group">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 rounded-md px-1 py-0.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+      >
+        <ChevronRight
+          className={`size-3.5 transition-transform ${open ? "rotate-90" : ""}`}
+          aria-hidden="true"
+        />
+        <Plural value={items.length} one="# finance lookup" other="# finance lookups" />
+      </button>
+      {open ? (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-2">
+          {items.map((item) => (
+            <FinanceCards
+              key={item.id}
+              block={item.block}
+              tiled
+              onAsk={onAsk && ((q) => onAsk(item.id, q))}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

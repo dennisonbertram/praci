@@ -23,6 +23,11 @@ msgstr " (읽지 않음)"
 msgid ", {0} already imported"
 msgstr ""
 
+#. placeholder {0}: items.length
+#: src/components/FinanceCards.tsx
+msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
+msgstr ""
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -793,6 +798,10 @@ msgstr "인자"
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 msgid "Artifacts"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "Ask about this"
 msgstr ""
 
 #: src/components/finance/ui.tsx

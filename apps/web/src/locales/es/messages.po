@@ -23,6 +23,11 @@ msgstr " (sin leer)"
 msgid ", {0} already imported"
 msgstr ""
 
+#. placeholder {0}: items.length
+#: src/components/FinanceCards.tsx
+msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
+msgstr ""
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -794,6 +799,10 @@ msgstr "Argumentos"
 #: src/pages/Shell.tsx
 msgid "Artifacts"
 msgstr "Artefactos"
+
+#: src/components/FinanceCards.tsx
+msgid "Ask about this"
+msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Ask agent"
