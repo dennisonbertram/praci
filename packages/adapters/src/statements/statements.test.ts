@@ -173,6 +173,23 @@ describe("Wells Fargo PDF", () => {
     expect(check).toEqual({ balances: "match", differenceCents: 0 });
   });
 
+  it("drops the '<' footnote marker and ignores the legend line", async () => {
+    const text = fakeWellsFargo({ closing: "1,150.25" })
+      .replace(
+        "Example Transfer Ex-0001 Example Corp",
+        "<  Business to Business ACH Debit".padEnd(37),
+      )
+      .replace(
+        "      Totals",
+        `${" ".repeat(32)}<  Business to Business ACH: If this is a business account, this transaction has a return time frame of one business day.\n      Totals`,
+      );
+    const { statement } = await run(text);
+    expect(statement.warnings).toEqual([]);
+    expect(statement.transactions).toHaveLength(4);
+    expect(statement.transactions[0]!.description).toBe("Business to Business ACH Debit");
+    expect(statement.transactions[3]!.description).toBe("Interest Payment");
+  });
+
   it("reports a mismatch when the ending balance disagrees", async () => {
     const { check } = await run(fakeWellsFargo({ closing: "1,160.25" }));
     expect(check).toEqual({ balances: "mismatch", differenceCents: 1000 });

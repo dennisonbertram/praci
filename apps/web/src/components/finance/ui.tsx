@@ -358,7 +358,7 @@ export function TransactionTable({ rows }: { rows: FinanceTransaction[] }) {
           <Th className="hidden @2xl:table-cell">
             <Trans>Category</Trans>
           </Th>
-          <Th right>
+          <Th right className="ps-4">
             <Trans>Amount</Trans>
           </Th>
           <Th className="hidden ps-4 @2xl:table-cell">
@@ -384,10 +384,10 @@ export function TransactionTable({ rows }: { rows: FinanceTransaction[] }) {
                 <div className="line-clamp-1 text-[11px] text-muted-foreground">{row.memo}</div>
               ) : null}
             </td>
-            <td className="hidden text-muted-foreground @2xl:table-cell">
+            <td className="hidden max-w-[10rem] truncate text-muted-foreground @2xl:table-cell">
               {row.category ?? t`Uncategorized`}
             </td>
-            <td className="whitespace-nowrap text-end tabular-nums">
+            <td className="whitespace-nowrap ps-4 text-end tabular-nums">
               {transactionAmount(row.amountCents)}
             </td>
             <td className="hidden ps-4 text-muted-foreground @2xl:table-cell">
