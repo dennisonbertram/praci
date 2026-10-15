@@ -928,12 +928,25 @@ msgstr "백업 모델을 저장했습니다."
 msgid "Balance"
 msgstr ""
 
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Balance over time"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Balance owed"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Bank + all crypto"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Bank + stablecoins"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -2192,6 +2205,10 @@ msgstr "아바타를 업데이트할 수 없습니다"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't update messaging settings"
 msgstr "메시징 설정을 업데이트할 수 없습니다"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Counted in runway"
+msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Counterparty"
@@ -4229,6 +4246,7 @@ msgid "Other connection types"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Other crypto"
 msgstr ""
 
@@ -5431,6 +5449,7 @@ msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO를 일시적으로 사용할 수 없습니다. 다시 시도하세요."
 
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins"
 msgstr ""
 
