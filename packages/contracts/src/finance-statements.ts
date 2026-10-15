@@ -109,4 +109,9 @@ export const FinanceStatementsOutputSchema = z.object({
 /** Upload limits, shared by the API check and the picker. */
 export const STATEMENT_MAX_BYTES = 10 * 1024 * 1024;
 export const STATEMENT_EXTENSIONS = ["pdf", "csv", "ofx", "qfx"] as const;
+/**
+ * Removes a statement. An imported one is undone: its transactions are deleted, the account's
+ * balance falls back to the newest remaining statement, and an account created by that import
+ * is deleted when no statements remain.
+ */
 export const FinanceStatementDiscardInputSchema = z.object({ id: z.string() });
