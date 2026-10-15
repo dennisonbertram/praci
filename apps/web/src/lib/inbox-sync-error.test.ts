@@ -12,6 +12,22 @@ describe("syncErrorText", () => {
     );
   });
 
+  it("says Gmail is limiting requests when a failed account was rate limited", () => {
+    expect(
+      syncErrorText({ failedAccounts: ["c1"], reconnectAccounts: [], rateLimitedAccounts: ["c1"] }),
+    ).toBe("Gmail is limiting requests right now. Try again in a minute.");
+  });
+
+  it("prefers the reconnect notice over the rate limit notice", () => {
+    expect(
+      syncErrorText({
+        failedAccounts: ["c1", "c2"],
+        reconnectAccounts: ["c2"],
+        rateLimitedAccounts: ["c1"],
+      }),
+    ).toBe("Gmail needs to be reconnected.");
+  });
+
   it("asks for a reconnect when any failed account has to be reconnected", () => {
     expect(syncErrorText({ failedAccounts: ["c1", "c2"], reconnectAccounts: ["c2"] })).toBe(
       "Gmail needs to be reconnected.",

@@ -211,6 +211,7 @@ async function searchMail(
   messages: CachedMessage[];
   failed: string[];
   reconnect: string[];
+  rateLimited: string[];
   nextPageToken: string | undefined;
 }> {
   const tokens = request.pageToken ? decodePageToken(request.pageToken) : undefined;
@@ -223,6 +224,7 @@ async function searchMail(
   const next: Record<string, string> = {};
   const failed: string[] = [];
   const reconnect: string[] = [];
+  const rateLimited: string[] = [];
   const pages = await Promise.all(
     targets.map(async ({ id }): Promise<CachedMessage[]> => {
       const account = accounts.find((a) => a.id === id);
@@ -253,6 +255,7 @@ async function searchMail(
         getLogger().warn("inbox.list search failed", { connectionId: id, reason: error.kind });
         failed.push(id);
         if (error.kind === "auth") reconnect.push(id);
+        if (error.kind === "rate_limited") rateLimited.push(id);
         return [];
       }
     }),
@@ -266,6 +269,7 @@ async function searchMail(
     messages,
     failed,
     reconnect,
+    rateLimited,
     nextPageToken: Object.keys(next).length ? encodePageToken(next) : undefined,
   };
 }
@@ -337,6 +341,7 @@ export async function inboxList(
       syncedAt: null,
       failedAccounts: result.failed,
       reconnectAccounts: result.reconnect,
+      rateLimitedAccounts: result.rateLimited,
       enabled,
       triageBlocked,
       triagePending: false,
@@ -396,6 +401,9 @@ export async function inboxList(
     failedAccounts: states.filter((s) => s.lastErrorAt).map((s) => s.connectionId),
     reconnectAccounts: states
       .filter((s) => s.lastErrorAt && s.needsReconnect)
+      .map((s) => s.connectionId),
+    rateLimitedAccounts: states
+      .filter((s) => s.lastErrorAt && s.lastErrorKind === "rate_limited")
       .map((s) => s.connectionId),
     enabled,
     triageBlocked,
