@@ -102,3 +102,12 @@ it("shows search and categories once a managed provider is configured", async ()
   expect(container.querySelector('[data-testid="catalog-not-set-up"]')).toBeNull();
   expect(container.querySelector('input[type="search"]')).not.toBeNull();
 });
+
+it("shows a member the catalog once managed apps are in it, though the server lists no providers", async () => {
+  const value = data(false, false);
+  value.catalog = [...value.catalog, { ...google("slack"), connectorId: "composio" }];
+  value.setup = { ...value.setup!, providers: [] };
+  await show(value);
+  expect(container.querySelector('[data-testid="catalog-not-set-up"]')).toBeNull();
+  expect(container.querySelector('input[type="search"]')).not.toBeNull();
+});
