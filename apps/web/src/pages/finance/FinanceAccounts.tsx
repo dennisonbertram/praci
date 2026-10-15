@@ -185,7 +185,7 @@ export function FinanceAccountsPage() {
             ) : null}
           </div>
           {prefs.data && crypto && crypto.summary.totalCents > 0 ? (
-            <div className="flex justify-end">
+            <div>
               <CountCryptoButton
                 scope={scope}
                 onSaved={() => {

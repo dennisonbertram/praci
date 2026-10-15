@@ -1347,10 +1347,6 @@ msgstr "Choose the account to connect, then come back here."
 msgid "Choose which connected model Rakazo uses."
 msgstr "Choose which connected model Rakazo uses."
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Choose which crypto counts"
-msgstr "Choose which crypto counts"
-
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
@@ -2227,8 +2223,12 @@ msgid "Counterparty"
 msgstr "Counterparty"
 
 #: src/components/finance/CountCryptoButton.tsx
-msgid "Counting crypto"
-msgstr "Counting crypto"
+msgid "Counting all crypto"
+msgstr "Counting all crypto"
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Counting stablecoins"
+msgstr "Counting stablecoins"
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
@@ -2578,6 +2578,10 @@ msgstr "Docker limits access to your computer for added security. Using {hostLab
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
 msgstr "Docs & files"
+
+#: src/components/finance/CountCryptoButton.tsx
+msgid "Don't count crypto"
+msgstr "Don't count crypto"
 
 #: src/pages/Auth.tsx
 msgid "Don’t have an account?"
@@ -4060,10 +4064,6 @@ msgstr "Not counted"
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
 msgstr "Not counted in cash"
-
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Not counting crypto"
-msgstr "Not counting crypto"
 
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"

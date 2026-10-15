@@ -4,8 +4,10 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
 import { ChevronDown } from "lucide-react";
@@ -14,8 +16,9 @@ import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
 /**
- * Follow-style toggle for whether crypto counts as cash. Saves the scope, then calls `onSaved` so the page can reload.
- * Turning on counts all crypto; the menu next to it picks stablecoins only.
+ * A tag for whether crypto counts as cash. Off: one click counts all crypto. On: it names what counts,
+ * and its menu switches between all crypto and stablecoins only, or turns counting off.
+ * Saves the scope, then calls `onSaved` so the page can reload.
  */
 export function CountCryptoButton({
   scope,
@@ -24,13 +27,9 @@ export function CountCryptoButton({
   scope: RunwayCryptoScope;
   onSaved: () => void;
 }) {
-  const [active, setActive] = useState(false);
-  // After a toggle the button keeps its new label until the pointer or focus leaves.
-  const [justToggled, setJustToggled] = useState(false);
   const [error, setError] = useState("");
   // One save at a time, so a slow earlier save cannot overwrite a later choice.
   const [saving, setSaving] = useState(false);
-  const on = scope !== "bank";
   async function save(runwayCrypto: RunwayCryptoScope) {
     setSaving(true);
     try {
@@ -43,64 +42,49 @@ export function CountCryptoButton({
       setSaving(false);
     }
   }
+  const nowrap = "whitespace-nowrap";
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-0.5">
+    <div className="flex flex-col items-start gap-1">
+      {scope === "bank" ? (
         <Button
-          size="sm"
+          size="xs"
           variant="outline"
-          aria-pressed={on}
+          className="rounded-full"
+          aria-pressed={false}
           disabled={saving}
-          aria-label={on ? t`Counting crypto` : t`Count crypto`}
-          onMouseEnter={() => setActive(true)}
-          onMouseLeave={() => {
-            setActive(false);
-            setJustToggled(false);
-          }}
-          onFocus={() => setActive(true)}
-          onBlur={() => {
-            setActive(false);
-            setJustToggled(false);
-          }}
-          onClick={() => {
-            setJustToggled(true);
-            void save(on ? "bank" : "all");
-          }}
+          onClick={() => void save("all")}
         >
-          {on
-            ? active && !justToggled
-              ? t`Not counting crypto`
-              : t`Counting crypto`
-            : t`Count crypto`}
+          {t`Count crypto`}
         </Button>
-        {on ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  size="icon-sm"
-                  variant="outline"
-                  disabled={saving}
-                  aria-label={t`Choose which crypto counts`}
-                />
-              }
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button size="xs" variant="secondary" className="rounded-full" disabled={saving} />
+            }
+          >
+            {scope === "all" ? t`Counting all crypto` : t`Counting stablecoins`}
+            <ChevronDown aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-auto min-w-max">
+            <DropdownMenuRadioGroup
+              value={scope}
+              onValueChange={(next) => void save(next as RunwayCryptoScope)}
             >
-              <ChevronDown aria-hidden="true" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuRadioGroup
-                value={scope}
-                onValueChange={(next) => void save(next as RunwayCryptoScope)}
-              >
-                <DropdownMenuRadioItem value="all">{t`All crypto`}</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="stablecoins">
-                  {t`Stablecoins only`}
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : null}
-      </div>
+              <DropdownMenuRadioItem value="all" className={nowrap}>
+                {t`All crypto`}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="stablecoins" className={nowrap}>
+                {t`Stablecoins only`}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className={nowrap} onClick={() => void save("bank")}>
+              {t`Don't count crypto`}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
       {error ? (
         <p role="alert" className="text-[13px] text-destructive">
           {error}
