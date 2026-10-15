@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { formatPinValue, jsonPointerGet } from "./pins.js";
+import type { PrismaClient } from "@rakazo/db";
+import { describe, expect, it, vi } from "vitest";
+import { formatPinValue, jsonPointerGet, refreshBotPins, saveBotPins } from "./pins.js";
 
 describe("jsonPointerGet", () => {
   const doc = { accounts: [{ balance: 1234.5 }], "a/b": { "m~n": "x" }, empty: null };
@@ -40,5 +41,132 @@ describe("formatPinValue", () => {
   it("rejects a non-number for a numeric format", () => {
     expect(() => formatPinValue("abc", "usd")).toThrow(/not a number/);
     expect(() => formatPinValue(null, "number")).toThrow();
+  });
+});
+
+type Row = Record<string, unknown>;
+const scope = { spaceId: "sp", botId: "bot", userId: "u" };
+const src = (tool = "get_balance", over: Row = {}) => ({
+  serverId: "srv",
+  tool,
+  args: {},
+  path: "/balance",
+  format: "number" as const,
+  ...over,
+});
+
+/** In-memory prisma with one bot, one pins row and one server assignment. */
+function fakeWorld(opts: {
+  assignment?: { allowAllTools: boolean; allowedTools: string[] } | null;
+  tools?: { name: string; annotations?: Row }[];
+  stats?: Row[];
+}) {
+  let row: Row = {
+    id: "p",
+    botId: "bot",
+    list: null,
+    revision: 1,
+    updatedBy: "bot",
+    updatedAt: new Date(),
+    refreshedAt: null,
+    stats: opts.stats ?? [],
+  };
+  let enabled = true;
+  const assignment =
+    opts.assignment === undefined ? { allowAllTools: true, allowedTools: [] } : opts.assignment;
+  const prisma = {
+    botMcpServer: {
+      findFirst: vi.fn(async () =>
+        assignment && enabled
+          ? { ...assignment, server: { id: "srv" }, bot: { spawnKey: null }, serverId: "srv" }
+          : null,
+      ),
+    },
+    botPins: {
+      findFirst: vi.fn(async () => row),
+      updateMany: vi.fn(async ({ data }: { data: Row }) => {
+        row = { ...row, ...data };
+        return { count: 1 };
+      }),
+      findUniqueOrThrow: vi.fn(async () => row),
+    },
+    thread: { findFirst: vi.fn(async () => ({ id: "t" })) },
+    $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
+  };
+  const events = {
+    append: vi.fn(async () => ({}) as never),
+    sendUserMessage: vi.fn(async () => ({ messageId: "m", seq: 1, taskId: null, runId: null })),
+  };
+  const mcp = {
+    listServerTools: vi.fn(async () => (opts.tools ?? [{ name: "get_balance" }]) as never),
+    callServerTool: vi.fn(),
+  };
+  return {
+    prisma: prisma as unknown as PrismaClient,
+    events,
+    mcp,
+    jobs: { enqueue: vi.fn() },
+    stored: () => row,
+    setStats: (stats: Row[]) => (row = { ...row, stats, revision: (row.revision as number) + 1 }),
+    disable: () => (enabled = false),
+  };
+}
+const save = (w: ReturnType<typeof fakeWorld>, source: ReturnType<typeof src>) =>
+  saveBotPins(w, scope, {
+    stats: [{ id: "a", label: "A", value: "1", source }],
+    baseRevision: 1,
+    updatedBy: "bot",
+  });
+
+describe("pin source authorization", () => {
+  it("refuses a server the bot is not assigned to or a tool outside its allowlist", async () => {
+    await expect(save(fakeWorld({ assignment: null }), src())).rejects.toThrow(/not assigned/);
+    const limited = fakeWorld({ assignment: { allowAllTools: false, allowedTools: ["other"] } });
+    await expect(save(limited, src())).rejects.toThrow(/not assigned/);
+    const ok = fakeWorld({ assignment: { allowAllTools: false, allowedTools: ["get_balance"] } });
+    await expect(save(ok, src())).resolves.toMatchObject({ ok: true });
+  });
+
+  it("uses tool annotations over the name, and refuses a tool the server does not list", async () => {
+    const tool = (annotations?: Row, name = "get_balance") =>
+      fakeWorld({ tools: [{ name, annotations }] });
+    await expect(save(tool({ readOnlyHint: false }), src())).rejects.toThrow(/not read-only/);
+    await expect(save(tool({ destructiveHint: true }), src())).rejects.toThrow(/not read-only/);
+    await expect(
+      save(tool({ readOnlyHint: true }, "delete_all"), src("delete_all")),
+    ).resolves.toMatchObject({ ok: true });
+    await expect(save(tool(undefined, "delete_all"), src("delete_all"))).rejects.toThrow(
+      /not read-only/,
+    );
+    await expect(save(tool(undefined, "get_balance"), src("get_other"))).rejects.toThrow(
+      /not offered/,
+    );
+  });
+});
+
+describe("refreshBotPins", () => {
+  const sourced = (source = src()) => [{ id: "a", label: "A", value: "1", source }];
+  const reply = (n: number) => ({
+    content: [{ type: "text", text: JSON.stringify({ balance: n }) }],
+  });
+
+  it("does not apply a result to a stat whose source changed during the call", async () => {
+    const w = fakeWorld({ stats: sourced() });
+    w.mcp.callServerTool.mockImplementation(async () => {
+      w.setStats(sourced(src("get_balance", { path: "/other" })));
+      return reply(99);
+    });
+    const result = await refreshBotPins(w, scope);
+    expect(result?.pins.stats[0]).toMatchObject({ value: "1", source: { path: "/other" } });
+    expect(result?.pins.stats[0]).not.toHaveProperty("error");
+  });
+
+  it("saves the error marker and still messages the bot when a source is now invalid", async () => {
+    const w = fakeWorld({ stats: [...sourced(), { id: "free", label: "Mood", value: "ok" }] });
+    w.disable();
+    const result = await refreshBotPins(w, scope);
+    expect(result?.pins.stats[0]).toMatchObject({ value: "1", error: expect.any(String) });
+    expect(w.mcp.callServerTool).not.toHaveBeenCalled();
+    expect(w.events.sendUserMessage).toHaveBeenCalledTimes(1);
   });
 });

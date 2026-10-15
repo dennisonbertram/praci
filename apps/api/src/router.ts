@@ -679,7 +679,7 @@ export interface RouterDeps {
   /** Builds the read-tool caller for finance servers (refresh, receipts); unset where finance sync is off. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
   /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
-  mcp?: Pick<McpConnector, "callServerTool">;
+  mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
   /** Reads an uploaded bank statement; wired in app.ts. */
   parseStatement?: ParseStatement;
   financeCrypto?: FinanceCryptoDeps;
@@ -3453,7 +3453,7 @@ export function createRouter(deps: RouterDeps) {
         const bot = await repos.getBot(context.actor, input.botId);
         try {
           const result = await saveBotPins(
-            { prisma: deps.prisma, events: deps.events },
+            { prisma: deps.prisma, events: deps.events, mcp: deps.mcp },
             { spaceId: bot.spaceId, botId: bot.id, userId: bot.userId },
             { list: input.list, baseRevision: input.baseRevision, updatedBy: "user" },
           );

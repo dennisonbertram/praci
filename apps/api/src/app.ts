@@ -482,6 +482,7 @@ export async function createApp(
     home,
     artifacts,
     connector: stack.connector,
+    mcp,
     connectors: stack.connector,
     listConnectedPluginSlugs: async (userId) => {
       const provider = await integrationSettings.resolve("composio");

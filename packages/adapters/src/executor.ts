@@ -286,6 +286,7 @@ import {
   mailToolsAllowed,
   selectMailTools,
 } from "./mail-tools.js";
+import type { McpConnector } from "./mcp-connector.js";
 import {
   buildMcpCredentialBlob,
   needsOAuthProbe,
@@ -2694,6 +2695,8 @@ export interface ExecutorDeps {
   artifacts?: ArtifactStore;
   connector?: ConnectorProvider;
   connectors?: { managed(id: string): ManagedConnectorProvider | undefined };
+  /** Lists a server's tools so pins_write can check a pin source's annotations. */
+  mcp?: Pick<McpConnector, "listServerTools">;
   secrets: string[];
   secretStore: SecretStore;
   deploymentModelKey?: string;
@@ -5044,7 +5047,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return finish(
               await pinsToolFromTool(
                 name,
-                { prisma: deps.prisma, events: deps.events },
+                { prisma: deps.prisma, events: deps.events, mcp: deps.mcp },
                 { spaceId: run.spaceId, botId: bot.id, userId: bot.userId, runId },
                 args,
               ),
