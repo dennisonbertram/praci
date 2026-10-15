@@ -422,7 +422,7 @@ describePostgres("data room repository (PostgreSQL)", () => {
       const contentHash = `hash-${label}-${run}`;
       await dr.replaceChunks(actor, item.id, [{ ordinal: 0, text, contentHash }]);
       if (vector)
-        await dr.saveEmbeddings(actor, item.id, model, [{ ordinal: 0, contentHash, vector }]);
+        await dr.saveEmbeddings(actor, item.id, model, [{ ordinal: 0, contentHash, vector }], 0);
       return item;
     };
     const ids = (results: { item: { id: string } }[]) => results.map((r) => r.item.id);
@@ -528,6 +528,67 @@ describePostgres("data room repository (PostgreSQL)", () => {
         (await prisma.dataRoomItem.findUniqueOrThrow({ where: { id: skipped.id } })).status,
       ).toBe("classifying");
       expect(await dr.requeueReady(b, "classify")).not.toContain(skipped.id);
+    });
+
+    it("refuses a cursor from the other search mode or another embedding model", async () => {
+      const q = `mode${run}`;
+      for (let i = 0; i < 3; i++) await put(a, `mode${i}`, `${q} text ${i}`, unit(80 + i));
+      const hybrid = { query: q, vector: unit(80), embeddingModel: MODEL, limit: 1 };
+      const keyword = { query: q, limit: 1 };
+      const hybridCursor = (await dr.searchPage(a, hybrid)).nextCursor as string;
+      const keywordCursor = (await dr.searchPage(a, keyword)).nextCursor as string;
+      expect(hybridCursor && keywordCursor).toBeTruthy();
+      const conflict = { name: "DataRoomConflictError", message: "Search changed; start again" };
+      await expect(dr.searchPage(a, { ...keyword, cursor: hybridCursor })).rejects.toMatchObject(
+        conflict,
+      );
+      await expect(dr.searchPage(a, { ...hybrid, cursor: keywordCursor })).rejects.toMatchObject(
+        conflict,
+      );
+      await expect(
+        dr.searchPage(a, { ...hybrid, embeddingModel: `new-${run}`, cursor: hybridCursor }),
+      ).rejects.toMatchObject(conflict);
+      // Same mode continues, in both relevance and sorted order.
+      expect((await dr.searchPage(a, { ...hybrid, cursor: hybridCursor })).results).toHaveLength(1);
+      const sort = { field: "name" as const, direction: "asc" as const };
+      const sorted = (await dr.searchPage(a, { ...hybrid, sort })).nextCursor as string;
+      await expect(dr.searchPage(a, { ...keyword, sort, cursor: sorted })).rejects.toMatchObject(
+        conflict,
+      );
+      expect(
+        (await dr.searchPage(a, { ...hybrid, sort, cursor: sorted })).results.length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("returns only the items a requeue moved, and refuses stale step writes", async () => {
+      const item = await put(a, "lease", "lease text", null);
+      await prisma.dataRoomItem.update({ where: { id: item.id }, data: { status: "ready" } });
+      await prisma.dataRoomItemText.create({
+        data: { itemId: item.id, spaceId: a.spaceId, userId: a.userId, text: "" },
+      });
+      expect(await dr.reindexItems(a, [item.id, "nope"])).toEqual([item.id]);
+      expect(await dr.reindexItems(a, [item.id])).toEqual([]); // no longer ready
+      const claimed = await dr.claimStep(a, item.id, ["indexing"], "indexing");
+      expect(claimed?.leaseUntil?.getTime()).toBeGreaterThan(Date.now());
+      expect(await dr.claimStep(a, item.id, ["indexing"], "indexing")).toBeNull(); // leased
+      await dr.stepWrite(a, item.id, (claimed?.revision ?? 0) + 5, { status: "ready" });
+      expect((await dr.getItem(a, item.id)).status).toBe("indexing"); // wrong revision
+      const chunk = { ordinal: 0, text: "new text", contentHash: "new-hash" };
+      await expect(
+        dr.replaceChunks(a, item.id, [chunk], { revision: (claimed?.revision ?? 0) - 1 }),
+      ).rejects.toMatchObject({ name: "DataRoomStaleError" });
+      expect(
+        await prisma.dataRoomChunk.count({ where: { itemId: item.id, text: "new text" } }),
+      ).toBe(0);
+      await dr.replaceChunks(a, item.id, [chunk], { revision: claimed?.revision });
+      await dr.saveEmbeddings(a, item.id, MODEL, [{ ...chunk, vector: unit(1) }], 999);
+      expect(
+        await prisma.dataRoomChunk.count({ where: { itemId: item.id, embeddingModel: MODEL } }),
+      ).toBe(0);
+      expect(await dr.stepWrite(a, item.id, claimed?.revision ?? 0, { status: "ready" })).toBe(
+        true,
+      );
+      expect((await dr.getItem(a, item.id)).leaseUntil).toBeNull();
     });
   });
 });

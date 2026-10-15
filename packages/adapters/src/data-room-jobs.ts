@@ -15,7 +15,7 @@ import {
 } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
 import type { DataRoomItemRecord, PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, IsolationError, recordUsage } from "@rakazo/db";
+import { createDataRoomRepos, DataRoomStaleError, IsolationError, recordUsage } from "@rakazo/db";
 import type { DataRoomAi } from "./data-room-models.js";
 import { LlmDataRoomClassifier } from "./llm-data-room-classifier.js";
 import { modelAcceptsImageInput } from "./model-vision.js";
@@ -107,14 +107,15 @@ async function runStep(
   const item = await repo.findItem(actor, payload.itemId);
   if (!item) return;
   if (item.status === spec.next) return void (await queueNext());
-  if ((spec.runs as readonly string[]).includes(item.status) === false) return;
-  if (!(await repo.stepWrite(actor, item.id, item.revision, { status: spec.active }))) return;
-  const revision = item.revision + 1;
+  // One statement claims the item: right status, no live lease. A loser does nothing.
+  const claimed = await repo.claimStep(actor, item.id, spec.runs, spec.active);
+  if (!claimed) return;
+  const revision = claimed.revision;
   try {
-    if (!(await work(item, revision))) return;
+    if (!(await work(claimed, revision))) return;
   } catch (error) {
-    if (error instanceof IsolationError) return;
-    const failures = item.failures + 1;
+    if (error instanceof IsolationError || error instanceof DataRoomStaleError) return;
+    const failures = claimed.failures + 1;
     if (step === "classify" && failures >= DATA_ROOM_JOB_ATTEMPTS) {
       // Facets are a bonus: keep the item searchable by text and name, and show why they are missing.
       if (
@@ -442,6 +443,7 @@ export async function runDataRoomIndex(deps: DataRoomJobDeps, payload: Payload):
       contentHash: createHash("sha256").update(chunk).digest("hex"),
     }));
     await repo.replaceChunks(actor, item.id, chunks, {
+      revision,
       ...(embedder && ai.embeddingModel ? { embeddingModel: ai.embeddingModel } : {}),
     });
     const todo = embedder ? await repo.unembeddedChunks(actor, item.id) : [];
@@ -468,6 +470,7 @@ export async function runDataRoomIndex(deps: DataRoomJobDeps, payload: Payload):
             contentHash: chunk.contentHash,
             vector: vectors[i] ?? [],
           })),
+          revision,
         );
       } catch (error) {
         // A model that cannot serve embeddings leaves the item keyword-searchable, not failed.
@@ -482,4 +485,39 @@ export async function runDataRoomIndex(deps: DataRoomJobDeps, payload: Payload):
       failures: 0,
     });
   });
+}
+
+const STRANDED_AFTER_MS = 15 * 60_000;
+const STEP_JOB_FOR_STATUS = {
+  pending: "dataroom.ingest",
+  extracting: "dataroom.ingest",
+  classifying: "dataroom.classify",
+  indexing: "dataroom.index",
+} as const;
+
+/**
+ * Queues the step of every item a crashed or lost job left behind: in a working status, its lease
+ * expired or never set, and untouched for 15 minutes. The leader-elected job reconciler calls this.
+ * `keepExisting` leaves a job that is still queued or retrying alone.
+ */
+export async function reconcileDataRoom(
+  deps: Pick<DataRoomJobDeps, "prisma" | "jobs">,
+  options: { now?: Date; batchSize?: number } = {},
+): Promise<number> {
+  const now = options.now ?? new Date();
+  const stranded = await deps.prisma.dataRoomItem.findMany({
+    where: {
+      status: { in: Object.keys(STEP_JOB_FOR_STATUS) },
+      OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }],
+      updatedAt: { lt: new Date(now.getTime() - STRANDED_AFTER_MS) },
+    },
+    select: { id: true, spaceId: true, userId: true, status: true },
+    orderBy: { updatedAt: "asc" },
+    take: options.batchSize ?? 200,
+  });
+  for (const item of stranded) {
+    const name = STEP_JOB_FOR_STATUS[item.status as keyof typeof STEP_JOB_FOR_STATUS];
+    await deps.jobs.enqueue({ ...dataRoomStepJob(name, item, item.id), keepExisting: true });
+  }
+  return stranded.length;
 }
