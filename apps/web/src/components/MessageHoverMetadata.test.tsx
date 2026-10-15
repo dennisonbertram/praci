@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { MessageHoverMetadata } from "./MessageHoverMetadata";
 
 describe("MessageHoverMetadata", () => {
-  it("places bot actions flush to the right of the bubble", () => {
+  it("places bot actions under the bubble's right edge", () => {
     const html = renderToStaticMarkup(
       <MessageHoverMetadata side="end">
         <div data-testid="message-actions" />
@@ -11,12 +11,11 @@ describe("MessageHoverMetadata", () => {
     );
 
     expect(html).toContain('data-testid="message-hover-rail"');
-    expect(html).toContain("start-full");
-    expect(html).toContain("ms-1");
-    expect(html).toContain("top-1/2");
-    expect(html).toContain("-translate-y-1/2");
-    expect(html).not.toContain("ms-1.5");
-    expect(html).not.toContain("bottom-0");
+    expect(html).toContain("top-full");
+    expect(html).toContain("end-0");
+    expect(html).toContain("pt-1");
+    expect(html).not.toContain("start-full");
+    expect(html).not.toContain("top-1/2");
     expect(html).not.toContain("<time");
     expect(html).toContain("opacity-0");
     expect(html).toContain("@media(hover:hover)_and_(pointer:fine)");
@@ -24,17 +23,24 @@ describe("MessageHoverMetadata", () => {
     expect(html).toContain("focus-within:opacity-100");
   });
 
-  it("mirrors user actions flush to the left of the bubble", () => {
+  it("keeps user actions under the bubble's end edge and clears the reactions row", () => {
     const html = renderToStaticMarkup(
       <MessageHoverMetadata side="start">
         <div data-testid="message-actions" />
       </MessageHoverMetadata>,
     );
 
-    expect(html).toContain("end-full");
-    expect(html).toContain("me-1");
-    expect(html).not.toContain("start-full");
+    expect(html).toContain("top-full");
+    expect(html).toContain("end-0");
+    expect(html).not.toContain("end-full");
     expect(html).not.toContain("<time");
+    expect(
+      renderToStaticMarkup(
+        <MessageHoverMetadata hasReactions side="start">
+          <div />
+        </MessageHoverMetadata>,
+      ),
+    ).toContain("pt-9");
   });
 
   it("drops the rail in-flow below the bubble on touch", () => {
@@ -52,7 +58,7 @@ describe("MessageHoverMetadata", () => {
     for (const html of [bot, user]) {
       expect(html).toContain("[@media(hover:none)]:static");
       expect(html).toContain("[@media(hover:none)]:w-full");
-      expect(html).toContain("[@media(hover:none)]:translate-y-0");
+      expect(html).toContain("[@media(hover:none)]:pt-0");
     }
     expect(bot).toContain("[@media(hover:none)]:justify-start");
     expect(user).toContain("[@media(hover:none)]:justify-end");
