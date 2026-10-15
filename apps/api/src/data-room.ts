@@ -31,6 +31,8 @@ export interface DataRoomDeps {
   jobs: JobPublisher;
   /** Injectable so tests can use a small cap. */
   maxUploadBytes?: number;
+  /** How long the blob cleanup waits, so a failed row delete can be seen first. Tests shorten it. */
+  blobDeleteDelayMs?: number;
 }
 
 export const folderDto = (folder: DataRoomFolderRecord): DataRoomApiFolder => ({
@@ -159,8 +161,13 @@ export function createDataRoomService(deps: DataRoomDeps) {
       dataRoomCall(async () => itemDto(await repo.moveItem(actor, input.id, input.folderId))),
     deleteItem: (actor: Actor, id: string) =>
       dataRoomCall(async () => {
-        const { storageKey } = await repo.deleteItem(actor, id);
-        if (storageKey) await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, storageKey));
+        const { storageKey } = await repo.getItem(actor, id);
+        // Queue the cleanup first: if the row delete fails, the job finds the row and keeps the blob.
+        if (storageKey) {
+          const at = new Date(Date.now() + (deps.blobDeleteDelayMs ?? 60_000));
+          await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, storageKey, at));
+        }
+        await repo.deleteItem(actor, id);
         return { ok: true as const };
       }),
     search: (

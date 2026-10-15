@@ -941,6 +941,7 @@ export function createRouter(deps: RouterDeps) {
     prisma: deps.prisma,
     artifacts: deps.artifacts,
     jobs: deps.jobs,
+    blobDeleteDelayMs: Number(process.env.RAKAZO_DATA_ROOM_BLOB_DELETE_DELAY_MS) || undefined,
   });
 
   const authed = os.use(async ({ context, next }) => {
