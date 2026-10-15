@@ -78,7 +78,8 @@ export function cleanClassification(raw: unknown): unknown {
   o.tags = uniq(strings(o.tags, 40), 12, true);
   if (Array.isArray(o.folderPath)) {
     o.folderPath = o.folderPath
-      .map((x) => (typeof x === "string" ? x.replaceAll("/", "-").trim().slice(0, 80) : x))
+      .flatMap((x) => (typeof x === "string" ? x.split("/") : [x]))
+      .map((x) => (typeof x === "string" ? x.trim().slice(0, 80) : x))
       .filter((x) => x !== "")
       .slice(0, 4);
   }
