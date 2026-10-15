@@ -517,6 +517,7 @@ msgid "Add custom connection"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Add item"
 msgstr "항목 추가"
 
@@ -2248,6 +2249,10 @@ msgstr ""
 msgid "Couldn't save the draft"
 msgstr ""
 
+#: src/pages/shell/bot-pins.tsx
+msgid "Couldn't save. Try again."
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Couldn't send. Try again."
 msgstr ""
@@ -2463,6 +2468,7 @@ msgstr ""
 #. placeholder {0}: group.name
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Delete {0}"
 msgstr "{0} 삭제"
 
@@ -3418,6 +3424,10 @@ msgstr ""
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
 msgstr "SSO 연결"
+
+#: src/pages/Shell.tsx
+msgid "List"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "List view"
@@ -4719,6 +4729,7 @@ msgstr ""
 #: src/components/ErrorBoundary.tsx
 #: src/pages/Finance.tsx
 #: src/pages/RoutineRunHistory.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Refresh"
 msgstr "새로고침"
 
@@ -5778,6 +5789,10 @@ msgstr ""
 msgid "The API did not come back. Refresh this page."
 msgstr "API가 다시 작동하지 않습니다. 이 페이지를 새로 고침하세요."
 
+#: src/pages/shell/bot-pins.tsx
+msgid "The bot changed this list. Your last edit wasn't saved."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "연결 시간이 초과되었습니다."
@@ -6126,6 +6141,7 @@ msgstr "업데이트됨"
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Updated {updated}"
 msgstr ""
 

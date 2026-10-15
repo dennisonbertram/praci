@@ -31,6 +31,7 @@ import type {
   FinanceSyncDeps,
   getBotSecretMetadata,
   IntegrationProviderSettings,
+  McpConnector,
   MemoryProviderResolver,
   PiOAuthLogins,
   RemoteConnectorDependencies,
@@ -72,6 +73,7 @@ import {
   expireComputerControl,
   forgetBotSecret,
   getBotPage,
+  getBotPins,
   hasActiveComputerControl,
   hostCredentialSource,
   isAutoReviewCheckerConfigured,
@@ -90,6 +92,7 @@ import {
   modelCredentialDto,
   normalizeSecretDestination,
   PageValidationError,
+  PinsValidationError,
   PushSessionEndedError,
   parseModelSecret,
   persistPreparedSecret,
@@ -103,6 +106,7 @@ import {
   probeOpenAiCompatibleModels,
   provisionComputer,
   queueComputerUpdate,
+  refreshBotPins,
   releaseComputerExecutionLease,
   renderPageChartSvg,
   replaceComputer,
@@ -114,6 +118,7 @@ import {
   routineRunModelPin,
   sanitizeComposioError,
   saveBotPage,
+  saveBotPins,
   savePushToken,
   scheduleComputerControlExpiry,
   scheduleComputerSleep,
@@ -673,6 +678,8 @@ export interface RouterDeps {
   mcpOAuth?: McpOAuthBroker;
   /** Builds the read-tool caller for finance servers (refresh, receipts); unset where finance sync is off. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
+  mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
   /** Reads an uploaded bank statement; wired in app.ts. */
   parseStatement?: ParseStatement;
   financeCrypto?: FinanceCryptoDeps;
@@ -3435,6 +3442,42 @@ export function createRouter(deps: RouterDeps) {
           }
           throw error;
         }
+      }),
+    },
+    pins: {
+      get: authed.pins.get.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        return getBotPins(deps.prisma, { spaceId: bot.spaceId, botId: bot.id });
+      }),
+      save: authed.pins.save.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        try {
+          const result = await saveBotPins(
+            { prisma: deps.prisma, events: deps.events, mcp: deps.mcp },
+            { spaceId: bot.spaceId, botId: bot.id, userId: bot.userId },
+            { list: input.list, baseRevision: input.baseRevision, updatedBy: "user" },
+          );
+          if (result.ok) return result;
+          if (!result.pins) {
+            throw new ORPCError("CONFLICT", { message: "The pins were changed or removed." });
+          }
+          return { ok: false as const, reason: "conflict" as const, pins: result.pins };
+        } catch (error) {
+          if (error instanceof PinsValidationError) {
+            throw new ORPCError("BAD_REQUEST", { message: error.message });
+          }
+          throw error;
+        }
+      }),
+      refresh: authed.pins.refresh.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        await assertTeachingSendAllowed(deps.prisma, bot.spaceId, bot.id);
+        const result = await refreshBotPins(
+          { prisma: deps.prisma, events: deps.events, jobs: deps.jobs, mcp: deps.mcp },
+          { spaceId: bot.spaceId, botId: bot.id, userId: bot.userId },
+        );
+        if (!result) throw new ORPCError("NOT_FOUND", { message: "This bot has no pins." });
+        return result;
       }),
     },
     routines: {

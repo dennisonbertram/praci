@@ -482,6 +482,7 @@ export async function createApp(
     home,
     artifacts,
     connector: stack.connector,
+    mcp,
     connectors: stack.connector,
     listConnectedPluginSlugs: async (userId) => {
       const provider = await integrationSettings.resolve("composio");
@@ -574,6 +575,7 @@ export async function createApp(
     artifacts,
     mail,
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
+    mcp,
     parseStatement: async (file, scope) => {
       // Only a PDF from an unknown bank reaches the model, and only with the consent the Inbox
       // triage model already needs. Without it the parser says no model is configured.

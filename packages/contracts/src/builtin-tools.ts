@@ -25,6 +25,8 @@ export const BUILTIN_TOOL_NAMES = [
   "page_read",
   "page_write",
   "page_edit",
+  "pins_read",
+  "pins_write",
   "add_mcp_server",
   "remember",
   "save_shared_memory",

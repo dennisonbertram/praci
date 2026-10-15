@@ -200,6 +200,7 @@ async function main() {
     home,
     artifacts,
     connector: stack.connector,
+    mcp,
     connectors: stack.connector,
     listConnectedPluginSlugs: async (userId) => {
       const provider = await integrationSettings.resolve("composio");
