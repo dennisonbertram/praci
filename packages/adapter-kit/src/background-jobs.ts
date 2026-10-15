@@ -25,6 +25,7 @@ const payloadSchemas = {
   "mail.search.expire": z.object({ searchId: z.string().min(1) }),
   "inbox.triage": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
   "finance.sync": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
+  "dataroom.blob.delete": z.object({ spaceId: z.string().min(1), storageKey: z.string().min(1) }),
 } satisfies { [Name in BackgroundJobName]: z.ZodType<BackgroundJobPayloads[Name]> };
 
 export function parseBackgroundJob(name: string, payload: unknown): BackgroundJob {
@@ -205,5 +206,14 @@ export function financeSyncJob(userId: string, spaceId: string, availableAt?: Da
     ...(availableAt ? { availableAt } : {}),
     replaceKey: financeSyncJobKey(userId, spaceId),
     maxAttempts: 3,
+  };
+}
+
+/** One cleanup per blob: a double enqueue replaces the first job instead of adding a second. */
+export function dataRoomBlobDeleteJob(spaceId: string, storageKey: string): BackgroundJob {
+  return {
+    name: "dataroom.blob.delete",
+    payload: { spaceId, storageKey },
+    replaceKey: `dataroom.blob.delete:${spaceId}:${storageKey}`,
   };
 }

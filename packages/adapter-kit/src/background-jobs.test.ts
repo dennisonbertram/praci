@@ -26,6 +26,7 @@ function handlers(): BackgroundJobHandlers {
     "mail.search.expire": vi.fn(async () => undefined),
     "inbox.triage": vi.fn(async () => undefined),
     "finance.sync": vi.fn(async () => undefined),
+    "dataroom.blob.delete": vi.fn(async () => undefined),
   };
 }
 
@@ -84,6 +85,9 @@ describe("background job contracts", () => {
     await dispatchBackgroundJob(target, "finance.sync", { userId: "user-1", spaceId: "space-1" });
     expect(target["finance.sync"]).toHaveBeenCalledWith({ userId: "user-1", spaceId: "space-1" });
     expect(() => parseBackgroundJob("finance.sync", { userId: "user-1" })).toThrow();
+    await dispatchBackgroundJob(target, "dataroom.blob.delete", { spaceId: "s", storageKey: "k" });
+    expect(target["dataroom.blob.delete"]).toHaveBeenCalledWith({ spaceId: "s", storageKey: "k" });
+    expect(() => parseBackgroundJob("dataroom.blob.delete", { spaceId: "s" })).toThrow();
     expect(financeSyncJob("user-1", "space-1")).toEqual({
       name: "finance.sync",
       payload: { userId: "user-1", spaceId: "space-1" },

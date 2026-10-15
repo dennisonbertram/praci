@@ -23,6 +23,15 @@ import {
 } from "./board.js";
 import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot-secrets.js";
 import {
+  DataRoomApiFolderSchema,
+  DataRoomApiItemListInputSchema,
+  DataRoomApiItemListOutputSchema,
+  DataRoomApiItemSchema,
+  DataRoomApiName,
+  DataRoomApiSearchInputSchema,
+  DataRoomApiSearchResultSchema,
+} from "./data-room-api.js";
+import {
   ActionApprovalRuleSchema,
   ActionAutoReviewSettingsSchema,
   AgentSecretInputSchema,
@@ -1094,6 +1103,25 @@ export const appContract = {
       list: oc.input(InboxScopeInputSchema).output(InboxTodosOutputSchema),
       setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoSchema),
     },
+  },
+  dataRoom: {
+    folders: oc.output(z.array(DataRoomApiFolderSchema)),
+    folderCreate: oc
+      .input(z.object({ name: DataRoomApiName, parentId: Id.nullable().optional() }))
+      .output(DataRoomApiFolderSchema),
+    folderRename: oc
+      .input(z.object({ id: Id, name: DataRoomApiName }))
+      .output(DataRoomApiFolderSchema),
+    folderMove: oc
+      .input(z.object({ id: Id, parentId: Id.nullable() }))
+      .output(DataRoomApiFolderSchema),
+    folderDelete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    items: oc.input(DataRoomApiItemListInputSchema).output(DataRoomApiItemListOutputSchema),
+    item: oc.input(z.object({ id: Id })).output(DataRoomApiItemSchema),
+    itemRename: oc.input(z.object({ id: Id, name: DataRoomApiName })).output(DataRoomApiItemSchema),
+    itemMove: oc.input(z.object({ id: Id, folderId: Id.nullable() })).output(DataRoomApiItemSchema),
+    itemDelete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    search: oc.input(DataRoomApiSearchInputSchema).output(z.array(DataRoomApiSearchResultSchema)),
   },
   finance: {
     agent: oc.output(BotSchema),

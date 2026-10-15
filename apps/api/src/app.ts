@@ -109,6 +109,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createBillingService } from "./billing.js";
 import { mountBillingRoutes } from "./billing-webhook.js";
+import { mountDataRoomRoutes } from "./data-room.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
 import { healthRoutes } from "./health.js";
@@ -536,6 +537,7 @@ export async function createApp(
     messaging,
     cloudAgent,
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
+    artifacts,
   });
   if (inMemoryJobs) {
     await inMemoryJobs.start(jobHandlers);
@@ -736,6 +738,11 @@ export async function createApp(
     await next();
   });
   mountInboxAttachment(app, { prisma, mail }, async (request) => {
+    const actor = await sessionActor(request);
+    if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
+    return actor;
+  });
+  mountDataRoomRoutes(app, { prisma, artifacts, jobs }, async (request) => {
     const actor = await sessionActor(request);
     if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
     return actor;
