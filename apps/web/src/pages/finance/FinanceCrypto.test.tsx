@@ -295,3 +295,39 @@ it("shows each exchange as its own group and reloads everything after removing o
   expect(rpcMock.exchangeRemove).toHaveBeenCalledWith({ id: "x1" });
   expect(rpcMock.exchanges).toHaveBeenCalledTimes(2);
 });
+
+it("shows wallet-only totals in the Wallets section when exchanges add to the summary", async () => {
+  const base = data();
+  rpcMock.crypto.mockResolvedValue(
+    data({
+      summary: {
+        ...base.summary,
+        totalCents: base.summary.totalCents + 25_000,
+        unpricedTokenCount: base.summary.unpricedTokenCount + 3,
+      },
+    }),
+  );
+  rpcMock.exchanges.mockResolvedValue([
+    {
+      id: "x1",
+      provider: "kraken",
+      connected: true,
+      lastSyncedAt: null,
+      lastError: null,
+      totalCents: 25_000,
+      balances: [1, 2, 3].map((n) => ({
+        asset: `Z${n}`,
+        amount: "1",
+        usdPrice: null,
+        usdValueCents: null,
+      })),
+    },
+  ]);
+  await show();
+  const heading = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Wallets");
+  const wallets = heading?.parentElement?.parentElement;
+  expect(wallets?.textContent).toContain("$3,002.50");
+  expect(wallets?.textContent).not.toContain("$3,252.50");
+  expect(wallets?.textContent).toContain("1 unpriced");
+  expect(wallets?.textContent).not.toContain("4 unpriced");
+});
