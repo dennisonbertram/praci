@@ -101,3 +101,19 @@ it("keeps Counting crypto right after turning on, until focus leaves and returns
   await act(async () => main().focus());
   expect(main().textContent).toBe("Not counting crypto");
 });
+
+it("disables the button and menu while a save is pending", async () => {
+  let finish: (v: unknown) => void = () => {};
+  rpcMock.setPreferences.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
+  await show("all");
+  await act(async () => main().click());
+  expect(main().disabled).toBe(true);
+  expect((container.querySelector('[aria-haspopup="menu"]') as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+  await act(async () => main().click());
+  expect(rpcMock.setPreferences).toHaveBeenCalledTimes(1);
+  await act(async () => finish({}));
+  await flush();
+  expect(main().disabled).toBe(false);
+});
