@@ -58,6 +58,111 @@ Use the steps below for history questions: mail older than two weeks, a person, 
    - To tell whether the user already replied, look for their sent rows in the same thread.
    - Do not show tool field names (coverage, continueFrom, records, searchId). Say it plainly, for example "I found 40 messages back to March; want me to look further back?"`,
   },
+  {
+    name: "finance-cost-cutting",
+    description: "Find recurring and overlapping spend to cut, from Mercury and Brex.",
+    body: `Use this when the user asks where to save money, which subscriptions to cancel, or why spend is up. You only read and suggest. Never pay, cancel, categorize or change anything.
+
+Rules for every finance answer:
+- Use the finance_* tools first. They read the user's synced Mercury and Brex data in one fast call and give the same numbers as the Finance page, with transfers between the user's own accounts and Brex card payments already left out so nothing is counted twice. Use the Mercury and Brex tools (such as Mercury getTransaction and listTransactions, Brex get_expense_by_id and list_bills) only for details the sync does not have: receipts, memos, cards, bills, or a charge from the last few minutes.
+- Compute totals, averages and percentages with code, never in your head. Do not add up rows by hand.
+- Say which accounts and dates you used.
+
+1. finance_recurring gives subscriptions with monthly cost, cadence, last charge and overlaps, and what is due in the next 30 days.
+2. finance_breakdown with by "vendor" and range "365d" (and "90d") shows where the money goes. Compare the two to find vendors that are growing.
+3. finance_transactions with vendor set shows the actual charges behind a candidate (dates and amounts).
+4. Pick the candidates:
+   - Recurring and costly.
+   - Growing: a vendor whose recent months are well above its earlier ones.
+   - Overlapping: several vendors doing the same job, such as multiple AI model or coding tools, project trackers or design tools (finance_recurring marks known overlaps).
+   - Possibly unused: a recurring vendor with no related activity, or two charges for the same product.
+   - Not candidates: payroll, taxes, rent, insurance and benefits, unless the user asks.
+5. Rank by yearly saving (monthly cost times 12). For each of the top items give the vendor, monthly and yearly cost, the evidence (dates and amounts of the last charges), and what to do: cancel, downgrade, merge with another tool, or check who uses it.
+6. Finish with the total possible saving and what you could not tell (for example, who uses a tool). Offer to look closer at any item.`,
+  },
+  {
+    name: "finance-crypto",
+    description: "Crypto wallet balances and allocation, priced by DefiLlama. Read only.",
+    body: `Use this when the user asks about their crypto: what they hold, what it is worth, how it is spread across wallets or chains, or what changed. You only read and report. All crypto tools are read-only: never move, swap, approve or send funds, and say so if asked to.
+
+- Call finance_crypto first. It reads the synced wallet balances in one call and matches the Crypto page: total value, value by chain and wallet, each wallet's top holdings, tokens without a price, and when it last synced. Use the Blockscout tools (such as get_address_info, get_tokens_by_address and read_contract) only for details it does not have, such as a fresh balance, a token's contract, or a Safe's owners.
+- Crypto is valued at DefiLlama prices in US dollars, and holdings come from a curated token list, so tokens outside it are not shown. Those are indicative, not what a sale would fetch. Say when the data is old (lastSyncedAt).
+- Stablecoins (USDC, USDT, DAI at their canonical contracts) count as cash and are already in the overview's cash and runway. Other crypto does not: never add it to cash, burn or runway, and do not use it in runway scenarios unless the user asks and states the assumption (for example, "if I sold half of it").
+- Holdings with a null usd have no price, often spam or dust tokens. They are not in the total; report how many there are instead of guessing a value.
+- Compute totals, shares and changes with code, never in your head.
+- For suspicious tokens or lookalike addresses, follow crypto-scams.
+- Answer with the total, the largest wallets, chains and holdings, and what you could not tell (unpriced tokens, a stale sync, chains that failed).`,
+  },
+  {
+    name: "crypto-scams",
+    description: "Spot scam tokens and address-poisoning in the user's wallets. Read only.",
+    body: `Use this when the user asks about unknown or suspicious tokens, airdrops, strange transfers, or whether an address is safe to send to. You only read and report. Never move, swap, approve, sign or send anything, and never visit a link or site from a token.
+
+Start with finance_crypto for the synced holdings (a null usd means unpriced). Use these read-only Blockscout tools for history: get_token_transfers_by_address (ERC-20 transfers; needs chain_id, address and age_from) and get_transactions_by_address (native transfers and contract calls; same arguments). Use get_address_info and get_tokens_by_address for one address or token. Follow the cursor to read more pages, and say if you stopped early.
+
+Scam or airdropped tokens. Treat a token as suspect when:
+- The user never asked for it and it has no price or no liquidity.
+- Its name or symbol copies a real asset (for example "USDC" at an unfamiliar contract). Compare the contract address with the real token's address on that chain, never the symbol.
+- Its name contains a URL or words such as claim, visit, reward, voucher or airdrop.
+- Its balance looks large but it cannot be priced or sold (a fake balance).
+Never tell the user to interact with, approve, sell or claim these, and never open their sites. The usual advice is to ignore or hide them.
+
+Address poisoning. An attacker sends a zero-value or dust transfer, or a fake-token transfer, from an address whose first and last characters match one the user has used, hoping the user copies it from history later.
+- List the counterparties in the wallet's transfers and look for pairs of addresses that share the start and end but differ in the middle.
+- Look for zero-value or tiny transfers from addresses the user never sent to, close in time to a real transfer.
+- Compare full addresses, never just the prefix or suffix. Treat any counterparty that differs from a known one in the middle characters as suspect.
+- Advice: get the full address from a trusted source (the user's address book or the recipient directly), never from transaction history, and send a small test transfer first.
+
+Approvals. If asked about token approvals or revoking, say that revoking needs the user's own wallet. You can only read.
+
+How to report. List each suspect token or lookalike address with its full address (never a shortened form like 0x1234…abcd), the chain, why it is suspect, and a confidence level (high, medium or low). Say what you checked. Never present a guess as fact: "looks like" is right when you did not confirm it.
+
+Limits. Say what you cannot see: holdings come from a curated token list, so unlisted spam may not appear; history comes only from the read tools above and may be paged or partial; a clean result does not prove an address is safe.`,
+  },
+  {
+    name: "finance-runway-scenarios",
+    description: "Runway and what-if scenarios from current cash and burn.",
+    body: `Use this when the user asks how long the money lasts or what happens if spend, revenue or cash changes. You only read and calculate.
+
+Follow the finance rules in finance-cost-cutting: finance_* tools first, compute with code, do not count Brex card payments and card purchases both.
+
+1. finance_overview returns cash (checking, savings and Treasury; the Brex card balance owed is separate and is not cash), monthly burn (the average over the last 3 full months of money out minus revenue), runway in months and the run-out date. If burn is zero or negative, say the business is not burning cash.
+2. For the detail behind burn, use finance_breakdown for the same months, or finance_transactions with classification "revenue" to report revenue separately. Financing proceeds are not revenue or spend.
+3. Scenarios, when the user gives them or asks "what if": change one input at a time with code (cut X dollars a month, add a hire, revenue up or down by a percent, a one-time payment, new funding) and show the new burn, runway and run-out date next to the current ones. Label every assumption as the user's, not data. If they gave no numbers, offer two or three sensible ones and say they are examples.
+4. Answer with: cash, burn, runway, run-out date, then each scenario. State the months and accounts used. Use Mercury getAccounts or Brex list_business_accounts only to double-check a balance the user questions.`,
+  },
+  {
+    name: "finance-monthly-review",
+    description: "Monthly money review: spend, changes, new and upcoming charges.",
+    body: `Use this for "how did last month go", a monthly or weekly review, or "what changed". You only read and report.
+
+Follow the finance rules in finance-cost-cutting: finance_* tools first, compute with code, do not count Brex card payments and card purchases both.
+
+1. finance_overview gives the date, spend this month against last month, burn and runway. Review the last full month unless the user names another, and compare it with the month before.
+2. finance_breakdown with an explicit range {from, to} for each month, by "category" and by "vendor". Do the comparisons with code.
+3. finance_recurring for charges due in the next 30 days (it includes unpaid Brex bills).
+4. Report, each with numbers from code:
+   - Total spend, money in (finance_transactions with classification "revenue", apart from financing), and net, against the previous month.
+   - The 5 categories and 5 vendors that moved most, up or down, in dollars and percent.
+   - New vendors: charged this month and never before.
+   - Charges larger than usual: finance_transactions with minAmount, compared with that vendor's earlier charges.
+   - Recurring charges due in the next 30 days and bills with due dates.
+5. Treasury yield and receipts are not in the sync: use Mercury getTreasury netReturns for yield, and the Mercury or Brex tools for receipts and memos, only if the user asks.
+6. Keep it short: a few lines of totals, then a list of what needs a look. Name what you could not check, such as expenses with no receipt or no category, and offer finance-cost-cutting or finance-categorize.`,
+  },
+  {
+    name: "finance-categorize",
+    description: "Suggest categories for uncategorized transactions. Suggest only.",
+    body: `Use this when the user asks to clean up or fix categories. You can only suggest. Changing a category in Mercury or Brex is a write that is not available, so end with a list the user can apply.
+
+Follow the finance rules in finance-cost-cutting: finance_* tools first, compute with code.
+
+1. Find the uncategorized ones: finance_breakdown with by "category" shows an "Uncategorized" row, and finance_transactions with category "uncategorized" lists the charges. Brex expenses always carry a merchant category, so the rows are usually Mercury. Call Mercury listCategories to see the user's custom categories, and Brex list_expense_categories only to see whether the company defined its own.
+2. Group the uncategorized rows by vendor with code, so one suggestion covers every charge from that vendor.
+3. Suggest a category for each vendor from the user's existing categories first. Only propose a new category name when none fits, and say it is new. Base it on the vendor and on how the user categorized the same or similar vendors. Say when you are unsure instead of guessing.
+4. Answer with a table: vendor, number of charges, total, suggested category, confidence (high or low). Put the largest totals first. Cap it at 30 vendors and say how many are left.
+5. Say plainly that nothing was changed, and that the user can make these changes in Mercury or Brex.`,
+  },
 ];
 
 export const BUILTIN_AGENT_SKILLS: Array<{

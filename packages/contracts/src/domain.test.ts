@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type ConnectionCatalogItem, preferNativeGmail } from "./domain.js";
+import { type ConnectionCatalogItem, preferNativeGoogle } from "./domain.js";
 
 const item = (connectorId: string, slug: string): ConnectionCatalogItem => ({
   connectorId,
@@ -8,25 +8,30 @@ const item = (connectorId: string, slug: string): ConnectionCatalogItem => ({
   logo: null,
   connected: false,
   noAuth: false,
+  description: null,
+  category: "other" as const,
 });
 const google = item("google", "gmail");
 const composio = item("composio", "gmail");
 const pipedream = item("pipedream", "gmail");
 const slack = item("composio", "slack");
 
-describe("preferNativeGmail", () => {
+describe("preferNativeGoogle", () => {
   it("shows only the Google Gmail entry when native Google is configured and allowed", () => {
-    expect(preferNativeGmail([composio, slack, google, pipedream], { nativeGoogle: true })).toEqual(
-      [slack, google],
-    );
+    expect(
+      preferNativeGoogle([composio, slack, google, pipedream], { nativeGoogle: true }),
+    ).toEqual([slack, google]);
   });
 
   it("keeps the managed Gmail entry when Google is not configured", () => {
-    expect(preferNativeGmail([composio, slack], { nativeGoogle: true })).toEqual([composio, slack]);
+    expect(preferNativeGoogle([composio, slack], { nativeGoogle: true })).toEqual([
+      composio,
+      slack,
+    ]);
   });
 
   it("hides the Google entry and keeps the managed one where native Google is unavailable", () => {
-    expect(preferNativeGmail([composio, google, slack], { nativeGoogle: false })).toEqual([
+    expect(preferNativeGoogle([composio, google, slack], { nativeGoogle: false })).toEqual([
       composio,
       slack,
     ]);
@@ -34,7 +39,7 @@ describe("preferNativeGmail", () => {
 
   it("keeps a connected managed Gmail entry so it can be disconnected", () => {
     const connected = { ...composio, connected: true };
-    expect(preferNativeGmail([connected, google, pipedream], { nativeGoogle: true })).toEqual([
+    expect(preferNativeGoogle([connected, google, pipedream], { nativeGoogle: true })).toEqual([
       connected,
       google,
     ]);
@@ -42,6 +47,30 @@ describe("preferNativeGmail", () => {
 
   it("does not drop a managed non-Gmail entry whose slug merely contains gmail", () => {
     const other = item("composio", "gmail-labels");
-    expect(preferNativeGmail([google, other], { nativeGoogle: true })).toEqual([google, other]);
+    expect(preferNativeGoogle([google, other], { nativeGoogle: true })).toEqual([google, other]);
+  });
+
+  it("drops managed Calendar and Drive entries however their slug is spelled", () => {
+    const nativeCal = item("google", "googlecalendar");
+    const nativeDrive = item("google", "googledrive");
+    const managed = [
+      item("composio", "GOOGLECALENDAR"),
+      item("pipedream", "google-calendar"),
+      item("composio", "googledrive"),
+      item("composio", "google_drive"),
+    ];
+    expect(
+      preferNativeGoogle([...managed, slack, nativeCal, nativeDrive], { nativeGoogle: true }),
+    ).toEqual([slack, nativeCal, nativeDrive]);
+  });
+
+  it("keeps a managed Calendar entry that is connected, or has no native twin", () => {
+    const connected = { ...item("composio", "googlecalendar"), connected: true };
+    const drive = item("composio", "googledrive");
+    expect(preferNativeGoogle([connected, drive, google], { nativeGoogle: true })).toEqual([
+      connected,
+      drive,
+      google,
+    ]);
   });
 });

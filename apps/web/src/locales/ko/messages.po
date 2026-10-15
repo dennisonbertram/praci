@@ -23,6 +23,21 @@ msgstr " (읽지 않음)"
 msgid "{0, plural, one {# model} other {# models}}"
 msgstr "{0, plural, one {모델 #개} other {모델 #개}}"
 
+#. placeholder {0}: rows.length
+#: src/pages/Inbox.tsx
+msgid "{0, plural, one {# result} other {# results}}"
+msgstr ""
+
+#. placeholder {0}: subs.items.length
+#: src/pages/Finance.tsx
+msgid "{0, plural, one {# subscription} other {# subscriptions}}"
+msgstr ""
+
+#. placeholder {0}: rows.length
+#: src/pages/Inbox.tsx
+msgid "{0, plural, one {#+ result} other {#+ results}}"
+msgstr ""
+
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -50,6 +65,16 @@ msgstr "{0} (10 MiB 초과)"
 msgid "{0} {unitLabel}"
 msgstr "{0} {unitLabel}"
 
+#. placeholder {0}: bot.name
+#: src/components/integrations/parts.tsx
+msgid "{0} can use {appName}"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "{0} connected"
+msgstr ""
+
 #. placeholder {0}: block.name
 #: src/pages/shell/message-cards.tsx
 msgid "{0} connection"
@@ -60,9 +85,19 @@ msgstr "{0} 연결"
 msgid "{0} default"
 msgstr ""
 
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "{0} did not accept the sign-in."
+msgstr ""
+
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} handling"
+msgstr ""
+
+#. placeholder {0}: row?.displayName ?? item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "{0} is ready."
 msgstr ""
 
 #. placeholder {0}: format(size / 1024)
@@ -75,6 +110,27 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
+#. placeholder {0}: Math.round(card.runwayMonths)
+#: src/components/FinanceCards.tsx
+msgid "{0} mo"
+msgstr ""
+
+#. placeholder {0}: data.excludedNonUsdCount
+#: src/pages/Finance.tsx
+msgid "{0} non-USD not counted"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "{0} now appears under Connected."
+msgstr ""
+
+#. placeholder {0}: wallet.safeThreshold
+#. placeholder {1}: wallet.safeOwners.length
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "{0} of {1}"
+msgstr ""
+
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
@@ -85,6 +141,21 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "{0} runs · {1} tokens"
 msgstr "{0}회 실행 · 토큰 {1}개"
+
+#. placeholder {0}: card.count
+#: src/components/FinanceCards.tsx
+msgid "{0} transactions"
+msgstr ""
+
+#. placeholder {0}: data.crypto.unpricedTokenCount
+#: src/pages/Finance.tsx
+msgid "{0} unpriced"
+msgstr ""
+
+#. placeholder {0}: target.name
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "{0} was added and shows Needs reconnect until you sign in."
+msgstr ""
 
 #. placeholder {0}: bot.name
 #: src/pages/ExternalConversationSettings.tsx
@@ -102,6 +173,10 @@ msgstr ""
 
 #: src/lib/billing.ts
 msgid "{amount} / {period}"
+msgstr ""
+
+#: src/components/integrations/SignInStep.tsx
+msgid "{appName} was not connected"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -155,6 +230,10 @@ msgstr ""
 msgid "{minutes}m ago"
 msgstr "{minutes}분 전"
 
+#: src/pages/Finance.tsx
+msgid "{monthlyTotal}/mo"
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -165,17 +244,41 @@ msgstr "{name} 실패"
 msgid "{name} finished"
 msgstr "{name} 완료"
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} is not connected."
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} stopped"
 msgstr "{name} 중지됨"
 
+#: src/pages/Finance.tsx
+msgid "{name}, paid with {paidWith}"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "{pct} yield"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
 msgstr "남은 시간 {remaining} · Bot은 화면만 보고 직접 조작하지 않습니다"
 
+#: src/pages/finance/FinanceBurn.tsx
+msgid "{runMonths} mo"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "{runwayMonths} mo"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "{seats, plural, one {# seat} other {# seats}}"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "{serverName} connected"
 msgstr ""
 
 #: src/components/ArtifactFileCard.tsx
@@ -194,21 +297,50 @@ msgstr ""
 msgid "{title}, {label}"
 msgstr "{title}, {label}"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "{toolCount, plural, one {# tool} other {# tools}}"
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "{unpriced} unpriced"
 msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} 작업 중"
 
+#: src/pages/Finance.tsx
+msgid "{yieldAmount} last month"
+msgstr ""
+
 #. placeholder {0}: mention.name
 #: src/pages/Shell.tsx
 msgid "@{0}"
 msgstr "@{0}"
 
+#: src/pages/finance/FinanceBurn.tsx
+msgid "* Month to date"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "* So far"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "+{more} more"
+msgstr ""
+
+#: src/components/finance/WalletDialog.tsx
+msgid "0x… or name.eth"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "3 mo"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "3-mo avg"
+msgstr ""
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "6 mo"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -238,10 +370,6 @@ msgstr ""
 msgid "Access token"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Access token (optional)"
-msgstr "액세스 토큰(선택 사항)"
-
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Account"
 msgstr "계정"
@@ -255,11 +383,14 @@ msgstr "계정 기본값"
 msgid "Account ID"
 msgstr "계정 ID"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Account label"
+#: src/components/integrations/AppDetail.tsx
+msgid "Account name"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceTransaction.tsx
 msgid "Accounts"
 msgstr ""
 
@@ -274,6 +405,10 @@ msgstr "작업 실행 전 확인"
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
 msgstr "{0} 작업 메뉴"
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Actions for {name}"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Actions for space"
@@ -293,11 +428,30 @@ msgstr "현재 모델"
 msgid "Activity"
 msgstr "활동"
 
+#: src/components/finance/WalletDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelBackupsSettings.tsx
-#: src/pages/PluginsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Add"
 msgstr "추가"
+
+#. placeholder {0}: providerName(onlyOne.provider)
+#: src/pages/Finance.tsx
+msgid "Add {0}"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Add a custom connection"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Add a GraphQL endpoint"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Add a local command"
+msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Add a model in Settings to use this."
@@ -319,20 +473,12 @@ msgstr ""
 msgid "Add a schedule, webhook, GitHub, or message trigger to run this routine."
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Add a server name."
-msgstr "서버 이름을 입력하세요."
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Add account"
+msgstr ""
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Add a stdio command."
-msgstr "stdio 명령을 입력하세요."
-
-#: src/pages/McpServersOverlay.tsx
-msgid "Add an HTTPS server URL."
-msgstr "HTTPS 서버 URL을 입력하세요."
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Add another"
+#: src/components/integrations/AppDetail.tsx
+msgid "Add another account"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -347,38 +493,17 @@ msgstr "백업으로 사용할 연결된 모델을 추가하세요."
 msgid "Add credential"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Add Executor"
-msgstr "Executor 추가"
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Add GraphQL"
-msgstr "GraphQL 추가"
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Add GraphQL endpoint"
-msgstr "GraphQL 엔드포인트 추가"
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Add custom connection"
+msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Add item"
 msgstr "항목 추가"
 
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/PluginsOverlay.tsx
 msgid "Add MCP server"
 msgstr "MCP 서버 추가"
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Add OpenAPI"
-msgstr "OpenAPI 추가"
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Add remote MCP server"
-msgstr "원격 MCP 서버 추가"
-
-#: src/pages/McpServersOverlay.tsx
-msgid "Add server"
-msgstr "서버 추가"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
@@ -388,28 +513,23 @@ msgstr ""
 msgid "Add to routine"
 msgstr "자동 실행에 추가"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Add Treg"
-msgstr "Treg 추가"
-
 #: src/pages/RoutineEditor.tsx
 msgid "Add trigger"
 msgstr "트리거 추가"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Added"
+#: src/components/finance/WalletDialog.tsx
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Add wallet"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
-msgid "Adding…"
-msgstr "추가 중…"
+#: src/components/finance/WalletDialog.tsx
+msgid "Address or ENS"
+msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/McpServersOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/PluginsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -420,6 +540,10 @@ msgstr "고급 설정"
 msgid "Advanced..."
 msgstr "고급..."
 
+#: src/pages/Finance.tsx
+msgid "after fees"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Agent computer"
 msgstr "Agent 컴퓨터"
@@ -428,16 +552,27 @@ msgstr "Agent 컴퓨터"
 msgid "Agent connections"
 msgstr "Agent 연결"
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Agents:"
-msgstr "사용 Bot:"
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Agents lose access to its tools."
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Agents lose access to this account."
+msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "AI data sharing"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/finance/FinanceSpend.tsx
 #: src/pages/Inbox.tsx
 msgid "All"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "All agents can use {0}."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -487,6 +622,10 @@ msgstr "확인 없이 이메일 동작 허용"
 msgid "Allow once"
 msgstr "한 번 허용"
 
+#: src/components/integrations/SignInStep.tsx
+msgid "Allow pop-ups for this site, or open the sign-in page directly."
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow purchase actions without asking"
 msgstr "확인 없이 결제 동작 허용"
@@ -515,6 +654,11 @@ msgstr "이 도구 항상 허용"
 msgid "Always allowed"
 msgstr "항상 허용됨"
 
+#: src/components/finance/ui.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Amount"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "이 서비스에는 구독 로그인이 아니라 API 키가 저장되어 있습니다."
@@ -540,11 +684,16 @@ msgstr "응답: {answer}"
 msgid "Any model, with your own key"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Anything else"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "API is back, but the update did not finish. Check the host logs."
 msgstr "API가 다시 작동하지만 업데이트가 완료되지 않았습니다. 호스트 로그를 확인하세요."
 
 #: src/components/AskCard.tsx
+#: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -553,9 +702,13 @@ msgstr "API가 다시 작동하지만 업데이트가 완료되지 않았습니�
 msgid "API key"
 msgstr "API 키"
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "API 키 헤더"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "App connections aren't set up on this server yet."
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Appearance"
@@ -578,6 +731,10 @@ msgstr "승인"
 msgid "Approve this server to let your agent use its tools."
 msgstr "이 서버를 승인하면 Bot이 제공되는 도구를 사용할 수 있습니다."
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Apps"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -589,6 +746,7 @@ msgstr "보관"
 msgid "archived"
 msgstr "보관됨"
 
+#: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Archived"
 msgstr "보관됨"
@@ -597,13 +755,17 @@ msgstr "보관됨"
 msgid "Archived. Chat, memory, and files kept."
 msgstr "보관되었습니다. 대화, 기억, 파일은 유지됩니다."
 
-#: src/pages/McpServersOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Arguments"
 msgstr "인자"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 msgid "Artifacts"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "Ask agent"
 msgstr ""
 
 #. placeholder {0}: rule.matchValue
@@ -639,6 +801,10 @@ msgstr "외부 이메일을 보내기 전에 확인"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Ask the server owner to configure this provider."
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Ask the server owner to set up the app catalog."
 msgstr ""
 
 #. placeholder {0}: preset.time
@@ -679,6 +845,14 @@ msgstr ""
 #. placeholder {0}: email.attachments
 #: src/components/EmailCards.tsx
 msgid "Attachments: {0}"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Auth header"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Authentication"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -727,8 +901,8 @@ msgid "Avatars"
 msgstr "아바타"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
-#: src/pages/PluginsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Back"
 msgstr "뒤로"
@@ -749,6 +923,23 @@ msgstr "백업 모델 순서"
 msgid "Backup models saved."
 msgstr "백업 모델을 저장했습니다."
 
+#: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Balance"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Balance owed"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Bank"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Bank only: {bankRunwayMonths} mo"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Base URL"
 msgstr "서버 주소"
@@ -765,11 +956,15 @@ msgstr ""
 msgid "Bcc"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
-#: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Bearer token"
 msgstr "Bearer 토큰"
+
+#: src/pages/Finance.tsx
+msgid "bill"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 msgid "Billing"
@@ -840,10 +1035,6 @@ msgstr ""
 msgid "Bots are working"
 msgstr "봇 작업 중"
 
-#: src/components/integrations/McpServerRow.tsx
-msgid "Bots lose access to its tools."
-msgstr ""
-
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
 msgstr ""
@@ -852,8 +1043,13 @@ msgstr ""
 msgid "Brain label"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Browse MCP servers"
+#: src/components/finance/ui.tsx
+msgid "Breadcrumb"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Breakdown"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
@@ -868,6 +1064,32 @@ msgstr "기본 제공"
 msgid "Bulleted list"
 msgstr ""
 
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Burn"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "Burn / mo"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Burn by category"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "By account"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "By month"
+msgstr ""
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Cadence"
+msgstr ""
+
 #: src/App.tsx
 msgid "Can't reach the server."
 msgstr "서버에 연결할 수 없습니다."
@@ -875,14 +1097,19 @@ msgstr "서버에 연결할 수 없습니다."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
-#: src/components/integrations/McpServerRow.tsx
+#: src/components/finance/WalletDialog.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/ConnectionDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/SignInStep.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/PluginsOverlay.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Cancel"
@@ -909,8 +1136,48 @@ msgstr "취소됨"
 msgid "Cancelled"
 msgstr "취소됨"
 
+#: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Card balance owed"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Card view"
+msgstr ""
+
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Cardholder"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Cash"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Cash accounts"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Cash out and cash in by month"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Cash out and cash in over time"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+#: src/pages/finance/FinanceBurn.tsx
+#: src/pages/Inbox.tsx
+msgid "Categories"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Category"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -922,9 +1189,25 @@ msgstr ""
 msgid "cc {0}"
 msgstr ""
 
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Chain"
+msgstr ""
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Chains"
+msgstr ""
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Change"
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Change password"
 msgstr "비밀번호 변경"
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Changes your account"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Changing…"
@@ -934,9 +1217,17 @@ msgstr "변경 중…"
 msgid "Channels"
 msgstr "채널"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Charges"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Chart failed to render: {error}"
 msgstr "차트를 표시하지 못했습니다: {error}"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Chat"
+msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Chat apps"
@@ -959,6 +1250,10 @@ msgstr ""
 msgid "Check failed"
 msgstr "확인 실패"
 
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Check for receipt"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
@@ -979,6 +1274,18 @@ msgstr "서버 URL과 네트워크를 확인한 뒤 다시 테스트하세요."
 #: src/pages/Auth.tsx
 msgid "Check your email"
 msgstr "이메일을 확인하세요"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Checking + Savings + Treasury"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Checking + Treasury"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Checking + Treasury + Stablecoins"
+msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
@@ -1011,6 +1318,10 @@ msgstr "새 비밀번호 선택"
 msgid "Choose file"
 msgstr "파일 선택"
 
+#: src/components/integrations/SignInStep.tsx
+msgid "Choose the account to connect, then come back here."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Choose which connected model Rakazo uses."
 msgstr "Rakazo에서 기본으로 사용할 연결된 모델을 선택하세요."
@@ -1030,20 +1341,12 @@ msgstr "{0}와의 대화 내용을 비울까요?"
 msgid "Clear conversation"
 msgstr "대화 내용 비우기"
 
-#: src/pages/Inbox.tsx
-msgid "Clear filter"
-msgstr ""
-
 #: src/pages/ActivityList.tsx
 msgid "Clear filter {label}"
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Clear formatting"
-msgstr ""
-
-#: src/pages/Inbox.tsx
-msgid "Clear search"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -1062,6 +1365,7 @@ msgstr ""
 #: src/components/ErrorBoundary.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
+#: src/components/integrations/SignInStep.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
@@ -1086,14 +1390,6 @@ msgstr "컴퓨터 닫기"
 #: src/pages/shell/message-cards.tsx
 msgid "Close image preview"
 msgstr "이미지 미리보기 닫기"
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Close integrations"
-msgstr "앱·도구 연동 닫기"
-
-#: src/pages/McpServersOverlay.tsx
-msgid "Close MCP servers"
-msgstr "MCP 서버 설정 닫기"
 
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -1146,6 +1442,10 @@ msgid "Collapse {0}"
 msgstr "{0} 접기"
 
 #: src/pages/Shell.tsx
+msgid "Collapse Finance agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Collapse Inbox agent"
 msgstr ""
 
@@ -1165,7 +1465,7 @@ msgstr ""
 msgid "Coming soon"
 msgstr "준비 중"
 
-#: src/pages/McpServersOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Command"
 msgstr "실행 명령"
 
@@ -1225,20 +1525,11 @@ msgstr ""
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "컴퓨터가 꺼져 있습니다. SANDBOX_PROVIDER=docker와 SANDBOX_SUPERVISOR_TOKEN을 설정하거나, SANDBOX_PROVIDER를 e2b, daytona, box 중 하나로 두고 해당 API 키를 넣으세요. .env 변경 후 스택을 다시 만드세요."
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Configure a plugin catalog on the server to connect apps."
-msgstr ""
-
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Configured by deployment"
 msgstr "서버에서 설정됨"
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Configured servers"
-msgstr "연결된 서버"
-
 #: src/pages/KnowledgeSection.tsx
-#: src/pages/McpServersOverlay.tsx
 msgid "Confirm delete"
 msgstr "삭제 확인"
 
@@ -1251,12 +1542,31 @@ msgstr "비밀번호 확인"
 msgid "Confirm the URL is reachable from this browser session, then test again."
 msgstr "이 브라우저 세션에서 URL에 연결할 수 있는지 확인한 뒤 다시 테스트하세요."
 
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "연결"
+
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "Connect {0}"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Connect {name}"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Connect a Composio or Pipedream account to add apps like Slack, Notion and GitHub."
+msgstr ""
 
 #: src/pages/Onboarding.tsx
 msgid "Connect a model"
@@ -1266,11 +1576,24 @@ msgstr "AI 모델 연결"
 msgid "Connect a provider to add backups."
 msgstr "백업을 추가하려면 제공업체를 연결하세요."
 
+#: src/pages/Finance.tsx
+msgid "Connect accounts"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Connect any app that offers an MCP server URL."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Connect API key"
 msgstr "API 키 연결"
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
+msgid "Connect Blockscout"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Executor"
 msgstr "Executor 연결"
 
@@ -1282,19 +1605,25 @@ msgstr ""
 msgid "Connect MCP server “{name}”"
 msgstr "MCP 서버 ‘{name}’ 연결"
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Connect OAuth"
-msgstr "OAuth 연결"
+#: src/pages/Finance.tsx
+msgid "Connect Mercury, Brex or both to see cash, burn, runway and spend."
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Connect the apps you use so your agents can read and act in them. You choose which agents get access to each one."
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Connect this provider to use it as your personal model."
 msgstr "이 AI 서비스를 연결하면 내 기본 모델로 사용할 수 있습니다."
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Treg"
 msgstr "Treg 연결"
 
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/parts.tsx
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 #: src/pages/MemorySettingsOverlay.tsx
@@ -1308,6 +1637,11 @@ msgstr "연결됨"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Connected · {0}"
 msgstr "연결됨 · {0}"
+
+#. placeholder {0}: new Date(row.createdAt).toLocaleDateString()
+#: src/components/integrations/AppDetail.tsx
+msgid "Connected {0}"
+msgstr ""
 
 #. placeholder {0}: selected.name
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -1324,10 +1658,10 @@ msgstr "{0}에 연결하고 기본 모델로 설정했습니다."
 msgid "Connected. Its tools are available from your next message."
 msgstr "연결되었습니다. 다음 메시지부터 이 도구를 사용할 수 있습니다."
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/components/integrations/McpServerRow.tsx
+#: src/components/integrations/parts.tsx
 #: src/pages/GoogleOAuthCallback.tsx
-#: src/pages/McpServersOverlay.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/shell/message-cards.tsx
@@ -1339,16 +1673,12 @@ msgstr "연결 중…"
 msgid "Connection test failed."
 msgstr "연결 테스트에 실패했습니다."
 
-#. placeholder {0}: item.name
-#: src/pages/PluginsOverlay.tsx
-msgid "Connection to {0} is still pending. You can close this and check again."
-msgstr "{0} 연결이 아직 진행 중입니다. 이 창을 닫고 나중에 다시 확인할 수 있습니다."
-
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Context limit"
 msgstr "컨텍스트 한도"
 
+#: src/components/integrations/AgentStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/Onboarding.tsx
 msgid "Continue"
@@ -1366,6 +1696,10 @@ msgstr "{0}(으)로 계속"
 #: src/pages/Auth.tsx
 msgid "Continue with email"
 msgstr "이메일로 계속하기"
+
+#: src/components/finance/WalletDialog.tsx
+msgid "Contract"
+msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1387,9 +1721,9 @@ msgstr ""
 msgid "Could not add"
 msgstr "추가하지 못했습니다."
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Could not add MCP server"
-msgstr "MCP 서버를 추가하지 못했습니다."
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Could not add the connection"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not approve this server"
@@ -1432,8 +1766,9 @@ msgstr "OAuth 인증을 완료하지 못했습니다."
 msgid "Could not complete the update. Try again."
 msgstr ""
 
+#: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/PluginsOverlay.tsx
 msgid "Could not connect"
 msgstr "연결하지 못했습니다."
 
@@ -1476,6 +1811,10 @@ msgid "Could not create space"
 msgstr "스페이스를 만들 수 없습니다"
 
 #: src/pages/Shell.tsx
+msgid "Could not create the Finance agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Could not create the Inbox agent"
 msgstr ""
 
@@ -1490,10 +1829,6 @@ msgstr "Bot을 삭제하지 못했습니다."
 #: src/pages/shell/dialogs.tsx
 msgid "Could not delete group"
 msgstr "그룹을 삭제할 수 없습니다"
-
-#: src/pages/McpServersOverlay.tsx
-msgid "Could not delete MCP server"
-msgstr "MCP 서버를 삭제하지 못했습니다."
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not delete routine"
@@ -1511,13 +1846,14 @@ msgstr ""
 msgid "Could not delete this artifact."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/McpDetail.tsx
+msgid "Could not disconnect"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not disconnect memory provider"
 msgstr "기억 서비스 연결을 해제하지 못했습니다."
-
-#: src/pages/McpServersOverlay.tsx
-msgid "Could not disconnect OAuth"
-msgstr "OAuth 연결을 해제하지 못했습니다."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Could not disconnect this provider"
@@ -1547,10 +1883,6 @@ msgstr "{name}을 다운로드하지 못했습니다. 다시 시도해 주세요
 #: src/components/computer/FilesApp.tsx
 msgid "Could not download file"
 msgstr ""
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Could not install connector"
-msgstr "도구 연결을 추가하지 못했습니다."
 
 #: src/components/computer/FilesApp.tsx
 msgid "Could not list files"
@@ -1594,13 +1926,9 @@ msgid "Could not load credentials."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/useIntegrations.ts
 msgid "Could not load integrations"
 msgstr "연동 목록을 불러오지 못했습니다."
-
-#: src/pages/McpServersOverlay.tsx
-msgid "Could not load MCP servers"
-msgstr "MCP 서버 목록을 불러오지 못했습니다."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Could not load model settings"
@@ -1618,6 +1946,10 @@ msgstr "로그인 옵션을 불러올 수 없습니다"
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not load skill"
 msgstr "스킬을 불러오지 못했습니다"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Could not load the app list. Reload to try again."
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "Could not load this artifact."
@@ -1671,16 +2003,16 @@ msgstr "모델 서버에 연결하지 못했습니다."
 msgid "Could not reach the server"
 msgstr "서버에 연결할 수 없습니다"
 
-#: src/components/integrations/McpServerRow.tsx
+#: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
 msgstr ""
 
-#: src/components/integrations/McpServerRow.tsx
+#: src/components/integrations/McpDetail.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
 msgstr "삭제하지 못했습니다."
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "Could not remove connector"
 msgstr "도구 연결을 삭제하지 못했습니다."
 
@@ -1692,12 +2024,9 @@ msgstr "확인 규칙을 삭제하지 못했습니다."
 msgid "Could not remove the credential"
 msgstr ""
 
-#: src/components/integrations/McpServerRow.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/McpDetail.tsx
 msgid "Could not rename"
-msgstr ""
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Could not rename connection"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -1716,10 +2045,6 @@ msgstr "차트를 만들지 못했습니다."
 msgid "Could not reset password"
 msgstr "비밀번호를 재설정할 수 없습니다"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Could not revoke connection"
-msgstr "연결을 해제하지 못했습니다."
-
 #: src/pages/Shell.tsx
 msgid "Could not run routine"
 msgstr "루틴을 실행할 수 없습니다"
@@ -1729,6 +2054,11 @@ msgstr "루틴을 실행할 수 없습니다"
 #: src/pages/shell/bot-panel.tsx
 msgid "Could not save"
 msgstr "저장하지 못했습니다."
+
+#: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Could not save agent access"
+msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Could not save Auto Review"
@@ -1774,12 +2104,16 @@ msgstr "목소리를 저장하지 못했습니다."
 msgid "Could not save the credential"
 msgstr ""
 
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Could not save the page."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
 msgstr "선택 내용을 저장하지 못했습니다."
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Could not search catalog"
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Could not search"
 msgstr ""
 
 #: src/pages/Auth.tsx
@@ -1790,9 +2124,9 @@ msgstr "재설정 이메일을 보낼 수 없습니다"
 msgid "Could not send that"
 msgstr "메시지를 보내지 못했습니다."
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Could not start OAuth"
-msgstr "OAuth 인증을 시작하지 못했습니다."
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Could not start sign-in."
+msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Could not start teaching"
@@ -1810,7 +2144,8 @@ msgstr "직접 조작으로 전환하지 못했습니다."
 msgid "Could not update"
 msgstr "업데이트하지 못했습니다."
 
-#: src/pages/McpServersOverlay.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/McpDetail.tsx
 msgid "Could not update agent access"
 msgstr "Bot의 서버 사용 권한을 변경하지 못했습니다."
 
@@ -1858,6 +2193,10 @@ msgstr "아바타를 업데이트할 수 없습니다"
 msgid "Couldn't update messaging settings"
 msgstr "메시징 설정을 업데이트할 수 없습니다"
 
+#: src/components/finance/ui.tsx
+msgid "Counterparty"
+msgstr ""
+
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1872,6 +2211,10 @@ msgstr "새 섹션을 만들고 {0}을 옮깁니다."
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "계정 만들기"
+
+#: src/pages/Shell.tsx
+msgid "Create Finance agent"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "Create group"
@@ -1916,20 +2259,11 @@ msgstr "생성됨"
 msgid "Creating…"
 msgstr "만드는 중…"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Credential"
-msgstr "인증 정보"
-
-#: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
-msgid "credential saved"
-msgstr "인증 정보 저장됨"
-
 #: src/pages/shell/bot-credentials.tsx
 msgid "Credentials"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Credentials are encrypted and never sent to the model."
 msgstr "인증 정보는 암호화되며 모델에 전송되지 않습니다."
 
@@ -1941,10 +2275,24 @@ msgstr "Cron"
 msgid "Cron expression"
 msgstr "Cron 표현식"
 
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Crypto"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Crypto wallet"
+msgstr ""
+
 #: src/components/AccountAccess.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Current password"
 msgstr "현재 비밀번호"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Custom connections still work."
+msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Custom header"
@@ -1961,6 +2309,15 @@ msgstr "봇 아바타 맞춤설정"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Dark"
 msgstr "다크"
+
+#: src/components/finance/ui.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Date"
+msgstr ""
+
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Date posted"
+msgstr ""
 
 #: src/lib/billing.ts
 #: src/pages/RoutineSchedule.tsx
@@ -2006,7 +2363,6 @@ msgstr "기본 기억 범위"
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/KnowledgeSection.tsx
-#: src/pages/McpServersOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2035,6 +2391,10 @@ msgstr "{0}을 삭제할까요?"
 #: src/components/AccountAccess.tsx
 msgid "Delete account"
 msgstr "계정 삭제"
+
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Delete chart"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "Delete group"
@@ -2074,6 +2434,7 @@ msgid "Deployment default"
 msgstr "서버 기본값"
 
 #: src/pages/Board.tsx
+#: src/pages/finance/FinanceSpend.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Description"
 msgstr "설명"
@@ -2088,6 +2449,14 @@ msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 msgid "Desktop update"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Developer"
+msgstr ""
+
+#: src/components/integrations/SignInStep.tsx
+msgid "Didn't open?"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2106,7 +2475,6 @@ msgstr ""
 msgid "Discard attachments?"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -2115,6 +2483,18 @@ msgstr "연결 해제"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Disconnect {disconnectName}?"
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Disconnect {name}"
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Disconnect {name}?"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Disconnect sign-in"
 msgstr ""
 
 #. placeholder {0}: selected.providerName ?? selected.provider
@@ -2142,9 +2522,13 @@ msgstr "오류 닫기"
 msgid "Dismissed. Reconnect anytime from MCP settings."
 msgstr "지금은 연결하지 않았습니다. MCP 설정에서 언제든 다시 연결할 수 있습니다."
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Display name"
 msgstr "표시 이름"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Dividends"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Docker"
@@ -2158,10 +2542,16 @@ msgstr ""
 msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
 msgstr "Docker는 보안을 위해 컴퓨터 접근을 제한합니다. {hostLabel}에서는 Bot이 로컬 파일과 도구로 작업할 수 있습니다."
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Docs & files"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Don’t have an account?"
 msgstr "계정이 없나요?"
 
+#: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -2232,6 +2622,10 @@ msgstr "예: Hivenet Agent, Presales, 근무표 봇"
 msgid "Earlier"
 msgstr ""
 
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Edit"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Edit first"
 msgstr "수정 후 보내기"
@@ -2240,9 +2634,17 @@ msgstr "수정 후 보내기"
 msgid "Edit Profile"
 msgstr "Bot 정보 수정"
 
+#: src/components/finance/WalletDialog.tsx
+msgid "Edit wallet"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Email"
 msgstr "이메일"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Email & calendar"
+msgstr ""
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -2291,6 +2693,18 @@ msgstr "이미지 한도는 1에서 1000 사이의 정수로 입력하세요."
 msgid "Enter an API key before testing."
 msgstr "테스트하기 전에 API 키를 입력하세요."
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Enter the command to run."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Enter the server URL, starting with https://."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Enter the URL, starting with https://."
+msgstr ""
+
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx
 msgid "Error"
@@ -2304,6 +2718,14 @@ msgstr "매"
 #: src/pages/RoutineSchedule.tsx
 msgid "every {intervalAmountSelect} {intervalUnitSelect}"
 msgstr "{intervalAmountSelect} {intervalUnitSelect}마다"
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Every agent loses access to {name}."
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Every agent loses access to its tools."
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -2324,14 +2746,22 @@ msgstr "매주 월요일"
 msgid "Every month"
 msgstr "매월"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Every two weeks"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Every week"
 msgstr "매주"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Executor token"
-msgstr "Executor 토큰"
+#: src/components/finance/WalletDialog.tsx
+msgid "Exchange"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Excluded"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Expand"
@@ -2342,6 +2772,10 @@ msgstr "펼치기"
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "{0} 펼치기"
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Expected"
+msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Export"
@@ -2370,6 +2804,7 @@ msgstr ""
 msgid "failed"
 msgstr "실패"
 
+#: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "실패"
@@ -2395,6 +2830,10 @@ msgstr "실패했습니다."
 msgid "Failure handling"
 msgstr "실패했을 때 처리"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Fee"
+msgstr ""
+
 #: src/components/computer/FilesApp.tsx
 msgid "File is too large to upload."
 msgstr ""
@@ -2413,6 +2852,29 @@ msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "Filters"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+#: src/components/FinanceCards.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceBurn.tsx
+#: src/pages/finance/FinanceCrypto.tsx
+#: src/pages/finance/FinanceNotFound.tsx
+#: src/pages/finance/FinanceSpend.tsx
+#: src/pages/finance/FinanceTransaction.tsx
+#: src/pages/Shell.tsx
+msgid "Finance"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Financing"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Find an app"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2447,6 +2909,10 @@ msgstr "완료되었습니다."
 #: src/pages/McpOAuthCallback.tsx
 msgid "Finishing MCP connection…"
 msgstr "MCP 연결을 마무리하는 중…"
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "First seen"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Fix or remove the highlighted addresses."
@@ -2501,6 +2967,10 @@ msgstr "게이트웨이 ID"
 msgid "General"
 msgstr "일반"
 
+#: src/components/integrations/BlockscoutConnectDialog.tsx
+msgid "Get an API key"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Get credentials"
 msgstr ""
@@ -2520,6 +2990,10 @@ msgstr "Git 이벤트"
 #: src/components/ComposeEmail.tsx
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail needs to be reconnected."
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Gmail tabs"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -2563,15 +3037,14 @@ msgstr "header"
 msgid "Header \"{header}\""
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Header name"
 msgstr "헤더 이름"
 
-#: src/pages/McpServersOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Header value"
-msgstr "헤더 값"
+msgstr ""
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hear a sample"
@@ -2604,6 +3077,10 @@ msgstr "높음"
 msgid "High"
 msgstr ""
 
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Holdings"
+msgstr ""
+
 #: src/pages/RoutineSchedule.tsx
 msgid "hour"
 msgstr "시간"
@@ -2625,6 +3102,10 @@ msgstr "완료 확인 방법"
 msgid "I’m done"
 msgstr "조작 끝내기"
 
+#: src/components/integrations/SignInStep.tsx
+msgid "If you closed the sign-in window, try again."
+msgstr ""
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "If you heard that, voice is ready."
 msgstr "샘플이 들렸다면 음성 설정이 완료되었습니다."
@@ -2637,12 +3118,16 @@ msgstr ""
 msgid "Image upload area"
 msgstr "이미지 업로드 영역"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Import OpenAPI JSON"
-msgstr "OpenAPI JSON 가져오기"
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Import an OpenAPI description"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Important"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "In"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -2670,6 +3155,10 @@ msgstr ""
 msgid "Inherit default"
 msgstr "기본 설정 사용"
 
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Initiated by"
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Inputs"
 msgstr "입력값"
@@ -2686,15 +3175,13 @@ msgstr "인스턴스 API 키"
 msgid "Instruction"
 msgstr "실행할 내용"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Integration domain"
-msgstr ""
-
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
 #: src/pages/Shell.tsx
 msgid "Integrations"
 msgstr "앱·도구 연동"
@@ -2719,6 +3206,10 @@ msgstr "이 Bot만 사용"
 
 #: src/pages/Artifacts.tsx
 msgid "Isolated preview — no access to your account"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "It now appears under Connected."
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -2766,9 +3257,30 @@ msgstr ""
 msgid "Knowledge"
 msgstr "지식"
 
+#: src/components/finance/WalletDialog.tsx
+msgid "Label"
+msgstr ""
+
+#: src/components/finance/WalletDialog.tsx
+msgid "Label (optional)"
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Language"
 msgstr "언어"
+
+#: src/pages/Finance.tsx
+msgid "Last 3 months"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Last 90 days"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Last charge"
+msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 #: src/components/EmailCards.tsx
@@ -2840,10 +3352,6 @@ msgstr "웹 이미지 자동으로 불러오기"
 msgid "Loading activity…"
 msgstr "활동을 불러오는 중…"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Loading integrations…"
-msgstr "연동 목록을 불러오는 중…"
-
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "기억 설정을 불러오는 중…"
@@ -2860,7 +3368,7 @@ msgstr "미리보기를 불러오는 중…"
 msgid "Loading rules…"
 msgstr "확인 규칙을 불러오는 중…"
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/AppDetail.tsx
 msgid "Loading tools…"
 msgstr ""
 
@@ -2871,6 +3379,7 @@ msgstr "음성 서비스를 불러오는 중…"
 #: src/App.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
+#: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/Onboarding.tsx
@@ -2887,6 +3396,14 @@ msgstr "로컬"
 #: src/pages/HostComputerPrompt.tsx
 msgid "Local access lets bots run commands without asking. Avoid it on shared or public servers."
 msgstr "로컬 접근을 허용하면 Bot이 묻지 않고 명령을 실행할 수 있습니다. 공유 서버나 공개 서버에서는 허용하지 마세요."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Local command"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Local server"
+msgstr ""
 
 #: src/pages/LocalSettings.tsx
 msgid "Local Server Settings"
@@ -2912,6 +3429,14 @@ msgstr ""
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+msgid "Mail data from this account that Rakazo cached is removed."
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Mail data Rakazo cached from these accounts is removed."
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Make sure nothing is still running on this computer."
 msgstr "이 컴퓨터에서 실행 중인 작업이 없는지 확인하세요."
@@ -2920,18 +3445,9 @@ msgstr "이 컴퓨터에서 실행 중인 작업이 없는지 확인하세요."
 msgid "Manage"
 msgstr ""
 
-#. placeholder {0}: server.name
-#: src/components/integrations/McpServerRow.tsx
-msgid "Manage {0}"
-msgstr ""
-
 #: src/pages/Paywall.tsx
 msgid "Manage billing"
 msgstr ""
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Manage MCP servers"
-msgstr "MCP 서버 관리"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Manage messaging settings"
@@ -2941,11 +3457,7 @@ msgstr "메시징 설정 관리"
 msgid "Manage the Space semantic memory provider."
 msgstr "작업공간에서 사용할 장기 기억 서비스를 관리합니다."
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Manual"
-msgstr ""
-
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Manual setup required"
 msgstr ""
 
@@ -3015,10 +3527,6 @@ msgstr "최대 출력 토큰 수"
 msgid "MCP endpoint"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx
-msgid "MCP servers"
-msgstr "MCP 서버"
-
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Medium"
@@ -3037,6 +3545,10 @@ msgstr "참여 Bot ({GROUP_MEMBER_MIN}~{GROUP_MEMBER_MAX}개)"
 msgid "Members (pick {GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
 msgstr "참여 Bot ({GROUP_MEMBER_MIN}~{GROUP_MEMBER_MAX}개 선택)"
 
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Memo"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -3053,6 +3565,10 @@ msgstr "멘션"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Mentions only"
+msgstr ""
+
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Merchant"
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -3175,9 +3691,38 @@ msgstr "모델 목록이 정상입니다. {modelCount, plural, one {모델 #개}
 msgid "month"
 msgstr ""
 
+#: src/components/finance/ui.tsx
+#: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Month"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Month to date"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
 msgstr "매월"
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Monthly avg"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Monthly burn"
+msgstr ""
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Monthly spend"
+msgstr ""
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Monthly trend"
+msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
@@ -3208,7 +3753,7 @@ msgstr "섹션으로 이동"
 msgid "Mute"
 msgstr "음소거"
 
-#: src/components/integrations/McpServerRow.tsx
+#: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
 #: src/pages/GroupPanel.tsx
@@ -3239,6 +3784,10 @@ msgstr ""
 msgid "Needs input"
 msgstr "입력 필요"
 
+#: src/components/integrations/parts.tsx
+msgid "Needs reconnect"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Needs reply"
 msgstr ""
@@ -3250,6 +3799,15 @@ msgstr "인수 필요"
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx
 msgid "Needs you"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Net"
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Never changes your account"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3298,6 +3856,14 @@ msgstr ""
 msgid "Newsletters"
 msgstr ""
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Next"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "Next 30 days"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
@@ -3307,19 +3873,20 @@ msgstr ""
 msgid "No agent connections yet."
 msgstr "아직 Agent 연결이 없습니다."
 
-#: src/pages/PluginsOverlay.tsx
-msgid "No apps match your search."
-msgstr "검색 결과가 없습니다."
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "No agent uses {0} yet. Choose agents on its page."
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "No apps match."
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "No artifacts found."
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
-msgid "no auth"
-msgstr "인증 없음"
-
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "No authentication"
 msgstr "인증 없음"
 
@@ -3359,10 +3926,6 @@ msgstr ""
 msgid "No mail matches this filter"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
-msgid "No managed app catalog is configured on this deployment."
-msgstr "이 서버에는 관리형 앱 목록이 설정되지 않았습니다."
-
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
 msgstr ""
@@ -3370,14 +3933,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No matching models"
 msgstr "일치하는 모델 없음"
-
-#: src/pages/PluginsOverlay.tsx
-msgid "No MCP or API tool sources installed yet."
-msgstr "아직 추가된 MCP 또는 API 도구가 없습니다."
-
-#: src/pages/McpServersOverlay.tsx
-msgid "No MCP servers yet."
-msgstr "아직 연결된 MCP 서버가 없습니다."
 
 #: src/pages/PeerMessagesOverlay.tsx
 msgid "No messages with {peerBotName} yet."
@@ -3391,15 +3946,23 @@ msgstr "사용 가능한 모델 목록이 없습니다."
 msgid "No models listed."
 msgstr "나열된 모델이 없습니다."
 
+#: src/pages/Inbox.tsx
+msgid "No more results"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "검색된 AI 서비스가 없습니다."
+
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "No receipt"
+msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "No results"
 msgstr "검색 결과가 없습니다"
@@ -3428,7 +3991,7 @@ msgstr ""
 msgid "No tickets yet"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/AppDetail.tsx
 msgid "No tools available."
 msgstr ""
 
@@ -3452,13 +4015,22 @@ msgstr ""
 msgid "Not confirmed as sent. Check Sent before trying again."
 msgstr ""
 
+#: src/components/integrations/FinanceSection.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Not connected"
 msgstr "연결되지 않음"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Not in the plugin catalog"
-msgstr "플러그인 카탈로그에 없음"
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Not counted"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Not counted in cash"
+msgstr ""
+
+#: src/pages/finance/FinanceNotFound.tsx
+msgid "Not found"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
@@ -3499,19 +4071,10 @@ msgstr ""
 msgid "OAuth authorization was cancelled."
 msgstr "OAuth 인증이 취소되었습니다."
 
-#: src/pages/McpServersOverlay.tsx
-msgid "OAuth connected"
-msgstr "OAuth 연결됨"
-
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "OAuth 연결 실패"
-
-#: src/components/integrations/McpServerRow.tsx
-#: src/pages/McpServersOverlay.tsx
-msgid "OAuth expired"
-msgstr ""
 
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
@@ -3531,7 +4094,12 @@ msgstr "매월 1일 {0}에"
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Only if the server does not use sign-in"
+msgstr ""
+
 #: src/components/inbox/InboxShortcuts.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -3555,6 +4123,10 @@ msgstr ""
 msgid "Open <0>{0}</0> to finish signing in."
 msgstr ""
 
+#: src/components/integrations/SignInStep.tsx
+msgid "Open again"
+msgstr ""
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr ""
@@ -3563,17 +4135,37 @@ msgstr ""
 msgid "Open external link?"
 msgstr "외부 링크를 열까요?"
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Open Finance"
+msgstr ""
+
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Open in Brex"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Open in full window"
 msgstr "전체 창으로 열기"
+
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Open in Mercury"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Open navigation"
 msgstr "메뉴 열기"
 
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Open receipt"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Open shell"
 msgstr "셸 열기"
+
+#: src/components/integrations/SignInStep.tsx
+msgid "Open sign-in"
+msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Open work"
@@ -3600,15 +4192,12 @@ msgstr "채팅 여는 중…"
 msgid "Opening your Space…"
 msgstr "작업공간을 여는 중…"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Optional"
 msgstr "선택 사항"
-
-#: src/pages/McpServersOverlay.tsx
-msgid "Optional header value"
-msgstr "선택 사항인 헤더 값"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
@@ -3630,18 +4219,53 @@ msgstr "조직 API 키"
 msgid "Original message unavailable"
 msgstr "원본 메시지를 사용할 수 없습니다"
 
+#: src/components/finance/ui.tsx
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Other"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Other connection types"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Other crypto"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Other model…"
 msgstr "다른 모델 직접 입력…"
 
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Out"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "overlaps"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Owner"
+msgstr ""
+
+#: src/pages/Shell.tsx
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Page"
+msgstr ""
+
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Page changed. Reload"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty 인시던트"
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Paid with"
+msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Park"
@@ -3668,6 +4292,10 @@ msgstr "비밀번호가 업데이트되었습니다"
 msgid "Passwords do not match"
 msgstr "비밀번호가 일치하지 않습니다"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Past charges"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Past due"
 msgstr ""
@@ -3676,6 +4304,10 @@ msgstr ""
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste a replacement key"
 msgstr "새 API 키를 붙여넣으세요"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Paste the MCP server URL from the app's documentation."
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed."
@@ -3693,6 +4325,20 @@ msgstr "API 키를 붙여넣은 뒤 다시 테스트하세요."
 msgid "Paused"
 msgstr "일시 중지됨"
 
+#: src/pages/Finance.tsx
+msgid "pending"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Pending"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "Period"
+msgstr ""
+
+#: src/components/finance/WalletDialog.tsx
 #: src/pages/Inbox.tsx
 msgid "Personal"
 msgstr ""
@@ -3722,9 +4368,18 @@ msgstr "재생 중…"
 msgid "Plugin"
 msgstr "플러그인"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Popular"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "POST to"
 msgstr "POST 대상"
+
+#: src/components/finance/ui.tsx
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Posted"
+msgstr ""
 
 #. placeholder {0}: props.name
 #: src/components/ArtifactFileCard.tsx
@@ -3760,6 +4415,10 @@ msgstr ""
 msgid "Project ID"
 msgstr ""
 
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Projected cash"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Promotions"
 msgstr ""
@@ -3782,6 +4441,10 @@ msgstr "서비스"
 msgid "Pull request"
 msgstr "풀 리퀘스트"
 
+#: src/components/finance/ui.tsx
+msgid "Quarter"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "대기 중"
@@ -3798,9 +4461,25 @@ msgstr "반응하기"
 msgid "Reactions"
 msgstr "반응"
 
+#: src/components/integrations/AppDetail.tsx
+msgid "Read"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Read balances and transactions"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Read cards, expenses and bills"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "답변을 자동으로 읽기"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Read wallet balances"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -3815,21 +4494,30 @@ msgstr ""
 msgid "Recall only"
 msgstr ""
 
+#: src/pages/finance/FinanceSpend.tsx
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Receipt"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Receipts"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "Recent"
 msgstr "최근"
 
-#: src/components/integrations/McpServerRow.tsx
+#: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
 msgid "Reconnect"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Reconnect OAuth"
-msgstr "OAuth 다시 연결"
+#: src/components/integrations/FinanceSection.tsx
+#: src/pages/Finance.tsx
+msgid "Reconnect {name}"
+msgstr ""
 
 #: src/App.tsx
 #: src/components/ComputerUpdateProgress.tsx
@@ -3892,12 +4580,17 @@ msgstr "작동하지 않는 컴퓨터를 다시 만듭니다."
 msgid "Recreating the computer"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "recurring"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Redirect URI"
 msgstr ""
 
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
+#: src/pages/Finance.tsx
 #: src/pages/RoutineRunHistory.tsx
 msgid "Refresh"
 msgstr "새로고침"
@@ -3927,9 +4620,10 @@ msgid "Release interrupted computer?"
 msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
-#: src/components/integrations/McpServerRow.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/ModelBackupsSettings.tsx
-#: src/pages/PluginsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove"
@@ -3940,12 +4634,20 @@ msgstr "삭제"
 #. placeholder {0}: file.name
 #: src/components/compose/RecipientField.tsx
 #: src/components/ComposeEmail.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
 #: src/pages/Shell.tsx
 msgid "Remove {0}"
 msgstr "{0} 삭제"
 
+#. placeholder {0}: removing?.name
+#. placeholder {0}: removingRow?.displayName ?? ""
 #. placeholder {0}: server.name
-#: src/components/integrations/McpServerRow.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
+#: src/pages/finance/FinanceCrypto.tsx
 msgid "Remove {0}?"
 msgstr ""
 
@@ -3995,11 +4697,20 @@ msgstr "대화, 컴퓨터, 기억과 함께 삭제되었습니다."
 msgid "Removed, but list refresh failed"
 msgstr "삭제했지만 목록을 새로고침하지 못했습니다."
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Removing…"
-msgstr "삭제 중…"
+#: src/components/integrations/AppDetail.tsx
+msgid "Removes all {accountCount} accounts and agent access."
+msgstr ""
 
-#: src/components/integrations/McpServerRow.tsx
+#: src/components/integrations/AppDetail.tsx
+msgid "Removes the account and agent access."
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Removes the connection and agent access."
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/McpDetail.tsx
 msgid "Rename"
 msgstr ""
 
@@ -4022,6 +4733,7 @@ msgstr ""
 msgid "Reopen"
 msgstr "다시 열기"
 
+#: src/components/integrations/FinanceSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Replace API key"
 msgstr "API 키 교체"
@@ -4138,6 +4850,11 @@ msgstr "Rakazo로 돌아가기"
 msgid "rev {0}"
 msgstr "리비전 {0}"
 
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Revenue"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
 msgstr "서비스 설정을 확인한 뒤 다시 테스트하세요."
@@ -4183,6 +4900,10 @@ msgstr "실행 기록"
 msgid "Run time must be in the future."
 msgstr "실행 시간은 미래여야 합니다."
 
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Run-out"
+msgstr ""
+
 #: src/components/CloudAgentCard.tsx
 msgid "running"
 msgstr "실행 중"
@@ -4203,7 +4924,23 @@ msgstr "실행 중…"
 msgid "Runs when this bot receives a verified message from this provider."
 msgstr ""
 
+#: src/components/FinanceCards.tsx
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Runway"
+msgstr ""
+
+#: src/components/finance/WalletDialog.tsx
+msgid "Safe"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Sales & CRM"
+msgstr ""
+
 #: src/components/AskCard.tsx
+#: src/components/finance/WalletDialog.tsx
+#: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
 #: src/pages/ExternalConversationSettings.tsx
@@ -4282,8 +5019,8 @@ msgid "Scheduling"
 msgstr ""
 
 #: src/components/inbox/InboxShortcuts.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/PluginsOverlay.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
@@ -4294,8 +5031,9 @@ msgstr "검색"
 msgid "Search activity"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "Search apps"
 msgstr "앱 검색"
 
@@ -4307,8 +5045,12 @@ msgstr ""
 msgid "Search bots and switch conversations"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search by domain"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Search directory"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -4323,6 +5065,10 @@ msgstr ""
 msgid "Search models"
 msgstr "모델 검색"
 
+#: src/pages/Inbox.tsx
+msgid "Search older mail"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search providers"
 msgstr "AI 서비스 검색"
@@ -4331,12 +5077,15 @@ msgstr "AI 서비스 검색"
 msgid "Search runs"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Search the directory"
+msgstr ""
+
 #. placeholder {0}: filters.query.trim()
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
 msgstr "검색 중…"
@@ -4409,16 +5158,16 @@ msgstr ""
 msgid "Server integrations"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Server name"
-msgstr "서버 이름"
-
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/McpServersOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Server URL"
 msgstr "서버 URL"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Set up app catalog"
+msgstr ""
 
 #: src/components/call/CallCard.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -4465,6 +5214,10 @@ msgstr "공유 스킬"
 msgid "Shell"
 msgstr "셸"
 
+#: src/pages/Finance.tsx
+msgid "Show all {total}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Show bots"
 msgstr ""
@@ -4478,6 +5231,7 @@ msgid "Show Inbox agent"
 msgstr ""
 
 #: src/components/inbox/TodoCard.tsx
+#: src/pages/Finance.tsx
 msgid "Show less"
 msgstr ""
 
@@ -4485,7 +5239,7 @@ msgstr ""
 msgid "Show list"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "Show more"
 msgstr "더 보기"
 
@@ -4527,6 +5281,10 @@ msgstr "로그인"
 msgid "Sign in again"
 msgstr ""
 
+#: src/components/integrations/SignInStep.tsx
+msgid "Sign in to {appName} in the new window"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Sign in to Rakazo"
 msgstr "Rakazo 로그인"
@@ -4544,6 +5302,28 @@ msgstr "구독으로 로그인하거나 대신 API 키를 테스트하세요."
 msgid "Sign up"
 msgstr "가입하기"
 
+#: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Sign-in did not finish in time."
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Sign-in did not finish."
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Sign-in failed"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/useMcpReconnect.ts
+msgid "Sign-in was cancelled or did not finish. Try again."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Sign-in was denied or failed."
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Site"
 msgstr ""
@@ -4553,6 +5333,7 @@ msgstr ""
 msgid "Skill {0}"
 msgstr "작업 기술 {0}"
 
+#: src/components/integrations/AgentStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/Shell.tsx
 msgid "Skip"
@@ -4587,6 +5368,10 @@ msgstr "소프트웨어 업데이트"
 #: src/lib/user-error.ts
 msgid "Something went wrong. Try again."
 msgstr "문제가 발생했습니다. 다시 시도하세요."
+
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Source"
+msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Space changed. Reopen Models to load its backup list."
@@ -4628,9 +5413,26 @@ msgstr "이 답변 읽기"
 msgid "Speech model"
 msgstr "음성 모델"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Spend"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+#: src/pages/Finance.tsx
+msgid "Spend this month"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Spent {spentRange}"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
 msgstr "SSO를 일시적으로 사용할 수 없습니다. 다시 시도하세요."
+
+#: src/pages/Finance.tsx
+msgid "Stablecoins"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Starred"
@@ -4656,9 +5458,19 @@ msgstr "시작 중"
 msgid "Starting…"
 msgstr "시작하는 중…"
 
+#: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
+#: src/pages/finance/FinanceTransaction.tsx
 msgid "Status"
+msgstr ""
+
+#: src/components/integrations/SignInStep.tsx
+msgid "Step 1 of 3"
+msgstr ""
+
+#: src/components/integrations/AgentStep.tsx
+msgid "Step 2 of 3"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -4682,10 +5494,6 @@ msgstr "가르치기 종료"
 msgid "Stopped."
 msgstr "중지되었습니다."
 
-#: src/pages/McpServersOverlay.tsx
-msgid "Stored encrypted"
-msgstr "암호화해 저장"
-
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Stored securely. Never shown here."
 msgstr "안전하게 저장됩니다. 이 화면에 표시되지 않습니다."
@@ -4693,6 +5501,10 @@ msgstr "안전하게 저장됩니다. 이 화면에 표시되지 않습니다."
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Stream replies"
 msgstr "답변 스트리밍"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Streamable HTTP"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "subagent"
@@ -4713,6 +5525,16 @@ msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Subscription required"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Subscriptions"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "Subscriptions / mo"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4736,6 +5558,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "전환 중…"
+
+#: src/pages/Finance.tsx
+msgid "Syncing…"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
@@ -4797,6 +5623,11 @@ msgstr "로그인 테스트"
 msgid "Testing…"
 msgstr "테스트 중…"
 
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "The agents you chose can use {0}."
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "The API did not come back. Refresh this page."
 msgstr "API가 다시 작동하지 않습니다. 이 페이지를 새로 고침하세요."
@@ -4804,6 +5635,10 @@ msgstr "API가 다시 작동하지 않습니다. 이 페이지를 새로 고침�
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "연결 시간이 초과되었습니다."
+
+#: src/components/integrations/AppDetail.tsx
+msgid "The Inbox page stops showing new mail until you reconnect."
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "The provider is rate-limiting requests."
@@ -4848,6 +5683,10 @@ msgstr "이 채팅은 읽기 전용입니다"
 #: src/pages/HostComputerPrompt.tsx
 msgid "this computer"
 msgstr "이 컴퓨터"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "This connection no longer exists."
+msgstr ""
 
 #. placeholder {0}: pendingDelete.versionCount
 #: src/pages/Artifacts.tsx
@@ -4894,14 +5733,9 @@ msgstr "이 재설정 링크는 유효하지 않거나 만료되었습니다"
 msgid "This server cannot be assigned without a bot."
 msgstr "연결할 Bot이 없어 이 서버를 배정할 수 없습니다."
 
-#: src/components/integrations/McpServerRow.tsx
-#: src/pages/McpServersOverlay.tsx
-msgid "This server did not request browser authorization."
-msgstr "이 서버는 브라우저 인증을 요청하지 않았습니다."
-
-#: src/pages/McpServersOverlay.tsx
-msgid "This server is already connected. Disconnect it first to authorize again."
-msgstr "이 서버는 이미 연결되어 있습니다. 다시 인증하려면 먼저 연결을 해제하세요."
+#: src/components/integrations/useMcpReconnect.ts
+msgid "This server did not ask for a sign-in."
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
@@ -4953,25 +5787,53 @@ msgstr "받는 사람:"
 msgid "Today"
 msgstr "오늘"
 
-#: src/pages/PluginsOverlay.tsx
-msgid "Tool sources"
-msgstr "도구 소스"
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Token"
+msgstr ""
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/AppDetail.tsx
 msgid "Tools"
+msgstr ""
+
+#. placeholder {0}: tools.length
+#: src/components/integrations/AppDetail.tsx
+msgid "Tools · {0}"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Total balance"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Total cash"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Total incl. crypto"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Transactions"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
 msgid "Transcript"
 msgstr "대화 기록"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Transport"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Treasury yield"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Treat like a person"
 msgstr ""
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Treg token"
-msgstr "Treg 토큰"
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Trial"
@@ -4982,7 +5844,10 @@ msgid "Trial ends {day}"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/SignInStep.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
@@ -4993,6 +5858,7 @@ msgstr "다시 시도"
 msgid "Try the test again."
 msgstr "테스트를 다시 시도하세요."
 
+#: src/components/finance/WalletDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
 msgstr ""
@@ -5013,6 +5879,11 @@ msgstr "섹션 없음"
 msgid "Unavailable"
 msgstr "사용할 수 없음"
 
+#: src/components/finance/ui.tsx
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Uncategorized"
+msgstr ""
+
 #: src/components/compose/RichTextEditor.tsx
 msgid "Underline"
 msgstr ""
@@ -5020,10 +5891,6 @@ msgstr ""
 #: src/components/MailOutbox.tsx
 #: src/pages/Inbox.tsx
 msgid "Undo"
-msgstr ""
-
-#: src/pages/PluginsOverlay.tsx
-msgid "Uninstall"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -5051,10 +5918,22 @@ msgstr ""
 msgid "Unsupported file type: {0}"
 msgstr "지원하지 않는 파일 형식: {0}"
 
+#: src/pages/Finance.tsx
+msgid "Until {runOutMonth}"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Up to date"
 msgstr "최신 상태"
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Upcoming"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Upcoming · 30 days"
+msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Update"
@@ -5085,6 +5964,8 @@ msgstr ""
 msgid "Updated"
 msgstr "업데이트됨"
 
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Updated {updated}"
 msgstr ""
@@ -5115,6 +5996,10 @@ msgstr "업로드"
 
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "URL"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -5152,6 +6037,12 @@ msgstr "이 모델 사용"
 msgid "Use your own key"
 msgstr "내 키 사용"
 
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
+msgid "Used by"
+msgstr ""
+
 #: src/components/AskCard.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Username"
@@ -5166,6 +6057,7 @@ msgstr "이 서버의 자체 {hostCredentialSource} 자격 증명으로 {selecte
 msgid "Using {0}"
 msgstr ""
 
+#: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
 msgstr ""
@@ -5174,16 +6066,35 @@ msgstr ""
 msgid "Values are encrypted and never shown again."
 msgstr "값은 암호화되며 다시 표시되지 않습니다."
 
-#: src/pages/PluginsOverlay.tsx
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Vendor"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Vendors"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Verify and add"
 msgstr "확인 후 추가"
 
-#: src/pages/PluginsOverlay.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Verifying…"
 msgstr "확인 중…"
 
 #: src/pages/Artifacts.tsx
 msgid "Version"
+msgstr ""
+
+#. placeholder {0}: providerLabel(connectorId)
+#: src/components/integrations/AppDetail.tsx
+msgid "via {0}"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "via MCP · {host}"
 msgstr ""
 
 #: src/pages/RoutineRunHistory.tsx
@@ -5201,13 +6112,34 @@ msgstr "음성"
 msgid "Voice chat"
 msgstr "음성 대화"
 
+#: src/pages/Finance.tsx
+msgid "vs {previousRange}"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "vs {previousSpend} for {monthPreviousRange}"
+msgstr ""
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "vs 3 mo ago"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."
 msgstr "잠시 기다린 뒤 다시 테스트하세요."
 
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/SignInStep.tsx
+msgid "Waiting for sign-in"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
 msgstr "API가 다시 작동하기를 기다리는 중…"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Waiting for you to finish signing in."
+msgstr ""
 
 #: src/lib/roster-status.ts
 msgid "Waiting in line…"
@@ -5216,6 +6148,10 @@ msgstr "줄에서 기다리는 중…"
 #: src/pages/shell/message-cards.tsx
 msgid "Waiting…"
 msgstr "기다리는 중…"
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Wallets"
+msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Web, desktop and mobile apps"
@@ -5233,10 +6169,18 @@ msgstr ""
 msgid "week"
 msgstr ""
 
+#: src/components/finance/ui.tsx
+msgid "Week"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Weekdays"
 msgstr "주중"
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Weekly"
+msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "What about its memories?"
@@ -5270,9 +6214,17 @@ msgstr "실행 시간"
 msgid "When to use"
 msgstr "언제 사용할지"
 
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Where it went"
+msgstr ""
+
 #: src/pages/HostComputerPrompt.tsx
 msgid "Where should bots run?"
 msgstr "Bot을 어디에서 실행할까요?"
+
+#: src/components/integrations/AgentStep.tsx
+msgid "Which agents can use {appName}?"
+msgstr ""
 
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
@@ -5287,6 +6239,10 @@ msgstr ""
 msgid "Working…"
 msgstr "처리 중…"
 
+#: src/components/integrations/AppDetail.tsx
+msgid "Write"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Writing"
 msgstr ""
@@ -5299,14 +6255,30 @@ msgstr ""
 msgid "year"
 msgstr ""
 
+#: src/components/finance/ui.tsx
+msgid "Year"
+msgstr ""
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Yearly"
+msgstr ""
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Yesterday"
 msgstr "어제"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Yield"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "You"
 msgstr "나"
+
+#: src/components/integrations/AgentStep.tsx
+msgid "You can change this later."
+msgstr ""
 
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this tab if it does not redirect automatically."
@@ -5320,6 +6292,19 @@ msgstr "이 창을 닫아도 됩니다."
 #: src/pages/Shell.tsx
 msgid "You have control"
 msgstr "직접 조작 중"
+
+#: src/components/integrations/SignInStep.tsx
+msgid "Your browser blocked the sign-in window"
+msgstr ""
+
+#. placeholder {0}: server.name
+#: src/components/integrations/McpDetail.tsx
+msgid "Your data in {0} is not deleted."
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Your data in {name} is not deleted."
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Your email address"

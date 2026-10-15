@@ -26,7 +26,7 @@ import {
 } from "@rakazo/core";
 import { Prisma, type PrismaClient } from "@rakazo/db";
 import { inboxOverview } from "./inbox-overview.js";
-import { parseRecipients } from "./mail-compose.js";
+import { buildRawMessage, parseRecipients } from "./mail-compose.js";
 
 export const MAIL_TOOL_NAMES = new Set([
   "mail_search",
@@ -36,6 +36,7 @@ export const MAIL_TOOL_NAMES = new Set([
   "inbox_overview",
   "mail_draft",
   "mail_modify",
+  "mail_send",
 ]);
 
 const SEARCH_TTL_MS = 24 * 3_600_000;
@@ -66,6 +67,8 @@ export type MailToolDeps = {
   publish?: (blocks: MessageBlock[]) => Promise<unknown>;
   /** MAIL_WRITES_DISABLED: the write tools change nothing. */
   writesDisabled?: boolean;
+  /** Stable per tool call, from the run; mail_send keys its send record on it so a replay never sends twice. */
+  idempotencyKey?: string;
   deadlineMs?: number;
   now?: () => Date;
 };
@@ -113,6 +116,7 @@ export async function mailToolFromTool(
     if (name === "inbox_overview") return await inboxOverview(deps, context);
     if (name === "mail_draft") return await mailDraft(deps, context, args);
     if (name === "mail_modify") return await mailModify(deps, context, args);
+    if (name === "mail_send") return await mailSend(deps, context, args);
     return { error: `Unknown mail tool ${name}` };
   } catch (error) {
     // Provider errors carry sanitized text; anything else is not shown to the model.
@@ -615,8 +619,8 @@ async function showEmails(
   return { shown: emails.length, ...(notFound.length ? { notFound } : {}) };
 }
 
-// --- mail_draft, mail_modify ---
-// Both change the user's mail, so the executor asks for approval first. Nothing here sends mail.
+// --- mail_draft, mail_modify, mail_send ---
+// All change the user's mail, so the executor asks for approval first.
 
 const WRITES_OFF = { error: "Changing mail is turned off." };
 /** Labels that would delete, report or fake-send a message. */
@@ -625,7 +629,7 @@ const FIXED_LABELS = new Set(["TRASH", "SPAM", "DRAFT", "SENT"]);
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
-/** Saves a new draft, or replaces the one named by `draftId`. The user sends it from their mail. */
+/** Saves a new draft, or replaces the one named by `draftId`. The user, or mail_send, sends it. */
 async function mailDraft(
   deps: MailToolDeps,
   context: AdapterContext,
@@ -734,6 +738,92 @@ async function mailModify(
     // Deleted since the last sync: nothing left to change.
     if (error instanceof MailProviderError && error.kind === "not_found")
       return { error: "Message not found" };
+    throw error;
+  }
+}
+
+const CHECK_SENT = "Check the Sent folder before trying again.";
+
+/**
+ * Sends a saved draft (`draftId`) or a new message. The send record is keyed on the tool call, so a
+ * replayed call reports the earlier outcome instead of sending again. A send whose outcome is unclear
+ * is never repeated. Same record and states as the Inbox composer's send (`ComposeSend`).
+ */
+async function mailSend(
+  deps: MailToolDeps,
+  context: AdapterContext,
+  args: Record<string, unknown>,
+) {
+  if (deps.writesDisabled) return WRITES_OFF;
+  if (!deps.idempotencyKey) return { error: "Mail could not be sent from here." };
+  const picked = await resolveAccount(deps, args);
+  if ("error" in picked) return picked;
+  const { account } = picked;
+  const replyTo = typeof args.replyToId === "string" ? args.replyToId.trim() : "";
+  const draft: MailDraftInput = {
+    to: parseRecipients(strings(args.to).join(", ")),
+    cc: parseRecipients(strings(args.cc).join(", ")),
+    bcc: parseRecipients(strings(args.bcc).join(", ")),
+    subject: typeof args.subject === "string" ? args.subject : "",
+    text: typeof args.body === "string" ? args.body : "",
+  };
+  const given = typeof args.draftId === "string" ? args.draftId.trim() : "";
+  // A new message is checked before any state changes; a saved draft was checked when it was saved.
+  if (!given) buildRawMessage(draft);
+  if (replyTo) draft.inReplyTo = replyTo;
+
+  const owner = { spaceId: deps.scope.spaceId, userId: deps.scope.userId };
+  const table = deps.prisma.composeSend;
+  const row = await table.upsert({
+    where: { spaceId_userId_clientId: { ...owner, clientId: `agent:${deps.idempotencyKey}` } },
+    create: { ...owner, clientId: `agent:${deps.idempotencyKey}`, connectionId: account.id },
+    update: {},
+    select: { id: true, connectionId: true, draftId: true, state: true },
+  });
+  const claim = await table.updateMany({
+    where: { id: row.id, state: { in: ["draft", "failed"] } },
+    data: { state: "pending" },
+  });
+  if (claim.count === 0) {
+    return row.state === "sent"
+      ? { ok: true, alreadySent: true }
+      : { error: `An earlier send of this message may or may not have gone out. ${CHECK_SENT}` };
+  }
+
+  const record = (data: { state: string; providerMessageId?: string | null }) =>
+    table.update({ where: { id: row.id }, data }).catch(() => undefined);
+  let sending = false;
+  try {
+    const draftId =
+      given || row.draftId || (await deps.mail.createDraft(account, draft, context)).draftId;
+    await table.update({ where: { id: row.id }, data: { draftId } });
+    sending = true;
+    const sent = await deps.mail.sendDraft(account, draftId, context);
+    sending = false;
+    await record({ state: "sent", providerMessageId: sent.messageId || null });
+    return {
+      ok: true,
+      account: accountName(account),
+      to: draft.to.map(addressText),
+      subject: draft.subject,
+    };
+  } catch (error) {
+    if (sending && !(error instanceof MailProviderError && error.kind !== "unknown")) {
+      await record({ state: "unknown" });
+      return { error: `The send may or may not have gone out. ${CHECK_SENT}` };
+    }
+    await record({ state: "failed" });
+    if (error instanceof MailProviderError && error.kind === "auth") {
+      const now = new Date();
+      await deps.prisma.mailSyncState
+        .upsert({
+          where: { connectionId: account.id },
+          create: { connectionId: account.id, lastErrorAt: now, needsReconnect: true },
+          update: { lastErrorAt: now, needsReconnect: true },
+        })
+        .catch(() => undefined);
+      return { error: "Mail needs to be reconnected in Rakazo before it can send." };
+    }
     throw error;
   }
 }

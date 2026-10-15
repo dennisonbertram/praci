@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   dispatchBackgroundJob,
+  financeSyncJob,
   HISTORY_COMPACT_MAX_ATTEMPTS,
   historyCompactJob,
   historyCompactJobKey,
@@ -24,6 +25,7 @@ function handlers(): BackgroundJobHandlers {
     "cloud_agent.poll": vi.fn(async () => undefined),
     "mail.search.expire": vi.fn(async () => undefined),
     "inbox.triage": vi.fn(async () => undefined),
+    "finance.sync": vi.fn(async () => undefined),
   };
 }
 
@@ -74,6 +76,22 @@ describe("background job contracts", () => {
     expect(inboxTriageJob("user-1", "space-1", later).availableAt).toBe(later);
     expect(inboxTriageJob("user-2", "space-1").replaceKey).not.toBe(
       inboxTriageJob("user-1", "space-1").replaceKey,
+    );
+  });
+
+  it("validates finance.sync and keys one queued job per user and space", async () => {
+    const target = handlers();
+    await dispatchBackgroundJob(target, "finance.sync", { userId: "user-1", spaceId: "space-1" });
+    expect(target["finance.sync"]).toHaveBeenCalledWith({ userId: "user-1", spaceId: "space-1" });
+    expect(() => parseBackgroundJob("finance.sync", { userId: "user-1" })).toThrow();
+    expect(financeSyncJob("user-1", "space-1")).toEqual({
+      name: "finance.sync",
+      payload: { userId: "user-1", spaceId: "space-1" },
+      replaceKey: "finance.sync:space-1:user-1",
+      maxAttempts: 3,
+    });
+    expect(financeSyncJob("user-2", "space-1").replaceKey).not.toBe(
+      financeSyncJob("user-1", "space-1").replaceKey,
     );
   });
 

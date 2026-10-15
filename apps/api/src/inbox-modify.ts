@@ -128,3 +128,25 @@ export function inboxArchive(
     signal,
   );
 }
+
+/** Undo for archive: puts INBOX back on every message of the thread that left it. */
+export function inboxUnarchive(
+  deps: ModifyDeps,
+  actor: Actor,
+  input: { messageId: string },
+  signal?: AbortSignal,
+) {
+  return modify(
+    deps,
+    actor,
+    input.messageId,
+    {
+      operation: "inbox.unarchive",
+      label: { addLabelIds: ["INBOX"] },
+      cache: { inInbox: true },
+      pending: { inInbox: false },
+      thread: true,
+    },
+    signal,
+  );
+}

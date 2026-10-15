@@ -229,10 +229,10 @@ describe("GoogleConnector.begin", () => {
     expect(a.state).not.toBe(b.state);
   });
 
-  it("refuses apps other than gmail and a missing redirect URI", async () => {
+  it("refuses apps other than Google's and a missing redirect URI", async () => {
     await expect(
       setup().connector.begin({ provider: "slack", redirectUrl: "" }, context),
-    ).rejects.toThrow(/gmail/i);
+    ).rejects.toThrow(/Gmail/i);
     await expect(
       setup({ redirectUri: null }).connector.begin({ provider: "gmail", redirectUrl: "" }, context),
     ).rejects.toThrow(/redirect/i);
@@ -313,6 +313,7 @@ describe("GoogleConnector.complete", () => {
 
   it("rejects a grant without gmail.readonly, stores nothing, and revokes what Google issued", async () => {
     const s = setup();
+    s.db.connections.length = 0; // no connected Google app that a revoke would also disconnect
     s.google.scope = "openid https://www.googleapis.com/auth/userinfo.email";
     const { state } = await s.connector.begin({ provider: "gmail", redirectUrl: "" }, context);
     await expect(s.connector.complete({ state, code: "code-1" }, context)).rejects.toThrow(
@@ -499,7 +500,7 @@ describe("GoogleConnector.proxy", () => {
       ).rejects.toThrow(/Gmail API/);
     }
     await expect(
-      s.connector.proxy({ ...request(GMAIL), method: "PATCH" as "POST", body: {} }, context),
+      s.connector.proxy({ ...request(GMAIL), method: "TRACE" as "POST", body: {} }, context),
     ).rejects.toThrow(/Gmail API/);
     expect(s.google.tokenCalls).toHaveLength(0);
     expect(s.google.gmailRequests).toHaveLength(0);
@@ -715,3 +716,342 @@ async function storeSecret(
   });
   return { secretId: stored.id };
 }
+
+const CALENDAR_EVENTS = "https://www.googleapis.com/auth/calendar.events";
+const DRIVE = "https://www.googleapis.com/auth/drive";
+const EMAIL = "https://www.googleapis.com/auth/userinfo.email";
+const CAL_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+const DRIVE_URL = "https://www.googleapis.com/drive/v3/files";
+const GMAIL_URL = "https://gmail.googleapis.com/gmail/v1/users/me/profile";
+
+const row = (id: string, provider: string, secretId: string | null, status = "connected") => ({
+  id,
+  spaceId: "space-1",
+  userId: "user-1",
+  connectorId: "google",
+  provider,
+  providerRef: "sub-1",
+  status,
+  secretId,
+});
+
+/** Runs begin and complete for one provider and files the resulting Connection row. */
+async function connectApp(s: ReturnType<typeof setup>, provider: string, scope: string) {
+  s.google.scope = scope;
+  const begun = await s.connector.begin({ provider, redirectUrl: "unused" }, context);
+  const done = await s.connector.complete(
+    { state: begun.state, code: "code-1", provider },
+    context,
+  );
+  s.db.connections.push(row(`conn-${provider}`, provider, done.secretId));
+  return done;
+}
+
+describe("GoogleConnector providers", () => {
+  it("asks for each provider's own scopes and normalizes the slug", async () => {
+    const { connector } = setup();
+    const scopeOf = async (provider: string) =>
+      new URL(
+        (await connector.begin({ provider, redirectUrl: "" }, context)).authorizationUrl as string,
+      ).searchParams.get("scope");
+    expect(await scopeOf(" GoogleCalendar ")).toBe(`openid email ${CALENDAR_EVENTS}`);
+    expect(await scopeOf("googledrive")).toBe(`openid email ${DRIVE}`);
+    expect(await scopeOf("gmail")).toBe(
+      `openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE} ${GMAIL_MODIFY}`,
+    );
+  });
+
+  it("requires the scope of the provider being connected", async () => {
+    const s = setup();
+    s.db.connections.length = 0;
+    for (const [provider, wrongScope, label] of [
+      ["googlecalendar", `openid ${EMAIL} ${GMAIL_READONLY}`, /Google Calendar/],
+      ["googledrive", `openid ${EMAIL} ${CALENDAR_EVENTS}`, /Google Drive/],
+      ["gmail", `openid ${EMAIL} ${DRIVE}`, /Gmail/],
+    ] as const) {
+      s.google.scope = wrongScope;
+      const { state } = await s.connector.begin({ provider, redirectUrl: "" }, context);
+      await expect(
+        s.connector.complete({ state, code: "code-1", provider }, context),
+      ).rejects.toThrow(label);
+    }
+    expect(s.db.secrets).toHaveLength(0);
+    // Each of the three rejected grants was alone, so each was revoked at Google.
+    expect(s.google.revokeCalls).toHaveLength(3);
+    s.google.scope = `openid ${EMAIL} ${CALENDAR_EVENTS}`;
+    const { state } = await s.connector.begin(
+      { provider: "googlecalendar", redirectUrl: "" },
+      context,
+    );
+    await expect(
+      s.connector.complete({ state, code: "code-1", provider: "googlecalendar" }, context),
+    ).resolves.toMatchObject({ connectionRef: "sub-1" });
+  });
+
+  it("does not revoke at Google when a rejected grant shares an account with a connected app", async () => {
+    const s = setup(); // conn-1 is a connected Gmail row for sub-1
+    s.google.scope = `openid ${EMAIL}`;
+    const { state } = await s.connector.begin(
+      { provider: "googledrive", redirectUrl: "" },
+      context,
+    );
+    await expect(
+      s.connector.complete({ state, code: "code-1", provider: "googledrive" }, context),
+    ).rejects.toThrow(/Google Drive/);
+    expect(s.google.revokeCalls).toEqual([]);
+    expect(s.db.secrets).toHaveLength(0);
+  });
+
+  it("revokes at Google only when the last app of the account is disconnected", async () => {
+    const s = setup();
+    s.db.connections.length = 0;
+    await connectApp(s, "gmail", `openid ${EMAIL} ${GMAIL_READONLY}`);
+    await connectApp(s, "googlecalendar", `openid ${EMAIL} ${CALENDAR_EVENTS}`);
+    expect(s.db.secrets).toHaveLength(2);
+    const [gmailRow, calendarRow] = s.db.connections;
+
+    calendarRow!.status = "revoked";
+    await s.connector.revoke("sub-1", context, { provider: "googlecalendar" });
+    expect(s.google.revokeCalls).toEqual([]);
+    expect(s.db.secrets).toHaveLength(1);
+    expect(calendarRow!.secretId).toBeNull();
+    expect(gmailRow!.secretId).not.toBeNull();
+
+    gmailRow!.status = "revoked";
+    await s.connector.revoke("sub-1", context, { provider: "gmail" });
+    expect(s.google.revokeCalls).toEqual(["refresh-1"]);
+    expect(s.db.secrets).toHaveLength(0);
+  });
+
+  it("revokes the row of the named provider, not a neighbour that is in error", async () => {
+    const s = setup();
+    s.db.connections.length = 0;
+    const gmail = await connectApp(s, "gmail", `openid ${EMAIL} ${GMAIL_READONLY}`);
+    const calendar = await connectApp(s, "googlecalendar", `openid ${EMAIL} ${CALENDAR_EVENTS}`);
+    s.db.connections[0]!.status = "error"; // Gmail keeps its secret but is not connected
+    s.db.connections[1]!.status = "revoked";
+    await s.connector.revoke("sub-1", context, { provider: "googlecalendar" });
+    expect(s.db.connections[1]!.secretId).toBeNull();
+    expect(s.db.connections[0]!.secretId).toBe(gmail.secretId);
+    expect(s.db.secrets.map((secret) => secret.id)).toEqual([gmail.secretId]);
+    expect(calendar.secretId).not.toBe(gmail.secretId);
+    // No connected app is left, so this was the last live grant.
+    expect(s.google.revokeCalls).toHaveLength(1);
+  });
+
+  it("keeps Google's grant when the revoked app has a connected neighbour", async () => {
+    const s = setup();
+    s.db.connections.length = 0;
+    const gmail = await connectApp(s, "gmail", `openid ${EMAIL} ${GMAIL_READONLY}`);
+    await connectApp(s, "googlecalendar", `openid ${EMAIL} ${CALENDAR_EVENTS}`);
+    s.db.connections[1]!.status = "revoked";
+    await s.connector.revoke("sub-1", context, { provider: "googlecalendar" });
+    expect(s.google.revokeCalls).toEqual([]);
+    expect(s.db.connections[0]!.secretId).toBe(gmail.secretId);
+    expect(s.db.secrets.map((secret) => secret.id)).toEqual([gmail.secretId]);
+  });
+
+  it.each([
+    ["another space", { spaceId: "space-2" }],
+    ["another Rakazo user", { userId: "user-2" }],
+  ])(
+    "keeps Google's grant when the same Google account is connected in %s",
+    async (_name, other) => {
+      const s = setup();
+      s.db.connections.length = 0;
+      await connectApp(s, "googlecalendar", `openid ${EMAIL} ${CALENDAR_EVENTS}`);
+      s.db.connections[0]!.status = "revoked";
+      s.db.connections.push({ ...row("elsewhere", "gmail", "secret-x"), ...other });
+      await s.connector.revoke("sub-1", context, { provider: "googlecalendar" });
+      expect(s.google.revokeCalls).toEqual([]);
+      expect(s.db.secrets).toHaveLength(0); // only the target's secret is deleted
+      expect(s.db.connections[1]!.secretId).toBe("secret-x");
+    },
+  );
+
+  it("does not revoke a rejected grant that another space has connected", async () => {
+    const s = setup();
+    s.db.connections.length = 0;
+    s.db.connections.push({ ...row("elsewhere", "gmail", "secret-x"), spaceId: "space-2" });
+    s.google.scope = `openid ${EMAIL}`;
+    const { state } = await s.connector.begin(
+      { provider: "googledrive", redirectUrl: "" },
+      context,
+    );
+    await expect(
+      s.connector.complete({ state, code: "code-1", provider: "googledrive" }, context),
+    ).rejects.toThrow(/Google Drive/);
+    expect(s.google.revokeCalls).toEqual([]);
+  });
+
+  it("returns text bodies untouched when asked: empty stays empty, big integers keep every digit", async () => {
+    const s = setup();
+    s.db.connections.length = 0;
+    await connectApp(s, "googledrive", `openid ${EMAIL} ${DRIVE}`);
+    const asText = (url: string) =>
+      s.connector.proxy(
+        { app: "googledrive", accountRef: "sub-1", method: "GET", url, responseType: "text" },
+        context,
+      );
+    s.google.gmail = () => ({ status: 200, data: null });
+    const realFetch = s.google.fetch;
+    let reply = new Response("", { headers: { "content-type": "application/json" } });
+    const connector = new GoogleConnector({
+      clientId: "id",
+      clientSecret: CLIENT_SECRET,
+      identitySecret: IDENTITY,
+      redirectUri: REDIRECT,
+      prisma: s.db.prisma,
+      secrets: s.secrets,
+      fetch: (async (input: string | URL | Request, init?: RequestInit) =>
+        String(input).startsWith("https://www.googleapis.com/drive")
+          ? reply.clone()
+          : realFetch(input, init)) as typeof fetch,
+    });
+    s.connector = connector;
+    expect((await asText(`${DRIVE_URL}/f1?alt=media`)).data).toBe("");
+    const big = '{"amount":9007199254740993}';
+    reply = new Response(big, { headers: { "content-type": "application/json" } });
+    expect((await asText(`${DRIVE_URL}/f2?alt=media`)).data).toBe(big);
+  });
+
+  it("sends each request with the token of the row for its own app", async () => {
+    const s = setup();
+    s.db.connections.length = 0;
+    await connectApp(s, "gmail", `openid ${EMAIL} ${GMAIL_READONLY}`);
+    await connectApp(s, "googlecalendar", `openid ${EMAIL} ${CALENDAR_EVENTS}`);
+    const call = (app: string, url: string) =>
+      s.connector.proxy({ app, accountRef: "sub-1", method: "GET", url }, context);
+    s.google.tokenCalls.length = 0;
+    await call("googlecalendar", CAL_URL);
+    await call("gmail", GMAIL_URL);
+    expect(s.google.tokenCalls).toHaveLength(2); // two rows, two refreshes
+    // A Drive app was never connected, so its request has no row to use.
+    expect((await call("googledrive", DRIVE_URL)).status).toBe(401);
+  });
+
+  it("limits each app to its own API paths", async () => {
+    const s = setup();
+    s.db.connections.length = 0;
+    await connectApp(s, "googledrive", `openid ${EMAIL} ${DRIVE}`);
+    s.google.gmailRequests.length = 0;
+    const send = (app: string, url: string, method: "GET" | "PATCH" = "GET") =>
+      s.connector.proxy({ app, accountRef: "sub-1", method, url }, context);
+    for (const [app, url] of [
+      ["gmail", CAL_URL],
+      ["gmail", DRIVE_URL],
+      ["googlecalendar", GMAIL_URL],
+      ["googlecalendar", DRIVE_URL],
+      ["googledrive", CAL_URL],
+      ["googledrive", "https://www.googleapis.com/oauth2/v3/userinfo"],
+      ["googledrive", "https://www.googleapis.com.evil.example.test/drive/v3/files"],
+      ["googledrive", "https://www.googleapis.com/drive/v3evil"],
+      ["slack", DRIVE_URL],
+    ] as const)
+      await expect(send(app, url)).rejects.toThrow(/only calls/);
+    expect(s.google.gmailRequests).toHaveLength(0);
+    await expect(send("googledrive", `${DRIVE_URL}/f1`, "PATCH")).resolves.toMatchObject({
+      status: 200,
+    });
+    await expect(
+      send("googledrive", "https://www.googleapis.com/upload/drive/v3/files?uploadType=media"),
+    ).resolves.toMatchObject({ status: 200 });
+  });
+
+  it("returns non-JSON bodies as text and still caps their size", async () => {
+    const s = setup();
+    s.db.connections.length = 0;
+    await connectApp(s, "googledrive", `openid ${EMAIL} ${DRIVE}`);
+    const realFetch = s.google.fetch;
+    let reply = () => new Response("a,b\n1,2", { headers: { "content-type": "text/plain" } });
+    s.connector = new GoogleConnector({
+      clientId: "id",
+      clientSecret: CLIENT_SECRET,
+      identitySecret: IDENTITY,
+      redirectUri: REDIRECT,
+      prisma: s.db.prisma,
+      secrets: s.secrets,
+      fetch: (async (input: string | URL | Request, init?: RequestInit) =>
+        String(input).startsWith("https://www.googleapis.com/drive")
+          ? reply()
+          : realFetch(input, init)) as typeof fetch,
+    });
+    const export_ = `${DRIVE_URL}/f1/export?mimeType=text/csv`;
+    await expect(
+      s.connector.proxy(
+        { app: "googledrive", accountRef: "sub-1", method: "GET", url: export_ },
+        context,
+      ),
+    ).resolves.toEqual({ status: 200, data: "a,b\n1,2" });
+    reply = () =>
+      new Response("x".repeat(10 * 1024 * 1024 + 1), { headers: { "content-type": "text/plain" } });
+    await expect(
+      s.connector.proxy(
+        { app: "googledrive", accountRef: "sub-1", method: "GET", url: export_ },
+        context,
+      ),
+    ).resolves.toEqual({ status: 502, data: {} });
+  });
+
+  it("sends a string body as is with its contentType, and JSON by default", async () => {
+    const s = setup();
+    s.db.connections.length = 0;
+    await connectApp(s, "googledrive", `openid ${EMAIL} ${DRIVE}`);
+    const realFetch = s.google.fetch;
+    const sent: Array<{ type: string | null; body: unknown }> = [];
+    s.connector = new GoogleConnector({
+      clientId: "id",
+      clientSecret: CLIENT_SECRET,
+      identitySecret: IDENTITY,
+      redirectUri: REDIRECT,
+      prisma: s.db.prisma,
+      secrets: s.secrets,
+      fetch: (async (input: string | URL | Request, init?: RequestInit) => {
+        if (!String(input).startsWith("https://www.googleapis.com/")) return realFetch(input, init);
+        sent.push({ type: new Headers(init?.headers).get("content-type"), body: init?.body });
+        return Response.json({ id: "f1" });
+      }) as typeof fetch,
+    });
+    const upload = "https://www.googleapis.com/upload/drive/v3/files/f1?uploadType=media";
+    const call = (body: unknown, contentType?: string) =>
+      s.connector.proxy(
+        {
+          app: "googledrive",
+          accountRef: "sub-1",
+          method: "PATCH",
+          url: upload,
+          body,
+          ...(contentType ? { contentType } : {}),
+        },
+        context,
+      );
+    await call('line 1\n"quoted"', "text/plain");
+    await call("json text");
+    await call({ name: "n" });
+    expect(sent).toEqual([
+      { type: "text/plain", body: 'line 1\n"quoted"' },
+      { type: "application/json", body: '"json text"' },
+      { type: "application/json", body: '{"name":"n"}' },
+    ]);
+  });
+
+  it("lists all three apps and flags the connected ones", async () => {
+    const s = setup();
+    s.db.connections.push(row("c2", "googledrive", "secret-2"));
+    const items = await s.connector.catalog(context);
+    expect(items.map((i) => i.logo)).toEqual([
+      "https://cdn.simpleicons.org/gmail",
+      "https://cdn.simpleicons.org/googlecalendar",
+      "https://cdn.simpleicons.org/googledrive",
+    ]);
+    expect(items.map((i) => [i.slug, i.name, i.connected])).toEqual([
+      ["gmail", "Gmail", true],
+      ["googlecalendar", "Google Calendar", false],
+      ["googledrive", "Google Drive", true],
+    ]);
+    expect((await s.connector.listConnectedExternalIds(context)).sort()).toEqual([
+      "gmail",
+      "googledrive",
+    ]);
+  });
+});

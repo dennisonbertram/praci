@@ -630,10 +630,23 @@ export const ConnectionSchema = z.object({
   provider: z.string(),
   displayName: z.string(),
   status: z.enum(["pending", "connected", "revoked", "error"]),
+  /** Short user-safe reason when status is "error"; null otherwise. */
+  error: z.string().nullable(),
   capabilities: z.array(z.string()),
   createdAt: z.string(),
 });
 export type Connection = z.infer<typeof ConnectionSchema>;
+
+export const ConnectionCategorySchema = z.enum([
+  "email_calendar",
+  "chat",
+  "docs_files",
+  "finance",
+  "developer",
+  "sales_crm",
+  "other",
+]);
+export type ConnectionCategory = z.infer<typeof ConnectionCategorySchema>;
 
 export const ConnectionCatalogItemSchema = z.object({
   connectorId: z.string(),
@@ -642,24 +655,37 @@ export const ConnectionCatalogItemSchema = z.object({
   logo: z.string().nullable(),
   connected: z.boolean(),
   noAuth: z.boolean(),
+  /** One line on what an agent can do with the app; null for apps not in the directory. */
+  description: z.string().nullable(),
+  category: ConnectionCategorySchema,
 });
 export type ConnectionCatalogItem = z.infer<typeof ConnectionCatalogItemSchema>;
 
+// Apps Rakazo's own Google connector offers, compared by slug without case or punctuation.
+const NATIVE_GOOGLE_APPS = new Set(["gmail", "googlecalendar", "googledrive"]);
+const nativeGoogleKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
 /**
- * One Gmail entry per surface. With native Google configured and usable, it
- * replaces the managed (Composio, Pipedream) Gmail entries. Where native Google
- * cannot work (a desktop shell that cannot open the system browser, mobile's
- * session-less browser) it is hidden and the managed entry stays.
+ * One entry per Google app (Gmail, Calendar, Drive) per surface. With native Google configured and
+ * usable, it replaces the managed (Composio, Pipedream) entry for the same app. Where native Google
+ * cannot work (a desktop shell that cannot open the system browser, mobile's session-less browser) it
+ * is hidden and the managed entry stays.
  */
-export function preferNativeGmail(
+export function preferNativeGoogle(
   items: ConnectionCatalogItem[],
   { nativeGoogle }: { nativeGoogle: boolean },
 ): ConnectionCatalogItem[] {
   if (!nativeGoogle) return items.filter((item) => item.connectorId !== "google");
-  if (!items.some((item) => item.connectorId === "google")) return items;
-  // A connected managed Gmail stays listed so it can still be disconnected.
+  const native = new Set(
+    items.filter((item) => item.connectorId === "google").map((item) => nativeGoogleKey(item.slug)),
+  );
+  // A connected managed entry stays listed so it can still be disconnected.
   return items.filter(
-    (item) => item.connectorId === "google" || item.slug !== "gmail" || item.connected,
+    (item) =>
+      item.connectorId === "google" ||
+      item.connected ||
+      !NATIVE_GOOGLE_APPS.has(nativeGoogleKey(item.slug)) ||
+      !native.has(nativeGoogleKey(item.slug)),
   );
 }
 
@@ -769,6 +795,8 @@ export const McpServerSchema = z.object({
   headerKeys: z.array(z.string()),
   hasSecret: z.boolean(),
   oauthStatus: z.enum(["none", "connected", "reconnect"]),
+  /** A browser sign-in was started and has not finished (its session is still open). */
+  oauthAttempted: z.boolean(),
   enabled: z.boolean(),
   revision: z.number().int().positive(),
   createdAt: z.string(),

@@ -200,8 +200,8 @@ class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
   ) {
     return (await this.required()).complete(request, context);
   }
-  async revoke(ref: string, context: AdapterContext) {
-    return (await this.required()).revoke(ref, context);
+  async revoke(ref: string, context: AdapterContext, options?: { provider?: string }) {
+    return (await this.required()).revoke(ref, context, options);
   }
   async proxy(request: ConnectorProxyRequest, context: AdapterContext) {
     const provider = await this.required();

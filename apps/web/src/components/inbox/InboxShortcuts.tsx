@@ -7,12 +7,14 @@ export function InboxShortcuts({ open, onClose }: { open: boolean; onClose: () =
     ["j", <Trans key="j">Next message</Trans>],
     ["k", <Trans key="k">Previous message</Trans>],
     ["Enter", <Trans key="o">Open</Trans>],
+    ["o", <Trans key="o2">Open</Trans>],
     ["/", <Trans key="s">Search</Trans>],
     ["c", <Trans key="c">Compose</Trans>],
     ["e", <Trans key="e2">Archive</Trans>],
     ["r", <Trans key="r">Reply</Trans>],
     ["a", <Trans key="a">Reply all</Trans>],
     ["f", <Trans key="f">Forward</Trans>],
+    ["?", <Trans key="h">Keyboard shortcuts</Trans>],
     ["Esc", <Trans key="e">Close</Trans>],
   ];
   return (

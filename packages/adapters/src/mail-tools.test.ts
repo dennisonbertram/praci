@@ -117,6 +117,7 @@ describe("selectMailTools", () => {
       "mail_grep",
       "mail_modify",
       "mail_search",
+      "mail_send",
       "show_emails",
     ]);
   });
@@ -539,20 +540,107 @@ describe("mail write tools", () => {
     expect(rows.every((r) => r.unread)).toBe(true);
   });
 
-  it("has no way to send: the provider's send is never reached", async () => {
-    const { deps, gmail } = withCache();
-    const sendDraft = vi.fn();
-    const mail = new Proxy(deps.mail, {
-      get: (target, key) => (key === "sendDraft" ? sendDraft : Reflect.get(target, key)),
+  /** An in-memory ComposeSend table with the calls mail_send makes. */
+  function withSends(options: { writesDisabled?: boolean } = {}) {
+    type Send = {
+      id: string;
+      clientId: string;
+      connectionId: string;
+      draftId: string | null;
+      state: string;
+    };
+    const sends: Send[] = [];
+    const sync: unknown[] = [];
+    const prisma = {
+      composeSend: {
+        upsert: async ({ create }: { create: { clientId: string; connectionId: string } }) => {
+          let row = sends.find((r) => r.clientId === create.clientId);
+          if (!row) {
+            row = { id: `s${sends.length}`, draftId: null, state: "draft", ...create };
+            sends.push(row);
+          }
+          return { ...row };
+        },
+        updateMany: async ({
+          where,
+          data,
+        }: {
+          where: { id: string; state: { in: string[] } };
+          data: Partial<Send>;
+        }) => {
+          const row = sends.find((r) => r.id === where.id && where.state.in.includes(r.state));
+          if (row) Object.assign(row, data);
+          return { count: row ? 1 : 0 };
+        },
+        update: async ({ where, data }: { where: { id: string }; data: Partial<Send> }) =>
+          Object.assign(sends.find((r) => r.id === where.id) as Send, data),
+      },
+      mailSyncState: { upsert: async (arg: unknown) => sync.push(arg) },
+    };
+    const { deps, gmail } = setup({ a: inbox }, { prisma });
+    return {
+      deps: { ...deps, writesDisabled: options.writesDisabled, idempotencyKey: "call-1" },
+      gmail,
+      sends,
+      sync,
+    };
+  }
+  const message = { to: ["Jana <jana@example.test>"], subject: "Friday", body: "See you then." };
+
+  it("sends a new message and a saved draft", async () => {
+    const { deps, gmail } = withSends();
+    expect(await run(deps, "mail_send", message)).toMatchObject({ ok: true, subject: "Friday" });
+    expect(gmail.sentOf("a")).toHaveLength(1);
+    expect(gmail.sentOf("a")[0]?.raw).toContain("Subject: Friday");
+
+    const { draftId } = (await run(deps, "mail_draft", { ...message, subject: "Draft" })) as {
+      draftId: string;
+    };
+    const second = { ...deps, idempotencyKey: "call-2" };
+    expect(await run(second, "mail_send", { draftId })).toMatchObject({ ok: true });
+    expect(gmail.sentOf("a")).toHaveLength(2);
+    expect(gmail.draftsOf("a")).toHaveLength(0);
+  });
+
+  it("sends once when the same tool call runs twice", async () => {
+    const { deps, gmail } = withSends();
+    await run(deps, "mail_send", message);
+    expect(await run(deps, "mail_send", message)).toEqual({ ok: true, alreadySent: true });
+    expect(gmail.sentOf("a")).toHaveLength(1);
+  });
+
+  it("never repeats a send whose outcome is unclear", async () => {
+    const { deps, gmail, sends } = withSends();
+    gmail.failNext(500, { urlIncludes: "drafts/send", times: 5 });
+    const first = await run(deps, "mail_send", message);
+    expect(first).toHaveProperty("error", expect.stringContaining("Sent"));
+    expect(sends[0]?.state).toBe("unknown");
+    gmail.clearFailures();
+    expect(await run(deps, "mail_send", message)).toHaveProperty("error");
+    expect(gmail.sentOf("a")).toHaveLength(0);
+  });
+
+  it("flags a reconnect when Gmail refuses the account", async () => {
+    const { deps, gmail, sends, sync } = withSends();
+    gmail.failNext(401, { urlIncludes: "drafts" });
+    expect(await run(deps, "mail_send", message)).toHaveProperty(
+      "error",
+      expect.stringContaining("reconnected"),
+    );
+    expect(sends[0]?.state).toBe("failed");
+    expect(sync).toHaveLength(1);
+  });
+
+  it("rejects a bad recipient before any state changes, and sends nothing when writes are off", async () => {
+    const { deps, gmail, sends } = withSends();
+    expect(await run(deps, "mail_send", { ...message, to: ["nope"] })).toHaveProperty("error");
+    expect(await run(deps, "mail_send", { ...message, to: [] })).toHaveProperty("error");
+    expect(sends).toHaveLength(0);
+    const off = withSends({ writesDisabled: true });
+    expect(await run(off.deps, "mail_send", message)).toEqual({
+      error: "Changing mail is turned off.",
     });
-    const spy: MailToolDeps = { ...deps, mail };
-    const args = { to: ["jana@example.test"], subject: "x", body: "y", send: true, id: "m1" };
-    for (const name of MAIL_TOOL_NAMES) {
-      expect(name).not.toMatch(/send/i);
-      await run(spy, name, args).catch(() => undefined);
-    }
-    expect(await run(spy, "mail_send", args)).toHaveProperty("error");
-    expect(sendDraft).not.toHaveBeenCalled();
+    expect(off.gmail.sentOf("a")).toHaveLength(0);
     expect(gmail.sentOf("a")).toHaveLength(0);
   });
 });

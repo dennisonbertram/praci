@@ -1,19 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
-
-/** Connects the two seeded Gmail accounts from the Integrations overlay that "Connect mail" opened. */
-async function connectTwoGmailAccounts(page: Page) {
-  const gmailRow = page
-    .getByRole("dialog")
-    .getByText("Gmail", { exact: true })
-    .first()
-    .locator("xpath=ancestor::*[.//button][1]");
-  await gmailRow.getByRole("button", { name: "Add", exact: true }).click();
-  await gmailRow.getByRole("button", { name: "Added", exact: true }).click();
-  const detail = page.getByTestId("connection-detail");
-  await detail.getByRole("button", { name: "Add another", exact: true }).click();
-  await expect(detail.getByLabel("Account label")).toHaveCount(2);
-}
+import { expect, test } from "@playwright/test";
+import { captureScreenshot, completeOnboarding, connectTwoGmailAccounts, signup } from "./helpers";
 
 test("the Inbox agent cites mail as urgency-grouped cards that open the message", async ({
   page,
@@ -25,11 +11,12 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   await page.goto("/app/inbox");
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
 
   const panel = page.getByTestId("side-panel");
+  await main.getByRole("button", { name: "Show Inbox agent" }).click();
   await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
   const composer = panel.getByPlaceholder(/Message/);
   await composer.fill(

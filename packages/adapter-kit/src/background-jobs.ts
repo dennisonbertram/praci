@@ -24,6 +24,7 @@ const payloadSchemas = {
   "cloud_agent.poll": z.object({ agentId: z.string().min(1) }),
   "mail.search.expire": z.object({ searchId: z.string().min(1) }),
   "inbox.triage": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
+  "finance.sync": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
 } satisfies { [Name in BackgroundJobName]: z.ZodType<BackgroundJobPayloads[Name]> };
 
 export function parseBackgroundJob(name: string, payload: unknown): BackgroundJob {
@@ -188,6 +189,21 @@ export function inboxTriageJob(userId: string, spaceId: string, availableAt?: Da
     ...(availableAt ? { availableAt } : {}),
     replaceKey: inboxTriageJobKey(userId, spaceId),
     // Each attempt can make up to five paid model calls.
+    maxAttempts: 3,
+  };
+}
+
+export function financeSyncJobKey(userId: string, spaceId: string): string {
+  return `finance.sync:${spaceId}:${userId}`;
+}
+
+/** The job key merges repeated enqueues for one user into one queued job; `syncFinanceForUser` takes its own claim for the running one. */
+export function financeSyncJob(userId: string, spaceId: string, availableAt?: Date): BackgroundJob {
+  return {
+    name: "finance.sync",
+    payload: { userId, spaceId },
+    ...(availableAt ? { availableAt } : {}),
+    replaceKey: financeSyncJobKey(userId, spaceId),
     maxAttempts: 3,
   };
 }

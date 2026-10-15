@@ -186,6 +186,8 @@ function SessionApp() {
             <Route path="/app/artifacts/:artifactId" element={<ArtifactsPage />} />
             {ticketBoardEnabled ? <Route path="/app/board" element={<BoardPage />} /> : null}
             <Route path="/app/inbox" element={<ShellPage />} />
+            <Route path="/app/integrations/*" element={<ShellPage />} />
+            <Route path="/app/finance/*" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
         </Routes>

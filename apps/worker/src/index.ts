@@ -15,6 +15,7 @@ import {
   createBackgroundJobHandlers,
   createCloudAgentConnection,
   createConnectorStack,
+  createFinanceCallToolFor,
   createJobReconciler,
   createMessagingContextLoader,
   createPostgresReconciliationLeadership,
@@ -249,6 +250,7 @@ async function main() {
     deploymentModelConfigured,
     messaging,
     cloudAgent,
+    financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
   });
   // graphile-worker run() connects through the shared pool. createPool already
   // retries connect() on 53300 a finite number of times. Keep retrying start

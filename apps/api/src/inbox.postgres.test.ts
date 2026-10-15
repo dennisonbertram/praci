@@ -24,7 +24,7 @@ import {
   inboxTodosList,
   inboxUnreadCount,
 } from "./inbox.js";
-import { inboxArchive, inboxMarkRead } from "./inbox-modify.js";
+import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
 import { createRouter, type RouterDeps } from "./router.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -1471,6 +1471,18 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(await cached(userB)).toEqual([
         { providerMessageId: "b-1", unread: true, inInbox: true },
       ]);
+    });
+
+    it("unarchive puts the whole thread back in the inbox", async () => {
+      const { second } = await setup();
+      await inboxArchive(deps, a, { messageId: second.id });
+
+      await inboxUnarchive(deps, a, { messageId: second.id });
+
+      expect(labelsOf("a-1").labelIds).toContain("INBOX");
+      expect(labelsOf("a-2").labelIds).toContain("INBOX");
+      expect((await cached(userA)).map((m) => m.inInbox)).toEqual([true, true]);
+      expect((await inboxList(deps, a, {})).rows).toHaveLength(1);
     });
 
     it("also changes older messages of the thread that were never cached", async () => {

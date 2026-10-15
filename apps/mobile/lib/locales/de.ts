@@ -802,4 +802,8 @@ export const DE_MESSAGES: Record<string, string> = {
   Spam: "Spam",
   Junk: "Unerwünscht",
   "To do": "Zu erledigen",
+  "Chart could not be drawn.": "Das Diagramm konnte nicht gezeichnet werden.",
+  "Could not load this page.": "Diese Seite konnte nicht geladen werden.",
+  "No page yet.": "Noch keine Seite.",
+  Page: "Seite",
 };

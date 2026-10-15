@@ -803,20 +803,22 @@ export class ConnectorRegistry implements ConnectorProvider {
     };
   }
 
-  async discoverTools(context: AdapterContext): Promise<ConnectorTool[]> {
+  async discoverTools(context: AdapterContext, only?: readonly string[]): Promise<ConnectorTool[]> {
     const discovered: ConnectorTool[] = [];
     const used = new Set<string>();
     const providerTools = await Promise.all(
-      [...this.providers].map(async ([connectorId, provider]) => {
-        try {
-          return [connectorId, await provider.discoverTools(context)] as const;
-        } catch (error) {
-          getLogger().error("connector discovery failed", sanitizeComposioError(error), {
-            "connector.id": connectorId,
-          });
-          return [connectorId, []] as const;
-        }
-      }),
+      [...this.providers]
+        .filter(([connectorId]) => !only || only.includes(connectorId))
+        .map(async ([connectorId, provider]) => {
+          try {
+            return [connectorId, await provider.discoverTools(context)] as const;
+          } catch (error) {
+            getLogger().error("connector discovery failed", sanitizeComposioError(error), {
+              "connector.id": connectorId,
+            });
+            return [connectorId, []] as const;
+          }
+        }),
     );
     for (const [connectorId, tools] of providerTools) {
       for (const tool of tools) {

@@ -383,6 +383,32 @@ to a `GmailApiEmulator`.
   accounts that lack a needed scope as needing reconnect only when that feature is used. Do
   not invalidate working accounts when the required set changes.
 
+### Calendar and Drive providers
+
+The same connector also connects `googlecalendar` ("Google Calendar", scopes `openid email
+https://www.googleapis.com/auth/calendar.events`) and `googledrive` ("Google Drive", scopes
+`openid email https://www.googleapis.com/auth/drive`). The slugs match the featured
+connector aliases and Composio's toolkit slugs, so `preferNativeGoogle` drops the managed
+Calendar and Drive entries the same way it drops managed Gmail.
+
+- Each provider is its own Connection row, secret and consent screen. `complete` receives the
+  pending row's provider and requires that provider's scope (`gmail.readonly`, `calendar.events`
+  or `drive`).
+- `proxy` selects the row by provider and account, so each app uses its own token. Gmail may
+  call `https://gmail.googleapis.com`; Calendar `https://www.googleapis.com/calendar/v3/`;
+  Drive `https://www.googleapis.com/drive/v3/` and `/upload/drive/v3/`. GET, POST, PUT, PATCH
+  and DELETE are allowed. A response that is not JSON (a Drive export or download) is returned
+  as text, within the same 10 MB cap.
+- Revocation: Google keeps one grant per Google user and OAuth client, so revoking any token
+  revokes Gmail, Calendar and Drive together. The connector therefore calls Google's revoke
+  endpoint only when no other connected Google row remains for the same account, space and
+  user; otherwise it deletes only the row's stored secret. `complete` applies the same rule
+  when it rejects a grant for a missing scope.
+- The owner must enable the Google Calendar API and the Google Drive API on the Google Cloud
+  project that holds the OAuth client, in addition to the Gmail API.
+- Retry, backoff and the per-account concurrency limit live in `google-api-request.ts`, shared by
+  the Gmail provider and the Calendar and Drive tools.
+
 ### Flow
 
 1. `connections.begin({ connectorId: "google", provider: "gmail" })` goes through the
@@ -452,8 +478,8 @@ to a `GmailApiEmulator`.
 
 Other `ManagedConnectorProvider` members:
 
-- `catalog` returns one item, `{ slug: "gmail", name: "Gmail" }`.
-- `listConnectedExternalIds` returns `["gmail"]` when the user has a connected Google row.
+- `catalog` returns three items (`gmail`, `googlecalendar`, `googledrive`); `connected` is per provider.
+- `listConnectedExternalIds` returns the slugs the user has a connected Google row for.
 - `discoverTools` returns `[]`. Agent mail tools are item 2's built-ins.
 - `execute` yields an error.
 
@@ -468,7 +494,7 @@ Other `ManagedConnectorProvider` members:
   - **One Gmail entry.** When the native Google connector is configured, the catalog
     shows one Gmail entry, the Google one, and drops the managed (Composio or
     Pipedream) `gmail` entries. Otherwise the managed entry shows as today. This is
-    the default, not a setting. It is one pure helper, `preferNativeGmail(items,
+    the default, not a setting. It is one pure helper, `preferNativeGoogle(items,
     { nativeGoogle })`, in `packages/contracts` next to the catalog item schema, so
     web, desktop and mobile apply the same rule. Web passes
     `nativeGoogle: nativeGoogleAvailable(desktopBridge())` (true in a browser, and in
@@ -527,7 +553,7 @@ the injected `fetch` for Pipedream.
 | `packages/adapters/src/pipedream-mail.test.ts` (PR 2b) | An injected `fetch` decodes the base64url target and routes it to the emulator, and conformance passes. The `account_id` and `external_user_id` query parameters are set. A legacy slug ref works with one account and gives `auth` with two. 401 and 429 statuses reach the mapping. |
 | `packages/adapters/src/google-connector.test.ts` (PR 2c) | `begin`: the URL has every required parameter, and the challenge matches S256 of the derived verifier. `complete` exchanges the code, stores the secret, and returns `sub`. Refresh happens on expiry, with one retry on 401. `invalid_grant` gives `auth`. A URL to another host is refused before any request is sent. `revoke` deletes the secret and tolerates 400. Conformance passes with the fetch routed to the emulator. |
 | `apps/api/src/router.test.ts` (PR 2c, extend) | `connections.complete({ connectionId })` polling still works for an existing connector. `connections.complete({ state, code })` by another user's session is isolated. Success marks the row connected with `providerRef = sub` and `secretId` set. A duplicate Google account returns `CONFLICT` and deletes the new secret. |
-| `preferNativeGmail` test (PR 2d) | With `nativeGoogle: false` (mobile, desktop) the Google entry is hidden and the managed one kept; with `true` only the Google Gmail entry shows. |
+| `preferNativeGoogle` test (PR 2d) | With `nativeGoogle: false` (mobile, desktop) the Google entry is hidden and the managed one kept; with `true` only the Google Gmail entry shows. |
 | Web E2E (PR 2d) | The Integration setup screen shows the Google choice. The screenshot is linked in the PR as AGENTS.md requires. The OAuth round trip itself is not run in CI. |
 
 There are no live tests in CI. Before each adapter PR merges, one manual smoke test

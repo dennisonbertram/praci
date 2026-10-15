@@ -88,10 +88,12 @@ import {
   ArrowUp,
   Bell,
   Box,
+  ChartColumn,
   ChevronDown,
   CircleAlert,
   Clock,
   Copy,
+  FileText,
   FolderOpen,
   Gauge,
   LayoutGrid,
@@ -120,9 +122,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { ClipboardEvent, DragEvent, MutableRefObject, RefObject } from "react";
+import type { ClipboardEvent, DragEvent, MutableRefObject, ReactNode, RefObject } from "react";
 import {
   Fragment,
+  lazy,
   memo,
   Suspense,
   useCallback,
@@ -150,7 +153,8 @@ import { CallCard } from "../components/call/CallCard";
 import { VoiceChatCard } from "../components/call/VoiceChatCard";
 import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import { EmailCards } from "../components/EmailCards";
-import { lazyOverlay } from "../components/ErrorBoundary";
+import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
+import { FinanceCards } from "../components/FinanceCards";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import {
   LIVE_TOOL_STEP_WINDOW,
@@ -193,6 +197,7 @@ import {
 } from "../lib/computer-screen";
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
+import { findFinanceAgent } from "../lib/finance-agent";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
@@ -257,6 +262,7 @@ import type { WorkingActivity } from "../lib/working-activity";
 import { workingActivity } from "../lib/working-activity";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
+import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { HostComputerPrompt } from "./HostComputerPrompt";
 import { InboxPage } from "./Inbox";
@@ -272,6 +278,7 @@ import {
 } from "./RoutineEditor";
 import type { SettingsSection } from "./SettingsOverlay";
 import { SpaceSearchResults } from "./SpaceSearch";
+import { BotPagePanel, type PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { BotCreatePicker } from "./shell/bot-picker";
 import { ComposerReplyPreview, ReplyLine, TimeSeparator } from "./shell/chat-context";
@@ -308,11 +315,8 @@ const SettingsOverlay = lazyOverlay(() =>
 const PeerMessagesOverlay = lazyOverlay(() =>
   import("./PeerMessagesOverlay").then((module) => module.PeerMessagesOverlay),
 );
-const PluginsOverlay = lazyOverlay(() =>
-  import("./PluginsOverlay").then((module) => module.PluginsOverlay),
-);
-const McpServersOverlay = lazyOverlay(() =>
-  import("./McpServersOverlay").then((module) => module.McpServersOverlay),
+const IntegrationsPage = lazy(() =>
+  import("./Integrations").then((module) => ({ default: module.IntegrationsPage })),
 );
 
 type PendingAttachment = {
@@ -405,6 +409,41 @@ function readCollapsedRosterParents(userId: string | null | undefined): Set<stri
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
 }
 
+/** A page-level row at the top of the sidebar (Inbox, Finance). */
+function SidebarPageLink({
+  testId,
+  current,
+  icon,
+  label,
+  onOpen,
+  children,
+}: {
+  testId: string;
+  current: boolean;
+  icon: ReactNode;
+  label: ReactNode;
+  onOpen: () => void;
+  children?: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      aria-current={current ? "page" : undefined}
+      onClick={onOpen}
+      className={`mx-2.5 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-start hover:bg-sidebar-accent ${
+        current ? "bg-sidebar-accent" : ""
+      }`}
+    >
+      <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
+        {icon}
+      </span>
+      <span className="text-[14px] font-medium text-foreground/90">{label}</span>
+      {children}
+    </button>
+  );
+}
+
 export function ShellPage() {
   const { t } = useLingui();
   const { botId, groupId } = useParams();
@@ -443,8 +482,14 @@ export function ShellPage() {
   const [inboxAgentCollapsed, setInboxAgentCollapsed] = useState(
     () => !window.matchMedia("(min-width: 768px)").matches,
   );
+  // With no Inbox agent the panel only holds a Create button, so it stays closed until asked for.
+  const [showEmptyInboxAgent, setShowEmptyInboxAgent] = useState(false);
   const [creatingInboxAgent, setCreatingInboxAgent] = useState(false);
   const [inboxAgentError, setInboxAgentError] = useState("");
+  // The Finance agent panel starts closed on every visit; "Ask agent" opens it.
+  const [financeAgentOpen, setFinanceAgentOpen] = useState(false);
+  const [creatingFinanceAgent, setCreatingFinanceAgent] = useState(false);
+  const [financeAgentError, setFinanceAgentError] = useState("");
   useEffect(() => {
     setInboxAgentCollapsed(
       readInboxAgentCollapsed(userId) || !window.matchMedia("(min-width: 768px)").matches,
@@ -481,6 +526,9 @@ export function ShellPage() {
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [panel, setPanelState] = useState<Panel>(null);
+  // The bot whose page exists (the Page control shows only then), and its latest page.updated event.
+  const [pageBotId, setPageBotId] = useState<string | null>(null);
+  const [pageRemote, setPageRemote] = useState<PageRemoteUpdate | null>(null);
   const [restoredPanelKey, setRestoredPanelKey] = useState<string | null>(null);
   const panelStorageKeyRef = useRef<string | null>(null);
   const observedPanelKey = useRef<string | null>(null);
@@ -575,8 +623,6 @@ export function ShellPage() {
   function updateSnapshot(update: (prev: ThreadSnapshot | null) => ThreadSnapshot | null) {
     commitSnapshot(update(snapshotRef.current));
   }
-  const [pluginsOpen, setPluginsOpen] = useState(false);
-  const [pluginsQuery, setPluginsQuery] = useState("");
   const [inboxUnread, setInboxUnread] = useState(0);
   const refreshInboxUnread = useCallback(() => {
     void rpc.inbox
@@ -585,7 +631,6 @@ export function ShellPage() {
       .catch(() => undefined);
   }, []);
   useEffect(refreshInboxUnread, [refreshInboxUnread]);
-  const [mcpOpen, setMcpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [messagingSettingsOpen, setMessagingSettingsOpen] = useState(false);
@@ -819,11 +864,23 @@ export function ShellPage() {
 
   const inGroup = Boolean(groupId);
   const inboxMode = useMatch("/app/inbox") != null;
-  const active = inGroup
-    ? undefined
-    : inboxMode
-      ? findInboxAgent(bots, userId)
-      : (bots.find((b) => b.id === botId) ?? bots[0]);
+  const integrationsMode = useMatch("/app/integrations/*") != null;
+  const financeMode = useMatch("/app/finance/*") != null;
+  // Inbox, Finance and Integrations are pages of their own: no bot route. Inbox and Finance
+  // keep their agent in a side panel.
+  const pageMode = inboxMode || financeMode || integrationsMode;
+  useEffect(() => {
+    if (!financeMode) setFinanceAgentOpen(false);
+  }, [financeMode]);
+  const active =
+    inGroup || integrationsMode
+      ? undefined
+      : inboxMode
+        ? findInboxAgent(bots, userId)
+        : financeMode
+          ? findFinanceAgent(bots, userId)
+          : (bots.find((b) => b.id === botId) ?? bots[0]);
+  const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =
     (computerBotId ? bots.find((bot) => bot.id === computerBotId) : undefined) ?? active;
   computerOpenRef.current = computerOpen;
@@ -836,15 +893,15 @@ export function ShellPage() {
   const activeRoutines = !inGroup && routinesBotId === active?.id ? routines : [];
   const panelTarget = inGroup ? activeGroup?.id : active?.id;
   const panelStorageKey =
-    // The Inbox agent panel is not a saved bot panel: never restore or write one for it.
-    userId && bootstrapMe?.spaceId && panelTarget && !inboxMode
+    // A page agent panel is not a saved bot panel: never restore or write one for it.
+    userId && bootstrapMe?.spaceId && panelTarget && !pageMode
       ? rightPanelStorageKey(userId, bootstrapMe.spaceId, inGroup ? "group" : "bot", panelTarget)
       : null;
   panelStorageKeyRef.current = panelStorageKey;
   const activeTaughtSkills = taughtSkillsBotId === active?.id ? taughtSkills : [];
   const recordingSkill = activeTaughtSkills.find((skill) => skill.status === "recording") ?? null;
-  const routeInboxMode = useRef(inboxMode);
-  routeInboxMode.current = inboxMode;
+  const routePageMode = useRef(pageMode);
+  routePageMode.current = pageMode;
   const routeBotId = useRef<string | undefined>(botId);
   routeBotId.current = botId;
   const routeGroupId = useRef<string | undefined>(groupId);
@@ -1025,8 +1082,8 @@ export function ShellPage() {
           }
           return;
         }
-        // /app/inbox has no bot id by design; creating the Inbox agent refreshes the roster here.
-        if (routeInboxMode.current) return;
+        // /app/inbox and /app/finance have no bot id by design; creating their agent refreshes the roster here.
+        if (routePageMode.current) return;
         const currentBotId = routeBotId.current;
         if (!currentBotId || !list.some((bot) => bot.id === currentBotId)) {
           navigate(firstThreadRoute(list, groupList), { replace: true });
@@ -1256,7 +1313,7 @@ export function ShellPage() {
           return;
         }
         const selectedBotId = bootstrap.thread?.botId ?? bootstrap.bots[0]?.id;
-        if (selectedBotId && selectedBotId !== botId && !inboxMode) {
+        if (selectedBotId && selectedBotId !== botId && !pageMode) {
           navigate(`/app/${selectedBotId}`, { replace: true });
         }
       })
@@ -1427,6 +1484,11 @@ export function ShellPage() {
           currentBot?.notifyOnFinish ?? false,
           false,
         );
+        if (event.type === "page.updated") {
+          const { revision, updatedBy } = event.payload as PageRemoteUpdate;
+          setPageBotId(active.id);
+          setPageRemote({ revision, updatedBy, seq: event.seq });
+        }
         if (event.type === "thread.cleared") {
           expandedHistoryThread.current = null;
           pinnedAroundRef.current = null;
@@ -1467,6 +1529,21 @@ export function ShellPage() {
       abort.abort();
     };
   }, [active?.id, markBotReadIfVisible, notifyBrowserForEvent]);
+
+  useEffect(() => {
+    setPageBotId(null);
+    setPageRemote(null);
+    if (!active?.id) return;
+    const botId = active.id;
+    let live = true;
+    void rpc.pages
+      .get({ botId })
+      .then((page) => live && page && setPageBotId(botId))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [active?.id]);
 
   useEffect(() => {
     if (!groupId || !activeGroup) return;
@@ -1920,7 +1997,7 @@ export function ShellPage() {
     initialBotsLoaded &&
     (inGroup
       ? Boolean(activeGroup && activeSnapshot)
-      : bots.length === 0 || inboxMode || Boolean(active && activeSnapshot));
+      : bots.length === 0 || pageMode || Boolean(active && activeSnapshot));
   const refreshThreadRef = useRef(refreshThread);
   refreshThreadRef.current = refreshThread;
   const refreshGroupThreadRef = useRef(refreshGroupThread);
@@ -2416,6 +2493,24 @@ export function ShellPage() {
     writeInboxAgentCollapsed(userId, collapsed);
   }
 
+  async function createFinanceAgent() {
+    setCreatingFinanceAgent(true);
+    setFinanceAgentError("");
+    try {
+      await rpc.finance.agent();
+      await refreshBots();
+    } catch (error) {
+      setFinanceAgentError(errorText(error, t`Could not create the Finance agent`));
+    } finally {
+      setCreatingFinanceAgent(false);
+    }
+  }
+
+  function askFinanceAgent() {
+    setFinanceAgentOpen(true);
+    if (!active && !creatingFinanceAgent) void createFinanceAgent();
+  }
+
   async function createInboxAgent() {
     setCreatingInboxAgent(true);
     setInboxAgentError("");
@@ -2428,6 +2523,33 @@ export function ShellPage() {
       setCreatingInboxAgent(false);
     }
   }
+
+  // The agent panel of the current page; null on bot and group routes, which have their own panels.
+  const agentPanel = inboxMode
+    ? {
+        name: "inbox-agent",
+        testId: "inbox-agent-panel",
+        open: !inboxAgentHidden,
+        collapse: () => setInboxAgentCollapsedPref(true),
+        collapseLabel: t`Collapse Inbox agent`,
+        create: createInboxAgent,
+        createLabel: t`Create Inbox agent`,
+        creating: creatingInboxAgent,
+        error: inboxAgentError,
+      }
+    : financeMode
+      ? {
+          name: "finance-agent",
+          testId: "finance-agent-panel",
+          open: financeAgentOpen,
+          collapse: () => setFinanceAgentOpen(false),
+          collapseLabel: t`Collapse Finance agent`,
+          create: createFinanceAgent,
+          createLabel: t`Create Finance agent`,
+          creating: creatingFinanceAgent,
+          error: financeAgentError,
+        }
+      : null;
 
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
@@ -2869,8 +2991,8 @@ export function ShellPage() {
           onSlashAction={(action) => {
             if (action === "chat-settings") {
               setPanel(inGroup ? "group-settings" : "settings");
-              // Inbox mode renders no settings panel; they open on the agent's own page.
-              if (inboxMode && active) openBot(active.id);
+              // Page modes render no settings panel; they open on the agent's own page.
+              if (pageMode && active) openBot(active.id);
               return;
             }
             if (action === "settings-general") {
@@ -3062,24 +3184,16 @@ export function ShellPage() {
             name="sidebar-search"
           />
         </InputGroup>
-        <button
-          type="button"
-          data-testid="sidebar-inbox"
-          aria-current={inboxMode ? "page" : undefined}
-          onClick={() => {
+        <SidebarPageLink
+          testId="sidebar-inbox"
+          current={inboxMode}
+          icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
+          label={<Trans>Inbox</Trans>}
+          onOpen={() => {
             setMobileSidebarOpen(false);
             navigate("/app/inbox");
           }}
-          className={`mx-2.5 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-start hover:bg-sidebar-accent ${
-            inboxMode ? "bg-sidebar-accent" : ""
-          }`}
         >
-          <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
-            <Mail size={15} strokeWidth={1.8} aria-hidden="true" />
-          </span>
-          <span className="text-[14px] font-medium text-foreground/90">
-            <Trans>Inbox</Trans>
-          </span>
           {inboxUnread > 0 ? (
             <span
               role="img"
@@ -3089,7 +3203,17 @@ export function ShellPage() {
               {inboxUnread}
             </span>
           ) : null}
-        </button>
+        </SidebarPageLink>
+        <SidebarPageLink
+          testId="sidebar-finance"
+          current={financeMode}
+          icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
+          label={<Trans>Finance</Trans>}
+          onOpen={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/finance");
+          }}
+        />
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {showSpaceSearch ? (
             <SpaceSearchResults
@@ -3238,7 +3362,7 @@ export function ShellPage() {
                         const selected =
                           (item.kind === "bot" &&
                             !inGroup &&
-                            !inboxMode &&
+                            !pageMode &&
                             active?.id === item.chat.id) ||
                           (item.kind === "group" && inGroup && activeGroup?.id === item.chat.id);
                         const compact = botsSidebarDensity === "compact";
@@ -3576,11 +3700,15 @@ export function ShellPage() {
         </div>
         <button
           type="button"
+          data-testid="sidebar-integrations"
+          aria-current={integrationsMode ? "page" : undefined}
           onClick={() => {
-            setPluginsQuery("");
-            setPluginsOpen(true);
+            setMobileSidebarOpen(false);
+            navigate("/app/integrations");
           }}
-          className="mx-3 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent"
+          className={`mx-3 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
+            integrationsMode ? "bg-sidebar-accent" : ""
+          }`}
         >
           <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
             <LayoutGrid size={15} strokeWidth={1.8} />
@@ -3733,10 +3861,10 @@ export function ShellPage() {
             className="absolute bottom-20 start-0 top-16 z-20 w-8 touch-none md:hidden"
           />
         ) : null}
-        {/* Inbox mode keeps only the navigation controls, so phones can still open the sidebar. */}
+        {/* Page modes keep only the navigation controls, so phones can still open the sidebar. */}
         <div
           className={`app-drag flex items-center justify-between px-3 md:px-[22px] ${
-            inboxMode
+            pageMode
               ? `py-2${botsSidebarCollapsed ? "" : " md:hidden"}`
               : "border-b border-sidebar-border py-[17px]"
           }`}
@@ -3764,7 +3892,7 @@ export function ShellPage() {
                 <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
               </button>
             ) : null}
-            {inboxMode ? null : (
+            {pageMode ? null : (
               <button
                 type="button"
                 data-testid="bot-settings-trigger"
@@ -3798,7 +3926,19 @@ export function ShellPage() {
             )}
           </div>
           <div className="flex items-center gap-1">
-            {!inGroup && !inboxMode && active ? (
+            {!inGroup && !pageMode && active && pageBotId === active.id ? (
+              <button
+                type="button"
+                title={t`Page`}
+                aria-label={t`Page`}
+                onClick={() => setPanel(panel === "page" ? null : "page")}
+                data-active={panel === "page" ? "" : undefined}
+                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+              >
+                <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
+              </button>
+            ) : null}
+            {!inGroup && !pageMode && active ? (
               <button
                 type="button"
                 title={t`Agent computer`}
@@ -3818,15 +3958,27 @@ export function ShellPage() {
             ) : null}
           </div>
         </div>
-        {inboxMode ? (
+        {integrationsMode ? (
+          <ErrorBoundary fallback={<SectionLoadFailed />}>
+            <Suspense fallback={null}>
+              <IntegrationsPage activeBotId={activeBotId.current} />
+            </Suspense>
+          </ErrorBoundary>
+        ) : financeMode ? (
+          <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
+        ) : inboxMode ? (
           <InboxPage
-            paused={pluginsOpen}
-            onShowAgent={inboxAgentCollapsed ? () => setInboxAgentCollapsedPref(false) : undefined}
+            paused={false}
+            onShowAgent={
+              inboxAgentHidden
+                ? () => {
+                    setInboxAgentCollapsedPref(false);
+                    setShowEmptyInboxAgent(true);
+                  }
+                : undefined
+            }
             onRefreshed={refreshInboxUnread}
-            onConnectMail={() => {
-              setPluginsQuery("gmail");
-              setPluginsOpen(true);
-            }}
+            onConnectMail={() => navigate("/app/integrations?q=gmail")}
           />
         ) : !active && !activeGroup && initialBotsLoaded ? (
           <div className="grid flex-1 place-items-center">
@@ -3844,12 +3996,12 @@ export function ShellPage() {
 
       <ResizableSidePanel
         botsSidebarCollapsed={botsSidebarCollapsed}
-        open={inboxMode ? !inboxAgentCollapsed : Boolean(panel && (active || activeGroup))}
-        panel={inboxMode ? "inbox-agent" : (panel ?? "closed")}
+        open={agentPanel ? agentPanel.open : Boolean(panel && (active || activeGroup))}
+        panel={agentPanel ? agentPanel.name : (panel ?? "closed")}
       >
-        {inboxMode ? (
-          inboxAgentCollapsed ? null : (
-            <div data-testid="inbox-agent-panel" className="flex h-full min-h-0 w-full flex-col">
+        {agentPanel ? (
+          agentPanel.open ? (
+            <div data-testid={agentPanel.testId} className="flex h-full min-h-0 w-full flex-col">
               <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2">
                 {active ? (
                   <button
@@ -3874,8 +4026,8 @@ export function ShellPage() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={t`Collapse Inbox agent`}
-                  onClick={() => setInboxAgentCollapsedPref(true)}
+                  aria-label={agentPanel.collapseLabel}
+                  onClick={agentPanel.collapse}
                 >
                   <PanelRightClose aria-hidden="true" />
                 </Button>
@@ -3884,18 +4036,18 @@ export function ShellPage() {
                 threadView
               ) : (
                 <div className="grid flex-1 place-content-center justify-items-center gap-3 px-5">
-                  <Button disabled={creatingInboxAgent} onClick={() => void createInboxAgent()}>
-                    <Trans>Create Inbox agent</Trans>
+                  <Button disabled={agentPanel.creating} onClick={() => void agentPanel.create()}>
+                    {agentPanel.createLabel}
                   </Button>
-                  {inboxAgentError ? (
+                  {agentPanel.error ? (
                     <p role="alert" className="text-center text-sm text-destructive">
-                      {inboxAgentError}
+                      {agentPanel.error}
                     </p>
                   ) : null}
                 </div>
               )}
             </div>
-          )
+          ) : null
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
@@ -3903,6 +4055,8 @@ export function ShellPage() {
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     <Trans>Settings</Trans>
+                  ) : panel === "page" ? (
+                    <Trans>Page</Trans>
                   ) : active ? (
                     (computer?.state ?? active.status)
                   ) : (
@@ -3943,6 +4097,9 @@ export function ShellPage() {
                   </Button>
                 </div>
               </div>
+            ) : null}
+            {panel === "page" && active ? (
+              <BotPagePanel key={active.id} botId={active.id} remote={pageRemote} />
             ) : null}
             {panel === "computer" && active ? (
               <div>
@@ -4669,18 +4826,6 @@ export function ShellPage() {
           />
         ) : null}
 
-        {pluginsOpen ? (
-          <PluginsOverlay
-            activeBotId={activeBotId.current}
-            initialQuery={pluginsQuery}
-            onClose={() => setPluginsOpen(false)}
-            onOpenMcp={() => {
-              setPluginsOpen(false);
-              setMcpOpen(true);
-            }}
-          />
-        ) : null}
-        {mcpOpen ? <McpServersOverlay onClose={() => setMcpOpen(false)} /> : null}
         {messagingSettingsOpen ? (
           <MessagingSettingsOverlay onClose={() => setMessagingSettingsOpen(false)} />
         ) : null}
@@ -7175,6 +7320,13 @@ const MessageView = memo(function MessageView({
           return (
             <div key={i} className="flex justify-start">
               <EmailCards block={block} />
+            </div>
+          );
+        }
+        if (block.kind === "finance") {
+          return (
+            <div key={i} className="flex justify-start">
+              <FinanceCards block={block} />
             </div>
           );
         }

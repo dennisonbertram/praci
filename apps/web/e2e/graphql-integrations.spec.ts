@@ -1,48 +1,37 @@
 import { expect, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
+import { captureScreenshot, completeOnboarding, openIntegrations, signup } from "./helpers";
 
-test("advanced GraphQL install shows Add GraphQL in MCP, OpenAPI, GraphQL, Executor, Treg order", async ({
+test("a GraphQL endpoint is added from the custom connection dialog's Advanced section", async ({
   page,
 }, testInfo) => {
   const stamp = Date.now();
   await signup(page, `graphql-source-${stamp}@rakazo.test`, "password12", `GraphQL ${stamp}`);
   await completeOnboarding(page);
 
-  await page.getByText("Integrations").click();
+  await openIntegrations(page);
   await expect(page.getByPlaceholder("Search apps")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add GraphQL", exact: true })).toBeHidden();
+  await expect(page.getByRole("button", { name: "GraphQL", exact: true })).toBeHidden();
 
-  const advanced = page.getByTestId("integrations-advanced");
-  await advanced.evaluate((element) => {
-    (element as HTMLDetailsElement).open = true;
-  });
+  await page.getByRole("button", { name: "Add custom connection", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByText("Advanced", { exact: true }).click();
+  for (const label of ["OpenAPI", "GraphQL", "Executor", "Treg", "Local command"]) {
+    await expect(dialog.getByRole("button", { name: label, exact: true })).toBeVisible();
+  }
+  await captureScreenshot(page, testInfo, "01-graphql-advanced");
 
-  await expect(page.getByRole("button", { name: "Manage MCP servers", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add MCP server", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add OpenAPI", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add GraphQL", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add Executor", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add Treg", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "MCP servers", exact: true })).toBeHidden();
-
-  // Catalog Search (when enabled) lives outside this group and must not affect add order.
-  const advancedActions = advanced.getByTestId("integrations-advanced-add").locator("button");
-  await expect(advancedActions).toHaveCount(5);
-  await expect(advancedActions.nth(0)).toHaveText("Add MCP server");
-  await expect(advancedActions.nth(1)).toHaveText("Add OpenAPI");
-  await expect(advancedActions.nth(2)).toHaveText("Add GraphQL");
-  await expect(advancedActions.nth(3)).toHaveText("Add Executor");
-  await expect(advancedActions.nth(4)).toHaveText("Add Treg");
-  await captureScreenshot(page, testInfo, "01-graphql-advanced-order");
-
-  await page.getByRole("button", { name: "Add GraphQL", exact: true }).click();
-  await page.getByPlaceholder("Display name").fill("Browser GraphQL");
-  await page
+  await dialog.getByRole("button", { name: "GraphQL", exact: true }).click();
+  await dialog.getByPlaceholder("Display name").fill("Browser GraphQL");
+  await dialog
     .getByPlaceholder("https://example.com/graphql")
     .fill("https://graphql.example.test/graphql");
-  await page.getByRole("button", { name: "Verify and add", exact: true }).click();
-  await expect(
-    page.getByText(/GRAPHQL · https:\/\/graphql\.example\.test\/graphql · no auth/),
-  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Verify and add", exact: true }).click();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(page.getByText(/GRAPHQL · graphql\.example\.test/)).toBeVisible();
   await captureScreenshot(page, testInfo, "02-graphql-installed");
+
+  // The new tool source can be removed from its card.
+  await page.getByRole("button", { name: "Remove Browser GraphQL", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(page.getByText(/GRAPHQL · graphql\.example\.test/)).toHaveCount(0);
 });

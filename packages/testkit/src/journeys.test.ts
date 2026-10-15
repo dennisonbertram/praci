@@ -1382,6 +1382,11 @@ describeJourneys("required product journeys", () => {
       notifyOnFinish: false,
     });
     const thread = await prisma.thread.findUniqueOrThrow({ where: { botId: bot.id } });
+    // Bot creation already stores a greeting message and event.
+    const [seededEvents, seededMessages] = await Promise.all([
+      prisma.event.count({ where: { threadId: thread.id } }),
+      prisma.message.count({ where: { threadId: thread.id } }),
+    ]);
 
     await Promise.all(
       Array.from({ length: 40 }, (_, index) =>
@@ -1408,8 +1413,12 @@ describeJourneys("required product journeys", () => {
       prisma.event.findMany({ where: { threadId: thread.id }, orderBy: { seq: "asc" } }),
       prisma.message.findMany({ where: { threadId: thread.id }, orderBy: { seq: "asc" } }),
     ]);
-    expect(events.map((row) => row.seq)).toEqual(Array.from({ length: 40 }, (_, i) => i));
-    expect(messages.map((row) => row.seq)).toEqual(Array.from({ length: 40 }, (_, i) => i));
+    expect(events.map((row) => row.seq)).toEqual(
+      Array.from({ length: seededEvents + 40 }, (_, i) => i),
+    );
+    expect(messages.map((row) => row.seq)).toEqual(
+      Array.from({ length: seededMessages + 40 }, (_, i) => i),
+    );
   });
 
   it("6: fake, managed-sandbox emulator, and desktop executor run the same graphical task", async () => {
@@ -2011,8 +2020,8 @@ describeJourneys("required product journeys", () => {
     expect(
       (await rpc<Array<{ id: string; status: string }>>(app, ada, "connections/list")).find(
         (row) => row.id === started.connectionId,
-      )?.status,
-    ).toBe("revoked");
+      ),
+    ).toBeUndefined();
   });
 
   it("54: group chats share one transcript with mentions and handoffs", async () => {

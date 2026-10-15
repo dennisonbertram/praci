@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
+import { captureScreenshot, completeOnboarding, finishConnectDialog, signup } from "./helpers";
 
 const api = () => process.env.API_URL ?? "http://127.0.0.1:3110";
 
@@ -10,14 +10,9 @@ async function openInbox(page: Page, name: string) {
   await completeOnboarding(page);
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  const gmailRow = page
-    .getByRole("dialog")
-    .getByText("Gmail", { exact: true })
-    .first()
-    .locator("xpath=ancestor::*[.//button][1]");
-  await gmailRow.getByRole("button", { name: "Add", exact: true }).click();
-  await gmailRow.getByRole("button", { name: "Added", exact: true }).click();
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByRole("button", { name: "Connect Gmail", exact: true }).click();
+  await finishConnectDialog(page, "Gmail");
+  await page.getByTestId("sidebar-inbox").click();
 }
 
 test("the preview shows Cc and keeps a long link and an HTML frame inside the dialog", async ({
