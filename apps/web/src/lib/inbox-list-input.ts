@@ -47,11 +47,13 @@ export function setInboxListParam(
   value: string,
 ): URLSearchParams {
   const next = new URLSearchParams(params);
-  for (const replaced of name === "filter" || name === "q"
-    ? (["view", "category"] as const)
-    : (["filter", "q"] as const)) {
-    next.delete(replaced);
-  }
+  const replaced =
+    name === "filter" || name === "q"
+      ? (["view", "category"] as const)
+      : name === "view"
+        ? (["filter", "q", ...(value ? (["category"] as const) : [])] as const)
+        : (["filter", "q", ...(value ? (["view"] as const) : [])] as const);
+  for (const key of replaced) next.delete(key);
   if (value) next.set(name, value);
   else next.delete(name);
   next.delete("mail");

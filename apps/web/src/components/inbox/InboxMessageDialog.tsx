@@ -28,6 +28,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ComposeEmail } from "../../components/ComposeEmail";
 import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
+import { allowStep } from "../../lib/inbox-keyboard";
 import type { InboxMessageOutput } from "../../lib/inbox-message-cache";
 import {
   loadInboxMessage,
@@ -47,6 +48,7 @@ export function InboxMessageDialog({
   unread,
   onArchive,
   onRead,
+  notice,
   onClose,
 }: {
   messageId: string | null;
@@ -60,6 +62,8 @@ export function InboxMessageDialog({
   unread?: boolean;
   onArchive?: () => void;
   onRead?: (read: boolean) => void;
+  /** A brief message with its own action, shown here because the page behind the dialog is inert. */
+  notice?: React.ReactNode;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -98,6 +102,7 @@ export function InboxMessageDialog({
             setComposing={setComposing}
           />
         ) : null}
+        {messageId && notice ? <div className="flex justify-center">{notice}</div> : null}
       </DialogContent>
     </Dialog>
   );
@@ -163,9 +168,10 @@ function InboxMessage({
         target?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])")
       )
         return;
-      if (event.key === "j" && nextId) onNavigate(nextId);
-      else if (event.key === "k" && previousId) onNavigate(previousId);
-      else if (event.key === "e" && onArchive) onArchive();
+      const step = event.key === "j" ? nextId : event.key === "k" ? previousId : undefined;
+      if (step) {
+        if (allowStep(event)) onNavigate(step);
+      } else if (event.key === "e" && onArchive) onArchive();
       else if (message && event.key in COMPOSE_KEYS) setComposing(COMPOSE_KEYS[event.key] ?? null);
     };
     document.addEventListener("keydown", onKeyDown);

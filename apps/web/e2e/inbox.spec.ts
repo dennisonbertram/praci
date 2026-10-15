@@ -1,25 +1,5 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
-
-/** Adds two Gmail accounts from the Integrations overlay that "Connect mail" opened. */
-async function connectTwoGmailAccounts(page: Page) {
-  const gmailRow = page
-    .getByRole("dialog")
-    .getByText("Gmail", { exact: true })
-    .first()
-    .locator("xpath=ancestor::*[.//button][1]");
-  await gmailRow.getByRole("button", { name: "Add", exact: true }).click();
-  await gmailRow.getByRole("button", { name: "Added", exact: true }).click();
-  const detail = page.getByTestId("connection-detail");
-  await detail.getByRole("button", { name: "Add another", exact: true }).click();
-  await expect(detail.getByLabel("Account label")).toHaveCount(2);
-  const renamed = page.waitForResponse(
-    (response) => response.url().includes("connections/rename") && response.ok(),
-  );
-  await detail.getByLabel("Account label").nth(1).fill("Work");
-  await detail.getByLabel("Account label").nth(1).blur();
-  await renamed;
-}
+import { expect, type Locator, test } from "@playwright/test";
+import { captureScreenshot, completeOnboarding, connectTwoGmailAccounts, signup } from "./helpers";
 
 test("Inbox lists mail from every account, groups it, and opens a message in place", async ({
   page,
@@ -33,12 +13,13 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
   await expect(page.getByRole("heading", { name: "Inbox", level: 1 })).toBeVisible();
   await captureScreenshot(page, testInfo, "inbox-empty");
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/integrations\?q=gmail$/);
   await expect(page.getByPlaceholder("Search apps")).toHaveValue("gmail");
 
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
 
-  // Closing the overlay reloads the page: both accounts sync and the list fills in.
+  // Opening the Inbox loads it fresh: both accounts sync and the list fills in.
   const tabs = page.getByRole("tablist");
   await expect(tabs.getByRole("tab", { name: "Work" })).toBeVisible();
   const main = page.getByRole("main");
@@ -132,7 +113,7 @@ test("an opened message covers the whole screen on a phone and fills it with the
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
 
   // The Inbox agent panel covers the page on a phone; collapse it first.
   await page.getByRole("button", { name: "Collapse Inbox agent" }).click();
@@ -159,7 +140,7 @@ test("an opened message lists its attachments and downloads one", async ({ page 
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
   // A message with no attachment shows no list.
@@ -191,7 +172,7 @@ test("Inbox filters and searches the whole mailbox through Gmail", async ({ page
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
   const tabs = page.getByRole("tablist");
@@ -351,7 +332,7 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
@@ -473,7 +454,7 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
   const row = (name: string | RegExp) => main.getByRole("button", { name });
@@ -641,7 +622,7 @@ test("Inbox asks before a model sorts the mail, and Allow starts triage", async 
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
@@ -678,7 +659,7 @@ test("Inbox offers no consent prompt while there is no model to allow", async ({
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
@@ -723,7 +704,7 @@ test("Inbox says what failed when an account's sync failed, and nothing when it 
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
@@ -787,7 +768,7 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await connectTwoGmailAccounts(page);
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
   const row = (name: string | RegExp) => main.getByRole("button", { name });

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
+import { captureScreenshot, completeOnboarding, connectTwoGmailAccounts, signup } from "./helpers";
 
 const api = () => process.env.API_URL ?? "http://127.0.0.1:3110";
 
@@ -37,26 +37,11 @@ function partOf(raw: string, type: "plain" | "html"): string {
 const textOf = (raw: string) => partOf(raw, "plain");
 const htmlOf = (raw: string) => partOf(raw, "html");
 
-async function connectTwoGmailAccounts(page: Page) {
+async function connectGmail(page: Page) {
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  const gmailRow = page
-    .getByRole("dialog")
-    .getByText("Gmail", { exact: true })
-    .first()
-    .locator("xpath=ancestor::*[.//button][1]");
-  await gmailRow.getByRole("button", { name: "Add", exact: true }).click();
-  await gmailRow.getByRole("button", { name: "Added", exact: true }).click();
-  const detail = page.getByTestId("connection-detail");
-  await detail.getByRole("button", { name: "Add another", exact: true }).click();
-  await expect(detail.getByLabel("Account label")).toHaveCount(2);
-  const renamed = page.waitForResponse(
-    (response) => response.url().includes("connections/rename") && response.ok(),
-  );
-  await detail.getByLabel("Account label").nth(1).fill("Work");
-  await detail.getByLabel("Account label").nth(1).blur();
-  await renamed;
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByTestId("sidebar-inbox").click();
 }
 
 test("replying to a message saves a draft, sends it into the same thread, and shows it as sent", async ({
@@ -64,7 +49,7 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
 }, testInfo) => {
   await signup(page, `compose-${Date.now()}@rakazo.test`, "password12", "Compose User");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
   const before = await gmail(page);
 
   const main = page.getByRole("main");
@@ -159,7 +144,7 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
 }, testInfo) => {
   await signup(page, `compose-new-${Date.now()}@rakazo.test`, "password12", "Compose New");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
   const before = await gmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
@@ -209,7 +194,7 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
 test("closing a composer with text in it keeps the draft in Gmail", async ({ page }) => {
   await signup(page, `compose-keep-${Date.now()}@rakazo.test`, "password12", "Compose Keep");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
   const before = await gmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
@@ -231,7 +216,7 @@ test("several recipients, rich text, a link and an attachment arrive as one mult
 }, testInfo) => {
   await signup(page, `compose-rich-${Date.now()}@rakazo.test`, "password12", "Compose Rich");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
   const before = await gmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
@@ -285,7 +270,7 @@ test("forwarding keeps the original's attachments, and a removed one stays behin
 }, testInfo) => {
   await signup(page, `compose-fwd-${Date.now()}@rakazo.test`, "password12", "Compose Forward");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
   const before = await gmail(page);
 
   await page
@@ -328,7 +313,7 @@ test("many recipients fold into one line, Send stays in view, and Discard can be
 }) => {
   await signup(page, `compose-many-${Date.now()}@rakazo.test`, "password12", "Compose Many");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
   const composer = page.getByRole("dialog", { name: "New message" });
@@ -357,7 +342,8 @@ test("many recipients fold into one line, Send stays in view, and Discard can be
 });
 
 // TEMP-SHOTS-BEGIN
-const SHOTS = "/private/tmp/claude-501/-Users-dennison-develop-rakazo/052c12c2-b38a-4b9b-a848-b847ac1382d1/scratchpad/compose5";
+const SHOTS =
+  "/private/tmp/claude-501/-Users-dennison-develop-rakazo/052c12c2-b38a-4b9b-a848-b847ac1382d1/scratchpad/compose5";
 for (const mode of ["light", "dark", "phone"] as const) {
   test(`temp shots ${mode}`, async ({ page }) => {
     test.setTimeout(240_000);
@@ -368,7 +354,7 @@ for (const mode of ["light", "dark", "phone"] as const) {
     if (mode === "dark") {
       await page.evaluate(() => document.documentElement.classList.add("dark"));
     }
-    await connectTwoGmailAccounts(page);
+    await connectGmail(page);
     const shot = async (name: string) => {
       await page.waitForTimeout(500);
       await page.screenshot({ path: `${SHOTS}/${mode}-${name}.png` });
@@ -394,21 +380,31 @@ for (const mode of ["light", "dark", "phone"] as const) {
     await c.getByRole("button", { name: "Send", exact: true }).click();
     await shot("invalid-one");
     // attachments
-    const files = Array.from({ length: 8 }, (_, i) => ({ name: i === 3 ? "a-really-long-file-name-for-the-quarterly-financial-reconciliation-statement-final-v7.pdf" : `invoice-${i}.pdf`, mimeType: "application/pdf", buffer: Buffer.from("x") }));
+    const files = Array.from({ length: 8 }, (_, i) => ({
+      name:
+        i === 3
+          ? "a-really-long-file-name-for-the-quarterly-financial-reconciliation-statement-final-v7.pdf"
+          : `invoice-${i}.pdf`,
+      mimeType: "application/pdf",
+      buffer: Buffer.from("x"),
+    }));
     await c.locator("input[type=file]").setInputFiles(files);
     await shot("attachments");
     // discard undo
     await c.getByRole("button", { name: "Discard", exact: true }).click();
     // attachments prompt
     const alert = page.getByRole("alertdialog");
-    if (await alert.isVisible().catch(() => false)) await alert.getByRole("button", { name: "Discard" }).click();
+    if (await alert.isVisible().catch(() => false))
+      await alert.getByRole("button", { name: "Discard" }).click();
     await shot("discard-undo");
     await page.getByRole("button", { name: "Undo", exact: true }).click();
     // failed send
     c = page.getByRole("dialog", { name: "New message" });
     await page.route("**/rpc/inbox/compose/send", (route) => route.abort("internetdisconnected"));
     await c.getByLabel("To").fill("ana@example.test,");
-    await c.locator("input[type=file]").evaluate((el) => { (el as HTMLInputElement).value = ""; });
+    await c.locator("input[type=file]").evaluate((el) => {
+      (el as HTMLInputElement).value = "";
+    });
     await c.getByRole("button", { name: "Send", exact: true }).click();
     await page.waitForTimeout(6_500);
     await shot("failed-send");

@@ -26,12 +26,48 @@ const GMAIL_READONLY = "https://www.googleapis.com/auth/gmail.readonly";
 const GMAIL_COMPOSE = "https://www.googleapis.com/auth/gmail.compose";
 // gmail.modify adds labels: mark read or unread and archive. Like compose it is optional at connect.
 const GMAIL_MODIFY = "https://www.googleapis.com/auth/gmail.modify";
-const SCOPES = ["openid", "email", GMAIL_READONLY, GMAIL_COMPOSE, GMAIL_MODIFY];
-const GMAIL_METHODS = new Set(["GET", "POST", "PUT", "DELETE"]);
+const GOOGLE_API_ORIGIN = "https://www.googleapis.com";
+const CALENDAR_EVENTS = "https://www.googleapis.com/auth/calendar.events";
+const DRIVE = "https://www.googleapis.com/auth/drive";
+const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
+
+/**
+ * Each provider is its own Connection row and OAuth consent. `required` is the scope the user must
+ * not untick; `paths` are the only URL path prefixes its access token may be sent to.
+ */
+const PROVIDERS = {
+  gmail: {
+    name: "Gmail",
+    scopes: ["openid", "email", GMAIL_READONLY, GMAIL_COMPOSE, GMAIL_MODIFY],
+    required: GMAIL_READONLY,
+    origin: GMAIL_ORIGIN,
+    paths: ["/"],
+  },
+  googlecalendar: {
+    name: "Google Calendar",
+    scopes: ["openid", "email", CALENDAR_EVENTS],
+    required: CALENDAR_EVENTS,
+    origin: GOOGLE_API_ORIGIN,
+    paths: ["/calendar/v3/"],
+  },
+  googledrive: {
+    name: "Google Drive",
+    scopes: ["openid", "email", DRIVE],
+    required: DRIVE,
+    origin: GOOGLE_API_ORIGIN,
+    paths: ["/drive/v3/", "/upload/drive/v3/"],
+  },
+} as const;
+type GoogleProvider = keyof typeof PROVIDERS;
+
+function providerOf(value: string | undefined): GoogleProvider | undefined {
+  const slug = (value ?? "").trim().toLowerCase();
+  return Object.hasOwn(PROVIDERS, slug) ? (slug as GoogleProvider) : undefined;
+}
 const SECRET_KIND = "google-oauth";
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_AUTH_RESPONSE_BYTES = 256 * 1024;
-const MAX_GMAIL_RESPONSE_BYTES = 10 * 1024 * 1024;
+const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const EXPIRY_MARGIN_MS = 60_000;
 const STATE_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
@@ -66,7 +102,9 @@ class GoogleAuthError extends Error {
 }
 
 /**
- * Rakazo's own Google OAuth client. Reads mail, saves and sends drafts, and changes labels.
+ * Rakazo's own Google OAuth client for Gmail, Google Calendar and Google Drive. Gmail reads mail, saves
+ * and sends drafts, and changes labels. Google keeps one grant per Google user and OAuth client, so
+ * revoking any token revokes all three; `revoke` and `complete` guard against that.
  * Accounts connected before gmail.compose or gmail.modify was requested lack that access, and
  * Google answers 403 insufficientPermissions to those writes, which the mail provider reports as
  * "reconnect". Reading keeps working.
@@ -88,18 +126,19 @@ export class GoogleConnector implements ManagedConnectorProvider {
   }
 
   async catalog(context: AdapterContext, query?: string): Promise<ConnectorCatalogItem[]> {
-    const connected = (await this.listConnectedExternalIds(context)).includes("gmail");
+    const connected = new Set(await this.listConnectedExternalIds(context));
     return filterCatalog(
-      [
-        {
-          connectorId: "google",
-          slug: "gmail",
-          name: "Gmail",
-          logo: null,
-          connected,
-          noAuth: false,
-        },
-      ],
+      (
+        Object.entries(PROVIDERS) as Array<[GoogleProvider, (typeof PROVIDERS)[GoogleProvider]]>
+      ).map(([slug, { name }]) => ({
+        connectorId: "google",
+        slug,
+        name,
+        // Simple Icons slugs match the provider keys; the web app inverts the black glyph in dark mode.
+        logo: `https://cdn.simpleicons.org/${slug}`,
+        connected: connected.has(slug),
+        noAuth: false,
+      })),
       query ?? "",
     );
   }
@@ -109,16 +148,17 @@ export class GoogleConnector implements ManagedConnectorProvider {
   }
 
   async listConnectedExternalIds(context: AdapterContext): Promise<string[]> {
-    const row = await this.config.prisma.connection.findFirst({
+    const rows = await this.config.prisma.connection.findMany({
       where: {
         spaceId: context.spaceId,
         userId: context.userId,
         connectorId: "google",
         status: "connected",
       },
-      select: { id: true },
+      select: { provider: true },
     });
-    return row ? ["gmail"] : [];
+    const slugs = rows.flatMap((row) => providerOf(row.provider) ?? []);
+    return [...new Set(slugs)];
   }
 
   /** Always false: the account becomes connected when the callback calls `complete({ state, code })`. */
@@ -130,14 +170,14 @@ export class GoogleConnector implements ManagedConnectorProvider {
     request: { provider: string; redirectUrl: string },
     _context: AdapterContext,
   ): Promise<{ authorizationUrl: string | null; state: string }> {
-    if (request.provider.trim().toLowerCase() !== "gmail")
-      throw new Error("Only Gmail can be connected with Google");
+    const provider = providerOf(request.provider);
+    if (!provider) throw new Error("Only Gmail, Google Calendar and Google Drive can be connected");
     const state = randomBytes(32).toString("base64url");
     const params = new URLSearchParams({
       client_id: this.config.clientId,
       redirect_uri: this.redirectUriFor(request.redirectUrl),
       response_type: "code",
-      scope: SCOPES.join(" "),
+      scope: PROVIDERS[provider].scopes.join(" "),
       state,
       code_challenge: createHash("sha256").update(this.verifier(state)).digest("base64url"),
       code_challenge_method: "S256",
@@ -150,11 +190,15 @@ export class GoogleConnector implements ManagedConnectorProvider {
   }
 
   async complete(
-    request: { state: string; code?: string; redirectUrl?: string },
+    request: { state: string; code?: string; redirectUrl?: string; provider?: string },
     context: AdapterContext,
   ): Promise<{ connectionRef: string; secretId: string }> {
     if (!STATE_PATTERN.test(request.state) || !request.code)
       throw new Error("Google authorization is incomplete");
+    // Without a provider the grant is Gmail's, as before providers were passed.
+    const provider = providerOf(request.provider ?? "gmail");
+    if (!provider) throw new Error("Only Gmail, Google Calendar and Google Drive can be connected");
+    const { name, required } = PROVIDERS[provider];
     const secrets = [this.config.clientSecret, request.code];
     try {
       const token = await this.tokenRequest(
@@ -170,13 +214,20 @@ export class GoogleConnector implements ManagedConnectorProvider {
       );
       secrets.push(token.accessToken);
       if (token.refreshToken) secrets.push(token.refreshToken);
-      // Google lets the user untick individual scopes on the consent screen. Reading is required.
-      // Without gmail.compose or gmail.modify the account still reads mail; those writes ask the user to reconnect.
-      if (!token.scope.split(" ").includes(GMAIL_READONLY)) {
-        await this.revokeToken(token.refreshToken ?? token.accessToken, context.signal).catch(
+      // Google lets the user untick individual scopes on the consent screen. The provider's main scope
+      // is required. Without gmail.compose or gmail.modify the account still reads mail; those writes
+      // ask the user to reconnect.
+      if (!token.scope.split(" ").includes(required)) {
+        // Revoking this token would also revoke the user's other connected Google apps, so the
+        // profile is read first. If it cannot be read, nothing is revoked.
+        const profile = await this.userinfo(token.accessToken, context.signal).catch(
           () => undefined,
         );
-        throw new Error("Gmail access was not granted. Try connecting again and allow it.");
+        if (profile && !(await this.hasConnectedSibling(profile.sub)))
+          await this.revokeToken(token.refreshToken ?? token.accessToken, context.signal).catch(
+            () => undefined,
+          );
+        throw new Error(`${name} access was not granted. Try connecting again and allow it.`);
       }
       if (!token.refreshToken)
         throw new Error("Google did not allow offline access. Try connecting again.");
@@ -203,9 +254,16 @@ export class GoogleConnector implements ManagedConnectorProvider {
     }
   }
 
-  async revoke(connectionRef: string, context: AdapterContext): Promise<void> {
-    // The router marks the row revoked before calling here, so status is not filtered.
-    const row = await this.config.prisma.connection.findFirst({
+  async revoke(
+    connectionRef: string,
+    context: AdapterContext,
+    options: { provider?: string } = {},
+  ): Promise<void> {
+    const provider = providerOf(options.provider ?? "gmail");
+    if (!provider) return;
+    // The router marks the row revoked before calling here, so status is not filtered. Rows of the
+    // other Google apps share this providerRef; the one being revoked is picked by provider.
+    const rows = await this.config.prisma.connection.findMany({
       where: {
         connectorId: "google",
         providerRef: connectionRef,
@@ -214,9 +272,13 @@ export class GoogleConnector implements ManagedConnectorProvider {
         secretId: { not: null },
       },
     });
+    const row = rows.find((candidate) => providerOf(candidate.provider) === provider);
     if (!row?.secretId) return;
     const credential = await this.loadCredential(row.secretId, context);
-    if (credential) await this.revokeToken(credential.refreshToken, context.signal);
+    // Google ties every app's scopes to one grant: revoking this token would disconnect the siblings.
+    const siblingRemains = await this.hasConnectedSibling(connectionRef, row.id);
+    if (credential && !siblingRemains)
+      await this.revokeToken(credential.refreshToken, context.signal);
     this.tokens.delete(row.id);
     await this.config.prisma.secret.deleteMany({
       where: { id: row.secretId, userId: context.userId, spaceId: context.spaceId },
@@ -231,12 +293,16 @@ export class GoogleConnector implements ManagedConnectorProvider {
     request: ConnectorProxyRequest,
     context: AdapterContext,
   ): Promise<ConnectorProxyResponse> {
-    // Without this check an access token could be sent to another host.
-    if (!GMAIL_METHODS.has(request.method) || !isGmailUrl(request.url))
-      throw new Error("The Google connector only calls the Gmail API");
+    // Without this check an access token could be sent to another host or another app's API.
+    const provider = providerOf(request.app);
+    if (!provider || !METHODS.has(request.method) || !isProviderUrl(provider, request.url))
+      throw new Error(
+        `The Google connector only calls the ${PROVIDERS[provider ?? "gmail"].name} API`,
+      );
     const row = await this.config.prisma.connection.findFirst({
       where: {
         connectorId: "google",
+        provider,
         providerRef: request.accountRef,
         spaceId: context.spaceId,
         userId: context.userId,
@@ -266,25 +332,53 @@ export class GoogleConnector implements ManagedConnectorProvider {
     forceRefresh: boolean,
   ): Promise<ConnectorProxyResponse> {
     const token = await this.accessToken(row, context, forceRefresh);
+    const raw = typeof request.body === "string" && Boolean(request.contentType);
     const response = await (this.config.fetch ?? fetch)(request.url, {
       method: request.method,
       headers: {
         authorization: `Bearer ${token}`,
-        accept: "application/json",
-        ...(request.body === undefined ? {} : { "content-type": "application/json" }),
+        accept: "application/json, text/plain;q=0.9, */*;q=0.8",
+        ...(request.body === undefined
+          ? {}
+          : { "content-type": raw ? (request.contentType as string) : "application/json" }),
       },
-      ...(request.body === undefined ? {} : { body: JSON.stringify(request.body) }),
+      ...(request.body === undefined
+        ? {}
+        : { body: raw ? (request.body as string) : JSON.stringify(request.body) }),
       redirect: "error",
       signal: combineSignals(context.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)),
     });
-    const body = await readBoundedText(response, MAX_GMAIL_RESPONSE_BYTES);
+    const body = await readBoundedText(response, MAX_RESPONSE_BYTES);
     if (body.truncated) return { status: 502, data: {} };
     const retryAfter = Number(response.headers.get("retry-after"));
     return {
       status: response.status,
-      data: parseJson(body.text),
+      // Drive exports and media downloads are not JSON; hand those back as the text they are.
+      data:
+        request.responseType === "text" ||
+        (body.text && !(response.headers.get("content-type") ?? "").includes("json"))
+          ? body.text
+          : parseJson(body.text),
       ...(Number.isFinite(retryAfter) && retryAfter > 0 ? { retryAfterMs: retryAfter * 1000 } : {}),
     };
+  }
+
+  /**
+   * True when any other connected Google app holds a grant for this Google account. Google's grant
+   * belongs to the account and OAuth client, not to a Rakazo space or user, so this looks across all
+   * of them and returns only a boolean.
+   */
+  private async hasConnectedSibling(sub: string, excludeId?: string): Promise<boolean> {
+    const sibling = await this.config.prisma.connection.findFirst({
+      where: {
+        connectorId: "google",
+        providerRef: sub,
+        status: "connected",
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { id: true },
+    });
+    return Boolean(sibling);
   }
 
   private accessToken(
@@ -414,10 +508,16 @@ export class GoogleConnector implements ManagedConnectorProvider {
   }
 }
 
-function isGmailUrl(value: string): boolean {
+function isProviderUrl(provider: GoogleProvider, value: string): boolean {
   try {
     const url = new URL(value);
-    return url.origin === GMAIL_ORIGIN && !url.username && !url.password;
+    const { origin, paths } = PROVIDERS[provider];
+    return (
+      url.origin === origin &&
+      !url.username &&
+      !url.password &&
+      paths.some((prefix) => url.pathname.startsWith(prefix))
+    );
   } catch {
     return false;
   }

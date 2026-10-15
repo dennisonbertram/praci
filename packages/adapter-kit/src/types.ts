@@ -265,7 +265,8 @@ export interface ConnectorCapabilities {
   secretsBrokered: boolean;
 }
 
-export type ConnectorCatalogItem = ConnectionCatalogItem;
+/** What a connector reports; the API adds the app directory description and category. */
+export type ConnectorCatalogItem = Omit<ConnectionCatalogItem, "description" | "category">;
 
 export interface MemoryReadRequest {
   scope: "bot" | "user";
@@ -647,6 +648,8 @@ export interface BackgroundJobPayloads {
   "mail.search.expire": { searchId: string };
   /** Classifies a user's new inbox mail and syncs their to-dos; one queued job per user and space. */
   "inbox.triage": { userId: string; spaceId: string };
+  /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */
+  "finance.sync": { userId: string; spaceId: string };
 }
 
 export type BackgroundJobName = keyof BackgroundJobPayloads;
@@ -997,11 +1000,15 @@ export interface ConnectorProxyRequest {
   app: string;
   /** Connection.providerRef. */
   accountRef: string;
-  method: "GET" | "POST" | "PUT" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** Absolute https URL including the query string. */
   url: string;
-  /** JSON body for POST and PUT. */
+  /** JSON body for POST, PUT and PATCH. With `contentType`, a string body is sent as is. */
   body?: unknown;
+  /** Media type of a raw string `body` (a Drive media upload). Omit for JSON. */
+  contentType?: string;
+  /** "text" returns the response body as the exact string, unparsed (empty stays ""). Default: JSON when the response is JSON. */
+  responseType?: "text";
 }
 
 /**

@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const get = vi.fn();
 vi.mock("./rpc", () => ({ rpc: { inbox: { get: (input: unknown) => get(input) } } }));
@@ -38,4 +38,19 @@ it("evicts the oldest entry beyond 40", async () => {
   for (let i = 0; i < 41; i++) await cache.loadInboxMessage(`m${i}`);
   expect(cache.peekInboxMessage("m0")).toBeUndefined();
   expect(cache.peekInboxMessage("m40")).toBeDefined();
+});
+
+afterEach(() => vi.useRealTimers());
+
+it("pauses prefetching for 30 seconds after a failed load, but still opens messages", async () => {
+  vi.useFakeTimers();
+  get.mockRejectedValueOnce(new Error("boom"));
+  await expect(cache.loadInboxMessage("a")).rejects.toThrow("boom");
+  get.mockResolvedValue({ id: "b" });
+  cache.prefetchInboxMessage("b");
+  expect(get).toHaveBeenCalledTimes(1);
+  await expect(cache.loadInboxMessage("b")).resolves.toEqual({ id: "b" });
+  vi.advanceTimersByTime(30_001);
+  cache.prefetchInboxMessage("c");
+  expect(get).toHaveBeenCalledTimes(3);
 });

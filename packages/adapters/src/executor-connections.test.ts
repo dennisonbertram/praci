@@ -1,7 +1,55 @@
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import { mergeConnectedPlugins } from "./composio-connector.js";
-import { persistLivePluginConnections, selectRunConnections } from "./executor.js";
+import {
+  botMayUseConnection,
+  deniedConnectionIds,
+  persistLivePluginConnections,
+  selectRunConnections,
+} from "./executor.js";
+
+describe("per-agent connection access", () => {
+  it("lets every agent use a connection open to all agents", () => {
+    expect(botMayUseConnection({ allAgents: true, botAccess: [] })).toBe(true);
+  });
+
+  it("limits a restricted connection to bots with an access row", () => {
+    expect(botMayUseConnection({ allAgents: false, botAccess: [] })).toBe(false);
+    expect(botMayUseConnection({ allAgents: false, botAccess: [{ botId: "bot-1" }] })).toBe(true);
+  });
+});
+
+describe("app-level agent access", () => {
+  const row = (id: string, status: string, allAgents: boolean, granted = false) => ({
+    id,
+    connectorId: "composio",
+    provider: "gmail",
+    status,
+    allAgents,
+    botAccess: granted ? [{ botId: "bot-1" }] : [],
+  });
+
+  it("denies every account of a restricted app, including a pending sibling", () => {
+    const denied = deniedConnectionIds([row("a", "connected", false), row("b", "pending", true)]);
+    expect([...denied].sort()).toEqual(["a", "b"]);
+  });
+
+  it("allows every account of the app once the bot is granted", () => {
+    const rows = [row("a", "connected", false, true), row("b", "error", false, true)];
+    expect(deniedConnectionIds(rows).size).toBe(0);
+  });
+
+  it("ignores revoked rows and leaves other apps alone", () => {
+    const other = { ...row("c", "connected", true), provider: "slack" };
+    const denied = deniedConnectionIds([
+      row("a", "connected", true),
+      row("r", "revoked", false),
+      other,
+    ]);
+    expect(denied.size).toBe(0);
+    expect([...deniedConnectionIds([row("a", "connected", false), other])]).toEqual(["a"]);
+  });
+});
 
 describe("run connection selection", () => {
   it("uses synchronized account statuses in the current run", async () => {

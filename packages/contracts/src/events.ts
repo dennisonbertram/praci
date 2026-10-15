@@ -111,6 +111,51 @@ export const EmailCardSchema = z.object({
 });
 export type EmailCard = z.infer<typeof EmailCardSchema>;
 
+const FinanceCents = z.number().int();
+const FinanceCardRow = z.object({ key: z.string(), label: z.string(), cents: FinanceCents });
+
+/** What a finance tool looked at, so the chat can show a preview. Rows are already trimmed to what the card shows. */
+export const FinanceCardSchema = z.discriminatedUnion("card", [
+  z.object({
+    card: z.literal("overview"),
+    cashCents: FinanceCents,
+    burnCents: FinanceCents,
+    /** Null when burn is zero or negative. */
+    runwayMonths: z.number().nullable(),
+    monthSpendCents: FinanceCents,
+  }),
+  z.object({
+    card: z.literal("breakdown"),
+    by: z.enum(["category", "vendor"]),
+    /** Human range, e.g. "Last 90 days". */
+    range: z.string(),
+    totalCents: FinanceCents,
+    rows: z.array(FinanceCardRow).max(5),
+  }),
+  z.object({
+    card: z.literal("transactions"),
+    count: z.number().int().nonnegative(),
+    totalCents: FinanceCents,
+    rows: z
+      .array(
+        z.object({
+          id: Id,
+          day: z.string(),
+          label: z.string(),
+          cents: FinanceCents,
+        }),
+      )
+      .max(5),
+  }),
+  z.object({
+    card: z.literal("recurring"),
+    monthlyCents: FinanceCents,
+    upcomingCents: FinanceCents,
+    rows: z.array(FinanceCardRow).max(5),
+  }),
+]);
+export type FinanceCard = z.infer<typeof FinanceCardSchema>;
+
 export const MessageBlock = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string() }),
   z.object({
@@ -254,6 +299,7 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     kind: z.literal("emails"),
     emails: z.array(EmailCardSchema).min(1).max(MAX_EMAIL_CARDS),
   }),
+  z.object({ kind: z.literal("finance"), card: FinanceCardSchema }),
   z.object({
     kind: z.literal("image"),
     artifactId: Id,

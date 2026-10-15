@@ -1,0 +1,193 @@
+// @vitest-environment jsdom
+
+import type { FinanceCryptoOutput } from "@rakazo/contracts";
+import type { ReactNode } from "react";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+const text = vi.hoisted(
+  () =>
+    (parts: TemplateStringsArray, ...values: unknown[]) =>
+      parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
+);
+vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/react/macro", () => ({
+  useLingui: () => ({ t: text, i18n: { locale: "en" } }),
+  Trans: ({ children }: { children: ReactNode }) => children,
+}));
+const rpcMock = vi.hoisted(() => ({
+  crypto: vi.fn(),
+  walletAdd: vi.fn(),
+  walletUpdate: vi.fn(),
+  walletRemove: vi.fn(),
+  cryptoConnect: vi.fn(),
+}));
+vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
+
+import { FinanceCryptoPage } from "./FinanceCrypto";
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const SAFE = "0x1111111111111111111111111111111111111111";
+const EOA = "0x2222222222222222222222222222222222222222";
+const data = (over: Partial<FinanceCryptoOutput> = {}): FinanceCryptoOutput => ({
+  connected: true,
+  hasApiKey: false,
+  lastError: null,
+  wallets: [
+    {
+      id: "w1",
+      address: SAFE,
+      ensName: null,
+      label: "Treasury",
+      type: "safe",
+      safeOwners: [EOA, SAFE, "0x3333333333333333333333333333333333333333"],
+      safeThreshold: 2,
+    },
+    {
+      id: "w2",
+      address: EOA,
+      ensName: "alice.eth",
+      label: null,
+      type: "personal",
+      safeOwners: null,
+      safeThreshold: null,
+    },
+  ],
+  holdings: [
+    {
+      walletId: "w1",
+      chainId: 1,
+      tokenAddress: null,
+      symbol: "ETH",
+      name: "Ether",
+      decimals: 18,
+      rawBalance: "1500000000000000000",
+      usdPrice: "2000",
+      usdValueCents: 300_000,
+      syncedAt: "2026-10-14T10:00:00.000Z",
+    },
+    {
+      walletId: "w2",
+      chainId: 8453,
+      tokenAddress: "0x4444444444444444444444444444444444444444",
+      symbol: "USDC",
+      name: "USD Coin",
+      decimals: 6,
+      rawBalance: "2500000",
+      usdPrice: "1",
+      usdValueCents: 250,
+      syncedAt: "2026-10-14T10:00:00.000Z",
+    },
+  ],
+  summary: {
+    totalCents: 300_250,
+    byChain: [
+      { chainId: 1, cents: 300_000 },
+      { chainId: 8453, cents: 250 },
+    ],
+    byWallet: [
+      { walletId: "w1", cents: 300_000 },
+      { walletId: "w2", cents: 250 },
+    ],
+    lastSyncedAt: "2026-10-14T10:00:00.000Z",
+    unpricedTokenCount: 1,
+  },
+  ...over,
+});
+
+let container: HTMLDivElement;
+let root: ReturnType<typeof createRoot>;
+const flush = () => act(async () => {});
+async function show() {
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceCryptoPage />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+}
+const byLabel = (label: string) =>
+  document.body.querySelector(`[aria-label="${label}"]`) as HTMLInputElement;
+beforeEach(() => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+});
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  vi.resetAllMocks();
+});
+
+it("renders totals, wallets, chains and holdings from the data", async () => {
+  rpcMock.crypto.mockResolvedValue(data());
+  await show();
+  const page = container.textContent ?? "";
+  expect(page).toContain("$3,002.50");
+  expect(page).toContain("1 unpriced");
+  expect(page).toContain("Treasury");
+  expect(page).toContain("Safe · 2 of 3");
+  expect(page).toContain("alice.eth");
+  expect(page).toContain("Ethereum");
+  expect(page).toContain("Base");
+  expect(page).toContain("1.5");
+  expect(page).toContain("$3,000.00");
+  expect(page).toContain("2.5");
+  expect(page).toContain("Updated");
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("shows the sync error only when there is one", async () => {
+  rpcMock.crypto.mockResolvedValue(data({ lastError: "Rate limited" }));
+  await show();
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe("Rate limited");
+});
+
+it("shows the server's error inline when adding a wallet fails", async () => {
+  rpcMock.crypto.mockResolvedValue(data({ wallets: [], holdings: [] }));
+  rpcMock.walletAdd.mockRejectedValue(new Error("That wallet is already added"));
+  await show();
+  await act(async () =>
+    (
+      [...container.querySelectorAll("button")].find(
+        (b) => b.textContent === "Add wallet",
+      ) as HTMLElement
+    ).click(),
+  );
+  const input = byLabel("Address or ENS");
+  await act(async () => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    set?.call(input, "alice.eth");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    (document.body.querySelector('button[type="submit"]') as HTMLButtonElement).click();
+  });
+  await flush();
+  expect(rpcMock.walletAdd).toHaveBeenCalledWith({ addressOrEns: "alice.eth", type: "personal" });
+  expect(document.body.querySelector('[role="alert"]')?.textContent).toContain("already added");
+});
+
+it("offers Connect, opening the modal, only when there is no API key", async () => {
+  rpcMock.crypto.mockResolvedValue(data({ hasApiKey: true }));
+  await show();
+  expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Connect")).toBe(
+    false,
+  );
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.crypto.mockResolvedValue(data({ connected: true, hasApiKey: false }));
+  await show();
+  const connect = [...container.querySelectorAll("button")].find(
+    (b) => b.textContent === "Connect",
+  );
+  await act(async () => (connect as HTMLElement).click());
+  expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain(
+    "Connect Blockscout",
+  );
+});

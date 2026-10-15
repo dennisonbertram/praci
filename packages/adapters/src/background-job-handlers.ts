@@ -16,12 +16,15 @@ import { expireComputerControl } from "./computer-control.js";
 import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
 import type { createRunExecutor } from "./executor.js";
+import type { FinanceSyncDeps } from "./finance-sync.js";
+import { syncFinanceForUser } from "./finance-sync.js";
 import { compactHistory } from "./history-compaction.js";
 import { createInboxClassifierProvider } from "./inbox-classifier-factory.js";
 import { runInboxTriage } from "./inbox-triage.js";
 import { expireMailSearch } from "./mail-tools.js";
 import type { MemoryProviderResolver } from "./memory-provider-factory.js";
 import { deliverMessagingOutbound, mirrorMessagingOutbound } from "./messaging-delivery.js";
+import { syncCryptoHoldings } from "./rpc-crypto-sync.js";
 import { expireTaughtSkillTeaching } from "./teaching-session.js";
 
 export function createBackgroundJobHandlers(deps: {
@@ -39,6 +42,8 @@ export function createBackgroundJobHandlers(deps: {
   deploymentModelConfigured?: boolean;
   messaging?: MessagingSurface;
   cloudAgent?: CloudAgentConnection | null;
+  /** Read-tool caller for the user's Mercury and Brex servers; see `createFinanceCallToolFor`. */
+  financeCallToolFor?: FinanceSyncDeps["callToolFor"];
 }): BackgroundJobHandlers {
   const deliverMessaging = async (runId?: string) => {
     if (!deps.messaging) return;
@@ -104,6 +109,18 @@ export function createBackgroundJobHandlers(deps: {
           classifier: createInboxClassifierProvider(),
         },
         payload,
+      );
+    },
+    "finance.sync": async (payload) => {
+      if (!deps.financeCallToolFor) throw new Error("Finance sync is not configured");
+      await syncFinanceForUser(
+        { prisma: deps.prisma, callToolFor: deps.financeCallToolFor },
+        { spaceId: payload.spaceId, userId: payload.userId },
+      );
+      // Wallets ride the same periodic job; with no wallets this is a no-op.
+      await syncCryptoHoldings(
+        { prisma: deps.prisma },
+        { spaceId: payload.spaceId, userId: payload.userId },
       );
     },
     "cloud_agent.poll": async (payload) => {

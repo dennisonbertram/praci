@@ -1271,3 +1271,55 @@ describe("allowlistDrift", () => {
     });
   });
 });
+
+describe("MCP connector Finance agent", () => {
+  it("exposes and runs only read tools for the Finance agent even with allowAllTools", async () => {
+    const endpoint = "https://api.brex.com/mcp";
+    const assignment = {
+      ...ASSIGNMENT,
+      bot: { spawnKey: "finance-agent:u1" },
+      server: { ...SERVER, endpoint },
+    };
+    const state = {
+      failNext: false,
+      initializations: 0,
+      calls: [] as string[],
+      tools: ["list_expenses", "lock_card"].map((name) => ({
+        name,
+        inputSchema: { type: "object" },
+      })),
+    };
+    vi.stubGlobal("fetch", mcpFetch(state, endpoint));
+    const connector = new McpConnector(
+      {
+        botMcpServer: {
+          findMany: vi.fn().mockResolvedValue([assignment]),
+          findFirst: vi.fn().mockResolvedValue(assignment),
+        },
+      } as never,
+      {} as never,
+      { network: TEST_NETWORK },
+    );
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+    } as never;
+    const tools = await connector.discoverTools(context);
+    expect(tools.map((tool) => tool.name)).toEqual(["mcp__demo__list_expenses"]);
+    const events: unknown[] = [];
+    for await (const event of connector.execute(
+      {
+        tool: "mcp__demo__lock_card",
+        args: {},
+        route: { connectorId: "mcp", resourceId: "server-1", toolName: "lock_card" },
+      } as never,
+      context,
+    ))
+      events.push(event);
+    expect(events).toMatchObject([{ type: "error" }]);
+    expect(state.calls).toEqual([]);
+    await connector.close();
+  });
+});

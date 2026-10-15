@@ -427,11 +427,40 @@ describe("run tool selection", () => {
       "mail_grep",
       "mail_modify",
       "mail_search",
+      "mail_send",
     ]);
     expect(mailNames(offered(true, ["mail_grep", "inbox_overview", "mail_draft"]))).toEqual([
       "mail_get",
       "mail_modify",
       "mail_search",
+      "mail_send",
+    ]);
+  });
+
+  it("offers the Drive tools only when a Drive account is connected", () => {
+    const offered = (driveEnabled: boolean) =>
+      selectBuiltinToolsForRun({
+        graphicalToolsAllowed: false,
+        pageBrowserAllowed: false,
+        groupId: null,
+        trigger: "message",
+        semanticMemoryEnabled: false,
+        messagingChannelRun: false,
+        driveEnabled,
+      })
+        .map((tool) => tool.name)
+        .filter((name) => name.startsWith("drive_"))
+        .sort();
+    expect(offered(false)).toEqual([]);
+    expect(offered(true)).toEqual([
+      "drive_create_file",
+      "drive_read",
+      "drive_search",
+      "drive_update_file",
+    ]);
+    expect([...READ_ONLY_AGENT_TOOLS].filter((name) => name.startsWith("drive_")).sort()).toEqual([
+      "drive_read",
+      "drive_search",
     ]);
   });
 

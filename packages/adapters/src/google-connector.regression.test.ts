@@ -24,7 +24,7 @@ function settings(redirectUri?: string) {
         return create;
       }),
     },
-    connection: { findFirst: vi.fn(async () => null) },
+    connection: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
   };
   return {
     rows,

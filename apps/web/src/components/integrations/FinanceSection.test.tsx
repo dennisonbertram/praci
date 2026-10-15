@@ -1,0 +1,143 @@
+// @vitest-environment jsdom
+
+import type { FinanceSource } from "@rakazo/contracts";
+import type { ReactNode } from "react";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+const connect = vi.hoisted(() => vi.fn());
+const cryptoRpc = vi.hoisted(() => ({ crypto: vi.fn(), cryptoConnect: vi.fn() }));
+vi.mock("../../lib/finance-connect", () => ({ connectFinanceProvider: connect }));
+vi.mock("../../lib/rpc", () => ({ rpc: { finance: cryptoRpc } }));
+vi.mock("@lingui/react/macro", () => ({
+  useLingui: () => ({
+    t: (parts: TemplateStringsArray, ...values: unknown[]) =>
+      parts.reduce((out, part, i) => out + part + (i < values.length ? String(values[i]) : ""), ""),
+  }),
+  Trans: ({ children }: { children: ReactNode }) => children,
+}));
+
+import { FinanceSection } from "./FinanceSection";
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const source = (provider: "mercury" | "brex", status: FinanceSource["status"]): FinanceSource => ({
+  provider,
+  serverId: status === "not_connected" ? null : "s1",
+  status,
+  lastSyncedAt: null,
+});
+
+let container: HTMLDivElement;
+let root: ReturnType<typeof createRoot>;
+async function show(sources: FinanceSource[], onChanged = vi.fn()) {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceSection sources={sources} onChanged={onChanged} />
+      </MemoryRouter>,
+    ),
+  );
+  return onChanged;
+}
+const tile = (p: string) => container.querySelector(`[data-testid="finance-tile-${p}"]`);
+const press = (p: string) =>
+  act(async () => {
+    (tile(p)?.querySelector("button") as HTMLButtonElement | null)?.click();
+  });
+beforeEach(() => {
+  cryptoRpc.crypto.mockResolvedValue({ connected: false, hasApiKey: false });
+});
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  vi.resetAllMocks();
+});
+
+it("connects through the Finance API and shows Open Finance once connected", async () => {
+  connect.mockResolvedValue("connected");
+  const onChanged = await show([source("mercury", "not_connected"), source("brex", "ok")]);
+  expect(tile("mercury")?.textContent).toContain("Not connected");
+  expect(tile("brex")?.textContent).toContain("Connected");
+  expect(tile("brex")?.querySelector("a")?.getAttribute("href")).toBe("/app/finance");
+  expect(tile("brex")?.querySelector("img")?.getAttribute("src")).toContain("brex");
+  expect(tile("mercury")?.querySelector("img")?.getAttribute("src")).toBe("/logos/mercury.svg");
+
+  await press("mercury");
+  expect(connect).toHaveBeenCalledWith("mercury", false);
+  expect(onChanged).toHaveBeenCalled();
+});
+
+it("reconnects a source that needs it and reports a cancelled sign-in", async () => {
+  connect.mockResolvedValue("cancelled");
+  await show([source("mercury", "needs_reconnect"), source("brex", "error")]);
+  expect(tile("mercury")?.textContent).toContain("Needs reconnect");
+  expect(tile("brex")?.textContent).toContain("Failed");
+  await press("mercury");
+  expect(connect).toHaveBeenCalledWith("mercury", true);
+  expect(tile("mercury")?.querySelector('[role="alert"]')?.textContent).toContain("cancelled");
+});
+
+it("shows a failed connect", async () => {
+  connect.mockRejectedValue(new Error("Could not reach the server"));
+  await show([source("mercury", "not_connected"), source("brex", "not_connected")]);
+  await press("brex");
+  expect(tile("brex")?.querySelector('[role="alert"]')?.textContent).toContain("Could not reach");
+});
+
+const crypto = () => container.querySelector('[data-testid="finance-tile-crypto"]') as Element;
+const typeKey = async (value: string) => {
+  const input = document.body.querySelector('[role="dialog"] input') as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+};
+const press2 = (root: ParentNode, label: string) =>
+  act(async () => {
+    (
+      [...root.querySelectorAll("button")].find((b) => b.textContent === label) as HTMLElement
+    ).click();
+  });
+
+it("shows a keyless Blockscout server as Not connected", async () => {
+  cryptoRpc.crypto.mockResolvedValue({ connected: true, hasApiKey: false });
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  expect(crypto().textContent).toContain("Not connected");
+  expect(crypto().textContent).not.toContain("Connected");
+});
+
+it("opens a modal from Connect, saves the key and then shows Connected", async () => {
+  cryptoRpc.crypto
+    .mockResolvedValueOnce({ connected: false, hasApiKey: false })
+    .mockResolvedValue({ connected: true, hasApiKey: true });
+  cryptoRpc.cryptoConnect.mockResolvedValue({ serverId: "s2", hasApiKey: true });
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  expect(crypto().querySelector("input")).toBeNull();
+  await press2(crypto(), "Connect");
+  const dialog = document.body.querySelector('[role="dialog"]') as Element;
+  expect(dialog.textContent).toContain("Get an API key");
+  expect(dialog.querySelector("a")?.getAttribute("href")).toBe("https://dev.blockscout.com");
+  await typeKey("k-123");
+  await press2(dialog, "Save");
+  expect(cryptoRpc.cryptoConnect).toHaveBeenCalledWith({ apiKey: "k-123" });
+  expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+  expect(crypto().textContent).toContain("Connected");
+  expect(crypto().textContent).toContain("Replace API key");
+});
+
+it("shows the server's error inside the modal", async () => {
+  cryptoRpc.cryptoConnect.mockRejectedValue(new Error("Invalid API key"));
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  await press2(crypto(), "Connect");
+  await typeKey("bad");
+  await press2(document.body.querySelector('[role="dialog"]') as Element, "Save");
+  expect(document.body.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain(
+    "Invalid API key",
+  );
+});

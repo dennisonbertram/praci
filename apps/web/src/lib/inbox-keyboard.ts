@@ -19,14 +19,35 @@ const rowButton = (id: string) =>
     (el) => el.dataset.rowId === id,
   );
 
+let lastStep = Number.NEGATIVE_INFINITY;
+/**
+ * Whether a j/k press may move now. Held keys (`repeat`) and presses within 150ms of the last
+ * accepted one are dropped, so a key burst cannot walk through, and mark read, a whole list.
+ */
+export function allowStep(event: KeyboardEvent): boolean {
+  const now = Date.now();
+  if (event.repeat || now - lastStep < 150) return false;
+  lastStep = now;
+  return true;
+}
+
 /** List shortcuts for the Inbox: j/k and arrows move, Enter or o opens, / searches, c composes, e archives, ? lists them. */
 export function useInboxKeyboard(options: InboxKeyboard) {
   const latest = useRef(options);
   latest.current = options;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const { ids, selectedId, enabled, select, open, focusSearch, compose, archive, help } =
-        latest.current;
+      const {
+        ids,
+        selectedId: selection,
+        enabled,
+        select,
+        open,
+        focusSearch,
+        compose,
+        archive,
+        help,
+      } = latest.current;
       if (!enabled || event.defaultPrevented) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const target = event.target instanceof Element ? event.target : null;
@@ -34,6 +55,8 @@ export function useInboxKeyboard(options: InboxKeyboard) {
         return;
       if (document.querySelector('[role="dialog"],[role="alertdialog"]')) return;
       const key = event.key;
+      // A selection a filter or search has hidden is no selection.
+      const selectedId = selection && ids.includes(selection) ? selection : undefined;
       const index = selectedId ? ids.indexOf(selectedId) : -1;
       const move = (to: number) => {
         const id = ids[Math.max(0, Math.min(ids.length - 1, to))];
@@ -44,8 +67,11 @@ export function useInboxKeyboard(options: InboxKeyboard) {
         el?.scrollIntoView?.({ block: "nearest" });
         el?.focus();
       };
-      if (key === "j" || key === "ArrowDown") move(index + 1);
-      else if (key === "k" || key === "ArrowUp") move(index < 0 ? 0 : index - 1);
+      if (key === "j" || key === "k") {
+        if (allowStep(event)) move(key === "j" ? index + 1 : index < 0 ? 0 : index - 1);
+        else event.preventDefault();
+      } else if (key === "ArrowDown") move(index + 1);
+      else if (key === "ArrowUp") move(index < 0 ? 0 : index - 1);
       else if (key === "o" || (key === "Enter" && !target?.closest("button,a"))) {
         if (index < 0) return;
         event.preventDefault();

@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rakazo Finance Mockup</title>
+<style>
+:root{
+  --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#b7791f; --success:#2f855a;
+  --bot:#e8743b; --ink2:#8a8a8a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323; --ink2:#7a7a7a;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+.app{display:grid;grid-template-columns:240px 1fr;height:100vh;min-height:640px}
+aside.left{background:var(--sidebar);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.search{margin:4px 4px 10px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--muted-fg);background:var(--card)}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:default}
+.row.active{background:var(--sidebar-accent);font-weight:600}
+.row .count{margin-left:auto;font-size:11px;color:var(--muted-fg)}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+.label{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.icon{width:22px;height:22px;display:grid;place-items:center;flex:none}
+.icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+main{overflow:auto;padding:20px 28px}
+h1{font-size:18px;margin:0}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.upd{font-size:11px;color:var(--muted-fg);display:flex;align-items:center;gap:2px}
+.ib{border:0;background:transparent;color:var(--muted-fg);cursor:pointer;padding:3px 5px;border-radius:6px;display:grid;place-items:center}
+.ib:hover{background:var(--muted)}
+.ib svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.chips{display:flex;gap:4px;margin-left:auto}
+.chip{padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted-fg);font-size:12px;display:inline-flex;align-items:center;gap:6px;background:transparent}
+.chip.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.sd{width:6px;height:6px;border-radius:50%;background:var(--success)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.card h2,.sec h2{font-size:12px;margin:0;color:var(--muted-fg);font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.kpi .n{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.sub{font-size:11px;color:var(--muted-fg)}
+.up-d{color:var(--success)} .dn-d{color:var(--destructive)}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.mute{color:var(--muted-fg)}
+.strip{display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap}
+.strip .big{font-size:18px;font-weight:650;font-variant-numeric:tabular-nums}
+.seg{display:flex;gap:4px}
+.strip .sub{margin-left:0}
+.legend{display:flex;gap:14px;font-size:11px;color:var(--muted-fg);align-items:center}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.l-out{background:var(--fg)} .l-rev{background:var(--ink2)}
+.l-fin{background:repeating-linear-gradient(45deg,var(--fg) 0 1.5px,var(--card) 1.5px 3.5px);border:1px solid var(--fg)}
+.cardhead{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.cardhead .legend,.cardhead .seg,.cardhead .sub{margin-left:auto}
+.chart{width:100%;height:auto;display:block}
+.chart .grid{stroke:var(--border);stroke-width:1}
+.chart .ax{fill:var(--muted-fg);font-size:10px;font-family:inherit}
+.chart .out{fill:var(--fg)} .chart .out.part{fill:var(--card);stroke:var(--fg);stroke-width:1.5;stroke-dasharray:3 2}
+.chart .rev{fill:var(--ink2)} .chart .fin{fill:url(#hatch);stroke:var(--fg);stroke-width:1}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.bk{display:grid;grid-template-columns:120px 1fr 64px;gap:10px;align-items:center;padding:5px 0}
+.track{height:8px;background:var(--muted);border-radius:4px;overflow:hidden;display:block}
+.track i{display:block;height:100%;background:var(--fg);border-radius:4px}
+.bk:nth-child(n+3) .track i{background:var(--ink2)}
+.up .tag{margin-left:6px}
+.up{display:grid;grid-template-columns:96px 1fr 82px;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--border)}
+.cardhead+.up{border-top:0}
+.tag{font-size:10px;color:var(--muted-fg);border:1px solid var(--border);border-radius:999px;padding:0 7px;white-space:nowrap}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:500;color:var(--muted-fg);text-align:left;padding:4px 0 6px}
+th.r{text-align:right}
+td{padding:7px 0;border-top:1px solid var(--border)}
+td.v{font-weight:600}
+td.v .tag{font-weight:400;margin-left:6px}
+td.tr{width:90px;color:var(--fg)} td.tr .spark{width:60px;height:20px;display:block;margin-left:auto}
+.tfoot{border-top:1px solid var(--border);padding-top:8px;color:var(--muted-fg);font-size:12px}
+.treas{display:inline-block;margin:12px 0 28px}
+.treas .n{font-size:18px;font-weight:650;margin-top:2px}
+aside.right{border-left:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;min-height:0}
+.rhead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600}
+.collapse{margin-left:auto;border:0;background:transparent;color:var(--muted-fg);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:6px}
+.collapse:hover{background:var(--muted)}
+.thread{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.me{align-self:flex-end;background:var(--primary);color:var(--primary-fg);padding:8px 12px;border-radius:14px 14px 4px 14px;max-width:85%}
+.bot{max-width:95%}
+.bot ul{margin:8px 0 0;padding-left:18px} .bot li{margin-bottom:4px}
+.sugg{display:flex;gap:6px;padding:0 12px;flex-wrap:wrap}
+.sugg .chip{font-size:11px;padding:3px 9px}
+.composer{margin:12px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--muted-fg)}
+.sugg+.composer{margin-top:10px}
+.note{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted-fg);background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:999px;display:flex;gap:10px;z-index:5;white-space:nowrap}
+.note label{cursor:pointer;padding:0 4px;border-radius:6px}
+.note input{position:absolute;opacity:0;pointer-events:none}
+.note label:has(input:checked){color:var(--fg);font-weight:600}
+#chat-open{position:absolute;opacity:0;pointer-events:none}
+.ask{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.ask svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ask:hover{opacity:.88}
+aside.right{display:none}
+body:has(#chat-open:checked) .app{grid-template-columns:240px 1fr 380px}
+body:has(#chat-open:checked) aside.right{display:flex}
+body:has(#chat-open:checked) .ask{display:none}
+body:has(#chat-open:focus-visible) .ask,body:has(#chat-open:focus-visible) .collapse{outline:2px solid var(--fg);outline-offset:2px}
+.empty{display:none}
+body:has(#v-empty:checked) .full{display:none}
+body:has(#v-empty:checked) .empty{display:flex}
+body:has(#v-empty:checked) aside.right,body:has(#v-empty:checked) .ask{display:none!important}
+body:has(#v-empty:checked) .app{grid-template-columns:240px 1fr!important}
+.empty{flex-direction:column;align-items:center;justify-content:center;gap:16px;height:100%}
+.empty h1{font-size:18px}
+.btns{display:flex;gap:8px}
+.btn{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+.btn.p{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+
+/* drill-down */
+[data-href]{cursor:pointer}
+[data-href]:focus-visible,.back:focus-visible,.crumbs a:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.card[data-href]:hover{border-color:var(--ink2)}
+.chip[data-href]:hover,a.chip:hover{border-color:var(--fg);color:var(--fg)}
+.chip.on:hover{color:var(--primary-fg)}
+a.chip{text-decoration:none}
+.chev{color:var(--ink2);width:14px;font-size:15px;text-align:right;line-height:1}
+.bk{grid-template-columns:140px 1fr 64px 10px;padding:5px 8px;margin:0 -8px;border-radius:8px}
+.bk:hover,.up:hover{background:var(--background)}
+.bk:hover .track{background:var(--border)}
+.up{grid-template-columns:96px 1fr 82px 10px;padding:7px 8px;margin:0 -8px}
+.sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px}
+tr[data-href]:hover td,tr[data-href]:focus-visible td{background:var(--background)}
+tr[data-href]:hover .chev{color:var(--fg)}
+.lnk{color:var(--fg);text-decoration:none}.lnk:hover{text-decoration:underline}
+td.v{position:relative}
+.tip{display:none;margin-left:10px;padding:2px 9px;border-radius:999px;background:var(--primary);color:var(--primary-fg);font-size:11px;font-weight:400;white-space:nowrap;vertical-align:middle;pointer-events:none}
+tr:hover .tip,tr:focus-visible .tip{display:inline-block}
+body:not(.detail) #detail,body.detail #dash{display:none}
+.dh{margin-bottom:6px;gap:10px}.dh .ask{margin-left:auto}
+.back{color:var(--fg);text-decoration:none;font-weight:600;padding:5px 11px;border:1px solid var(--border);border-radius:8px;background:var(--card);white-space:nowrap}
+.back:hover{background:var(--muted)}
+.crumbs{display:flex;flex-wrap:wrap;gap:4px;font-size:12px;color:var(--muted-fg);min-width:0}
+.crumbs a{color:var(--muted-fg);text-decoration:none}.crumbs a:hover{color:var(--fg);text-decoration:underline}
+.crumbs .cur{color:var(--fg)}.crumbs i{font-style:normal;opacity:.5}
+.ttl{font-size:20px;margin:6px 0 0;font-weight:650}
+.kpis.k3{grid-template-columns:repeat(3,1fr)}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:8px 12px;margin:0}
+.kv dt{color:var(--muted-fg)}.kv dd{margin:0}
+.ch{width:100%}.ch svg{display:block}
+.chart .hit{fill:transparent}
+.bg:hover .hit{fill:var(--muted)}
+.split{display:flex;align-items:center;gap:20px}.split>div:first-child{flex:none}.split .ch{flex:1}
+.big{font-size:18px;font-weight:650;font-variant-numeric:tabular-nums}
+.kpi .n.paid{font-size:12px;font-weight:600;line-height:1.35;margin-top:6px;letter-spacing:0}a.btn{text-decoration:none;display:inline-block}
+.amt{font-size:26px;font-weight:650;font-variant-numeric:tabular-nums}
+.ri{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;color:var(--fg)}
+.thumb{display:inline-block;cursor:pointer;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.thumb:hover{border-color:var(--fg)}
+.norc{display:flex;align-items:center;gap:12px}
+.rwrap{display:flex;justify-content:center;padding:28px 14px}
+.rcpt{width:24em;max-width:100%;background:#fff;color:#111;padding:1.6em 1.6em 1.8em;font-family:ui-monospace,Menlo,monospace;line-height:1.5;box-shadow:0 .2em 1.4em rgba(0,0,0,.14);pointer-events:none}
+.rcpt b{font-size:1.25em;display:block}.rcpt hr{border:0;border-top:1px dashed #999;margin:.8em 0}
+.rcpt .li{display:flex;justify-content:space-between;gap:1em}.rcpt .tot{font-weight:700}.rcpt .rs{color:#666}
+@media (max-width:900px){
+  .bk{grid-template-columns:100px 1fr 60px 10px}
+  .hm{display:none}
+  .kpis.k3{grid-template-columns:1fr 1fr}
+  .kv{grid-template-columns:100px 1fr}
+  .split{flex-direction:column;align-items:stretch;gap:8px}
+}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;height:auto}
+  body:has(#v-empty:checked) .app{grid-template-columns:1fr;height:100vh}
+  aside.left{display:none}
+  body:has(#chat-open:checked) .app{grid-template-columns:1fr}
+  body:has(#chat-open:checked) aside.right{position:fixed;inset:0;z-index:10;border-left:0}
+  main{padding:16px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .cols{grid-template-columns:1fr}
+  .chips{margin-left:0;width:100%}
+  .ask{margin-left:auto}
+  .up{grid-template-columns:84px 1fr 76px 10px}
+  .note{bottom:6px}
+  main{padding-bottom:48px}
+}
+</style>
+</head>
+<body>
+<input type="checkbox" id="chat-open" aria-label="Finance agent panel">
+<div class="app">
+  <aside class="left" aria-label="Bots">
+    <div class="search">Search</div>
+    <div class="row"><span class="icon">✉</span>Inbox<span class="count">12</span></div>
+    <div class="row active"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2 13.5h12M4 11V7.5M8 11V3.5M12 11V6"/></svg></span>Finance</div>
+    <div class="label">Bots</div>
+    <div class="row"><span class="av" style="background:var(--bot)">I</span>Inbox agent</div>
+    <div class="row"><span class="av" style="background:#4a7bd0">R</span>Research</div>
+    <div class="row"><span class="av" style="background:#7a5bc9">W</span>Writer</div>
+    <div class="row"><span class="av" style="background:#3f9b8a">O</span>Ops</div>
+    <div style="flex:1"></div>
+    <div class="row" style="color:var(--muted-fg)"><span class="icon">⧉</span>Integrations</div>
+  </aside>
+
+  <main>
+  <div class="full">
+<div id="dash">
+    <div class="head">
+      <h1>Finance</h1>
+      <span class="upd">Updated 5 min ago<button class="ib" aria-label="Refresh"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg></button></span>
+      <div class="chips"><span class="chip" data-href="#/account/checking"><span class="sd"></span>Mercury</span><span class="chip" data-href="#/account/brex"><span class="sd"></span>Brex</span></div>
+      <label class="ask" for="chat-open"><svg viewBox="0 0 16 16"><path d="M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z"/></svg>Ask agent</label>
+    </div>
+
+    <div class="kpis">
+      <div class="card kpi" data-href="#/accounts"><h2>Cash</h2><div class="n">$74,500</div><div class="sub">Checking + Treasury</div></div>
+      <div class="card kpi" data-href="#/burn"><h2>Monthly burn</h2><div class="n">$8,967</div><div class="sub">3-mo avg</div></div>
+      <div class="card kpi" data-href="#/runway"><h2>Runway</h2><div class="n">8.3 mo</div><div class="sub">Until Jun 2027</div></div>
+      <div class="card kpi" data-href="#/spend?period=month"><h2>Spend this month</h2><div class="n">$3,600</div><div class="sub"><span class="up-d">↓ 60%</span> vs $8,900 last month</div></div>
+    </div>
+
+    <div class="card strip">
+      <div class="seg" role="tablist" aria-label="Period"><span class="chip" data-href="#/spend?period=week">Week</span><span class="chip on" data-href="#/spend?period=month">Month</span><span class="chip" data-href="#/spend?period=quarter">Quarter</span><span class="chip" data-href="#/spend?period=year">Year</span></div>
+      <span class="big" data-href="#/spend?period=month">$3,600</span>
+      <span class="sub"><span class="up-d">↓ 60%</span> vs previous month</span>
+    </div>
+
+    <div class="card">
+      <div class="cardhead"><h2 class="lnk" data-href="#/burn">Burn ›</h2>
+        <div class="legend"><span><i class="l-out"></i>Out</span><span><i class="l-rev"></i>Revenue</span><span><i class="l-fin"></i>Financing</span></div></div>
+      <div class="ch" id="c-burn" style="height:230px"></div>
+      <div class="sub" style="margin-top:2px">* Month to date</div>
+    </div>
+
+    <div class="cols">
+      <div class="card">
+        <div class="cardhead"><h2>Breakdown</h2><div class="seg"><span class="chip on" data-bk="cat" tabindex="0">Category</span><span class="chip" data-bk="ven" tabindex="0">Vendor</span></div></div>
+        <div id="bk"><div class="bk" data-href="#/category/payroll"><span>Payroll</span><span class="track"><i style="width:100.0%"></i></span><span class="num">$6,000</span><span class="chev">›</span></div>
+<div class="bk" data-href="#/category/cloud"><span>Servers &amp; cloud</span><span class="track"><i style="width:39.2%"></i></span><span class="num">$2,350</span><span class="chev">›</span></div>
+<div class="bk" data-href="#/category/software"><span>Recurring software</span><span class="track"><i style="width:35.0%"></i></span><span class="num">$2,100</span><span class="chev">›</span></div>
+<div class="bk" data-href="#/category/other"><span>Other</span><span class="track"><i style="width:25.0%"></i></span><span class="num">$1,500</span><span class="chev">›</span></div>
+<div class="bk" data-href="#/category/travel"><span>Travel</span><span class="track"><i style="width:15.8%"></i></span><span class="num">$950</span><span class="chev">›</span></div>
+<div class="bk" data-href="#/category/benefits"><span>Benefits</span><span class="track"><i style="width:12.5%"></i></span><span class="num">$750</span><span class="chev">›</span></div>
+<div class="bk" data-href="#/category/legal"><span>Legal</span><span class="track"><i style="width:10.0%"></i></span><span class="num">$600</span><span class="chev">›</span></div></div>
+        <div class="sub" style="margin-top:4px">Last 90 days</div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Upcoming · 30 days</h2><span class="sub" style="font-weight:600;color:var(--fg)">~$7,136</span></div>
+        <div class="up" data-href="#/recurring/payroll-provider"><span class="mute">Oct 16 · 30</span><span>Payroll provider <span class="tag">recurring</span></span><span class="num">$2,000 ×2</span><span class="chev">›</span></div>
+<div class="up" data-href="#/recurring/benefits-provider"><span class="mute">Oct 20 · Nov 3</span><span>Benefits provider <span class="tag">recurring</span></span><span class="num">$250 ×2</span><span class="chev">›</span></div>
+<div class="up" data-href="#/recurring/brex-payment"><span class="mute">Oct 25</span><span>Brex card payment <span class="tag">pending</span></span><span class="num">~$1,900</span><span class="chev">›</span></div>
+<div class="up" data-href="#/recurring/vercel"><span class="mute">Nov 1</span><span>Vercel <span class="tag">recurring</span></span><span class="num">~$700</span><span class="chev">›</span></div>
+<div class="up" data-href="#/recurring/google-workspace"><span class="mute">Nov 1</span><span>Google Workspace <span class="tag">recurring</span></span><span class="num">$36</span><span class="chev">›</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="cardhead"><h2>Subscriptions</h2></div>
+      <table>
+        <thead><tr><th>Vendor</th><th class="r">Monthly</th><th class="r">3 mo</th><th class="r">Last charge</th><th></th></tr></thead>
+        <tbody>
+<tr data-href="#/vendor/vercel" data-slug="vercel"><td class="v">Vercel</td><td class="num">$700</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,16.0 30.0,9.1 58.0,4.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 1</td><td class="chev">›</td></tr>
+<tr data-href="#/vendor/modal" data-slug="modal"><td class="v">Modal</td><td class="num">$420</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,16.0 30.0,9.0 58.0,4.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 3</td><td class="chev">›</td></tr>
+<tr data-href="#/vendor/claude" data-slug="claude"><td class="v">Claude <span class="tag">overlaps</span></td><td class="num">$150</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,16.0 30.0,10.0 58.0,4.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 6</td><td class="chev">›</td></tr>
+<tr data-href="#/vendor/openai" data-slug="openai"><td class="v">OpenAI <span class="tag">overlaps</span></td><td class="num">$275</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,4.0 30.0,10.5 58.0,16.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 4</td><td class="chev">›</td></tr>
+<tr data-href="#/vendor/chatgpt" data-slug="chatgpt"><td class="v">ChatGPT <span class="tag">overlaps</span></td><td class="num">$90</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,16.0 30.0,16.0 58.0,16.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 8</td><td class="chev">›</td></tr>
+<tr data-href="#/vendor/cursor" data-slug="cursor"><td class="v">Cursor</td><td class="num">$45</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,16.0 30.0,4.0 58.0,4.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 2</td><td class="chev">›</td></tr>
+<tr data-href="#/vendor/openrouter" data-slug="openrouter"><td class="v">OpenRouter <span class="tag">overlaps</span></td><td class="num">$180</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,16.0 30.0,10.0 58.0,4.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 5</td><td class="chev">›</td></tr>
+<tr data-href="#/vendor/devin" data-slug="devin"><td class="v">Devin</td><td class="num">$120</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,4.0 30.0,10.0 58.0,16.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 7</td><td class="chev">›</td></tr>
+<tr data-href="#/vendor/perplexity" data-slug="perplexity"><td class="v">Perplexity <span class="tag">overlaps</span></td><td class="num">$20</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,16.0 30.0,16.0 58.0,16.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 9</td><td class="chev">›</td></tr>
+<tr data-href="#/vendor/replit" data-slug="replit"><td class="v">Replit</td><td class="num">$30</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,16.0 30.0,16.0 58.0,16.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 9</td><td class="chev">›</td></tr>
+<tr data-href="#/vendor/google-workspace" data-slug="google-workspace"><td class="v">Google Workspace</td><td class="num">$36</td><td class="tr"><svg class="spark" viewBox="0 0 60 20" aria-hidden="true"><polyline points="2.0,16.0 30.0,16.0 58.0,16.0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></td><td class="num mute">Oct 1</td><td class="chev">›</td></tr>
+        </tbody>
+      </table>
+      <div class="tfoot">11 subscriptions · $2,066/mo</div>
+    </div>
+
+    <div class="card treas" data-href="#/account/treasury"><h2>Treasury yield</h2><div class="n">$241 last month</div><div class="sub">after fees</div></div>
+  </div>
+  <div id="detail"></div>
+  </div>
+
+  <div class="empty">
+    <h1>Finance</h1>
+    <div class="btns"><button class="btn p">Connect Mercury</button><button class="btn">Connect Brex</button></div>
+  </div>
+  </main>
+
+  <aside class="right" aria-label="Finance agent">
+    <div class="rhead"><span class="av" style="background:#2f7f6f">F</span>Finance agent<label class="collapse" for="chat-open" role="button" aria-label="Collapse panel" title="Collapse panel">⇥</label></div>
+    <div class="thread">
+      <div class="me">Where can we cut costs?</div>
+      <div class="bot">Two places stand out.
+        <ul>
+          <li><b>Overlapping AI tools:</b> Claude, OpenAI, ChatGPT, OpenRouter and Perplexity cost about <b>$715/mo</b>. Consolidating to one or two would cut most of that.</li>
+          <li><b>Vercel</b> is up <b>40%</b> in 3 months, from $500 to $700.</li>
+        </ul>
+        <p style="margin:8px 0 0">Doing both would add about <b>+0.7 mo</b> of runway.</p>
+      </div>
+    </div>
+    <div class="sugg"><span class="chip">Cut costs</span><span class="chip">Runway scenarios</span><span class="chip">Monthly review</span></div>
+    <div class="composer">Ask about your finances…</div>
+  </aside>
+</div>
+<div class="note"><label><input type="radio" name="v" id="v-conn" checked>Connected</label><label><input type="radio" name="v" id="v-empty">Empty</label><span>· sample data</span></div>
+<script>
+(()=>{
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MF=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const fm=n=>'$'+Math.round(Math.abs(n)).toLocaleString('en-US');
+const fc=n=>'$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const ta=t=>t.amt>0?'+'+fc(t.amt):fc(t.amt);
+const fd=d=>{const[y,m,dd]=d.split('-');return MN[m-1]+' '+(+dd)+(y!=='2026'?', '+y:'')};
+const mlabel=id=>{const[y,m]=id.split('-');return MN[m-1]+' '+y};
+const mfull=id=>{const[y,m]=id.split('-');return MF[m-1]+' '+y};
+const A=h=>`data-href="${h}" tabindex="0" role="link"`;
+const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
+const CH='<td class="chev">›</td>';
+
+/* ---- data (fake) ---- */
+const OUT=[8000,9500,7200,10400,8800,9100,7600,11000,8300,9700,8900,3600];
+const REV=[0,0,6000,0,0,5000,0,0,7000,0,0,0];
+const FIN=[0,0,0,0,0,0,25000,0,0,0,0,0];
+const VER=[420,430,450,460,480,470,490,520,500,560,630,700];
+const MON=OUT.map((o,i)=>{const mo=(10+i)%12,y=i<2?2025:2026;return{id:y+'-'+pad(mo+1),l:MN[mo],y,o,rev:REV[i],fin:FIN[i],i}});
+const CATS={payroll:'Payroll',software:'Recurring software',cloud:'Servers & cloud',travel:'Travel',benefits:'Benefits',legal:'Legal',other:'Other',revenue:'Revenue',financing:'Financing',interest:'Interest',transfer:'Card payment'};
+const SC=['payroll','software','cloud','travel','benefits','legal','other'];
+
+const ACC={checking:{n:'Mercury Checking',l:'••0002',bal:12000},savings:{n:'Mercury Savings',l:'••0004',bal:2500},treasury:{n:'Mercury Treasury',l:'••0003',bal:60000},brex:{n:'Brex Card',l:'••0001',bal:1300}};
+const SRC={checking:'Mercury Checking ••0002',savings:'Mercury Savings ••0004',treasury:'Mercury Treasury ••0003',brex:'Brex card'};
+const SUBS=[['vercel','Vercel',1,'cloud',0,'Pro plan'],['modal','Modal',3,'cloud',420,'Compute usage'],['claude','Claude',6,'software',150,'Team plan'],['openai','OpenAI',4,'software',275,'API usage'],['chatgpt','ChatGPT',8,'software',90,'Team seats'],['cursor','Cursor',2,'software',45,'Pro plan'],['openrouter','OpenRouter',5,'software',180,'Credits'],['devin','Devin',7,'software',120,'Team plan'],['perplexity','Perplexity',9,'software',20,'Pro plan'],['replit','Replit',9,'software',30,'Core plan'],['google-workspace','Google Workspace',1,'software',36,'Business Starter']];
+const TWO={vercel:1,openai:1}; // vendors paid with two cards
+const MERC={'google-workspace':1};
+const FIX=[[16,'Payroll provider','Payroll run','payroll',2000,'payroll-provider','a'],[30,'Payroll provider','Payroll run','payroll',2000,'payroll-provider','b'],[3,'Benefits provider','Benefits premium','benefits',250,'benefits-provider','a'],[20,'Benefits provider','Benefits premium','benefits',250,'benefits-provider','b']];
+const WGT=[[8,'Contractor payouts','Contractor invoices','payroll',.18,'checking','contractors','a'],[22,'Contractor payouts','Contractor invoices','payroll',.17,'checking','contractors','b'],[12,'Airline','Flights','travel',.1,'brex','airline','a'],[19,'Hotel','Lodging','travel',.1,'brex','hotel','a'],[14,'Law firm','Legal fees','legal',.15,'checking','law-firm','a'],[10,'Office supplier','Office supplies','other',.1,'brex','office-supplier','a'],[1,'Coworking space','Coworking','other',.2,'checking','coworking','a']];
+const TX=[],VND={};
+SUBS.forEach(s=>VND[s[0]]={name:s[1],cat:s[3]});
+const add=t=>{t.m=t.date.slice(0,7);t.d=+t.date.slice(8);t.id=t.slug+'-'+t.m+'-'+t.k;t.status=t.date>='2026-10-13'?'Pending':'Posted';VND[t.slug]=VND[t.slug]||{name:t.cpty,cat:t.cat};TX.push(t)};
+MON.forEach(M=>{
+  const last=M.id==='2026-10'?14:31, it=[];
+  const dt=d=>M.id+'-'+pad(Math.min(d,M.id.endsWith('-02')?28:d));
+  SUBS.forEach(s=>{
+    const brex=!MERC[s[0]];
+    if(s[0]==='vercel'){it.push({d:1,cpty:'Vercel',desc:'Pro plan',cat:'cloud',amt:200,src:'brex',card:'0001',slug:'vercel',k:'plan'},{d:1,cpty:'Vercel',desc:'Usage',cat:'cloud',amt:VER[M.i]-200,src:'brex',card:'0002',slug:'vercel',k:'use'})}
+    else it.push({d:s[2],cpty:s[1],desc:s[5],cat:s[3],amt:s[4],src:brex?'brex':'checking',card:brex?(TWO[s[0]]&&M.i%2?'0002':'0001'):null,slug:s[0],k:'a'});
+  });
+  FIX.forEach(f=>it.push({d:f[0],cpty:f[1],desc:f[2],cat:f[3],amt:f[4],src:'checking',slug:f[5],k:f[6]}));
+  const fixed=it.filter(x=>x.d<=last), wt=WGT.filter(w=>w[0]<=last);
+  const R=M.o-sum(fixed,x=>x.amt), W=sum(wt,w=>w[4]);let acc=0;
+  wt.forEach((w,j)=>{const a=j===wt.length-1?R-acc:Math.round(R*w[4]/W);acc+=a;fixed.push({d:w[0],cpty:w[1],desc:w[2],cat:w[3],amt:a,src:w[5],card:w[5]==='brex'?'0001':null,slug:w[6],k:w[7]})});
+  fixed.forEach(x=>add({date:dt(x.d),cpty:x.cpty,desc:x.desc,cat:x.cat,amt:-x.amt,src:x.src,card:x.card,slug:x.slug,k:x.k}));
+  if(M.rev)add({date:M.id+'-20',cpty:'Customer payment',desc:'Invoice payment',cat:'revenue',amt:M.rev,src:'checking',slug:'customer',k:'a'});
+  if(M.fin)add({date:M.id+'-12',cpty:'Seed extension',desc:'Wire in',cat:'financing',amt:M.fin,src:'checking',slug:'investor',k:'a'});
+});
+const brexSum=i=>sum(TX.filter(t=>t.m===MON[i].id&&t.src==='brex'),t=>-t.amt);
+for(let i=1;i<=10;i++){const[y,m]=MON[i].id.split('-');add({date:y+'-'+m+'-25',cpty:'Brex',desc:'Card payment',cat:'transfer',amt:-brexSum(i-1),src:'checking',slug:'brex-payment',k:'a',xfer:1})}
+const TR=[310,305,300,296,292,288,285,281,278,275,271,268].map((d,i)=>{const mo=(9+i)%12,y=mo>=9?2025:2026;return{id:y+'-'+pad(mo+1),d,f:Math.round(d*.1),n:d-Math.round(d*.1)}});
+TR.forEach(r=>{const[y,m]=r.id.split('-').map(Number);const ny=m===12?y+1:y,nm=m===12?1:m+1;add({date:ny+'-'+pad(nm)+'-01',cpty:'Mercury Treasury',desc:'Dividend',cat:'interest',amt:r.n,src:'treasury',slug:'treasury',k:r.id.slice(5),xfer:1})});
+['08','09'].forEach(m=>add({date:'2026-'+m+'-28',cpty:'Mercury Savings',desc:'Interest',cat:'interest',amt:.04,src:'savings',slug:'savings',k:'a',xfer:1}));
+TX.sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:a.id<b.id?-1:1);
+const T={};TX.forEach(t=>T[t.id]=t);
+const SER=[];SER[11]=ACC.checking.bal+ACC.savings.bal+ACC.treasury.bal;for(let i=11;i>0;i--)SER[i-1]=SER[i]-(REV[i]+FIN[i]-OUT[i]);
+const BREXSER=[900,1100,1000,1500,1200,1300,1100,1600,1400,1250,1350,1300];
+const accSer=k=>k==='checking'?SER.map(v=>v*ACC.checking.bal/SER[11]):k==='treasury'?SER.map(v=>v*ACC.treasury.bal/SER[11]):k==='savings'?SER.map(()=>ACC.savings.bal):BREXSER;
+const shade=i=>`color-mix(in srgb,var(--fg) ${[100,78,60,46,34,24,16][i%7]}%,var(--card))`;
+const catSum=(list,c)=>sum(list.filter(t=>t.cat===c),t=>-t.amt);
+const spendTx=TX.filter(t=>t.amt<0&&!t.xfer);
+const srcLabel=t=>t.src==='brex'?'Brex card ••'+t.card:SRC[t.src];
+const pay=slug=>{const l=TX.filter(t=>t.slug===slug),o=[];
+  const cards=[...new Set(l.filter(t=>t.src==='brex').map(t=>t.card))].sort();
+  if(cards.length)o.push(cards.length>1?`Brex · ${cards.length} cards: ${cards.map(c=>'••'+c).join(', ')}`:'Brex ••'+cards[0]);
+  [...new Set(l.filter(t=>t.src!=='brex').map(t=>t.src))].forEach(s=>o.push(SRC[s]));
+  return o.join(' + ')};
+const tip=slug=>`<span class="tip" role="tooltip">${pay(slug)}</span>`;
+const hasR=t=>t.amt<0&&!t.xfer&&(t.src==='brex'&&t.slug!=='staples'||t.slug==='harbor-legal');
+
+/* ---- charts ---- */
+function nice(max){const p=10**Math.floor(Math.log10(Math.max(max,1)/3));let step=p;for(const m of[1,2,5,10]){step=m*p;if(max/step<=4)break}return{step,top:Math.max(step,Math.ceil(max/step)*step)}}
+const ak=n=>n>=1000?'$'+(+(n/1000).toFixed(1))+'k':'$'+n;
+const svg=(w,h,l,b)=>`<svg class="chart" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${l}">${b}</svg>`;
+function grid(w,h,L,R,T,B,top,step){let s='';for(let v=0;v<=top;v+=step){const y=T+(h-T-B)*(1-v/top);s+=`<line class="grid" x1="${L}" x2="${w-R}" y1="${y}" y2="${y}"/><text class="ax" x="${L-6}" y="${y+3}" text-anchor="end">${ak(v)}</text>`}return s}
+function line(w,h,vals,labels,o={}){
+  const ax=o.axes!==false,L=ax?46:4,R=ax?10:4,T=ax?10:4,B=ax?22:4,{step,top:nt}=nice(Math.max(...vals)),top=ax?nt:Math.max(...vals),lo=ax?0:Math.min(...vals);
+  const X=i=>L+i*(w-L-R)/(vals.length-1),Y=v=>T+(h-T-B)*(1-(v-lo)/((top-lo)||1));
+  let s=ax?grid(w,h,L,R,T,B,top,step):'';
+  if(ax){const ev=Math.max(1,Math.ceil(46/((w-L-R)/(vals.length-1))));labels.forEach((l,i)=>{if(i%ev===0)s+=`<text class="ax" x="${X(i)}" y="${h-6}" text-anchor="middle">${l}</text>`})}
+  const sp=o.dash??vals.length-1,pts=vals.map((v,i)=>X(i).toFixed(1)+','+Y(v).toFixed(1));
+  s+=`<polyline points="${pts.slice(0,sp+1)}" fill="none" stroke="var(--fg)" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round"/>`;
+  if(sp<vals.length-1)s+=`<polyline points="${pts.slice(sp)}" fill="none" stroke="var(--fg)" stroke-width="1.75" stroke-dasharray="5 4" stroke-linecap="round"/>`;
+  s+=`<circle cx="${X(sp)}" cy="${Y(vals[sp])}" r="3" fill="var(--fg)"/>`;
+  if(o.end)s+=`<circle cx="${X(vals.length-1)}" cy="${Y(0)}" r="3" fill="var(--card)" stroke="var(--fg)" stroke-width="1.5"/>`;
+  return svg(w,h,o.label||'Line chart',s)}
+function bars(w,h,items){
+  const L=46,R=6,T=18,B=22,{step,top}=nice(Math.max(...items.map(x=>x.v))),slot=(w-L-R)/items.length,bw=Math.min(40,slot*.5);
+  let s=grid(w,h,L,R,T,B,top,step);
+  items.forEach((x,i)=>{const cx=L+slot*(i+.5),y=T+(h-T-B)*(1-x.v/top);s+=`<rect class="out" x="${cx-bw/2}" y="${y}" width="${bw}" height="${h-B-y}" rx="2"/><text class="ax" x="${cx}" y="${y-4}" text-anchor="middle">${fm(x.v)}</text><text class="ax" x="${cx}" y="${h-6}" text-anchor="middle">${x.l}</text>`});
+  return svg(w,h,'Monthly spend',s)}
+let HC=0;
+function burnBars(w,h=230){
+  const L=40,R=4,T=10,B=24,top=12000,slot=(w-L-R)/12,bw=Math.min(17,slot*.28);
+  const hid='ht'+(++HC);let s=`<defs><pattern id="${hid}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="var(--card)"/><line x1="0" y1="0" x2="0" y2="5" stroke="var(--fg)" stroke-width="2"/></pattern></defs>`+grid(w,h,L,R,T,B,top,3000);
+  const Y=v=>T+(h-T-B)*(1-v/top);
+  MON.forEach((m,i)=>{const c=L+slot*(i+.5),two=m.rev||m.fin,ox=two?c-bw-1:c-bw/2,part=i===11;
+    s+=`<g ${A('#/month/'+m.id)} class="bg"><rect class="hit" x="${L+slot*i}" y="${T}" width="${slot}" height="${h-T-B}"/>`;
+    s+=`<rect class="out${part?' part':''}" x="${ox}" y="${Y(m.o)}" width="${bw}" height="${h-B-Y(m.o)}" rx="2"/>`;
+    if(m.rev)s+=`<rect class="rev" x="${c+1}" y="${Y(m.rev)}" width="${bw}" height="${h-B-Y(m.rev)}" rx="2"/>`;
+    if(m.fin)s+=`<rect class="fin" style="fill:url(#${hid})" x="${c+1}" y="${Y(m.fin)}" width="${bw}" height="${h-B-Y(m.fin)}" rx="2"/>`;
+    s+=`<text class="ax" x="${c}" y="${h-8}" text-anchor="middle"${part?' font-weight="700"':''}>${m.l}${part?'*':''}</text></g>`});
+  return svg(w,h,'Cash out and cash in by month',s)}
+function stack(w,segs){const tot=sum(segs,s=>s.v);let x=0,s='';segs.forEach((g,i)=>{const sw=g.v/tot*w;s+=`<rect ${A('#/category/'+g.c)} x="${x}" y="0" width="${Math.max(sw-1,0)}" height="26" rx="2" style="fill:${shade(i)}"><title>${CATS[g.c]}</title></rect>`;x+=sw});return svg(w,26,'Burn by category',s)}
+
+const ro=new ResizeObserver(es=>es.forEach(e=>e.target._d&&e.target._d()));
+let live=[];
+function mount(el,fn,keep){if(!el)return;el._d=()=>{const w=el.clientWidth;if(w)el.innerHTML=fn(w)};el._d();ro.observe(el);if(!keep)live.push(el)}
+
+/* ---- snippets ---- */
+const kpi=(l,n,s,h)=>`<div class="card kpi" ${h?A(h):''}><h2>${l}</h2><div class="n">${n}</div><div class="sub">${s||'&nbsp;'}</div></div>`;
+const cc=(id,title,h,extra='')=>`<div class="card"><div class="cardhead"><h2>${title}</h2>${extra}</div><div class="ch" id="${id}" style="height:${h}px"></div></div>`;
+const receiptIcon='<svg class="ri" viewBox="0 0 16 16" aria-label="Receipt"><path d="M3.5 1.5h9v13l-1.8-1.2-1.7 1.2-1.5-1.2-1.5 1.2-1.7-1.2-.8.6zM6 5.5h4M6 8h4"/></svg>';
+function txTable(list,o={}){
+  return `<table><thead><tr><th>Date</th><th>Counterparty</th><th class="hm">Category</th><th class="r">Amount</th><th class="hm" style="padding-left:18px">Status</th><th></th></tr></thead><tbody>`+
+  list.map(t=>`<tr ${A('#/txn/'+t.id)}><td class="mute" style="width:70px">${fd(t.date)}</td><td>${t.cpty}<div class="sub">${t.desc}</div></td><td class="hm mute">${CATS[t.cat]}</td><td class="num">${ta(t)}</td><td class="hm mute" style="padding-left:18px">${t.status}</td>${CH}</tr>`).join('')+'</tbody></table>'}
+const bkRows=(rows)=>rows.map(([c,v],i)=>`<div class="bk" ${A('#/category/'+c)}><span><i class="sw" style="background:${shade(i)}"></i>${CATS[c]}</span><span class="track"><i style="width:${v/rows[0][1]*100}%"></i></span><span class="num">${fm(v)}</span><span class="chev">›</span></div>`).join('');
+const AI='<svg viewBox="0 0 16 16"><path d="M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z"/></svg>';
+const KV=r=>'<dl class="kv">'+r.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')+'</dl>';
+
+/* ---- pages ---- */
+function accountsPage(){
+  const rows=['checking','savings','treasury'].map(k=>{const a=ACC[k];return `<tr ${A('#/account/'+k)}><td class="v">${a.n} <span class="mute" style="font-weight:400">${a.l}</span>${k==='treasury'?' <span class="tag">4.3% yield</span>':''}</td><td class="num">${fm(a.bal)}</td>${CH}</tr>`}).join('');
+  return{c:[['Finance','#/'],['Accounts']],t:'Accounts',h:`<div class="kpis k3">${kpi('Total cash','$74,500','Checking + Savings + Treasury')}${kpi('Card balance owed','$1,300','Not counted in cash','#/account/brex')}</div>`+
+  cc('c1','Total balance',200)+`<div class="card" style="margin-top:12px"><div class="cardhead"><h2>Cash accounts</h2></div><table><tbody>${rows}</tbody></table></div><div class="card" style="margin-top:12px"><div class="cardhead"><h2>Card balance owed</h2></div><table><tbody><tr ${A('#/account/brex')}><td class="v">Brex Card <span class="mute" style="font-weight:400">••0001</span></td><td class="num">$1,300</td>${CH}</tr></tbody></table></div>`,
+  ch:{c1:w=>line(w,200,SER,MON.map(m=>m.l),{label:'Total balance'})}}}
+function accountPage(k){const a=ACC[k];if(!a)return;
+  const list=TX.filter(t=>t.src===k||(k==='brex'&&t.slug==='brex-payment')).slice(0,20);
+  let h=`<div class="kpis k3">${kpi(k==='brex'?'Balance owed':'Balance',fc(a.bal).replace('.00',''),'')}${k==='treasury'?kpi('Yield','4.3%',''):''}</div>`+cc('c1','Balance',180);
+  if(k==='treasury')h+=`<div class="card" style="margin-top:12px"><div class="cardhead"><h2>Yield</h2></div><table><thead><tr><th>Month</th><th class="r">Dividends</th><th class="r">Fee</th><th class="r">Net</th></tr></thead><tbody>${TR.slice().reverse().map(r=>`<tr><td>${mlabel(r.id)}</td><td class="num">${fc(r.d)}</td><td class="num mute">${fc(r.f)}</td><td class="num">${fc(r.n)}</td></tr>`).join('')}</tbody></table></div>`;
+  h+=`<div class="card" style="margin-top:12px"><div class="cardhead"><h2>Transactions</h2></div>${txTable(list)}</div>`;
+  return{c:[['Finance','#/'],['Accounts','#/accounts'],[a.n]],t:`${a.n} <span class="mute" style="font-weight:400">${a.l}</span>`,h,ch:{c1:w=>line(w,180,accSer(k),MON.map(m=>m.l),{label:'Balance'})}}}
+function burnPage(){
+  const L3=MON.slice(8,11).map(m=>m.id),l3=spendTx.filter(t=>L3.includes(t.m)),cs=SC.map(c=>[c,catSum(l3,c)]).sort((a,b)=>b[1]-a[1]);
+  const ac=['checking','brex'].map(s=>[s,sum(l3.filter(t=>t.src===s),t=>-t.amt)]),tot=sum(ac,a=>a[1]);
+  const rows=MON.slice().reverse().map(m=>{const n=m.rev+m.fin-m.o;return `<tr ${A('#/month/'+m.id)}><td>${mlabel(m.id)}</td><td class="num">${fm(m.o)}</td><td class="num">${m.rev+m.fin?fm(m.rev+m.fin):'—'}</td><td class="num ${n<0?'dn-d':'up-d'}">${n<0?'−':'+'}${fm(n)}</td>${CH}</tr>`}).join('');
+  return{c:[['Finance','#/'],['Burn']],t:'Burn',h:`<div class="kpis k3">${kpi('Monthly burn','$8,967','3-mo avg')}</div>`+
+  `<div class="card"><div class="cardhead"><h2>Burn</h2><div class="legend"><span><i class="l-out"></i>Out</span><span><i class="l-rev"></i>Revenue</span><span><i class="l-fin"></i>Financing</span></div></div><div class="ch" id="c1" style="height:230px"></div><div class="sub">* Month to date</div></div>`+
+  `<div class="cols"><div class="card"><div class="cardhead"><h2>Where it went</h2><span class="sub">Jul–Sep</span></div><div class="ch" id="c2" style="height:26px;margin-bottom:8px"></div>${bkRows(cs)}</div>`+
+  `<div class="card"><div class="cardhead"><h2>By account</h2><span class="sub">Jul–Sep</span></div><table><tbody>${ac.map(([s,v])=>`<tr ${A('#/account/'+s)}><td class="v">${ACC[s].n}</td><td class="num">${fm(v)}</td><td class="num mute">${Math.round(v/tot*100)}%</td>${CH}</tr>`).join('')}</tbody></table></div></div>`+
+  `<div class="card"><div class="cardhead"><h2>By month</h2></div><table><thead><tr><th>Month</th><th class="r">Out</th><th class="r">In</th><th class="r">Net</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`,
+  ch:{c1:burnBars,c2:w=>stack(w,cs.map(([c,v])=>({c,v})))}}}
+function monthPage(id){const m=MON.find(x=>x.id===id);if(!m)return;
+  const list=TX.filter(t=>t.m===id&&!t.xfer),cs=SC.map(c=>[c,catSum(list,c)]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]),n=m.rev+m.fin-m.o;
+  return{c:[['Finance','#/'],['Burn','#/burn'],[mlabel(id)]],t:mfull(id),sub:m.i===11?'Month to date':'',h:`<div class="kpis k3">${kpi('Out',fm(m.o))}${kpi('In',fm(m.rev+m.fin))}${kpi('Net',`<span class="${n<0?'dn-d':'up-d'}">${n<0?'−':'+'}${fm(n)}</span>`)}</div>`+
+  `<div class="card"><div class="cardhead"><h2>Categories</h2></div>${bkRows(cs)}</div><div class="card" style="margin-top:12px"><div class="cardhead"><h2>Transactions</h2></div>${txTable(list)}</div>`}}
+function runwayPage(){
+  const vals=SER.slice(),lab=MON.map(m=>m.l);for(let j=1;j<=12;j++){vals.push(j===12?0:Math.max(0,74500-8967*j));lab.push(MN[(9+j)%12])}
+  return{c:[['Finance','#/'],['Runway']],t:'Runway',h:`<div class="kpis">${kpi('Cash','$74,500','',"#/accounts")}${kpi('Monthly burn','$8,967','',"#/burn")}${kpi('Runway','8.3 mo','')}${kpi('Run-out','Jun 26, 2027','')}</div>`+cc('c1','Projected cash',240)+
+  `<div class="card" style="margin-top:12px">${KV([['Burn','3-mo avg'],['Revenue','Excluded'],['Financing','Excluded'],['Treasury yield','Excluded'],['Card balance owed','Not counted']])}</div>`,
+  ch:{c1:w=>line(w,240,vals,lab,{dash:11,end:1,label:'Projected cash'})}}}
+const PER={week:'Week',month:'Month',quarter:'Quarter',year:'Year'};
+const inP=(t,p)=>p==='week'?t.m==='2026-10'&&t.d>=8:p==='month'?t.m==='2026-10':p==='quarter'?t.m>='2026-08':true;
+function spendPage(q){const p=PER[q.get('period')]?q.get('period'):'month',cat=SC.includes(q.get('cat'))?q.get('cat'):'';
+  const base=spendTx.filter(t=>inP(t,p)),list=cat?base.filter(t=>t.cat===cat):base,u=c=>`#/spend?period=${p}${c?'&cat='+c:''}`;
+  return{c:[['Finance','#/'],['Spend']],t:'Spend',h:`<div class="card strip"><div class="seg">${Object.keys(PER).map(k=>`<a class="chip${k===p?' on':''}" href="#/spend?period=${k}${cat?'&cat='+cat:''}">${PER[k]}</a>`).join('')}</div><span class="big">${fm(sum(list,t=>-t.amt))}</span></div>`+
+  `<div class="seg" style="flex-wrap:wrap;margin-bottom:12px"><a class="chip${cat?'':' on'}" href="${u('')}">All</a>${SC.filter(c=>base.some(t=>t.cat===c)).map(c=>`<a class="chip${c===cat?' on':''}" href="${u(c)}">${CATS[c]}</a>`).join('')}</div>`+
+  `<div class="card">${txTable(list)}</div>`}}
+function vendorRows(list){const m={};list.forEach(t=>m[t.slug]=(m[t.slug]||0)+-t.amt);return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([s,v])=>`<tr ${A('#/vendor/'+s)}><td class="v">${VND[s].name}${tip(s)}</td><td class="num">${fm(v)}</td>${CH}</tr>`).join('')}
+function categoryPage(c){if(!SC.includes(c))return;
+  const all=spendTx.filter(t=>t.cat===c),l90=all.filter(t=>t.m>='2026-08'),vals=MON.map(m=>sum(all.filter(t=>t.m===m.id),t=>-t.amt));
+  const CAT90=sum(l90,t=>-t.amt);
+  return{c:[['Finance','#/'],['Breakdown','#/'],[CATS[c]]],t:CATS[c],h:`<div class="card"><div class="split"><div><h2>Last 90 days</h2><div class="n big">${fm(CAT90)}</div></div><div class="ch" id="c1" style="height:44px"></div></div></div>`+
+  `<div class="card" style="margin-top:12px"><div class="cardhead"><h2>Vendors</h2></div><table><tbody>${vendorRows(l90)}</tbody></table></div><div class="card" style="margin-top:12px"><div class="cardhead"><h2>Recent</h2></div>${txTable(all.slice(0,8))}</div>`,
+  ch:{c1:w=>line(w,44,vals,[],{axes:false,label:'Monthly trend'})}}}
+const REC={'payroll-provider':['Twice monthly','Oct 16','$2,000','Payroll provider'],'benefits-provider':['Twice monthly','Oct 20','$250','Benefits provider'],'brex-payment':['Monthly','Oct 25','~$1,900','Brex card payment'],vercel:['Monthly','Nov 1','~$700','Vercel'],'google-workspace':['Monthly','Nov 1','$36','Google Workspace']}
+function recurringPage(s){const r=REC[s];if(!r)return;
+  return{c:[['Finance','#/'],['Upcoming','#/'],[r[3]]],t:r[3],h:`<div class="card">${KV([['Cadence',r[0]],['Next',r[1]],['Expected',r[2]],['Vendor',`<a class="lnk" href="#/vendor/${s}">${VND[s].name} ›</a>`]])}</div><div class="card" style="margin-top:12px"><div class="cardhead"><h2>Past charges</h2></div>${txTable(TX.filter(t=>t.slug===s&&t.amt<0).slice(0,6))}</div>`}}
+function vendorPage(s){const v=VND[s];if(!v||s==='customer'||s==='investor')return;
+  const six=MON.slice(6),vals=six.map(m=>sum(TX.filter(t=>t.slug===s&&t.m===m.id&&t.amt<0),t=>-t.amt)),avg=sum(vals,x=>x)/6,a=vals[5],b=MON.slice(8,9).map(m=>sum(TX.filter(t=>t.slug===s&&t.m===m.id&&t.amt<0),t=>-t.amt))[0];
+  const ch=a&&b?Math.round((a-b)/b*100):null,idx=Math.max(0,SUBS.findIndex(x=>x[0]===s)),sub=SUBS.some(x=>x[0]===s);
+  const list=TX.filter(t=>t.slug===s&&t.m>='2026-05'&&t.amt<0);
+  return{c:[['Finance','#/'],[sub?'Subscriptions':'Vendors','#/'],[v.name]],t:v.name,h:`<div class="kpis"><div class="card kpi"><h2>Monthly avg</h2><div class="n">${fm(avg)}</div><div class="sub">6 mo</div></div><div class="card kpi"><h2>Change</h2><div class="n">${ch===null?'—':`<span class="${ch>0?'dn-d':'up-d'}">${ch>0?'↑':'↓'} ${Math.abs(ch)}%</span>`}</div><div class="sub">vs 3 mo ago</div></div><div class="card kpi"><h2>First seen</h2><div class="n">${MN[(idx*3+2)%12]} 2025</div><div class="sub">&nbsp;</div></div><div class="card kpi"><h2>Paid with</h2><div class="n paid">${pay(s)}</div><div class="sub">&nbsp;</div></div></div>`+
+  cc('c1','Monthly spend',200)+`<div class="card" style="margin-top:12px"><div class="cardhead"><h2>Charges</h2></div><table><thead><tr><th>Date</th><th>Description</th><th class="r">Amount</th><th class="r">Receipt</th><th></th></tr></thead><tbody>${list.map(t=>`<tr ${A('#/txn/'+t.id)}><td class="mute" style="width:70px">${fd(t.date)}</td><td>${t.desc}</td><td class="num">${fc(t.amt)}</td><td class="num mute">${hasR(t)?receiptIcon:'—'}</td>${CH}</tr>`).join('')}</tbody></table></div>`,
+  ch:{c1:w=>bars(w,200,six.map((m,i)=>({l:m.l,v:vals[i]})))}}}
+function tcr(t){const v=VND[t.slug];
+  if(t.xfer||t.amt>0){const a=ACC[t.src];return[['Finance','#/'],['Accounts','#/accounts'],[a.n,'#/account/'+t.src],[t.cpty,'#/txn/'+t.id]]}
+  if(SUBS.some(x=>x[0]===t.slug))return[['Finance','#/'],['Subscriptions','#/'],[v.name,'#/vendor/'+t.slug],[fd(t.date),'#/txn/'+t.id]];
+  return[['Finance','#/'],['Burn','#/burn'],[mlabel(t.m),'#/month/'+t.m],[t.cpty,'#/txn/'+t.id]]}
+const ext=t=>t.src==='brex'?['Open in Brex','https://dashboard.brex.com']:['Open in Mercury','https://app.mercury.com'];
+function txnPage(id){const t=T[id];if(!t)return;const e=ext(t),spend=t.amt<0&&!t.xfer;
+  const rows=[['Merchant',spend?`<a class="lnk" href="#/vendor/${t.slug}">${t.cpty} ›</a>`:t.cpty],['Date posted',fd(t.date).replace(/^(\w+ \d+)$/,'$1, 2026')],['Status',t.status],['Source',srcLabel(t)],[t.src==='brex'?'Cardholder':'Initiated by','Founder'],['Category',spend?`<a class="lnk" href="#/category/${t.cat}">${CATS[t.cat]} ›</a>`:CATS[t.cat]],['Memo',t.desc]];
+  const rc=!spend?'':hasR(t)?`<div class="thumb" ${A('#/receipt/'+id)} aria-label="Open receipt">${rcpt(t,7)}</div>`:`<div class="norc"><span class="mute">No receipt</span><button class="btn">Upload</button></div>`;
+  return{c:tcr(t),t:fd(t.date).includes(',')?fd(t.date):fd(t.date)+', 2026',h:`<div class="cols" style="margin-top:0"><div class="card"><div class="amt">${ta(t)}</div><div class="sub" style="margin-bottom:12px">${t.cpty}</div>${KV(rows)}<div style="margin-top:14px"><a class="btn" href="${e[1]}" target="_blank" rel="noopener">${e[0]} ↗</a></div></div>${spend?`<div class="card"><div class="cardhead"><h2>Receipt</h2></div>${rc}</div>`:''}</div>`}}
+function rcpt(t,px){const a=-t.amt;let ls=[[t.desc,a]];
+  if(t.slug==='vercel'&&t.k==='use'){const x=Math.round(a*.5),y=Math.round(a*.3);ls=[['Bandwidth',x],['Edge requests',y],['Build minutes',a-x-y]]}
+  if(t.slug==='vercel'&&t.k==='plan')ls=[['Pro plan · 20 seats',a]];
+  const n=[...t.id].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7)%90000+10000;
+  return `<div class="rcpt" style="font-size:${px}px"><b>${t.cpty}</b><div class="rs">Receipt · INV-${n}</div><div class="rs">${fd(t.date)}${t.date.startsWith('2026')&&!fd(t.date).includes(',')?', 2026':''}</div><hr>${ls.map(([l,v])=>`<div class="li"><span>${l}</span><span>${fc(v)}</span></div>`).join('')}<div class="li"><span>Tax</span><span>$0.00</span></div><hr><div class="li tot"><span>Total</span><span>${fc(a)}</span></div><div class="rs">${srcLabel(t)}</div></div>`}
+function receiptPage(id){const t=T[id];if(!t||!hasR(t))return;return{c:[...tcr(t),['Receipt']],t:'Receipt',h:`<div class="card rwrap">${rcpt(t,14)}</div>`}}
+
+function page(seg,q){const[a,b]=seg;
+  switch(a){case'accounts':return accountsPage();case'account':return accountPage(b);case'burn':return burnPage();case'month':return monthPage(b);case'runway':return runwayPage();case'spend':return spendPage(q);case'category':return categoryPage(b);case'recurring':return recurringPage(b);case'vendor':return vendorPage(b);case'txn':return txnPage(b);case'receipt':return receiptPage(b)}}
+function route(){
+  const[p,qs]=location.hash.replace(/^#\/?/,'').split('?'),seg=p.split('/').filter(Boolean);
+  live.forEach(e=>ro.unobserve(e));live=[];
+  document.body.classList.toggle('detail',seg.length>0);
+  $('main').scrollTop=0;
+  if(!seg.length)return;
+  const r=page(seg,new URLSearchParams(qs||''))||{c:[['Finance','#/'],['Not found']],t:'Not found',h:''};
+  const prev=r.c[r.c.length-2]||['Finance','#/'];
+  $('#detail').innerHTML=`<div class="head dh"><a class="back" href="${prev[1]}">← ${prev[0]}</a><nav class="crumbs" aria-label="Breadcrumb">${r.c.map((x,i)=>i===r.c.length-1?`<span class="cur">${x[0]}</span>`:`<a href="${x[1]}">${x[0]}</a><i>/</i>`).join(' ')}</nav><label class="ask" for="chat-open">${AI}Ask agent</label></div><h1 class="ttl">${r.t}</h1>${r.sub?`<div class="sub" style="margin:-2px 0 12px">${r.sub}</div>`:'<div style="height:12px"></div>'}${r.h}`;
+  Object.entries(r.ch||{}).forEach(([id,fn])=>mount(document.getElementById(id),fn));
+}
+
+/* ---- dashboard wiring ---- */
+const bk=$('#bk'),catHtml=bk.innerHTML;
+function venHtml(){const m={};spendTx.filter(t=>t.m>='2026-08').forEach(t=>m[t.slug]=(m[t.slug]||0)+-t.amt);const r=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  return r.map(([s,v],i)=>`<div class="bk" ${A('#/vendor/'+s)}><span>${VND[s].name}</span><span class="track"><i style="width:${v/r[0][1]*100}%"></i></span><span class="num">${fm(v)}</span><span class="chev">›</span></div>`).join('')}
+document.addEventListener('click',e=>{
+  const bt=e.target.closest('[data-bk]');if(bt){bt.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===bt));bk.innerHTML=bt.dataset.bk==='ven'?venHtml():catHtml;return}
+  const el=e.target.closest('[data-href]');if(el)location.hash=el.dataset.href});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'){const el=e.target.closest&&e.target.closest('[data-href]');if(el)location.hash=el.dataset.href}});
+document.querySelectorAll('#dash [data-href]').forEach(e=>{e.tabIndex=0;e.setAttribute('role','link')});
+document.querySelectorAll('#dash tr[data-slug]').forEach(r=>{r.querySelector('td.v').insertAdjacentHTML('beforeend',tip(r.dataset.slug))});
+mount($('#c-burn'),burnBars,true);
+addEventListener('hashchange',route);route();
+})();
+
+</script>
+</body>
+</html>

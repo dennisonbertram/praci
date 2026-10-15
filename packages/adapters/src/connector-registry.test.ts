@@ -76,3 +76,18 @@ describe("ConnectorRegistry", () => {
 function tool(name: string): ConnectorTool {
   return { name, description: name, inputSchema: { type: "object", properties: {} } };
 }
+
+describe("ConnectorRegistry discovery filter", () => {
+  it("discovers only the named connectors when asked", async () => {
+    const registry = new ConnectorRegistry(new DestinationEmulator(), [
+      new StubConnector("mcp", [tool("mercury.read")]),
+      new StubConnector("composio", [tool("gmail.send")]),
+    ]);
+    expect((await registry.discoverTools(context, ["mcp"])).map((t) => t.name)).toEqual([
+      "mercury.read",
+    ]);
+    expect((await registry.discoverTools(context)).map((t) => t.name)).toEqual(
+      expect.arrayContaining(["mercury.read", "gmail.send"]),
+    );
+  });
+});

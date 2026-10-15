@@ -1,4 +1,4 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { InboxListOutput, InboxMark, InboxTodo, MailRow } from "@rakazo/contracts";
 import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
@@ -7,7 +7,9 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -49,10 +51,13 @@ const ALL = "all";
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 6;
 const STATUS_MS = 6_000;
+const PREFETCH_DELAY_MS = 250;
 /** Marks the `?mail=` history entry the list pushed, so closing the message can go Back. */
 const LIST_OPEN = { inboxList: true };
 
-type Status = { kind: "marked"; messageId: string; mark: InboxMark };
+type Status =
+  | { kind: "marked"; messageId: string; mark: InboxMark }
+  | { kind: "archived"; messageId: string };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
 type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
@@ -128,6 +133,7 @@ export function InboxPage({
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const polls = useRef(0);
+  const archiving = useRef(new Map<string, Promise<boolean>>());
   const [composing, setComposing] = useState(false);
 
   // A message sent from any composer: reload, since the send synced the account.
@@ -251,7 +257,19 @@ export function InboxPage({
       return [{ ...row, needsReply: null }];
     });
   }, [shown, moreRows, filtered]);
-  const groups = useMemo(() => groupInbox(rows, new Date()), [rows]);
+  // The view and category buttons show only when triage can fill them in.
+  const triage = Boolean(shown?.enabled ?? data?.enabled);
+  const narrowed = triage && (view === "important" || Boolean(category));
+  // A search or narrowed list is one date-ordered list under a result count, not Needs reply / Today / Earlier.
+  const resultsView = filtered || narrowed;
+  const groups = useMemo(
+    () =>
+      groupInbox(
+        resultsView ? rows.map((row) => ({ ...row, needsReply: null })) : rows,
+        new Date(),
+      ),
+    [rows, resultsView],
+  );
   const ids = useMemo(
     () => [...groups.needsReply, ...groups.today, ...groups.earlier].map((row) => row.id),
     [groups],
@@ -266,9 +284,6 @@ export function InboxPage({
   };
   const setParam = (name: Parameters<typeof setInboxListParam>[1], value: string) =>
     setParams(setInboxListParam(params, name, value));
-  // The view and category buttons show only when triage can fill them in.
-  const triage = Boolean(shown?.enabled);
-  const narrowed = triage && (view === "important" || Boolean(category));
   const showTodos =
     triage && !filtered && !narrowed && shown?.triageBlocked?.reason !== "needs_consent";
   const loading =
@@ -304,8 +319,31 @@ export function InboxPage({
     const neighbor = ids[index + 1] ?? ids[index - 1];
     if (selectedId === messageId) setSelectedId(neighbor);
     patchRows((list) => list.filter((row) => row.id !== messageId));
-    change(rpc.inbox.archive({ messageId }));
+    setStatus({ kind: "archived", messageId });
+    const call = rpc.inbox.archive({ messageId });
+    // Resolves to whether the archive saved, so Undo never overtakes it.
+    archiving.current.set(
+      messageId,
+      call.then(
+        () => true,
+        () => false,
+      ),
+    );
+    change(call);
     return neighbor;
+  };
+  const unarchive = async (messageId: string) => {
+    setStatus(null);
+    const saved = await archiving.current.get(messageId);
+    archiving.current.delete(messageId);
+    // A failed archive already showed its error and reloaded the list.
+    if (saved === false) return;
+    setError("");
+    rpc.inbox
+      .unarchive({ messageId })
+      .then(onRefreshed)
+      .catch((cause) => setError(errorText(cause)))
+      .then(() => setReload((n) => n + 1));
   };
   // The row changes at once; a failed save puts it back.
   const mark = (messageId: string, value: InboxMark | null) => {
@@ -362,10 +400,30 @@ export function InboxPage({
     setParams(next, { replace: true, state: location.state });
   };
   const openRow = [...(shown?.rows ?? []), ...moreRows].find((row) => row.id === openId);
+  // A message that stays open for 800ms is read once. Passing through it with j/k, or selecting in
+  // the list, does not. The id is remembered even when the row is already read, so Mark unread sticks.
+  const readFor = useRef<string | null>(null);
+  const setReadRef = useRef(setRead);
+  setReadRef.current = setRead;
+  const openUnread = openRow?.unread;
+  const openRowId = openRow?.id;
+  useEffect(() => {
+    if (!openId) {
+      readFor.current = null;
+      return;
+    }
+    if (!openRowId || readFor.current === openId) return;
+    const timer = setTimeout(() => {
+      readFor.current = openId;
+      if (openUnread) setReadRef.current(openId, true);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [openId, openRowId, openUnread]);
   const openIndex = openId ? ids.indexOf(openId) : -1;
+  const focusSearch = () => searchRef.current?.querySelector("input")?.focus();
   const clearFilters = () => {
     const next = new URLSearchParams(params);
-    for (const name of ["filter", "category", "view", "mail"]) next.delete(name);
+    for (const name of ["q", "filter", "category", "view", "mail"]) next.delete(name);
     setParams(next);
   };
 
@@ -375,17 +433,22 @@ export function InboxPage({
     enabled: !paused && !openId && !composing && !help,
     select: setSelectedId,
     open: openMessage,
-    focusSearch: () => searchRef.current?.querySelector("input")?.focus(),
+    focusSearch,
     compose: accounts.length > 0 ? () => setComposing(true) : undefined,
-    archive: filtered ? undefined : archive,
+    archive: (id) => {
+      if (rows.find((row) => row.id === id)?.inInbox) archive(id);
+    },
     help: () => setHelp(true),
   });
   // Warm the cache so the first messages and the selected one open instantly.
   useEffect(() => {
     for (const id of ids.slice(0, 3)) prefetchInboxMessage(id);
   }, [ids]);
+  // Debounced so holding j or k does not fetch every row passed over.
   useEffect(() => {
-    if (selectedId) prefetchInboxMessage(selectedId);
+    if (!selectedId) return;
+    const timer = setTimeout(() => prefetchInboxMessage(selectedId), PREFETCH_DELAY_MS);
+    return () => clearTimeout(timer);
   }, [selectedId]);
   // Back from a message lands on its row.
   const wasOpen = useRef(false);
@@ -400,6 +463,27 @@ export function InboxPage({
       );
     }
   }, [openId, selectedId]);
+
+  const toast = status ? (
+    <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
+      {status.kind === "archived" ? (
+        <Trans>Archived</Trans>
+      ) : status.mark === "noise" ? (
+        <Trans>Marked noise</Trans>
+      ) : (
+        <Trans>Marked important</Trans>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() =>
+          status.kind === "archived" ? unarchive(status.messageId) : mark(status.messageId, null)
+        }
+      >
+        <Trans>Undo</Trans>
+      </Button>
+    </div>
+  ) : null;
 
   return (
     <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
@@ -482,7 +566,7 @@ export function InboxPage({
                 ? categoryLabels()[category]
                 : null}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="min-w-48">
             <DropdownMenuRadioGroup
               value={filter ?? (triage ? category : undefined) ?? ""}
               onValueChange={(value) => {
@@ -499,19 +583,29 @@ export function InboxPage({
                 </DropdownMenuRadioItem>
               ))}
               <DropdownMenuSeparator />
-              {(["primary", "promotions", "social", "updates"] as const).map((name) => (
-                <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                  {filterLabels()[name]}
-                </DropdownMenuRadioItem>
-              ))}
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>
+                  <Trans>Gmail tabs</Trans>
+                </DropdownMenuLabel>
+                {(["primary", "promotions", "social", "updates"] as const).map((name) => (
+                  <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                    {filterLabels()[name]}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuGroup>
               {triage ? (
                 <>
                   <DropdownMenuSeparator />
-                  {InboxViewCategorySchema.options.map((name) => (
-                    <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                      {categoryLabels()[name]}
-                    </DropdownMenuRadioItem>
-                  ))}
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>
+                      <Trans>Categories</Trans>
+                    </DropdownMenuLabel>
+                    {InboxViewCategorySchema.options.map((name) => (
+                      <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                        {categoryLabels()[name]}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuGroup>
                 </>
               ) : null}
             </DropdownMenuRadioGroup>
@@ -591,7 +685,7 @@ export function InboxPage({
             <Skeleton key={n} className="h-9 w-full" />
           ))}
         </div>
-      ) : shown && shown.rows.length === 0 ? (
+      ) : shown && rows.length === 0 ? (
         failed ? null : (
           <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
             {query ? (
@@ -599,8 +693,8 @@ export function InboxPage({
                 <p>
                   <Trans>No results for "{query}"</Trans>
                 </p>
-                <Button variant="outline" size="sm" onClick={() => setParam("q", "")}>
-                  <Trans>Clear search</Trans>
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  <Trans>Clear</Trans>
                 </Button>
               </>
             ) : filter || category || view === "important" ? (
@@ -609,7 +703,7 @@ export function InboxPage({
                   <Trans>No mail matches this filter</Trans>
                 </p>
                 <Button variant="outline" size="sm" onClick={clearFilters}>
-                  <Trans>Clear filter</Trans>
+                  <Trans>Clear</Trans>
                 </Button>
               </>
             ) : (
@@ -641,41 +735,81 @@ export function InboxPage({
               }
             />
           ) : null}
+          {resultsView ? (
+            <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                {more.token && fresh
+                  ? plural(rows.length, { one: "#+ result", other: "#+ results" })
+                  : plural(rows.length, { one: "# result", other: "# results" })}
+              </span>
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <Trans>Clear</Trans>
+              </Button>
+            </div>
+          ) : null}
           <InboxGroup
             title={<Trans>Needs reply</Trans>}
             hideAttention
             rows={groups.needsReply}
             onOpen={openMessage}
             onMark={triage ? mark : undefined}
-            onArchive={filtered ? undefined : archive}
+            onArchive={archive}
             onRead={setRead}
             selectedId={selectedId}
             today={false}
           />
-          <InboxGroup
-            title={<Trans>Today</Trans>}
-            rows={groups.today}
-            onOpen={openMessage}
-            onMark={triage ? mark : undefined}
-            onArchive={filtered ? undefined : archive}
-            onRead={setRead}
-            selectedId={selectedId}
-            today
-          />
-          <InboxGroup
-            title={<Trans>Earlier</Trans>}
-            rows={groups.earlier}
-            onOpen={openMessage}
-            onMark={triage ? mark : undefined}
-            onArchive={filtered ? undefined : archive}
-            onRead={setRead}
-            selectedId={selectedId}
-            today={false}
-          />
+          {resultsView ? (
+            <InboxGroup
+              rows={[...groups.today, ...groups.earlier]}
+              onOpen={openMessage}
+              onMark={triage ? mark : undefined}
+              onArchive={archive}
+              onRead={setRead}
+              selectedId={selectedId}
+            />
+          ) : (
+            <>
+              <InboxGroup
+                title={<Trans>Today</Trans>}
+                rows={groups.today}
+                onOpen={openMessage}
+                onMark={triage ? mark : undefined}
+                onArchive={archive}
+                onRead={setRead}
+                selectedId={selectedId}
+                today
+              />
+              <InboxGroup
+                title={<Trans>Earlier</Trans>}
+                rows={groups.earlier}
+                onOpen={openMessage}
+                onMark={triage ? mark : undefined}
+                onArchive={archive}
+                onRead={setRead}
+                selectedId={selectedId}
+                today={false}
+              />
+            </>
+          )}
           {filtered && fresh && more.token ? (
             <div className="grid place-items-center pb-2">
               <Button variant="outline" size="sm" disabled={more.busy} onClick={loadMore}>
-                <Trans>Load more</Trans>
+                {more.busy ? <Trans>Loading…</Trans> : <Trans>Load more</Trans>}
+              </Button>
+            </div>
+          ) : filtered && fresh && rows.length > 0 ? (
+            <p className="pb-2 text-center text-xs text-muted-foreground">
+              <Trans>No more results</Trans>
+            </p>
+          ) : !resultsView && rows.length > 0 ? (
+            <div className="grid place-items-center pb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={focusSearch}
+              >
+                <Trans>Search older mail</Trans>
               </Button>
             </div>
           ) : null}
@@ -690,7 +824,7 @@ export function InboxPage({
         onNavigate={goToMessage}
         unread={openRow?.unread}
         onArchive={
-          openRow && !filtered
+          openRow?.inInbox
             ? () => {
                 const next = archive(openRow.id);
                 if (next) goToMessage(next);
@@ -699,26 +833,14 @@ export function InboxPage({
             : undefined
         }
         onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
+        notice={openId ? toast : null}
       />
       <InboxShortcuts open={help} onClose={() => setHelp(false)} />
       <div
         role="status"
         className="pointer-events-none fixed inset-x-0 bottom-4 z-100 flex justify-center px-4"
       >
-        {status ? (
-          <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
-            {status.mark === "noise" ? (
-              <Trans>Marked noise</Trans>
-            ) : (
-              <Trans>Marked important</Trans>
-            )}
-            {status.kind === "marked" ? (
-              <Button variant="ghost" size="sm" onClick={() => mark(status.messageId, null)}>
-                <Trans>Undo</Trans>
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
+        {openId ? null : toast}
       </div>
       {composing ? (
         <ComposeEmail

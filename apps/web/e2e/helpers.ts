@@ -150,3 +150,41 @@ export async function createNamedBot(
   await expect(page.getByPlaceholder(`Message ${name}`)).toBeVisible();
   return bot.id;
 }
+
+/** Opens the Integrations page from the sidebar. */
+export async function openIntegrations(page: Page) {
+  await page.getByTestId("sidebar-integrations").click();
+  await expect(page).toHaveURL(/\/app\/integrations$/);
+  await expect(page.getByRole("heading", { name: "Integrations", level: 1 })).toBeVisible();
+}
+
+/** Runs the connect dialog for a managed app through sign-in, agent choice and the done step. */
+export async function finishConnectDialog(page: Page, appName: string) {
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(dialog.getByText(`${appName} connected`, { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+}
+
+/**
+ * From the Integrations page, connects two Gmail accounts through the connect dialog and the
+ * app's detail page, and names the second one. Leaves the browser on Gmail's detail page.
+ */
+export async function connectTwoGmailAccounts(page: Page, secondName = "Work") {
+  await page.getByRole("button", { name: "Connect Gmail", exact: true }).click();
+  await finishConnectDialog(page, "Gmail");
+  await page.getByRole("link", { name: "Gmail", exact: true }).click();
+  await page.getByRole("button", { name: "Add another account", exact: true }).click();
+  await finishConnectDialog(page, "Gmail");
+  const accounts = page.getByRole("button", { name: "Rename", exact: true });
+  await expect(accounts).toHaveCount(2);
+  await accounts.nth(1).click();
+  const renamed = page.waitForResponse(
+    (response) => response.url().includes("connections/rename") && response.ok(),
+  );
+  await page.getByLabel("Account name").fill(secondName);
+  await page.getByLabel("Account name").press("Enter");
+  await renamed;
+  await expect(page.getByText(secondName, { exact: true })).toBeVisible();
+}

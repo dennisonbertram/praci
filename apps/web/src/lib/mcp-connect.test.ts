@@ -44,6 +44,32 @@ describe("connectMcpOauth", () => {
     expect([...storage.values()]).toEqual(["1"]);
   });
 
+  it("closes the sign-in window when the attempt times out", async () => {
+    vi.useFakeTimers();
+    vi.mocked(rpc.mcp.oauth.begin).mockResolvedValue({
+      status: "authorization_required",
+      authorizationUrl: "https://provider.example/authorize",
+    } as never);
+    const popup = {
+      closed: false,
+      close: vi.fn(),
+      location: { href: "about:blank" },
+      sessionStorage: { setItem: vi.fn() },
+    };
+    vi.stubGlobal("window", {
+      location: { origin: "http://127.0.0.1:5173" },
+      open: vi.fn(() => popup),
+      setTimeout,
+      clearTimeout,
+    });
+
+    const result = connectMcpOauth("server-id");
+    await vi.advanceTimersByTimeAsync(3 * 60 * 1000);
+
+    await expect(result).resolves.toBe("cancelled");
+    expect(popup.close).toHaveBeenCalled();
+  });
+
   it("asks the API for a fresh authorization when reauthorizing an already connected server", async () => {
     vi.mocked(rpc.mcp.oauth.begin).mockResolvedValue({ status: "already_connected" } as never);
     vi.stubGlobal("window", { location: { origin: "http://127.0.0.1:5173" } });

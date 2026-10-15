@@ -1,7 +1,6 @@
 import { expect, type Route, test } from "@playwright/test";
 import type { McpServer } from "@rakazo/contracts";
-import { MCP_OAUTH_CHANNEL } from "../src/lib/mcp-connect";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
+import { captureScreenshot, completeOnboarding, openIntegrations, signup } from "./helpers";
 
 test("connects an MCP server through the OAuth popup callback", async ({ page }, testInfo) => {
   const stamp = Date.now();
@@ -9,6 +8,8 @@ test("connects an MCP server through the OAuth popup callback", async ({ page },
   await completeOnboarding(page);
 
   let oauthStatus: McpServer["oauthStatus"] = "none";
+  // A sign-in was started and never finished.
+  let oauthAttempted = true;
   let hasSecret = false;
   const server: McpServer = {
     id: "mcp-oauth-server",
@@ -24,6 +25,7 @@ test("connects an MCP server through the OAuth popup callback", async ({ page },
     headerKeys: [],
     hasSecret,
     oauthStatus,
+    oauthAttempted,
     enabled: true,
     revision: 1,
     createdAt: "2026-08-24T00:00:00.000Z",
@@ -42,7 +44,7 @@ test("connects an MCP server through the OAuth popup callback", async ({ page },
   await page.context().route("**/rpc/mcp/servers/list", async (route) => {
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ json: [{ ...server, hasSecret, oauthStatus }] }),
+      body: JSON.stringify({ json: [{ ...server, hasSecret, oauthStatus, oauthAttempted }] }),
     });
   });
   await page.context().route("**/rpc/mcp/assignments/all", async (route) => {
@@ -53,6 +55,7 @@ test("connects an MCP server through the OAuth popup callback", async ({ page },
       json: {
         serverId: server.id,
         redirectUri: `${browserOrigin}/mcp/oauth/callback`,
+        reauthorize: true,
       },
     });
     await route.fulfill({
@@ -77,48 +80,36 @@ test("connects an MCP server through the OAuth popup callback", async ({ page },
     markCompletionStarted();
     await completionGate;
     oauthStatus = "connected";
+    oauthAttempted = false;
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({ json: { ok: true } }),
     });
   });
 
-  await page.getByText("Integrations", { exact: true }).click();
-  await page.getByTestId("integrations-advanced").evaluate((element) => {
-    (element as HTMLDetailsElement).open = true;
-  });
-  await page.getByRole("button", { name: "Manage MCP servers", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "MCP servers" })).toBeVisible();
-  await expect(page.getByText("Linear MCP", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Access token (optional)")).toBeHidden();
+  await openIntegrations(page);
+  // A server whose sign-in was started and never finished reads as needing a reconnect, with Reconnect inline.
+  const card = page.getByRole("main");
+  await expect(card.getByText("Needs reconnect", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "mcp-oauth-ready");
 
-  await page.getByText("Advanced", { exact: true }).click();
-  await expect(page.getByLabel("Access token (optional)")).toBeVisible();
-  await page.getByText("Advanced", { exact: true }).click();
-
   const popupPromise = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Connect OAuth", exact: true }).click();
+  await card.getByRole("button", { name: "Reconnect", exact: true }).click();
   const popup = await popupPromise;
   await completionStarted;
   await expect(popup.getByText("Finishing MCP connection…", { exact: true })).toBeVisible();
   await captureScreenshot(popup, testInfo, "mcp-oauth-callback");
 
   releaseCompletion();
-  await expect(page.getByText("OAuth connected", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Reconnect OAuth", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Disconnect", exact: true })).toBeVisible();
+  await expect(card.locator('[data-status="connected"]')).toBeVisible();
   await expect.poll(() => popup.isClosed()).toBe(true);
   await captureScreenshot(page, testInfo, "mcp-oauth-connected");
 
   oauthStatus = "reconnect";
+  oauthAttempted = false;
   hasSecret = true;
-  await page.evaluate((channelName) => {
-    const channel = new BroadcastChannel(channelName);
-    channel.postMessage({ type: "mcp-oauth-complete" });
-    channel.close();
-  }, MCP_OAUTH_CHANNEL);
-  await expect(page.getByText("OAuth expired", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(card.getByText("Needs reconnect", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "mcp-oauth-expired");
 });
 
@@ -137,6 +128,7 @@ function mcpRow(overrides: Partial<McpServer> = {}): McpServer {
     headerKeys: [],
     hasSecret: true,
     oauthStatus: "connected",
+    oauthAttempted: false,
     enabled: true,
     revision: 1,
     createdAt: "2026-08-24T00:00:00.000Z",
@@ -204,15 +196,14 @@ test("manages a connected MCP server from Integrations: reconnect, rename, remov
     });
   });
 
-  await page.getByText("Integrations", { exact: true }).click();
-  const list = page.getByTestId("connected-mcp-servers");
-  await expect(list.getByText("MCP server", { exact: true })).toBeVisible();
+  await openIntegrations(page);
+  await page.getByRole("link", { name: "MCP server", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/integrations\/mcp\/managed-server$/);
+  await expect(page.getByRole("heading", { name: "MCP server", level: 1 })).toBeVisible();
 
   // Reconnect asks the API to start a fresh authorization even though a token exists.
-  await list.getByRole("button", { name: "Manage MCP server" }).click();
-  await captureScreenshot(page, testInfo, "mcp-manage-menu");
   const popupPromise = page.waitForEvent("popup");
-  await page.getByRole("menuitem", { name: "Reconnect" }).click();
+  await page.getByRole("button", { name: "Reconnect", exact: true }).click();
   const popup = await popupPromise;
   await expect.poll(() => reconnectDone).toBe(true);
   await expect.poll(() => popup.isClosed()).toBe(true);
@@ -225,27 +216,30 @@ test("manages a connected MCP server from Integrations: reconnect, rename, remov
       },
     },
   ]);
-  await expect(list.getByText("MCP server", { exact: true })).toBeVisible();
 
-  await list.getByRole("button", { name: "Manage MCP server" }).click();
-  await page.getByRole("menuitem", { name: "Rename" }).click();
-  const nameInput = list.getByRole("textbox", { name: "Name" });
+  await page.getByRole("button", { name: "Rename", exact: true }).click();
+  const nameInput = page.getByRole("textbox", { name: "Name" });
   await expect(nameInput).toHaveValue("MCP server");
-  // Typing without clicking proves the menu closing did not take focus back.
   await expect(nameInput).toBeFocused();
+  // Escape cancels only the rename.
+  await page.keyboard.press("Escape");
+  await expect(nameInput).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "MCP server", level: 1 })).toBeVisible();
+  await page.getByRole("button", { name: "Rename", exact: true }).click();
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.type("Brex");
   await page.keyboard.press("Enter");
-  await expect(list.getByText("Brex", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brex", level: 1 })).toBeVisible();
   expect(renames).toEqual([{ json: { id: "managed-server", name: "Brex" } }]);
+  await captureScreenshot(page, testInfo, "mcp-manage-detail");
 
-  await list.getByRole("button", { name: "Manage Brex" }).click();
-  await page.getByRole("menuitem", { name: "Remove" }).click();
+  await page.getByRole("button", { name: "Remove Brex", exact: true }).click();
   const dialog = page.getByRole("alertdialog");
   await expect(dialog.getByText("Remove Brex?")).toBeVisible();
   await captureScreenshot(page, testInfo, "mcp-manage-remove-confirm");
-  await dialog.getByRole("button", { name: "Remove" }).click();
-  await expect(page.getByTestId("connected-mcp-servers")).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Remove Brex", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/integrations$/);
+  await expect(page.getByRole("link", { name: "Brex", exact: true })).toHaveCount(0);
   expect(removes).toEqual([{ json: { id: "managed-server" } }]);
 });
 
@@ -277,23 +271,16 @@ test("adds an MCP server by URL under a readable name without Continue or Skip",
       body: JSON.stringify({ json: { status: "already_connected" } }),
     }),
   );
-  // The mocked server has no database row, so the real approve call would fail.
-  await page
-    .context()
-    .route("**/rpc/mcp/assignments/approve", (route) =>
-      route.fulfill({ contentType: "application/json", body: JSON.stringify({ json: {} }) }),
-    );
-
-  await page.getByText("Integrations", { exact: true }).click();
-  await page.getByRole("button", { name: "Browse MCP servers" }).click();
-  await page.getByText("Add server URL", { exact: true }).click();
-  await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Skip", exact: true })).toHaveCount(0);
-  await page.getByRole("textbox", { name: "Server URL" }).fill("https://api.brex.test/mcp");
-  await page.getByRole("button", { name: "Connect", exact: true }).click();
-
-  const list = page.getByTestId("connected-mcp-servers");
-  await expect(list.getByText("Brex", { exact: true })).toBeVisible();
+  await openIntegrations(page);
+  await page.getByRole("button", { name: "Add custom connection", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("textbox", { name: "Server URL" }).fill("https://api.brex.test/mcp");
+  await dialog.getByRole("button", { name: "Connect", exact: true }).click();
+  // The server needs no browser sign-in, so the dialog moves straight to choosing agents.
+  await expect(dialog.getByText("Which agents can use Brex?")).toBeVisible();
+  await dialog.getByRole("button", { name: "Skip", exact: true }).click();
+  await expect(dialog.getByText("Brex connected", { exact: true })).toBeVisible();
   expect(created).toEqual(["Brex"]);
-  await expect(page.getByRole("textbox", { name: "Server URL" })).toBeHidden();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Brex", exact: true })).toBeVisible();
 });

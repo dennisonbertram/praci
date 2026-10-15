@@ -165,6 +165,11 @@ describe("nativeGoogleAvailable", () => {
       }),
     ).toBe(true);
   });
+
+  it("is off in a desktop app built before the sign-in bridge existed", () => {
+    const { oauth: _missing, ...older } = desktop("darwin");
+    expect(nativeGoogleAvailable(older as RakazoDesktop)).toBe(false);
+  });
 });
 
 describe("signInWithSystemBrowser", () => {
