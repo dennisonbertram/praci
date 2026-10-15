@@ -146,10 +146,16 @@ export function FinanceCryptoPage() {
   const [connecting, setConnecting] = useState(false);
   const data = q.data;
   const updated = data?.summary.lastSyncedAt ? formatRelativeTime(data.summary.lastSyncedAt) : "";
-  const unpriced = data?.summary.unpricedTokenCount ?? 0;
   const holdings = [...(data?.holdings ?? [])].sort(
     (a, b) => (b.usdValueCents ?? -1) - (a.usdValueCents ?? -1),
   );
+  // The Wallets section is wallet-only: the summary's totals also include exchanges.
+  const walletCents = (data?.summary.byWallet ?? []).reduce((sum, w) => sum + w.cents, 0);
+  const exchangeUnpriced = (exchanges.data ?? []).reduce(
+    (sum, x) => sum + x.balances.filter((b) => b.usdValueCents === null).length,
+    0,
+  );
+  const unpriced = Math.max(0, (data?.summary.unpricedTokenCount ?? 0) - exchangeUnpriced);
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Crypto` }]}
@@ -188,7 +194,7 @@ export function FinanceCryptoPage() {
               <>
                 <div>
                   <div className="text-[22px] font-semibold leading-tight tabular-nums">
-                    {moneyExact(data.summary.totalCents)}
+                    {moneyExact(walletCents)}
                   </div>
                   {unpriced > 0 ? (
                     <div className="text-[11px] text-muted-foreground">
