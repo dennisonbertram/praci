@@ -154,7 +154,7 @@ import { VoiceChatCard } from "../components/call/VoiceChatCard";
 import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
-import { FinanceCards } from "../components/FinanceCards";
+import { FinanceCardGroup } from "../components/FinanceCards";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import {
   LIVE_TOOL_STEP_WINDOW,
@@ -5420,7 +5420,29 @@ const Transcript = memo(function Transcript({
             {loadingOlder ? t`Loading…` : t`Load earlier messages`}
           </button>
         ) : null}
-        {groupVoiceChats(reactionView.visibleMessages).map((item) => {
+        {foldFinanceRuns(groupVoiceChats(reactionView.visibleMessages)).map((item) => {
+          if (item.kind === "financeRun") {
+            const first = item.messages[0];
+            if (!first) return null;
+            return (
+              <div key={first.id} data-message-id={first.id} className="relative py-0.5">
+                {separatorIds.has(first.id) ? (
+                  <TimeSeparator createdAt={first.createdAt} locale={i18n.locale || "en"} />
+                ) : null}
+                <FinanceCardGroup
+                  items={item.messages.flatMap((m) =>
+                    m.blocks.flatMap((block, i) =>
+                      block.kind === "finance" ? [{ id: `${m.id}:${i}`, block }] : [],
+                    ),
+                  )}
+                  onAsk={(id, quote) => {
+                    const message = item.messages.find((m) => id.startsWith(`${m.id}:`));
+                    if (message) onQuote(message, quote);
+                  }}
+                />
+              </div>
+            );
+          }
           if (item.kind === "voiceChat") {
             return (
               <div key={item.key}>
@@ -5495,6 +5517,7 @@ const Transcript = memo(function Transcript({
                       speaking={speakingMessageId === message.id}
                       onSpeak={() => onSpeak(message)}
                       onOpenComputer={onOpenComputer}
+                      onQuote={onQuote}
                       showToolActivity={showToolActivity}
                     />
                     {peerReceipt ? null : (
@@ -6869,6 +6892,41 @@ function ComputerReleaseActions({
   );
 }
 
+type TranscriptItem = ReturnType<typeof groupVoiceChats<ThreadMessage>>[number];
+type FinanceRun = { kind: "financeRun"; messages: ThreadMessage[] };
+
+const isFinanceOnly = (message: ThreadMessage) =>
+  message.role === "bot" &&
+  message.blocks.length > 0 &&
+  message.blocks.every((block) => block.kind === "finance");
+
+/** Each finance tool call is its own bot message; fold 2+ consecutive ones from the same bot so they tile as one group. A lone one stays a normal message. */
+function foldFinanceRuns(items: TranscriptItem[]): (TranscriptItem | FinanceRun)[] {
+  const out: (TranscriptItem | FinanceRun)[] = [];
+  let run: TranscriptItem[] = [];
+  const flush = () => {
+    if (run.length >= 2) {
+      out.push({
+        kind: "financeRun",
+        messages: run.flatMap((i) => (i.kind === "message" ? [i.message] : [])),
+      });
+    } else out.push(...run);
+    run = [];
+  };
+  for (const item of items) {
+    if (item.kind === "message" && isFinanceOnly(item.message)) {
+      const prev = run[0];
+      if (prev?.kind === "message" && prev.message.botId !== item.message.botId) flush();
+      run.push(item);
+    } else {
+      flush();
+      out.push(item);
+    }
+  }
+  flush();
+  return out;
+}
+
 const MessageView = memo(function MessageView({
   artifactTarget,
   canAnswer,
@@ -6888,6 +6946,7 @@ const MessageView = memo(function MessageView({
   speaking,
   onSpeak,
   onOpenComputer,
+  onQuote,
   showToolActivity,
 }: {
   artifactTarget: ArtifactTarget;
@@ -6908,6 +6967,7 @@ const MessageView = memo(function MessageView({
   speaking: boolean;
   onSpeak: () => void;
   onOpenComputer: (botId?: string) => void;
+  onQuote: (message: ThreadMessage, quote: string) => void;
   showToolActivity: boolean;
 }) {
   const { t } = useLingui();
@@ -7326,7 +7386,10 @@ const MessageView = memo(function MessageView({
         if (block.kind === "finance") {
           return (
             <div key={i} className="flex justify-start">
-              <FinanceCards block={block} />
+              <FinanceCardGroup
+                items={[{ id: `${message.id}:${i}`, block }]}
+                onAsk={(_, quote) => onQuote(message, quote)}
+              />
             </div>
           );
         }
