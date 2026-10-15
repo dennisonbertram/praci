@@ -342,8 +342,8 @@ export const cryptoData: FinanceCryptoOutput = {
 
 // Invented runway figures with crypto, and a short balance history.
 export const runwayData: FinanceRunwayOutput = {
-  runwayCrypto: "stablecoins",
-  cashCents: 9_000_000,
+  runwayCrypto: "bank",
+  cashCents: 7_500_000,
   breakdown: { bankCents: 7_500_000, stablecoinCents: 1_500_000, otherCryptoCents: 800_000 },
   monthlyBurnCents: 900_000,
   runway: { months: 10, runOutDate: "2027-08-15" },
