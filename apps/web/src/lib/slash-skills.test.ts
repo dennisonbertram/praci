@@ -20,7 +20,10 @@ it("lists the person's own skills ahead of bundled ones even past the cap", () =
 });
 
 it("keeps each group in its original order", () => {
-  const result = slashSkillOptions([bundled[0]!, skill("a", "user"), bundled[1]!, skill("b", "user")], "");
+  const result = slashSkillOptions(
+    [bundled[0]!, skill("a", "user"), bundled[1]!, skill("b", "user")],
+    "",
+  );
   expect(result.map((s) => s.name)).toEqual(["a", "b", "bundled-0", "bundled-1"]);
 });
 

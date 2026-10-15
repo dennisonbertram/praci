@@ -20,5 +20,7 @@ export function slashSkillOptions(
       skill.description.toLowerCase().includes(needle),
   );
   // Array.prototype.sort is stable, so each group keeps its original order.
-  return matches.sort((a, b) => Number(b.source === "user") - Number(a.source === "user")).slice(0, limit);
+  return matches
+    .sort((a, b) => Number(b.source === "user") - Number(a.source === "user"))
+    .slice(0, limit);
 }
