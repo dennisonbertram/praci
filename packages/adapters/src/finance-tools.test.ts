@@ -635,7 +635,12 @@ describe("offering the tools", () => {
       { spaceId: "s", userId: "other", endpoint: "https://api.brex.com/mcp" },
       { spaceId: "s", userId: "v", endpoint: "https://example.com/mcp" },
     ];
+    const statementUsers = ["stmt"];
     const prisma = {
+      financeAccount: {
+        findFirst: async ({ where }: { where: { userId: string } }) =>
+          statementUsers.includes(where.userId) ? { id: "a" } : null,
+      },
       mcpServer: {
         findMany: async ({ where }: { where: { spaceId: string; userId: string } }) =>
           servers.filter((s) => s.spaceId === where.spaceId && s.userId === where.userId),
@@ -644,6 +649,8 @@ describe("offering the tools", () => {
     expect(await hasFinanceSource(prisma, { spaceId: "s", userId: "u" })).toBe(true);
     expect(await hasFinanceSource(prisma, { spaceId: "s", userId: "v" })).toBe(false);
     expect(await hasFinanceSource(prisma, { spaceId: "s", userId: "none" })).toBe(false);
+    // A user with only an uploaded-statement account still gets the finance tools.
+    expect(await hasFinanceSource(prisma, { spaceId: "s", userId: "stmt" })).toBe(true);
     servers.push({ spaceId: "s", userId: "w", endpoint: "https://mcp.blockscout.com/mcp" });
     expect(await hasFinanceSource(prisma, { spaceId: "s", userId: "w" })).toBe(true);
   });

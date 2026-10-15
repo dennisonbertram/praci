@@ -5,6 +5,7 @@ import type {
   FinanceTransaction,
   MessageBlock,
   RunwayCryptoScope,
+  StatementReminder,
 } from "@rakazo/contracts";
 import {
   CRYPTO_CHAINS,
@@ -25,6 +26,7 @@ import {
   monthlyBurn,
   runway,
   spendTotals,
+  statementReminders,
   subscriptions,
   summarizeCrypto,
   upcoming,
@@ -75,6 +77,7 @@ export type FinanceToolDeps = {
     | "financeWallet"
     | "financeCryptoHolding"
     | "financePreference"
+    | "financeStatement"
   >;
   /** From the run (the bot owner), never from model input. */
   scope: Scope;
@@ -97,6 +100,33 @@ export async function hasFinanceSource(
   return servers.some(
     (server) =>
       financeProviderForEndpoint(server.endpoint) !== null || isCryptoEndpoint(server.endpoint),
+  );
+}
+
+/** Statement accounts whose newest imported statement is getting old (shared by the Finance page and the agent). */
+export async function loadStatementReminders(
+  prisma: Pick<PrismaClient, "financeAccount" | "financeStatement">,
+  scope: Scope,
+  today: string,
+): Promise<StatementReminder[]> {
+  const accounts = await prisma.financeAccount.findMany({
+    where: { ...scope, provider: "statement" },
+    select: { id: true, name: true, lastFour: true },
+  });
+  if (accounts.length === 0) return [];
+  const covered = await prisma.financeStatement.groupBy({
+    by: ["accountId"],
+    where: { ...scope, status: "imported", accountId: { in: accounts.map((a) => a.id) } },
+    _max: { periodEnd: true },
+  });
+  const through = new Map(covered.map((c) => [c.accountId, c._max.periodEnd]));
+  return statementReminders(
+    accounts.map((a) => ({
+      accountId: a.id,
+      accountName: a.lastFour ? `${a.name} ••${a.lastFour}` : a.name,
+      coveredThrough: through.get(a.id) ?? null,
+    })),
+    today,
   );
 }
 
@@ -378,6 +408,7 @@ async function financeOverview(deps: FinanceToolDeps) {
     synced.length > 0 && synced.every(Boolean)
       ? new Date(Math.min(...synced.map((d) => (d as Date).getTime()))).toISOString()
       : null;
+  const statementsDue = await loadStatementReminders(deps.prisma, deps.scope, dayOf(now));
   await show(deps, {
     card: "overview",
     cashCents: cash.cashCents,
@@ -388,6 +419,10 @@ async function financeOverview(deps: FinanceToolDeps) {
   return {
     asOf: dayOf(now),
     lastSyncedAt,
+    // Accounts fed by uploaded statements whose next monthly statement is overdue.
+    ...(statementsDue.length > 0
+      ? { statementsDue: statementsDue.map((r) => ({ account: r.accountName, monthEnd: r.dueFor })) }
+      : {}),
     cash: {
       total: dollars(cash.cashCents),
       checking: dollars(cash.checkingCents),

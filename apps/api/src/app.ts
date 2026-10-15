@@ -39,6 +39,7 @@ import {
   createTicketChangeNotifier,
   createWebProvider,
   deletePushToken,
+  createRuntimeExtract,
   destroyBot,
   EmailEmulator,
   ExpoPushProvider,
@@ -58,6 +59,7 @@ import {
   messagingPlatformsFromEnv,
   PiAgentRuntime,
   PiOAuthLogins,
+  parseStatement,
   PipedreamConnector,
   PostgresRealtimeFanout,
   pipedreamConfigFromEnv,
@@ -74,6 +76,7 @@ import {
   stripeBillingConfigFromEnv,
   syncCryptoHoldings,
   toTeamChatInbound,
+  triageStatus,
   withSecretPersistence,
 } from "@rakazo/adapters";
 import { createAuth, isBlockedAuthPath, loopbackTwinOrigins } from "@rakazo/auth";
@@ -89,6 +92,7 @@ import {
   parsePositiveInteger,
   provisionMessagingIdentity,
   pushSessionExpiresAt,
+  recordUsage,
   requireMembership,
 } from "@rakazo/db";
 import type { Logger } from "@rakazo/logging";
@@ -570,9 +574,43 @@ export async function createApp(
     artifacts,
     mail,
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
-    // The lead swaps this for the real parser (packages/adapters/src/statements) when that branch merges.
-    parseStatement: async () => {
-      throw new Error("parsers not installed");
+    parseStatement: async (file, scope) => {
+      // Only a PDF from an unknown bank reaches the model, and only with the consent the Inbox
+      // triage model already needs. Without it the parser says no model is configured.
+      const ready = (await triageStatus({ prisma, resolveModel: executor.resolveModel }, scope))
+        .ready;
+      const metered: AgentRuntime = {
+        describe: () => runtime.describe(),
+        abort: (runId) => runtime.abort(runId),
+        run: (request, context) =>
+          runtime.run(
+            {
+              ...request,
+              usageOperationKind: "triage",
+              onUsage: async (usage) => {
+                await recordUsage(prisma, usage, {
+                  ...scope,
+                  operationId: request.runId,
+                  operationKind: "triage",
+                });
+              },
+            },
+            context,
+          ),
+      };
+      const operationId = `statement:${randomUUID()}`;
+      return parseStatement(file, {
+        ...(ready
+          ? {
+              extract: createRuntimeExtract(metered, ready.model, {
+                operationId,
+                traceId: operationId,
+                ...scope,
+                signal: AbortSignal.timeout(120_000),
+              }),
+            }
+          : {}),
+      });
     },
     financeCrypto: {
       sync: (scope, opts) => syncCryptoHoldings({ prisma, secrets }, scope, opts),

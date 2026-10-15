@@ -1,12 +1,11 @@
 import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
-import { loadClassifyContext } from "@rakazo/adapters";
+import { loadClassifyContext, loadStatementReminders as loadStatementRemindersFor } from "@rakazo/adapters";
 import type {
   Actor,
   FinanceStatement,
   ParsedStatement,
   StatementCheck,
-  StatementReminder,
 } from "@rakazo/contracts";
 import {
   ParsedStatementSchema,
@@ -14,7 +13,7 @@ import {
   STATEMENT_MAX_BYTES,
   StatementCheckSchema,
 } from "@rakazo/contracts";
-import { classify, statementReminders, vendorKey } from "@rakazo/core";
+import { classify, vendorKey } from "@rakazo/core";
 import type { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { FinanceDeps } from "./finance.js";
@@ -25,10 +24,11 @@ import { notFound } from "./inbox.js";
 // and user. File contents are never logged.
 
 /** The parser dependency. Throws when the file cannot be read. */
-export type ParseStatement = (input: {
-  fileName: string;
-  bytes: Uint8Array;
-}) => Promise<{ statement: ParsedStatement; check: StatementCheck }>;
+export type ParseStatement = (
+  input: { fileName: string; bytes: Uint8Array },
+  /** Whose statement it is, for the model fallback's consent check and usage. */
+  scope: { spaceId: string; userId: string },
+) => Promise<{ statement: ParsedStatement; check: StatementCheck }>;
 
 const scopeOf = (actor: Actor) => ({ spaceId: actor.spaceId, userId: actor.userId });
 const PROVIDER = "statement";
@@ -137,14 +137,21 @@ export async function financeStatementUpload(
 
   let parsed: { statement: ParsedStatement; check: StatementCheck };
   try {
-    const result = await deps.parseStatement({ fileName: input.fileName, bytes });
+    const result = await deps.parseStatement({ fileName: input.fileName, bytes }, scopeOf(actor));
     parsed = { statement: ParsedStatementSchema.parse(result.statement), check: result.check };
   } catch (error) {
     getLogger().warn("statement parse failed", {
       reason: error instanceof Error ? error.name : "error",
     });
+    // Parser errors are written to be shown to the user and never carry file contents.
+    const message = error instanceof Error ? error.message : "";
     const row = await deps.prisma.financeStatement.create({
-      data: { ...base, status: "failed", warnings: [], error: "Could not read this statement" },
+      data: {
+        ...base,
+        status: "failed",
+        warnings: [],
+        error: (message || "Could not read this statement").slice(0, 300),
+      },
       omit: omitBulk,
     });
     return toStatement(row);
@@ -210,7 +217,7 @@ export async function financeStatementConfirm(
   const row = await deps.prisma.$transaction(
     async (tx) => {
       // One import per user at a time: two uploads for a new account must not create it twice.
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`finance-statement:${actor.spaceId}:${actor.userId}`}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`finance-statement:${actor.spaceId}:${actor.userId}`}))`;
       const claimed = await tx.financeStatement.updateMany({
         where: { id: found.id, ...scope, status: "review" },
         data: { status: "imported" },
@@ -313,32 +320,8 @@ export async function financeStatementDiscard(
 }
 
 /** Statement accounts whose newest imported statement is getting old. */
-export async function loadStatementReminders(
-  deps: FinanceDeps,
-  actor: Actor,
-  today: string,
-): Promise<StatementReminder[]> {
-  const scope = scopeOf(actor);
-  const accounts = await deps.prisma.financeAccount.findMany({
-    where: { ...scope, provider: PROVIDER },
-    select: { id: true, name: true, lastFour: true },
-  });
-  if (accounts.length === 0) return [];
-  const covered = await deps.prisma.financeStatement.groupBy({
-    by: ["accountId"],
-    where: { ...scope, status: "imported", accountId: { in: accounts.map((a) => a.id) } },
-    _max: { periodEnd: true },
-  });
-  const through = new Map(covered.map((c) => [c.accountId, c._max.periodEnd]));
-  return statementReminders(
-    accounts.map((a) => ({
-      accountId: a.id,
-      accountName: a.lastFour ? `${a.name} ••${a.lastFour}` : a.name,
-      coveredThrough: through.get(a.id) ?? null,
-    })),
-    today,
-  );
-}
+export const loadStatementReminders = (deps: FinanceDeps, actor: Actor, today: string) =>
+  loadStatementRemindersFor(deps.prisma, scopeOf(actor), today);
 
 export async function financeStatements(deps: FinanceDeps, actor: Actor) {
   const rows = await deps.prisma.financeStatement.findMany({
