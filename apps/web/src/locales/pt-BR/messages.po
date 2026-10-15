@@ -517,6 +517,7 @@ msgid "Add custom connection"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Add item"
 msgstr "Adicionar item"
 
@@ -2463,6 +2464,7 @@ msgstr ""
 #. placeholder {0}: group.name
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Delete {0}"
 msgstr "Excluir {0}"
 
@@ -3418,6 +3420,10 @@ msgstr ""
 #: src/components/AccountAccess.tsx
 msgid "Link SSO"
 msgstr "Vincular SSO"
+
+#: src/pages/Shell.tsx
+msgid "List"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "List view"
@@ -4719,6 +4725,7 @@ msgstr ""
 #: src/components/ErrorBoundary.tsx
 #: src/pages/Finance.tsx
 #: src/pages/RoutineRunHistory.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Refresh"
 msgstr "Atualizar"
 
@@ -5778,6 +5785,10 @@ msgstr ""
 msgid "The API did not come back. Refresh this page."
 msgstr ""
 
+#: src/pages/shell/bot-pins.tsx
+msgid "The bot changed this list. Your last edit wasn't saved."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "O tempo da conexão se esgotou."
@@ -6126,6 +6137,7 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Updated {updated}"
 msgstr ""
 
