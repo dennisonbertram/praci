@@ -137,6 +137,8 @@ export class GmailApiEmulator {
   readonly requests: Array<{ accountRef: string; url: string; method: string }> = [];
   private readonly mailboxes = new Map<string, Mailbox>();
   private readonly sent = new Map<string, EmulatedDraft[]>();
+  /** Accounts that share another account's sent mail. */
+  private readonly sentKeys = new Map<string, string>();
   private failure: Failure | undefined;
   private sequence = 0;
   private readonly clock: () => Date;
@@ -170,6 +172,24 @@ export class GmailApiEmulator {
     const mailbox = this.mailboxes.get(seededRef);
     if (!mailbox) throw new Error(`No seeded mailbox ${seededRef}`);
     this.mailboxes.set(accountRef, mailbox);
+  }
+
+  /**
+   * Serves `accountRef` from its own copy of `seed`'s messages, so changes to mail (read, labels,
+   * archive) stay with that account. Drafts and sent mail stay shared with `seededRef`.
+   */
+  isolate(accountRef: string, seededRef: string, seed: { messages: EmulatedMessage[] }): void {
+    const shared = this.mailboxes.get(seededRef);
+    if (!shared) throw new Error(`No seeded mailbox ${seededRef}`);
+    this.mailboxes.set(accountRef, {
+      address: shared.address,
+      messages: seed.messages.map(store).sort(newestFirst),
+      drafts: shared.drafts,
+      historyId: HISTORY_START,
+      historyFloor: HISTORY_START,
+      history: [],
+    });
+    this.sentKeys.set(accountRef, seededRef);
   }
 
   /** Delivers a message, as if it arrived from outside. It lands in the change log. */
@@ -244,6 +264,8 @@ export class GmailApiEmulator {
   }
 
   private keyOf(accountRef: string): string {
+    const shared = this.sentKeys.get(accountRef);
+    if (shared) return shared;
     const mailbox = this.mailboxes.get(accountRef);
     return [...this.mailboxes].find(([, other]) => other === mailbox)?.[0] ?? accountRef;
   }

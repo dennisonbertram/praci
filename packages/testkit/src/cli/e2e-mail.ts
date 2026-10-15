@@ -141,7 +141,10 @@ export function createE2eComposio(): ComposioEmulator {
         const index = connectedByUser.get(userId) ?? 0;
         connectedByUser.set(userId, index + 1);
         const target = seeded[index];
-        if (target) gmail.alias(result.state, target);
+        // Each connection gets its own copy of the mail, so a spec that reads, archives or labels a
+        // message does not change what another user's spec sees. Drafts and sent mail stay shared.
+        const fresh = target ? e2eMailboxes()[target] : undefined;
+        if (target && fresh) gmail.isolate(result.state, target, fresh);
       }
       return result;
     }
