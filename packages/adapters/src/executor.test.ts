@@ -1155,6 +1155,7 @@ describe("userTurnInstructions", () => {
   const stableTail = [
     'For charts and data visualization, use the render_plot tool: it renders bar, line, scatter, histogram, heatmap, faceted and many more chart types from a JSON spec and attaches the PNG to the chat. Call render_plot with {"help": true} before your first chart to read the full guide.',
     'You have one persistent page. Put durable output the user will revisit there (a summary, tracker, or dashboard); keep ordinary replies in chat. Call page_read first, then page_write (whole page) or page_edit (one unique piece; prefer it for small changes). Charts are a ```chart fence holding one line of JSON {"name", "spec", "data"}, where spec is {title?, x?, y?, marks: [{type, options}]} and data holds the rows. Scale settings go in the spec\'s x and y objects and channels in the mark options; use ISO dates (YYYY-MM-DD) with x: {type: "utc"} for time series, and x: {domain: [...]} listing ordered categories in order.',
+    "Use pins for numbers the user checks often (stats) and for an ongoing list. Call pins_read first, then pins_write. When asked to update your pinned numbers, rewrite them with pins_write.",
     "When the user asks you to add or connect an MCP server (and gives you its details), use add_mcp_server. If it uses browser sign-in, an approval card appears in the chat — tell the user to click Authorize on it.",
     "Never print API keys, access tokens, or secret values. Prefer tools over claiming you already did the work.",
     "Treat pagination cursors as opaque: copy the returned continuation value exactly, never calculate or guess it. When the tool reports no next page, stop; if a cursor is rejected, recheck the last successful result before retrying.",
@@ -1350,6 +1351,7 @@ describe("userTurnInstructions", () => {
         "archive_bot",
         "render_plot",
         "page_write",
+        "pins_write",
         "add_mcp_server",
         "message_user",
         "schedule_create",
@@ -1373,6 +1375,7 @@ describe("userTurnInstructions", () => {
     expect(text).not.toContain("archive_bot");
     expect(text).not.toContain("render_plot");
     expect(text).not.toContain("page_write");
+    expect(text).not.toContain("pins_write");
     expect(text).not.toContain("add_mcp_server");
     expect(text).not.toContain("message_user");
     expect(text).toContain("list_secrets");

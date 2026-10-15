@@ -97,6 +97,7 @@ import {
   FolderOpen,
   Gauge,
   LayoutGrid,
+  ListTodo,
   Lock,
   LogOut,
   Mail,
@@ -281,6 +282,7 @@ import { SpaceSearchResults } from "./SpaceSearch";
 import { BotPagePanel, type PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { BotCreatePicker } from "./shell/bot-picker";
+import { PinsList, PinsStrip, useBotPins } from "./shell/bot-pins";
 import { ComposerReplyPreview, ReplyLine, TimeSeparator } from "./shell/chat-context";
 import { CommandPalette, isCommandPaletteHotkey } from "./shell/command-palette";
 import {
@@ -529,6 +531,7 @@ export function ShellPage() {
   // The bot whose page exists (the Page control shows only then), and its latest page.updated event.
   const [pageBotId, setPageBotId] = useState<string | null>(null);
   const [pageRemote, setPageRemote] = useState<PageRemoteUpdate | null>(null);
+  const [pinsSeq, setPinsSeq] = useState(0);
   const [restoredPanelKey, setRestoredPanelKey] = useState<string | null>(null);
   const panelStorageKeyRef = useRef<string | null>(null);
   const observedPanelKey = useRef<string | null>(null);
@@ -880,6 +883,7 @@ export function ShellPage() {
         : financeMode
           ? findFinanceAgent(bots, userId)
           : (bots.find((b) => b.id === botId) ?? bots[0]);
+  const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
   const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =
     (computerBotId ? bots.find((bot) => bot.id === computerBotId) : undefined) ?? active;
@@ -1489,6 +1493,7 @@ export function ShellPage() {
           setPageBotId(active.id);
           setPageRemote({ revision, updatedBy, seq: event.seq });
         }
+        if (event.type === "pins.updated") setPinsSeq(event.seq);
         if (event.type === "thread.cleared") {
           expandedHistoryThread.current = null;
           pinnedAroundRef.current = null;
@@ -2896,115 +2901,126 @@ export function ShellPage() {
     .slice(0, 2)
     .toUpperCase();
 
+  const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
   const threadView = (
     <>
-      <Transcript
-        key={activeSnapshot?.threadId}
-        scrollRef={messageScroll}
-        scrollRequest={scrollRequest}
-        onScrollRequestHandled={clearScrollRequest}
-        artifactTarget={transcriptArtifactTarget}
-        messages={transcriptMessages}
-        showToolActivity={showToolActivity}
-        olderCursor={activeSnapshot?.olderCursor ?? null}
-        loadingOlder={loadingOlder}
-        answerableAskMessageId={answerableAskMessageId}
-        running={transcriptRunning}
-        workingBots={workingBots}
-        workingActivity={soleWorkingActivity}
-        workingStartedAt={workingStartedAt}
-        onLoadOlder={loadOlder}
-        onOpenBot={openBot}
-        onAnswer={answerMessage}
-        onReply={(message) => {
-          setReplyTarget(message);
-          setReplyQuote(null);
-        }}
-        onQuote={(message, quote) => {
-          setReplyTarget(message);
-          setReplyQuote(quote);
-        }}
-        onReact={reactToMessage}
-        onJumpToMessage={jumpToReplyMessage}
-        onOpenPeerMessages={(peer) => {
-          setPeerConversation(peer);
-        }}
-        memberName={resolveTranscriptMemberName}
-        peerBot={resolveTranscriptBot}
-        onRefresh={refreshActiveThread}
-        onBotChanged={refreshBots}
-        onAddRoutine={addSkillRoutine}
-        voiceReady={Boolean(voiceStatus?.ready)}
-        speakingMessageId={speakingMessageId}
-        onSpeak={speakMessage}
-        onOpenComputer={onOpenComputer}
-      />
-      {recordingSkill ? (
-        <div className="px-6 pb-2 text-center text-[13px] text-destructive">
-          <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
-        </div>
-      ) : null}
-      {active || activeGroup ? (
-        <Composer
-          key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
-          activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
-          running={composerRunning}
-          disabled={Boolean(recordingSkill)}
-          pendingAttachments={activePendingAttachments}
-          attachmentNotice={attachmentNotice}
-          sendError={sendError}
-          runError={displayedRunError}
-          runErrorId={displayedRunErrorId}
-          onRunErrorPresented={handleRunErrorPresented}
-          onDismissError={dismissComposerError}
-          sending={sending}
-          fileInputRef={fileInputRef}
-          onAttachmentPick={onAttachmentPick}
-          onRemoveAttachment={removeAttachment}
-          onSend={sendMessage}
-          onStop={stopRun}
-          onVoice={
-            !inGroup && active
-              ? () => {
-                  if (!voiceStatus?.ready) {
-                    openSettings("voice");
-                    return;
-                  }
-                  startCall({
-                    botId: active.id,
-                    botName: active.name,
-                    botColor: active.color,
-                    transcribe: voiceStatus ? Boolean(voiceStatus.transcribe) : undefined,
-                  });
+      {!inGroup && !pageMode && botPins ? <PinsStrip pins={botPins} onPins={setBotPins} /> : null}
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <Transcript
+            key={activeSnapshot?.threadId}
+            scrollRef={messageScroll}
+            scrollRequest={scrollRequest}
+            onScrollRequestHandled={clearScrollRequest}
+            artifactTarget={transcriptArtifactTarget}
+            messages={transcriptMessages}
+            showToolActivity={showToolActivity}
+            olderCursor={activeSnapshot?.olderCursor ?? null}
+            loadingOlder={loadingOlder}
+            answerableAskMessageId={answerableAskMessageId}
+            running={transcriptRunning}
+            workingBots={workingBots}
+            workingActivity={soleWorkingActivity}
+            workingStartedAt={workingStartedAt}
+            onLoadOlder={loadOlder}
+            onOpenBot={openBot}
+            onAnswer={answerMessage}
+            onReply={(message) => {
+              setReplyTarget(message);
+              setReplyQuote(null);
+            }}
+            onQuote={(message, quote) => {
+              setReplyTarget(message);
+              setReplyQuote(quote);
+            }}
+            onReact={reactToMessage}
+            onJumpToMessage={jumpToReplyMessage}
+            onOpenPeerMessages={(peer) => {
+              setPeerConversation(peer);
+            }}
+            memberName={resolveTranscriptMemberName}
+            peerBot={resolveTranscriptBot}
+            onRefresh={refreshActiveThread}
+            onBotChanged={refreshBots}
+            onAddRoutine={addSkillRoutine}
+            voiceReady={Boolean(voiceStatus?.ready)}
+            speakingMessageId={speakingMessageId}
+            onSpeak={speakMessage}
+            onOpenComputer={onOpenComputer}
+          />
+          {recordingSkill ? (
+            <div className="px-6 pb-2 text-center text-[13px] text-destructive">
+              <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
+            </div>
+          ) : null}
+          {active || activeGroup ? (
+            <Composer
+              key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
+              activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
+              running={composerRunning}
+              disabled={Boolean(recordingSkill)}
+              pendingAttachments={activePendingAttachments}
+              attachmentNotice={attachmentNotice}
+              sendError={sendError}
+              runError={displayedRunError}
+              runErrorId={displayedRunErrorId}
+              onRunErrorPresented={handleRunErrorPresented}
+              onDismissError={dismissComposerError}
+              sending={sending}
+              fileInputRef={fileInputRef}
+              onAttachmentPick={onAttachmentPick}
+              onRemoveAttachment={removeAttachment}
+              onSend={sendMessage}
+              onStop={stopRun}
+              onVoice={
+                !inGroup && active
+                  ? () => {
+                      if (!voiceStatus?.ready) {
+                        openSettings("voice");
+                        return;
+                      }
+                      startCall({
+                        botId: active.id,
+                        botName: active.name,
+                        botColor: active.color,
+                        transcribe: voiceStatus ? Boolean(voiceStatus.transcribe) : undefined,
+                      });
+                    }
+                  : undefined
+              }
+              artifactTarget={transcriptArtifactTarget}
+              replyTarget={activeReplyTarget}
+              replyQuote={activeReplyQuote}
+              replyTargetName={replyTargetName}
+              onClearReply={clearReply}
+              mentionTargets={composerMentionTargets}
+              agentSkills={agentSkills}
+              onSlashOpen={refreshAgentSkills}
+              sentHistory={sentHistory}
+              onSlashAction={(action) => {
+                if (action === "chat-settings") {
+                  setPanel(inGroup ? "group-settings" : "settings");
+                  // Page modes render no settings panel; they open on the agent's own page.
+                  if (pageMode && active) openBot(active.id);
+                  return;
                 }
-              : undefined
-          }
-          artifactTarget={transcriptArtifactTarget}
-          replyTarget={activeReplyTarget}
-          replyQuote={activeReplyQuote}
-          replyTargetName={replyTargetName}
-          onClearReply={clearReply}
-          mentionTargets={composerMentionTargets}
-          agentSkills={agentSkills}
-          onSlashOpen={refreshAgentSkills}
-          sentHistory={sentHistory}
-          onSlashAction={(action) => {
-            if (action === "chat-settings") {
-              setPanel(inGroup ? "group-settings" : "settings");
-              // Page modes render no settings panel; they open on the agent's own page.
-              if (pageMode && active) openBot(active.id);
-              return;
-            }
-            if (action === "settings-general") {
-              openSettings("general");
-              return;
-            }
-            if (action === "settings-usage") {
-              openSettings("usage");
-            }
-          }}
-        />
-      ) : null}
+                if (action === "settings-general") {
+                  openSettings("general");
+                  return;
+                }
+                if (action === "settings-usage") {
+                  openSettings("usage");
+                }
+              }}
+            />
+          ) : null}
+        </div>
+        {pinsList ? (
+          <aside className="rk-scroll hidden w-72 shrink-0 overflow-y-auto border-s border-border px-4 py-3 lg:block">
+            <PinsList pins={pinsList} onPins={setBotPins} />
+          </aside>
+        ) : null}
+      </div>
     </>
   );
 
@@ -3938,6 +3954,18 @@ export function ShellPage() {
                 <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
               </button>
             ) : null}
+            {!inGroup && !pageMode && active && botPins?.list ? (
+              <button
+                type="button"
+                title={t`List`}
+                aria-label={t`List`}
+                onClick={() => setPanel(panel === "list" ? null : "list")}
+                data-active={panel === "list" ? "" : undefined}
+                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent lg:hidden"
+              >
+                <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
+              </button>
+            ) : null}
             {!inGroup && !pageMode && active ? (
               <button
                 type="button"
@@ -4057,6 +4085,8 @@ export function ShellPage() {
                     <Trans>Settings</Trans>
                   ) : panel === "page" ? (
                     <Trans>Page</Trans>
+                  ) : panel === "list" ? (
+                    <Trans>List</Trans>
                   ) : active ? (
                     (computer?.state ?? active.status)
                   ) : (
@@ -4100,6 +4130,9 @@ export function ShellPage() {
             ) : null}
             {panel === "page" && active ? (
               <BotPagePanel key={active.id} botId={active.id} remote={pageRemote} />
+            ) : null}
+            {panel === "list" && botPins?.list ? (
+              <PinsList pins={botPins} onPins={setBotPins} />
             ) : null}
             {panel === "computer" && active ? (
               <div>

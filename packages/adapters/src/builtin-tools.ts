@@ -485,6 +485,76 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "pins_read",
+    description:
+      "Read this bot's pins: stats (the strip of up to 6 numbers above the chat) and list (the sidebar list), plus the revision.",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+  },
+  {
+    name: "pins_write",
+    description:
+      "Replace this bot's pins. stats is the strip of numbers the user checks often; list is the one sidebar list (for example a to-do list). Only the sections you give are replaced. Give a stat a source when one read-only MCP tool call returns the number, so a refresh can update it without you. baseRevision is the revision from pins_read (0 for new pins). A stale revision saves nothing and returns the current pins.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        stats: {
+          type: "array",
+          maxItems: 6,
+          description: "Up to 6 numbers.",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              label: { type: "string", description: "At most 40 characters." },
+              value: { type: "string", description: "Display text, at most 40 characters." },
+              detail: { type: "string", description: "Short qualifier, e.g. of $50,000 goal." },
+              source: {
+                type: "object",
+                description: "A read-only MCP tool call that returns this number.",
+                properties: {
+                  serverId: { type: "string", description: "The MCP server id." },
+                  tool: { type: "string" },
+                  args: { type: "object" },
+                  path: {
+                    type: "string",
+                    description: 'JSON Pointer into the parsed result, e.g. "/accounts/0/balance".',
+                  },
+                  format: { type: "string", enum: ["number", "usd", "percent", "text"] },
+                },
+                required: ["serverId", "tool", "args", "path", "format"],
+              },
+            },
+            required: ["id", "label", "value"],
+          },
+        },
+        list: {
+          type: ["object", "null"],
+          description: "The sidebar list, or null to remove it.",
+          properties: {
+            title: { type: "string" },
+            items: {
+              type: "array",
+              maxItems: 50,
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  text: { type: "string" },
+                  done: { type: "boolean" },
+                },
+                required: ["id", "text", "done"],
+              },
+            },
+          },
+          required: ["title", "items"],
+        },
+        baseRevision: { type: "number" },
+      },
+      required: ["baseRevision"],
+    },
+  },
+  {
     name: "add_mcp_server",
     description:
       "Connect an MCP tool server to this Space when the user asks you to add one and provides the details (URL or command, optional token/headers/env). The server is created immediately and assigned to you. If it needs browser OAuth authorization, an approval card appears in the chat for the user to complete — tell them to click Authorize. Do not invent endpoints; only use details the user provided.",
