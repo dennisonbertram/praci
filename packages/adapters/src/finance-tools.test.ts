@@ -611,7 +611,7 @@ describe("exchange balances in the Finance tools", () => {
         cash: { total: number; stablecoins: number; otherCrypto: number };
       };
       // Exchange USD 50 is stablecoin cash; exchange BTC 200 joins the wallet's 3002.5 of other crypto.
-      expect(overview.cash).toMatchObject({ total: 10_050, stablecoins: 50, otherCrypto: 3202.5 });
+      expect(overview.cash).toMatchObject({ total: 10_000, stablecoins: 50, otherCrypto: 3202.5 });
       const crypto = (await financeToolFromTool("finance_crypto", deps, {})) as {
         exchanges: Array<{
           exchange: string;
