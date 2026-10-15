@@ -153,7 +153,12 @@ describePostgres("Data room API (PostgreSQL)", () => {
     });
     expect(JSON.stringify(body)).not.toContain("storageKey");
     expect(await blobCount(actors.A.spaceId)).toBe(1);
-    expect(enqueued).toEqual([]);
+    expect(enqueued).toHaveLength(1);
+    expect(enqueued[0]).toMatchObject({
+      name: "dataroom.ingest",
+      payload: { spaceId: actors.A.spaceId, userId: actors.a.userId, itemId: item.id },
+      replaceKey: `dataroom.ingest:${item.id}`,
+    });
   });
 
   it("returns the existing item for the same bytes and stores no second blob", async () => {
@@ -162,6 +167,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
     const body = (await res.json()) as { item: DataRoomApiItem; duplicate: boolean };
     expect(body).toMatchObject({ duplicate: true, item: { id: item.id } });
     expect(await blobCount(actors.A.spaceId)).toBe(1);
+    expect(enqueued.filter((job) => job.name === "dataroom.ingest")).toHaveLength(1);
   });
 
   it("refuses an upload over the cap with 413 and stores no blob", async () => {
