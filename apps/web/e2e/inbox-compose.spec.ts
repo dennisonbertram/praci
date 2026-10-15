@@ -357,7 +357,8 @@ test("many recipients fold into one line, Send stays in view, and Discard can be
 });
 
 // TEMP-SHOTS-BEGIN
-const SHOTS = "/private/tmp/claude-501/-Users-dennison-develop-rakazo/052c12c2-b38a-4b9b-a848-b847ac1382d1/scratchpad/compose5";
+const SHOTS =
+  "/private/tmp/claude-501/-Users-dennison-develop-rakazo/052c12c2-b38a-4b9b-a848-b847ac1382d1/scratchpad/compose5";
 for (const mode of ["light", "dark", "phone"] as const) {
   test(`temp shots ${mode}`, async ({ page }) => {
     test.setTimeout(240_000);
@@ -394,21 +395,31 @@ for (const mode of ["light", "dark", "phone"] as const) {
     await c.getByRole("button", { name: "Send", exact: true }).click();
     await shot("invalid-one");
     // attachments
-    const files = Array.from({ length: 8 }, (_, i) => ({ name: i === 3 ? "a-really-long-file-name-for-the-quarterly-financial-reconciliation-statement-final-v7.pdf" : `invoice-${i}.pdf`, mimeType: "application/pdf", buffer: Buffer.from("x") }));
+    const files = Array.from({ length: 8 }, (_, i) => ({
+      name:
+        i === 3
+          ? "a-really-long-file-name-for-the-quarterly-financial-reconciliation-statement-final-v7.pdf"
+          : `invoice-${i}.pdf`,
+      mimeType: "application/pdf",
+      buffer: Buffer.from("x"),
+    }));
     await c.locator("input[type=file]").setInputFiles(files);
     await shot("attachments");
     // discard undo
     await c.getByRole("button", { name: "Discard", exact: true }).click();
     // attachments prompt
     const alert = page.getByRole("alertdialog");
-    if (await alert.isVisible().catch(() => false)) await alert.getByRole("button", { name: "Discard" }).click();
+    if (await alert.isVisible().catch(() => false))
+      await alert.getByRole("button", { name: "Discard" }).click();
     await shot("discard-undo");
     await page.getByRole("button", { name: "Undo", exact: true }).click();
     // failed send
     c = page.getByRole("dialog", { name: "New message" });
     await page.route("**/rpc/inbox/compose/send", (route) => route.abort("internetdisconnected"));
     await c.getByLabel("To").fill("ana@example.test,");
-    await c.locator("input[type=file]").evaluate((el) => { (el as HTMLInputElement).value = ""; });
+    await c.locator("input[type=file]").evaluate((el) => {
+      (el as HTMLInputElement).value = "";
+    });
     await c.getByRole("button", { name: "Send", exact: true }).click();
     await page.waitForTimeout(6_500);
     await shot("failed-send");

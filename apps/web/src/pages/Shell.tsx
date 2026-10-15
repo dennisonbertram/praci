@@ -3844,11 +3844,7 @@ export function ShellPage() {
 
       <ResizableSidePanel
         botsSidebarCollapsed={botsSidebarCollapsed}
-        open={
-          inboxMode
-            ? !inboxAgentCollapsed
-            : Boolean(panel && (active || activeGroup))
-        }
+        open={inboxMode ? !inboxAgentCollapsed : Boolean(panel && (active || activeGroup))}
         panel={inboxMode ? "inbox-agent" : (panel ?? "closed")}
       >
         {inboxMode ? (

@@ -53,7 +53,10 @@ test("a reply quote dates the original in the browser's time zone and a forward 
   page,
 }, testInfo) => {
   await openInbox(page, "preview-fwd");
-  await page.getByRole("main").getByRole("button", { name: /Team sync notes/ }).click();
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: /Team sync notes/ })
+    .click();
   const sent = await page.getByRole("dialog").locator("time").getAttribute("datetime");
   const dateText = new Intl.DateTimeFormat("en-US", {
     weekday: "short",
