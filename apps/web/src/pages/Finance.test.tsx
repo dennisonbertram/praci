@@ -738,7 +738,7 @@ const withStablecoins = () =>
       cashCents: 125_000_00,
       bankCashCents: 100_000_00,
       stablecoinCents: 25_000_00,
-      otherCryptoCents: 30_000_00,
+      otherCryptoCents: 0,
     },
     runway: { months: 12.5, runOutDate: "2027-10-30" },
     bankRunway: { months: 10, runOutDate: "2027-08-12" },
@@ -789,4 +789,38 @@ it("keeps the plain Cash subtitle and no runway hover without stablecoins", asyn
   expect(cash?.textContent).toContain("Checking + Treasury");
   expect(cash?.textContent).not.toContain("Stablecoins");
   expect(await hoverOver("Runway")).toBe("");
+});
+
+const scoped = (counted: { stablecoins: number; other: number }) =>
+  connectedOverview({
+    cash: {
+      ...connectedOverview().cash,
+      cashCents: 100_000_00 + counted.stablecoins + counted.other,
+      bankCashCents: 100_000_00,
+      stablecoinCents: counted.stablecoins,
+      otherCryptoCents: counted.other,
+    },
+    crypto: cryptoWith(25_000_00, 55_000_00),
+  });
+
+it("shows plain bank cash under the bank scope, with held crypto in the hover", async () => {
+  rpcMock.overview.mockResolvedValue(scoped({ stablecoins: 0, other: 0 }));
+  await show("/app/finance");
+  await flush();
+  expect(kpi("Cash")?.textContent).toContain("$100,000");
+  expect(kpi("Cash")?.textContent).toContain("Checking + Treasury");
+  expect(kpi("Cash")?.textContent).not.toContain("Stablecoins");
+  const tip = await hoverOver("Cash");
+  expect(tip).toContain("Stablecoins$25,000");
+  expect(tip).toContain("Other crypto$30,000");
+  expect(tip).toContain("Total incl. crypto$155,000");
+});
+
+it("counts all crypto under the all scope", async () => {
+  rpcMock.overview.mockResolvedValue(scoped({ stablecoins: 25_000_00, other: 30_000_00 }));
+  await show("/app/finance");
+  await flush();
+  expect(kpi("Cash")?.textContent).toContain("$155,000");
+  expect(kpi("Cash")?.textContent).toContain("Checking + Treasury + Crypto");
+  expect(await hoverOver("Cash")).toContain("Total incl. crypto$155,000");
 });

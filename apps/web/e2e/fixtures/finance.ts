@@ -100,6 +100,9 @@ export const connectedOverview: FinanceOverview = {
   agent: null,
   cash: {
     cashCents: 7_500_000,
+    bankCashCents: 7_500_000,
+    stablecoinCents: 0,
+    otherCryptoCents: 0,
     checkingCents: 1_200_000,
     savingsCents: 300_000,
     treasuryCents: 6_000_000,
