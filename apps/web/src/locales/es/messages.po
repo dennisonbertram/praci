@@ -4491,6 +4491,10 @@ msgstr "Plugin"
 msgid "Popular"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Post and schedule to social accounts"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "POST to"
 msgstr "POST a"
@@ -5504,6 +5508,7 @@ msgstr "Mensaje de Slack"
 msgid "Slack not enabled"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/Inbox.tsx
 msgid "Social"
 msgstr ""
