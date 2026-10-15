@@ -10,6 +10,7 @@ import { wellsFargoParser } from "./wells-fargo.js";
 
 export { checkStatement } from "./check.js";
 export { createRuntimeExtract } from "./model-pdf.js";
+export { normalizeStem } from "./money.js";
 export { extractPdfText } from "./pdf-text.js";
 export type { StatementDeps, StatementInput, StatementParser } from "./types.js";
 

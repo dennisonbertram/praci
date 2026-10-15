@@ -3,6 +3,7 @@ import { ORPCError } from "@orpc/server";
 import {
   loadClassifyContext,
   loadStatementReminders as loadStatementRemindersFor,
+  normalizeStem,
 } from "@rakazo/adapters";
 import type { Actor, FinanceStatement, ParsedStatement, StatementCheck } from "@rakazo/contracts";
 import {
@@ -43,6 +44,34 @@ const slug = (text: string) =>
 export const statementAccountKey = (
   s: Pick<ParsedStatement, "institution" | "accountLast4" | "accountName">,
 ) => `stmt:${slug(s.institution)}:${s.accountLast4 ?? (slug(s.accountName ?? "") || "account")}`;
+
+/**
+ * The key of the account a statement goes to. Normally `statementAccountKey`. A statement with no
+ * account number (its institution may be only a file-name stem) also matches an existing account
+ * with no number whose key was made from an older, dated stem ("checking-2026-06"), so monthly
+ * exports of one account do not pile up as separate accounts.
+ */
+async function resolveAccountKey(
+  db: { financeAccount: FinanceDeps["prisma"]["financeAccount"] },
+  scope: { spaceId: string; userId: string },
+  statement: ParsedStatement,
+): Promise<string> {
+  const key = statementAccountKey(statement);
+  if (statement.accountLast4 !== null) return key;
+  const candidates = await db.financeAccount.findMany({
+    where: { ...scope, provider: PROVIDER, lastFour: null },
+    select: { externalId: true },
+  });
+  if (candidates.some((c) => c.externalId === key)) return key;
+  const suffix = key.slice(key.lastIndexOf(":"));
+  const wanted = normalizeStem(statement.institution);
+  const match = candidates.find((c) => {
+    const rest = c.externalId.slice("stmt:".length);
+    if (!c.externalId.endsWith(suffix) || !wanted) return false;
+    return normalizeStem(rest.slice(0, rest.length - suffix.length)) === wanted;
+  });
+  return match?.externalId ?? key;
+}
 
 const accountName = (s: ParsedStatement) => {
   const own = s.accountName?.trim();
@@ -204,7 +233,7 @@ export async function financeStatementUpload(
   }
 
   const { statement, check } = parsed;
-  const key = statementAccountKey(statement);
+  const key = await resolveAccountKey(deps.prisma, scopeOf(actor), statement);
   const account = await deps.prisma.financeAccount.findFirst({
     where: { ...scopeOf(actor), provider: PROVIDER, externalId: key },
     select: { id: true },
@@ -256,9 +285,7 @@ export async function financeStatementConfirm(
     throw new ORPCError("BAD_REQUEST", { message: "The balances do not match" });
   }
   const statement = ParsedStatementSchema.parse(found.parsed);
-  const key = statementAccountKey(statement);
   const ids = statementTxnIds(statement.transactions);
-  const legacyIds = statementTxnIds(statement.transactions, key);
   const kind = statement.accountKind ?? "checking";
   const context = await loadClassifyContext(deps.prisma, scope);
   const now = deps.now?.() ?? new Date();
@@ -274,6 +301,8 @@ export async function financeStatementConfirm(
       if (claimed.count === 0) {
         throw new ORPCError("BAD_REQUEST", { message: "This statement was already handled" });
       }
+      const key = await resolveAccountKey(tx, scope, statement);
+      const legacyIds = statementTxnIds(statement.transactions, key);
       const sameFile = found.fileSha256
         ? await tx.financeStatement.count({
             where: {
