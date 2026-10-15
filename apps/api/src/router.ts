@@ -6211,9 +6211,11 @@ export function createRouter(deps: RouterDeps) {
       folderDelete: authed.dataRoom.folderDelete.handler(({ context, input }) =>
         dataRoom.deleteFolder(context.actor, input.id),
       ),
-      items: authed.dataRoom.items.handler(({ context, input }) =>
-        dataRoom.items(context.actor, input),
-      ),
+      items: {
+        list: authed.dataRoom.items.list.handler(({ context, input }) =>
+          dataRoom.items(context.actor, input),
+        ),
+      },
       item: authed.dataRoom.item.handler(({ context, input }) =>
         dataRoom.item(context.actor, input.id),
       ),
