@@ -3,7 +3,7 @@ CREATE TABLE "finance_preferences" (
     "id" TEXT NOT NULL,
     "spaceId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "runwayCrypto" TEXT NOT NULL DEFAULT 'stablecoins',
+    "runwayCrypto" TEXT NOT NULL DEFAULT 'bank',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
