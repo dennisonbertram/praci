@@ -1883,6 +1883,7 @@ model FinanceWallet {
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
   holdings      FinanceCryptoHolding[]
+  snapshots     FinanceCryptoSnapshot[]
 
   @@unique([spaceId, userId, address])
   @@index([spaceId, userId])
@@ -1913,4 +1914,35 @@ model FinanceCryptoHolding {
   @@unique([walletId, chainId, tokenAddress])
   @@index([spaceId, userId])
   @@map("finance_crypto_holdings")
+}
+
+/// Per user and space: what counts as cash for runway. "bank" | "stablecoins" (default) | "all".
+model FinancePreference {
+  id           String   @id @default(cuid())
+  spaceId      String
+  userId       String
+  runwayCrypto String   @default("stablecoins")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([spaceId, userId])
+  @@map("finance_preferences")
+}
+
+/// One wallet's priced crypto value for one UTC day, rewritten by every sync that day (the last value wins).
+model FinanceCryptoSnapshot {
+  id               String        @id @default(cuid())
+  spaceId          String
+  userId           String
+  walletId         String
+  wallet           FinanceWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  /// UTC day, YYYY-MM-DD.
+  day              String
+  stablecoinCents  BigInt
+  otherCryptoCents BigInt
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([walletId, day])
+  @@index([spaceId, userId, day])
+  @@map("finance_crypto_snapshots")
 }
