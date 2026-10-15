@@ -2257,6 +2257,10 @@ msgstr ""
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Couldn't classify"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
 msgstr "No se pudo cargar la configuración de mensajería"

@@ -2257,6 +2257,10 @@ msgstr "Could not upload file"
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 
+#: src/components/data-room/Preview.tsx
+msgid "Couldn't classify"
+msgstr "Couldn't classify"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
 msgstr "Couldn't load messaging settings"

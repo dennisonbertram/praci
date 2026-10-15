@@ -94,6 +94,9 @@ export function Preview({
       ) : facets.summary ? (
         <p className="text-sm">{facets.summary}</p>
       ) : null}
+      {item.status === "ready" && item.error ? (
+        <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
+      ) : null}
       <dl className="grid grid-cols-[72px_1fr] gap-x-2 gap-y-1.5 text-sm">
         {facets.docType ? <Field label={t`Type`}>{facets.docType}</Field> : null}
         {facets.docDate ? <Field label={t`Date`}>{dateText(facets.docDate)}</Field> : null}

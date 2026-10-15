@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { ORPCError } from "@orpc/client";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
@@ -183,4 +184,58 @@ it("keeps a pinned item only while it is in the results, else pins the first or 
   expect(preview()).toBe("c.txt");
   await search("none", []);
   expect(container.querySelector('[data-testid="data-room-preview"]')).toBeNull();
+});
+
+it("restarts a search from the first page, without an error, when the cursor no longer fits", async () => {
+  await renderPage();
+  const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  rpcMock.search
+    .mockResolvedValueOnce({
+      results: [{ item: item("c.txt"), ordinal: 0, snippet: "x", score: 1 }],
+      nextCursor: "c000000000000000000000009",
+    })
+    .mockRejectedValueOnce(new ORPCError("CONFLICT", { message: "Search changed; start again" }))
+    .mockResolvedValue({
+      results: [{ item: item("d.txt"), ordinal: 0, snippet: "y", score: 1 }],
+      nextCursor: null,
+    });
+  await act(async () => {
+    set?.call(input, "lease");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  const more = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Load more",
+  );
+  await act(async () => {
+    more?.click();
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(10);
+  });
+  expect(rpcMock.search).toHaveBeenCalledTimes(3);
+  // The third call is the first page again: no cursor.
+  expect(rpcMock.search.mock.calls[2]?.[0].cursor).toBeUndefined();
+  expect(names()).toEqual(["d.txt"]);
+  expect(container.textContent).not.toContain("Search changed");
+});
+
+it("marks only failed items as failed; a ready item with an error gets a muted preview line", async () => {
+  rpcMock.list.mockResolvedValue({
+    items: [{ ...item("ok.txt"), error: "classifier timeout" }],
+    nextCursor: null,
+  });
+  await renderPage();
+  const row = container.querySelector("li[data-item-id]");
+  expect(row?.querySelector('[aria-label="Failed"]')).toBeNull();
+  expect(row?.textContent).not.toContain("classifier timeout");
+  expect(container.querySelector('[data-testid="data-room-preview"]')?.textContent).toContain(
+    "Couldn't classify",
+  );
+  expect(container.querySelector('[data-testid="data-room-preview"]')?.textContent).not.toContain(
+    "classifier timeout",
+  );
 });
