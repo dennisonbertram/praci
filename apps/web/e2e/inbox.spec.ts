@@ -188,7 +188,9 @@ test("Inbox filters and searches the whole mailbox through Gmail", async ({ page
   await expect(main.getByRole("button", { name: /Signed contract/ })).toBeVisible();
   await expect(main.getByRole("button", { name: /Q3 report/ })).toBeVisible();
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toHaveCount(0);
-  await expect(main.getByRole("heading", { name: "Earlier", level: 2 })).toBeVisible();
+  // A filtered list shows one count instead of date group headings.
+  await expect(main.getByText("2 results")).toBeVisible();
+  await expect(main.getByRole("heading", { level: 2 })).toHaveCount(0);
   await expect(filterMenu).toHaveText("Starred");
   const url = new URL(page.url());
   expect(url.searchParams.has("m")).toBe(false);
@@ -236,7 +238,11 @@ test("Inbox filters and searches the whole mailbox through Gmail", async ({ page
   await captureScreenshot(page, testInfo, "inbox-search-empty");
 
   // Gmail rejecting the query shows the error and its retry button, not an empty list.
-  await main.getByRole("button", { name: "Clear", exact: true }).click();
+  // The search box has its own icon-only Clear; this is the one in the results bar.
+  await main
+    .getByRole("button", { name: "Clear", exact: true })
+    .filter({ hasText: "Clear" })
+    .click();
   await expect(page).not.toHaveURL(/[?&]q=/);
   await search.fill("has:drive");
   await search.press("Enter");
@@ -353,7 +359,9 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
   await captureScreenshot(page, testInfo, "inbox-todo-card");
 
   // Checking a to-do sends the change and keeps the item visible, struck through.
-  // A narrow container shows two open to-dos and "1 more".
+  // A container under 48rem shows two open to-dos and "1 more"; the collapsed agent panel leaves
+  // the pane wider than that at the default viewport, so narrow the window.
+  await page.setViewportSize({ width: 900, height: 800 });
   await card.getByRole("button", { name: "1 more" }).click();
   const checkbox = card.getByRole("checkbox", { name: "Pay the October invoice" });
   await expect(checkbox).not.toBeChecked();
