@@ -101,6 +101,8 @@ import {
 } from "./domain.js";
 import { ComputerCommandSchema, ProductEventSchema } from "./events.js";
 import {
+  BalanceSeriesInputSchema,
+  BalanceSeriesOutputSchema,
   FinanceAccountOutputSchema,
   FinanceAccountsOutputSchema,
   FinanceBurnOutputSchema,
@@ -1075,6 +1077,7 @@ export const appContract = {
     refresh: oc.output(z.object({ ok: z.literal(true) })),
     connect: oc.input(FinanceConnectInputSchema).output(FinanceConnectOutputSchema),
     accounts: oc.output(FinanceAccountsOutputSchema),
+    balanceSeries: oc.input(BalanceSeriesInputSchema).output(BalanceSeriesOutputSchema),
     account: oc.input(z.object({ id: Id })).output(FinanceAccountOutputSchema),
     burn: oc.output(FinanceBurnOutputSchema),
     month: oc

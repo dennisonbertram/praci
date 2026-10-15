@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type {
+  BalanceRange,
   ExchangeProvider,
   FinanceAccountsOutput,
   FinanceCryptoOutput,
@@ -24,6 +25,7 @@ import {
   Chevron,
   DetailPage,
   Kpi,
+  PeriodTabs,
   rowClass,
   Section,
   Th,
@@ -33,7 +35,14 @@ import {
 } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { ExchangeConnectDialog } from "../../components/integrations/ExchangeConnectDialog";
-import { money, moneyExact, monthLabel, monthShort } from "../../lib/finance-format";
+import {
+  dayAxisLabels,
+  money,
+  moneyExact,
+  monthAxisLabels,
+  monthLabel,
+  monthShort,
+} from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
@@ -141,7 +150,16 @@ function CryptoGroup({
 }
 
 export function FinanceAccountsPage({ source = null }: { source?: FinanceProvider | null }) {
-  const q = useFinanceQuery(() => rpc.finance.accounts(), []);
+  const accounts = useFinanceQuery(() => rpc.finance.accounts(), []);
+  // Whatever reloads the accounts total (a wallet added, the crypto scope changed) reloads the chart too.
+  const [balanceStamp, setBalanceStamp] = useState(0);
+  const q = {
+    ...accounts,
+    reload: () => {
+      accounts.reload();
+      setBalanceStamp((n) => n + 1);
+    },
+  };
   const cryptoQuery = useFinanceQuery(() => rpc.finance.crypto(), []);
   const prefs = useFinanceQuery(() => rpc.finance.preferences(), []);
   const exchangeQuery = useFinanceQuery(() => rpc.finance.exchanges(), []);
@@ -150,6 +168,11 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
   const exchanges = exchangeQuery.data ?? [];
   const crypto = cryptoQuery.data;
   const data = q.data;
+  const [range, setRange] = useState<BalanceRange>("year");
+  const balance = useFinanceQuery(
+    () => rpc.finance.balanceSeries({ range }),
+    [range, balanceStamp],
+  ).data;
   const scope = prefs.data?.runwayCrypto ?? "bank";
   const sourceName = FINANCE_PROVIDERS.find((p) => p.provider === source)?.name;
   // Cash accounts and cards both carry a provider; the total and chart stay unfiltered.
@@ -242,13 +265,24 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
               />
             </div>
           ) : null}
-          <Section title={<Trans>Total balance</Trans>}>
-            <LineChart
-              values={data.history.map((p) => p.balanceCents)}
-              labels={data.history.map((p) => monthShort(p.month))}
-              height={200}
-              label={t`Total balance`}
-            />
+          <Section
+            title={<Trans>Total balance</Trans>}
+            action={<PeriodTabs value={range} onChange={setRange} />}
+          >
+            <div style={{ minHeight: 200 }}>
+              {balance ? (
+                <LineChart
+                  values={balance.points.map((p) => p.balanceCents)}
+                  labels={
+                    range === "year"
+                      ? monthAxisLabels(balance.points.map((p) => p.day.slice(0, 7)))
+                      : dayAxisLabels(balance.points.map((p) => p.day))
+                  }
+                  height={200}
+                  label={t`Total balance`}
+                />
+              ) : null}
+            </div>
           </Section>
           <Section title={<Trans>Cash accounts</Trans>}>
             <AccountTable rows={fromSource(data.cash)} />
@@ -307,7 +341,7 @@ export function FinanceAccountPage({ id }: { id: string }) {
           <Section title={<Trans>Balance</Trans>}>
             <LineChart
               values={data.history.map((p) => p.balanceCents)}
-              labels={data.history.map((p) => monthShort(p.month))}
+              labels={monthAxisLabels(data.history.map((p) => p.month))}
               height={180}
               label={t`Balance`}
             />

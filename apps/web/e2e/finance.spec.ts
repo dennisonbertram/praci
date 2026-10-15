@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import {
+  balanceSeriesOf,
   connectedOverview,
   cryptoData,
   cryptoHistoryData,
@@ -28,6 +29,7 @@ async function mockFinance(page: Page, overview = connectedOverview) {
       overview,
       refresh: { ok: true },
       preferences: { runwayCrypto: "bank" },
+      balanceSeries: balanceSeriesOf(String(input?.range)),
       vendor,
       transaction: transactionOf(String(input?.id)),
       receiptUrl: { url: "https://files.example.test/receipt.png", mimeType: "image/png" },
@@ -293,6 +295,12 @@ test("Finance Accounts lists wallets apart from cash and adds one from the menu"
   await expect(main.getByText("Mercury Checking")).toBeVisible();
   await expect(main.getByRole("heading", { name: "Crypto" })).toBeVisible();
   await expect(main.getByRole("button", { name: "Count crypto" })).toBeVisible();
+  await expect(main.getByRole("img", { name: "Total balance" })).toBeVisible();
+  const quarterRequest = page.waitForRequest(
+    (r) => r.url().includes("/rpc/finance/balanceSeries") && !!r.postData()?.includes("quarter"),
+  );
+  await main.getByRole("tab", { name: "Quarter" }).click();
+  await quarterRequest;
   await expect(main.locator('a[href="/app/finance/crypto"]').first()).toHaveText("Treasury");
   await expect(main.getByText("$75,000", { exact: true }).first()).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-accounts-crypto-group");

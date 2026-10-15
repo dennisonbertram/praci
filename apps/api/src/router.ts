@@ -257,6 +257,7 @@ import {
   financeAccountDetail,
   financeAccounts,
   financeAgent,
+  financeBalanceSeries,
   financeBurn,
   financeCategory,
   financeConnect,
@@ -6174,6 +6175,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       runway: authed.finance.runway.handler(({ context }) =>
         financeRunway(financeDeps, context.actor),
+      ),
+      balanceSeries: authed.finance.balanceSeries.handler(({ context, input }) =>
+        financeBalanceSeries(financeDeps, context.actor, input),
       ),
       preferences: authed.finance.preferences.handler(({ context }) =>
         financePreferences(financeDeps, context.actor),

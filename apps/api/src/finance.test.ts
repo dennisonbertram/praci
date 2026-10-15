@@ -58,6 +58,7 @@ import {
   type FinanceDeps,
   financeAccountDetail,
   financeAccounts,
+  financeBalanceSeries,
   financeCategory,
   financeConnect,
   financeCryptoHistory,
@@ -898,5 +899,105 @@ describe("runway crypto scope", () => {
     expect(lone).toHaveLength(12);
     expect(lone.at(-2)?.balanceCents).toBe(250);
     expect(lone.at(-1)?.balanceCents).toBe(370);
+  });
+});
+
+describe("balance series", () => {
+  const wallet = (id: string) => ({
+    id,
+    ...scope(a),
+    address: `0x${id.padEnd(40, "0")}`,
+    type: "personal",
+    createdAt: new Date(),
+  });
+  const holding = (usd: bigint) => ({
+    ...scope(a),
+    walletId: "w1",
+    chainId: 1,
+    tokenAddress: "",
+    symbol: "ETH",
+    name: "Ether",
+    decimals: 6,
+    rawBalance: "1",
+    usdPrice: "1",
+    usdValueCents: usd,
+    syncedAt: new Date("2026-10-14T00:00:00Z"),
+  });
+  const snap = (day: string, other: bigint) => ({
+    ...scope(a),
+    walletId: "w1",
+    day,
+    stablecoinCents: 0n,
+    otherCryptoCents: other,
+  });
+  const data = (pref: string) => ({
+    financeAccount: [account(a, { balanceCents: 100_000n })],
+    financeTransaction: [
+      txn(a, { id: "t-a", postedAt: new Date("2026-10-12T10:00:00Z"), amountCents: -2_000n }),
+      txn(a, { id: "t-b", postedAt: new Date("2026-09-20T10:00:00Z"), amountCents: 5_000n }),
+    ],
+    financeWallet: [wallet("w1")],
+    financeCryptoHolding: [holding(700n)],
+    financeCryptoSnapshot: [snap("2026-10-10", 400n), snap("2026-09-30", 300n)],
+    financePreference: [{ ...scope(a), runwayCrypto: pref }],
+  });
+  const series = async (pref: string, range: "week" | "month" | "quarter" | "year") =>
+    (await financeBalanceSeries(setup(data(pref)).deps, a, { range })).points;
+
+  it("returns the grid per range ending today", async () => {
+    const week = await series("bank", "week");
+    expect(week.map((p) => p.day)).toEqual([
+      "2026-10-08",
+      "2026-10-09",
+      "2026-10-10",
+      "2026-10-11",
+      "2026-10-12",
+      "2026-10-13",
+      "2026-10-14",
+    ]);
+    expect(await series("bank", "month")).toHaveLength(30);
+    expect((await series("bank", "quarter")).map((p) => p.day).slice(-2)).toEqual([
+      "2026-10-07",
+      "2026-10-14",
+    ]);
+    expect((await series("bank", "year"))[0]?.day).toBe("2025-11-30");
+  });
+
+  it("rebuilds daily bank cash by undoing later transactions", async () => {
+    const week = Object.fromEntries(
+      (await series("bank", "week")).map((p) => [p.day, p.balanceCents]),
+    );
+    expect(week["2026-10-14"]).toBe(100_000);
+    expect(week["2026-10-12"]).toBe(100_000);
+    // The 12th's $20 spend had not happened yet on the 11th.
+    expect(week["2026-10-11"]).toBe(102_000);
+  });
+
+  it("adds counted crypto: snapshots for past days, holdings for today, none under bank", async () => {
+    const all = Object.fromEntries(
+      (await series("all", "week")).map((p) => [p.day, p.balanceCents]),
+    );
+    expect(all["2026-10-09"]).toBe(102_000 + 300);
+    expect(all["2026-10-10"]).toBe(102_000 + 400);
+    expect(all["2026-10-14"]).toBe(100_000 + 700);
+  });
+
+  it("matches the accounts chart at the same month-ends under every scope", async () => {
+    for (const pref of ["bank", "stablecoins", "all"]) {
+      const { deps } = setup(data(pref));
+      const chart = (await financeAccounts(deps, a)).history.map((p) => p.balanceCents);
+      const year = (await financeBalanceSeries(deps, a, { range: "year" })).points.map(
+        (p) => p.balanceCents,
+      );
+      expect(year).toEqual(chart);
+    }
+  });
+
+  it("works for a wallet-only user", async () => {
+    const { financeAccount: _a, financeTransaction: _t, ...rest } = data("all");
+    const { deps } = setup(rest);
+    const week = (await financeBalanceSeries(deps, a, { range: "week" })).points;
+    expect(week).toHaveLength(7);
+    expect(week.map((p) => p.balanceCents)).toEqual([300, 300, 400, 400, 400, 400, 700]);
   });
 });
