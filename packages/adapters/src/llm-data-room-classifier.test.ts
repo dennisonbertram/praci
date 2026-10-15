@@ -116,6 +116,27 @@ describe("LlmDataRoomClassifier.classify", () => {
     expect(out.folderPath).toEqual(["Finance", "Statements"]);
   });
 
+  it("keeps the model path when the existing folder would not validate", async () => {
+    const { classifier } = make(JSON.stringify({ ...valid, folderPath: ["Contracts"] }));
+    const out = await classifier.classify(
+      input({ folders: [[`Contracts${" ".repeat(80)}`]] }),
+      context,
+    );
+    expect(out.folderPath).toEqual(["Contracts"]);
+  });
+
+  it("turns an unknown currency code into null", async () => {
+    const { classifier } = make(JSON.stringify({ ...valid, currency: "zzz" }));
+    expect((await classifier.classify(input(), context)).currency).toBeNull();
+  });
+
+  it("rejects an impossible calendar date", async () => {
+    const { classifier } = make(JSON.stringify({ ...valid, docDate: "2025-02-30" }));
+    await expect(classifier.classify(input(), context)).rejects.toBeInstanceOf(
+      DataRoomClassifierError,
+    );
+  });
+
   it("allows a brand-new folder path", async () => {
     const { classifier } = make(JSON.stringify({ ...valid, folderPath: ["Legal", "NDAs"] }));
     const out = await classifier.classify(input({ folders: [["Contracts"]] }), context);
@@ -158,6 +179,19 @@ describe("LlmDataRoomClassifier.planQuery", () => {
     );
     expect(out).toEqual(plan);
     expect(requests[0]?.instructions).toContain("2026-10-15");
+  });
+
+  it("rejects array filters, unknown filter keys and a reversed date range", async () => {
+    for (const filters of [
+      [],
+      { docType: "contract", colour: "red" },
+      { dateFrom: "2025-12-31", dateTo: "2025-01-01" },
+    ]) {
+      const { classifier } = make(JSON.stringify({ query: "x", filters }));
+      await expect(
+        classifier.planQuery({ question: "q", today: "2026-10-15" }, context),
+      ).rejects.toBeInstanceOf(DataRoomClassifierError);
+    }
   });
 
   it("throws a typed error on a bad date", async () => {

@@ -18,7 +18,7 @@ export const DataRoomDocTypeSchema = z.enum([
 ]);
 export type DataRoomDocType = z.infer<typeof DataRoomDocTypeSchema>;
 
-const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const IsoDate = z.iso.date();
 
 /** What the classifier says about one document; the job (#52) stores these as facets. */
 export const DataRoomClassificationSchema = z.object({
@@ -58,12 +58,16 @@ export type DataRoomClassification = z.infer<typeof DataRoomClassificationSchema
 /** A natural-language question turned into a text query plus structured filters. */
 export const DataRoomQueryPlanSchema = z.object({
   query: z.string(),
-  filters: z.object({
-    docType: DataRoomDocTypeSchema.optional(),
-    parties: z.array(z.string().max(120)).max(20).optional(),
-    dateFrom: IsoDate.optional(),
-    dateTo: IsoDate.optional(),
-    source: z.string().max(80).optional(),
-  }),
+  filters: z
+    .strictObject({
+      docType: DataRoomDocTypeSchema.optional(),
+      parties: z.array(z.string().max(120)).max(20).optional(),
+      dateFrom: IsoDate.optional(),
+      dateTo: IsoDate.optional(),
+      source: z.string().max(80).optional(),
+    })
+    .refine((f) => !f.dateFrom || !f.dateTo || f.dateFrom <= f.dateTo, {
+      message: "dateFrom must not be after dateTo",
+    }),
 });
 export type DataRoomQueryPlan = z.infer<typeof DataRoomQueryPlanSchema>;
