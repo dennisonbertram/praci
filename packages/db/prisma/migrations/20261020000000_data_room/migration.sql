@@ -1,7 +1,7 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') THEN
-    RAISE EXCEPTION 'The database image must include pgvector (the pgvector/pgvector Postgres image). See docs/self-host.md, section Upgrade.';
+    RAISE EXCEPTION 'The database image must include pgvector (the pgvector/pgvector Postgres image). See docs/self-host.md, section Upgrade. After switching the image, run: pnpm --filter @rakazo/db exec prisma migrate resolve --rolled-back 20261020000000_data_room';
   END IF;
 END
 $$;

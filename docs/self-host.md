@@ -624,6 +624,15 @@ docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
 
 This restarts Postgres briefly; the data volume is reused. If you skip it, the migration fails with
 "the database image must include pgvector" and the API stays unhealthy until you do this.
+If the API already failed with that error, Prisma has recorded the migration as failed and refuses
+later migrations. After switching the image, mark it rolled back (nothing was applied) and restart
+the API:
+
+```bash
+docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
+  run --rm api pnpm --filter @rakazo/db exec prisma migrate resolve --rolled-back 20261020000000_data_room
+docker compose --env-file .env -f infra/compose/docker-compose.prod.yml up -d --wait --pull never api
+```
 Updater-managed hosts do this step by hand once; the sidecar never touches Postgres.
 
 A Compose deployment on a published release tag upgrades by moving that tag:
