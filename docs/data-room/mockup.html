@@ -58,7 +58,7 @@ h1{font-size:18px;margin:0}
 .sf .caret{width:1px;height:14px;background:var(--fg);margin-left:-6px}
 .seg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-left:auto}
 .seg .ib{border-radius:0;padding:5px 8px}
-.facets{display:flex;gap:6px;padding:0 20px 10px;align-items:center}
+.facets{display:flex;gap:6px;padding:0 20px 10px;align-items:center;flex-wrap:wrap}
 .facets .sf{flex:none;width:260px;margin-right:6px}
 .facets .sort{margin-left:auto;display:flex;align-items:center;gap:2px}
 .facets .sort .menu{left:0;right:auto;min-width:140px}
@@ -68,7 +68,8 @@ h1{font-size:18px;margin:0}
 .ctx .chip{max-width:100%;color:var(--fg);cursor:default}
 .ctx .chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctx .chip .ib{padding:0;margin-right:-4px}
-.body{display:flex;flex:1;min-height:0;border-top:1px solid var(--border)}
+.body{display:flex;flex:1;min-height:0;border-top:1px solid var(--border);container:bd/inline-size}
+@container bd (max-width:799px){.tree{display:none}}
 .tree{width:184px;flex:none;padding:10px 8px;border-right:1px solid var(--border);overflow:auto}
 .fi{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;cursor:pointer;color:var(--fg)}
 .fi:hover{background:var(--muted)}
@@ -76,12 +77,15 @@ h1{font-size:18px;margin:0}
 .fi .count{margin-left:auto;font-size:11px;color:var(--muted-fg);font-weight:400}
 .fi.l1{padding-left:26px}
 .fi svg{color:var(--muted-fg)}
-.list{flex:1;min-width:0;overflow:auto;padding:0 12px 56px}
-.trow{display:grid;grid-template-columns:minmax(0,1fr) 96px 64px 120px 28px 28px;gap:10px;align-items:center;padding:7px 8px;border-bottom:1px solid var(--border);cursor:pointer;position:relative}
+.list{flex:1;min-width:300px;overflow:auto;padding:0 12px 56px;container:ls/inline-size}
+.trow>:nth-child(2),.trow>:nth-child(3),.trow>:nth-child(4){display:none}
+.trow{display:grid;--cols:minmax(160px,1fr) 28px 28px;grid-template-columns:var(--cols);gap:10px;align-items:center;padding:7px 8px;border-bottom:1px solid var(--border);cursor:pointer;position:relative}
 .trow.hd{cursor:default;font-size:11px;color:var(--muted-fg);padding:8px 8px 6px;position:sticky;top:0;background:var(--background);z-index:1}
-.list.cmp .trow{grid-template-columns:minmax(0,1fr) 84px 52px 24px 24px}
-.list.cmp .trow>:nth-child(4){display:none}
-.trow .span2{grid-column:span 2}
+.trow>*{min-width:0}
+.trow>span:not(.nm):not(.src){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@container ls (min-width:330px){.trow{--cols:minmax(160px,1fr) 52px 28px 28px}.trow>:nth-child(3){display:grid}}
+@container ls (min-width:430px){.trow{--cols:minmax(160px,1fr) 84px 52px 28px 28px}.trow>:nth-child(2){display:flex}}
+@container ls (min-width:560px){.trow{--cols:minmax(160px,1fr) 84px 52px 120px 28px 28px}.trow>:nth-child(4){display:block}}
 .trow:not(.hd):hover{background:var(--muted)}
 .trow.sel{background:var(--sidebar-accent)}
 .nm{display:flex;align-items:center;gap:8px;min-width:0;font-weight:500}
@@ -112,7 +116,7 @@ h1{font-size:18px;margin:0}
 .gc .th svg{width:22px;height:22px}
 
 /* right panels */
-aside.right{width:340px;flex:none;border-left:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;min-height:0;overflow:auto}
+aside.right{flex:0 1 340px;min-width:280px;border-left:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;min-height:0;overflow:auto}
 .rhead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600}
 .rhead>.ib{margin-left:auto}
 .pv{margin:14px;height:190px;border:1px solid var(--border);border-radius:8px;background:var(--muted);padding:16px 22px;display:flex;flex-direction:column;gap:7px}
@@ -254,9 +258,9 @@ const sicon=s=>`<span class="src" title="${SRCN[s]}" aria-label="${SRCN[s]}">${S
 const kebab=(pin)=>`<button class="ib kebab ${pin?'pin':''}" aria-label="More actions">${ic.more}</button>`;
 const menu=(items)=>`<div class="menu" role="menu">${items.map(i=>i==='-'?'<hr>':`<div role="menuitem" class="${i[2]||''}">${i[0]}${i[1]}</div>`).join('')}</div>`;
 const hd=`<div class="trow hd"><span>Name</span><span>Type</span><span>Date</span><span>Parties</span><span></span><span></span></div>`;
-const row=(d,sel)=>`<div class="trow ${sel?'sel':''}" tabindex="0" data-id="${d.id}"><span class="nm">${ic.doc}<span class="t">${d.n}</span></span><span class="mute">${d.t}</span><span class="mute">${d.d}</span><span class="ell mute" title="${d.p.join(', ')}">${d.p.join(', ')}</span>${sicon(d.s)}${kebab()}</div>`;
-const procRow=p=>`<div class="trow" tabindex="0"><span class="nm">${ic.doc}<span class="t mute">${p.n}</span></span><span class="stat"><span class="spin"></span>${p.st}</span><span></span><span></span>${sicon(p.s)}<span></span><div class="pend"></div></div>`;
-const failRow=(open)=>`<div class="trow failed" tabindex="0"><span class="nm"><span class="dot" aria-hidden="true"></span><span class="t">${FAILED.n}</span></span><span class="stat fail">Failed</span><span class="mute ell span2">${FAILED.err}</span>${sicon(FAILED.s)}${kebab(open)}${open?menu([[ic.retry,'Retry'],[ic.edit,'Rename'],'-',[ic.trash,'Delete','danger']]):''}</div>`;
+const row=(d,sel)=>`<div class="trow ${sel?'sel':''}" tabindex="0" data-id="${d.id}"><span class="nm">${ic.doc}<span class="t" title="${d.n}">${d.n}</span></span><span class="mute">${d.t}</span><span class="mute">${d.d}</span><span class="ell mute" title="${d.p.join(', ')}">${d.p.join(', ')}</span>${sicon(d.s)}${kebab()}</div>`;
+const procRow=p=>`<div class="trow" tabindex="0"><span class="nm">${ic.doc}<span class="t mute" title="${p.n}">${p.n}</span></span><span class="stat"><span class="spin"></span>${p.st}</span><span></span><span></span>${sicon(p.s)}<span></span><div class="pend"></div></div>`;
+const failRow=(open)=>`<div class="trow failed" tabindex="0"><span class="nm"><span class="dot" aria-hidden="true"></span><span class="t" title="${FAILED.n}">${FAILED.n}</span></span><span class="stat fail">Failed</span><span></span><span class="mute" title="${FAILED.err}">${FAILED.err}</span>${sicon(FAILED.s)}${kebab(open)}${open?menu([[ic.retry,'Retry'],[ic.edit,'Rename'],'-',[ic.trash,'Delete','danger']]):''}</div>`;
 
 function header(q,viewMode){
  return `<div class="head"><h1>Data room</h1>
@@ -292,7 +296,7 @@ function library(){
  const lst=mode==='grid'
   ?`<div class="grid">${L.map(x=>`<div class="gc ${x.id===cur()&&pvOpen?'sel':''}" tabindex="0" data-id="${x.id}"><div class="th">${ic.doc}</div><div class="ell" style="font-weight:500">${x.n}</div><div class="mute" style="font-size:11px">${x.t} · ${x.d}</div></div>`).join('')}</div>`
   :hd+L.map(x=>row(x,x.id===cur()&&pvOpen)).join('');
- return `<div class="page">${header('',mode)}${fac({})}<div class="body">${tree('all')}<div class="list ${pvOpen?'cmp':''}">${lst}</div>${pvOpen?preview(d):''}</div></div>`;
+ return `<div class="page">${header('',mode)}${fac({})}<div class="body">${tree('all')}<div class="list">${lst}</div>${pvOpen?preview(d):''}</div></div>`;
 }
 function states(){
  return `<div class="page">${header('')}${fac({})}<div class="body">${tree('all')}<div class="list">${hd}${PROC.map(procRow).join('')}${failRow(true)}${DOCS.slice(0,3).map(x=>row(x,false)).join('')}</div></div></div>`;
@@ -306,8 +310,8 @@ function results(){
  return `<div class="page">${header('','list')}${fac({type:'Contract',party:'Harbor Property',date:'',source:''},'lease renewal terms')}<div class="body">${tree('all')}<div class="list"><div class="rcount">3 documents</div><div class="res">${R.map(r=>`<div class="rs"><div class="top">${ic.doc}<span>${r.d.n}</span><span class="meta">${r.d.f} · ${SRCN[r.d.s]}</span></div>${r.sn.map(s=>`<div class="sn"><span class="cite">${s[0]}</span><p>${s[1]}</p></div>`).join('')}</div>`).join('')}</div></div></div></div>`;
 }
 function agent(){
- return `<div class="page">${header('')}${fac({})}<div class="body">${tree('all')}<div class="list cmp">${hd}${DOCS.map(x=>row(x,x.id===ctx)).join('')}</div>
- <aside class="right" style="width:380px" aria-label="Data room agent"><div class="rhead"><span class="av" style="background:#2f7f6f">D</span>Data room agent<button class="ib" aria-label="Collapse panel">${ic.side}</button></div>
+ return `<div class="page">${header('')}${fac({})}<div class="body">${tree('all')}<div class="list">${hd}${DOCS.map(x=>row(x,x.id===ctx)).join('')}</div>
+ <aside class="right" style="flex-basis:380px" aria-label="Data room agent"><div class="rhead"><span class="av" style="background:#2f7f6f">D</span>Data room agent<button class="ib" aria-label="Collapse panel">${ic.side}</button></div>
   <div class="thread">
    <div class="notice"><span class="av" style="background:#2f7f6f">D</span><div><b>Moved</b> Mutual NDA Orchid Partners.pdf to Legal / Contracts.<div class="acts"><button class="btn">Undo</button></div></div></div>
    <div class="me">When can we end the office lease early?</div>
