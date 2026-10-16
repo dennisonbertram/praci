@@ -51,6 +51,25 @@ export function activeThreadRuns(
   return snapshot?.activeRuns ?? (snapshot?.run ? [snapshot.run] : []);
 }
 
+/** True for events that reduceThreadSnapshot folds into the snapshot. */
+export function isThreadSnapshotEvent(event: ProductEvent): boolean {
+  return (
+    event.type === "thread.cleared" ||
+    event.type === "thread.progress" ||
+    event.type === "thread.subagent" ||
+    event.type === "thread.cloud_agent" ||
+    event.type === "agent.tool.called" ||
+    event.type === "agent.tool.completed" ||
+    event.type === "thread.message.created" ||
+    event.type === "thread.message.updated" ||
+    event.type === "thread.message.reaction" ||
+    event.type === "run.started" ||
+    event.type === "run.waiting_input" ||
+    event.type === "computer.takeover.requested" ||
+    isRunTerminalEvent(event)
+  );
+}
+
 /** Fold one product event into a thread snapshot. Shared by web and mobile. */
 export function reduceThreadSnapshot(
   prev: ThreadSnapshot | null,

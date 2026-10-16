@@ -25,6 +25,7 @@ import {
   isPeerReceiptBlocks,
   isRunTerminalEvent,
   isSecretAskBlock,
+  isThreadSnapshotEvent,
   latestAnswerableAskMessageId,
   leaveThreadWindow,
   messageProviderLabel,
@@ -1472,20 +1473,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
               if (sessionGeneration !== currentSessionGeneration()) return;
               cursor = Math.max(cursor, event.seq ?? -1);
               retryMs = 250;
-              if (
-                event.type === "thread.progress" ||
-                event.type === "agent.tool.called" ||
-                event.type === "agent.tool.completed" ||
-                event.type === "thread.message.created" ||
-                event.type === "thread.message.updated" ||
-                event.type === "thread.message.reaction" ||
-                event.type === "thread.subagent" ||
-                event.type === "thread.cloud_agent" ||
-                event.type === "thread.cleared" ||
-                event.type === "run.waiting_input" ||
-                event.type === "computer.takeover.requested" ||
-                isRunTerminalEvent(event)
-              ) {
+              if (isThreadSnapshotEvent(event)) {
                 if (event.type === "thread.cleared") {
                   expandedHistoryThread.current = null;
                   pinnedAroundRef.current = null;

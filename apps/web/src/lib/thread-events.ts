@@ -9,12 +9,11 @@ import type {
 import {
   activeThreadRuns,
   isActive,
-  isRunTerminalEvent,
   mergeThreadHistory,
   prependThreadHistoryPage,
 } from "@rakazo/core";
 
-export { activeThreadRuns, reduceThreadSnapshot } from "@rakazo/core";
+export { activeThreadRuns, isThreadSnapshotEvent, reduceThreadSnapshot } from "@rakazo/core";
 
 const computerStates: ReadonlySet<unknown> = new Set<ComputerStatus["state"]>([
   "stopped",
@@ -190,24 +189,6 @@ export function prependThreadMessagePage(
   page: ThreadMessagePage,
 ): ThreadSnapshot | null {
   return prependThreadHistoryPage(prev, page);
-}
-
-export function isThreadSnapshotEvent(event: ProductEvent): boolean {
-  return (
-    event.type === "thread.cleared" ||
-    event.type === "thread.progress" ||
-    event.type === "thread.subagent" ||
-    event.type === "thread.cloud_agent" ||
-    event.type === "agent.tool.called" ||
-    event.type === "agent.tool.completed" ||
-    event.type === "thread.message.created" ||
-    event.type === "thread.message.updated" ||
-    event.type === "thread.message.reaction" ||
-    event.type === "run.started" ||
-    event.type === "run.waiting_input" ||
-    event.type === "computer.takeover.requested" ||
-    isRunTerminalEvent(event)
-  );
 }
 
 export function userHoldsComputerControl(
