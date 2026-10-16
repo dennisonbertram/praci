@@ -175,5 +175,14 @@ export const SharedSpaceMemory: StoryObj<typeof SpaceMemorySection> = {
     </div>
   ),
   beforeEach: () =>
-    mockRpc({ ...none, "memory.list": docs.map((d) => ({ ...d, scope: "user", botId: null })) }),
+    mockRpc({
+      ...none,
+      "memory.list": [
+        { ...docs[0], id: "mem_s", scope: "user", botId: null, path: "MEMORY.md" },
+        { ...docs[0], id: "mem_c", botId: "bot_chief", path: "MEMORY.md" },
+        { ...docs[1], id: "mem_r", botId: "bot_retired" },
+      ],
+      "bots.list": [{ id: "bot_chief", name: "Chief" }],
+      "bots.listArchived": [{ id: "bot_retired", name: "Retired" }],
+    }),
 };
