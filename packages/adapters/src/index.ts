@@ -137,6 +137,7 @@ export * from "./remote-mcp.js";
 export * from "./rpc-crypto-source.js";
 export * from "./rpc-crypto-sync.js";
 export * from "./run-secret.js";
+export * from "./s3-artifacts.js";
 export * from "./sandbox-factory.js";
 export * from "./sandbox-provider-env.js";
 export * from "./schedule-tools.js";
