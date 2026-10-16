@@ -82,11 +82,25 @@ export async function contactToolFromTool(
       return { ok: true };
     }
     if (name === "contacts_save") {
-      // The tool never updates by id: it matches by email, like the user's own list.
+      // The tool never updates by id and never creates: it changes the contact with this email.
       const { id: _id, ...rest } = args;
       const input = ContactSaveInputSchema.safeParse(rest);
       if (!input.success) return { error: input.error.issues.map((i) => i.message).join("; ") };
-      return { contact: await saveContact(deps.prisma, deps.scope, input.data) };
+      const existing = input.data.email
+        ? await deps.prisma.contact.findFirst({
+            where: {
+              spaceId: deps.scope.spaceId,
+              userId: deps.scope.userId,
+              email: input.data.email,
+            },
+            select: { id: true },
+          })
+        : null;
+      if (!existing)
+        return { error: "No contact with this email. Use contacts_add for new people." };
+      return {
+        contact: await saveContact(deps.prisma, deps.scope, { ...input.data, id: existing.id }),
+      };
     }
     return { error: `Unknown contact tool ${name}` };
   } catch (error) {

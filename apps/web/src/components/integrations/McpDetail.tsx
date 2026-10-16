@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { isCartaEndpoint } from "@rakazo/contracts";
+import { isCartaAgentSpawnKey, isCartaEndpoint } from "@rakazo/contracts";
 import { Button, Input, Label, Switch } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -200,7 +200,11 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           <Trans>Used by</Trans>
         </Heading>
         <AgentToggleList
-          bots={data.bots}
+          bots={
+            isCartaEndpoint(server.endpoint)
+              ? data.bots.filter((bot) => isCartaAgentSpawnKey(bot.spawnKey))
+              : data.bots
+          }
           appName={server.name}
           disabled={busy}
           isOn={assigned}

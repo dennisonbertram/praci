@@ -4370,3 +4370,74 @@ describe("MCP OAuth reauthorization", () => {
     });
   });
 });
+
+describe("Carta server guards", () => {
+  const actor = {
+    spaceId: "workspace-1",
+    userId: "user-1",
+    email: "user@rakazo.test",
+    isDeploymentOwner: false,
+  } satisfies Actor;
+  const cartaRow = {
+    id: "server-1",
+    spaceId: "workspace-1",
+    userId: "user-1",
+    slug: "carta",
+    name: "Carta",
+    description: "",
+    transport: "streamable_http",
+    endpoint: CARTA_MCP_ENDPOINT,
+    command: null,
+    args: [],
+    env: {},
+    headers: {},
+    secretId: null,
+    enabled: true,
+    writesEnabled: false,
+    revision: 1,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+  };
+  function clientFor(prisma: object, status: "none" | "connected" | "reconnect" = "none") {
+    const deps = {
+      prisma,
+      secrets: { load: vi.fn(), put: vi.fn() },
+      mcpOAuth: { statusFor: vi.fn().mockResolvedValue(status) },
+      env: {
+        defaultProvider: "fake",
+        defaultModel: "fake-model",
+        webOrigin: "http://127.0.0.1:5173",
+        screenProxySecret: "fake-test-secret",
+        sandboxProvider: "fake",
+      },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    return createRouterClient(createRouter(deps), { context: { actor } as never });
+  }
+
+  it("refuses a refresh until a Carta server is signed in", async () => {
+    for (const status of ["none", "reconnect"] as const) {
+      const client = clientFor(
+        { mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) } },
+        status,
+      );
+      await expect(client.carta.refresh()).rejects.toThrow("Connect Carta first");
+    }
+    const none = clientFor({ mcpServer: { findMany: vi.fn().mockResolvedValue([]) } });
+    await expect(none.carta.refresh()).rejects.toThrow("Connect Carta first");
+  });
+
+  it("refuses to give a Carta server to a bot other than the Carta agent", async () => {
+    const tx = {
+      bot: { findFirst: vi.fn().mockResolvedValue({ id: "bot-2", spawnKey: null }) },
+      mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) },
+    };
+    const client = clientFor({ $transaction: (fn: (t: unknown) => unknown) => fn(tx) });
+    await expect(
+      client.mcp.assignments.replace({
+        botId: "bot-2",
+        assignments: [{ serverId: "server-1", allowAllTools: true, allowedTools: [] }],
+      }),
+    ).rejects.toThrow("Carta is used only by the Carta agent.");
+  });
+});

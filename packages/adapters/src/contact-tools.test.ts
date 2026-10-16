@@ -97,4 +97,37 @@ describe("contact tools", () => {
       expect.objectContaining({ where: { spaceId_userId: scope } }),
     );
   });
+
+  it("contacts_save updates a matching contact and never creates one", async () => {
+    const row = {
+      id: "c1",
+      name: "Ada Fund",
+      email: "ada@example.test",
+      organization: null,
+      kind: "investor",
+      notes: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    };
+    const findFirst = vi.fn().mockResolvedValueOnce(null).mockResolvedValue({ id: "c1" });
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const create = vi.fn();
+    const upsert = vi.fn();
+    const findUniqueOrThrow = vi.fn(async () => ({ ...row, name: "Ada Capital" }));
+    const prisma = {
+      contact: { findFirst, updateMany, create, upsert, findUniqueOrThrow },
+    } as never;
+    const args = { name: "Ada Capital", email: "ada@example.test" };
+    const missing = await contactToolFromTool("contacts_save", { prisma, scope }, args);
+    expect(missing).toEqual({
+      error: "No contact with this email. Use contacts_add for new people.",
+    });
+    const noEmail = await contactToolFromTool("contacts_save", { prisma, scope }, { name: "X" });
+    expect(noEmail).toHaveProperty("error");
+    expect(create).not.toHaveBeenCalled();
+    expect(upsert).not.toHaveBeenCalled();
+    const saved = await contactToolFromTool("contacts_save", { prisma, scope }, args);
+    expect(saved).toEqual({ contact: expect.objectContaining({ name: "Ada Capital" }) });
+    expect(upsert).not.toHaveBeenCalled();
+  });
 });

@@ -272,3 +272,31 @@ it("shows a retry when the cap table cannot be read, and stops polling", async (
   await click(button("Try again"));
   expect(container.textContent).not.toContain("Could not load the cap table");
 });
+
+it("picks up a run started elsewhere on focus and on a slow background check", async () => {
+  vi.useFakeTimers();
+  rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: false });
+  await show();
+  const initial = rpcMock.capTable.mock.calls.length;
+  await act(async () => void window.dispatchEvent(new Event("focus")));
+  expect(rpcMock.capTable.mock.calls.length).toBeGreaterThan(initial);
+  rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: true });
+  await act(async () => vi.advanceTimersByTimeAsync(30_100));
+  expect(container.textContent).toContain("Reading Carta…");
+  const polling = rpcMock.capTable.mock.calls.length;
+  await act(async () => vi.advanceTimersByTimeAsync(3100));
+  expect(rpcMock.capTable.mock.calls.length).toBeGreaterThan(polling);
+});
+
+it("retries the refresh, not the contacts load, after a failed refresh", async () => {
+  rpcMock.refresh.mockRejectedValueOnce(new Error("boom"));
+  rpcMock.refresh.mockResolvedValue({ ok: true });
+  await show();
+  await click(container.querySelector("[aria-label='Refresh from Carta']") as HTMLElement);
+  expect(container.textContent).toContain("boom");
+  const lists = rpcMock.list.mock.calls.length;
+  await click(button("Try again"));
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(2);
+  expect(rpcMock.list.mock.calls.length).toBe(lists);
+  expect(container.textContent).not.toContain("boom");
+});

@@ -1,6 +1,6 @@
 import type { McpServer } from "@rakazo/contracts";
 import { cartaAgentSpawnKey, isCartaEndpoint } from "@rakazo/contracts";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { mcpStatus } from "./integrations";
 import { rpc } from "./rpc";
 
@@ -29,7 +29,8 @@ export function hasConnectedCarta(servers: readonly McpServer[]): boolean {
  * Creates the user's Carta agent when Carta is connected and the agent is missing. `ready` is false
  * until the bot list has loaded, so an existing agent is not mistaken for a missing one. When `create`
  * resolves to `false` (it failed), the next change of `botsVersion` (a bot list refresh) tries once
- * more; nothing else retries.
+ * more. Carta may be connected later (the sign-in runs in another window), so the check also runs
+ * again when the window regains focus while the agent is missing.
  */
 export function useAutoCreateCartaAgent(
   ready: boolean,
@@ -40,6 +41,13 @@ export function useAutoCreateCartaAgent(
   const started = useRef(false);
   const createRef = useRef(create);
   createRef.current = create;
+  const [focusCount, setFocusCount] = useState(0);
+  useEffect(() => {
+    if (hasAgent) return;
+    const onFocus = () => setFocusCount((n) => n + 1);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [hasAgent]);
   useEffect(() => {
     if (!ready) {
       started.current = false;
@@ -50,13 +58,12 @@ export function useAutoCreateCartaAgent(
     rpc.mcp.servers
       .list()
       .then(async (servers) => {
-        if (hasConnectedCarta(servers) && (await createRef.current()) === false) {
+        if (!hasConnectedCarta(servers) || (await createRef.current()) === false) {
           started.current = false;
         }
       })
       .catch(() => {
         started.current = false;
       });
-    // biome-ignore lint/correctness/useExhaustiveDependencies: botsVersion only re-runs the effect
-  }, [ready, hasAgent, botsVersion]);
+  }, [ready, hasAgent, botsVersion, focusCount]);
 }

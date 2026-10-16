@@ -70,3 +70,12 @@ it("retries a failed creation once per bot list refresh, not on every render", a
   await showAt(2);
   expect(create).toHaveBeenCalledTimes(2);
 });
+
+it("creates the agent after a sign-in that happened once the first check had found no Carta", async () => {
+  servers.mockResolvedValue([]);
+  await show(true, false);
+  expect(create).not.toHaveBeenCalled();
+  servers.mockResolvedValue([carta]);
+  await act(async () => void window.dispatchEvent(new Event("focus")));
+  expect(create).toHaveBeenCalledTimes(1);
+});

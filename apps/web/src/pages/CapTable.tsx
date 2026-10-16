@@ -34,6 +34,8 @@ type Prefill = { name: string; email: string | null; organization: string | null
 
 /** How often the page asks again while the Carta agent is still reading. */
 const POLL_MS = 3000;
+/** How often an idle page checks for a run started elsewhere, such as in another tab. */
+const IDLE_POLL_MS = 30_000;
 const DASH = "—";
 
 const num = (value: number | null) =>
@@ -331,19 +333,32 @@ export function CapTablePage({
     wasSyncing.current = syncing;
   }, [syncing, load]);
   useEffect(() => {
-    if (!syncing || capFailed) return;
-    const timer = setInterval(() => void loadCap(), POLL_MS);
+    if (!cartaConnected || capFailed) return;
+    const timer = setInterval(
+      () => {
+        if (syncing || document.visibilityState === "visible") void loadCap();
+      },
+      syncing ? POLL_MS : IDLE_POLL_MS,
+    );
+    const onFocus = () => void loadCap();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
     return () => {
       clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
       latestCap.current++;
     };
-  }, [syncing, capFailed, loadCap]);
+  }, [cartaConnected, syncing, capFailed, loadCap]);
 
-  const refresh = () =>
-    rpc.carta
+  const [refreshError, setRefreshError] = useState("");
+  const refresh = () => {
+    setRefreshError("");
+    return rpc.carta
       .refresh()
       .then(loadCap)
-      .catch((cause) => setError(errorText(cause, t`Could not refresh from Carta`)));
+      .catch((cause) => setRefreshError(errorText(cause, t`Could not refresh from Carta`)));
+  };
 
   const snapshot = cartaConnected ? (cap?.snapshot ?? null) : null;
   const reading = cartaConnected && syncing && !snapshot && !capFailed;
@@ -429,6 +444,15 @@ export function CapTablePage({
             <Trans>Could not load the cap table</Trans>
           </span>
           <Button variant="outline" size="sm" onClick={() => void loadCap()}>
+            <Trans>Try again</Trans>
+          </Button>
+        </div>
+      ) : null}
+
+      {refreshError ? (
+        <div role="alert" className="mb-3 flex items-center gap-3 text-sm text-destructive">
+          <span>{refreshError}</span>
+          <Button variant="outline" size="sm" onClick={() => void refresh()}>
             <Trans>Try again</Trans>
           </Button>
         </div>

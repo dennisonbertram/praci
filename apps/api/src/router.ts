@@ -160,6 +160,7 @@ import {
   appContract,
   BotSecretAuth,
   ComputerCommandSchema,
+  cartaAgentSpawnKey,
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
@@ -538,6 +539,8 @@ function computerContext(actor: Actor, botId: string, operationId: string): Adap
     signal: new AbortController().signal,
   };
 }
+
+const CARTA_ONLY_MESSAGE = "Carta is used only by the Carta agent.";
 
 function mcpServerDto(
   row: {
@@ -4571,6 +4574,10 @@ export function createRouter(deps: RouterDeps) {
             if (row) {
               if (isCartaEndpoint(row.endpoint))
                 await assignToExistingCartaAgent(deps.prisma, context.actor);
+              else if (isCartaEndpoint(existing.endpoint))
+                await deps.prisma.botMcpServer.deleteMany({
+                  where: { serverId: row.id, ...actorScope(context.actor) },
+                });
               return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
             }
           }
@@ -4696,7 +4703,7 @@ export function createRouter(deps: RouterDeps) {
                     spaceId: context.actor.spaceId,
                     userId: context.actor.userId,
                   },
-                  select: { id: true },
+                  select: { id: true, spawnKey: true },
                 }),
                 tx.mcpServer.findFirst({
                   where: {
@@ -4705,10 +4712,15 @@ export function createRouter(deps: RouterDeps) {
                     userId: context.actor.userId,
                     enabled: true,
                   },
-                  select: { id: true },
+                  select: { id: true, endpoint: true },
                 }),
               ]);
               if (!bot || !server) throw new IsolationError();
+              if (
+                bot.spawnKey !== cartaAgentSpawnKey(context.actor.userId) &&
+                isCartaEndpoint(server.endpoint)
+              )
+                throw new ORPCError("BAD_REQUEST", { message: CARTA_ONLY_MESSAGE });
               return tx.botMcpServer.upsert({
                 where: { botId_serverId: { botId: bot.id, serverId: server.id } },
                 create: {
@@ -4746,7 +4758,7 @@ export function createRouter(deps: RouterDeps) {
                 spaceId: context.actor.spaceId,
                 userId: context.actor.userId,
               },
-              select: { id: true },
+              select: { id: true, spawnKey: true },
             });
             if (!bot) throw new IsolationError();
             const servers = await tx.mcpServer.findMany({
@@ -4755,9 +4767,14 @@ export function createRouter(deps: RouterDeps) {
                 spaceId: context.actor.spaceId,
                 userId: context.actor.userId,
               },
-              select: { id: true },
+              select: { id: true, endpoint: true },
             });
             if (servers.length !== input.assignments.length) throw new IsolationError();
+            if (
+              bot.spawnKey !== cartaAgentSpawnKey(context.actor.userId) &&
+              servers.some((server) => isCartaEndpoint(server.endpoint))
+            )
+              throw new ORPCError("BAD_REQUEST", { message: CARTA_ONLY_MESSAGE });
             const previous = await tx.botMcpServer.findMany({
               where: {
                 botId: bot.id,
@@ -6292,6 +6309,14 @@ export function createRouter(deps: RouterDeps) {
         syncing: await isCartaSyncing(deps.prisma, context.actor),
       })),
       refresh: authed.carta.refresh.handler(async ({ context }) => {
+        const cartaServers = (
+          await deps.prisma.mcpServer.findMany({ where: actorScope(context.actor) })
+        ).filter((server) => server.enabled && isCartaEndpoint(server.endpoint));
+        const statuses = await Promise.all(
+          cartaServers.map((server) => mcpOAuth.statusFor(server, context.actor)),
+        );
+        if (!statuses.includes("connected"))
+          throw new ORPCError("BAD_REQUEST", { message: "Connect Carta first" });
         const result = await startCartaSync(cartaSyncDeps, context.actor).catch(
           (error: unknown) => {
             throw mapSpaceLifecycleError(error);
