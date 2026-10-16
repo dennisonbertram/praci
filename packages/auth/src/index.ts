@@ -42,6 +42,8 @@ export interface AuthEnv {
   email?: TransactionalEmailProvider;
   onEmailError?: (error: unknown) => void;
   beforeDeleteUser?: (userId: string) => Promise<void>;
+  /** Runs after account deletion removed the user's Data room rows, so the caller can delete their blobs. */
+  afterDeleteUserData?: (blobs: Array<{ spaceId: string; storageKey: string }>) => Promise<void>;
   /** Runs when a session row is deleted. Delivery also drops a token whose session is missing or expired. */
   afterDeleteSession?: (session: AuthSession) => Promise<void>;
   /** Runs when a password change replaces the caller's own session instead of ending it. */
@@ -339,7 +341,18 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
             )
             .map(({ organizationId }) => organizationId);
 
-          await prisma.$transaction(async (tx) => {
+          const blobs = await prisma.$transaction(async (tx) => {
+            // The cascades below remove these rows but not their blobs.
+            const items = await tx.dataRoomItem.findMany({
+              where: {
+                storageKey: { not: null },
+                OR: [
+                  { userId: user.id },
+                  { space: { organizationId: { in: personalOrganizationIds } } },
+                ],
+              },
+              select: { spaceId: true, storageKey: true },
+            });
             await tx.deploymentSettings.updateMany({
               where: { ownerUserId: user.id },
               data: { ownerUserId: null },
@@ -352,7 +365,11 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
             await tx.organization.deleteMany({
               where: { id: { in: personalOrganizationIds } },
             });
+            return items.flatMap(({ spaceId, storageKey }) =>
+              storageKey ? [{ spaceId, storageKey }] : [],
+            );
           });
+          await env.afterDeleteUserData?.(blobs);
         },
       },
     },

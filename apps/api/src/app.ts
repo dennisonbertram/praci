@@ -12,6 +12,7 @@ import type {
   SandboxProvider,
   TransactionalEmailProvider,
 } from "@rakazo/adapter-kit";
+import { dataRoomBlobDeleteJob } from "@rakazo/adapter-kit";
 import type {
   ComposioProvider,
   ConnectorRegistry,
@@ -449,6 +450,13 @@ export async function createApp(
       await deletePushToken(env.dataDir, userId).catch((error) =>
         getLogger().error("push token removal failed", error),
       );
+    },
+    afterDeleteUserData: async (blobs) => {
+      for (const { spaceId, storageKey } of blobs) {
+        await jobs
+          .enqueue(dataRoomBlobDeleteJob(spaceId, storageKey))
+          .catch((error) => getLogger().error("data room blob cleanup", error));
+      }
     },
     // The session change already happened, so a token file failure must not fail sign-out.
     afterDeleteSession: async (session) => {

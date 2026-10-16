@@ -14,6 +14,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import {
   computerControlExpireJobKey,
+  dataRoomBlobDeleteJob,
   messagingDeliverJob,
   routineJobKey,
   routineWakeupJob,
@@ -1151,6 +1152,11 @@ export function createRouter(deps: RouterDeps) {
             claimRenewal = null;
           }
           const fallback = await deleteEmptySpaceForMember(deps.prisma, claimedInput);
+          for (const storageKey of fallback.dataRoomStorageKeys) {
+            await deps.jobs
+              .enqueue(dataRoomBlobDeleteJob(input.spaceId, storageKey))
+              .catch((jobError) => getLogger().error("data room blob cleanup", jobError));
+          }
           return { ok: true as const, activeSpaceId: fallback.id };
         } catch (error) {
           if (context.signal?.aborted) claimReleasable = false;
