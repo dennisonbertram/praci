@@ -4,6 +4,7 @@ export * from "./board.js";
 export * from "./board-live.js";
 export * from "./bootstrap-user.js";
 export * from "./cancel-runs.js";
+export * from "./cap-table.js";
 export * from "./client.js";
 export * from "./computers.js";
 export * from "./contacts.js";

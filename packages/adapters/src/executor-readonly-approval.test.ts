@@ -756,3 +756,30 @@ describe("mail_send for the Carta agent", () => {
     expect(f.effects).toEqual([]);
   });
 });
+
+describe("Carta write tools", () => {
+  beforeEach(() => {
+    reviewMock.mockReset();
+  });
+  const rules: ActionApprovalRule[] = [
+    { effect: "always_allow", matchKind: "tool", matchValue: "mutate" },
+  ];
+  const mutate = (spawnKey: string | null) =>
+    fixture({ name: "mutate", readOnly: false, autoReview: true, rules, spawnKey });
+
+  it("asks for the Carta agent despite an always-allow rule and Auto Review", async () => {
+    const f = mutate(cartaAgentSpawnKey("user-1"));
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(isApprovalPausedResult(f.results[0])).toBe(true);
+    expect(reviewMock).not.toHaveBeenCalled();
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("follows the saved rule for an ordinary bot's tool of the same name", async () => {
+    const f = mutate(null);
+    await f.run();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(f.execute).toHaveBeenCalledOnce();
+  });
+});

@@ -213,6 +213,7 @@ import {
   findSpaceMemoryConfig,
   findTicket,
   formatMessagingLinkCode,
+  getCapTableSnapshot,
   InvalidSpaceNameError,
   IsolationError,
   isRecordNotFound,
@@ -262,7 +263,14 @@ import {
 } from "./artifacts.js";
 import type { BillingService } from "./billing.js";
 import { botProfileLabelsChanged, commitBotUpdate } from "./bot-update.js";
-import { assignToExistingCartaAgent, ensureCartaAgent } from "./carta-agent.js";
+import type { CartaSyncDeps } from "./carta-agent.js";
+import {
+  assignToExistingCartaAgent,
+  ensureCartaAgent,
+  isCartaSyncing,
+  onMcpServerConnected,
+  startCartaSync,
+} from "./carta-agent.js";
 import {
   executionBlocksUserTakeover,
   resolveBusyBotName,
@@ -546,6 +554,7 @@ function mcpServerDto(
     headers: unknown;
     secretId: string | null;
     enabled: boolean;
+    writesEnabled: boolean;
     revision: number;
     createdAt: Date;
     updatedAt: Date;
@@ -578,6 +587,7 @@ function mcpServerDto(
     oauthStatus,
     oauthAttempted,
     enabled: row.enabled,
+    writesEnabled: row.writesEnabled,
     revision: row.revision,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -898,6 +908,12 @@ export function createRouter(deps: RouterDeps) {
   const repos = createRepos(deps.prisma);
   const onboardingDeps = { prisma: deps.prisma, events: deps.events, connectors: deps.connectors };
   const mcpOAuth = deps.mcpOAuth ?? new McpOAuthBroker(deps.prisma, deps.secrets);
+  const cartaSyncDeps: CartaSyncDeps = {
+    prisma: deps.prisma,
+    repos,
+    hasModel: async (actor) => !(await modelSetup(deps, actor)).needsModel,
+    enqueueRun: (runId) => deps.jobs.enqueue(runContinueJob(runId)),
+  };
   const beginMcpOAuth = (input: {
     serverId: string;
     spaceId: string;
@@ -4574,6 +4590,26 @@ export function createRouter(deps: RouterDeps) {
           if (!row) throw new IsolationError();
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
+        setWrites: authed.mcp.servers.setWrites.handler(async ({ context, input }) => {
+          const where = {
+            id: input.id,
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+          };
+          const server = await deps.prisma.mcpServer.findFirst({ where });
+          if (!server) throw new IsolationError();
+          if (!isCartaEndpoint(server.endpoint))
+            throw new ORPCError("BAD_REQUEST", {
+              message: "Writes can only be turned on for a Carta server",
+            });
+          const row = await deps.prisma.mcpServer.update({
+            where: { id: server.id },
+            data: { writesEnabled: input.enabled },
+          });
+          // The Carta agent's tool list follows the switch; the call-time check already does.
+          await assignToExistingCartaAgent(deps.prisma, context.actor);
+          return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
+        }),
         remove: authed.mcp.servers.remove.handler(async ({ context, input }) => {
           const server = await deps.prisma.mcpServer.findFirst({
             where: {
@@ -4794,11 +4830,17 @@ export function createRouter(deps: RouterDeps) {
         }),
         complete: authed.mcp.oauth.complete.handler(async ({ context, input }) => {
           try {
+            // The session is consumed by complete(), so read which server it signs in first.
+            const session = await deps.prisma.mcpOAuthSession.findFirst({
+              where: { id: input.sessionId, ...actorScope(context.actor) },
+              select: { serverId: true },
+            });
             await mcpOAuth.complete({
               ...input,
               spaceId: context.actor.spaceId,
               userId: context.actor.userId,
             });
+            if (session) await onMcpServerConnected(cartaSyncDeps, context.actor, session.serverId);
             return { ok: true as const };
           } catch (error) {
             throw new ORPCError("BAD_REQUEST", {
@@ -6245,6 +6287,20 @@ export function createRouter(deps: RouterDeps) {
           throw mapSpaceLifecycleError(error);
         }),
       ),
+      capTable: authed.carta.capTable.handler(async ({ context }) => ({
+        snapshot: await getCapTableSnapshot(deps.prisma, actorScope(context.actor)),
+        syncing: await isCartaSyncing(deps.prisma, context.actor),
+      })),
+      refresh: authed.carta.refresh.handler(async ({ context }) => {
+        const result = await startCartaSync(cartaSyncDeps, context.actor).catch(
+          (error: unknown) => {
+            throw mapSpaceLifecycleError(error);
+          },
+        );
+        if (result === "no_model")
+          throw new ORPCError("BAD_REQUEST", { message: "Add a model before refreshing" });
+        return { ok: true as const };
+      }),
     },
     contacts: {
       list: authed.contacts.list.handler(({ context, input }) =>

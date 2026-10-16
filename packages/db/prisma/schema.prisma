@@ -25,6 +25,7 @@ model User {
   aiDataConsents AiDataConsent[]
   mailSearches   MailSearch[]
   contacts       Contact[]
+  capTableSnapshots       CapTableSnapshot[]
   id                          String                       @id
   name                        String
   email                       String
@@ -240,6 +241,7 @@ model Space {
   botPages                    BotPage[]
   botPins                     BotPins[]
   contacts                    Contact[]
+  capTableSnapshots                    CapTableSnapshot[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
   artifacts                   Artifact[]
@@ -1306,6 +1308,8 @@ model McpServer {
   secretId      String?
   secret        Secret?           @relation(fields: [secretId], references: [id], onDelete: SetNull)
   enabled       Boolean           @default(true)
+  /// Whether the server's known write tools may be offered to agents (Carta only for now).
+  writesEnabled Boolean           @default(false)
   revision      Int               @default(1)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
@@ -2105,6 +2109,21 @@ model Contact {
   @@unique([spaceId, userId, email])
   @@index([spaceId, userId])
   @@map("contacts")
+}
+
+/// The Carta agent's latest read of the company's cap table. One row per user, replaced on each sync.
+model CapTableSnapshot {
+  id        String   @id @default(cuid())
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// CapTableSnapshotInput from @rakazo/contracts.
+  data      Json
+  updatedAt DateTime @updatedAt
+
+  @@unique([spaceId, userId])
+  @@map("cap_table_snapshots")
 }
 
 // Data room. Every row carries spaceId (cascade) and userId; every query filters on spaceId.

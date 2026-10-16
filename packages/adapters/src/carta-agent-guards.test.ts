@@ -1,4 +1,9 @@
-import { CARTA_READ_TOOLS, cartaAgentSpawnKey, financeAgentSpawnKey } from "@rakazo/contracts";
+import {
+  CARTA_READ_TOOLS,
+  CARTA_WRITE_TOOLS,
+  cartaAgentSpawnKey,
+  financeAgentSpawnKey,
+} from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import { buildApprovalAskBlock, cartaMailSendIsComplete, isCartaMailSend } from "./approval-ask.js";
 import { selectBuiltinToolsForRun } from "./executor.js";
@@ -27,13 +32,33 @@ describe("assignmentAllowsTool for the Carta agent", () => {
       ),
     ).toBe(false);
   });
+  it("refuses write tools until the server's writes are on, checked on each call", () => {
+    const assignment = (writesEnabled: boolean) => ({
+      allowAllTools: false,
+      allowedTools: [...CARTA_READ_TOOLS, ...CARTA_WRITE_TOOLS],
+      server: { ...server, writesEnabled },
+      bot: { spawnKey: carta },
+    });
+    expect(assignmentAllowsTool(assignment(false), "mutate")).toBe(false);
+    expect(assignmentAllowsTool(assignment(true), "mutate")).toBe(true);
+    expect(assignmentAllowsTool(assignment(true), "call_tool")).toBe(true);
+    expect(assignmentAllowsTool(assignment(false), "fetch")).toBe(true);
+  });
+  it("refuses every Carta tool to a bot that is not the Carta agent", () => {
+    for (const spawnKey of [null, financeAgentSpawnKey("u1")])
+      expect(
+        assignmentAllowsTool(
+          {
+            allowAllTools: true,
+            allowedTools: [],
+            server: { ...server, writesEnabled: true },
+            bot: { spawnKey },
+          },
+          CARTA_READ_TOOLS[0],
+        ),
+      ).toBe(false);
+  });
   it("leaves other bots and other servers unchanged", () => {
-    expect(
-      assignmentAllowsTool(
-        { allowAllTools: true, allowedTools: [], server, bot: { spawnKey: null } },
-        "write_something",
-      ),
-    ).toBe(true);
     expect(
       assignmentAllowsTool(
         {

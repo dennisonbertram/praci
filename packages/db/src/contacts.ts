@@ -77,6 +77,15 @@ export async function deleteContact(prisma: Db, actor: Scope, id: string): Promi
   if (count === 0) throw new IsolationError("Contact not found");
 }
 
+/** Creates a new contact. Throws ContactEmailTakenError when the email already belongs to one. */
+export const addContact = (prisma: Db, actor: Scope, input: Omit<ContactSaveInput, "id">) =>
+  prisma.contact
+    .create({ data: { ...ownerOf(actor), ...input } })
+    .then(toContact)
+    .catch((error: unknown) => {
+      throw isUniqueViolation(error) ? new ContactEmailTakenError() : error;
+    });
+
 export const saveContact = (prisma: Db, actor: Scope, input: ContactSaveInput) =>
   writeContact(prisma, actor, input).catch((error: unknown) => {
     throw isUniqueViolation(error) ? new ContactEmailTakenError() : error;

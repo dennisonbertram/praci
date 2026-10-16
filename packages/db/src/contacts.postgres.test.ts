@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
-import { ContactEmailTakenError, deleteContact, listContacts, saveContact } from "./contacts.js";
+import {
+  addContact,
+  ContactEmailTakenError,
+  deleteContact,
+  listContacts,
+  saveContact,
+} from "./contacts.js";
 import { IsolationError } from "./scope.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -48,6 +54,24 @@ describePostgres("contacts (PostgreSQL)", () => {
     await prisma.organization.deleteMany({ where: { id: organizationId } });
     await prisma.user.deleteMany({ where: { id: { in: [mine.userId, sameSpace.userId] } } });
     await close();
+  });
+
+  it("addContact creates, then refuses an email the user already has", async () => {
+    const first = await addContact(prisma, mine, {
+      name: "Add One",
+      email: "add-one@example.test",
+    });
+    expect(first.name).toBe("Add One");
+    await expect(
+      addContact(prisma, mine, { name: "Dup", email: "add-one@example.test" }),
+    ).rejects.toBeInstanceOf(ContactEmailTakenError);
+    const other = await addContact(prisma, sameSpace, {
+      name: "Mine",
+      email: "add-one@example.test",
+    });
+    expect(other.email).toBe("add-one@example.test");
+    await deleteContact(prisma, mine, first.id);
+    await deleteContact(prisma, sameSpace, other.id);
   });
 
   it("creates, then updates by matching email instead of duplicating", async () => {

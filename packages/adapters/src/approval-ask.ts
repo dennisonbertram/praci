@@ -1,6 +1,6 @@
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { MailApproval, MailEdits, MessageBlock } from "@rakazo/contracts";
-import { isCartaAgentSpawnKey, MAX_COMPOSE_BODY } from "@rakazo/contracts";
+import { CARTA_WRITE_TOOLS, isCartaAgentSpawnKey, MAX_COMPOSE_BODY } from "@rakazo/contracts";
 import { redactSecrets } from "@rakazo/core";
 import { buildRawMessage, displayAddress, parseRecipients } from "./mail-compose.js";
 
@@ -54,6 +54,10 @@ export function buildApprovalAskBlock(
 /** The Carta agent's mail_send: always asks, never from a saved rule or Auto Review. */
 export const isCartaMailSend = (botSpawnKey: string | null | undefined, toolName: string) =>
   toolName === "mail_send" && isCartaAgentSpawnKey(botSpawnKey);
+
+/** The Carta agent's write tools on Carta's server: every call asks, whatever the saved rules say. */
+export const isCartaWrite = (botSpawnKey: string | null | undefined, toolName: string) =>
+  isCartaAgentSpawnKey(botSpawnKey) && (CARTA_WRITE_TOOLS as readonly string[]).includes(toolName);
 
 /** Whether a mail_send call carries the whole message (no draftId shortcut). */
 export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean {
