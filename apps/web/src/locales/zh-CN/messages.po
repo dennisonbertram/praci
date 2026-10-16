@@ -523,6 +523,10 @@ msgstr ""
 msgid "Add custom connection"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Add files"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Add item"
@@ -612,6 +616,11 @@ msgstr ""
 msgid "All crypto"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderTree.tsx
+msgid "All items"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "All providers"
 msgstr ""
@@ -687,6 +696,7 @@ msgstr "始终允许此工具"
 msgid "Always allowed"
 msgstr "始终允许"
 
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
@@ -754,6 +764,7 @@ msgid "Appearance"
 msgstr "外观"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
 
@@ -805,6 +816,10 @@ msgstr "参数"
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 msgid "Artifacts"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Ascending"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -1169,6 +1184,7 @@ msgstr "无法连接服务器。"
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/WalletDialog.tsx
@@ -1309,6 +1325,7 @@ msgstr ""
 msgid "Chart failed to render: {error}"
 msgstr "图表渲染失败：{error}"
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Chat"
 msgstr ""
@@ -1413,6 +1430,10 @@ msgstr "设置新密码"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
 msgstr "选择文件"
+
+#: src/pages/DataRoom.tsx
+msgid "Choose files"
+msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
@@ -1520,6 +1541,7 @@ msgid "Close panel"
 msgstr "关闭面板"
 
 #: src/components/ArtifactFileCard.tsx
+#: src/components/data-room/Preview.tsx
 msgid "Close preview"
 msgstr "关闭预览"
 
@@ -2304,6 +2326,10 @@ msgstr ""
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Couldn't classify"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
 msgstr "无法加载消息设置"
@@ -2470,6 +2496,14 @@ msgstr "自定义机器人头像"
 msgid "Dark"
 msgstr "深色"
 
+#: src/pages/DataRoom.tsx
+#: src/pages/Shell.tsx
+msgid "Data room"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Date"
@@ -2520,6 +2554,8 @@ msgstr "默认（{0}）"
 msgid "Default scope"
 msgstr "默认范围"
 
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
@@ -2546,6 +2582,7 @@ msgstr "删除 {0}"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "删除 {0}？"
@@ -2594,6 +2631,10 @@ msgstr "拒绝"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "部署默认"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Descending"
+msgstr ""
 
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -2684,6 +2725,7 @@ msgid "Disconnecting…"
 msgstr "正在断开…"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/shell/message-cards.tsx
@@ -2741,6 +2783,7 @@ msgid "Done"
 msgstr "完成"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/Artifacts.tsx
 msgid "Download"
 msgstr ""
@@ -2789,12 +2832,20 @@ msgstr "技能草稿"
 msgid "Drag, drop, or paste an image"
 msgstr "拖放或粘贴图片"
 
+#: src/pages/DataRoom.tsx
+msgid "Drop files here"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Drop files to attach"
 msgstr ""
 
 #: src/components/finance/StatementImport.tsx
 msgid "Drop statements here or choose files"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Drop to add to Data room"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -2857,6 +2908,10 @@ msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a name without slashes"
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -3006,6 +3061,9 @@ msgstr ""
 msgid "failed"
 msgstr "失败"
 
+#: src/components/data-room/format.ts
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
@@ -3040,12 +3098,24 @@ msgstr ""
 msgid "File is too large to upload."
 msgstr ""
 
+#: src/components/data-room/DropZone.tsx
+msgid "Filed"
+msgstr ""
+
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Files"
 msgstr ""
 
+#: src/components/data-room/format.ts
+msgid "Filing"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Filter"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Filter by {label}"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -3060,6 +3130,7 @@ msgstr ""
 msgid "Filters"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/finance/ui.tsx
 #: src/components/FinanceCards.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -3128,6 +3199,15 @@ msgstr ""
 msgid "Flag unexpected actions"
 msgstr "标记异常操作"
 
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/Preview.tsx
+msgid "Folder"
+msgstr ""
+
+#: src/components/data-room/FolderTree.tsx
+msgid "Folders"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "忘记密码？"
@@ -3151,6 +3231,7 @@ msgid "Free"
 msgstr "免费"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
@@ -3195,6 +3276,10 @@ msgstr ""
 msgid "Git event"
 msgstr "Git 事件"
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Gmail"
+msgstr ""
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now. Try again in a minute."
 msgstr ""
@@ -3206,6 +3291,14 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Gmail tabs"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Google Drive"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Grid view"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -3440,6 +3533,10 @@ msgstr ""
 msgid "Italic"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Items"
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "它的对话、文件和例行任务将被永久删除。它创建的 Bot 仍留在列表中。"
@@ -3551,6 +3648,7 @@ msgid "List"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
+#: src/pages/DataRoom.tsx
 msgid "List view"
 msgstr ""
 
@@ -3571,6 +3669,7 @@ msgid "Load earlier messages"
 msgstr "加载更早的消息"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/Inbox.tsx
 msgid "Load more"
 msgstr ""
@@ -3976,8 +4075,18 @@ msgstr ""
 msgid "More"
 msgstr ""
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemMenu.tsx
+msgid "More actions for {0}"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "More computer actions"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
+msgid "Move"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -4000,6 +4109,9 @@ msgstr "移动到"
 msgid "Mute"
 msgstr "静音"
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
@@ -4170,6 +4282,10 @@ msgstr ""
 msgid "No credentials saved for this bot."
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "No folder"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
 msgstr "还没有群聊。"
@@ -4228,6 +4344,7 @@ msgid "No remote MCP servers found"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "No results"
 msgstr "无结果"
@@ -4263,6 +4380,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
 msgstr "无触发器"
+
+#: src/components/data-room/Preview.tsx
+msgid "None"
+msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
@@ -4526,6 +4647,10 @@ msgstr "其他模型…"
 msgid "Out"
 msgstr ""
 
+#: src/components/data-room/DropZone.tsx
+msgid "Over the 50 MB limit"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "overlaps"
 msgstr ""
@@ -4554,6 +4679,15 @@ msgstr ""
 #: src/pages/ScratchpadSection.tsx
 msgid "Park"
 msgstr "搁置"
+
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
+msgid "Parties"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Party"
+msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/pages/AccountSettingsOverlay.tsx
@@ -4617,6 +4751,7 @@ msgstr ""
 msgid "pending"
 msgstr ""
 
+#: src/components/data-room/format.ts
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
@@ -4671,6 +4806,10 @@ msgstr "POST 到"
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Posted"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Preview"
 msgstr ""
 
 #. placeholder {0}: props.name
@@ -4791,6 +4930,10 @@ msgstr ""
 msgid "Read-only API key"
 msgstr ""
 
+#: src/components/data-room/format.ts
+msgid "Reading"
+msgstr ""
+
 #: src/components/finance/StatementImport.tsx
 msgid "Reading…"
 msgstr ""
@@ -4821,6 +4964,10 @@ msgstr ""
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Recent"
 msgstr "最近"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Recently added"
+msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -4934,6 +5081,10 @@ msgstr "交还控制权"
 msgid "Release interrupted computer?"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Relevance"
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/StatementReviewCard.tsx
@@ -4979,6 +5130,10 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Remove filter {label}"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5031,6 +5186,8 @@ msgstr ""
 msgid "Removes the connection and agent access."
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Rename"
@@ -5148,8 +5305,13 @@ msgstr "还原上次保存的工作区。电脑上未保存的工作会丢失。
 msgid "Restoring your workspace"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Results"
+msgstr ""
+
 #: src/components/AccountAccess.tsx
 #: src/pages/Auth.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Retry"
 msgstr "重试"
@@ -5262,6 +5424,7 @@ msgid "Sales & CRM"
 msgstr ""
 
 #: src/components/AskCard.tsx
+#: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
@@ -5381,6 +5544,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search directory"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Search documents"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -5668,6 +5835,10 @@ msgstr ""
 msgid "Site"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Size"
+msgstr ""
+
 #. placeholder {0}: skill.name
 #: src/pages/Shell.tsx
 msgid "Skill {0}"
@@ -5710,6 +5881,13 @@ msgstr "软件更新"
 msgid "Something went wrong. Try again."
 msgstr "出了点问题。请重试。"
 
+#. placeholder {0}: labels[field]
+#: src/components/data-room/FilterBar.tsx
+msgid "Sort: {0}"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Source"
 msgstr ""
@@ -5918,6 +6096,10 @@ msgstr ""
 msgid "System"
 msgstr "系统"
 
+#: src/components/data-room/Preview.tsx
+msgid "Tags"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Take control"
 msgstr "接管控制权"
@@ -6119,6 +6301,7 @@ msgid "Title"
 msgstr "标题"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
@@ -6233,6 +6416,9 @@ msgstr "重试"
 msgid "Try the test again."
 msgstr "请重试测试。"
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
@@ -6294,6 +6480,10 @@ msgstr "取消置顶"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Unsupported file name"
 msgstr ""
 
 #. placeholder {0}: pending.file.name
@@ -6374,6 +6564,7 @@ msgid "Updating…"
 msgstr "正在更新…"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
@@ -6381,6 +6572,10 @@ msgstr "上传"
 
 #: src/components/finance/StatementImport.tsx
 msgid "Upload a PDF, CSV, OFX or QFX file"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Upload failed"
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -6494,6 +6689,11 @@ msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "via MCP · {host}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+#: src/pages/DataRoom.tsx
+msgid "View"
 msgstr ""
 
 #: src/pages/RoutineRunHistory.tsx
