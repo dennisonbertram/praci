@@ -511,6 +511,10 @@ msgstr "연결된 모델 추가"
 msgid "Add connected models to use them as backups."
 msgstr "백업으로 사용할 연결된 모델을 추가하세요."
 
+#: src/pages/CapTable.tsx
+msgid "Add contact"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Add credential"
 msgstr ""
@@ -589,6 +593,7 @@ msgid "AI data sharing"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/Inbox.tsx
 msgid "All"
@@ -891,6 +896,14 @@ msgstr ""
 #. placeholder {0}: email.attachments
 #: src/components/EmailCards.tsx
 msgid "Attachments: {0}"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Auditor"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Auditors"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -1196,6 +1209,11 @@ msgstr "취소됨"
 #: src/pages/ActivityList.tsx
 msgid "Cancelled"
 msgstr "취소됨"
+
+#: src/pages/CapTable.tsx
+#: src/pages/Shell.tsx
+msgid "Cap Table"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Cap table, equity and investors"
@@ -1529,6 +1547,10 @@ msgid "Collapse {0}"
 msgstr "{0} 접기"
 
 #: src/pages/Shell.tsx
+msgid "Collapse Carta agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Collapse Finance agent"
 msgstr ""
 
@@ -1683,6 +1705,10 @@ msgstr "API 키 연결"
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Blockscout"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Connect Carta"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -1903,6 +1929,10 @@ msgid "Could not create space"
 msgstr "스페이스를 만들 수 없습니다"
 
 #: src/pages/Shell.tsx
+msgid "Could not create the Carta agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Could not create the Finance agent"
 msgstr ""
 
@@ -2011,6 +2041,10 @@ msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Could not load commands"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Could not load contacts"
 msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
@@ -2200,6 +2234,10 @@ msgstr "목소리를 저장하지 못했습니다."
 msgid "Could not save the credential"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Could not save the embedding model"
+msgstr ""
+
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Could not save the page."
 msgstr ""
@@ -2332,6 +2370,10 @@ msgstr "새 섹션을 만들고 {0}을 옮깁니다."
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "계정 만들기"
+
+#: src/pages/Shell.tsx
+msgid "Create Carta agent"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Create Finance agent"
@@ -2480,6 +2522,7 @@ msgstr "기본 기억 범위"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
@@ -2771,6 +2814,10 @@ msgstr ""
 msgid "Edit"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Edit contact"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Edit first"
 msgstr "수정 후 보내기"
@@ -2784,6 +2831,7 @@ msgid "Edit wallet"
 msgstr ""
 
 #: src/pages/Auth.tsx
+#: src/pages/CapTable.tsx
 msgid "Email"
 msgstr "이메일"
 
@@ -2798,6 +2846,10 @@ msgstr "이 이메일은 가입이 허용되지 않습니다"
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "이메일 인증이 필요합니다"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Embedding model"
+msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Ends {day}"
@@ -3363,6 +3415,14 @@ msgstr "간격 숫자"
 msgid "Interval unit"
 msgstr "간격 단위"
 
+#: src/pages/CapTable.tsx
+msgid "Investor"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Investors"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
@@ -3414,6 +3474,10 @@ msgstr "key"
 
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Keyboard shortcuts"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Kind"
 msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
@@ -3616,8 +3680,14 @@ msgstr ""
 msgid "Make sure nothing is still running on this computer."
 msgstr "이 컴퓨터에서 실행 중인 작업이 없는지 확인하세요."
 
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
+msgstr ""
+
+#. placeholder {0}: cryptoServer.name
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Manage {0}"
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -3933,6 +4003,7 @@ msgstr "음소거"
 #: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -4091,6 +4162,10 @@ msgstr ""
 msgid "No chat apps linked yet."
 msgstr "아직 연결된 채팅 앱이 없습니다."
 
+#: src/pages/CapTable.tsx
+msgid "No contacts yet"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr ""
@@ -4235,6 +4310,10 @@ msgstr ""
 msgid "Not sent. {text}"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Notes"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Nothing is still running"
 msgstr "실행 중인 작업 없음"
@@ -4295,7 +4374,6 @@ msgstr ""
 
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -4332,7 +4410,6 @@ msgid "Open external link?"
 msgstr "외부 링크를 열까요?"
 
 #: src/components/integrations/FinanceSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Finance"
 msgstr ""
 
@@ -4412,6 +4489,10 @@ msgstr "또는 API 키 붙여넣기"
 msgid "Organic"
 msgstr "자연스럽게"
 
+#: src/pages/CapTable.tsx
+msgid "Organization"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Organization API key"
 msgstr "조직 API 키"
@@ -4421,6 +4502,7 @@ msgid "Original message unavailable"
 msgstr "원본 메시지를 사용할 수 없습니다"
 
 #: src/components/finance/ui.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
 msgstr ""
@@ -5185,6 +5267,7 @@ msgstr ""
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -5470,6 +5553,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Show bots"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Show Carta agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -6136,6 +6223,7 @@ msgstr ""
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 msgid "Try again"

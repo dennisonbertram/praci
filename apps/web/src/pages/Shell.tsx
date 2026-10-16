@@ -37,7 +37,6 @@ import type { ComposerMention, SlashActionId } from "@rakazo/core";
 import {
   attachmentsForThread,
   buildComposerMentionOptions,
-  clampMentionHighlightIndex,
   cronFromPreset,
   DEFAULT_BOT_COLOR,
   formatMessageTime,
@@ -115,6 +114,7 @@ import {
   PanelRightClose,
   Paperclip,
   Pencil,
+  PieChart,
   Plus,
   Reply,
   Search,
@@ -200,6 +200,7 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
+import { findCartaAgent } from "../lib/carta-agent";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -274,6 +275,7 @@ import type { WorkingActivity } from "../lib/working-activity";
 import { workingActivity } from "../lib/working-activity";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
+import { CapTablePage } from "./CapTable";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { HostComputerPrompt } from "./HostComputerPrompt";
@@ -502,6 +504,10 @@ export function ShellPage() {
   const [financeAgentOpen, setFinanceAgentOpen] = useState(false);
   const [creatingFinanceAgent, setCreatingFinanceAgent] = useState(false);
   const [financeAgentError, setFinanceAgentError] = useState("");
+  // The Carta agent panel is open on every visit to Cap Table and can be collapsed.
+  const [cartaAgentOpen, setCartaAgentOpen] = useState(true);
+  const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
+  const [cartaAgentError, setCartaAgentError] = useState("");
   useEffect(() => {
     setInboxAgentCollapsed(
       readInboxAgentCollapsed(userId) || !window.matchMedia("(min-width: 768px)").matches,
@@ -881,10 +887,14 @@ export function ShellPage() {
   const financeMode = useMatch("/app/finance/*") != null;
   // Inbox, Finance and Integrations are pages of their own: no bot route. Inbox and Finance
   // keep their agent in a side panel.
-  const pageMode = inboxMode || financeMode || integrationsMode;
+  const capTableMode = useMatch("/app/cap-table/*") != null;
+  const pageMode = inboxMode || financeMode || capTableMode || integrationsMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
+  useEffect(() => {
+    if (!capTableMode) setCartaAgentOpen(true);
+  }, [capTableMode]);
   const active =
     inGroup || integrationsMode
       ? undefined
@@ -892,7 +902,9 @@ export function ShellPage() {
         ? findInboxAgent(bots, userId)
         : financeMode
           ? findFinanceAgent(bots, userId)
-          : (bots.find((b) => b.id === botId) ?? bots[0]);
+          : capTableMode
+            ? findCartaAgent(bots, userId)
+            : (bots.find((b) => b.id === botId) ?? bots[0]);
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
   const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =
@@ -2539,6 +2551,19 @@ export function ShellPage() {
     }
   }
 
+  async function createCartaAgent() {
+    setCreatingCartaAgent(true);
+    setCartaAgentError("");
+    try {
+      await rpc.carta.agent();
+      await refreshBots();
+    } catch (error) {
+      setCartaAgentError(errorText(error, t`Could not create the Carta agent`));
+    } finally {
+      setCreatingCartaAgent(false);
+    }
+  }
+
   function askFinanceAgent() {
     setFinanceAgentOpen(true);
     if (!active && !creatingFinanceAgent) void createFinanceAgent();
@@ -2582,7 +2607,19 @@ export function ShellPage() {
           creating: creatingFinanceAgent,
           error: financeAgentError,
         }
-      : null;
+      : capTableMode
+        ? {
+            name: "carta-agent",
+            testId: "carta-agent-panel",
+            open: cartaAgentOpen,
+            collapse: () => setCartaAgentOpen(false),
+            collapseLabel: t`Collapse Carta agent`,
+            create: createCartaAgent,
+            createLabel: t`Create Carta agent`,
+            creating: creatingCartaAgent,
+            error: cartaAgentError,
+          }
+        : null;
 
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
@@ -3288,6 +3325,16 @@ export function ShellPage() {
           onOpen={() => {
             setMobileSidebarOpen(false);
             navigate("/app/finance");
+          }}
+        />
+        <SidebarPageLink
+          testId="sidebar-cap-table"
+          current={capTableMode}
+          icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+          label={<Trans>Cap Table</Trans>}
+          onOpen={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/cap-table");
           }}
         />
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
@@ -4054,6 +4101,11 @@ export function ShellPage() {
           </ErrorBoundary>
         ) : financeMode ? (
           <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
+        ) : capTableMode ? (
+          <CapTablePage
+            onShowAgent={cartaAgentOpen ? undefined : () => setCartaAgentOpen(true)}
+            onConnectCarta={() => navigate("/app/integrations?q=carta")}
+          />
         ) : inboxMode ? (
           <InboxPage
             paused={false}
@@ -5866,7 +5918,8 @@ export const Composer = memo(function Composer({
   const historyIndex = useRef<number | null>(null);
   const historyDraft = useRef("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  const [mentionHighlightIndex, setMentionHighlightIndex] = useState(0);
+  // Highlight is tracked by option identity so late-loading targets cannot shift it to another item.
+  const [mentionHighlightKey, setMentionHighlightKey] = useState<string | null>(null);
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<AgentSkillCatalogEntry | null>(null);
   const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>([]);
@@ -6037,7 +6090,7 @@ export const Composer = memo(function Composer({
     markEdited();
     setDraft((current) => current.replace(/@([\w-]*)$/, ""));
     setMentionQuery(null);
-    setMentionHighlightIndex(0);
+    setMentionHighlightKey(null);
     setSelectedMentions((current) =>
       current.some((selected) => mentionChipKey(selected) === mentionChipKey(mention))
         ? current
@@ -6077,13 +6130,22 @@ export const Composer = memo(function Composer({
       .slice(0, 10);
   }, [mentionQuery, mentionTargets]);
 
+  // Reset to the first option only when the typed query changes.
   useEffect(() => {
-    setMentionHighlightIndex(0);
-  }, [mentionQuery, mentionOptions]);
+    setMentionHighlightKey(null);
+  }, [mentionQuery]);
 
-  const activeMentionIndex = clampMentionHighlightIndex(
-    mentionHighlightIndex,
-    mentionOptions.length,
+  // Pin the default highlight to the first shown option so a later insert cannot take it over.
+  useEffect(() => {
+    if (mentionHighlightKey === null && mentionOptions[0]) {
+      setMentionHighlightKey(mentionChipKey(mentionOptions[0]));
+    }
+  }, [mentionHighlightKey, mentionOptions]);
+
+  // A highlighted option that left the list falls back to the first one.
+  const activeMentionIndex = Math.max(
+    0,
+    mentionOptions.findIndex((mention) => mentionChipKey(mention) === mentionHighlightKey),
   );
   const mentionPickerOpen = mentionOptions.length > 0;
   const activeMentionOptionId = mentionPickerOpen
@@ -6115,7 +6177,7 @@ export const Composer = memo(function Composer({
     historyIndex.current = null;
     setDraft("");
     setMentionQuery(null);
-    setMentionHighlightIndex(0);
+    setMentionHighlightKey(null);
     setSlashQuery(null);
     setSelectedSkill(null);
     const mentions = selectedMentions;
@@ -6408,7 +6470,7 @@ export const Composer = memo(function Composer({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => insertMention(mention)}
                 // Opening the list under a stationary pointer must not steal the keyboard highlight.
-                onMouseMove={() => setMentionHighlightIndex(index)}
+                onMouseMove={() => setMentionHighlightKey(mentionChipKey(mention))}
                 className={`flex w-full items-start gap-3 px-4 py-2.5 text-start hover:bg-accent ${
                   highlighted ? "bg-accent" : ""
                 }`}
@@ -6586,13 +6648,14 @@ export const Composer = memo(function Composer({
               }
               if (action.type === "move") {
                 event.preventDefault();
-                setMentionHighlightIndex(action.index);
+                const target = mentionOptions[action.index];
+                if (target) setMentionHighlightKey(mentionChipKey(target));
                 return;
               }
               if (action.type === "dismiss") {
                 event.preventDefault();
                 setMentionQuery(null);
-                setMentionHighlightIndex(0);
+                setMentionHighlightKey(null);
                 return;
               }
               if (

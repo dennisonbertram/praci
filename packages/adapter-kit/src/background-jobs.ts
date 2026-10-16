@@ -6,6 +6,12 @@ import type {
   BackgroundJobPayloads,
 } from "./types.js";
 
+const dataRoomStepPayload = z.object({
+  spaceId: z.string().min(1),
+  userId: z.string().min(1),
+  itemId: z.string().min(1),
+});
+
 const payloadSchemas = {
   "run.continue": z.object({ runId: z.string().min(1) }),
   "routine.wakeup": z.object({
@@ -25,6 +31,10 @@ const payloadSchemas = {
   "mail.search.expire": z.object({ searchId: z.string().min(1) }),
   "inbox.triage": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
   "finance.sync": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
+  "dataroom.blob.delete": z.object({ spaceId: z.string().min(1), storageKey: z.string().min(1) }),
+  "dataroom.ingest": dataRoomStepPayload,
+  "dataroom.classify": dataRoomStepPayload,
+  "dataroom.index": dataRoomStepPayload,
 } satisfies { [Name in BackgroundJobName]: z.ZodType<BackgroundJobPayloads[Name]> };
 
 export function parseBackgroundJob(name: string, payload: unknown): BackgroundJob {
@@ -205,5 +215,36 @@ export function financeSyncJob(userId: string, spaceId: string, availableAt?: Da
     ...(availableAt ? { availableAt } : {}),
     replaceKey: financeSyncJobKey(userId, spaceId),
     maxAttempts: 3,
+  };
+}
+
+/** One cleanup per blob: a double enqueue replaces the first job instead of adding a second. */
+export function dataRoomBlobDeleteJob(
+  spaceId: string,
+  storageKey: string,
+  availableAt?: Date,
+): BackgroundJob {
+  return {
+    ...(availableAt ? { availableAt } : {}),
+    name: "dataroom.blob.delete",
+    payload: { spaceId, storageKey },
+    replaceKey: `dataroom.blob.delete:${spaceId}:${storageKey}`,
+  };
+}
+
+/** Attempts a Data room step gets; the item is marked failed when the last one fails. */
+export const DATA_ROOM_JOB_ATTEMPTS = 3;
+
+/** One queued job per item and step: a double enqueue replaces the first. */
+export function dataRoomStepJob(
+  name: "dataroom.ingest" | "dataroom.classify" | "dataroom.index",
+  scope: { spaceId: string; userId: string },
+  itemId: string,
+): BackgroundJob {
+  return {
+    name,
+    payload: { spaceId: scope.spaceId, userId: scope.userId, itemId },
+    replaceKey: `${name}:${itemId}`,
+    maxAttempts: DATA_ROOM_JOB_ATTEMPTS,
   };
 }

@@ -5,6 +5,7 @@ import type {
   ConnectorTool,
 } from "@rakazo/adapter-kit";
 import { MEMORY_REVISION_CONFLICT_ERROR } from "@rakazo/adapter-kit";
+import { cartaAgentSpawnKey } from "@rakazo/contracts";
 import type { ActionApprovalRule } from "@rakazo/core";
 import { approvalEffectKey, toolEffectIdempotencyKey } from "@rakazo/core/node/approval-effect-key";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -61,7 +62,11 @@ function fixture({
   disabledBuiltinTools = [],
   existingSharedMemory,
   advanceRevisionAfterRead = false,
+  spawnKey = null,
+  mail,
 }: {
+  spawnKey?: string | null;
+  mail?: unknown;
   builtin?: boolean;
   disabledBuiltinTools?: string[];
   existingSharedMemory?: string;
@@ -176,6 +181,8 @@ function fixture({
     bot: {
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.botId,
+        userId: run.userId,
+        spawnKey,
         name: bot.name,
         title: bot.title,
         description: bot.description,
@@ -286,6 +293,7 @@ function fixture({
     secrets,
     autoReview: autoReviewProvider,
     shutdownSignal,
+    mail,
   } as unknown as Parameters<typeof createRunExecutor>[0]);
   return {
     effects,
@@ -693,5 +701,58 @@ describe("connector read-only metadata and approval enforcement", () => {
       expect(f.execute).not.toHaveBeenCalled();
       expect(f.pauseRunForInput).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("mail_send for the Carta agent", () => {
+  beforeEach(() => {
+    reviewMock.mockReset();
+  });
+  const send = {
+    to: ["investor@example.test"],
+    bcc: ["hidden@example.test"],
+    subject: "Update",
+    body: "Hello",
+  };
+  const rules: ActionApprovalRule[] = [
+    { effect: "always_allow", matchKind: "tool", matchValue: "mail_send" },
+  ];
+  const mailFixture = (spawnKey: string | null, args: Record<string, unknown>) => {
+    const mail = {
+      listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+    };
+    const f = fixture({
+      name: "mail_send",
+      builtin: true,
+      autoReview: true,
+      rules,
+      spawnKey,
+      mail,
+    });
+    f.setCalls([{ args, executionId: "call-1" }]);
+    return f;
+  };
+
+  it("asks despite an always-allow rule and Auto Review", async () => {
+    const f = mailFixture(cartaAgentSpawnKey("user-1"), send);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(isApprovalPausedResult(f.results[0])).toBe(true);
+    expect(reviewMock).not.toHaveBeenCalled();
+  });
+
+  it("is allowed by the same rule for an ordinary bot", async () => {
+    const f = mailFixture(null, send);
+    await f.run();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(isApprovalPausedResult(f.results[0])).toBe(false);
+  });
+
+  it("refuses a draft-id-only send before any approval or effect", async () => {
+    const f = mailFixture(cartaAgentSpawnKey("user-1"), { draftId: "d1" });
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("full message") });
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(f.effects).toEqual([]);
   });
 });

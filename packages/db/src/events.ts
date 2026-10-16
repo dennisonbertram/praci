@@ -226,6 +226,9 @@ export interface AnswerRunInput {
 
 const MAIL_APPROVAL_TOOLS = new Set(["mail_draft", "mail_send"]);
 
+/** The compose record key of an edited mail approval: one record per approval effect. */
+export const mailApprovalComposeClientId = (effectId: string) => `approval_${effectId}`;
+
 export interface SendUserMessageInput {
   spaceId: string;
   threadId: string;
@@ -757,6 +760,21 @@ async function commitAnswerRunInput(
         ...(input.mailDenial ? { result: { note: input.mailDenial.note } } : {}),
       },
     });
+    // The person's own send is recorded in the same commit as the claim, so a crash before the
+    // provider call still leaves a durable record for the reconciler to settle the card from.
+    const connectionId = input.mailDenial?.mail.connectionId;
+    if (input.mailDenial && connectionId) {
+      const key = {
+        spaceId: input.spaceId,
+        userId: input.answeredByUserId,
+        clientId: mailApprovalComposeClientId(approvalEffect!.id),
+      };
+      await tx.composeSend.upsert({
+        where: { spaceId_userId_clientId: key },
+        create: { ...key, connectionId },
+        update: {},
+      });
+    }
     if (input.answer === "always") {
       await tx.actionApprovalRule.upsert({
         where: {
@@ -902,11 +920,18 @@ export async function findMailApprovalForEdit(
 export interface SetMailApprovalOutcomeInput {
   spaceId: string;
   threadId: string;
-  messageId: string;
+  /** Omitted when the card is gone (a cleared thread): only the agent's note is updated. */
+  messageId?: string;
   effectId: string;
   outcome: NonNullable<MailApproval["outcome"]>;
   /** Replaces the note the agent reads when it resumes, so it matches how the send ended. */
   note?: string;
+  /**
+   * For a recovery write: apply only while the approval is still unsettled (the effect still has
+   * this note) and the compose record is in this state (null: there is none). Checked under the
+   * same thread lock, so a send that finished meanwhile is never overwritten.
+   */
+  onlyIf?: { note: string; compose: { userId: string; clientId: string; state: string | null } };
 }
 
 /** Records how the person's own send of an edited mail approval ended, for the card to show. */
@@ -917,12 +942,27 @@ export async function setMailApprovalOutcome(
 ): Promise<void> {
   const committed = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$queryRaw`SELECT id FROM threads WHERE id = ${input.threadId} FOR UPDATE`;
+    if (input.onlyIf) {
+      const { note, compose } = input.onlyIf;
+      const effect = await tx.externalEffect.findFirst({
+        where: { id: input.effectId, spaceId: input.spaceId, status: "denied" },
+        select: { result: true },
+      });
+      if ((effect?.result as { note?: unknown } | null)?.note !== note) return null;
+      // Locked, so a state change by the inline sender waits for us or is already visible.
+      const rows = await tx.$queryRaw<Array<{ state: string }>>`
+        SELECT state FROM compose_sends
+        WHERE "spaceId" = ${input.spaceId} AND "userId" = ${compose.userId}
+          AND "clientId" = ${compose.clientId} FOR UPDATE`;
+      if ((rows[0]?.state ?? null) !== compose.state) return null;
+    }
     if (input.note) {
       await tx.externalEffect.updateMany({
         where: { id: input.effectId, spaceId: input.spaceId, status: "denied" },
         data: { result: { note: input.note } },
       });
     }
+    if (!input.messageId) return null;
     const message = await tx.message.findFirst({
       where: { id: input.messageId, threadId: input.threadId, role: "bot" },
     });

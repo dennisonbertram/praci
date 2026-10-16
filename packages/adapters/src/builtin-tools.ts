@@ -917,6 +917,35 @@ export const builtinAgentTools: ConnectorTool[] = [
     readOnly: true,
   },
   {
+    name: "contacts_list",
+    description:
+      "The user's saved contacts (investors, auditors, others), by name. Filter by kind and/or text found in the name, email or organization.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["investor", "auditor", "other"] },
+        query: { type: "string", description: "Part of a name, email or organization." },
+      },
+    },
+    readOnly: true,
+  },
+  {
+    name: "contacts_save",
+    description:
+      "Save a contact, or update the one with the same email. Fields you leave out are kept on update. Only save people the user asked you to track.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        email: { type: "string" },
+        organization: { type: "string", description: "For example the investor's fund." },
+        kind: { type: "string", enum: ["investor", "auditor", "other"] },
+        notes: { type: "string" },
+      },
+      required: ["name"],
+    },
+  },
+  {
     name: "drive_search",
     description:
       "Find files in the user's connected Google Drive by name or content. Returns id, name, mimeType, modifiedTime, owners, webViewLink and size for each match. Use drive_read for the content.",

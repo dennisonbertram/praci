@@ -511,6 +511,10 @@ msgstr "Add connected model"
 msgid "Add connected models to use them as backups."
 msgstr "Add connected models to use them as backups."
 
+#: src/pages/CapTable.tsx
+msgid "Add contact"
+msgstr "Add contact"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Add credential"
 msgstr "Add credential"
@@ -589,6 +593,7 @@ msgid "AI data sharing"
 msgstr "AI data sharing"
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/Inbox.tsx
 msgid "All"
@@ -893,6 +898,14 @@ msgstr "Attachments can't be over {MAX_COMPOSE_ATTACHMENT_MB} MB."
 msgid "Attachments: {0}"
 msgstr "Attachments: {0}"
 
+#: src/pages/CapTable.tsx
+msgid "Auditor"
+msgstr "Auditor"
+
+#: src/pages/CapTable.tsx
+msgid "Auditors"
+msgstr "Auditors"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Auth header"
 msgstr "Auth header"
@@ -1196,6 +1209,11 @@ msgstr "cancelled"
 #: src/pages/ActivityList.tsx
 msgid "Cancelled"
 msgstr "Cancelled"
+
+#: src/pages/CapTable.tsx
+#: src/pages/Shell.tsx
+msgid "Cap Table"
+msgstr "Cap Table"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Cap table, equity and investors"
@@ -1529,6 +1547,10 @@ msgid "Collapse {0}"
 msgstr "Collapse {0}"
 
 #: src/pages/Shell.tsx
+msgid "Collapse Carta agent"
+msgstr "Collapse Carta agent"
+
+#: src/pages/Shell.tsx
 msgid "Collapse Finance agent"
 msgstr "Collapse Finance agent"
 
@@ -1684,6 +1706,10 @@ msgstr "Connect API key"
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Blockscout"
 msgstr "Connect Blockscout"
+
+#: src/pages/CapTable.tsx
+msgid "Connect Carta"
+msgstr "Connect Carta"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Executor"
@@ -1903,6 +1929,10 @@ msgid "Could not create space"
 msgstr "Could not create space"
 
 #: src/pages/Shell.tsx
+msgid "Could not create the Carta agent"
+msgstr "Could not create the Carta agent"
+
+#: src/pages/Shell.tsx
 msgid "Could not create the Finance agent"
 msgstr "Could not create the Finance agent"
 
@@ -2012,6 +2042,10 @@ msgstr "Could not load bots. Reload to try again."
 #: src/components/computer/TerminalApp.tsx
 msgid "Could not load commands"
 msgstr "Could not load commands"
+
+#: src/pages/CapTable.tsx
+msgid "Could not load contacts"
+msgstr "Could not load contacts"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Could not load credentials."
@@ -2200,6 +2234,10 @@ msgstr "Could not save that voice"
 msgid "Could not save the credential"
 msgstr "Could not save the credential"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Could not save the embedding model"
+msgstr "Could not save the embedding model"
+
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Could not save the page."
 msgstr "Could not save the page."
@@ -2332,6 +2370,10 @@ msgstr "Create a section and move {0} into it."
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "Create account"
+
+#: src/pages/Shell.tsx
+msgid "Create Carta agent"
+msgstr "Create Carta agent"
 
 #: src/pages/Shell.tsx
 msgid "Create Finance agent"
@@ -2480,6 +2522,7 @@ msgstr "Default scope"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
@@ -2771,6 +2814,10 @@ msgstr "Earlier"
 msgid "Edit"
 msgstr "Edit"
 
+#: src/pages/CapTable.tsx
+msgid "Edit contact"
+msgstr "Edit contact"
+
 #: src/components/AskCard.tsx
 msgid "Edit first"
 msgstr "Edit first"
@@ -2784,6 +2831,7 @@ msgid "Edit wallet"
 msgstr "Edit wallet"
 
 #: src/pages/Auth.tsx
+#: src/pages/CapTable.tsx
 msgid "Email"
 msgstr "Email"
 
@@ -2798,6 +2846,10 @@ msgstr "Email is not allowed to register"
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "Email verification required"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Embedding model"
+msgstr "Embedding model"
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Ends {day}"
@@ -3363,6 +3415,14 @@ msgstr "Interval amount"
 msgid "Interval unit"
 msgstr "Interval unit"
 
+#: src/pages/CapTable.tsx
+msgid "Investor"
+msgstr "Investor"
+
+#: src/pages/CapTable.tsx
+msgid "Investors"
+msgstr "Investors"
+
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
@@ -3415,6 +3475,10 @@ msgstr "key"
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Keyboard shortcuts"
 msgstr "Keyboard shortcuts"
+
+#: src/pages/CapTable.tsx
+msgid "Kind"
+msgstr "Kind"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Knowledge"
@@ -3616,9 +3680,15 @@ msgstr "Mail data Rakazo cached from these accounts is removed."
 msgid "Make sure nothing is still running on this computer."
 msgstr "Make sure nothing is still running on this computer."
 
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr "Manage"
+
+#. placeholder {0}: cryptoServer.name
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Manage {0}"
+msgstr "Manage {0}"
 
 #: src/pages/Paywall.tsx
 msgid "Manage billing"
@@ -3933,6 +4003,7 @@ msgstr "Mute"
 #: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -4091,6 +4162,10 @@ msgstr "No bots match"
 msgid "No chat apps linked yet."
 msgstr "No chat apps linked yet."
 
+#: src/pages/CapTable.tsx
+msgid "No contacts yet"
+msgstr "No contacts yet"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
@@ -4235,6 +4310,10 @@ msgstr "Not sent"
 msgid "Not sent. {text}"
 msgstr "Not sent. {text}"
 
+#: src/pages/CapTable.tsx
+msgid "Notes"
+msgstr "Notes"
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Nothing is still running"
 msgstr "Nothing is still running"
@@ -4295,7 +4374,6 @@ msgstr "Only if the server does not use sign-in"
 
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -4332,7 +4410,6 @@ msgid "Open external link?"
 msgstr "Open external link?"
 
 #: src/components/integrations/FinanceSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Finance"
 msgstr "Open Finance"
 
@@ -4412,6 +4489,10 @@ msgstr "Or paste an API key"
 msgid "Organic"
 msgstr "Organic"
 
+#: src/pages/CapTable.tsx
+msgid "Organization"
+msgstr "Organization"
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Organization API key"
 msgstr "Organization API key"
@@ -4421,6 +4502,7 @@ msgid "Original message unavailable"
 msgstr "Original message unavailable"
 
 #: src/components/finance/ui.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
 msgstr "Other"
@@ -5185,6 +5267,7 @@ msgstr "Sales & CRM"
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -5471,6 +5554,10 @@ msgstr "Show all {total}"
 #: src/pages/Shell.tsx
 msgid "Show bots"
 msgstr "Show bots"
+
+#: src/pages/CapTable.tsx
+msgid "Show Carta agent"
+msgstr "Show Carta agent"
 
 #: src/pages/Shell.tsx
 msgid "Show computer"
@@ -6136,6 +6223,7 @@ msgstr "Trial ends {day}"
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 msgid "Try again"

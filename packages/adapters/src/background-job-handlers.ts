@@ -1,6 +1,7 @@
 import type {
   AgentHomeStore,
   AgentRuntime,
+  ArtifactStore,
   BackgroundJobHandlers,
   JobPublisher,
   MessagingSurface,
@@ -15,6 +16,9 @@ import { pollCloudAgent } from "./cloud-agent-poll.js";
 import { expireComputerControl } from "./computer-control.js";
 import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
+import type { DataRoomJobDeps } from "./data-room-jobs.js";
+import { runDataRoomClassify, runDataRoomIndex, runDataRoomIngest } from "./data-room-jobs.js";
+import { resolveDataRoomAi } from "./data-room-models.js";
 import { syncExchanges } from "./exchange-sync.js";
 import type { createRunExecutor } from "./executor.js";
 import type { FinanceSyncDeps } from "./finance-sync.js";
@@ -45,6 +49,8 @@ export function createBackgroundJobHandlers(deps: {
   cloudAgent?: CloudAgentConnection | null;
   /** Read-tool caller for the user's Mercury and Brex servers; see `createFinanceCallToolFor`. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Deletes the blobs of removed Data room items and reads them for ingest. */
+  artifacts?: ArtifactStore;
 }): BackgroundJobHandlers {
   const deliverMessaging = async (runId?: string) => {
     if (!deps.messaging) return;
@@ -59,6 +65,18 @@ export function createBackgroundJobHandlers(deps: {
         signal: new AbortController().signal,
       },
     );
+  };
+
+  const dataRoomDeps = (): DataRoomJobDeps => {
+    if (!deps.artifacts) throw new Error("Artifact store is not configured");
+    return {
+      prisma: deps.prisma,
+      jobs: deps.jobs,
+      artifacts: deps.artifacts,
+      runtime: deps.runtime,
+      resolveAi: (scope) =>
+        resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.executor.resolveModel }, scope),
+    };
   };
 
   return {
@@ -112,6 +130,29 @@ export function createBackgroundJobHandlers(deps: {
         payload,
       );
     },
+    "dataroom.blob.delete": async (payload) => {
+      if (!deps.artifacts) throw new Error("Artifact store is not configured");
+      // The job is queued before the row is deleted. While the row is still there, fail so the
+      // queue retries with backoff; the job ends visibly failed if the delete never happened.
+      // ponytail: a long row delete outlasting every retry leaks the blob; use a transactional
+      // outbox if that ever matters.
+      const live = await deps.prisma.dataRoomItem.findFirst({
+        where: { spaceId: payload.spaceId, storageKey: payload.storageKey },
+        select: { id: true },
+      });
+      if (live) throw new Error("Data room item still references this blob");
+      const operationId = `dataroom.blob.delete:${payload.storageKey}`;
+      await deps.artifacts.remove(payload.storageKey, {
+        operationId,
+        traceId: operationId,
+        spaceId: payload.spaceId,
+        userId: "",
+        signal: new AbortController().signal,
+      });
+    },
+    "dataroom.ingest": (payload) => runDataRoomIngest(dataRoomDeps(), payload),
+    "dataroom.classify": (payload) => runDataRoomClassify(dataRoomDeps(), payload),
+    "dataroom.index": (payload) => runDataRoomIndex(dataRoomDeps(), payload),
     "finance.sync": async (payload) => {
       if (!deps.financeCallToolFor) throw new Error("Finance sync is not configured");
       await syncFinanceForUser(

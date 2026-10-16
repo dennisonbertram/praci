@@ -14,6 +14,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import {
   computerControlExpireJobKey,
+  dataRoomBlobDeleteJob,
   messagingDeliverJob,
   routineJobKey,
   routineWakeupJob,
@@ -114,6 +115,7 @@ import {
   resolveBotUploadPath,
   resolveBotWorkspaceCwd,
   resolveBotWorkspacePath,
+  resolveDataRoomAi,
   revokeScreenControl,
   routineRunModelPin,
   sanitizeComposioError,
@@ -154,12 +156,15 @@ import type {
 } from "@rakazo/contracts";
 import {
   ATTACHMENT_MAX_BYTES,
+  actorScope,
   appContract,
   BotSecretAuth,
   ComputerCommandSchema,
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
+  isCartaAgentSpawnKey,
+  isCartaEndpoint,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -190,6 +195,7 @@ import {
   CannotDeleteSpaceAsNonOwnerError,
   CannotRenameSpaceAsNonOwnerError,
   ComputerLimitError,
+  ContactEmailTakenError,
   claimEmptySpaceDeletionForMember,
   createExternalConversationRepos,
   createGroupRepos,
@@ -197,6 +203,7 @@ import {
   createSpaceForMember,
   createThreadMessageInTransaction,
   defaultModelCredentialCandidates,
+  deleteContact,
   deleteEmptySpaceForMember,
   deleteUnreferencedCredentialSecret,
   ensureBoard,
@@ -212,6 +219,7 @@ import {
   issueMessagingLinkCode,
   isUniqueViolation,
   listBoards,
+  listContacts,
   listSpaceBackupModels,
   listTicketComments,
   lockOwnedGroup,
@@ -230,6 +238,7 @@ import {
   SpaceLimitError,
   SpaceNotEmptyError,
   SpaceNotFoundError,
+  saveContact,
   selectSpaceModelPreference,
   selectSpaceVoicePreference,
   toBoardDto,
@@ -253,12 +262,14 @@ import {
 } from "./artifacts.js";
 import type { BillingService } from "./billing.js";
 import { botProfileLabelsChanged, commitBotUpdate } from "./bot-update.js";
+import { assignToExistingCartaAgent, ensureCartaAgent } from "./carta-agent.js";
 import {
   executionBlocksUserTakeover,
   resolveBusyBotName,
   toComputerStatus,
 } from "./computer-status.js";
 import { completeNativeOAuth, connectionError } from "./connection-oauth.js";
+import { createDataRoomService } from "./data-room.js";
 import {
   type FinanceCryptoDeps,
   financeAccountDetail,
@@ -753,6 +764,14 @@ function mapSpaceLifecycleError(error: unknown): unknown {
   return error;
 }
 
+function contactNotFound(error: unknown): never {
+  if (error instanceof IsolationError) throw new ORPCError("NOT_FOUND", { message: error.message });
+  if (error instanceof ContactEmailTakenError) {
+    throw new ORPCError("CONFLICT", { message: error.message });
+  }
+  throw error;
+}
+
 const BOT_SECRET_INPUT_ERRORS = [
   "Invalid credential destination",
   "Invalid credential length",
@@ -920,6 +939,13 @@ export function createRouter(deps: RouterDeps) {
     dataDir: deps.dataDir,
   });
   const agentSkills = createAgentSkillsService(deps.prisma);
+  const dataRoom = createDataRoomService({
+    prisma: deps.prisma,
+    artifacts: deps.artifacts,
+    jobs: deps.jobs,
+    resolveAi: (scope) =>
+      resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.resolveModel }, scope),
+  });
 
   const authed = os.use(async ({ context, next }) => {
     if (!context.actor) throw new ORPCError("UNAUTHORIZED");
@@ -1129,6 +1155,11 @@ export function createRouter(deps: RouterDeps) {
             claimRenewal = null;
           }
           const fallback = await deleteEmptySpaceForMember(deps.prisma, claimedInput);
+          for (const storageKey of fallback.dataRoomStorageKeys) {
+            await deps.jobs
+              .enqueue(dataRoomBlobDeleteJob(input.spaceId, storageKey))
+              .catch((jobError) => getLogger().error("data room blob cleanup", jobError));
+          }
           return { ok: true as const, activeSpaceId: fallback.id };
         } catch (error) {
           if (context.signal?.aborted) claimReleasable = false;
@@ -1250,6 +1281,12 @@ export function createRouter(deps: RouterDeps) {
       }),
     },
     models: {
+      embeddingModel: authed.models.embeddingModel.handler(({ context }) =>
+        dataRoom.embeddingModel(context.actor),
+      ),
+      setEmbeddingModel: authed.models.setEmbeddingModel.handler(({ context, input }) =>
+        dataRoom.setEmbeddingModel(context.actor, input),
+      ),
       list: authed.models.list.handler(async ({ context }) => {
         const auth = await modelCredentialAuthKindsForSpace(
           deps.prisma,
@@ -1723,7 +1760,11 @@ export function createRouter(deps: RouterDeps) {
       }),
       create: authed.bots.create.handler(async ({ context, input }) => {
         // inbox.agent is the only way to create an Inbox agent; reserve its key prefix.
-        if (isInboxAgentSpawnKey(input.spawnKey) || isFinanceAgentSpawnKey(input.spawnKey)) {
+        if (
+          isInboxAgentSpawnKey(input.spawnKey) ||
+          isFinanceAgentSpawnKey(input.spawnKey) ||
+          isCartaAgentSpawnKey(input.spawnKey)
+        ) {
           throw new ORPCError("BAD_REQUEST", { message: "Reserved spawn key" });
         }
         let bot: Bot;
@@ -4365,6 +4406,9 @@ export function createRouter(deps: RouterDeps) {
               },
             });
           });
+          // An existing Carta agent gets a newly added Carta server, with read tools only.
+          if (isCartaEndpoint(row.endpoint))
+            await assignToExistingCartaAgent(deps.prisma, context.actor);
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         update: authed.mcp.servers.update.handler(async ({ context, input }) => {
@@ -4508,7 +4552,11 @@ export function createRouter(deps: RouterDeps) {
                   return updated;
                 }),
             );
-            if (row) return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
+            if (row) {
+              if (isCartaEndpoint(row.endpoint))
+                await assignToExistingCartaAgent(deps.prisma, context.actor);
+              return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
+            }
           }
           throw new ORPCError("CONFLICT", { message: "MCP credentials changed; retry" });
         }),
@@ -6190,6 +6238,66 @@ export function createRouter(deps: RouterDeps) {
         });
         return loadAutoReviewSettings(deps, context.actor);
       }),
+    },
+    carta: {
+      agent: authed.carta.agent.handler(({ context }) =>
+        ensureCartaAgent({ prisma: deps.prisma, repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
+    },
+    contacts: {
+      list: authed.contacts.list.handler(({ context, input }) =>
+        listContacts(deps.prisma, actorScope(context.actor), input),
+      ),
+      save: authed.contacts.save.handler(({ context, input }) =>
+        saveContact(deps.prisma, actorScope(context.actor), input).catch(contactNotFound),
+      ),
+      delete: authed.contacts.delete.handler(async ({ context, input }) => {
+        await deleteContact(deps.prisma, actorScope(context.actor), input.id).catch(
+          contactNotFound,
+        );
+        return { ok: true as const };
+      }),
+    },
+    dataRoom: {
+      folders: authed.dataRoom.folders.handler(({ context }) => dataRoom.folders(context.actor)),
+      folderCreate: authed.dataRoom.folderCreate.handler(({ context, input }) =>
+        dataRoom.createFolder(context.actor, input),
+      ),
+      folderRename: authed.dataRoom.folderRename.handler(({ context, input }) =>
+        dataRoom.renameFolder(context.actor, input),
+      ),
+      folderMove: authed.dataRoom.folderMove.handler(({ context, input }) =>
+        dataRoom.moveFolder(context.actor, input),
+      ),
+      folderDelete: authed.dataRoom.folderDelete.handler(({ context, input }) =>
+        dataRoom.deleteFolder(context.actor, input.id),
+      ),
+      items: {
+        list: authed.dataRoom.items.list.handler(({ context, input }) =>
+          dataRoom.items(context.actor, input),
+        ),
+      },
+      item: authed.dataRoom.item.handler(({ context, input }) =>
+        dataRoom.item(context.actor, input.id),
+      ),
+      itemRename: authed.dataRoom.itemRename.handler(({ context, input }) =>
+        dataRoom.renameItem(context.actor, input),
+      ),
+      itemMove: authed.dataRoom.itemMove.handler(({ context, input }) =>
+        dataRoom.moveItem(context.actor, input),
+      ),
+      itemDelete: authed.dataRoom.itemDelete.handler(({ context, input }) =>
+        dataRoom.deleteItem(context.actor, input.id),
+      ),
+      search: authed.dataRoom.search.handler(({ context, input }) =>
+        dataRoom.search(context.actor, input),
+      ),
+      consent: authed.dataRoom.consent.handler(({ context }) => dataRoom.consent(context.actor)),
+      consentGrant: authed.dataRoom.consentGrant.handler(({ context, input }) =>
+        dataRoom.consentGrant(context.actor, input),
+      ),
     },
     finance: {
       agent: authed.finance.agent.handler(({ context }) =>
