@@ -142,15 +142,16 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
   await expect(preview.getByRole("heading", { level: 3 })).toContainText("Example HQ lease");
   await expect(preview).toContainText("Synthetic five-year renewal");
 
-  // Hovering another row shows it; a click pins it. A failed item shows its error.
+  // Hovering another row leaves the preview alone; a click shows it. A failed item shows its error.
   await rows.nth(1).hover();
-  await expect(preview.getByRole("heading", { level: 3 })).toHaveText("Series A term sheet v3.pdf");
+  await page.waitForTimeout(300);
+  await expect(preview.getByRole("heading", { level: 3 })).toContainText("Example HQ lease");
   await rows.nth(2).click();
   await page.mouse.move(0, 0);
   await expect(preview.getByRole("heading", { level: 3 })).toHaveText("Board minutes Q2.pdf");
   await expect(preview).toContainText("Could not read this file");
   // Arrow keys move the preview with the focus.
-  await rows.nth(1).focus();
+  await page.keyboard.press("ArrowUp");
   await expect(preview.getByRole("heading", { level: 3 })).toHaveText("Series A term sheet v3.pdf");
   await page.keyboard.press("ArrowUp");
   await expect(preview.getByRole("heading", { level: 3 })).toContainText("Example HQ lease");

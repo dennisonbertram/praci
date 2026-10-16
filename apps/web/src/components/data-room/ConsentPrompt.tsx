@@ -27,7 +27,8 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
     return (
       <Card size="sm" className="px-3.5 text-xs text-muted-foreground">
         <Trans>
-          Documents are stored but not read. Set up a model in Settings to tag and file them.
+          You can search documents by name and text, but they aren't tagged or filed. Set up a model
+          in Settings to do that.
         </Trans>
       </Card>
     );
@@ -43,8 +44,8 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
       }}
     >
       <Trans>
-        To tag, file and search them, their text (and images) is sent to {names}. Until then they
-        are stored but not read.
+        To tag and file them, their text (and images) is sent to {names}. Until then you can search
+        them by name and text, but they aren't tagged or filed.
       </Trans>
     </ConsentCard>
   );

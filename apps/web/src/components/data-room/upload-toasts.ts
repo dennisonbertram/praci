@@ -13,8 +13,9 @@ export type UploadToast = {
     | { kind: "error"; reason: UploadFailure };
 };
 
-const DONE_TOAST_MS = 8_000;
+const DONE_TOAST_MS = 10_000;
 const FAILED_TOAST_MS = 15_000;
+const HELD_RECHECK_MS = 2_000;
 let nextId = 1;
 let toasts: UploadToast[] = [];
 const listeners = new Set<() => void>();
@@ -47,8 +48,20 @@ function update(id: number, state: UploadToast["state"]) {
   notify();
 }
 
+/** True while the pointer is over the toasts: none of them goes away under it. */
+let held = false;
+export function holdUploadToasts(hold: boolean) {
+  held = hold;
+}
+/** Dismisses the toast after `ms`, or as soon after that as the toasts are no longer held. */
+function dismissLater(id: number, ms: number) {
+  setTimeout(() => (held ? dismissLater(id, HELD_RECHECK_MS) : dismissUploadToast(id)), ms);
+}
+
 export function dismissUploadToast(id: number) {
   toasts = toasts.filter((toast) => toast.id !== id);
+  // With no toasts left there is nothing under the pointer, and no pointerleave will come.
+  if (toasts.length === 0) held = false;
   notify();
 }
 
@@ -69,7 +82,7 @@ async function uploadOne(file: File, folderId: string | undefined) {
   notify();
   const fail = (reason: UploadFailure) => {
     update(id, { kind: "error", reason });
-    setTimeout(() => dismissUploadToast(id), FAILED_TOAST_MS);
+    dismissLater(id, FAILED_TOAST_MS);
   };
   // The server enforces the limit; this only avoids sending a file that will be refused.
   if (file.size > DATA_ROOM_UPLOAD_MAX_BYTES) return fail("too-large");
@@ -84,7 +97,7 @@ async function uploadOne(file: File, folderId: string | undefined) {
       ...(duplicate ? { existing: item.name } : {}),
     });
     window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
-    setTimeout(() => dismissUploadToast(id), DONE_TOAST_MS);
+    dismissLater(id, DONE_TOAST_MS);
   } catch (error) {
     if (!current()) return;
     fail(

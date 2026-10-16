@@ -59,6 +59,8 @@ it("names where documents go and grants exactly the shown key and version on All
   const onAllowed = vi.fn();
   await render(onAllowed);
   expect(container.textContent).toContain("Example Model");
+  // Text search works before consent: only tagging and filing wait for it.
+  expect(container.textContent).toContain("you can search them by name and text");
   await act(async () => container.querySelector("button")?.click());
   expect(rpc.consentGrant).toHaveBeenCalledExactlyOnceWith({
     key: "data-room:abc",
@@ -81,10 +83,11 @@ it("shows why the grant failed and keeps asking", async () => {
   expect(onAllowed).not.toHaveBeenCalled();
 });
 
-it("says documents are not read when no model is set up, with nothing to allow", async () => {
+it("says documents are searchable but not tagged when no model is set up, with nothing to allow", async () => {
   rpc.consent.mockResolvedValue(status({ recipients: [] }));
   await render();
-  expect(container.textContent).toContain("not read");
+  expect(container.textContent).toContain("search documents by name and text");
+  expect(container.textContent).toContain("aren't tagged or filed");
   expect(container.querySelector("button")).toBeNull();
 });
 

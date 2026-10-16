@@ -130,7 +130,15 @@ export function Preview({
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
       {canPreviewImage(item) ? <ImagePreview key={item.id} item={item} /> : null}
       {item.status === "failed" ? (
-        <p className="text-sm text-destructive">{item.error ?? t`Failed`}</p>
+        <div className="flex flex-col items-start gap-1.5 text-sm">
+          <p className="font-medium text-destructive">
+            <Trans>Couldn't read this file</Trans>
+          </p>
+          {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
+          <Button variant="outline" size="sm" onClick={() => onAction("delete", item)}>
+            <Trans>Delete</Trans>
+          </Button>
+        </div>
       ) : item.status !== "ready" ? (
         <p className="text-sm text-muted-foreground">{statusLabel(item.status)}</p>
       ) : facets.summary ? (

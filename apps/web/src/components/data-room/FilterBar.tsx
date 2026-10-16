@@ -245,10 +245,17 @@ export function FilterBar({
   hasDates: boolean;
 }) {
   const labels = sortLabels();
-  const fields: (SortField | "relevance")[] = searching
-    ? ["relevance", "date"]
-    : ["date", "name", "type", "createdAt"];
   const field = sort?.field ?? "relevance";
+  // Date and Type order nothing until some item has one (or that sort is already chosen).
+  const fields = (
+    (searching ? ["relevance", "date"] : ["date", "name", "type", "createdAt"]) as (
+      | SortField
+      | "relevance"
+    )[]
+  ).filter(
+    (name) =>
+      name === field || (name === "date" ? hasDates : name === "type" ? types.length > 0 : true),
+  );
   const direction = sort?.direction ?? "desc";
   return (
     <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2.5 md:px-5">

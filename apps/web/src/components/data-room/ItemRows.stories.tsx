@@ -4,9 +4,7 @@ import { GridView, ListView, ResultsView, type RowInteraction } from "./ItemRows
 
 const o: RowInteraction = {
   shownId: "itm_ready",
-  onHover: () => undefined,
-  onLeave: () => undefined,
-  onFocusItem: () => undefined,
+  onSelect: () => undefined,
   onToggle: () => undefined,
   onAction: () => undefined,
   folderPath: (id) => (id ? "Contracts / Sample vendor" : ""),

@@ -8,6 +8,7 @@ import { dataRoomItemPath, dragHasFiles } from "../../lib/data-room";
 import {
   dismissUploadToast,
   getUploadToasts,
+  holdUploadToasts,
   setUploadScope,
   subscribeUploadToasts,
   type UploadFailure,
@@ -101,6 +102,8 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
           aria-live="polite"
           data-testid="data-room-toasts"
           className="fixed end-4 bottom-20 z-100 flex w-72 flex-col gap-2"
+          onPointerEnter={() => holdUploadToasts(true)}
+          onPointerLeave={() => holdUploadToasts(false)}
         >
           {toasts.map(({ id, name, state }) => (
             <div key={id} className="rounded-lg border border-border bg-card p-3 text-sm shadow-md">
@@ -112,7 +115,7 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                   <span className="text-xs text-muted-foreground tabular-nums">
                     {Math.round(state.fraction * 100)}%
                   </span>
-                ) : state.kind === "error" ? (
+                ) : (
                   <Button
                     variant="ghost"
                     size="icon-xs"
@@ -121,7 +124,7 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                   >
                     <X aria-hidden="true" />
                   </Button>
-                ) : null}
+                )}
               </div>
               {state.kind === "uploading" ? (
                 <div

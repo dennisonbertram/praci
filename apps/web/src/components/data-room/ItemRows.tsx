@@ -14,19 +14,22 @@ import type { Row } from "./use-data-room-list";
 export type RowInteraction = {
   /** The item the preview shows, highlighted in the list. */
   shownId: string | undefined;
-  onHover: (item: DataRoomApiItem) => void;
-  onLeave: () => void;
-  onFocusItem: (item: DataRoomApiItem) => void;
+  /** An arrow key moved to this row: show it, as a click would, but never close the preview. */
+  onSelect: (item: DataRoomApiItem) => void;
   onToggle: (item: DataRoomApiItem) => void;
   onAction: (action: ItemAction, item: DataRoomApiItem) => void;
   folderPath: (id: string | null) => string;
 };
 
+/** True while an arrow key moves the focus, so only that focus (not a click or Tab) selects. */
+let arrowMove = false;
 function moveFocus(event: KeyboardEvent<HTMLElement>) {
   const rows = Array.from(
     event.currentTarget.closest("[data-rows]")?.querySelectorAll<HTMLElement>("[data-row]") ?? [],
   );
+  arrowMove = true;
   rows[rows.indexOf(event.currentTarget) + (event.key === "ArrowDown" ? 1 : -1)]?.focus();
+  arrowMove = false;
 }
 
 function rowProps(item: DataRoomApiItem, o: RowInteraction) {
@@ -35,10 +38,8 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction) {
     "data-item-id": item.id,
     tabIndex: 0,
     onClick: () => o.onToggle(item),
-    // Not mouseenter: that also fires when a popover or dialog closes over a still pointer.
-    onMouseMove: () => o.onHover(item),
     onFocus: (event: React.FocusEvent<HTMLElement>) => {
-      if (event.target === event.currentTarget) o.onFocusItem(item);
+      if (arrowMove && event.target === event.currentTarget) o.onSelect(item);
     },
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
       if (event.target !== event.currentTarget) return;
@@ -153,8 +154,9 @@ function ItemRow({
       {...rowProps(item, o)}
       className={cn(
         facets ? ROW_GRID : PLAIN_GRID,
-        "cursor-pointer border-b border-border py-1.5 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-        o.shownId === item.id && "bg-sidebar-accent",
+        "cursor-pointer border-b border-border py-1.5 text-sm outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+        // Clearly stronger than the hover tint, so the chosen row stays obvious.
+        o.shownId === item.id && "bg-sidebar-accent font-medium hover:bg-sidebar-accent",
       )}
     >
       <span data-testid="data-room-name" className="flex min-w-0 items-center gap-2">
@@ -206,7 +208,7 @@ export function ListView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
   return (
     <div>
       <TableHead facets={facets} />
-      <ul aria-label={t`Items`} data-rows onMouseLeave={o.onLeave}>
+      <ul aria-label={t`Items`} data-rows>
         {rows.map(({ item }) => (
           <ItemRow key={item.id} item={item} o={o} facets={facets} />
         ))}
@@ -220,7 +222,6 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
     <ul
       aria-label={t`Items`}
       data-rows
-      onMouseLeave={o.onLeave}
       className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 p-3"
     >
       {rows.map(({ item }) => (
@@ -270,15 +271,16 @@ export function Snippet({ text }: { text: string }) {
 
 export function ResultsView({ rows, o }: { rows: Row[]; o: RowInteraction }): ReactNode {
   return (
-    <ul aria-label={t`Results`} data-rows onMouseLeave={o.onLeave} className="flex flex-col">
+    <ul aria-label={t`Results`} data-rows className="flex flex-col">
       {rows.map(({ item, snippets }) => (
         <li
           key={item.id}
           {...rowProps(item, o)}
           aria-current={o.shownId === item.id}
           className={cn(
-            "flex cursor-pointer flex-col gap-1.5 border-b border-border px-3 py-2.5 outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-            o.shownId === item.id && "bg-sidebar-accent",
+            "flex cursor-pointer flex-col gap-1.5 border-b border-border px-3 py-2.5 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+            // Clearly stronger than the hover tint, so the chosen row stays obvious.
+            o.shownId === item.id && "bg-sidebar-accent font-medium hover:bg-sidebar-accent",
           )}
         >
           <div className="flex items-center gap-2 text-sm">

@@ -117,7 +117,8 @@ export function ItemDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      {/* Like the Delete confirmation, Cancel closes it; no second close control. */}
+      <DialogContent showCloseButton={false}>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <DialogHeader>
             <DialogTitle className="break-words leading-snug">

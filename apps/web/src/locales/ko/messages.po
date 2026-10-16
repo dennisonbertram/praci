@@ -2347,6 +2347,10 @@ msgstr "메시징 설정을 불러올 수 없습니다"
 msgid "Couldn't reach Gmail."
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Couldn't read this file"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Couldn't save the draft"
 msgstr ""
@@ -2565,6 +2569,7 @@ msgstr "기본 기억 범위"
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
@@ -2775,10 +2780,6 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Document date"
-msgstr ""
-
-#: src/components/data-room/ConsentPrompt.tsx
-msgid "Documents are stored but not read. Set up a model in Settings to tag and file them."
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -3084,7 +3085,6 @@ msgstr "실패"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
-#: src/components/data-room/Preview.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
@@ -5596,7 +5596,11 @@ msgid "Search mail"
 msgstr ""
 
 #: src/pages/DataRoom.tsx
-msgid "Search matches words in names and text. Try one word."
+msgid "Search matches words in names and text."
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Search matches words in names and text. Try fewer words."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6369,7 +6373,7 @@ msgid "To do"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "To tag, file and search them, their text (and images) is sent to {names}. Until then they are stored but not read."
+msgid "To tag and file them, their text (and images) is sent to {names}. Until then you can search them by name and text, but they aren't tagged or filed."
 msgstr ""
 
 #: src/pages/shell/bot-picker.tsx
@@ -6945,6 +6949,10 @@ msgstr "자동으로 이동하지 않으면 이 탭을 닫아도 됩니다."
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this window."
 msgstr "이 창을 닫아도 됩니다."
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "You can search documents by name and text, but they aren't tagged or filed. Set up a model in Settings to do that."
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "You have control"

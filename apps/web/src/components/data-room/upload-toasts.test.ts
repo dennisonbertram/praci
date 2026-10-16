@@ -14,7 +14,9 @@ vi.mock("../../lib/data-room", async (original) => ({
 
 import { DataRoomUploadError } from "../../lib/data-room";
 import {
+  dismissUploadToast,
   getUploadToasts,
+  holdUploadToasts,
   setOpenDataRoomFolder,
   setUploadScope,
   uploadFilesToDataRoom,
@@ -97,4 +99,30 @@ it("says uploaded, or names the identical file already there", async () => {
     { kind: "uploaded", itemId: "i1" },
     { kind: "uploaded", itemId: "i0", existing: "lease.pdf" },
   ]);
+});
+
+it("keeps a finished toast while the pointer is over the toasts, then lets it go", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockResolvedValue({ item: { id: "i1", name: "a.txt" }, duplicate: false });
+  uploadFilesToDataRoom([file("a.txt")]);
+  await flush();
+  holdUploadToasts(true);
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(names()).toEqual(["a.txt"]);
+  holdUploadToasts(false);
+  await vi.advanceTimersByTimeAsync(3_000);
+  expect(names()).toEqual([]);
+});
+
+it("stops holding once the last toast is closed under the pointer", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockResolvedValue({ item: { id: "i1", name: "a.txt" }, duplicate: false });
+  uploadFilesToDataRoom([file("a.txt")]);
+  await flush();
+  holdUploadToasts(true);
+  dismissUploadToast(getUploadToasts()[0]?.id ?? 0);
+  uploadFilesToDataRoom([file("b.txt")]);
+  await flush();
+  await vi.advanceTimersByTimeAsync(11_000);
+  expect(names()).toEqual([]);
 });

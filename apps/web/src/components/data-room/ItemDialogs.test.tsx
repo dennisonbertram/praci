@@ -89,3 +89,18 @@ it("refuses a new folder name with a slash and marks the field", async () => {
   expect(rpc.folderCreate).not.toHaveBeenCalled();
   expect(name.getAttribute("aria-invalid")).toBe("true");
 });
+
+it("closes every item dialog with Cancel only, like the Delete confirmation", async () => {
+  for (const action of ["move", "rename", "delete"] as const) {
+    await act(async () =>
+      root.render(
+        <ItemDialog action={action} item={item} folders={[]} onClose={vi.fn()} onDone={vi.fn()} />,
+      ),
+    );
+    expect(document.querySelector('[data-slot="dialog-close"]')).toBeNull();
+    const buttons = Array.from(
+      document.querySelectorAll('[role="dialog"] button, [role="alertdialog"] button'),
+    );
+    expect(buttons.map((b) => b.textContent)).toContain("Cancel");
+  }
+});

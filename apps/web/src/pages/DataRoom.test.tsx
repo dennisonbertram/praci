@@ -432,21 +432,132 @@ it("reads the first page again when a status poll changes the value the list is 
 const previewName = () =>
   container.querySelector('[data-testid="data-room-preview"] h3')?.textContent;
 
-it("previews a row only when the pointer moves over it, not when an overlay closes above it", async () => {
+it("changes the preview only on a click, so the highlight stays on the chosen row", async () => {
   await renderPage();
   expect(previewName()).toBe("b.txt");
-  const row = container.querySelectorAll<HTMLElement>("li[data-item-id]")[1];
-  // A closing popover or dialog leaves the pointer over a row: the browser sends mouseover only.
+  const rows = container.querySelectorAll<HTMLElement>("li[data-item-id]");
   await act(async () => {
-    row?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    rows[1]?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    rows[1]?.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+    rows[1]?.focus();
     await vi.advanceTimersByTimeAsync(300);
   });
   expect(previewName()).toBe("b.txt");
+  expect(rows[0]?.getAttribute("aria-current")).toBe("true");
   await act(async () => {
-    row?.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
-    await vi.advanceTimersByTimeAsync(300);
+    rows[1]?.click();
   });
   expect(previewName()).toBe("a.txt");
+  expect(rows[1]?.getAttribute("aria-current")).toBe("true");
+  // An arrow key selects the row it moves to.
+  await act(async () => {
+    rows[1]?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+  });
+  expect(previewName()).toBe("b.txt");
+});
+
+it("keeps the chosen item through a narrow and back to wide resize, opening no dialog", async () => {
+  let resize: () => void = () => undefined;
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: () => void) {
+        resize = callback;
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
+  const width = (value: number) =>
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, value });
+  width(1000);
+  await renderPage();
+  expect(previewName()).toBe("b.txt");
+  width(400);
+  await act(async () => resize());
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(previewName()).toBeUndefined();
+  width(1000);
+  await act(async () => resize());
+  expect(previewName()).toBe("b.txt");
+  expect(container.querySelector('li[aria-current="true"]')?.getAttribute("data-item-id")).toBe(
+    "id-b.txt",
+  );
+  delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+  vi.unstubAllGlobals();
+});
+
+it("shows the list again as soon as the search is cleared, and hints by word count", async () => {
+  await renderPage();
+  const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  const type = async (value: string) => {
+    await act(async () => {
+      set?.call(input, value);
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+  await type("notice of renewal");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  expect(container.textContent).toContain("Try fewer words");
+  await type("notice");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  expect(container.textContent).toContain("No results");
+  expect(container.textContent).not.toContain("Try fewer words");
+
+  const lists = rpcMock.list.mock.calls.length;
+  const answer = deferred<{ items: DataRoomApiItem[]; nextCursor: null }>();
+  rpcMock.list.mockReturnValueOnce(answer.promise);
+  await type("");
+  // The old empty results must not flash the first-run screen (which would also remount the
+  // consent card and ask for its status again).
+  expect(container.textContent).not.toContain("Drop files here");
+  expect(rpcMock.consent).toHaveBeenCalledTimes(1);
+  answer.resolve({ items: [item("b.txt")], nextCursor: null });
+  await settle();
+  expect(rpcMock.list.mock.calls.length).toBe(lists + 1);
+  expect(container.textContent).not.toContain("No results");
+  expect(container.textContent).not.toContain("Relevance");
+});
+
+it("offers Date and Type sorts only once some item has a date or type", async () => {
+  rpcMock.list.mockResolvedValue({
+    items: [{ ...item("a.txt"), facets: { ...item("a.txt").facets, docType: null } }],
+    nextCursor: null,
+  });
+  await renderPage();
+  const sortTrigger = Array.from(container.querySelectorAll("button")).find((b) =>
+    b.textContent?.startsWith("Sort:"),
+  );
+  await act(async () => {
+    sortTrigger?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const options = Array.from(document.querySelectorAll('[role="menuitemradio"]')).map(
+    (el) => el.textContent,
+  );
+  expect(options).toEqual(["Name", "Recently added"]);
+});
+
+it("says a failed file could not be read, with its reason and a Delete button", async () => {
+  rpcMock.list.mockResolvedValue({
+    items: [{ ...item("junk.pdf"), status: "failed", error: "This file isn't a readable PDF." }],
+    nextCursor: null,
+  });
+  await renderPage();
+  const preview = container.querySelector('[data-testid="data-room-preview"]');
+  expect(preview?.textContent).toContain("Couldn't read this file");
+  expect(preview?.textContent).toContain("This file isn't a readable PDF.");
+  const remove = Array.from(preview?.querySelectorAll("button") ?? []).find(
+    (b) => b.textContent === "Delete",
+  );
+  await act(async () => {
+    remove?.click();
+  });
+  expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain("junk.pdf");
 });
 
 it("hides the Type, Party, Date and Source filters and columns while no item has them", async () => {

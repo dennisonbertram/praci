@@ -30,7 +30,6 @@ import {
 import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
 
-const HOVER_MS = 150;
 const SEARCH_DEBOUNCE_MS = 300;
 /** Below this width of the page body the preview covers the list instead of sitting beside it. */
 const PREVIEW_BESIDE_PX = 560;
@@ -74,7 +73,9 @@ export function DataRoomPage() {
   const [saved] = useState(readDataRoomView);
   const [view, setView] = useState<"list" | "grid">(saved.view);
   const [queryInput, setQueryInput] = useState("");
-  const query = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
+  const debouncedQuery = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
+  // Clearing the box shows the list again at once; only typing waits for a pause.
+  const query = queryInput.trim() === "" ? "" : debouncedQuery;
   const [filters, setFilters] = useState<Filters>({});
   // "Recently added" first, so a file just filed is on top even before it has a document date.
   const [listSort, setListSort] = useState<Sort>(saved.sort);
@@ -110,13 +111,13 @@ export function DataRoomPage() {
     return () => window.removeEventListener(DATA_ROOM_CHANGED, reload);
   }, [reload]);
 
-  // Preview: hovering or focusing a row shows it; a click pins it; clicking the pinned row closes the pane.
+  // Preview: a click (or Enter) on a row shows it; clicking the shown row again closes the pane.
+  // The pointer alone never changes it, so the highlight stays on the row the user chose.
   const [pinned, setPinned] = useState<DataRoomApiItem | null>(null);
-  const [hovered, setHovered] = useState<DataRoomApiItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(true);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // Narrow: the preview has no room beside the list, so a click opens it in a dialog.
+  // Narrow: the preview has no room beside the list, so a tap opens it in a dialog.
   const [narrow, setNarrow] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [bodyEl, setBodyEl] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!bodyEl) return;
@@ -129,13 +130,10 @@ export function DataRoomPage() {
     return () => observer.disconnect();
   }, [bodyEl]);
   const autoPinned = useRef(false);
-  // Narrow, the preview is a dialog that only a tap opens: drop a pin made while wide.
+  // The dialog belongs to one width: resizing never opens it, and closes it when the page widens.
   useEffect(() => {
-    if (narrow) setPinned(null);
+    setDialogOpen(false);
   }, [narrow]);
-  /** The row the pointer is over, so moving within it does not restart the hover delay. */
-  const hoverTarget = useRef<string | null>(null);
-  useEffect(() => () => clearTimeout(timer.current), []);
 
   useEffect(() => {
     if (!linkedItem) return;
@@ -150,8 +148,8 @@ export function DataRoomPage() {
         setQueryInput("");
         setFilters(item.folderId ? { folderId: item.folderId } : {});
         setPinned(item);
-        setHovered(null);
         setPreviewOpen(true);
+        setDialogOpen(true);
       })
       .catch(() => undefined);
     return () => {
@@ -177,7 +175,6 @@ export function DataRoomPage() {
     const first = appliedKey.current === null;
     appliedKey.current = queryKey;
     if (first || (pinned && resultIds.split(",").includes(pinned.id))) return;
-    setHovered(null);
     setPinned(previewOpen && !narrow ? (list.rows[0]?.item ?? null) : null);
   }, [list.loading, list.key, list.rows, queryKey, resultIds, pinned, previewOpen, narrow]);
 
@@ -193,42 +190,28 @@ export function DataRoomPage() {
     const id = pinned.id;
     rpc.dataRoom.item({ id }).catch(() => {
       setPinned((current) => (current?.id === id ? null : current));
-      setHovered((current) => (current?.id === id ? null : current));
     });
   }, [list.loading, list.key, queryKey, resultIds, pinned]);
 
   const fresh = (item: DataRoomApiItem | null) =>
     item ? (list.rows.find((row) => row.item.id === item.id)?.item ?? item) : null;
-  const shown = previewOpen ? fresh(hovered ?? pinned) : null;
+  const shown = previewOpen ? fresh(pinned) : null;
 
   const interaction: RowInteraction = {
     shownId: shown?.id,
-    onHover: (item) => {
-      if (narrow || hoverTarget.current === item.id) return;
-      hoverTarget.current = item.id;
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => setHovered(item), HOVER_MS);
-    },
-    onLeave: () => {
-      hoverTarget.current = null;
+    onSelect: (item) => {
       if (narrow) return;
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => setHovered(null), HOVER_MS);
-    },
-    onFocusItem: (item) => {
-      if (narrow) return;
-      clearTimeout(timer.current);
-      setHovered(item);
+      setPinned(item);
+      setPreviewOpen(true);
     },
     onToggle: (item) => {
-      clearTimeout(timer.current);
-      setHovered(null);
-      if (pinned?.id === item.id && previewOpen) {
+      if (!narrow && pinned?.id === item.id && previewOpen) {
         setPinned(null);
         setPreviewOpen(false);
       } else {
         setPinned(item);
         setPreviewOpen(true);
+        setDialogOpen(narrow);
       }
     },
     onAction: (kind, item) => setAction({ kind, item }),
@@ -240,8 +223,8 @@ export function DataRoomPage() {
   function closePreview() {
     const id = shown?.id;
     setPinned(null);
-    setHovered(null);
     setPreviewOpen(false);
+    setDialogOpen(false);
     // Keep the keyboard where the user was.
     if (id) {
       requestAnimationFrame(() =>
@@ -251,7 +234,15 @@ export function DataRoomPage() {
   }
 
   const hasFilters = Object.values(filters).some(Boolean);
-  const empty = !list.loading && list.rows.length === 0 && !list.error && !searching && !hasFilters;
+  // Only rows that answer the query now asked count: for one render after a search is cleared, the
+  // old empty results are still in hand, and must not flash the first-run screen.
+  const empty =
+    !list.loading &&
+    list.key === queryKey &&
+    list.rows.length === 0 &&
+    !list.error &&
+    !searching &&
+    !hasFilters;
   const rows = list.rows;
   const uniq = (values: string[]) => [...new Set(values)].sort();
   const clearFilters = () => setFilters(filters.folderId ? { folderId: filters.folderId } : {});
@@ -355,7 +346,11 @@ export function DataRoomPage() {
                   </p>
                   {searching ? (
                     <p className="text-xs">
-                      <Trans>Search matches words in names and text. Try one word.</Trans>
+                      {query.includes(" ") ? (
+                        <Trans>Search matches words in names and text. Try fewer words.</Trans>
+                      ) : (
+                        <Trans>Search matches words in names and text.</Trans>
+                      )}
                     </p>
                   ) : null}
                   {Object.entries(filters).some(([key, value]) => key !== "folderId" && value) ? (
@@ -395,7 +390,7 @@ export function DataRoomPage() {
           </div>
         </>
       )}
-      {shown && narrow ? (
+      {shown && narrow && dialogOpen ? (
         <Dialog open onOpenChange={(open) => !open && closePreview()}>
           <DialogContent className="max-h-[85dvh] overflow-y-auto p-0">
             <Preview
@@ -417,7 +412,6 @@ export function DataRoomPage() {
           onDone={(kind, updated) => {
             if (kind === "delete") {
               if (pinned?.id === action.item.id) setPinned(null);
-              if (hovered?.id === action.item.id) setHovered(null);
             } else if (updated && pinned?.id === updated.id) {
               setPinned(updated);
             }

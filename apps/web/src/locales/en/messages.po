@@ -2347,6 +2347,10 @@ msgstr "Couldn't load messaging settings"
 msgid "Couldn't reach Gmail."
 msgstr "Couldn't reach Gmail."
 
+#: src/components/data-room/Preview.tsx
+msgid "Couldn't read this file"
+msgstr "Couldn't read this file"
+
 #: src/components/ComposeEmail.tsx
 msgid "Couldn't save the draft"
 msgstr "Couldn't save the draft"
@@ -2565,6 +2569,7 @@ msgstr "Default scope"
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
@@ -2776,10 +2781,6 @@ msgstr "Docs & files"
 #: src/components/data-room/FilterBar.tsx
 msgid "Document date"
 msgstr "Document date"
-
-#: src/components/data-room/ConsentPrompt.tsx
-msgid "Documents are stored but not read. Set up a model in Settings to tag and file them."
-msgstr "Documents are stored but not read. Set up a model in Settings to tag and file them."
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
@@ -3084,7 +3085,6 @@ msgstr "failed"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
-#: src/components/data-room/Preview.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
@@ -5596,8 +5596,12 @@ msgid "Search mail"
 msgstr "Search mail"
 
 #: src/pages/DataRoom.tsx
-msgid "Search matches words in names and text. Try one word."
-msgstr "Search matches words in names and text. Try one word."
+msgid "Search matches words in names and text."
+msgstr "Search matches words in names and text."
+
+#: src/pages/DataRoom.tsx
+msgid "Search matches words in names and text. Try fewer words."
+msgstr "Search matches words in names and text. Try fewer words."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
@@ -6369,8 +6373,8 @@ msgid "To do"
 msgstr "To do"
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "To tag, file and search them, their text (and images) is sent to {names}. Until then they are stored but not read."
-msgstr "To tag, file and search them, their text (and images) is sent to {names}. Until then they are stored but not read."
+msgid "To tag and file them, their text (and images) is sent to {names}. Until then you can search them by name and text, but they aren't tagged or filed."
+msgstr "To tag and file them, their text (and images) is sent to {names}. Until then you can search them by name and text, but they aren't tagged or filed."
 
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
@@ -6945,6 +6949,10 @@ msgstr "You can close this tab if it does not redirect automatically."
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this window."
 msgstr "You can close this window."
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "You can search documents by name and text, but they aren't tagged or filed. Set up a model in Settings to do that."
+msgstr "You can search documents by name and text, but they aren't tagged or filed. Set up a model in Settings to do that."
 
 #: src/pages/Shell.tsx
 msgid "You have control"
