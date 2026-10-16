@@ -612,3 +612,24 @@ export interface InboxClassifierProvider {
     context: AdapterContext,
   ): Promise<InboxClassifyResult>;
 }
+
+/** Fixed vector size for the data room's vector column; every Embedder must return this size. */
+export const DATA_ROOM_EMBEDDING_DIMENSIONS = 1024;
+
+/**
+ * Provider-neutral text embedder. `vectors[i]` belongs to `texts[i]`. Implementations split large
+ * inputs into batches of at most `maxBatch`, return vectors of `dimensions` numbers, and do not
+ * retry (the job queue does).
+ */
+export interface Embedder {
+  describe(): AdapterDescriptor<{ dimensions: number; maxBatch: number }>;
+  embed(texts: string[], context: AdapterContext): Promise<{ model: string; vectors: number[][] }>;
+}
+
+/** The configured model does not produce the required vector size, or rejects the request shape. */
+export class EmbedderMisconfiguredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EmbedderMisconfiguredError";
+  }
+}
