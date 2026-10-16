@@ -38,6 +38,7 @@ import {
   buildComposerMentionOptions,
   clampMentionHighlightIndex,
   cronFromPreset,
+  DEFAULT_BOT_COLOR,
   formatMessageTime,
   groupVoiceChats,
   inferAttachmentMimeType,
@@ -294,7 +295,7 @@ import {
   RenameBotSectionDialog,
   RenameSpaceDialog,
 } from "./shell/dialogs";
-import { FALLBACK_BOT_COLOR, MentionIcon } from "./shell/mention-icon";
+import { MentionIcon } from "./shell/mention-icon";
 import {
   AppConnectCard,
   ArtifactImage,
@@ -336,7 +337,6 @@ type PendingBrowserNotification = {
 };
 
 const ATTACHMENT_ACCEPT = [...ATTACHMENT_ALLOWED_MIME_TYPES, ".zip"].join(",");
-/** Identity colour for bots the roster no longer knows about. */
 const THREAD_SNAPSHOT_TIMEOUT_MS = 2_000;
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
 const VOICE_STATUS_REFRESH_TIMEOUT_MS = 10_000;
@@ -1964,7 +1964,7 @@ export function ShellPage() {
     const bot = resolveTranscriptBot(run.botId);
     return {
       botId: run.botId,
-      color: bot?.color ?? FALLBACK_BOT_COLOR,
+      color: bot?.color ?? DEFAULT_BOT_COLOR,
       name: bot?.name,
       status: run.status,
     };
@@ -4917,7 +4917,7 @@ export function ShellPage() {
             peerBotId={peerConversation.peerBotId}
             peerBotName={peerConversation.peerBotName}
             peerBotColor={
-              resolveTranscriptBot(peerConversation.peerBotId)?.color ?? FALLBACK_BOT_COLOR
+              resolveTranscriptBot(peerConversation.peerBotId)?.color ?? DEFAULT_BOT_COLOR
             }
             onClose={() => setPeerConversation(null)}
           />
@@ -6918,7 +6918,7 @@ const MessageView = memo(function MessageView({
           style={{ color: speakerColorDef.light }}
         >
           <BotAvatar
-            color={speakerBot?.color ?? FALLBACK_BOT_COLOR}
+            color={speakerBot?.color ?? DEFAULT_BOT_COLOR}
             identity={message.botId}
             size={22}
           />
@@ -7043,7 +7043,7 @@ const MessageView = memo(function MessageView({
             <CollaborationMarker
               key={i}
               ariaLabel={label}
-              color={peerBot(peerBotId)?.color ?? FALLBACK_BOT_COLOR}
+              color={peerBot(peerBotId)?.color ?? DEFAULT_BOT_COLOR}
               identity={peerBotId}
               label={label}
               onClick={() => onOpenPeerMessages({ peerBotId, peerBotName: peer })}

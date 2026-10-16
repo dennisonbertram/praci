@@ -17,7 +17,7 @@ import { AlchemyConnectDialog } from "./AlchemyConnectDialog";
 import { AppLogo } from "./AppLogo";
 import { BlockscoutConnectDialog } from "./BlockscoutConnectDialog";
 import { ExchangeConnectDialog } from "./ExchangeConnectDialog";
-import { StatusBadge } from "./parts";
+import { IntegrationTile, StatusBadge } from "./parts";
 
 /** False once the tile has unmounted, so a slow request does not set state afterwards. */
 function useMounted() {
@@ -48,10 +48,7 @@ function CryptoTile() {
   }, []);
 
   return (
-    <div
-      data-testid="finance-tile-crypto"
-      className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
-    >
+    <IntegrationTile data-testid="finance-tile-crypto">
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Blockscout" logo="/logos/blockscout.svg" />
         <div className="min-w-0">
@@ -96,7 +93,7 @@ function CryptoTile() {
       {dialog ? (
         <BlockscoutConnectDialog onConnected={() => void load()} onClose={() => setDialog(false)} />
       ) : null}
-    </div>
+    </IntegrationTile>
   );
 }
 
@@ -117,10 +114,7 @@ function AlchemyTile() {
   }, []);
 
   return (
-    <div
-      data-testid="finance-tile-alchemy"
-      className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
-    >
+    <IntegrationTile data-testid="finance-tile-alchemy">
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Alchemy" logo="/logos/alchemy.svg" />
         <div className="min-w-0">
@@ -173,7 +167,7 @@ function AlchemyTile() {
       {dialog ? (
         <AlchemyConnectDialog onConnected={() => void load()} onClose={() => setDialog(false)} />
       ) : null}
-    </div>
+    </IntegrationTile>
   );
 }
 
@@ -196,10 +190,7 @@ function ExchangeTile({ provider }: { provider: ExchangeProvider }) {
 
   const connected = found?.connected === true;
   return (
-    <div
-      data-testid={`finance-tile-${provider}`}
-      className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
-    >
+    <IntegrationTile data-testid={`finance-tile-${provider}`}>
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name={exchange.name} logo={exchange.logo} />
         <div className="min-w-0">
@@ -248,7 +239,7 @@ function ExchangeTile({ provider }: { provider: ExchangeProvider }) {
           onClose={() => setDialog(false)}
         />
       ) : null}
-    </div>
+    </IntegrationTile>
   );
 }
 
@@ -299,11 +290,7 @@ export function FinanceSection({
         const reconnect = status === "needs_reconnect" || status === "error";
         const error = errors[provider];
         return (
-          <div
-            key={provider}
-            data-testid={`finance-tile-${provider}`}
-            className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
-          >
+          <IntegrationTile key={provider} data-testid={`finance-tile-${provider}`}>
             <div className="flex min-w-0 items-center gap-3">
               <AppLogo name={name} logo={logo} />
               <div className="min-w-0">
@@ -352,7 +339,7 @@ export function FinanceSection({
                 {error}
               </p>
             ) : null}
-          </div>
+          </IntegrationTile>
         );
       })}
       <CryptoTile />

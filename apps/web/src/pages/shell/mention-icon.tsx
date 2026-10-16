@@ -1,8 +1,8 @@
 import type { ComposerMention } from "@rakazo/core";
+import { DEFAULT_BOT_COLOR } from "@rakazo/core";
 import { BotAvatar } from "@rakazo/ui-web";
 import { Clock, Puzzle } from "lucide-react";
 
-export const FALLBACK_BOT_COLOR = "#85858A";
 
 const GLYPHS = { group: "G", everyone: "@" } as const;
 
@@ -33,5 +33,5 @@ export function MentionIcon({
       </span>
     );
   }
-  return <BotAvatar color={mention.color ?? FALLBACK_BOT_COLOR} identity={mention.id} size={16} />;
+  return <BotAvatar color={mention.color ?? DEFAULT_BOT_COLOR} identity={mention.id} size={16} />;
 }

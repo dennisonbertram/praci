@@ -32,7 +32,7 @@ import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
 import { FinanceSection } from "./FinanceSection";
-import { AgentStack, StatusBadge } from "./parts";
+import { AgentStack, IntegrationTile, StatusBadge } from "./parts";
 import { agentsFor, type IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
@@ -47,9 +47,9 @@ function hostOf(value: string | null) {
 
 function Card({ children }: { children: ReactNode }) {
   return (
-    <div className="relative flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 transition-colors hover:bg-muted/40">
+    <IntegrationTile className="relative  transition-colors hover:bg-muted/40">
       {children}
-    </div>
+    </IntegrationTile>
   );
 }
 
@@ -220,7 +220,7 @@ function AppTile({
 }) {
   const { t } = useLingui();
   return (
-    <div className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5">
+    <IntegrationTile>
       <CardHead name={name} logo={logo} sub={description ?? undefined} />
       <div className="mt-auto flex">
         <Button
@@ -233,7 +233,7 @@ function AppTile({
           <Trans>Connect</Trans>
         </Button>
       </div>
-    </div>
+    </IntegrationTile>
   );
 }
 
