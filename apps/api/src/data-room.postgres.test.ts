@@ -153,7 +153,12 @@ describePostgres("Data room API (PostgreSQL)", () => {
     });
     expect(JSON.stringify(body)).not.toContain("storageKey");
     expect(await blobCount(actors.A.spaceId)).toBe(1);
-    expect(enqueued).toEqual([]);
+    expect(enqueued).toHaveLength(1);
+    expect(enqueued[0]).toMatchObject({
+      name: "dataroom.ingest",
+      payload: { spaceId: actors.A.spaceId, userId: actors.a.userId, itemId: item.id },
+      replaceKey: `dataroom.ingest:${item.id}`,
+    });
   });
 
   it("returns the existing item for the same bytes and stores no second blob", async () => {
@@ -162,6 +167,28 @@ describePostgres("Data room API (PostgreSQL)", () => {
     const body = (await res.json()) as { item: DataRoomApiItem; duplicate: boolean };
     expect(body).toMatchObject({ duplicate: true, item: { id: item.id } });
     expect(await blobCount(actors.A.spaceId)).toBe(1);
+    // The first upload is still pending, so the duplicate runs ingest again (the job key dedupes).
+    expect(enqueued.filter((job) => job.name === "dataroom.ingest")).toHaveLength(2);
+    expect(new Set(enqueued.map((job) => job.replaceKey)).size).toBe(1);
+  });
+
+  it("restarts a duplicate of a failed item, but leaves a ready one alone", async () => {
+    const before = enqueued.filter((job) => job.name === "dataroom.ingest").length;
+    await prisma.dataRoomItem.update({
+      where: { id: item.id },
+      data: { status: "failed", failures: 3, error: "boom" },
+    });
+    expect((await upload("a", "name=again.txt", "quokka report")).status).toBe(200);
+    expect(await prisma.dataRoomItem.findUniqueOrThrow({ where: { id: item.id } })).toMatchObject({
+      status: "pending",
+      failures: 0,
+      error: null,
+    });
+    expect(enqueued.filter((job) => job.name === "dataroom.ingest")).toHaveLength(before + 1);
+    await prisma.dataRoomItem.update({ where: { id: item.id }, data: { status: "ready" } });
+    await upload("a", "name=again.txt", "quokka report");
+    expect(enqueued.filter((job) => job.name === "dataroom.ingest")).toHaveLength(before + 1);
+    await prisma.dataRoomItem.update({ where: { id: item.id }, data: { status: "pending" } });
   });
 
   it("refuses an upload over the cap with 413 and stores no blob", async () => {
