@@ -27,10 +27,8 @@ import {
   isSecretAskBlock,
   isThreadSnapshotEvent,
   latestAnswerableAskMessageId,
-  leaveThreadWindow,
   messageProviderLabel,
   newClientId,
-  openThreadWindow,
   plainTextFromMarkdown,
   projectMessageReactions,
   reconcileThreadScrollState,
@@ -43,7 +41,6 @@ import {
   threadWindowMessages,
   timeSeparatorIds,
   userVisibleMessages,
-  withLiveStreamingProgress,
 } from "@rakazo/core";
 import * as Clipboard from "expo-clipboard";
 import {
@@ -202,13 +199,17 @@ import {
   loadVerifiedIntegrationsScope,
   subscribeSessionGeneration,
 } from "../lib/session";
+import {
+  applyMessageJump as applyMessageJumpAction,
+  commitSnap as commitSnapAction,
+  showLatest as showLatestAction,
+} from "../lib/thread-actions";
 import type { SendAttempt } from "../lib/thread-feedback";
 import { confirmEchoes, subscribeDelivered, useThreadFeedback } from "../lib/thread-feedback";
 import { ThreadJumpAnchor } from "../lib/thread-jump";
 import { ThreadReadOnlyContext } from "../lib/thread-read-only";
 import type { ThreadScrollAction, ThreadScrollState } from "../lib/thread-scroll";
 import { ThreadScrollBehavior } from "../lib/thread-scroll";
-import { reconcileVisibleThreadSnapshot } from "../lib/thread-snapshot";
 import { prepareUnsentSends } from "../lib/unsent-sends";
 import { errorText } from "../lib/user-error";
 import { speakQueue, speakText } from "../lib/voice";
@@ -550,9 +551,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   streamResponsesRef.current = streamResponses;
 
   function commitSnap(next: MobileSnapshot | null) {
-    snapRef.current = next;
-    const visible = withLiveStreamingProgress(next, streamResponsesRef.current);
-    setSnap((previous) => reconcileVisibleThreadSnapshot(previous, visible));
+    commitSnapAction({ snapRef, streamResponsesRef, setSnap }, next);
   }
 
   useEffect(() => {
@@ -1194,50 +1193,30 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   }
 
   async function applyMessageJump(target: { botId?: string; groupId?: string; messageId: string }) {
-    const threadTarget = target.groupId ? { groupId: target.groupId } : { botId: target.botId! };
-    const epoch = historyEpoch.current;
-    jumpGeneration.current += 1;
-    const jumpId = jumpGeneration.current;
-    const scope = await liveSavedChatsScope();
-    if (!scope || !isIntegrationsScopeCurrent(scope)) return;
-    const [snap, page] = await Promise.all([
-      rpc<MobileSnapshot>("threads/get", threadTarget),
-      rpc<MobileMessagePage>("threads/messages", {
-        ...threadTarget,
-        around: { messageId: target.messageId },
-      }),
-    ]);
-    // The epoch check drops a jump that raced a conversation clear (or a bot switch); the
-    // generation check drops an older same-thread jump that finished after a newer one.
-    if (
-      epoch !== historyEpoch.current ||
-      jumpId !== jumpGeneration.current ||
-      !isIntegrationsScopeCurrent(scope)
-    )
-      return;
-    if (target.groupId && activeGroupId.current !== target.groupId) return;
-    if (target.botId && activeBotId.current !== target.botId) return;
-    const targetInPage = page.messages.some((message) => message.id === target.messageId);
-    const opened = targetInPage ? openThreadWindow(snap, page) : null;
-    expandedHistoryThread.current = targetInPage ? page.threadId : null;
-    pinnedAroundRef.current = opened
-      ? {
-          ...threadTarget,
-          messageId: target.messageId,
-          threadId: page.threadId,
-          newerCursor: opened.newerCursor,
-        }
-      : null;
-    jumpAnchor.current.begin(targetInPage ? target.messageId : null);
-    jumpScrollTarget.current = targetInPage ? target.messageId : null;
-    newerLoadFailed.current = false;
-    joinPinnedAfterLayout.current = null;
-    pinnedScrollMetrics.current = { offset: 0, viewport: 0, content: 0 };
-    // Publish the jump refs even when the opened snapshot is already visible.
-    setThreadScrollState(scrollBehavior.current.state());
-    snapshotOrigin.current = scope;
-    commitSnap(opened?.snapshot ?? snap);
-    setShowingSaved(false);
+    await applyMessageJumpAction(
+      {
+        rpc,
+        liveSavedChatsScope,
+        isIntegrationsScopeCurrent,
+        snapshotOrigin,
+        setShowingSaved,
+        historyEpoch,
+        jumpGeneration,
+        activeGroupId,
+        activeBotId,
+        expandedHistoryThread,
+        pinnedAroundRef,
+        jumpAnchor,
+        jumpScrollTarget,
+        newerLoadFailed,
+        joinPinnedAfterLayout,
+        pinnedScrollMetrics,
+        scrollBehavior,
+        setThreadScrollState,
+        commitSnap,
+      },
+      target,
+    );
   }
 
   async function loadNewerMessages() {
@@ -1310,21 +1289,17 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   }
 
   function showLatest() {
-    const pinned = pinnedAroundRef.current;
-    pinnedAroundRef.current = null;
-    joinPinnedAfterLayout.current = null;
-    jumpScrollTarget.current = null;
-    jumpAnchor.current.release();
-    expandedHistoryThread.current = null;
-    // The live list mounts at the latest message.
-    scrollBehavior.current.jumpToLatest();
-    // Clearing the pinned refs must render even when the snapshot and scroll flags are unchanged.
-    setThreadScrollState(scrollBehavior.current.state());
-    commitSnap(
-      snapRef.current && pinned
-        ? leaveThreadWindow(snapRef.current, pinned.newerCursor)
-        : snapRef.current,
-    );
+    showLatestAction({
+      pinnedAroundRef,
+      joinPinnedAfterLayout,
+      jumpScrollTarget,
+      jumpAnchor,
+      expandedHistoryThread,
+      scrollBehavior,
+      setThreadScrollState,
+      snapRef,
+      commitSnap,
+    });
   }
 
   async function loadOlderMessages() {

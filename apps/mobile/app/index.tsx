@@ -1,8 +1,6 @@
 import { MenuView } from "@expo/ui/community/menu";
 import type { RunActivityRow, SearchHit, SpaceBot, SpaceGroup } from "@rakazo/contracts";
 import { normalizeCreateBotProfile } from "@rakazo/contracts";
-import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
-import { botColors } from "@rakazo/ui-tokens";
 import { Redirect, useFocusEffect, useNavigation, useRouter } from "expo-router";
 import type { ReactNode } from "react";
 import {
@@ -22,7 +20,6 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -31,9 +28,10 @@ import { KeyboardController } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BotAvatar } from "../components/bot-avatar";
 import { BotOrganizeModal } from "../components/bot-organize-modal";
-import { GroupAvatar } from "../components/group-avatar";
+import { ConversationRow } from "../components/conversation-row";
+import { BotRow, FALLBACK_COLOR, GroupRow } from "../components/inbox-rows";
+import { createHomeStyles } from "../components/inbox-styles";
 import { NativeSymbol } from "../components/native-symbol";
-import { WorkingIndicator } from "../components/WorkingIndicator";
 import {
   activityStatusLabel,
   fetchSpaceActivity,
@@ -57,9 +55,8 @@ import {
   selectSpace,
 } from "../lib/api";
 import { mobileTokens, resolveMobileAppearance } from "../lib/appearance";
-import { mobileBotAvatarPresentation } from "../lib/bot-avatar";
 import { t, useI18n } from "../lib/i18n";
-import { botTag, filterBots, formatThreadTime, userInitials } from "../lib/inbox";
+import { filterBots, userInitials } from "../lib/inbox";
 import { retainInboxValue } from "../lib/inbox-retention";
 import type { InboxSpace, InboxSpaceItem } from "../lib/inbox-spaces";
 import {
@@ -73,7 +70,6 @@ import {
 import { dismissThreadNotifications, resumeLiveNotifications } from "../lib/live-notifications";
 import { native, useThemedStyles } from "../lib/native";
 import { iosAtLeast } from "../lib/native-controls";
-import { previewSnippet } from "../lib/preview";
 import { registerPushToken } from "../lib/push";
 import { loadSavedInbox, saveInbox } from "../lib/saved-chats";
 import { querySpaceSearch } from "../lib/search";
@@ -84,9 +80,8 @@ import {
   currentSessionGeneration,
   subscribeSessionGeneration,
 } from "../lib/session";
+import { useInboxDay } from "../lib/use-inbox-day";
 import { errorText } from "../lib/user-error";
-
-const FALLBACK_COLOR = botColors[3];
 
 type InboxItem = InboxSpaceItem | { type: "search"; hit: SearchHit };
 
@@ -109,28 +104,7 @@ function Home() {
   const appearance = resolveMobileAppearance();
   const styles = useThemedStyles(createHomeStyles);
   const { t, locale } = useI18n();
-  const [day, setDay] = useState(() => new Date().setHours(0, 0, 0, 0));
-  useFocusEffect(
-    useCallback(() => {
-      let timer: ReturnType<typeof setTimeout>;
-      const refreshDay = () => {
-        clearTimeout(timer);
-        const now = new Date();
-        setDay(new Date(now).setHours(0, 0, 0, 0));
-        const midnight = new Date(now);
-        midnight.setHours(24, 0, 0, 0);
-        timer = setTimeout(refreshDay, midnight.getTime() - now.getTime());
-      };
-      refreshDay();
-      const subscription = AppState.addEventListener("change", (state) => {
-        if (state === "active") refreshDay();
-      });
-      return () => {
-        clearTimeout(timer);
-        subscription.remove();
-      };
-    }, []),
-  );
+  const day = useInboxDay();
   const [bots, setBots] = useState<MobileBot[]>([]);
   const [groups, setGroups] = useState<MobileGroup[]>([]);
   const [botSections, setBotSections] = useState<MobileBotSection[]>([]);
@@ -1047,109 +1021,6 @@ function ActivityRow({
   );
 }
 
-function ConversationRow({
-  title,
-  preview,
-  time,
-  avatar,
-  indicator,
-  tag,
-  unread,
-  depth = 0,
-  hasChildren = false,
-  collapsed = false,
-  onToggleChildren,
-  onPress,
-  onLongPress,
-  accessibilityLabel,
-  accessibilityHint,
-}: {
-  title: string;
-  preview: string;
-  time: string;
-  avatar: ReactNode;
-  indicator?: ReactNode;
-  tag?: string | null;
-  unread?: boolean;
-  depth?: number;
-  hasChildren?: boolean;
-  collapsed?: boolean;
-  onToggleChildren?: () => void;
-  onPress: () => void;
-  onLongPress?: () => void;
-  accessibilityLabel: string;
-  accessibilityHint?: string;
-}) {
-  const styles = useThemedStyles(createHomeStyles);
-  const { t } = useI18n();
-  const toggleLabel = collapsed
-    ? t("Expand {name}", { name: title })
-    : t("Collapse {name}", { name: title });
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-      // Screen readers treat the row as one element, so the chevron is offered as a row action.
-      accessibilityState={hasChildren ? { expanded: !collapsed } : undefined}
-      accessibilityActions={
-        hasChildren ? [{ name: "toggleChildren", label: toggleLabel }] : undefined
-      }
-      onAccessibilityAction={(event) => {
-        if (event.nativeEvent.actionName === "toggleChildren") onToggleChildren?.();
-      }}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      style={({ pressed }) => [
-        styles.row,
-        depth > 0 ? { paddingInlineStart: 16 + depth * 16 } : null,
-        pressed && styles.rowPressed,
-      ]}
-    >
-      {hasChildren ? (
-        <Pressable
-          accessible={false}
-          importantForAccessibility="no"
-          hitSlop={8}
-          onPress={onToggleChildren}
-          style={styles.treeToggle}
-        >
-          <NativeSymbol
-            ios={collapsed ? "chevron.right" : "chevron.down"}
-            android={collapsed ? "chevron-forward" : "chevron-down"}
-            size={14}
-          />
-        </Pressable>
-      ) : null}
-      {avatar}
-      <View style={styles.rowBody}>
-        <View style={styles.rowTop}>
-          <View style={styles.titleRow}>
-            <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
-              {title}
-            </Text>
-            {tag ? (
-              <View style={styles.tag}>
-                <Text style={styles.tagLabel} numberOfLines={1}>
-                  {tag}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-          <View style={styles.rowMeta}>
-            {indicator}
-            {time ? <Text style={styles.time}>{time}</Text> : null}
-            {unread ? <View accessibilityElementsHidden style={styles.unreadDot} /> : null}
-          </View>
-        </View>
-        <Text style={[styles.preview, unread && styles.unreadPreview]} numberOfLines={1}>
-          {preview}
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
-
 function MailInboxRow({ onPress }: { onPress: () => void }) {
   const styles = useThemedStyles(createHomeStyles);
   const { t } = useI18n();
@@ -1227,334 +1098,3 @@ const SearchRow = memo(function SearchRow({
     </Pressable>
   );
 });
-
-const BotRow = memo(function BotRow({
-  bot,
-  day,
-  depth = 0,
-  hasChildren = false,
-  collapsed = false,
-  onToggleChildren,
-  onPress,
-  onLongPress,
-}: {
-  bot: MobileBot | SpaceBot;
-  day: number;
-  depth?: number;
-  hasChildren?: boolean;
-  collapsed?: boolean;
-  onToggleChildren?: (botId: string) => void;
-  onPress: (bot: MobileBot | SpaceBot) => void;
-  onLongPress?: (bot: MobileBot | SpaceBot) => void;
-}) {
-  const { t } = useI18n();
-  const preview = previewSnippet(bot.preview, 40) || bot.title || t("No messages yet");
-  const time = bot.updatedAt ? formatThreadTime(bot.updatedAt, new Date(day)) : "";
-  const tag = botTag(bot.title, bot.name);
-  const working = ACTIVE_RUN_STATUSES.some((status) => status === bot.status);
-  // Only flat avatars carry a usable color; image avatars fall back to the muted dot.
-  const presentation = mobileBotAvatarPresentation(bot.color || FALLBACK_COLOR);
-  const tint =
-    presentation.kind === "shape" || presentation.kind === "color" ? presentation.color : undefined;
-  // Spelled out because an explicit label replaces the one built from the row's children.
-  const label = [
-    bot.name,
-    tag,
-    working ? t("Working…") : null,
-    bot.notifyOnFinish === false ? t("notifications silenced") : null,
-    bot.unread ? t("unread") : null,
-    time,
-    preview,
-  ]
-    .filter(Boolean)
-    .join(", ");
-  return (
-    <ConversationRow
-      title={bot.name}
-      preview={preview}
-      time={time}
-      tag={tag}
-      unread={bot.unread}
-      depth={depth}
-      hasChildren={hasChildren}
-      collapsed={collapsed}
-      onToggleChildren={onToggleChildren ? () => onToggleChildren(bot.id) : undefined}
-      accessibilityLabel={label}
-      accessibilityHint={
-        onLongPress ? t("Long press to pin, move, or silence notifications") : undefined
-      }
-      onPress={() => onPress(bot)}
-      onLongPress={onLongPress ? () => onLongPress(bot) : undefined}
-      indicator={working ? <WorkingIndicator compact tint={tint} /> : null}
-      avatar={
-        <BotAvatar
-          color={bot.color || FALLBACK_COLOR}
-          identity={bot.id}
-          status={bot.status}
-          muted={bot.notifyOnFinish === false}
-        />
-      }
-    />
-  );
-});
-
-const GroupRow = memo(function GroupRow({
-  group,
-  day,
-  onPress,
-  onLongPress,
-}: {
-  group: MobileGroup | SpaceGroup;
-  day: number;
-  onPress: (group: MobileGroup | SpaceGroup) => void;
-  onLongPress?: (group: MobileGroup | SpaceGroup) => void;
-}) {
-  const { t } = useI18n();
-  const preview =
-    previewSnippet(group.preview, 40) || group.members.map((member) => member.name).join(", ");
-  const time = group.updatedAt ? formatThreadTime(group.updatedAt, new Date(day)) : "";
-  return (
-    <ConversationRow
-      title={group.name}
-      preview={preview}
-      time={time}
-      unread={group.unread}
-      accessibilityLabel={[group.name, group.unread ? t("unread") : null, time, preview]
-        .filter(Boolean)
-        .join(", ")}
-      accessibilityHint={onLongPress ? t("Long press to pin or move to a section") : undefined}
-      onPress={() => onPress(group)}
-      onLongPress={onLongPress ? () => onLongPress(group) : undefined}
-      avatar={<GroupAvatar members={group.members} size={54} />}
-    />
-  );
-});
-
-function createHomeStyles() {
-  const tokens = mobileTokens();
-  return StyleSheet.create({
-    screen: {
-      flex: 1,
-      backgroundColor: native.page,
-    },
-    centered: {
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 10,
-    },
-    headerActions: {
-      flexDirection: "row",
-      alignItems: "center",
-      padding: 2,
-      borderRadius: 22,
-      backgroundColor: native.fillPressed,
-    },
-    circleButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: native.fillPressed,
-    },
-    headerButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-    },
-    headerButtonActive: {
-      backgroundColor: native.fill,
-    },
-    headerButtonAccent: {
-      backgroundColor: tokens.primary,
-    },
-    profileInitials: {
-      color: native.label,
-      fontSize: 15,
-      fontWeight: "600",
-    },
-    searchField: {
-      marginHorizontal: 16,
-      marginBottom: 8,
-      minHeight: 44,
-      paddingVertical: 10,
-      textAlignVertical: "center",
-      borderRadius: 10,
-      backgroundColor: native.fill,
-      color: native.label,
-      paddingHorizontal: 12,
-      fontSize: 17,
-      writingDirection: "auto",
-    },
-    error: {
-      color: native.secondaryLabel,
-      paddingHorizontal: 20,
-      paddingBottom: 8,
-    },
-    list: {
-      flexGrow: 1,
-      paddingBottom: 32,
-    },
-    empty: {
-      color: native.secondaryLabel,
-      fontSize: 16,
-      paddingHorizontal: 20,
-      paddingTop: 28,
-    },
-    row: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      gap: 12,
-    },
-    mailInboxIcon: {
-      width: 54,
-      height: 54,
-      borderRadius: 27,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: native.fill,
-    },
-    treeToggle: {
-      width: 20,
-      height: 20,
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: -4,
-    },
-    rowPressed: {
-      opacity: 0.55,
-    },
-    rowBody: {
-      flex: 1,
-      minWidth: 0,
-      gap: 2,
-    },
-    rowTop: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    titleRow: {
-      flex: 1,
-      minWidth: 0,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-    },
-    rowMeta: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 7,
-    },
-    name: {
-      flexShrink: 1,
-      color: native.label,
-      fontSize: 17,
-      fontWeight: "600",
-      writingDirection: "auto",
-    },
-    tag: {
-      flexShrink: 1,
-      borderRadius: 999,
-      backgroundColor: native.fill,
-      paddingHorizontal: 7,
-      paddingVertical: 2,
-    },
-    tagLabel: {
-      color: native.secondaryLabel,
-      fontSize: 11,
-      fontWeight: "500",
-      writingDirection: "auto",
-    },
-    time: {
-      color: native.secondaryLabel,
-      fontSize: 15,
-    },
-    preview: {
-      color: native.secondaryLabel,
-      fontSize: 15,
-      lineHeight: 20,
-      writingDirection: "auto",
-    },
-    unreadPreview: {
-      color: native.label,
-      fontWeight: "600",
-    },
-    unreadDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: tokens.foreground,
-    },
-    spaceHeading: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingTop: 8,
-    },
-    spaceSelect: {
-      flex: 1,
-      minHeight: 44,
-      justifyContent: "center",
-    },
-    spaceTitle: {
-      color: native.label,
-      fontSize: 14,
-      fontWeight: "600",
-      writingDirection: "auto",
-    },
-    spaceActions: {
-      width: 44,
-      height: 44,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    recoveryAction: {
-      minHeight: 44,
-      paddingHorizontal: 20,
-      justifyContent: "center",
-    },
-    sectionHeading: {
-      color: native.secondaryLabel,
-      fontSize: 14,
-      fontWeight: "600",
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 4,
-    },
-    activitySection: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: native.fillPressed,
-      marginBottom: 4,
-      paddingBottom: 4,
-    },
-    activityGap: {
-      paddingTop: 16,
-    },
-    groupAvatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: native.fill,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    groupAvatarLabel: {
-      color: native.secondaryLabel,
-      fontSize: 16,
-      fontWeight: "600",
-    },
-  });
-}
