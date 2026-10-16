@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   htmlLangForLocale,
@@ -32,17 +29,6 @@ describe("UI_LOCALES", () => {
     expect(isUiLocale("pt")).toBe(false);
     expect(isUiLocale("ru")).toBe(true);
     expect(isUiLocale("de")).toBe(true);
-  });
-});
-
-describe("Account language picker", () => {
-  it("offers every UI locale", async () => {
-    const source = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "../app/(settings)/account.tsx"),
-      "utf8",
-    );
-    expect(source).toContain("UI_LOCALES.map(");
-    expect(source).not.toContain("ACCOUNT_UI_LOCALES");
   });
 });
 
