@@ -251,6 +251,7 @@ import {
 } from "./computer-tools.js";
 import { checkpointRunComputerWorkspace } from "./computer-workspace.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
+import { CONTACT_TOOL_NAMES, contactToolFromTool, contactToolsAllowed } from "./contact-tools.js";
 import { formatCurrentTimeInstruction } from "./current-time.js";
 import { resolveDeploymentModel } from "./deployment-model.js";
 import {
@@ -449,6 +450,7 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "finance_transactions",
   "finance_recurring",
   "finance_crypto",
+  "contacts_list",
   "calendar_list_events",
   "calendar_get_event",
   "drive_search",
@@ -3964,6 +3966,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
             spaceId: run.spaceId,
             userId: bot.userId,
           }).catch(() => false));
+        const contactsEnabled = contactToolsAllowed({
+          hasProvider: true,
+          groupId: thread.groupId,
+          runUserId: run.userId,
+          botUserId: bot.userId,
+          botSpawnKey: bot.spawnKey,
+          trigger: run.trigger,
+          messagingChannelRun,
+        });
         const builtins = [
           ...selectBuiltinToolsForRun({
             ticketBoardEnabled: deps.ticketBoardEnabled,
@@ -3978,6 +3989,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             calendarEnabled,
             driveEnabled,
             financeEnabled,
+            contactsEnabled,
             messagingChannelRun,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
@@ -5415,6 +5427,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   scope: { spaceId: run.spaceId, userId: bot.userId },
                   publish: (blocks) => publishMessage(deps, run, "bot", blocks),
                 },
+                args,
+              ),
+            );
+          }
+          if (CONTACT_TOOL_NAMES.has(name) && contactsEnabled) {
+            return finish(
+              await contactToolFromTool(
+                name,
+                { prisma: deps.prisma, scope: { spaceId: run.spaceId, userId: bot.userId } },
                 args,
               ),
             );
@@ -7725,6 +7746,8 @@ export function selectBuiltinToolsForRun(options: {
   driveEnabled?: boolean;
   /** The run's requester owns the bot and has a connected finance source. */
   financeEnabled?: boolean;
+  /** The Carta agent on a run its owner started. */
+  contactsEnabled?: boolean;
   messagingChannelRun: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
@@ -7758,6 +7781,7 @@ export function selectBuiltinToolsForRun(options: {
       !disabled.has(tool.name) &&
       (options.driveEnabled || !DRIVE_TOOL_NAMES.has(tool.name)) &&
       (options.financeEnabled || !FINANCE_TOOL_NAMES.has(tool.name)) &&
+      (options.contactsEnabled || !CONTACT_TOOL_NAMES.has(tool.name)) &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
       (!isBackgroundRunTrigger(options.trigger) ||
