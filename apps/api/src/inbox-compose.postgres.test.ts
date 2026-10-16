@@ -267,13 +267,14 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(tokyo.body).toContain("Date: Thu, Sep 24, 2026, 12:04 AM\n");
     });
 
-    it("fills To and Subject from the cached message when Gmail is rate limited", async () => {
+    it("fills the Subject, but not To, from the cached message when Gmail is rate limited", async () => {
       const row = await cache(a, connA, "a-1", "t-a1");
       gmail.failNext(429, { urlIncludes: "/messages/a-1", times: 100 });
       const reply = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" });
       expect(reply).toMatchObject({
         connectionId: connA,
-        to: "Ann Sender <ann@example.test>",
+        to: "",
+        cc: "",
         subject: "Re: Subject a-1",
         body: "",
         replyToMessageId: row.id,
@@ -290,6 +291,25 @@ describePostgres("inbox compose (PostgreSQL)", () => {
         (await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" }))
           .quoteUnavailable,
       ).toBeUndefined();
+    });
+
+    it("fills To from the cached message when it is the user's own", async () => {
+      const row = await cache(a, connA, "a-1", "t-a1");
+      await prisma.cachedMailMessage.update({
+        where: { id: row.id },
+        data: {
+          fromSelf: true,
+          fromAddress: "box-a@example.test",
+          toAddresses: ["pat@example.test"],
+        },
+      });
+      gmail.failNext(429, { urlIncludes: "/messages/a-1", times: 100 });
+      const reply = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" });
+      expect(reply).toMatchObject({
+        to: "pat@example.test",
+        subject: "Re: Subject a-1",
+        quoteUnavailable: true,
+      });
     });
 
     it("still reports a missing or revoked message instead of falling back", async () => {

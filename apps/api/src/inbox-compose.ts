@@ -87,6 +87,7 @@ async function ownMessage(
       providerMessageId: true,
       connectionId: true,
       fromName: true,
+      fromSelf: true,
       fromAddress: true,
       toAddresses: true,
       ccAddresses: true,
@@ -141,7 +142,9 @@ export async function inboxComposePrefill(
       if (error.kind === "not_found") throw notFound();
       if (error.kind === "auth")
         throw new ORPCError("PRECONDITION_FAILED", { message: error.message });
-      // Anything else (a rate limit, an outage) still opens the window with the cached To and Subject.
+      // Anything else (a rate limit, an outage) still opens the window with the cached Subject. The
+      // cache has no Reply-To, so recipients are filled only for the user's own message, which
+      // answers to its To list whatever Reply-To says.
       const address = (a: string) => ({ address: a });
       const prefill = replyPrefill(
         {
@@ -163,6 +166,7 @@ export async function inboxComposePrefill(
       return {
         connectionId: account.id,
         ...prefill,
+        ...(original.fromSelf ? {} : { to: "", cc: "" }),
         body: "",
         attachments: [],
         quoteUnavailable: true,
