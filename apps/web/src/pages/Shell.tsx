@@ -37,7 +37,6 @@ import type { ComposerMention, SlashActionId } from "@rakazo/core";
 import {
   attachmentsForThread,
   buildComposerMentionOptions,
-  clampMentionHighlightIndex,
   cronFromPreset,
   DEFAULT_BOT_COLOR,
   formatMessageTime,
@@ -5829,7 +5828,8 @@ export const Composer = memo(function Composer({
   const historyIndex = useRef<number | null>(null);
   const historyDraft = useRef("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  const [mentionHighlightIndex, setMentionHighlightIndex] = useState(0);
+  // Highlight is tracked by option identity so late-loading targets cannot shift it to another item.
+  const [mentionHighlightKey, setMentionHighlightKey] = useState<string | null>(null);
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<AgentSkillCatalogEntry | null>(null);
   const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>([]);
@@ -6000,7 +6000,7 @@ export const Composer = memo(function Composer({
     markEdited();
     setDraft((current) => current.replace(/@([\w-]*)$/, ""));
     setMentionQuery(null);
-    setMentionHighlightIndex(0);
+    setMentionHighlightKey(null);
     setSelectedMentions((current) =>
       current.some((selected) => mentionChipKey(selected) === mentionChipKey(mention))
         ? current
@@ -6040,16 +6040,15 @@ export const Composer = memo(function Composer({
       .slice(0, 10);
   }, [mentionQuery, mentionTargets]);
 
-  // Reset only when the typed query changes. Routines and connectors load asynchronously and hand
-  // the composer a new targets array, which must not undo an ArrowDown or redirect Enter/Tab.
-  // clampMentionHighlightIndex keeps the index valid if the list shrinks.
+  // Reset to the first option only when the typed query changes.
   useEffect(() => {
-    setMentionHighlightIndex(0);
+    setMentionHighlightKey(null);
   }, [mentionQuery]);
 
-  const activeMentionIndex = clampMentionHighlightIndex(
-    mentionHighlightIndex,
-    mentionOptions.length,
+  // A highlighted option that left the list falls back to the first one.
+  const activeMentionIndex = Math.max(
+    0,
+    mentionOptions.findIndex((mention) => mentionChipKey(mention) === mentionHighlightKey),
   );
   const mentionPickerOpen = mentionOptions.length > 0;
   const activeMentionOptionId = mentionPickerOpen
@@ -6081,7 +6080,7 @@ export const Composer = memo(function Composer({
     historyIndex.current = null;
     setDraft("");
     setMentionQuery(null);
-    setMentionHighlightIndex(0);
+    setMentionHighlightKey(null);
     setSlashQuery(null);
     setSelectedSkill(null);
     const mentions = selectedMentions;
@@ -6374,7 +6373,7 @@ export const Composer = memo(function Composer({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => insertMention(mention)}
                 // Opening the list under a stationary pointer must not steal the keyboard highlight.
-                onMouseMove={() => setMentionHighlightIndex(index)}
+                onMouseMove={() => setMentionHighlightKey(mentionChipKey(mention))}
                 className={`flex w-full items-start gap-3 px-4 py-2.5 text-start hover:bg-accent ${
                   highlighted ? "bg-accent" : ""
                 }`}
@@ -6552,13 +6551,14 @@ export const Composer = memo(function Composer({
               }
               if (action.type === "move") {
                 event.preventDefault();
-                setMentionHighlightIndex(action.index);
+                const target = mentionOptions[action.index];
+                if (target) setMentionHighlightKey(mentionChipKey(target));
                 return;
               }
               if (action.type === "dismiss") {
                 event.preventDefault();
                 setMentionQuery(null);
-                setMentionHighlightIndex(0);
+                setMentionHighlightKey(null);
                 return;
               }
               if (
