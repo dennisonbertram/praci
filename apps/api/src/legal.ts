@@ -3,18 +3,8 @@ import type { ArtifactStore, JobPublisher } from "@rakazo/adapter-kit";
 import { runContinueJob } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
 import { toLegalContract, toLegalDeadline } from "@rakazo/adapters";
-import type {
-  Actor,
-  Bot,
-  DataRoomConsentStatus,
-  LegalGraph,
-  LegalOverview,
-} from "@rakazo/contracts";
-import {
-  DATA_ROOM_DISCLOSURE,
-  DATA_ROOM_DISCLOSURE_VERSION,
-  LEGAL_AGENT_MODEL,
-} from "@rakazo/contracts";
+import type { Actor, Bot, LegalGraph, LegalOverview } from "@rakazo/contracts";
+import { LEGAL_AGENT_MODEL } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
 import { createLegalRepos, IsolationError } from "@rakazo/db";
 import { createDataRoomService } from "./data-room.js";
