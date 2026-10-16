@@ -392,6 +392,8 @@ it("opens a reply with the cached recipient and no retry when the quote did not 
     attachments: [],
     quoteUnavailable: true,
   });
+  vi.useFakeTimers();
+  draftSave.mockResolvedValue({ status: "saved" });
   const container = document.createElement("div");
   document.body.append(container);
   await act(async () =>
@@ -404,6 +406,16 @@ it("opens a reply with the cached recipient and no retry when the quote did not 
   expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Try again")).toBe(
     false,
   );
+  try {
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(draftSave).toHaveBeenCalled();
+    expect(container.textContent).toContain("The original message didn't load.");
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("asks before closing with attachments", async () => {

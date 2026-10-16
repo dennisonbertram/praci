@@ -312,6 +312,21 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       });
     });
 
+    it("treats a cached message sent from an alias as the user's own", async () => {
+      const row = await cache(a, connA, "a-1", "t-a1");
+      await prisma.cachedMailMessage.update({
+        where: { id: row.id },
+        data: {
+          fromSelf: true,
+          fromAddress: "alias@example.test",
+          toAddresses: ["pat@example.test"],
+        },
+      });
+      gmail.failNext(429, { urlIncludes: "/messages/a-1", times: 100 });
+      const reply = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" });
+      expect(reply.to).toBe("pat@example.test");
+    });
+
     it("still reports a missing or revoked message instead of falling back", async () => {
       const row = await cache(a, connA, "a-gone");
       await expect(

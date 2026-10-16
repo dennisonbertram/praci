@@ -160,7 +160,11 @@ export async function inboxComposePrefill(
           text: "",
         },
         input.mode,
-        accounts.flatMap((a) => (a.address ? [a.address] : [])),
+        // A message sent from an alias is still the user's own.
+        [
+          ...accounts.flatMap((a) => (a.address ? [a.address] : [])),
+          ...(original.fromSelf ? [original.fromAddress] : []),
+        ],
         input,
       );
       return {
