@@ -33,7 +33,7 @@ function CheckLine({ statement }: { statement: FinanceStatement }) {
   if (check?.balances === "match") {
     return (
       <div className="text-success">
-        <Trans>Transactions add up to the closing balance</Trans>
+        <Trans>The transactions read add up to the closing balance</Trans>
       </div>
     );
   }

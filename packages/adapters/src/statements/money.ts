@@ -52,3 +52,7 @@ export function normalizeStem(stem: string): string {
 
 export const decodeText = (bytes: Uint8Array) =>
   new TextDecoder("utf-8").decode(bytes).replace(/^﻿/, "");
+
+/** The note for parts of a file the parser skipped, e.g. "2 rows could not be read and were skipped." */
+export const unreadNote = (count: number, one: string, many: string): string =>
+  `${count} ${count === 1 ? one : many} could not be read and ${count === 1 ? "was" : "were"} skipped.`;

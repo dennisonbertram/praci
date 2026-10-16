@@ -190,7 +190,7 @@ it("imports each file as soon as it is read, grouped under one account", async (
   expect(text.match(/New account/g)).toHaveLength(1);
   expect(text).toContain("$1,000.00 → $1,150.25");
   expect(text).toContain("4 transactions, 2 already imported");
-  expect(text).toContain("Transactions add up to the closing balance");
+  expect(text).toContain("The transactions read add up to the closing balance");
   expect(text).toContain("Read by an AI model");
   expect(text.match(/Imported/g)).toHaveLength(2);
   expect(labelsOf()).not.toContain("Import");
