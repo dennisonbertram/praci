@@ -22,6 +22,12 @@ it("rejects absolute, external and out-of-app targets", () => {
     "javascript:alert(1)",
     "/app\n//evil.example",
     "/app/%2e%2e/%2e%2e/sign-in",
+    "/app/%2e/integrations",
+    "/app/a/%2E%2E/x",
+    "/app/\u007f",
+    "/app/%00",
+    "/app/%1F",
+    "/app/%7f",
   ]) {
     expect(appReturnPath(bad), String(bad)).toBeNull();
   }

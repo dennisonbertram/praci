@@ -126,7 +126,8 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
   const [search] = useSearchParams();
   // `?connect=1` opens the connect dialog on arrival; `?next=` is where to go once connected.
   const next = appReturnPath(search.get("next"));
-  const autoConnect = useRef(search.get("connect") === "1");
+  const handledKey = useRef<string | null>(null);
+  const [confirmFirst, setConfirmFirst] = useState(false);
   const connectorId = decodeURIComponent(params.connectorId ?? "");
   const slug = decodeURIComponent(params.slug ?? "");
   const rows = data.connections.filter(
@@ -150,14 +151,18 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
     matchFeaturedConnectorId(slug) === "gmail" || (connectorId === "google" && /mail/i.test(slug));
 
   useEffect(() => {
-    if (!autoConnect.current || !data.loaded) return;
-    autoConnect.current = false;
+    // Once per navigation, so moving between app pages re-arms it.
+    if (search.get("connect") !== "1" || !data.loaded || handledKey.current === location.key)
+      return;
+    handledKey.current = location.key;
     if (connectedCount > 0) {
       if (next) navigate(next, { replace: true });
     } else if (item) {
+      // A link may open the dialog, but nothing is created until the person clicks Connect in it.
+      setConfirmFirst(true);
       setAdding(true);
     }
-  }, [data.loaded, connectedCount, item, next, navigate]);
+  }, [data.loaded, connectedCount, item, next, navigate, search, location.key]);
 
   useEffect(() => {
     if (connectedCount === 0) {
@@ -215,7 +220,11 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
         item={item}
         data={data}
         activeBotId={activeBotId}
-        onClose={() => setAdding(false)}
+        confirmFirst={confirmFirst}
+        onClose={() => {
+          setAdding(false);
+          setConfirmFirst(false);
+        }}
         onConnected={next ? () => navigate(next) : undefined}
       />
     ) : null;
@@ -255,7 +264,9 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
               </p>
               {data.setup?.canConfigure ? (
                 <Link
-                  to={`/integrations/setup?next=${encodeURIComponent(location.pathname)}`}
+                  to={`/integrations/setup?next=${encodeURIComponent(
+                    appReturnPath(`${location.pathname}${location.search}`) ?? location.pathname,
+                  )}`}
                   className="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
                 >
                   <Trans>Set up app catalog</Trans>

@@ -136,8 +136,11 @@ test("App page: ?connect=1 opens the connect dialog and ?next= returns the perso
   await expect(page).toHaveURL(/\/app\/integrations$/);
   await page.goto(`${appPage}?connect=1&next=%2Fapp%2Fintegrations%3Fback%3D1`);
   const dialog = page.getByRole("dialog");
+  // The link only opens the dialog; nothing is connected until the person clicks Connect in it.
+  await expect(dialog.getByText("Connect Gmail", { exact: true })).toBeVisible();
+  await captureScreenshot(page, testInfo, "integrations-auto-connect-confirm");
+  await dialog.getByRole("button", { name: "Connect", exact: true }).click();
   await expect(dialog.getByText("Which agents can use Gmail?")).toBeVisible();
-  await captureScreenshot(page, testInfo, "integrations-auto-connect");
   await finishConnectDialog(page, "Gmail");
   await expect(page).toHaveURL(/\/app\/integrations\?back=1$/);
 

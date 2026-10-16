@@ -4,7 +4,11 @@
  */
 export function appReturnPath(value: string | null | undefined): string | null {
   // Backslashes and control characters are read as "/" by some browsers, so refuse them outright.
-  if (!value?.startsWith("/app") || [...value].some((c) => c === "\\" || c < " ")) return null;
+  if (!value?.startsWith("/app") || [...value].some((c) => c === "\\" || c < " " || c === "\x7f")) {
+    return null;
+  }
+  // Encoded dots (path traversal) and encoded control characters are never legitimate here.
+  if (/%(?:2e|[01][0-9a-f]|7f)/i.test(value)) return null;
   try {
     const base = "http://return.invalid";
     const url = new URL(value, base);

@@ -14,6 +14,7 @@ import { type SignInState, SignInStep } from "./SignInStep";
 import type { IntegrationsData } from "./useIntegrations";
 
 type Phase =
+  | { kind: "confirm" }
   | { kind: "signin"; state: SignInState }
   | { kind: "agents" }
   | { kind: "done"; agents: "all" | "some" | "none" | "skipped" };
@@ -31,6 +32,7 @@ export function ConnectAppDialog({
   activeBotId,
   onClose,
   onConnected,
+  confirmFirst = false,
 }: {
   item: ConnectionCatalogItem;
   data: IntegrationsData;
@@ -38,9 +40,13 @@ export function ConnectAppDialog({
   onClose: () => void;
   /** Runs after the dialog closes on a successful connect, e.g. to return the person to where they came from. */
   onConnected?: () => void;
+  /** Wait for an explicit Connect before creating anything, for dialogs opened by a link. */
+  confirmFirst?: boolean;
 }) {
   const { t } = useLingui();
-  const [phase, setPhase] = useState<Phase>({ kind: "signin", state: { kind: "waiting" } });
+  const [phase, setPhase] = useState<Phase>(
+    confirmFirst ? { kind: "confirm" } : { kind: "signin", state: { kind: "waiting" } },
+  );
   const [row, setRow] = useState<Connection | null>(null);
   const [saving, setSaving] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
@@ -165,7 +171,7 @@ export function ConnectAppDialog({
   }
 
   useEffect(() => {
-    if (started.current) return;
+    if (started.current || confirmFirst) return;
     started.current = true;
     void start();
   }, []);
@@ -214,7 +220,27 @@ export function ConnectAppDialog({
         className="max-w-[440px] sm:max-w-[440px]"
         aria-label={t`Connect ${item.name}`}
       >
-        {phase.kind === "signin" ? (
+        {phase.kind === "confirm" ? (
+          <div>
+            <div className="mb-3 flex justify-center">
+              <AppLogo name={item.name} logo={item.logo} size="xl" />
+            </div>
+            <DialogTitle className="text-center">{t`Connect ${item.name}`}</DialogTitle>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={close}>
+                <Trans>Cancel</Trans>
+              </Button>
+              <Button
+                onClick={() => {
+                  started.current = true;
+                  void start();
+                }}
+              >
+                <Trans>Connect</Trans>
+              </Button>
+            </div>
+          </div>
+        ) : phase.kind === "signin" ? (
           <SignInStep
             appName={item.name}
             logo={item.logo}

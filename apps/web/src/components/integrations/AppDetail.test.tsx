@@ -4,7 +4,7 @@ import type { ConnectionCatalogItem } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
@@ -22,13 +22,16 @@ vi.mock("./ConnectAppDialog", () => ({
   ConnectAppDialog: ({
     onClose,
     onConnected,
+    confirmFirst,
   }: {
     onClose: () => void;
     onConnected?: () => void;
+    confirmFirst?: boolean;
   }) => (
     <button
       type="button"
       data-testid="connect-dialog"
+      data-confirm-first={String(Boolean(confirmFirst))}
       onClick={() => {
         onClose();
         onConnected?.();
@@ -75,7 +78,17 @@ let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 function Where() {
   const location = useLocation();
-  return <output data-testid="where">{location.pathname}</output>;
+  const navigate = useNavigate();
+  return (
+    <>
+      <output data-testid="where">{location.pathname}</output>
+      <button
+        id="go"
+        type="button"
+        onClick={() => navigate("/app/integrations/app/composio/slack?connect=1")}
+      />
+    </>
+  );
 }
 async function show(url: string, value: IntegrationsData) {
   container = document.createElement("div");
@@ -114,6 +127,8 @@ it("waits for a click when it is opened without ?connect=1", async () => {
 it("opens the connect dialog on arrival with ?connect=1 and returns to ?next= when connected", async () => {
   await show(`${PAGE}?connect=1&next=%2Fapp%2Fdata-room`, data());
   expect(dialog()).not.toBeNull();
+  // A link only opens the dialog; the dialog itself waits for a click before creating anything.
+  expect(dialog()?.getAttribute("data-confirm-first")).toBe("true");
   await act(async () => (dialog() as HTMLButtonElement).click());
   expect(where()).toBe("/app/data-room");
 });
@@ -144,11 +159,24 @@ it("says so when the app is not in the catalog, and points the owner at setup", 
   await show(`${PAGE}?connect=1`, data({ catalog: [], setup }));
   expect(dialog()).toBeNull();
   expect(container.textContent).toContain("isn't available on this server");
-  expect(container.querySelector("a[href^='/integrations/setup?next=']")).not.toBeNull();
+  // Setup keeps the connect continuation so the person lands back in the flow.
+  expect(
+    container.querySelector(
+      `a[href="/integrations/setup?next=${encodeURIComponent(`${PAGE}?connect=1`)}"]`,
+    ),
+  ).not.toBeNull();
 });
 
 it("tells a member to ask the server owner when the app is not in the catalog", async () => {
   await show(PAGE, data({ catalog: [] }));
   expect(container.textContent).toContain("Ask the server owner to set up the app catalog.");
   expect(container.querySelector("a[href^='/integrations/setup']")).toBeNull();
+});
+
+it("re-arms ?connect=1 for each navigation between app pages", async () => {
+  const slack = { ...gmail, connectorId: "composio", slug: "slack", name: "Slack" };
+  await show(PAGE, data({ catalog: [gmail, slack] }));
+  expect(dialog()).toBeNull();
+  await act(async () => container.querySelector<HTMLButtonElement>("#go")?.click());
+  expect(dialog()).not.toBeNull();
 });
