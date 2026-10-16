@@ -14,6 +14,7 @@ import net from "node:net";
 import { homedir } from "node:os";
 import path from "node:path";
 import { demoFinance, demoMailboxes } from "./demo/data.js";
+import { assertDemoContainer, type ContainerInfo, childEnv, DEMO_LABEL } from "./demo/safety.js";
 import { seedDemo } from "./demo/seed.js";
 
 /**
@@ -38,6 +39,7 @@ const MODEL_KEYS = ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"];
 
 interface State {
   pids: number[];
+  containerId?: string;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -90,8 +92,7 @@ function modelEnv(): NodeJS.ProcessEnv {
 
 /** The environment the demo API and its seeding run with. Throwaway values for a local stack. */
 function stackEnv(): NodeJS.ProcessEnv {
-  return {
-    ...process.env,
+  return childEnv(process.env, {
     NODE_ENV: "development",
     DATABASE_URL,
     REALTIME_DATABASE_URL: DATABASE_URL,
@@ -115,7 +116,7 @@ function stackEnv(): NodeJS.ProcessEnv {
     SIGNUP_ALLOWLIST: "",
     VITE_DEFAULT_UI_LOCALE: "en",
     ...modelEnv(),
-  };
+  });
 }
 
 function start(name: string, script: string, args: string[], cwd: string, env: NodeJS.ProcessEnv) {
@@ -141,6 +142,19 @@ function ours(pid: number): boolean {
   }
 }
 
+/** Removes the demo's container; refuses one that lacks the demo label or is not the recorded one. */
+function removeContainer(recordedId?: string) {
+  let info: ContainerInfo | null = null;
+  try {
+    const [id, labels] = JSON.parse(
+      docker("inspect", "-f", "[{{json .Id}},{{json .Config.Labels}}]", CONTAINER),
+    );
+    info = { id, labels };
+  } catch {}
+  assertDemoContainer(info, recordedId);
+  if (info) docker("rm", "-f", "-v", info.id);
+}
+
 async function down() {
   const state: State | null = existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : null;
   for (const pid of state?.pids ?? []) {
@@ -151,13 +165,12 @@ async function down() {
   }
   await sleep(1_500);
   for (const pid of state?.pids ?? []) {
+    if (!ours(pid)) continue;
     try {
       process.kill(-pid, "SIGKILL");
     } catch {}
   }
-  try {
-    docker("rm", "-f", "-v", CONTAINER);
-  } catch {}
+  removeContainer(state?.containerId);
   rmSync(DIR, { recursive: true, force: true });
   console.log("Demo stack stopped; its database and local files are removed.");
 }
@@ -189,14 +202,14 @@ async function up() {
   const env = stackEnv();
   const pids: number[] = [];
   try {
-    try {
-      docker("rm", "-f", "-v", CONTAINER);
-    } catch {}
-    docker(
+    removeContainer();
+    const containerId = docker(
       "run",
       "-d",
       "--name",
       CONTAINER,
+      "--label",
+      `${DEMO_LABEL}=1`,
       "-p",
       `127.0.0.1:${PG_PORT}:5432`,
       "-e",
@@ -206,7 +219,8 @@ async function up() {
       "-e",
       "POSTGRES_DB=rakazo_demo",
       "pgvector/pgvector:pg16-trixie",
-    );
+    ).trim();
+    writeFileSync(STATE, JSON.stringify({ pids, containerId } satisfies State));
     await waitFor("Postgres", async () => {
       try {
         docker(
@@ -242,13 +256,13 @@ async function up() {
         env,
       ),
     );
-    writeFileSync(STATE, JSON.stringify({ pids } satisfies State));
+    writeFileSync(STATE, JSON.stringify({ pids, containerId } satisfies State));
     await waitFor("the API", () => healthy(`${API_URL}/health`));
 
     const webDir = path.join(ROOT, "apps/web");
     const vite = path.join(webDir, "node_modules/vite/bin/vite.js");
     pids.push(start("web", vite, [], webDir, env));
-    writeFileSync(STATE, JSON.stringify({ pids } satisfies State));
+    writeFileSync(STATE, JSON.stringify({ pids, containerId } satisfies State));
     await waitFor("the web app", () => healthy(WEB_ORIGIN));
 
     const email = "mock-founder@demo.rakazo.test";
