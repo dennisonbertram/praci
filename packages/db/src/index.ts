@@ -23,6 +23,7 @@ export * from "./prisma-errors.js";
 export * from "./repos.js";
 export * from "./scope.js";
 export * from "./sessions.js";
+export * from "./sidebar-pages.js";
 export * from "./spaces.js";
 export * from "./transaction-retry.js";
 export * from "./usage.js";

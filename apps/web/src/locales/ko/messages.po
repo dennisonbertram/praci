@@ -536,6 +536,10 @@ msgstr "항목 추가"
 msgid "Add MCP server"
 msgstr "MCP 서버 추가"
 
+#: src/components/AddSidebarPage.tsx
+msgid "Add page"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
 msgstr ""
@@ -782,7 +786,11 @@ msgid "Approve this server to let your agent use its tools."
 msgstr "이 서버를 승인하면 Bot이 제공되는 도구를 사용할 수 있습니다."
 
 #: src/components/MailApprovalCard.tsx
-msgid "Approved"
+msgid "Approved to save"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Approved to send"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1193,6 +1201,7 @@ msgstr "서버에 연결할 수 없습니다."
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
@@ -2819,14 +2828,25 @@ msgstr ""
 msgid "Draft discarded"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
+msgid "Draft not saved"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Draft saved"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Draft saved by you"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
 msgstr "작업 기술 초안"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Drafts are off for {botName}. Turn them back on in its tools."
+msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Drag, drop, or paste an image"
@@ -4303,7 +4323,6 @@ msgid "No group chats yet."
 msgstr "아직 그룹 채팅이 없습니다."
 
 #: src/components/AskCard.tsx
-#: src/components/MailApprovalCard.tsx
 msgid "No longer active"
 msgstr "이미 종료된 요청입니다"
 
@@ -4413,9 +4432,16 @@ msgstr ""
 msgid "Not a valid email address"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
+msgid "Not confirmed as saved. Check Drafts in your mail before trying again."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Not confirmed as sent. Check Sent in your mail before trying again."
 msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
@@ -4445,6 +4471,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not sent. {text}"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Not waiting for approval"
 msgstr ""
 
 #: src/pages/CapTable.tsx
@@ -4682,6 +4712,10 @@ msgstr ""
 
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page changed. Reload"
+msgstr ""
+
+#: src/components/SidebarPages.tsx
+msgid "Page options"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5150,6 +5184,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Remove filter {label}"
+msgstr ""
+
+#: src/components/SidebarPages.tsx
+msgid "Remove from sidebar"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5645,8 +5683,16 @@ msgstr "보내기"
 msgid "Send reset link"
 msgstr "재설정 링크 보내기"
 
+#: src/components/MailApprovalCard.tsx
+msgid "Send saved draft"
+msgstr ""
+
 #: src/components/AiDataSharing.tsx
 msgid "Senders, recipients, subjects and short previews are sent to {name}."
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -5659,9 +5705,12 @@ msgstr ""
 msgid "Sending…"
 msgstr "보내는 중…"
 
-#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Sent by you"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -6144,6 +6193,10 @@ msgstr "팀 컴퓨터"
 msgid "Team conversations"
 msgstr ""
 
+#: src/lib/sidebar-page-copy.ts
+msgid "Team health"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
 msgstr "Teams 메시지"
@@ -6435,6 +6488,18 @@ msgstr "다시 시도"
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
 msgstr "테스트를 다시 시도하세요."
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off drafts for {botName}?"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off sending for {botName}?"
+msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -6861,6 +6926,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "처리 중…"
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Workload and key people, from your connected tools"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"

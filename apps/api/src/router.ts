@@ -188,6 +188,7 @@ import {
 } from "@rakazo/core";
 import type { BoardEvents, Board as BoardRow, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
+  addSidebarPage,
   appendEventInTransaction,
   BotSectionNameConflictError,
   CannotDeleteDefaultSpaceError,
@@ -220,6 +221,7 @@ import {
   isUniqueViolation,
   listBoards,
   listContacts,
+  listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
   lockOwnedGroup,
@@ -229,10 +231,12 @@ import {
   parseComputerMode,
   pushSessionExpiresAt,
   releaseSpaceDeletionClaim,
+  removeSidebarPage,
   renameSpaceForMember,
   renewSpaceDeletionClaim,
   replaceSpaceBackupModels,
   restoreBotUnderComputerQuota,
+  SidebarPageError,
   SPACE_DELETION_CLAIM_TIMEOUT_MS,
   SpaceDeletionInProgressError,
   SpaceLimitError,
@@ -762,6 +766,15 @@ function mapSpaceLifecycleError(error: unknown): unknown {
     return new ORPCError("BAD_REQUEST", { message: error.message });
   }
   return error;
+}
+
+function sidebarPageError(error: unknown): never {
+  if (error instanceof SidebarPageError) {
+    throw new ORPCError(error.code === "owner_only" ? "FORBIDDEN" : "BAD_REQUEST", {
+      message: error.message,
+    });
+  }
+  throw error;
 }
 
 function contactNotFound(error: unknown): never {
@@ -6244,6 +6257,19 @@ export function createRouter(deps: RouterDeps) {
         ensureCartaAgent({ prisma: deps.prisma, repos }, context.actor).catch((error: unknown) => {
           throw mapSpaceLifecycleError(error);
         }),
+      ),
+    },
+    sidebarPages: {
+      list: authed.sidebarPages.list.handler(({ context }) =>
+        listSidebarPages(deps.prisma, actorScope(context.actor)),
+      ),
+      add: authed.sidebarPages.add.handler(({ context, input }) =>
+        addSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey).catch(
+          sidebarPageError,
+        ),
+      ),
+      remove: authed.sidebarPages.remove.handler(({ context, input }) =>
+        removeSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey),
       ),
     },
     contacts: {

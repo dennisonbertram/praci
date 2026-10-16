@@ -25,6 +25,7 @@ model User {
   aiDataConsents AiDataConsent[]
   mailSearches   MailSearch[]
   contacts       Contact[]
+  sidebarPages   SidebarPage[]
   id                          String                       @id
   name                        String
   email                       String
@@ -240,6 +241,7 @@ model Space {
   botPages                    BotPage[]
   botPins                     BotPins[]
   contacts                    Contact[]
+  sidebarPages                SidebarPage[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
   artifacts                   Artifact[]
@@ -2105,6 +2107,22 @@ model Contact {
   @@unique([spaceId, userId, email])
   @@index([spaceId, userId])
   @@map("contacts")
+}
+
+/// An optional sidebar page the user added from SIDEBAR_PAGE_TEMPLATES.
+model SidebarPage {
+  id          String   @id @default(cuid())
+  spaceId     String
+  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateKey String
+  position    Int
+  createdAt   DateTime @default(now())
+
+  @@unique([spaceId, userId, templateKey])
+  @@index([spaceId, userId])
+  @@map("sidebar_pages")
 }
 
 // Data room. Every row carries spaceId (cascade) and userId; every query filters on spaceId.
