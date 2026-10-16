@@ -22,6 +22,7 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 const rpcMock = vi.hoisted(() => ({
   accounts: vi.fn(),
+  account: vi.fn(),
   crypto: vi.fn(),
   exchanges: vi.fn(),
   walletAdd: vi.fn(),
@@ -32,7 +33,7 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
-import { FinanceAccountsPage } from "./FinanceAccounts";
+import { FinanceAccountPage, FinanceAccountsPage } from "./FinanceAccounts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -342,7 +343,10 @@ it("clears the filter from the chip near the title, and shows everything with no
   const clear = container.querySelector('a[aria-label="Clear Mercury filter"]');
   expect(clear?.textContent).toBe("Mercury ×");
   expect(clear?.getAttribute("href")).toBe("/app/finance/accounts");
+  // The all-accounts chart would contradict the filtered figure, so it waits for the filter to clear.
+  expect(container.textContent).not.toContain("Total balance");
   await showSource(null);
+  expect(container.textContent).toContain("Total balance");
   expect(container.querySelector('a[aria-label^="Clear"]')).toBeNull();
   expect(rows().join(" ")).toContain("Checking");
   expect(rows().join(" ")).toContain("Brex Card");
@@ -368,4 +372,33 @@ it("reloads the chart after the crypto scope is saved", async () => {
   await flush();
   expect(rpcMock.balanceSeries).toHaveBeenCalledTimes(2);
   expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "year" });
+});
+
+it("says an account has no transactions yet, without mentioning a period it does not have", async () => {
+  rpcMock.account.mockResolvedValue({
+    account: {
+      id: "a9",
+      provider: "mercury",
+      kind: "savings",
+      name: "Savings",
+      lastFour: "2222",
+      balanceCents: 100_000,
+      annualYieldPct: null,
+    },
+    history: [],
+    treasuryYield: [],
+    transactions: [],
+  });
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountPage id="a9" />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  expect(container.textContent).toContain("No transactions on this account yet");
+  expect(container.textContent).not.toContain("in this period");
 });

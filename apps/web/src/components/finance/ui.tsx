@@ -129,7 +129,9 @@ function useCameFrom(): Crumb | null {
  * The trail shown above a page: its own crumbs, or, when it was opened from somewhere else (the
  * dashboard's Breakdown, a category page), Finance, that origin and the page itself.
  */
-export function trailFor(crumbs: Crumb[], cameFrom: Crumb | null): Crumb[] {
+export function trailFor(own: Crumb[], cameFrom: Crumb | null): Crumb[] {
+  // A crumb whose name has not loaded yet (or never will, on a missing page) is left out.
+  const crumbs = own.filter((crumb) => crumb.label);
   const [root, ...rest] = crumbs;
   const here = rest.at(-1);
   if (!cameFrom || !root || !here) return crumbs;
@@ -138,8 +140,10 @@ export function trailFor(crumbs: Crumb[], cameFrom: Crumb | null): Crumb[] {
 
 /** Back button, breadcrumb and Ask agent for every detail page; the last crumb is the page itself. */
 export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
-  const crumbs = trailFor(own, useCameFrom());
-  const previous = crumbs.length > 1 ? crumbs[crumbs.length - 2] : undefined;
+  const cameFrom = useCameFrom();
+  const crumbs = trailFor(own, cameFrom);
+  // Before the page's own name loads (or when it never will), Back still returns to the real origin.
+  const previous = crumbs.length > 1 ? crumbs[crumbs.length - 2] : (cameFrom ?? undefined);
   return (
     <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
       <Link
@@ -353,9 +357,9 @@ export function BreakdownRows({
         <HereLink
           key={row.key}
           to={to(row)}
-          className="group grid grid-cols-[minmax(0,10rem)_1fr_4.5rem_0.75rem] items-center gap-2.5 rounded-lg px-2 py-1.5 outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground @md:grid-cols-[minmax(0,13rem)_1fr_4.5rem_0.75rem]"
+          className="group grid grid-cols-[minmax(0,10rem)_1fr_4.5rem_0.75rem] items-center gap-2.5 rounded-lg px-2 py-1.5 outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground @md:grid-cols-[minmax(0,13rem)_1fr_4.5rem_0.75rem] @xl:grid-cols-[minmax(0,17rem)_1fr_4.5rem_0.75rem]"
         >
-          <span className="truncate">
+          <span className="truncate" title={row.label}>
             {swatches ? (
               <i
                 className="me-1.5 inline-block size-2 rounded-xs"
@@ -437,7 +441,14 @@ export const rowClass =
   "group/row cursor-pointer border-t border-border hover:bg-background [&>td]:py-2";
 
 /** Transactions: date, counterparty and memo, category, signed amount, status. Each row opens the transaction. */
-export function TransactionTable({ rows }: { rows: FinanceTransaction[] }) {
+export function TransactionTable({
+  rows,
+  empty,
+}: {
+  rows: FinanceTransaction[];
+  /** What an empty list says; a page without a period picks its own words. */
+  empty?: ReactNode;
+}) {
   const rowProps = useRowNavigate();
   const back = useBackState();
   return (
@@ -466,7 +477,7 @@ export function TransactionTable({ rows }: { rows: FinanceTransaction[] }) {
         {rows.length === 0 ? (
           <tr className="border-t border-border">
             <td colSpan={6} className="py-3 text-muted-foreground">
-              <Trans>No transactions in this period</Trans>
+              {empty ?? <Trans>No transactions in this period</Trans>}
             </td>
           </tr>
         ) : null}

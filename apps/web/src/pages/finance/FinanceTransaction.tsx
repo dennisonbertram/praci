@@ -20,6 +20,7 @@ import {
   accountLabel,
   fullDay,
   monthLabel,
+  shortDay,
   transactionAmount,
   txnDay,
 } from "../../lib/finance-format";
@@ -43,11 +44,15 @@ function httpsUrl(value: string | null): string | null {
 const isSpend = (txn: FinanceTransactionOutput["transaction"]) =>
   txn.classification === "spend" && txn.amountCents < 0;
 
+/** The crumb for one charge: its day and amount, since the title and the crumb before already name the merchant. */
+const transactionCrumb = (txn: FinanceTransactionOutput["transaction"]) =>
+  `${shortDay(txnDay(txn))} · ${transactionAmount(txn.amountCents)}`;
+
 /** Where the transaction sits in the app, so Back returns to the page the user is most likely to have come from. */
 export function transactionCrumbs(data: FinanceTransactionOutput): Crumb[] {
   const { transaction: txn, account, vendorName, vendorIsSubscription } = data;
   const root = { label: t`Finance`, to: financePath.dashboard() };
-  const here = { label: txn.counterparty, to: financePath.transaction(txn.id) };
+  const here = { label: transactionCrumb(txn), to: financePath.transaction(txn.id) };
   if (!isSpend(txn)) {
     return [
       root,
@@ -59,7 +64,7 @@ export function transactionCrumbs(data: FinanceTransactionOutput): Crumb[] {
   if (vendorIsSubscription) {
     return [
       root,
-      { label: t`Subscriptions`, to: financePath.dashboard() },
+      { label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` },
       { label: vendorName, to: financePath.vendor(txn.vendorKey) },
       here,
     ];
@@ -148,7 +153,7 @@ export function FinanceTransactionPage({ id }: { id: string }) {
           ? transactionCrumbs(data)
           : [
               { label: t`Finance`, to: financePath.dashboard() },
-              ...(txn ? [{ label: txn.counterparty }] : []),
+              ...(txn ? [{ label: transactionCrumb(txn) }] : []),
             ]
       }
       title={txn?.counterparty}

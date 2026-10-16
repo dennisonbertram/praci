@@ -10,7 +10,7 @@ import type {
 import { Button, Skeleton, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AddAccountDialog, type CryptoChoice } from "../components/finance/AddAccountDialog";
 import { type BarGranularity, BurnBars, Sparkline } from "../components/finance/charts";
 import { StatementReminderBanner } from "../components/finance/StatementReminderBanner";
@@ -118,6 +118,8 @@ export function FinancePage({ onAskAgent }: { onAskAgent?: () => void }) {
   );
 }
 
+const REFRESH_HOLD_MS = 800;
+
 function Dashboard() {
   const overview = useFinanceQuery(() => rpc.finance.overview(), []);
   const [syncing, setSyncing] = useState(false);
@@ -126,11 +128,14 @@ function Dashboard() {
   reload.current = overview.reload;
 
   // Sync reads the vendors (throttled by the server), then the dashboard reads the stored result.
-  const sync = () => {
+  // A click holds "Syncing…" briefly: a throttled refresh answers at once and would show no change.
+  const sync = (holdMs = 0) => {
     setSyncing(true);
     setSyncError("");
+    const hold = new Promise((resolve) => setTimeout(resolve, holdMs));
     rpc.finance
       .refresh()
+      .then(() => hold)
       .catch((cause) => setSyncError(errorText(cause)))
       .finally(() => {
         setSyncing(false);
@@ -158,7 +163,7 @@ function Dashboard() {
       data={data}
       syncing={syncing}
       error={syncError}
-      onRefresh={sync}
+      onRefresh={() => sync(REFRESH_HOLD_MS)}
       onReload={overview.reload}
     />
   );
@@ -275,7 +280,12 @@ function Overview({
   }, [hash]);
   const [uploading, setUploading] = useState(false);
   const [period, setPeriod] = useState<SpendPeriod>("month");
-  const [by, setBy] = useState<"category" | "vendor">("category");
+  // The Breakdown mode lives in the URL, so Back (in the app or the browser) reopens it as left.
+  const [params, setParams] = useSearchParams();
+  const by = params.get("by") === "vendor" ? "vendor" : "category";
+  const setBy = (mode: "category" | "vendor") =>
+    setParams(mode === "vendor" ? { by: mode } : {}, { replace: true });
+
   const [allBreakdown, setAllBreakdown] = useState(false);
   const [allUpcoming, setAllUpcoming] = useState(false);
   const totals = data.spendTotals[period];
@@ -504,7 +514,12 @@ function Overview({
           </Section>
 
           <div className="grid gap-3 @3xl:grid-cols-2">
-            <BackHere value={{ label: t`Breakdown`, to: `${financePath.dashboard()}#breakdown` }}>
+            <BackHere
+              value={{
+                label: t`Breakdown`,
+                to: `${financePath.dashboard()}${by === "vendor" ? "?by=vendor" : ""}#breakdown`,
+              }}
+            >
               <Section
                 id="breakdown"
                 title={<Trans>Breakdown</Trans>}

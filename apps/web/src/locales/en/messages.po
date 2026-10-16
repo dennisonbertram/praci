@@ -1118,6 +1118,10 @@ msgstr "Bills"
 msgid "Blocked"
 msgstr "Blocked"
 
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Blockscout is connected, but reading wallet balances needs its API key."
+msgstr "Blockscout is connected, but reading wallet balances needs its API key."
+
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 msgid "Board"
@@ -1773,6 +1777,10 @@ msgstr "Connect API key"
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Connect Blockscout"
 msgstr "Connect Blockscout"
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Connect Blockscout to read wallet balances and history."
+msgstr "Connect Blockscout to read wallet balances and history."
 
 #: src/pages/CapTable.tsx
 msgid "Connect Carta"
@@ -4430,9 +4438,17 @@ msgstr "No tools available."
 msgid "No transactions in this period"
 msgstr "No transactions in this period"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "No transactions on this account yet"
+msgstr "No transactions on this account yet"
+
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
 msgstr "No trigger"
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "No wallets yet. Add a wallet address to see its balances here."
+msgstr "No wallets yet. Add a wallet address to see its balances here."
 
 #: src/components/data-room/Preview.tsx
 msgid "None"
@@ -4467,6 +4483,10 @@ msgstr "Not counted"
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
 msgstr "Not counted in cash"
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Not enough history"
+msgstr "Not enough history"
 
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceNotFound.tsx
@@ -5995,10 +6015,6 @@ msgstr "Speech model"
 msgid "Spend"
 msgstr "Spend"
 
-#: src/components/FinanceCards.tsx
-msgid "Spend this month"
-msgstr "Spend this month"
-
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Spending minus revenue, 3-mo avg"
 msgstr "Spending minus revenue, 3-mo avg"
@@ -6006,6 +6022,10 @@ msgstr "Spending minus revenue, 3-mo avg"
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
 msgstr "Spent {spentRange}"
+
+#: src/components/FinanceCards.tsx
+msgid "Spent this month"
+msgstr "Spent this month"
 
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
@@ -6255,6 +6275,10 @@ msgstr "The provider is rate-limiting requests."
 msgid "The selected memory provider is not available in this build."
 msgstr "The selected memory provider is not available in this build."
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "The transactions read add up to the closing balance"
+msgstr "The transactions read add up to the closing balance"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
 msgstr "These saved settings can't be read. Remove it and add it again."
@@ -6435,10 +6459,6 @@ msgstr "Total incl. crypto"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Transactions"
 msgstr "Transactions"
-
-#: src/components/finance/StatementReviewCard.tsx
-msgid "Transactions add up to the closing balance"
-msgstr "Transactions add up to the closing balance"
 
 #. placeholder {0}: moneyExact(Math.abs(check.differenceCents))
 #: src/components/finance/StatementReviewCard.tsx

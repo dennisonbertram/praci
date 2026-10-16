@@ -246,15 +246,22 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
   const data = q.data;
   const change = data ? changeText(data.changePct) : null;
   const paidWith = data ? paidWithLabel(data.paidWith) : "";
+  // Months before the first charge are not months of zero spend.
+  const charged = data ? data.monthly.filter((m) => m.month >= data.firstSeenAt.slice(0, 7)) : [];
   return (
     <DetailPage
       crumbs={[
         { label: t`Finance`, to: financePath.dashboard() },
-        {
-          label: data?.isSubscription ? t`Subscriptions` : t`Breakdown`,
-          to: `${financePath.dashboard()}#${data?.isSubscription ? "subscriptions" : "breakdown"}`,
-        },
-        { label: data?.name ?? "" },
+        // Only a loaded vendor knows which card it belongs to.
+        ...(data
+          ? [
+              {
+                label: data.isSubscription ? t`Subscriptions` : t`Breakdown`,
+                to: `${financePath.dashboard()}#${data.isSubscription ? "subscriptions" : "breakdown"}`,
+              },
+              { label: data.name },
+            ]
+          : []),
       ]}
       title={data?.name}
       loading={!data}
@@ -276,18 +283,15 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
             <Kpi
               title={t`Change`}
               value={change ? <span className={toneClass(data.changePct)}>{change}</span> : "—"}
-              sub={t`vs 3 mo ago`}
+              sub={data.changePct === null ? t`Not enough history` : t`vs 3 mo ago`}
             />
             <Kpi title={t`First seen`} value={monthLabel(data.firstSeenAt.slice(0, 7))} />
-            <Kpi
-              title={t`Paid with`}
-              value={<span className="text-sm font-semibold leading-snug">{paidWith || "—"}</span>}
-            />
+            <Kpi title={t`Paid with`} value={paidWith || "—"} />
           </div>
           <Section title={<Trans>Monthly spend</Trans>}>
             <MonthBars
-              items={data.monthly.map((m, i) => ({
-                label: monthAxisLabels(data.monthly.map((x) => x.month))[i] ?? "",
+              items={charged.map((m, i) => ({
+                label: monthAxisLabels(charged.map((x) => x.month))[i] ?? "",
                 cents: m.cents,
               }))}
               label={t`Monthly spend`}

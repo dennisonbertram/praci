@@ -1118,6 +1118,10 @@ msgstr ""
 msgid "Blocked"
 msgstr ""
 
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Blockscout is connected, but reading wallet balances needs its API key."
+msgstr ""
+
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 msgid "Board"
@@ -1772,6 +1776,10 @@ msgstr "API कुंजी कनेक्ट करें"
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Connect Blockscout"
+msgstr ""
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Connect Blockscout to read wallet balances and history."
 msgstr ""
 
 #: src/pages/CapTable.tsx
@@ -4430,8 +4438,16 @@ msgstr ""
 msgid "No transactions in this period"
 msgstr ""
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "No transactions on this account yet"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
+msgstr ""
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "No wallets yet. Add a wallet address to see its balances here."
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -4466,6 +4482,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
+msgstr ""
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Not enough history"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -5995,16 +6015,16 @@ msgstr "वाक् मॉडल"
 msgid "Spend"
 msgstr ""
 
-#: src/components/FinanceCards.tsx
-msgid "Spend this month"
-msgstr ""
-
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Spending minus revenue, 3-mo avg"
 msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "Spent this month"
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -6255,6 +6275,10 @@ msgstr "प्रोवाइडर अनुरोधों की दर स�
 msgid "The selected memory provider is not available in this build."
 msgstr "चयनित मेमोरी प्रोवाइडर इस बिल्ड में उपलब्ध नहीं है।"
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "The transactions read add up to the closing balance"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
 msgstr ""
@@ -6434,10 +6458,6 @@ msgstr ""
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Transactions"
-msgstr ""
-
-#: src/components/finance/StatementReviewCard.tsx
-msgid "Transactions add up to the closing balance"
 msgstr ""
 
 #. placeholder {0}: moneyExact(Math.abs(check.differenceCents))

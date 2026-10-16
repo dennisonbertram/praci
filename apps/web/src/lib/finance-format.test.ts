@@ -12,6 +12,7 @@ import {
   monthLabel,
   monthShort,
   paidWithLabel,
+  shareText,
   shortDay,
   transactionAmount,
   txnDay,
@@ -124,5 +125,14 @@ describe("axis labels", () => {
       "Jan 1 '26",
       "Jan 2",
     ]);
+  });
+});
+
+describe("shareText", () => {
+  it("shows a small real share as <1% rather than 0%", () => {
+    expect(shareText(500, 19_847_500)).toBe("<1%");
+    expect(shareText(0, 100)).toBe("0%");
+    expect(shareText(50, 100)).toBe("50%");
+    expect(shareText(5, 0)).toBe("—");
   });
 });

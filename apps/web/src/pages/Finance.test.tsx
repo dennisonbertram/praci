@@ -535,6 +535,17 @@ it("refreshes on demand and shows a sync failure with a retry", async () => {
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not reach");
 });
 
+it("shows Syncing on a click even when the refresh answers at once", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  await show("/app/finance");
+  await flush();
+  await act(async () => button(/^Refresh$/)?.click());
+  expect(container.textContent).toContain("Syncing…");
+  await act(() => new Promise((resolve) => setTimeout(resolve, 900)));
+  expect(container.textContent).not.toContain("Syncing…");
+  expect(container.textContent).toContain("Updated");
+});
+
 it("shows an error with Try again when the dashboard cannot load", async () => {
   rpcMock.overview.mockRejectedValueOnce(new Error("Could not reach the server"));
   rpcMock.overview.mockResolvedValue(connectedOverview());
@@ -604,8 +615,12 @@ it("shows No receipt without an upload action when a charge has no receipt", asy
   expect(container.textContent).toContain("No receipt");
   expect(container.textContent).not.toContain("Upload");
   expect(rpcMock.receiptUrl).not.toHaveBeenCalled();
-  // Subscription charges sit under the vendor in the breadcrumb.
+  // Subscription charges sit under the vendor in the breadcrumb; the charge's own crumb is its day
+  // and amount, so the merchant is not named twice.
   expect(container.querySelector('nav a[href="/app/finance/vendor/acme-hosting"]')).not.toBeNull();
+  expect(container.querySelector("nav")?.textContent?.replace(/\s+/g, " ")).toBe(
+    "Finance/Subscriptions/Acme Hosting/Oct 2 · $42.00",
+  );
   const external = container.querySelector('a[href="https://dashboard.example.test/expenses/e1"]');
   expect(external?.getAttribute("rel")).toContain("noopener");
 });
@@ -915,6 +930,34 @@ it("shows the breakdown for the selected period, labelled with its days", async 
   expect(breakdown()).toContain("No spend in this period");
 });
 
+it("starts a vendor's monthly chart at its first charge and says why there is no change", async () => {
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
+  rpcMock.vendor.mockResolvedValue({
+    key: "cloud",
+    name: "Cloud",
+    isSubscription: true,
+    monthlyAvgCents: 481_200,
+    monthlyAvgMonths: 3,
+    changePct: null,
+    firstSeenAt: "2026-07-09T00:00:00.000Z",
+    paidWith: [],
+    monthly: ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"].map((month) => ({
+      month,
+      cents: month < "2026-07" ? 0 : 481_200,
+    })),
+    charges: [],
+  });
+  await show("/app/finance/vendor/cloud");
+  await flush();
+  const labels = [...container.querySelectorAll('svg[aria-label="Monthly spend"] text')].map(
+    (n) => n.textContent,
+  );
+  expect(labels.some((l) => l?.startsWith("May") || l?.startsWith("Jun"))).toBe(false);
+  expect(labels.some((l) => l?.startsWith("Jul"))).toBe(true);
+  expect(container.textContent).toContain("Not enough history");
+  vi.restoreAllMocks();
+});
+
 it("sends Back from a vendor opened in Breakdown to the Breakdown card", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   rpcMock.vendor.mockResolvedValue({
@@ -937,10 +980,41 @@ it("sends Back from a vendor opened in Breakdown to the Breakdown card", async (
   await flush();
   expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
   // Opened from Breakdown, although the vendor is also a subscription.
-  const back = container.querySelector('a[href="/app/finance#breakdown"]');
+  const back = container.querySelector('a[href="/app/finance?by=vendor#breakdown"]');
   expect(back?.textContent).toContain("Breakdown");
   expect(container.querySelector("nav")?.textContent).not.toContain("Subscriptions");
   expect(container.textContent).toContain("Last 3 full months");
+  // Back reopens Breakdown in Vendor mode.
+  Element.prototype.scrollIntoView = vi.fn();
+  await act(async () => (back as HTMLElement).click());
+  await flush();
+  expect(button("Vendor")?.getAttribute("aria-pressed")).toBe("true");
+});
+
+it("leaves no empty crumb and no guessed origin on a missing vendor", async () => {
+  rpcMock.vendor.mockRejectedValue(Object.assign(new Error("Not found"), { code: "NOT_FOUND" }));
+  await act(async () => {
+    root.render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/app/finance/vendor/gone",
+            state: { back: { label: "Upcoming", to: "/app/finance#upcoming" } },
+          },
+        ]}
+      >
+        <FinancePage />
+      </MemoryRouter>,
+    );
+  });
+  await flush();
+  expect(container.textContent).toContain("Not found");
+  expect(container.querySelector("nav")?.textContent).toBe("Finance");
+  expect(container.textContent).not.toContain("Breakdown");
+  // Back still names the card the founder actually came from.
+  expect(container.querySelector('a[href="/app/finance#upcoming"]')?.textContent).toContain(
+    "Upcoming",
+  );
 });
 
 it("shows the clicked transaction at once while the rest loads", async () => {

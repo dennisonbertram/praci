@@ -26,6 +26,7 @@ import {
   monthFull,
   monthLabel,
   monthShort,
+  shareText,
 } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { rpc } from "../../lib/rpc";
@@ -130,7 +131,7 @@ export function FinanceBurnPage() {
                       </td>
                       <td className="text-end tabular-nums">{money(cents)}</td>
                       <td className="text-end text-muted-foreground tabular-nums">
-                        {Math.round((cents / accountTotal) * 100)}%
+                        {shareText(cents, accountTotal)}
                       </td>
                       <Chevron />
                     </tr>
@@ -140,7 +141,7 @@ export function FinanceBurnPage() {
                       <td className="font-semibold">Brex</td>
                       <td className="text-end tabular-nums">{money(brexCents)}</td>
                       <td className="text-end text-muted-foreground tabular-nums">
-                        {Math.round((brexCents / accountTotal) * 100)}%
+                        {shareText(brexCents, accountTotal)}
                       </td>
                       <td />
                     </tr>

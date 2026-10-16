@@ -125,6 +125,13 @@ export function changeText(pct: number | null): string | null {
   return `${pct < 0 ? "↓" : "↑"} ${rounded}%`;
 }
 
+/** A part's share of a whole, as a whole percent; a small but real part reads "<1%", not "0%". */
+export function shareText(part: number, whole: number): string {
+  if (whole <= 0) return "—";
+  const pct = Math.round((part / whole) * 100);
+  return pct === 0 && part > 0 ? "<1%" : `${pct}%`;
+}
+
 /**
  * The day a transaction counts on and is shown with: the purchase date when there is one (a Brex
  * card charge posts a day or two later), else the posted date. Totals and date filters use the same day.

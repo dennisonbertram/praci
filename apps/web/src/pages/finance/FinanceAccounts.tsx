@@ -189,12 +189,12 @@ export function FinanceAccountsPage({
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Accounts` }]}
       title={
-        <>
+        // A filter chip that wraps on a narrow screen starts under the title, not indented.
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Trans>Accounts</Trans>
           {sourceName ? (
             <Badge
               variant="outline"
-              className="ms-2 align-middle"
               render={
                 <Link to={financePath.accounts()} aria-label={t`Clear ${sourceName} filter`} />
               }
@@ -204,13 +204,12 @@ export function FinanceAccountsPage({
           ) : unknownSource ? (
             <Badge
               variant="outline"
-              className="ms-2 align-middle"
               render={<Link to={financePath.accounts()} aria-label={t`Clear filter`} />}
             >
               {t`Unknown source: ${unknownSource}`} ×
             </Badge>
           ) : null}
-        </>
+        </span>
       }
       action={
         <Button variant="outline" size="sm" onClick={() => setAdding("type")}>
@@ -292,25 +291,28 @@ export function FinanceAccountsPage({
               />
             </div>
           ) : null}
-          <Section
-            title={<Trans>Total balance</Trans>}
-            action={<PeriodTabs value={range} onChange={setRange} />}
-          >
-            <div style={{ minHeight: 200 }}>
-              {balance ? (
-                <LineChart
-                  values={balance.points.map((p) => p.balanceCents)}
-                  labels={
-                    range === "year"
-                      ? monthAxisLabels(balance.points.map((p) => p.day.slice(0, 7)))
-                      : dayAxisLabels(balance.points.map((p) => p.day))
-                  }
-                  height={200}
-                  label={t`Total balance`}
-                />
-              ) : null}
-            </div>
-          </Section>
+          {/* The chart is every account's total, so a source filter hides it rather than contradict the figure above. */}
+          {sourceName ? null : (
+            <Section
+              title={<Trans>Total balance</Trans>}
+              action={<PeriodTabs value={range} onChange={setRange} />}
+            >
+              <div style={{ minHeight: 200 }}>
+                {balance ? (
+                  <LineChart
+                    values={balance.points.map((p) => p.balanceCents)}
+                    labels={
+                      range === "year"
+                        ? monthAxisLabels(balance.points.map((p) => p.day.slice(0, 7)))
+                        : dayAxisLabels(balance.points.map((p) => p.day))
+                    }
+                    height={200}
+                    label={t`Total balance`}
+                  />
+                ) : null}
+              </div>
+            </Section>
+          )}
           <Section title={<Trans>Cash accounts</Trans>}>
             <AccountTable rows={shownCash} />
           </Section>
@@ -412,7 +414,10 @@ export function FinanceAccountPage({ id }: { id: string }) {
             </Section>
           ) : null}
           <Section title={<Trans>Transactions</Trans>}>
-            <TransactionTable rows={data.transactions} />
+            <TransactionTable
+              rows={data.transactions}
+              empty={<Trans>No transactions on this account yet</Trans>}
+            />
           </Section>
         </>
       ) : null}

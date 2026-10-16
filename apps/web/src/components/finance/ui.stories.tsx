@@ -212,6 +212,10 @@ export const TransactionsEmpty: Story = {
   render: () => <TransactionTable rows={[]} />,
 };
 
+export const TransactionsEmptyCustomText: Story = {
+  render: () => <TransactionTable rows={[]} empty="No transactions on this account yet" />,
+};
+
 export const TableParts: Story = {
   name: "Th and Chevron",
   render: () => (
