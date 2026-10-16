@@ -277,6 +277,7 @@ import { workingActivity } from "../lib/working-activity";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CapTablePage } from "./CapTable";
+import { DataRoomPage } from "./DataRoom";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { HostComputerPrompt } from "./HostComputerPrompt";
@@ -886,10 +887,11 @@ export function ShellPage() {
   const inboxMode = useMatch("/app/inbox") != null;
   const integrationsMode = useMatch("/app/integrations/*") != null;
   const financeMode = useMatch("/app/finance/*") != null;
-  // Inbox, Finance and Integrations are pages of their own: no bot route. Inbox and Finance
-  // keep their agent in a side panel.
+  const dataRoomMode = useMatch("/app/data-room") != null;
+  // Inbox, Finance, Cap Table, Data room and Integrations are pages of their own: no bot route.
+  // Inbox and Finance keep their agent in a side panel.
   const capTableMode = useMatch("/app/cap-table/*") != null;
-  const pageMode = inboxMode || financeMode || capTableMode || integrationsMode;
+  const pageMode = inboxMode || financeMode || capTableMode || integrationsMode || dataRoomMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
@@ -897,7 +899,7 @@ export function ShellPage() {
     if (!capTableMode) setCartaAgentOpen(true);
   }, [capTableMode]);
   const active =
-    inGroup || integrationsMode
+    inGroup || integrationsMode || dataRoomMode
       ? undefined
       : inboxMode
         ? findInboxAgent(bots, userId)
@@ -3347,6 +3349,16 @@ export function ShellPage() {
             navigate("/app/cap-table");
           }}
         />
+        <SidebarPageLink
+          testId="sidebar-data-room"
+          current={dataRoomMode}
+          icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
+          label={<Trans>Data room</Trans>}
+          onOpen={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/data-room");
+          }}
+        />
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {showSpaceSearch ? (
             <SpaceSearchResults
@@ -4109,6 +4121,8 @@ export function ShellPage() {
               <IntegrationsPage activeBotId={activeBotId.current} />
             </Suspense>
           </ErrorBoundary>
+        ) : dataRoomMode ? (
+          <DataRoomPage />
         ) : financeMode ? (
           <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
         ) : capTableMode ? (
