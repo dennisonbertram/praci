@@ -69,7 +69,7 @@ function setup(
       compose,
     );
   const allow = () => events.answerRunInput({ answer: "allow" } as never);
-  return { effect, answers, outcomes, events, compose, sent, saved, edit, allow };
+  return { effect, answers, outcomes, events, compose, sent, saved, edit, allow, deps };
 }
 
 const code = (promise: Promise<unknown>) =>
@@ -200,6 +200,21 @@ describe("answerEditedMailApproval", () => {
       expect(t.compose[method]).toHaveBeenCalledTimes(1);
     },
   );
+
+  it("sends a reply in the original's thread, and fails without sending when it is not cached", async () => {
+    const found = setup({ request: { ...stored, replyToId: "provider-1" } });
+    (
+      found.deps.prisma as { cachedMailMessage: { findFirst: unknown } }
+    ).cachedMailMessage.findFirst = async () => ({ id: "cached-1" });
+    await found.edit();
+    expect(found.sent[0]).toMatchObject({ replyToMessageId: "cached-1" });
+
+    const missing = setup({ request: { ...stored, replyToId: "provider-1" } });
+    await missing.edit();
+    expect(missing.compose.send).not.toHaveBeenCalled();
+    expect(missing.outcomes).toEqual(["failed"]);
+    expect((missing.effect.result as { note: string }).note).toContain("nothing was sent");
+  });
 
   it("rejects without claiming for another user, invalid edits and a merged message over the limit", async () => {
     const other = setup();

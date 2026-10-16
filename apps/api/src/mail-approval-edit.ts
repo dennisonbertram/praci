@@ -130,6 +130,11 @@ export async function answerEditedMailApproval(
             select: { id: true },
           })
         : null;
+      if (replyTo && !original) {
+        // The compose path replies through the cached message. Without it the send would go out
+        // as a new conversation, so nothing is sent and the card offers the composer instead.
+        throw new ORPCError("NOT_FOUND", { message: "The message being replied to is not cached" });
+      }
       const fields: ComposeFields = {
         // One compose record per approval: the same key on every attempt.
         clientId: `approval_${pending.effectId}`,
