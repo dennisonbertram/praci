@@ -359,6 +359,9 @@ export function resolveDuplicateEffectGate(
     return { action: "return", result: effect.result ?? { duplicate: true } };
   }
   if (effect.status === "denied") {
+    // A denial can carry its own note (the user sent an edited copy themselves).
+    const note = (effect.result as { note?: unknown } | null | undefined)?.note;
+    if (typeof note === "string" && note) return { action: "return", result: { error: note } };
     return {
       action: "return",
       result: {

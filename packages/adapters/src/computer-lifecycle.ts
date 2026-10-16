@@ -11,6 +11,7 @@ import type { ComputerUpdate } from "@rakazo/contracts";
 import { ACTIVE_RUN_STATUSES, parseScreenLeaseId, screenLeaseId } from "@rakazo/core";
 import {
   expireComputerExecutionLeases,
+  isUniqueViolation,
   type PrismaClient,
   parseComputerMode,
   type ThreadEvents,
@@ -535,7 +536,7 @@ export async function acquireComputerExecutionLease(
       fence: created.fence,
     });
   } catch (error) {
-    if (isUniqueConstraintError(error)) throw new ComputerBusyError();
+    if (isUniqueViolation(error)) throw new ComputerBusyError();
     throw error;
   }
 }
@@ -609,10 +610,6 @@ export async function releaseComputerExecutionLease(
     runId: lease.runId,
     fence: lease.fence,
   });
-}
-
-function isUniqueConstraintError(error: unknown) {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
 }
 
 export type ComputerReplaceMode = "recover" | "reset" | "update";

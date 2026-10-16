@@ -15,6 +15,7 @@ import {
   appendNewerThreadPage,
   attachmentsForThread,
   buildComposerMentionOptions,
+  channelMessageLine,
   cloudAgentHttpsUrl,
   formatFileSize,
   formatMessageTime,
@@ -24,15 +25,20 @@ import {
   isPeerReceiptBlocks,
   isRunTerminalEvent,
   isSecretAskBlock,
+  isThreadSnapshotEvent,
   latestAnswerableAskMessageId,
   leaveThreadWindow,
+  messageProviderLabel,
+  newClientId,
   openThreadWindow,
   plainTextFromMarkdown,
   projectMessageReactions,
   reconcileThreadScrollState,
+  reduceThreadSnapshot,
   replyAttachment,
   resolveComposerSendPlan,
   resolvePersonaColorDef,
+  selectableMessageText,
   selectedAskActionLabel,
   threadWindowMessages,
   timeSeparatorIds,
@@ -122,17 +128,14 @@ import type {
   MobileSnapshot,
 } from "../lib/api";
 import {
-  applyMobileThreadEvent,
   blockText,
   copyableMobileMessageText,
   currentApiBase,
   loadSessionToken,
   mergeMobileSnapshot,
-  messagingProviderLabel,
   mobileThreadRefreshResult,
   prependMobileMessagePage,
   rpc,
-  selectableMobileMessageText,
   selectedSpaceId,
   selectSpace,
   subscribeThread,
@@ -217,14 +220,6 @@ import {
 
 type PendingAttachment = PickedAttachment & { threadKey: string };
 type AskAction = NonNullable<Extract<MessageBlock, { kind: "ask" }>["actions"]>[number];
-
-function newClientNonce(): string {
-  const webCrypto = globalThis.crypto;
-  if (webCrypto && typeof webCrypto.randomUUID === "function") {
-    return webCrypto.randomUUID();
-  }
-  return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
 
 function formatApprovalAnswer(
   answer: string | undefined,
@@ -586,7 +581,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const preparingSend = useRef(false);
-  const feedback = useThreadFeedback(threadKey, newClientNonce);
+  const feedback = useThreadFeedback(threadKey, newClientId);
   const { error, setError } = feedback;
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [selectableText, setSelectableText] = useState<string | null>(null);
@@ -1478,20 +1473,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
               if (sessionGeneration !== currentSessionGeneration()) return;
               cursor = Math.max(cursor, event.seq ?? -1);
               retryMs = 250;
-              if (
-                event.type === "thread.progress" ||
-                event.type === "agent.tool.called" ||
-                event.type === "agent.tool.completed" ||
-                event.type === "thread.message.created" ||
-                event.type === "thread.message.updated" ||
-                event.type === "thread.message.reaction" ||
-                event.type === "thread.subagent" ||
-                event.type === "thread.cloud_agent" ||
-                event.type === "thread.cleared" ||
-                event.type === "run.waiting_input" ||
-                event.type === "computer.takeover.requested" ||
-                isRunTerminalEvent(event)
-              ) {
+              if (isThreadSnapshotEvent(event)) {
                 if (event.type === "thread.cleared") {
                   expandedHistoryThread.current = null;
                   pinnedAroundRef.current = null;
@@ -1499,7 +1481,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                   jumpAnchor.current.release();
                   historyEpoch.current += 1;
                 }
-                commitSnap(applyMobileThreadEvent(snapRef.current, event));
+                commitSnap(reduceThreadSnapshot(snapRef.current, event));
               }
               if (event.type === "page.updated") setHasPage(true);
               if (event.type === "pins.updated") setPinsTick((n) => n + 1);
@@ -2080,7 +2062,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
         ...(targetGroupId ? { groupId: targetGroupId } : { botId: targetBotId! }),
         messageId: message.id,
         reaction,
-        clientNonce: newClientNonce(),
+        clientNonce: newClientId(),
       });
     } catch (err) {
       if (!isCurrentTarget(targetBotId, targetGroupId)) return;
@@ -2837,9 +2819,7 @@ function previewMessageText(message: MobileMessage): string {
   const text = message.blocks
     .flatMap((block) => {
       if (block.kind === "channel_message" && block.text) {
-        return [
-          `${messagingProviderLabel(block.provider, block.transport)} · ${block.fromLabel}: ${block.text}`,
-        ];
+        return [channelMessageLine(block)];
       }
       if (block.kind === "text" && block.text) {
         // Bot text is Markdown; user text is already plain.
@@ -2982,7 +2962,7 @@ const MessageRow = memo(function MessageRow({
     menu: ReturnType<typeof buildMessageContextMenu>;
     onMenuAction: (id: string) => void;
   }>(() => {
-    const messageText = selectableMobileMessageText(message);
+    const messageText = selectableMessageText(message);
     const includeQuote =
       !readOnly &&
       !message.id.startsWith("progress:") &&
@@ -3352,7 +3332,7 @@ const MessageBubble = memo(function MessageBubble({
         style={{ width: "100%", paddingVertical: 4, alignItems: "center" }}
       >
         <Text style={{ color: tokens.mutedForeground, fontSize: 13.5, textAlign: "center" }}>
-          {messagingProviderLabel(channelMessage.provider, channelMessage.transport)} ·{" "}
+          {messageProviderLabel(channelMessage.provider, channelMessage.transport)} ·{" "}
           {channelMessage.fromLabel}: {channelMessage.text}
         </Text>
       </Pressable>
@@ -3655,9 +3635,7 @@ const MessageBubble = memo(function MessageBubble({
   const caption = message.blocks
     .flatMap((block) => {
       if (block.kind === "channel_message" && block.text) {
-        return [
-          `${messagingProviderLabel(block.provider, block.transport)} · ${block.fromLabel}: ${block.text}`,
-        ];
+        return [channelMessageLine(block)];
       }
       return block.kind === "text" && block.text ? [block.text] : [];
     })

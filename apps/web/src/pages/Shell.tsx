@@ -11,6 +11,7 @@ import type {
   Connection,
   ConnectionCatalogItem,
   Group,
+  MailEdits,
   Me,
   MessageReaction,
   ProductEvent,
@@ -38,16 +39,19 @@ import {
   buildComposerMentionOptions,
   clampMentionHighlightIndex,
   cronFromPreset,
+  DEFAULT_BOT_COLOR,
   formatMessageTime,
   groupVoiceChats,
   inferAttachmentMimeType,
   isActive,
+  isApprovalAskBlock,
   isPeerReceiptBlocks,
   isRunTerminalEvent,
   isToolActivityBlock,
   latestAnswerableAskMessageId,
   mentionChipKey,
   nestRosterByParent,
+  newClientId,
   plainTextFromMarkdown,
   projectMessageReactions,
   reorderBotTo,
@@ -91,7 +95,6 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
-  Clock,
   Copy,
   FileText,
   FolderOpen,
@@ -112,7 +115,6 @@ import {
   Paperclip,
   Pencil,
   Plus,
-  Puzzle,
   Reply,
   Search,
   Settings,
@@ -130,6 +132,7 @@ import {
   memo,
   Suspense,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -143,7 +146,13 @@ import { useMatch, useNavigate, useParams, useSearchParams } from "react-router-
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
+import {
+  type BotToolControls,
+  BotToolControlsContext,
+  type ComposerDraft,
+} from "../components/BotToolControls";
 import { CloudAgentCard } from "../components/CloudAgentCard";
+import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { ComputerMaintenanceActions } from "../components/ComputerMaintenanceActions";
 import {
   ComputersUnavailableHint,
@@ -156,6 +165,7 @@ import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
+import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import {
   LIVE_TOOL_STEP_WINDOW,
@@ -189,7 +199,6 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
-import { newClientId } from "../lib/client-id";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -227,6 +236,7 @@ import {
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import { sharedInflight } from "../lib/shared-inflight";
+import { slashSkillOptions as pickSlashSkills } from "../lib/slash-skills";
 import {
   activeThreadRuns,
   applyThreadSendReceipt,
@@ -295,6 +305,7 @@ import {
   RenameBotSectionDialog,
   RenameSpaceDialog,
 } from "./shell/dialogs";
+import { MentionIcon } from "./shell/mention-icon";
 import {
   AppConnectCard,
   ArtifactImage,
@@ -336,8 +347,6 @@ type PendingBrowserNotification = {
 };
 
 const ATTACHMENT_ACCEPT = [...ATTACHMENT_ALLOWED_MIME_TYPES, ".zip"].join(",");
-/** Identity colour for bots the roster no longer knows about. */
-const FALLBACK_BOT_COLOR = "#85858A";
 const THREAD_SNAPSHOT_TIMEOUT_MS = 2_000;
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
 const VOICE_STATUS_REFRESH_TIMEOUT_MS = 10_000;
@@ -1965,7 +1974,7 @@ export function ShellPage() {
     const bot = resolveTranscriptBot(run.botId);
     return {
       botId: run.botId,
-      color: bot?.color ?? FALLBACK_BOT_COLOR,
+      color: bot?.color ?? DEFAULT_BOT_COLOR,
       name: bot?.name,
       status: run.status,
     };
@@ -2137,7 +2146,7 @@ export function ShellPage() {
     if (botId) void jumpToMessageRef.current({ botId, messageId }).catch(() => undefined);
   }, []);
   const answerMessage = useCallback(
-    async (message: ThreadMessage, text: string, username?: string) => {
+    async (message: ThreadMessage, text: string, username?: string, mail?: MailEdits) => {
       const botId = activeBotId.current;
       const groupId = activeGroupId.current;
       if (!botId && !groupId) return;
@@ -2147,6 +2156,7 @@ export function ShellPage() {
         messageId: message.id,
         answer: text,
         ...(username ? { username } : {}),
+        ...(mail ? { mail } : {}),
       });
       if (groupId && activeGroupId.current === groupId) {
         await refreshGroupThreadRef.current(groupId);
@@ -2154,6 +2164,23 @@ export function ShellPage() {
         await refreshThreadRef.current(botId);
       }
     },
+    [],
+  );
+  const [composerDraft, setComposerDraft] = useState<ComposerDraft | null>(null);
+  const botToolControls = useMemo<BotToolControls>(
+    () => ({
+      openComposer: setComposerDraft,
+      editableBotName: (botId) => botsRef.current.find((bot) => bot.id === botId)?.name,
+      disableTool: async (botId, tool) => {
+        const bot = botsRef.current.find((item) => item.id === botId);
+        if (!bot) return;
+        const disabledBuiltinTools = bot.disabledBuiltinTools.includes(tool)
+          ? bot.disabledBuiltinTools
+          : [...bot.disabledBuiltinTools, tool];
+        const updated = await rpc.bots.update({ botId, disabledBuiltinTools });
+        setBots((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      },
+    }),
     [],
   );
   const reactToMessage = useCallback(
@@ -2166,7 +2193,7 @@ export function ShellPage() {
           ...(groupId ? { groupId } : { botId: botId! }),
           messageId: message.id,
           reaction,
-          clientNonce: newClientNonce(),
+          clientNonce: newClientId(),
         });
       } catch (error) {
         const stillHere = groupId
@@ -2907,47 +2934,78 @@ export function ShellPage() {
       {!inGroup && !pageMode && botPins ? <PinsStrip pins={botPins} onPins={setBotPins} /> : null}
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <Transcript
-            key={activeSnapshot?.threadId}
-            scrollRef={messageScroll}
-            scrollRequest={scrollRequest}
-            onScrollRequestHandled={clearScrollRequest}
-            artifactTarget={transcriptArtifactTarget}
-            messages={transcriptMessages}
-            showToolActivity={showToolActivity}
-            olderCursor={activeSnapshot?.olderCursor ?? null}
-            loadingOlder={loadingOlder}
-            answerableAskMessageId={answerableAskMessageId}
-            running={transcriptRunning}
-            workingBots={workingBots}
-            workingActivity={soleWorkingActivity}
-            workingStartedAt={workingStartedAt}
-            onLoadOlder={loadOlder}
-            onOpenBot={openBot}
-            onAnswer={answerMessage}
-            onReply={(message) => {
-              setReplyTarget(message);
-              setReplyQuote(null);
-            }}
-            onQuote={(message, quote) => {
-              setReplyTarget(message);
-              setReplyQuote(quote);
-            }}
-            onReact={reactToMessage}
-            onJumpToMessage={jumpToReplyMessage}
-            onOpenPeerMessages={(peer) => {
-              setPeerConversation(peer);
-            }}
-            memberName={resolveTranscriptMemberName}
-            peerBot={resolveTranscriptBot}
-            onRefresh={refreshActiveThread}
-            onBotChanged={refreshBots}
-            onAddRoutine={addSkillRoutine}
-            voiceReady={Boolean(voiceStatus?.ready)}
-            speakingMessageId={speakingMessageId}
-            onSpeak={speakMessage}
-            onOpenComputer={onOpenComputer}
-          />
+          <BotToolControlsContext.Provider value={botToolControls}>
+            <Transcript
+              key={activeSnapshot?.threadId}
+              scrollRef={messageScroll}
+              scrollRequest={scrollRequest}
+              onScrollRequestHandled={clearScrollRequest}
+              artifactTarget={transcriptArtifactTarget}
+              messages={transcriptMessages}
+              showToolActivity={showToolActivity}
+              olderCursor={activeSnapshot?.olderCursor ?? null}
+              loadingOlder={loadingOlder}
+              answerableAskMessageId={answerableAskMessageId}
+              running={transcriptRunning}
+              workingBots={workingBots}
+              workingActivity={soleWorkingActivity}
+              workingStartedAt={workingStartedAt}
+              onLoadOlder={loadOlder}
+              onOpenBot={openBot}
+              onAnswer={answerMessage}
+              onReply={(message) => {
+                setReplyTarget(message);
+                setReplyQuote(null);
+              }}
+              onQuote={(message, quote) => {
+                setReplyTarget(message);
+                setReplyQuote(quote);
+              }}
+              onReact={reactToMessage}
+              onJumpToMessage={jumpToReplyMessage}
+              onOpenPeerMessages={(peer) => {
+                setPeerConversation(peer);
+              }}
+              memberName={resolveTranscriptMemberName}
+              peerBot={resolveTranscriptBot}
+              onRefresh={refreshActiveThread}
+              onBotChanged={refreshBots}
+              onAddRoutine={addSkillRoutine}
+              voiceReady={Boolean(voiceStatus?.ready)}
+              speakingMessageId={speakingMessageId}
+              onSpeak={speakMessage}
+              onOpenComputer={onOpenComputer}
+            />
+          </BotToolControlsContext.Provider>
+          {composerDraft ? (
+            <ComposeEmail
+              seed={NEW_MESSAGE}
+              accounts={[
+                { connectionId: composerDraft.connectionId, label: composerDraft.account },
+              ]}
+              connectionId={composerDraft.connectionId}
+              restore={{
+                seed: NEW_MESSAGE,
+                clientId: crypto.randomUUID().replaceAll("-", ""),
+                fields: {
+                  connectionId: composerDraft.connectionId,
+                  to: composerDraft.to,
+                  cc: composerDraft.cc,
+                  bcc: composerDraft.bcc,
+                  subject: composerDraft.subject,
+                  html: "",
+                  text: composerDraft.body,
+                },
+                forwarded: [],
+                files: [],
+                saved: false,
+                accounts: [
+                  { connectionId: composerDraft.connectionId, label: composerDraft.account },
+                ],
+              }}
+              onClose={() => setComposerDraft(null)}
+            />
+          ) : null}
           {recordingSkill ? (
             <div className="px-6 pb-2 text-center text-[13px] text-destructive">
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
@@ -4918,7 +4976,7 @@ export function ShellPage() {
             peerBotId={peerConversation.peerBotId}
             peerBotName={peerConversation.peerBotName}
             peerBotColor={
-              resolveTranscriptBot(peerConversation.peerBotId)?.color ?? FALLBACK_BOT_COLOR
+              resolveTranscriptBot(peerConversation.peerBotId)?.color ?? DEFAULT_BOT_COLOR
             }
             onClose={() => setPeerConversation(null)}
           />
@@ -5158,7 +5216,12 @@ const Transcript = memo(function Transcript({
   workingStartedAt?: number;
   onLoadOlder: () => void | Promise<void>;
   onOpenBot: (botId: string) => void;
-  onAnswer: (message: ThreadMessage, text: string, username?: string) => Promise<void>;
+  onAnswer: (
+    message: ThreadMessage,
+    text: string,
+    username?: string,
+    mail?: MailEdits,
+  ) => Promise<void>;
   onReply: (message: ThreadMessage) => void;
   onQuote: (message: ThreadMessage, quote: string) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
@@ -5518,7 +5581,9 @@ const Transcript = memo(function Transcript({
                         : `relative w-fit min-w-0 ${
                             message.role === "user"
                               ? "max-w-[min(84%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[84%]"
-                              : "max-w-[min(88%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[88%]"
+                              : message.blocks.some((block) => block.kind === "ask" && block.mail)
+                                ? "max-w-[calc(100%_-_5rem)] [@media(hover:none)]:max-w-full"
+                                : "max-w-[min(88%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[88%]"
                           }`
                     }
                   >
@@ -6011,20 +6076,10 @@ export const Composer = memo(function Composer({
     ? `${mentionListboxId}-option-${activeMentionIndex}`
     : undefined;
 
-  const slashSkillOptions = useMemo(() => {
-    if (slashQuery === null) return [];
-    const query = slashQuery.trim().toLowerCase();
-    const skills = agentSkills ?? [];
-    return skills
-      .filter((skill) => {
-        if (!query) return true;
-        return (
-          skill.name.toLowerCase().includes(query) ||
-          skill.description.toLowerCase().includes(query)
-        );
-      })
-      .slice(0, 8);
-  }, [agentSkills, slashQuery]);
+  const slashSkillOptions = useMemo(
+    () => (slashQuery === null ? [] : pickSlashSkills(agentSkills ?? [], slashQuery)),
+    [agentSkills, slashQuery],
+  );
 
   const slashActionOptions = useMemo(() => {
     if (slashQuery === null) return [];
@@ -6040,7 +6095,7 @@ export const Composer = memo(function Composer({
   async function send() {
     if (!canSend || sending || disabled) return;
     const revision = editRevision.current;
-    const clientNonce = retryNonce.current ?? newClientNonce();
+    const clientNonce = retryNonce.current ?? newClientId();
     retryNonce.current = null;
     const text = serializeComposerPrompt(draft, selectedSkill, selectedMentions);
     historyIndex.current = null;
@@ -6344,7 +6399,7 @@ export const Composer = memo(function Composer({
                   highlighted ? "bg-accent" : ""
                 }`}
               >
-                <MentionOptionIcon mention={mention} />
+                <MentionIcon mention={mention} variant="option" />
                 <span className="min-w-0">
                   <span dir="auto" className="block text-[14px] text-foreground">
                     @{mention.name}
@@ -6465,7 +6520,7 @@ export const Composer = memo(function Composer({
               data-mention-kind={mention.kind}
               className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-[13px] text-foreground"
             >
-              <MentionChipIcon mention={mention} />
+              <MentionIcon mention={mention} variant="chip" />
               <span dir="auto" className="truncate">
                 {mention.name}
               </span>
@@ -6676,47 +6731,6 @@ function slashActionLabel(id: SlashActionId) {
     case "settings-usage":
       return t`Settings: Usage`;
   }
-}
-
-function MentionOptionIcon({ mention }: { mention: ComposerMention }) {
-  if (mention.kind === "routine") {
-    return <Clock size={16} strokeWidth={1.7} className="mt-0.5 shrink-0 text-muted-foreground" />;
-  }
-  if (mention.kind === "connector") {
-    return <Puzzle size={16} strokeWidth={1.7} className="mt-0.5 shrink-0 text-muted-foreground" />;
-  }
-  if (mention.kind === "group") {
-    return (
-      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent text-[9px] text-foreground/75">
-        G
-      </span>
-    );
-  }
-  if (mention.kind === "everyone") {
-    return (
-      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent text-[9px] text-foreground/75">
-        @
-      </span>
-    );
-  }
-  return <BotAvatar color={mention.color ?? FALLBACK_BOT_COLOR} identity={mention.id} size={16} />;
-}
-
-function MentionChipIcon({ mention }: { mention: ComposerMention }) {
-  if (mention.kind === "routine") {
-    return <Clock size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />;
-  }
-  if (mention.kind === "connector") {
-    return <Puzzle size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />;
-  }
-  if (mention.kind === "group" || mention.kind === "everyone") {
-    return (
-      <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent text-[9px] text-foreground/75">
-        {mention.kind === "group" ? "G" : "@"}
-      </span>
-    );
-  }
-  return <BotAvatar color={mention.color ?? FALLBACK_BOT_COLOR} identity={mention.id} size={16} />;
 }
 
 function previewMessageText(message: ThreadMessage): string {
@@ -6993,7 +7007,12 @@ const MessageView = memo(function MessageView({
   artifactTarget: ArtifactTarget;
   canAnswer: boolean;
   message: ThreadMessage;
-  onAnswer: (message: ThreadMessage, text: string, username?: string) => Promise<void>;
+  onAnswer: (
+    message: ThreadMessage,
+    text: string,
+    username?: string,
+    mail?: MailEdits,
+  ) => Promise<void>;
   onOpenBot: (botId: string) => void;
   onOpenPeerMessages: (peer: { peerBotId: string; peerBotName: string }) => void;
   speakerName?: string;
@@ -7012,6 +7031,7 @@ const MessageView = memo(function MessageView({
   showToolActivity: boolean;
 }) {
   const { t } = useLingui();
+  const botToolControls = useContext(BotToolControlsContext);
   const isNarration =
     message.role === "bot" &&
     message.blocks.length > 0 &&
@@ -7037,7 +7057,7 @@ const MessageView = memo(function MessageView({
           style={{ color: speakerColorDef.light }}
         >
           <BotAvatar
-            color={speakerBot?.color ?? FALLBACK_BOT_COLOR}
+            color={speakerBot?.color ?? DEFAULT_BOT_COLOR}
             identity={message.botId}
             size={22}
           />
@@ -7162,7 +7182,7 @@ const MessageView = memo(function MessageView({
             <CollaborationMarker
               key={i}
               ariaLabel={label}
-              color={peerBot(peerBotId)?.color ?? FALLBACK_BOT_COLOR}
+              color={peerBot(peerBotId)?.color ?? DEFAULT_BOT_COLOR}
               identity={peerBotId}
               label={label}
               onClick={() => onOpenPeerMessages({ peerBotId, peerBotName: peer })}
@@ -7407,6 +7427,37 @@ const MessageView = memo(function MessageView({
           );
         }
         if (block.kind === "ask") {
+          if (block.mail && isApprovalAskBlock(block)) {
+            return (
+              <MailApprovalCard
+                key={i}
+                mail={block.mail}
+                status={block.status === "answered" ? "answered" : "pending"}
+                answer={block.answer}
+                canAnswer={canAnswer}
+                botName={botToolControls?.editableBotName(message.botId)}
+                onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
+                onOpenComposer={(failed) =>
+                  failed.connectionId
+                    ? botToolControls?.openComposer({
+                        connectionId: failed.connectionId,
+                        account: failed.account ?? "",
+                        to: failed.to,
+                        cc: failed.cc,
+                        bcc: failed.bcc,
+                        subject: failed.subject,
+                        body: failed.body,
+                      })
+                    : undefined
+                }
+                onDisableTool={
+                  message.botId
+                    ? (tool) => botToolControls!.disableTool(message.botId!, tool)
+                    : undefined
+                }
+              />
+            );
+          }
           return (
             <AskCard
               key={i}
@@ -7506,8 +7557,4 @@ function computerPlaceholder(
 
 function computerLabel(mode: ComputerStatus["mode"] | undefined, botName: string) {
   return mode === "dedicated" ? t`${botName}’s computer` : t`Team Computer`;
-}
-
-function newClientNonce(): string {
-  return newClientId();
 }

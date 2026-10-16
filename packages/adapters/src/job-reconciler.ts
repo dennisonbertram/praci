@@ -328,7 +328,9 @@ export function createJobReconciler(
 
       // A queued run already has a job while it waits out failure backoff.
       // Default replace would zero that job's attempts and run it now. keepExisting
-      // leaves the job while attempts remain, and still replaces one that is exhausted.
+      // leaves the job while attempts remain, and still replaces one that is exhausted
+      // or locked (a lock left by a dead worker would otherwise block this retry for
+      // hours; the lease fence in continueRun stops a live worker from double-running).
       await Promise.all([
         ...runs.map((run) => deps.jobs.enqueue({ ...runContinueJob(run.id), keepExisting: true })),
         ...routines.flatMap((routine) =>

@@ -1,5 +1,6 @@
 import type { SecretStore } from "@rakazo/adapter-kit";
 import type { ExchangeProvider } from "@rakazo/contracts";
+import { actorScope } from "@rakazo/contracts";
 import type { ExchangeBucket } from "@rakazo/core";
 import {
   addAmounts,
@@ -42,7 +43,6 @@ type Scope = { spaceId: string; userId: string };
 export type ExchangeSyncResult = { ok: true } | { ok: false; message: string };
 
 const STALE_MS = 15 * 60_000;
-const scopeOf = ({ spaceId, userId }: Scope) => ({ spaceId, userId });
 
 /** Reads, merges (staked/earn suffixes fold into the base asset) and prices one exchange's balances. */
 export async function readExchangeBalances(
@@ -95,19 +95,19 @@ async function storeBalances(
   rows: PricedBalance[],
   syncedAt: Date,
 ) {
-  await tx.financeExchangeBalance.deleteMany({ where: { connectionId, ...scopeOf(scope) } });
+  await tx.financeExchangeBalance.deleteMany({ where: { connectionId, ...actorScope(scope) } });
   await tx.financeExchangeBalance.createMany({
-    data: rows.map((r) => ({ ...scopeOf(scope), connectionId, ...r, syncedAt })),
+    data: rows.map((r) => ({ ...actorScope(scope), connectionId, ...r, syncedAt })),
   });
   const parts = exchangeParts(rows);
   const day = syncedAt.toISOString().slice(0, 10);
   await tx.financeExchangeSnapshot.upsert({
     where: { connectionId_day: { connectionId, day } },
-    create: { ...scopeOf(scope), connectionId, day, ...parts },
+    create: { ...actorScope(scope), connectionId, day, ...parts },
     update: parts,
   });
   await tx.financeExchangeConnection.updateMany({
-    where: { id: connectionId, ...scopeOf(scope) },
+    where: { id: connectionId, ...actorScope(scope) },
     data: { lastSyncedAt: syncedAt, lastError: null },
   });
 }
@@ -138,7 +138,7 @@ export async function connectExchange(
   const stored = await deps.secrets.put(JSON.stringify(creds), {
     operationId: "finance.exchange.connect",
     traceId: "finance.exchange.connect",
-    ...scopeOf(scope),
+    ...actorScope(scope),
     botId: "finance",
     signal: signal ?? new AbortController().signal,
   });
@@ -149,13 +149,13 @@ export async function connectExchange(
         await tx.secret.create({
           data: {
             id: stored.id,
-            ...scopeOf(scope),
+            ...actorScope(scope),
             kind: "exchange",
             ciphertext: stored.ciphertext,
           },
         });
         const previous = await tx.financeExchangeConnection.findFirst({
-          where: { ...scopeOf(scope), provider },
+          where: { ...actorScope(scope), provider },
         });
         const connection = previous
           ? await tx.financeExchangeConnection.update({
@@ -163,10 +163,10 @@ export async function connectExchange(
               data: { secretId: stored.id },
             })
           : await tx.financeExchangeConnection.create({
-              data: { ...scopeOf(scope), provider, secretId: stored.id },
+              data: { ...actorScope(scope), provider, secretId: stored.id },
             });
         if (previous) {
-          await tx.secret.deleteMany({ where: { id: previous.secretId, ...scopeOf(scope) } });
+          await tx.secret.deleteMany({ where: { id: previous.secretId, ...actorScope(scope) } });
         }
         await storeBalances(tx, scope, connection.id, rows, syncedAt);
         return { id: connection.id };
@@ -188,7 +188,10 @@ export async function syncExchanges(
 ): Promise<ExchangeSyncResult[]> {
   const now = (deps.now ?? (() => new Date()))();
   const connections = await deps.prisma.financeExchangeConnection.findMany({
-    where: { ...scopeOf(scope), ...(opts.connectionIds ? { id: { in: opts.connectionIds } } : {}) },
+    where: {
+      ...actorScope(scope),
+      ...(opts.connectionIds ? { id: { in: opts.connectionIds } } : {}),
+    },
   });
   const results: ExchangeSyncResult[] = [];
   for (const c of connections) {
@@ -201,7 +204,7 @@ export async function syncExchanges(
       continue;
     try {
       const secret = await deps.prisma.secret.findFirst({
-        where: { id: c.secretId, ...scopeOf(scope) },
+        where: { id: c.secretId, ...actorScope(scope) },
       });
       if (!secret) throw new ExchangeError(c.provider as ExchangeProvider, "invalid_key");
       const creds = JSON.parse(
@@ -218,7 +221,7 @@ export async function syncExchanges(
       const kept = await deps.prisma.$transaction(
         async (tx) => {
           const own = await tx.financeExchangeConnection.updateMany({
-            where: { id: c.id, secretId: c.secretId, ...scopeOf(scope) },
+            where: { id: c.id, secretId: c.secretId, ...actorScope(scope) },
             data: { lastError: null },
           });
           if (own.count === 0) return false;
@@ -234,7 +237,7 @@ export async function syncExchanges(
       const message = messageOf(error);
       getLogger().warn("exchange sync failed", { provider: c.provider, reason: message });
       await deps.prisma.financeExchangeConnection.updateMany({
-        where: { id: c.id, secretId: c.secretId, ...scopeOf(scope) },
+        where: { id: c.id, secretId: c.secretId, ...actorScope(scope) },
         data: { lastError: message },
       });
       results.push({ ok: false, message });

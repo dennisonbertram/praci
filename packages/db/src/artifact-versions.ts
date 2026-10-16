@@ -1,5 +1,6 @@
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
+import { isUniqueViolation } from "./prisma-errors.js";
 
 export async function resolveNextArtifactVersion(
   prisma: Pick<PrismaClient, "artifact">,
@@ -87,5 +88,5 @@ function artifactVersionLockKey(params: {
 }
 
 function isArtifactVersionConflict(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+  return isUniqueViolation(error);
 }

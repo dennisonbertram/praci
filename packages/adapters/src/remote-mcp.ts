@@ -1,4 +1,3 @@
-import { lookup } from "node:dns/promises";
 import type { LookupFunction } from "node:net";
 import { isIP } from "node:net";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -9,6 +8,7 @@ import { Agent } from "undici";
 import { combineSignals } from "./connector-safety.js";
 import {
   createAddressCheckedLookup,
+  defaultResolveHostname,
   isCloudMetadataAddress,
   isLinkLocalAddress,
   isLoopbackAddress,
@@ -47,9 +47,6 @@ export interface SafeRemoteFetch {
   (input: string | URL | Request, init?: RequestInit): Promise<Response>;
   close(): Promise<void>;
 }
-
-const resolveHostname: ResolveHostname = (hostname) =>
-  lookup(hostname, { all: true, verbatim: true });
 
 export async function listRemoteMcpTools(options: RemoteMcpOptions): Promise<ConnectorTool[]> {
   return withRemoteMcpClient(options, async (client, signal) => {
@@ -102,13 +99,13 @@ async function withRemoteMcpClient<T>(
   const policy = { allowPrivateEndpoint: options.allowPrivateEndpoint };
   const endpoint = await assertSafeRemoteUrl(
     options.endpoint,
-    options.resolveHostname ?? resolveHostname,
+    options.resolveHostname ?? defaultResolveHostname,
     policy,
   );
   const signal = combineSignals(options.signal, AbortSignal.timeout(MCP_TIMEOUT_MS));
   const safeFetch = createSafeRemoteFetch(
     options.fetch,
-    options.resolveHostname ?? resolveHostname,
+    options.resolveHostname ?? defaultResolveHostname,
     policy,
   );
   const transport = new StreamableHTTPClientTransport(endpoint, {
@@ -131,7 +128,7 @@ async function withRemoteMcpClient<T>(
 
 export async function assertSafeRemoteUrl(
   value: string,
-  resolve: ResolveHostname = resolveHostname,
+  resolve: ResolveHostname = defaultResolveHostname,
   policy: RemoteUrlPolicy = {},
 ): Promise<URL> {
   return (await inspectSafeRemoteUrl(value, resolve, policy)).url;
@@ -191,7 +188,7 @@ function literalAddresses(hostname: string): ResolvedAddress[] | undefined {
 
 export function createSafeRemoteFetch(
   baseFetch?: typeof globalThis.fetch,
-  resolve: ResolveHostname = resolveHostname,
+  resolve: ResolveHostname = defaultResolveHostname,
   policy: RemoteUrlPolicy = {},
 ): SafeRemoteFetch {
   const dispatcher = new Agent({ connect: { lookup: createSafeLookup(resolve, policy) } });
@@ -254,7 +251,7 @@ function assertPrivateAddresses(addresses: ResolvedAddress[]): void {
  * private (cloud metadata endpoints stay blocked) instead of public. */
 export function createPrivateNetworkFetch(
   baseFetch?: typeof globalThis.fetch,
-  resolve: ResolveHostname = resolveHostname,
+  resolve: ResolveHostname = defaultResolveHostname,
 ): SafeRemoteFetch {
   const dispatcher = new Agent({
     connect: { lookup: createAddressCheckedLookup(resolve, assertPrivateAddresses) },
@@ -317,7 +314,7 @@ function transportFailureDetail(error: unknown, depth = 0): string | undefined {
 }
 
 export function createSafeLookup(
-  resolve: ResolveHostname = resolveHostname,
+  resolve: ResolveHostname = defaultResolveHostname,
   policy: RemoteUrlPolicy = {},
 ): LookupFunction {
   return createAddressCheckedLookup(resolve, (addresses, hostname) => {

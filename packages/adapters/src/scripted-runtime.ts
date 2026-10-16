@@ -174,6 +174,25 @@ export function inferScript(
       },
     ];
   }
+  if (lower.includes("send email card")) {
+    return [
+      {
+        assistant: "this email needs your approval.",
+        toolCalls: [
+          {
+            name: "mail_send",
+            args: {
+              account: "first@example.test",
+              to: ["Sam Rivera <sam@example.test>"],
+              subject: "Offsite dates",
+              body: "The 14th works for us.\nSee you then.",
+            },
+          },
+        ],
+        complete: true,
+      },
+    ];
+  }
   if (lower.includes("message the bot named") || lower.includes("message bot named")) {
     const name = namedBot(prompt) ?? "Peer";
     const message =

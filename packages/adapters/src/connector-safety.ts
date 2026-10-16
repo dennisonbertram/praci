@@ -1,7 +1,10 @@
 import { redactSecrets } from "@rakazo/core";
 
 export function combineSignals(...signals: Array<AbortSignal | undefined>): AbortSignal {
-  return AbortSignal.any(signals.filter((signal): signal is AbortSignal => Boolean(signal)));
+  const active = signals.filter((signal): signal is AbortSignal => Boolean(signal));
+  if (active.length === 0) return new AbortController().signal;
+  if (active.length === 1) return active[0]!;
+  return AbortSignal.any(active);
 }
 
 export function sanitizeConnectorError(error: unknown, secrets: string[] = []): string {

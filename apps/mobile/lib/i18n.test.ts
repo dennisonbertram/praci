@@ -81,7 +81,23 @@ describe("mobile i18n", () => {
     const { ZH_MESSAGES } = await import("./locales/zh");
     const { RU_MESSAGES } = await import("./locales/ru");
     const { DE_MESSAGES } = await import("./locales/de");
-    for (const messages of [ZH_MESSAGES, RU_MESSAGES, DE_MESSAGES]) {
+    const { ES_MESSAGES } = await import("./locales/es");
+    const { FR_MESSAGES } = await import("./locales/fr");
+    const { PT_BR_MESSAGES } = await import("./locales/pt-BR");
+    const { HI_MESSAGES } = await import("./locales/hi");
+    const { KO_MESSAGES } = await import("./locales/ko");
+    const { TR_MESSAGES } = await import("./locales/tr");
+    for (const messages of [
+      ZH_MESSAGES,
+      RU_MESSAGES,
+      DE_MESSAGES,
+      ES_MESSAGES,
+      FR_MESSAGES,
+      PT_BR_MESSAGES,
+      HI_MESSAGES,
+      KO_MESSAGES,
+      TR_MESSAGES,
+    ]) {
       const empty = Object.entries(messages).filter(([, value]) => !value.trim());
       const interpolationMismatches = Object.entries(messages).filter(([id, value]) => {
         const tokens = (message: string) =>
@@ -97,6 +113,12 @@ describe("mobile i18n", () => {
     const { ZH_MESSAGES } = await import("./locales/zh");
     const { RU_MESSAGES } = await import("./locales/ru");
     const { DE_MESSAGES } = await import("./locales/de");
+    const { ES_MESSAGES } = await import("./locales/es");
+    const { FR_MESSAGES } = await import("./locales/fr");
+    const { PT_BR_MESSAGES } = await import("./locales/pt-BR");
+    const { HI_MESSAGES } = await import("./locales/hi");
+    const { KO_MESSAGES } = await import("./locales/ko");
+    const { TR_MESSAGES } = await import("./locales/tr");
     const { EMPTY_PLUGIN_CATALOG_MESSAGE, SLASH_ACTIONS } = await import("@rakazo/core");
     const { AI_DATA_DISCLOSURES, OPENAI_COMPATIBLE_BASE_URL_HINT } = await import(
       "@rakazo/contracts"
@@ -125,7 +147,17 @@ describe("mobile i18n", () => {
         ids.add(JSON.parse(`"${match[1]}"`) as string);
       }
     }
-    for (const messages of [ZH_MESSAGES, RU_MESSAGES, DE_MESSAGES]) {
+    for (const messages of [
+      ZH_MESSAGES,
+      RU_MESSAGES,
+      DE_MESSAGES,
+      ES_MESSAGES,
+      FR_MESSAGES,
+      PT_BR_MESSAGES,
+      HI_MESSAGES,
+      KO_MESSAGES,
+      TR_MESSAGES,
+    ]) {
       const missing = [...ids].filter((id) => !messages[id]?.trim()).sort();
       expect(missing).toEqual([]);
     }
@@ -171,14 +203,29 @@ describe("mobile i18n", () => {
     expect(dateLocaleForUi()).toBe("de");
   });
 
+  it("activates the newer locales from device language and translates chrome", async () => {
+    const { resetI18nForTests, t } = await import("./i18n");
+    const { normalizeUiLocale } = await import("./ui-locale");
+    expect(normalizeUiLocale("fr-CA")).toBe("fr");
+    expect(normalizeUiLocale("es-MX")).toBe("es");
+    expect(normalizeUiLocale("pt-PT")).toBe("pt-BR");
+    resetI18nForTests("fr");
+    expect(t("Delete {name}?", { name: "Scout" })).toBe("Supprimer Scout ?");
+    resetI18nForTests("es");
+    expect(t("Sign out")).toBe("Cerrar sesión");
+    resetI18nForTests("pt-BR");
+    expect(t("Sign out")).toBe("Sair");
+  });
+
   it("keeps the last locale when rapid setUiLocale calls finish out of order", async () => {
     const { setItemAsync } = await import("expo-secure-store");
     const { applyMobileUiDirection } = await import("./ui-direction");
     const { getActiveUiLocale, resetI18nForTests, setUiLocale } = await import("./i18n");
+    const { UI_LOCALES } = await import("./ui-locale");
     resetI18nForTests("en");
 
     const gates = new Map<string, { release: () => void; wait: Promise<void> }>();
-    for (const locale of ["en", "zh-CN", "ru", "de"] as const) {
+    for (const locale of UI_LOCALES) {
       let release!: () => void;
       const wait = new Promise<void>((resolve) => {
         release = resolve;

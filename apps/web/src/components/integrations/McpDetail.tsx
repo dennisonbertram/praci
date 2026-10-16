@@ -8,6 +8,7 @@ import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { ConfirmDialog, Heading } from "./AppDetail";
 import { AppLogo } from "./AppLogo";
+import { CustomConnectionDialog } from "./CustomConnectionDialog";
 import { AgentToggleList, StatusBadge } from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
@@ -214,6 +215,9 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           <Trans>Your data in {server.name} is not deleted.</Trans>
         </li>
       </ConfirmDialog>
+      {reconnect.needsClient ? (
+        <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
+      ) : null}
     </div>
   );
 }

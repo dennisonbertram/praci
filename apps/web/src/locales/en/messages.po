@@ -111,12 +111,12 @@ msgid "{0} is ready."
 msgstr "{0} is ready."
 
 #. placeholder {0}: format(size / 1024)
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{0} KB"
 msgstr "{0} KB"
 
 #. placeholder {0}: format(size / (1024 * 1024))
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{0} MB"
 msgstr "{0} MB"
 
@@ -216,7 +216,6 @@ msgid "{count} years"
 msgstr "{count} years"
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{days}d ago"
 msgstr "{days}d ago"
 
@@ -229,7 +228,6 @@ msgid "{hiddenCount} more"
 msgstr "{hiddenCount} more"
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{hours}h ago"
 msgstr "{hours}h ago"
 
@@ -238,7 +236,6 @@ msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
 msgstr "{inboxUnread, plural, one {# unread} other {# unread}}"
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{minutes}m ago"
 msgstr "{minutes}m ago"
 
@@ -297,7 +294,7 @@ msgstr "{seats, plural, one {# seat} other {# seats}}"
 msgid "{serverName} connected"
 msgstr "{serverName} connected"
 
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{size} B"
 msgstr "{size} B"
 
@@ -476,6 +473,7 @@ msgid "Add a model in Settings to use this."
 msgstr "Add a model in Settings to use this."
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Add a recipient."
 msgstr "Add a recipient."
 
@@ -767,6 +765,10 @@ msgstr "Approve"
 msgid "Approve this server to let your agent use its tools."
 msgstr "Approve this server to let your agent use its tools."
 
+#: src/components/MailApprovalCard.tsx
+msgid "Approved"
+msgstr "Approved"
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Apps"
 msgstr "Apps"
@@ -1005,6 +1007,7 @@ msgid "Basic auth ({username})"
 msgstr "Basic auth ({username})"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Bcc"
 msgstr "Bcc"
 
@@ -1142,6 +1145,10 @@ msgstr "By month"
 msgid "Cadence"
 msgstr "Cadence"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Callback URL"
+msgstr "Callback URL"
+
 #: src/App.tsx
 msgid "Can't reach the server."
 msgstr "Can't reach the server."
@@ -1190,6 +1197,10 @@ msgstr "cancelled"
 msgid "Cancelled"
 msgstr "Cancelled"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Cap table, equity and investors"
+msgstr "Cap table, equity and investors"
+
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Card balance owed"
@@ -1235,6 +1246,7 @@ msgid "Category"
 msgstr "Category"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Cc"
 msgstr "Cc"
 
@@ -1423,6 +1435,7 @@ msgstr "Clear formatting"
 msgid "Clearing…"
 msgstr "Clearing…"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client ID"
 msgstr "Client ID"
@@ -1430,6 +1443,10 @@ msgstr "Client ID"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client secret"
 msgstr "Client secret"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Client secret (optional)"
+msgstr "Client secret (optional)"
 
 #: src/components/ComposeEmail.tsx
 #: src/components/ErrorBoundary.tsx
@@ -1774,11 +1791,13 @@ msgid "Contract"
 msgstr "Contract"
 
 #: src/components/ComputersUnavailableHint.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Copied"
 msgstr "Copied"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -2210,6 +2229,7 @@ msgid "Could not start teaching"
 msgstr "Could not start teaching"
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Could not submit this answer"
 msgstr "Could not submit this answer"
 
@@ -2562,17 +2582,30 @@ msgstr "Didn't open?"
 msgid "Direct MCP"
 msgstr "Direct MCP"
 
+#: src/components/MailApprovalCard.tsx
+msgid "Disable drafts for {botName}"
+msgstr "Disable drafts for {botName}"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Disable sending for {botName}"
+msgstr "Disable sending for {botName}"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Disabled tools"
 msgstr "Disabled tools"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Discard"
 msgstr "Discard"
 
 #: src/components/ComposeEmail.tsx
 msgid "Discard attachments?"
 msgstr "Discard attachments?"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Discarded"
+msgstr "Discarded"
 
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2657,6 +2690,7 @@ msgstr "Don’t have an account?"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -2700,6 +2734,7 @@ msgid "Draft discarded"
 msgstr "Draft discarded"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Draft saved"
 msgstr "Draft saved"
 
@@ -2731,6 +2766,7 @@ msgstr "e.g. Hivenet Agent, Presales, Timesheets bot"
 msgid "Earlier"
 msgstr "Earlier"
 
+#: src/components/MailApprovalCard.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Edit"
 msgstr "Edit"
@@ -2813,6 +2849,10 @@ msgstr "Enter the server URL, starting with https://."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Enter the URL, starting with https://."
 msgstr "Enter the URL, starting with https://."
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Equity"
+msgstr "Equity"
 
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx
@@ -3055,6 +3095,7 @@ msgid "Free"
 msgstr "Free"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
 msgstr "From"
@@ -3352,7 +3393,6 @@ msgid "Junk"
 msgstr "Junk"
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "just now"
 msgstr "just now"
 
@@ -3454,6 +3494,10 @@ msgstr "Listen"
 msgid "Listening"
 msgstr "Listening"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Live data, enrichment and generation tools"
+msgstr "Live data, enrichment and generation tools"
+
 #: src/pages/Shell.tsx
 msgid "Load earlier messages"
 msgstr "Load earlier messages"
@@ -3551,6 +3595,10 @@ msgstr "Low"
 #: src/pages/shell/bot-credentials.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
+
+#: src/components/MailApprovalCard.tsx
+msgid "Mail"
+msgstr "Mail"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Mail data from this account that Rakazo cached is removed."
@@ -3695,6 +3743,7 @@ msgid "Merchant"
 msgstr "Merchant"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "Message"
@@ -3848,6 +3897,7 @@ msgid "Monthly trend"
 msgstr "Monthly trend"
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr "More"
@@ -3898,6 +3948,10 @@ msgstr "Name this routine"
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
 msgstr "Needs an answer"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Needs approval"
+msgstr "Needs approval"
 
 #: src/components/inbox/InboxRow.tsx
 msgid "Needs attention"
@@ -4042,6 +4096,7 @@ msgid "No group chats yet."
 msgstr "No group chats yet."
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "No longer active"
 msgstr "No longer active"
 
@@ -4139,6 +4194,7 @@ msgid "Not a valid email address"
 msgstr "Not a valid email address"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
 msgstr "Not confirmed as sent. Check Sent before trying again."
 
@@ -4162,6 +4218,10 @@ msgstr "Not found"
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "Not now"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Not sent"
+msgstr "Not sent"
 
 #: src/components/ComposeEmail.tsx
 msgid "Not sent. {text}"
@@ -4269,6 +4329,10 @@ msgstr "Open Finance"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open in Brex"
 msgstr "Open in Brex"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Open in composer"
+msgstr "Open in composer"
 
 #: src/pages/Shell.tsx
 msgid "Open in full window"
@@ -4618,6 +4682,10 @@ msgstr "Read cards, expenses and bills"
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read exchange balances"
 msgstr "Read exchange balances"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Read posts, DMs and bookmarks"
+msgstr "Read posts, DMs and bookmarks"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
@@ -5125,6 +5193,10 @@ msgstr "Save backups"
 msgid "Save credential"
 msgstr "Save credential"
 
+#: src/components/MailApprovalCard.tsx
+msgid "Save draft"
+msgstr "Save draft"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Save limits"
 msgstr "Save limits"
@@ -5164,6 +5236,7 @@ msgid "Saving..."
 msgstr "Saving..."
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -5267,6 +5340,7 @@ msgid "Select a connected model"
 msgstr "Select a connected model"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
 msgstr "Send"
@@ -5300,10 +5374,12 @@ msgid "Sending is turned off."
 msgstr "Sending is turned off."
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sending…"
 msgstr "Sending…"
 
+#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
 msgstr "Sent"
@@ -5395,6 +5471,7 @@ msgid "Show Inbox agent"
 msgstr "Show Inbox agent"
 
 #: src/components/inbox/TodoCard.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Finance.tsx
 msgid "Show less"
 msgstr "Show less"
@@ -5404,6 +5481,7 @@ msgid "Show list"
 msgstr "Show list"
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "Show more"
 
@@ -5686,6 +5764,7 @@ msgid "subagent"
 msgstr "subagent"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Subject"
 msgstr "Subject"
 
@@ -5920,6 +5999,10 @@ msgstr "This server cannot be assigned without a bot."
 msgid "This server did not ask for a sign-in."
 msgstr "This server did not ask for a sign-in."
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "This server needs an OAuth client ID."
+msgstr "This server needs an OAuth client ID."
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 msgstr "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
@@ -5939,6 +6022,7 @@ msgid "Title"
 msgstr "Title"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
 msgstr "To"
@@ -5976,6 +6060,7 @@ msgid "Token"
 msgstr "Token"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "Tools"
 msgstr "Tools"
 
@@ -6084,6 +6169,10 @@ msgstr "Underline"
 #: src/pages/Inbox.tsx
 msgid "Undo"
 msgstr "Undo"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Unknown"
+msgstr "Unknown"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Unknown tool"

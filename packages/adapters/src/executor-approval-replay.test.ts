@@ -8,6 +8,7 @@ import {
   boundDirectApprovalRequest,
   catalogApprovalRequest,
   createApprovedEffectReplayQueue,
+  resolveDuplicateEffectGate,
 } from "./approval-effect.js";
 import {
   APPROVED_EFFECT_REPLAY_ORDER,
@@ -428,5 +429,21 @@ describe("executor approval replay", () => {
         "__rakazoCatalogTool",
       ),
     ).toEqual(approvedRequest);
+  });
+});
+
+describe("denied effect result", () => {
+  it("tells the model what a denial's note says, and keeps the standard text without one", () => {
+    expect(
+      resolveDuplicateEffectGate(
+        { status: "denied", result: { note: "The user sent it themselves." } },
+        "mail_send",
+      ),
+    ).toEqual({ action: "return", result: { error: "The user sent it themselves." } });
+    const plain = resolveDuplicateEffectGate({ status: "denied" }, "mail_send");
+    expect(plain).toMatchObject({
+      action: "return",
+      result: { error: expect.stringContaining("The user denied this action") },
+    });
   });
 });

@@ -149,7 +149,7 @@ function thread(count: number, botId = "bot-a"): MobileSnapshot {
       role: index % 2 ? "bot" : "user",
       blocks: [{ kind: "text", text: `message ${index}` }],
     })) as MobileSnapshot["messages"],
-  };
+  } as unknown as MobileSnapshot;
 }
 
 beforeEach(() => {
@@ -173,7 +173,7 @@ it("round trips only what the inbox shows", () => {
   const saved = readSavedThread(scope, "bot:bot-a")!;
   expect(saved.messages).toHaveLength(SAVED_CHAT_MESSAGES);
   expect(saved.run).toBeNull();
-  expect(saved).not.toHaveProperty("cursor");
+  expect(saved.cursor).toBe(-1);
 });
 
 it.each([{ apiBase: "https://other.example.test" }, { userId: "user-b" }, { spaceId: "space-b" }])(

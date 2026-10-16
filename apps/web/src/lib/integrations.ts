@@ -105,14 +105,56 @@ export const FIRST_PARTY_MCP = [
     name: "Zernio",
     logo: "/logos/zernio.svg",
     endpoint: "https://mcp.zernio.com/mcp",
+    section: "social",
+    category: null,
   },
-] as const;
+  {
+    id: "x",
+    name: "X",
+    logo: "https://cdn.simpleicons.org/x",
+    endpoint: "https://api.x.com/mcp",
+    section: "social",
+    category: null,
+    // X does not register clients on the fly: the user brings the Client ID of their own X app.
+    oauthClient: true,
+    // Read scopes only: X's metadata also lists billing and developer write scopes.
+    scope:
+      "tweet.read users.read follows.read like.read list.read bookmark.read dm.read offline.access",
+  },
+  {
+    id: "carta",
+    name: "Carta",
+    logo: null,
+    endpoint: "https://mcp.app.carta.com/mcp",
+    section: "equity",
+    category: "finance",
+  },
+  {
+    id: "treg",
+    name: "Treg",
+    logo: null,
+    endpoint: "https://treg.to/mcp/",
+    section: "tools",
+    category: "developer",
+  },
+] as const satisfies readonly {
+  id: string;
+  name: string;
+  logo: string | null;
+  endpoint: string;
+  section: string;
+  category: string | null;
+  oauthClient?: boolean;
+  scope?: string;
+}[];
 
-/** True when an MCP server endpoint is the https server at the same host as `endpoint`. */
-export function isMcpEndpointHost(candidate: string | null | undefined, endpoint: string): boolean {
+/** True when `candidate` is the same https endpoint as `endpoint`: same host and path, ignoring a trailing slash. */
+export function isSameMcpEndpoint(candidate: string | null | undefined, endpoint: string): boolean {
   try {
-    const url = new URL(candidate ?? "");
-    return url.protocol === "https:" && url.host === new URL(endpoint).host;
+    const a = new URL(candidate ?? "");
+    const b = new URL(endpoint);
+    const path = (url: URL) => url.pathname.replace(/\/+$/, "");
+    return a.protocol === "https:" && a.host === b.host && path(a) === path(b);
   } catch {
     return false;
   }

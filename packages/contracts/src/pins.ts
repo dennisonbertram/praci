@@ -9,6 +9,7 @@ import { PageAuthor } from "./pages.js";
  */
 export const BOT_PINS_MAX_STATS = 6;
 export const BOT_PINS_MAX_ITEMS = 50;
+export const BOT_PINS_ITEM_TEXT_MAX = 60;
 
 export const PinFormat = z.enum(["number", "usd", "percent", "text"]);
 export type PinFormat = z.infer<typeof PinFormat>;
@@ -41,7 +42,7 @@ export type PinStat = z.infer<typeof PinStatSchema>;
 
 export const PinItemSchema = z.object({
   id: z.string().min(1).max(40),
-  text: z.string().min(1).max(60),
+  text: z.string().min(1).max(BOT_PINS_ITEM_TEXT_MAX),
   done: z.boolean(),
 });
 export type PinItem = z.infer<typeof PinItemSchema>;

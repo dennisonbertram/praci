@@ -7,6 +7,7 @@ import {
 } from "@rakazo/adapters";
 import type { Actor, FinanceStatement, ParsedStatement, StatementCheck } from "@rakazo/contracts";
 import {
+  actorScope,
   ParsedStatementSchema,
   STATEMENT_EXTENSIONS,
   STATEMENT_MAX_BYTES,
@@ -29,7 +30,6 @@ export type ParseStatement = (
   scope: { spaceId: string; userId: string },
 ) => Promise<{ statement: ParsedStatement; check: StatementCheck }>;
 
-const scopeOf = (actor: Actor) => ({ spaceId: actor.spaceId, userId: actor.userId });
 const PROVIDER = "statement";
 const LIST_LIMIT = 200;
 const FORMATS = { pdf: "pdf", csv: "csv", ofx: "ofx", qfx: "ofx" } as const;
@@ -162,7 +162,7 @@ async function existingTxnIds(
   accountKey: string,
 ): Promise<Set<string>> {
   const rows = await prisma.financeTransaction.findMany({
-    where: { ...scopeOf(actor), provider: PROVIDER, accountExternalId: accountKey },
+    where: { ...actorScope(actor), provider: PROVIDER, accountExternalId: accountKey },
     select: { externalId: true },
   });
   return new Set(rows.map((r) => r.externalId));
@@ -190,7 +190,7 @@ export async function financeStatementUpload(
     throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Statement import is not available" });
   }
   const base = {
-    ...scopeOf(actor),
+    ...actorScope(actor),
     fileName: input.fileName.slice(0, 255),
     format: FORMATS[extension as keyof typeof FORMATS],
     fileSha256: createHash("sha256").update(bytes).digest("hex"),
@@ -200,7 +200,7 @@ export async function financeStatementUpload(
 
   const sameFile = await deps.prisma.financeStatement.findFirst({
     where: {
-      ...scopeOf(actor),
+      ...actorScope(actor),
       fileSha256: base.fileSha256,
       status: { in: ["review", "imported"] },
     },
@@ -212,7 +212,10 @@ export async function financeStatementUpload(
 
   let parsed: { statement: ParsedStatement; check: StatementCheck };
   try {
-    const result = await deps.parseStatement({ fileName: input.fileName, bytes }, scopeOf(actor));
+    const result = await deps.parseStatement(
+      { fileName: input.fileName, bytes },
+      actorScope(actor),
+    );
     parsed = { statement: ParsedStatementSchema.parse(result.statement), check: result.check };
   } catch (error) {
     getLogger().warn("statement parse failed", {
@@ -233,9 +236,9 @@ export async function financeStatementUpload(
   }
 
   const { statement, check } = parsed;
-  const key = await resolveAccountKey(deps.prisma, scopeOf(actor), statement);
+  const key = await resolveAccountKey(deps.prisma, actorScope(actor), statement);
   const account = await deps.prisma.financeAccount.findFirst({
-    where: { ...scopeOf(actor), provider: PROVIDER, externalId: key },
+    where: { ...actorScope(actor), provider: PROVIDER, externalId: key },
     select: { id: true },
   });
   const known = account ? await existingTxnIds(deps.prisma, actor, key) : new Set<string>();
@@ -271,7 +274,7 @@ export async function financeStatementConfirm(
   actor: Actor,
   input: { id: string; acceptMismatch?: boolean },
 ): Promise<FinanceStatement> {
-  const scope = scopeOf(actor);
+  const scope = actorScope(actor);
   const found = await deps.prisma.financeStatement.findFirst({
     where: { id: input.id, ...scope },
     select: { id: true, status: true, check: true, parsed: true, fileSha256: true },
@@ -413,7 +416,7 @@ export async function financeStatementDiscard(
   actor: Actor,
   input: { id: string },
 ): Promise<{ ok: true }> {
-  const scope = scopeOf(actor);
+  const scope = actorScope(actor);
   await deps.prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`finance-statement:${actor.spaceId}:${actor.userId}`}))`;
@@ -479,11 +482,11 @@ export async function financeStatementDiscard(
 
 /** Statement accounts whose newest imported statement is getting old. */
 export const loadStatementReminders = (deps: FinanceDeps, actor: Actor, today: string) =>
-  loadStatementRemindersFor(deps.prisma, scopeOf(actor), today);
+  loadStatementRemindersFor(deps.prisma, actorScope(actor), today);
 
 export async function financeStatements(deps: FinanceDeps, actor: Actor) {
   const rows = await deps.prisma.financeStatement.findMany({
-    where: scopeOf(actor),
+    where: actorScope(actor),
     orderBy: { uploadedAt: "desc" },
     take: LIST_LIMIT,
     omit: omitBulk,

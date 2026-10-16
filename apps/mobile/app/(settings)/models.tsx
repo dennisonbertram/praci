@@ -4,6 +4,7 @@ import {
   CLOUDFLARE_AI_GATEWAY_PROVIDER_ID,
   cloudflareGatewayRouting,
   connectedBackupOptions,
+  connectionMaxTokensField,
   DEFAULT_MODEL_CONTEXT_WINDOW,
   DEFAULT_MODEL_MAX_TOKENS,
   MAX_MODEL_BACKUPS,
@@ -65,22 +66,6 @@ import {
 import { mobileBackupScopeIsCurrent } from "../../lib/model-backups";
 import { native, useResolvedAppearance, useThemedStyles } from "../../lib/native";
 import { errorText } from "../../lib/user-error";
-
-function connectionMaxTokensField(providerId: string, stored: number | undefined): string {
-  if (providerId === OPENAI_COMPATIBLE_PROVIDER_ID) {
-    return String(stored ?? DEFAULT_MODEL_MAX_TOKENS);
-  }
-  return stored !== undefined ? String(stored) : "";
-}
-
-const THINKING_LEVEL_OPTIONS: ThinkingLevel[] = [
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
-];
 
 function thinkingLevelLabel(level: ThinkingLevel, t: (message: string) => string): string {
   if (level === "xhigh") return t("Extra high");
@@ -1011,7 +996,7 @@ export default function Models() {
                         text: t("Default"),
                         onPress: () => setThinkingLevel(null),
                       },
-                      ...THINKING_LEVEL_OPTIONS.map((level) => ({
+                      ...COMPATIBLE_THINKING_LEVELS.map((level) => ({
                         text: thinkingLevelLabel(level, t),
                         onPress: () => setThinkingLevel(level),
                       })),

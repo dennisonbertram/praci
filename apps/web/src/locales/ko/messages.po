@@ -111,12 +111,12 @@ msgid "{0} is ready."
 msgstr ""
 
 #. placeholder {0}: format(size / 1024)
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{0} KB"
 msgstr "{0} KB"
 
 #. placeholder {0}: format(size / (1024 * 1024))
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{0} MB"
 msgstr "{0} MB"
 
@@ -216,7 +216,6 @@ msgid "{count} years"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{days}d ago"
 msgstr "{days}일 전"
 
@@ -229,7 +228,6 @@ msgid "{hiddenCount} more"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{hours}h ago"
 msgstr "{hours}시간 전"
 
@@ -238,7 +236,6 @@ msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{minutes}m ago"
 msgstr "{minutes}분 전"
 
@@ -297,7 +294,7 @@ msgstr ""
 msgid "{serverName} connected"
 msgstr ""
 
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{size} B"
 msgstr "{size} B"
 
@@ -476,6 +473,7 @@ msgid "Add a model in Settings to use this."
 msgstr "이 기능을 사용하려면 설정에서 모델을 추가하세요."
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Add a recipient."
 msgstr ""
 
@@ -767,6 +765,10 @@ msgstr "승인"
 msgid "Approve this server to let your agent use its tools."
 msgstr "이 서버를 승인하면 Bot이 제공되는 도구를 사용할 수 있습니다."
 
+#: src/components/MailApprovalCard.tsx
+msgid "Approved"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Apps"
 msgstr ""
@@ -1005,6 +1007,7 @@ msgid "Basic auth ({username})"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Bcc"
 msgstr ""
 
@@ -1142,6 +1145,10 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Callback URL"
+msgstr ""
+
 #: src/App.tsx
 msgid "Can't reach the server."
 msgstr "서버에 연결할 수 없습니다."
@@ -1190,6 +1197,10 @@ msgstr "취소됨"
 msgid "Cancelled"
 msgstr "취소됨"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Cap table, equity and investors"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Card balance owed"
@@ -1235,6 +1246,7 @@ msgid "Category"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Cc"
 msgstr ""
 
@@ -1423,12 +1435,17 @@ msgstr ""
 msgid "Clearing…"
 msgstr "비우는 중…"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client ID"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client secret"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Client secret (optional)"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -1774,11 +1791,13 @@ msgid "Contract"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Copied"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -2210,6 +2229,7 @@ msgid "Could not start teaching"
 msgstr "가르치기를 시작하지 못했습니다."
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Could not submit this answer"
 msgstr "답변을 보내지 못했습니다."
 
@@ -2562,16 +2582,29 @@ msgstr ""
 msgid "Direct MCP"
 msgstr ""
 
+#: src/components/MailApprovalCard.tsx
+msgid "Disable drafts for {botName}"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Disable sending for {botName}"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Disabled tools"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Discard"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Discard attachments?"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Discarded"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
@@ -2657,6 +2690,7 @@ msgstr "계정이 없나요?"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -2700,6 +2734,7 @@ msgid "Draft discarded"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Draft saved"
 msgstr ""
 
@@ -2731,6 +2766,7 @@ msgstr "예: Hivenet Agent, Presales, 근무표 봇"
 msgid "Earlier"
 msgstr ""
 
+#: src/components/MailApprovalCard.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Edit"
 msgstr ""
@@ -2812,6 +2848,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Enter the URL, starting with https://."
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Equity"
 msgstr ""
 
 #: src/lib/roster-status.ts
@@ -3055,6 +3095,7 @@ msgid "Free"
 msgstr "무료"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
 msgstr ""
@@ -3352,7 +3393,6 @@ msgid "Junk"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "just now"
 msgstr "방금"
 
@@ -3454,6 +3494,10 @@ msgstr ""
 msgid "Listening"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Live data, enrichment and generation tools"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Load earlier messages"
 msgstr "이전 메시지 불러오기"
@@ -3550,6 +3594,10 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Mail"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -3695,6 +3743,7 @@ msgid "Merchant"
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Message"
 msgstr "메시지"
@@ -3848,6 +3897,7 @@ msgid "Monthly trend"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr ""
@@ -3897,6 +3947,10 @@ msgstr "이 루틴의 이름을 정하세요"
 
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Needs approval"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
@@ -4042,6 +4096,7 @@ msgid "No group chats yet."
 msgstr "아직 그룹 채팅이 없습니다."
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "No longer active"
 msgstr "이미 종료된 요청입니다"
 
@@ -4139,6 +4194,7 @@ msgid "Not a valid email address"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
 msgstr ""
 
@@ -4162,6 +4218,10 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "나중에"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Not sent"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not sent. {text}"
@@ -4268,6 +4328,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open in Brex"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Open in composer"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4617,6 +4681,10 @@ msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read exchange balances"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Read posts, DMs and bookmarks"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -5125,6 +5193,10 @@ msgstr "백업 모델 저장"
 msgid "Save credential"
 msgstr ""
 
+#: src/components/MailApprovalCard.tsx
+msgid "Save draft"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Save limits"
 msgstr ""
@@ -5164,6 +5236,7 @@ msgid "Saving..."
 msgstr ""
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -5267,6 +5340,7 @@ msgid "Select a connected model"
 msgstr "연결된 모델 선택"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
 msgstr "보내기"
@@ -5300,10 +5374,12 @@ msgid "Sending is turned off."
 msgstr ""
 
 #: src/components/AskCard.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sending…"
 msgstr "보내는 중…"
 
+#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
 msgstr ""
@@ -5395,6 +5471,7 @@ msgid "Show Inbox agent"
 msgstr ""
 
 #: src/components/inbox/TodoCard.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Finance.tsx
 msgid "Show less"
 msgstr ""
@@ -5404,6 +5481,7 @@ msgid "Show list"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "더 보기"
 
@@ -5686,6 +5764,7 @@ msgid "subagent"
 msgstr "보조 에이전트"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Subject"
 msgstr ""
 
@@ -5920,6 +5999,10 @@ msgstr "연결할 Bot이 없어 이 서버를 배정할 수 없습니다."
 msgid "This server did not ask for a sign-in."
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "This server needs an OAuth client ID."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 msgstr "이 구독 로그인 방식은 아직 Rakazo에서 지원되지 않습니다. 서버에 설정된 인증 정보를 사용하거나 다른 서비스를 선택하세요."
@@ -5939,6 +6022,7 @@ msgid "Title"
 msgstr "역할"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
 msgstr ""
@@ -5976,6 +6060,7 @@ msgid "Token"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "Tools"
 msgstr ""
 
@@ -6083,6 +6168,10 @@ msgstr ""
 #: src/components/MailOutbox.tsx
 #: src/pages/Inbox.tsx
 msgid "Undo"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Unknown"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx

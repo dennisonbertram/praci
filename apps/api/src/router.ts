@@ -208,7 +208,9 @@ import {
   formatMessagingLinkCode,
   InvalidSpaceNameError,
   IsolationError,
+  isRecordNotFound,
   issueMessagingLinkCode,
+  isUniqueViolation,
   listBoards,
   listSpaceBackupModels,
   listTicketComments,
@@ -319,6 +321,7 @@ import {
 } from "./inbox-compose.js";
 import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
+import { answerEditedMailApproval } from "./mail-approval-edit.js";
 import {
   dismissMcpServerApprovals,
   resolveMcpApprovalCards,
@@ -882,6 +885,7 @@ export function createRouter(deps: RouterDeps) {
     userId: string;
     redirectUri: string;
     reauthorize?: boolean;
+    oauthClient?: { clientId: string; clientSecret?: string; scope?: string };
   }) => {
     const expectedRedirect = new URL("/mcp/oauth/callback", deps.env.webOrigin).toString();
     if (new URL(input.redirectUri).toString() !== expectedRedirect) {
@@ -2593,6 +2597,22 @@ export function createRouter(deps: RouterDeps) {
       }),
       answer: authed.threads.answer.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
+        if (input.mail && Object.keys(input.mail).length > 0) {
+          if (input.answer !== "allow") {
+            throw new ORPCError("BAD_REQUEST", { message: "Edits go with Send" });
+          }
+          await answerEditedMailApproval(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            target,
+            { runId: input.runId, messageId: input.messageId, mail: input.mail },
+            () =>
+              deps.jobs.enqueue(runContinueJob(input.runId)).catch((error) => {
+                getLogger().error("thread answer enqueue", error);
+              }),
+          );
+          return { ok: true as const };
+        }
         const answered = await deps.events.answerRunInput({
           spaceId: context.actor.spaceId,
           threadId: target.threadId,
@@ -4857,6 +4877,9 @@ export function createRouter(deps: RouterDeps) {
             userId: context.actor.userId,
             status: { in: ["connected", "pending", "error"] },
           },
+          // Without an order Postgres returns rows in storage order, which changes when a row is
+          // updated, so the accounts of one app swapped places between loads.
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         });
         return rows.map((row) => ({
           id: row.id,
@@ -7519,14 +7542,6 @@ async function messagingIdentityDto(
     botId: identity.botId,
     botName: bot?.name ?? "Assistant",
   };
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
-}
-
-function isRecordNotFound(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2025");
 }
 
 function messagingChannelDto(membership: {

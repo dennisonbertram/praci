@@ -40,14 +40,19 @@ const data = {
   refresh: vi.fn().mockResolvedValue(undefined),
 } as unknown as IntegrationsData;
 
-async function mount() {
+async function mount(props: { oauthClient?: boolean; oauthScope?: string } = {}) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   await act(async () => {
     root.render(
-      <CustomConnectionDialog data={data} initialUrl="https://example.com/mcp" onClose={vi.fn()} />,
+      <CustomConnectionDialog
+        data={data}
+        initialUrl="https://example.com/mcp"
+        onClose={vi.fn()}
+        {...props}
+      />,
     );
   });
 }
@@ -112,4 +117,44 @@ it("does not open a sign-in window for an attempt cancelled while it was startin
     finish({ status: "authorization_required", authorizationUrl: "https://auth.test/x" });
   });
   expect(api.open).not.toHaveBeenCalled();
+});
+
+it("shows no client ID fields for a normal custom connection", async () => {
+  await mount();
+  expect(field("Client ID")).toBeNull();
+  expect(field("Client secret (optional)")).toBeNull();
+});
+
+it("shows the client ID fields and callback URL when the entry needs them, and sends them", async () => {
+  api.begin.mockResolvedValue({ status: "already_connected" });
+  await mount({ oauthClient: true, oauthScope: "tweet.read" });
+  expect(field("Client secret (optional)").type).toBe("password");
+  expect(field("Callback URL").value).toBe(`${window.location.origin}/mcp/oauth/callback`);
+  await type("Client ID", "abc");
+  await type("Client secret (optional)", "shh");
+  await click("Connect");
+  expect(api.begin).toHaveBeenCalledWith("srv-1", {
+    oauthClient: { clientId: "abc", clientSecret: "shh", scope: "tweet.read" },
+  });
+});
+
+it("asks for a client ID when the server cannot register one", async () => {
+  api.begin.mockRejectedValueOnce(new Error("This server needs an OAuth client ID"));
+  await mount();
+  await click("Connect");
+  expect(field("Client ID")).not.toBeNull();
+  expect(document.body.textContent).toContain("This server needs an OAuth client ID");
+});
+
+it("locks the connection fields after the error and retries on the same server", async () => {
+  api.begin.mockRejectedValueOnce(new Error("This server needs an OAuth client ID"));
+  api.begin.mockResolvedValue({ status: "already_connected" });
+  await mount();
+  await click("Connect");
+  expect((field("Server URL") as HTMLInputElement).readOnly).toBe(true);
+  expect(field("Transport")).toBeNull();
+  await type("Client ID", "abc");
+  await click("Connect");
+  expect(api.create).toHaveBeenCalledTimes(1);
+  expect(api.begin).toHaveBeenLastCalledWith("srv-1", { oauthClient: { clientId: "abc" } });
 });
