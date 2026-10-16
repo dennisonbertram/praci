@@ -3,6 +3,7 @@
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, resolve } from "node:path";
+import { insideRoot } from "./safe-path.mjs";
 import { chromium } from "@playwright/test";
 
 const root = resolve(process.argv[2] ?? "storybook-static");
@@ -16,7 +17,8 @@ const types = {
   ".woff2": "font/woff2",
 };
 const server = createServer((req, res) => {
-  const path = join(root, decodeURIComponent(new URL(req.url, "http://x").pathname));
+  const path = insideRoot(root, decodeURIComponent(new URL(req.url, "http://x").pathname));
+  if (!path) return res.writeHead(403).end();
   const file = existsSync(path) && statSync(path).isDirectory() ? join(path, "index.html") : path;
   if (!existsSync(file)) return res.writeHead(404).end();
   res.writeHead(200, { "content-type": types[extname(file)] ?? "application/octet-stream" });
