@@ -2991,6 +2991,10 @@ msgstr ""
 msgid "Filter by date"
 msgstr ""
 
+#: src/pages/KnowledgeSection.tsx
+msgid "Filter memory"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr ""
@@ -4093,6 +4097,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "No mail matches this filter"
+msgstr ""
+
+#: src/pages/KnowledgeSection.tsx
+msgid "No matches"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -6159,6 +6167,10 @@ msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
+msgstr ""
+
+#: src/pages/KnowledgeSection.tsx
+msgid "Unknown bot"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
