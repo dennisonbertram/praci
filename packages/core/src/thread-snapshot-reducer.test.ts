@@ -1,6 +1,6 @@
 import type { ProductEvent, ThreadSnapshot } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import { reduceThreadSnapshot } from "./thread-snapshot-reducer.js";
+import { isThreadSnapshotEvent, reduceThreadSnapshot } from "./thread-snapshot-reducer.js";
 
 const at = "2026-01-01T00:00:00.000Z";
 
@@ -80,5 +80,13 @@ describe("reduceThreadSnapshot", () => {
     );
     expect(repeated?.cursor).toBe(6);
     expect(repeated?.run).toBe(waiting?.run);
+  });
+});
+
+describe("isThreadSnapshotEvent", () => {
+  it("accepts run.started and terminal run events", () => {
+    expect(isThreadSnapshotEvent(event({ type: "run.started" }))).toBe(true);
+    expect(isThreadSnapshotEvent(event({ type: "run.completed" }))).toBe(true);
+    expect(isThreadSnapshotEvent(event({ type: "bot.updated" }))).toBe(false);
   });
 });
