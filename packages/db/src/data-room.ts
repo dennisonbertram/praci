@@ -385,7 +385,8 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       const last = pageRows.at(-1);
       return {
         items: pageRows.flatMap((row) => byId.get(row.id) ?? []),
-        nextCursor: rows.length > limit && last ? encodeCursor(sort, last.sortValue, last.id) : null,
+        nextCursor:
+          rows.length > limit && last ? encodeCursor(sort, last.sortValue, last.id) : null,
       };
     },
 
