@@ -82,7 +82,8 @@ function Legal({ onAskAgent }: { onAskAgent?: () => void }) {
       {data.model && !data.model.isPreferred ? (
         <p className="mb-3 text-xs text-muted-foreground">
           <Trans>
-            Using {data.model.id}. Add an OpenRouter key in Settings to run Muse Spark 1.2.
+            The Legal agent cannot run until you add an OpenRouter key in Settings. It runs only on
+            Muse Spark 1.2.
           </Trans>
         </p>
       ) : null}

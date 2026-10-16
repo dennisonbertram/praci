@@ -199,12 +199,12 @@ it("warns when the Legal agent runs on a different model than Muse Spark 1.2", a
   });
   await render(<LegalPage />);
   expect(container.textContent).toContain(
-    "Using openai/gpt-6-luna. Add an OpenRouter key in Settings to run Muse Spark 1.2.",
+    "The Legal agent cannot run until you add an OpenRouter key in Settings.",
   );
 });
 
 it("shows no model warning when the agent runs on Muse Spark 1.2", async () => {
   rpcMock.overview.mockResolvedValue(overview);
   await render(<LegalPage />);
-  expect(container.textContent).not.toContain("Add an OpenRouter key");
+  expect(container.textContent).not.toContain("OpenRouter key");
 });

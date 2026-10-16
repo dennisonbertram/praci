@@ -55,6 +55,8 @@ import {
   isInboxAgentSpawnKey,
   isLegalAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
+  LEGAL_AGENT_MODEL,
+  LEGAL_MODEL_REQUIRED_MESSAGE,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@rakazo/contracts";
 import type { ActionApprovalRule, ToolCallStreak } from "@rakazo/core";
@@ -3829,6 +3831,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
             },
             { spaceId: run.spaceId, userId: bot.userId },
           );
+        if (
+          legalOnly &&
+          (runModelProvider !== LEGAL_AGENT_MODEL.provider || runModelId !== LEGAL_AGENT_MODEL.id)
+        ) {
+          // Fixed rule, for quality: the Legal agent runs on Muse Spark 1.2 and nothing else. A run
+          // that resolved to another model (no OpenRouter key, so the default took over) ends here.
+          await publishMessage(deps, run, "bot", [
+            { kind: "text", text: LEGAL_MODEL_REQUIRED_MESSAGE },
+          ]).catch((error) => getLogger().error("legal model notice", error));
+          await failRunBeforeModel(LEGAL_MODEL_REQUIRED_MESSAGE);
+          return;
+        }
         if (legalOnly) {
           // The Legal agent's history and tools carry document content, so the model that receives
           // them must be one the user allowed. Without that consent the run ends before any model call.

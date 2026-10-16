@@ -17,6 +17,10 @@ export const LEGAL_AGENT_MODEL = {
   thinkingLevel: "xhigh",
 } as const;
 
+/** Shown when a Legal run resolves to any other model; the agent runs on Muse Spark 1.2 only. */
+export const LEGAL_MODEL_REQUIRED_MESSAGE =
+  "The Legal agent runs only on Muse Spark 1.2. Add an OpenRouter key in Settings.";
+
 /** Name of the Legal agent's daily routine. */
 export const LEGAL_SCAN_ROUTINE_NAME = "Daily legal scan";
 
