@@ -281,7 +281,11 @@ export function ComposeEmail({
         pendingContent.current = prefillHtml(next);
         // An older server sends no attachment list.
         setForwarded(next.attachments ?? []);
-        if (next.attachmentsTooLarge)
+        // The server filled To and Subject from its cached copy; the user can retry for the quote.
+        if (next.quoteUnavailable) {
+          setNotice({ kind: "error", text: t`The original message didn't load.` });
+          setPrefillFailed(true);
+        } else if (next.attachmentsTooLarge)
           setNotice({
             kind: "error",
             text: t`Attachments can't be over ${MAX_COMPOSE_ATTACHMENT_MB} MB.`,

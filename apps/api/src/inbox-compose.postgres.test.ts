@@ -267,6 +267,38 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(tokyo.body).toContain("Date: Thu, Sep 24, 2026, 12:04 AM\n");
     });
 
+    it("fills To and Subject from the cached message when Gmail is rate limited", async () => {
+      const row = await cache(a, connA, "a-1", "t-a1");
+      gmail.failNext(429, { urlIncludes: "/messages/a-1", times: 100 });
+      const reply = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" });
+      expect(reply).toMatchObject({
+        connectionId: connA,
+        to: "Ann Sender <ann@example.test>",
+        subject: "Re: Subject a-1",
+        body: "",
+        replyToMessageId: row.id,
+        quoteUnavailable: true,
+      });
+      const forward = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "forward" });
+      expect(forward).toMatchObject({
+        to: "",
+        subject: "Fwd: Subject a-1",
+        quoteUnavailable: true,
+      });
+      gmail.clearFailures();
+      expect(
+        (await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" }))
+          .quoteUnavailable,
+      ).toBeUndefined();
+    });
+
+    it("still reports a missing or revoked message instead of falling back", async () => {
+      const row = await cache(a, connA, "a-gone");
+      await expect(
+        inboxComposePrefill(deps(), a, { messageId: row.id, mode: "reply" }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
     it("carries an HTML mail's formatting into a forward, not a reply", async () => {
       const row = await cache(a, connA, "a-html");
       const forward = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "forward" });
@@ -632,6 +664,24 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       await inboxComposeDiscard(deps(), a, { clientId: sent.clientId });
       expect(gmail.sentOf("box-a")).toHaveLength(1);
       expect(await prisma.composeSend.count({ where: { clientId: sent.clientId } })).toBe(1);
+    });
+  });
+
+  describe("rate limits", () => {
+    it("answers a discard that Gmail rate limits with its own error", async () => {
+      const input = fields();
+      await inboxComposeDraftSave(deps(), a, input);
+      gmail.failNext(429, { urlIncludes: "/drafts/", times: 100 });
+      await expect(
+        inboxComposeDiscard(deps(), a, { clientId: input.clientId }),
+      ).rejects.toMatchObject({
+        code: "TOO_MANY_REQUESTS",
+        message: "Gmail is busy. Try again in a moment.",
+      });
+      gmail.clearFailures();
+      expect(await inboxComposeDiscard(deps(), a, { clientId: input.clientId })).toEqual({
+        ok: true,
+      });
     });
   });
 

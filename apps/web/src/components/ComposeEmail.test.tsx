@@ -380,6 +380,30 @@ it("retries a failed reply prefill", async () => {
   expect(chips()).toEqual(["Remove sam@example.test"]);
 });
 
+it("opens a reply with the cached recipient and offers a retry when the quote did not load", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  prefill.mockResolvedValue({
+    connectionId: "c1",
+    replyToMessageId: "m1",
+    to: "sam@example.test",
+    cc: "",
+    subject: "Re: Offsite",
+    body: "",
+    attachments: [],
+    quoteUnavailable: true,
+  });
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () =>
+    createRoot(container).render(
+      <ComposeEmail seed={reply("reply")} accounts={[]} connectionId="c1" onClose={() => {}} />,
+    ),
+  );
+  expect(chips()).toEqual(["Remove sam@example.test"]);
+  expect(container.textContent).toContain("The original message didn't load.");
+  expect(button("Try again")).toBeTruthy();
+});
+
 it("asks before closing with attachments", async () => {
   const onClose = vi.fn();
   await open(reply("reply"), onClose);
