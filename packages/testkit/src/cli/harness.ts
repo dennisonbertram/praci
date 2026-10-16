@@ -91,7 +91,7 @@ async function main() {
     });
 
     if (integration) {
-      const suites = [
+      const listed = [
         "packages/testkit/src/pi-offline.postgres.test.ts",
         "packages/testkit/src/usage-accounting.postgres.test.ts",
         "packages/db/src/history-retrieval.postgres.test.ts",
@@ -112,6 +112,9 @@ async function main() {
         "packages/testkit/src/executor-lifecycle.test.ts",
         "packages/testkit/src/connections.test.ts",
         "packages/testkit/src/bot-secrets.test.ts",
+        "packages/testkit/src/messaging.test.ts",
+        "packages/testkit/src/mention-targets.test.ts",
+        "packages/testkit/src/runs-list.test.ts",
         "packages/db/src/space-membership.postgres.test.ts",
         "packages/db/src/messaging.postgres.test.ts",
         "packages/db/src/billing.postgres.test.ts",
@@ -122,6 +125,11 @@ async function main() {
         "packages/adapters/src/job-reconciler.postgres.test.ts",
         "packages/adapters/src/cloud-agent.postgres.test.ts",
       ];
+      // Every *.postgres.test.ts runs here, so a new suite cannot be forgotten in the list above.
+      const discovered = execSync("git ls-files '*.postgres.test.ts'", { encoding: "utf8" })
+        .split("\n")
+        .filter(Boolean);
+      const suites = [...new Set([...listed, ...discovered])];
       // Each app reconciles all durable work in its database, including intentionally
       // unfinished fixture runs. Clone the pristine migrated schema so one suite
       // cannot execute another suite's backlog or wait for it during shutdown.
