@@ -13,6 +13,7 @@
     "intl:extract": "lingui extract --clean",
     "intl:compile": "lingui compile",
     "storybook": "storybook dev -p 6106",
+    "storybook:smoke": "node .storybook/smoke.mjs storybook-static",
     "build-storybook": "storybook build"
   },
   "dependencies": {

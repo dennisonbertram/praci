@@ -12,3 +12,5 @@ export const Loaded: StoryObj = { beforeEach: () => mockRpc({ "pins.get": mockPi
 ```
 
 A function value receives the call's input. Shared invented data lives in `src/stories/fixtures.ts`; add to it rather than editing the mock. Every story is wrapped in Lingui's provider and a `MemoryRouter`.
+
+Smoke test: after `build-storybook`, run `node .storybook/smoke.mjs storybook-static [path-filter]` from `apps/web`. It opens every story in headless Chromium and fails on a page error, a console error or an empty render.
