@@ -3,7 +3,6 @@ import { DEFAULT_BOT_COLOR } from "@rakazo/core";
 import { BotAvatar } from "@rakazo/ui-web";
 import { Clock, Puzzle } from "lucide-react";
 
-
 const GLYPHS = { group: "G", everyone: "@" } as const;
 
 /** Icon for a mention in the picker ("option") or in the composer ("chip"). */
