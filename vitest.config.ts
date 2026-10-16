@@ -41,6 +41,7 @@ export default defineConfig({
     setupFiles: ["./packages/testkit/src/pin-test-env.ts"],
     include: [
       ".agents/skills/pr-watch/*.test.ts",
+      "scripts/*.test.mjs",
       "packages/*/src/**/*.test.{ts,tsx}",
       "infra/sandboxes/supervisor/src/**/*.test.ts",
       "infra/updater/src/**/*.test.ts",

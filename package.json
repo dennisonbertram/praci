@@ -13,6 +13,8 @@
     "build": "turbo build",
     "check": "turbo check",
     "lint": "biome check .",
+    "design-system": "node scripts/design-system.mjs --write",
+    "design-system:check": "node scripts/design-system.mjs --check",
     "format": "biome check --write .",
     "db:generate": "pnpm --filter @rakazo/db generate",
     "db:migrate": "pnpm --filter @rakazo/db migrate",
