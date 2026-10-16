@@ -738,7 +738,7 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
                 {paidWith ? (
                   <span
                     role="tooltip"
-                    className="pointer-events-none ms-2.5 hidden whitespace-nowrap rounded-full bg-primary px-2.5 py-0.5 align-middle text-[11px] font-normal text-primary-foreground group-focus-within/row:inline-block group-hover/row:inline-block"
+                    className="pointer-events-none invisible ms-2.5 inline-block whitespace-nowrap rounded-full bg-primary px-2.5 py-0.5 align-middle text-[11px] font-normal leading-4 text-primary-foreground group-focus-within/row:visible group-hover/row:visible"
                   >
                     {paidWith}
                   </span>

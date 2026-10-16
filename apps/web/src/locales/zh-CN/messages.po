@@ -3130,6 +3130,10 @@ msgstr ""
 msgid "Git event"
 msgstr "Git 事件"
 
+#: src/lib/inbox-sync-error.ts
+msgid "Gmail is limiting requests right now. Try again in a minute."
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail needs to be reconnected."

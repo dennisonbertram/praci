@@ -199,8 +199,8 @@ export async function flagReconnect(deps: ComposeDeps, connectionId: string): Pr
   await deps.prisma.mailSyncState
     .upsert({
       where: { connectionId },
-      create: { connectionId, lastErrorAt: now, needsReconnect: true },
-      update: { lastErrorAt: now, needsReconnect: true },
+      create: { connectionId, lastErrorAt: now, needsReconnect: true, lastErrorKind: "auth" },
+      update: { lastErrorAt: now, needsReconnect: true, lastErrorKind: "auth" },
     })
     .catch(() => undefined);
 }

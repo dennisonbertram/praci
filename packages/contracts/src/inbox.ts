@@ -125,6 +125,8 @@ export const InboxListOutputSchema = z.object({
   failedAccounts: z.array(Id),
   /** The failed accounts whose login the provider refused: they need reconnecting. */
   reconnectAccounts: z.array(Id),
+  /** The failed accounts the provider rate limited; optional so older servers and clients still match. */
+  rateLimitedAccounts: z.array(Id).optional(),
   /** True when triage can run: a usable model the user has allowed. Clients hide triage UI otherwise. */
   enabled: z.boolean(),
   /** Why `enabled` is false; null when triage can run. */
