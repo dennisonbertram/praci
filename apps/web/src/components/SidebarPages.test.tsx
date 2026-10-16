@@ -32,6 +32,7 @@ const rpcMock = vi.hoisted(() => ({
   add: vi.fn(),
   remove: vi.fn(),
 }));
+vi.mock("../lib/user-error", () => ({ errorText: () => "Could not add the page" }));
 vi.mock("../lib/rpc", () => ({ rpc: { sidebarPages: rpcMock } }));
 
 import { SidebarPages } from "./SidebarPages";
@@ -64,23 +65,27 @@ async function render(templates: SidebarPageTemplate[], at = "/app") {
     );
   });
 }
+const state = (pages: string[], addable: string[]) => ({
+  pages: pages.map((templateKey) => ({ templateKey })),
+  addable,
+});
 const byText = (value: string) =>
   [...document.body.querySelectorAll<HTMLElement>("[role=menuitem], button")].find((el) =>
     el.textContent?.includes(value),
   );
-const click = async (el: HTMLElement | null | undefined) => {
+const click = async (el: Element | null | undefined) => {
   await act(async () => {
     el?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
     el?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     el?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-    el?.click();
+    (el as HTMLElement | null | undefined)?.click();
   });
 };
 
 beforeEach(() => {
-  rpcMock.list.mockReset().mockResolvedValue([]);
-  rpcMock.add.mockReset().mockResolvedValue({ ok: true });
-  rpcMock.remove.mockReset().mockResolvedValue({ ok: true });
+  rpcMock.list.mockReset().mockResolvedValue(state([], ["team-health"]));
+  rpcMock.add.mockReset().mockResolvedValue(state(["team-health"], []));
+  rpcMock.remove.mockReset().mockResolvedValue(state([], ["team-health"]));
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -91,35 +96,62 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
+const addRow = () => container.querySelector("[data-testid=sidebar-add-page]");
+const pageRow = () => container.querySelector("[data-testid=sidebar-page-team-health]");
+
 it("hides the add row when no template is available", async () => {
   await render([template({ available: false })]);
-  expect(container.querySelector("[data-testid=sidebar-add-page]")).toBeNull();
+  expect(addRow()).toBeNull();
   expect(rpcMock.list).not.toHaveBeenCalled();
+});
+
+it("shows the add row only after the list has loaded", async () => {
+  let resolve!: (value: unknown) => void;
+  rpcMock.list.mockReturnValue(new Promise((r) => (resolve = r)));
+  await render([template()]);
+  expect(addRow()).toBeNull();
+  await act(async () => resolve(state([], ["team-health"])));
+  expect(addRow()).not.toBeNull();
+});
+
+it("does not offer a template the server did not list as addable", async () => {
+  rpcMock.list.mockResolvedValue(state([], []));
+  await render([template()]);
+  expect(addRow()).toBeNull();
 });
 
 it("adds an available page and shows its link", async () => {
   await render([template()]);
-  await click(container.querySelector("[data-testid=sidebar-add-page]"));
+  await click(addRow());
   await click(byText("Team health"));
   expect(rpcMock.add).toHaveBeenCalledWith({ templateKey: "team-health" });
-  expect(container.querySelector("[data-testid=sidebar-page-team-health]")).not.toBeNull();
-  // Nothing left to add, so the row goes away.
-  expect(container.querySelector("[data-testid=sidebar-add-page]")).toBeNull();
+  expect(pageRow()).not.toBeNull();
+  expect(addRow()).toBeNull();
+});
+
+it("shows the error and adds no row when add fails", async () => {
+  rpcMock.add.mockRejectedValue(new Error("nope"));
+  await render([template()]);
+  await click(addRow());
+  await click(byText("Team health"));
+  expect(pageRow()).toBeNull();
+  expect(container.querySelector("[role=alert]")?.textContent).toBe("Could not add the page");
+  expect(addRow()).not.toBeNull();
 });
 
 it("shows pages the user already added, and opens the route", async () => {
-  rpcMock.list.mockResolvedValue([{ templateKey: "team-health" }]);
+  rpcMock.list.mockResolvedValue(state(["team-health"], []));
   await render([template()]);
-  await click(container.querySelector("[data-testid=sidebar-page-team-health]"));
+  await click(pageRow());
   expect(path).toBe("/app/team-health");
 });
 
 it("removes a page and leaves its route", async () => {
-  rpcMock.list.mockResolvedValue([{ templateKey: "team-health" }]);
+  rpcMock.list.mockResolvedValue(state(["team-health"], []));
   await render([template()], "/app/team-health");
   await click(container.querySelector("[aria-label='Page options']"));
   await click(byText("Remove from sidebar"));
   expect(rpcMock.remove).toHaveBeenCalledWith({ templateKey: "team-health" });
-  expect(container.querySelector("[data-testid=sidebar-page-team-health]")).toBeNull();
+  expect(pageRow()).toBeNull();
   expect(path).toBe("/app");
 });

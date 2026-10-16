@@ -27,12 +27,13 @@ type Story = StoryObj<typeof meta>;
 
 /** Nothing added yet: only the add row. */
 export const NothingAdded: Story = {
-  beforeEach: () => mockRpc({ "sidebarPages.list": [] }),
+  beforeEach: () => mockRpc({ "sidebarPages.list": { pages: [], addable: ["team-health"] } }),
 };
 
 /** The page is added, so its row shows and the add row is gone. */
 export const PageAdded: Story = {
-  beforeEach: () => mockRpc({ "sidebarPages.list": [{ templateKey: "team-health" }] }),
+  beforeEach: () =>
+    mockRpc({ "sidebarPages.list": { pages: [{ templateKey: "team-health" }], addable: [] } }),
 };
 
 /** No template is available: nothing is shown. */

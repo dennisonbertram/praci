@@ -183,7 +183,7 @@ import {
 import { MessageReactionSchema } from "./reactions.js";
 import { RoutineHistorySchema, RoutineRunCursorSchema, RunsListOutputSchema } from "./runs.js";
 import { SearchQueryOutputSchema } from "./search.js";
-import { SidebarPageInputSchema, SidebarPageSchema } from "./sidebar-pages.js";
+import { SidebarPageInputSchema, SidebarPagesStateSchema } from "./sidebar-pages.js";
 
 const botId = z.object({ botId: Id });
 const groupId = z.object({ groupId: Id });
@@ -1106,9 +1106,9 @@ export const appContract = {
     delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
   },
   sidebarPages: {
-    list: oc.output(z.array(SidebarPageSchema)),
-    add: oc.input(SidebarPageInputSchema).output(z.object({ ok: z.literal(true) })),
-    remove: oc.input(SidebarPageInputSchema).output(z.object({ ok: z.literal(true) })),
+    list: oc.output(SidebarPagesStateSchema),
+    add: oc.input(SidebarPageInputSchema).output(SidebarPagesStateSchema),
+    remove: oc.input(SidebarPageInputSchema).output(SidebarPagesStateSchema),
   },
   finance: {
     agent: oc.output(BotSchema),

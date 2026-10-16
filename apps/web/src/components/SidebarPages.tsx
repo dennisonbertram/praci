@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { SidebarPageTemplate } from "@rakazo/contracts";
+import type { SidebarPagesState, SidebarPageTemplate } from "@rakazo/contracts";
 import { SIDEBAR_PAGE_TEMPLATES } from "@rakazo/contracts";
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import { rpc } from "../lib/rpc";
 import { sidebarPageCopy } from "../lib/sidebar-page-copy";
+import { errorText } from "../lib/user-error";
 import { AddSidebarPage } from "./AddSidebarPage";
 import { SidebarPageLink } from "./SidebarPageLink";
 
@@ -26,35 +27,48 @@ export function SidebarPages({
   const { t } = useLingui();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [added, setAdded] = useState<string[]>([]);
+  const [state, setState] = useState<SidebarPagesState | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     // Nothing can be added in this build, so there is nothing to load.
     if (!templates.some((template) => template.available)) return;
+    let active = true;
     void rpc.sidebarPages
       .list()
-      .then((pages) => setAdded(pages.map((page) => page.templateKey)))
+      .then((next) => active && setState(next))
       .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [templates]);
 
   const add = useCallback(async (templateKey: string) => {
-    await rpc.sidebarPages.add({ templateKey });
-    setAdded((current) => (current.includes(templateKey) ? current : [...current, templateKey]));
+    setError("");
+    try {
+      setState(await rpc.sidebarPages.add({ templateKey }));
+    } catch (cause) {
+      setError(errorText(cause));
+    }
   }, []);
 
   const remove = useCallback(
     async (template: SidebarPageTemplate) => {
-      await rpc.sidebarPages.remove({ templateKey: template.key });
-      setAdded((current) => current.filter((key) => key !== template.key));
+      setError("");
+      try {
+        setState(await rpc.sidebarPages.remove({ templateKey: template.key }));
+      } catch (cause) {
+        setError(errorText(cause));
+        return;
+      }
       if (matchPath({ path: template.route, end: false }, pathname)) navigate("/app");
     },
     [navigate, pathname],
   );
 
+  const added = state?.pages.map((page) => page.templateKey) ?? [];
   const rows = added.flatMap((key) => templates.find((template) => template.key === key) ?? []);
-  const addable = templates.filter(
-    (template) => template.available && !added.includes(template.key),
-  );
+  const addable = templates.filter((template) => state?.addable.includes(template.key));
 
   return (
     <>
@@ -86,6 +100,11 @@ export function SidebarPages({
         </div>
       ))}
       <AddSidebarPage templates={addable} onAdd={(key) => void add(key)} />
+      {error ? (
+        <p role="alert" className="mx-5 mb-1 text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
     </>
   );
 }

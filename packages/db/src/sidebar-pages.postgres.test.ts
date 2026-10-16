@@ -35,6 +35,7 @@ describePostgres("sidebar pages (PostgreSQL)", () => {
     userId: owner.userId,
   };
   const userIds = [owner.userId, member.userId];
+  const pages = async (who: typeof owner) => (await listSidebarPages(prisma, who, templates)).pages;
   let prisma: PrismaClient;
   let close: () => Promise<void>;
 
@@ -100,20 +101,17 @@ describePostgres("sidebar pages (PostgreSQL)", () => {
     await addSidebarPage(prisma, owner, "alpha", templates);
     await addSidebarPage(prisma, owner, "beta", templates);
     await addSidebarPage(prisma, owner, "alpha", templates);
-    expect(await listSidebarPages(prisma, owner)).toEqual([
-      { templateKey: "alpha" },
-      { templateKey: "beta" },
-    ]);
+    expect(await pages(owner)).toEqual([{ templateKey: "alpha" }, { templateKey: "beta" }]);
     await removeSidebarPage(prisma, owner, "alpha");
     await removeSidebarPage(prisma, owner, "alpha");
-    expect(await listSidebarPages(prisma, owner)).toEqual([{ templateKey: "beta" }]);
+    expect(await pages(owner)).toEqual([{ templateKey: "beta" }]);
   });
 
   it("keeps pages private to the user and the space", async () => {
-    expect(await listSidebarPages(prisma, member)).toEqual([]);
-    expect(await listSidebarPages(prisma, otherSpace)).toEqual([]);
+    expect(await pages(member)).toEqual([]);
+    expect(await pages(otherSpace)).toEqual([]);
     await removeSidebarPage(prisma, member, "beta");
-    expect(await listSidebarPages(prisma, owner)).toEqual([{ templateKey: "beta" }]);
+    expect(await pages(owner)).toEqual([{ templateKey: "beta" }]);
   });
 
   it("rejects unknown and unavailable templates", async () => {
@@ -133,6 +131,16 @@ describePostgres("sidebar pages (PostgreSQL)", () => {
       code: "owner_only",
     });
     await addSidebarPage(prisma, owner, "owned", templates);
-    expect((await listSidebarPages(prisma, owner)).map((p) => p.templateKey)).toContain("owned");
+    expect((await pages(owner)).map((p) => p.templateKey)).toContain("owned");
+  });
+
+  it("offers owner-only templates in addable only to the space owner", async () => {
+    await removeSidebarPage(prisma, owner, "owned");
+    const ownerState = await listSidebarPages(prisma, owner, templates);
+    const memberState = await listSidebarPages(prisma, member, templates);
+    expect(ownerState.addable).toContain("owned");
+    expect(memberState.addable).toEqual(["alpha", "beta"]);
+    expect(ownerState.addable).not.toContain("off");
+    expect(ownerState.addable).not.toContain("beta");
   });
 });

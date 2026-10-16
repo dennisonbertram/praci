@@ -30,3 +30,10 @@ export type SidebarPage = z.infer<typeof SidebarPageSchema>;
 export const SidebarPageInputSchema = z.object({
   templateKey: SidebarPageKeySchema,
 });
+
+/** The user's added pages and the template keys they may still add. */
+export const SidebarPagesStateSchema = z.object({
+  pages: z.array(SidebarPageSchema),
+  addable: z.array(SidebarPageKeySchema),
+});
+export type SidebarPagesState = z.infer<typeof SidebarPagesStateSchema>;

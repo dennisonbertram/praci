@@ -6242,16 +6242,14 @@ export function createRouter(deps: RouterDeps) {
       list: authed.sidebarPages.list.handler(({ context }) =>
         listSidebarPages(deps.prisma, actorScope(context.actor)),
       ),
-      add: authed.sidebarPages.add.handler(async ({ context, input }) => {
-        await addSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey).catch(
+      add: authed.sidebarPages.add.handler(({ context, input }) =>
+        addSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey).catch(
           sidebarPageError,
-        );
-        return { ok: true as const };
-      }),
-      remove: authed.sidebarPages.remove.handler(async ({ context, input }) => {
-        await removeSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey);
-        return { ok: true as const };
-      }),
+        ),
+      ),
+      remove: authed.sidebarPages.remove.handler(({ context, input }) =>
+        removeSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey),
+      ),
     },
     contacts: {
       list: authed.contacts.list.handler(({ context, input }) =>
