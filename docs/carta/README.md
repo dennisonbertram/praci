@@ -55,16 +55,20 @@ reachable through it. PR 1 records this in this file.
    `carta-agent:<userId>` (`cartaAgentSpawnKey`, `isCartaAgentSpawnKey`), created
    idempotently by `ensureCartaAgent` in `apps/api/src/carta-agent.ts` and exposed
    as RPC `carta.agent`. `bots.create` rejects the reserved prefix
-   (`router.ts`, next to the `finance-agent:` check). Once Carta is connected, its
-   card on Integrations offers "Open Carta agent", which calls `carta.agent` and
-   opens the bot. No new page in v1.
-3. **Carta is read-only for the agent.** `CARTA_READ_TOOLS` lists the allowed tools
+   (`router.ts`, next to the `finance-agent:` check).
+3. **"Cap Table" in the sidebar opens the Carta agent.** A `SidebarPageLink`
+   (`sidebar-cap-table`) under Finance in `Shell.tsx` routes to `/app/cap-table`.
+   With Carta connected, the route calls `carta.agent` and shows the Carta agent's
+   chat full width; without it, the page shows only "Connect Carta", which opens
+   the Integrations Carta tile's dialog. No cap table dashboard and no stored
+   cap table data in v1; a dashboard needs Carta's real tool output first.
+4. **Carta is read-only for the agent.** `CARTA_READ_TOOLS` lists the allowed tools
    explicitly; `assignCartaServers` writes them to `BotMcpServer.allowedTools`, and
    `assignmentAllowsTool` in `mcp-connector.ts` enforces the list for this spawn key
    even when `allowAllTools` is set (the Finance agent's guard). If Rakazo's OAuth
    client can request scopes per server, request only the `read_*` scopes.
    `set_context` stays allowed because it selects a company, not data.
-4. **Writing happens in Gmail and Drive, behind approval.** The agent gets the
+5. **Writing happens in Gmail and Drive, behind approval.** The agent gets the
    built-in `mail_search`, `mail_get`, `mail_draft`, `mail_send`, `drive_search`,
    `drive_read` and `drive_create_file`. Each write already pauses for the
    founder's "Allow once" (`action-approval.ts`). The skills always save a draft
@@ -73,10 +77,10 @@ reachable through it. PR 1 records this in this file.
    agent asks every time, whatever rules exist. Unlike the Finance agent, this
    agent keeps the built-in Google tools; it still gets no Composio or Pipedream
    tools.
-5. **It reads Finance numbers through the existing tools.** `financeToolsAllowed`
+6. **It reads Finance numbers through the existing tools.** `financeToolsAllowed`
    is widened to the Carta spawn key so `finance_overview` and `finance_breakdown`
    supply cash, burn and runway. No new finance code.
-6. **Two built-in skills**, added to `packages/adapters/src/builtin-skills.ts` (no
+7. **Two built-in skills**, added to `packages/adapters/src/builtin-skills.ts` (no
    migration):
    - `carta-investor-update`: pick the period; pull metrics from `finance_*`;
      pull ownership and new investors from Carta; read the last two sent updates
@@ -97,12 +101,12 @@ reachable through it. PR 1 records this in this file.
      figures, it gives the founder the Carta numbers to compare inside DocuSign.
      It never signs or confirms on the founder's behalf, and never answers in a
      confirmation portal.
-7. **A routine nudges audit season.** Creating the agent adds one inactive
+8. **A routine nudges audit season.** Creating the agent adds one inactive
    suggestion the founder can turn on: weekly from January to March, run
    `@carta-audit-response` and report new requests. The investor-update routine
    (monthly or quarterly) is offered the same way. Both use the existing `Routine`
    table and `@Skill` mentions.
-8. **No new tables in v1.** Open audit requests live in Gmail threads and the
+9. **No new tables in v1.** Open audit requests live in Gmail threads and the
    agent's replies; Rakazo stores nothing new about investors. An audit tracker is
    a v2 decision once the skill shows what needs tracking.
 
@@ -114,7 +118,7 @@ reachable through it. PR 1 records this in this file.
 - Opening or signing DocuSign envelopes (a DocuSign connection is a v2 option).
 - Confirmation.com and other auditor portals.
 - The fund (LP-side) persona and the CRM scopes.
-- A Carta page or dashboard.
+- A cap table dashboard (the Cap Table page is the agent's chat).
 - An investor CRM in Rakazo.
 
 ## Tests
@@ -142,7 +146,8 @@ reachable through it. PR 1 records this in this file.
 2. Contracts and agent: `carta.ts`, `ensureCartaAgent`, `carta.agent` RPC, reserved
    prefix, the MCP guard, Finance tool gate, tests.
 3. Skills: `carta-investor-update`, `carta-audit-response`, evals.
-4. Web: "Open Carta agent" on the Carta card, routine suggestions, e2e screenshot.
+4. Web: the Cap Table sidebar item and `/app/cap-table` route, routine
+   suggestions, a web e2e that opens the page, and its CI screenshot.
 
 ## Open risks
 
