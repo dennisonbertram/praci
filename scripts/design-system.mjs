@@ -54,7 +54,7 @@ export function findComponents(source) {
       if (l.match(/^\s*/)[0].length <= indent && !/^\s*[})\]]/.test(l) && !/^\s*\./.test(l)) break;
     }
     const body = lines.slice(i, j).join("\n");
-    if (!JSX.test(body.slice(line.length))) return;
+    if (!JSX.test(body)) return;
     if (/^\s*(export\s+)?const\s+\w+\s*:\s*[^=]*(Record|Map)</.test(line)) return;
     if (
       /Providers?$/.test(name) &&
@@ -123,12 +123,11 @@ const isWebSource = (f) =>
 function scan() {
   const all = [...WEB_ROOTS.flatMap((r) => walk(r)), ...walk(MOBILE_ROOT)];
   const read = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
-  const stories = all.filter((f) => f.endsWith(".stories.tsx"));
   const web = [];
   for (const f of WEB_ROOTS.flatMap((r) => all.filter((a) => a.startsWith(`${r}/`)))) {
     if (!isWebSource(f)) continue;
     const names = findComponents(read(f));
-    if (names.length) web.push({ file: f, names, stories: storiesFor(f, stories, read) });
+    if (names.length) web.push({ file: f, names, stories: storiesFor(f, all, read) });
   }
   const mobile = [];
   for (const f of all.filter(

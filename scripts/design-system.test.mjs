@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { findComponents, storiesFor } from "./design-system.mjs";
 
+// Same inventory the real run passes: every scanned file, sources and stories together.
 const files = [
   "apps/web/src/components/A.tsx",
   "apps/web/src/components/A.stories.tsx",
@@ -32,5 +33,9 @@ describe("findComponents", () => {
   it("finds rendered components and skips non-rendering helpers and children-only providers", () => {
     const src = `export function Card() {\n  return <div />;\n}\nexport function fmt() {\n  return 1;\n}\nexport function ThemeProvider({ children }) {\n  return <Ctx.Provider value={1}>{children}</Ctx.Provider>;\n}\n`;
     expect(findComponents(src)).toEqual(["Card"]);
+  });
+  it("finds compact one-line components", () => {
+    expect(findComponents("export const Foo = () => <div />;\n")).toEqual(["Foo"]);
+    expect(findComponents("export function Bar() { return <div />; }\n")).toEqual(["Bar"]);
   });
 });
