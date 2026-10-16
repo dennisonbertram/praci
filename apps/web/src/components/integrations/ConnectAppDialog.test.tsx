@@ -68,13 +68,20 @@ const data = (connections: Connection[] = []): IntegrationsData => ({
   refresh: vi.fn().mockResolvedValue(undefined),
 });
 
-async function mount(connections: Connection[] = []) {
+async function mount(connections: Connection[] = [], confirmFirst = false) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   await act(async () => {
-    root.render(<ConnectAppDialog item={item} data={data(connections)} onClose={vi.fn()} />);
+    root.render(
+      <ConnectAppDialog
+        item={item}
+        data={data(connections)}
+        confirmFirst={confirmFirst}
+        onClose={vi.fn()}
+      />,
+    );
   });
   return root;
 }
@@ -132,4 +139,19 @@ it("keeps waiting when the sign-in window reads as closed and Try again reuses t
     await vi.advanceTimersByTimeAsync(2100);
   });
   expect(text()).toContain("Slack connected");
+});
+
+it("creates no connection until Connect is clicked when opened by a link", async () => {
+  vi.spyOn(window, "open").mockReturnValue(null);
+  await mount([], true);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5000);
+  });
+  expect(api.begin).not.toHaveBeenCalled();
+  expect(api.complete).not.toHaveBeenCalled();
+  const connect = [...document.querySelectorAll("button")].find((b) => b.textContent === "Connect");
+  await act(async () => {
+    connect?.click();
+  });
+  expect(api.begin).toHaveBeenCalledTimes(1);
 });
