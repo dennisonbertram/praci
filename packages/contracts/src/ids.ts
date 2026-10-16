@@ -11,6 +11,12 @@ export const ActorSchema = z.object({
 });
 export type Actor = z.infer<typeof ActorSchema>;
 
+/** The space and user every tenant-scoped query and record is keyed by. */
+export const actorScope = ({ spaceId, userId }: Pick<Actor, "spaceId" | "userId">) => ({
+  spaceId,
+  userId,
+});
+
 export const BOT_COLORS = [
   "#3EC5A8",
   "#F5A03C",

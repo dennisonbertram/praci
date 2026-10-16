@@ -21,6 +21,7 @@ import type {
   FinanceWalletUpdateInput,
 } from "@rakazo/contracts";
 import {
+  actorScope,
   CRYPTO_API_KEY_HEADER,
   CRYPTO_MCP_ENDPOINT,
   financeAgentSpawnKey,
@@ -33,8 +34,6 @@ import { getLogger } from "@rakazo/logging";
 import type { FinanceDeps } from "./finance.js";
 import { assignFinanceServers } from "./finance-agent.js";
 import { notFound } from "./inbox.js";
-
-const scopeOf = (actor: Actor) => ({ spaceId: actor.spaceId, userId: actor.userId });
 
 const toWallet = (row: Prisma.FinanceWalletGetPayload<object>): FinanceWallet => ({
   id: row.id,
@@ -62,21 +61,21 @@ const toHolding = (row: Prisma.FinanceCryptoHoldingGetPayload<object>): CryptoHo
 
 export async function loadWallets(deps: FinanceDeps, actor: Actor): Promise<FinanceWallet[]> {
   const rows = await deps.prisma.financeWallet.findMany({
-    where: scopeOf(actor),
+    where: actorScope(actor),
     orderBy: { createdAt: "asc" },
   });
   return rows.map(toWallet);
 }
 
 async function loadHoldings(deps: FinanceDeps, actor: Actor): Promise<CryptoHolding[]> {
-  const rows = await deps.prisma.financeCryptoHolding.findMany({ where: scopeOf(actor) });
+  const rows = await deps.prisma.financeCryptoHolding.findMany({ where: actorScope(actor) });
   return rows.map(toHolding);
 }
 
 /** The Blockscout server is not a finance provider, so it is found by its endpoint. */
 async function cryptoServer(deps: FinanceDeps, actor: Actor) {
   const rows = await deps.prisma.mcpServer.findMany({
-    where: scopeOf(actor),
+    where: actorScope(actor),
     orderBy: { createdAt: "asc" },
   });
   const own = rows.filter((row) => isCryptoEndpoint(row.endpoint));
@@ -111,7 +110,7 @@ export async function loadCryptoSummary(deps: FinanceDeps, actor: Actor) {
   const [wallets, holdings, exchange] = await Promise.all([
     loadWallets(deps, actor),
     loadHoldings(deps, actor),
-    deps.prisma.financeExchangeBalance.findMany({ where: scopeOf(actor) }),
+    deps.prisma.financeExchangeBalance.findMany({ where: actorScope(actor) }),
   ]);
   if (wallets.length === 0 && exchange.length === 0) return null;
   return withExchanges(summarizeCrypto(holdings), exchange);
@@ -124,7 +123,7 @@ export async function syncCryptoQuietly(
   opts: { walletIds?: string[]; signal?: AbortSignal } = {},
 ): Promise<void> {
   try {
-    await deps.crypto?.sync(scopeOf(actor), { ...opts, force: true });
+    await deps.crypto?.sync(actorScope(actor), { ...opts, force: true });
   } catch (error) {
     getLogger().warn("crypto sync failed", {
       reason: error instanceof Error ? error.name : "error",
@@ -159,7 +158,7 @@ export async function financeWalletAdd(
     }
     let resolved: string | null;
     try {
-      resolved = await deps.crypto.resolveEns(scopeOf(actor), parsed.name, signal);
+      resolved = await deps.crypto.resolveEns(actorScope(actor), parsed.name, signal);
     } catch (error) {
       getLogger().warn("ens lookup failed", {
         reason: error instanceof Error ? error.name : "error",
@@ -171,13 +170,13 @@ export async function financeWalletAdd(
     ensName = parsed.name;
   }
   const conflict = () => new ORPCError("CONFLICT", { message: "That wallet is already added" });
-  if (await deps.prisma.financeWallet.findFirst({ where: { ...scopeOf(actor), address } })) {
+  if (await deps.prisma.financeWallet.findFirst({ where: { ...actorScope(actor), address } })) {
     throw conflict();
   }
   const row = await deps.prisma.financeWallet
     .create({
       data: {
-        ...scopeOf(actor),
+        ...actorScope(actor),
         address,
         ensName,
         label: input.label ?? null,
@@ -197,7 +196,7 @@ export async function financeWalletUpdate(
   actor: Actor,
   input: FinanceWalletUpdateInput,
 ): Promise<FinanceWallet> {
-  const where = { id: input.id, ...scopeOf(actor) };
+  const where = { id: input.id, ...actorScope(actor) };
   const { count } = await deps.prisma.financeWallet.updateMany({
     where,
     data: {
@@ -217,7 +216,7 @@ export async function financeWalletRemove(
   input: { id: string },
 ): Promise<{ ok: true }> {
   const { count } = await deps.prisma.financeWallet.deleteMany({
-    where: { id: input.id, ...scopeOf(actor) },
+    where: { id: input.id, ...actorScope(actor) },
   });
   if (!count) throw notFound();
   return { ok: true };
@@ -228,12 +227,12 @@ export async function financeCrypto(deps: FinanceDeps, actor: Actor): Promise<Fi
     loadWallets(deps, actor),
     loadHoldings(deps, actor),
     cryptoServer(deps, actor),
-    hasAlchemyKey(deps.prisma, scopeOf(actor)),
-    deps.prisma.financeExchangeBalance.findMany({ where: scopeOf(actor) }),
+    hasAlchemyKey(deps.prisma, actorScope(actor)),
+    deps.prisma.financeExchangeBalance.findMany({ where: actorScope(actor) }),
   ]);
   const state = server
     ? await deps.prisma.financeSyncState.findFirst({
-        where: { mcpServerId: server.id, ...scopeOf(actor) },
+        where: { mcpServerId: server.id, ...actorScope(actor) },
         select: { lastError: true },
       })
     : null;
@@ -278,7 +277,7 @@ export async function financeCryptoProviderConnect(
       message: ALCHEMY_REJECTION[error.kind] ?? "Could not check the Alchemy key",
     });
   }
-  await storeAlchemyKey(deps.prisma, deps.secrets, scopeOf(actor), input.apiKey);
+  await storeAlchemyKey(deps.prisma, deps.secrets, actorScope(actor), input.apiKey);
   await syncCryptoQuietly(deps, actor);
   return { ok: true };
 }
@@ -287,7 +286,7 @@ export async function financeCryptoProviderRemove(
   deps: FinanceDeps,
   actor: Actor,
 ): Promise<{ ok: true }> {
-  await removeAlchemyKey(deps.prisma, scopeOf(actor));
+  await removeAlchemyKey(deps.prisma, actorScope(actor));
   await syncCryptoQuietly(deps, actor);
   return { ok: true };
 }
@@ -307,7 +306,7 @@ export async function financeCryptoConnect(
     (await deps.prisma.mcpServer
       .create({
         data: {
-          ...scopeOf(actor),
+          ...actorScope(actor),
           slug: "crypto-blockscout",
           name: "Blockscout",
           transport: "streamable_http",
@@ -328,14 +327,14 @@ export async function financeCryptoConnect(
     const stored = await deps.secrets.put(blob ?? "", {
       operationId: "finance.crypto.connect",
       traceId: "finance.crypto.connect",
-      ...scopeOf(actor),
+      ...actorScope(actor),
       botId: "mcp",
       signal: new AbortController().signal,
     });
     current = await persistPreparedSecret(deps.prisma, deps.secrets, stored, () =>
       deps.prisma.$transaction(async (tx) => {
         await tx.secret.create({
-          data: { id: stored.id, ...scopeOf(actor), kind: "mcp", ciphertext: stored.ciphertext },
+          data: { id: stored.id, ...actorScope(actor), kind: "mcp", ciphertext: stored.ciphertext },
         });
         const updated = await tx.mcpServer.update({
           where: { id: server.id },
@@ -347,7 +346,7 @@ export async function financeCryptoConnect(
           },
         });
         if (previousSecretId) {
-          await tx.secret.deleteMany({ where: { id: previousSecretId, ...scopeOf(actor) } });
+          await tx.secret.deleteMany({ where: { id: previousSecretId, ...actorScope(actor) } });
         }
         return updated;
       }),
@@ -359,7 +358,7 @@ export async function financeCryptoConnect(
     });
   }
   const bot = await deps.prisma.bot.findFirst({
-    where: { ...scopeOf(actor), spawnKey: financeAgentSpawnKey(actor.userId), archivedAt: null },
+    where: { ...actorScope(actor), spawnKey: financeAgentSpawnKey(actor.userId), archivedAt: null },
     select: { id: true },
   });
   if (bot) await assignFinanceServers(deps.prisma, actor, bot.id);
