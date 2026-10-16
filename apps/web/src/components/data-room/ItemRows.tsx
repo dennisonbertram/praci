@@ -196,13 +196,14 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
           {...rowProps(item, o)}
           aria-current={o.shownId === item.id}
           className={cn(
-            "flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+            "relative flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
             o.shownId === item.id && "bg-sidebar-accent",
           )}
         >
           <span className="grid h-20 place-items-center rounded-md bg-muted">
             <Marker item={item} />
           </span>
+          <ItemMenu item={item} onAction={o.onAction} className="absolute top-3 right-3" />
           <span className="truncate font-medium" title={item.name}>
             {item.name}
           </span>

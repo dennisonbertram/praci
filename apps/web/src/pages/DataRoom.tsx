@@ -159,6 +159,22 @@ export function DataRoomPage() {
     setPinned(previewOpen && !narrow ? (list.rows[0]?.item ?? null) : null);
   }, [list.loading, list.key, list.rows, queryKey, resultIds, pinned, previewOpen, narrow]);
 
+  // A reload of the same query can drop the pinned item (moved or deleted elsewhere). If it can no
+  // longer be read, close its preview.
+  const wasLoading = useRef(false);
+  useEffect(() => {
+    const finished = wasLoading.current && !list.loading;
+    wasLoading.current = list.loading;
+    if (!finished || list.key !== queryKey || !pinned || resultIds.split(",").includes(pinned.id)) {
+      return;
+    }
+    const id = pinned.id;
+    rpc.dataRoom.item({ id }).catch(() => {
+      setPinned((current) => (current?.id === id ? null : current));
+      setHovered((current) => (current?.id === id ? null : current));
+    });
+  }, [list.loading, list.key, queryKey, resultIds, pinned]);
+
   const fresh = (item: DataRoomApiItem | null) =>
     item ? (list.rows.find((row) => row.item.id === item.id)?.item ?? item) : null;
   const shown = previewOpen ? fresh(hovered ?? pinned) : null;

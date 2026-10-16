@@ -375,3 +375,46 @@ it("on a narrow page opens the preview in a dialog only on click, not on hover",
   expect(dialog?.contains(document.activeElement)).toBe(true);
   delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
 });
+
+it("shows the item menu on grid tiles", async () => {
+  await renderPage();
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('button[aria-label="Grid view"]')?.click();
+  });
+  expect(container.querySelector('[data-testid="data-room-head"]')).toBeNull();
+  expect(
+    container.querySelector('ul[aria-label="Items"] button[aria-label="More actions for b.txt"]'),
+  ).not.toBeNull();
+});
+
+it("closes the preview when a reload drops the pinned item and it can no longer be read", async () => {
+  await renderPage();
+  const preview = () => container.querySelector('[data-testid="data-room-preview"]');
+  expect(preview()).not.toBeNull();
+  rpcMock.list.mockResolvedValueOnce({ items: [item("a.txt")], nextCursor: null });
+  rpcMock.item.mockRejectedValue(new Error("gone"));
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  await settle();
+  expect(names()).toEqual(["a.txt"]);
+  expect(preview()).toBeNull();
+});
+
+it("reads the first page again when a status poll changes the value the list is sorted by", async () => {
+  rpcMock.list.mockResolvedValueOnce({
+    items: [{ ...item("p.txt"), status: "pending" }],
+    nextCursor: null,
+  });
+  await renderPage();
+  rpcMock.item.mockResolvedValueOnce({
+    ...item("p.txt"),
+    createdAt: "2026-10-02T00:00:00.000Z",
+    status: "pending",
+  });
+  const calls = rpcMock.list.mock.calls.length;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(3_100);
+  });
+  expect(rpcMock.list.mock.calls.length).toBe(calls + 1);
+});

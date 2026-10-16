@@ -25,6 +25,20 @@ const LIST_PAGE = 50;
 const SEARCH_PAGE = 20;
 const POLL_MS = 3_000;
 
+/** The value the server orders by, so a change to it means the row's place in the order changed. */
+function sortValue(item: DataRoomApiItem, sort: Sort | null) {
+  switch (sort?.field ?? "createdAt") {
+    case "date":
+      return item.facets.docDate;
+    case "type":
+      return item.facets.docType;
+    case "name":
+      return item.name;
+    default:
+      return item.createdAt;
+  }
+}
+
 function mergeRows(rows: Row[], more: Row[]) {
   const byId = new Map(rows.map((row) => [row.item.id, row]));
   const merged = [...rows];
@@ -99,6 +113,8 @@ export function useDataRoomList(q: ListQuery) {
   const cursorRef = useRef<string | null>(null);
   /** Per item, the newest status read; an older answer is dropped. */
   const pollSeq = useRef(new Map<string, number>());
+  const rowsRef = useRef(state.rows);
+  rowsRef.current = state.rows;
   const loadedKey = useRef(key);
   const latest = useRef(q);
   latest.current = q;
@@ -172,6 +188,15 @@ export function useDataRoomList(q: ListQuery) {
           .then((item) => {
             // Not if the list was reloaded or re-queried since, or a newer poll was sent.
             if (id !== generation.current || pollSeq.current.get(itemId) !== mine) return;
+            // Patching a row in place would leave it out of order and the cursor could skip
+            // documents, so when the sort value moved, read the first page again. A relevance
+            // search (no sort) is not ordered by these fields.
+            const old = rowsRef.current.find((row) => row.item.id === itemId)?.item;
+            const { query, sort } = latest.current;
+            if (old && (sort || !query) && sortValue(old, sort) !== sortValue(item, sort)) {
+              setAttempt((n) => n + 1);
+              return;
+            }
             setState((s) => ({
               ...s,
               rows: s.rows.map((row) =>
