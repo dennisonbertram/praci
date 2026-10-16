@@ -8,6 +8,7 @@
  * Normalize at the adapter boundary so every provider path benefits.
  * Does not invent parameter names — only ensures the required envelope.
  */
+import { isRecord } from "@rakazo/core";
 export function normalizeOpenAiToolParameters(parameters: unknown): Record<string, unknown> {
   const schema = flattenRootUnion(isRecord(parameters) ? { ...parameters } : {});
   const properties = isRecord(schema.properties) ? schema.properties : {};
@@ -23,10 +24,6 @@ export function openAiToolParametersNeedNormalization(parameters: unknown): bool
 }
 
 const ROOT_UNION_KEYS = ["oneOf", "anyOf", "allOf"] as const;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value != null && typeof value === "object" && !Array.isArray(value);
-}
 
 function rootUnionKey(schema: Record<string, unknown>) {
   return ROOT_UNION_KEYS.find((key) => Array.isArray(schema[key]));

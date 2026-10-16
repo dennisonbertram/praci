@@ -2,6 +2,7 @@ import { createSlackAdapter } from "@chat-adapter/slack";
 import { createTelegramAdapter } from "@chat-adapter/telegram";
 import { createWhatsAppAdapter } from "@chat-adapter/whatsapp";
 import type { MessagingInboundMessage, MessagingOutboundStatus } from "@rakazo/adapter-kit";
+import { asRecord } from "@rakazo/core";
 import type { Adapter } from "chat";
 import { createLarkAdapter, Domain } from "chat-adapter-lark";
 import { createSendblueAdapter } from "chat-adapter-sendblue";
@@ -281,10 +282,6 @@ function slackAuthorizedBotUserId(root: Record<string, unknown>): string | undef
 function mentionsSlackBot(text: string, botUserId: string | undefined): boolean {
   if (!botUserId) return false;
   return text.includes(`<@${botUserId}>`);
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
 }
 
 function stringField(record: Record<string, unknown>, key: string): string | undefined {
