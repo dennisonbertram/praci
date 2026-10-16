@@ -86,6 +86,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   resolvePersonaColorDef,
+  Spinner,
 } from "@rakazo/ui-web";
 import {
   ArrowDown,
@@ -200,7 +201,7 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
-import { findCartaAgent } from "../lib/carta-agent";
+import { findCartaAgent, useAutoCreateCartaAgent } from "../lib/carta-agent";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -2582,6 +2583,13 @@ export function ShellPage() {
     }
   }
 
+  // Carta needs no Create click: the agent appears once Carta is connected.
+  useAutoCreateCartaAgent(
+    capTableMode && initialBotsLoaded && Boolean(userId),
+    findCartaAgent(bots, userId) !== undefined,
+    createCartaAgent,
+  );
+
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
   const agentPanel = inboxMode
     ? {
@@ -2614,8 +2622,8 @@ export function ShellPage() {
             open: cartaAgentOpen,
             collapse: () => setCartaAgentOpen(false),
             collapseLabel: t`Collapse Carta agent`,
-            create: createCartaAgent,
-            createLabel: t`Create Carta agent`,
+            create: undefined,
+            createLabel: "",
             creating: creatingCartaAgent,
             error: cartaAgentError,
           }
@@ -4176,9 +4184,13 @@ export function ShellPage() {
                 threadView
               ) : (
                 <div className="grid flex-1 place-content-center justify-items-center gap-3 px-5">
-                  <Button disabled={agentPanel.creating} onClick={() => void agentPanel.create()}>
-                    {agentPanel.createLabel}
-                  </Button>
+                  {agentPanel.create ? (
+                    <Button disabled={agentPanel.creating} onClick={() => void agentPanel.create()}>
+                      {agentPanel.createLabel}
+                    </Button>
+                  ) : agentPanel.creating ? (
+                    <Spinner aria-label={t`Loading`} />
+                  ) : null}
                   {agentPanel.error ? (
                     <p role="alert" className="text-center text-sm text-destructive">
                       {agentPanel.error}

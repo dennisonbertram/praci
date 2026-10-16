@@ -29,6 +29,19 @@ export const Connected: Story = {
   },
 };
 
+const cartaServer = (writesEnabled: boolean) =>
+  mockServer("srv_1", "Carta", { endpoint: "https://mcp.app.carta.com/mcp", writesEnabled });
+
+export const CartaWritesOff: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: { data: mockIntegrations({ servers: [cartaServer(false)] }) },
+};
+
+export const CartaWritesOn: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: { data: mockIntegrations({ servers: [cartaServer(true)] }) },
+};
+
 export const NeedsReconnect: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },
   args: {
