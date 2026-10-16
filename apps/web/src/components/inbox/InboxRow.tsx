@@ -110,6 +110,7 @@ export function InboxRow({
   };
   const found = inboxLabel(row);
   const label = hideAttention && found === "attention" ? null : found;
+  const muted = row.feedback === "noise";
   const marks = onMark
     ? ([
         { mark: "important", name: t`Mark important`, Icon: Star },
@@ -140,7 +141,7 @@ export function InboxRow({
           aria-current={selected ? "true" : undefined}
           data-row-id={row.id}
           onClick={onOpen}
-          className={`grid h-14 w-full min-w-0 grid-cols-[8px_72px_minmax(0,1fr)_auto] items-center gap-x-2 border-s-2 ps-3.5 pe-4 text-start text-[15px] font-normal hover:bg-muted @md:gap-x-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-11" : ""}`}
+          className={`grid h-14 w-full min-w-0 grid-cols-[8px_72px_minmax(0,1fr)_auto] items-center gap-x-2 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal hover:bg-muted @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-11" : ""} ${muted ? "text-muted-foreground" : ""}`}
         >
           <span
             aria-hidden="true"
@@ -149,7 +150,7 @@ export function InboxRow({
           />
           <span
             dir="auto"
-            className={`col-start-2 row-start-1 truncate text-foreground ${row.unread ? "font-semibold" : "font-normal"}`}
+            className={`col-start-2 row-start-1 truncate ${muted ? "text-muted-foreground" : "text-foreground"} ${row.unread ? "font-semibold" : "font-normal"}`}
           >
             {isSuspiciousCategory(row.category) ? (
               <TriangleAlert
@@ -165,7 +166,10 @@ export function InboxRow({
               </span>
             ) : null}
           </span>
-          <span dir="auto" className="col-start-3 row-start-1 truncate text-foreground/70">
+          <span
+            dir="auto"
+            className={`col-start-3 row-start-1 truncate ${muted ? "text-muted-foreground" : "text-foreground/70"}`}
+          >
             {row.subject}
             {row.snippet ? <span className="text-muted-foreground"> — {row.snippet}</span> : null}
           </span>

@@ -486,7 +486,7 @@ export function InboxPage({
   ) : null;
 
   return (
-    <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-10 md:pt-6">
+    <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-6 xl:px-10">
       <div className="mb-5 flex flex-wrap items-center gap-2 @md:flex-nowrap">
         <h1 className="me-auto shrink-0 text-xl font-semibold tracking-tight @md:me-1">
           <Trans>Inbox</Trans>
