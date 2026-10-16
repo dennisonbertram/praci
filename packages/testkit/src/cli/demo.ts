@@ -1,10 +1,10 @@
 import { execFileSync, spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import {
   closeSync,
   existsSync,
   mkdirSync,
   openSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -13,8 +13,18 @@ import { createRequire } from "node:module";
 import net from "node:net";
 import { homedir } from "node:os";
 import path from "node:path";
+import { loadOrCreateCredentials } from "./demo/credentials.js";
 import { demoFinance, demoMailboxes } from "./demo/data.js";
-import { assertDemoContainer, type ContainerInfo, childEnv, DEMO_LABEL } from "./demo/safety.js";
+import {
+  assertDemoContainer,
+  assertStateSlot,
+  type ContainerInfo,
+  childEnv,
+  DEMO_LABEL,
+  SLOT_LABEL,
+  slotConfig,
+  stateDir,
+} from "./demo/safety.js";
 import { seedDemo } from "./demo/seed.js";
 
 /**
@@ -25,19 +35,23 @@ import { seedDemo } from "./demo/seed.js";
  */
 
 const ROOT = path.resolve(import.meta.dirname, "../../../..");
-const DIR = path.join(ROOT, ".demo");
+const CREDENTIALS = path.join(ROOT, ".demo-credentials.local");
+const {
+  slot: SLOT,
+  container: CONTAINER,
+  pgPort: PG_PORT,
+  apiPort: API_PORT,
+  webPort: WEB_PORT,
+} = slotConfig(process.env.DEMO_SLOT);
+const DIR = stateDir(ROOT, SLOT);
 const STATE = path.join(DIR, "state.json");
-const CREDENTIALS = path.join(DIR, "credentials.local");
-const CONTAINER = "rakazo-demo-pg";
-const PG_PORT = 5450;
-const API_PORT = 3300;
-const WEB_PORT = 5373;
 const WEB_ORIGIN = `http://127.0.0.1:${WEB_PORT}`;
 const API_URL = `http://127.0.0.1:${API_PORT}`;
 const DATABASE_URL = `postgres://rakazo_demo:rakazo_demo@127.0.0.1:${PG_PORT}/rakazo_demo`;
 const MODEL_KEYS = ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"];
 
 interface State {
+  slot: number;
   pids: number[];
   containerId?: string;
 }
@@ -94,6 +108,7 @@ function modelEnv(): NodeJS.ProcessEnv {
 function stackEnv(): NodeJS.ProcessEnv {
   return childEnv(process.env, {
     NODE_ENV: "development",
+    DEMO_SLOT: String(SLOT),
     DATABASE_URL,
     REALTIME_DATABASE_URL: DATABASE_URL,
     WAKEUP_DRIVER: "memory",
@@ -151,12 +166,13 @@ function removeContainer(recordedId?: string) {
     );
     info = { id, labels };
   } catch {}
-  assertDemoContainer(info, recordedId);
+  assertDemoContainer(info, recordedId, SLOT);
   if (info) docker("rm", "-f", "-v", info.id);
 }
 
 async function down() {
   const state: State | null = existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : null;
+  assertStateSlot(state, SLOT);
   for (const pid of state?.pids ?? []) {
     if (!ours(pid)) continue;
     try {
@@ -171,19 +187,25 @@ async function down() {
     } catch {}
   }
   removeContainer(state?.containerId);
-  rmSync(DIR, { recursive: true, force: true });
+  // Slot 0's directory also holds the other slots' `slot-N/` directories; leave those alone.
+  for (const entry of existsSync(DIR) ? readdirSync(DIR) : [])
+    if (SLOT !== 0 || !entry.startsWith("slot-"))
+      rmSync(path.join(DIR, entry), { recursive: true, force: true });
+  if (SLOT !== 0 || !existsSync(DIR) || readdirSync(DIR).length === 0)
+    rmSync(DIR, { recursive: true, force: true });
   console.log("Demo stack stopped; its database and local files are removed.");
 }
 
 function printInfo(email: string) {
   console.log(`
-Mock demo stack is running. Every record in it is invented and labeled MOCK.
+Mock demo stack is running (slot ${SLOT}). Every record in it is invented and labeled MOCK.
   Web:          ${WEB_ORIGIN}
   API:          ${API_URL}
+  Postgres:     127.0.0.1:${PG_PORT} (${CONTAINER})
   Sign in as:   ${email}
   Login file:   ${CREDENTIALS}
   Logs:         ${DIR}/api.log, ${DIR}/web.log
-Stop and delete it with: pnpm demo:down`);
+Stop and delete it with: ${SLOT ? `DEMO_SLOT=${SLOT} ` : ""}pnpm demo:down`);
 }
 
 async function up() {
@@ -210,6 +232,8 @@ async function up() {
       CONTAINER,
       "--label",
       `${DEMO_LABEL}=1`,
+      "--label",
+      `${SLOT_LABEL}=${SLOT}`,
       "-p",
       `127.0.0.1:${PG_PORT}:5432`,
       "-e",
@@ -220,7 +244,7 @@ async function up() {
       "POSTGRES_DB=rakazo_demo",
       "pgvector/pgvector:pg16-trixie",
     ).trim();
-    writeFileSync(STATE, JSON.stringify({ pids, containerId } satisfies State));
+    writeFileSync(STATE, JSON.stringify({ slot: SLOT, pids, containerId } satisfies State));
     await waitFor("Postgres", async () => {
       try {
         docker(
@@ -256,17 +280,16 @@ async function up() {
         env,
       ),
     );
-    writeFileSync(STATE, JSON.stringify({ pids, containerId } satisfies State));
+    writeFileSync(STATE, JSON.stringify({ slot: SLOT, pids, containerId } satisfies State));
     await waitFor("the API", () => healthy(`${API_URL}/health`));
 
     const webDir = path.join(ROOT, "apps/web");
     const vite = path.join(webDir, "node_modules/vite/bin/vite.js");
     pids.push(start("web", vite, [], webDir, env));
-    writeFileSync(STATE, JSON.stringify({ pids, containerId } satisfies State));
+    writeFileSync(STATE, JSON.stringify({ slot: SLOT, pids, containerId } satisfies State));
     await waitFor("the web app", () => healthy(WEB_ORIGIN));
 
-    const email = "mock-founder@demo.rakazo.test";
-    const password = randomBytes(12).toString("hex");
+    const { email, password } = loadOrCreateCredentials(CREDENTIALS);
     const done = await seedDemo({
       apiUrl: API_URL,
       webOrigin: WEB_ORIGIN,
@@ -274,9 +297,6 @@ async function up() {
       encryptionKey: env.ENCRYPTION_KEY as string,
       email,
       password,
-    });
-    writeFileSync(CREDENTIALS, `email=${email}\npassword=${password}\nurl=${WEB_ORIGIN}\n`, {
-      mode: 0o600,
     });
     console.log(`Seeded: ${done.join("; ")}`);
     console.log(

@@ -48,3 +48,4 @@ apps/web/scripts/msgids.json
 playwright-report-www
 
 .demo
+.demo-credentials.local
