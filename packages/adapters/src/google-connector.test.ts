@@ -409,6 +409,49 @@ describe("GoogleConnector.proxy", () => {
     expect(s.google.tokenCalls).toHaveLength(2);
   });
 
+  it("returns binary bodies byte for byte and enforces maxBytes while streaming", async () => {
+    const s = setup();
+    await connect(s);
+    s.db.connections[0]!.provider = "googledrive";
+    const pdf = new Uint8Array([
+      ...Array.from({ length: 256 }, (_, i) => i),
+      0xff,
+      0xfe,
+      0x25,
+      0x50,
+    ]);
+    const realFetch = s.google.fetch;
+    const drive = "https://www.googleapis.com/drive/v3/files/f1?alt=media";
+    const connector = new GoogleConnector({
+      clientId: "x",
+      clientSecret: CLIENT_SECRET,
+      identitySecret: IDENTITY,
+      prisma: s.db.prisma,
+      secrets: s.secrets,
+      fetch: (async (input: string | URL | Request, init?: RequestInit) =>
+        String(input) === drive
+          ? new Response(pdf, { headers: { "content-type": "application/pdf" } })
+          : realFetch(input, init)) as typeof fetch,
+    });
+    const call = (maxBytes: number) =>
+      connector.proxy(
+        {
+          app: "googledrive",
+          accountRef: "sub-1",
+          method: "GET",
+          url: drive,
+          responseType: "bytes",
+          maxBytes,
+        },
+        context,
+      );
+    const ok = await call(1024);
+    expect(ok.status).toBe(200);
+    expect(ok.contentType).toBe("application/pdf");
+    expect(Array.from(ok.data as Uint8Array)).toEqual(Array.from(pdf));
+    expect((await call(100)).status).toBe(413);
+  });
+
   it("returns 401 without calling Gmail when Google reports invalid_grant", async () => {
     const s = setup();
     await connect(s);
