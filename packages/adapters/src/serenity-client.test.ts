@@ -172,6 +172,22 @@ describe("serenity SSRF fetch path", () => {
     },
   );
 
+  it.each(["metadata.google.internal", "metadata.goog"])(
+    "rejects metadata hostname %s before DNS or transport even if it resolves privately",
+    async (host) => {
+      const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+      const resolveHostname = vi.fn(async () => [{ address: "10.0.0.2", family: 4 as const }]);
+      const result = await probeSerenity(
+        { endpoint: `https://${host}/mcp`, token: TOKEN, endpointTrust: "private" },
+        undefined,
+        { fetch: fetchMock, resolveHostname },
+      );
+      expect(result.ok).toBe(false);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(resolveHostname).not.toHaveBeenCalled();
+    },
+  );
+
   it("rejects a metadata literal endpoint", async () => {
     const result = await probeSerenity(
       { endpoint: "https://169.254.170.2/mcp", token: TOKEN, endpointTrust: "private" },

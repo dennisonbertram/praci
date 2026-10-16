@@ -3,7 +3,10 @@ import dns from "node:dns";
 import { lookup } from "node:dns/promises";
 import type { LookupFunction } from "node:net";
 import { isIP } from "node:net";
-import { CLOUD_METADATA_IPV4 as CLOUD_METADATA_IPV4_LIST } from "@rakazo/contracts";
+import {
+  CLOUD_METADATA_IPV4 as CLOUD_METADATA_IPV4_LIST,
+  CLOUD_METADATA_IPV6 as CLOUD_METADATA_IPV6_LIST,
+} from "@rakazo/contracts";
 
 export type ResolvedAddress = { address: string; family: number };
 export type ResolveHostname = (hostname: string) => Promise<ResolvedAddress[]>;
@@ -17,7 +20,6 @@ const pinnedDns = new AsyncLocalStorage<PinnedDns>();
 let dnsPinInstalled = false;
 
 const CLOUD_METADATA_IPV4 = new Set(CLOUD_METADATA_IPV4_LIST.map(ipv4ToNumber));
-const AWS_IMDS_IPV6 = 0xfd000ec2000000000000000000000254n;
 /** fd7a:115c:a1e0::/48 — the Tailscale IPv6 range. */
 const TAILSCALE_ULA_PREFIX = 0xfd7a115ca1e0n;
 
@@ -191,7 +193,7 @@ export function isCloudMetadataAddress(address: string): boolean {
 
   const ipv6 = parseIpv6(value);
   if (ipv6 === undefined) return false;
-  if (ipv6 === AWS_IMDS_IPV6) return true;
+  if (CLOUD_METADATA_IPV6_LIST.some((a) => parseIpv6(a) === ipv6)) return true;
   const embeddedIpv4 = getEmbeddedIpv4Number(ipv6);
   return embeddedIpv4 !== undefined && isCloudMetadataIpv4Number(embeddedIpv4);
 }

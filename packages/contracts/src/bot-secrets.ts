@@ -165,6 +165,8 @@ export const CLOUD_METADATA_IPV4: readonly string[] = [
   "169.254.170.2", // AWS ECS task credentials
   "100.100.100.200", // Alibaba
 ];
+/** AWS IMDS over IPv6 (canonical lowercase text form). */
+export const CLOUD_METADATA_IPV6: readonly string[] = ["fd00:ec2::254"];
 export const CLOUD_METADATA_HOSTNAMES: ReadonlySet<string> = new Set([
   "metadata.google.internal",
   "metadata.goog",
@@ -174,7 +176,11 @@ export const CLOUD_METADATA_HOSTNAMES: ReadonlySet<string> = new Set([
  * even though they sit inside otherwise-private ranges (CGNAT / link-local). */
 export function isCloudMetadataHost(hostname: string): boolean {
   const host = hostname.replace(/^\[|\]$/g, "").toLowerCase();
-  return CLOUD_METADATA_IPV4.includes(host) || CLOUD_METADATA_HOSTNAMES.has(host);
+  return (
+    CLOUD_METADATA_IPV4.includes(host) ||
+    CLOUD_METADATA_IPV6.includes(host) ||
+    CLOUD_METADATA_HOSTNAMES.has(host)
+  );
 }
 
 function botSecretOriginSchema(allowPrivateHttpOrigin: boolean) {

@@ -1,7 +1,7 @@
 import { isIP } from "node:net";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { isLocalMcpHost } from "@rakazo/contracts";
+import { CLOUD_METADATA_HOSTNAMES, isLocalMcpHost } from "@rakazo/contracts";
 import { Agent } from "undici";
 import { combineSignals } from "./connector-safety.js";
 import {
@@ -130,7 +130,7 @@ export async function classifySerenityEndpointTrust(
 
 function assertAllowedSerenityEndpoint(url: URL): void {
   const host = hostnameOf(url);
-  if (isCloudMetadataAddress(host)) {
+  if (isCloudMetadataAddress(host) || CLOUD_METADATA_HOSTNAMES.has(host)) {
     throw new Error("Serenity endpoint targets a blocked address.");
   }
   if (url.protocol === "http:") {
