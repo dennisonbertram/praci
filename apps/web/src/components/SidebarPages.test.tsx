@@ -4,7 +4,7 @@ import type { SidebarPageTemplate } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -50,8 +50,10 @@ const template = (over: Partial<SidebarPageTemplate> = {}): SidebarPageTemplate 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 let path = "";
+let goTo: (to: string) => void;
 function Path() {
   path = useLocation().pathname;
+  goTo = useNavigate();
   return null;
 }
 
@@ -154,4 +156,41 @@ it("removes a page and leaves its route", async () => {
   expect(rpcMock.remove).toHaveBeenCalledWith({ templateKey: "team-health" });
   expect(pageRow()).toBeNull();
   expect(path).toBe("/app");
+});
+
+const deferred = () => {
+  let resolve!: (value: unknown) => void;
+  const promise = new Promise((r) => (resolve = r));
+  return { promise, resolve };
+};
+
+it("does not redirect when the user navigated elsewhere before remove finished", async () => {
+  rpcMock.list.mockResolvedValue(state(["team-health"], []));
+  const pending = deferred();
+  rpcMock.remove.mockReturnValue(pending.promise);
+  await render([template()], "/app/team-health");
+  await click(container.querySelector("[aria-label='Page options']"));
+  await click(byText("Remove from sidebar"));
+  await act(async () => goTo("/app/inbox"));
+  await act(async () => pending.resolve(state([], ["team-health"])));
+  expect(path).toBe("/app/inbox");
+  expect(pageRow()).toBeNull();
+});
+
+it("applies only the latest mutation when responses arrive out of order", async () => {
+  const alpha = template({ key: "alpha", route: "/app/alpha" });
+  const beta = template({ key: "beta", route: "/app/beta" });
+  rpcMock.list.mockResolvedValue(state([], ["alpha", "beta"]));
+  const slowAdd = deferred();
+  rpcMock.add
+    .mockReturnValueOnce(slowAdd.promise)
+    .mockResolvedValueOnce(state(["beta"], ["alpha"]));
+  await render([alpha, beta]);
+  await click(addRow());
+  await click(byText("alpha"));
+  await click(addRow());
+  await click(byText("beta"));
+  await act(async () => slowAdd.resolve(state(["alpha"], ["beta"])));
+  expect(container.querySelector("[data-testid=sidebar-page-beta]")).not.toBeNull();
+  expect(container.querySelector("[data-testid=sidebar-page-alpha]")).toBeNull();
 });

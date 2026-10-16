@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
 import { Ellipsis, LayoutDashboard } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import { rpc } from "../lib/rpc";
 import { sidebarPageCopy } from "../lib/sidebar-page-copy";
@@ -29,42 +29,47 @@ export function SidebarPages({
   const { pathname } = useLocation();
   const [state, setState] = useState<SidebarPagesState | null>(null);
   const [error, setError] = useState("");
+  const pathRef = useRef(pathname);
+  pathRef.current = pathname;
+  // Counts mutations, so only the latest response (and no initial list) is applied after one.
+  const latest = useRef(0);
 
   useEffect(() => {
     // Nothing can be added in this build, so there is nothing to load.
     if (!templates.some((template) => template.available)) return;
     let active = true;
+    const seen = latest.current;
     void rpc.sidebarPages
       .list()
-      .then((next) => active && setState(next))
+      .then((next) => active && latest.current === seen && setState(next))
       .catch(() => {});
     return () => {
       active = false;
     };
   }, [templates]);
 
-  const add = useCallback(async (templateKey: string) => {
+  /** Runs a mutation and applies its response unless a newer mutation started; true if the request succeeded. */
+  const mutate = useCallback(async (run: () => Promise<SidebarPagesState>) => {
+    const mine = ++latest.current;
     setError("");
     try {
-      setState(await rpc.sidebarPages.add({ templateKey }));
+      const next = await run();
+      if (latest.current === mine) setState(next);
+      return true;
     } catch (cause) {
-      setError(errorText(cause));
+      if (latest.current === mine) setError(errorText(cause));
+      return false;
     }
   }, []);
 
-  const remove = useCallback(
-    async (template: SidebarPageTemplate) => {
-      setError("");
-      try {
-        setState(await rpc.sidebarPages.remove({ templateKey: template.key }));
-      } catch (cause) {
-        setError(errorText(cause));
-        return;
-      }
-      if (matchPath({ path: template.route, end: false }, pathname)) navigate("/app");
-    },
-    [navigate, pathname],
-  );
+  const add = (templateKey: string) => mutate(() => rpc.sidebarPages.add({ templateKey }));
+
+  const remove = async (template: SidebarPageTemplate) => {
+    const removed = await mutate(() => rpc.sidebarPages.remove({ templateKey: template.key }));
+    if (removed && matchPath({ path: template.route, end: false }, pathRef.current)) {
+      navigate("/app");
+    }
+  };
 
   const added = state?.pages.map((page) => page.templateKey) ?? [];
   const rows = added.flatMap((key) => templates.find((template) => template.key === key) ?? []);
