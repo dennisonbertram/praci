@@ -12,6 +12,7 @@ import type {
   SandboxProvider,
   TransactionalEmailProvider,
 } from "@rakazo/adapter-kit";
+import { dataRoomBlobDeleteJob } from "@rakazo/adapter-kit";
 import type {
   ComposioProvider,
   ConnectorRegistry,
@@ -109,6 +110,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createBillingService } from "./billing.js";
 import { mountBillingRoutes } from "./billing-webhook.js";
+import { mountDataRoomRoutes } from "./data-room.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
 import { healthRoutes } from "./health.js";
@@ -449,6 +451,13 @@ export async function createApp(
         getLogger().error("push token removal failed", error),
       );
     },
+    afterDeleteUserData: async (blobs) => {
+      for (const { spaceId, storageKey } of blobs) {
+        await jobs
+          .enqueue(dataRoomBlobDeleteJob(spaceId, storageKey))
+          .catch((error) => getLogger().error("data room blob cleanup", error));
+      }
+    },
     // The session change already happened, so a token file failure must not fail sign-out.
     afterDeleteSession: async (session) => {
       await endSessionPushToken(env.dataDir, session.userId, session.id).catch((error) =>
@@ -536,6 +545,7 @@ export async function createApp(
     messaging,
     cloudAgent,
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
+    artifacts,
   });
   if (inMemoryJobs) {
     await inMemoryJobs.start(jobHandlers);
@@ -736,6 +746,11 @@ export async function createApp(
     await next();
   });
   mountInboxAttachment(app, { prisma, mail }, async (request) => {
+    const actor = await sessionActor(request);
+    if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
+    return actor;
+  });
+  mountDataRoomRoutes(app, { prisma, artifacts, jobs }, async (request) => {
     const actor = await sessionActor(request);
     if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
     return actor;

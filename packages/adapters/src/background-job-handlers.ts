@@ -1,6 +1,7 @@
 import type {
   AgentHomeStore,
   AgentRuntime,
+  ArtifactStore,
   BackgroundJobHandlers,
   JobPublisher,
   MessagingSurface,
@@ -45,6 +46,8 @@ export function createBackgroundJobHandlers(deps: {
   cloudAgent?: CloudAgentConnection | null;
   /** Read-tool caller for the user's Mercury and Brex servers; see `createFinanceCallToolFor`. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Deletes the blobs of removed Data room items. */
+  artifacts?: ArtifactStore;
 }): BackgroundJobHandlers {
   const deliverMessaging = async (runId?: string) => {
     if (!deps.messaging) return;
@@ -111,6 +114,26 @@ export function createBackgroundJobHandlers(deps: {
         },
         payload,
       );
+    },
+    "dataroom.blob.delete": async (payload) => {
+      if (!deps.artifacts) throw new Error("Artifact store is not configured");
+      // The job is queued before the row is deleted. While the row is still there, fail so the
+      // queue retries with backoff; the job ends visibly failed if the delete never happened.
+      // ponytail: a long row delete outlasting every retry leaks the blob; use a transactional
+      // outbox if that ever matters.
+      const live = await deps.prisma.dataRoomItem.findFirst({
+        where: { spaceId: payload.spaceId, storageKey: payload.storageKey },
+        select: { id: true },
+      });
+      if (live) throw new Error("Data room item still references this blob");
+      const operationId = `dataroom.blob.delete:${payload.storageKey}`;
+      await deps.artifacts.remove(payload.storageKey, {
+        operationId,
+        traceId: operationId,
+        spaceId: payload.spaceId,
+        userId: "",
+        signal: new AbortController().signal,
+      });
     },
     "finance.sync": async (payload) => {
       if (!deps.financeCallToolFor) throw new Error("Finance sync is not configured");

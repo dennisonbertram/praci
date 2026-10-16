@@ -14,6 +14,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import {
   computerControlExpireJobKey,
+  dataRoomBlobDeleteJob,
   messagingDeliverJob,
   routineJobKey,
   routineWakeupJob,
@@ -267,6 +268,7 @@ import {
   toComputerStatus,
 } from "./computer-status.js";
 import { completeNativeOAuth, connectionError } from "./connection-oauth.js";
+import { createDataRoomService } from "./data-room.js";
 import {
   type FinanceCryptoDeps,
   financeAccountDetail,
@@ -936,6 +938,11 @@ export function createRouter(deps: RouterDeps) {
     dataDir: deps.dataDir,
   });
   const agentSkills = createAgentSkillsService(deps.prisma);
+  const dataRoom = createDataRoomService({
+    prisma: deps.prisma,
+    artifacts: deps.artifacts,
+    jobs: deps.jobs,
+  });
 
   const authed = os.use(async ({ context, next }) => {
     if (!context.actor) throw new ORPCError("UNAUTHORIZED");
@@ -1145,6 +1152,11 @@ export function createRouter(deps: RouterDeps) {
             claimRenewal = null;
           }
           const fallback = await deleteEmptySpaceForMember(deps.prisma, claimedInput);
+          for (const storageKey of fallback.dataRoomStorageKeys) {
+            await deps.jobs
+              .enqueue(dataRoomBlobDeleteJob(input.spaceId, storageKey))
+              .catch((jobError) => getLogger().error("data room blob cleanup", jobError));
+          }
           return { ok: true as const, activeSpaceId: fallback.id };
         } catch (error) {
           if (context.signal?.aborted) claimReleasable = false;
@@ -6238,6 +6250,41 @@ export function createRouter(deps: RouterDeps) {
         );
         return { ok: true as const };
       }),
+    },
+    dataRoom: {
+      folders: authed.dataRoom.folders.handler(({ context }) => dataRoom.folders(context.actor)),
+      folderCreate: authed.dataRoom.folderCreate.handler(({ context, input }) =>
+        dataRoom.createFolder(context.actor, input),
+      ),
+      folderRename: authed.dataRoom.folderRename.handler(({ context, input }) =>
+        dataRoom.renameFolder(context.actor, input),
+      ),
+      folderMove: authed.dataRoom.folderMove.handler(({ context, input }) =>
+        dataRoom.moveFolder(context.actor, input),
+      ),
+      folderDelete: authed.dataRoom.folderDelete.handler(({ context, input }) =>
+        dataRoom.deleteFolder(context.actor, input.id),
+      ),
+      items: {
+        list: authed.dataRoom.items.list.handler(({ context, input }) =>
+          dataRoom.items(context.actor, input),
+        ),
+      },
+      item: authed.dataRoom.item.handler(({ context, input }) =>
+        dataRoom.item(context.actor, input.id),
+      ),
+      itemRename: authed.dataRoom.itemRename.handler(({ context, input }) =>
+        dataRoom.renameItem(context.actor, input),
+      ),
+      itemMove: authed.dataRoom.itemMove.handler(({ context, input }) =>
+        dataRoom.moveItem(context.actor, input),
+      ),
+      itemDelete: authed.dataRoom.itemDelete.handler(({ context, input }) =>
+        dataRoom.deleteItem(context.actor, input.id),
+      ),
+      search: authed.dataRoom.search.handler(({ context, input }) =>
+        dataRoom.search(context.actor, input),
+      ),
     },
     finance: {
       agent: authed.finance.agent.handler(({ context }) =>
