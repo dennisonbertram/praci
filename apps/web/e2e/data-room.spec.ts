@@ -169,7 +169,7 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
       calls.some(
         (c) =>
           c.name === "items/list" &&
-          JSON.stringify(c.input.sort) === JSON.stringify({ field: "name", direction: "desc" }),
+          JSON.stringify(c.input.sort) === JSON.stringify({ field: "name", direction: "asc" }),
       ),
     )
     .toBe(true);
@@ -200,7 +200,7 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
   await page.evaluate(() => window.dispatchEvent(new Event("rakazo:data-room-changed")));
   const toast = page.getByTestId("data-room-toasts");
   await expect(toast).toContainText("lease.txt");
-  await expect(toast).toContainText("Filed");
+  await expect(toast).toContainText("Uploaded");
   await expect(toast.getByRole("link", { name: "View" })).toHaveAttribute(
     "href",
     `/app/data-room?item=${item.id}`,
