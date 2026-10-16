@@ -235,6 +235,10 @@ msgstr "il y a {hours} h"
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "{minutes}m ago"
 msgstr "il y a {minutes} min"
@@ -430,6 +434,8 @@ msgid "Actions for space"
 msgstr "Actions pour l'espace"
 
 #: src/pages/BillingSettingsPanel.tsx
+#: src/pages/Legal.tsx
+#: src/pages/legal/LegalContracts.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Active"
 msgstr "Actif"
@@ -629,6 +635,7 @@ msgid "All time"
 msgstr "Toute la période"
 
 #: src/components/AiDataSharing.tsx
+#: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr ""
 
@@ -865,6 +872,7 @@ msgid "Ask the server owner to set up the app catalog."
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
+#: src/components/legal/LegalGraph.tsx
 msgid "Asset"
 msgstr ""
 
@@ -936,6 +944,14 @@ msgstr "Autoriser"
 #: src/pages/shell/message-cards.tsx
 msgid "Authorize this server so agents can use its tools. A popup opens."
 msgstr "Autorisez ce serveur pour que les agents puissent utiliser ses outils. Une fenêtre contextuelle s'ouvre."
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Auto-renews"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Auto-renews, {notice} days notice"
+msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Automated senders"
@@ -1558,6 +1574,10 @@ msgstr ""
 msgid "Collapse Inbox agent"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Collapse Legal agent"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Color"
 msgstr "Couleur"
@@ -1589,6 +1609,10 @@ msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Compact"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Company"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
@@ -1809,7 +1833,14 @@ msgid "Continue with email"
 msgstr "Continuer avec l'e-mail"
 
 #: src/components/finance/WalletDialog.tsx
+#: src/components/legal/LegalGraph.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Contract"
+msgstr ""
+
+#: src/pages/Legal.tsx
+#: src/pages/legal/LegalContracts.tsx
+msgid "Contracts"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -1930,6 +1961,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Inbox agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Legal agent"
 msgstr ""
 
 #: src/pages/Onboarding.tsx
@@ -2376,6 +2411,10 @@ msgid "Create Inbox agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
+msgid "Create Legal agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
 msgid "Create new Bot"
 msgstr "Créer un nouveau bot"
@@ -2487,6 +2526,10 @@ msgstr "Travail quotidien"
 #: src/pages/RoutineSchedule.tsx
 msgid "days"
 msgstr "jours"
+
+#: src/pages/Legal.tsx
+msgid "Deadlines"
+msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Decline"
@@ -2689,9 +2732,15 @@ msgstr "Déconnexion en cours…"
 #: src/components/data-room/DropZone.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr "Fermer"
+
+#. placeholder {0}: deadline.title
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Dismiss {0}"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Dismiss error"
@@ -2739,6 +2788,7 @@ msgstr "Vous n'avez pas de compte ?"
 #: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Done"
 msgstr "Terminé"
@@ -2775,6 +2825,10 @@ msgstr ""
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
 msgstr "Téléchargement en cours…"
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Draft"
+msgstr ""
 
 #: src/components/MailOutbox.tsx
 msgid "Draft discarded"
@@ -2988,6 +3042,10 @@ msgstr "Développer {0}"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Expired"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -3253,6 +3311,10 @@ msgstr ""
 msgid "Google Drive"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Graph"
+msgstr ""
+
 #: src/pages/DataRoom.tsx
 msgid "Grid view"
 msgstr ""
@@ -3501,6 +3563,10 @@ msgstr "Aller au message cité : {excerpt}"
 msgid "Junk"
 msgstr ""
 
+#: src/components/legal/LegalGraph.tsx
+msgid "Jurisdiction"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "just now"
 msgstr "à l'instant"
@@ -3550,6 +3616,10 @@ msgstr ""
 msgid "Last charge"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Last scan {lastScan}"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 #: src/components/EmailCards.tsx
 msgid "Later"
@@ -3563,8 +3633,21 @@ msgstr ""
 msgid "Leave"
 msgstr "Quitter"
 
+#: src/pages/Legal.tsx
+#: src/pages/Shell.tsx
+msgid "Legal"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Legal relationships"
+msgstr ""
+
 #: src/components/AiDataSharing.tsx
 msgid "Let Rakazo sort your mail"
+msgstr ""
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Let the Legal agent read your documents"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -3742,6 +3825,11 @@ msgstr "Gérer le fournisseur de mémoire sémantique de l'espace."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Manual setup required"
 msgstr "Configuration manuelle requise"
+
+#. placeholder {0}: deadline.title
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Mark {0} done"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 msgid "Mark as Read"
@@ -4169,6 +4257,10 @@ msgstr ""
 msgid "Next 30 days"
 msgstr ""
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "Next deadline"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
@@ -4194,6 +4286,10 @@ msgstr "Aucun artefact trouvé."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "No authentication"
 msgstr "Aucune authentification"
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "No auto-renewal"
+msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "No bot activity yet."
@@ -4264,12 +4360,24 @@ msgstr "Aucun modèle listé."
 msgid "No more results"
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "No open deadlines."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "Aucun fournisseur trouvé."
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "No receipt"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "No relations."
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "No relationships yet."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -4356,6 +4464,10 @@ msgstr ""
 msgid "Not now"
 msgstr "Pas maintenant"
 
+#: src/pages/Legal.tsx
+msgid "Not scanned yet"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not sent"
 msgstr ""
@@ -4399,6 +4511,10 @@ msgstr "L'autorisation OAuth a été annulée."
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "Échec de la connexion OAuth"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Obligation"
+msgstr ""
 
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
@@ -4453,6 +4569,10 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Open deadlines"
 msgstr ""
 
 #: src/components/markdown-link-prompt.tsx
@@ -4548,6 +4668,7 @@ msgid "Original message unavailable"
 msgstr "Message d’origine indisponible"
 
 #: src/components/finance/ui.tsx
+#: src/components/legal/LegalGraph.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
 msgstr ""
@@ -4573,6 +4694,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Over the 50 MB limit"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Overdue"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -4606,6 +4731,7 @@ msgstr "Mettre en attente"
 
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Parties"
 msgstr ""
 
@@ -4683,6 +4809,10 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Period"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Person"
 msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
@@ -4993,6 +5123,10 @@ msgstr "Actualisation en cours…"
 msgid "Registration is closed"
 msgstr "Les inscriptions sont fermées"
 
+#: src/components/legal/LegalGraph.tsx
+msgid "Relations of {selectedLabel}"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Release computer"
 msgstr "Libérer l'ordinateur"
@@ -5127,6 +5261,10 @@ msgstr "Renommer la section"
 #: src/pages/shell/dialogs.tsx
 msgid "Rename space"
 msgstr "Renommer l'espace"
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Renewal"
+msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Renews {day}"
@@ -5271,6 +5409,10 @@ msgstr "Vérifiez les paramètres du fournisseur et testez à nouveau."
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Revoke"
 msgstr "Révoquer"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Right"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Robot"
@@ -5430,6 +5572,14 @@ msgstr "Enregistrement en cours…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "Dites oui ou non, ou répondez en une phrase."
 
+#: src/pages/Legal.tsx
+msgid "Scan now"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scanning…"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Scheduling"
 msgstr ""
@@ -5521,6 +5671,10 @@ msgstr "Sélectionnez un bot"
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Select a connected model"
 msgstr "Sélectionnez un modèle connecté"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Select an item to see its relations."
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
@@ -5687,6 +5841,10 @@ msgstr ""
 #: src/components/call/VoiceChatCard.tsx
 msgid "Show transcript"
 msgstr "Afficher la transcription"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Showing the {shown} most connected of {total} items."
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Sidebar density"
@@ -5909,6 +6067,7 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceTransaction.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Status"
 msgstr ""
 
@@ -6051,8 +6210,16 @@ msgstr "Message Teams"
 msgid "Teams not enabled"
 msgstr "Teams non activé"
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "Term"
+msgstr ""
+
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Terminal"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Terminated"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -6098,6 +6265,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "The Legal agent scans your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -6373,6 +6544,7 @@ msgid "Undo"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Unknown"
 msgstr ""
 
@@ -6398,6 +6570,10 @@ msgstr "Désépingler"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Unreviewed documents"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
@@ -6570,6 +6746,7 @@ msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
+#: src/pages/legal/LegalContracts.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
 msgstr ""
@@ -6611,6 +6788,7 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Legal.tsx
 msgid "View"
 msgstr ""
 

@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 153 of 153
-- Web and shared components: 442
+- Web and shared component files with stories: 158 of 166
+- Web and shared components: 474
 - Mobile components: 124 in 82 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -70,7 +70,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | DesktopUpdatesProvider, DesktopUpdateSection | [apps/web/src/components/DesktopUpdates.tsx](../../apps/web/src/components/DesktopUpdates.tsx) | [DesktopUpdates.stories.tsx](../../apps/web/src/components/DesktopUpdates.stories.tsx) | web |
 | EmailCards | [apps/web/src/components/EmailCards.tsx](../../apps/web/src/components/EmailCards.tsx) | [EmailCards.stories.tsx](../../apps/web/src/components/EmailCards.stories.tsx) | web |
 | SectionLoadFailed | [apps/web/src/components/ErrorBoundary.tsx](../../apps/web/src/components/ErrorBoundary.tsx) | [ErrorBoundary.stories.tsx](../../apps/web/src/components/ErrorBoundary.stories.tsx) | web |
-| FinanceCards, Header, Preview | [apps/web/src/components/FinanceCards.tsx](../../apps/web/src/components/FinanceCards.tsx) | [FinanceCards.stories.tsx](../../apps/web/src/components/FinanceCards.stories.tsx) | web |
+| FinanceCards, FinanceCardGroup, Header, Preview | [apps/web/src/components/FinanceCards.tsx](../../apps/web/src/components/FinanceCards.tsx) | [FinanceCards.stories.tsx](../../apps/web/src/components/FinanceCards.stories.tsx) | web |
 | I18nBootstrap | [apps/web/src/components/I18nBootstrap.tsx](../../apps/web/src/components/I18nBootstrap.tsx) | [I18nBootstrap.stories.tsx](../../apps/web/src/components/I18nBootstrap.stories.tsx) | web |
 | Row, MailApprovalCard | [apps/web/src/components/MailApprovalCard.tsx](../../apps/web/src/components/MailApprovalCard.tsx) | [MailApprovalCard.stories.tsx](../../apps/web/src/components/MailApprovalCard.stories.tsx) | web |
 | MailOutbox | [apps/web/src/components/MailOutbox.tsx](../../apps/web/src/components/MailOutbox.tsx) | [MailOutbox.stories.tsx](../../apps/web/src/components/MailOutbox.stories.tsx) | web |
@@ -111,6 +111,18 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ComputerWorkspace, WorkspaceWindow | [apps/web/src/components/computer/ComputerWorkspace.tsx](../../apps/web/src/components/computer/ComputerWorkspace.tsx) | [ComputerWorkspace.stories.tsx](../../apps/web/src/components/computer/ComputerWorkspace.stories.tsx) | web |
 | FilesApp, FilePreview, ImagePreview | [apps/web/src/components/computer/FilesApp.tsx](../../apps/web/src/components/computer/FilesApp.tsx) | [FilesApp.stories.tsx](../../apps/web/src/components/computer/FilesApp.stories.tsx) | web |
 | TerminalApp, ActivityTerminal, ShellTerminal, TerminalPane | [apps/web/src/components/computer/TerminalApp.tsx](../../apps/web/src/components/computer/TerminalApp.tsx) | [TerminalApp.stories.tsx](../../apps/web/src/components/computer/TerminalApp.stories.tsx) | web |
+
+## Web components/data-room
+
+| Component | File | Story file | Surface |
+| --- | --- | --- | --- |
+| DataRoomDropZone | [apps/web/src/components/data-room/DropZone.tsx](../../apps/web/src/components/data-room/DropZone.tsx) | missing | web |
+| Chip, TextFilter, DateFilter, SourceFilter, FilterBar | [apps/web/src/components/data-room/FilterBar.tsx](../../apps/web/src/components/data-room/FilterBar.tsx) | missing | web |
+| FolderTree | [apps/web/src/components/data-room/FolderTree.tsx](../../apps/web/src/components/data-room/FolderTree.tsx) | missing | web |
+| ItemDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | missing | web |
+| ItemMenu | [apps/web/src/components/data-room/ItemMenu.tsx](../../apps/web/src/components/data-room/ItemMenu.tsx) | missing | web |
+| SourceIcon, Marker, TableHead, ItemRow, ListView, GridView, Snippet, ResultsView | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | missing | web |
+| Field, Tag, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | missing | web |
 
 ## Web components/finance
 
@@ -155,6 +167,13 @@ Every rendered React component, grouped by area. A web or shared component file 
 | IntegrationTile, StatusBadge, AgentStack, AgentToggleList | [apps/web/src/components/integrations/parts.tsx](../../apps/web/src/components/integrations/parts.tsx) | [parts.stories.tsx](../../apps/web/src/components/integrations/parts.stories.tsx) | web |
 | SignInStep | [apps/web/src/components/integrations/SignInStep.tsx](../../apps/web/src/components/integrations/SignInStep.tsx) | [SignInStep.stories.tsx](../../apps/web/src/components/integrations/SignInStep.stories.tsx) | web |
 
+## Web components/legal
+
+| Component | File | Story file | Surface |
+| --- | --- | --- | --- |
+| LegalConsentPrompt | [apps/web/src/components/legal/ConsentPrompt.tsx](../../apps/web/src/components/legal/ConsentPrompt.tsx) | [ConsentPrompt.stories.tsx](../../apps/web/src/components/legal/ConsentPrompt.stories.tsx) | web |
+| LegalGraphView | [apps/web/src/components/legal/LegalGraph.tsx](../../apps/web/src/components/legal/LegalGraph.tsx) | [LegalGraph.stories.tsx](../../apps/web/src/components/legal/LegalGraph.stories.tsx) | web |
+
 ## Web components/teach
 
 | Component | File | Story file | Surface |
@@ -175,6 +194,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | BillingSettingsPanel | [apps/web/src/pages/BillingSettingsPanel.tsx](../../apps/web/src/pages/BillingSettingsPanel.tsx) | [BillingSettingsPanel.stories.tsx](../../apps/web/src/pages/BillingSettingsPanel.stories.tsx) | web |
 | BoardPage, TicketDialog | [apps/web/src/pages/Board.tsx](../../apps/web/src/pages/Board.tsx) | [Board.stories.tsx](../../apps/web/src/pages/Board.stories.tsx) | web |
 | BotContextMenu | [apps/web/src/pages/BotContextMenu.tsx](../../apps/web/src/pages/BotContextMenu.tsx) | [BotContextMenu.stories.tsx](../../apps/web/src/pages/BotContextMenu.stories.tsx) | web |
+| FileInputButton, DataRoomPage | [apps/web/src/pages/DataRoom.tsx](../../apps/web/src/pages/DataRoom.tsx) | missing | web |
 | ExternalConversationSettings | [apps/web/src/pages/ExternalConversationSettings.tsx](../../apps/web/src/pages/ExternalConversationSettings.tsx) | [ExternalConversationSettings.stories.tsx](../../apps/web/src/pages/ExternalConversationSettings.stories.tsx) | web |
 | FinancePage, Dashboard, EmptyState, DashboardSkeleton, SourceChip, Overview, ShowAll, HoverRow, Legend, UpcomingRow, SubscriptionsTable | [apps/web/src/pages/Finance.tsx](../../apps/web/src/pages/Finance.tsx) | [Finance.stories.tsx](../../apps/web/src/pages/Finance.stories.tsx) | web |
 | AccountTable, CryptoGroup, FinanceAccountsPage, FinanceAccountPage | [apps/web/src/pages/finance/FinanceAccounts.tsx](../../apps/web/src/pages/finance/FinanceAccounts.tsx) | [FinanceAccounts.stories.tsx](../../apps/web/src/pages/finance/FinanceAccounts.stories.tsx) | web |
@@ -190,6 +210,9 @@ Every rendered React component, grouped by area. A web or shared component file 
 | IntegrationsPage | [apps/web/src/pages/Integrations.tsx](../../apps/web/src/pages/Integrations.tsx) | [Integrations.stories.tsx](../../apps/web/src/pages/Integrations.stories.tsx) | web |
 | IntegrationSetupPage | [apps/web/src/pages/IntegrationSetup.tsx](../../apps/web/src/pages/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/pages/IntegrationSetup.stories.tsx) | web |
 | KnowledgeSection, SpaceMemorySection, MemoryDocumentList, SkillSourceBadge, AgentSkills | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
+| LegalPage, Legal, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
+| LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
+| LegalDeadlines | [apps/web/src/pages/legal/LegalDeadlines.tsx](../../apps/web/src/pages/legal/LegalDeadlines.tsx) | [LegalDeadlines.stories.tsx](../../apps/web/src/pages/legal/LegalDeadlines.stories.tsx) | web |
 | LocalSettingsPage | [apps/web/src/pages/LocalSettings.tsx](../../apps/web/src/pages/LocalSettings.tsx) | [LocalSettings.stories.tsx](../../apps/web/src/pages/LocalSettings.stories.tsx) | web |
 | McpOAuthCallbackPage | [apps/web/src/pages/McpOAuthCallback.tsx](../../apps/web/src/pages/McpOAuthCallback.tsx) | [McpOAuthCallback.stories.tsx](../../apps/web/src/pages/McpOAuthCallback.stories.tsx) | web |
 | SerenitySettingsForm | [apps/web/src/pages/memory-providers/SerenitySettingsForm.tsx](../../apps/web/src/pages/memory-providers/SerenitySettingsForm.tsx) | [SerenitySettingsForm.stories.tsx](../../apps/web/src/pages/memory-providers/SerenitySettingsForm.stories.tsx) | web |
@@ -197,7 +220,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ScopePicker, MemorySettingsOverlay | [apps/web/src/pages/MemorySettingsOverlay.tsx](../../apps/web/src/pages/MemorySettingsOverlay.tsx) | [MemorySettingsOverlay.stories.tsx](../../apps/web/src/pages/MemorySettingsOverlay.stories.tsx) | web |
 | MessagingSettingsOverlay | [apps/web/src/pages/MessagingSettingsOverlay.tsx](../../apps/web/src/pages/MessagingSettingsOverlay.tsx) | [MessagingSettingsOverlay.stories.tsx](../../apps/web/src/pages/MessagingSettingsOverlay.stories.tsx) | web |
 | ModelBackupsSettings | [apps/web/src/pages/ModelBackupsSettings.tsx](../../apps/web/src/pages/ModelBackupsSettings.tsx) | [ModelBackupsSettings.stories.tsx](../../apps/web/src/pages/ModelBackupsSettings.stories.tsx) | web |
-| ModelSettingsOverlay, ModelPicker, ModelOption | [apps/web/src/pages/ModelSettingsOverlay.tsx](../../apps/web/src/pages/ModelSettingsOverlay.tsx) | [ModelSettingsOverlay.stories.tsx](../../apps/web/src/pages/ModelSettingsOverlay.stories.tsx) | web |
+| ModelSettingsOverlay, EmbeddingModelField, ModelPicker, ModelOption | [apps/web/src/pages/ModelSettingsOverlay.tsx](../../apps/web/src/pages/ModelSettingsOverlay.tsx) | [ModelSettingsOverlay.stories.tsx](../../apps/web/src/pages/ModelSettingsOverlay.stories.tsx) | web |
 | OnboardingPage | [apps/web/src/pages/Onboarding.tsx](../../apps/web/src/pages/Onboarding.tsx) | [Onboarding.stories.tsx](../../apps/web/src/pages/Onboarding.stories.tsx) | web |
 | PaywallPage | [apps/web/src/pages/Paywall.tsx](../../apps/web/src/pages/Paywall.tsx) | [Paywall.stories.tsx](../../apps/web/src/pages/Paywall.stories.tsx) | web |
 | PeerMessagesOverlay | [apps/web/src/pages/PeerMessagesOverlay.tsx](../../apps/web/src/pages/PeerMessagesOverlay.tsx) | [PeerMessagesOverlay.stories.tsx](../../apps/web/src/pages/PeerMessagesOverlay.stories.tsx) | web |
