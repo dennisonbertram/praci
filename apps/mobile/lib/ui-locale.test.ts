@@ -11,12 +11,23 @@ import {
 
 describe("UI_LOCALES", () => {
   it("offers every locale with a mobile catalog", () => {
-    expect([...UI_LOCALES]).toEqual(["en", "zh-CN", "ru", "de"]);
-    expect(Object.keys(UI_LOCALE_LABELS).sort()).toEqual(["de", "en", "ru", "zh-CN"]);
-    expect(isUiLocale("ko")).toBe(false);
-    expect(isUiLocale("tr")).toBe(false);
-    expect(isUiLocale("hi")).toBe(false);
-    expect(isUiLocale("pt-BR")).toBe(false);
+    expect([...UI_LOCALES]).toEqual([
+      "en",
+      "zh-CN",
+      "ru",
+      "de",
+      "es",
+      "fr",
+      "pt-BR",
+      "hi",
+      "ko",
+      "tr",
+    ]);
+    expect(Object.keys(UI_LOCALE_LABELS).sort()).toEqual([...UI_LOCALES].sort());
+    for (const locale of ["ko", "tr", "hi", "pt-BR", "es", "fr"]) {
+      expect(isUiLocale(locale)).toBe(true);
+    }
+    expect(isUiLocale("pt")).toBe(false);
     expect(isUiLocale("ru")).toBe(true);
     expect(isUiLocale("de")).toBe(true);
   });
@@ -51,14 +62,20 @@ describe("normalizeUiLocale", () => {
     expect(normalizeUiLocale("zh-Hant")).toBe("en");
   });
 
-  it("falls back to English for unknown locales and web-only languages", () => {
-    expect(normalizeUiLocale("fr-FR")).toBe("en");
-    expect(normalizeUiLocale("ko")).toBe("en");
-    expect(normalizeUiLocale("ko-KR")).toBe("en");
-    expect(normalizeUiLocale("tr")).toBe("en");
-    expect(normalizeUiLocale("hi")).toBe("en");
-    expect(normalizeUiLocale("pt")).toBe("en");
-    expect(normalizeUiLocale("pt-BR")).toBe("en");
+  it("maps the newer locales from regional device tags", () => {
+    expect(normalizeUiLocale("fr-FR")).toBe("fr");
+    expect(normalizeUiLocale("es_MX")).toBe("es");
+    expect(normalizeUiLocale("ko-KR")).toBe("ko");
+    expect(normalizeUiLocale("tr-TR")).toBe("tr");
+    expect(normalizeUiLocale("hi-IN")).toBe("hi");
+    expect(normalizeUiLocale("pt")).toBe("pt-BR");
+    expect(normalizeUiLocale("pt-BR")).toBe("pt-BR");
+    expect(normalizeUiLocale("pt-PT")).toBe("pt-BR");
+  });
+
+  it("falls back to English for unknown locales", () => {
+    expect(normalizeUiLocale("it-IT")).toBe("en");
+    expect(normalizeUiLocale("ja")).toBe("en");
     expect(normalizeUiLocale("")).toBe("en");
     expect(normalizeUiLocale(null)).toBe("en");
   });
