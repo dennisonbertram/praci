@@ -68,6 +68,7 @@ import {
   userVisibleMessages,
   withLiveStreamingProgress,
 } from "@rakazo/core";
+import { financeCardSummary } from "@rakazo/core/message-quote";
 import type { GroupAvatarMember } from "@rakazo/ui-web";
 import {
   AvatarStyleProvider,
@@ -6750,6 +6751,7 @@ function previewMessageText(message: ThreadMessage): string {
   const text = message.blocks
     .map((block) => {
       if (block.kind === "channel_message") return block.text;
+      if (block.kind === "finance") return financeCardSummary(block.card);
       if (block.kind === "text") {
         // Bot text is Markdown; user text is already plain.
         return message.role === "bot" ? plainTextFromMarkdown(block.text) : block.text;
