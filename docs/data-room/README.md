@@ -118,10 +118,10 @@ providers sit behind interfaces instead of one hard-coded vendor.
 9. **Agents add documents on their own; a separate agent files them.** Any agent
    may call `add_to_data_room`, but items arrive unfiled with no folder, name or
    tags. Organizing is the Data room agent's job, and it has no delete tool. The
-   20 KB image cutoff keeps logos and signatures out. Artifacts have no
-   (connection, external id) unique key, so an artifact repeat is caught by a
-   check before filing, not a database constraint; two concurrent adds of the
-   same artifact could both file it.
+   20 KB image cutoff keeps logos and signatures out. A repeat import of the same
+   external id returns the existing item, with or without a connection, so
+   concurrent adds of one artifact file it once. Search and read hide items
+   imported through a connection the user denied that agent.
 
 ## Data model
 

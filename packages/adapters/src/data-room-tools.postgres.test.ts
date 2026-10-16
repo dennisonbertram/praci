@@ -312,6 +312,72 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
     }
   });
 
+  it("files two concurrent adds of one artifact as one item", async () => {
+    const a = users.a as Actor;
+    const stored = await artifacts.put({ bytes: new TextEncoder().encode("race") });
+    const row = await prisma.artifact.create({
+      data: {
+        spaceId: a.spaceId,
+        userId: a.userId,
+        name: "race.md",
+        mimeType: "text/markdown",
+        size: 4,
+        hash: stored.hash,
+        storageKey: stored.id,
+      },
+    });
+    const results = (await Promise.all([
+      call("add_to_data_room", { artifact_id: row.id }),
+      call("add_to_data_room", { artifact_id: row.id }),
+    ])) as { text?: string; error?: string }[];
+    expect(results.every((r) => r.text)).toBe(true);
+    expect(results.filter((r) => r.text?.startsWith("Added")).length).toBeGreaterThanOrEqual(1);
+    expect(await prisma.dataRoomItem.count({ where: { externalId: `artifact:${row.id}` } })).toBe(
+      1,
+    );
+  });
+
+  it("hides items from a connection the user denied this agent, but not uploads", async () => {
+    const a = users.a as Actor;
+    const make = async (name: string, sourceConnectionId?: string) => {
+      const { item } = await repo.createItem(a, {
+        source: sourceConnectionId ? "drive" : "upload",
+        sha256: randomUUID(),
+        name,
+        mimeType: "text/plain",
+        size: 5,
+        ...(sourceConnectionId ? { sourceConnectionId, externalId: randomUUID() } : {}),
+      });
+      await repo.finishExtraction(a, item.id, 0, "walrus ledger");
+      await repo.replaceChunks(a, item.id, [
+        { ordinal: 0, text: "walrus ledger", contentHash: randomUUID() },
+      ]);
+      return item;
+    };
+    const imported = await make("imported.txt", driveAccount.id);
+    const upload = await make("upload.txt");
+    const denied = { deniedConnectionIds: [driveAccount.id] };
+
+    const ids = async (over: Parameters<typeof deps>[1]) =>
+      (
+        (await call("search_data_room", { query: "walrus" }, users.a, over)) as {
+          results: { id: string }[];
+        }
+      ).results
+        .map((r) => r.id)
+        .sort();
+    expect(await ids({})).toEqual([imported.id, upload.id].sort());
+    expect(await ids(denied)).toEqual([upload.id]);
+    expect(await call("read_data_room_item", { item_id: imported.id }, users.a, denied)).toEqual({
+      error: "Item not found",
+    });
+    expect(
+      await call("read_data_room_item", { item_id: upload.id }, users.a, denied),
+    ).toMatchObject({
+      name: "upload.txt",
+    });
+  });
+
   it("adds nothing until the Data room consent is accepted", async () => {
     const before = await itemCount(users.a as Actor);
     const queued = jobs.queue.length;

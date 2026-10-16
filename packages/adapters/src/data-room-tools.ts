@@ -61,6 +61,8 @@ export type DataRoomToolDeps = {
   connectors?: DriveFilesDeps["connectors"];
   /** Connected Drive accounts of the bot owner, without any the user denied this agent. */
   driveAccounts: () => Promise<DriveAccount[]>;
+  /** Connections the user denied this agent; items imported through them stay hidden. */
+  deniedConnectionIds?: readonly string[];
   /** Injectable so tests can use a small cap. */
   maxBytes?: number;
 };
@@ -111,6 +113,7 @@ async function search(deps: DataRoomToolDeps, actor: Actor, args: Record<string,
   const { docDateFrom, docDateTo, ...rest } = parsed.data;
   const filters = {
     ...rest,
+    excludeConnectionIds: [...(deps.deniedConnectionIds ?? [])],
     ...(docDateFrom ? { docDateFrom: new Date(docDateFrom) } : {}),
     ...(docDateTo ? { docDateTo: new Date(docDateTo) } : {}),
   };
@@ -136,10 +139,12 @@ async function read(deps: DataRoomToolDeps, actor: Actor, args: Record<string, u
   const id = text(args.item_id);
   if (!id) return { error: "item_id is required" };
   const repo = createDataRoomRepos(deps.prisma);
-  const item = await repo.getItem(actor, id).catch((error: unknown) => {
-    if (error instanceof IsolationError) return null;
-    throw error;
-  });
+  const item = await repo
+    .getItem(actor, id, { excludeConnectionIds: [...(deps.deniedConnectionIds ?? [])] })
+    .catch((error: unknown) => {
+      if (error instanceof IsolationError) return null;
+      throw error;
+    });
   if (!item) return { error: "Item not found" };
   const folders = new Map((await repo.listFolders(actor)).map((folder) => [folder.id, folder]));
   const path: string[] = [];

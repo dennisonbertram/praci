@@ -33,6 +33,8 @@ export interface DataRoomFilters {
   docDateTo?: Date;
   status?: string;
   source?: string;
+  /** Hides items imported through these connections. Items with no connection stay visible. */
+  excludeConnectionIds?: string[];
 }
 
 const MAX_LIMIT = 50;
@@ -139,6 +141,14 @@ function eligibleWhere(actor: Actor, filters: DataRoomFilters = {}): Prisma.Data
     ...(filters.tag ? { tags: { has: filters.tag } } : {}),
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.source ? { source: filters.source } : {}),
+    ...(filters.excludeConnectionIds?.length
+      ? {
+          OR: [
+            { sourceConnectionId: null },
+            { sourceConnectionId: { notIn: filters.excludeConnectionIds } },
+          ],
+        }
+      : {}),
     ...(filters.docDateFrom || filters.docDateTo
       ? { docDate: { gte: filters.docDateFrom, lte: filters.docDateTo } }
       : {}),
@@ -163,6 +173,11 @@ function eligibleSql(actor: Actor, filters: DataRoomFilters = {}): Prisma.Sql {
   if (filters.tag) parts.push(Prisma.sql`${filters.tag} = ANY(i."tags")`);
   if (filters.status) parts.push(Prisma.sql`i."status" = ${filters.status}`);
   if (filters.source) parts.push(Prisma.sql`i."source" = ${filters.source}`);
+  if (filters.excludeConnectionIds?.length) {
+    parts.push(
+      Prisma.sql`(i."sourceConnectionId" IS NULL OR NOT (i."sourceConnectionId" = ANY(${filters.excludeConnectionIds})))`,
+    );
+  }
   if (filters.docDateFrom) parts.push(Prisma.sql`i."docDate" >= ${filters.docDateFrom}`);
   if (filters.docDateTo) parts.push(Prisma.sql`i."docDate" <= ${filters.docDateTo}`);
   return Prisma.join(parts, " AND ");
@@ -196,8 +211,14 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     return folder;
   }
 
-  async function requireItem(actor: Actor, id: string): Promise<DataRoomItemRecord> {
-    const item = await prisma.dataRoomItem.findFirst({ where: { id, ...eligibleWhere(actor) } });
+  async function requireItem(
+    actor: Actor,
+    id: string,
+    filters: DataRoomFilters = {},
+  ): Promise<DataRoomItemRecord> {
+    const item = await prisma.dataRoomItem.findFirst({
+      where: { id, ...eligibleWhere(actor, filters) },
+    });
     if (!item) throw new IsolationError();
     return item;
   }
@@ -359,11 +380,11 @@ export function createDataRoomRepos(prisma: PrismaClient) {
           const existing =
             input.source === "upload"
               ? await findExisting()
-              : input.sourceConnectionId && input.externalId
+              : input.externalId
                 ? await prisma.dataRoomItem.findFirst({
                     where: {
                       ...eligibleWhere(actor),
-                      sourceConnectionId: input.sourceConnectionId,
+                      sourceConnectionId: input.sourceConnectionId ?? null,
                       externalId: input.externalId,
                     },
                   })
@@ -374,7 +395,8 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       }
     },
 
-    getItem: (actor: Actor, id: string) => requireItem(actor, id),
+    getItem: (actor: Actor, id: string, filters: DataRoomFilters = {}) =>
+      requireItem(actor, id, filters),
 
     /**
      * One page ordered in SQL by `sort`, ties broken by id ascending, with a keyset cursor that

@@ -355,8 +355,11 @@ describePostgres("data room repository (PostgreSQL)", () => {
         size: 1,
         externalId: `ext-${run}`,
       });
-    await external(a, "e1");
-    await expect(external(a, "e2")).rejects.toThrow();
+    const first = await external(a, "e1");
+    await expect(external(a, "e2")).resolves.toMatchObject({
+      created: false,
+      item: { id: first.item.id },
+    });
     // The same external id for another member or space is a different item.
     await expect(external(a2, "e3")).resolves.toMatchObject({ created: true });
     await expect(external(b, "e4")).resolves.toMatchObject({ created: true });
