@@ -6,6 +6,7 @@ import { Agent } from "undici";
 import { combineSignals } from "./connector-safety.js";
 import {
   createAddressCheckedLookup,
+  defaultResolveHostname,
   isCloudMetadataAddress,
   isPrivateAddress,
   type ResolvedAddress,
@@ -117,12 +118,7 @@ export async function classifySerenityEndpointTrust(
   const url = parseSerenityEndpoint(endpoint);
   if (serenityEndpointRequiresDeploymentOwner(url.href)) return "private";
   const host = hostnameOf(url);
-  const resolve =
-    resolveHostname ??
-    (async (hostname: string) => {
-      const { lookup } = await import("node:dns/promises");
-      return lookup(hostname, { all: true, verbatim: true });
-    });
+  const resolve = resolveHostname ?? defaultResolveHostname;
   const addresses = await resolve(host);
   if (addresses.length === 0) {
     throw new Error("Serenity endpoint did not resolve to an address.");
@@ -243,13 +239,6 @@ function serenityFetchPath(
   return "public";
 }
 
-function defaultResolveHostname(): ResolveHostname {
-  return async (hostname: string) => {
-    const { lookup } = await import("node:dns/promises");
-    return lookup(hostname, { all: true, verbatim: true });
-  };
-}
-
 function assertPrivateLanAddresses(addresses: ResolvedAddress[]): void {
   if (addresses.length === 0) {
     throw new Error("Serenity endpoint did not resolve to an address.");
@@ -269,7 +258,7 @@ function assertPrivateLanAddresses(addresses: ResolvedAddress[]): void {
  */
 export function createSerenityPrivateLanFetch(
   baseFetch?: typeof globalThis.fetch,
-  resolve: ResolveHostname = defaultResolveHostname(),
+  resolve: ResolveHostname = defaultResolveHostname,
 ): SafeRemoteFetch {
   const transport = fetchPairedWithDispatcher(baseFetch);
   const privateFetch = async (input: string | URL | Request, init?: RequestInit) => {
@@ -317,7 +306,7 @@ async function withSerenityClient<T>(
   const url = normalizeSerenityEndpointUrl(config.endpoint);
   const requestSignal = combineSignals(signal, AbortSignal.timeout(SERENITY_TIMEOUT_MS));
   const path = serenityFetchPath(config, url);
-  const resolve = network.resolveHostname ?? defaultResolveHostname();
+  const resolve = network.resolveHostname ?? defaultResolveHostname;
   const pinnedFetch: SafeRemoteFetch | null =
     path === "public"
       ? createSafeRemoteFetch(network.fetch, network.resolveHostname)
@@ -417,11 +406,17 @@ export async function recallSerenity(
       config,
       options.signal,
       async (client, signal) => {
-        return callSerenityVerb(client, signal, "recall", {
-              query,
-              limit: Math.min(Math.max(1, Math.floor(options.limit)), 50),
-              ...(options.entity ? { entity: options.entity } : {}),
-            }, "Serenity recall failed");
+        return callSerenityVerb(
+          client,
+          signal,
+          "recall",
+          {
+            query,
+            limit: Math.min(Math.max(1, Math.floor(options.limit)), 50),
+            ...(options.entity ? { entity: options.entity } : {}),
+          },
+          "Serenity recall failed",
+        );
       },
       options.network,
     );
@@ -461,12 +456,18 @@ export async function rememberSerenity(
       config,
       options.signal,
       async (client, signal) => {
-        return callSerenityVerb(client, signal, "remember", {
-              fact: trimmedFact,
-              provenance: trimmedProvenance,
-              ...(options.entity ? { entity: options.entity } : {}),
-              ...(options.operationKey ? { operation_key: options.operationKey } : {}),
-            }, "Serenity remember failed");
+        return callSerenityVerb(
+          client,
+          signal,
+          "remember",
+          {
+            fact: trimmedFact,
+            provenance: trimmedProvenance,
+            ...(options.entity ? { entity: options.entity } : {}),
+            ...(options.operationKey ? { operation_key: options.operationKey } : {}),
+          },
+          "Serenity remember failed",
+        );
       },
       options.network,
     );
@@ -510,10 +511,16 @@ export async function forgetSerenity(
       options.signal,
       async (client, signal) => {
         // MEMORY_VERBS forget accepts only id + optional reason (additionalProperties: false).
-        return callSerenityVerb(client, signal, "forget", {
-              id: factId,
-              ...(options.reason?.trim() ? { reason: options.reason.trim() } : {}),
-            }, "Serenity forget failed");
+        return callSerenityVerb(
+          client,
+          signal,
+          "forget",
+          {
+            id: factId,
+            ...(options.reason?.trim() ? { reason: options.reason.trim() } : {}),
+          },
+          "Serenity forget failed",
+        );
       },
       options.network,
     );
