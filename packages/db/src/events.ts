@@ -920,7 +920,8 @@ export async function findMailApprovalForEdit(
 export interface SetMailApprovalOutcomeInput {
   spaceId: string;
   threadId: string;
-  messageId: string;
+  /** Omitted when the card is gone (a cleared thread): only the agent's note is updated. */
+  messageId?: string;
   effectId: string;
   outcome: NonNullable<MailApproval["outcome"]>;
   /** Replaces the note the agent reads when it resumes, so it matches how the send ended. */
@@ -961,6 +962,7 @@ export async function setMailApprovalOutcome(
         data: { result: { note: input.note } },
       });
     }
+    if (!input.messageId) return null;
     const message = await tx.message.findFirst({
       where: { id: input.messageId, threadId: input.threadId, role: "bot" },
     });

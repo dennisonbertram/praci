@@ -22,7 +22,7 @@ describePostgres("mail approval recovery (PostgreSQL)", () => {
   let threadId: string;
   let n = 0;
   const events = () => createThreadEvents(prisma);
-  const later = () => new Date(Date.now() + MAIL_APPROVAL_STALE_MS + 1000);
+  const later = (windows = 1) => new Date(Date.now() + windows * MAIL_APPROVAL_STALE_MS + 1000);
 
   beforeAll(async () => {
     const db = createDb(databaseUrl!);
@@ -288,8 +288,10 @@ describePostgres("mail approval recovery (PostgreSQL)", () => {
       batchSize: 100,
     });
     expect((await card(a.message.id))?.outcome).toBeUndefined();
-    // The next pass sees the real state.
+    // The skipped effect waits one more stale window, then the next pass sees the real state.
     await reconcile(later());
+    expect((await card(a.message.id))?.outcome).toBeUndefined();
+    await reconcile(later(2));
     expect((await card(a.message.id))?.outcome).toBe("sent");
   });
 
@@ -325,6 +327,45 @@ describePostgres("mail approval recovery (PostgreSQL)", () => {
     await write;
     expect((await card(a.message.id))?.outcome).toBeUndefined();
     expect(await note(a.effect.id)).toBe(claimNote);
+  });
+
+  it("settles an effect whose card is gone, so it cannot fill the batch and starve newer ones", async () => {
+    const gone = await waitingApproval("mail_send");
+    await claim(gone);
+    await prisma.message.delete({ where: { id: gone.message.id } });
+    const fresh = await waitingApproval("mail_send");
+    await claim(fresh);
+    // Make the cleared one older, and scan with room for one effect only.
+    await prisma.$executeRaw`UPDATE external_effects SET "updatedAt" = now() - interval '1 hour' WHERE id = ${gone.effect.id}`;
+    await reconcileMailApprovals({ prisma, events: events(), now: later(), batchSize: 1 });
+    expect(await note(gone.effect.id)).toContain("nothing was sent");
+    await reconcile(later());
+    expect((await card(fresh.message.id))?.outcome).toBe("failed");
+  });
+
+  it("moves an effect it could not settle behind newer ones", async () => {
+    const stuck = await waitingApproval("mail_send");
+    await claim(stuck);
+    const next = await waitingApproval("mail_send");
+    await claim(next);
+    await prisma.$executeRaw`UPDATE external_effects SET "updatedAt" = now() - interval '1 hour' WHERE id = ${stuck.effect.id}`;
+    // A compose row that keeps changing under the scan: the stuck effect is skipped.
+    const realUpdate = prisma.composeSend.updateMany.bind(prisma.composeSend);
+    const racing = {
+      ...prisma,
+      composeSend: {
+        findUnique: prisma.composeSend.findUnique.bind(prisma.composeSend),
+        updateMany: async (args: Parameters<typeof realUpdate>[0]) => {
+          const id = (args as { where: { id: string } }).where.id;
+          await prisma.composeSend.updateMany({ where: { id }, data: { connectionId } });
+          return { count: 0 };
+        },
+      },
+    } as unknown as PrismaClient;
+    await reconcileMailApprovals({ prisma: racing, events: events(), now: later(), batchSize: 1 });
+    expect((await card(stuck.message.id))?.outcome).toBeUndefined();
+    await reconcile(later());
+    expect((await card(next.message.id))?.outcome).toBe("failed");
   });
 
   it("leaves a plain denial alone", async () => {

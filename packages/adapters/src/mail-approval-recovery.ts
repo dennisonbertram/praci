@@ -43,8 +43,6 @@ export async function reconcileMailApprovals(deps: {
   batchSize: number;
 }): Promise<void> {
   const cutoff = new Date(deps.now.getTime() - MAIL_APPROVAL_STALE_MS);
-  // ponytail: oldest-first without a cursor; an effect that cannot be settled keeps its place, so
-  // more than batchSize of them would hide newer ones. Add a cursor if that is ever seen.
   const effects = await deps.prisma.externalEffect.findMany({
     where: {
       kind: { in: ["mail_draft", "mail_send"] },
@@ -62,10 +60,11 @@ export async function reconcileMailApprovals(deps: {
       kind: true,
       runId: true,
       result: true,
-      run: { select: { userId: true } },
+      run: { select: { userId: true, threadId: true } },
     },
   });
   for (const effect of effects) {
+    const claimNote = (effect.result as { note: string }).note;
     try {
       const send = effect.kind === "mail_send";
       const row = await deps.prisma.composeSend.findUnique({
@@ -121,16 +120,16 @@ export async function reconcileMailApprovals(deps: {
               (block as { approvalEffectId?: unknown }).approvalEffectId === effect.id,
           ),
       );
-      if (!card) continue;
+      // A cleared thread has no card; the effect's note is still settled so it leaves the scan.
       await deps.events.setMailApprovalOutcome({
         spaceId: effect.spaceId,
-        threadId: card.threadId,
-        messageId: card.id,
+        threadId: card?.threadId ?? effect.run.threadId,
+        ...(card ? { messageId: card.id } : {}),
         effectId: effect.id,
         outcome,
         note: mailApprovalAgentNote(send, outcome),
         onlyIf: {
-          note: (effect.result as { note: string }).note,
+          note: claimNote,
           compose: {
             userId: effect.run.userId,
             clientId: mailApprovalComposeClientId(effect.id),
@@ -140,6 +139,15 @@ export async function reconcileMailApprovals(deps: {
       });
     } catch (error) {
       getLogger().error("mail approval reconciliation", error);
+    } finally {
+      // Still unsettled (skipped, fresh, or failed): move it to the back of the oldest-first scan
+      // so it cannot starve newer approvals. It is retried once the stale window passes again.
+      await deps.prisma.externalEffect
+        .updateMany({
+          where: { id: effect.id, result: { path: ["note"], equals: claimNote } },
+          data: { updatedAt: deps.now },
+        })
+        .catch(() => undefined);
     }
   }
 }
