@@ -128,6 +128,51 @@ td.r{text-align:right;white-space:nowrap;padding-right:0}
 .olist div{padding:6px 0;border-top:1px solid var(--border);display:flex;justify-content:space-between}
 .olist div:first-child{border-top:0}
 
+/* toolbar, filter, sort, table view */
+[hidden]{display:none!important}
+.tools{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin:-6px 0 18px}
+.tools svg,.tb .ib svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tools .btn{display:inline-flex;align-items:center;gap:6px;padding:5px 10px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:transparent;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--muted-fg)}
+.seg button[aria-pressed="true"]{background:var(--primary);color:var(--primary-fg)}
+.tools .chip{cursor:pointer}
+.tools .chip:hover{border-color:var(--fg);color:var(--fg)}
+.pop-f,.pop-s{top:calc(100% + 4px);right:0}
+.pop-f{width:230px;padding:8px 10px}
+.pop-s{width:230px}
+.pop-f h3{font-size:11px;margin:8px 0 2px;color:var(--muted-fg);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.pop-f h3:first-child{margin-top:0}
+.pop-f label{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer}
+.pop-f input{margin:0;accent-color:var(--fg)}
+.mi{display:flex;width:100%;align-items:center;gap:8px;padding:6px 8px;border:0;background:transparent;border-radius:8px;cursor:pointer;text-align:left}
+.mi:hover{background:var(--muted)}
+.mi::before{content:"";width:12px;flex:none}
+.mi[aria-checked="true"]::before{content:"\2713"}
+.none{margin:8px 0 0;display:flex;align-items:center;gap:8px}
+.tscroll{overflow-x:auto}
+.tb{min-width:900px}
+.tb td{white-space:nowrap;vertical-align:middle}
+.tb th{white-space:nowrap}
+.tb th button{border:0;background:transparent;padding:0;color:inherit;font:inherit;cursor:pointer}
+.tb th button:hover{color:var(--fg)}
+.tb th[aria-sort]:not([aria-sort="none"]) button{color:var(--fg);font-weight:600}
+.tb th[aria-sort="ascending"] button::after{content:" \2191"}
+.tb th[aria-sort="descending"] button::after{content:" \2193"}
+.tb .stk{position:sticky;left:0;z-index:1;background:var(--card);padding-right:12px}
+.tb .sp{width:72px;height:20px}
+.tb .who b{font-size:13px}
+.tb .who>span.sub{display:block}
+.tb .av{width:28px;height:28px}
+.tb .chv{width:22px;flex:none}
+.tb .ib[aria-expanded="true"] svg{transform:rotate(90deg)}
+.tb tr.xr{cursor:pointer}
+.tb tr.xr:hover td{background:var(--muted)}
+.tb tr.xr:hover td.stk{background:var(--muted)}
+.tb .evr td{white-space:normal;padding:0 0 8px}
+.tb .evb{padding:8px 10px;background:var(--muted);border-radius:8px;font-size:12px}
+.tb td.r{padding-right:0}
+
 /* empty / history */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:60vh;text-align:center}
 .hist{max-width:46ch}
@@ -146,6 +191,7 @@ td.r{text-align:right;white-space:nowrap;padding-right:0}
   .mock{left:8px;right:8px;overflow-x:auto;border-radius:12px}
   .rv{overflow-x:auto}
   .rv table{min-width:520px}
+  .pop-f{right:auto;left:0}
   .sum{font-size:17px}
 }
 </style>
@@ -197,9 +243,18 @@ td.r{text-align:right;white-space:nowrap;padding-right:0}
     </div>
     <p class="sum">Take care of Maya and Jonah first. 2 others show rising after-hours work.</p>
 
-    <section class="sec"><h2>Take care of first</h2>
+    <div class="tools" role="toolbar" aria-label="View, filter and sort">
+      <span id="fchips" style="display:contents"></span>
+      <button class="btn q" id="fclear" hidden>Clear</button>
+      <div class="anch"><button class="btn" id="fbtn" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 16 16"><path d="M2.5 4h11M4.5 8h7M6.5 12h3"/></svg><span id="flab">Filter</span></button><div class="pop pop-f" id="fpop" role="group" aria-label="Filter" hidden></div></div>
+      <div class="anch"><button class="btn" id="sbtn" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 16 16"><path d="M5 13V3M2.5 5.5L5 3l2.5 2.5M11 3v10M8.5 10.5L11 13l2.5-2.5"/></svg><span id="slab">Sort: Recent change</span></button><div class="pop pop-s" id="spop" role="menu" aria-label="Sort" hidden></div></div>
+      <div class="seg" role="group" aria-label="View"><button id="vc" aria-pressed="true"><svg viewBox="0 0 16 16"><path d="M2.5 2.5h4.5v4.5h-4.5zM9 2.5h4.5v4.5h-4.5zM2.5 9h4.5v4.5h-4.5zM9 9h4.5v4.5h-4.5z"/></svg>Cards</button><button id="vt" aria-pressed="false"><svg viewBox="0 0 16 16"><path d="M2.5 3.5h11v9h-11zM2.5 7h11M2.5 10h11"/></svg>Table</button></div>
+    </div>
+    <div id="cv">
+
+    <section class="sec" id="sec0"><h2>Take care of first</h2>
     <div class="grid2">
-      <article class="card pc">
+      <article class="card pc" data-id="m">
         <div class="who"><span class="av p lg">MO</span><div><b>Maya Okonkwo</b><span class="sub">Account lead</span></div></div>
         <div class="blk"><h3>Revenue line</h3><ul>
           <li>Sole owner of 9 of 12 threads with Northwind Labs, last 90 days</li>
@@ -212,7 +267,7 @@ td.r{text-align:right;white-space:nowrap;padding-right:0}
         <div class="acts"><button class="btn p">Schedule 1:1</button><button class="btn">Add second owner for Northwind</button><span class="sp2"></span><button class="btn q">Not an issue</button><button class="btn q">Done</button></div>
       </article>
 
-      <article class="card pc">
+      <article class="card pc" data-id="j">
         <div class="who"><span class="av p lg">JP</span><div><b>Jonah Petrakis</b><span class="sub">Backend engineer, billing</span></div></div>
         <div class="blk"><h3>Revenue line</h3><ul>
           <li>Wrote 71% of billing-service changes, last 90 days (58 of 82 commits)</li>
@@ -225,15 +280,15 @@ td.r{text-align:right;white-space:nowrap;padding-right:0}
       </article>
     </div></section>
 
-    <section class="sec"><h2>Workload signals</h2>
+    <section class="sec" id="sec1"><h2>Workload signals</h2>
     <div class="grid2">
-      <article class="card pc">
+      <article class="card pc" data-id="p">
         <div class="who"><span class="av p">PR</span><div><b>Priya Raman</b><span class="sub">Designer</span></div></div>
         <div class="sig" style="border-top:0"><span>Weekend activity 3 of last 5 weekends (baseline 0 in 5)</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="3.0" width="124" height="24.0" rx="2"/><polyline class="ln" points="2.0,27.0 12.9,27.0 23.8,27.0 34.7,27.0 45.6,27.0 56.5,27.0 67.5,27.0 78.4,3.0 89.3,27.0 100.2,3.0 111.1,3.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Low &middot; Slack only</span></div>
         <div class="sig"><span>Meetings 21 h/wk, up from 13, over 4 weeks</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="15.0" width="124" height="12.0" rx="2"/><polyline class="ln" points="2.0,24.6 12.9,22.2 23.8,19.8 34.7,22.2 45.6,24.6 56.5,19.8 67.5,22.2 78.4,15.0 89.3,7.8 100.2,5.4 111.1,3.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Medium &middot; no PTO data</span></div>
         <div class="acts"><button class="btn p">Block focus time Thursday</button><span class="sp2"></span><button class="btn q">Not an issue</button></div>
       </article>
-      <article class="card pc">
+      <article class="card pc" data-id="t">
         <div class="who"><span class="av p">TL</span><div><b>Theo Lindqvist</b><span class="sub">Support</span></div></div>
         <div class="sig" style="border-top:0"><span>After 8 PM replies on 8 of last 15 weekdays (baseline 2)</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="15.0" width="124" height="12.0" rx="2"/><polyline class="ln" points="2.0,24.0 12.9,21.0 23.8,21.0 34.7,24.0 45.6,18.0 56.5,21.0 67.5,21.0 78.4,15.0 89.3,12.0 100.2,9.0 111.1,6.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Medium &middot; Gmail and Slack</span></div>
         <div class="sig"><span>Tickets owned 31 open, up from 18, over 6 weeks</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="15.7" width="124" height="11.3" rx="2"/><polyline class="ln" points="2.0,22.8 12.9,21.4 23.8,19.9 34.7,21.4 45.6,18.5 56.5,17.1 67.5,12.9 78.4,10.1 89.3,7.2 100.2,4.4 111.1,3.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Low &middot; Linear only</span></div>
@@ -241,17 +296,22 @@ td.r{text-align:right;white-space:nowrap;padding-right:0}
       </article>
     </div></section>
 
-    <section class="sec"><h2>Revenue line</h2>
+    <section class="sec" id="sec2"><h2>Revenue line</h2>
     <div class="card rv"><table>
       <thead><tr><th>Person</th><th>Depends on them</th><th>Why</th><th></th></tr></thead>
-      <tbody>
-      <tr><td>Sam Ferreira</td><td>checkout-api</td><td class="mute">Sole author of 24 of 24 changes, last 90 days</td><td class="r"><button class="btn">Add backup</button></td></tr>
-      <tr><td>Ada Wójcik</td><td>Kestrel Freight</td><td class="mute">Single contact on their side, 14 threads, last 90 days</td><td class="r"><button class="btn">Add backup</button></td></tr>
-      <tr><td>Marcus Bell</td><td>Bluefin Health</td><td class="mute">Only internal sender on 11 of 11 threads, last 90 days</td><td class="r"><button class="btn">Add backup</button></td></tr>
+      <tbody id="rvb">
+      <tr data-id="sf"><td>Sam Ferreira</td><td>checkout-api</td><td class="mute">Sole author of 24 of 24 changes, last 90 days</td><td class="r"><button class="btn">Add backup</button></td></tr>
+      <tr data-id="aw"><td>Ada Wójcik</td><td>Kestrel Freight</td><td class="mute">Single contact on their side, 14 threads, last 90 days</td><td class="r"><button class="btn">Add backup</button></td></tr>
+      <tr data-id="mb"><td>Marcus Bell</td><td>Bluefin Health</td><td class="mute">Only internal sender on 11 of 11 threads, last 90 days</td><td class="r"><button class="btn">Add backup</button></td></tr>
       </tbody></table></div></section>
 
-    <button class="card others" id="oth" aria-expanded="false" aria-controls="olist"><span>8 others &middot; no sustained change</span><span class="chev">&#8250;</span></button>
-    <div class="card olist" id="olist"><div><span>Marcus Bell</span><span class="mute">Sales</span></div><div><span>Lena Ivanova</span><span class="mute">Engineer</span></div><div><span>Dev Anand</span><span class="mute">Engineer</span></div><div><span>Noor Haddad</span><span class="mute">Operations</span></div><div><span>Carl Eriksen</span><span class="mute">Engineer</span></div><div><span>Rosa Mendes</span><span class="mute">Marketing</span></div><div><span>Yusuf Demir</span><span class="mute">Engineer</span></div><div><span>Ines Moreau</span><span class="mute">Finance</span></div></div>
+    <button class="card others" id="oth" aria-expanded="false" aria-controls="olist"><span><span id="oc">8</span> others &middot; no sustained change</span><span class="chev">&#8250;</span></button>
+    <div class="card olist" id="olist"></div>
+    </div>
+    <div class="card" id="tv" hidden><div class="tscroll"><table class="tb"><thead><tr>
+      <th class="stk" scope="col"><button data-k="name">Person</button></th><th scope="col"><button data-k="group">Group</button></th><th scope="col">Revenue line</th><th scope="col"><button data-k="sig">Signals</button></th><th scope="col">Trend</th><th scope="col">Confidence</th><th scope="col"><button data-k="recent">Changed</button></th><th scope="col"><span class="sr" style="position:absolute;left:-9999px">Actions</span></th></tr></thead><tbody id="tvb"></tbody></table></div></div>
+    <p class="none" id="none" hidden>No one matches these filters. <button class="btn" data-clear>Clear</button></p>
+
   </div>
 
   <!-- state 4 -->
@@ -278,6 +338,97 @@ td.r{text-align:right;white-space:nowrap;padding-right:0}
   oth.onclick=function(){var o=ol.classList.toggle('open');oth.setAttribute('aria-expanded',o)};
   var info=document.getElementById('info');
   info.onclick=function(){go(b.dataset.s=='3'?2:3)};
+
+  var SIG={a:'After hours',w:'Weekend',m:'Meetings',r:'Reviews',t:'Tickets'},SRC=['Slack','Gmail','Calendar','GitHub','Linear'],
+  GL=['Take care of first','Workload signals','Revenue line','No change'],GT=['Take care of first','Workload','Revenue line','No change'],
+  SORT={recent:'Recent change',name:'Name',group:'Group',sig:'Signals (count)',late:'Last activity after hours'},
+  OPT={g:GL.map(function(l,i){return[String(i),l]}),s:Object.keys(SIG).map(function(k){return[k,SIG[k]]}),src:SRC.map(function(x){return[x,x]})},
+  FT={g:'Group',s:'Signal',src:'Source'};
+  function sp(b,h,p){return{b:b,h:h,p:p}}
+  var SPM=sp(18.4,8.6,'2.0,25.3 12.9,23.6 23.8,21.9 34.7,23.6 45.6,20.1 56.5,21.9 67.5,15.0 78.4,9.9 89.3,6.4 100.2,4.7 111.1,3.0 122.0,3.0'),
+  SPJ=sp(18.4,8.6,'2.0,23.6 12.9,21.9 23.8,22.7 34.7,24.4 45.6,21.0 56.5,22.7 67.5,15.0 78.4,9.9 89.3,6.4 100.2,4.7 111.1,3.0 122.0,3.0'),
+  SPP=sp(3,24,'2.0,27.0 12.9,27.0 23.8,27.0 34.7,27.0 45.6,27.0 56.5,27.0 67.5,27.0 78.4,3.0 89.3,27.0 100.2,3.0 111.1,3.0 122.0,3.0'),
+  SPT=sp(15,12,'2.0,24.0 12.9,21.0 23.8,21.0 34.7,24.0 45.6,18.0 56.5,21.0 67.5,21.0 78.4,15.0 89.3,12.0 100.2,9.0 111.1,6.0 122.0,3.0');
+  // One list drives both views. g: 0 first, 1 workload, 2 revenue line, 3 no change. wk: weeks since the change was flagged.
+  var P=[
+  {id:'m',n:'Maya Okonkwo',r:'Account lead',g:0,rev:'Northwind Labs, Harbor &amp; Pine',s:['m','w','a'],src:['Slack','Calendar'],top:'Meetings 26 h/wk, from 14',sp:SPM,cf:'Medium',wk:2,late:11,ev:'Meetings: 312 h over 12 weeks, 71 h in the last 3 weeks. Weekend days with activity: Sep 6, Sep 20, Sep 27, Oct 4, Oct 11. Late weekdays: Oct 1 to Oct 14. Counts and dates only.'},
+  {id:'j',n:'Jonah Petrakis',r:'Backend engineer, billing',g:0,rev:'billing-service, checkout-api',s:['r','a'],src:['GitHub','Slack'],top:'Reviews 38% of team, from 15%',sp:SPJ,cf:'Medium',wk:3,late:9},
+  {id:'p',n:'Priya Raman',r:'Designer',g:1,s:['w','m'],src:['Slack','Calendar'],top:'Weekend 3 of last 5',sp:SPP,cf:'Low',wk:4,late:2},
+  {id:'t',n:'Theo Lindqvist',r:'Support',g:1,s:['a','t'],src:['Gmail','Slack','Linear'],top:'After 8 PM 8 of 15 weekdays',sp:SPT,cf:'Medium',wk:6,late:8},
+  {id:'sf',n:'Sam Ferreira',r:'Engineer',g:2,rev:'checkout-api',s:[],src:['GitHub'],late:3},
+  {id:'aw',n:'Ada Wójcik',r:'Customer success',g:2,rev:'Kestrel Freight',s:[],src:['Gmail','Slack'],late:1},
+  {id:'mb',n:'Marcus Bell',r:'Sales',g:2,rev:'Bluefin Health',s:[],src:['Gmail','Calendar'],late:2},
+  {id:'o1',n:'Kofi Mensah',r:'Sales',g:3,s:[],src:['Gmail','Calendar'],late:1},
+  {id:'o2',n:'Lena Ivanova',r:'Engineer',g:3,s:[],src:['GitHub','Slack'],late:0},
+  {id:'o3',n:'Dev Anand',r:'Engineer',g:3,s:[],src:['GitHub','Linear'],late:2},
+  {id:'o4',n:'Noor Haddad',r:'Operations',g:3,s:[],src:['Slack','Calendar'],late:1},
+  {id:'o5',n:'Carl Eriksen',r:'Engineer',g:3,s:[],src:['GitHub','Slack'],late:0},
+  {id:'o6',n:'Rosa Mendes',r:'Marketing',g:3,s:[],src:['Gmail','Slack'],late:1},
+  {id:'o7',n:'Yusuf Demir',r:'Engineer',g:3,s:[],src:['GitHub','Linear'],late:2},
+  {id:'o8',n:'Ines Moreau',r:'Finance',g:3,s:[],src:['Gmail','Calendar'],late:0}];
+  var CMP={recent:function(a,b){return(a.wk==null?99:a.wk)-(b.wk==null?99:b.wk)},name:function(a,b){return a.n.localeCompare(b.n)},
+    group:function(a,b){return a.g-b.g},sig:function(a,b){return b.s.length-a.s.length},late:function(a,b){return b.late-a.late}};
+  var st={view:'cards',sort:'recent',f:{g:[],s:[],src:[]}};
+  function $(i){return document.getElementById(i)}
+  function vals(p,k){return k=='g'?[String(p.g)]:p[k]}
+  function match(p){return Object.keys(st.f).every(function(k){var f=st.f[k];return!f.length||vals(p,k).some(function(v){return f.indexOf(v)>=0})})}
+  function lab(k,v){return OPT[k].filter(function(o){return o[0]==v})[0][1]}
+  function nf(){return st.f.g.length+st.f.s.length+st.f.src.length}
+  var CH='<svg viewBox="0 0 16 16"><path d="M6 3.5L10.5 8 6 12.5"/></svg>';
+  function spark(x){return'<svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="'+x.b+'" width="124" height="'+x.h+'" rx="2"/><polyline class="ln" points="'+x.p+'"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg>'}
+  function row(p){
+    var ini=p.n.split(' ').map(function(w){return w[0]}).join(''),n=p.s.length;
+    return'<tr data-id="'+p.id+'"'+(p.ev?' class="xr"':'')+'><td class="stk"><div class="who">'+(p.ev?'<button class="ib" aria-expanded="false" aria-label="Show evidence for '+p.n+'">'+CH+'</button>':'<span class="chv"></span>')+
+    '<span class="av p">'+ini+'</span><div><b>'+p.n+'</b><span class="sub">'+p.r+'</span></div></div></td>'+
+    '<td><span class="tag">'+GT[p.g]+'</span></td><td class="mute">'+(p.rev||'&mdash;')+'</td>'+
+    '<td>'+(n?'<b class="num">'+n+'</b> <span class="mute">'+p.top+'</span>':'<span class="mute">&mdash;</span>')+'</td>'+
+    '<td>'+(p.sp?spark(p.sp):'<span class="mute">&mdash;</span>')+'</td><td>'+(p.cf?'<span class="tag">'+p.cf+'</span>':'<span class="mute">&mdash;</span>')+'</td>'+
+    '<td class="mute num">'+(p.wk!=null?p.wk+' wk ago':'&mdash;')+'</td>'+
+    '<td class="r"><button class="ib act" aria-haspopup="menu" aria-label="Actions for '+p.n+'"><svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r=".6"/><circle cx="8" cy="8" r=".6"/><circle cx="12.5" cy="8" r=".6"/></svg></button></td></tr>'+
+    (p.ev?'<tr class="evr" hidden><td colspan="8"><div class="evb">'+p.ev+'</div></td></tr>':'');
+  }
+  function render(){
+    var L=P.filter(match).sort(CMP[st.sort]),ids={};L.forEach(function(p){ids[p.id]=1});
+    var cards=st.view=='cards';
+    $('cv').hidden=!cards||!L.length;$('tv').hidden=cards||!L.length;$('none').hidden=!!L.length;
+    $('vc').setAttribute('aria-pressed',cards);$('vt').setAttribute('aria-pressed',!cards);
+    // card view: hide and reorder the existing cards and rows
+    document.querySelectorAll('#cv [data-id]').forEach(function(e){e.hidden=!ids[e.dataset.id]});
+    L.forEach(function(p){var e=document.querySelector('#cv [data-id="'+p.id+'"]');if(e)e.parentNode.appendChild(e)});
+    [0,1,2].forEach(function(i){var c=$('sec'+i);c.hidden=!c.querySelector('[data-id]:not([hidden])')});
+    var O=L.filter(function(p){return p.g==3});
+    $('oc').textContent=O.length;oth.hidden=!O.length;if(!O.length)ol.classList.remove('open');
+    ol.innerHTML=O.map(function(p){return'<div><span>'+p.n+'</span><span class="mute">'+p.r+'</span></div>'}).join('');
+    // table view
+    $('tvb').innerHTML=L.map(row).join('');
+    document.querySelectorAll('.tb th[data-k],.tb th:has(button[data-k])').forEach(function(th){
+      var k=th.querySelector('button').dataset.k;th.setAttribute('aria-sort',k==st.sort?(k=='sig'?'descending':'ascending'):'none')});
+    // toolbar
+    $('flab').textContent='Filter'+(nf()?' · '+nf():'');$('slab').textContent='Sort: '+SORT[st.sort];
+    $('fclear').hidden=!nf();
+    $('fchips').innerHTML=Object.keys(st.f).map(function(k){return st.f[k].map(function(v){return'<button class="chip sm" data-k="'+k+'" data-v="'+v+'" aria-label="Remove filter '+lab(k,v)+'">'+lab(k,v)+' &times;</button>'}).join('')}).join('');
+    document.querySelectorAll('#fpop input').forEach(function(i){i.checked=st.f[i.name].indexOf(i.value)>=0});
+    document.querySelectorAll('#spop .mi').forEach(function(m){m.setAttribute('aria-checked',m.dataset.k==st.sort)});
+  }
+  $('fpop').innerHTML=Object.keys(OPT).map(function(k){return'<h3>'+FT[k]+'</h3>'+OPT[k].map(function(o){return'<label><input type="checkbox" name="'+k+'" value="'+o[0]+'">'+o[1]+'</label>'}).join('')}).join('');
+  $('spop').innerHTML=Object.keys(SORT).map(function(k){return'<button class="mi" role="menuitemradio" data-k="'+k+'">'+SORT[k]+'</button>'}).join('');
+  function menu(btn,pop){btn.onclick=function(e){e.stopPropagation();var o=pop.hidden;closeM();pop.hidden=!o;btn.setAttribute('aria-expanded',o)}}
+  function closeM(){['fpop','spop'].forEach(function(i){$(i).hidden=true});$('fbtn').setAttribute('aria-expanded',false);$('sbtn').setAttribute('aria-expanded',false)}
+  menu($('fbtn'),$('fpop'));menu($('sbtn'),$('spop'));
+  document.addEventListener('click',function(e){if(!e.target.closest('.anch'))closeM()});
+  document.addEventListener('keydown',function(e){if(e.key=='Escape')closeM()});
+  function clear(){st.f={g:[],s:[],src:[]};render()}
+  $('fclear').onclick=clear;document.querySelector('[data-clear]').onclick=clear;
+  $('fpop').onchange=function(e){var f=st.f[e.target.name],i=f.indexOf(e.target.value);i<0?f.push(e.target.value):f.splice(i,1);render()};
+  $('fchips').onclick=function(e){var c=e.target.closest('.chip');if(c){var f=st.f[c.dataset.k];f.splice(f.indexOf(c.dataset.v),1);render()}};
+  $('spop').onclick=function(e){var m=e.target.closest('.mi');if(m){st.sort=m.dataset.k;closeM();render()}};
+  $('vc').onclick=function(){st.view='cards';render()};$('vt').onclick=function(){st.view='table';render()};
+  document.querySelector('.tb thead').onclick=function(e){var b=e.target.closest('button[data-k]');if(b){st.sort=b.dataset.k;render()}};
+  $('tvb').onclick=function(e){
+    if(e.target.closest('.act'))return;
+    var tr=e.target.closest('tr.xr');if(!tr)return;
+    var ev=tr.nextElementSibling;ev.hidden=!ev.hidden;tr.querySelector('.ib').setAttribute('aria-expanded',!ev.hidden)};
+  render();
 })();
 </script>
 </body>

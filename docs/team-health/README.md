@@ -50,8 +50,13 @@ web never shows a mobile link to a screen that does not exist.
    A signal therefore needs at least 15 weeks of history; the 26-week backfill usually
    provides it at once, and the "not enough history" state shows weeks collected out
    of 15. v1 signals (best evidence, cheapest): after-hours activity, weekend activity,
-   meeting hours, share of team PR reviews, open tickets owned. No composite score,
-   no ranking; cards sort by most recent change.
+   meeting hours, share of team PR reviews, open tickets owned. No composite score.
+6a. **Cards or table, with the same filter and sort.** A Cards | Table toggle shows
+   the same people. Filter by group (Take care of first, Workload, Revenue line, No
+   change), signal type and source. Sort by recent change (default), name, group,
+   signal count, or last after-hours activity; table column headers sort too. There
+   is no score to sort by. View, filter and sort are kept in the URL so a view can be
+   shared and survives reload.
 6. **Revenue line is inferred and correctable.** v1 signals: sole internal owner of
    threads with an external business domain (personal domains excluded), share of
    changes to revenue services, and single contact on the customer's side. Revenue
