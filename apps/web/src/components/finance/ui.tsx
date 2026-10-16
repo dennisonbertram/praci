@@ -276,7 +276,7 @@ export function Section({
   return (
     <Card id={id} size="sm" className={cn("scroll-mt-3 px-3.5", className)}>
       {title || action ? (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {title ? (
             <h2 className="whitespace-nowrap text-xs font-semibold text-muted-foreground">
               {title}
@@ -353,7 +353,7 @@ export function BreakdownRows({
         <HereLink
           key={row.key}
           to={to(row)}
-          className="group grid grid-cols-[minmax(0,7.5rem)_1fr_4.5rem_0.75rem] items-center gap-2.5 rounded-lg px-2 py-1.5 outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground @md:grid-cols-[minmax(0,9rem)_1fr_4.5rem_0.75rem]"
+          className="group grid grid-cols-[minmax(0,10rem)_1fr_4.5rem_0.75rem] items-center gap-2.5 rounded-lg px-2 py-1.5 outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground @md:grid-cols-[minmax(0,13rem)_1fr_4.5rem_0.75rem]"
         >
           <span className="truncate">
             {swatches ? (

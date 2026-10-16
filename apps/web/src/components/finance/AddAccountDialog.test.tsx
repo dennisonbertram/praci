@@ -231,7 +231,7 @@ it("discards a held statement without importing it", async () => {
 it("lists statements uploaded before, so they can be found and removed later", async () => {
   rpcMock.statements.mockResolvedValue({
     statements: [
-      statement({ id: "old", status: "imported", createsAccount: false }),
+      statement({ id: "old", status: "imported", createsAccount: true }),
       statement({ id: "bad", status: "failed", fileName: "broken.pdf" }),
     ],
     reminders: [],
@@ -240,6 +240,7 @@ it("lists statements uploaded before, so they can be found and removed later", a
   const text = dialog().textContent ?? "";
   expect(text).toContain("Example Bank ••1234");
   expect(text).toContain("Imported");
+  expect(text).not.toContain("New account");
   expect(text).not.toContain("broken.pdf");
   await click("Remove");
   expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "old" });

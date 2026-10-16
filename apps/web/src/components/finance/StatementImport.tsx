@@ -53,7 +53,11 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
               key: ++counter.current,
               name: statement.fileName,
               state: statement.status === "review" ? "review" : "imported",
-              statement,
+              // Its account exists by now, so it is not shown as a new one.
+              statement:
+                statement.status === "imported"
+                  ? { ...statement, createsAccount: false }
+                  : statement,
             }),
           );
         setItems((all) => [...past, ...all]);

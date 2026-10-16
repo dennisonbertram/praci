@@ -281,7 +281,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
             <Kpi title={t`First seen`} value={monthLabel(data.firstSeenAt.slice(0, 7))} />
             <Kpi
               title={t`Paid with`}
-              value={<span className="text-xs font-semibold leading-snug">{paidWith || "—"}</span>}
+              value={<span className="text-sm font-semibold leading-snug">{paidWith || "—"}</span>}
             />
           </div>
           <Section title={<Trans>Monthly spend</Trans>}>

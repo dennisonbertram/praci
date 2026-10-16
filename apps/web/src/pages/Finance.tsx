@@ -391,7 +391,8 @@ function Overview({
       ) : (
         <div className="flex flex-col gap-3">
           <div
-            className={`grid grid-cols-2 gap-3 ${
+            // Two per row when narrow; an odd last card takes the whole row instead of sitting alone.
+            className={`grid grid-cols-2 gap-3 [&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${
               hasCash ? (data.crypto ? "@3xl:grid-cols-4" : "@3xl:grid-cols-3") : "@3xl:grid-cols-2"
             }`}
           >
