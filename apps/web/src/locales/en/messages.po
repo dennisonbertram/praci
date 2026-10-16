@@ -2213,6 +2213,10 @@ msgstr "Could not save that voice"
 msgid "Could not save the credential"
 msgstr "Could not save the credential"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Could not save the embedding model"
+msgstr "Could not save the embedding model"
+
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Could not save the page."
 msgstr "Could not save the page."
@@ -2840,6 +2844,10 @@ msgstr "Email is not allowed to register"
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "Email verification required"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Embedding model"
+msgstr "Embedding model"
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Ends {day}"
