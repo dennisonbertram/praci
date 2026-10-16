@@ -1,6 +1,6 @@
 import { isIP } from "node:net";
 import { CLOUD_METADATA_HOSTNAMES } from "@rakazo/contracts";
-import { readBoundedResponseBytes } from "@rakazo/core";
+import { abortError, readBoundedResponseBytes, withAbort } from "@rakazo/core";
 import { Agent } from "undici";
 import { combineSignals } from "./connector-safety.js";
 import {
@@ -282,26 +282,4 @@ function assertPublicAddresses(addresses: ResolvedAddress[]): void {
   }
 }
 
-function abortError(signal: AbortSignal): Error {
-  return signal.reason instanceof Error ? signal.reason : new Error("Request timed out");
-}
-
-/** Race a promise against an AbortSignal so stalled work cannot outlive the deadline. */
-export function withAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
-  if (!signal) return promise;
-  if (signal.aborted) return Promise.reject(abortError(signal));
-  return new Promise<T>((resolve, reject) => {
-    const onAbort = () => reject(abortError(signal));
-    signal.addEventListener("abort", onAbort, { once: true });
-    promise.then(
-      (value) => {
-        signal.removeEventListener("abort", onAbort);
-        resolve(value);
-      },
-      (error) => {
-        signal.removeEventListener("abort", onAbort);
-        reject(error);
-      },
-    );
-  });
-}
+export { withAbort };

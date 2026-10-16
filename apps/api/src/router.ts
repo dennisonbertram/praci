@@ -1515,7 +1515,7 @@ export function createRouter(deps: RouterDeps) {
         return result.status === "connected" ? { status: "ready" as const } : result;
       }),
       finishOAuth: authed.models.finishOAuth.handler(async ({ context, input }) => {
-        throwIfAborted(context.signal);
+        context.signal?.throwIfAborted();
         const result = await deps.oauthLogins.finish(
           input.loginId,
           context.actor,
@@ -7369,7 +7369,7 @@ async function persistModelCredential(
   },
   codexCatalog: CodexLiveCatalog,
 ) {
-  throwIfAborted(input.signal);
+  input.signal?.throwIfAborted();
   const requestedModelId = usableModelId(input.modelId);
   const authError = requestedModelId
     ? validateModelAuthAvailability(input.provider, requestedModelId, input.plaintext)
@@ -7402,16 +7402,16 @@ async function persistModelCredential(
     userId: actor.userId,
     signal: input.signal ?? new AbortController().signal,
   });
-  throwIfAborted(input.signal);
+  input.signal?.throwIfAborted();
   const cred = await withSerializableRetry(() =>
     deps.prisma.$transaction(
       async (tx) => {
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         const existing = await tx.userModelCredential.findFirst({
           where: { userId: actor.userId, provider: input.provider },
           orderBy: newestModelCredentialOrder,
         });
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         const secret = await tx.secret.create({
           data: {
             id: stored.id,
@@ -7421,7 +7421,7 @@ async function persistModelCredential(
             ciphertext: stored.ciphertext,
           },
         });
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         const credential = !existing
           ? await tx.userModelCredential.create({
               data: {
@@ -7442,7 +7442,7 @@ async function persistModelCredential(
                   : {}),
               },
             });
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         let thinkingLevel = input.thinkingLevel;
         if (thinkingLevel === undefined) {
           // A stored effort only carries over while it still names this model.
@@ -7463,14 +7463,14 @@ async function persistModelCredential(
           ? clampCatalogThinkingLevel(thinkingLevel, allowedThinking)
           : null;
         await selectSpaceModelPreference(tx, actor, credential.id, defaultModel, thinkingLevel);
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         if (existing) {
           await deleteUnreferencedCredentialSecret(tx, {
             credentialKind: "model",
             credentialId: existing.id,
             secretId: existing.secretId,
           });
-          throwIfAborted(input.signal);
+          input.signal?.throwIfAborted();
         }
         return { ...credential, isDefault: true, defaultModel };
       },
@@ -7478,10 +7478,6 @@ async function persistModelCredential(
     ),
   );
   return modelCredentialDto(cred, input.plaintext);
-}
-
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) throw signal.reason ?? new Error("Request cancelled");
 }
 
 function nextRoutineDate(crons: string[], timezone: string): Date {

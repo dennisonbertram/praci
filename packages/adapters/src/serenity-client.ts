@@ -5,12 +5,12 @@ import { isLocalMcpHost } from "@rakazo/contracts";
 import { Agent } from "undici";
 import { combineSignals } from "./connector-safety.js";
 import {
+  assertPrivateLanAddresses as assertPrivateLanAddressesShared,
   createAddressCheckedLookup,
   defaultResolveHostname,
-  assertPrivateLanAddresses as assertPrivateLanAddressesShared,
+  normalizeUrlHostname as hostnameOf,
   isCloudMetadataAddress,
   isPrivateAddress,
-  normalizeUrlHostname as hostnameOf,
   type ResolvedAddress,
   type ResolveHostname,
 } from "./network-address.js";

@@ -13,10 +13,9 @@ import type { ResolvedAddress, ResolveHostname } from "./network-address.js";
 import {
   assertPrivateLanAddresses as assertPrivateLanAddressesShared,
   defaultResolveHostname,
+  normalizeUrlHostname as hostnameOf,
   isCloudMetadataAddress,
   isLinkLocalAddress,
-  isPrivateAddress,
-  normalizeUrlHostname as hostnameOf,
 } from "./network-address.js";
 import { isPrivateRemoteMcpHostname } from "./remote-mcp.js";
 import { MemoryProviderDeploymentOwnerRequiredError } from "./serenity-memory-provider.js";
