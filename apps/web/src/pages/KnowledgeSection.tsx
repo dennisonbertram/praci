@@ -3,6 +3,7 @@ import type { AgentSkill, AgentSkillCatalogEntry, MemoryDocument } from "@rakazo
 import {
   Badge,
   Button,
+  Input,
   Skeleton,
   Tabs,
   TabsContent,
@@ -59,17 +60,43 @@ export function KnowledgeSection({
   );
 }
 
-/** The space's shared memory documents, mounted in the Memory settings overlay. */
+/** All of the user's memory documents (shared and per bot), mounted in Settings → Memory. */
 export function SpaceMemorySection() {
+  const { t } = useLingui();
+  const [filter, setFilter] = useState("");
+  const [hasDocs, setHasDocs] = useState(false);
+  const [botNames, setBotNames] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    // Documents still show if bot names fail to load.
+    void Promise.all([rpc.bots.list(), rpc.bots.listArchived()])
+      .then((lists) => setBotNames(new Map(lists.flat().map((bot) => [bot.id, bot.name]))))
+      .catch(() => undefined);
+  }, []);
+
   return (
     <div className="mt-6" data-testid="space-memory-documents">
-      <div className="mb-2 text-[12.5px] uppercase tracking-[0.08em] text-muted-foreground">
-        <Trans>Shared documents</Trans>
-      </div>
+      {hasDocs ? (
+        <Input
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+          placeholder={t`Filter memory`}
+          aria-label={t`Filter memory`}
+          className="mb-3"
+        />
+      ) : null}
       <MemoryDocumentList
-        load={() => rpc.memory.list({ scope: "user" })}
+        load={() => rpc.memory.list({})}
         exportFilename="space-memory.md"
+        exportScope="user"
         testId="space-memory-list"
+        filter={filter}
+        onHasDocs={setHasDocs}
+        groupLabel={(doc) =>
+          doc.scope === "user"
+            ? t`Shared documents`
+            : (botNames.get(doc.botId ?? "") ?? t`Unknown bot`)
+        }
       />
     </div>
   );
@@ -78,11 +105,21 @@ export function SpaceMemorySection() {
 function MemoryDocumentList({
   load,
   exportFilename,
+  exportScope,
   testId,
+  filter = "",
+  groupLabel,
+  onHasDocs,
 }: {
   load: () => Promise<MemoryDocument[]>;
   exportFilename: string;
+  /** Limit the exported file to one scope. */
+  exportScope?: MemoryDocument["scope"];
   testId: string;
+  filter?: string;
+  /** When set, documents render in groups headed by this label; shared first, then by label. */
+  groupLabel?: (doc: MemoryDocument) => string;
+  onHasDocs?: (hasDocs: boolean) => void;
 }) {
   const { t } = useLingui();
   const [loading, setLoading] = useState(true);
@@ -115,6 +152,30 @@ function MemoryDocumentList({
     };
   }, [t]);
 
+  const hasDocs = docs.length > 0;
+  useEffect(() => {
+    onHasDocs?.(hasDocs);
+  }, [hasDocs, onHasDocs]);
+
+  const needle = filter.trim().toLowerCase();
+  const visible = needle
+    ? docs.filter(
+        (doc) =>
+          doc.path.toLowerCase().includes(needle) || doc.content.toLowerCase().includes(needle),
+      )
+    : docs;
+  const groups = new Map<string, { label: string; docs: MemoryDocument[] }>();
+  for (const doc of visible) {
+    const key = groupLabel ? (doc.scope === "user" ? "" : (doc.botId ?? "?")) : "";
+    const group = groups.get(key) ?? { label: groupLabel?.(doc) ?? "", docs: [] };
+    group.docs.push(doc);
+    groups.set(key, group);
+  }
+  // Shared group (key "") first, then bots by name.
+  const ordered = [...groups.entries()].sort(([ka, a], [kb, b]) =>
+    ka === "" ? -1 : kb === "" ? 1 : a.label.localeCompare(b.label),
+  );
+
   function openDoc(doc: MemoryDocument) {
     setOpenId(doc.id);
     setDraft(doc.content);
@@ -146,7 +207,8 @@ function MemoryDocumentList({
       const fresh = await loadRef.current();
       generation.current += 1;
       setDocs(fresh);
-      const markdown = fresh.map((doc) => `# ${doc.path}\n\n${doc.content}`).join("\n\n");
+      const exported = exportScope ? fresh.filter((doc) => doc.scope === exportScope) : fresh;
+      const markdown = exported.map((doc) => `# ${doc.path}\n\n${doc.content}`).join("\n\n");
       downloadArtifactBytes(exportFilename, "text/markdown", new TextEncoder().encode(markdown));
     } catch {
       setError(t`Could not load`);
@@ -164,57 +226,78 @@ function MemoryDocumentList({
           <Trans>Nothing remembered yet</Trans>
         </div>
       ) : null}
-      {docs.map((doc) => (
-        <div key={doc.id}>
-          <Button
-            variant="ghost"
-            type="button"
-            disabled={busy}
-            onClick={() => (openId === doc.id ? setOpenId(null) : openDoc(doc))}
-            className={rowClass(openId === doc.id)}
-          >
-            <span className="flex w-full items-baseline justify-between gap-3">
-              <span className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
-                {doc.path}
-              </span>
-              <span className="shrink-0 text-[12px] text-muted-foreground">
-                <Trans>rev {doc.revision}</Trans>
-              </span>
-            </span>
-          </Button>
-          {openId === doc.id ? (
-            <div className="px-2.5 pb-2">
-              <Textarea
-                aria-label={doc.path}
-                disabled={busy}
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                rows={Math.min(16, Math.max(4, draft.split("\n").length + 1))}
-                className={fieldClass}
-                dir="auto"
-              />
-              <div className="mt-2 flex gap-2">
-                <Button
-                  variant="ghost"
-                  type="button"
-                  disabled={busy || draft === doc.content}
-                  onClick={() => void save(doc)}
-                  className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"
-                >
-                  <Trans>Save</Trans>
-                </Button>
-                <Button
-                  variant="ghost"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setOpenId(null)}
-                  className="rounded-lg px-3 py-1.5 text-[13px] text-muted-foreground"
-                >
-                  <Trans>Cancel</Trans>
-                </Button>
-              </div>
+      {!loading && docs.length > 0 && visible.length === 0 ? (
+        <div className="px-2.5 py-1 text-[13.5px] text-muted-foreground">
+          <Trans>No matches</Trans>
+        </div>
+      ) : null}
+      {ordered.map(([key, group], index) => (
+        <div
+          key={key}
+          className={groupLabel && index > 0 ? "mt-4" : undefined}
+          data-testid={groupLabel ? `memory-group-${key || "shared"}` : undefined}
+        >
+          {groupLabel ? (
+            <div
+              className="mb-2 text-[12.5px] uppercase tracking-[0.08em] text-muted-foreground"
+              dir="auto"
+            >
+              {group.label}
             </div>
           ) : null}
+          {group.docs.map((doc) => (
+            <div key={doc.id}>
+              <Button
+                variant="ghost"
+                type="button"
+                disabled={busy}
+                onClick={() => (openId === doc.id ? setOpenId(null) : openDoc(doc))}
+                className={rowClass(openId === doc.id)}
+              >
+                <span className="flex w-full items-baseline justify-between gap-3">
+                  <span className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
+                    {doc.path}
+                  </span>
+                  <span className="shrink-0 text-[12px] text-muted-foreground">
+                    <Trans>rev {doc.revision}</Trans>
+                  </span>
+                </span>
+              </Button>
+              {openId === doc.id ? (
+                <div className="px-2.5 pb-2">
+                  <Textarea
+                    aria-label={doc.path}
+                    disabled={busy}
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    rows={Math.min(16, Math.max(4, draft.split("\n").length + 1))}
+                    className={fieldClass}
+                    dir="auto"
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      disabled={busy || draft === doc.content}
+                      onClick={() => void save(doc)}
+                      className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+                    >
+                      <Trans>Save</Trans>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setOpenId(null)}
+                      className="rounded-lg px-3 py-1.5 text-[13px] text-muted-foreground"
+                    >
+                      <Trans>Cancel</Trans>
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ))}
         </div>
       ))}
       {docs.length ? (
