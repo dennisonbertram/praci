@@ -42,6 +42,29 @@ function fakePrisma(
 }
 
 describe("createJobReconciler", () => {
+  it("scans for abandoned mail approvals when it can write events, and survives a failed scan", async () => {
+    const prisma = fakePrisma() as unknown as {
+      externalEffect: { findMany: ReturnType<typeof vi.fn> };
+    };
+    prisma.externalEffect = { findMany: vi.fn(async () => []) };
+    const { jobs } = publisher();
+    const events = {} as ThreadEvents;
+    await createJobReconciler({
+      prisma: prisma as unknown as PrismaClient,
+      jobs,
+      events,
+    }).reconcileOnce();
+    expect(prisma.externalEffect.findMany).toHaveBeenCalledOnce();
+    prisma.externalEffect.findMany.mockRejectedValueOnce(new Error("db down"));
+    await expect(
+      createJobReconciler({
+        prisma: prisma as unknown as PrismaClient,
+        jobs,
+        events,
+      }).reconcileOnce(),
+    ).resolves.toBeUndefined();
+  });
+
   it("continues the main scans when an auxiliary reconciler fails", async () => {
     const prisma = fakePrisma();
     const { jobs } = publisher();

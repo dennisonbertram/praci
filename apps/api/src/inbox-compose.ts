@@ -182,12 +182,22 @@ type Row = { id: string; connectionId: string; draftId: string | null; state: st
 /** The compose record for this client id, created on first use. It never changes accounts. */
 async function composeRow(deps: ComposeDeps, actor: Actor, input: ComposeFields): Promise<Row> {
   const key = { spaceId: actor.spaceId, userId: actor.userId, clientId: input.clientId };
-  const row = await deps.prisma.composeSend.upsert({
-    where: { spaceId_userId_clientId: key },
-    create: { ...key, connectionId: input.connectionId },
-    update: {},
-    select: { id: true, connectionId: true, draftId: true, state: true },
-  });
+  const select = { id: true, connectionId: true, draftId: true, state: true } as const;
+  // Prisma's upsert is not atomic: two first requests can both insert. The loser reads the winner's row.
+  const row = await deps.prisma.composeSend
+    .upsert({
+      where: { spaceId_userId_clientId: key },
+      create: { ...key, connectionId: input.connectionId },
+      update: {},
+      select,
+    })
+    .catch((error: unknown) => {
+      if ((error as { code?: string }).code !== "P2002") throw error;
+      return deps.prisma.composeSend.findUniqueOrThrow({
+        where: { spaceId_userId_clientId: key },
+        select,
+      });
+    });
   if (row.connectionId !== input.connectionId)
     throw new ORPCError("BAD_REQUEST", { message: "A draft cannot change accounts" });
   return row;
@@ -257,6 +267,7 @@ export async function inboxComposeDraftSave(
   const draft = draftOf(input, original?.providerMessageId, true);
   const row = await composeRow(deps, actor, input);
   // A send in flight, or one that already happened, owns the draft.
+  if (row.state === "abandoned") return { status: "failed" };
   if (row.state === "sent" || row.state === "unknown" || row.state === "pending")
     return { status: savedStatus(row.state) };
   try {

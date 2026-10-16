@@ -37,7 +37,6 @@ import type { ComposerMention, SlashActionId } from "@rakazo/core";
 import {
   attachmentsForThread,
   buildComposerMentionOptions,
-  clampMentionHighlightIndex,
   cronFromPreset,
   DEFAULT_BOT_COLOR,
   formatMessageTime,
@@ -68,6 +67,7 @@ import {
   userVisibleMessages,
   withLiveStreamingProgress,
 } from "@rakazo/core";
+import { financeCardSummary } from "@rakazo/core/message-quote";
 import type { GroupAvatarMember } from "@rakazo/ui-web";
 import {
   AvatarStyleProvider,
@@ -114,6 +114,7 @@ import {
   PanelRightClose,
   Paperclip,
   Pencil,
+  PieChart,
   Plus,
   Reply,
   Scale,
@@ -200,6 +201,7 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
+import { findCartaAgent } from "../lib/carta-agent";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -275,6 +277,7 @@ import type { WorkingActivity } from "../lib/working-activity";
 import { workingActivity } from "../lib/working-activity";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
+import { CapTablePage } from "./CapTable";
 import { DataRoomPage } from "./DataRoom";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
@@ -508,6 +511,10 @@ export function ShellPage() {
   const [legalAgentOpen, setLegalAgentOpen] = useState(false);
   const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
   const [legalAgentError, setLegalAgentError] = useState("");
+  // The Carta agent panel is open on every visit to Cap Table and can be collapsed.
+  const [cartaAgentOpen, setCartaAgentOpen] = useState(true);
+  const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
+  const [cartaAgentError, setCartaAgentError] = useState("");
   useEffect(() => {
     setInboxAgentCollapsed(
       readInboxAgentCollapsed(userId) || !window.matchMedia("(min-width: 768px)").matches,
@@ -887,15 +894,20 @@ export function ShellPage() {
   const financeMode = useMatch("/app/finance/*") != null;
   const dataRoomMode = useMatch("/app/data-room") != null;
   const legalMode = useMatch("/app/legal") != null;
-  // Inbox, Finance, Legal, Data room and Integrations are pages of their own: no bot route. Inbox,
-  // Finance and Legal keep their agent in a side panel.
-  const pageMode = inboxMode || financeMode || legalMode || integrationsMode || dataRoomMode;
+  const capTableMode = useMatch("/app/cap-table/*") != null;
+  // Inbox, Finance, Legal, Data room, Cap Table and Integrations are pages of their own: no bot
+  // route. Inbox, Finance, Legal and Cap Table keep their agent in a side panel.
+  const pageMode =
+    inboxMode || financeMode || legalMode || capTableMode || integrationsMode || dataRoomMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
   useEffect(() => {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
+  useEffect(() => {
+    if (!capTableMode) setCartaAgentOpen(true);
+  }, [capTableMode]);
   const active =
     inGroup || integrationsMode || dataRoomMode
       ? undefined
@@ -905,7 +917,9 @@ export function ShellPage() {
           ? findFinanceAgent(bots, userId)
           : legalMode
             ? findLegalAgent(bots, userId)
-            : (bots.find((b) => b.id === botId) ?? bots[0]);
+            : capTableMode
+              ? findCartaAgent(bots, userId)
+              : (bots.find((b) => b.id === botId) ?? bots[0]);
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
   const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =
@@ -2570,6 +2584,19 @@ export function ShellPage() {
     if (!active && !creatingLegalAgent) void createLegalAgent();
   }
 
+  async function createCartaAgent() {
+    setCreatingCartaAgent(true);
+    setCartaAgentError("");
+    try {
+      await rpc.carta.agent();
+      await refreshBots();
+    } catch (error) {
+      setCartaAgentError(errorText(error, t`Could not create the Carta agent`));
+    } finally {
+      setCreatingCartaAgent(false);
+    }
+  }
+
   function askFinanceAgent() {
     setFinanceAgentOpen(true);
     if (!active && !creatingFinanceAgent) void createFinanceAgent();
@@ -2625,7 +2652,19 @@ export function ShellPage() {
             creating: creatingLegalAgent,
             error: legalAgentError,
           }
-        : null;
+        : capTableMode
+          ? {
+              name: "carta-agent",
+              testId: "carta-agent-panel",
+              open: cartaAgentOpen,
+              collapse: () => setCartaAgentOpen(false),
+              collapseLabel: t`Collapse Carta agent`,
+              create: createCartaAgent,
+              createLabel: t`Create Carta agent`,
+              creating: creatingCartaAgent,
+              error: cartaAgentError,
+            }
+          : null;
 
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
@@ -3351,6 +3390,16 @@ export function ShellPage() {
           onOpen={() => {
             setMobileSidebarOpen(false);
             navigate("/app/data-room");
+          }}
+        />
+        <SidebarPageLink
+          testId="sidebar-cap-table"
+          current={capTableMode}
+          icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+          label={<Trans>Cap Table</Trans>}
+          onOpen={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/cap-table");
           }}
         />
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
@@ -4121,6 +4170,11 @@ export function ShellPage() {
           <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
         ) : legalMode ? (
           <LegalPage onAskAgent={legalAgentOpen ? undefined : askLegalAgent} />
+        ) : capTableMode ? (
+          <CapTablePage
+            onShowAgent={cartaAgentOpen ? undefined : () => setCartaAgentOpen(true)}
+            onConnectCarta={() => navigate("/app/integrations?q=carta")}
+          />
         ) : inboxMode ? (
           <InboxPage
             paused={false}
@@ -5585,24 +5639,37 @@ const Transcript = memo(function Transcript({
             {loadingOlder ? t`Loading…` : t`Load earlier messages`}
           </button>
         ) : null}
-        {foldFinanceRuns(groupVoiceChats(reactionView.visibleMessages)).map((item) => {
+        {foldFinanceRuns(groupVoiceChats(reactionView.visibleMessages), (id) =>
+          reactionView.reactions.has(id),
+        ).map((item) => {
           if (item.kind === "financeRun") {
             const first = item.messages[0];
             if (!first) return null;
+            const speaker = memberName?.(first.botId);
             return (
-              <div key={first.id} data-message-id={first.id} className="relative py-0.5">
+              <div key={first.id} className="relative py-0.5">
                 {separatorIds.has(first.id) ? (
                   <TimeSeparator createdAt={first.createdAt} locale={i18n.locale || "en"} />
+                ) : null}
+                {speaker ? (
+                  <SpeakerHeader
+                    botId={first.botId}
+                    name={speaker}
+                    color={first.botId ? peerBot?.(first.botId)?.color : undefined}
+                  />
                 ) : null}
                 <FinanceCardGroup
                   items={item.messages.flatMap((m) =>
                     m.blocks.flatMap((block, i) =>
-                      block.kind === "finance" ? [{ id: `${m.id}:${i}`, block }] : [],
+                      block.kind === "finance"
+                        ? [{ id: `${m.id}:${i}`, messageId: m.id, block }]
+                        : [],
                     ),
                   )}
-                  onAsk={(id, quote) => {
-                    const message = item.messages.find((m) => id.startsWith(`${m.id}:`));
-                    if (message) onQuote(message, quote);
+                  revealMessageId={scrollRequest?.messageId}
+                  onAsk={(messageId) => {
+                    const message = item.messages.find((m) => m.id === messageId);
+                    if (message) onReply(message);
                   }}
                 />
               </div>
@@ -5684,7 +5751,7 @@ const Transcript = memo(function Transcript({
                       speaking={speakingMessageId === message.id}
                       onSpeak={() => onSpeak(message)}
                       onOpenComputer={onOpenComputer}
-                      onQuote={onQuote}
+                      onReply={onReply}
                       showToolActivity={showToolActivity}
                     />
                     {peerReceipt || message.id.startsWith("progress:") ? null : (
@@ -5943,7 +6010,8 @@ export const Composer = memo(function Composer({
   const historyIndex = useRef<number | null>(null);
   const historyDraft = useRef("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  const [mentionHighlightIndex, setMentionHighlightIndex] = useState(0);
+  // Highlight is tracked by option identity so late-loading targets cannot shift it to another item.
+  const [mentionHighlightKey, setMentionHighlightKey] = useState<string | null>(null);
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<AgentSkillCatalogEntry | null>(null);
   const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>([]);
@@ -6114,7 +6182,7 @@ export const Composer = memo(function Composer({
     markEdited();
     setDraft((current) => current.replace(/@([\w-]*)$/, ""));
     setMentionQuery(null);
-    setMentionHighlightIndex(0);
+    setMentionHighlightKey(null);
     setSelectedMentions((current) =>
       current.some((selected) => mentionChipKey(selected) === mentionChipKey(mention))
         ? current
@@ -6154,13 +6222,22 @@ export const Composer = memo(function Composer({
       .slice(0, 10);
   }, [mentionQuery, mentionTargets]);
 
+  // Reset to the first option only when the typed query changes.
   useEffect(() => {
-    setMentionHighlightIndex(0);
-  }, [mentionQuery, mentionOptions]);
+    setMentionHighlightKey(null);
+  }, [mentionQuery]);
 
-  const activeMentionIndex = clampMentionHighlightIndex(
-    mentionHighlightIndex,
-    mentionOptions.length,
+  // Pin the default highlight to the first shown option so a later insert cannot take it over.
+  useEffect(() => {
+    if (mentionHighlightKey === null && mentionOptions[0]) {
+      setMentionHighlightKey(mentionChipKey(mentionOptions[0]));
+    }
+  }, [mentionHighlightKey, mentionOptions]);
+
+  // A highlighted option that left the list falls back to the first one.
+  const activeMentionIndex = Math.max(
+    0,
+    mentionOptions.findIndex((mention) => mentionChipKey(mention) === mentionHighlightKey),
   );
   const mentionPickerOpen = mentionOptions.length > 0;
   const activeMentionOptionId = mentionPickerOpen
@@ -6192,7 +6269,7 @@ export const Composer = memo(function Composer({
     historyIndex.current = null;
     setDraft("");
     setMentionQuery(null);
-    setMentionHighlightIndex(0);
+    setMentionHighlightKey(null);
     setSlashQuery(null);
     setSelectedSkill(null);
     const mentions = selectedMentions;
@@ -6485,7 +6562,7 @@ export const Composer = memo(function Composer({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => insertMention(mention)}
                 // Opening the list under a stationary pointer must not steal the keyboard highlight.
-                onMouseMove={() => setMentionHighlightIndex(index)}
+                onMouseMove={() => setMentionHighlightKey(mentionChipKey(mention))}
                 className={`flex w-full items-start gap-3 px-4 py-2.5 text-start hover:bg-accent ${
                   highlighted ? "bg-accent" : ""
                 }`}
@@ -6663,13 +6740,14 @@ export const Composer = memo(function Composer({
               }
               if (action.type === "move") {
                 event.preventDefault();
-                setMentionHighlightIndex(action.index);
+                const target = mentionOptions[action.index];
+                if (target) setMentionHighlightKey(mentionChipKey(target));
                 return;
               }
               if (action.type === "dismiss") {
                 event.preventDefault();
                 setMentionQuery(null);
-                setMentionHighlightIndex(0);
+                setMentionHighlightKey(null);
                 return;
               }
               if (
@@ -6828,6 +6906,7 @@ function previewMessageText(message: ThreadMessage): string {
   const text = message.blocks
     .map((block) => {
       if (block.kind === "channel_message") return block.text;
+      if (block.kind === "finance") return financeCardSummary(block.card);
       if (block.kind === "text") {
         // Bot text is Markdown; user text is already plain.
         return message.role === "bot" ? plainTextFromMarkdown(block.text) : block.text;
@@ -7047,7 +7126,10 @@ const isFinanceOnly = (message: ThreadMessage) =>
   message.blocks.every((block) => block.kind === "finance");
 
 /** Each finance tool call is its own bot message; fold 2+ consecutive ones from the same bot so they tile as one group. A lone one stays a normal message. */
-function foldFinanceRuns(items: TranscriptItem[]): (TranscriptItem | FinanceRun)[] {
+function foldFinanceRuns(
+  items: TranscriptItem[],
+  hasReactions: (messageId: string) => boolean = () => false,
+): (TranscriptItem | FinanceRun)[] {
   const out: (TranscriptItem | FinanceRun)[] = [];
   let run: TranscriptItem[] = [];
   const flush = () => {
@@ -7060,7 +7142,7 @@ function foldFinanceRuns(items: TranscriptItem[]): (TranscriptItem | FinanceRun)
     run = [];
   };
   for (const item of items) {
-    if (item.kind === "message" && isFinanceOnly(item.message)) {
+    if (item.kind === "message" && isFinanceOnly(item.message) && !hasReactions(item.message.id)) {
       const prev = run[0];
       if (prev?.kind === "message" && prev.message.botId !== item.message.botId) flush();
       run.push(item);
@@ -7071,6 +7153,32 @@ function foldFinanceRuns(items: TranscriptItem[]): (TranscriptItem | FinanceRun)
   }
   flush();
   return out;
+}
+
+/** Group-chat speaker line: bot avatar and name, with optional trailing content. */
+function SpeakerHeader({
+  botId,
+  name,
+  color,
+  children,
+}: {
+  botId?: string;
+  name: string;
+  color?: string;
+  children?: ReactNode;
+}) {
+  const colorDef = resolvePersonaColorDef(botId ?? "bot", color);
+  return (
+    <div
+      className="mb-1.5 flex items-center gap-2 text-[13px] font-semibold tracking-tight"
+      dir="auto"
+      style={{ color: colorDef.light }}
+    >
+      <BotAvatar color={color ?? DEFAULT_BOT_COLOR} identity={botId} size={22} />
+      <span className="min-w-0 truncate">{name}</span>
+      {children}
+    </div>
+  );
 }
 
 const MessageView = memo(function MessageView({
@@ -7092,7 +7200,7 @@ const MessageView = memo(function MessageView({
   speaking,
   onSpeak,
   onOpenComputer,
-  onQuote,
+  onReply,
   showToolActivity,
 }: {
   artifactTarget: ArtifactTarget;
@@ -7118,7 +7226,7 @@ const MessageView = memo(function MessageView({
   speaking: boolean;
   onSpeak: () => void;
   onOpenComputer: (botId?: string) => void;
-  onQuote: (message: ThreadMessage, quote: string) => void;
+  onReply: (message: ThreadMessage) => void;
   showToolActivity: boolean;
 }) {
   const { t } = useLingui();
@@ -7135,24 +7243,10 @@ const MessageView = memo(function MessageView({
 
   const replyBotId = message.replyPreview?.botId ?? replyParent?.botId;
   const speakerBot = message.botId ? peerBot?.(message.botId) : undefined;
-  const speakerColorDef = useMemo(
-    () => resolvePersonaColorDef(message.botId ?? "bot", speakerBot?.color),
-    [message.botId, speakerBot?.color],
-  );
   const messageContext = (
     <>
       {speakerName ? (
-        <div
-          className="mb-1.5 flex items-center gap-2 text-[13px] font-semibold tracking-tight"
-          dir="auto"
-          style={{ color: speakerColorDef.light }}
-        >
-          <BotAvatar
-            color={speakerBot?.color ?? DEFAULT_BOT_COLOR}
-            identity={message.botId}
-            size={22}
-          />
-          <span className="min-w-0 truncate">{speakerName}</span>
+        <SpeakerHeader botId={message.botId} name={speakerName} color={speakerBot?.color}>
           {isLive ? null : (
             <time
               dateTime={message.createdAt}
@@ -7162,7 +7256,7 @@ const MessageView = memo(function MessageView({
               {formatMessageTime(message.createdAt, i18n.locale || "en")}
             </time>
           )}
-        </div>
+        </SpeakerHeader>
       ) : null}
       <ReplyLine
         target={artifactTarget}
@@ -7579,8 +7673,8 @@ const MessageView = memo(function MessageView({
           return (
             <div key={i} className="flex justify-start">
               <FinanceCardGroup
-                items={[{ id: `${message.id}:${i}`, block }]}
-                onAsk={(_, quote) => onQuote(message, quote)}
+                items={[{ id: `${message.id}:${i}`, messageId: message.id, block }]}
+                onAsk={() => onReply(message)}
               />
             </div>
           );

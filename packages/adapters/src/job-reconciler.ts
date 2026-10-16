@@ -7,6 +7,7 @@ import { getLogger } from "@rakazo/logging";
 import type { PoolClient } from "pg";
 import { returnBotMessageOutcome } from "./bot-messages.js";
 import { scheduleComputerControlExpiry } from "./computer-control.js";
+import { reconcileMailApprovals } from "./mail-approval-recovery.js";
 import { reconcileStuckWork } from "./stuck-work.js";
 import { isLoopGuardStopText } from "./tool-loop.js";
 import { isUserProgressClientNonce } from "./user-progress.js";
@@ -148,6 +149,18 @@ export function createJobReconciler(
         });
       } catch (error) {
         getLogger().error("stuck work reconciliation", error);
+      }
+      if (deps.events) {
+        try {
+          await reconcileMailApprovals({
+            prisma: deps.prisma,
+            events: deps.events,
+            now,
+            batchSize,
+          });
+        } catch (error) {
+          getLogger().error("mail approval reconciliation", error);
+        }
       }
       controlScanDeadline ??= new Date(now.getTime() + CONTROL_LOOKAHEAD_MS);
       const runCursorFilter = runCursor

@@ -192,6 +192,7 @@ function SessionApp() {
             <Route path="/app/finance/*" element={<ShellPage />} />
             <Route path="/app/legal" element={<ShellPage />} />
             <Route path="/app/data-room" element={<ShellPage />} />
+            <Route path="/app/cap-table/*" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
         </Routes>

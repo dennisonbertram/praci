@@ -95,6 +95,31 @@ export const Selected: Story = {
   args: { row: rows[0] as MailRow, selected: true, onMark: noop, onArchive: noop, onRead: noop },
 };
 
+/** The sender is always foreground colour: semibold when unread, regular when read. The preview is one step dimmer than the subject. */
+export const ReadAndUnread: StoryObj = {
+  render: () => (
+    <div>
+      <InboxRow row={rows[0] as MailRow} onOpen={noop} onMark={undefined} />
+      <InboxRow row={base} onOpen={noop} onMark={undefined} />
+      <InboxRow row={base} selected onOpen={noop} onMark={undefined} />
+    </div>
+  ),
+};
+
+/** The wide pane widens the sender column (200px from the @3xl container width). */
+export const WidePane: StoryObj = {
+  decorators: [
+    (Story) => (
+      <div className="@container w-[1100px]">
+        <Story />
+      </div>
+    ),
+  ],
+  render: () => (
+    <InboxGroup title="Today" rows={rows} onOpen={noop} onMark={noop} selectedId="r2" />
+  ),
+};
+
 export const Suspicious: Story = { args: { row: rows[2] as MailRow } };
 
 export const WithTriageMarks: Story = {

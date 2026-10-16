@@ -51,6 +51,7 @@ import {
   HistoryReadInputSchema,
   HistorySearchInputSchema,
   isAttachmentImageMimeType,
+  isCartaAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   isLegalAgentSpawnKey,
@@ -140,7 +141,7 @@ import {
   formatAgentEnvironmentInstruction,
   redactShellStreams,
 } from "./agent-environment.js";
-import { buildApprovalAskBlock } from "./approval-ask.js";
+import { buildApprovalAskBlock, cartaMailSendIsComplete, isCartaMailSend } from "./approval-ask.js";
 import {
   approvalPausedToolResult,
   approvalReplayPathError,
@@ -254,6 +255,7 @@ import {
 } from "./computer-tools.js";
 import { checkpointRunComputerWorkspace } from "./computer-workspace.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
+import { CONTACT_TOOL_NAMES, contactToolFromTool, contactToolsAllowed } from "./contact-tools.js";
 import { formatCurrentTimeInstruction } from "./current-time.js";
 import { resolveDataRoomAi } from "./data-room-models.js";
 import { DATA_ROOM_TOOL_NAMES, dataRoomToolFromTool } from "./data-room-tools.js";
@@ -464,6 +466,7 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "read_data_room_item",
   "legal_unreviewed_documents",
   "legal_query",
+  "contacts_list",
   "calendar_list_events",
   "calendar_get_event",
   "drive_search",
@@ -3534,7 +3537,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const mailOnly = isInboxAgentSpawnKey(bot.spawnKey);
         // The Finance agent reads synced finance data through finance_* tools, with its Mercury and
         // Brex MCP tools for details. Composio and the other connectors only slow it down.
-        const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey);
+        // The Carta agent likewise uses only MCP tools (Carta) plus the built-in mail, drive and
+        // finance tools.
+        const cartaAgent = isCartaAgentSpawnKey(bot.spawnKey);
+        const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey) || cartaAgent;
         // The Legal agent works from the Data Room, mail and Drive through its own tools only: no
         // Composio, MCP or other connector tools, and a fixed list of built-ins (read-only mail).
         const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
@@ -4029,6 +4035,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
           trigger: run.trigger,
           messagingChannelRun,
         });
+        const contactsEnabled = contactToolsAllowed({
+          hasProvider: true,
+          groupId: thread.groupId,
+          runUserId: run.userId,
+          botUserId: bot.userId,
+          botSpawnKey: bot.spawnKey,
+          trigger: run.trigger,
+          messagingChannelRun,
+        });
         const legalToolSet: ReadonlySet<string> = new Set(LEGAL_AGENT_BUILTIN_TOOLS);
         const builtins = [
           ...selectBuiltinToolsForRun({
@@ -4045,12 +4060,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
             driveEnabled,
             financeEnabled,
             legalEnabled,
+            contactsEnabled,
             messagingChannelRun,
+            cartaAgent,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
           }),
           // Cross-owner agent connections only exist for chat-linked bots.
-          ...(hasMessagingIdentity && !isBackgroundRunTrigger(run.trigger)
+          ...(hasMessagingIdentity && !cartaAgent && !isBackgroundRunTrigger(run.trigger)
             ? agentConnectionTools.filter((tool) => !disabledBuiltinTools.has(tool.name))
             : []),
         ].filter((tool) => !legalOnly || legalToolSet.has(tool.name));
@@ -4464,6 +4481,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
               }
             }
           }
+          // The Carta agent sends only whole messages: the approval card shows exactly what goes out,
+          // and a saved draft's recipients and body would not be shown.
+          if (isCartaMailSend(bot.spawnKey, name) && !cartaMailSendIsComplete(args)) {
+            return {
+              error:
+                "Send the full message: pass to, subject and body (and cc and bcc if any), not a draftId, so the user can review every recipient and the whole text.",
+            };
+          }
           const viaConnector = !BUILTIN_AGENT_TOOL_NAMES.has(name);
           // Declared effect of the operation this call dispatches (installed API method and
           // flag). Install config is immutable per route resource, so it cannot drift before
@@ -4481,7 +4506,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             requiresUnattendedApproval ||
             toolRequiresApproval(name, viaConnector, declaredReadOnly);
           const requiresMandatoryApproval =
-            requiresUnattendedApproval || toolRequiresExplicitApproval(name);
+            requiresUnattendedApproval ||
+            toolRequiresExplicitApproval(name) ||
+            // No saved rule or Auto Review may send mail for the Carta agent (investor email).
+            isCartaMailSend(bot.spawnKey, name);
           const connectorKind = connectorKindFromToolName(
             name,
             connectedPlugins.map((plugin) => plugin.provider),
@@ -4752,6 +4780,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               blocks: [
                 buildApprovalAskBlock(applied!.effect.id, name, args, runSecrets, {
                   reviewReason,
+                  fullMail: isCartaMailSend(bot.spawnKey, name),
                 }),
               ],
             });
@@ -5486,6 +5515,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
               DATA_ROOM_TOOL_NAMES.has(name)
                 ? await dataRoomToolFromTool(name, toolDeps, args)
                 : await legalToolFromTool(name, toolDeps, args),
+            );
+          }
+          if (CONTACT_TOOL_NAMES.has(name) && contactsEnabled) {
+            return finish(
+              await contactToolFromTool(
+                name,
+                { prisma: deps.prisma, scope: { spaceId: run.spaceId, userId: bot.userId } },
+                args,
+              ),
             );
           }
           if (DRIVE_TOOL_NAMES.has(name) && deps.connectors && driveEnabled) {
@@ -7782,6 +7820,15 @@ function computerRetryDelay(fence: number): number {
   return Math.min(10_000, 250 * 2 ** Math.min(Math.max(fence - 1, 0), 5));
 }
 
+const CARTA_BLOCKED_DELEGATION_TOOLS = new Set([
+  "spawn_bot",
+  "message_bot",
+  "handoff_to_bot",
+  "message_agent",
+  "connect_agent",
+  "respond_agent_connection",
+]);
+
 export function selectBuiltinToolsForRun(options: {
   ticketBoardEnabled?: boolean;
   historyRetrievalEnabled?: boolean;
@@ -7802,7 +7849,11 @@ export function selectBuiltinToolsForRun(options: {
   financeEnabled?: boolean;
   /** The run belongs to the owner's Legal agent: the Legal and Data Room tools are offered. */
   legalEnabled?: boolean;
+  /** The Carta agent on a run its owner started. */
+  contactsEnabled?: boolean;
   messagingChannelRun: boolean;
+  /** The Carta agent: no delegation to other bots, whose runs would skip its mail approval. */
+  cartaAgent?: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
   /** Built-in names this bot turned off. Unknown names are ignored. */
@@ -7836,6 +7887,8 @@ export function selectBuiltinToolsForRun(options: {
       (options.driveEnabled || !DRIVE_TOOL_NAMES.has(tool.name)) &&
       (options.financeEnabled || !FINANCE_TOOL_NAMES.has(tool.name)) &&
       (options.legalEnabled || !LEGAL_GATED_TOOL_NAMES.has(tool.name)) &&
+      (options.contactsEnabled || !CONTACT_TOOL_NAMES.has(tool.name)) &&
+      !(options.cartaAgent && CARTA_BLOCKED_DELEGATION_TOOLS.has(tool.name)) &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
       (!isBackgroundRunTrigger(options.trigger) ||

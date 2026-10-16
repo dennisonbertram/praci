@@ -517,6 +517,10 @@ msgstr "जुड़ा मॉडल जोड़ें"
 msgid "Add connected models to use them as backups."
 msgstr "बैकअप के रूप में उपयोग करने के लिए जुड़े मॉडल जोड़ें।"
 
+#: src/pages/CapTable.tsx
+msgid "Add contact"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Add credential"
 msgstr ""
@@ -599,6 +603,7 @@ msgid "AI data sharing"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/Inbox.tsx
 msgid "All"
@@ -916,6 +921,14 @@ msgstr ""
 msgid "Attachments: {0}"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Auditor"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Auditors"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Auth header"
 msgstr ""
@@ -1228,6 +1241,11 @@ msgstr "रद्द"
 #: src/pages/ActivityList.tsx
 msgid "Cancelled"
 msgstr "रद्द किया गया"
+
+#: src/pages/CapTable.tsx
+#: src/pages/Shell.tsx
+msgid "Cap Table"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Cap table, equity and investors"
@@ -1567,6 +1585,10 @@ msgid "Collapse {0}"
 msgstr ""
 
 #: src/pages/Shell.tsx
+msgid "Collapse Carta agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Collapse Finance agent"
 msgstr ""
 
@@ -1729,6 +1751,10 @@ msgstr "API कुंजी कनेक्ट करें"
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Blockscout"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Connect Carta"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -1956,6 +1982,10 @@ msgid "Could not create space"
 msgstr ""
 
 #: src/pages/Shell.tsx
+msgid "Could not create the Carta agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Could not create the Finance agent"
 msgstr ""
 
@@ -2068,6 +2098,10 @@ msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Could not load commands"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Could not load contacts"
 msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
@@ -2399,6 +2433,10 @@ msgid "Create account"
 msgstr "खाता बनाएं"
 
 #: src/pages/Shell.tsx
+msgid "Create Carta agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Create Finance agent"
 msgstr ""
 
@@ -2563,6 +2601,7 @@ msgstr "डिफ़ॉल्ट स्कोप"
 #: src/components/data-room/ItemMenu.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
@@ -2880,6 +2919,10 @@ msgstr ""
 msgid "Edit"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Edit contact"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Edit first"
 msgstr "पहले संपादित करें"
@@ -2893,6 +2936,7 @@ msgid "Edit wallet"
 msgstr ""
 
 #: src/pages/Auth.tsx
+#: src/pages/CapTable.tsx
 msgid "Email"
 msgstr "ईमेल"
 
@@ -3526,6 +3570,14 @@ msgstr "अंतराल मात्रा"
 msgid "Interval unit"
 msgstr "अंतराल इकाई"
 
+#: src/pages/CapTable.tsx
+msgid "Investor"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Investors"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
@@ -3585,6 +3637,10 @@ msgstr ""
 
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Keyboard shortcuts"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Kind"
 msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
@@ -4141,6 +4197,7 @@ msgstr "म्यूट करें"
 #: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -4305,6 +4362,10 @@ msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "No contacts yet"
 msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
@@ -4474,6 +4535,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not sent. {text}"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Notes"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -4661,6 +4726,10 @@ msgstr "या एक API कुंजी पेस्ट करें"
 msgid "Organic"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Organization"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Organization API key"
 msgstr "संगठन API कुंजी"
@@ -4671,6 +4740,7 @@ msgstr "मूल संदेश उपलब्ध नहीं है"
 
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
 msgstr ""
@@ -5498,6 +5568,7 @@ msgstr ""
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -5799,6 +5870,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Show bots"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Show Carta agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -6502,6 +6577,7 @@ msgstr ""
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 msgid "Try again"

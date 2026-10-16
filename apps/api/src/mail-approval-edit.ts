@@ -1,7 +1,8 @@
 import { ORPCError } from "@orpc/server";
-import { mailRequestIsValid, normalizeMailEdits } from "@rakazo/adapters";
+import { mailApprovalAgentNote, mailRequestIsValid, normalizeMailEdits } from "@rakazo/adapters";
 import type { Actor, ComposeFields, ComposeResult, MailEdits } from "@rakazo/contracts";
 import type { ThreadEvents } from "@rakazo/db";
+import { mailApprovalComposeClientId } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { mailContext } from "./inbox.js";
 import type { ComposeDeps } from "./inbox-compose.js";
@@ -23,23 +24,6 @@ const defaultCompose: MailComposePath = {
   send: inboxComposeSend,
   draftSave: inboxComposeDraftSave,
 };
-
-/**
- * What the agent reads when it resumes. The claim records the cautious one, since nothing is known
- * yet (and a crash must not leave it believing the mail went out); the real outcome replaces it.
- */
-function agentNote(send: boolean, outcome?: "sent" | "saved" | "unknown" | "failed"): string {
-  const what = send ? "email" : "draft";
-  if (outcome === "sent" || outcome === "saved") {
-    return send
-      ? "The user edited this email and sent it themselves from the approval card. Do not send it again."
-      : "The user edited this email and saved it as a draft themselves from the approval card. Do not save it again.";
-  }
-  if (outcome === "failed") {
-    return `The user edited this ${what} on the approval card, but their ${send ? "send" : "save"} failed and nothing was ${send ? "sent" : "saved"}. Do not tell them it was ${send ? "sent" : "saved"}.`;
-  }
-  return `The user edited this ${what} on the approval card and the outcome of their ${send ? "send" : "save"} is ${outcome === "unknown" ? "unknown" : "not known yet"}. Do not ${send ? "send" : "save"} it again; they should check ${send ? "Sent" : "Drafts"}.`;
-}
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -104,7 +88,7 @@ export async function answerEditedMailApproval(
     answeredByUserId: actor.userId,
     answer: "deny",
     mailDenial: {
-      note: agentNote(send),
+      note: mailApprovalAgentNote(send),
       // Only what the person typed replaces the card's fields. The rest of the card was redacted
       // when it was made, and the stored call is not, so it is never copied onto the card.
       mail: { ...checked.edits, connectionId: account.id },
@@ -137,7 +121,7 @@ export async function answerEditedMailApproval(
       }
       const fields: ComposeFields = {
         // One compose record per approval: the same key on every attempt.
-        clientId: `approval_${pending.effectId}`,
+        clientId: mailApprovalComposeClientId(pending.effectId),
         connectionId: account.id,
         ...(original ? { replyToMessageId: original.id } : {}),
         to: strings(merged.to).join(", "),
@@ -166,7 +150,7 @@ export async function answerEditedMailApproval(
       messageId: input.messageId,
       effectId: pending.effectId,
       outcome,
-      note: agentNote(send, outcome),
+      note: mailApprovalAgentNote(send, outcome),
     });
   } finally {
     await afterClaim();

@@ -26,6 +26,8 @@ const meta = {
       "approvalRules.list": [],
       "autoReview.get": { enabled: false, checkerAvailable: true },
       "memory.list": [],
+      "bots.list": [],
+      "bots.listArchived": [],
       "agentSkills.list": [],
       "models.list": mockModelCatalog,
       "models.credentials": mockModelCredentials,

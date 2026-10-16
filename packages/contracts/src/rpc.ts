@@ -22,6 +22,7 @@ import {
   UpdateTicketInput,
 } from "./board.js";
 import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot-secrets.js";
+import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from "./contacts.js";
 import {
   DataRoomApiFolderSchema,
   DataRoomApiItemListInputSchema,
@@ -1152,6 +1153,14 @@ export const appContract = {
     /** Data Room consent for the Legal agent's own model; same shapes as dataRoom.consent. */
     consent: oc.output(DataRoomConsentStatusSchema),
     consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),
+  },
+  carta: {
+    agent: oc.output(BotSchema),
+  },
+  contacts: {
+    list: oc.input(ContactListInputSchema).output(z.array(ContactSchema)),
+    save: oc.input(ContactSaveInputSchema).output(ContactSchema),
+    delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
   },
   finance: {
     agent: oc.output(BotSchema),

@@ -291,6 +291,10 @@ describe("skill tools", () => {
     });
     expect(formatSkillsCatalogInstruction(records)).toContain("- Interrogate:");
     expect(formatSkillsCatalogInstruction(records)).toContain("Review only");
+    for (const name of ["carta-investor-update", "carta-audit-response"]) {
+      expect(records.find((row) => row.name === name)).toMatchObject({ source: "builtin" });
+      expect(formatSkillsCatalogInstruction(records)).toContain(`- ${name}:`);
+    }
 
     const read = await skillReadFromTool(prisma as never, owner, { name: "interrogate" });
     expect(read).toMatchObject({ name: "Interrogate", source: "builtin", readOnly: true });

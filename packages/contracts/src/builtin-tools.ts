@@ -58,6 +58,8 @@ export const BUILTIN_TOOL_NAMES = [
   "legal_upsert_node",
   "legal_link",
   "legal_query",
+  "contacts_list",
+  "contacts_save",
   "drive_search",
   "drive_read",
   "drive_create_file",
