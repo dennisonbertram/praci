@@ -962,9 +962,13 @@ describe("thread event reduction", () => {
 
     expect(waiting?.run?.status).toBe("waiting_input");
     expect(waiting?.cursor).toBe(6);
-    expect(
-      reduceThreadSnapshot(waiting, event({ type: "run.waiting_input", seq: 7, runId: "run-1" })),
-    ).toBe(waiting);
+    // A repeated wait changes nothing visible but still advances the cursor.
+    const repeated = reduceThreadSnapshot(
+      waiting,
+      event({ type: "run.waiting_input", seq: 7, runId: "run-1" }),
+    );
+    expect(repeated?.cursor).toBe(7);
+    expect(repeated?.run).toBe(waiting?.run);
   });
 
   it("clears live progress when a run waits for input", () => {

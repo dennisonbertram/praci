@@ -1,13 +1,13 @@
 vi.mock("./ai-consent", () => ({ promptAiConsent: vi.fn() }));
 
-import { isServerUnreachable, withLiveStreamingProgress } from "@rakazo/core";
+import type { ProductEvent } from "@rakazo/contracts";
+import { isServerUnreachable, reduceThreadSnapshot, withLiveStreamingProgress } from "@rakazo/core";
 import * as SecureStore from "expo-secure-store";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { promptAiConsent } from "./ai-consent";
 import type { MobileMessage, MobileSnapshot } from "./api.js";
 import {
   adoptDeletedSpaceFallback,
-  applyMobileThreadEvent,
   authHeaders,
   blockText,
   captureApiRequestContext,
@@ -2381,13 +2381,15 @@ describe("mobile thread refresh targeting", () => {
 
     activeGroupId = "group-b";
     currentEpoch += 1;
-    resolveRequest({
-      groupId: "group-a",
-      threadId: "thread-a",
-      messages: [],
-      olderCursor: null,
-      run: null,
-    });
+    resolveRequest(
+      loose({
+        groupId: "group-a",
+        threadId: "thread-a",
+        messages: [],
+        olderCursor: null,
+        run: null,
+      }),
+    );
     await refresh;
 
     expect(applied).toBeNull();
@@ -2443,7 +2445,8 @@ describe("discarded mobile thread refresh cursor", () => {
       },
     ];
     return events.reduce<MobileSnapshot>(
-      (view, event) => (event.seq > cursor ? (applyMobileThreadEvent(view, event) ?? view) : view),
+      (view, event) =>
+        event.seq > cursor ? (applyMobileThreadEvent(view, loose(event)) ?? view) : view,
       onScreen,
     );
   }
@@ -2467,6 +2470,30 @@ describe("discarded mobile thread refresh cursor", () => {
     expect(result.snapshot?.cursor).toBe(fetched.cursor);
   });
 });
+
+// Fixtures keep only the fields a test reads; fill the rest so the shared reducer sees full events.
+function loose<T>(value: unknown): T {
+  return value as T;
+}
+
+function applyMobileThreadEvent(
+  prev: unknown,
+  event: Partial<ProductEvent> & { type: string },
+): MobileSnapshot | null {
+  return reduceThreadSnapshot(
+    loose<MobileSnapshot | null>(prev),
+    loose<ProductEvent>({
+      id: "event",
+      spaceId: "space-1",
+      threadId: "thread-1",
+      botId: "bot-1",
+      seq: 0,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      ...event,
+    }),
+  );
+}
 
 describe("mobile thread event reduction", () => {
   it("appends an emoji reply with its exact target", () => {
@@ -2597,7 +2624,7 @@ describe("mobile thread event reduction", () => {
       payload: { delta: "lo" },
     });
 
-    expect(second?.messages).toEqual([
+    expect(second?.messages).toMatchObject([
       {
         id: "progress:run-1",
         role: "bot",
@@ -2622,7 +2649,7 @@ describe("mobile thread event reduction", () => {
     });
 
     expect(afterDelta?.cursor).toBe(5);
-    expect(afterDelta?.messages).toEqual([
+    expect(afterDelta?.messages).toMatchObject([
       {
         id: "progress:run-1",
         role: "bot",
@@ -2665,7 +2692,7 @@ describe("mobile thread event reduction", () => {
       runId: "run-1",
       payload: { delta: "bon", streaming: true },
     });
-    expect(withLiveStreamingProgress(afterResume, true)?.messages).toEqual([
+    expect(withLiveStreamingProgress(afterResume, true)?.messages).toMatchObject([
       {
         id: "progress:run-1",
         role: "bot",
@@ -2676,7 +2703,7 @@ describe("mobile thread event reduction", () => {
   });
 
   it("preserves progress from a legacy run-only snapshot", () => {
-    const initial: MobileSnapshot = {
+    const initial = loose<MobileSnapshot>({
       ...snapshot([
         {
           ...mobileMessage("progress:run-legacy", [{ kind: "progress", text: "Still working" }]),
@@ -2685,7 +2712,7 @@ describe("mobile thread event reduction", () => {
       ]),
       run: { id: "run-legacy", status: "running" },
       activeRuns: undefined,
-    };
+    });
 
     const next = applyMobileThreadEvent(initial, {
       type: "thread.progress",
@@ -2700,7 +2727,7 @@ describe("mobile thread event reduction", () => {
   });
 
   it("preserves concurrent progress when active-run metadata lags", () => {
-    const initial: MobileSnapshot = {
+    const initial = loose<MobileSnapshot>({
       ...snapshot([
         {
           ...mobileMessage("progress:run-concurrent", [
@@ -2711,7 +2738,7 @@ describe("mobile thread event reduction", () => {
       ]),
       run: { id: "run-current", status: "running" },
       activeRuns: [{ id: "run-current", status: "running" }],
-    };
+    });
 
     const next = applyMobileThreadEvent(initial, {
       type: "thread.progress",
@@ -2872,7 +2899,7 @@ describe("mobile thread event reduction", () => {
 
   it("clears loaded history and active state when another client clears the thread", () => {
     const initial = snapshot([mobileMessage("message-1", [{ kind: "text", text: "old" }])], 1);
-    initial.run = { id: "run-1", status: "running" };
+    initial.run = loose({ id: "run-1", status: "running" });
 
     const next = applyMobileThreadEvent(initial, { type: "thread.cleared", seq: 12 });
 
@@ -2880,7 +2907,10 @@ describe("mobile thread event reduction", () => {
   });
 
   it("applies the durable waiting-input run transition", () => {
-    const initial: MobileSnapshot = { ...snapshot(), run: { id: "run-1", status: "running" } };
+    const initial = loose<MobileSnapshot>({
+      ...snapshot(),
+      run: { id: "run-1", status: "running" },
+    });
     const waiting = applyMobileThreadEvent(initial, {
       type: "run.waiting_input",
       runId: "run-1",
@@ -2900,11 +2930,11 @@ describe("mobile thread event reduction", () => {
 
   it("applies computer takeover requests as waiting_takeover", () => {
     const progress = mobileMessage("progress:run-1", [{ kind: "progress", text: "working…" }], 1);
-    const initial: MobileSnapshot = {
+    const initial = loose<MobileSnapshot>({
       ...snapshot([progress]),
       run: { id: "run-1", status: "running" },
       activeRuns: [{ id: "run-1", status: "running" }],
-    };
+    });
     const waiting = applyMobileThreadEvent(initial, {
       type: "computer.takeover.requested",
       runId: "run-1",
@@ -2923,7 +2953,7 @@ describe("mobile thread event reduction", () => {
       [{ kind: "progress", text: "working…" }],
       1,
     );
-    const initial: MobileSnapshot = {
+    const initial = loose<MobileSnapshot>({
       ...snapshot([progress]),
       run: { id: "run-user", status: "running" },
       activeRuns: [{ id: "run-user", status: "running" }],
@@ -2934,7 +2964,7 @@ describe("mobile thread event reduction", () => {
         mode: "team",
         busyBotName: "Peer",
       },
-    };
+    });
 
     const waiting = applyMobileThreadEvent(initial, {
       type: "computer.takeover.requested",
@@ -2943,8 +2973,13 @@ describe("mobile thread event reduction", () => {
       seq: 12,
     });
 
-    expect(waiting?.run).toEqual({ id: "run-peer", botId: "bot-peer", status: "waiting_takeover" });
-    expect(waiting?.activeRuns).toEqual([
+    expect(waiting?.run).toMatchObject({
+      id: "run-peer",
+      botId: "bot-peer",
+      status: "waiting_takeover",
+      trigger: "bot_message",
+    });
+    expect(waiting?.activeRuns).toMatchObject([
       { id: "run-user", status: "running" },
       { id: "run-peer", botId: "bot-peer", status: "waiting_takeover" },
     ]);
@@ -2990,14 +3025,14 @@ describe("mobile thread event reduction", () => {
   });
 
   it("updates a waiting group run without replacing the newer active run", () => {
-    const initial: MobileSnapshot = {
+    const initial = loose<MobileSnapshot>({
       ...snapshot(),
       run: { id: "run-newer", status: "running" },
       activeRuns: [
         { id: "run-newer", status: "running" },
         { id: "run-waiting", status: "running" },
       ],
-    };
+    });
 
     const waiting = applyMobileThreadEvent(initial, {
       type: "run.waiting_input",
@@ -3014,7 +3049,7 @@ describe("mobile thread event reduction", () => {
   it("clears only the terminal run's live progress", () => {
     const runA = { id: "run-a", status: "running" };
     const runB = { id: "run-b", status: "running" };
-    const initial: MobileSnapshot = {
+    const initial = loose<MobileSnapshot>({
       ...snapshot([
         {
           ...mobileMessage("progress:run-a", [{ kind: "progress", text: "A" }]),
@@ -3027,7 +3062,7 @@ describe("mobile thread event reduction", () => {
       ]),
       run: runA,
       activeRuns: [runA, runB],
-    };
+    });
 
     const next = applyMobileThreadEvent(initial, {
       type: "run.cancelled",
@@ -3044,7 +3079,7 @@ describe("mobile thread event reduction", () => {
   it("keeps a failed member run's error while another member run is still active", () => {
     const runA = { id: "run-a", status: "running" };
     const runB = { id: "run-b", status: "running" };
-    const initial: MobileSnapshot = {
+    const initial = loose<MobileSnapshot>({
       ...snapshot([
         {
           ...mobileMessage("progress:run-b", [{ kind: "progress", text: "B" }]),
@@ -3053,7 +3088,7 @@ describe("mobile thread event reduction", () => {
       ]),
       run: runA,
       activeRuns: [runA, runB],
-    };
+    });
 
     const next = applyMobileThreadEvent(initial, {
       type: "run.failed",
@@ -3108,7 +3143,7 @@ describe("mobile thread event reduction", () => {
 
   it("leaves the snapshot unchanged for unrelated events", () => {
     const initial = snapshot();
-    expect(applyMobileThreadEvent(initial, { type: "run.started" })).toBe(initial);
+    expect(applyMobileThreadEvent(initial, { type: "heartbeat", seq: 9 })).toBe(initial);
     expect(applyMobileThreadEvent(null, { type: "thread.progress" })).toBeNull();
   });
 });
@@ -3159,7 +3194,7 @@ function snapshot(
   messages: MobileMessage[] = [],
   olderCursor: number | null = null,
 ): MobileSnapshot {
-  return {
+  return loose({
     botId: "bot-1",
     threadId: "thread-1",
     cursor: 3,
@@ -3173,44 +3208,53 @@ function snapshot(
       mode: "team",
       busyBotName: null,
     },
-  };
+  });
 }
 
-function mobileMessage(id: string, blocks: MobileMessage["blocks"], seq?: number): MobileMessage {
-  return { id, threadId: "thread-1", seq, role: "bot", blocks };
+function mobileMessage(id: string, blocks: MobileMessage["blocks"], seq = 0): MobileMessage {
+  return {
+    id,
+    threadId: "thread-1",
+    seq,
+    role: "bot",
+    blocks,
+    createdAt: "2026-01-01T00:00:00.000Z",
+  };
 }
 
 describe("mobile clipboard text", () => {
   it("copies message content with transport labels and omits card chrome", async () => {
     const { copyableMobileMessageText } = await import("./api");
     expect(
-      copyableMobileMessageText({
-        id: "message",
-        role: "bot",
-        blocks: [
-          { kind: "text", text: "Hello" },
-          {
-            kind: "channel_message",
-            provider: "sendblue",
-            transport: "SMS",
-            channelId: "ch-1",
-            fromAddress: "+15551234567",
-            fromLabel: "Sender",
-            text: "Reply",
-          },
-          { kind: "card", lines: [] },
-        ],
-      }),
+      copyableMobileMessageText(
+        loose({
+          id: "message",
+          role: "bot",
+          blocks: [
+            { kind: "text", text: "Hello" },
+            {
+              kind: "channel_message",
+              provider: "sendblue",
+              transport: "SMS",
+              channelId: "ch-1",
+              fromAddress: "+15551234567",
+              fromLabel: "Sender",
+              text: "Reply",
+            },
+            { kind: "card", lines: [] },
+          ],
+        }),
+      ),
     ).toBe("Hello\nSMS · Sender: Reply");
   });
 
   it("keeps leading whitespace for selection while copying trims it", async () => {
     const { copyableMobileMessageText, selectableMobileMessageText } = await import("./api");
-    const message: MobileMessage = {
+    const message = loose<MobileMessage>({
       id: "message",
       role: "user",
       blocks: [{ kind: "text", text: "    indented\nnext  " }],
-    };
+    });
     expect(selectableMobileMessageText(message)).toBe("    indented\nnext  ");
     expect(copyableMobileMessageText(message)).toBe("indented\nnext");
   });

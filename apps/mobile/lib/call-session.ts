@@ -8,19 +8,14 @@ import {
   isFarewell,
   isInterimCallBargeIn,
   latestSpokenCallReply,
+  reduceThreadSnapshot,
   spokenMemory,
 } from "@rakazo/core";
 import type { AudioRecorder } from "expo-audio";
 import { File } from "expo-file-system";
 import { useSyncExternalStore } from "react";
 import type { MobileSnapshot } from "./api";
-import {
-  applyMobileThreadEvent,
-  blockText,
-  captureApiRequestContext,
-  rpc,
-  subscribeThread,
-} from "./api";
+import { blockText, captureApiRequestContext, rpc, subscribeThread } from "./api";
 import type { CallCue } from "./call-sounds";
 import {
   playCallCue,
@@ -772,7 +767,7 @@ function watchReplies(
               });
               return;
             }
-            snapshot = applyMobileThreadEvent(snapshot, event) ?? snapshot;
+            snapshot = reduceThreadSnapshot(snapshot, event) ?? snapshot;
             if (!snapshot) return;
             const message = latestSpokenCallReply(snapshot.messages, watchedCallId);
             if (!message || message.id === lastSeen) return;
