@@ -56,12 +56,12 @@ export function InboxGroup({
   return (
     <section className="mb-5">
       {title ? (
-        <h2 className="mb-1.5 text-xs font-semibold text-muted-foreground">
+        <h2 className="mb-2 text-[13px] font-semibold text-muted-foreground">
           {title}
           <span className="ms-1.5 font-normal tabular-nums">{rows.length}</span>
         </h2>
       ) : null}
-      <div className="border-t border-border">
+      <div className="border-t border-foreground/10">
         {rows.map((row) => (
           <InboxRow
             key={row.id}
@@ -132,7 +132,7 @@ export function InboxRow({
       : []),
   ];
   return (
-    <div className="border-b border-border">
+    <div className="border-b border-foreground/10">
       <div className="group/row relative">
         <button
           type="button"
@@ -141,7 +141,7 @@ export function InboxRow({
           aria-current={selected ? "true" : undefined}
           data-row-id={row.id}
           onClick={onOpen}
-          className={`grid h-11 w-full min-w-0 grid-cols-[8px_72px_minmax(0,1fr)_auto] items-center gap-x-2 border-s-2 ps-2.5 pe-3 text-start text-sm font-normal hover:bg-muted @md:gap-x-3 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_180px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-11" : ""} text-muted-foreground`}
+          className={`grid h-14 w-full min-w-0 grid-cols-[8px_72px_minmax(0,1fr)_auto] items-center gap-x-2 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal hover:bg-muted @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-11" : ""} ${muted ? "text-muted-foreground" : ""}`}
         >
           <span
             aria-hidden="true"
@@ -150,7 +150,7 @@ export function InboxRow({
           />
           <span
             dir="auto"
-            className={`col-start-2 row-start-1 truncate ${row.unread && !muted ? "text-foreground" : ""}`}
+            className={`col-start-2 row-start-1 truncate ${muted ? "text-muted-foreground" : "text-foreground"} ${row.unread ? "font-semibold" : "font-normal"}`}
           >
             {isSuspiciousCategory(row.category) ? (
               <TriangleAlert
@@ -166,9 +166,12 @@ export function InboxRow({
               </span>
             ) : null}
           </span>
-          <span dir="auto" className="col-start-3 row-start-1 truncate">
+          <span
+            dir="auto"
+            className={`col-start-3 row-start-1 truncate ${muted ? "text-muted-foreground" : "text-foreground/70"}`}
+          >
             {row.subject}
-            {row.snippet ? <span> - {row.snippet}</span> : null}
+            {row.snippet ? <span className="text-muted-foreground"> — {row.snippet}</span> : null}
           </span>
           {label ? (
             <Badge
@@ -181,7 +184,7 @@ export function InboxRow({
           {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
           <time
             dateTime={row.receivedAt}
-            className={`col-start-4 row-start-1 text-end text-xs @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
+            className={`col-start-4 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
           >
             {formatMailTime(row.receivedAt, isToday)}
           </time>

@@ -116,3 +116,111 @@ describe("tokens.css", () => {
     expect(css).toContain(`--background: ${darkTokens.background.toLowerCase()};`);
   });
 });
+
+function luminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const channel = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+describe("text contrast", () => {
+  const surfaces = ["background", "card", "muted", "accent", "secondary", "sidebar"] as const;
+  for (const [name, palette] of [
+    ["dark", darkTokens],
+    ["light", lightTokens],
+  ] as const) {
+    it(`keeps foreground and muted text at WCAG AA on every ${name} surface`, () => {
+      for (const surface of surfaces) {
+        expect(
+          contrast(palette.foreground, palette[surface]),
+          `foreground on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+      // Muted text is the dimmest text rows use (inbox previews), including on a hovered or selected row.
+      for (const surface of ["background", "card", "muted"] as const) {
+        expect(
+          contrast(palette.mutedForeground, palette[surface]),
+          `muted on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+
+  const statusText = ["destructive", "link", "statusWorking", "success", "warning"] as const;
+  const raised = ["background", "card", "popover", "muted", "accent", "secondary"] as const;
+
+  it("keeps every dark status and link colour at AA as text on every dark surface", () => {
+    for (const color of statusText) {
+      for (const surface of raised) {
+        expect(
+          contrast(darkTokens[color], darkTokens[surface]),
+          `${color} on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  // Light destructive and link pass on the page and cards. Light success and warning, and every
+  // light status colour on muted/accent fills, are below AA today; those light tokens are unchanged.
+  it("keeps light error and link text at AA on the page, cards and popovers", () => {
+    for (const color of ["destructive", "link"] as const) {
+      for (const surface of ["background", "card", "popover"] as const) {
+        expect(
+          contrast(lightTokens[color], lightTokens[surface]),
+          `${color} on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  for (const [name, palette] of [
+    ["dark", darkTokens],
+    ["light", lightTokens],
+  ] as const) {
+    it(`keeps labels on filled ${name} controls at AA`, () => {
+      for (const [fill, label] of [
+        ["destructive", "destructiveForeground"],
+        ["primary", "primaryForeground"],
+        ["secondary", "secondaryForeground"],
+        ["card", "cardForeground"],
+        ["popover", "popoverForeground"],
+        ["accent", "accentForeground"],
+        ["chatUser", "chatUserForeground"],
+        ["sidebarAccent", "sidebarAccentForeground"],
+      ] as const) {
+        expect(
+          contrast(palette[label], palette[fill]),
+          `${label} on ${fill}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+
+  it("keeps the dark palette warm and its surfaces stepped in order", () => {
+    const warm = (hex: string) =>
+      Number.parseInt(hex.slice(1, 3), 16) >= Number.parseInt(hex.slice(5, 7), 16);
+    for (const token of [
+      "background",
+      "foreground",
+      "card",
+      "muted",
+      "accent",
+      "border",
+      "mutedForeground",
+    ] as const) {
+      expect(warm(darkTokens[token]), token).toBe(true);
+    }
+    const lum = (token: keyof typeof darkTokens) => luminance(darkTokens[token]);
+    expect(lum("background")).toBeLessThan(lum("sidebar"));
+    expect(lum("sidebar")).toBeLessThan(lum("card"));
+    expect(lum("card")).toBeLessThan(lum("accent"));
+    expect(lum("accent")).toBeLessThan(lum("chatUser"));
+  });
+});
