@@ -126,6 +126,7 @@ export function InboxPage({
   const [status, setStatus] = useState<Status | null>(null);
   // Spoken by screen readers only, for read changes; the Archived toast is already a status region.
   const [announcement, setAnnouncement] = useState("");
+  const announceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [todosByTab, setTodosByTab] = useState<Record<string, InboxTodo[]>>({});
   const [todoRefresh, setTodoRefresh] = useState(0);
   const [selectedId, setSelectedId] = useState<string | undefined>();
@@ -313,7 +314,8 @@ export function InboxPage({
     // Clear first so a repeat of the same message is announced again.
     setAnnouncement("");
     const text = read ? t`Marked read` : t`Marked unread`;
-    setTimeout(() => setAnnouncement(text), 50);
+    clearTimeout(announceTimer.current);
+    announceTimer.current = setTimeout(() => setAnnouncement(text), 50);
     patchRows((list) =>
       list.map((row) => (row.id === messageId ? { ...row, unread: !read } : row)),
     );

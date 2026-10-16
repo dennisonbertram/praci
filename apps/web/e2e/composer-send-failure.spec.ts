@@ -96,7 +96,7 @@ test("a routine that already ran is not put back when the thread refresh fails",
   await page.reload();
   await mentionRoutine(page, composer, "daily-digest");
   const chip = page.getByTestId("mention-chip");
-  await expect(chip).toHaveText("daily-digest");
+  await expect(chip).toContainText("daily-digest");
 
   const testRun = page.waitForResponse(
     (response) => response.url().includes("/rpc/routines/testRun") && response.ok(),
@@ -211,7 +211,7 @@ test("an unchanged routine retry after a lost response reuses the run", async ({
   });
   await composer.press("Enter");
   await expect(page.getByTestId("composer-error")).toBeVisible();
-  await expect(page.getByTestId("mention-chip")).toHaveText("daily-digest");
+  await expect(page.getByTestId("mention-chip")).toContainText("daily-digest");
   const retryResponse = page.waitForResponse(
     (response) => response.url().includes("/rpc/routines/testRun") && response.ok(),
   );

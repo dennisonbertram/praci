@@ -192,6 +192,20 @@ describe("Composer", () => {
       expect(keydown(textarea, { key: "Enter" }).defaultPrevented).toBe(true);
     });
 
+    it("does not send from the Send button while No matches shows", () => {
+      const onSend = vi.fn().mockResolvedValue(true);
+      const textarea = renderComposer(onSend);
+      type(textarea, "@zz");
+      const send = container?.querySelector<HTMLButtonElement>('button[aria-label="Send"]');
+      expect(send).not.toBeNull();
+      act(() => send?.click());
+      expect(onSend).not.toHaveBeenCalled();
+      // Control: the same button sends once the query no longer matches nothing.
+      type(textarea, "hello");
+      act(() => send?.click());
+      expect(onSend).toHaveBeenCalledTimes(1);
+    });
+
     it("leaves Enter alone while an IME is composing", () => {
       const textarea = renderComposer(vi.fn());
       type(textarea, "@zz");

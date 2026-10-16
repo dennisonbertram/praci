@@ -6156,7 +6156,8 @@ export const Composer = memo(function Composer({
     (slashSkillOptions.length > 0 || slashActionOptions.length > 0);
 
   async function send() {
-    if (!canSend || sending || disabled) return;
+    // Same as Enter: while "No matches" shows, Escape first, then send as typed.
+    if (!canSend || sending || disabled || mentionNoMatches) return;
     const revision = editRevision.current;
     const clientNonce = retryNonce.current ?? newClientId();
     retryNonce.current = null;

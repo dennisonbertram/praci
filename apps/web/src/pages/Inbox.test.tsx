@@ -399,6 +399,14 @@ it("clears the live region before each announcement so a repeat is spoken again"
   expect(region()).toBe("");
 });
 
+it("announces only the latest read change when two happen within the delay", async () => {
+  const c = await render();
+  await click(byText(c, "read a"));
+  await click(byText(c, "read a"));
+  await dwell(80);
+  expect(c.querySelector('[aria-live="polite"]')?.textContent).toBe("Marked unread");
+});
+
 it("archives under a filter and a search too", async () => {
   const c = await render(["/app/inbox?filter=unread&q=zebra"]);
   await press("j");
