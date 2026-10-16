@@ -2147,6 +2147,7 @@ model DataRoomItem {
   updatedAt          DateTime        @updatedAt
   chunks             DataRoomChunk[]
   text               DataRoomItemText?
+  legalContracts     LegalContract[]
 
   @@index([spaceId, folderId])
   @@index([spaceId, status])
@@ -2214,4 +2215,106 @@ model DataRoomSyncState {
 
   @@index([spaceId])
   @@map("data_room_sync_states")
+}
+
+/// What the Legal agent concluded about one Data Room item. The document itself stays in the Data Room.
+model LegalContract {
+  id                String       @id @default(cuid())
+  spaceId           String
+  userId            String
+  dataRoomItemId    String
+  item              DataRoomItem @relation(fields: [dataRoomItemId], references: [id], onDelete: Cascade)
+  title             String
+  contractType      String
+  counterparties    String[]
+  /// "active" | "expired" | "terminated" | "draft" | "unknown"
+  status            String
+  effectiveDate     DateTime?    @db.Date
+  expirationDate    DateTime?    @db.Date
+  autoRenews        Boolean?
+  renewalNoticeDays Int?
+  governingLaw      String?
+  /// Integer minor units, like DataRoomItem.amountCents.
+  valueCents        BigInt?
+  currency          String?
+  summary           String?
+  /// DataRoomItem.revision the analysis was made at; a higher revision means it needs review again.
+  analyzedRevision  Int
+  analyzedAt        DateTime
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  deadlines         LegalDeadline[]
+  nodes             LegalNode[]
+
+  @@unique([spaceId, userId, dataRoomItemId])
+  @@index([spaceId, userId, expirationDate])
+  @@map("legal_contracts")
+}
+
+model LegalDeadline {
+  id             String         @id @default(cuid())
+  spaceId        String
+  userId         String
+  contractId     String?
+  contract       LegalContract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  dataRoomItemId String?
+  title          String
+  dueDate        DateTime       @db.Date
+  /// "renewal" | "notice" | "termination" | "payment" | "filing" | "compliance" | "other"
+  kind           String
+  /// "open" | "done" | "dismissed"
+  status         String         @default("open")
+  sourceQuote    String?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([spaceId, userId, status, dueDate])
+  @@index([contractId])
+  @@map("legal_deadlines")
+}
+
+/// A party, contract, obligation, right, asset or jurisdiction in the legal graph.
+model LegalNode {
+  id         String         @id @default(cuid())
+  spaceId    String
+  userId     String
+  /// "company" | "person" | "contract" | "obligation" | "right" | "asset" | "jurisdiction" | "other"
+  kind       String
+  label      String
+  /// Normalized label; with kind it identifies the node, so the agent can upsert it again.
+  key        String
+  attrs      Json?
+  contractId String?
+  contract   LegalContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  edgesOut   LegalEdge[]    @relation("LegalEdgeFrom")
+  edgesIn    LegalEdge[]    @relation("LegalEdgeTo")
+
+  @@unique([spaceId, userId, kind, key])
+  @@index([spaceId, userId])
+  @@index([contractId])
+  @@map("legal_nodes")
+}
+
+model LegalEdge {
+  id             String    @id @default(cuid())
+  spaceId        String
+  userId         String
+  fromId         String
+  from           LegalNode @relation("LegalEdgeFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId           String
+  to             LegalNode @relation("LegalEdgeTo", fields: [toId], references: [id], onDelete: Cascade)
+  /// A short verb: party_to, owes, grants, governed_by, owns, signed_by.
+  relation       String
+  dataRoomItemId String?
+  sourceQuote    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([fromId, toId, relation])
+  @@index([spaceId, userId])
+  @@index([toId])
+  @@map("legal_edges")
 }
