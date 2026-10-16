@@ -1,6 +1,9 @@
 import { formatCron } from "./cron.js";
 import { hasMentionToken } from "./group-mentions.js";
 
+/** Identity colour for bots the roster does not know and for the everyone mention. */
+export const DEFAULT_BOT_COLOR = "#85858A";
+
 export const COMPOSER_MENTION_KINDS = ["bot", "group", "routine", "connector", "everyone"] as const;
 
 export type ComposerMentionKind = (typeof COMPOSER_MENTION_KINDS)[number];
@@ -165,7 +168,7 @@ export function buildComposerMentionOptions(input: {
       id: "everyone",
       name: "everyone",
       subtitle: "Everyone in this group",
-      color: "#85858A",
+      color: DEFAULT_BOT_COLOR,
     });
   }
 

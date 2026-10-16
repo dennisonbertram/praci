@@ -1,4 +1,3 @@
-import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import type {
   AdapterContext,
@@ -11,7 +10,12 @@ import type {
 } from "@rakazo/adapter-kit";
 import { isCloudMetadataHost, isLocalMcpHost } from "@rakazo/contracts";
 import type { ResolvedAddress, ResolveHostname } from "./network-address.js";
-import { isCloudMetadataAddress, isLinkLocalAddress, isPrivateAddress } from "./network-address.js";
+import {
+  defaultResolveHostname,
+  isCloudMetadataAddress,
+  isLinkLocalAddress,
+  isPrivateAddress,
+} from "./network-address.js";
 import { isPrivateRemoteMcpHostname } from "./remote-mcp.js";
 import { MemoryProviderDeploymentOwnerRequiredError } from "./serenity-memory-provider.js";
 import type { SupermemoryConnectionConfig } from "./supermemory-client.js";
@@ -29,9 +33,6 @@ export { SUPERMEMORY_CLOUD_BASE_URL };
 
 const LOCAL_NETWORK_ERROR = "Local mode requires a loopback or private-network address.";
 const BLOCKED_TARGET_ERROR = "Local mode cannot target a blocked address.";
-
-const defaultResolveHostname: ResolveHostname = (hostname) =>
-  lookup(hostname, { all: true, verbatim: true });
 
 export function supermemoryRequiresDeploymentOwner(settings: Record<string, string>): boolean {
   return settings.mode === "local";

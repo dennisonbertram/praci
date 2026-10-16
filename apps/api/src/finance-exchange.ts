@@ -1,13 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import { connectExchange, ExchangeError, syncExchanges } from "@rakazo/adapters";
 import type { Actor, FinanceExchange, FinanceExchangeConnectInput } from "@rakazo/contracts";
+import { actorScope } from "@rakazo/contracts";
 import { exchangeParts } from "@rakazo/core";
 import type { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { FinanceDeps } from "./finance.js";
 import { notFound } from "./inbox.js";
 
-const scopeOf = (actor: Actor) => ({ spaceId: actor.spaceId, userId: actor.userId });
 const syncDeps = (deps: FinanceDeps) => ({
   prisma: deps.prisma,
   secrets: deps.secrets,
@@ -43,7 +43,7 @@ export async function financeExchanges(
   actor: Actor,
 ): Promise<FinanceExchange[]> {
   const rows = await deps.prisma.financeExchangeConnection.findMany({
-    where: scopeOf(actor),
+    where: actorScope(actor),
     orderBy: { createdAt: "asc" },
     include: { balances: true },
   });
@@ -61,7 +61,7 @@ export async function financeExchangeConnect(
   try {
     ({ id } = await connectExchange(
       syncDeps(deps),
-      scopeOf(actor),
+      actorScope(actor),
       input.provider,
       { key: input.key, secret: input.secret },
       signal,
@@ -80,7 +80,7 @@ export async function financeExchangeConnect(
     });
   }
   const row = await deps.prisma.financeExchangeConnection.findFirst({
-    where: { id, ...scopeOf(actor) },
+    where: { id, ...actorScope(actor) },
     include: { balances: true },
   });
   if (!row) throw notFound();
@@ -93,12 +93,12 @@ export async function financeExchangeRemove(
   actor: Actor,
   input: { id: string },
 ): Promise<{ ok: true }> {
-  const where = { id: input.id, ...scopeOf(actor) };
+  const where = { id: input.id, ...actorScope(actor) };
   const row = await deps.prisma.financeExchangeConnection.findFirst({ where });
   if (!row) throw notFound();
   await deps.prisma.$transaction(async (tx) => {
     await tx.financeExchangeConnection.deleteMany({ where });
-    await tx.secret.deleteMany({ where: { id: row.secretId, ...scopeOf(actor) } });
+    await tx.secret.deleteMany({ where: { id: row.secretId, ...actorScope(actor) } });
   });
   return { ok: true };
 }
@@ -110,7 +110,7 @@ export async function syncExchangesQuietly(
   signal?: AbortSignal,
 ): Promise<void> {
   try {
-    await syncExchanges(syncDeps(deps), scopeOf(actor), { force: true, signal });
+    await syncExchanges(syncDeps(deps), actorScope(actor), { force: true, signal });
   } catch (error) {
     getLogger().warn("exchange sync failed", {
       reason: error instanceof Error ? error.name : "error",
@@ -120,7 +120,7 @@ export async function syncExchangesQuietly(
 
 /** Daily exchange rows in the wallet-snapshot shape, with the connection id as the source id. */
 export async function loadExchangeSnapshotRows(deps: FinanceDeps, actor: Actor) {
-  const rows = await deps.prisma.financeExchangeSnapshot.findMany({ where: scopeOf(actor) });
+  const rows = await deps.prisma.financeExchangeSnapshot.findMany({ where: actorScope(actor) });
   return rows.map((r) => ({
     walletId: r.connectionId,
     day: r.day,
@@ -133,7 +133,7 @@ export async function loadExchangeSnapshotRows(deps: FinanceDeps, actor: Actor) 
 export async function exchangesDue(deps: FinanceDeps, actor: Actor): Promise<boolean> {
   const now = (deps.now?.() ?? new Date()).getTime();
   const rows = await deps.prisma.financeExchangeConnection.findMany({
-    where: scopeOf(actor),
+    where: actorScope(actor),
     select: { lastSyncedAt: true, lastError: true, updatedAt: true },
   });
   return rows.some(

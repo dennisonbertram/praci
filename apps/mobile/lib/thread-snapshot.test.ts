@@ -3,14 +3,19 @@ import { describe, expect, it } from "vitest";
 import type { MobileSnapshot } from "./api";
 import { reconcileVisibleThreadSnapshot } from "./thread-snapshot";
 
+// Fixtures keep only the fields these tests read, so they are cast to the full snapshot type.
+function loose<T>(value: unknown): T {
+  return value as T;
+}
+
 function snapshot(): MobileSnapshot {
-  return {
+  return loose({
     threadId: "thread-1",
     cursor: 0,
     messages: [],
     olderCursor: null,
     run: { id: "run-1", status: "running" },
-  };
+  });
 }
 
 describe("visible thread snapshot publication", () => {
@@ -24,7 +29,7 @@ describe("visible thread snapshot publication", () => {
       raw = {
         ...raw,
         cursor: event,
-        messages: [
+        messages: loose([
           {
             id: "progress:run-1",
             role: "bot",
@@ -33,7 +38,7 @@ describe("visible thread snapshot publication", () => {
               payload: { text: `Stage ${Math.ceil(event / 40)}`, activity: true },
             }),
           },
-        ],
+        ]),
       };
       const visible = withLiveStreamingProgress(raw, false)!;
       if (before !== visible) beforeCommits += 1;
@@ -55,9 +60,9 @@ describe("visible thread snapshot publication", () => {
       const raw: MobileSnapshot = {
         ...initial,
         cursor: event,
-        messages: [
+        messages: loose([
           { id: "progress:run-1", role: "bot", blocks: [{ kind: "progress", text: `${event}` }] },
-        ],
+        ]),
       };
       expect(reconcileVisibleThreadSnapshot(initial, withLiveStreamingProgress(raw, false))).toBe(
         initial,
@@ -75,7 +80,7 @@ describe("visible thread snapshot publication", () => {
   it("publishes all snapshot fields except cursor, including nested values and array order", () => {
     const previous = snapshot();
     expect(reconcileVisibleThreadSnapshot(previous, structuredClone(previous))).toBe(previous);
-    const changes: Partial<MobileSnapshot>[] = [
+    const changes: Record<string, unknown>[] = [
       { threadId: "thread-2" },
       { botId: "bot-1" },
       { groupId: "group-1", groupName: "Group" },
@@ -97,15 +102,15 @@ describe("visible thread snapshot publication", () => {
       { messages: [{ id: "message-1", role: "bot", blocks: [{ kind: "text", text: "Done" }] }] },
     ];
     for (const change of changes) {
-      const next = { ...previous, ...change };
+      const next = loose<MobileSnapshot>({ ...previous, ...change });
       expect(reconcileVisibleThreadSnapshot(previous, next)).toBe(next);
     }
     const messages: MobileSnapshot = {
       ...previous,
-      messages: [
+      messages: loose([
         { id: "message-1", role: "bot", blocks: [{ kind: "text", text: "One" }] },
         { id: "message-2", role: "bot", blocks: [{ kind: "text", text: "Two" }] },
-      ],
+      ]),
     };
     const reordered = { ...messages, messages: [...messages.messages].reverse() };
     expect(reconcileVisibleThreadSnapshot(messages, reordered)).toBe(reordered);

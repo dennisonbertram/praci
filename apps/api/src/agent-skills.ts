@@ -9,7 +9,7 @@ import {
   parseSkillMd,
   type SkillSource,
 } from "@rakazo/core";
-import { IsolationError, type PrismaClient } from "@rakazo/db";
+import { IsolationError, isUniqueViolation, type PrismaClient } from "@rakazo/db";
 
 type AgentSkillRow = {
   id: string;
@@ -205,11 +205,7 @@ export function createAgentSkillsService(prisma: PrismaClient) {
         });
         return mapAgentSkill(row);
       } catch (error) {
-        if (
-          error instanceof Error &&
-          "code" in error &&
-          (error as { code?: string }).code === "P2002"
-        ) {
+        if (isUniqueViolation(error)) {
           throw new ORPCError("CONFLICT", { message: "A skill with that name already exists." });
         }
         throw error;
@@ -265,11 +261,7 @@ export function createAgentSkillsService(prisma: PrismaClient) {
         if (updated.count !== 1) throw new IsolationError();
       } catch (error) {
         if (error instanceof IsolationError) throw error;
-        if (
-          error instanceof Error &&
-          "code" in error &&
-          (error as { code?: string }).code === "P2002"
-        ) {
+        if (isUniqueViolation(error)) {
           throw new ORPCError("CONFLICT", { message: "A skill with that name already exists." });
         }
         throw error;

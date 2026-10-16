@@ -115,6 +115,7 @@ import {
   findModelCredential,
   InvalidSpaceNameError,
   isTooManyDatabaseConnections,
+  isUniqueViolation,
   loadRunHistoryMessages,
   parseComputerMode,
   readHistory,
@@ -3304,6 +3305,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         takeoverContinuePlan(run);
 
       const fence = nextFence(run.leaseFence);
+      const renew = () => renewRunLease(deps, runId, workerId, fence);
       const now = new Date();
       const leased = await deps.prisma.run.updateMany({
         where: {
@@ -3321,7 +3323,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           status: "leased",
           leaseOwner: workerId,
           leaseFence: fence,
-          leaseExpiresAt: new Date(Date.now() + 5 * 60_000),
+          leaseExpiresAt: new Date(Date.now() + RUN_LEASE_MS),
           error: null,
           checkpoint: null,
         },
@@ -3387,10 +3389,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
       let runAbortController: AbortController | null = null;
       let detachShutdown: (() => void) | undefined;
       const heartbeat = setInterval(() => {
-        void Promise.all([
-          renewRunLease(deps, runId, workerId, fence),
-          renewComputerExecutionLease(deps.prisma, computerLease),
-        ])
+        void Promise.all([renew(), renewComputerExecutionLease(deps.prisma, computerLease)])
           .then(([runRenewed, computerRenewed]) => {
             if (!runRenewed || !computerRenewed) {
               leaseValid = false;
@@ -4666,7 +4665,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           };
 
           const requestApproval = async () => {
-            if (!(await renewRunLease(deps, runId, workerId, fence))) {
+            if (!(await renew())) {
               // Another worker owns the run now; exit without leaving a local pause card.
               return pauseForApproval();
             }
@@ -6175,7 +6174,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               }
               return settleUncertainEffect(deps.prisma, recordedForAsk.effect.id, "request_secret");
             }
-            if (!(await renewRunLease(deps, runId, workerId, fence))) {
+            if (!(await renew())) {
               return pauseForSecret();
             }
             await workspaceCheckpoint.flush();
@@ -6977,7 +6976,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 },
               });
             } else if (event.type === "ask") {
-              if (!(await renewRunLease(deps, runId, workerId, fence))) return;
+              if (!(await renew())) return;
               const safeText = redactSecrets(event.text, runSecrets);
               const safeDetail = event.detail
                 ? redactSecrets(event.detail, runSecrets)
@@ -7017,7 +7016,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               });
               return;
             } else if (event.type === "takeover") {
-              if (!(await renewRunLease(deps, runId, workerId, fence))) return;
+              if (!(await renew())) return;
               const safeReason = redactSecrets(event.reason, runSecrets);
               // Publish pending narration as tagged mid-turn progress so reconciliation
               // does not treat pre-takeover text as the delegated final result.
@@ -7098,7 +7097,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               if (loopGuard.stuck) {
                 approvedEffectReplays.assertDrained();
                 flushPendingTools();
-                if (!(await renewRunLease(deps, runId, workerId, fence))) return;
+                if (!(await renew())) return;
                 if (messageSegments.length > 0) {
                   await publishMessage(deps, run, "bot", redactBlocks(messageSegments, runSecrets));
                 }
@@ -7341,7 +7340,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ) {
             throw new Error(TOOL_STEPS_WITHOUT_RESPONSE);
           }
-          if (!(await renewRunLease(deps, runId, workerId, fence))) return;
+          if (!(await renew())) return;
           const botMessageOutcome =
             run.trigger === "bot_message"
               ? botMessageOutcomeFromMidTurn(text, midTurnUserTexts)
@@ -7668,6 +7667,8 @@ async function notifyRun(
     });
 }
 
+const RUN_LEASE_MS = 5 * 60_000;
+
 async function renewRunLease(
   deps: ExecutorDeps,
   runId: string,
@@ -7681,7 +7682,7 @@ async function renewRunLease(
       leaseOwner: workerId,
       leaseFence: fence,
     },
-    data: { leaseExpiresAt: new Date(Date.now() + 5 * 60_000) },
+    data: { leaseExpiresAt: new Date(Date.now() + RUN_LEASE_MS) },
   });
   return renewed.count === 1;
 }
@@ -8426,10 +8427,6 @@ function redactBlocks(blocks: MessageBlock[], secrets: string[]): MessageBlock[]
     }
     return block;
   });
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
 }
 
 async function publishMessage(

@@ -49,6 +49,44 @@ export const GROK_MASCOT_SHAPES = SHIPPED_SHAPE_KEYS.map(
 
 const FALLBACK_SHAPE_PATH = GROK_SHAPES.hex ?? "";
 
+const DEFAULT_BOT_COLOR = "#F97316";
+
+/** Spinning glow ring shown around a working avatar. */
+function WorkingRing({ id, size, light }: { id: string; size: number; light: string }) {
+  return (
+    <svg
+      className="rakazo-bot-avatar-ring pointer-events-none absolute"
+      style={{
+        inset: -4,
+        width: size + 8,
+        height: size + 8,
+        filter: `drop-shadow(0 0 6px ${light}) drop-shadow(0 0 10px #ffffff)`,
+      }}
+      viewBox="0 0 48 48"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        cx="24"
+        cy="24"
+        r="22"
+        stroke={`url(#${id}-ring)`}
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        strokeDasharray="45 80"
+      />
+      <circle cx="43" cy="24" r="2.8" fill="#ffffff" />
+      <defs>
+        <linearGradient id={`${id}-ring`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+          <stop offset="60%" stopColor={light} stopOpacity="0.9" />
+          <stop offset="100%" stopColor={light} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
 export function resolvePersonaShape(identity: string, explicitShape?: string | null): string {
   if (explicitShape) {
     const explicit = GROK_SHAPES[explicitShape];
@@ -71,11 +109,11 @@ export function parseBotAvatar(
   isImage: boolean;
   imageUrl?: string;
 } {
-  if (!rawColor) return { color: "#F97316", isImage: false };
+  if (!rawColor) return { color: DEFAULT_BOT_COLOR, isImage: false };
   // Only data: image URLs are rendered. Arbitrary http(s)/blob values in `color`
   // must not become <img src> (SSRF / tracking when other members view the bot).
   if (rawColor.startsWith("data:image/")) {
-    return { color: "#F97316", isImage: true, imageUrl: rawColor };
+    return { color: DEFAULT_BOT_COLOR, isImage: true, imageUrl: rawColor };
   }
   if (rawColor.includes("::shape_")) {
     const parts = rawColor.split("::shape_");
@@ -83,7 +121,7 @@ export function parseBotAvatar(
     const parsedShapeIdx = /^\d+$/.test(rawShapeIdx) ? Number(rawShapeIdx) : 0;
     const shapeIdx = Number.isSafeInteger(parsedShapeIdx) ? parsedShapeIdx : 0;
     return {
-      color: parts[0] || "#F97316",
+      color: parts[0] || DEFAULT_BOT_COLOR,
       shapeIndex: shapeIdx % SHIPPED_SHAPE_KEYS.length,
       isImage: false,
     };
@@ -285,36 +323,7 @@ function ShapeAvatar({
       data-working={isWorking}
       data-mood={mood}
     >
-      <svg
-        className="rakazo-bot-avatar-ring absolute pointer-events-none"
-        style={{
-          inset: -4,
-          width: size + 8,
-          height: size + 8,
-          filter: `drop-shadow(0 0 6px ${colorDef.light}) drop-shadow(0 0 10px #ffffff)`,
-        }}
-        viewBox="0 0 48 48"
-        fill="none"
-        aria-hidden="true"
-      >
-        <circle
-          cx="24"
-          cy="24"
-          r="22"
-          stroke={`url(#${id}-ring)`}
-          strokeWidth="3.2"
-          strokeLinecap="round"
-          strokeDasharray="45 80"
-        />
-        <circle cx="43" cy="24" r="2.8" fill="#ffffff" />
-        <defs>
-          <linearGradient id={`${id}-ring`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
-            <stop offset="60%" stopColor={colorDef.light} stopOpacity="0.9" />
-            <stop offset="100%" stopColor={colorDef.light} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-      </svg>
+      <WorkingRing id={id} size={size} light={colorDef.light} />
       <svg
         viewBox={VIEWBOX}
         width={size}
@@ -425,36 +434,7 @@ function RobotAvatar({
           : `0 2px ${Math.max(4, Math.round(size * 0.15))}px rgba(0,0,0,0.4)`,
       }}
     >
-      <svg
-        className="rakazo-bot-avatar-ring pointer-events-none absolute"
-        style={{
-          inset: -4,
-          width: size + 8,
-          height: size + 8,
-          filter: `drop-shadow(0 0 6px ${colorDef.light}) drop-shadow(0 0 10px #ffffff)`,
-        }}
-        viewBox="0 0 48 48"
-        fill="none"
-        aria-hidden="true"
-      >
-        <circle
-          cx="24"
-          cy="24"
-          r="22"
-          stroke={`url(#${gradientId}-ring)`}
-          strokeWidth="3.2"
-          strokeLinecap="round"
-          strokeDasharray="45 80"
-        />
-        <circle cx="43" cy="24" r="2.8" fill="#ffffff" />
-        <defs>
-          <linearGradient id={`${gradientId}-ring`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
-            <stop offset="60%" stopColor={colorDef.light} stopOpacity="0.9" />
-            <stop offset="100%" stopColor={colorDef.light} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-      </svg>
+      <WorkingRing id={gradientId} size={size} light={colorDef.light} />
       <div
         ref={face.visorRef}
         className="rakazo-bot-avatar-visor relative flex items-center justify-center overflow-hidden"

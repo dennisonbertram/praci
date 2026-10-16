@@ -6,6 +6,7 @@ import { Agent } from "undici";
 import { combineSignals } from "./connector-safety.js";
 import {
   createAddressCheckedLookup,
+  defaultResolveHostname,
   isCloudMetadataAddress,
   isPrivateAddress,
   type ResolvedAddress,
@@ -117,12 +118,7 @@ export async function classifySerenityEndpointTrust(
   const url = parseSerenityEndpoint(endpoint);
   if (serenityEndpointRequiresDeploymentOwner(url.href)) return "private";
   const host = hostnameOf(url);
-  const resolve =
-    resolveHostname ??
-    (async (hostname: string) => {
-      const { lookup } = await import("node:dns/promises");
-      return lookup(hostname, { all: true, verbatim: true });
-    });
+  const resolve = resolveHostname ?? defaultResolveHostname;
   const addresses = await resolve(host);
   if (addresses.length === 0) {
     throw new Error("Serenity endpoint did not resolve to an address.");
@@ -199,6 +195,22 @@ function verbErrorMessage(payload: unknown, fallback: string): string {
   return parts.length > 0 ? parts.join(" ") : fallback;
 }
 
+async function callSerenityVerb(
+  client: Client,
+  signal: AbortSignal,
+  name: string,
+  args: Record<string, unknown>,
+  failureMessage: string,
+): Promise<unknown> {
+  const result = await client.callTool({ name, arguments: args }, undefined, {
+    signal,
+    timeout: SERENITY_TIMEOUT_MS,
+  });
+  const body = mcpTextPayload(result);
+  if (toolCallIsError(result)) throw new Error(verbErrorMessage(body, failureMessage));
+  return body;
+}
+
 /** Surface hosted gateway rate limits plainly instead of as an opaque transport error. */
 function assertNotRateLimited(response: Response): Response {
   if (response.status !== 429) return response;
@@ -227,13 +239,6 @@ function serenityFetchPath(
   return "public";
 }
 
-function defaultResolveHostname(): ResolveHostname {
-  return async (hostname: string) => {
-    const { lookup } = await import("node:dns/promises");
-    return lookup(hostname, { all: true, verbatim: true });
-  };
-}
-
 function assertPrivateLanAddresses(addresses: ResolvedAddress[]): void {
   if (addresses.length === 0) {
     throw new Error("Serenity endpoint did not resolve to an address.");
@@ -253,7 +258,7 @@ function assertPrivateLanAddresses(addresses: ResolvedAddress[]): void {
  */
 export function createSerenityPrivateLanFetch(
   baseFetch?: typeof globalThis.fetch,
-  resolve: ResolveHostname = defaultResolveHostname(),
+  resolve: ResolveHostname = defaultResolveHostname,
 ): SafeRemoteFetch {
   const transport = fetchPairedWithDispatcher(baseFetch);
   const privateFetch = async (input: string | URL | Request, init?: RequestInit) => {
@@ -301,7 +306,7 @@ async function withSerenityClient<T>(
   const url = normalizeSerenityEndpointUrl(config.endpoint);
   const requestSignal = combineSignals(signal, AbortSignal.timeout(SERENITY_TIMEOUT_MS));
   const path = serenityFetchPath(config, url);
-  const resolve = network.resolveHostname ?? defaultResolveHostname();
+  const resolve = network.resolveHostname ?? defaultResolveHostname;
   const pinnedFetch: SafeRemoteFetch | null =
     path === "public"
       ? createSafeRemoteFetch(network.fetch, network.resolveHostname)
@@ -401,23 +406,17 @@ export async function recallSerenity(
       config,
       options.signal,
       async (client, signal) => {
-        const result = await client.callTool(
+        return callSerenityVerb(
+          client,
+          signal,
+          "recall",
           {
-            name: "recall",
-            arguments: {
-              query,
-              limit: Math.min(Math.max(1, Math.floor(options.limit)), 50),
-              ...(options.entity ? { entity: options.entity } : {}),
-            },
+            query,
+            limit: Math.min(Math.max(1, Math.floor(options.limit)), 50),
+            ...(options.entity ? { entity: options.entity } : {}),
           },
-          undefined,
-          { signal, timeout: SERENITY_TIMEOUT_MS },
+          "Serenity recall failed",
         );
-        const body = mcpTextPayload(result);
-        if (toolCallIsError(result)) {
-          throw new Error(verbErrorMessage(body, "Serenity recall failed"));
-        }
-        return body;
       },
       options.network,
     );
@@ -457,24 +456,18 @@ export async function rememberSerenity(
       config,
       options.signal,
       async (client, signal) => {
-        const result = await client.callTool(
+        return callSerenityVerb(
+          client,
+          signal,
+          "remember",
           {
-            name: "remember",
-            arguments: {
-              fact: trimmedFact,
-              provenance: trimmedProvenance,
-              ...(options.entity ? { entity: options.entity } : {}),
-              ...(options.operationKey ? { operation_key: options.operationKey } : {}),
-            },
+            fact: trimmedFact,
+            provenance: trimmedProvenance,
+            ...(options.entity ? { entity: options.entity } : {}),
+            ...(options.operationKey ? { operation_key: options.operationKey } : {}),
           },
-          undefined,
-          { signal, timeout: SERENITY_TIMEOUT_MS },
+          "Serenity remember failed",
         );
-        const body = mcpTextPayload(result);
-        if (toolCallIsError(result)) {
-          throw new Error(verbErrorMessage(body, "Serenity remember failed"));
-        }
-        return body;
       },
       options.network,
     );
@@ -517,23 +510,17 @@ export async function forgetSerenity(
       config,
       options.signal,
       async (client, signal) => {
-        const result = await client.callTool(
+        // MEMORY_VERBS forget accepts only id + optional reason (additionalProperties: false).
+        return callSerenityVerb(
+          client,
+          signal,
+          "forget",
           {
-            name: "forget",
-            // MEMORY_VERBS forget accepts only id + optional reason (additionalProperties: false).
-            arguments: {
-              id: factId,
-              ...(options.reason?.trim() ? { reason: options.reason.trim() } : {}),
-            },
+            id: factId,
+            ...(options.reason?.trim() ? { reason: options.reason.trim() } : {}),
           },
-          undefined,
-          { signal, timeout: SERENITY_TIMEOUT_MS },
+          "Serenity forget failed",
         );
-        const body = mcpTextPayload(result);
-        if (toolCallIsError(result)) {
-          throw new Error(verbErrorMessage(body, "Serenity forget failed"));
-        }
-        return body;
       },
       options.network,
     );

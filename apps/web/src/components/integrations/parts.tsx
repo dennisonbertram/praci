@@ -1,7 +1,20 @@
 import { useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
-import { BotAvatar, Switch } from "@rakazo/ui-web";
+import { BotAvatar, cn, Switch } from "@rakazo/ui-web";
+import type { ComponentProps } from "react";
 import type { StatusKind } from "../../lib/integrations";
+
+export function IntegrationTile({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
 const STATUS_STYLE: Record<StatusKind, string> = {
   connected: "text-success",

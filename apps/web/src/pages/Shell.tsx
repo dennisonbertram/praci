@@ -38,6 +38,7 @@ import {
   buildComposerMentionOptions,
   clampMentionHighlightIndex,
   cronFromPreset,
+  DEFAULT_BOT_COLOR,
   formatMessageTime,
   groupVoiceChats,
   inferAttachmentMimeType,
@@ -48,6 +49,7 @@ import {
   latestAnswerableAskMessageId,
   mentionChipKey,
   nestRosterByParent,
+  newClientId,
   plainTextFromMarkdown,
   projectMessageReactions,
   reorderBotTo,
@@ -91,7 +93,6 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
-  Clock,
   Copy,
   FileText,
   FolderOpen,
@@ -112,7 +113,6 @@ import {
   Paperclip,
   Pencil,
   Plus,
-  Puzzle,
   Reply,
   Search,
   Settings,
@@ -189,7 +189,6 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
-import { newClientId } from "../lib/client-id";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -296,6 +295,7 @@ import {
   RenameBotSectionDialog,
   RenameSpaceDialog,
 } from "./shell/dialogs";
+import { MentionIcon } from "./shell/mention-icon";
 import {
   AppConnectCard,
   ArtifactImage,
@@ -337,8 +337,6 @@ type PendingBrowserNotification = {
 };
 
 const ATTACHMENT_ACCEPT = [...ATTACHMENT_ALLOWED_MIME_TYPES, ".zip"].join(",");
-/** Identity colour for bots the roster no longer knows about. */
-const FALLBACK_BOT_COLOR = "#85858A";
 const THREAD_SNAPSHOT_TIMEOUT_MS = 2_000;
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
 const VOICE_STATUS_REFRESH_TIMEOUT_MS = 10_000;
@@ -1966,7 +1964,7 @@ export function ShellPage() {
     const bot = resolveTranscriptBot(run.botId);
     return {
       botId: run.botId,
-      color: bot?.color ?? FALLBACK_BOT_COLOR,
+      color: bot?.color ?? DEFAULT_BOT_COLOR,
       name: bot?.name,
       status: run.status,
     };
@@ -2167,7 +2165,7 @@ export function ShellPage() {
           ...(groupId ? { groupId } : { botId: botId! }),
           messageId: message.id,
           reaction,
-          clientNonce: newClientNonce(),
+          clientNonce: newClientId(),
         });
       } catch (error) {
         const stillHere = groupId
@@ -4919,7 +4917,7 @@ export function ShellPage() {
             peerBotId={peerConversation.peerBotId}
             peerBotName={peerConversation.peerBotName}
             peerBotColor={
-              resolveTranscriptBot(peerConversation.peerBotId)?.color ?? FALLBACK_BOT_COLOR
+              resolveTranscriptBot(peerConversation.peerBotId)?.color ?? DEFAULT_BOT_COLOR
             }
             onClose={() => setPeerConversation(null)}
           />
@@ -6007,7 +6005,7 @@ export const Composer = memo(function Composer({
   async function send() {
     if (!canSend || sending || disabled) return;
     const revision = editRevision.current;
-    const clientNonce = retryNonce.current ?? newClientNonce();
+    const clientNonce = retryNonce.current ?? newClientId();
     retryNonce.current = null;
     const text = serializeComposerPrompt(draft, selectedSkill, selectedMentions);
     historyIndex.current = null;
@@ -6311,7 +6309,7 @@ export const Composer = memo(function Composer({
                   highlighted ? "bg-accent" : ""
                 }`}
               >
-                <MentionOptionIcon mention={mention} />
+                <MentionIcon mention={mention} variant="option" />
                 <span className="min-w-0">
                   <span dir="auto" className="block text-[14px] text-foreground">
                     @{mention.name}
@@ -6432,7 +6430,7 @@ export const Composer = memo(function Composer({
               data-mention-kind={mention.kind}
               className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-[13px] text-foreground"
             >
-              <MentionChipIcon mention={mention} />
+              <MentionIcon mention={mention} variant="chip" />
               <span dir="auto" className="truncate">
                 {mention.name}
               </span>
@@ -6643,47 +6641,6 @@ function slashActionLabel(id: SlashActionId) {
     case "settings-usage":
       return t`Settings: Usage`;
   }
-}
-
-function MentionOptionIcon({ mention }: { mention: ComposerMention }) {
-  if (mention.kind === "routine") {
-    return <Clock size={16} strokeWidth={1.7} className="mt-0.5 shrink-0 text-muted-foreground" />;
-  }
-  if (mention.kind === "connector") {
-    return <Puzzle size={16} strokeWidth={1.7} className="mt-0.5 shrink-0 text-muted-foreground" />;
-  }
-  if (mention.kind === "group") {
-    return (
-      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent text-[9px] text-foreground/75">
-        G
-      </span>
-    );
-  }
-  if (mention.kind === "everyone") {
-    return (
-      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent text-[9px] text-foreground/75">
-        @
-      </span>
-    );
-  }
-  return <BotAvatar color={mention.color ?? FALLBACK_BOT_COLOR} identity={mention.id} size={16} />;
-}
-
-function MentionChipIcon({ mention }: { mention: ComposerMention }) {
-  if (mention.kind === "routine") {
-    return <Clock size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />;
-  }
-  if (mention.kind === "connector") {
-    return <Puzzle size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />;
-  }
-  if (mention.kind === "group" || mention.kind === "everyone") {
-    return (
-      <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent text-[9px] text-foreground/75">
-        {mention.kind === "group" ? "G" : "@"}
-      </span>
-    );
-  }
-  return <BotAvatar color={mention.color ?? FALLBACK_BOT_COLOR} identity={mention.id} size={16} />;
 }
 
 function previewMessageText(message: ThreadMessage): string {
@@ -6961,7 +6918,7 @@ const MessageView = memo(function MessageView({
           style={{ color: speakerColorDef.light }}
         >
           <BotAvatar
-            color={speakerBot?.color ?? FALLBACK_BOT_COLOR}
+            color={speakerBot?.color ?? DEFAULT_BOT_COLOR}
             identity={message.botId}
             size={22}
           />
@@ -7086,7 +7043,7 @@ const MessageView = memo(function MessageView({
             <CollaborationMarker
               key={i}
               ariaLabel={label}
-              color={peerBot(peerBotId)?.color ?? FALLBACK_BOT_COLOR}
+              color={peerBot(peerBotId)?.color ?? DEFAULT_BOT_COLOR}
               identity={peerBotId}
               label={label}
               onClick={() => onOpenPeerMessages({ peerBotId, peerBotName: peer })}
@@ -7427,8 +7384,4 @@ function computerPlaceholder(
 
 function computerLabel(mode: ComputerStatus["mode"] | undefined, botName: string) {
   return mode === "dedicated" ? t`${botName}’s computer` : t`Team Computer`;
-}
-
-function newClientNonce(): string {
-  return newClientId();
 }

@@ -12,16 +12,24 @@ export function useCopyText(): [copied: boolean, copy: (text: string) => void] {
     [],
   );
 
+  const clearTimer = () => {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    timerRef.current = null;
+  };
+
   const copy = (text: string) => {
     if (!navigator.clipboard) return;
     void navigator.clipboard
       .writeText(text)
       .then(() => {
         setCopied(true);
-        if (timerRef.current) window.clearTimeout(timerRef.current);
+        clearTimer();
         timerRef.current = window.setTimeout(() => setCopied(false), 1600);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        clearTimer();
+        setCopied(false);
+      });
   };
 
   return [copied, copy];
