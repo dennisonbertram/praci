@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 154 of 154
-- Web and shared components: 446
+- Web and shared components: 447
 - Mobile components: 124 in 82 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -198,7 +198,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ScopePicker, MemorySettingsOverlay | [apps/web/src/pages/MemorySettingsOverlay.tsx](../../apps/web/src/pages/MemorySettingsOverlay.tsx) | [MemorySettingsOverlay.stories.tsx](../../apps/web/src/pages/MemorySettingsOverlay.stories.tsx) | web |
 | MessagingSettingsOverlay | [apps/web/src/pages/MessagingSettingsOverlay.tsx](../../apps/web/src/pages/MessagingSettingsOverlay.tsx) | [MessagingSettingsOverlay.stories.tsx](../../apps/web/src/pages/MessagingSettingsOverlay.stories.tsx) | web |
 | ModelBackupsSettings | [apps/web/src/pages/ModelBackupsSettings.tsx](../../apps/web/src/pages/ModelBackupsSettings.tsx) | [ModelBackupsSettings.stories.tsx](../../apps/web/src/pages/ModelBackupsSettings.stories.tsx) | web |
-| ModelSettingsOverlay, ModelPicker, ModelOption | [apps/web/src/pages/ModelSettingsOverlay.tsx](../../apps/web/src/pages/ModelSettingsOverlay.tsx) | [ModelSettingsOverlay.stories.tsx](../../apps/web/src/pages/ModelSettingsOverlay.stories.tsx) | web |
+| ModelSettingsOverlay, EmbeddingModelField, ModelPicker, ModelOption | [apps/web/src/pages/ModelSettingsOverlay.tsx](../../apps/web/src/pages/ModelSettingsOverlay.tsx) | [ModelSettingsOverlay.stories.tsx](../../apps/web/src/pages/ModelSettingsOverlay.stories.tsx) | web |
 | OnboardingPage | [apps/web/src/pages/Onboarding.tsx](../../apps/web/src/pages/Onboarding.tsx) | [Onboarding.stories.tsx](../../apps/web/src/pages/Onboarding.stories.tsx) | web |
 | PaywallPage | [apps/web/src/pages/Paywall.tsx](../../apps/web/src/pages/Paywall.tsx) | [Paywall.stories.tsx](../../apps/web/src/pages/Paywall.stories.tsx) | web |
 | PeerMessagesOverlay | [apps/web/src/pages/PeerMessagesOverlay.tsx](../../apps/web/src/pages/PeerMessagesOverlay.tsx) | [PeerMessagesOverlay.stories.tsx](../../apps/web/src/pages/PeerMessagesOverlay.stories.tsx) | web |
