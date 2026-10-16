@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, it } from "vitest";
@@ -12,4 +12,16 @@ it("creates the login once with mode 0600, then reuses it", () => {
   writeFileSync(file, "email=a@b.test\npassword=keepme\n");
   expect(loadOrCreateCredentials(file)).toEqual({ email: "a@b.test", password: "keepme" });
   expect(readFileSync(file, "utf8")).toContain("keepme");
+});
+
+it("tightens a loose mode on reuse and when rewriting a malformed file", () => {
+  const file = path.join(mkdtempSync(path.join(tmpdir(), "demo-cred-")), "creds");
+  writeFileSync(file, "email=a@b.test\npassword=keepme\n");
+  chmodSync(file, 0o644);
+  loadOrCreateCredentials(file);
+  expect(statSync(file).mode & 0o777).toBe(0o600);
+  writeFileSync(file, "garbage");
+  chmodSync(file, 0o644);
+  loadOrCreateCredentials(file);
+  expect(statSync(file).mode & 0o777).toBe(0o600);
 });

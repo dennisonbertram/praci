@@ -71,3 +71,16 @@ export function assertDemoContainer(
       `The ${container} container is not the one this demo started; refusing to remove it.`,
     );
 }
+
+/** Slot 0 keeps `.demo/`; other slots use `.demo/slot-N/` so their state never mixes. */
+export function stateDir(root: string, slot: number): string {
+  return slot === 0 ? `${root}/.demo` : `${root}/.demo/slot-${slot}`;
+}
+
+/** Throws unless the recorded state belongs to this slot (state from before slots existed is slot 0). */
+export function assertStateSlot(state: { slot?: number } | null, slot: number): void {
+  if (state && (state.slot ?? 0) !== slot)
+    throw new Error(
+      `The recorded demo state is for slot ${state.slot ?? 0}, not slot ${slot}; refusing to stop anything.`,
+    );
+}

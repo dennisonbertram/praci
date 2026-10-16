@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertDemoContainer, childEnv, slotConfig } from "./safety.js";
+import { assertDemoContainer, assertStateSlot, childEnv, slotConfig, stateDir } from "./safety.js";
 
 describe("demo safety", () => {
   it("keeps real-service credentials out of the child environment", () => {
@@ -69,5 +69,15 @@ describe("demo safety", () => {
     expect(() =>
       assertDemoContainer({ id: "a", labels: { "rakazo.demo": "1" } }, "a"),
     ).not.toThrow();
+  });
+
+  it("keeps each slot's state apart and refuses another slot's state", () => {
+    expect(stateDir("/r", 0)).toBe("/r/.demo");
+    expect(stateDir("/r", 2)).toBe("/r/.demo/slot-2");
+    expect(() => assertStateSlot(null, 2)).not.toThrow();
+    expect(() => assertStateSlot({ slot: 2 }, 2)).not.toThrow();
+    expect(() => assertStateSlot({}, 0)).not.toThrow();
+    expect(() => assertStateSlot({ slot: 2 }, 0)).toThrow(/slot 2, not slot 0/);
+    expect(() => assertStateSlot({}, 2)).toThrow(/slot 0, not slot 2/);
   });
 });

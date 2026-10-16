@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   openSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -16,11 +17,13 @@ import { loadOrCreateCredentials } from "./demo/credentials.js";
 import { demoFinance, demoMailboxes } from "./demo/data.js";
 import {
   assertDemoContainer,
+  assertStateSlot,
   type ContainerInfo,
   childEnv,
   DEMO_LABEL,
   SLOT_LABEL,
   slotConfig,
+  stateDir,
 } from "./demo/safety.js";
 import { seedDemo } from "./demo/seed.js";
 
@@ -32,8 +35,6 @@ import { seedDemo } from "./demo/seed.js";
  */
 
 const ROOT = path.resolve(import.meta.dirname, "../../../..");
-const DIR = path.join(ROOT, ".demo");
-const STATE = path.join(DIR, "state.json");
 const CREDENTIALS = path.join(ROOT, ".demo-credentials.local");
 const {
   slot: SLOT,
@@ -42,12 +43,15 @@ const {
   apiPort: API_PORT,
   webPort: WEB_PORT,
 } = slotConfig(process.env.DEMO_SLOT);
+const DIR = stateDir(ROOT, SLOT);
+const STATE = path.join(DIR, "state.json");
 const WEB_ORIGIN = `http://127.0.0.1:${WEB_PORT}`;
 const API_URL = `http://127.0.0.1:${API_PORT}`;
 const DATABASE_URL = `postgres://rakazo_demo:rakazo_demo@127.0.0.1:${PG_PORT}/rakazo_demo`;
 const MODEL_KEYS = ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"];
 
 interface State {
+  slot: number;
   pids: number[];
   containerId?: string;
 }
@@ -168,6 +172,7 @@ function removeContainer(recordedId?: string) {
 
 async function down() {
   const state: State | null = existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : null;
+  assertStateSlot(state, SLOT);
   for (const pid of state?.pids ?? []) {
     if (!ours(pid)) continue;
     try {
@@ -182,7 +187,12 @@ async function down() {
     } catch {}
   }
   removeContainer(state?.containerId);
-  rmSync(DIR, { recursive: true, force: true });
+  // Slot 0's directory also holds the other slots' `slot-N/` directories; leave those alone.
+  for (const entry of existsSync(DIR) ? readdirSync(DIR) : [])
+    if (SLOT !== 0 || !entry.startsWith("slot-"))
+      rmSync(path.join(DIR, entry), { recursive: true, force: true });
+  if (SLOT !== 0 || !existsSync(DIR) || readdirSync(DIR).length === 0)
+    rmSync(DIR, { recursive: true, force: true });
   console.log("Demo stack stopped; its database and local files are removed.");
 }
 
@@ -234,7 +244,7 @@ async function up() {
       "POSTGRES_DB=rakazo_demo",
       "pgvector/pgvector:pg16-trixie",
     ).trim();
-    writeFileSync(STATE, JSON.stringify({ pids, containerId } satisfies State));
+    writeFileSync(STATE, JSON.stringify({ slot: SLOT, pids, containerId } satisfies State));
     await waitFor("Postgres", async () => {
       try {
         docker(
@@ -270,13 +280,13 @@ async function up() {
         env,
       ),
     );
-    writeFileSync(STATE, JSON.stringify({ pids, containerId } satisfies State));
+    writeFileSync(STATE, JSON.stringify({ slot: SLOT, pids, containerId } satisfies State));
     await waitFor("the API", () => healthy(`${API_URL}/health`));
 
     const webDir = path.join(ROOT, "apps/web");
     const vite = path.join(webDir, "node_modules/vite/bin/vite.js");
     pids.push(start("web", vite, [], webDir, env));
-    writeFileSync(STATE, JSON.stringify({ pids, containerId } satisfies State));
+    writeFileSync(STATE, JSON.stringify({ slot: SLOT, pids, containerId } satisfies State));
     await waitFor("the web app", () => healthy(WEB_ORIGIN));
 
     const { email, password } = loadOrCreateCredentials(CREDENTIALS);
