@@ -4540,6 +4540,7 @@ msgstr "Only if the server does not use sign-in"
 
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -4580,6 +4581,7 @@ msgid "Open external link?"
 msgstr "Open external link?"
 
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Finance"
 msgstr "Open Finance"
 
@@ -6266,6 +6268,10 @@ msgstr "The file is too large"
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
 msgstr "The Inbox page stops showing new mail until you reconnect."
+
+#: src/pages/Legal.tsx
+msgid "The Legal agent cannot run until you add an OpenRouter key in Settings. It runs only on Muse Spark 1.2."
+msgstr "The Legal agent cannot run until you add an OpenRouter key in Settings. It runs only on Muse Spark 1.2."
 
 #: src/pages/Legal.tsx
 msgid "The Legal agent scans your Data room for contracts and deadlines."

@@ -205,6 +205,13 @@ button.rk-table-sort {
   pointer-events: none;
 }
 
+/* Reserve room under the overlay in the last header cell so it never covers a
+   sort button. 3 tools (1.7em) + gaps + padding + inset = ~5.75em of card font;
+   th is 0.85em, so ~6.8em here. Always reserved: hover must not shift layout. */
+.rk-table-card .rk-table thead th:last-child {
+  padding-inline-end: 7em;
+}
+
 .rk-table-card:hover > .rk-table-head,
 .rk-table-card:focus-within > .rk-table-head {
   opacity: 1;
@@ -248,6 +255,11 @@ button.rk-table-sort {
   .rk-table-sort-trigger {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  /* 3 x 44px tools + gaps/padding/inset. */
+  .rk-table-card .rk-table thead th:last-child {
+    padding-inline-end: calc(140px + 0.5em);
   }
 
   .rk-table-card > .rk-table-head {

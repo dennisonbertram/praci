@@ -629,6 +629,10 @@ describe("mail write tools", () => {
     );
     expect(sends[0]?.state).toBe("failed");
     expect(sync).toHaveLength(1);
+    expect(sync[0]).toMatchObject({
+      create: { lastErrorKind: "auth" },
+      update: { lastErrorKind: "auth" },
+    });
   });
 
   it("rejects a bad recipient before any state changes, and sends nothing when writes are off", async () => {

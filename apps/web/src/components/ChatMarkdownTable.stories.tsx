@@ -72,7 +72,11 @@ export const Sorted: Story = {
 export const Expanded: Story = {
   args: { children: small },
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByLabelText("Expand table"));
+    // The tools overlay the card and take pointer events only on hover or focus-within;
+    // synthetic hover does not set CSS :hover, so focus the button first.
+    const expand = within(canvasElement).getByLabelText("Expand table");
+    expand.focus();
+    await userEvent.click(expand);
     await expect(within(document.body).getByLabelText("Close table")).toBeTruthy();
   },
 };

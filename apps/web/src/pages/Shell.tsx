@@ -5719,6 +5719,29 @@ const Transcript = memo(function Transcript({
                         onReact={onReact}
                       />
                     )}
+                    {peerReceipt ||
+                    message.id.startsWith("progress:") ||
+                    (message.role === "bot" && memberName?.(message.botId)) ? null : (
+                      <time
+                        dateTime={message.createdAt}
+                        data-testid="message-hover-time"
+                        className={cn(
+                          "pointer-events-none absolute end-0 z-10 whitespace-nowrap text-xs tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100 group-has-[[aria-expanded=true]]/message:opacity-100 [@media(hover:none)]:transition-none",
+                          // Bot speaker header renders its own time in the header row; here it sits just above the bubble.
+                          "bottom-full pb-0.5",
+                          // Touch has no hover margin: drop the revealed time in-flow under the bubble.
+                          "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
+                          "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
+                          "[@media(hover:none)]:group-hover/message:mt-1 [@media(hover:none)]:group-focus-within/message:mt-1 [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:mt-1",
+                          "[@media(hover:none)]:group-hover/message:h-auto [@media(hover:none)]:group-focus-within/message:h-auto [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:h-auto",
+                          message.role === "user"
+                            ? "[@media(hover:none)]:group-hover/message:text-end [@media(hover:none)]:group-focus-within/message:text-end [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:text-end"
+                            : "[@media(hover:none)]:group-hover/message:text-start [@media(hover:none)]:group-focus-within/message:text-start [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:text-start",
+                        )}
+                      >
+                        {formatMessageTime(message.createdAt, i18n.locale || "en")}
+                      </time>
+                    )}
                   </div>
                 </div>
                 {!peerReceipt && messageReactions ? (
@@ -7129,7 +7152,16 @@ const MessageView = memo(function MessageView({
             identity={message.botId}
             size={22}
           />
-          {speakerName}
+          <span className="min-w-0 truncate">{speakerName}</span>
+          {isLive ? null : (
+            <time
+              dateTime={message.createdAt}
+              data-testid="message-hover-time"
+              className="pointer-events-none ms-auto whitespace-nowrap text-xs font-normal tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100 group-has-[[aria-expanded=true]]/message:opacity-100 [@media(hover:none)]:transition-none"
+            >
+              {formatMessageTime(message.createdAt, i18n.locale || "en")}
+            </time>
+          )}
         </div>
       ) : null}
       <ReplyLine

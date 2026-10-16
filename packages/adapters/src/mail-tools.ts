@@ -818,8 +818,13 @@ async function mailSend(
       await deps.prisma.mailSyncState
         .upsert({
           where: { connectionId: account.id },
-          create: { connectionId: account.id, lastErrorAt: now, needsReconnect: true },
-          update: { lastErrorAt: now, needsReconnect: true },
+          create: {
+            connectionId: account.id,
+            lastErrorAt: now,
+            needsReconnect: true,
+            lastErrorKind: "auth",
+          },
+          update: { lastErrorAt: now, needsReconnect: true, lastErrorKind: "auth" },
         })
         .catch(() => undefined);
       return { error: "Mail needs to be reconnected in Rakazo before it can send." };
