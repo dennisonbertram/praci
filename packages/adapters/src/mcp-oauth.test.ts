@@ -1,3 +1,5 @@
+import { MCP_OAUTH_CLIENT_ID_REQUIRED } from "@rakazo/contracts";
+import { getLogger } from "@rakazo/logging";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OAuthMaterial } from "./mcp-oauth.js";
 import {
@@ -1420,4 +1422,280 @@ describe("MCP setup with an existing access token", () => {
       expect(secrets.put).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("MCP OAuth with a pre-registered client", () => {
+  const redirectUri = "http://127.0.0.1:5173/mcp/oauth/callback";
+
+  // An authorization server like X's: no registration_endpoint.
+  function setup(initial?: OAuthMaterial) {
+    let tokenResponse: () => Response = () =>
+      Response.json({ access_token: "new-access", token_type: "bearer" });
+    const requested: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const request = input instanceof Request ? input : new Request(input, init);
+        const url = logicalHref(input, init);
+        requested.push(`${request.method} ${url}`);
+        if (url === "https://mcp.example.test/mcp" && request.method === "POST") {
+          return new Response(null, {
+            status: 401,
+            headers: {
+              "WWW-Authenticate":
+                'Bearer resource_metadata="https://mcp.example.test/.well-known/oauth-protected-resource/mcp"',
+            },
+          });
+        }
+        if (url === "https://mcp.example.test/.well-known/oauth-protected-resource/mcp") {
+          return Response.json({
+            resource: "https://mcp.example.test/mcp",
+            authorization_servers: ["https://auth.example.test"],
+            scopes_supported: ["read", "billing.write"],
+          });
+        }
+        if (url === "https://auth.example.test/.well-known/oauth-authorization-server") {
+          return Response.json({
+            issuer: "https://auth.example.test",
+            authorization_endpoint: "https://auth.example.test/authorize",
+            token_endpoint: "https://auth.example.test/token",
+            response_types_supported: ["code"],
+            grant_types_supported: ["authorization_code", "refresh_token"],
+            code_challenge_methods_supported: ["S256"],
+          });
+        }
+        if (url === "https://auth.example.test/token" && request.method === "POST") {
+          return tokenResponse();
+        }
+        throw new Error(`Unexpected request: ${request.method} ${url}`);
+      }),
+    );
+    const stored: string[] = [];
+    const secrets = {
+      load: vi.fn(() => JSON.stringify(initial ?? {})),
+      put: vi.fn(async (plaintext: string) => {
+        stored.push(plaintext);
+        return { id: "secret-1", ciphertext: `encrypted-${stored.length}` };
+      }),
+    };
+    const row = initial ? { id: "secret-1", ciphertext: "encrypted" } : undefined;
+    const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(1),
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      mcpServer: {
+        findFirst: vi.fn().mockResolvedValue({
+          endpoint: "https://mcp.example.test/mcp",
+          secretId: initial ? "secret-1" : null,
+        }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      secret: {
+        findFirst: vi.fn().mockResolvedValue(row),
+        create: vi.fn().mockResolvedValue({}),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const prisma = {
+      mcpServer: {
+        update: vi.fn().mockResolvedValue({}),
+        findFirst: vi.fn().mockResolvedValue({
+          id: "server-1",
+          endpoint: "https://mcp.example.test/mcp",
+          secretId: initial ? "secret-1" : null,
+        }),
+      },
+      secret: { findFirst: vi.fn().mockResolvedValue(row) },
+      deploymentSettings: deploymentOwner("user-1"),
+      mcpOAuthSession: oauthSessionStore(),
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    };
+    const broker = new McpOAuthBroker(prisma as never, secrets as never, TEST_NETWORK);
+    const scope = { serverId: "server-1", spaceId: "workspace-1", userId: "user-1", redirectUri };
+    return {
+      broker,
+      scope,
+      requested,
+      stored,
+      prisma,
+      setTokenResponse: (fn: () => Response) => (tokenResponse = fn),
+    };
+  }
+
+  it("uses the supplied client ID without registering and keeps the secret out of errors", async () => {
+    const { broker, scope, requested, stored } = setup();
+    const started = await broker.begin({
+      ...scope,
+      oauthClient: { clientId: "client-abc", clientSecret: "s3cret-value" },
+    });
+    if (started.status !== "authorization_required") throw new Error("OAuth was not requested");
+    expect(new URL(started.authorizationUrl).searchParams.get("client_id")).toBe("client-abc");
+    expect(requested.some((entry) => entry.includes("/register"))).toBe(false);
+    expect(JSON.stringify(started)).not.toContain("s3cret-value");
+    const material = JSON.parse(stored[0] as string);
+    expect(material.oauth.clientInformation).toEqual({
+      client_id: "client-abc",
+      client_secret: "s3cret-value",
+      redirect_uris: [redirectUri],
+      token_endpoint_auth_method: "client_secret_basic",
+    });
+  });
+
+  it("requests the override scope instead of every scope the server lists", async () => {
+    const { broker, scope } = setup();
+    const started = await broker.begin({
+      ...scope,
+      oauthClient: { clientId: "client-abc", scope: "read offline.access" },
+    });
+    if (started.status !== "authorization_required") throw new Error("OAuth was not requested");
+    expect(new URL(started.authorizationUrl).searchParams.get("scope")).toBe("read offline.access");
+  });
+
+  it("requests the server's listed scopes when there is no override", async () => {
+    const { broker, scope } = setup();
+    const started = await broker.begin({ ...scope, oauthClient: { clientId: "client-abc" } });
+    if (started.status !== "authorization_required") throw new Error("OAuth was not requested");
+    expect(new URL(started.authorizationUrl).searchParams.get("scope")).toBe("read billing.write");
+  });
+
+  it("keeps a secret the token endpoint echoes out of the error and the log", async () => {
+    const { broker, scope, setTokenResponse } = setup();
+    const warn = vi.spyOn(getLogger(), "warn").mockImplementation(() => undefined);
+    const started = await broker.begin({
+      ...scope,
+      oauthClient: { clientId: "client-abc", clientSecret: "s3cret-value" },
+    });
+    if (started.status !== "authorization_required") throw new Error("OAuth was not requested");
+    setTokenResponse(() =>
+      Response.json(
+        { error: "invalid_request", error_description: "bad secret s3cret-value" },
+        { status: 400 },
+      ),
+    );
+    const error = await broker
+      .complete({
+        sessionId: started.sessionId,
+        code: "code",
+        state: started.sessionId,
+        spaceId: scope.spaceId,
+        userId: scope.userId,
+      })
+      .then(
+        () => null,
+        (caught: unknown) => caught,
+      );
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain("invalid_request");
+    expect((error as Error).message).not.toContain("s3cret-value");
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("s3cret-value");
+    warn.mockRestore();
+  });
+
+  const storedMaterial = (clientId: string): OAuthMaterial => ({
+    oauth: {
+      clientSupplied: true,
+      clientInformation: { client_id: clientId, token_endpoint_auth_method: "none" },
+      tokens: { access_token: "old-access", token_type: "Bearer" },
+      obtainedAt: Date.now(),
+    },
+  });
+
+  it("drops the old tokens when the client ID changes", async () => {
+    const { broker, scope, stored } = setup(storedMaterial("client-old"));
+    const started = await broker.begin({ ...scope, oauthClient: { clientId: "client-new" } });
+    expect(started.status).toBe("authorization_required");
+    for (const payload of stored) expect(payload).not.toContain("old-access");
+  });
+
+  it("leaves the stored material alone until the new client signs in", async () => {
+    const { broker, scope, stored, prisma } = setup(storedMaterial("client-old"));
+    const started = await broker.begin({ ...scope, oauthClient: { clientId: "client-new" } });
+    if (started.status !== "authorization_required") throw new Error("OAuth was not requested");
+    // An abandoned sign-in persists nothing, so the old client and token keep working.
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    await broker.complete({
+      sessionId: started.sessionId,
+      code: "code",
+      state: started.sessionId,
+      spaceId: scope.spaceId,
+      userId: scope.userId,
+    });
+    const final = stored.at(-1) as string;
+    expect(final).toContain("client-new");
+    expect(final).toContain("new-access");
+    expect(final).not.toContain("old-access");
+  });
+
+  it("drops the old scope override for a new client and keeps it for the same client", async () => {
+    const material = () => {
+      const m = storedMaterial("client-old");
+      (m.oauth as { scopeOverride?: string }).scopeOverride = "old.scope";
+      return m;
+    };
+    const scopeOf = (url: string) => new URL(url).searchParams.get("scope");
+    const changed = setup(material());
+    const a = await changed.broker.begin({
+      ...changed.scope,
+      oauthClient: { clientId: "client-new" },
+    });
+    const same = setup(material());
+    const b = await same.broker.begin({ ...same.scope, oauthClient: { clientId: "client-old" } });
+    if (a.status !== "authorization_required" || b.status !== "authorization_required") {
+      throw new Error("OAuth was not requested");
+    }
+    expect(scopeOf(a.authorizationUrl)).toBe("read billing.write");
+    expect(scopeOf(b.authorizationUrl)).toBe("old.scope");
+  });
+
+  it("redacts the supplied secret from network errors", async () => {
+    const { broker, scope } = setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("connect failed for s3cret-value");
+      }),
+    );
+    const error = await broker
+      .begin({ ...scope, oauthClient: { clientId: "client-abc", clientSecret: "s3cret-value" } })
+      .then(
+        () => null,
+        (caught: unknown) => caught,
+      );
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain("s3cret-value");
+  });
+
+  it("keeps the tokens when the client is unchanged", async () => {
+    const { broker, scope, stored } = setup(storedMaterial("client-old"));
+    await broker.begin({ ...scope, oauthClient: { clientId: "client-old" } });
+    expect(stored.length).toBeGreaterThan(0);
+    for (const payload of stored) expect(payload).toContain("old-access");
+  });
+
+  it("registers a public client when no secret is supplied", async () => {
+    const { broker, scope, stored } = setup();
+    await broker.begin({ ...scope, oauthClient: { clientId: "client-abc" } });
+    const material = JSON.parse(stored[0] as string);
+    expect(material.oauth.clientInformation.token_endpoint_auth_method).toBe("none");
+    expect(material.oauth.clientInformation.client_secret).toBeUndefined();
+  });
+
+  it("asks for a client ID when the server cannot register one", async () => {
+    const { broker, scope } = setup();
+    await expect(broker.begin(scope)).rejects.toThrow(MCP_OAUTH_CLIENT_ID_REQUIRED);
+  });
+
+  it("keeps a supplied client when the SDK invalidates client credentials", async () => {
+    const material: OAuthMaterial = {
+      oauth: {
+        clientSupplied: true,
+        clientInformation: { client_id: "client-abc" },
+        tokens: { access_token: "a", token_type: "Bearer" },
+      },
+    };
+    const provider = new StoredMcpOAuthProvider("server-1", material, vi.fn(), { redirectUri });
+    await provider.invalidateCredentials("client");
+    await provider.invalidateCredentials("all");
+    expect(provider.clientInformation()?.client_id).toBe("client-abc");
+    expect(await provider.tokens()).toBeUndefined();
+  });
 });

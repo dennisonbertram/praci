@@ -1133,6 +1133,10 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Callback URL"
+msgstr ""
+
 #: src/App.tsx
 msgid "Can't reach the server."
 msgstr "सर्वर तक नहीं पहुंचा जा सका।"
@@ -1180,6 +1184,10 @@ msgstr "रद्द"
 #: src/pages/ActivityList.tsx
 msgid "Cancelled"
 msgstr "रद्द किया गया"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Cap table, equity and investors"
+msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -1414,12 +1422,17 @@ msgstr ""
 msgid "Clearing…"
 msgstr "साफ़ किया जा रहा है…"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client ID"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client secret"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Client secret (optional)"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -1765,11 +1778,13 @@ msgid "Contract"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Copied"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -2805,6 +2820,10 @@ msgstr ""
 msgid "Enter the URL, starting with https://."
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Equity"
+msgstr ""
+
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx
 msgid "Error"
@@ -3439,6 +3458,10 @@ msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Listening"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Live data, enrichment and generation tools"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4491,6 +4514,10 @@ msgstr "प्लगइन"
 msgid "Popular"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Post and schedule to social accounts"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "POST to"
 msgstr ""
@@ -4600,6 +4627,10 @@ msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read exchange balances"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Read posts, DMs and bookmarks"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -5504,6 +5535,7 @@ msgstr ""
 msgid "Slack not enabled"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/Inbox.tsx
 msgid "Social"
 msgstr ""
@@ -5902,6 +5934,10 @@ msgstr "बॉट के बिना यह सर्वर असाइन न
 msgid "This server did not ask for a sign-in."
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "This server needs an OAuth client ID."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 msgstr "यह सब्सक्रिप्शन साइन-इन अभी Rakazo में उपलब्ध नहीं है। किसी डिप्लॉयमेंट क्रेडेंशियल का उपयोग करें या दूसरा प्रोवाइडर चुनें।"
@@ -5958,6 +5994,7 @@ msgid "Token"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "Tools"
 msgstr ""
 

@@ -21,8 +21,10 @@ import {
   type CategoryFilter,
   type ConnectedApp,
   FINANCE_PROVIDERS,
+  FIRST_PARTY_MCP,
   filterCatalog,
   groupConnections,
+  isSameMcpEndpoint,
   mcpStatus,
   popularApps,
 } from "../../lib/integrations";
@@ -123,6 +125,9 @@ function McpCard({ server, data }: { server: McpServer; data: IntegrationsData }
         </p>
       ) : null}
       <UsedBy bots={data.bots.filter((bot) => assigned.includes(bot.id))} />
+      {reconnect.needsClient ? (
+        <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
+      ) : null}
     </Card>
   );
 }
@@ -254,7 +259,11 @@ export function IntegrationsHome({
   const jumpToFinance = useRef(params.get("category") === "finance");
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
-  const [custom, setCustom] = useState<{ url: string } | null>(null);
+  const [custom, setCustom] = useState<{
+    url: string;
+    oauthClient?: boolean;
+    scope?: string;
+  } | null>(null);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const labels: Record<CategoryFilter, string> = {
@@ -275,10 +284,27 @@ export function IntegrationsHome({
     () => filterCatalog(popularApps(data.catalog, data.connections), { query, category }),
     [data.catalog, data.connections, query, category],
   );
+  const firstPartySections = { social: t`Social`, equity: t`Equity`, tools: t`Tools` };
+  const firstPartyDescription = {
+    zernio: t`Post and schedule to social accounts`,
+    carta: t`Cap table, equity and investors`,
+    x: t`Read posts, DMs and bookmarks`,
+    treg: t`Live data, enrichment and generation tools`,
+  };
   const financeNames = FINANCE_PROVIDERS.map((entry) => entry.name.toLowerCase());
   const showFinance =
     (category === "all" || category === "finance") &&
     financeNames.some((name) => name.includes(query.trim().toLowerCase()));
+  const firstPartyMcp = FIRST_PARTY_MCP.filter(
+    (entry) =>
+      (category === "all" || category === entry.category) &&
+      entry.name.toLowerCase().includes(query.trim().toLowerCase()) &&
+      !data.servers.some(
+        (server) => "endpoint" in server && isSameMcpEndpoint(server.endpoint, entry.endpoint),
+      ) &&
+      !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)),
+  );
+  const otherMatches = showFinance || firstPartyMcp.length > 0;
   const financeServerIds = data.financeSources.flatMap((source) =>
     source.serverId ? [source.serverId] : [],
   );
@@ -450,12 +476,12 @@ export function IntegrationsHome({
                 </button>
               ))}
             </fieldset>
-            {results.length === 0 && showFinance ? null : (
+            {results.length === 0 && otherMatches ? null : (
               <>
                 <SectionTitle>
                   {filtering ? <Trans>Apps</Trans> : <Trans>Popular</Trans>}
                 </SectionTitle>
-                {results.length === 0 && !showFinance ? (
+                {results.length === 0 && !otherMatches ? (
                   <p className="py-2 text-muted-foreground" data-testid="no-apps">
                     <Trans>No apps match.</Trans>
                   </p>
@@ -500,6 +526,33 @@ export function IntegrationsHome({
           </div>
         ) : null}
 
+        {(["social", "equity", "tools"] as const).map((section) => {
+          const entries = firstPartyMcp.filter((entry) => entry.section === section);
+          return entries.length > 0 ? (
+            <div key={section}>
+              <SectionTitle>{firstPartySections[section]}</SectionTitle>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
+                {entries.map((entry) => (
+                  <AppTile
+                    key={entry.id}
+                    name={entry.name}
+                    logo={entry.logo}
+                    description={firstPartyDescription[entry.id]}
+                    onConnect={() =>
+                      setCustom({
+                        url: entry.endpoint,
+                        ...("oauthClient" in entry
+                          ? { oauthClient: true, scope: entry.scope }
+                          : {}),
+                      })
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null;
+        })}
+
         <SectionTitle>
           <Trans>Anything else</Trans>
         </SectionTitle>
@@ -531,6 +584,8 @@ export function IntegrationsHome({
         <CustomConnectionDialog
           data={data}
           initialUrl={custom.url}
+          oauthClient={custom.oauthClient}
+          oauthScope={custom.scope}
           onClose={() => setCustom(null)}
         />
       ) : null}

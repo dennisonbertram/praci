@@ -14,7 +14,7 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { SecretStore } from "@rakazo/adapter-kit";
 import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
-import { isLocalMcpHost } from "@rakazo/contracts";
+import { isLocalMcpHost, MCP_OAUTH_CLIENT_ID_REQUIRED } from "@rakazo/contracts";
 import { readBoundedResponseBytes } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -28,6 +28,10 @@ type OAuthState = {
   tokens?: OAuthTokens;
   obtainedAt?: number;
   clientInformation?: OAuthClientInformationMixed;
+  /** The user registered this client with the provider; the SDK must not discard it. */
+  clientSupplied?: boolean;
+  /** Replaces the scope the SDK would request (the server's whole `scopes_supported` list). */
+  scopeOverride?: string;
   discoveryState?: OAuthDiscoveryState;
   redirectUri?: string;
   codeVerifier?: string;
@@ -184,6 +188,8 @@ type ProviderOptions = {
   redirectUri?: string;
   state?: string;
   onAuthorization?: (url: URL) => void;
+  /** Keep changes in memory only; the caller persists them later. */
+  memoryOnly?: boolean;
   onPersisted?: (record: { id: string; ref: string; material: OAuthMaterial }) => void;
   /** Network for renewing an expired access token through its stored refresh token. */
   refreshNetwork?: () => Promise<{ fetch: typeof fetch; close: () => Promise<void> }>;
@@ -229,6 +235,11 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
       token_endpoint_auth_method: "none",
       application_type: applicationType,
     } as OAuthClientMetadata;
+  }
+
+  /** Stored secrets (tokens, client secret) that errors and logs must not repeat. */
+  secrets(): string[] {
+    return oauthMaterialSecrets(this.material);
   }
 
   state(): string {
@@ -315,6 +326,10 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
       }
       throw error;
     }
+    // The SDK calls auth() inside the transport, so its scope choice cannot be set from here;
+    // the token request carries no scope, so rewriting the authorization URL is enough.
+    const override = this.material.oauth?.scopeOverride;
+    if (override) authorizationUrl.searchParams.set("scope", override);
     this.authorizationUrl = authorizationUrl;
     if (this.options.onAuthorization) {
       this.options.onAuthorization(authorizationUrl);
@@ -358,9 +373,13 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
   ): Promise<void> {
     if (scope === "all") {
       const redirectUri = this.redirectUrl;
-      this.material.oauth = redirectUri ? { redirectUri } : undefined;
+      const { clientSupplied, clientInformation, scopeOverride } = this.material.oauth ?? {};
+      const kept = clientSupplied ? { clientSupplied, clientInformation, scopeOverride } : {};
+      this.material.oauth = redirectUri || clientSupplied ? { ...kept, redirectUri } : undefined;
     } else if (this.material.oauth) {
-      if (scope === "client") delete this.material.oauth.clientInformation;
+      // A client ID the user typed in is not the SDK's to throw away.
+      if (scope === "client" && !this.material.oauth.clientSupplied)
+        delete this.material.oauth.clientInformation;
       if (scope === "tokens") {
         delete this.material.oauth.tokens;
         delete this.material.oauth.obtainedAt;
@@ -405,6 +424,7 @@ function oauthFetch(
   network: RemoteTransportDependencies,
   material: OAuthMaterial = {},
   allowPrivateEndpoint = false,
+  redact: string[] = [],
 ): {
   fetch: typeof fetch;
   close: () => Promise<void>;
@@ -459,8 +479,11 @@ function oauthFetch(
     fetch: recordingFetch,
     close: () => safeFetch.close(),
     publicError: (error, message) => {
-      if (error instanceof Error && networkErrors.has(error)) return error;
-      const secrets = oauthMaterialSecrets(material);
+      const secrets = [...oauthMaterialSecrets(material), ...redact];
+      if (error instanceof Error && networkErrors.has(error)) {
+        const clean = sanitizeConnectorError(error, secrets);
+        return clean === error.message ? error : new Error(clean);
+      }
       const sdk = sanitizeConnectorError(error, secrets);
       const surfaced = rejection ? formatOAuthRejection(rejection, sdk, secrets) : undefined;
       getLogger().warn(`${message}: ${surfaced ?? sdk}`);
@@ -574,6 +597,7 @@ export class McpOAuthBroker {
     userId: string;
     redirectUri: string;
     reauthorize?: boolean;
+    oauthClient?: { clientId: string; clientSecret?: string; scope?: string };
   }): Promise<
     | { status: "authorization_required"; sessionId: string; authorizationUrl: string }
     | { status: "already_connected" | "authorization_not_requested" }
@@ -605,12 +629,53 @@ export class McpOAuthBroker {
     }
     const sessionId = randomUUID();
     const context = { spaceId: input.spaceId, userId: input.userId };
-    const loaded = await this.loadMaterial(server, context);
+    let loaded = await this.loadMaterial(server, context);
     let authorizationUrl: URL | undefined;
+    const supplied = input.oauthClient;
+    let memoryOnly = false;
+    if (supplied) {
+      const stored = loaded.material.oauth?.clientInformation;
+      const changed =
+        stored?.client_id !== supplied.clientId ||
+        (stored && "client_secret" in stored ? stored.client_secret : undefined) !==
+          supplied.clientSecret;
+      const clientInformation = {
+        client_id: supplied.clientId,
+        ...(supplied.clientSecret ? { client_secret: supplied.clientSecret } : {}),
+        redirect_uris: [input.redirectUri],
+        token_endpoint_auth_method: supplied.clientSecret ? "client_secret_basic" : "none",
+      } as OAuthClientInformationMixed;
+      if (changed) {
+        // Tokens and scope belong to the client that got them. Build the new state in
+        // memory only: the stored material changes when sign-in completes, so an
+        // abandoned attempt leaves the old client and tokens working.
+        const { tokens, obtainedAt, scopeOverride, ...rest } = loaded.material.oauth ?? {};
+        loaded = {
+          ...loaded,
+          material: {
+            ...structuredClone(loaded.material),
+            oauth: {
+              ...structuredClone(rest),
+              clientInformation,
+              clientSupplied: true,
+              ...(supplied.scope ? { scopeOverride: supplied.scope } : {}),
+            },
+          },
+        };
+        memoryOnly = true;
+      } else {
+        loaded.material.oauth = {
+          ...loaded.material.oauth,
+          clientSupplied: true,
+          ...(supplied.scope ? { scopeOverride: supplied.scope } : {}),
+        };
+      }
+    }
+    const providerOptions = { redirectUri: input.redirectUri, state: sessionId };
     const provider = this.createProvider(server, context, loaded, {
-      redirectUri: input.redirectUri,
-      state: sessionId,
+      ...providerOptions,
       reauthorize: input.reauthorize,
+      memoryOnly,
       onAuthorization: (url) => {
         authorizationUrl = url;
       },
@@ -624,6 +689,7 @@ export class McpOAuthBroker {
       this.network,
       loaded.material,
       await actorMayUsePrivateEndpoint(this.prisma, input.userId, this.allowPrivateEndpoint),
+      supplied?.clientSecret ? [supplied.clientSecret] : [],
     );
     const transport = new StreamableHTTPClientTransport(endpoint, {
       requestInit: { headers: networkFetch.headers },
@@ -635,7 +701,15 @@ export class McpOAuthBroker {
     try {
       await client.connect(transport, { signal, timeout: 15_000 });
     } catch (error) {
-      if (!authorizationUrl) throw networkFetch.publicError(error, "Could not start MCP OAuth");
+      if (!authorizationUrl) {
+        if (
+          error instanceof Error &&
+          error.message.includes("does not support dynamic client registration")
+        ) {
+          throw new Error(MCP_OAUTH_CLIENT_ID_REQUIRED);
+        }
+        throw networkFetch.publicError(error, "Could not start MCP OAuth");
+      }
     } finally {
       await client.close().catch(() => undefined);
       await networkFetch.close().catch(() => undefined);
@@ -681,7 +755,10 @@ export class McpOAuthBroker {
       spaceId: input.spaceId,
       userId: input.userId,
       endpoint: server.endpoint,
-      provider,
+      // A memory-only provider would drop the tokens complete() has to store.
+      provider: memoryOnly
+        ? this.createProvider(server, context, loaded, providerOptions)
+        : provider,
       createdAt: Date.now(),
       expiry,
     });
@@ -762,6 +839,7 @@ export class McpOAuthBroker {
       this.network,
       {},
       await actorMayUsePrivateEndpoint(this.prisma, pending.userId, this.allowPrivateEndpoint),
+      pending.provider.secrets(),
     );
     const transport = new StreamableHTTPClientTransport(endpoint, {
       authProvider: pending.provider,
@@ -838,6 +916,7 @@ export class McpOAuthBroker {
       server.id,
       loaded.material,
       async (material) => {
+        if (options.memoryOnly) return;
         await this.replaceMaterial(
           server.id,
           material,

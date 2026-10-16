@@ -70,8 +70,8 @@ import {
   subscribeResponseStreaming,
 } from "../../lib/response-streaming";
 import { continueWithSso } from "../../lib/sso";
-import type { AccountUiLocale } from "../../lib/ui-locale";
-import { ACCOUNT_UI_LOCALES, UI_LOCALE_LABELS } from "../../lib/ui-locale";
+import type { UiLocale } from "../../lib/ui-locale";
+import { UI_LOCALE_LABELS, UI_LOCALES } from "../../lib/ui-locale";
 import { errorText } from "../../lib/user-error";
 
 /** Render account settings, including the entry point for voice configuration. */
@@ -286,7 +286,7 @@ export default function Account() {
     }
   }
 
-  function applyLocale(code: AccountUiLocale) {
+  function applyLocale(code: UiLocale) {
     if (code === locale || localeSaving) return;
     setLocaleSaving(true);
     setLocaleError(null);
@@ -301,7 +301,7 @@ export default function Account() {
     if (localeSaving) return;
     presentMessageActionSheet({
       title: t("Language"),
-      actions: ACCOUNT_UI_LOCALES.map((code) => ({
+      actions: UI_LOCALES.map((code) => ({
         text: UI_LOCALE_LABELS[code],
         onPress: () => applyLocale(code),
       })),

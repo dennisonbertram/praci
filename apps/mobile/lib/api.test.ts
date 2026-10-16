@@ -2803,6 +2803,74 @@ describe("mobile thread event reduction", () => {
     ).toBe("Sender now: Subject now\nSender late: Subject late");
   });
 
+  it("gives finance and skill draft blocks readable text", () => {
+    const text = (block: unknown) => blockText(mobileMessage("b", [block as never]));
+    expect(
+      text({
+        kind: "finance",
+        card: {
+          card: "overview",
+          cashCents: 1_234_500,
+          burnCents: 100_000,
+          runwayMonths: 12.4,
+          monthSpendCents: 90_000,
+        },
+      }),
+    ).toBe("Cash $12,345.00 · Burn $1,000.00/mo · Runway 12 mo · Spend this month $900.00");
+    expect(
+      text({
+        kind: "finance",
+        card: {
+          card: "breakdown",
+          by: "vendor",
+          range: "Last 90 days",
+          totalCents: 5000,
+          rows: [{ key: "a", label: "Acme", cents: 5000 }],
+        },
+      }),
+    ).toBe("By vendor, Last 90 days: $50.00\nAcme: $50.00");
+    expect(
+      text({
+        kind: "finance",
+        card: {
+          card: "transactions",
+          count: 1,
+          totalCents: -700,
+          rows: [{ id: "t1", day: "2026-10-01T00:00:00Z", label: "Coffee", cents: -700 }],
+        },
+      }),
+    ).toBe("1 transactions: -$7.00\n2026-10-01 Coffee: -$7.00");
+    expect(
+      text({
+        kind: "finance",
+        card: {
+          card: "recurring",
+          monthlyCents: 2000,
+          upcomingCents: 500,
+          rows: [{ key: "r", label: "Hosting", cents: 2000 }],
+        },
+      }),
+    ).toBe("Recurring $20.00/mo, $5.00 upcoming\nHosting: $20.00");
+    expect(
+      text({
+        kind: "skill_draft",
+        skillId: "s1",
+        name: "Weekly recap",
+        goal: "Summarize the week",
+        status: "draft",
+        playbook: {
+          whenToUse: "",
+          inputs: [],
+          steps: ["Read mail", "Write recap"],
+          howToCheck: "",
+          whatToReturn: "",
+          approvalBoundaries: "",
+          failureHandling: "",
+        },
+      }),
+    ).toBe("Weekly recap (draft): Summarize the week\n1. Read mail\n2. Write recap");
+  });
+
   it("formats channel messages with their platform attribution", () => {
     expect(
       blockText(
