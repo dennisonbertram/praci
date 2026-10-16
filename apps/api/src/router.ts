@@ -194,6 +194,10 @@ import {
   CannotRenameSpaceAsNonOwnerError,
   ComputerLimitError,
   ContactEmailTakenError,
+  addSidebarPage,
+  listSidebarPages,
+  removeSidebarPage,
+  SidebarPageError,
   claimEmptySpaceDeletionForMember,
   createExternalConversationRepos,
   createGroupRepos,
@@ -759,6 +763,15 @@ function mapSpaceLifecycleError(error: unknown): unknown {
     return new ORPCError("BAD_REQUEST", { message: error.message });
   }
   return error;
+}
+
+function sidebarPageError(error: unknown): never {
+  if (error instanceof SidebarPageError) {
+    throw new ORPCError(error.code === "owner_only" ? "FORBIDDEN" : "BAD_REQUEST", {
+      message: error.message,
+    });
+  }
+  throw error;
 }
 
 function contactNotFound(error: unknown): never {
@@ -6224,6 +6237,21 @@ export function createRouter(deps: RouterDeps) {
           throw mapSpaceLifecycleError(error);
         }),
       ),
+    },
+    sidebarPages: {
+      list: authed.sidebarPages.list.handler(({ context }) =>
+        listSidebarPages(deps.prisma, actorScope(context.actor)),
+      ),
+      add: authed.sidebarPages.add.handler(async ({ context, input }) => {
+        await addSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey).catch(
+          sidebarPageError,
+        );
+        return { ok: true as const };
+      }),
+      remove: authed.sidebarPages.remove.handler(async ({ context, input }) => {
+        await removeSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey);
+        return { ok: true as const };
+      }),
     },
     contacts: {
       list: authed.contacts.list.handler(({ context, input }) =>
