@@ -506,6 +506,10 @@ msgstr "Добавить подключённую модель"
 msgid "Add connected models to use them as backups."
 msgstr "Добавьте подключённые модели, чтобы использовать их как резервные."
 
+#: src/pages/CapTable.tsx
+msgid "Add contact"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Add credential"
 msgstr ""
@@ -584,6 +588,7 @@ msgid "AI data sharing"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/Inbox.tsx
 msgid "All"
@@ -882,6 +887,14 @@ msgstr ""
 #. placeholder {0}: email.attachments
 #: src/components/EmailCards.tsx
 msgid "Attachments: {0}"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Auditor"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Auditors"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -1187,6 +1200,11 @@ msgstr "отменен"
 #: src/pages/ActivityList.tsx
 msgid "Cancelled"
 msgstr "Отменено"
+
+#: src/pages/CapTable.tsx
+#: src/pages/Shell.tsx
+msgid "Cap Table"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Cap table, equity and investors"
@@ -1520,6 +1538,10 @@ msgid "Collapse {0}"
 msgstr "Свернуть {0}"
 
 #: src/pages/Shell.tsx
+msgid "Collapse Carta agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Collapse Finance agent"
 msgstr ""
 
@@ -1674,6 +1696,10 @@ msgstr "Подключить API-ключ"
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Blockscout"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Connect Carta"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -1894,6 +1920,10 @@ msgid "Could not create space"
 msgstr "Не удалось создать пространство"
 
 #: src/pages/Shell.tsx
+msgid "Could not create the Carta agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Could not create the Finance agent"
 msgstr ""
 
@@ -2002,6 +2032,10 @@ msgstr "Не удалось загрузить ботов. Обновите ст
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Could not load commands"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Could not load contacts"
 msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
@@ -2325,6 +2359,10 @@ msgid "Create account"
 msgstr "Зарегистрироваться"
 
 #: src/pages/Shell.tsx
+msgid "Create Carta agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Create Finance agent"
 msgstr ""
 
@@ -2471,6 +2509,7 @@ msgstr "Область действия по умолчанию"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
@@ -2762,6 +2801,10 @@ msgstr ""
 msgid "Edit"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Edit contact"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Edit first"
 msgstr "Сначала отредактируйте"
@@ -2775,6 +2818,7 @@ msgid "Edit wallet"
 msgstr ""
 
 #: src/pages/Auth.tsx
+#: src/pages/CapTable.tsx
 msgid "Email"
 msgstr "Электронная почта"
 
@@ -3350,6 +3394,14 @@ msgstr "Значение интервала"
 msgid "Interval unit"
 msgstr "Единица интервала"
 
+#: src/pages/CapTable.tsx
+msgid "Investor"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Investors"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
@@ -3401,6 +3453,10 @@ msgstr "ключ"
 
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Keyboard shortcuts"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Kind"
 msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
@@ -3920,6 +3976,7 @@ msgstr "Выключить микрофон"
 #: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -4078,6 +4135,10 @@ msgstr "Ни один бот не подходит"
 msgid "No chat apps linked yet."
 msgstr "Приложения для чата пока не связаны."
 
+#: src/pages/CapTable.tsx
+msgid "No contacts yet"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr ""
@@ -4216,6 +4277,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not sent. {text}"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Notes"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -4395,6 +4460,10 @@ msgstr "Или вставьте ключ API"
 msgid "Organic"
 msgstr "Органичный"
 
+#: src/pages/CapTable.tsx
+msgid "Organization"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Organization API key"
 msgstr "Ключ API организации"
@@ -4404,6 +4473,7 @@ msgid "Original message unavailable"
 msgstr "Исходное сообщение недоступно"
 
 #: src/components/finance/ui.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
 msgstr ""
@@ -5168,6 +5238,7 @@ msgstr ""
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -5454,6 +5525,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Show bots"
 msgstr "Показать ботов"
+
+#: src/pages/CapTable.tsx
+msgid "Show Carta agent"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Show computer"
@@ -6119,6 +6194,7 @@ msgstr ""
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 msgid "Try again"
