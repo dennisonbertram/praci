@@ -67,7 +67,7 @@ export const darkTokens = {
   accent: "#2A2927",
   accentForeground: "#ECEBE6",
   destructive: "#F46262",
-  destructiveForeground: "#FFFFFF",
+  destructiveForeground: "#1C1C1A",
   border: "#2E2D2A",
   input: "#282826",
   ring: "#3B82F6",

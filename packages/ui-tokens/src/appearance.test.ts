@@ -180,6 +180,29 @@ describe("text contrast", () => {
     }
   });
 
+  for (const [name, palette] of [
+    ["dark", darkTokens],
+    ["light", lightTokens],
+  ] as const) {
+    it(`keeps labels on filled ${name} controls at AA`, () => {
+      for (const [fill, label] of [
+        ["destructive", "destructiveForeground"],
+        ["primary", "primaryForeground"],
+        ["secondary", "secondaryForeground"],
+        ["card", "cardForeground"],
+        ["popover", "popoverForeground"],
+        ["accent", "accentForeground"],
+        ["chatUser", "chatUserForeground"],
+        ["sidebarAccent", "sidebarAccentForeground"],
+      ] as const) {
+        expect(
+          contrast(palette[label], palette[fill]),
+          `${label} on ${fill}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+
   it("keeps the dark palette warm and its surfaces stepped in order", () => {
     const warm = (hex: string) =>
       Number.parseInt(hex.slice(1, 3), 16) >= Number.parseInt(hex.slice(5, 7), 16);

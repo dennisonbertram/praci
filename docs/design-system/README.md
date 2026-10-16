@@ -79,7 +79,7 @@ The only color outside ink: destructive, success, warning, working, links.
 | Token | CSS variable | Light | Dark |
 | --- | --- | --- | --- |
 | `destructive` | `--destructive` | `#dc2626` | `#f46262` |
-| `destructiveForeground` | `--destructive-foreground` | `#ffffff` | `#ffffff` |
+| `destructiveForeground` | `--destructive-foreground` | `#ffffff` | `#1c1c1a` |
 | `success` | `--success` | `#228b3b` | `#4ecb71` |
 | `warning` | `--warning` | `#b7791f` | `#e9c46a` |
 | `statusWorking` | `--status-working` | `#2563eb` | `#4f8ff7` |
