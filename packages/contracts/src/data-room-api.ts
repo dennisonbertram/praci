@@ -1,0 +1,126 @@
+import * as z from "zod";
+import { Id } from "./ids.js";
+
+/** Uploads are streamed through the API and refused above this size. */
+export const DATA_ROOM_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
+
+/** A file or folder name: 1 to 255 characters, no path separators or control characters. */
+export const DataRoomApiName = z
+  .string()
+  .min(1)
+  .max(255)
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: names must not hold control characters.
+  .refine((name) => !/[/\\\u0000-\u001f\u007f]/.test(name) && name.trim() !== "", {
+    message: "Name cannot be blank or contain path separators",
+  });
+
+const NullableId = Id.nullable();
+
+export const DataRoomApiFolderSchema = z.object({
+  id: Id,
+  name: z.string(),
+  parentId: NullableId,
+  createdAt: z.string().datetime(),
+});
+export type DataRoomApiFolder = z.infer<typeof DataRoomApiFolderSchema>;
+
+export const DataRoomApiFacetsSchema = z.object({
+  docType: z.string().nullable(),
+  docDate: z.string().datetime().nullable(),
+  parties: z.array(z.string()),
+  amountCents: z.number().nullable(),
+  currency: z.string().nullable(),
+  tags: z.array(z.string()),
+  summary: z.string().nullable(),
+});
+
+/** An item as clients see it. The storage key never leaves the server. */
+export const DataRoomApiItemSchema = z.object({
+  id: Id,
+  name: z.string(),
+  mimeType: z.string(),
+  size: z.number().int(),
+  folderId: NullableId,
+  source: z.string(),
+  status: z.string(),
+  /** Why the last step failed. A `ready` item can carry one (for example, filing was skipped). */
+  error: z.string().nullable(),
+  facets: DataRoomApiFacetsSchema,
+  createdAt: z.string().datetime(),
+});
+export type DataRoomApiItem = z.infer<typeof DataRoomApiItemSchema>;
+
+export const DataRoomApiFiltersSchema = z.object({
+  /** Omit for every folder; null for items outside any folder. */
+  folderId: NullableId.optional(),
+  docType: z.string().min(1).optional(),
+  party: z.string().min(1).optional(),
+  tag: z.string().min(1).optional(),
+  docDateFrom: z.string().datetime().optional(),
+  docDateTo: z.string().datetime().optional(),
+  status: z.string().min(1).optional(),
+  source: z.string().min(1).optional(),
+});
+
+export const DataRoomApiSortSchema = z.object({
+  /** "date" is the document date; items without one sort last in both directions. */
+  field: z.enum(["date", "name", "type", "createdAt"]),
+  direction: z.enum(["asc", "desc"]),
+});
+
+export const DataRoomApiItemListInputSchema = DataRoomApiFiltersSchema.extend({
+  sort: DataRoomApiSortSchema.default({ field: "createdAt", direction: "desc" }),
+  limit: z.number().int().min(1).max(100).default(50),
+  /** The `nextCursor` (valid only with the same sort and filters) of the previous page. */
+  cursor: Id.optional(),
+});
+export const DataRoomApiItemListOutputSchema = z.object({
+  items: z.array(DataRoomApiItemSchema),
+  nextCursor: Id.nullable(),
+});
+
+export const DataRoomApiSearchInputSchema = z.object({
+  query: z.string().trim().min(1).max(500),
+  filters: DataRoomApiFiltersSchema.optional(),
+  /** Omit to order by relevance. */
+  sort: DataRoomApiSortSchema.optional(),
+  limit: z.number().int().min(1).max(50).default(10),
+  /** The `nextCursor` of the previous page (valid only with the same query, filters and sort). */
+  cursor: Id.optional(),
+});
+export const DataRoomApiSearchResultSchema = z.object({
+  item: DataRoomApiItemSchema,
+  ordinal: z.number().int(),
+  /** Plain text. U+0001 and U+0002 mark highlight start and end. Render as text, never HTML. */
+  snippet: z.string(),
+  score: z.number(),
+});
+
+export const DataRoomApiSearchOutputSchema = z.object({
+  results: z.array(DataRoomApiSearchResultSchema),
+  nextCursor: Id.nullable(),
+});
+
+export const DataRoomApiUploadResponseSchema = z.object({
+  item: DataRoomApiItemSchema,
+  duplicate: z.boolean(),
+});
+export type DataRoomApiUploadResponse = z.infer<typeof DataRoomApiUploadResponseSchema>;
+
+/** Bump when the disclosure below changes; it invalidates earlier consent. */
+export const DATA_ROOM_DISCLOSURE_VERSION = "2026-10-22";
+export const DATA_ROOM_DISCLOSURE =
+  "The full text of your documents and, for images, the page images are sent to the providers below to read, file and search them.";
+
+export const DataRoomConsentStatusSchema = z.object({
+  /** Binds the consent to the exact providers below; it changes when they do. */
+  key: z.string(),
+  version: z.string(),
+  allowed: z.boolean(),
+  disclosure: z.string(),
+  /** Empty when no model is set up, in which case nothing is sent anywhere. */
+  recipients: z.array(z.object({ name: z.string(), detail: z.string() })),
+});
+export type DataRoomConsentStatus = z.infer<typeof DataRoomConsentStatusSchema>;
+
+export const DataRoomConsentGrantInputSchema = z.object({ key: z.string(), version: z.string() });

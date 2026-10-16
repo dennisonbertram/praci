@@ -157,7 +157,7 @@ the data is disposable); `docker compose down -v` deletes all Postgres state. Fo
 add `infra/compose/docker-compose.postgres-host.yml` so Postgres is published on loopback
 `127.0.0.1:5433`, or use
 `docker compose --env-file .env -f infra/compose/docker-compose.yml exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'`.
-Do not publish Postgres on a public interface.
+Do not publish Postgres on a public interface. The Postgres image now includes the pgvector extension: it is Postgres 16.15 on the same Debian trixie base as the previous image, so existing data volumes keep their collation. Moving an existing deployment to it needs one extra step; see [Upgrade](#upgrade).
 
 The Docker supervisor is not published as its own image and is not exposed on the host. It runs from
 the app image, stays on the internal Compose network, and holds the Docker socket because access to
@@ -413,6 +413,23 @@ The Electron desktop app is a client of the same API. Docker and E2B still apply
 
 For provider configuration and health checks, see the [provider setup guide](./self-host-sandbox-providers.md).
 
+## Object storage for artifacts
+
+By default Rakazo keeps uploaded and generated files on the local disk under `data/`, which is
+only safe when a single API or worker process runs. To run several processes, point Rakazo at any
+S3-compatible store (AWS S3, Cloudflare R2, MinIO). Files are stored under
+`<prefix>/artifacts/<space id>/<id>`, so one bucket can serve many spaces. Set the first four
+variables together; any `RAKAZO_S3_*` variable that is set turns object storage on, and a partial set stops startup and names the missing variable.
+
+- `RAKAZO_S3_ENDPOINT`: the store's URL, for example `https://s3.us-east-1.amazonaws.com`.
+- `RAKAZO_S3_BUCKET`: an existing bucket.
+- `RAKAZO_S3_ACCESS_KEY_ID` and `RAKAZO_S3_SECRET_ACCESS_KEY`: credentials with read, write and delete access to the bucket.
+- `RAKAZO_S3_REGION`: defaults to `us-east-1`, which AWS, R2 and MinIO all accept.
+- `RAKAZO_S3_FORCE_PATH_STYLE`: set to `true` for MinIO and other stores without bucket subdomains.
+- `RAKAZO_S3_PREFIX`: optional key prefix.
+
+Plain `http` endpoints are accepted only for localhost, private network addresses and single-word hostnames such as `minio`; use `https` for anything else. Existing local files are not copied to the bucket.
+
 ## Backup
 
 ```bash
@@ -610,6 +627,30 @@ production snapshot's custom-format `rakazo.dump` or `appdata.tgz`.
 ```
 
 ## Upgrade
+
+**Required once, before the release that adds the Data room:** that release's migration runs
+`CREATE EXTENSION vector`, which needs the Postgres image to include pgvector. The updater and the
+commands below recreate only `api`, `worker`, and `web`, so switch Postgres first. Update the checkout
+(or `docker-compose.prod.yml`) so `POSTGRES_IMAGE` resolves to the new pgvector image, then:
+
+```bash
+docker compose --env-file .env -f infra/compose/docker-compose.prod.yml pull postgres
+docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
+  up -d --wait --pull never postgres
+```
+
+This restarts Postgres briefly; the data volume is reused. If you skip it, the migration fails with
+"the database image must include pgvector" and the API stays unhealthy until you do this.
+If the API already failed with that error, Prisma has recorded the migration as failed and refuses
+later migrations. After switching the image, mark it rolled back (nothing was applied) and restart
+the API:
+
+```bash
+docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
+  run --rm api pnpm --filter @rakazo/db exec prisma migrate resolve --rolled-back 20261020000000_data_room
+docker compose --env-file .env -f infra/compose/docker-compose.prod.yml up -d --wait --pull never api
+```
+Updater-managed hosts do this step by hand once; the sidecar never touches Postgres.
 
 A Compose deployment on a published release tag upgrades by moving that tag:
 

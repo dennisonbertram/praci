@@ -17,6 +17,10 @@ describeFast("pnpm test emulator pin", () => {
     expect(process.env.INTEGRATIONS_CATALOG_URL).toBeUndefined();
   });
 
+  it("does not keep object storage settings in the test process", () => {
+    expect(Object.keys(process.env).filter((name) => name.startsWith("RAKAZO_S3_"))).toEqual([]);
+  });
+
   itOffline(
     "does not connect to an inherited database without an explicit integration flag",
     () => {

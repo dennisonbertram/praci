@@ -519,6 +519,10 @@ msgstr "Add credential"
 msgid "Add custom connection"
 msgstr "Add custom connection"
 
+#: src/pages/DataRoom.tsx
+msgid "Add files"
+msgstr "Add files"
+
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Add item"
@@ -607,6 +611,11 @@ msgstr "All bots"
 msgid "All crypto"
 msgstr "All crypto"
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderTree.tsx
+msgid "All items"
+msgstr "All items"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "All providers"
 msgstr "All providers"
@@ -682,6 +691,7 @@ msgstr "Always allow this tool"
 msgid "Always allowed"
 msgstr "Always allowed"
 
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
@@ -749,6 +759,7 @@ msgid "Appearance"
 msgstr "Appearance"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr "Apply"
 
@@ -801,6 +812,10 @@ msgstr "Arguments"
 #: src/pages/Shell.tsx
 msgid "Artifacts"
 msgstr "Artifacts"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Ascending"
+msgstr "Ascending"
 
 #: src/components/FinanceCards.tsx
 msgid "Ask about this"
@@ -1156,6 +1171,7 @@ msgstr "Can't reach the server."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/WalletDialog.tsx
@@ -1291,6 +1307,7 @@ msgstr "Charges"
 msgid "Chart failed to render: {error}"
 msgstr "Chart failed to render: {error}"
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Chat"
 msgstr "Chat"
@@ -1395,6 +1412,10 @@ msgstr "Choose a new password"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
 msgstr "Choose file"
+
+#: src/pages/DataRoom.tsx
+msgid "Choose files"
+msgstr "Choose files"
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
@@ -1502,6 +1523,7 @@ msgid "Close panel"
 msgstr "Close panel"
 
 #: src/components/ArtifactFileCard.tsx
+#: src/components/data-room/Preview.tsx
 msgid "Close preview"
 msgstr "Close preview"
 
@@ -2200,6 +2222,10 @@ msgstr "Could not save that voice"
 msgid "Could not save the credential"
 msgstr "Could not save the credential"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Could not save the embedding model"
+msgstr "Could not save the embedding model"
+
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Could not save the page."
 msgstr "Could not save the page."
@@ -2265,6 +2291,10 @@ msgstr "Could not upload file"
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
+
+#: src/components/data-room/Preview.tsx
+msgid "Couldn't classify"
+msgstr "Couldn't classify"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
@@ -2428,6 +2458,14 @@ msgstr "Customize bot avatar"
 msgid "Dark"
 msgstr "Dark"
 
+#: src/pages/DataRoom.tsx
+#: src/pages/Shell.tsx
+msgid "Data room"
+msgstr "Data room"
+
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Date"
@@ -2478,6 +2516,8 @@ msgstr "Default ({0})"
 msgid "Default scope"
 msgstr "Default scope"
 
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -2503,6 +2543,7 @@ msgstr "Delete {0}"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "Delete {0}?"
@@ -2551,6 +2592,10 @@ msgstr "Deny"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "Deployment default"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Descending"
+msgstr "Descending"
 
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -2641,6 +2686,7 @@ msgid "Disconnecting…"
 msgstr "Disconnecting…"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/shell/message-cards.tsx
@@ -2698,6 +2744,7 @@ msgid "Done"
 msgstr "Done"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/Artifacts.tsx
 msgid "Download"
 msgstr "Download"
@@ -2746,6 +2793,10 @@ msgstr "Draft skill"
 msgid "Drag, drop, or paste an image"
 msgstr "Drag, drop, or paste an image"
 
+#: src/pages/DataRoom.tsx
+msgid "Drop files here"
+msgstr "Drop files here"
+
 #: src/components/ComposeEmail.tsx
 msgid "Drop files to attach"
 msgstr "Drop files to attach"
@@ -2753,6 +2804,10 @@ msgstr "Drop files to attach"
 #: src/components/finance/StatementImport.tsx
 msgid "Drop statements here or choose files"
 msgstr "Drop statements here or choose files"
+
+#: src/components/data-room/DropZone.tsx
+msgid "Drop to add to Data room"
+msgstr "Drop to add to Data room"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
@@ -2799,6 +2854,10 @@ msgstr "Email is not allowed to register"
 msgid "Email verification required"
 msgstr "Email verification required"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Embedding model"
+msgstr "Embedding model"
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Ends {day}"
 msgstr "Ends {day}"
@@ -2806,6 +2865,10 @@ msgstr "Ends {day}"
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
 msgstr "Engage when... Ignore..."
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a name without slashes"
+msgstr "Enter a name without slashes"
 
 #: src/lib/user-error.ts
 msgid "Enter a password"
@@ -2954,6 +3017,9 @@ msgstr "Extra high"
 msgid "failed"
 msgstr "failed"
 
+#: src/components/data-room/format.ts
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
@@ -2988,13 +3054,25 @@ msgstr "Fee"
 msgid "File is too large to upload."
 msgstr "File is too large to upload."
 
+#: src/components/data-room/DropZone.tsx
+msgid "Filed"
+msgstr "Filed"
+
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Files"
 msgstr "Files"
 
+#: src/components/data-room/format.ts
+msgid "Filing"
+msgstr "Filing"
+
 #: src/pages/Inbox.tsx
 msgid "Filter"
 msgstr "Filter"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Filter by {label}"
+msgstr "Filter by {label}"
 
 #: src/pages/Artifacts.tsx
 msgid "Filter by date"
@@ -3004,6 +3082,7 @@ msgstr "Filter by date"
 msgid "Filters"
 msgstr "Filters"
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/finance/ui.tsx
 #: src/components/FinanceCards.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -3072,6 +3151,15 @@ msgstr "Fix or remove the highlighted addresses."
 msgid "Flag unexpected actions"
 msgstr "Flag unexpected actions"
 
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/Preview.tsx
+msgid "Folder"
+msgstr "Folder"
+
+#: src/components/data-room/FolderTree.tsx
+msgid "Folders"
+msgstr "Folders"
+
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "Forgot password?"
@@ -3095,6 +3183,7 @@ msgid "Free"
 msgstr "Free"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
@@ -3139,6 +3228,10 @@ msgstr "Getting ready"
 msgid "Git event"
 msgstr "Git event"
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Gmail"
+msgstr "Gmail"
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now. Try again in a minute."
 msgstr "Gmail is limiting requests right now. Try again in a minute."
@@ -3151,6 +3244,14 @@ msgstr "Gmail needs to be reconnected."
 #: src/pages/Inbox.tsx
 msgid "Gmail tabs"
 msgstr "Gmail tabs"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Google Drive"
+msgstr "Google Drive"
+
+#: src/pages/DataRoom.tsx
+msgid "Grid view"
+msgstr "Grid view"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -3376,6 +3477,10 @@ msgstr "It now appears under Connected."
 msgid "Italic"
 msgstr "Italic"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Items"
+msgstr "Items"
+
 #: src/pages/shell/dialogs.tsx
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
@@ -3483,6 +3588,7 @@ msgid "List"
 msgstr "List"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/DataRoom.tsx
 msgid "List view"
 msgstr "List view"
 
@@ -3503,6 +3609,7 @@ msgid "Load earlier messages"
 msgstr "Load earlier messages"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/Inbox.tsx
 msgid "Load more"
 msgstr "Load more"
@@ -3902,9 +4009,19 @@ msgstr "Monthly trend"
 msgid "More"
 msgstr "More"
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemMenu.tsx
+msgid "More actions for {0}"
+msgstr "More actions for {0}"
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "More computer actions"
 msgstr "More computer actions"
+
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
+msgid "Move"
+msgstr "Move"
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Move {full} down"
@@ -3926,6 +4043,9 @@ msgstr "Move to"
 msgid "Mute"
 msgstr "Mute"
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
@@ -4091,6 +4211,10 @@ msgstr "No chat apps linked yet."
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "No folder"
+msgstr "No folder"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
 msgstr "No group chats yet."
@@ -4145,6 +4269,7 @@ msgid "No remote MCP servers found"
 msgstr "No remote MCP servers found"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "No results"
 msgstr "No results"
@@ -4180,6 +4305,10 @@ msgstr "No tools available."
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
 msgstr "No trigger"
+
+#: src/components/data-room/Preview.tsx
+msgid "None"
+msgstr "None"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
@@ -4434,6 +4563,10 @@ msgstr "Other model…"
 msgid "Out"
 msgstr "Out"
 
+#: src/components/data-room/DropZone.tsx
+msgid "Over the 50 MB limit"
+msgstr "Over the 50 MB limit"
+
 #: src/pages/Finance.tsx
 msgid "overlaps"
 msgstr "overlaps"
@@ -4462,6 +4595,15 @@ msgstr "Paid with"
 #: src/pages/ScratchpadSection.tsx
 msgid "Park"
 msgstr "Park"
+
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
+msgid "Parties"
+msgstr "Parties"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Party"
+msgstr "Party"
 
 #: src/components/AskCard.tsx
 #: src/pages/AccountSettingsOverlay.tsx
@@ -4525,6 +4667,7 @@ msgstr "PDF, CSV, OFX or QFX"
 msgid "pending"
 msgstr "pending"
 
+#: src/components/data-room/format.ts
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
@@ -4580,6 +4723,10 @@ msgstr "POST to"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Posted"
 msgstr "Posted"
+
+#: src/components/data-room/Preview.tsx
+msgid "Preview"
+msgstr "Preview"
 
 #. placeholder {0}: props.name
 #: src/components/ArtifactFileCard.tsx
@@ -4699,6 +4846,10 @@ msgstr "Read wallet balances"
 msgid "Read-only API key"
 msgstr "Read-only API key"
 
+#: src/components/data-room/format.ts
+msgid "Reading"
+msgstr "Reading"
+
 #: src/components/finance/StatementImport.tsx
 msgid "Reading…"
 msgstr "Reading…"
@@ -4729,6 +4880,10 @@ msgstr "Receipts"
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Recent"
 msgstr "Recent"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Recently added"
+msgstr "Recently added"
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -4842,6 +4997,10 @@ msgstr "Release control"
 msgid "Release interrupted computer?"
 msgstr "Release interrupted computer?"
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Relevance"
+msgstr "Relevance"
+
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/StatementReviewCard.tsx
@@ -4888,6 +5047,10 @@ msgstr "Remove {name}?"
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
 msgstr "Remove {secretName}? This bot will no longer be able to use it."
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Remove filter {label}"
+msgstr "Remove filter {label}"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"
@@ -4939,6 +5102,8 @@ msgstr "Removes the account and agent access."
 msgid "Removes the connection and agent access."
 msgstr "Removes the connection and agent access."
 
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Rename"
@@ -5056,8 +5221,13 @@ msgstr "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgid "Restoring your workspace"
 msgstr "Restoring your workspace"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Results"
+msgstr "Results"
+
 #: src/components/AccountAccess.tsx
 #: src/pages/Auth.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Retry"
 msgstr "Retry"
@@ -5170,6 +5340,7 @@ msgid "Sales & CRM"
 msgstr "Sales & CRM"
 
 #: src/components/AskCard.tsx
+#: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
@@ -5289,6 +5460,10 @@ msgstr "Search by domain"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search directory"
 msgstr "Search directory"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Search documents"
+msgstr "Search documents"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Search integrations.sh"
@@ -5571,6 +5746,10 @@ msgstr "Sign-in was denied or failed."
 msgid "Site"
 msgstr "Site"
 
+#: src/components/data-room/Preview.tsx
+msgid "Size"
+msgstr "Size"
+
 #. placeholder {0}: skill.name
 #: src/pages/Shell.tsx
 msgid "Skill {0}"
@@ -5613,6 +5792,13 @@ msgstr "Software update"
 msgid "Something went wrong. Try again."
 msgstr "Something went wrong. Try again."
 
+#. placeholder {0}: labels[field]
+#: src/components/data-room/FilterBar.tsx
+msgid "Sort: {0}"
+msgstr "Sort: {0}"
+
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Source"
 msgstr "Source"
@@ -5821,6 +6007,10 @@ msgstr "Syncing…"
 msgid "System"
 msgstr "System"
 
+#: src/components/data-room/Preview.tsx
+msgid "Tags"
+msgstr "Tags"
+
 #: src/pages/Shell.tsx
 msgid "Take control"
 msgstr "Take control"
@@ -6022,6 +6212,7 @@ msgid "Title"
 msgstr "Title"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
@@ -6135,6 +6326,9 @@ msgstr "Try again"
 msgid "Try the test again."
 msgstr "Try the test again."
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
@@ -6193,6 +6387,10 @@ msgstr "Unpin"
 #: src/pages/Inbox.tsx
 msgid "Unread"
 msgstr "Unread"
+
+#: src/components/data-room/DropZone.tsx
+msgid "Unsupported file name"
+msgstr "Unsupported file name"
 
 #. placeholder {0}: pending.file.name
 #: src/pages/Shell.tsx
@@ -6272,6 +6470,7 @@ msgid "Updating…"
 msgstr "Updating…"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
@@ -6280,6 +6479,10 @@ msgstr "Upload"
 #: src/components/finance/StatementImport.tsx
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr "Upload a PDF, CSV, OFX or QFX file"
+
+#: src/components/data-room/DropZone.tsx
+msgid "Upload failed"
+msgstr "Upload failed"
 
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Upload statements"
@@ -6393,6 +6596,11 @@ msgstr "via {0}"
 #: src/components/integrations/McpDetail.tsx
 msgid "via MCP · {host}"
 msgstr "via MCP · {host}"
+
+#: src/components/data-room/DropZone.tsx
+#: src/pages/DataRoom.tsx
+msgid "View"
+msgstr "View"
 
 #: src/pages/RoutineRunHistory.tsx
 msgid "View chat"

@@ -7,6 +7,7 @@ export * from "./cancel-runs.js";
 export * from "./client.js";
 export * from "./computers.js";
 export * from "./credential-secrets.js";
+export * from "./data-room.js";
 export * from "./events.js";
 export * from "./expire-stuck-run.js";
 export * from "./external-conversations.js";

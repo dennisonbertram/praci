@@ -650,6 +650,12 @@ export interface BackgroundJobPayloads {
   "inbox.triage": { userId: string; spaceId: string };
   /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */
   "finance.sync": { userId: string; spaceId: string };
+  /** Removes a deleted Data room item's blob. Idempotent: a missing blob is success. */
+  "dataroom.blob.delete": { spaceId: string; storageKey: string };
+  /** Pipeline steps for one Data room item, in order; each queues the next. */
+  "dataroom.ingest": { spaceId: string; userId: string; itemId: string };
+  "dataroom.classify": { spaceId: string; userId: string; itemId: string };
+  "dataroom.index": { spaceId: string; userId: string; itemId: string };
 }
 
 export type BackgroundJobName = keyof BackgroundJobPayloads;

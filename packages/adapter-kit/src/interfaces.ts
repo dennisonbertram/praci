@@ -1,3 +1,4 @@
+import type { DataRoomClassification, DataRoomQueryPlan } from "@rakazo/contracts";
 import type {
   AdapterContext,
   AdapterDescriptor,
@@ -611,4 +612,43 @@ export interface InboxClassifierProvider {
     messages: InboxClassifierMessage[],
     context: AdapterContext,
   ): Promise<InboxClassifyResult>;
+}
+
+/** Fixed vector size for the data room's vector column; every Embedder must return this size. */
+export const DATA_ROOM_EMBEDDING_DIMENSIONS = 1024;
+
+/**
+ * Provider-neutral text embedder. `vectors[i]` belongs to `texts[i]`. Implementations split large
+ * inputs into batches of at most `maxBatch`, return vectors of `dimensions` numbers, and do not
+ * retry (the job queue does).
+ */
+export interface Embedder {
+  describe(): AdapterDescriptor<{ dimensions: number; maxBatch: number }>;
+  embed(texts: string[], context: AdapterContext): Promise<{ model: string; vectors: number[][] }>;
+}
+
+/** The configured model does not produce the required vector size, or rejects the request shape. */
+export class EmbedderMisconfiguredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EmbedderMisconfiguredError";
+  }
+}
+
+// --- Data room classifier ---
+
+/**
+ * Provider-neutral document classifier for the data room. Throws on unusable model output; the
+ * job queue owns retries.
+ */
+export interface DataRoomClassifier {
+  describe(): AdapterDescriptor<Record<string, never>>;
+  classify(
+    input: { name: string; mimeType: string; text: string; folders: string[][] },
+    context: AdapterContext,
+  ): Promise<DataRoomClassification>;
+  planQuery(
+    input: { question: string; today: string },
+    context: AdapterContext,
+  ): Promise<DataRoomQueryPlan>;
 }

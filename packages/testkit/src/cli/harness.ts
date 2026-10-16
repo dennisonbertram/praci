@@ -45,7 +45,7 @@ async function main() {
   const mode = integration ? "integration" : "e2e";
   const reportDir = path.resolve("test-report", mode);
   await mkdir(reportDir, { recursive: true });
-  const container = await new PostgreSqlContainer("postgres:16-alpine").start();
+  const container = await new PostgreSqlContainer("pgvector/pgvector:pg16-trixie").start();
   try {
     const databaseUrl = container.getConnectionUri();
     const apiPort = Number(process.env.API_PORT ?? 3110);
@@ -63,6 +63,10 @@ async function main() {
     process.env.CLOUD_AGENT_PROVIDER = "emulator";
     delete process.env.CURSOR_API_KEY;
     process.env.COMPOSIO_API_KEY = "";
+    // A developer .env must never point E2E at a real bucket; E2E uses the local artifact store.
+    for (const name of Object.keys(process.env)) {
+      if (name.startsWith("RAKAZO_S3_")) delete process.env[name];
+    }
     process.env.BETTER_AUTH_SECRET = "test-secret-test-secret-32chars!";
     process.env.ENCRYPTION_KEY = "test-encryption-key-test-encryption-key";
     process.env.SANDBOX_SUPERVISOR_TOKEN = "test-supervisor-token-test-32chars";

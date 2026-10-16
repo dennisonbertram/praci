@@ -216,6 +216,11 @@ model Space {
   botSections                 BotSection[]
   botDeletions                BotDeletion[]
   threads                     Thread[]
+  dataRoomFolders             DataRoomFolder[]
+  dataRoomItems               DataRoomItem[]
+  dataRoomChunks              DataRoomChunk[]
+  dataRoomItemTexts           DataRoomItemText[]
+  dataRoomSyncStates          DataRoomSyncState[]
   events                      Event[]
   tasks                       Task[]
   runs                        Run[]
@@ -356,6 +361,8 @@ model SpaceModelPreference {
   credential   UserModelCredential @relation(fields: [credentialId, userId], references: [id, userId], onDelete: Cascade)
   modelId      String?
   thinkingLevel String?
+  /// Embedding model for the Data room, served by this credential's connection. Null: keyword search only.
+  embeddingModel String?
   isDefault    Boolean             @default(false)
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -928,6 +935,8 @@ model Connection {
   cachedMailMessages CachedMailMessage[]
   inboxTodos         InboxTodo[]
   mailSyncState      MailSyncState?
+  dataRoomSyncState  DataRoomSyncState?
+  dataRoomItems      DataRoomItem[]
   composeSends       ComposeSend[]
   /// false: only bots with a BotConnectionAccess row may use this connection's tools.
   allAgents          Boolean  @default(true)
@@ -2072,4 +2081,137 @@ model FinanceExchangeSnapshot {
   @@unique([connectionId, day])
   @@index([spaceId, userId, day])
   @@map("finance_exchange_snapshots")
+}
+
+// Data room. Every row carries spaceId (cascade) and userId; every query filters on spaceId.
+// Partial unique indexes, the generated tsv column and the HNSW index live in the migration SQL
+// because Prisma cannot express them.
+model DataRoomFolder {
+  id        String           @id @default(cuid())
+  spaceId   String
+  space     Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  parentId  String?
+  parent    DataRoomFolder?  @relation("DataRoomFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  DataRoomFolder[] @relation("DataRoomFolderTree")
+  name      String
+  /// "user" or "agent".
+  createdBy String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  items     DataRoomItem[]
+
+  @@index([spaceId, parentId])
+  @@map("data_room_folders")
+}
+
+model DataRoomItem {
+  id                 String          @id @default(cuid())
+  spaceId            String
+  space              Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId             String
+  folderId           String?
+  folder             DataRoomFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  /// "upload", "drive", "gmail", "chat" or "finance".
+  source             String
+  sourceConnectionId String?
+  sourceConnection   Connection?     @relation(fields: [sourceConnectionId], references: [id], onDelete: SetNull)
+  externalId         String?
+  sha256             String
+  /// Null when the source keeps the bytes.
+  storageKey         String?
+  name               String
+  mimeType           String
+  size               Int
+  sourceUrl          String?
+  sourceUpdatedAt    DateTime?
+  /// "pending", "extracting", "classifying", "indexing", "ready" or "failed".
+  status             String          @default("pending")
+  error              String?
+  docType            String?
+  docDate            DateTime?
+  parties            String[]
+  amountCents        BigInt?
+  currency           String?
+  tags               String[]
+  summary            String?
+  /// Bumped by every pipeline write; a step writes only if it still matches what the step read.
+  revision           Int             @default(0)
+  /// Consecutive failed attempts of the current pipeline step; the item fails at the retry limit.
+  failures           Int             @default(0)
+  /// Set when the classifier filled the facets. Null on a ready item means classification was skipped.
+  classifiedAt       DateTime?
+  /// Held by the pipeline step that claimed the item; a step starts only when this is null or past.
+  leaseUntil         DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  chunks             DataRoomChunk[]
+  text               DataRoomItemText?
+
+  @@index([spaceId, folderId])
+  @@index([spaceId, status])
+  @@index([spaceId, userId, createdAt, id])
+  @@index([spaceId, userId, docDate, id])
+  @@index([spaceId, userId, name, id])
+  @@index([spaceId, userId, docType, id])
+  @@index([parties], type: Gin)
+  @@index([tags], type: Gin)
+  @@map("data_room_items")
+}
+
+/// Extracted document text, kept apart from the item so lists never load it. Lets indexing run
+/// again (new embedding model, consent granted) without reading the blob or calling vision again.
+model DataRoomItemText {
+  itemId  String       @id
+  item    DataRoomItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  spaceId String
+  space   Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId  String
+  text    String
+
+  @@index([spaceId, userId])
+  @@map("data_room_item_texts")
+}
+
+model DataRoomChunk {
+  id             String                       @id @default(cuid())
+  spaceId        String
+  space          Space                        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId         String
+  itemId         String
+  item           DataRoomItem                 @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  ordinal        Int
+  text           String
+  contentHash    String
+  /// GENERATED ALWAYS AS (to_tsvector('english', text)) STORED.
+  tsv            Unsupported("tsvector")? @default(dbgenerated("to_tsvector('english'::regconfig, text)"))
+
+  embedding      Unsupported("vector(1024)")?
+  embeddingModel String?
+
+  @@unique([itemId, ordinal])
+  @@index([tsv], type: Gin)
+  @@index([spaceId, userId])
+  @@map("data_room_chunks")
+}
+
+/// Sync throttle and in-flight claim for one source connection (the MailSyncState pattern).
+model DataRoomSyncState {
+  connectionId String     @id
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  spaceId      String
+  space        Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId       String
+  /// Provider change cursor (Drive page token, Gmail historyId).
+  cursor       String?
+  lastSyncedAt DateTime?
+  /// Claim held by the process that is syncing; stale after 2 minutes.
+  claimedAt    DateTime?
+  /// Random id of the sync holding the claim; every write checks it.
+  claimToken   String?
+  /// Short failure reason; never a vendor payload or credential.
+  error        String?
+
+  @@index([spaceId])
+  @@map("data_room_sync_states")
 }

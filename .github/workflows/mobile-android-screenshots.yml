@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 45
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16-trixie
         env:
           POSTGRES_USER: rakazo
           POSTGRES_PASSWORD: rakazo
