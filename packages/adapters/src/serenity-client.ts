@@ -199,6 +199,22 @@ function verbErrorMessage(payload: unknown, fallback: string): string {
   return parts.length > 0 ? parts.join(" ") : fallback;
 }
 
+async function callSerenityVerb(
+  client: Client,
+  signal: AbortSignal,
+  name: string,
+  args: Record<string, unknown>,
+  failureMessage: string,
+): Promise<unknown> {
+  const result = await client.callTool({ name, arguments: args }, undefined, {
+    signal,
+    timeout: SERENITY_TIMEOUT_MS,
+  });
+  const body = mcpTextPayload(result);
+  if (toolCallIsError(result)) throw new Error(verbErrorMessage(body, failureMessage));
+  return body;
+}
+
 /** Surface hosted gateway rate limits plainly instead of as an opaque transport error. */
 function assertNotRateLimited(response: Response): Response {
   if (response.status !== 429) return response;
@@ -401,23 +417,11 @@ export async function recallSerenity(
       config,
       options.signal,
       async (client, signal) => {
-        const result = await client.callTool(
-          {
-            name: "recall",
-            arguments: {
+        return callSerenityVerb(client, signal, "recall", {
               query,
               limit: Math.min(Math.max(1, Math.floor(options.limit)), 50),
               ...(options.entity ? { entity: options.entity } : {}),
-            },
-          },
-          undefined,
-          { signal, timeout: SERENITY_TIMEOUT_MS },
-        );
-        const body = mcpTextPayload(result);
-        if (toolCallIsError(result)) {
-          throw new Error(verbErrorMessage(body, "Serenity recall failed"));
-        }
-        return body;
+            }, "Serenity recall failed");
       },
       options.network,
     );
@@ -457,24 +461,12 @@ export async function rememberSerenity(
       config,
       options.signal,
       async (client, signal) => {
-        const result = await client.callTool(
-          {
-            name: "remember",
-            arguments: {
+        return callSerenityVerb(client, signal, "remember", {
               fact: trimmedFact,
               provenance: trimmedProvenance,
               ...(options.entity ? { entity: options.entity } : {}),
               ...(options.operationKey ? { operation_key: options.operationKey } : {}),
-            },
-          },
-          undefined,
-          { signal, timeout: SERENITY_TIMEOUT_MS },
-        );
-        const body = mcpTextPayload(result);
-        if (toolCallIsError(result)) {
-          throw new Error(verbErrorMessage(body, "Serenity remember failed"));
-        }
-        return body;
+            }, "Serenity remember failed");
       },
       options.network,
     );
@@ -517,23 +509,11 @@ export async function forgetSerenity(
       config,
       options.signal,
       async (client, signal) => {
-        const result = await client.callTool(
-          {
-            name: "forget",
-            // MEMORY_VERBS forget accepts only id + optional reason (additionalProperties: false).
-            arguments: {
+        // MEMORY_VERBS forget accepts only id + optional reason (additionalProperties: false).
+        return callSerenityVerb(client, signal, "forget", {
               id: factId,
               ...(options.reason?.trim() ? { reason: options.reason.trim() } : {}),
-            },
-          },
-          undefined,
-          { signal, timeout: SERENITY_TIMEOUT_MS },
-        );
-        const body = mcpTextPayload(result);
-        if (toolCallIsError(result)) {
-          throw new Error(verbErrorMessage(body, "Serenity forget failed"));
-        }
-        return body;
+            }, "Serenity forget failed");
       },
       options.network,
     );
