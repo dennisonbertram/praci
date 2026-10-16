@@ -212,7 +212,7 @@ export function financeCardSummary(card: FinanceCard): string {
     case "overview": {
       // One decimal and the same labels as the dashboard and the card.
       const runway = card.runwayMonths === null ? "–" : `${card.runwayMonths.toFixed(1)} mo`;
-      return `Finance overview: Cash ${usd(card.cashCents)}; Burn / mo ${usd(card.burnCents)}; Runway ${runway}; Spent this month ${usd(card.monthSpendCents)}`;
+      return `Finance overview: Cash ${usd(card.cashCents)}; Monthly burn ${usd(card.burnCents)}; Runway ${runway}; Spent this month ${usd(card.monthSpendCents)}`;
     }
     case "breakdown": {
       const title = `${card.by === "vendor" ? "Vendors" : "Categories"} · ${oneLine(card.range)}`;

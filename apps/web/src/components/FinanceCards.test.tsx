@@ -104,6 +104,9 @@ it("shows the count and first transactions, each linking to its page", async () 
   });
   expect(view.textContent).toContain("12 transactions · all dates");
   expect(view.textContent).toContain("Vendor A");
+  // One row of twelve is shown, and the total is labelled as net, not spend.
+  expect(view.textContent).toContain("Latest 1 of 12");
+  expect(view.textContent).toContain("Net $345.00");
   expect(hrefs(view)).toContain("/app/finance/transaction/t1");
 });
 

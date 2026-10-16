@@ -118,7 +118,7 @@ function Preview({ card }: { card: FinanceCard }) {
   if (card.card === "overview") {
     const kpis = [
       [t`Cash`, money(card.cashCents)],
-      [t`Burn / mo`, money(card.burnCents)],
+      [t`Monthly burn`, money(card.burnCents)],
       // One decimal, as on the dashboard.
       [t`Runway`, card.runwayMonths === null ? "–" : t`${card.runwayMonths.toFixed(1)} mo`],
       [t`Spent this month`, money(card.monthSpendCents)],
@@ -188,7 +188,8 @@ function Preview({ card }: { card: FinanceCard }) {
         <Header
           to={financePath.spend()}
           title={t`${card.count} transactions · ${period}`}
-          value={transactionAmount(card.totalCents)}
+          // Money in and out add up together here, so the total is a net amount, not spend.
+          value={t`Net ${transactionAmount(card.totalCents)}`}
         />
         <ul className="flex flex-col px-3">
           {card.rows.map((row) => (
@@ -208,6 +209,13 @@ function Preview({ card }: { card: FinanceCard }) {
             </li>
           ))}
         </ul>
+        {card.rows.length < card.count ? (
+          <p className="px-3 pt-1 text-xs text-muted-foreground">
+            <Trans>
+              Latest {card.rows.length} of {card.count}
+            </Trans>
+          </p>
+        ) : null}
       </Card>
     );
   }

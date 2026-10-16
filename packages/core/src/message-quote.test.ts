@@ -374,7 +374,7 @@ describe("financeCardSummary", () => {
         monthSpendCents: 1523200,
       }),
     ).toBe(
-      "Finance overview: Cash $412,721; Burn / mo $46,282; Runway 9.2 mo; Spent this month $15,232",
+      "Finance overview: Cash $412,721; Monthly burn $46,282; Runway 9.2 mo; Spent this month $15,232",
     );
   });
 
