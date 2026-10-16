@@ -905,6 +905,8 @@ export interface SetMailApprovalOutcomeInput {
   messageId: string;
   effectId: string;
   outcome: NonNullable<MailApproval["outcome"]>;
+  /** Replaces the note the agent reads when it resumes, so it matches how the send ended. */
+  note?: string;
 }
 
 /** Records how the person's own send of an edited mail approval ended, for the card to show. */
@@ -915,6 +917,12 @@ export async function setMailApprovalOutcome(
 ): Promise<void> {
   const committed = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$queryRaw`SELECT id FROM threads WHERE id = ${input.threadId} FOR UPDATE`;
+    if (input.note) {
+      await tx.externalEffect.updateMany({
+        where: { id: input.effectId, spaceId: input.spaceId, status: "denied" },
+        data: { result: { note: input.note } },
+      });
+    }
     const message = await tx.message.findFirst({
       where: { id: input.messageId, threadId: input.threadId, role: "bot" },
     });

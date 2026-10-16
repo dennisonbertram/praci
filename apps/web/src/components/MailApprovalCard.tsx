@@ -28,11 +28,20 @@ const toFields = (mail: MailApproval): Fields => ({
   body: mail.body,
 });
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  hideLabel = false,
+  children,
+}: {
+  label: string;
+  /** The row's field has its own accessible name, so the visible label is not read twice. */
+  hideLabel?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col border-b border-border py-2 @sm:flex-row @sm:items-start @sm:gap-2.5">
       <span
-        aria-hidden="true"
+        aria-hidden={hideLabel || undefined}
         className="shrink-0 text-xs leading-5 text-muted-foreground @sm:w-11 @sm:text-sm @sm:leading-7"
       >
         {label}
@@ -77,6 +86,9 @@ export function MailApprovalCard({
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const ownAnswer = useRef(false);
   const answered = status === "answered";
   const interactive = !answered && canAnswer;
   const busy = pendingAction !== null;
@@ -87,6 +99,16 @@ export function MailApprovalCard({
   useEffect(() => {
     if (answered) setOpen(outcomeNeedsAttention);
   }, [answered, outcomeNeedsAttention]);
+
+  // Answering from this card removes the button that had focus; keep it on the card's header.
+  useEffect(() => {
+    if (!answered || !ownAnswer.current) return;
+    ownAnswer.current = false;
+    const active = document.activeElement;
+    if (!active || active === document.body || cardRef.current?.contains(active)) {
+      toggleRef.current?.focus();
+    }
+  }, [answered]);
 
   useLayoutEffect(() => {
     const body = bodyRef.current;
@@ -115,11 +137,13 @@ export function MailApprovalCard({
     }
     setPendingAction(action);
     setError(null);
+    ownAnswer.current = true;
     try {
       if (action === "disable") await onDisableTool?.(mail.tool);
       await onAnswer(action === "allow" ? "allow" : "deny", undefined, edits);
       setEditing(false);
     } catch (err) {
+      ownAnswer.current = false;
       setError(errorText(err, t`Could not submit this answer`));
     } finally {
       setPendingAction(null);
@@ -186,6 +210,7 @@ export function MailApprovalCard({
 
   return (
     <div
+      ref={cardRef}
       data-testid="mail-approval-card"
       data-editing={editing || undefined}
       className={cn(
@@ -196,6 +221,7 @@ export function MailApprovalCard({
       <div className="flex items-center gap-3 px-5 py-3.5">
         {answered ? (
           <button
+            ref={toggleRef}
             type="button"
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
@@ -209,7 +235,7 @@ export function MailApprovalCard({
           <>
             {tile}
             {headerText}
-            {interactive ? (
+            {interactive && !mail.locked ? (
               <Button
                 variant="ghost"
                 size="sm"
@@ -230,7 +256,7 @@ export function MailApprovalCard({
             {editing ? (
               <Input
                 aria-label={t`Subject`}
-                className="h-8 w-full bg-background text-base font-semibold"
+                className="h-8 w-full border-muted-foreground/40 bg-background text-base font-semibold"
                 disabled={busy}
                 value={fields.subject}
                 onChange={(event) => set("subject")(event.target.value)}
@@ -248,11 +274,11 @@ export function MailApprovalCard({
               </Row>
             ) : null}
             {recipientRows.map(([key, label, value]) => (
-              <Row key={key} label={label}>
+              <Row key={key} label={label} hideLabel={editing}>
                 {editing ? (
                   <Input
                     aria-label={label}
-                    className="h-7 w-full bg-background"
+                    className="h-7 w-full border-muted-foreground/40 bg-background"
                     disabled={busy}
                     value={fields[key.toLowerCase() as "to" | "cc" | "bcc"]}
                     onChange={(event) =>
@@ -269,7 +295,7 @@ export function MailApprovalCard({
             {editing ? (
               <Textarea
                 aria-label={t`Message`}
-                className="min-h-32 bg-background text-sm leading-6"
+                className="min-h-32 border-muted-foreground/40 bg-background text-sm leading-6"
                 disabled={busy}
                 value={fields.body}
                 onChange={(event) => set("body")(event.target.value)}

@@ -109,7 +109,9 @@ describe("mail approval payload", () => {
     expect(mailOf("mail_draft", { ...args, body: "x".repeat(150_001) })).toBeUndefined();
     expect(mailOf("mail_draft", { draftId: "d1", subject: "s", body: "b" })).toMatchObject({
       tool: "mail_draft",
+      locked: true,
     });
+    expect(mailOf("mail_draft", { ...args, subject: "s" })).not.toHaveProperty("locked");
   });
 });
 

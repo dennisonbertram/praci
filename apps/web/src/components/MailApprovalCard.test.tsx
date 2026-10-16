@@ -289,3 +289,41 @@ it("shows Cc and Bcc rows only when the message has them", async () => {
   expect(host.textContent).toContain("lee@example.test");
   expect(host.textContent).toContain("Bcc");
 });
+
+it("offers no Edit on a card that replaces a saved draft, but still answers it", async () => {
+  const { onAnswer } = await render({ mail: { ...mail, tool: "mail_draft", locked: true } });
+  expect(button("Edit")).toBeUndefined();
+  await click(button("Save draft"));
+  expect(onAnswer).toHaveBeenCalledWith("allow", undefined, undefined);
+});
+
+it("keeps the row labels readable, and hides them only while an input names the row", async () => {
+  await render();
+  const label = (text: string) =>
+    [...host.querySelectorAll("span")].find((el) => el.textContent === text) as HTMLElement;
+  expect(label("To").getAttribute("aria-hidden")).toBeNull();
+  expect(label("From").getAttribute("aria-hidden")).toBeNull();
+  await click(button("Edit"));
+  expect(label("To").getAttribute("aria-hidden")).toBe("true");
+  expect(label("From").getAttribute("aria-hidden")).toBeNull();
+  expect(host.querySelector("input[aria-label=To]")).not.toBeNull();
+});
+
+it("moves focus to the header toggle when answering removes the focused button", async () => {
+  await render();
+  const send = button("Send");
+  send?.focus();
+  await click(send);
+  await render({ status: "answered", answer: "allow" });
+  expect(document.activeElement).toBe(toggle());
+});
+
+it("leaves focus alone when the answer came from somewhere else", async () => {
+  await render();
+  const outside = document.createElement("button");
+  document.body.append(outside);
+  outside.focus();
+  await render({ status: "answered", answer: "allow" });
+  expect(document.activeElement).toBe(outside);
+  outside.remove();
+});

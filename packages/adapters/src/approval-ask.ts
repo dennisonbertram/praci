@@ -127,6 +127,8 @@ function mailApproval(
     subject: text(args.subject),
     body,
     ...(typeof args.replyToId === "string" && args.replyToId.trim() ? { reply: true } : {}),
+    // Replacing a saved draft is not something the card can edit.
+    ...(typeof args.draftId === "string" && args.draftId.trim() ? { locked: true } : {}),
   };
 }
 

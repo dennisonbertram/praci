@@ -173,6 +173,8 @@ export const MailApprovalSchema = z.object({
   body: z.string(),
   /** The message answers another one. */
   reply: z.boolean().optional(),
+  /** Replaces a saved draft, which the card cannot edit; it can only be approved or discarded. */
+  locked: z.boolean().optional(),
   /** Set after the person edited it and sent it themselves: how that ended. */
   outcome: z.enum(["sent", "saved", "unknown", "failed"]).optional(),
   /** With a failed outcome: the connection the composer should open on. */

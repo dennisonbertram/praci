@@ -24,6 +24,23 @@ const defaultCompose: MailComposePath = {
   draftSave: inboxComposeDraftSave,
 };
 
+/**
+ * What the agent reads when it resumes. The claim records the cautious one, since nothing is known
+ * yet (and a crash must not leave it believing the mail went out); the real outcome replaces it.
+ */
+function agentNote(send: boolean, outcome?: "sent" | "saved" | "unknown" | "failed"): string {
+  const what = send ? "email" : "draft";
+  if (outcome === "sent" || outcome === "saved") {
+    return send
+      ? "The user edited this email and sent it themselves from the approval card. Do not send it again."
+      : "The user edited this email and saved it as a draft themselves from the approval card. Do not save it again.";
+  }
+  if (outcome === "failed") {
+    return `The user edited this ${what} on the approval card, but their ${send ? "send" : "save"} failed and nothing was ${send ? "sent" : "saved"}. Do not tell them it was ${send ? "sent" : "saved"}.`;
+  }
+  return `The user edited this ${what} on the approval card and the outcome of their ${send ? "send" : "save"} is ${outcome === "unknown" ? "unknown" : "not known yet"}. Do not ${send ? "send" : "save"} it again; they should check ${send ? "Sent" : "Drafts"}.`;
+}
+
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
@@ -55,7 +72,7 @@ export async function answerEditedMailApproval(
   if (!pending) {
     throw new ORPCError("CONFLICT", { message: "This prompt is no longer awaiting an answer" });
   }
-  // A saved draft is sent as it is; there is nothing here to edit.
+  // Replacing a saved draft is not offered by the card (it is locked), so this is only a direct call.
   if (pending.request.draftId) throw new ORPCError("BAD_REQUEST", { message: "Not editable" });
   const merged: Record<string, unknown> = { ...pending.request, ...checked.edits };
   if (!mailRequestIsValid(pending.kind, merged)) {
@@ -87,17 +104,10 @@ export async function answerEditedMailApproval(
     answeredByUserId: actor.userId,
     answer: "deny",
     mailDenial: {
-      note: send
-        ? "The user edited this email and sent it themselves from the approval card. Do not send it again."
-        : "The user edited this email and saved it as a draft themselves from the approval card. Do not save it again.",
-      mail: {
-        to: strings(merged.to),
-        cc: strings(merged.cc),
-        bcc: strings(merged.bcc),
-        subject: typeof merged.subject === "string" ? merged.subject : "",
-        body: typeof merged.body === "string" ? merged.body : "",
-        connectionId: account.id,
-      },
+      note: agentNote(send),
+      // Only what the person typed replaces the card's fields. The rest of the card was redacted
+      // when it was made, and the stored call is not, so it is never copied onto the card.
+      mail: { ...checked.edits, connectionId: account.id },
     },
   });
   if (!claimed) {
@@ -147,6 +157,7 @@ export async function answerEditedMailApproval(
       messageId: input.messageId,
       effectId: pending.effectId,
       outcome,
+      note: agentNote(send, outcome),
     });
   } finally {
     await afterClaim();

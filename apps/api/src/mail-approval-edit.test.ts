@@ -36,8 +36,9 @@ function setup(
       answers.push(input);
       return true;
     }),
-    setMailApprovalOutcome: vi.fn(async (input: { outcome: string }) => {
+    setMailApprovalOutcome: vi.fn(async (input: { outcome: string; note?: string }) => {
       outcomes.push(input.outcome);
+      if (input.note) effect.result = { note: input.note };
     }),
   };
   const deps = {
@@ -83,6 +84,9 @@ describe("answerEditedMailApproval", () => {
     await t.edit({ subject: "Monday", cc: "lee@example.test" });
     expect(t.effect.status).toBe("denied");
     expect(t.effect.result).toMatchObject({ note: expect.stringContaining("sent it themselves") });
+    expect(t.answers[0]?.mailDenial).toMatchObject({
+      note: expect.stringContaining("not known yet"),
+    });
     expect(t.compose.send).toHaveBeenCalledTimes(1);
     expect(t.sent[0]).toEqual({
       clientId: "approval_effect-1",
@@ -94,6 +98,22 @@ describe("answerEditedMailApproval", () => {
       body: "Old text.",
     });
     expect(t.outcomes).toEqual(["sent"]);
+  });
+
+  it("publishes only what the person typed, never the stored call's unredacted fields", async () => {
+    const t = setup({ request: { ...stored, body: "Key is sk-live-123. Old text." } });
+    await t.edit({ subject: "Monday" });
+    // The stored body still has the secret the card hid; it must not reach the card.
+    expect(t.answers[0]?.mailDenial).toMatchObject({
+      mail: { subject: "Monday", connectionId: "conn-1" },
+    });
+    const published = (t.answers[0] as unknown as { mailDenial: { mail: Record<string, unknown> } })
+      .mailDenial.mail;
+    expect(JSON.stringify(published)).not.toContain("sk-live-123");
+    expect(published).not.toHaveProperty("body");
+    expect(published).not.toHaveProperty("to");
+    // What is sent is still the whole stored message, with the edit.
+    expect(t.sent[0]?.body).toContain("sk-live-123");
   });
 
   it("saves a draft for mail_draft", async () => {
@@ -138,13 +158,28 @@ describe("answerEditedMailApproval", () => {
     await unknown.edit();
     expect(unknown.outcomes).toEqual(["unknown"]);
     expect(unknown.compose.send).toHaveBeenCalledTimes(1);
+    const unknownNote = (unknown.effect.result as { note: string }).note;
+    expect(unknownNote).toContain("unknown");
+    expect(unknownNote).toContain("Do not send it again");
+    expect(unknownNote).toContain("check Sent");
 
     const failed = setup();
     failed.compose.send.mockResolvedValueOnce({ status: "failed" } as never);
     await failed.edit();
     expect(failed.outcomes).toEqual(["failed"]);
+    const failedNote = (failed.effect.result as { note: string }).note;
+    expect(failedNote).toContain("failed and nothing was sent");
+    expect(failedNote).not.toContain("sent it themselves");
     expect(failed.compose.send).toHaveBeenCalledTimes(1);
     expect(failed.effect.status).toBe("denied");
+  });
+
+  it("tells the agent a thrown send failed and nothing went out", async () => {
+    const t = setup();
+    t.compose.send.mockRejectedValueOnce(new Error("boom"));
+    await t.edit();
+    expect(t.outcomes).toEqual(["failed"]);
+    expect((t.effect.result as { note: string }).note).toContain("nothing was sent");
   });
 
   it("rejects without claiming for another user, invalid edits and a merged message over the limit", async () => {
