@@ -25,6 +25,7 @@ import {
   aiConsentTarget,
   aiDataUsesForProcedure,
   cancelResponseBody,
+  channelMessageLine,
   emailCardsText,
   ensureAiDataConsent,
   isRunTerminalEvent,
@@ -37,6 +38,7 @@ import {
   reduceLiveMessageBlocks,
   replyMetadata,
   runFailureError,
+  selectableMessageText,
   signupRequiresEmailVerification,
   takeLiveMessage,
   updateCloudAgentMessages,
@@ -1078,46 +1080,14 @@ export function prependMobileMessagePage(
   return prependThreadHistoryPage(prev, page);
 }
 
-const MESSAGING_PROVIDER_LABELS: Record<string, string> = {
-  sendblue: "iMessage",
-  slack: "Slack",
-  whatsapp: "WhatsApp",
-  telegram: "Telegram",
-  lark: "Feishu",
-};
-
-export function messagingProviderLabel(provider: string, transport?: string): string {
-  if (provider === "sendblue" && ["iMessage", "SMS", "RCS"].includes(transport ?? "")) {
-    return transport!;
-  }
-  return MESSAGING_PROVIDER_LABELS[provider] ?? provider;
-}
-
-/** The message's text exactly as written, for a view that selects part of it. */
-export function selectableMobileMessageText(message: MobileMessage): string {
-  return message.blocks
-    .map((block) => {
-      if (block.kind === "channel_message") {
-        return `${messagingProviderLabel(block.provider, block.transport)} · ${block.fromLabel}: ${block.text}`;
-      }
-      if (block.kind === "text" || block.kind === "progress" || block.kind === "ask")
-        return block.text;
-      return "";
-    })
-    .filter(Boolean)
-    .join("\n");
-}
-
 export function copyableMobileMessageText(message: MobileMessage): string {
-  return selectableMobileMessageText(message).trim();
+  return selectableMessageText(message).trim();
 }
 
 export function blockText(message: MobileMessage) {
   return message.blocks
     .map((block) => {
-      if (block.kind === "channel_message") {
-        return `${messagingProviderLabel(block.provider, block.transport)} · ${block.fromLabel}: ${block.text}`;
-      }
+      if (block.kind === "channel_message") return channelMessageLine(block);
       if (block.kind === "cloud_agent")
         return `${block.title}: ${block.status}${block.prUrl ? ` ${block.prUrl}` : ""}`;
       if (block.kind === "subagent") {

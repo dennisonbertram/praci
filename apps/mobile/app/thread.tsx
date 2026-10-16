@@ -15,6 +15,7 @@ import {
   appendNewerThreadPage,
   attachmentsForThread,
   buildComposerMentionOptions,
+  channelMessageLine,
   cloudAgentHttpsUrl,
   formatFileSize,
   formatMessageTime,
@@ -26,6 +27,7 @@ import {
   isSecretAskBlock,
   latestAnswerableAskMessageId,
   leaveThreadWindow,
+  messageProviderLabel,
   openThreadWindow,
   plainTextFromMarkdown,
   projectMessageReactions,
@@ -33,6 +35,7 @@ import {
   replyAttachment,
   resolveComposerSendPlan,
   resolvePersonaColorDef,
+  selectableMessageText,
   selectedAskActionLabel,
   threadWindowMessages,
   timeSeparatorIds,
@@ -128,11 +131,9 @@ import {
   currentApiBase,
   loadSessionToken,
   mergeMobileSnapshot,
-  messagingProviderLabel,
   mobileThreadRefreshResult,
   prependMobileMessagePage,
   rpc,
-  selectableMobileMessageText,
   selectedSpaceId,
   selectSpace,
   subscribeThread,
@@ -2837,9 +2838,7 @@ function previewMessageText(message: MobileMessage): string {
   const text = message.blocks
     .flatMap((block) => {
       if (block.kind === "channel_message" && block.text) {
-        return [
-          `${messagingProviderLabel(block.provider, block.transport)} · ${block.fromLabel}: ${block.text}`,
-        ];
+        return [channelMessageLine(block)];
       }
       if (block.kind === "text" && block.text) {
         // Bot text is Markdown; user text is already plain.
@@ -2982,7 +2981,7 @@ const MessageRow = memo(function MessageRow({
     menu: ReturnType<typeof buildMessageContextMenu>;
     onMenuAction: (id: string) => void;
   }>(() => {
-    const messageText = selectableMobileMessageText(message);
+    const messageText = selectableMessageText(message);
     const includeQuote =
       !readOnly &&
       !message.id.startsWith("progress:") &&
@@ -3352,7 +3351,7 @@ const MessageBubble = memo(function MessageBubble({
         style={{ width: "100%", paddingVertical: 4, alignItems: "center" }}
       >
         <Text style={{ color: tokens.mutedForeground, fontSize: 13.5, textAlign: "center" }}>
-          {messagingProviderLabel(channelMessage.provider, channelMessage.transport)} ·{" "}
+          {messageProviderLabel(channelMessage.provider, channelMessage.transport)} ·{" "}
           {channelMessage.fromLabel}: {channelMessage.text}
         </Text>
       </Pressable>
@@ -3655,9 +3654,7 @@ const MessageBubble = memo(function MessageBubble({
   const caption = message.blocks
     .flatMap((block) => {
       if (block.kind === "channel_message" && block.text) {
-        return [
-          `${messagingProviderLabel(block.provider, block.transport)} · ${block.fromLabel}: ${block.text}`,
-        ];
+        return [channelMessageLine(block)];
       }
       return block.kind === "text" && block.text ? [block.text] : [];
     })

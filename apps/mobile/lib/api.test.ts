@@ -3205,13 +3205,14 @@ describe("mobile clipboard text", () => {
   });
 
   it("keeps leading whitespace for selection while copying trims it", async () => {
-    const { copyableMobileMessageText, selectableMobileMessageText } = await import("./api");
+    const { copyableMobileMessageText } = await import("./api");
+    const { selectableMessageText } = await import("@rakazo/core");
     const message: MobileMessage = {
       id: "message",
       role: "user",
       blocks: [{ kind: "text", text: "    indented\nnext  " }],
     };
-    expect(selectableMobileMessageText(message)).toBe("    indented\nnext  ");
+    expect(selectableMessageText(message)).toBe("    indented\nnext  ");
     expect(copyableMobileMessageText(message)).toBe("indented\nnext");
   });
 });
