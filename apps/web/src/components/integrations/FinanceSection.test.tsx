@@ -28,7 +28,11 @@ vi.mock("@lingui/react/macro", () => ({
 
 import { FinanceSection, useFinanceStatus } from "./FinanceSection";
 
-function Standalone(props: { sources: FinanceSource[]; onChanged: () => void }) {
+function Standalone(props: {
+  sources: FinanceSource[];
+  onChanged: () => void;
+  extras?: Parameters<typeof FinanceSection>[0]["extras"];
+}) {
   return <FinanceSection {...props} status={useFinanceStatus()} />;
 }
 
@@ -43,14 +47,18 @@ const source = (provider: "mercury" | "brex", status: FinanceSource["status"]): 
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
-async function show(sources: FinanceSource[], onChanged = vi.fn()) {
+async function show(
+  sources: FinanceSource[],
+  onChanged = vi.fn(),
+  extras?: Parameters<typeof FinanceSection>[0]["extras"],
+) {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
   await act(async () =>
     root.render(
       <MemoryRouter>
-        <Standalone sources={sources} onChanged={onChanged} />
+        <Standalone sources={sources} onChanged={onChanged} extras={extras} />
       </MemoryRouter>,
     ),
   );
@@ -83,6 +91,16 @@ it("connects through the Finance API and shows Open Finance once connected", asy
   await press("mercury");
   expect(connect).toHaveBeenCalledWith("mercury", false);
   expect(onChanged).toHaveBeenCalled();
+});
+
+it("shows a connected bank's extra line (its agents) like the other connected tiles", async () => {
+  await show([source("mercury", "ok"), source("brex", "not_connected")], vi.fn(), {
+    mercury: <span>Used by Finance agent</span>,
+    brex: <span>Used by nobody</span>,
+  });
+  expect(tile("mercury")?.textContent).toContain("Used by Finance agent");
+  // A tile that is not connected has no agents to show.
+  expect(tile("brex")?.textContent).not.toContain("Used by");
 });
 
 it("reconnects a source that needs it and reports a cancelled sign-in", async () => {

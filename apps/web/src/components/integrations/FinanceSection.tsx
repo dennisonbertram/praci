@@ -315,20 +315,20 @@ export const FINANCE_TILE_COUNT = FINANCE_PROVIDERS.length + 2 + EXCHANGES.lengt
 /** Finance tiles. Mercury and Brex connect through the Finance API so the server treats them as
  * finance sources and the Finance agent gets its read-only assignment. `mode` picks the tiles:
  * "connected" renders only working connections (as bare tiles, to sit in the Connected grid),
- * "available" the rest, "all" both. Renders nothing when no tile is left. `cryptoExtra` is shown
- * on the Blockscout tile (the agents that use its MCP server). */
+ * "available" the rest, "all" both. Renders nothing when no tile is left. `extras` adds a line to a
+ * connected tile (the agents that use its MCP server), keyed by provider or "crypto" for Blockscout. */
 export function FinanceSection({
   sources,
   status,
   onChanged,
   mode = "all",
-  cryptoExtra,
+  extras,
 }: {
   sources: FinanceSource[];
   status: FinanceStatus;
   onChanged: () => void;
   mode?: "all" | "connected" | "available";
-  cryptoExtra?: ReactNode;
+  extras?: Partial<Record<FinanceProvider | "crypto", ReactNode>>;
 }) {
   const { t } = useLingui();
   const [busy, setBusy] = useState<FinanceProvider | null>(null);
@@ -436,13 +436,14 @@ export function FinanceSection({
                   {error}
                 </p>
               ) : null}
+              {connected ? extras?.[provider] : null}
             </IntegrationTile>
           );
         },
       )}
       {shown("crypto") ? (
         <CryptoTile hasKey={status.blockscout} hasServer={status.blockscoutServer} reload={reload}>
-          {mode === "available" ? null : cryptoExtra}
+          {mode === "available" ? null : extras?.crypto}
         </CryptoTile>
       ) : null}
       {shown("alchemy") ? <AlchemyTile state={status.alchemy} reload={reload} /> : null}
