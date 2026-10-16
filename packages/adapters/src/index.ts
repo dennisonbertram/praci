@@ -3,6 +3,11 @@ export * from "./agent-environment.js";
 export * from "./ai-consent.js";
 export * from "./alchemy-crypto-key.js";
 export * from "./alchemy-crypto-source.js";
+export {
+  mailRequestIsValid,
+  type NormalizedMailEdits,
+  normalizeMailEdits,
+} from "./approval-ask.js";
 export * from "./artifacts.js";
 export * from "./auto-review.js";
 export * from "./auto-review-factory.js";

@@ -321,6 +321,7 @@ import {
 } from "./inbox-compose.js";
 import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
+import { answerEditedMailApproval } from "./mail-approval-edit.js";
 import {
   dismissMcpServerApprovals,
   resolveMcpApprovalCards,
@@ -2596,6 +2597,22 @@ export function createRouter(deps: RouterDeps) {
       }),
       answer: authed.threads.answer.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
+        if (input.mail && Object.keys(input.mail).length > 0) {
+          if (input.answer !== "allow") {
+            throw new ORPCError("BAD_REQUEST", { message: "Edits go with Send" });
+          }
+          await answerEditedMailApproval(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            target,
+            { runId: input.runId, messageId: input.messageId, mail: input.mail },
+            () =>
+              deps.jobs.enqueue(runContinueJob(input.runId)).catch((error) => {
+                getLogger().error("thread answer enqueue", error);
+              }),
+          );
+          return { ok: true as const };
+        }
         const answered = await deps.events.answerRunInput({
           spaceId: context.actor.spaceId,
           threadId: target.threadId,
