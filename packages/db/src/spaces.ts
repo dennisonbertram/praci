@@ -463,7 +463,7 @@ export async function releaseSpaceDeletionClaim(
 export async function deleteEmptySpaceForMember(
   prisma: PrismaClient,
   input: ClaimedSpaceDeleteInput,
-): Promise<{ id: string }> {
+): Promise<{ id: string; dataRoomStorageKeys: string[] }> {
   return withTransactionRetry(() =>
     prisma.$transaction(
       async (tx) => {
@@ -474,16 +474,23 @@ export async function deleteEmptySpaceForMember(
         });
         if (!claim) throw new SpaceDeletionInProgressError();
         const planned = await assertEmptySpaceDeletable(tx, input);
+        // The cascade removes the rows but not their blobs; the caller queues the blob deletes.
+        const dataRoomStorageKeys = (
+          await tx.dataRoomItem.findMany({
+            where: { spaceId: input.spaceId, storageKey: { not: null } },
+            select: { storageKey: true },
+          })
+        ).flatMap((item) => (item.storageKey ? [item.storageKey] : []));
         await tx.space.delete({ where: { id: input.spaceId } });
         if (input.spaceId !== input.currentSpaceId) {
-          return { id: input.currentSpaceId };
+          return { id: input.currentSpaceId, dataRoomStorageKeys };
         }
         const remaining = planned.memberships.filter(
           (membership) => membership.spaceId !== input.spaceId,
         );
         const fallback = remaining.find((membership) => membership.space.isDefault) ?? remaining[0];
         if (!fallback) throw new CannotDeleteLastSpaceError();
-        return { id: fallback.spaceId };
+        return { id: fallback.spaceId, dataRoomStorageKeys };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     ),

@@ -29,8 +29,6 @@ export interface DataRoomFilters {
 
 const MAX_LIMIT = 50;
 const DEFAULT_LIMIT = 10;
-/** Chunks each search leg fetches before grouping by item. */
-const OVER_FETCH = 100;
 /** Highlight markers in search snippets. replaceChunks strips them from stored text. */
 const HIGHLIGHT_START = "\u0001";
 const HIGHLIGHT_STOP = "\u0002";
@@ -47,6 +45,71 @@ export interface DataRoomSearchResult {
    */
   snippet: string;
   score: number;
+}
+
+const DATE_SORTS = new Set<DataRoomSortField>(["date", "createdAt"]);
+
+type CursorSort = { field: DataRoomSortField | "relevance"; direction: "asc" | "desc" };
+const RELEVANCE_SORT: CursorSort = { field: "relevance", direction: "desc" };
+
+/** The cursor records its sort, so a cursor from another field or direction is rejected. */
+function encodeCursor(sort: CursorSort, value: Date | string | number | null, id: string) {
+  const v = value instanceof Date ? value.toISOString() : value;
+  return Buffer.from(JSON.stringify([sort.field, sort.direction, v, id])).toString("base64url");
+}
+
+function decodeCursor(
+  cursor: string,
+  sort: CursorSort,
+): { value: Date | string | number | null; id: string } {
+  const { field } = sort;
+  try {
+    const [f, d, v, id] = JSON.parse(Buffer.from(cursor, "base64url").toString()) as [
+      string,
+      string,
+      string | number | null,
+      string,
+    ];
+    if (f !== field || d !== sort.direction) throw new Error();
+    const kind = field === "relevance" ? "number" : "string";
+    if (typeof id !== "string" || (v !== null && typeof v !== kind)) throw new Error();
+    if (field === "relevance" && v === null) throw new Error();
+    const value =
+      typeof v === "string" && field !== "relevance" && DATE_SORTS.has(field) ? new Date(v) : v;
+    if (value instanceof Date && Number.isNaN(value.getTime())) throw new Error();
+    return { value, id };
+  } catch {
+    throw new DataRoomConflictError("Invalid cursor");
+  }
+}
+
+/**
+ * ORDER BY and keyset condition for a sort: nulls last in both directions, ties by id ascending.
+ * `column` and `idColumn` are SQL expressions for the sort value and the item id.
+ */
+function keysetSql(
+  sort: DataRoomSort,
+  cursor: string | undefined,
+  column: Prisma.Sql,
+  idColumn: Prisma.Sql,
+) {
+  const nullable = SORT_NULLABLE[sort.field];
+  const after = Prisma.raw(sort.direction === "asc" ? ">" : "<");
+  const direction = Prisma.raw(sort.direction === "asc" ? "ASC" : "DESC");
+  let where: Prisma.Sql | undefined;
+  if (cursor) {
+    const { value, id } = decodeCursor(cursor, sort);
+    where =
+      value === null
+        ? Prisma.sql`(${column} IS NULL AND ${idColumn} > ${id})`
+        : Prisma.sql`(${column} ${after} ${value} OR (${column} = ${value} AND ${idColumn} > ${id})${
+            nullable ? Prisma.sql` OR ${column} IS NULL` : Prisma.empty
+          })`;
+  }
+  const order = nullable
+    ? Prisma.sql`${column} ${direction} NULLS LAST, ${idColumn} ASC`
+    : Prisma.sql`${column} ${direction}, ${idColumn} ASC`;
+  return { where, order };
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -94,6 +157,21 @@ function eligibleSql(actor: Actor, filters: DataRoomFilters = {}): Prisma.Sql {
   return Prisma.join(parts, " AND ");
 }
 
+export type DataRoomSortField = "date" | "name" | "type" | "createdAt";
+export interface DataRoomSort {
+  field: DataRoomSortField;
+  direction: "asc" | "desc";
+}
+const SORT_COLUMN = {
+  date: "docDate",
+  name: "name",
+  type: "docType",
+  createdAt: "createdAt",
+} as const;
+/** docDate and docType may be null; those rows sort after the others in both directions. */
+const SORT_NULLABLE = { date: true, name: false, type: true, createdAt: false } as const;
+
+/** Where `getItem`-style lookups, lists and search all start, so visibility is defined once. */
 export function createDataRoomRepos(prisma: PrismaClient) {
   async function requireFolder(
     actor: Actor,
@@ -279,6 +357,39 @@ export function createDataRoomRepos(prisma: PrismaClient) {
 
     getItem: (actor: Actor, id: string) => requireItem(actor, id),
 
+    /**
+     * One page ordered in SQL by `sort`, ties broken by id ascending, with a keyset cursor that
+     * stays correct under every sort. The cursor is opaque and only valid with the same sort.
+     */
+    async listItemsPage(
+      actor: Actor,
+      filters: DataRoomFilters,
+      options: { sort?: DataRoomSort; limit?: number; cursor?: string } = {},
+    ): Promise<{ items: DataRoomItemRecord[]; nextCursor: string | null }> {
+      const sort = options.sort ?? { field: "createdAt", direction: "desc" };
+      const limit = Math.min(Math.max(Math.trunc(options.limit ?? DEFAULT_LIMIT), 1), 100);
+      const column = Prisma.raw(`i."${SORT_COLUMN[sort.field]}"`);
+      const keyset = keysetSql(sort, options.cursor, column, Prisma.raw("i.id"));
+      const parts = [eligibleSql(actor, filters), ...(keyset.where ? [keyset.where] : [])];
+      const order = keyset.order;
+      const rows = await prisma.$queryRaw<{ id: string; sortValue: Date | string | null }[]>`
+        SELECT i.id, ${column} AS "sortValue" FROM data_room_items i
+        WHERE ${Prisma.join(parts, " AND ")}
+        ORDER BY ${order}
+        LIMIT ${limit + 1}`;
+      const pageRows = rows.slice(0, limit);
+      const records = await prisma.dataRoomItem.findMany({
+        where: { id: { in: pageRows.map((row) => row.id) }, ...eligibleWhere(actor) },
+      });
+      const byId = new Map(records.map((record) => [record.id, record]));
+      const last = pageRows.at(-1);
+      return {
+        items: pageRows.flatMap((row) => byId.get(row.id) ?? []),
+        nextCursor:
+          rows.length > limit && last ? encodeCursor(sort, last.sortValue, last.id) : null,
+      };
+    },
+
     listItems: (actor: Actor, filters: DataRoomFilters, page: { limit?: number } = {}) =>
       prisma.dataRoomItem.findMany({
         where: eligibleWhere(actor, filters),
@@ -376,48 +487,104 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     },
 
     /**
-     * Keyword leg: websearch_to_tsquery over chunks of eligible items, best chunk per item.
-     * A vector leg can be added as a second CTE of the same shape and fused before the final select.
+     * Keyword search, one page. Matching items are ordered in SQL, best chunk per item, then cut to
+     * the limit: by relevance (keyset on score desc, item id) or by `sort` (same rules as
+     * listItemsPage). The cursor is only valid with the same query, filters and sort.
+     * ponytail: scans every matching chunk of one owner; add a vector/top-N stage if that grows.
      */
-    async searchKeyword(
+    async searchPage(
       actor: Actor,
-      input: { query: string; filters?: DataRoomFilters; limit?: number },
-    ): Promise<DataRoomSearchResult[]> {
+      input: {
+        query: string;
+        filters?: DataRoomFilters;
+        sort?: DataRoomSort;
+        limit?: number;
+        cursor?: string;
+      },
+    ): Promise<{ results: DataRoomSearchResult[]; nextCursor: string | null }> {
       const query = input.query.trim();
-      if (!query) return [];
+      if (!query) return { results: [], nextCursor: null };
       const limit = Math.min(Math.max(Math.trunc(input.limit ?? DEFAULT_LIMIT), 1), MAX_LIMIT);
+      const idColumn = Prisma.raw(`r."itemId"`);
+      let where: Prisma.Sql | undefined;
+      let order: Prisma.Sql;
+      if (input.sort) {
+        ({ where, order } = keysetSql(
+          input.sort,
+          input.cursor,
+          Prisma.raw(`r."${SORT_COLUMN[input.sort.field]}"`),
+          idColumn,
+        ));
+      } else {
+        if (input.cursor) {
+          const { value, id } = decodeCursor(input.cursor, RELEVANCE_SORT);
+          where = Prisma.sql`(r.rank < ${value} OR (r.rank = ${value} AND r."itemId" > ${id}))`;
+        }
+        order = Prisma.sql`r.rank DESC, r."itemId" ASC`;
+      }
       const rows = await prisma.$queryRaw<
-        { itemId: string; ordinal: number; rank: number; snippet: string }[]
+        {
+          itemId: string;
+          ordinal: number;
+          rank: number;
+          snippet: string;
+          sortValue: Date | string | number | null;
+        }[]
       >`
         WITH q AS (SELECT websearch_to_tsquery('english', ${query}) AS tsq),
-        keyword AS (
-          SELECT c."itemId", c.ordinal, c.text, ts_rank_cd(c.tsv, q.tsq) AS rank
+        best AS (
+          SELECT DISTINCT ON (c."itemId") c."itemId", c.ordinal, c.text,
+            ts_rank_cd(c.tsv, q.tsq)::float8 AS rank
           FROM data_room_chunks c
           JOIN data_room_items i ON i.id = c."itemId", q
           WHERE c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
             AND ${eligibleSql(actor, input.filters)}
             AND c.tsv @@ q.tsq
-          ORDER BY rank DESC
-          LIMIT ${OVER_FETCH}
+          ORDER BY c."itemId", rank DESC, c.ordinal
         ),
-        best AS (
-          SELECT DISTINCT ON ("itemId") "itemId", ordinal, text, rank
-          FROM keyword ORDER BY "itemId", rank DESC, ordinal
+        r AS (
+          SELECT b.*, i."docDate", i."name", i."docType", i."createdAt"
+          FROM best b JOIN data_room_items i ON i.id = b."itemId"
+        ),
+        page AS (
+          SELECT r.* FROM r
+          ${where ? Prisma.sql`WHERE ${where}` : Prisma.empty}
+          ORDER BY ${order}
+          LIMIT ${limit + 1}
         )
-        SELECT b."itemId", b.ordinal, b.rank,
-          ts_headline('english', b.text, q.tsq, ${HEADLINE_OPTIONS}::text) AS snippet
-        FROM best b, q
-        ORDER BY b.rank DESC, b."itemId"
-        LIMIT ${limit}`;
-      if (!rows.length) return [];
+        SELECT r."itemId", r.ordinal, r.rank,
+          ts_headline('english', r.text, q.tsq, ${HEADLINE_OPTIONS}::text) AS snippet,
+          ${input.sort ? Prisma.raw(`r."${SORT_COLUMN[input.sort.field]}"`) : Prisma.sql`r.rank`} AS "sortValue"
+        FROM page r, q
+        ORDER BY ${order}`;
+      const pageRows = rows.slice(0, limit);
       const items = await prisma.dataRoomItem.findMany({
-        where: { id: { in: rows.map((row) => row.itemId) }, ...eligibleWhere(actor) },
+        where: { id: { in: pageRows.map((row) => row.itemId) }, ...eligibleWhere(actor) },
       });
       const byId = new Map(items.map((item) => [item.id, item]));
-      return rows.flatMap((row) => {
-        const item = byId.get(row.itemId);
-        return item ? [{ item, ordinal: row.ordinal, snippet: row.snippet, score: row.rank }] : [];
-      });
+      const last = pageRows.at(-1);
+      return {
+        results: pageRows.flatMap((row) => {
+          const item = byId.get(row.itemId);
+          return item
+            ? [{ item, ordinal: row.ordinal, snippet: row.snippet, score: row.rank }]
+            : [];
+        }),
+        nextCursor:
+          rows.length > limit && last
+            ? input.sort
+              ? encodeCursor(input.sort, last.sortValue, last.itemId)
+              : encodeCursor(RELEVANCE_SORT, last.rank, last.itemId)
+            : null,
+      };
+    },
+
+    /** The best matches without paging. */
+    async searchKeyword(
+      actor: Actor,
+      input: { query: string; filters?: DataRoomFilters; limit?: number },
+    ): Promise<DataRoomSearchResult[]> {
+      return (await this.searchPage(actor, input)).results;
     },
   };
 }

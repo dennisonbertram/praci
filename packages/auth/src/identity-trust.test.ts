@@ -47,6 +47,7 @@ function fixture({
     ownerUserId: null,
   };
   const messages: TransactionalEmail[] = [];
+  const blobs: Array<{ spaceId: string; storageKey: string }> = [];
   const members = new Set<string>();
   const prisma = {
     authData: data,
@@ -105,6 +106,9 @@ function fixture({
       ),
     },
     member: { findMany: vi.fn(async () => []) },
+    dataRoomItem: {
+      findMany: vi.fn(async () => [{ spaceId: "space-1", storageKey: "blob/k1" }]),
+    },
     messagingIdentity: { deleteMany: vi.fn(async () => ({ count: 0 })) },
     organization: { deleteMany: vi.fn(async () => ({ count: 0 })) },
     spaceMember: {
@@ -123,6 +127,7 @@ function fixture({
     webOrigin,
     signupsEnabled: "true",
     signupAllowlist: "",
+    afterDeleteUserData: async (items) => void blobs.push(...items),
     email: delivery
       ? {
           describe: () => ({
@@ -166,7 +171,7 @@ function fixture({
     const url = new URL(messages.at(-1)!.text.match(/http:\/\/\S+/)![0]);
     return request(`${url.pathname.replace("/api/auth", "")}${url.search}`);
   };
-  return { auth, request, signup, signin, verify, data, policy, messages, members };
+  return { auth, request, signup, signin, verify, data, policy, messages, members, blobs };
 }
 
 beforeEach(() => vi.clearAllMocks());
@@ -485,5 +490,6 @@ describe("session credentials", () => {
     const deleted = await f.request("/delete-user", { password: "offline-password12" }, token);
     expect(deleted.status).toBe(200);
     expect(f.data.user).toHaveLength(0);
+    expect(f.blobs).toEqual([{ spaceId: "space-1", storageKey: "blob/k1" }]);
   });
 });

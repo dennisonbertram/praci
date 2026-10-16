@@ -26,7 +26,11 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { FinanceSection } from "./FinanceSection";
+import { FinanceSection, useFinanceStatus } from "./FinanceSection";
+
+function Standalone(props: { sources: FinanceSource[]; onChanged: () => void }) {
+  return <FinanceSection {...props} status={useFinanceStatus()} />;
+}
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -46,7 +50,7 @@ async function show(sources: FinanceSource[], onChanged = vi.fn()) {
   await act(async () =>
     root.render(
       <MemoryRouter>
-        <FinanceSection sources={sources} onChanged={onChanged} />
+        <Standalone sources={sources} onChanged={onChanged} />
       </MemoryRouter>,
     ),
   );
@@ -125,7 +129,7 @@ it("opens a modal from Connect, saves the key and then shows Connected", async (
     .mockResolvedValueOnce({ connected: false, hasApiKey: false })
     .mockResolvedValue({ connected: true, hasApiKey: true });
   cryptoRpc.cryptoConnect.mockResolvedValue({ serverId: "s2", hasApiKey: true });
-  await show([source("mercury", "ok"), source("brex", "ok")]);
+  const onChanged = await show([source("mercury", "ok"), source("brex", "ok")]);
   expect(crypto().querySelector("input")).toBeNull();
   await press2(crypto(), "Connect");
   const dialog = document.body.querySelector('[role="dialog"]') as Element;
@@ -134,6 +138,7 @@ it("opens a modal from Connect, saves the key and then shows Connected", async (
   await typeKey("k-123");
   await press2(dialog, "Save");
   expect(cryptoRpc.cryptoConnect).toHaveBeenCalledWith({ apiKey: "k-123" });
+  expect(onChanged).toHaveBeenCalled(); // page data refreshes: the connect may create an MCP server
   expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   expect(crypto().textContent).toContain("Connected");
   expect(crypto().textContent).toContain("Replace API key");
@@ -224,7 +229,6 @@ it("connects Alchemy only after the server accepts the key, and shows its error 
     alchemy: { connected: false, lastError: null },
   };
   cryptoRpc.crypto
-    .mockResolvedValueOnce(off)
     .mockResolvedValueOnce(off)
     .mockResolvedValue({ ...off, alchemy: { connected: true, lastError: null } });
   cryptoRpc.cryptoProviderConnect

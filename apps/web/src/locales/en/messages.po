@@ -3676,9 +3676,15 @@ msgstr "Mail data Rakazo cached from these accounts is removed."
 msgid "Make sure nothing is still running on this computer."
 msgstr "Make sure nothing is still running on this computer."
 
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr "Manage"
+
+#. placeholder {0}: cryptoServer.name
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Manage {0}"
+msgstr "Manage {0}"
 
 #: src/pages/Paywall.tsx
 msgid "Manage billing"
@@ -4364,7 +4370,6 @@ msgstr "Only if the server does not use sign-in"
 
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -4401,7 +4406,6 @@ msgid "Open external link?"
 msgstr "Open external link?"
 
 #: src/components/integrations/FinanceSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Finance"
 msgstr "Open Finance"
 

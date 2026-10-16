@@ -1,11 +1,15 @@
 import type { FinanceSource } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../../lib/__mocks__/rpc";
-import { FinanceSection } from "./FinanceSection";
+import { FinanceSection, useFinanceStatus } from "./FinanceSection";
+
+function Standalone(props: { sources: FinanceSource[]; onChanged: () => void }) {
+  return <FinanceSection {...props} status={useFinanceStatus()} />;
+}
 
 const meta = {
   title: "Integrations/FinanceSection",
-  component: FinanceSection,
+  component: Standalone,
   parameters: {
     docs: {
       description: {
@@ -22,7 +26,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof FinanceSection>;
+} satisfies Meta<typeof Standalone>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 

@@ -2180,6 +2180,10 @@ model DataRoomItem {
 
   @@index([spaceId, folderId])
   @@index([spaceId, status])
+  @@index([spaceId, userId, createdAt, id])
+  @@index([spaceId, userId, docDate, id])
+  @@index([spaceId, userId, name, id])
+  @@index([spaceId, userId, docType, id])
   @@index([parties], type: Gin)
   @@index([tags], type: Gin)
   @@map("data_room_items")

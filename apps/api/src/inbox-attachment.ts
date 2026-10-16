@@ -5,22 +5,25 @@ import type { InboxDeps } from "./inbox.js";
 import { inboxAttachment } from "./inbox.js";
 
 /** Types a browser would render or run if it were served inline; they download as opaque bytes. */
-const RENDERABLE =
+export const RENDERABLE =
   /^(text\/html|application\/xhtml|image\/svg|[^;]*[/+]xml|text\/javascript|application\/(java|ecma)script)/i;
 const SAFE_TYPE = /^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/i;
 
-function downloadType(mimeType: string): string {
+export function downloadType(mimeType: string): string {
   return SAFE_TYPE.test(mimeType) && !RENDERABLE.test(mimeType)
     ? mimeType
     : "application/octet-stream";
 }
 
 /** `attachment` with an ASCII fallback plus the RFC 5987 UTF-8 name; no CR, LF, quote or path part. */
-function contentDisposition(filename: string): string {
-  const clean = filename
-    .replace(/[\p{Cc}\p{Cf}\\/:*?"<>|;]+/gu, "_")
-    .replace(/^[.\s]+/, "")
-    .slice(0, 150);
+export function contentDisposition(filename: string): string {
+  // Cut by code point: a UTF-16 slice can split a surrogate pair, which encodeURIComponent rejects.
+  const clean = Array.from(
+    filename.replace(/[\p{Cc}\p{Cf}\\/:*?"<>|;]+/gu, "_").replace(/^[.\s]+/, ""),
+  )
+    .slice(0, 150)
+    .join("")
+    .replace(/\p{Surrogate}/gu, "\ufffd");
   const name = clean || "attachment";
   const fallback = name.replace(/[^\x20-\x7e]/g, "_").replace(/%/g, "_");
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`;
