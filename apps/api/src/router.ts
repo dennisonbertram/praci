@@ -163,6 +163,7 @@ import {
   IntegrationProviderIdSchema,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
+  isLegalAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   parseTicketRef,
   usableModelId,
@@ -323,6 +324,15 @@ import {
 } from "./inbox-compose.js";
 import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
+import {
+  legalAgent,
+  legalConsent,
+  legalConsentGrant,
+  legalGraph,
+  legalOverview,
+  legalScanNow,
+  legalUpdateDeadline,
+} from "./legal.js";
 import { answerEditedMailApproval } from "./mail-approval-edit.js";
 import {
   dismissMcpServerApprovals,
@@ -905,6 +915,22 @@ export function createRouter(deps: RouterDeps) {
     secrets: deps.secrets,
     crypto: deps.financeCrypto,
     parseStatement: deps.parseStatement,
+  };
+  const legalDeps = {
+    prisma: deps.prisma,
+    jobs: deps.jobs,
+    repos,
+    // The Legal agent's own model decides who receives Data Room text, not the space default.
+    resolveAi: (actor: Actor, botId: string) =>
+      resolveDataRoomAi(
+        {
+          prisma: deps.prisma,
+          resolveModel: deps.resolveModel
+            ? (scope) => deps.resolveModel!({ ...scope, botId })
+            : undefined,
+        },
+        actor,
+      ),
   };
   const codexCatalog = deps.codexCatalog ?? new CodexCatalogCache();
   const favicons = deps.favicons ?? createFaviconResolver();
@@ -1738,7 +1764,11 @@ export function createRouter(deps: RouterDeps) {
       }),
       create: authed.bots.create.handler(async ({ context, input }) => {
         // inbox.agent is the only way to create an Inbox agent; reserve its key prefix.
-        if (isInboxAgentSpawnKey(input.spawnKey) || isFinanceAgentSpawnKey(input.spawnKey)) {
+        if (
+          isInboxAgentSpawnKey(input.spawnKey) ||
+          isFinanceAgentSpawnKey(input.spawnKey) ||
+          isLegalAgentSpawnKey(input.spawnKey)
+        ) {
           throw new ORPCError("BAD_REQUEST", { message: "Reserved spawn key" });
         }
         let bot: Bot;
@@ -6243,6 +6273,31 @@ export function createRouter(deps: RouterDeps) {
       consent: authed.dataRoom.consent.handler(({ context }) => dataRoom.consent(context.actor)),
       consentGrant: authed.dataRoom.consentGrant.handler(({ context, input }) =>
         dataRoom.consentGrant(context.actor, input),
+      ),
+    },
+    legal: {
+      agent: authed.legal.agent.handler(({ context }) =>
+        legalAgent(legalDeps, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
+      overview: authed.legal.overview.handler(({ context }) =>
+        legalOverview(legalDeps, context.actor),
+      ),
+      graph: authed.legal.graph.handler(({ context }) => legalGraph(legalDeps, context.actor)),
+      updateDeadline: authed.legal.updateDeadline.handler(({ context, input }) =>
+        legalUpdateDeadline(legalDeps, context.actor, input),
+      ),
+      scanNow: authed.legal.scanNow.handler(({ context }) =>
+        legalScanNow(legalDeps, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
+      consent: authed.legal.consent.handler(({ context }) =>
+        legalConsent(legalDeps, context.actor),
+      ),
+      consentGrant: authed.legal.consentGrant.handler(({ context, input }) =>
+        legalConsentGrant(legalDeps, context.actor, input),
       ),
     },
     finance: {

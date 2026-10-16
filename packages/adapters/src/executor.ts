@@ -53,6 +53,8 @@ import {
   isAttachmentImageMimeType,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
+  isLegalAgentSpawnKey,
+  LEGAL_AGENT_BUILTIN_TOOLS,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@rakazo/contracts";
 import type { ActionApprovalRule, ToolCallStreak } from "@rakazo/core";
@@ -251,6 +253,8 @@ import {
 import { checkpointRunComputerWorkspace } from "./computer-workspace.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
 import { formatCurrentTimeInstruction } from "./current-time.js";
+import { resolveDataRoomAi } from "./data-room-models.js";
+import { DATA_ROOM_TOOL_NAMES, dataRoomToolFromTool } from "./data-room-tools.js";
 import { resolveDeploymentModel } from "./deployment-model.js";
 import {
   DRIVE_TOOL_NAMES,
@@ -281,6 +285,12 @@ import {
   CATALOG_EXECUTE,
   uniquifyInstalledToolName,
 } from "./lazy-tool-catalog.js";
+import {
+  LEGAL_GATED_TOOL_NAMES,
+  LEGAL_TOOL_NAMES,
+  legalToolFromTool,
+  legalToolsAllowed,
+} from "./legal-tools.js";
 import {
   MAIL_TOOL_NAMES,
   mailToolFromTool,
@@ -448,6 +458,10 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "finance_transactions",
   "finance_recurring",
   "finance_crypto",
+  "search_data_room",
+  "read_data_room_item",
+  "legal_unreviewed_documents",
+  "legal_query",
   "calendar_list_events",
   "calendar_get_event",
   "drive_search",
@@ -3519,10 +3533,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The Finance agent reads synced finance data through finance_* tools, with its Mercury and
         // Brex MCP tools for details. Composio and the other connectors only slow it down.
         const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey);
+        // The Legal agent works from the Data Room, mail and Drive through its own tools only: no
+        // Composio, MCP or other connector tools, and a fixed list of built-ins (read-only mail).
+        const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
         // Connections limited to chosen agents stay out of this run unless the bot was granted access.
         const deniedIds = deniedConnectionIds(storedConnections);
         const composioRows =
-          mailOnly || financeOnly
+          mailOnly || financeOnly || legalOnly
             ? []
             : storedConnections.filter(
                 (connection) =>
@@ -3540,7 +3557,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         }
         const connectedComposio = mergeConnectedPlugins(composioRows, liveSlugs);
         const connectedPlugins =
-          mailOnly || financeOnly
+          mailOnly || financeOnly || legalOnly
             ? []
             : selectRunConnections(
                 storedConnections.filter((row) => !deniedIds.has(row.id)),
@@ -3579,7 +3596,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
 
         const discoveredPromise =
-          deps.connector && !mailOnly
+          deps.connector && !mailOnly && !legalOnly
             ? deps.connector
                 .discoverTools(context, financeOnly ? ["mcp"] : undefined)
                 .then((tools) =>
@@ -3960,6 +3977,16 @@ export function createRunExecutor(deps: ExecutorDeps) {
             spaceId: run.spaceId,
             userId: bot.userId,
           }).catch(() => false));
+        const legalEnabled = legalToolsAllowed({
+          hasProvider: true,
+          groupId: thread.groupId,
+          runUserId: run.userId,
+          botUserId: bot.userId,
+          botSpawnKey: bot.spawnKey,
+          trigger: run.trigger,
+          messagingChannelRun,
+        });
+        const legalToolSet: ReadonlySet<string> = new Set(LEGAL_AGENT_BUILTIN_TOOLS);
         const builtins = [
           ...selectBuiltinToolsForRun({
             ticketBoardEnabled: deps.ticketBoardEnabled,
@@ -3974,6 +4001,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             calendarEnabled,
             driveEnabled,
             financeEnabled,
+            legalEnabled,
             messagingChannelRun,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
@@ -3982,7 +4010,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ...(hasMessagingIdentity && !isBackgroundRunTrigger(run.trigger)
             ? agentConnectionTools.filter((tool) => !disabledBuiltinTools.has(tool.name))
             : []),
-        ];
+        ].filter((tool) => !legalOnly || legalToolSet.has(tool.name));
         const exposedConnectorTools = discovered.filter(
           (tool) => !builtinAgentTools.some((builtin) => builtin.name === tool.name),
         );
@@ -5403,6 +5431,34 @@ export function createRunExecutor(deps: ExecutorDeps) {
               ),
             );
           }
+          if ((LEGAL_TOOL_NAMES.has(name) || DATA_ROOM_TOOL_NAMES.has(name)) && legalEnabled) {
+            // Consent is for the model this run uses; it is read on every call so revoking it applies at once.
+            const allowed = async () =>
+              (
+                await resolveDataRoomAi(
+                  {
+                    prisma: deps.prisma,
+                    resolveModel: async () => ({
+                      provider: runModelProvider ?? "",
+                      id: runModelId ?? "",
+                      baseUrl: resolved.baseUrl,
+                      apiKey: resolved.apiKey,
+                    }),
+                  },
+                  { spaceId: run.spaceId, userId: bot.userId },
+                )
+              ).allowed;
+            const toolDeps = {
+              prisma: deps.prisma,
+              scope: { spaceId: run.spaceId, userId: bot.userId },
+              allowed,
+            };
+            return finish(
+              DATA_ROOM_TOOL_NAMES.has(name)
+                ? await dataRoomToolFromTool(name, toolDeps, args)
+                : await legalToolFromTool(name, toolDeps, args),
+            );
+          }
           if (DRIVE_TOOL_NAMES.has(name) && deps.connectors && driveEnabled) {
             return finish(
               await driveToolFromTool(
@@ -6550,13 +6606,17 @@ export function createRunExecutor(deps: ExecutorDeps) {
 
         const pluginLine = mailOnly
           ? undefined
-          : financeOnly
-            ? financeEnabled
-              ? "Start with finance_overview, finance_breakdown, finance_transactions and finance_recurring: they read the synced finance data in one call and match the Finance page. Use the Mercury and Brex tools only for details the sync does not have."
+          : legalOnly
+            ? legalEnabled
+              ? "Start with legal_unreviewed_documents, read each with read_data_room_item, and record what you find with the legal_* tools. Use mail_search and drive_search for legal documents that are not in the Data Room yet."
               : undefined
-            : connectedPlugins.length > 0
-              ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
-              : "No plugins are connected yet.";
+            : financeOnly
+              ? financeEnabled
+                ? "Start with finance_overview, finance_breakdown, finance_transactions and finance_recurring: they read the synced finance data in one call and match the Finance page. Use the Mercury and Brex tools only for details the sync does not have."
+                : undefined
+              : connectedPlugins.length > 0
+                ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
+                : "No plugins are connected yet.";
         const taughtSkillIndex = savedSkills.slice(0, 20);
         const taughtSkillsLine =
           taughtSkillIndex.length > 0
@@ -7709,6 +7769,8 @@ export function selectBuiltinToolsForRun(options: {
   driveEnabled?: boolean;
   /** The run's requester owns the bot and has a connected finance source. */
   financeEnabled?: boolean;
+  /** The run belongs to the owner's Legal agent: the Legal and Data Room tools are offered. */
+  legalEnabled?: boolean;
   messagingChannelRun: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
@@ -7742,6 +7804,7 @@ export function selectBuiltinToolsForRun(options: {
       !disabled.has(tool.name) &&
       (options.driveEnabled || !DRIVE_TOOL_NAMES.has(tool.name)) &&
       (options.financeEnabled || !FINANCE_TOOL_NAMES.has(tool.name)) &&
+      (options.legalEnabled || !LEGAL_GATED_TOOL_NAMES.has(tool.name)) &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
       (!isBackgroundRunTrigger(options.trigger) ||
