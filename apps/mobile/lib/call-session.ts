@@ -8,6 +8,7 @@ import {
   isFarewell,
   isInterimCallBargeIn,
   latestSpokenCallReply,
+  newClientId,
   reduceThreadSnapshot,
   spokenMemory,
 } from "@rakazo/core";
@@ -185,7 +186,7 @@ export function startCall(
   endCall();
   deps = { ...productionDeps(), ...overrides };
   switchBot = call.switchBot;
-  callId = randomId();
+  callId = newClientId();
   callRunId = null;
   canTranscribe = call.transcribe ?? true;
   onDevice = null;
@@ -807,10 +808,4 @@ function trackPendingCallSend(callId: string, request: Promise<unknown>): () => 
     pending.delete(request);
     if (pending.size === 0) pendingCallSends.delete(callId);
   };
-}
-
-function randomId(): string {
-  const webCrypto = globalThis.crypto;
-  if (webCrypto && typeof webCrypto.randomUUID === "function") return webCrypto.randomUUID();
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }

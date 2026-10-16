@@ -1,4 +1,13 @@
-import type { BotPins, PinList } from "@rakazo/contracts";
+import type { BotPins, PinList, PinOp } from "@rakazo/contracts";
+import {
+  addItem,
+  BOT_PINS_ITEM_TEXT_MAX,
+  deleteItem,
+  editItem,
+  rebasePins,
+  toggleItem,
+} from "@rakazo/contracts";
+import { newClientId } from "@rakazo/core";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -15,12 +24,7 @@ import { NativeSymbol } from "../components/native-symbol";
 import { getPins, savePins } from "../lib/agent-pins";
 import { useI18n } from "../lib/i18n";
 import { native, useThemedStyles } from "../lib/native";
-import type { PinOp } from "../lib/pin-list";
-import { addItem, deleteItem, editItem, rebasePins, toggleItem } from "../lib/pin-list";
 import { errorText } from "../lib/user-error";
-
-const newId = () =>
-  globalThis.crypto?.randomUUID?.().slice(0, 36) ?? Math.random().toString(36).slice(2, 12);
 
 export default function AgentListScreen() {
   const { botId } = useLocalSearchParams<{ botId: string }>();
@@ -126,7 +130,7 @@ export default function AgentListScreen() {
             // Remounting on a saved change drops a rejected blank edit.
             key={`${item.id}:${item.text}`}
             defaultValue={item.text}
-            maxLength={60}
+            maxLength={BOT_PINS_ITEM_TEXT_MAX}
             multiline
             blurOnSubmit
             returnKeyType="done"
@@ -142,11 +146,11 @@ export default function AgentListScreen() {
           onChangeText={setDraft}
           placeholder={t("Add item")}
           placeholderTextColor={native.secondaryLabel}
-          maxLength={60}
+          maxLength={BOT_PINS_ITEM_TEXT_MAX}
           returnKeyType="done"
           blurOnSubmit={false}
           onSubmitEditing={() => {
-            change((l) => addItem(l, newId(), draft));
+            change((l) => addItem(l, newClientId(), draft));
             setDraft("");
           }}
           style={styles.input}

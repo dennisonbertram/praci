@@ -4,7 +4,7 @@ import type {
   IntegrationCatalogSurface,
   McpServer,
 } from "@rakazo/contracts";
-import { deriveMcpName } from "@rakazo/core";
+import { deriveMcpName, newClientId } from "@rakazo/core";
 import {
   Button,
   Dialog,
@@ -16,7 +16,6 @@ import {
   NativeSelectOption,
 } from "@rakazo/ui-web";
 import { useRef, useState } from "react";
-import { newClientId } from "../../lib/client-id";
 import { beginMcpOauth, openMcpAuthorization, waitForMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { watchWindowClosed } from "../../lib/sign-in-window";

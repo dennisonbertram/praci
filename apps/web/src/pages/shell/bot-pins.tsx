@@ -1,7 +1,14 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { BotPins, PinItem } from "@rakazo/contracts";
-import { BOT_PINS_MAX_ITEMS } from "@rakazo/contracts";
+import type { BotPins, PinItem, PinList } from "@rakazo/contracts";
+import {
+  addItem,
+  BOT_PINS_ITEM_TEXT_MAX,
+  BOT_PINS_MAX_ITEMS,
+  deleteItem,
+  editItem,
+  setItemDone,
+} from "@rakazo/contracts";
 import { Button, Card, Checkbox, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web";
 import { RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -147,7 +154,7 @@ function ItemRow({
           ref={(el) => el?.focus()}
           dir="auto"
           aria-label={item.text}
-          maxLength={60}
+          maxLength={BOT_PINS_ITEM_TEXT_MAX}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={() => end(true)}
@@ -185,13 +192,13 @@ export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPi
   if (!list) return null;
 
   // Saves run one at a time and apply the change to the newest items and revision.
-  const change = (edit: (items: PinItem[]) => PinItem[]) => {
+  const change = (edit: (list: PinList) => PinList) => {
     const saved = queue.current.then(async () => {
       const current = latest.current;
       if (!current.list) return false;
       const request = {
         botId: current.botId,
-        list: { ...current.list, items: edit(current.list.items) },
+        list: edit(current.list),
         baseRevision: current.revision,
       };
       try {
@@ -222,7 +229,7 @@ export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPi
     if (adding.current) return;
     adding.current = true;
     const id = crypto.randomUUID().slice(0, 12);
-    if (await change((items) => [...items, { id, text, done: false }])) setAdded("");
+    if (await change((l) => addItem(l, id, text))) setAdded("");
     adding.current = false;
   };
 
@@ -236,13 +243,9 @@ export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPi
           <ItemRow
             key={item.id}
             item={item}
-            onToggle={(done) =>
-              change((items) => items.map((it) => (it.id === item.id ? { ...it, done } : it)))
-            }
-            onText={(text) =>
-              change((items) => items.map((it) => (it.id === item.id ? { ...it, text } : it)))
-            }
-            onDelete={() => change((items) => items.filter((it) => it.id !== item.id))}
+            onToggle={(done) => change((l) => setItemDone(l, item.id, done))}
+            onText={(text) => change((l) => editItem(l, item.id, text))}
+            onDelete={() => change((l) => deleteItem(l, item.id))}
           />
         ))}
       </ul>
@@ -251,7 +254,7 @@ export function PinsList({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPi
           dir="auto"
           aria-label={t`Add item`}
           placeholder={t`Add item`}
-          maxLength={60}
+          maxLength={BOT_PINS_ITEM_TEXT_MAX}
           value={added}
           onChange={(event) => setAdded(event.target.value)}
           onBlur={() => void commitAdded()}

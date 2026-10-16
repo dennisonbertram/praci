@@ -214,13 +214,11 @@ describe("Android mobile platform contract", () => {
 
   it("renders the per-message transport in every native channel-message path", () => {
     const thread = readFileSync(resolve(mobileRoot, "app/thread.tsx"), "utf8");
-    expect(
-      thread.match(/messagingProviderLabel\(block\.provider, block\.transport\)/g),
-    ).toHaveLength(2);
+    expect(thread.match(/channelMessageLine\(block\)/g)).toHaveLength(2);
     expect(thread).toContain(
-      "messagingProviderLabel(channelMessage.provider, channelMessage.transport)",
+      "messageProviderLabel(channelMessage.provider, channelMessage.transport)",
     );
-    expect(thread).not.toMatch(/messagingProviderLabel\((?:block|channelMessage)\.provider\)/);
+    expect(thread).not.toMatch(/messageProviderLabel\((?:block|channelMessage)\.provider\)/);
   });
 
   it("reconciles finished agents and opens ordinary chats at the latest message", () => {

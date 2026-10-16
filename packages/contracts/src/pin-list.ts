@@ -1,5 +1,5 @@
-import type { PinList } from "@rakazo/contracts";
-import { BOT_PINS_MAX_ITEMS } from "@rakazo/contracts";
+import type { PinList } from "./pins.js";
+import { BOT_PINS_ITEM_TEXT_MAX, BOT_PINS_MAX_ITEMS } from "./pins.js";
 
 const mapItem = (
   list: PinList,
@@ -15,9 +15,12 @@ export const toggleItem = (list: PinList, id: string): PinList =>
 
 /** Blank text keeps the old text: the contract requires at least one character. */
 export function editItem(list: PinList, id: string, text: string): PinList {
-  const next = text.trim().slice(0, 60);
+  const next = text.trim().slice(0, BOT_PINS_ITEM_TEXT_MAX);
   return next ? mapItem(list, id, (item) => ({ ...item, text: next })) : list;
 }
+
+export const setItemDone = (list: PinList, id: string, done: boolean): PinList =>
+  mapItem(list, id, (item) => ({ ...item, done }));
 
 export const deleteItem = (list: PinList, id: string): PinList => ({
   ...list,
@@ -25,7 +28,7 @@ export const deleteItem = (list: PinList, id: string): PinList => ({
 });
 
 export function addItem(list: PinList, id: string, text: string): PinList {
-  const next = text.trim().slice(0, 60);
+  const next = text.trim().slice(0, BOT_PINS_ITEM_TEXT_MAX);
   if (!next || list.items.length >= BOT_PINS_MAX_ITEMS) return list;
   return { ...list, items: [...list.items, { id, text: next, done: false }] };
 }
