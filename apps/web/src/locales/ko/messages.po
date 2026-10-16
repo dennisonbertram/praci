@@ -4316,8 +4316,11 @@ msgid "No mail matches this filter"
 msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
-#: src/pages/Shell.tsx
 msgid "No matches"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
 #: src/pages/Artifacts.tsx

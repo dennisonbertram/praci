@@ -6512,10 +6512,12 @@ export const Composer = memo(function Composer({
       ) : null}
       {mentionNoMatches ? (
         <div
+          id={mentionListboxId}
+          role="status"
           data-testid="mention-picker-empty"
           className="mb-2 rounded-[14px] border border-border bg-muted px-4 py-2.5 text-[14px] text-muted-foreground"
         >
-          <Trans>No matches</Trans>
+          <Trans>No matches. Press Escape to send as typed.</Trans>
         </div>
       ) : null}
       {showSlashPicker ? (
@@ -6668,19 +6670,20 @@ export const Composer = memo(function Composer({
                 removeLastChip();
                 return;
               }
+              const composing = event.nativeEvent.isComposing || event.keyCode === 229;
               const action = resolveMentionPickerKey({
                 key: event.key,
                 shiftKey: event.shiftKey,
-                isComposing: event.nativeEvent.isComposing || event.keyCode === 229,
+                isComposing: composing,
                 optionCount: mentionOptions.length,
                 highlightedIndex: activeMentionIndex,
               });
-              if (mentionNoMatches && event.key === "Enter" && !event.shiftKey) {
+              if (mentionNoMatches && !composing && event.key === "Enter" && !event.shiftKey) {
                 // Escape dismisses the empty state first; Enter then sends the text as typed.
                 event.preventDefault();
                 return;
               }
-              if (mentionNoMatches && event.key === "Escape") {
+              if (mentionNoMatches && !composing && event.key === "Escape") {
                 event.preventDefault();
                 setMentionQuery(null);
                 return;
@@ -6745,8 +6748,8 @@ export const Composer = memo(function Composer({
             role="combobox"
             aria-autocomplete="list"
             aria-haspopup="listbox"
-            aria-expanded={mentionPickerOpen}
-            aria-controls={mentionPickerOpen ? mentionListboxId : undefined}
+            aria-expanded={mentionPickerOpen || mentionNoMatches}
+            aria-controls={mentionPickerOpen || mentionNoMatches ? mentionListboxId : undefined}
             aria-activedescendant={activeMentionOptionId}
             name="chat-message"
             autoComplete="off"

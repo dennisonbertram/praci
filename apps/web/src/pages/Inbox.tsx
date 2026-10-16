@@ -310,7 +310,10 @@ export function InboxPage({
     });
   };
   const setRead = (messageId: string, read: boolean) => {
-    setAnnouncement(read ? t`Marked read` : t`Marked unread`);
+    // Clear first so a repeat of the same message is announced again.
+    setAnnouncement("");
+    const text = read ? t`Marked read` : t`Marked unread`;
+    setTimeout(() => setAnnouncement(text), 50);
     patchRows((list) =>
       list.map((row) => (row.id === messageId ? { ...row, unread: !read } : row)),
     );

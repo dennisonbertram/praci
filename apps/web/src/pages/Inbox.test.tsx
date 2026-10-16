@@ -388,6 +388,17 @@ it("marks a row read at once and unread again, saving each", async () => {
   expect(rpcMock.markRead).toHaveBeenLastCalledWith({ messageId: "a", read: false });
 });
 
+it("clears the live region before each announcement so a repeat is spoken again", async () => {
+  const c = await render();
+  const region = () => c.querySelector('[aria-live="polite"]')?.textContent;
+  await click(byText(c, "read a"));
+  expect(region()).toBe("");
+  await dwell(80);
+  expect(region()).toBe("Marked read");
+  await click(byText(c, "read a"));
+  expect(region()).toBe("");
+});
+
 it("archives under a filter and a search too", async () => {
   const c = await render(["/app/inbox?filter=unread&q=zebra"]);
   await press("j");

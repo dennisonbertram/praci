@@ -173,6 +173,31 @@ describe("Composer", () => {
     });
   });
 
+  describe("mention picker with no matches", () => {
+    const keydown = (textarea: HTMLTextAreaElement, init: KeyboardEventInit) => {
+      const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+      act(() => {
+        textarea.dispatchEvent(event);
+      });
+      return event;
+    };
+
+    it("announces the empty state and blocks Enter until Escape", () => {
+      const textarea = renderComposer(vi.fn());
+      type(textarea, "@zz");
+      const empty = container?.querySelector("[data-testid='mention-picker-empty']");
+      expect(empty?.getAttribute("role")).toBe("status");
+      expect(textarea.getAttribute("aria-expanded")).toBe("true");
+      expect(keydown(textarea, { key: "Enter" }).defaultPrevented).toBe(true);
+    });
+
+    it("leaves Enter alone while an IME is composing", () => {
+      const textarea = renderComposer(vi.fn());
+      type(textarea, "@zz");
+      expect(keydown(textarea, { key: "Enter", isComposing: true }).defaultPrevented).toBe(false);
+    });
+  });
+
   it("clears the draft once the message is sent", async () => {
     const onSend = vi.fn().mockResolvedValue(true);
     const textarea = renderComposer(onSend);

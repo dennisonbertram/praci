@@ -93,7 +93,7 @@ test("mention picker completes with Enter and Tab", async ({ page }, testInfo) =
   await composer.fill("@Writer");
   await expect(page.getByTestId("mention-picker").getByRole("option")).toHaveCount(1);
   await composer.fill("@zz");
-  await expect(page.getByTestId("mention-picker-empty")).toHaveText("No matches");
+  await expect(page.getByTestId("mention-picker-empty")).toContainText("No matches");
   await captureScreenshot(page, testInfo, "mention-picker-no-matches");
   await composer.press("Enter");
   await expect(composer).toHaveValue("@zz");
