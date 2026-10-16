@@ -1,6 +1,6 @@
 import { ContactKindSchema, ContactSaveInputSchema, isCartaAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { listContacts, saveContact } from "@rakazo/db";
+import { ContactEmailTakenError, listContacts, saveContact } from "@rakazo/db";
 import { mailToolsAllowed } from "./mail-tools.js";
 
 export const CONTACT_TOOL_NAMES = new Set(["contacts_list", "contacts_save"]);
@@ -57,7 +57,8 @@ export async function contactToolFromTool(
       return { contact: await saveContact(deps.prisma, deps.scope, input.data) };
     }
     return { error: `Unknown contact tool ${name}` };
-  } catch {
+  } catch (error) {
+    if (error instanceof ContactEmailTakenError) return { error: error.message };
     return { error: "Contact tool failed" };
   }
 }

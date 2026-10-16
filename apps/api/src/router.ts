@@ -190,6 +190,7 @@ import {
   CannotDeleteSpaceAsNonOwnerError,
   CannotRenameSpaceAsNonOwnerError,
   ComputerLimitError,
+  ContactEmailTakenError,
   claimEmptySpaceDeletionForMember,
   createExternalConversationRepos,
   createGroupRepos,
@@ -757,9 +758,11 @@ function mapSpaceLifecycleError(error: unknown): unknown {
 }
 
 function contactNotFound(error: unknown): never {
-  throw error instanceof IsolationError
-    ? new ORPCError("NOT_FOUND", { message: error.message })
-    : error;
+  if (error instanceof IsolationError) throw new ORPCError("NOT_FOUND", { message: error.message });
+  if (error instanceof ContactEmailTakenError) {
+    throw new ORPCError("CONFLICT", { message: error.message });
+  }
+  throw error;
 }
 
 const BOT_SECRET_INPUT_ERRORS = [

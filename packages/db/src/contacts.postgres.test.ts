@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
-import { deleteContact, listContacts, saveContact } from "./contacts.js";
+import { ContactEmailTakenError, deleteContact, listContacts, saveContact } from "./contacts.js";
 import { IsolationError } from "./scope.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -74,6 +74,13 @@ describePostgres("contacts (PostgreSQL)", () => {
       "Bea Other",
       "Zed Audits",
     ]);
+  });
+
+  it("rejects changing an email to one another contact has", async () => {
+    const [bea] = await listContacts(prisma, mine, { kind: "other" });
+    await expect(
+      saveContact(prisma, mine, { id: bea!.id, name: "Bea Other", email: "ada@example.test" }),
+    ).rejects.toBeInstanceOf(ContactEmailTakenError);
   });
 
   it("filters by kind and text", async () => {
