@@ -10,6 +10,7 @@ import {
 import type { Actor } from "@rakazo/contracts";
 import { findSpaceMemoryConfig, Prisma, type PrismaClient } from "@rakazo/db";
 import { withSerializableRetry } from "./serializable-retry.js";
+import { requireSpaceOwner } from "./space-owner.js";
 
 export interface MemoryProviderConfigDeps {
   prisma: PrismaClient;
@@ -23,15 +24,6 @@ export interface MemoryProviderConfigDeps {
   prepareConnection?: (
     input: Parameters<typeof prepareMemoryProviderConnection>[0],
   ) => ReturnType<typeof prepareMemoryProviderConnection>;
-}
-
-async function requireSpaceOwner(prisma: PrismaClient, actor: Actor): Promise<void> {
-  const member = await prisma.spaceMember.findUnique({
-    where: { spaceId_userId: { spaceId: actor.spaceId, userId: actor.userId } },
-    select: { role: true },
-  });
-  const roles = member?.role.split(",").map((role) => role.trim());
-  if (!roles?.includes("owner")) throw new ORPCError("FORBIDDEN");
 }
 
 export async function persistMemoryProviderConfig(

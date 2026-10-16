@@ -189,6 +189,7 @@ import {
 } from "@rakazo/core";
 import type { BoardEvents, Board as BoardRow, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
+  addSidebarPage,
   appendEventInTransaction,
   BotSectionNameConflictError,
   CannotDeleteDefaultSpaceError,
@@ -222,6 +223,7 @@ import {
   isUniqueViolation,
   listBoards,
   listContacts,
+  listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
   lockOwnedGroup,
@@ -231,10 +233,12 @@ import {
   parseComputerMode,
   pushSessionExpiresAt,
   releaseSpaceDeletionClaim,
+  removeSidebarPage,
   renameSpaceForMember,
   renewSpaceDeletionClaim,
   replaceSpaceBackupModels,
   restoreBotUnderComputerQuota,
+  SidebarPageError,
   SPACE_DELETION_CLAIM_TIMEOUT_MS,
   SpaceDeletionInProgressError,
   SpaceLimitError,
@@ -775,6 +779,15 @@ function mapSpaceLifecycleError(error: unknown): unknown {
     return new ORPCError("BAD_REQUEST", { message: error.message });
   }
   return error;
+}
+
+function sidebarPageError(error: unknown): never {
+  if (error instanceof SidebarPageError) {
+    throw new ORPCError(error.code === "owner_only" ? "FORBIDDEN" : "BAD_REQUEST", {
+      message: error.message,
+    });
+  }
+  throw error;
 }
 
 function contactNotFound(error: unknown): never {
@@ -1534,7 +1547,7 @@ export function createRouter(deps: RouterDeps) {
         return result.status === "connected" ? { status: "ready" as const } : result;
       }),
       finishOAuth: authed.models.finishOAuth.handler(async ({ context, input }) => {
-        throwIfAborted(context.signal);
+        context.signal?.throwIfAborted();
         const result = await deps.oauthLogins.finish(
           input.loginId,
           context.actor,
@@ -6327,6 +6340,19 @@ export function createRouter(deps: RouterDeps) {
         return { ok: true as const };
       }),
     },
+    sidebarPages: {
+      list: authed.sidebarPages.list.handler(({ context }) =>
+        listSidebarPages(deps.prisma, actorScope(context.actor)),
+      ),
+      add: authed.sidebarPages.add.handler(({ context, input }) =>
+        addSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey).catch(
+          sidebarPageError,
+        ),
+      ),
+      remove: authed.sidebarPages.remove.handler(({ context, input }) =>
+        removeSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey),
+      ),
+    },
     contacts: {
       list: authed.contacts.list.handler(({ context, input }) =>
         listContacts(deps.prisma, actorScope(context.actor), input),
@@ -7450,7 +7476,7 @@ async function persistModelCredential(
   },
   codexCatalog: CodexLiveCatalog,
 ) {
-  throwIfAborted(input.signal);
+  input.signal?.throwIfAborted();
   const requestedModelId = usableModelId(input.modelId);
   const authError = requestedModelId
     ? validateModelAuthAvailability(input.provider, requestedModelId, input.plaintext)
@@ -7483,16 +7509,16 @@ async function persistModelCredential(
     userId: actor.userId,
     signal: input.signal ?? new AbortController().signal,
   });
-  throwIfAborted(input.signal);
+  input.signal?.throwIfAborted();
   const cred = await withSerializableRetry(() =>
     deps.prisma.$transaction(
       async (tx) => {
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         const existing = await tx.userModelCredential.findFirst({
           where: { userId: actor.userId, provider: input.provider },
           orderBy: newestModelCredentialOrder,
         });
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         const secret = await tx.secret.create({
           data: {
             id: stored.id,
@@ -7502,7 +7528,7 @@ async function persistModelCredential(
             ciphertext: stored.ciphertext,
           },
         });
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         const credential = !existing
           ? await tx.userModelCredential.create({
               data: {
@@ -7523,7 +7549,7 @@ async function persistModelCredential(
                   : {}),
               },
             });
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         let thinkingLevel = input.thinkingLevel;
         if (thinkingLevel === undefined) {
           // A stored effort only carries over while it still names this model.
@@ -7544,14 +7570,14 @@ async function persistModelCredential(
           ? clampCatalogThinkingLevel(thinkingLevel, allowedThinking)
           : null;
         await selectSpaceModelPreference(tx, actor, credential.id, defaultModel, thinkingLevel);
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         if (existing) {
           await deleteUnreferencedCredentialSecret(tx, {
             credentialKind: "model",
             credentialId: existing.id,
             secretId: existing.secretId,
           });
-          throwIfAborted(input.signal);
+          input.signal?.throwIfAborted();
         }
         return { ...credential, isDefault: true, defaultModel };
       },
@@ -7559,10 +7585,6 @@ async function persistModelCredential(
     ),
   );
   return modelCredentialDto(cred, input.plaintext);
-}
-
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) throw signal.reason ?? new Error("Request cancelled");
 }
 
 function nextRoutineDate(crons: string[], timezone: string): Date {

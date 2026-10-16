@@ -1,4 +1,5 @@
 import dns from "node:dns";
+import { CLOUD_METADATA_IPV4, CLOUD_METADATA_IPV6, isCloudMetadataHost } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
   isCloudMetadataAddress,
@@ -9,6 +10,17 @@ import {
 } from "./network-address.js";
 
 describe("network address classification", () => {
+  it("contracts predicate and adapters classifier agree on every listed metadata address", () => {
+    for (const a of [...CLOUD_METADATA_IPV4, ...CLOUD_METADATA_IPV6]) {
+      expect(isCloudMetadataHost(a), a).toBe(true);
+      expect(isCloudMetadataAddress(a), a).toBe(true);
+    }
+  });
+
+  it.each(["169.254.170.2", "::ffff:169.254.170.2"])("classifies ECS metadata %s", (address) => {
+    expect(isCloudMetadataAddress(address)).toBe(true);
+  });
+
   it.each([
     "169.254.1.1",
     "fe80::1",

@@ -834,7 +834,7 @@ export class PiOAuthLogins {
     const lockKey = oauthProviderKey(input.userId, input.provider);
     const prepared = await this.withReplacementLock(lockKey, input.signal, async () => {
       await this.retireActiveSession(scope, input.signal);
-      throwIfAborted(input.signal);
+      input.signal?.throwIfAborted();
 
       const abort = new AbortController();
       const abortFromRequest = () => abort.abort(input.signal?.reason);
@@ -1105,7 +1105,7 @@ export class PiOAuthLogins {
 
     try {
       await previous;
-      throwIfAborted(signal);
+      signal?.throwIfAborted();
       return await operation();
     } finally {
       release.resolve(undefined);
@@ -1115,7 +1115,7 @@ export class PiOAuthLogins {
 
   private async retireActiveSession(scope: string, signal: AbortSignal | undefined): Promise<void> {
     while (true) {
-      throwIfAborted(signal);
+      signal?.throwIfAborted();
       const session = this.activeByScope.get(scope);
       if (!session) return;
       if (session.state === "finalizing") {
@@ -1123,7 +1123,7 @@ export class PiOAuthLogins {
           throw new Error("OAuth session is finalizing without a completion promise.");
         }
         await session.finishing;
-        throwIfAborted(signal);
+        signal?.throwIfAborted();
         continue;
       }
       if (session.state === "consumed") {
@@ -1218,8 +1218,4 @@ function httpsAuthorizationUrl(input: string): string {
   const url = new URL(input);
   if (url.protocol !== "https:") throw new Error("Authorization URL must use HTTPS.");
   return url.toString();
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) throw signal.reason ?? new Error("Sign-in cancelled.");
 }

@@ -174,7 +174,7 @@ const strings = (value: unknown): string[] =>
 
 /**
  * The fields of a mail_draft or mail_send call, for the inline mail card. A send of a saved draft
- * (draftId, no body) has nothing to show or edit, and an oversized body stays on the generic card.
+ * (draftId, no body) shows as a locked card, and an oversized body stays on the generic card.
  */
 function mailApproval(
   toolName: string,
@@ -185,9 +185,6 @@ function mailApproval(
   const text = (value: unknown) => (typeof value === "string" ? redactSecrets(value, secrets) : "");
   const body = text(args.body);
   if (body.length > MAX_COMPOSE_BODY) return undefined;
-  if (toolName === "mail_send" && typeof args.draftId === "string" && args.draftId.trim()) {
-    return undefined;
-  }
   return {
     tool: toolName,
     ...(typeof args.account === "string" && args.account

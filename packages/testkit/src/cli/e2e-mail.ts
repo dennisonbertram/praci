@@ -133,10 +133,12 @@ export type E2eGmailSnapshot = ReturnType<GmailApiEmulator["snapshot"]>;
  * mailbox, the second of the second, so a spec knows which account holds which mail and no other
  * user's spec can change it. `gmailFor` returns one user's accounts under the seeded names.
  */
-export function createE2eComposio(): ComposioEmulator & {
+export function createE2eComposio(
+  mailboxes: () => Record<string, { address: string; messages: EmulatedMessage[] }> = e2eMailboxes,
+): ComposioEmulator & {
   gmailFor(userId: string): E2eGmailSnapshot;
 } {
-  const gmail = new GmailApiEmulator({ mailboxes: e2eMailboxes() });
+  const gmail = new GmailApiEmulator({ mailboxes: mailboxes() });
   const seeded = gmail.accountRefs();
   const refsByUser = new Map<string, string[]>();
   return new (class extends ComposioEmulator {
@@ -145,7 +147,7 @@ export function createE2eComposio(): ComposioEmulator & {
       if (args[0].provider === "GMAIL") {
         const refs = refsByUser.get(args[1].userId) ?? [];
         const target = seeded[refs.length];
-        const fresh = target ? e2eMailboxes()[target] : undefined;
+        const fresh = target ? mailboxes()[target] : undefined;
         if (target && fresh) {
           gmail.isolate(result.state, target, fresh);
           refs.push(result.state);

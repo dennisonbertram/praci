@@ -1,10 +1,8 @@
 import { isIP } from "node:net";
-import { OPENAI_COMPATIBLE_PROVIDER_ID } from "@rakazo/contracts";
+import { CLOUD_METADATA_HOSTNAMES, OPENAI_COMPATIBLE_PROVIDER_ID } from "@rakazo/contracts";
 import { isCloudMetadataAddress, isLinkLocalAddress, isPrivateAddress } from "./network-address.js";
 
 export { OPENAI_COMPATIBLE_PROVIDER_ID };
-
-const METADATA_HOSTS = new Set(["metadata.google.internal", "metadata.goog"]);
 
 export function openAiCompatAllowPublicHosts(): boolean {
   return process.env.RAKAZO_OPENAI_COMPAT_ALLOW_PUBLIC === "1";
@@ -48,7 +46,7 @@ export function isPrivateOpenAiCompatibleHostname(hostname: string): boolean {
   ) {
     return true;
   }
-  if (METADATA_HOSTS.has(normalized)) return false;
+  if (CLOUD_METADATA_HOSTNAMES.has(normalized)) return false;
   const ipKind = isIP(normalized);
   if (ipKind === 4 || ipKind === 6) return isPrivateAddress(normalized);
   return false;
@@ -57,7 +55,7 @@ export function isPrivateOpenAiCompatibleHostname(hostname: string): boolean {
 function isBlockedHostname(hostname: string): boolean {
   const normalized = normalizeHostname(hostname);
   return (
-    METADATA_HOSTS.has(normalized) ||
+    CLOUD_METADATA_HOSTNAMES.has(normalized) ||
     (isIP(normalized) !== 0 &&
       (isCloudMetadataAddress(normalized) || isLinkLocalAddress(normalized)))
   );

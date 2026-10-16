@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import type { MailApproval } from "@rakazo/contracts";
-import type { ComponentProps, ReactNode } from "react";
-import { act } from "react";
+import type { ComponentProps, ReactElement, ReactNode } from "react";
+import { act, cloneElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MailApprovalCard } from "./MailApprovalCard";
@@ -43,11 +43,14 @@ vi.mock("@rakazo/ui-web", () => {
         {children}
       </button>
     ),
-    DropdownMenuTrigger: ({ children, render }: { children?: ReactNode; render?: ReactNode }) => (
-      <button type="button" aria-label="menu trigger" data-has-render={Boolean(render)}>
-        {children}
-      </button>
-    ),
+    DropdownMenuTrigger: ({ children, render }: { children?: ReactNode; render?: ReactElement }) =>
+      render ? (
+        cloneElement(render, undefined, children)
+      ) : (
+        <button type="button" aria-label="menu trigger">
+          {children}
+        </button>
+      ),
     Input: (props: ComponentProps<"input">) => <input {...props} />,
     Textarea: (props: ComponentProps<"textarea">) => <textarea {...props} />,
   };
@@ -197,10 +200,18 @@ it("blocks an invalid address or a send with no recipient before calling the ser
 
 it("disables the bot's tool and denies the call from the menu", async () => {
   const { onAnswer, onDisableTool } = await render();
-  expect(host.querySelector("[role=menuitemcheckbox]")?.getAttribute("aria-checked")).toBe("true");
+  expect(host.querySelector("[role=menuitemcheckbox]")).toBeNull();
   await click(button("Disable sending for Ada"));
+  // It asks first; nothing happens until confirmed, and Cancel backs out.
+  expect(host.textContent).toContain("Turn off sending for Ada?");
+  expect(onDisableTool).not.toHaveBeenCalled();
+  await click(button("Cancel"));
+  expect(button("Send")).toBeDefined();
+  await click(button("Disable sending for Ada"));
+  await click(button("Turn off"));
   expect(onDisableTool).toHaveBeenCalledWith("mail_send");
   expect(onAnswer).toHaveBeenCalledWith("deny", undefined, undefined);
+  expect(host.querySelector("[role=status]")?.textContent).toContain("Sending is off for Ada");
   await render({ mail: { ...mail, tool: "mail_draft" } });
   expect(button("Disable drafts for Ada")).toBeDefined();
 });
@@ -211,8 +222,10 @@ it("keeps the call pending when disabling the tool fails", async () => {
   });
   const { onAnswer } = await render({ onDisableTool });
   await click(button("Disable sending for Ada"));
+  await click(button("Turn off"));
   expect(onAnswer).not.toHaveBeenCalled();
-  expect(host.textContent).toContain("nope");
+  expect(host.querySelector("[role=alert]")?.textContent).toContain("nope");
+  expect(button("Send")).toBeDefined();
 });
 
 it("hides the menu when the person cannot change the bot's tools", async () => {
@@ -235,7 +248,7 @@ it("disables the actions while an answer is in flight", async () => {
 
 it("folds a finished card to its header and opens it with the chevron", async () => {
   await render({ status: "answered", answer: "allow", mail: { ...mail, subject: "Monday" } });
-  expect(header()).toBe("Mail Approved · jana@example.test");
+  expect(header()).toBe("Mail Approved to send · jana@example.testMonday");
   expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
   expect(host.querySelector("h3")).toBeNull();
   await click(toggle() ?? undefined);
@@ -261,16 +274,22 @@ it("shows what became of the person's own edited send", async () => {
   await render({ status: "answered", answer: "deny", mail: edited });
   expect(status()).toBe("Sending…");
   await render({ status: "answered", answer: "deny", mail: { ...edited, outcome: "sent" } });
-  expect(status()).toBe("Sent");
+  expect(status()).toBe("Sent by you");
   await render({
     status: "answered",
     answer: "deny",
     mail: { ...edited, tool: "mail_draft", outcome: "saved" },
   });
-  expect(status()).toBe("Draft saved");
+  expect(status()).toBe("Draft saved by you");
   await render({ status: "answered", answer: "deny", mail: { ...edited, outcome: "unknown" } });
   expect(status()).toBe("Unknown");
-  expect(host.textContent).toContain("Check Sent before trying again");
+  expect(host.textContent).toContain("Check Sent in your mail before trying again");
+  await render({
+    status: "answered",
+    answer: "deny",
+    mail: { ...edited, tool: "mail_draft", outcome: "unknown" },
+  });
+  expect(host.textContent).toContain("Check Drafts in your mail before trying again");
   expect(button("Open in composer")).toBeUndefined();
 });
 
@@ -326,4 +345,50 @@ it("leaves focus alone when the answer came from somewhere else", async () => {
   await render({ status: "answered", answer: "allow" });
   expect(document.activeElement).toBe(outside);
   outside.remove();
+});
+
+it("says a failed draft save is a draft that was not saved", async () => {
+  await render({
+    status: "answered",
+    answer: "deny",
+    mail: { ...mail, tool: "mail_draft", connectionId: "conn-1", outcome: "failed" },
+    onOpenComposer: vi.fn(),
+  });
+  expect(header()).toContain("Draft not saved");
+});
+
+it("shows a locked card for sending a saved draft, with no recipient required", async () => {
+  const { onAnswer } = await render({
+    mail: { ...mail, locked: true, to: [], subject: "", body: "" },
+  });
+  expect(button("Edit")).toBeUndefined();
+  expect(host.textContent).not.toContain("To");
+  await click(button("Send saved draft"));
+  expect(onAnswer).toHaveBeenCalledWith("allow", undefined, undefined);
+});
+
+it("keeps the recipient in the pending header on a narrow panel", async () => {
+  await render();
+  const recipient = [...host.querySelectorAll("span")].find((el) =>
+    el.textContent?.startsWith("· jana@"),
+  );
+  expect(recipient?.className).not.toContain("hidden");
+});
+
+it("moves focus into the disable confirmation, and back to More on cancel or failure", async () => {
+  const onDisableTool = vi.fn(async () => {
+    throw new Error("nope");
+  });
+  await render({ onDisableTool });
+  await click(button("Disable sending for Ada"));
+  const group = host.querySelector("fieldset") as HTMLElement;
+  expect(group.getAttribute("aria-labelledby")).toBe(group.querySelector("span")?.id);
+  expect(document.activeElement).toBe(button("Cancel"));
+  await click(button("Cancel"));
+  expect(host.querySelector("fieldset")).toBeNull();
+  expect(document.activeElement).toBe(host.querySelector("[aria-label=More]"));
+  await click(button("Disable sending for Ada"));
+  await click(button("Turn off"));
+  expect(host.querySelector("[role=alert]")?.textContent).toContain("nope");
+  expect(document.activeElement).toBe(host.querySelector("[aria-label=More]"));
 });
