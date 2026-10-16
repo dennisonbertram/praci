@@ -417,13 +417,22 @@ export function IntegrationsHome({
                 onChanged={() => void data.refresh()}
                 cryptoExtra={
                   cryptoServer ? (
-                    <UsedBy
-                      bots={data.bots.filter((bot) =>
-                        data.mcpAssignments.some(
-                          (entry) => entry.serverId === cryptoServer.id && entry.botId === bot.id,
-                        ),
-                      )}
-                    />
+                    <div className="flex items-center gap-2">
+                      <UsedBy
+                        bots={data.bots.filter((bot) =>
+                          data.mcpAssignments.some(
+                            (entry) => entry.serverId === cryptoServer.id && entry.botId === bot.id,
+                          ),
+                        )}
+                      />
+                      <Link
+                        to={`/app/integrations/mcp/${cryptoServer.id}`}
+                        aria-label={t`Manage ${cryptoServer.name}`}
+                        className="ms-auto text-[11px] text-muted-foreground underline hover:text-foreground"
+                      >
+                        <Trans>Manage</Trans>
+                      </Link>
+                    </div>
                   ) : null
                 }
               />

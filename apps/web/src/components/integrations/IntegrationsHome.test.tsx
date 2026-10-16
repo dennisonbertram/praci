@@ -256,6 +256,11 @@ it("shows one Blockscout tile when its key and MCP server both exist", async () 
   expect(count("finance-tile-crypto")).toBe(1);
   expect(inConnected("finance-tile-crypto")).toBe(true);
   expect(container.textContent).not.toContain("mcp.blockscout.com");
+  expect(
+    container
+      .querySelector('[data-testid="finance-tile-crypto"] a[aria-label="Manage Blockscout"]')
+      ?.getAttribute("href"),
+  ).toBe("/app/integrations/mcp/s2");
   expect(container.querySelector('[data-testid="finance-tile-crypto"]')?.textContent).toContain(
     "Replace API key",
   );
