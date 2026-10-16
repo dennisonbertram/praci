@@ -33,12 +33,12 @@ Page and container backgrounds with their text.
 
 | Token | CSS variable | Light | Dark |
 | --- | --- | --- | --- |
-| `background` | `--background` | `#fafaf8` | `#0b0c0e` |
-| `foreground` | `--foreground` | `#1a1a1a` | `#ececee` |
-| `card` | `--card` | `#ffffff` | `#141518` |
-| `cardForeground` | `--card-foreground` | `#1a1a1a` | `#ececee` |
-| `popover` | `--popover` | `#ffffff` | `#141518` |
-| `popoverForeground` | `--popover-foreground` | `#1a1a1a` | `#ececee` |
+| `background` | `--background` | `#fafaf8` | `#1c1c1a` |
+| `foreground` | `--foreground` | `#1a1a1a` | `#ecebe6` |
+| `card` | `--card` | `#ffffff` | `#252523` |
+| `cardForeground` | `--card-foreground` | `#1a1a1a` | `#ecebe6` |
+| `popover` | `--popover` | `#ffffff` | `#252523` |
+| `popoverForeground` | `--popover-foreground` | `#1a1a1a` | `#ecebe6` |
 
 ### Action
 
@@ -46,10 +46,10 @@ Ink primary for the main action; secondary for quieter fills.
 
 | Token | CSS variable | Light | Dark |
 | --- | --- | --- | --- |
-| `primary` | `--primary` | `#1a1a1a` | `#f1f1ef` |
-| `primaryForeground` | `--primary-foreground` | `#f1f1ef` | `#0b0c0e` |
-| `secondary` | `--secondary` | `#f0f0ed` | `#18191e` |
-| `secondaryForeground` | `--secondary-foreground` | `#1a1a1a` | `#ececee` |
+| `primary` | `--primary` | `#1a1a1a` | `#f1f0eb` |
+| `primaryForeground` | `--primary-foreground` | `#f1f1ef` | `#1c1c1a` |
+| `secondary` | `--secondary` | `#f0f0ed` | `#282826` |
+| `secondaryForeground` | `--secondary-foreground` | `#1a1a1a` | `#ecebe6` |
 
 ### Quiet and hover
 
@@ -57,10 +57,10 @@ De-emphasized text, fills and hover states.
 
 | Token | CSS variable | Light | Dark |
 | --- | --- | --- | --- |
-| `muted` | `--muted` | `#f0f0ed` | `#141518` |
-| `mutedForeground` | `--muted-foreground` | `#6c6c70` | `#85858a` |
-| `accent` | `--accent` | `#eaeae6` | `#1a1b20` |
-| `accentForeground` | `--accent-foreground` | `#1a1a1a` | `#ececee` |
+| `muted` | `--muted` | `#f0f0ed` | `#252523` |
+| `mutedForeground` | `--muted-foreground` | `#6c6c70` | `#9c9a93` |
+| `accent` | `--accent` | `#eaeae6` | `#2a2927` |
+| `accentForeground` | `--accent-foreground` | `#1a1a1a` | `#ecebe6` |
 
 ### Lines and focus
 
@@ -68,8 +68,8 @@ Borders, input fills and the focus ring.
 
 | Token | CSS variable | Light | Dark |
 | --- | --- | --- | --- |
-| `border` | `--border` | `#f0f0ed` | `#1e2026` |
-| `input` | `--input` | `#eaeae6` | `#18191e` |
+| `border` | `--border` | `#f0f0ed` | `#2e2d2a` |
+| `input` | `--input` | `#eaeae6` | `#282826` |
 | `ring` | `--ring` | `#6c6c70` | `#3b82f6` |
 
 ### Status
@@ -91,8 +91,8 @@ The user's message bubble and link favicon backing.
 
 | Token | CSS variable | Light | Dark |
 | --- | --- | --- | --- |
-| `chatUser` | `--chat-user` | `#e2e2dc` | `#22242b` |
-| `chatUserForeground` | `--chat-user-foreground` | `#1a1a1a` | `#ececee` |
+| `chatUser` | `--chat-user` | `#e2e2dc` | `#33322f` |
+| `chatUserForeground` | `--chat-user-foreground` | `#1a1a1a` | `#ecebe6` |
 | `faviconPlate` | `--favicon-plate` | `#ffffff` | `#ffffff` |
 
 ### Sidebar
@@ -101,11 +101,11 @@ Navigation rail.
 
 | Token | CSS variable | Light | Dark |
 | --- | --- | --- | --- |
-| `sidebar` | `--sidebar` | `#ecece9` | `#111215` |
-| `sidebarForeground` | `--sidebar-foreground` | `#1a1a1a` | `#ececee` |
-| `sidebarBorder` | `--sidebar-border` | `#e8e8e4` | `#1c1d22` |
-| `sidebarAccent` | `--sidebar-accent` | `#ffffff` | `#1a1b20` |
-| `sidebarAccentForeground` | `--sidebar-accent-foreground` | `#1a1a1a` | `#ececee` |
+| `sidebar` | `--sidebar` | `#ecece9` | `#222220` |
+| `sidebarForeground` | `--sidebar-foreground` | `#1a1a1a` | `#ecebe6` |
+| `sidebarBorder` | `--sidebar-border` | `#e8e8e4` | `#2a2926` |
+| `sidebarAccent` | `--sidebar-accent` | `#ffffff` | `#2a2927` |
+| `sidebarAccentForeground` | `--sidebar-accent-foreground` | `#1a1a1a` | `#ecebe6` |
 
 ### Overlay and scrollbar
 
@@ -113,9 +113,9 @@ Modal scrim and scrollbar thumb.
 
 | Token | CSS variable | Light | Dark |
 | --- | --- | --- | --- |
-| `overlay` | `--overlay` | `rgba(20, 20, 22, 0.45)` | `rgba(4, 4, 5, 0.72)` |
-| `scrollbar` | `--scrollbar` | `#c8c8c4` | `#1e2026` |
-| `scrollbarHover` | `--scrollbar-hover` | `#a8a8a4` | `#2e313a` |
+| `overlay` | `--overlay` | `rgba(20, 20, 22, 0.45)` | `rgba(8, 8, 7, 0.72)` |
+| `scrollbar` | `--scrollbar` | `#c8c8c4` | `#2e2d2a` |
+| `scrollbarHover` | `--scrollbar-hover` | `#a8a8a4` | `#45443f` |
 <!-- tokens:end -->
 
 Radius: `--radius` is `0.75rem`. Tailwind's `rounded-sm`, `-md`, `-lg`, `-xl` and `-2xl` are derived from it in `packages/ui-web/src/styles.css` (radius minus 4px, minus 2px, equal, plus 4px, plus 8px).
