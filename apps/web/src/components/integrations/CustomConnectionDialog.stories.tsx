@@ -40,6 +40,11 @@ export const Default: Story = {};
 
 export const WithUrl: Story = { args: { initialUrl: "https://example.com/mcp" } };
 
+/** A first-party tile such as Carta: the URL is known, so only the sign-in shows. */
+export const FirstPartySignIn: Story = {
+  args: { initialUrl: "https://mcp.app.carta.com/mcp", service: "Carta" },
+};
+
 export const AdvancedOpen: Story = {
   play: async () => {
     await userEvent.click(await screen().findByText("Advanced"));

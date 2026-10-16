@@ -268,6 +268,8 @@ export function IntegrationsHome({
   );
   const financeRef = useRef<HTMLDivElement>(null);
   const jumpToFinance = useRef(params.get("category") === "finance");
+  // /app/integrations?connect=carta opens that first-party tile's sign-in once the page has loaded.
+  const connectOnLoad = useRef(params.get("connect"));
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
   const [custom, setCustom] = useState<{
@@ -353,6 +355,23 @@ export function IntegrationsHome({
     jumpToFinance.current = false;
     financeRef.current?.scrollIntoView?.({ block: "start" });
   }, [data.loaded]);
+
+  function connectFirstParty(entry: (typeof FIRST_PARTY_MCP)[number]) {
+    setCustom({
+      url: entry.endpoint,
+      service: entry.name,
+      // Treg takes an API token, not a sign-in.
+      ...(entry.id === "treg" ? { token: true } : {}),
+      ...("oauthClient" in entry ? { oauthClient: true, scope: entry.scope } : {}),
+    });
+  }
+
+  useEffect(() => {
+    if (!connectOnLoad.current || !data.loaded) return;
+    const entry = firstPartyMcp.find((candidate) => candidate.id === connectOnLoad.current);
+    connectOnLoad.current = null;
+    if (entry) connectFirstParty(entry);
+  }, [data.loaded, firstPartyMcp]);
 
   function retry(app: ConnectedApp) {
     const item = data.catalog.find((entry) => `${entry.connectorId}:${entry.slug}` === app.key);
@@ -610,17 +629,7 @@ export function IntegrationsHome({
                     name={entry.name}
                     logo={entry.logo}
                     description={firstPartyDescription[entry.id]}
-                    onConnect={() =>
-                      setCustom({
-                        url: entry.endpoint,
-                        service: entry.name,
-                        // Treg takes an API token, not a sign-in.
-                        ...(entry.id === "treg" ? { token: true } : {}),
-                        ...("oauthClient" in entry
-                          ? { oauthClient: true, scope: entry.scope }
-                          : {}),
-                      })
-                    }
+                    onConnect={() => connectFirstParty(entry)}
                   />
                 ))}
               </div>

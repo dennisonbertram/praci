@@ -65,13 +65,13 @@ const data = (canConfigure: boolean, managed: boolean): IntegrationsData => ({
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
-async function show(value: IntegrationsData) {
+async function show(value: IntegrationsData, url = "/app/integrations") {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
   await act(async () =>
     root.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[url]}>
         <IntegrationsHome data={value} />
       </MemoryRouter>,
     ),
@@ -132,27 +132,18 @@ const zernioServer = {
   endpoint: "https://mcp.zernio.com/mcp",
 } as unknown as IntegrationsData["servers"][number];
 
-it("offers Zernio even without an app catalog and prefills the custom dialog", async () => {
+it("offers Zernio even without an app catalog and opens its sign-in", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Zernio"]');
   expect(connect).not.toBeNull();
   await act(async () => connect?.click());
-  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
-  expect(input?.value).toBe("https://mcp.zernio.com/mcp");
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Sign in with Zernio");
+  expect(document.querySelector('input[aria-label="Server URL"]')).toBeNull();
 });
 
 it("hides the Zernio tile once its server is connected", async () => {
   await show({ ...data(true, true), servers: [zernioServer] });
   expect(container.querySelector('[aria-label="Connect Zernio"]')).toBeNull();
-});
-
-it("offers Carta and prefills the custom dialog", async () => {
-  await show(data(true, false));
-  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Carta"]');
-  expect(connect).not.toBeNull();
-  await act(async () => connect?.click());
-  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
-  expect(input?.value).toBe("https://mcp.app.carta.com/mcp");
 });
 
 it("shows Carta but not Zernio under the Finance chip", async () => {
@@ -194,12 +185,11 @@ it("hides the Treg tile once the token preset source is installed", async () => 
   expect(container.querySelector('[aria-label="Connect Treg"]')).toBeNull();
 });
 
-it("opens the X tile with its URL and the client ID fields", async () => {
+it("opens the X tile with the client ID fields and no server URL", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect X"]');
   await act(async () => connect?.click());
-  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
-  expect(input?.value).toBe("https://api.x.com/mcp");
+  expect(document.querySelector('input[aria-label="Server URL"]')).toBeNull();
   expect(document.querySelector('[aria-label="Client ID"]')).not.toBeNull();
 });
 
@@ -337,6 +327,15 @@ it("names the dialog after the service for a first-party tile", async () => {
   const dialog = document.querySelector('[role="dialog"]');
   expect(dialog?.textContent).toContain("Connect Carta");
   expect(dialog?.textContent).not.toContain("Add a custom connection");
+  // Carta's URL is known: no server URL or connection settings, just the sign-in.
+  expect(dialog?.querySelector('[aria-label="Server URL"]')).toBeNull();
+  expect(dialog?.textContent).not.toContain("Advanced");
+  expect(dialog?.textContent).toContain("Sign in with Carta");
+});
+
+it("opens a first-party sign-in from ?connect= once the page has loaded", async () => {
+  await show(data(true, false), "/app/integrations?q=carta&connect=carta");
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Connect Carta");
 });
 
 it("still lists native Google apps when the managed catalog is not set up", async () => {

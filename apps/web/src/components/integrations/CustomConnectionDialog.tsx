@@ -442,25 +442,30 @@ export function CustomConnectionDialog({
             <DialogTitle>
               {service ? <Trans>Connect {service}</Trans> : <Trans>Add a custom connection</Trans>}
             </DialogTitle>
-            {service ? null : (
-              <DialogDescription>
+            <DialogDescription>
+              {service ? (
+                <Trans>Sign in with {service} in the window that opens.</Trans>
+              ) : (
                 <Trans>Paste the MCP server URL from the app's documentation.</Trans>
-              </DialogDescription>
+              )}
+            </DialogDescription>
+            {/* A first-party service has a known URL, so it shows no connection settings. */}
+            {service ? null : (
+              <div className="mt-3 text-xs text-muted-foreground">
+                <Trans>Server URL</Trans>
+                <Input
+                  aria-label={t`Server URL`}
+                  autoFocus
+                  className="mt-1 font-mono text-sm"
+                  value={url}
+                  // The server already exists; only the client fields can still change.
+                  readOnly={server !== null}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder="https://example.com/mcp"
+                  onKeyDown={(event) => event.key === "Enter" && void connectUrl()}
+                />
+              </div>
             )}
-            <div className="mt-3 text-xs text-muted-foreground">
-              <Trans>Server URL</Trans>
-              <Input
-                aria-label={t`Server URL`}
-                autoFocus
-                className="mt-1 font-mono text-sm"
-                value={url}
-                // The server already exists; only the client fields can still change.
-                readOnly={server !== null}
-                onChange={(event) => setUrl(event.target.value)}
-                placeholder="https://example.com/mcp"
-                onKeyDown={(event) => event.key === "Enter" && void connectUrl()}
-              />
-            </div>
             {needsClient ? (
               <div className="mt-3 space-y-3 text-xs text-muted-foreground">
                 <div>
@@ -499,7 +504,7 @@ export function CustomConnectionDialog({
                 </div>
               </div>
             ) : null}
-            {server === null ? (
+            {server === null && !service ? (
               <details className="mt-4 border-t border-border pt-3">
                 <summary className="cursor-pointer text-sm text-muted-foreground">
                   <Trans>Advanced</Trans>
@@ -609,7 +614,13 @@ export function CustomConnectionDialog({
                 disabled={busy || !url.trim() || (needsClient && !clientId.trim())}
                 onClick={() => void connectUrl()}
               >
-                {busy ? <Trans>Connecting…</Trans> : <Trans>Connect</Trans>}
+                {busy ? (
+                  <Trans>Connecting…</Trans>
+                ) : service ? (
+                  <Trans>Sign in with {service}</Trans>
+                ) : (
+                  <Trans>Connect</Trans>
+                )}
               </Button>
             </div>
           </div>
