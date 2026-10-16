@@ -160,6 +160,7 @@ import {
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
+  isCartaAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -253,6 +254,7 @@ import {
 } from "./artifacts.js";
 import type { BillingService } from "./billing.js";
 import { botProfileLabelsChanged, commitBotUpdate } from "./bot-update.js";
+import { assignToExistingCartaAgent, ensureCartaAgent } from "./carta-agent.js";
 import {
   executionBlocksUserTakeover,
   resolveBusyBotName,
@@ -1723,7 +1725,11 @@ export function createRouter(deps: RouterDeps) {
       }),
       create: authed.bots.create.handler(async ({ context, input }) => {
         // inbox.agent is the only way to create an Inbox agent; reserve its key prefix.
-        if (isInboxAgentSpawnKey(input.spawnKey) || isFinanceAgentSpawnKey(input.spawnKey)) {
+        if (
+          isInboxAgentSpawnKey(input.spawnKey) ||
+          isFinanceAgentSpawnKey(input.spawnKey) ||
+          isCartaAgentSpawnKey(input.spawnKey)
+        ) {
           throw new ORPCError("BAD_REQUEST", { message: "Reserved spawn key" });
         }
         let bot: Bot;
@@ -4365,6 +4371,8 @@ export function createRouter(deps: RouterDeps) {
               },
             });
           });
+          // An existing Carta agent gets a newly added Carta server, with read tools only.
+          await assignToExistingCartaAgent(deps.prisma, context.actor);
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         update: authed.mcp.servers.update.handler(async ({ context, input }) => {
@@ -4508,7 +4516,10 @@ export function createRouter(deps: RouterDeps) {
                   return updated;
                 }),
             );
-            if (row) return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
+            if (row) {
+              await assignToExistingCartaAgent(deps.prisma, context.actor);
+              return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
+            }
           }
           throw new ORPCError("CONFLICT", { message: "MCP credentials changed; retry" });
         }),
@@ -6190,6 +6201,13 @@ export function createRouter(deps: RouterDeps) {
         });
         return loadAutoReviewSettings(deps, context.actor);
       }),
+    },
+    carta: {
+      agent: authed.carta.agent.handler(({ context }) =>
+        ensureCartaAgent({ prisma: deps.prisma, repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
     },
     finance: {
       agent: authed.finance.agent.handler(({ context }) =>

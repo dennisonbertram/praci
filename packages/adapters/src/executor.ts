@@ -51,6 +51,7 @@ import {
   HistoryReadInputSchema,
   HistorySearchInputSchema,
   isAttachmentImageMimeType,
+  isCartaAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -136,7 +137,7 @@ import {
   formatAgentEnvironmentInstruction,
   redactShellStreams,
 } from "./agent-environment.js";
-import { buildApprovalAskBlock } from "./approval-ask.js";
+import { buildApprovalAskBlock, cartaMailSendIsComplete, isCartaMailSend } from "./approval-ask.js";
 import {
   approvalPausedToolResult,
   approvalReplayPathError,
@@ -3518,7 +3519,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const mailOnly = isInboxAgentSpawnKey(bot.spawnKey);
         // The Finance agent reads synced finance data through finance_* tools, with its Mercury and
         // Brex MCP tools for details. Composio and the other connectors only slow it down.
-        const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey);
+        // The Carta agent likewise uses only MCP tools (Carta) plus the built-in mail, drive and
+        // finance tools.
+        const cartaAgent = isCartaAgentSpawnKey(bot.spawnKey);
+        const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey) || cartaAgent;
         // Connections limited to chosen agents stay out of this run unless the bot was granted access.
         const deniedIds = deniedConnectionIds(storedConnections);
         const composioRows =
@@ -4393,6 +4397,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
               }
             }
           }
+          // The Carta agent sends only whole messages: the approval card shows exactly what goes out,
+          // and a saved draft's recipients and body would not be shown.
+          if (isCartaMailSend(bot.spawnKey, name) && !cartaMailSendIsComplete(args)) {
+            return {
+              error:
+                "Send the full message: pass to, subject and body (and cc and bcc if any), not a draftId, so the user can review every recipient and the whole text.",
+            };
+          }
           const viaConnector = !BUILTIN_AGENT_TOOL_NAMES.has(name);
           // Declared effect of the operation this call dispatches (installed API method and
           // flag). Install config is immutable per route resource, so it cannot drift before
@@ -4410,7 +4422,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             requiresUnattendedApproval ||
             toolRequiresApproval(name, viaConnector, declaredReadOnly);
           const requiresMandatoryApproval =
-            requiresUnattendedApproval || toolRequiresExplicitApproval(name);
+            requiresUnattendedApproval ||
+            toolRequiresExplicitApproval(name) ||
+            // No saved rule or Auto Review may send mail for the Carta agent (investor email).
+            isCartaMailSend(bot.spawnKey, name);
           const connectorKind = connectorKindFromToolName(
             name,
             connectedPlugins.map((plugin) => plugin.provider),
@@ -4681,6 +4696,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               blocks: [
                 buildApprovalAskBlock(applied!.effect.id, name, args, runSecrets, {
                   reviewReason,
+                  fullMail: isCartaMailSend(bot.spawnKey, name),
                 }),
               ],
             });

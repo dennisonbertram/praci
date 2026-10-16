@@ -12,6 +12,7 @@ import {
   FinanceProviderSchema,
   FinanceRecordProviderSchema,
   financeProviderForEndpoint,
+  isCartaAgentSpawnKey,
   isCryptoEndpoint,
   isFinanceAgentSpawnKey,
   RunwayCryptoScopeSchema,
@@ -52,7 +53,7 @@ export function financeToolsAllowed(
   },
 ): boolean {
   return (
-    isFinanceAgentSpawnKey(options.botSpawnKey) &&
+    (isFinanceAgentSpawnKey(options.botSpawnKey) || isCartaAgentSpawnKey(options.botSpawnKey)) &&
     OWNER_INITIATED_TRIGGERS.has(options.trigger) &&
     mailToolsAllowed(options)
   );

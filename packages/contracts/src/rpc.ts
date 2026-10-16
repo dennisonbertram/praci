@@ -1095,6 +1095,9 @@ export const appContract = {
       setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoSchema),
     },
   },
+  carta: {
+    agent: oc.output(BotSchema),
+  },
   finance: {
     agent: oc.output(BotSchema),
     overview: oc.output(FinanceOverviewSchema),
