@@ -6246,6 +6246,10 @@ msgstr ""
 msgid "The Inbox page stops showing new mail until you reconnect."
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "The original message didn't load."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The provider is rate-limiting requests."
 msgstr "Der Anbieter drosselt die Anfragen."
