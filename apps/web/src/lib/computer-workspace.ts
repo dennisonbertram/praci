@@ -4,6 +4,7 @@ import {
   foldComputerCommands,
   type ProductEvent,
 } from "@rakazo/contracts";
+import { formatBytes } from "./format-bytes";
 
 type Listener = (botId: string, command: ComputerCommand) => void;
 
@@ -86,7 +87,8 @@ export function formatComputerCommand(command: ComputerCommand, labels: Computer
       lines.push(`\x1b[2m[exit ${command.exitCode}]\x1b[0m`);
     }
   } else {
-    const size = command.bytes === undefined ? "" : ` \x1b[2m(${formatSize(command.bytes)})\x1b[0m`;
+    const size =
+      command.bytes === undefined ? "" : ` \x1b[2m(${formatBytes(command.bytes)})\x1b[0m`;
     lines.push(
       `\x1b[2m${ACTION_GLYPHS[command.kind]}\x1b[0m ${labels[command.kind](target)}${size}`,
     );
@@ -138,10 +140,4 @@ export function parentPath(path: string) {
 
 export function basename(path: string) {
   return path.slice(path.lastIndexOf("/") + 1);
-}
-
-export function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
