@@ -24,7 +24,6 @@ import {
   actorScope,
   CRYPTO_API_KEY_HEADER,
   CRYPTO_MCP_ENDPOINT,
-  financeAgentSpawnKey,
   isCryptoEndpoint,
 } from "@rakazo/contracts";
 import { exchangeParts, parseWalletInput, summarizeCrypto } from "@rakazo/core";
@@ -32,7 +31,7 @@ import type { Prisma } from "@rakazo/db";
 import { isUniqueViolation } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { FinanceDeps } from "./finance.js";
-import { assignFinanceServers } from "./finance-agent.js";
+import { assignToExistingFinanceAgent } from "./finance-agent.js";
 import { notFound } from "./inbox.js";
 
 const toWallet = (row: Prisma.FinanceWalletGetPayload<object>): FinanceWallet => ({
@@ -357,11 +356,7 @@ export async function financeCryptoConnect(
       data: { enabled: true, revision: { increment: 1 } },
     });
   }
-  const bot = await deps.prisma.bot.findFirst({
-    where: { ...actorScope(actor), spawnKey: financeAgentSpawnKey(actor.userId), archivedAt: null },
-    select: { id: true },
-  });
-  if (bot) await assignFinanceServers(deps.prisma, actor, bot.id);
+  await assignToExistingFinanceAgent(deps.prisma, actor);
   // A new or replaced key should show results right away.
   if (input.apiKey !== undefined) await syncCryptoQuietly(deps, actor);
   return {

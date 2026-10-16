@@ -43,7 +43,6 @@ import {
   actorScope,
   FINANCE_MCP_ENDPOINTS,
   FinanceProviderSchema,
-  financeAgentSpawnKey,
   financeProviderForEndpoint,
   RunwayCryptoScopeSchema,
 } from "@rakazo/contracts";
@@ -73,7 +72,11 @@ import {
 } from "@rakazo/core";
 import type { createRepos, Prisma, PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
-import { assignFinanceServers, ensureFinanceAgent } from "./finance-agent.js";
+import {
+  assignToExistingFinanceAgent,
+  ensureFinanceAgent,
+  financeAgentWhere,
+} from "./finance-agent.js";
 import { loadCryptoSummary, syncCryptoQuietly } from "./finance-crypto.js";
 import {
   exchangesDue,
@@ -313,11 +316,7 @@ export async function financeConnect(
         return raced;
       }));
   // An agent that already exists gets the new server, with read tools only, without waiting for the panel.
-  const bot = await deps.prisma.bot.findFirst({
-    where: { ...actorScope(actor), spawnKey: financeAgentSpawnKey(actor.userId), archivedAt: null },
-    select: { id: true },
-  });
-  if (bot) await assignFinanceServers(deps.prisma, actor, bot.id);
+  await assignToExistingFinanceAgent(deps.prisma, actor);
   // A stored token the vendor refused would otherwise be reused and the sign-in never asked for.
   const state = await deps.prisma.financeSyncState.findFirst({
     where: { mcpServerId: server.id, ...actorScope(actor) },
@@ -419,11 +418,7 @@ export async function financeOverview(
       deps.prisma.financeBill.findMany({ where: actorScope(actor), orderBy: { dueAt: "asc" } }),
       deps.prisma.financeTreasuryYield.findMany({ where: actorScope(actor) }),
       deps.prisma.bot.findFirst({
-        where: {
-          ...actorScope(actor),
-          spawnKey: financeAgentSpawnKey(actor.userId),
-          archivedAt: null,
-        },
+        where: financeAgentWhere(actor),
         select: { id: true, name: true },
       }),
       loadCryptoSummary(deps, actor),
