@@ -66,6 +66,20 @@ it("keeps the triage label in the accessibility tree when the badge is hidden in
   expect(spoken?.textContent).toBe("Newsletter");
 });
 
+it("shows a compact label dot in the narrow pane that names the label", async () => {
+  await show();
+  const dot = document.querySelector("[data-label-dot]");
+  expect(dot?.getAttribute("title")).toBe("Newsletter");
+  expect(dot?.className).toContain("@md:hidden");
+});
+
+it("gives the More trigger a larger touch target on coarse pointers", async () => {
+  await show();
+  expect(document.querySelector('button[aria-label="More"]')?.className).toContain(
+    "pointer-coarse:size-10",
+  );
+});
+
 it("shows the More menu trigger below md as well as on touch, since the inline actions hide there", async () => {
   await show();
   const inline = document.querySelector('button[aria-label="Archive"]')?.parentElement;

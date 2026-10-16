@@ -27,6 +27,14 @@ function formatMailTime(iso: string, today: boolean): string {
       });
 }
 
+/** Narrow panes drop the badge for a dot: warning for Spam/Junk, solid for Needs attention, hollow for Newsletter; Spam is a solid warning dot and Junk a warning ring. */
+const LABEL_DOT = {
+  attention: "bg-foreground/60",
+  newsletter: "border border-muted-foreground",
+  spam: "bg-warning",
+  junk: "border-2 border-warning",
+} as const;
+
 export function InboxGroup({
   title,
   rows,
@@ -141,7 +149,7 @@ export function InboxRow({
           aria-current={selected ? "true" : undefined}
           data-row-id={row.id}
           onClick={onOpen}
-          className={`grid h-14 w-full min-w-0 grid-cols-[8px_72px_minmax(0,1fr)_auto] items-center gap-x-2 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal hover:bg-muted @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-11" : ""} ${muted ? "text-muted-foreground" : ""}`}
+          className={`grid h-14 w-full min-w-0 grid-cols-[8px_72px_minmax(0,1fr)_auto] items-center gap-x-2 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal hover:bg-muted @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
         >
           <span
             aria-hidden="true"
@@ -170,6 +178,14 @@ export function InboxRow({
             dir="auto"
             className={`col-start-3 row-start-1 truncate ${muted ? "text-muted-foreground" : "text-foreground/70"}`}
           >
+            {label ? (
+              <span
+                aria-hidden="true"
+                title={labelNames[label]}
+                data-label-dot={label}
+                className={`me-1.5 inline-block size-2 rounded-full align-middle @md:hidden ${LABEL_DOT[label]}`}
+              />
+            ) : null}
             {row.subject}
             {row.snippet ? <span className="text-muted-foreground"> — {row.snippet}</span> : null}
           </span>
@@ -237,7 +253,7 @@ export function InboxRow({
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    className={`absolute end-3 top-1/2 hidden -translate-y-1/2 bg-muted pointer-coarse:inline-flex @max-md:inline-flex aria-expanded:opacity-100 pointer-coarse:opacity-100 ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
+                    className={`absolute end-3 top-1/2 hidden -translate-y-1/2 bg-muted pointer-coarse:inline-flex pointer-coarse:size-10 @max-md:inline-flex aria-expanded:opacity-100 pointer-coarse:opacity-100 ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
                   />
                 }
                 aria-label={t`More`}
@@ -251,12 +267,13 @@ export function InboxRow({
                     {name}
                   </DropdownMenuItem>
                 ))}
-                {marks.map(({ mark, name }) => (
+                {marks.map(({ mark, name, Icon }) => (
                   <DropdownMenuCheckboxItem
                     key={mark}
                     checked={row.feedback === mark}
                     onCheckedChange={(checked) => onMark?.(row.id, checked ? mark : null)}
                   >
+                    <Icon aria-hidden="true" />
                     {name}
                   </DropdownMenuCheckboxItem>
                 ))}

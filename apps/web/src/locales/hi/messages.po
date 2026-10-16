@@ -3870,6 +3870,14 @@ msgstr ""
 msgid "Marked noise"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Marked read"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked unread"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -4187,6 +4195,10 @@ msgstr ""
 msgid "Needs reply"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Needs sign-in"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "नियंत्रण लेना ज़रूरी"
@@ -4335,6 +4347,10 @@ msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -5453,6 +5469,10 @@ msgstr "चल रहा है · रोकें"
 #: src/pages/RoutineEditor.tsx
 msgid "Running…"
 msgstr "चल रहा है…"
+
+#: src/pages/Shell.tsx
+msgid "Runs on send"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Runs when this bot receives a verified message from this provider."

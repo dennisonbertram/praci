@@ -146,6 +146,31 @@ export function routineScheduleSubtitle(crons: readonly string[], botName?: stri
   return schedule;
 }
 
+/** 0 when the name starts with the query, 1 when a word in it does, 2 when it contains it, null otherwise. */
+export function mentionMatchRank(name: string, query: string): 0 | 1 | 2 | null {
+  const q = query.trim().toLowerCase();
+  if (!q) return 0;
+  const lower = name.toLowerCase();
+  if (lower.startsWith(q)) return 0;
+  if (lower.split(/[\s\-_.]+/).some((word) => word.startsWith(q))) return 1;
+  // A single letter would match most names by substring, so it only matches word starts.
+  return q.length > 1 && lower.includes(q) ? 2 : null;
+}
+
+/** Drops non-matches and puts better matches first. The sort is stable, so ties keep their kind order. */
+export function rankMentionOptions<T extends { name: string }>(
+  options: readonly T[],
+  query: string,
+): T[] {
+  return options
+    .flatMap((option) => {
+      const rank = mentionMatchRank(option.name, query);
+      return rank === null ? [] : [{ option, rank }];
+    })
+    .sort((a, b) => a.rank - b.rank)
+    .map(({ option }) => option);
+}
+
 export function buildComposerMentionOptions(input: {
   query: string;
   bots: readonly MentionPickerBot[];
@@ -157,12 +182,9 @@ export function buildComposerMentionOptions(input: {
   /** When omitted, return every match (catalog build). When set, apply after query filter. */
   limit?: number;
 }): ComposerMention[] {
-  const query = input.query.trim().toLowerCase();
   const options: ComposerMention[] = [];
 
-  const matches = (name: string) => !query || name.toLowerCase().startsWith(query);
-
-  if (input.includeEveryone && matches("everyone")) {
+  if (input.includeEveryone) {
     options.push({
       kind: "everyone",
       id: "everyone",
@@ -173,7 +195,6 @@ export function buildComposerMentionOptions(input: {
   }
 
   for (const bot of input.bots) {
-    if (!matches(bot.name)) continue;
     options.push({
       kind: "bot",
       id: bot.id,
@@ -185,7 +206,6 @@ export function buildComposerMentionOptions(input: {
 
   for (const group of input.groups) {
     if (input.currentGroupId && group.id === input.currentGroupId) continue;
-    if (!matches(group.name)) continue;
     options.push({
       kind: "group",
       id: group.id,
@@ -200,31 +220,29 @@ export function buildComposerMentionOptions(input: {
     routineNameCounts.set(key, (routineNameCounts.get(key) ?? 0) + 1);
   }
   for (const routine of input.routines) {
-    if (!matches(routine.name)) continue;
     const duplicate = (routineNameCounts.get(routine.name.toLowerCase()) ?? 0) > 1;
     options.push({
       kind: "routine",
       id: routine.id,
       name: routine.name,
       botId: routine.botId,
-      subtitle: routineScheduleSubtitle(routine.crons, duplicate ? routine.botName : undefined),
+      subtitle: `Runs on send · ${routineScheduleSubtitle(routine.crons, duplicate ? routine.botName : undefined)}`,
     });
   }
 
   for (const connector of input.connectors) {
-    if (!matches(connector.name)) continue;
     options.push({
       kind: "connector",
       id: connector.id,
       name: connector.name,
       connectionId: connector.connectionId,
       authStatus: connector.authStatus,
-      subtitle: connector.authStatus === "connected" ? "Connected" : "Needs auth",
+      subtitle: connector.authStatus === "connected" ? "Connected" : "Needs sign-in",
     });
   }
 
-  if (input.limit == null) return options;
-  return options.slice(0, input.limit);
+  const ranked = rankMentionOptions(options, input.query);
+  return input.limit == null ? ranked : ranked.slice(0, input.limit);
 }
 
 /**

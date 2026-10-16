@@ -3870,6 +3870,14 @@ msgstr "Marked important"
 msgid "Marked noise"
 msgstr "Marked noise"
 
+#: src/pages/Inbox.tsx
+msgid "Marked read"
+msgstr "Marked read"
+
+#: src/pages/Inbox.tsx
+msgid "Marked unread"
+msgstr "Marked unread"
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -4187,6 +4195,10 @@ msgstr "Needs reconnect"
 msgid "Needs reply"
 msgstr "Needs reply"
 
+#: src/pages/Shell.tsx
+msgid "Needs sign-in"
+msgstr "Needs sign-in"
+
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "Needs takeover"
@@ -4336,6 +4348,10 @@ msgstr "No mail matches this filter"
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
 msgstr "No matches"
+
+#: src/pages/Shell.tsx
+msgid "No matches. Press Escape to send as typed."
+msgstr "No matches. Press Escape to send as typed."
 
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
@@ -5453,6 +5469,10 @@ msgstr "Running · Stop"
 #: src/pages/RoutineEditor.tsx
 msgid "Running…"
 msgstr "Running…"
+
+#: src/pages/Shell.tsx
+msgid "Runs on send"
+msgstr "Runs on send"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Runs when this bot receives a verified message from this provider."
