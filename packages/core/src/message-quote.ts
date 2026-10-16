@@ -1,4 +1,4 @@
-import type { MessageBlock, ReplyPreview } from "@rakazo/contracts";
+import type { FinanceCard, MessageBlock, ReplyPreview } from "@rakazo/contracts";
 import { droppedTableHtmlText, truncateReplyQuote } from "@rakazo/contracts";
 import { toText } from "hast-util-to-text";
 import { toHast } from "mdast-util-to-hast";
@@ -175,7 +175,7 @@ function replyBlockText(block: MessageBlock): string {
     case "emails":
       return block.emails[0]?.subject ?? "";
     case "finance":
-      return "";
+      return financeCardSummary(block.card);
     case "image":
     case "file":
       return block.name || blocksToAgentHistoryText([block]);
@@ -195,4 +195,33 @@ export function messageReplyPreview(
   );
   const text = caption || (attachment?.kind === "file" ? attachment.name : "");
   return { role, botId, text, ...(attachment ? { attachment } : {}) };
+}
+
+const usd = (cents: number, exact = false) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: exact ? 2 : 0,
+  }).format(Math.abs(cents) / 100);
+const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
+const rowList = (rows: string[]) => (rows.length ? ` — ${rows.join("; ")}` : "");
+
+/** One-line plain-text summary of a finance card: title, headline total, then its rows. Labels are untrusted, so this stays text. Display only; never feed it into money math. */
+export function financeCardSummary(card: FinanceCard): string {
+  switch (card.card) {
+    case "overview": {
+      const runway = card.runwayMonths === null ? "–" : `${Math.round(card.runwayMonths)} mo`;
+      return `Finance overview: Cash ${usd(card.cashCents)}; Burn / mo ${usd(card.burnCents)}; Runway ${runway}; Spend this month ${usd(card.monthSpendCents)}`;
+    }
+    case "breakdown": {
+      const title = `${card.by === "vendor" ? "Vendors" : "Categories"} · ${oneLine(card.range)}`;
+      return `${title}: ${usd(card.totalCents)}${rowList(card.rows.map((r) => `${oneLine(r.label)} ${usd(r.cents)}`))}`;
+    }
+    case "transactions": {
+      const amount = (cents: number) => (cents > 0 ? `+${usd(cents, true)}` : usd(cents, true));
+      return `${card.count} transactions: ${amount(card.totalCents)}${rowList(card.rows.map((r) => `${oneLine(r.label)} (${r.day.slice(0, 10)}) ${amount(r.cents)}`))}`;
+    }
+    case "recurring":
+      return `Subscriptions / mo: ${usd(card.monthlyCents)}${rowList(card.rows.map((r) => `${oneLine(r.label)} ${usd(r.cents)}`))}; next 30 days ${usd(card.upcomingCents)}`;
+  }
 }

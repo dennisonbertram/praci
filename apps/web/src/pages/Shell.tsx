@@ -68,6 +68,7 @@ import {
   userVisibleMessages,
   withLiveStreamingProgress,
 } from "@rakazo/core";
+import { financeCardSummary } from "@rakazo/core/message-quote";
 import type { GroupAvatarMember } from "@rakazo/ui-web";
 import {
   AvatarStyleProvider,
@@ -164,7 +165,7 @@ import { VoiceChatCard } from "../components/call/VoiceChatCard";
 import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
-import { FinanceCards } from "../components/FinanceCards";
+import { FinanceCardGroup } from "../components/FinanceCards";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import {
@@ -5517,7 +5518,42 @@ const Transcript = memo(function Transcript({
             {loadingOlder ? t`Loading…` : t`Load earlier messages`}
           </button>
         ) : null}
-        {groupVoiceChats(reactionView.visibleMessages).map((item) => {
+        {foldFinanceRuns(groupVoiceChats(reactionView.visibleMessages), (id) =>
+          reactionView.reactions.has(id),
+        ).map((item) => {
+          if (item.kind === "financeRun") {
+            const first = item.messages[0];
+            if (!first) return null;
+            const speaker = memberName?.(first.botId);
+            return (
+              <div key={first.id} className="relative py-0.5">
+                {separatorIds.has(first.id) ? (
+                  <TimeSeparator createdAt={first.createdAt} locale={i18n.locale || "en"} />
+                ) : null}
+                {speaker ? (
+                  <SpeakerHeader
+                    botId={first.botId}
+                    name={speaker}
+                    color={first.botId ? peerBot?.(first.botId)?.color : undefined}
+                  />
+                ) : null}
+                <FinanceCardGroup
+                  items={item.messages.flatMap((m) =>
+                    m.blocks.flatMap((block, i) =>
+                      block.kind === "finance"
+                        ? [{ id: `${m.id}:${i}`, messageId: m.id, block }]
+                        : [],
+                    ),
+                  )}
+                  revealMessageId={scrollRequest?.messageId}
+                  onAsk={(messageId) => {
+                    const message = item.messages.find((m) => m.id === messageId);
+                    if (message) onReply(message);
+                  }}
+                />
+              </div>
+            );
+          }
           if (item.kind === "voiceChat") {
             return (
               <div key={item.key}>
@@ -5594,6 +5630,7 @@ const Transcript = memo(function Transcript({
                       speaking={speakingMessageId === message.id}
                       onSpeak={() => onSpeak(message)}
                       onOpenComputer={onOpenComputer}
+                      onReply={onReply}
                       showToolActivity={showToolActivity}
                     />
                     {peerReceipt ? null : (
@@ -6714,6 +6751,7 @@ function previewMessageText(message: ThreadMessage): string {
   const text = message.blocks
     .map((block) => {
       if (block.kind === "channel_message") return block.text;
+      if (block.kind === "finance") return financeCardSummary(block.card);
       if (block.kind === "text") {
         // Bot text is Markdown; user text is already plain.
         return message.role === "bot" ? plainTextFromMarkdown(block.text) : block.text;
@@ -6924,6 +6962,70 @@ function ComputerReleaseActions({
   );
 }
 
+type TranscriptItem = ReturnType<typeof groupVoiceChats<ThreadMessage>>[number];
+type FinanceRun = { kind: "financeRun"; messages: ThreadMessage[] };
+
+const isFinanceOnly = (message: ThreadMessage) =>
+  message.role === "bot" &&
+  message.blocks.length > 0 &&
+  message.blocks.every((block) => block.kind === "finance");
+
+/** Each finance tool call is its own bot message; fold 2+ consecutive ones from the same bot so they tile as one group. A lone one stays a normal message. */
+function foldFinanceRuns(
+  items: TranscriptItem[],
+  hasReactions: (messageId: string) => boolean = () => false,
+): (TranscriptItem | FinanceRun)[] {
+  const out: (TranscriptItem | FinanceRun)[] = [];
+  let run: TranscriptItem[] = [];
+  const flush = () => {
+    if (run.length >= 2) {
+      out.push({
+        kind: "financeRun",
+        messages: run.flatMap((i) => (i.kind === "message" ? [i.message] : [])),
+      });
+    } else out.push(...run);
+    run = [];
+  };
+  for (const item of items) {
+    if (item.kind === "message" && isFinanceOnly(item.message) && !hasReactions(item.message.id)) {
+      const prev = run[0];
+      if (prev?.kind === "message" && prev.message.botId !== item.message.botId) flush();
+      run.push(item);
+    } else {
+      flush();
+      out.push(item);
+    }
+  }
+  flush();
+  return out;
+}
+
+/** Group-chat speaker line: bot avatar and name, with optional trailing content. */
+function SpeakerHeader({
+  botId,
+  name,
+  color,
+  children,
+}: {
+  botId?: string;
+  name: string;
+  color?: string;
+  children?: ReactNode;
+}) {
+  const colorDef = resolvePersonaColorDef(botId ?? "bot", color);
+  return (
+    <div
+      className="mb-1.5 flex items-center gap-2 text-[13px] font-semibold tracking-tight"
+      dir="auto"
+      style={{ color: colorDef.light }}
+    >
+      <BotAvatar color={color ?? DEFAULT_BOT_COLOR} identity={botId} size={22} />
+      <span className="min-w-0 truncate">{name}</span>
+      {children}
+    </div>
+  );
+}
+
 const MessageView = memo(function MessageView({
   artifactTarget,
   canAnswer,
@@ -6943,6 +7045,7 @@ const MessageView = memo(function MessageView({
   speaking,
   onSpeak,
   onOpenComputer,
+  onReply,
   showToolActivity,
 }: {
   artifactTarget: ArtifactTarget;
@@ -6968,6 +7071,7 @@ const MessageView = memo(function MessageView({
   speaking: boolean;
   onSpeak: () => void;
   onOpenComputer: (botId?: string) => void;
+  onReply: (message: ThreadMessage) => void;
   showToolActivity: boolean;
 }) {
   const { t } = useLingui();
@@ -6984,24 +7088,10 @@ const MessageView = memo(function MessageView({
 
   const replyBotId = message.replyPreview?.botId ?? replyParent?.botId;
   const speakerBot = message.botId ? peerBot?.(message.botId) : undefined;
-  const speakerColorDef = useMemo(
-    () => resolvePersonaColorDef(message.botId ?? "bot", speakerBot?.color),
-    [message.botId, speakerBot?.color],
-  );
   const messageContext = (
     <>
       {speakerName ? (
-        <div
-          className="mb-1.5 flex items-center gap-2 text-[13px] font-semibold tracking-tight"
-          dir="auto"
-          style={{ color: speakerColorDef.light }}
-        >
-          <BotAvatar
-            color={speakerBot?.color ?? DEFAULT_BOT_COLOR}
-            identity={message.botId}
-            size={22}
-          />
-          <span className="min-w-0 truncate">{speakerName}</span>
+        <SpeakerHeader botId={message.botId} name={speakerName} color={speakerBot?.color}>
           {isLive ? null : (
             <time
               dateTime={message.createdAt}
@@ -7011,7 +7101,7 @@ const MessageView = memo(function MessageView({
               {formatMessageTime(message.createdAt, i18n.locale || "en")}
             </time>
           )}
-        </div>
+        </SpeakerHeader>
       ) : null}
       <ReplyLine
         target={artifactTarget}
@@ -7427,7 +7517,10 @@ const MessageView = memo(function MessageView({
         if (block.kind === "finance") {
           return (
             <div key={i} className="flex justify-start">
-              <FinanceCards block={block} />
+              <FinanceCardGroup
+                items={[{ id: `${message.id}:${i}`, messageId: message.id, block }]}
+                onAsk={() => onReply(message)}
+              />
             </div>
           );
         }

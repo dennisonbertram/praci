@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 153 of 153
-- Web and shared components: 442
+- Web and shared components: 444
 - Mobile components: 124 in 82 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -70,7 +70,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | DesktopUpdatesProvider, DesktopUpdateSection | [apps/web/src/components/DesktopUpdates.tsx](../../apps/web/src/components/DesktopUpdates.tsx) | [DesktopUpdates.stories.tsx](../../apps/web/src/components/DesktopUpdates.stories.tsx) | web |
 | EmailCards | [apps/web/src/components/EmailCards.tsx](../../apps/web/src/components/EmailCards.tsx) | [EmailCards.stories.tsx](../../apps/web/src/components/EmailCards.stories.tsx) | web |
 | SectionLoadFailed | [apps/web/src/components/ErrorBoundary.tsx](../../apps/web/src/components/ErrorBoundary.tsx) | [ErrorBoundary.stories.tsx](../../apps/web/src/components/ErrorBoundary.stories.tsx) | web |
-| FinanceCards, Header, Preview | [apps/web/src/components/FinanceCards.tsx](../../apps/web/src/components/FinanceCards.tsx) | [FinanceCards.stories.tsx](../../apps/web/src/components/FinanceCards.stories.tsx) | web |
+| FinanceCards, FinanceCardGroup, Header, Preview | [apps/web/src/components/FinanceCards.tsx](../../apps/web/src/components/FinanceCards.tsx) | [FinanceCards.stories.tsx](../../apps/web/src/components/FinanceCards.stories.tsx) | web |
 | I18nBootstrap | [apps/web/src/components/I18nBootstrap.tsx](../../apps/web/src/components/I18nBootstrap.tsx) | [I18nBootstrap.stories.tsx](../../apps/web/src/components/I18nBootstrap.stories.tsx) | web |
 | Row, MailApprovalCard | [apps/web/src/components/MailApprovalCard.tsx](../../apps/web/src/components/MailApprovalCard.tsx) | [MailApprovalCard.stories.tsx](../../apps/web/src/components/MailApprovalCard.stories.tsx) | web |
 | MailOutbox | [apps/web/src/components/MailOutbox.tsx](../../apps/web/src/components/MailOutbox.tsx) | [MailOutbox.stories.tsx](../../apps/web/src/components/MailOutbox.stories.tsx) | web |
@@ -207,7 +207,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | RoutineSchedule | [apps/web/src/pages/RoutineSchedule.tsx](../../apps/web/src/pages/RoutineSchedule.tsx) | [RoutineSchedule.stories.tsx](../../apps/web/src/pages/RoutineSchedule.stories.tsx) | web |
 | ScratchpadSection | [apps/web/src/pages/ScratchpadSection.tsx](../../apps/web/src/pages/ScratchpadSection.tsx) | [ScratchpadSection.stories.tsx](../../apps/web/src/pages/ScratchpadSection.stories.tsx) | web |
 | SettingsOverlay | [apps/web/src/pages/SettingsOverlay.tsx](../../apps/web/src/pages/SettingsOverlay.tsx) | [SettingsOverlay.stories.tsx](../../apps/web/src/pages/SettingsOverlay.stories.tsx) | web |
-| SidebarPageLink, ShellPage, Transcript, QuoteSelectionButton, Composer, MessageHoverActions, ComputerReleaseActions, MessageView, DesktopKindEmptyState | [apps/web/src/pages/Shell.tsx](../../apps/web/src/pages/Shell.tsx) | [Shell.stories.tsx](../../apps/web/src/pages/Shell.stories.tsx) | web |
+| SidebarPageLink, ShellPage, Transcript, QuoteSelectionButton, Composer, MessageHoverActions, ComputerReleaseActions, SpeakerHeader, MessageView, DesktopKindEmptyState | [apps/web/src/pages/Shell.tsx](../../apps/web/src/pages/Shell.tsx) | [Shell.stories.tsx](../../apps/web/src/pages/Shell.stories.tsx) | web |
 | AvatarStudioPopover | [apps/web/src/pages/shell/avatar-studio-popover.tsx](../../apps/web/src/pages/shell/avatar-studio-popover.tsx) | [avatar-studio-popover.stories.tsx](../../apps/web/src/pages/shell/avatar-studio-popover.stories.tsx) | web |
 | BotCredentialsSection | [apps/web/src/pages/shell/bot-credentials.tsx](../../apps/web/src/pages/shell/bot-credentials.tsx) | [bot-credentials.stories.tsx](../../apps/web/src/pages/shell/bot-credentials.stories.tsx) | web |
 | ChartView, BotPagePanel | [apps/web/src/pages/shell/bot-page-panel.tsx](../../apps/web/src/pages/shell/bot-page-panel.tsx) | [bot-page-panel.stories.tsx](../../apps/web/src/pages/shell/bot-page-panel.stories.tsx) | web |
