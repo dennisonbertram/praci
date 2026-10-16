@@ -9,6 +9,10 @@ import {
 } from "./network-address.js";
 
 describe("network address classification", () => {
+  it.each(["169.254.170.2", "::ffff:169.254.170.2"])("classifies ECS metadata %s", (address) => {
+    expect(isCloudMetadataAddress(address)).toBe(true);
+  });
+
   it.each([
     "169.254.1.1",
     "fe80::1",

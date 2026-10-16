@@ -159,17 +159,22 @@ export function isPrivateNetworkHost(hostname: string): boolean {
   return false;
 }
 
+/** The single list of cloud metadata addresses and names. Adapters import it. */
+export const CLOUD_METADATA_IPV4: readonly string[] = [
+  "169.254.169.254", // AWS/GCP/Azure IMDS
+  "169.254.170.2", // AWS ECS task credentials
+  "100.100.100.200", // Alibaba
+];
+export const CLOUD_METADATA_HOSTNAMES: ReadonlySet<string> = new Set([
+  "metadata.google.internal",
+  "metadata.goog",
+]);
+
 /** Provider metadata endpoints that must never become credential targets,
  * even though they sit inside otherwise-private ranges (CGNAT / link-local). */
 export function isCloudMetadataHost(hostname: string): boolean {
   const host = hostname.replace(/^\[|\]$/g, "").toLowerCase();
-  return (
-    host === "169.254.169.254" ||
-    host === "169.254.170.2" ||
-    host === "100.100.100.200" ||
-    host === "metadata.google.internal" ||
-    host === "metadata.goog"
-  );
+  return CLOUD_METADATA_IPV4.includes(host) || CLOUD_METADATA_HOSTNAMES.has(host);
 }
 
 function botSecretOriginSchema(allowPrivateHttpOrigin: boolean) {

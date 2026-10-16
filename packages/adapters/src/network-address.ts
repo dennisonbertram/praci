@@ -3,6 +3,7 @@ import dns from "node:dns";
 import { lookup } from "node:dns/promises";
 import type { LookupFunction } from "node:net";
 import { isIP } from "node:net";
+import { CLOUD_METADATA_IPV4 as CLOUD_METADATA_IPV4_LIST } from "@rakazo/contracts";
 
 export type ResolvedAddress = { address: string; family: number };
 export type ResolveHostname = (hostname: string) => Promise<ResolvedAddress[]>;
@@ -15,10 +16,7 @@ type PinnedDns = { hostname: string; addresses: ResolvedAddress[] };
 const pinnedDns = new AsyncLocalStorage<PinnedDns>();
 let dnsPinInstalled = false;
 
-const CLOUD_METADATA_IPV4 = new Set([
-  ipv4ToNumber("169.254.169.254"),
-  ipv4ToNumber("100.100.100.200"),
-]);
+const CLOUD_METADATA_IPV4 = new Set(CLOUD_METADATA_IPV4_LIST.map(ipv4ToNumber));
 const AWS_IMDS_IPV6 = 0xfd000ec2000000000000000000000254n;
 /** fd7a:115c:a1e0::/48 — the Tailscale IPv6 range. */
 const TAILSCALE_ULA_PREFIX = 0xfd7a115ca1e0n;
@@ -196,6 +194,29 @@ export function isCloudMetadataAddress(address: string): boolean {
   if (ipv6 === AWS_IMDS_IPV6) return true;
   const embeddedIpv4 = getEmbeddedIpv4Number(ipv6);
   return embeddedIpv4 !== undefined && isCloudMetadataIpv4Number(embeddedIpv4);
+}
+
+/** Hostname as URL.hostname yields it, minus IPv6 brackets and any trailing dot. */
+export function normalizeUrlHostname(url: URL): string {
+  return url.hostname
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "")
+    .toLowerCase();
+}
+
+/** Owner-gated private-LAN guard shared by Serenity and Supermemory: the
+ * resolved set must be non-empty, private, and free of metadata or link-local. */
+export function assertPrivateLanAddresses(
+  addresses: ResolvedAddress[],
+  messages: { empty?: string; blocked: string; notPrivate: string },
+): void {
+  if (addresses.length === 0 && messages.empty) throw new Error(messages.empty);
+  if (addresses.some((e) => isCloudMetadataAddress(e.address) || isLinkLocalAddress(e.address))) {
+    throw new Error(messages.blocked);
+  }
+  if (addresses.length === 0 || addresses.some((e) => !isPrivateAddress(e.address))) {
+    throw new Error(messages.notPrivate);
+  }
 }
 
 /** Tailscale gives every node a CGNAT 100.64.0.0/10 address and an

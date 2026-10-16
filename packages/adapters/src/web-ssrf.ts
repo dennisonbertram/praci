@@ -1,4 +1,5 @@
 import { isIP } from "node:net";
+import { CLOUD_METADATA_HOSTNAMES } from "@rakazo/contracts";
 import { readBoundedResponseBytes } from "@rakazo/core";
 import { Agent } from "undici";
 import { combineSignals } from "./connector-safety.js";
@@ -80,8 +81,7 @@ export function isBlockedHostname(hostname: string): boolean {
     normalized.endsWith(".localhost") ||
     normalized.endsWith(".local") ||
     normalized.endsWith(".internal") ||
-    normalized === "metadata.google.internal" ||
-    normalized === "metadata.goog"
+    CLOUD_METADATA_HOSTNAMES.has(normalized)
   ) {
     return true;
   }

@@ -7,8 +7,10 @@ import { combineSignals } from "./connector-safety.js";
 import {
   createAddressCheckedLookup,
   defaultResolveHostname,
+  assertPrivateLanAddresses as assertPrivateLanAddressesShared,
   isCloudMetadataAddress,
   isPrivateAddress,
+  normalizeUrlHostname as hostnameOf,
   type ResolvedAddress,
   type ResolveHostname,
 } from "./network-address.js";
@@ -91,10 +93,6 @@ function normalizeSerenityEndpointUrl(endpoint: string): URL {
   const path = url.pathname.replace(/\/+$/, "") || "";
   url.pathname = path.endsWith("/mcp") ? path : `${path}/mcp`;
   return url;
-}
-
-function hostnameOf(url: URL): string {
-  return url.hostname.replace(/^\[|\]$/g, "");
 }
 
 /** Loopback, RFC1918/ULA literals, or HTTP need deployment-owner authorization. */
@@ -240,15 +238,11 @@ function serenityFetchPath(
 }
 
 function assertPrivateLanAddresses(addresses: ResolvedAddress[]): void {
-  if (addresses.length === 0) {
-    throw new Error("Serenity endpoint did not resolve to an address.");
-  }
-  if (addresses.some((entry) => isCloudMetadataAddress(entry.address))) {
-    throw new Error("Serenity endpoint targets a blocked address.");
-  }
-  if (addresses.some((entry) => !isPrivateAddress(entry.address))) {
-    throw new Error("Serenity endpoint no longer resolves to a private address.");
-  }
+  assertPrivateLanAddressesShared(addresses, {
+    empty: "Serenity endpoint did not resolve to an address.",
+    blocked: "Serenity endpoint targets a blocked address.",
+    notPrivate: "Serenity endpoint no longer resolves to a private address.",
+  });
 }
 
 /**

@@ -157,6 +157,30 @@ describe("serenity SSRF fetch path", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it.each(["169.254.170.2", "169.254.169.254", "100.100.100.200"])(
+    "rejects private-trust hostnames that resolve to metadata address %s",
+    async (address) => {
+      const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+      const result = await probeSerenity(
+        { endpoint: "https://serenity.example.test/mcp", token: TOKEN, endpointTrust: "private" },
+        undefined,
+        { fetch: fetchMock, resolveHostname: async () => [{ address, family: 4 as const }] },
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toMatch(/blocked address/i);
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects a metadata literal endpoint", async () => {
+    const result = await probeSerenity(
+      { endpoint: "https://169.254.170.2/mcp", token: TOKEN, endpointTrust: "private" },
+      undefined,
+      { fetch: vi.fn(), resolveHostname: async () => [] },
+    );
+    expect(result.ok).toBe(false);
+  });
+
   it("pins private-trust HTTPS to the first DNS answer within a request", async () => {
     let resolveCalls = 0;
     const fetchMock = vi.fn(async () => {
