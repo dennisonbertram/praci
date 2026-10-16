@@ -7,7 +7,14 @@ import {
   dataRoomStepJob,
 } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
-import { modelAcceptsImageInput } from "@rakazo/adapters";
+import {
+  DriveFileError,
+  type DriveFilesDeps,
+  downloadDriveFile,
+  listDriveAccounts,
+  listDriveFiles,
+  modelAcceptsImageInput,
+} from "@rakazo/adapters";
 import type {
   Actor,
   DataRoomApiFolder,
@@ -46,6 +53,8 @@ export interface DataRoomDeps {
   resolveAi?: (scope: { userId: string; spaceId: string }) => Promise<DataRoomAi>;
   /** Needed only to import mail attachments. */
   mail?: MailProvider;
+  /** Needed only to import from Google Drive. */
+  connectors?: DriveFilesDeps["connectors"];
   /** Injectable so tests can use a small cap. */
   maxUploadBytes?: number;
   /** How long the blob cleanup waits, so a failed row delete can be seen first. Tests shorten it. */
@@ -95,14 +104,14 @@ export async function dataRoomCall<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-function blobContext(actor: Actor, operation: string) {
+function blobContext(actor: Actor, operation: string, signal?: AbortSignal) {
   const operationId = `${operation}:${randomUUID()}`;
   return {
     operationId,
     traceId: operationId,
     spaceId: actor.spaceId,
     userId: actor.userId,
-    signal: new AbortController().signal,
+    signal: signal ?? new AbortController().signal,
   };
 }
 
@@ -120,13 +129,42 @@ const toFilters = (input: {
   };
 };
 
+const DRIVE_ERRORS = {
+  not_connected: "PRECONDITION_FAILED",
+  reconnect: "PRECONDITION_FAILED",
+  not_found: "NOT_FOUND",
+  unsupported: "BAD_REQUEST",
+  too_large: "PAYLOAD_TOO_LARGE",
+  rate_limited: "TOO_MANY_REQUESTS",
+  failed: "INTERNAL_SERVER_ERROR",
+} as const;
+
+/** Runs a Drive call as the caller's first connected Drive account, with failures as API errors. */
+async function withDrive<T>(
+  deps: DataRoomDeps,
+  actor: Actor,
+  run: (drive: DriveFilesDeps, connectionId: string) => Promise<T>,
+): Promise<T> {
+  const connectors = deps.connectors;
+  if (!connectors) throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Drive is unavailable" });
+  try {
+    const [account] = await listDriveAccounts(deps.prisma, actor);
+    if (!account) throw new DriveFileError("not_connected", "No connected Google Drive account");
+    return await run({ prisma: deps.prisma, connectors }, account.id);
+  } catch (error) {
+    if (error instanceof DriveFileError)
+      throw new ORPCError(DRIVE_ERRORS[error.code], { message: error.message });
+    throw error;
+  }
+}
+
 export interface FileDataRoomInput {
   bytes: Uint8Array;
   sha256: string;
   name: string;
   mimeType: string;
   folderId: string | null;
-  source: "upload" | "gmail";
+  source: "upload" | "gmail" | "drive";
   sourceConnectionId?: string;
   externalId?: string;
   sourceUrl?: string;
@@ -445,6 +483,83 @@ export function createDataRoomService(deps: DataRoomDeps) {
         }
       }
       return { imported, duplicates, failed };
+    },
+
+    driveList: (
+      actor: Actor,
+      input: { query?: string; folderId?: string; pageToken?: string },
+      signal?: AbortSignal,
+    ) =>
+      withDrive(deps, actor, (drive, connectionId) =>
+        listDriveFiles(drive, blobContext(actor, "data-room.drive", signal), {
+          ...input,
+          connectionId,
+        }),
+      ),
+
+    /** Copies files of the caller's own Drive into the Data room; a Drive file id names a repeat. */
+    importDrive: async (
+      actor: Actor,
+      input: { fileIds: string[]; folderId?: string | null },
+      signal?: AbortSignal,
+    ) => {
+      const folderId = input.folderId ?? null;
+      if (folderId) {
+        const folder = await deps.prisma.dataRoomFolder.findFirst({
+          where: { id: folderId, spaceId: actor.spaceId, userId: actor.userId },
+          select: { id: true },
+        });
+        if (!folder) throw new ORPCError("NOT_FOUND");
+      }
+      return withDrive(deps, actor, async (drive, sourceConnectionId) => {
+        const context = blobContext(actor, "data-room.drive", signal);
+        let imported = 0;
+        let duplicates = 0;
+        let failed = 0;
+        for (const externalId of new Set(input.fileIds)) {
+          const known = await deps.prisma.dataRoomItem.findFirst({
+            where: { spaceId: actor.spaceId, userId: actor.userId, sourceConnectionId, externalId },
+          });
+          if (known) {
+            await requeueStuck(actor, known);
+            duplicates += 1;
+            continue;
+          }
+          // One bad file does not stop the rest; an account or rate problem would fail them all.
+          const file = await downloadDriveFile(drive, context, externalId, {
+            connectionId: sourceConnectionId,
+            maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
+          }).catch((error: unknown) => {
+            if (
+              error instanceof DriveFileError &&
+              ["not_found", "unsupported", "too_large", "failed"].includes(error.code)
+            )
+              return null;
+            throw error;
+          });
+          if (!file) {
+            failed += 1;
+            continue;
+          }
+          const mimeType = file.mimeType.toLowerCase();
+          const modified = new Date(file.modifiedTime);
+          const { created } = await fileItem(actor, {
+            source: "drive",
+            sha256: createHash("sha256").update(file.bytes).digest("hex"),
+            name: file.name.replace(PATH_OR_CONTROL, "_").trim().slice(0, 255) || "file",
+            mimeType: MIME.test(mimeType) ? mimeType : "application/octet-stream",
+            bytes: file.bytes,
+            folderId,
+            sourceConnectionId,
+            externalId,
+            ...(file.webViewLink ? { sourceUrl: file.webViewLink } : {}),
+            ...(Number.isNaN(modified.getTime()) ? {} : { sourceUpdatedAt: modified }),
+          });
+          if (created) imported += 1;
+          else duplicates += 1;
+        }
+        return { imported, duplicates, failed };
+      });
     },
 
     search: (

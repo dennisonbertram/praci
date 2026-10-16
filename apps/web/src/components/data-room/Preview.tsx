@@ -126,6 +126,15 @@ export function Preview({
             ) : (
               t`From email`
             )
+          ) : item.source === "drive" && item.sourceUrl?.startsWith("https://") ? (
+            <a
+              href={item.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline-offset-2 hover:underline"
+            >
+              {t`From Google Drive`}
+            </a>
           ) : (
             sourceLabel(item.source)
           )}

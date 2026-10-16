@@ -1,4 +1,4 @@
-import { plural, t } from "@lingui/core/macro";
+import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { InboxListOutput, InboxMessage, MailRow } from "@rakazo/contracts";
 import {
@@ -17,7 +17,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { syncErrorText } from "../../lib/inbox-sync-error";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
-import { sizeText } from "./format";
+import { failedText, importedText, sizeText } from "./format";
+import { DriveImportButton } from "./ImportFromDrive";
 
 const SEARCH_DEBOUNCE_MS = 300;
 /** The most attachments one import call accepts. */
@@ -180,18 +181,12 @@ function EmailPicker({
         picks: [...picks.values()],
         folderId,
       });
-      const done =
-        imported === 0 && duplicates > 0 && failed === 0
-          ? t`Already in the Data room`
-          : imported > 0
-            ? plural(imported, { one: "Imported # file", other: "Imported # files" })
-            : "";
-      const failure = failed
-        ? plural(failed, { one: "Couldn't import # file", other: "Couldn't import # files" })
-        : "";
-      onDone(done, imported > 0 || duplicates > 0);
+      onDone(
+        imported > 0 || (duplicates > 0 && failed === 0) ? importedText(imported, duplicates) : "",
+        imported > 0 || duplicates > 0,
+      );
       if (failed === 0) onClose();
-      else setError(failure);
+      else setError(failedText(failed));
     } catch (cause) {
       setError(errorText(cause));
     } finally {
@@ -266,6 +261,14 @@ function EmailPicker({
   );
 }
 
+const isConnected = (
+  rows: { connectorId: string; provider: string; status: string }[],
+  app: string,
+) =>
+  rows.some(
+    (row) => row.connectorId === "google" && row.provider === app && row.status === "connected",
+  );
+
 /**
  * One button per import source. Add another source by adding a button here. With no Gmail account
  * connected the email button leads to the connection page instead.
@@ -280,7 +283,7 @@ export function ImportSources({
   compact?: boolean;
 }) {
   const navigate = useNavigate();
-  const [connected, setConnected] = useState<boolean | null>(null);
+  const [connected, setConnected] = useState<{ gmail: boolean; drive: boolean } | null>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
     let current = true;
@@ -289,26 +292,27 @@ export function ImportSources({
       .then(
         (rows) =>
           current &&
-          setConnected(
-            rows.some(
+          setConnected({
+            gmail: rows.some(
               (row) => row.status === "connected" && row.provider.trim().toLowerCase() === "gmail",
             ),
-          ),
+            drive: isConnected(rows, "googledrive"),
+          }),
       )
-      .catch(() => current && setConnected(false));
+      .catch(() => current && setConnected({ gmail: false, drive: false }));
     return () => {
       current = false;
     };
   }, []);
   if (connected === null) return null;
-  const label = connected ? t`Import from email` : t`Connect Gmail`;
+  const label = connected.gmail ? t`Import from email` : t`Connect Gmail`;
   return (
     <>
       <Button
         variant="outline"
         size={compact ? "icon" : "default"}
         aria-label={compact ? label : undefined}
-        onClick={() => (connected ? setOpen(true) : navigate(GMAIL_PAGE))}
+        onClick={() => (connected.gmail ? setOpen(true) : navigate(GMAIL_PAGE))}
       >
         <Mail aria-hidden="true" />
         {compact ? null : label}
@@ -316,6 +320,12 @@ export function ImportSources({
       {open ? (
         <EmailPicker folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
       ) : null}
+      <DriveImportButton
+        connected={connected.drive}
+        compact={compact}
+        folderId={folderId}
+        onDone={onDone}
+      />
     </>
   );
 }

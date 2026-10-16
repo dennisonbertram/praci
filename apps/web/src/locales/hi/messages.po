@@ -214,7 +214,7 @@ msgstr ""
 msgid "{days}d ago"
 msgstr "{days} दिन पहले"
 
-#: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/format.ts
 msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
 msgstr ""
 
@@ -230,7 +230,7 @@ msgstr ""
 msgid "{hours}h ago"
 msgstr "{hours} घंटे पहले"
 
-#: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/format.ts
 msgid "{imported, plural, one {Imported # file} other {Imported # files}}"
 msgstr ""
 
@@ -682,7 +682,7 @@ msgstr "एक बार अनुमति दी गई"
 msgid "Already have an account?"
 msgstr "पहले से खाता है?"
 
-#: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/format.ts
 msgid "Already in the Data room"
 msgstr ""
 
@@ -965,6 +965,7 @@ msgid "Avatars"
 msgstr ""
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
@@ -1716,6 +1717,10 @@ msgstr "Executor कनेक्ट करें"
 
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Connect Gmail"
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Connect Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3209,6 +3214,10 @@ msgstr ""
 msgid "From email"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "From Google Drive"
+msgstr ""
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "फ़ुलस्क्रीन"
@@ -3386,6 +3395,7 @@ msgstr ""
 msgid "Image upload area"
 msgstr "छवि अपलोड क्षेत्र"
 
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Import"
 msgstr ""
@@ -3396,6 +3406,10 @@ msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Import from email"
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Import from Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3627,6 +3641,7 @@ msgstr ""
 msgid "Load earlier messages"
 msgstr "पुराने संदेश लोड करें"
 
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
@@ -4231,6 +4246,7 @@ msgstr ""
 msgid "No credentials saved for this bot."
 msgstr ""
 
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "No files found"
 msgstr ""
@@ -5488,6 +5504,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Search documents"
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Search Drive"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx

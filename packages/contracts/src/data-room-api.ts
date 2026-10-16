@@ -141,3 +141,31 @@ export const DataRoomApiImportEmailOutputSchema = z.object({
   /** Files that could not be fetched or stored; the rest of the picks are still filed. */
   failed: z.number().int(),
 });
+
+/** The caller's Google Drive for the import picker: a text search, or the children of a folder. */
+export const DataRoomApiDriveListInputSchema = z.object({
+  query: z.string().max(200).optional(),
+  folderId: z.string().min(1).max(200).optional(),
+  pageToken: z.string().min(1).max(2000).optional(),
+});
+export const DataRoomApiDriveFileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  mimeType: z.string(),
+  size: z.number().optional(),
+  isFolder: z.boolean(),
+});
+export type DataRoomApiDriveFile = z.infer<typeof DataRoomApiDriveFileSchema>;
+export const DataRoomApiDriveListOutputSchema = z.object({
+  files: z.array(DataRoomApiDriveFileSchema),
+  nextPageToken: z.string().optional(),
+});
+export const DataRoomApiImportDriveInputSchema = z.object({
+  fileIds: z.array(z.string().min(1).max(200)).min(1).max(20),
+  folderId: NullableId.optional(),
+});
+export const DataRoomApiImportDriveOutputSchema = z.object({
+  imported: z.number().int(),
+  duplicates: z.number().int(),
+  failed: z.number().int(),
+});

@@ -214,7 +214,7 @@ msgstr "{count} years"
 msgid "{days}d ago"
 msgstr "{days}d ago"
 
-#: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/format.ts
 msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
 msgstr "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
 
@@ -230,7 +230,7 @@ msgstr "{hiddenCount} more"
 msgid "{hours}h ago"
 msgstr "{hours}h ago"
 
-#: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/format.ts
 msgid "{imported, plural, one {Imported # file} other {Imported # files}}"
 msgstr "{imported, plural, one {Imported # file} other {Imported # files}}"
 
@@ -682,7 +682,7 @@ msgstr "Allowed once"
 msgid "Already have an account?"
 msgstr "Already have an account?"
 
-#: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/format.ts
 msgid "Already in the Data room"
 msgstr "Already in the Data room"
 
@@ -965,6 +965,7 @@ msgid "Avatars"
 msgstr "Avatars"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
@@ -1717,6 +1718,10 @@ msgstr "Connect Executor"
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Connect Gmail"
 msgstr "Connect Gmail"
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Connect Google Drive"
+msgstr "Connect Google Drive"
 
 #: src/pages/Inbox.tsx
 msgid "Connect mail"
@@ -3209,6 +3214,10 @@ msgstr "From {0}"
 msgid "From email"
 msgstr "From email"
 
+#: src/components/data-room/Preview.tsx
+msgid "From Google Drive"
+msgstr "From Google Drive"
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "Fullscreen"
@@ -3386,6 +3395,7 @@ msgstr "Ignore"
 msgid "Image upload area"
 msgstr "Image upload area"
 
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Import"
 msgstr "Import"
@@ -3397,6 +3407,10 @@ msgstr "Import an OpenAPI description"
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Import from email"
 msgstr "Import from email"
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Import from Google Drive"
+msgstr "Import from Google Drive"
 
 #: src/pages/Inbox.tsx
 msgid "Important"
@@ -3627,6 +3641,7 @@ msgstr "Live data, enrichment and generation tools"
 msgid "Load earlier messages"
 msgstr "Load earlier messages"
 
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
@@ -4231,6 +4246,7 @@ msgstr "No chat apps linked yet."
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
 
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "No files found"
 msgstr "No files found"
@@ -5489,6 +5505,10 @@ msgstr "Search directory"
 #: src/components/data-room/FilterBar.tsx
 msgid "Search documents"
 msgstr "Search documents"
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Search Drive"
+msgstr "Search Drive"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Search integrations.sh"

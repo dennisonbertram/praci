@@ -927,6 +927,7 @@ export function createRouter(deps: RouterDeps) {
     artifacts: deps.artifacts,
     jobs: deps.jobs,
     mail: deps.mail,
+    connectors: deps.connectors,
     resolveAi: (scope) =>
       resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.resolveModel }, scope),
   });
@@ -6240,6 +6241,12 @@ export function createRouter(deps: RouterDeps) {
       ),
       importEmail: authed.dataRoom.importEmail.handler(({ context, input }) =>
         dataRoom.importEmail(context.actor, input, context.signal),
+      ),
+      driveList: authed.dataRoom.driveList.handler(({ context, input }) =>
+        dataRoom.driveList(context.actor, input, context.signal),
+      ),
+      importDrive: authed.dataRoom.importDrive.handler(({ context, input }) =>
+        dataRoom.importDrive(context.actor, input, context.signal),
       ),
       search: authed.dataRoom.search.handler(({ context, input }) =>
         dataRoom.search(context.actor, input),

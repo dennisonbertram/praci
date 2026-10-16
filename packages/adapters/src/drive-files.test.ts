@@ -137,6 +137,29 @@ describe("downloadDriveFile", () => {
     );
   });
 
+  it("imports a Doc whose source size is large but whose PDF is small", async () => {
+    const { deps } = setup([{ id: "big", name: "Big", mimeType: DOC, size: "5000000", pdf: PDF }]);
+    const result = await downloadDriveFile(deps, context, "big", { maxBytes: 10_000 });
+    expect(result.bytes.byteLength).toBe(PDF.byteLength);
+  });
+
+  it("maps a 403 userRateLimitExceeded to rate_limited", async () => {
+    const { deps } = setup(files);
+    const limited = {
+      proxy: async () => ({
+        status: 403,
+        data: { error: { errors: [{ reason: "userRateLimitExceeded" }] } },
+      }),
+    } as unknown as ManagedConnectorProvider;
+    expect(
+      await code(
+        downloadDriveFile({ ...deps, connectors: { managed: () => limited } }, context, "pdf1", {
+          maxBytes: 10_000,
+        }),
+      ),
+    ).toBe("rate_limited");
+  });
+
   it("only uses the caller's own connection", async () => {
     const { deps } = setup(files);
     expect(

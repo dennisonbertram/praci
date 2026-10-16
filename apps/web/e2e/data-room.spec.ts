@@ -407,3 +407,62 @@ test("Data room imports a mail attachment through the picker", async ({ page }, 
   // The list reloads so the new item shows up.
   await expect.poll(() => calls.filter((c) => c.name === "items/list").length).toBeGreaterThan(1);
 });
+
+test("Data room imports a Google Drive file through the picker", async ({ page }, testInfo) => {
+  const { calls } = await mockDataRoom(page);
+  const json = (body: unknown) => ({
+    contentType: "application/json",
+    body: JSON.stringify({ json: body, meta: [] }),
+  });
+  await page.route("**/rpc/connections/list", (route) =>
+    route.fulfill(
+      json([
+        {
+          id: "c0000000000000000000000d1",
+          connectorId: "google",
+          provider: "googledrive",
+          displayName: "Example drive",
+          status: "connected",
+        },
+      ]),
+    ),
+  );
+  await page.route("**/rpc/dataRoom/driveList", (route) =>
+    route.fulfill(
+      json({
+        files: [
+          {
+            id: "dir1",
+            name: "Contracts",
+            mimeType: "application/vnd.google-apps.folder",
+            isFolder: true,
+          },
+          {
+            id: "doc1",
+            name: "Quarterly plan",
+            mimeType: "application/vnd.google-apps.document",
+            isFolder: false,
+          },
+        ],
+      }),
+    ),
+  );
+  await page.route("**/rpc/dataRoom/importDrive", (route) =>
+    route.fulfill(json({ imported: 1, duplicates: 0 })),
+  );
+
+  await signup(page, `data-room-drive-${Date.now()}@rakazo.test`, "password12", "Data Room User");
+  await completeOnboarding(page);
+  await page.getByTestId("sidebar-data-room").click();
+  await expect(page.getByTestId("data-room-list").locator("li[data-item-id]")).toHaveCount(3);
+
+  await page.getByRole("button", { name: "Import from Google Drive" }).click();
+  const dialog = page.getByRole("dialog", { name: "Import from Google Drive" });
+  await expect(dialog.getByPlaceholder("Search Drive")).toBeVisible();
+  await dialog.getByRole("checkbox", { name: "Quarterly plan" }).click();
+  await captureScreenshot(page, testInfo, "data-room-import-drive");
+  await dialog.getByRole("button", { name: "Import", exact: true }).click();
+
+  await expect(page.getByRole("status").filter({ hasText: "Imported 1 file" })).toBeVisible();
+  await expect.poll(() => calls.filter((c) => c.name === "items/list").length).toBeGreaterThan(1);
+});

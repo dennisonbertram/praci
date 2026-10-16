@@ -2,7 +2,12 @@ import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-k
 import type { PrismaClient } from "@rakazo/db";
 import { asRecord } from "./connector-http.js";
 import { driveQuote, listDriveAccounts } from "./drive-tools.js";
-import { GoogleApiClient, GoogleApiError, isGoogleAuthFailure } from "./google-api-request.js";
+import {
+  GoogleApiClient,
+  GoogleApiError,
+  isGoogleAuthFailure,
+  isGoogleRateLimited,
+} from "./google-api-request.js";
 
 const API = "https://www.googleapis.com/drive/v3";
 const GOOGLE_APPS = "application/vnd.google-apps.";
@@ -114,7 +119,7 @@ function mapError(cause: unknown): DriveFileError {
   if (response.status === 404) return new DriveFileError("not_found", "File not found");
   if (response.status === 413 || hasReason(response.data, "exportSizeLimitExceeded"))
     return new DriveFileError("too_large", "The file is too large to import");
-  if (response.status === 429 || hasReason(response.data, "rateLimitExceeded"))
+  if (isGoogleRateLimited(response))
     return new DriveFileError("rate_limited", "Drive rate limit reached; try again later");
   return new DriveFileError("failed", `Drive did not accept the request (${response.status})`);
 }
@@ -190,7 +195,8 @@ export async function downloadDriveFile(
   const exported = PDF_EXPORTS.has(file.mimeType);
   if (file.mimeType.startsWith(GOOGLE_APPS) && !exported)
     throw new DriveFileError("unsupported", "This kind of Google file can't be imported");
-  if (file.size !== undefined && file.size > options.maxBytes)
+  // A Workspace file's size is the source document's, not the PDF's; the export is capped as it streams.
+  if (!exported && file.size !== undefined && file.size > options.maxBytes)
     throw new DriveFileError("too_large", "The file is too large to import");
   const url = exported
     ? `${API}/files/${id}/export?mimeType=application%2Fpdf`
