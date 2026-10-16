@@ -14,7 +14,6 @@ import {
   DATA_ROOM_DISCLOSURE,
   DATA_ROOM_DISCLOSURE_VERSION,
   LEGAL_AGENT_MODEL,
-  legalAgentSpawnKey,
 } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
 import { createLegalRepos, IsolationError } from "@rakazo/db";
@@ -39,25 +38,21 @@ export const legalAgent = (deps: LegalDeps, actor: Actor): Promise<Bot> =>
 export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<LegalOverview> {
   const repo = createLegalRepos(deps.prisma);
   const now = today();
-  const [contracts, openDeadlines, counts, unreviewed, bot] = await Promise.all([
+  // Creating the agent here means the first load already knows its model.
+  const bot = await ensureLegalAgent(deps, actor);
+  const [contracts, openDeadlines, counts, unreviewed] = await Promise.all([
     repo.listContracts(actor, { limit: 500 }),
     repo.listDeadlines(actor, { status: "open", limit: 500 }),
     repo.deadlineCounts(actor, now),
     repo.countUnreviewed(actor),
-    deps.prisma.bot.findFirst({
-      where: { ...scope(actor), spawnKey: legalAgentSpawnKey(actor.userId), archivedAt: null },
-      select: { id: true },
-    }),
   ]);
-  const lastScan = bot
-    ? await deps.prisma.run.findFirst({
-        where: { botId: bot.id, trigger: "routine", status: "completed" },
-        orderBy: { completedAt: "desc" },
-        select: { completedAt: true },
-      })
-    : null;
+  const lastScan = await deps.prisma.run.findFirst({
+    where: { botId: bot.id, trigger: "routine", status: "completed" },
+    orderBy: { completedAt: "desc" },
+    select: { completedAt: true },
+  });
   // The same resolution path a run uses: the bot's own model if the user has its credential, else the default.
-  const resolved = bot ? (await deps.resolveAi(actor, bot.id).catch(() => null))?.model : null;
+  const resolved = (await deps.resolveAi(actor, bot.id).catch(() => null))?.model;
   const titles = new Map(contracts.map((c) => [c.id, c.title]));
   const next = new Map<string, string>();
   for (const d of openDeadlines) {
@@ -77,7 +72,7 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
       ...counts,
       unreviewedDocuments: unreviewed,
     },
-    agent: { botId: bot?.id ?? null, lastScanAt: lastScan?.completedAt?.toISOString() ?? null },
+    agent: { botId: bot.id, lastScanAt: lastScan?.completedAt?.toISOString() ?? null },
     model: resolved
       ? {
           provider: resolved.provider,

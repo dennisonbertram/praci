@@ -79,7 +79,7 @@ function Legal({ onAskAgent }: { onAskAgent?: () => void }) {
           <AskAgentButton />
         </div>
       </div>
-      {data.model && !data.model.isPreferred ? (
+      {!data.model?.isPreferred ? (
         <p className="mb-3 text-xs text-muted-foreground">
           <Trans>
             The Legal agent cannot run until you add an OpenRouter key in Settings. It runs only on
@@ -92,7 +92,7 @@ function Legal({ onAskAgent }: { onAskAgent?: () => void }) {
           {scanError}
         </p>
       ) : null}
-      {status && !status.allowed ? (
+      {status && !status.allowed && status.recipients.length > 0 ? (
         <LegalConsentPrompt consent={status} onChange={setGranted} />
       ) : null}
       <div className="mb-4 grid grid-cols-2 gap-3 @3xl:grid-cols-5">

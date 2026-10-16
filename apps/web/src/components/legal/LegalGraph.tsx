@@ -135,10 +135,10 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
                 d={`M${from.x} ${from.y} C${(from.x + to.x) / 2} ${from.y} ${(from.x + to.x) / 2} ${to.y} ${to.x} ${to.y}`}
                 fill="none"
                 className={cn(
-                  on ? "stroke-foreground" : "stroke-border",
-                  selected && !on && "opacity-40",
+                  on ? "stroke-foreground" : "stroke-muted-foreground",
+                  selected && !on && "opacity-30",
                 )}
-                strokeWidth={on ? 2 : 1}
+                strokeWidth={on ? 2.5 : 1.5}
               >
                 <title>{edge.relation}</title>
               </path>

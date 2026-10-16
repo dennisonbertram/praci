@@ -985,6 +985,11 @@ export const builtinAgentTools: ConnectorTool[] = [
         valueCents: { type: "number", description: "Total value in integer cents." },
         currency: { type: "string", description: "ISO 4217 code, for example USD." },
         summary: { type: "string", description: "Two or three plain sentences." },
+        renewalQuote: {
+          type: "string",
+          description:
+            "Short verbatim text of the renewal or notice clause. Kept as the evidence of the expiration and notice deadlines this call opens.",
+        },
       },
       required: ["dataRoomItemId", "revision"],
     },

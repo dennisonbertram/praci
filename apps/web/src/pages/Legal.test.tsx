@@ -76,7 +76,7 @@ it("shows counts and contracts, with the value formatted from the decimal string
   expect(page).toContain("Mar 1, 2023 – Feb 28, 2026");
   expect(page).toContain("Unreviewed documents");
   expect(container.querySelector(`a[href="/app/data-room?item=${id(101)}"]`)).not.toBeNull();
-  expect(container.querySelector('[aria-label="Allow"]')).toBeNull();
+  expect(button("Allow")).toBeUndefined();
 });
 
 it("shows the empty state, loading skeleton and load error", async () => {
@@ -137,6 +137,8 @@ it("marks overdue deadlines and closes one with Done", async () => {
   await render(<LegalDeadlines deadlines={deadlines} onChanged={onChanged} today="2026-10-16" />);
   const page = container.textContent ?? "";
   expect(page).toContain("Overdue by 16 days");
+  // The year is always shown, whatever year it is.
+  expect(page).toMatch(/[A-Z][a-z]{2} \d{1,2}, 20\d\d/);
   expect(page).toContain("Tenant shall submit the closing statement");
   expect(page.match(/Overdue by/g)).toHaveLength(1);
   await click(button(`Mark ${deadlines[0]?.title} done`));
@@ -207,4 +209,21 @@ it("shows no model warning when the agent runs on Muse Spark 1.2", async () => {
   rpcMock.overview.mockResolvedValue(overview);
   await render(<LegalPage />);
   expect(container.textContent).not.toContain("OpenRouter key");
+});
+
+it("warns on first load when no model resolves, and shows no consent card without a recipient", async () => {
+  rpcMock.overview.mockResolvedValue({ ...overview, model: null });
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain(
+    "The Legal agent cannot run until you add an OpenRouter key in Settings.",
+  );
+  expect(button("Allow")).toBeUndefined();
+});
+
+it("still asks for consent when a recipient exists", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  expect(button("Allow")).toBeDefined();
 });

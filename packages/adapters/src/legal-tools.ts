@@ -128,6 +128,8 @@ const ContractArgs = z.object({
     .nullable()
     .optional(),
   summary: z.string().trim().max(2000).nullable().optional(),
+  /** Verbatim renewal or notice clause; kept as the evidence of the deadlines derived from the dates. */
+  renewalQuote: Quote.nullable().optional(),
 });
 
 const DeadlineArgs = z.object({
@@ -320,7 +322,7 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
     currency: input.currency?.toUpperCase(),
     summary: input.summary,
   });
-  const derived = await deriveDeadlines(deps, row);
+  const derived = await deriveDeadlines(deps, row, input.renewalQuote ?? undefined);
   return {
     contract: toLegalContract(row),
     derivedDeadlines: derived.map((d) => toLegalDeadline(d)),
@@ -333,20 +335,20 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
  * open one, a deadline the user closed stays closed, and an open derived deadline that no longer
  * applies (contract terminated, renamed, no expiry) is dismissed. Deadlines made by hand are never touched.
  */
-async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecord) {
+async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecord, quote?: string) {
   const repo = createLegalRepos(deps.prisma);
   const actor = actorOf(deps.scope);
   const wanted: { title: string; kind: string; dueDate: Date }[] = [];
   const live = contract.status === "active" || contract.status === "unknown";
   if (live && contract.expirationDate) {
     wanted.push({
-      title: `${contract.autoRenews ? "Renews" : "Expires"}: ${contract.title}`,
+      title: contract.autoRenews ? "Renews" : "Expires",
       kind: contract.autoRenews ? "renewal" : "termination",
       dueDate: contract.expirationDate,
     });
     if (contract.renewalNoticeDays !== null) {
       wanted.push({
-        title: `Notice deadline: ${contract.title}`,
+        title: "Renewal notice deadline",
         kind: "notice",
         dueDate: addDays(contract.expirationDate, -contract.renewalNoticeDays),
       });
@@ -375,6 +377,7 @@ async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecor
         dataRoomItemId: contract.dataRoomItemId,
         ...item,
         derived: true,
+        sourceQuote: quote,
         notes: NOTICE_NOTE,
       }),
     );

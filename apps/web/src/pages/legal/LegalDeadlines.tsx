@@ -5,7 +5,7 @@ import { Button, cn } from "@rakazo/ui-web";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
-import { shortDay } from "../../lib/finance-format";
+import { fullDay } from "../../lib/finance-format";
 import { daysBetween, todayIso } from "../../lib/legal-format";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -92,7 +92,7 @@ export function LegalDeadlines({
                 dateTime={deadline.dueDate}
                 className={cn("text-sm tabular-nums", overdue && "font-medium text-destructive")}
               >
-                {shortDay(deadline.dueDate)}
+                {fullDay(deadline.dueDate)}
               </time>
               <div className="flex gap-2">
                 <Button

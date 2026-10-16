@@ -403,6 +403,21 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(await prisma.routine.count({ where: { botId: bot.id } })).toBe(1);
   });
 
+  it("creates the Legal agent when the overview is read first, so the model is known", async () => {
+    const c = await makeActor("e");
+    extra.push(c);
+    const api = {
+      prisma,
+      repos: createRepos(prisma),
+      jobs: { enqueue: async () => {} } as never,
+      resolveAi: async () =>
+        ({ model: { provider: "openrouter", id: "meta/muse-spark-1.2" } }) as never,
+    };
+    const overview = await legalOverview(api, c);
+    expect(overview.agent.botId).not.toBeNull();
+    expect(overview.model).toMatchObject({ isPreferred: true });
+  });
+
   it("stores the revision the agent read, so a document that changed meanwhile stays unreviewed", async () => {
     const item = await addItem(a, "nda.txt", "Mutual NDA between Acme Inc and Us.");
     await legal(a, "legal_upsert_contract", {
@@ -442,10 +457,17 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       expirationDate: "2028-06-30",
       autoRenews: false,
       renewalNoticeDays: 90,
+      renewalQuote: "Either party may give 90 days written notice of non-renewal.",
     };
     const first = await legal(a, "legal_upsert_contract", base);
     const contractId = first.contract.id;
     expect(first.derivedDeadlines).toHaveLength(2);
+    expect(first.derivedDeadlines.map((d: any) => d.title).sort()).toEqual([
+      "Expires",
+      "Renewal notice deadline",
+    ]);
+    for (const d of first.derivedDeadlines)
+      expect(d.sourceQuote).toContain("90 days written notice");
     const manual = await legal(a, "legal_upsert_deadline", {
       contractId,
       title: "Insurance certificate",
@@ -458,11 +480,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     // A new title replaces the derived expiry deadline instead of duplicating it.
     const renamed = await legal(a, "legal_upsert_contract", { ...base, title: "HQ lease" });
     const open = (await legal(a, "legal_query", { view: "deadlines", contractId })).deadlines;
-    expect(open.map((d: any) => d.title).sort()).toEqual([
-      "Expires: HQ lease",
-      "Insurance certificate",
-      "Notice deadline: HQ lease",
-    ]);
+    expect(open.map((d: any) => d.title).sort()).toEqual(["Expires", "Insurance certificate"]);
     expect(renamed.derivedDeadlines.length).toBeGreaterThan(0);
     expect(
       (await prisma.legalDeadline.findUniqueOrThrow({ where: { id: noticeRow.id } })).status,
