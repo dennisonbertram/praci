@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
-  ACCOUNT_UI_LOCALES,
   htmlLangForLocale,
   isUiLocale,
   normalizeUiLocale,
@@ -33,11 +35,14 @@ describe("UI_LOCALES", () => {
   });
 });
 
-describe("ACCOUNT_UI_LOCALES", () => {
-  it("limits the Account picker to English and Simplified Chinese", () => {
-    expect([...ACCOUNT_UI_LOCALES]).toEqual(["en", "zh-CN"]);
-    expect(ACCOUNT_UI_LOCALES).not.toContain("ru");
-    expect(ACCOUNT_UI_LOCALES).not.toContain("de");
+describe("Account language picker", () => {
+  it("offers every UI locale", async () => {
+    const source = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../app/(settings)/account.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("UI_LOCALES.map(");
+    expect(source).not.toContain("ACCOUNT_UI_LOCALES");
   });
 });
 
