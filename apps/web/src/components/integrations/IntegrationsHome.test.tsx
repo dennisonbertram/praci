@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({
@@ -14,6 +14,12 @@ vi.mock("@lingui/react/macro", () => ({
   }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
+
+const financeRpc = vi.hoisted(() => ({
+  crypto: vi.fn(),
+  exchanges: vi.fn(),
+}));
+vi.mock("../../lib/rpc", () => ({ rpc: { finance: financeRpc } }));
 
 import { IntegrationsHome } from "./IntegrationsHome";
 import type { IntegrationsData } from "./useIntegrations";
@@ -71,6 +77,14 @@ async function show(value: IntegrationsData) {
     ),
   );
 }
+beforeEach(() => {
+  financeRpc.crypto.mockResolvedValue({
+    connected: false,
+    hasApiKey: false,
+    alchemy: { connected: false, lastError: null },
+  });
+  financeRpc.exchanges.mockResolvedValue([]);
+});
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
@@ -184,4 +198,49 @@ it("opens the X tile with its URL and the client ID fields", async () => {
   const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
   expect(input?.value).toBe("https://api.x.com/mcp");
   expect(document.querySelector('[aria-label="Client ID"]')).not.toBeNull();
+});
+
+const connectedTiles = () =>
+  [...container.querySelectorAll('[data-testid^="connected-finance-"]')].map(
+    (el) => el.textContent,
+  );
+
+it("lists a connected finance source under Connected, even when it is the only connection", async () => {
+  const value = data(true, true);
+  value.catalog = [];
+  value.financeSources = [
+    { provider: "mercury", serverId: "s1", status: "ok", lastSyncedAt: null },
+  ];
+  await show(value);
+  const tiles = connectedTiles();
+  expect(tiles).toHaveLength(1);
+  expect(tiles[0]).toContain("Mercury");
+  expect(tiles[0]).toContain("Open Finance");
+  expect(container.textContent).toContain("Connected");
+  expect(container.querySelector('[data-testid="finance-tile-mercury"]')).not.toBeNull();
+});
+
+it("lists connected crypto and exchange connections under Connected", async () => {
+  financeRpc.crypto.mockResolvedValue({
+    connected: true,
+    hasApiKey: true,
+    alchemy: { connected: true, lastError: null },
+  });
+  financeRpc.exchanges.mockResolvedValue([{ provider: "kraken", connected: true }]);
+  await show(data(true, true));
+  const tiles = connectedTiles();
+  expect(tiles).toHaveLength(3);
+  for (const [i, name] of ["Blockscout", "Alchemy", "Kraken"].entries()) {
+    expect(tiles[i]).toContain(name);
+    expect(tiles[i]).toContain("Open");
+  }
+});
+
+it("shows no finance tile under Connected when nothing is connected", async () => {
+  const value = data(true, true);
+  value.financeSources = [
+    { provider: "brex", serverId: null, status: "not_connected", lastSyncedAt: null },
+  ];
+  await show(value);
+  expect(connectedTiles()).toEqual([]);
 });

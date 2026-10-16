@@ -243,6 +243,70 @@ function ExchangeTile({ provider }: { provider: ExchangeProvider }) {
   );
 }
 
+export type ConnectedFinance = {
+  key: string;
+  name: string;
+  logo: string | null;
+  description: string;
+  to: string;
+  action: "finance" | "crypto";
+};
+
+/** Every working finance connection, for the Connected list. Uses the same "connected" rules as
+ * the tiles below: Mercury/Brex are `ok`, Blockscout needs its PRO key, exchanges need a good read. */
+export function useConnectedFinance(sources: FinanceSource[]): ConnectedFinance[] {
+  const { t } = useLingui();
+  const [crypto, setCrypto] = useState<{ blockscout: boolean; alchemy: boolean } | null>(null);
+  const [exchanges, setExchanges] = useState<FinanceExchange[]>([]);
+  const mounted = useMounted();
+  useEffect(() => {
+    rpc.finance
+      .crypto()
+      .then((c) => {
+        if (mounted.current)
+          setCrypto({ blockscout: c.connected && c.hasApiKey, alchemy: c.alchemy.connected });
+      })
+      .catch(() => {});
+    rpc.finance
+      .exchanges()
+      .then((all) => mounted.current && setExchanges(all))
+      .catch(() => {});
+  }, [mounted]);
+
+  const read = t`Read wallet balances`;
+  const items: ConnectedFinance[] = FINANCE_PROVIDERS.filter(
+    ({ provider }) => sources.find((s) => s.provider === provider)?.status === "ok",
+  ).map(({ provider, name, logo }) => ({
+    key: provider,
+    name,
+    logo,
+    description:
+      provider === "mercury"
+        ? t`Read balances and transactions`
+        : t`Read cards, expenses and bills`,
+    to: "/app/finance",
+    action: "finance",
+  }));
+  const crypto_ = (key: string, name: string, logo: string | null) => ({
+    key,
+    name,
+    logo,
+    description: read,
+    to: financePath.crypto(),
+    action: "crypto" as const,
+  });
+  if (crypto?.blockscout) items.push(crypto_("crypto", "Blockscout", "/logos/blockscout.svg"));
+  if (crypto?.alchemy) items.push(crypto_("alchemy", "Alchemy", "/logos/alchemy.svg"));
+  for (const e of EXCHANGES) {
+    if (exchanges.find((x) => x.provider === e.provider)?.connected)
+      items.push({
+        ...crypto_(e.provider, e.name, e.logo),
+        description: t`Read exchange balances`,
+      });
+  }
+  return items;
+}
+
 /** Mercury and Brex tiles. They connect through the Finance API so the server treats them as
  * finance sources and the Finance agent gets its read-only assignment. */
 export function FinanceSection({
