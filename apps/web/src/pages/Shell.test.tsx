@@ -113,6 +113,66 @@ function pressEnter(textarea: HTMLTextAreaElement) {
 }
 
 describe("Composer", () => {
+  describe("mention highlight when targets reload", () => {
+    const researcher: ComposerMention = { kind: "bot", id: "bot-3", name: "Researcher" };
+    const writer: ComposerMention = { kind: "bot", id: "bot-4", name: "Research Writer" };
+    const routine: ComposerMention = { kind: "routine", id: "r1", name: "Research digest" };
+
+    function openOnWriter(targets: ComposerMention[]) {
+      const textarea = renderComposer(vi.fn(), { mentionTargets: targets });
+      type(textarea, "@Res");
+      act(() => {
+        textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+      });
+      return textarea;
+    }
+    const selected = () =>
+      container?.querySelector("[role='option'][aria-selected='true']")?.textContent;
+    const chips = () =>
+      [...(container?.querySelectorAll("[data-testid='mention-chip']") ?? [])].map(
+        (chip) => chip.textContent,
+      );
+    const pressKey = (textarea: HTMLTextAreaElement, key: string) =>
+      act(() => {
+        textarea.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      });
+
+    it("survives a new targets array", () => {
+      const textarea = openOnWriter([researcher, writer]);
+      expect(selected()).toContain("Research Writer");
+      rerenderComposer({ mentionTargets: [researcher, writer] });
+      expect(selected()).toContain("Research Writer");
+      pressKey(textarea, "Enter");
+      expect(chips()).toEqual(["Research Writer"]);
+    });
+
+    it("follows the highlighted option when an option is inserted before it", () => {
+      const textarea = openOnWriter([researcher, writer]);
+      rerenderComposer({ mentionTargets: [routine, researcher, writer] });
+      expect(selected()).toContain("Research Writer");
+      pressKey(textarea, "Enter");
+      expect(chips()).toEqual(["Research Writer"]);
+    });
+
+    it("keeps the default highlight on the first option when an option is inserted before it", () => {
+      const textarea = renderComposer(vi.fn(), { mentionTargets: [researcher, writer] });
+      type(textarea, "@Res");
+      expect(selected()).toContain("Researcher");
+      rerenderComposer({ mentionTargets: [routine, researcher, writer] });
+      expect(selected()).toContain("Researcher");
+      pressKey(textarea, "Enter");
+      expect(chips()).toEqual(["Researcher"]);
+    });
+
+    it("falls back to the first option when the highlighted option disappears", () => {
+      const textarea = openOnWriter([researcher, writer]);
+      rerenderComposer({ mentionTargets: [researcher] });
+      expect(selected()).toContain("Researcher");
+      pressKey(textarea, "Enter");
+      expect(chips()).toEqual(["Researcher"]);
+    });
+  });
+
   it("clears the draft once the message is sent", async () => {
     const onSend = vi.fn().mockResolvedValue(true);
     const textarea = renderComposer(onSend);
