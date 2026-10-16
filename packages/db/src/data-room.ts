@@ -859,7 +859,9 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         step === "ingest"
           ? await prisma.$queryRaw<{ id: string }[]>`
               SELECT i.id FROM data_room_items i
-              WHERE ${eligibleSql(actor, { status: "ready" })} AND i."mimeType" LIKE 'image/%'
+              WHERE ${eligibleSql(actor, { status: "ready" })} AND (i."mimeType" LIKE 'image/%'
+                  OR (lower(i."mimeType") IN ('', 'application/octet-stream')
+                    AND lower(i.name) ~ '\.(jpe?g|png|webp|gif)$'))
                 AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
                   AND t.text = '')`
           : step === "classify"
@@ -886,20 +888,25 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       return moved.map((r) => r.id);
     },
 
-    /** Ready items among `ids` go back to indexing (their name or folder changed). Returns the moved ids. */
+    /**
+     * Ready items among `ids`, and items whose index run is in flight (leased), go back to indexing
+     * because their name or folder changed. The revision bump makes the in-flight run's writes
+     * stale and the cleared lease lets a fresh run claim the item. Returns the moved ids.
+     */
     async reindexItems(actor: Actor, ids: string[]): Promise<string[]> {
       if (!ids.length) return [];
       const moved = await prisma.$queryRaw<{ id: string }[]>`
         UPDATE data_room_items SET status = 'indexing', failures = 0, revision = revision + 1,
-          "updatedAt" = now()
+          "leaseUntil" = NULL, "updatedAt" = now()
         WHERE id = ANY(${ids}::text[]) AND "spaceId" = ${actor.spaceId}
-          AND "userId" = ${actor.userId} AND status = 'ready'
+          AND "userId" = ${actor.userId}
+          AND (status = 'ready' OR (status = 'indexing' AND "leaseUntil" IS NOT NULL))
         RETURNING id`;
       return moved.map((r) => r.id);
     },
 
     /**
-     * Moves up to `limit` ready items in the folder and all its subfolders back to indexing and
+     * Moves up to `limit` ready or in-flight indexing items in the folder and all its subfolders back to indexing and
      * returns their ids. Call again until fewer than `limit` come back.
      */
     async reindexFolder(actor: Actor, folderId: string, limit: number): Promise<string[]> {
@@ -912,11 +919,12 @@ export function createDataRoomRepos(prisma: PrismaClient) {
           WHERE f."spaceId" = ${actor.spaceId} AND f."userId" = ${actor.userId}
         )
         UPDATE data_room_items SET status = 'indexing', failures = 0, revision = revision + 1,
-          "updatedAt" = now()
+          "leaseUntil" = NULL, "updatedAt" = now()
         WHERE id IN (
           SELECT i.id FROM data_room_items i
           WHERE i."spaceId" = ${actor.spaceId} AND i."userId" = ${actor.userId}
-            AND i.status = 'ready' AND i."folderId" IN (SELECT id FROM sub)
+            AND (i.status = 'ready' OR (i.status = 'indexing' AND i."leaseUntil" IS NOT NULL))
+            AND i."folderId" IN (SELECT id FROM sub)
           LIMIT ${limit})
         RETURNING id`;
       return moved.map((r) => r.id);

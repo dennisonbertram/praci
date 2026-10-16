@@ -77,6 +77,10 @@ describe("extractItemText", () => {
     expect(await extract("scan.pdf", "application/pdf", makePdf(""))).toBe("");
   });
 
+  it("keeps a short PDF text layer", async () => {
+    expect(await extract("a.pdf", "application/pdf", makePdf("Invoice 12"))).toBe("Invoice 12");
+  });
+
   it("decodes plain text, markdown, csv and json as UTF-8", async () => {
     expect(await extract("a.txt", "text/plain", "héllo wörld")).toBe("héllo wörld");
     expect(await extract("a.md", "text/markdown", "# Title\n\nbody")).toBe("# Title\n\nbody");

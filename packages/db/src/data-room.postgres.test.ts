@@ -530,6 +530,17 @@ describePostgres("data room repository (PostgreSQL)", () => {
       expect(await dr.requeueReady(b, "classify")).not.toContain(skipped.id);
     });
 
+    it("requeues images stored as octet-stream by their extension for vision", async () => {
+      const { item } = await upload(a, `shot-${run}.PNG`, `oct-${run}`, {
+        mimeType: "application/octet-stream",
+      });
+      await prisma.dataRoomItem.update({ where: { id: item.id }, data: { status: "ready" } });
+      await prisma.dataRoomItemText.create({
+        data: { itemId: item.id, spaceId: a.spaceId, userId: a.userId, text: "" },
+      });
+      expect(await dr.requeueReady(a, "ingest")).toContain(item.id);
+    });
+
     it("refuses a cursor from the other search mode or another embedding model", async () => {
       const q = `mode${run}`;
       for (let i = 0; i < 3; i++) await put(a, `mode${i}`, `${q} text ${i}`, unit(80 + i));

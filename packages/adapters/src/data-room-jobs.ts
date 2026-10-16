@@ -27,8 +27,6 @@ const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const TEXT_MAX_BYTES = 5 * 1024 * 1024;
 const FOLDER_PATHS_MAX = 200;
 const STEP_TIMEOUT_MS = 120_000;
-/** A PDF with less text than this has no usable text layer. */
-const PDF_MIN_TEXT_CHARS = 20;
 
 export const CHUNK_TARGET_CHARS = 3_200;
 export const CHUNK_OVERLAP_CHARS = 400;
@@ -272,7 +270,6 @@ export async function extractItemText(
   else if (TEXT_TYPES.has(type)) text = decodeUtf8(bytes);
   else if (IMAGE_TYPES.has(type)) text = await readImageText(deps, ai, item, bytes, type, ctx);
   text = text.replaceAll("\u0000", "").trim();
-  if (type === "application/pdf" && text.length < PDF_MIN_TEXT_CHARS) return "";
   return text.slice(0, DATA_ROOM_TEXT_MAX_CHARS);
 }
 
@@ -289,6 +286,8 @@ export async function runDataRoomIngest(deps: DataRoomJobDeps, payload: Payload)
         ? await deps.resolveAi(payload)
         : ({ model: null, allowed: false } as DataRoomAi);
       text = await extractItemText(deps, ai, item, bytes, ctx);
+      // The vision call can take a while: if consent was revoked meanwhile, discard the output.
+      if (text && IMAGE_TYPES.has(type) && !(await deps.resolveAi(payload)).allowed) text = "";
     }
     return repo.finishExtraction(actorOf(payload), item.id, revision, text);
   });

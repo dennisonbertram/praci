@@ -422,6 +422,63 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
     expect((await chunksOf(item.id))[0]?.embedded).toBe(true);
   });
 
+  it("re-indexes an item renamed or moved while its index run is in flight", async () => {
+    reset();
+    const folder = await repo.createFolder(actor, { name: `Old${run}` });
+    const item = await addItem("rename me");
+    await runDataRoomIngest(deps(), { ...scope(), itemId: item.id });
+    await runDataRoomClassify(deps(), { ...scope(), itemId: item.id });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const embed = embedder.embed.bind(embedder);
+    let started = 0;
+    embedder.embed = async (texts, ctx) => {
+      started += 1;
+      await gate;
+      return embed(texts, ctx);
+    };
+    const first = runDataRoomIndex(deps(), { ...scope(), itemId: item.id });
+    while (started === 0) await new Promise((r) => setTimeout(r, 5));
+    await repo.updateItem(actor, item.id, { name: `renamed-${run}.txt` });
+    await repo.moveItem(actor, item.id, folder.id);
+    expect(await repo.reindexItems(actor, [item.id])).toEqual([item.id]);
+    release();
+    await first;
+    expect((await reload(item.id)).status).toBe("indexing"); // the stale run did not finish it
+    await runDataRoomIndex(deps(), { ...scope(), itemId: item.id });
+    expect((await reload(item.id)).status).toBe("ready");
+    const [metadata] = await prisma.$queryRaw<{ text: string }[]>`
+      SELECT text FROM data_room_chunks WHERE "itemId" = ${item.id} AND ordinal = -1`;
+    expect(metadata?.text).toContain(`renamed-${run}`);
+    expect(metadata?.text).toContain(`Old${run}`);
+  });
+
+  it("drops vision output when consent is revoked during the call", async () => {
+    reset();
+    let revoked = false;
+    ai = fakeAi({
+      model: { provider: "openai-compatible", id: "vis", acceptsImages: true } as never,
+    });
+    const runtime = {
+      run: async function* () {
+        revoked = true;
+        yield { type: "done", text: "secret text in image" };
+      },
+    };
+    const visionDeps = {
+      ...deps(),
+      runtime,
+      resolveAi: async () => ({ ...ai, allowed: !revoked }),
+    } as unknown as DataRoomJobDeps;
+    const item = await addItem(new Uint8Array([1, 2, 3]), { name: "a.png", mimeType: "image/png" });
+    await runDataRoomIngest(visionDeps, { ...scope(), itemId: item.id });
+    const [row] = await prisma.$queryRaw<{ text: string }[]>`
+      SELECT text FROM data_room_item_texts WHERE "itemId" = ${item.id}`;
+    expect(row?.text).toBe("");
+  });
+
   it("leaves a leased item to its holder and takes over once the lease expires", async () => {
     reset();
     const item = await addItem("lease text");
