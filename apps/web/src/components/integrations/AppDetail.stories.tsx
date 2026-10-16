@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { expect, userEvent, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
-import { demoConnection, demoIntegrations } from "../../stories/fixtures-4";
+import { demoConnection, demoIntegrations } from "../../stories/fixtures";
 import { AppDetail } from "./AppDetail";
 
 const tools = [

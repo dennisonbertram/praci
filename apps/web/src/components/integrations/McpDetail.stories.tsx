@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { mockAssignments, mockIntegrations, mockServer } from "../../stories/fixtures-9";
+import { mockAssignments, mockIntegrations, mockServer } from "../../stories/fixtures";
 import { McpDetail } from "./McpDetail";
 
 const meta = {

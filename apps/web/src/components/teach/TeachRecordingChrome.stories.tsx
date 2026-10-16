@@ -1,6 +1,6 @@
 import type { TaughtSkill } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../../stories/fixtures-8";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import { TeachRecordingChrome, TeachStopButton } from "./TeachRecordingChrome";
 
 const recording: TaughtSkill = {

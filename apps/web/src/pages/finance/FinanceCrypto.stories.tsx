@@ -1,7 +1,7 @@
 import type { FinanceCryptoOutput, FinanceExchange, FinanceWallet } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockRpc, resetRpc } from "../../stories/fixtures-2";
+import { mockRpc, resetRpcMocks } from "../../lib/__mocks__/rpc";
 import { FinanceCryptoPage } from "./FinanceCrypto";
 
 const addr = (n: number) => `0x${n.toString(16).padStart(40, "0")}`;
@@ -117,7 +117,7 @@ const load = (
   });
 
 const meta = {
-  beforeEach: () => resetRpc(),
+  beforeEach: () => resetRpcMocks(),
   title: "Finance/FinanceCryptoPage",
   parameters: {
     layout: "fullscreen",

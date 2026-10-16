@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
-import { mockBot } from "../../stories/fixtures-7";
+import { scoutBot } from "../../stories/fixtures";
 import { BotSettings } from "./bot-panel";
 
 // Registered per story: responses reset after a meta-level beforeEach would run.
@@ -24,7 +24,7 @@ const meta = {
   title: "Shell/Bot settings",
   component: BotSettings,
   args: {
-    bot: mockBot,
+    bot: scoutBot,
     memoryProviderConfigured: false,
     onSkillsChange: () => undefined,
     onSave: async () => undefined,
@@ -56,21 +56,21 @@ export const AdvancedWithMemoryScopeAndDisabledTools: Story = {
   beforeEach: setup,
   args: {
     memoryProviderConfigured: true,
-    bot: { ...mockBot, computerMode: "dedicated", disabledBuiltinTools: ["web_search"] },
+    bot: { ...scoutBot, computerMode: "dedicated", disabledBuiltinTools: ["web_search"] },
   },
   play: openAdvanced,
 };
 
 export const NotificationsOff: Story = {
   beforeEach: setup,
-  args: { bot: { ...mockBot, notifyOnFinish: false } },
+  args: { bot: { ...scoutBot, notifyOnFinish: false } },
 };
 
 export const LongProfileText: Story = {
   beforeEach: setup,
   args: {
     bot: {
-      ...mockBot,
+      ...scoutBot,
       name: "A bot name at the limit of what fits",
       title: "A very long title that describes this bot in far too many words to fit on one line",
       description: "A long description. ".repeat(20),

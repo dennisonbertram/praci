@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../../stories/fixtures-0";
+import { mockRpc } from "../../lib/__mocks__/rpc";
+import { withPageBehind } from "../../stories/decorators";
 import { InboxMessageDialog } from "./InboxMessageDialog";
 
 // The message cache is module-level, so every story uses its own message id.
@@ -25,14 +26,7 @@ const meta = {
     },
   },
   args: { messageId: "msg_text", subject: "Quarterly planning notes", onClose: () => undefined },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="text-sm text-muted-foreground">Page behind the dialog</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
 } satisfies Meta<typeof InboxMessageDialog>;
 export default meta;
 type Story = StoryObj<typeof meta>;

@@ -1,9 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createRef, type ReactNode, useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import "../stories/shell-session-stub";
 import { mockRpc } from "../lib/__mocks__/rpc";
-import { mockBots, mockSections } from "../stories/fixtures-6";
+import { mockBots, mockSections } from "../stories/fixtures";
 import { Composer, ShellPage } from "./Shell";
 
 /** The preview already provides a router at "/", so move it to the route instead of nesting one. */

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../stories/fixtures-0";
+import { mockRpc } from "../lib/__mocks__/rpc";
+import { withPageBehind } from "../stories/decorators";
 import { ComposeEmail, type ComposeRestore, NEW_MESSAGE } from "./ComposeEmail";
 
 const accounts = [
@@ -46,14 +47,7 @@ const meta = {
     docs: { description: { component: "Also shows: Row, RecipientSummary" } },
   },
   args: { seed: NEW_MESSAGE, accounts, onClose: () => undefined },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="text-sm text-muted-foreground">Page behind the composer</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind("Page behind the composer")],
   beforeEach: () => mockRpc({ "inbox.compose.draftSave": { status: "saved" } }),
 } satisfies Meta<typeof ComposeEmail>;
 export default meta;

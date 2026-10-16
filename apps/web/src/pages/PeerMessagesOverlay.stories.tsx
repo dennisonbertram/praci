@@ -1,19 +1,13 @@
 import type { ThreadMessage } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../stories/mock-rpc-5";
+import { mockRpc } from "../lib/__mocks__/rpc";
+import { withPageBehind } from "../stories/decorators";
 import { PeerMessagesOverlay } from "./PeerMessagesOverlay";
 
 const meta = {
   title: "Chat/PeerMessagesOverlay",
   component: PeerMessagesOverlay,
-  decorators: [
-    (Story) => (
-      <>
-        <p className="p-4 text-sm text-muted-foreground">Page behind the dialog</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
   args: {
     botId: "bot_a",
     botName: "Planner",

@@ -2,6 +2,7 @@ import type { ComputerStatus } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
+import { withVisibleRoot } from "../stories/decorators";
 import { ComputerMaintenanceActions } from "./ComputerMaintenanceActions";
 
 const computer: ComputerStatus = {
@@ -86,12 +87,5 @@ export const ResetFailed: Story = {
 /** With no computer, or no action to offer, the control renders nothing. */
 export const Nothing: Story = {
   args: { computer: { ...computer, state: "booting", canUpdate: false } },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="text-sm text-muted-foreground">No actions are available while it boots.</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withVisibleRoot("No actions are available while it boots.")],
 };

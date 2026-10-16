@@ -1,13 +1,19 @@
 import type { Group } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockBot, mockBots } from "../stories/fixtures-9";
+import { makeBot, teamBots } from "../stories/fixtures";
 import { CreateGroupForm, GroupSettings } from "./GroupPanel";
 
 const noop = async () => undefined;
 const bots = [
-  ...mockBots,
-  mockBot("bot_old", "Archived bot", "#888888", { archivedAt: "2026-01-01T00:00:00.000Z" }),
+  ...teamBots,
+  makeBot({
+    id: "bot_old",
+    name: "Archived bot",
+    title: "Archived bot helper",
+    color: "#888888",
+    archivedAt: "2026-01-01T00:00:00.000Z",
+  }),
 ];
 
 const group: Group = {

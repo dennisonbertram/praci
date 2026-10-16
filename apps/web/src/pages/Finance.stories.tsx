@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { userEvent, within } from "storybook/test";
-import { blockRemoteLogos, mockRpc } from "../stories/fixtures-6";
+import { mockRpc } from "../lib/__mocks__/rpc";
 import { FinancePage } from "./Finance";
 
 /** The preview already provides a router at "/", so move it to the Finance route instead of nesting one. */
@@ -210,7 +210,6 @@ const notConnected = {
 export const NothingConnected: Story = {
   beforeEach: () => {
     mockRpc({ "finance.overview": { ...notConnected, crypto: null } });
-    return blockRemoteLogos();
   },
 };
 
@@ -228,7 +227,6 @@ export const NothingConnectedWithCrypto: Story = {
         },
       },
     });
-    return blockRemoteLogos();
   },
 };
 

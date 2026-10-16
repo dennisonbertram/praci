@@ -1,6 +1,6 @@
 import type { InboxListOutput, InboxTodo, MailRow } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../stories/fixtures-9";
+import { mockRpc } from "../lib/__mocks__/rpc";
 import { InboxPage } from "./Inbox";
 
 const DAY = 86_400_000;

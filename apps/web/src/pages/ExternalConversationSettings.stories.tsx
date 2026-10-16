@@ -1,7 +1,7 @@
 import type { ExternalConversation } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockBot } from "../stories/fixtures-7";
+import { scoutBot } from "../stories/fixtures";
 import { ExternalConversationSettings } from "./ExternalConversationSettings";
 
 const conversation: ExternalConversation = {
@@ -27,7 +27,7 @@ const conversation: ExternalConversation = {
 const meta = {
   title: "Shell/External conversation settings",
   component: ExternalConversationSettings,
-  args: { conversation, bot: mockBot, onSave: async (): Promise<void> => undefined },
+  args: { conversation, bot: scoutBot, onSave: async (): Promise<void> => undefined },
   decorators: [
     (Story) => (
       <div className="w-96">
@@ -61,7 +61,7 @@ export const OverridesAndRollup: Story = {
 };
 
 export const MentionsOnlyBotDefault: Story = {
-  args: { bot: { ...mockBot, teamChatAmbientEnabled: false } },
+  args: { bot: { ...scoutBot, teamChatAmbientEnabled: false } },
 };
 
 export const NoAutomatedSenders: Story = {

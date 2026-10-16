@@ -1,7 +1,7 @@
 import { LOCAL_SETTINGS_PAGE } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { lazy, Suspense } from "react";
-import { mockRpc } from "./stories/rpc-mock-1";
+import { mockRpc } from "./lib/__mocks__/rpc";
 
 // App starts a session request when its module loads. Loading it here, after the story's
 // beforeEach has answered fetch, keeps that first request away from the network.

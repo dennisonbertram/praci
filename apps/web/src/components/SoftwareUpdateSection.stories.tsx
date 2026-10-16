@@ -2,6 +2,7 @@ import type { ServerUpdateCheck, ServerUpdateStatus } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
+import { withVisibleRoot } from "../stories/decorators";
 import { SoftwareUpdatePanel, SoftwareUpdateSection } from "./SoftwareUpdateSection";
 
 const status: ServerUpdateStatus = {
@@ -108,10 +109,6 @@ export const SectionCheckFailed: StoryObj = {
 
 /** Not the deployment owner: the section renders nothing. The text below stands in for the page. */
 export const SectionHiddenForMembers: StoryObj = {
-  render: () => (
-    <>
-      <SoftwareUpdateSection isDeploymentOwner={false} />
-      <p className="text-sm text-muted-foreground">The section is hidden for non-owners.</p>
-    </>
-  ),
+  render: () => <SoftwareUpdateSection isDeploymentOwner={false} />,
+  decorators: [withVisibleRoot("The section is hidden for non-owners.")],
 };

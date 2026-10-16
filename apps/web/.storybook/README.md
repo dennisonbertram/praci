@@ -11,6 +11,13 @@ import { mockRpc } from "../../lib/__mocks__/rpc";
 export const Loaded: StoryObj = { beforeEach: () => mockRpc({ "pins.get": mockPins }) };
 ```
 
-A function value receives the call's input. Shared invented data lives in `src/stories/fixtures.ts`; add to it rather than editing the mock. Every story is wrapped in Lingui's provider and a `MemoryRouter`.
+A function value receives the call's input. Always import `mockRpc` from `src/lib/__mocks__/rpc`; do not wrap it.
+
+Shared helpers:
+- `src/stories/fixtures/` has invented data by domain (`bots`, `users`, `models`, `integrations`, `images`), re-exported from `index.ts`. `makeBot(overrides)` builds every bot; add a variant only when a story needs different data.
+- `src/stories/decorators.tsx` has `withPageBehind(label?)` for dialogs (they render in a portal, so the story root would be empty) and `withVisibleRoot(message)` for components that render null.
+- `.storybook/stubs.ts` is imported first by `preview.tsx`. It answers the auth session request and replaces remote image URLs with an empty data URI, so stories need no network and logos show their letter fallback. Stories do not stub either themselves.
+
+Every story is wrapped in Lingui's provider and a `MemoryRouter`.
 
 Smoke test: after `build-storybook`, run `node .storybook/smoke.mjs storybook-static [path-filter]` from `apps/web`. It opens every story in headless Chromium and fails on a page error, a console error or an empty render.

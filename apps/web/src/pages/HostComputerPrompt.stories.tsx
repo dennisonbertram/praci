@@ -1,7 +1,8 @@
 import type { Me, RakazoDesktop } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockRpc } from "../stories/fixtures-8";
+import { mockRpc } from "../lib/__mocks__/rpc";
+import { withPageBehind } from "../stories/decorators";
 import { HostComputerPrompt } from "./HostComputerPrompt";
 
 const me: Me = {
@@ -35,14 +36,7 @@ const meta = {
   title: "Shell/HostComputerPrompt",
   component: HostComputerPrompt,
   args: { initialMe: me },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="text-sm text-muted-foreground">Page behind the dialog</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
 } satisfies Meta<typeof HostComputerPrompt>;
 export default meta;
 type Story = StoryObj<typeof meta>;

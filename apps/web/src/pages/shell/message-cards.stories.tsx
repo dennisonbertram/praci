@@ -2,7 +2,8 @@ import type { MessageBlock } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
-import { grayPngBase64, grayPngUrl } from "../../stories/fixtures-4";
+import { withVisibleRoot } from "../../stories/decorators";
+import { grayPngBase64, grayPngUrl } from "../../stories/fixtures";
 import {
   AppConnectCard,
   ArtifactImage,
@@ -113,15 +114,9 @@ export const ChoiceSaveFailed: Story = {
 /** A dismissed card renders nothing; the line below stands in for the thread. */
 export const ChoiceDismissed: Story = {
   render: () => (
-    <>
-      <ChoiceCard
-        botId="bot_ada"
-        block={{ ...choice, answerId: "_dismissed" }}
-        onBotChanged={noop}
-      />
-      <p className="text-sm text-muted-foreground">The card is gone from the thread.</p>
-    </>
+    <ChoiceCard botId="bot_ada" block={{ ...choice, answerId: "_dismissed" }} onBotChanged={noop} />
   ),
+  decorators: [withVisibleRoot("The card is gone from the thread.")],
 };
 
 export const AppConnect: Story = {

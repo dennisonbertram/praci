@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../../stories/fixtures-6";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import { BotPagePanel } from "./bot-page-panel";
 
 const chart = {

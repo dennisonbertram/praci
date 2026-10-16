@@ -1,7 +1,7 @@
 import type { Routine } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import { mockRpc, resetRpc } from "../stories/fixtures-2";
+import { mockRpc, resetRpcMocks } from "../lib/__mocks__/rpc";
 import {
   draftFromRoutine,
   emptyRoutineDraft,
@@ -51,7 +51,7 @@ const meta = {
     },
   },
   beforeEach: () => {
-    resetRpc();
+    resetRpcMocks();
     mockRpc({
       "models.credentials": [],
       "models.list": [],

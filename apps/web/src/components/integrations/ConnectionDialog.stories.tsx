@@ -1,18 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
+import { withPageBehind } from "../../stories/decorators";
 import { ConnectionDialog } from "./ConnectionDialog";
 
 const meta = {
   title: "Integrations/ConnectionDialog",
   component: ConnectionDialog,
-  decorators: [
-    (Story) => (
-      <>
-        <p className="p-4 text-sm text-muted-foreground">Page behind the dialog</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
   args: {
     title: "Connect Demo",
     name: "Demo",

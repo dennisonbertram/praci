@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../stories/rpc-mock-1";
+import { mockRpc } from "../lib/__mocks__/rpc";
 import { LocalSettingsPage } from "./LocalSettings";
 
 const meta = {

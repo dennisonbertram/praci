@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockBots } from "../../stories/fixtures-9";
+import { teamBots } from "../../stories/fixtures";
 import { BotCreatePicker } from "./bot-picker";
 
 const noop = () => undefined;
@@ -9,7 +9,7 @@ const meta = {
   title: "Shell/Bot create picker",
   component: BotCreatePicker,
   args: {
-    bots: mockBots,
+    bots: teamBots,
     onCreateBot: noop,
     onOpenBot: noop,
     onCreateGroup: noop,

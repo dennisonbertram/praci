@@ -1,7 +1,7 @@
 import type { RunActivityRow } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockRpc } from "../stories/fixtures-6";
+import { mockRpc } from "../lib/__mocks__/rpc";
 import { ActivityList } from "./ActivityList";
 
 const row = (over: Partial<RunActivityRow>): RunActivityRow =>

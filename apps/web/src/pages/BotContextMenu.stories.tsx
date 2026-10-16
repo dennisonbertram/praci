@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockSections } from "../stories/fixtures-6";
+import { mockSections } from "../stories/fixtures";
 import { BotContextMenu } from "./BotContextMenu";
 
 const noop = () => {};

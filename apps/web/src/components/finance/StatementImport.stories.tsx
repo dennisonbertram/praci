@@ -1,7 +1,7 @@
 import type { FinanceStatement } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent } from "storybook/test";
-import { mockRpc } from "../../stories/mock-rpc-5";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import { StatementImport } from "./StatementImport";
 
 const meta = {

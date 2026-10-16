@@ -1,6 +1,7 @@
 import type { SpaceMemoryConfig } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../stories/mock-rpc-5";
+import { mockRpc } from "../lib/__mocks__/rpc";
+import { withPageBehind } from "../stories/decorators";
 import { MemorySettingsOverlay } from "./MemorySettingsOverlay";
 
 const meta = {
@@ -10,14 +11,7 @@ const meta = {
     docs: { description: { component: "Also shows: ScopePicker (the Default scope toggles)" } },
   },
   args: { onClose: () => undefined, onConfigChange: () => undefined, config: null },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="p-4 text-sm text-muted-foreground">Page behind the dialog</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
 } satisfies Meta<typeof MemorySettingsOverlay>;
 export default meta;
 type Story = StoryObj<typeof meta>;

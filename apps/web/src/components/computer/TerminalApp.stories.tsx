@@ -1,7 +1,7 @@
 import type { ComputerCommand } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { screen, userEvent } from "storybook/test";
-import { mockRpc } from "../../stories/rpc-mock-1";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import TerminalApp from "./TerminalApp";
 
 const commands: ComputerCommand[] = [

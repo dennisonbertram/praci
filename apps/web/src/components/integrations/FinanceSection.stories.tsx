@@ -1,33 +1,7 @@
 import type { FinanceSource } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../../stories/mock-rpc-5";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import { FinanceSection } from "./FinanceSection";
-
-// Tiles load brand logos from the web; blank them so stories stay offline (AppLogo falls back to a letter).
-let logosBlocked = false;
-function blockRemoteLogos() {
-  if (logosBlocked) return;
-  logosBlocked = true;
-  const remote = (value: string) => (/^https?:/.test(value) ? "" : value);
-  const setAttribute = Element.prototype.setAttribute;
-  Element.prototype.setAttribute = function (name: string, value: string) {
-    return setAttribute.call(
-      this,
-      name,
-      this instanceof HTMLImageElement && name === "src" ? remote(value) : value,
-    );
-  };
-  const src = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
-  if (src?.set) {
-    const set = src.set;
-    Object.defineProperty(HTMLImageElement.prototype, "src", {
-      ...src,
-      set(value: string) {
-        set.call(this, remote(value));
-      },
-    });
-  }
-}
 
 const meta = {
   title: "Integrations/FinanceSection",
@@ -42,14 +16,11 @@ const meta = {
   },
   args: { sources: [], onChanged: () => undefined },
   decorators: [
-    (Story) => {
-      blockRemoteLogos();
-      return (
-        <div className="w-[860px] max-w-full">
-          <Story />
-        </div>
-      );
-    },
+    (Story) => (
+      <div className="w-[860px] max-w-full">
+        <Story />
+      </div>
+    ),
   ],
 } satisfies Meta<typeof FinanceSection>;
 export default meta;

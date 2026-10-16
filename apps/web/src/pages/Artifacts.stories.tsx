@@ -2,7 +2,8 @@ import type { Artifact } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { userEvent, within } from "storybook/test";
-import { mockBot, mockRpc, resetRpc } from "../stories/fixtures-2";
+import { mockRpc, resetRpcMocks } from "../lib/__mocks__/rpc";
+import { mockBot } from "../stories/fixtures";
 import { ArtifactsPage } from "./Artifacts";
 
 const base = (
@@ -96,7 +97,7 @@ function Page({ at = "/app/artifacts" }: { at?: string }) {
 }
 
 const meta = {
-  beforeEach: () => resetRpc(),
+  beforeEach: () => resetRpcMocks(),
   title: "Artifacts/ArtifactsPage",
   parameters: {
     layout: "fullscreen",

@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockMe, mockModelCatalog, mockModelCredentials, mockRpc } from "../stories/fixtures-0";
+import { mockRpc } from "../lib/__mocks__/rpc";
+import { withPageBehind } from "../stories/decorators";
+import { mockMe, mockModelCatalog, mockModelCredentials } from "../stories/fixtures";
 import { SettingsOverlay } from "./SettingsOverlay";
 
 const meta = {
@@ -17,14 +19,7 @@ const meta = {
     onMemoryConfigChange: () => undefined,
     onClose: () => undefined,
   },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="text-sm text-muted-foreground">Page behind the settings</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind("Page behind the settings")],
   beforeEach: () => {
     mockRpc({
       "aiConsent.status": { recipients: [] },

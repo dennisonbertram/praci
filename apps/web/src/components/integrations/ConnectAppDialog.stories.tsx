@@ -1,21 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../../lib/__mocks__/rpc";
-import { demoApp, demoBots, demoConnection, demoIntegrations } from "../../stories/fixtures-4";
+import { withPageBehind } from "../../stories/decorators";
+import { demoApp, demoConnection, demoIntegrations } from "../../stories/fixtures";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 
-/** The dialog renders in a portal, so a page behind it keeps the story from looking empty. */
 const meta = {
   title: "Integrations/ConnectAppDialog",
   component: ConnectAppDialog,
   args: { item: demoApp, data: demoIntegrations({ connections: [] }), onClose: () => undefined },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="p-6">Sample Mail is not connected.</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind("Sample Mail is not connected.")],
 } satisfies Meta<typeof ConnectAppDialog>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -66,7 +59,7 @@ export const ConnectedNoAgents: Story = {
 };
 
 export const SecondAccount: Story = {
-  args: { data: demoIntegrations({ bots: demoBots }) },
+  args: { data: demoIntegrations() },
   beforeEach: () =>
     mockRpc({
       "connections.begin": { connectionId: "conn_new", authorizationUrl: null },

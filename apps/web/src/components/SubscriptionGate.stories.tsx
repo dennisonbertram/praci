@@ -1,6 +1,6 @@
 import type { BillingStatus } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../stories/fixtures-9";
+import { mockRpc } from "../lib/__mocks__/rpc";
 import { SubscriptionGate } from "./SubscriptionGate";
 
 const status: BillingStatus = {

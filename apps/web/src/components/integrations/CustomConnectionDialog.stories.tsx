@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockBots, mockRpc } from "../../stories/fixtures-6";
+import { mockRpc } from "../../lib/__mocks__/rpc";
+import { withPageBehind } from "../../stories/decorators";
+import { mockBots } from "../../stories/fixtures";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
 import type { IntegrationsData } from "./useIntegrations";
 
@@ -26,14 +28,7 @@ const meta = {
   component: CustomConnectionDialog,
   parameters: { layout: "fullscreen" },
   args: { data, onClose: () => {} },
-  decorators: [
-    (Story) => (
-      <>
-        <div className="p-4 text-sm text-muted-foreground">Integrations page behind the dialog</div>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind("Integrations page behind the dialog")],
 } satisfies Meta<typeof CustomConnectionDialog>;
 export default meta;
 type Story = StoryObj<typeof meta>;

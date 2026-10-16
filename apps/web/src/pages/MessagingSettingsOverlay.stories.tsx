@@ -6,7 +6,9 @@ import type {
 } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockBot as bot, mockRpc, resetRpc } from "../stories/fixtures-2";
+import { mockRpc, resetRpcMocks } from "../lib/__mocks__/rpc";
+import { withPageBehind } from "../stories/decorators";
+import { mockBot as bot } from "../stories/fixtures";
 import { MessagingSettingsOverlay } from "./MessagingSettingsOverlay";
 
 const linked: MessagingStatus = {
@@ -84,16 +86,8 @@ const spaces = (externalConversations: ExternalConversation[]) => ({
 });
 
 const meta = {
-  beforeEach: () => resetRpc(),
-  decorators: [
-    (Story) => (
-      <>
-        {/* The dialog renders in a portal, so a page behind it keeps the story root non-empty. */}
-        <div aria-hidden className="h-screen bg-muted/30" />
-        <Story />
-      </>
-    ),
-  ],
+  beforeEach: () => resetRpcMocks(),
+  decorators: [withPageBehind()],
   title: "Settings/MessagingSettingsOverlay",
   component: MessagingSettingsOverlay,
   args: { onClose: () => undefined },

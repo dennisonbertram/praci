@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import { mockBots } from "../../stories/fixtures-6";
+import { mockBots } from "../../stories/fixtures";
 import { AgentStack, AgentToggleList, IntegrationTile, StatusBadge } from "./parts";
 
 const meta = {

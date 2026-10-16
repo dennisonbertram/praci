@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { mockBots, mockRpc, stubExternalImages } from "../stories/fixtures-0";
+import { mockRpc } from "../lib/__mocks__/rpc";
+import { detailedBots } from "../stories/fixtures";
 import { IntegrationsPage } from "./Integrations";
 
 const catalog = [
@@ -75,7 +76,7 @@ const loaded = (extra: Record<string, unknown> = {}) =>
     "connections.list": [connection],
     "connections.access": { allAgents: true, botIds: [] },
     "mcp.servers.list": [server],
-    "bots.list": mockBots,
+    "bots.list": detailedBots,
     "mcp.assignments.all": [],
     "capabilities.list": [],
     "integrationSetup.get": null,
@@ -107,7 +108,6 @@ const meta = {
   ],
   beforeEach: () => {
     loaded();
-    return stubExternalImages();
   },
 } satisfies Meta<typeof IntegrationsPage>;
 export default meta;

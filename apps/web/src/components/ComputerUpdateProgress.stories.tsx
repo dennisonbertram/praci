@@ -1,7 +1,8 @@
 import type { ComputerUpdate } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { screen, userEvent } from "storybook/test";
-import { mockRpc } from "../stories/fixtures-0";
+import { mockRpc } from "../lib/__mocks__/rpc";
+import { withPageBehind } from "../stories/decorators";
 import { ComputerUpdateProgress } from "./ComputerUpdateProgress";
 
 const update = (patch: Partial<ComputerUpdate> = {}): ComputerUpdate => ({
@@ -24,14 +25,7 @@ const meta = {
   title: "Computer/Update progress",
   component: ComputerUpdateProgress,
   args: { onCompleted: () => undefined },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="text-sm text-muted-foreground">Page behind the update</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind("Page behind the update")],
 } satisfies Meta<typeof ComputerUpdateProgress>;
 export default meta;
 type Story = StoryObj<typeof meta>;

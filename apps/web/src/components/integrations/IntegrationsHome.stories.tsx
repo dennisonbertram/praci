@@ -5,10 +5,8 @@ import {
   mockIntegrations,
   mockServer,
   mockSource,
-} from "../../stories/fixtures-9";
+} from "../../stories/fixtures";
 import { IntegrationsHome } from "./IntegrationsHome";
-
-const BLANK_PIXEL = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 
 const meta = {
   title: "Integrations/IntegrationsHome",
@@ -21,22 +19,6 @@ const meta = {
           "Also shows: Card, CardHead, UsedBy, McpCard, AppCard, SourceCard, AppTile, SectionTitle",
       },
     },
-  },
-  // Finance logos are remote images; keep stories offline by swapping them for a blank pixel.
-  beforeEach: () => {
-    const descriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
-    if (!descriptor?.set) return;
-    const { get, set } = descriptor;
-    Object.defineProperty(HTMLImageElement.prototype, "src", {
-      configurable: true,
-      get,
-      set(value: string) {
-        set.call(this, /^https?:/.test(value) ? BLANK_PIXEL : value);
-      },
-    });
-    return () => {
-      Object.defineProperty(HTMLImageElement.prototype, "src", descriptor);
-    };
   },
   decorators: [
     (Story) => (

@@ -1,7 +1,7 @@
 import type { ComputerStatus } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockRpc } from "../../stories/fixtures-9";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import { ComputerWorkspace } from "./ComputerWorkspace";
 
 const computer: ComputerStatus = {

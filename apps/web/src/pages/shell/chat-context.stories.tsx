@@ -1,6 +1,6 @@
 import type { ThreadMessage } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../../stories/fixtures-9";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import { ComposerReplyPreview, ReplyLine, TimeSeparator } from "./chat-context";
 
 // A 1x1 sample image so the thumbnail has something to show.

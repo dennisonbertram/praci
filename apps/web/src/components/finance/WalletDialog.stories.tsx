@@ -2,6 +2,7 @@ import type { FinanceWallet } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
+import { withPageBehind } from "../../stories/decorators";
 import { WalletDialog } from "./WalletDialog";
 
 const wallet: FinanceWallet = {
@@ -18,14 +19,7 @@ const meta = {
   title: "Finance/WalletDialog",
   component: WalletDialog,
   // The dialog renders in a portal, so give the story root something to show.
-  decorators: [
-    (Story) => (
-      <>
-        <p className="text-sm text-muted-foreground">Page behind the dialog</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
   args: { open: true, onClose: () => undefined, onSaved: () => undefined },
 } satisfies Meta<typeof WalletDialog>;
 export default meta;

@@ -1,7 +1,7 @@
 import type { BotSecretMetadata } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockRpc } from "../../stories/fixtures-8";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import { BotCredentialsSection } from "./bot-credentials";
 
 const at = "2026-01-01T00:00:00.000Z";

@@ -1,7 +1,7 @@
 import type { Bot, Ticket, TicketComment } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { mockRpc } from "../stories/mock-rpc-5";
+import { mockRpc } from "../lib/__mocks__/rpc";
 import { BoardPage } from "./Board";
 
 const meta = {

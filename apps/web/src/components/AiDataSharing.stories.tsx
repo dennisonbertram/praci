@@ -1,6 +1,6 @@
 import type { AiConsentStatus } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../stories/mock-rpc-5";
+import { mockRpc } from "../lib/__mocks__/rpc";
 import { AiDataSharingSection, InboxConsentPrompt } from "./AiDataSharing";
 
 const meta = { title: "Settings/AI data sharing" } satisfies Meta;

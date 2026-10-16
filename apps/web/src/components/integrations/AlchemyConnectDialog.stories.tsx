@@ -1,21 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { screen, userEvent } from "storybook/test";
-import { mockRpc } from "../../stories/rpc-mock-1";
+import { mockRpc } from "../../lib/__mocks__/rpc";
+import { withPageBehind } from "../../stories/decorators";
 import { AlchemyConnectDialog } from "./AlchemyConnectDialog";
 
 const meta = {
   title: "Integrations/AlchemyConnectDialog",
   component: AlchemyConnectDialog,
   args: { onConnected: () => undefined, onClose: () => undefined },
-  // The dialog renders in a portal, so give the story root some content of its own.
-  decorators: [
-    (Story) => (
-      <>
-        <div className="h-80" />
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
 } satisfies Meta<typeof AlchemyConnectDialog>;
 export default meta;
 type Story = StoryObj<typeof meta>;

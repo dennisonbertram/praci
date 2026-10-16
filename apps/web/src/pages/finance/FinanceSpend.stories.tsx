@@ -5,7 +5,7 @@ import type {
   FinanceVendorOutput,
 } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockRpc } from "../../stories/fixtures-8";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import {
   FinanceCategoryPage,
   FinanceRecurringPage,

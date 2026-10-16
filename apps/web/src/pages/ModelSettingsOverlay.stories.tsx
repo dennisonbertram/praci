@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { screen, userEvent } from "storybook/test";
-import { mockMe, mockModelCatalog, mockModelCredentials, mockRpc } from "../stories/fixtures-0";
+import { mockRpc } from "../lib/__mocks__/rpc";
+import { withPageBehind } from "../stories/decorators";
+import { mockMe, mockModelCatalog, mockModelCredentials } from "../stories/fixtures";
 import { ModelSettingsOverlay } from "./ModelSettingsOverlay";
 
 const loaded = (extra: Record<string, unknown> = {}) =>
@@ -122,14 +124,7 @@ export const EmptyCatalog: Story = {
 export const AsDialog: Story = {
   name: "As a dialog (not embedded)",
   args: { embedded: false },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="text-sm text-muted-foreground">Page behind the dialog</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
 };
 
 export const OwnerDefaultSpace: Story = { args: { localOwner: true } };

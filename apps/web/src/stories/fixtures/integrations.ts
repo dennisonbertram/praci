@@ -1,61 +1,14 @@
 import type {
-  Bot,
   BotMcpServer,
   CapabilityInstall,
   Connection,
   ConnectionCatalogItem,
   McpServer,
 } from "@rakazo/contracts";
-import type { IntegrationsData } from "../components/integrations/useIntegrations";
+import type { IntegrationsData } from "../../components/integrations/useIntegrations";
+import { mockBots, teamBots } from "./bots";
 
-/** Invented data for batch 9 stories (Integrations and Group pickers). */
 const STAMP = "2026-01-01T00:00:00.000Z";
-
-export function mockBot(id: string, name: string, color: string, extra: Partial<Bot> = {}): Bot {
-  return {
-    id,
-    spaceId: "space_demo",
-    name,
-    title: `${name} helper`,
-    description: "",
-    instructions: "",
-    color,
-    notifyOnFinish: false,
-    pinned: false,
-    sectionId: null,
-    archivedAt: null,
-    unread: false,
-    parentBotId: null,
-    memoryScope: null,
-    threadId: `thread_${id}`,
-    preview: "",
-    status: "idle",
-    runErrorId: null,
-    computerMode: "team",
-    updatedAt: STAMP,
-    createdAt: STAMP,
-    voiceId: null,
-    autoSpeak: false,
-    modelProvider: null,
-    modelId: null,
-    thinkingLevel: null,
-    teamChatAmbientEnabled: false,
-    teamChatRules: "",
-    path: "",
-    content: "",
-    disabledBuiltinTools: [],
-    webhookConfigured: false,
-    spawnKey: null,
-    ...extra,
-  } as Bot;
-}
-
-export const mockBots: Bot[] = [
-  mockBot("bot_ada", "Ada", "#3b82f6"),
-  mockBot("bot_bram", "Bram", "#10b981"),
-  mockBot("bot_cleo", "Cleo", "#f59e0b", { status: "running" }),
-  mockBot("bot_dara", "Dara", "#ef4444"),
-];
 
 export const mockCatalog: ConnectionCatalogItem[] = [
   {
@@ -180,7 +133,7 @@ export function mockIntegrations(extra: Partial<IntegrationsData> = {}): Integra
     catalog: mockCatalog,
     connections: [],
     servers: [],
-    bots: mockBots,
+    bots: teamBots,
     mcpAssignments: [],
     access: {},
     sources: [],
@@ -193,11 +146,34 @@ export function mockIntegrations(extra: Partial<IntegrationsData> = {}): Integra
   };
 }
 
-// The app code gets src/lib/rpc through sb.mock, which Vite bundles as a second copy of
-// __mocks__/rpc.ts. Registering responses on that copy (not on a direct import of the mock file)
-// is what the app's rpc calls see.
-import * as appRpc from "../lib/rpc";
+/** One connected sample app, for the connect and detail stories. */
+export const demoApp: ConnectionCatalogItem = {
+  connectorId: "demo",
+  slug: "sample-mail",
+  name: "Sample Mail",
+  logo: null,
+  connected: true,
+  noAuth: false,
+  description: "Read and draft sample email.",
+  category: "email_calendar",
+};
 
-type RpcResponse = unknown | ((input: unknown) => unknown);
-export const mockRpc = (map: Record<string, RpcResponse>): void =>
-  (appRpc as unknown as { mockRpc: (map: Record<string, RpcResponse>) => void }).mockRpc(map);
+export const demoConnection = (patch: Partial<Connection> = {}): Connection => ({
+  id: "conn_1",
+  connectorId: "demo",
+  provider: "sample-mail",
+  displayName: "Sample Mail",
+  status: "connected",
+  error: null,
+  capabilities: [],
+  createdAt: STAMP,
+  ...patch,
+});
+
+export const demoIntegrations = (patch: Partial<IntegrationsData> = {}): IntegrationsData =>
+  mockIntegrations({
+    catalog: [demoApp],
+    connections: [demoConnection()],
+    bots: mockBots.slice(0, 2),
+    ...patch,
+  });

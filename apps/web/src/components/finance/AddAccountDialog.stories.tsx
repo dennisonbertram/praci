@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { screen, userEvent, waitFor } from "storybook/test";
-import { mockRpc, stubExternalImages } from "../../stories/fixtures-0";
+import { mockRpc } from "../../lib/__mocks__/rpc";
+import { withPageBehind } from "../../stories/decorators";
 import { AddAccountDialog } from "./AddAccountDialog";
 
 const meta = {
@@ -8,17 +9,9 @@ const meta = {
   component: AddAccountDialog,
   parameters: { docs: { description: { component: "Also shows: Option, iconTile" } } },
   args: { onPickCrypto: () => undefined, onImported: () => undefined, onClose: () => undefined },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="text-sm text-muted-foreground">Page behind the dialog</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
   beforeEach: () => {
     mockRpc({ "finance.overview": { sources: [] }, "finance.exchanges": [] });
-    return stubExternalImages();
   },
 } satisfies Meta<typeof AddAccountDialog>;
 export default meta;
