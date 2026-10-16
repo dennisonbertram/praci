@@ -26,7 +26,11 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { FinanceSection } from "./FinanceSection";
+import { FinanceSection, useFinanceStatus } from "./FinanceSection";
+
+function Standalone(props: { sources: FinanceSource[]; onChanged: () => void }) {
+  return <FinanceSection {...props} status={useFinanceStatus()} />;
+}
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -46,7 +50,7 @@ async function show(sources: FinanceSource[], onChanged = vi.fn()) {
   await act(async () =>
     root.render(
       <MemoryRouter>
-        <FinanceSection sources={sources} onChanged={onChanged} />
+        <Standalone sources={sources} onChanged={onChanged} />
       </MemoryRouter>,
     ),
   );
@@ -224,7 +228,6 @@ it("connects Alchemy only after the server accepts the key, and shows its error 
     alchemy: { connected: false, lastError: null },
   };
   cryptoRpc.crypto
-    .mockResolvedValueOnce(off)
     .mockResolvedValueOnce(off)
     .mockResolvedValue({ ...off, alchemy: { connected: true, lastError: null } });
   cryptoRpc.cryptoProviderConnect
