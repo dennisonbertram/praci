@@ -46,8 +46,9 @@ reachable through it. PR 1 records this in this file.
 
 ## Decisions
 
-1. **Connection reuses the Carta tile** added on Integrations (a first-party MCP
-   tile that opens the custom connection dialog prefilled with the endpoint). A
+1. **Connection reuses the Carta tile** that the first-party tiles PR adds on
+   Integrations (branch `feat/carta-connection`: a tile that opens the custom
+   connection dialog prefilled with the endpoint). This plan builds on that PR. A
    server counts as Carta by its endpoint host, through one helper in
    `packages/contracts/src/carta.ts` (`isCartaEndpoint`), like
    `financeProviderForEndpoint`.
@@ -68,15 +69,20 @@ reachable through it. PR 1 records this in this file.
    even when `allowAllTools` is set (the Finance agent's guard). If Rakazo's OAuth
    client can request scopes per server, request only the `read_*` scopes.
    `set_context` stays allowed because it selects a company, not data.
-5. **Writing happens in Gmail and Drive, behind approval.** The agent gets the
-   built-in `mail_search`, `mail_get`, `mail_draft`, `mail_send`, `drive_search`,
-   `drive_read` and `drive_create_file`. Each write already pauses for the
-   founder's "Allow once" (`action-approval.ts`). The skills always save a draft
-   first and then ask to send it, so the approval card shows the exact message.
-   An "Always allow" rule must never cover `mail_send` for this agent: the Carta
-   agent asks every time, whatever rules exist. Unlike the Finance agent, this
-   agent keeps the built-in Google tools; it still gets no Composio or Pipedream
-   tools.
+5. **Writing happens in Gmail and Drive, and every send is approved by hand.** The
+   agent uses the built-in `mail_search`, `mail_grep`, `mail_get`, `mail_draft`,
+   `mail_send`, `drive_search`, `drive_read` and `drive_create_file`, and gets no
+   Composio or Pipedream tools.
+   - Being on `APPROVAL_REQUIRED_BUILTIN_TOOLS` is not enough: a saved rule or
+     Auto Review can let those run (`planActionGate`). For the Carta spawn key,
+     `mail_send` goes through the mandatory path (`toolRequiresExplicitApproval`,
+     `executor.ts` `requiresMandatoryApproval`), which skips rules and Auto Review.
+   - `mail_send` with only a `draftId` does not load the draft
+     (`mail-tools.ts`), so the approval card would not show the message, and the
+     draft could change after approval. The Carta agent always sends with full
+     arguments (to, cc, bcc, subject, body), and is refused a draft-id-only
+     send. Its approval card shows every recipient, Bcc included, and the whole
+     body, not the truncated summary (`approval-ask.ts`).
 6. **It reads Finance numbers through the existing tools.** `financeToolsAllowed`
    is widened to the Carta spawn key so `finance_overview` and `finance_breakdown`
    supply cash, burn and runway. No new finance code.
@@ -88,19 +94,23 @@ reachable through it. PR 1 records this in this file.
      and asks if they are not in the chat; save a Gmail draft to the founder with
      investors in Bcc. It never invents a metric: anything missing is marked TBD in
      the draft.
-   - `carta-audit-response`: search Gmail for audit and confirmation requests in
-     the last 120 days; for each, extract the fund, the as-of date and every item
+   - `carta-audit-response`: find audit and confirmation requests from the last
+     120 days with `mail_grep` (`mail_search` returns only a summary of the first
+     and last few results); for each, extract the fund, the as-of date and every item
      asked; answer holdings from Carta as of that date and flag any difference from
      the auditor's figures; find the requested documents in Drive (and the Data
      room once it exists); draft the reply with attachments listed, plus a short
      "still needed from you" list, then ask to send it. **DocuSign requests:** the
-     agent cannot open or sign an envelope. It reads what the email shows (sender,
-     fund, due date, any figures or attached letter), checks those against Carta,
+     agent cannot open or sign an envelope. It reads what the email body shows
+     (sender, fund, due date, any figures), checks those against Carta,
      and tells the founder either "the figures match, sign it" or exactly what
      differs and the reply to send the auditor instead. When the email has no
      figures, it gives the founder the Carta numbers to compare inside DocuSign.
      It never signs or confirms on the founder's behalf, and never answers in a
-     confirmation portal.
+     confirmation portal. **Attachments:** `mail_get` returns headers and body
+     text only, so in v1 a request whose figures are in an attached letter is
+     listed as "read the attached letter" for the founder. Reading attachments
+     comes with the Data room (docs/data-room), which indexes them.
 8. **A routine nudges audit season.** Creating the agent adds one inactive
    suggestion the founder can turn on: weekly from January to March, run
    `@carta-audit-response` and report new requests. The investor-update routine
@@ -116,6 +126,7 @@ reachable through it. PR 1 records this in this file.
   confirmations inside Carta).
 - Sending without the founder's per-message approval.
 - Opening or signing DocuSign envelopes (a DocuSign connection is a v2 option).
+- Reading email attachments (comes with the Data room).
 - Confirmation.com and other auditor portals.
 - The fund (LP-side) persona and the CRM scopes.
 - A cap table dashboard (the Cap Table page is the agent's chat).
@@ -125,8 +136,9 @@ reachable through it. PR 1 records this in this file.
 
 - Unit: `isCartaEndpoint` (https host match, look-alike hosts rejected);
   `assignmentAllowsTool` refuses a non-listed Carta tool for the Carta spawn key
-  with `allowAllTools: true`; an "Always allow" rule for `mail_send` still asks
-  for the Carta agent; `ensureCartaAgent` is idempotent and narrows a wider
+  with `allowAllTools: true`; for the Carta agent, `mail_send` still asks with an
+  "Always allow" rule and with Auto Review on, and a draft-id-only send is
+  refused; `ensureCartaAgent` is idempotent and narrows a wider
   assignment; `bots.create` rejects `carta-agent:`.
 - Postgres: agent and assignments are scoped to space and user; another user's
   Carta server is never assigned.
