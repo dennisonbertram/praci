@@ -106,12 +106,12 @@ msgid "{0} is ready."
 msgstr ""
 
 #. placeholder {0}: format(size / 1024)
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{0} KB"
 msgstr "{0} KB"
 
 #. placeholder {0}: format(size / (1024 * 1024))
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{0} MB"
 msgstr "{0} MB"
 
@@ -211,7 +211,6 @@ msgid "{count} years"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{days}d ago"
 msgstr "hace {days} d"
 
@@ -224,7 +223,6 @@ msgid "{hiddenCount} more"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{hours}h ago"
 msgstr "hace {hours} h"
 
@@ -233,7 +231,6 @@ msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{minutes}m ago"
 msgstr "hace {minutes} min"
 
@@ -292,7 +289,7 @@ msgstr ""
 msgid "{serverName} connected"
 msgstr ""
 
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{size} B"
 msgstr "{size} B"
 
@@ -3358,7 +3355,6 @@ msgid "Junk"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "just now"
 msgstr "ahora mismo"
 
