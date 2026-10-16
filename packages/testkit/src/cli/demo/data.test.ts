@@ -19,6 +19,10 @@ describe("mock demo data", () => {
     }
   });
 
+  it("includes one document that fails to read, so the failed state can be seen", () => {
+    expect(DEMO_DOCUMENTS.filter((document) => document.kind === "broken")).toHaveLength(1);
+  });
+
   it("builds a mailbox of 25 mock threads with unread mail and one attachment", () => {
     const { messages } = demoMailboxes()["mock-demo-mailbox"];
     for (const message of messages) {

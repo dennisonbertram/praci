@@ -484,12 +484,13 @@ export const DEMO_CONTACTS = [
 export interface DemoDocument {
   folder: string;
   name: string;
-  kind: "pdf" | "csv";
+  /** "broken" is bytes that claim to be a PDF but are not, so the demo shows a failed item. */
+  kind: "pdf" | "csv" | "broken";
   /** ASCII only, no parentheses or backslashes (it becomes a PDF text layer). */
   text: string;
 }
 
-const doc = (folder: string, name: string, text: string, kind: "pdf" | "csv" = "pdf") => ({
+const doc = (folder: string, name: string, text: string, kind: DemoDocument["kind"] = "pdf") => ({
   folder,
   name,
   kind,
@@ -543,6 +544,12 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
     "Product",
     "MOCK Product Roadmap.pdf",
     "Roadmap for the next two quarters. Q4: calibration tool. Q1: fleet dashboard.",
+  ),
+  doc(
+    "Legal",
+    "MOCK Signed NDA - Bolt Freight.pdf",
+    "A damaged scan that is not a readable PDF.",
+    "broken",
   ),
 ];
 

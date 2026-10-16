@@ -164,7 +164,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     await session.upload(
       document.name,
       folders.get(document.folder) as string,
-      document.kind === "pdf" ? "application/pdf" : "text/csv",
+      document.kind === "csv" ? "text/csv" : "application/pdf",
       bytes,
     );
   }
