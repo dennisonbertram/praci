@@ -15,7 +15,7 @@ test("a GraphQL endpoint is added from the custom connection dialog's Advanced s
   await page.getByRole("button", { name: "Add custom connection", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByText("Advanced", { exact: true }).click();
-  for (const label of ["OpenAPI", "GraphQL", "Executor", "Treg", "Local command"]) {
+  for (const label of ["OpenAPI", "GraphQL", "Executor", "Local command"]) {
     await expect(dialog.getByRole("button", { name: label, exact: true })).toBeVisible();
   }
   await captureScreenshot(page, testInfo, "01-graphql-advanced");

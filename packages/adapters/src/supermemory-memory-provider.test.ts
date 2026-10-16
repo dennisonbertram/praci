@@ -238,6 +238,18 @@ describe("Supermemory local base URL", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("rejects metadata hostnames before DNS even if they resolve privately", async () => {
+    const resolveHostname = vi.fn(async () => [{ address: "10.0.0.2", family: 4 as const }]);
+    await expect(
+      prepareSupermemoryConnection(
+        { mode: "local", baseUrl: "http://metadata.google.internal/" },
+        credentials,
+        { allowPrivateEndpoint: true, resolveHostname },
+      ),
+    ).rejects.toThrow(/blocked address/);
+    expect(resolveHostname).not.toHaveBeenCalled();
+  });
+
   it("rejects cloud metadata and link-local targets", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

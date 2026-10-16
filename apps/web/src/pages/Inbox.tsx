@@ -124,6 +124,9 @@ export function InboxPage({
   const [error, setError] = useState("");
   // Shown briefly at the bottom; a mark stays undoable even after its row left the list.
   const [status, setStatus] = useState<Status | null>(null);
+  // Spoken by screen readers only, for read changes; the Archived toast is already a status region.
+  const [announcement, setAnnouncement] = useState("");
+  const announceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [todosByTab, setTodosByTab] = useState<Record<string, InboxTodo[]>>({});
   const [todoRefresh, setTodoRefresh] = useState(0);
   const [selectedId, setSelectedId] = useState<string | undefined>();
@@ -308,6 +311,11 @@ export function InboxPage({
     });
   };
   const setRead = (messageId: string, read: boolean) => {
+    // Clear first so a repeat of the same message is announced again.
+    setAnnouncement("");
+    const text = read ? t`Marked read` : t`Marked unread`;
+    clearTimeout(announceTimer.current);
+    announceTimer.current = setTimeout(() => setAnnouncement(text), 50);
     patchRows((list) =>
       list.map((row) => (row.id === messageId ? { ...row, unread: !read } : row)),
     );
@@ -836,6 +844,9 @@ export function InboxPage({
         notice={openId ? toast : null}
       />
       <InboxShortcuts open={help} onClose={() => setHelp(false)} />
+      <div aria-live="polite" className="sr-only">
+        {announcement}
+      </div>
       <div
         role="status"
         className="pointer-events-none fixed inset-x-0 bottom-4 z-100 flex justify-center px-4"

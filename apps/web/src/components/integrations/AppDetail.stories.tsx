@@ -13,11 +13,17 @@ const tools = [
 ];
 
 /** The preview already provides a router; this moves it to the app's route and mounts the page. */
-function Page({ data }: { data: ReturnType<typeof demoIntegrations> }) {
+function Page({
+  data,
+  to = "/app/demo/sample-mail",
+}: {
+  data: ReturnType<typeof demoIntegrations>;
+  to?: string;
+}) {
   const navigate = useNavigate();
   useEffect(() => {
-    void navigate("/app/demo/sample-mail");
-  }, [navigate]);
+    void navigate(to);
+  }, [navigate, to]);
   return (
     <Routes>
       <Route
@@ -74,6 +80,29 @@ export const NotConnected: Story = {
 
 export const NotConnectedUnknownApp: Story = {
   render: () => <Page data={demoIntegrations({ connections: [], catalog: [] })} />,
+};
+
+export const NotInCatalogOwner: Story = {
+  render: () => (
+    <Page
+      data={demoIntegrations({
+        connections: [],
+        catalog: [],
+        setup: { canConfigure: true, needsSetup: true, webUrl: "http://localhost", providers: [] },
+      })}
+    />
+  ),
+};
+
+/** Arriving with `?connect=1` opens the connect dialog without a second click. */
+export const AutoConnect: Story = {
+  beforeEach: () => mockRpc({ "connections.begin": () => new Promise(() => undefined) }),
+  render: () => (
+    <Page
+      data={demoIntegrations({ connections: [] })}
+      to="/app/demo/sample-mail?connect=1&next=%2Fapp%2Fdata-room"
+    />
+  ),
 };
 
 export const NotLoaded: Story = {

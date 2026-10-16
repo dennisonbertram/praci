@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from "node:fs";
 import type { ThreadScrollState } from "@rakazo/core";
 import {
   appendNewerThreadPage,
@@ -11,17 +10,9 @@ import {
 import { act, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
+import { showLatest } from "./thread-actions";
 import { ThreadJumpAnchor } from "./thread-jump";
 import { ThreadScrollBehavior } from "./thread-scroll";
-
-// Exercise the screen's actual handler without importing its native dependencies.
-// Keep Vitest's jsdom URL transform from replacing the file URL with self.location.
-const testFileUrl = import.meta.url;
-const source = readFileSync(new URL("../app/thread.tsx", testFileUrl), "utf8");
-const handler = source.slice(
-  source.indexOf("  function showLatest() {"),
-  source.indexOf("  async function loadOlderMessages() {"),
-);
 
 function page(seqs: number[]) {
   return {
@@ -53,7 +44,7 @@ describe("mobile jump to latest", () => {
           detached: false,
           unread: false,
         });
-        const scope = {
+        const deps = {
           pinnedAroundRef,
           joinPinnedAfterLayout: useRef<number | null>(0),
           jumpScrollTarget,
@@ -63,19 +54,15 @@ describe("mobile jump to latest", () => {
           setThreadScrollState,
           publishThreadScrollState: (next: ThreadScrollState) =>
             setThreadScrollState((previous) => reconcileThreadScrollState(previous, next)),
-          snapRef,
-          commitSnap: setSnap,
-          leaveThreadWindow,
+          snapRef: snapRef as never,
+          commitSnap: setSnap as never,
         };
-        const showLatest = new Function(...Object.keys(scope), `${handler}; return showLatest;`)(
-          ...Object.values(scope),
-        );
         const pinned = pinnedAroundRef.current != null || jumpScrollTarget.current != null;
         return (
           <>
             <div data-list={pinned ? "pinned" : "live"}>{snap.messages.length}</div>
             {pinned || scrollState.detached ? (
-              <button type="button" onClick={showLatest}>
+              <button type="button" onClick={() => showLatest(deps)}>
                 Jump to latest
               </button>
             ) : null}

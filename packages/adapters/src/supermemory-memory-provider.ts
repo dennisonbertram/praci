@@ -11,10 +11,11 @@ import type {
 import { isCloudMetadataHost, isLocalMcpHost } from "@rakazo/contracts";
 import type { ResolvedAddress, ResolveHostname } from "./network-address.js";
 import {
+  assertPrivateLanAddresses as assertPrivateLanAddressesShared,
   defaultResolveHostname,
+  normalizeUrlHostname as hostnameOf,
   isCloudMetadataAddress,
   isLinkLocalAddress,
-  isPrivateAddress,
 } from "./network-address.js";
 import { isPrivateRemoteMcpHostname } from "./remote-mcp.js";
 import { MemoryProviderDeploymentOwnerRequiredError } from "./serenity-memory-provider.js";
@@ -38,29 +39,16 @@ export function supermemoryRequiresDeploymentOwner(settings: Record<string, stri
   return settings.mode === "local";
 }
 
-function hostnameOf(url: URL): string {
-  return url.hostname
-    .replace(/^\[|\]$/g, "")
-    .replace(/\.$/, "")
-    .toLowerCase();
-}
-
 function isBlockedSupermemoryHost(host: string): boolean {
   if (isCloudMetadataHost(host)) return true;
   return isIP(host) !== 0 && (isCloudMetadataAddress(host) || isLinkLocalAddress(host));
 }
 
 function assertPrivateLanAddresses(addresses: ResolvedAddress[]): void {
-  if (
-    addresses.some(
-      (entry) => isCloudMetadataAddress(entry.address) || isLinkLocalAddress(entry.address),
-    )
-  ) {
-    throw new Error(BLOCKED_TARGET_ERROR);
-  }
-  if (addresses.length === 0 || addresses.some((entry) => !isPrivateAddress(entry.address))) {
-    throw new Error(LOCAL_NETWORK_ERROR);
-  }
+  assertPrivateLanAddressesShared(addresses, {
+    blocked: BLOCKED_TARGET_ERROR,
+    notPrivate: LOCAL_NETWORK_ERROR,
+  });
 }
 
 /** Literals and metadata names. Hostnames are classified by assertSupermemoryLocalBaseUrl. */

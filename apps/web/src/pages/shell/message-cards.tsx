@@ -402,7 +402,7 @@ export function McpApprovalCard({
 
   const summary = endpoint ?? `stdio · ${transport}`;
   return (
-    <BuiCard data-testid="mcp-approval-card" className="max-w-[74%] p-4">
+    <BuiCard data-testid="mcp-approval-card" className="max-w-full p-4">
       <div className="flex items-center gap-2">
         <span className="grid h-7 w-7 place-items-center rounded-lg bg-muted text-xs text-foreground">
           M

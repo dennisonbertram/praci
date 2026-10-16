@@ -23,6 +23,8 @@ const MAX_CHANGES = 500;
 
 /** Stored timestamps are UTC without a zone, so compare against Postgres' UTC clock. */
 const DB_NOW = Prisma.sql`timezone('utc', now())`;
+/** After a rate limit, no sync of the connection starts for this long, so page loads do not keep hitting Gmail. */
+const RATE_LIMIT_BACKOFF = Prisma.sql`interval '30 seconds'`;
 
 export interface MailSyncDeps {
   prisma: PrismaClient;
@@ -81,6 +83,7 @@ export async function syncMailbox(
     WHERE s."connectionId" = ${account.id} AND c.id = s."connectionId"
       AND c."spaceId" = ${spaceId} AND c."userId" = ${userId} AND c.status = 'connected'
       AND (s."lastSyncedAt" IS NULL OR s."lastSyncedAt" < ${DB_NOW} - interval '60 seconds')
+      AND (s."backoffUntil" IS NULL OR s."backoffUntil" < ${DB_NOW})
       AND (s."syncStartedAt" IS NULL OR s."syncStartedAt" < ${DB_NOW} - interval '2 minutes')
     RETURNING s."connectionId", s."changeCursor"`;
   if (claimed.length === 0) return "skipped";
@@ -106,6 +109,8 @@ export async function syncMailbox(
       UPDATE mail_sync_states
       SET "lastErrorAt" = ${DB_NOW}, "needsReconnect" = ${needsReconnect},
           "lastErrorKind" = ${lastErrorKind},
+          "backoffUntil" = CASE WHEN ${lastErrorKind} = 'rate_limited'
+            THEN ${DB_NOW} + ${RATE_LIMIT_BACKOFF} ELSE NULL END,
           "syncStartedAt" = NULL, "claimToken" = NULL
       WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
     getLogger().warn("mail sync failed", {
@@ -293,18 +298,20 @@ export async function syncMailbox(
         });
 
         // An incomplete sync is not an error: the mail that loaded is shown. It leaves lastSyncedAt
-        // alone, so the 60-second throttle does not start and the next sync retries at once.
+        // alone, so the 60-second throttle does not start, but it is usually a rate limit, so the
+        // next sync waits out a short pause instead of retrying at once.
         if (partial) {
           await tx.$executeRaw`
             UPDATE mail_sync_states
             SET "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL,
+                "backoffUntil" = ${DB_NOW} + ${RATE_LIMIT_BACKOFF},
                 "syncStartedAt" = NULL, "claimToken" = NULL
             WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
           return "failed" as const;
         }
         await tx.$executeRaw`
           UPDATE mail_sync_states
-          SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL,
+          SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL, "backoffUntil" = NULL,
               "changeCursor" = COALESCE(${nextCursor ?? null}::text, "changeCursor"),
               "syncStartedAt" = NULL, "claimToken" = NULL
           WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;

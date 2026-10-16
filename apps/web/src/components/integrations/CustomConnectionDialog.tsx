@@ -4,7 +4,11 @@ import type {
   IntegrationCatalogSurface,
   McpServer,
 } from "@rakazo/contracts";
-import { MCP_OAUTH_CLIENT_ID_REQUIRED } from "@rakazo/contracts";
+import {
+  isCartaAgentSpawnKey,
+  isCartaEndpoint,
+  MCP_OAUTH_CLIENT_ID_REQUIRED,
+} from "@rakazo/contracts";
 import { deriveMcpName, newClientId } from "@rakazo/core";
 import {
   Button,
@@ -49,6 +53,8 @@ export function CustomConnectionDialog({
   data,
   existingServer,
   initialUrl = "",
+  service,
+  tokenSource = false,
   oauthClient = false,
   oauthScope,
   onClose,
@@ -57,13 +63,19 @@ export function CustomConnectionDialog({
   /** Sign in an existing server that needs a client ID; its connection fields stay locked. */
   existingServer?: McpServer;
   initialUrl?: string;
+  /** The first-party service this dialog connects; it names the dialog instead of "custom connection". */
+  service?: string;
+  /** Open on the Treg token form (the one way to connect Treg) instead of the URL form. */
+  tokenSource?: boolean;
   /** Show the OAuth client ID fields up front, for servers that refuse dynamic registration. */
   oauthClient?: boolean;
   oauthScope?: string;
   onClose: () => void;
 }) {
   const { t } = useLingui();
-  const [view, setView] = useState<View>({ kind: "form" });
+  const [view, setView] = useState<View>(
+    tokenSource ? { kind: "source", source: "treg" } : { kind: "form" },
+  );
   const [url, setUrl] = useState(existingServer?.endpoint ?? initialUrl);
   const [authHeader, setAuthHeader] = useState("");
   const [headerValue, setHeaderValue] = useState("");
@@ -403,7 +415,11 @@ export function CustomConnectionDialog({
       {error}
     </p>
   ) : null;
-  const back = (
+  const back = tokenSource ? (
+    <Button variant="outline" onClick={close}>
+      <Trans>Cancel</Trans>
+    </Button>
+  ) : (
     <Button
       variant="outline"
       onClick={() => {
@@ -419,16 +435,18 @@ export function CustomConnectionDialog({
     <Dialog open onOpenChange={(open) => !open && close()}>
       <DialogContent
         className="max-h-[calc(100%-2rem)] max-w-[440px] overflow-y-auto sm:max-w-[440px]"
-        aria-label={t`Add a custom connection`}
+        aria-label={service ? t`Connect ${service}` : t`Add a custom connection`}
       >
         {view.kind === "form" ? (
           <div>
             <DialogTitle>
-              <Trans>Add a custom connection</Trans>
+              {service ? <Trans>Connect {service}</Trans> : <Trans>Add a custom connection</Trans>}
             </DialogTitle>
-            <DialogDescription>
-              <Trans>Paste the MCP server URL from the app's documentation.</Trans>
-            </DialogDescription>
+            {service ? null : (
+              <DialogDescription>
+                <Trans>Paste the MCP server URL from the app's documentation.</Trans>
+              </DialogDescription>
+            )}
             <div className="mt-3 text-xs text-muted-foreground">
               <Trans>Server URL</Trans>
               <Input
@@ -540,7 +558,6 @@ export function CustomConnectionDialog({
                         ["api", "OpenAPI"],
                         ["graphql", "GraphQL"],
                         ["executor", "Executor"],
-                        ["treg", "Treg"],
                       ] as const
                     ).map(([kind, label]) => (
                       <Button
@@ -732,7 +749,11 @@ export function CustomConnectionDialog({
         ) : view.kind === "agents" ? (
           <AgentStep
             appName={serverName}
-            bots={data.bots}
+            bots={
+              isCartaEndpoint(server?.endpoint)
+                ? data.bots.filter((bot) => isCartaAgentSpawnKey(bot.spawnKey))
+                : data.bots
+            }
             busy={busy}
             error={error}
             onContinue={(ids) => void assign(ids)}

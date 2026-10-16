@@ -731,5 +731,10 @@
   "Nothing is still running": "No queda nada en ejecución",
   "Credentials are encrypted and never sent to the model.": "Las credenciales se cifran y nunca se envían al modelo.",
   "Rename section": "Renombrar sección",
-  "Could not rename section": "No se pudo renombrar la sección"
+  "Could not rename section": "No se pudo renombrar la sección",
+  "Add page": "Agregar página",
+  "Page options": "Opciones de la página",
+  "Remove from sidebar": "Quitar de la barra lateral",
+  "Team health": "Salud del equipo",
+  "Workload and key people, from your connected tools": "Carga de trabajo y personas clave, desde tus herramientas conectadas"
 }

@@ -17,7 +17,7 @@ describe("app directory", () => {
     expect(describeApp("GMAIL")?.category).toBe("email_calendar");
     expect(describeApp("google_calendar")?.description).toBeTruthy();
     expect(describeApp("Google Drive")?.category).toBe("docs_files");
-    expect(describeApp("twitter")).toEqual(describeApp("x"));
+    expect(describeApp("googlemail")).toEqual(describeApp("gmail"));
     expect(describeApp("not-a-real-app")).toBeUndefined();
   });
 

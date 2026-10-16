@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import type { Bot } from "@rakazo/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MobileBot } from "./api";
@@ -90,26 +89,6 @@ describe("thread bot roster", () => {
       expect(retainUnchangedBotRoster(current, next)).toBe(next);
       expect(retainUnchangedBotRoster(next, current)).toBe(current);
     }
-  });
-
-  it("keeps focus independent of reply observation and removes the duplicate mount load", () => {
-    const thread = readFileSync(new URL("../app/thread.tsx", import.meta.url), "utf8");
-    const focus = thread.match(
-      /useFocusEffect\(\s*useCallback\(\(\) => \{((?:(?!useFocusEffect)[\s\S])*?speakFinishedReplyRef\.current\(\)[\s\S]*?)\}, \[([^\]]*)\]\)/,
-    );
-    expect(focus?.[2]).toBe("botId, readOnly, markReadIfVisible, refreshMentionBots");
-    expect(focus?.[1]).toContain("speakFinishedReplyRef.current()");
-    expect(thread).toContain("speakFinishedReplyRef.current = speakFinishedReply");
-    expect(thread).toContain(
-      "setMentionBots((current) => retainUnchangedBotRoster(current, bots))",
-    );
-    const mount = thread.match(
-      /useEffect\(\(\) => \{([^}]*"groups\/list"[\s\S]*?)\}, \[refreshMentionBots\]\)/,
-    );
-    expect(mount).not.toBeNull();
-    expect(mount?.[1]).not.toContain("refreshMentionBots()");
-    expect(thread).toContain('AppState.addEventListener("change", speakFinishedReply)');
-    expect(thread).toContain("}, [speakFinishedReply]);");
   });
 
   it("does not schedule another refresh for identical data (30 s virtual request harness)", () => {

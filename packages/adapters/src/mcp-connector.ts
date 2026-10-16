@@ -10,6 +10,7 @@ import type {
 import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
 import {
   CARTA_READ_TOOLS,
+  CARTA_WRITE_TOOLS,
   FINANCE_READ_TOOLS,
   financeProviderForEndpoint,
   isCartaAgentSpawnKey,
@@ -82,20 +83,29 @@ export function assignmentAllowsTool(
   assignment: {
     allowAllTools: boolean;
     allowedTools: unknown;
-    server: { endpoint?: string | null };
+    server: { endpoint?: string | null; writesEnabled?: boolean };
     bot?: { spawnKey: string | null } | null;
   },
   toolName: string,
 ): boolean {
+  const cartaServer = isCartaEndpoint(assignment.server.endpoint);
+  const cartaAgent = isCartaAgentSpawnKey(assignment.bot?.spawnKey);
+  // Carta belongs to the Carta agent; other bots ask it through message_bot.
+  if (cartaServer && !cartaAgent) return false;
   if (isFinanceAgentSpawnKey(assignment.bot?.spawnKey)) {
     const provider = financeProviderForEndpoint(assignment.server.endpoint);
     if (provider && !(FINANCE_READ_TOOLS[provider] as readonly string[]).includes(toolName))
       return false;
   }
-  if (isCartaAgentSpawnKey(assignment.bot?.spawnKey)) {
-    // Only Carta's read tools: another server (say, email) would send mail without the mail_send approval.
-    if (!isCartaEndpoint(assignment.server.endpoint)) return false;
-    if (!(CARTA_READ_TOOLS as readonly string[]).includes(toolName)) return false;
+  if (cartaAgent) {
+    // Only Carta's own tools: another server (say, email) would send mail without the mail_send approval.
+    if (!cartaServer) return false;
+    // Write tools need the server's switch, checked on every call so turning it off takes effect at once.
+    const allowed =
+      (CARTA_READ_TOOLS as readonly string[]).includes(toolName) ||
+      (assignment.server.writesEnabled === true &&
+        (CARTA_WRITE_TOOLS as readonly string[]).includes(toolName));
+    if (!allowed) return false;
   }
   return assignment.allowAllTools || (assignment.allowedTools as unknown[]).includes(toolName);
 }
@@ -207,6 +217,7 @@ export class McpConnector implements ConnectorProvider {
                 resourceRevision: assignment.server.revision,
                 toolName: tool.name,
                 catalogGroup: assignment.server.slug,
+                ...(assignment.server.endpoint ? { endpoint: assignment.server.endpoint } : {}),
               },
             }));
         } catch (error) {

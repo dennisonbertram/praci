@@ -8,6 +8,7 @@ import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@lingui/core/macro", () => ({ msg: (parts: TemplateStringsArray) => parts[0] }));
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, index) => `${text}${index > 0 ? values[index - 1] : ""}${part}`, "");
@@ -170,6 +171,45 @@ describe("Composer", () => {
       expect(selected()).toContain("Researcher");
       pressKey(textarea, "Enter");
       expect(chips()).toEqual(["Researcher"]);
+    });
+  });
+
+  describe("mention picker with no matches", () => {
+    const keydown = (textarea: HTMLTextAreaElement, init: KeyboardEventInit) => {
+      const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+      act(() => {
+        textarea.dispatchEvent(event);
+      });
+      return event;
+    };
+
+    it("announces the empty state and blocks Enter until Escape", () => {
+      const textarea = renderComposer(vi.fn());
+      type(textarea, "@zz");
+      const empty = container?.querySelector("[data-testid='mention-picker-empty']");
+      expect(empty?.getAttribute("role")).toBe("status");
+      expect(textarea.getAttribute("aria-expanded")).toBe("true");
+      expect(keydown(textarea, { key: "Enter" }).defaultPrevented).toBe(true);
+    });
+
+    it("does not send from the Send button while No matches shows", () => {
+      const onSend = vi.fn().mockResolvedValue(true);
+      const textarea = renderComposer(onSend);
+      type(textarea, "@zz");
+      const send = container?.querySelector<HTMLButtonElement>('button[aria-label="Send"]');
+      expect(send).not.toBeNull();
+      act(() => send?.click());
+      expect(onSend).not.toHaveBeenCalled();
+      // Control: the same button sends once the query no longer matches nothing.
+      type(textarea, "hello");
+      act(() => send?.click());
+      expect(onSend).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves Enter alone while an IME is composing", () => {
+      const textarea = renderComposer(vi.fn());
+      type(textarea, "@zz");
+      expect(keydown(textarea, { key: "Enter", isComposing: true }).defaultPrevented).toBe(false);
     });
   });
 

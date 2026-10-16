@@ -28,7 +28,7 @@ import {
 } from "@rakazo/contracts";
 import { getLogger } from "@rakazo/logging";
 import type { InboxDeps } from "./inbox.js";
-import { mailContext, notFound } from "./inbox.js";
+import { mailContext, mailUnavailable, notFound } from "./inbox.js";
 
 export type ComposeDeps = InboxDeps & { mailWritesDisabled?: boolean };
 
@@ -75,7 +75,7 @@ async function ownMessage(
   actor: Actor,
   messageId: string,
   connectionId: string | undefined,
-): Promise<{ providerMessageId: string; connectionId: string }> {
+) {
   const row = await deps.prisma.cachedMailMessage.findFirst({
     where: {
       id: messageId,
@@ -83,7 +83,17 @@ async function ownMessage(
       userId: actor.userId,
       ...(connectionId ? { connectionId } : {}),
     },
-    select: { providerMessageId: true, connectionId: true },
+    select: {
+      providerMessageId: true,
+      connectionId: true,
+      fromName: true,
+      fromSelf: true,
+      fromAddress: true,
+      toAddresses: true,
+      ccAddresses: true,
+      subject: true,
+      receivedAt: true,
+    },
   });
   if (!row) throw notFound();
   return row;
@@ -132,7 +142,40 @@ export async function inboxComposePrefill(
       if (error.kind === "not_found") throw notFound();
       if (error.kind === "auth")
         throw new ORPCError("PRECONDITION_FAILED", { message: error.message });
-      throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
+      // Anything else (a rate limit, an outage) still opens the window with the cached Subject. The
+      // cache has no Reply-To, so recipients are filled only for the user's own message, which
+      // answers to its To list whatever Reply-To says.
+      const address = (a: string) => ({ address: a });
+      const prefill = replyPrefill(
+        {
+          from: {
+            address: original.fromAddress,
+            ...(original.fromName ? { name: original.fromName } : {}),
+          },
+          to: original.toAddresses.map(address),
+          cc: original.ccAddresses.map(address),
+          replyTo: [],
+          subject: original.subject,
+          date: original.receivedAt.toISOString(),
+          text: "",
+        },
+        input.mode,
+        // A message sent from an alias is still the user's own.
+        [
+          ...accounts.flatMap((a) => (a.address ? [a.address] : [])),
+          ...(original.fromSelf ? [original.fromAddress] : []),
+        ],
+        input,
+      );
+      return {
+        connectionId: account.id,
+        ...prefill,
+        ...(original.fromSelf ? {} : { to: "", cc: "" }),
+        body: "",
+        attachments: [],
+        quoteUnavailable: true,
+        ...(input.mode === "forward" ? {} : { replyToMessageId: input.messageId }),
+      };
     }
     throw error;
   }
@@ -476,8 +519,7 @@ export async function inboxComposeDiscard(
     } catch (error) {
       if (!(error instanceof MailProviderError)) throw error;
       // A draft already gone is what was wanted; anything else keeps the record so Discard can be retried.
-      if (error.kind !== "not_found")
-        throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
+      if (error.kind !== "not_found") throw mailUnavailable(error);
     }
   }
   await deps.prisma.composeSend.deleteMany({

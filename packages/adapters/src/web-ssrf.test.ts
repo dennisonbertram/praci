@@ -12,6 +12,14 @@ import {
 const publicResolver = async () => [{ address: "203.0.113.10", family: 4 as const }];
 
 describe("web SSRF policy", () => {
+  it("rejects metadata hostnames before DNS", async () => {
+    const resolve = vi.fn(publicResolver);
+    for (const host of ["metadata.google.internal", "metadata.goog"]) {
+      await expect(assertSafeWebUrl(`https://${host}/`, resolve)).rejects.toThrow();
+    }
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
   it.each([
     "http://localhost/x",
     "https://127.0.0.1/x",

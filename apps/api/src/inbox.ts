@@ -19,7 +19,7 @@ import type {
   InboxTodo,
   MailRow,
 } from "@rakazo/contracts";
-import { InboxCategorySchema, inboxAgentSpawnKey } from "@rakazo/contracts";
+import { InboxCategorySchema, InboxPrioritySchema, inboxAgentSpawnKey } from "@rakazo/contracts";
 import { applySenderMark, senderMarkMap, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
@@ -107,8 +107,8 @@ async function enqueueTriage(deps: InboxDeps, actor: Actor): Promise<void> {
   });
 }
 
-const PRIORITIES = ["critical", "important", "normal", "low"] as const;
-const asPriority = (value: string | null) => PRIORITIES.find((p) => p === value) ?? null;
+const asPriority = (value: string | null) =>
+  InboxPrioritySchema.options.find((p) => p === value) ?? null;
 
 /** True when the triage job would run for this user: the one check the job itself makes. */
 async function triageEnabled(deps: InboxDeps, actor: Actor): Promise<boolean> {
@@ -511,9 +511,16 @@ export function providerFailure(error: unknown, operation: string, connectionId:
     if (error.kind === "auth") {
       throw new ORPCError("PRECONDITION_FAILED", { message: error.message });
     }
-    throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
+    throw mailUnavailable(error);
   }
   throw error;
+}
+
+/** Gmail answering "slow down" is its own message, so the user knows to wait, not to reconnect. */
+export function mailUnavailable(error: MailProviderError): ORPCError<string, unknown> {
+  return error.kind === "rate_limited"
+    ? new ORPCError("TOO_MANY_REQUESTS", { message: "Gmail is busy. Try again in a moment." })
+    : new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
 }
 
 export async function inboxGet(
