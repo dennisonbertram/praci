@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 165 of 165
-- Web and shared components: 477
+- Web and shared component files with stories: 166 of 166
+- Web and shared components: 478
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -135,6 +135,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Chart, Grid, LineChart, Sparkline, BurnBars, MonthBars, StackBar | [apps/web/src/components/finance/charts.tsx](../../apps/web/src/components/finance/charts.tsx) | [charts.stories.tsx](../../apps/web/src/components/finance/charts.stories.tsx) | web |
 | CountCryptoButton | [apps/web/src/components/finance/CountCryptoButton.tsx](../../apps/web/src/components/finance/CountCryptoButton.tsx) | [CountCryptoButton.stories.tsx](../../apps/web/src/components/finance/CountCryptoButton.stories.tsx) | web |
 | ExchangeGroup | [apps/web/src/components/finance/ExchangeGroup.tsx](../../apps/web/src/components/finance/ExchangeGroup.tsx) | [ExchangeGroup.stories.tsx](../../apps/web/src/components/finance/ExchangeGroup.stories.tsx) | web |
+| RenameAccountDialog | [apps/web/src/components/finance/RenameAccountDialog.tsx](../../apps/web/src/components/finance/RenameAccountDialog.tsx) | [RenameAccountDialog.stories.tsx](../../apps/web/src/components/finance/RenameAccountDialog.stories.tsx) | web |
 | StatementImport | [apps/web/src/components/finance/StatementImport.tsx](../../apps/web/src/components/finance/StatementImport.tsx) | [StatementImport.stories.tsx](../../apps/web/src/components/finance/StatementImport.stories.tsx) | web |
 | StatementReminderBanner | [apps/web/src/components/finance/StatementReminderBanner.tsx](../../apps/web/src/components/finance/StatementReminderBanner.tsx) | [StatementReminderBanner.stories.tsx](../../apps/web/src/components/finance/StatementReminderBanner.stories.tsx) | web |
 | CheckLine, Row, StatementGroup | [apps/web/src/components/finance/StatementReviewCard.tsx](../../apps/web/src/components/finance/StatementReviewCard.tsx) | [StatementReviewCard.stories.tsx](../../apps/web/src/components/finance/StatementReviewCard.stories.tsx) | web |

@@ -437,6 +437,7 @@ msgstr "Kontostandard"
 msgid "Account ID"
 msgstr "Konto-ID"
 
+#: src/components/finance/RenameAccountDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 msgid "Account name"
 msgstr ""
@@ -1251,10 +1252,6 @@ msgstr ""
 msgid "Burn"
 msgstr ""
 
-#: src/components/FinanceCards.tsx
-msgid "Burn / mo"
-msgstr ""
-
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Burn by category"
 msgstr ""
@@ -1285,6 +1282,7 @@ msgstr "Server nicht erreichbar."
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
+#: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
@@ -2289,6 +2287,10 @@ msgstr "Abschnitt konnte nicht umbenannt werden"
 #: src/pages/shell/dialogs.tsx
 msgid "Could not rename space"
 msgstr "Space konnte nicht umbenannt werden"
+
+#: src/components/finance/RenameAccountDialog.tsx
+msgid "Could not rename the account"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not render chart"
@@ -3729,6 +3731,16 @@ msgstr ""
 msgid "Later"
 msgstr ""
 
+#: src/components/finance/RenameAccountDialog.tsx
+msgid "Later statements for this account keep this name."
+msgstr ""
+
+#. placeholder {0}: card.rows.length
+#. placeholder {1}: card.count
+#: src/components/FinanceCards.tsx
+msgid "Latest {0} of {1}"
+msgstr ""
+
 #: src/pages/CapTable.tsx
 msgid "Latest 409A"
 msgstr ""
@@ -4192,6 +4204,7 @@ msgstr "Monatlich"
 msgid "Monthly avg"
 msgstr ""
 
+#: src/components/FinanceCards.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Monthly burn"
@@ -4308,6 +4321,11 @@ msgstr ""
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Net"
+msgstr ""
+
+#. placeholder {0}: transactionAmount(card.totalCents)
+#: src/components/FinanceCards.tsx
+msgid "Net {0}"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -5389,7 +5407,12 @@ msgstr ""
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "Rename"
+msgstr ""
+
+#: src/components/finance/RenameAccountDialog.tsx
+msgid "Rename account"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -5628,6 +5651,7 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
