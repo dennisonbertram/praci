@@ -1,0 +1,552 @@
+<!doctype html>
+<!-- Design mockup. All people, companies and figures are invented. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rakazo Team health Mockup</title>
+<style>
+:root{
+  --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#b7791f; --success:#2f855a;
+  --bot:#e8743b; --ink2:#8a8a8a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323; --ink2:#7a7a7a;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+button{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:240px 1fr;height:100vh;min-height:640px}
+aside.left{background:var(--sidebar);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px;position:relative}
+.search{margin:4px 4px 10px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--muted-fg);background:var(--card)}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:default;position:relative}
+.row.active{background:var(--sidebar-accent);font-weight:600}
+.row .count{margin-left:auto;font-size:11px;color:var(--muted-fg)}
+.row.add{color:var(--muted-fg);cursor:pointer;background:transparent;border:0;width:100%;text-align:left}
+.row.add:hover{background:var(--sidebar-accent)}
+.row .more{margin-left:auto;display:none}
+@media (hover:none){.row .more{display:grid}}
+.row.active .more{display:grid}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--primary-fg);flex:none}
+.av.p{background:var(--fg);color:var(--background)}
+.av.lg{width:36px;height:36px;font-size:13px}
+.label{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.icon{width:22px;height:22px;display:grid;place-items:center;flex:none}
+.icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+main{overflow:auto;padding:52px 28px 56px}
+a.chip{text-decoration:none}
+h1{font-size:18px;margin:0}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.upd{font-size:11px;color:var(--muted-fg);display:flex;align-items:center;gap:2px}
+.ib{border:0;background:transparent;color:var(--muted-fg);cursor:pointer;padding:3px 5px;border-radius:6px;display:grid;place-items:center}
+.ib:hover{background:var(--muted)}
+.ib:disabled{opacity:.4;cursor:default}.ib:disabled:hover{background:transparent}
+.ib svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.chips{display:flex;gap:4px;margin-left:auto}
+.chips .chip{cursor:pointer}
+.chip{padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted-fg);font-size:12px;display:inline-flex;align-items:center;gap:6px;background:transparent}
+.chip.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.chip.warn{color:var(--warning);border-color:var(--warning)}
+.sd.w{background:var(--warning)}
+.warnt{color:var(--warning);margin-left:8px}
+.chip.dash{border-style:dashed;cursor:pointer}
+.chip.dash:hover{border-color:var(--fg);color:var(--fg)}
+.chip.sm{padding:2px 9px;font-size:11px}
+.sd{width:6px;height:6px;border-radius:50%;background:var(--success)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.sub{font-size:11px;color:var(--muted-fg)}
+.mute{color:var(--muted-fg)}
+.num{font-variant-numeric:tabular-nums}
+.tag{font-size:10px;color:var(--muted-fg);border:1px solid var(--border);border-radius:999px;padding:0 7px;white-space:nowrap}
+.ask{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;border:0}
+.ask svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ask:hover{opacity:.88}
+.btn{padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer}
+.btn:hover{border-color:var(--fg)}
+.btn.p{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn.q{border-color:transparent;background:transparent;color:var(--muted-fg)}
+.btn.q:hover{color:var(--fg);background:var(--muted)}
+button:focus-visible,.chip:focus-visible,summary:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+
+/* mockup-only switch, outside app chrome */
+.mock{position:fixed;top:8px;right:8px;z-index:30;display:flex;align-items:center;gap:6px;background:var(--card);border:1px dashed var(--ink2);border-radius:999px;padding:3px 4px 3px 12px;font-size:11px;color:var(--muted-fg)}
+.mock button{border:0;background:transparent;border-radius:999px;padding:3px 9px;cursor:pointer;color:var(--muted-fg);font-size:11px;white-space:nowrap}
+.mock button[aria-pressed="true"]{background:var(--primary);color:var(--primary-fg)}
+
+/* popovers */
+.pop{position:absolute;z-index:20;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px;box-shadow:0 8px 28px rgba(0,0,0,.14)}
+.pop-add{left:calc(100% - 8px);top:0;width:280px}
+.tpl{display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:8px;cursor:pointer}
+.tpl:hover{background:var(--muted)}
+.tpl.dis{opacity:.55;cursor:default}.tpl.dis:hover{background:transparent}
+.tpl b{display:block;font-weight:600}
+.tpl .tag{margin-left:auto}
+.pop-info{left:0;top:30px;width:340px;padding:12px 14px;display:none}
+.cov.open .pop-info{display:block}
+.pop-info h3{margin:0 0 6px;font-size:12px}
+.pop-info ul{margin:0;padding-left:16px}.pop-info li{margin-bottom:3px}
+.anch{position:relative}
+
+/* coverage */
+.cov{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px;position:relative}
+.sum{font-size:20px;font-weight:650;letter-spacing:-.01em;margin:0 0 20px;max-width:60ch}
+.sec{margin-bottom:22px}
+.sec>h2{font-size:12px;margin:0 0 8px;color:var(--muted-fg);font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pc{display:flex;flex-direction:column;gap:12px}
+.who{display:flex;align-items:center;gap:10px}
+.who b{font-size:15px;display:block}
+.blk h3{font-size:11px;margin:0 0 6px;color:var(--muted-fg);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.blk ul{margin:0;padding-left:16px}.blk li{margin-bottom:3px}
+.sig{display:grid;grid-template-columns:1fr 124px;gap:4px 12px;align-items:center;padding:7px 0;border-top:1px solid var(--border)}
+.sig .tag{justify-self:start;margin-top:2px}
+.sig .sp{grid-row:1/3;grid-column:2}
+.sp{width:124px;height:30px;display:block}
+.sp .band{fill:var(--muted)}
+.sp .ln{fill:none;stroke:var(--fg);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.sp .dot{fill:var(--fg)}
+details.ev summary{cursor:pointer;color:var(--muted-fg);font-size:12px;list-style:none;padding:2px 0}
+details.ev summary::before{content:"\203A";display:inline-block;width:12px;transition:transform .1s}
+details.ev[open] summary::before{transform:rotate(90deg)}
+details.ev .evb{margin:6px 0 0;padding:8px 10px;background:var(--muted);border-radius:8px;font-size:12px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.acts .sp2{flex:1}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:500;color:var(--muted-fg);text-align:left;padding:4px 8px 6px 0}
+td{padding:8px 8px 8px 0;border-top:1px solid var(--border);vertical-align:top}
+td.r{text-align:right;white-space:nowrap;padding-right:0}
+.others{width:100%;text-align:left;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--muted-fg)}
+.others:hover{border-color:var(--fg)}
+.others .chev{margin-left:auto;transition:transform .1s}
+.others[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.olist{display:none;margin-top:8px;padding:2px 14px;gap:0}
+.olist.open{display:block}
+.olist div{padding:6px 0;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:8px}
+.olist div:first-child{border-top:0}
+
+/* toolbar, filter, sort, table view */
+[hidden]{display:none!important}
+.tools{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin:-6px 0 18px}
+.tools svg,.tb .ib svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tools .btn{display:inline-flex;align-items:center;gap:6px;padding:5px 10px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:transparent;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--muted-fg)}
+.seg button[aria-pressed="true"]{background:var(--primary);color:var(--primary-fg)}
+.tools .chip{cursor:pointer}
+.tools .chip:hover{border-color:var(--fg);color:var(--fg)}
+.pop-f,.pop-s{top:calc(100% + 4px);right:0}
+.pop-f{width:230px;padding:8px 10px}
+.pop-s{width:230px}
+.pop-f h3{font-size:11px;margin:8px 0 2px;color:var(--muted-fg);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.pop-f h3:first-child{margin-top:0}
+.pop-f label{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer}
+.pop-f input{margin:0;accent-color:var(--fg)}
+.mi{display:flex;width:100%;align-items:center;gap:8px;padding:6px 8px;border:0;background:transparent;border-radius:8px;cursor:pointer;text-align:left}
+.mi:hover{background:var(--muted)}
+.mi::before{content:"";width:12px;flex:none}
+.mi[aria-checked="true"]::before{content:"\2713"}
+.none{margin:8px 0 0;display:flex;align-items:center;gap:8px}
+.tscroll{overflow-x:auto}
+.tb{min-width:900px}
+.tb td{white-space:nowrap;vertical-align:middle}
+.tb th{white-space:nowrap}
+.tb td:nth-child(3),.tb td:nth-child(4){white-space:normal}
+.tb th button{border:0;background:transparent;padding:0;color:inherit;font:inherit;cursor:pointer}
+.tb th button:hover{color:var(--fg)}
+.tb th[aria-sort]:not([aria-sort="none"]) button{color:var(--fg);font-weight:600}
+.tb th[aria-sort="ascending"] button::after{content:" \2191"}
+.tb th[aria-sort="descending"] button::after{content:" \2193"}
+.tb .stk{position:sticky;left:0;z-index:1;background:var(--card);padding-right:12px}
+.tb .sp{width:72px;height:20px}
+.tb .who b{font-size:13px}
+.tb .who>span.sub{display:block}
+.tb .av{width:28px;height:28px}
+.tb .chv{width:22px;flex:none}
+.tb .ib[aria-expanded="true"] svg{transform:rotate(90deg)}
+.tb tr.xr{cursor:pointer}
+.tb tr.xr:hover td{background:var(--muted)}
+.tb tr.xr:hover td.stk{background:var(--muted)}
+.tb .evr td{white-space:normal;padding:0 0 8px}
+.tb .evb{padding:8px 10px;background:var(--muted);border-radius:8px;font-size:12px}
+.tb td.r{padding-right:0}
+
+.bh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.bh h3{margin:0}
+.res{color:var(--success);font-size:12px;padding:0 4px}
+.appr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}.appr span:first-child{flex:1;min-width:200px}
+.foot{display:flex;gap:4px;margin-top:14px;flex-wrap:wrap}.foot .btn{font-size:12px}
+.gd td{padding:10px 0 4px;font-size:11px;color:var(--muted-fg);font-weight:600;text-transform:uppercase;letter-spacing:.04em;border-top:1px solid var(--border)}
+.toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;background:var(--primary);color:var(--primary-fg);border-radius:10px;padding:6px 8px 6px 14px;display:flex;align-items:center;gap:8px;max-width:calc(100vw - 32px)}
+.toast .btn{color:var(--primary-fg);padding:3px 10px}.toast .btn:hover{opacity:.8}
+#rmenu{position:fixed;min-width:170px}
+.mi.n::before{display:none}
+.tm{max-width:560px}
+.gone{display:none}
+.olist div{align-items:center}
+.olist .ib{margin-left:8px}
+.bar.ind i{width:35%}
+
+/* empty / history */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:60vh;text-align:center}
+.hist{max-width:46ch}
+.bar{height:6px;background:var(--muted);border-radius:3px;overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;background:var(--fg);border-radius:3px;width:60%}
+
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;height:auto}
+  aside.left{display:none}
+  main{padding:60px 16px 24px}
+  .grid2{grid-template-columns:1fr}
+  .chips{margin-left:0;width:100%}
+  .ask{margin-left:auto}
+  .sig{grid-template-columns:1fr}
+  .sig .sp{grid-row:auto;grid-column:auto}
+  .mock{left:8px;right:8px;overflow-x:auto;border-radius:12px}
+  .rv{overflow-x:auto}
+  .rv table{min-width:520px}
+  .pop-f{right:auto;left:0}
+  .sum{font-size:17px}
+}
+</style>
+</head>
+<body data-s="2">
+<div class="mock" role="group" aria-label="Mockup state">Mockup state
+  <button data-go="1">1 Add page</button><button data-go="2">2 Team health</button><button data-go="3">3 What this reads</button><button data-go="4">4 Nothing connected</button><button data-go="5">5 Not enough history</button><button data-go="6">6 Syncing</button><button data-go="7">7 Teammate view</button><button data-go="8">8 Teammate request</button><button data-go="10">Unverified</button><button data-go="9">9 Reconnect needed</button>
+</div>
+
+<div class="app">
+  <aside class="left" aria-label="Pages">
+    <div class="search">Search</div>
+    <div class="row"><span class="icon">&#9993;</span>Inbox<span class="count">12</span></div>
+    <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2 13.5h12M4 11V7.5M8 11V3.5M12 11V6"/></svg></span>Finance</div>
+    <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2.5 5.5h11v7.5h-11zM5.5 5.5V3.5h5v2"/></svg></span>Data room</div>
+    <div class="row active" data-st="2,3,4,5,6,9"><span class="icon"><svg viewBox="0 0 16 16"><path d="M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1.5 13c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5M10.5 3.2a2 2 0 0 1 0 3.6M12 9.8c1.4.4 2.5 1.5 2.5 3.2"/></svg></span>Team health<button class="ib more" aria-label="Page options"><svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r=".6"/><circle cx="8" cy="8" r=".6"/><circle cx="12.5" cy="8" r=".6"/></svg></button></div>
+    <div class="row active" data-st="7"><span class="icon"><svg viewBox="0 0 16 16"><path d="M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1.5 13c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5M10.5 3.2a2 2 0 0 1 0 3.6M12 9.8c1.4.4 2.5 1.5 2.5 3.2"/></svg></span>My workload</div>
+    <div class="anch" data-st="1">
+      <button class="row add" aria-haspopup="menu" aria-expanded="true"><span class="icon"><svg viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></svg></span>Add page</button>
+      <div class="pop pop-add" role="menu" aria-label="Page templates">
+        <div class="tpl" role="menuitem" tabindex="0"><span class="icon"><svg viewBox="0 0 16 16"><path d="M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1.5 13c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5M10.5 3.2a2 2 0 0 1 0 3.6M12 9.8c1.4.4 2.5 1.5 2.5 3.2"/></svg></span><span><b>Team health</b><span class="sub">Workload and key people, from your connected tools</span></span></div>
+      </div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="row" style="color:var(--muted-fg)"><span class="icon">&#10697;</span>Integrations</div>
+  </aside>
+
+  <main>
+  <!-- state 1: placeholder content -->
+  <div data-st="1"><div class="head"><h1>Inbox</h1></div></div>
+
+  <!-- states 2, 3, 9 -->
+  <div data-st="2,3,9">
+    <div class="head">
+      <h1>Team health</h1>
+      <span class="upd">Updated 9:40 AM
+        <button class="ib" aria-label="Refresh" disabled title="Next refresh at 9:55 AM" data-st="2,3"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg></button>
+        <button class="ib" aria-label="Refresh" data-st="9"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg></button>
+        <span class="warnt" data-st="9">Sync failed</span></span>
+      <div class="chips" role="group" aria-label="Range"><button class="chip on" aria-pressed="true" data-r="12 weeks">12w</button><button class="chip" aria-pressed="false" data-r="6 months">6m</button></div>
+      <button class="ask"><svg viewBox="0 0 16 16"><path d="M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z"/></svg>Ask agent</button>
+    </div>
+    <div class="card appr" id="appr"><span>Jonah Petrakis asked to see their card</span><button class="btn p" data-ap>Approve</button><button class="btn" data-ap>Decline</button></div>
+    <div class="cov">
+      <span class="chip sm" data-st="2,3"><span class="sd"></span>Slack</span><a class="chip sm warn" href="#integrations" data-st="9"><span class="sd w"></span>Slack &middot; Reconnect</a><span class="chip sm"><span class="sd"></span>Gmail</span><span class="chip sm"><span class="sd"></span>Calendar</span><span class="chip sm"><span class="sd"></span>GitHub</span><span class="chip sm"><span class="sd"></span>Linear</span>
+      <button class="ib info" aria-label="What this reads" aria-expanded="false"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.8"/><path d="M8 7.2v3.6M8 5.2v.1"/></svg></button>
+      <div class="pop pop-info" role="dialog" aria-label="What this reads">
+        <h3>What this reads</h3>
+        <ul><li>Metadata only: timestamps, counts, participants' domains, PR authors and reviewers.</li><li>Never message text.</li><li>Each person is compared with their own 12-week baseline.</li><li>Each person can see their own card once you approve their request.</li></ul>
+      </div>
+    </div>
+    <p class="sum">Take care of Maya and Jonah first: revenue owners with rising workload. Priya and Theo show sustained workload signals.</p>
+
+    <div class="tools" role="toolbar" aria-label="View, filter and sort">
+      <span id="fchips" style="display:contents"></span>
+      <button class="btn q" id="fclear" hidden>Clear</button>
+      <div class="anch"><button class="btn" id="fbtn" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 16 16"><path d="M2.5 4h11M4.5 8h7M6.5 12h3"/></svg><span id="flab">Filter</span></button><div class="pop pop-f" id="fpop" role="group" aria-label="Filter" hidden></div></div>
+      <div class="anch"><button class="btn" id="sbtn" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 16 16"><path d="M5 13V3M2.5 5.5L5 3l2.5 2.5M11 3v10M8.5 10.5L11 13l2.5-2.5"/></svg><span id="slab">Sort: Recently flagged</span></button><div class="pop pop-s" id="spop" role="menu" aria-label="Sort" hidden></div></div>
+      <div class="seg" role="group" aria-label="View"><button id="vc" aria-pressed="true"><svg viewBox="0 0 16 16"><path d="M2.5 2.5h4.5v4.5h-4.5zM9 2.5h4.5v4.5h-4.5zM2.5 9h4.5v4.5h-4.5zM9 9h4.5v4.5h-4.5z"/></svg>Cards</button><button id="vt" aria-pressed="false"><svg viewBox="0 0 16 16"><path d="M2.5 3.5h11v9h-11zM2.5 7h11M2.5 10h11"/></svg>Table</button></div>
+    </div>
+    <div id="cv">
+
+    <section class="sec" id="sec0"><h2>Take care of first</h2>
+    <div class="grid2">
+      <article class="card pc" data-id="m">
+        <div class="who"><span class="av p lg">MO</span><div><b>Maya Okonkwo</b><span class="sub">Account lead</span></div></div>
+        <div class="blk" data-rv><div class="bh"><h3>Revenue line</h3><button class="ib act" data-m="rvblk" aria-haspopup="menu" aria-label="Revenue line options"><svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r=".6"/><circle cx="8" cy="8" r=".6"/><circle cx="12.5" cy="8" r=".6"/></svg></button></div><ul>
+          <li>Sole owner of 9 of 12 threads with Northwind Labs, last 90 days</li>
+          <li>Only internal sender on 6 of 7 threads with Harbor &amp; Pine, last 90 days</li></ul></div>
+        <div class="blk"><h3>Workload</h3>
+          <div class="sig"><span>Meetings 26 h/wk, up from 14, over 6 weeks</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="18.4" width="124" height="8.6" rx="2"><title>Usual range</title></rect><polyline class="ln" points="2.0,25.3 12.9,23.6 23.8,21.9 34.7,23.6 45.6,20.1 56.5,21.9 67.5,15.0 78.4,9.9 89.3,6.4 100.2,4.7 111.1,3.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Medium &middot; no PTO calendar</span></div>
+          <div class="sig"><span>Weekend activity 4 of last 6 weekends (baseline 1 in 6)</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="23.0" width="124" height="4.0" rx="2"><title>Usual range</title></rect><polyline class="ln" points="2.0,27.0 12.9,3.0 23.8,27.0 34.7,27.0 45.6,3.0 56.5,27.0 67.5,27.0 78.4,3.0 89.3,3.0 100.2,3.0 111.1,3.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Medium &middot; Slack only</span></div>
+          <div class="sig"><span>After 9 PM activity on 11 of last 14 weekdays</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="12.6" width="124" height="14.4" rx="2"><title>Usual range</title></rect><polyline class="ln" points="2.0,22.2 12.9,17.4 23.8,22.2 34.7,17.4 45.6,17.4 56.5,22.2 67.5,12.6 78.4,17.4 89.3,12.6 100.2,7.8 111.1,7.8 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Medium &middot; Slack only</span></div></div>
+        <details class="ev"><summary>Evidence</summary><div class="evb">Meetings: 312 h over 12 weeks, 71 h in the last 3 weeks. Weekend days with activity: Sep 6, Sep 20, Sep 27, Oct 4, Oct 11. Late weekdays: Oct 1 to Oct 14. Counts and dates only.</div></details>
+        <div class="acts"><span class="res">1:1 booked Thu 2 PM</span><button class="btn">Add second owner for Northwind</button><span class="sp2"></span><button class="btn q" data-a="na">Not an issue</button><button class="btn q" data-a="done">Done</button></div>
+      </article>
+
+      <article class="card pc" data-id="j">
+        <div class="who"><span class="av p lg">JP</span><div><b>Jonah Petrakis</b><span class="sub">Backend engineer, billing</span></div></div>
+        <div class="blk" data-rv><div class="bh"><h3>Revenue line</h3><button class="ib act" data-m="rvblk" aria-haspopup="menu" aria-label="Revenue line options"><svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r=".6"/><circle cx="8" cy="8" r=".6"/><circle cx="12.5" cy="8" r=".6"/></svg></button></div><ul>
+          <li>Wrote 71% of billing-service changes, last 90 days (58 of 82 commits)</li>
+          <li>Reviewed 14 of 17 checkout-api PRs, last 12 weeks</li></ul></div>
+        <div class="blk"><h3>Workload</h3>
+          <div class="sig"><span>Reviews: 38% of team's PR reviews, up from 15%, over 5 weeks. Role may explain part.</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="18.4" width="124" height="8.6" rx="2"><title>Usual range</title></rect><polyline class="ln" points="2.0,23.6 12.9,21.9 23.8,22.7 34.7,24.4 45.6,21.0 56.5,22.7 67.5,15.0 78.4,9.9 89.3,6.4 100.2,4.7 111.1,3.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Medium &middot; GitHub only</span></div>
+          <div class="sig"><span>Commits after 10 PM on 9 of last 20 workdays (baseline 3)</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="15.0" width="124" height="12.0" rx="2"><title>Usual range</title></rect><polyline class="ln" points="2.0,24.0 12.9,21.0 23.8,21.0 34.7,24.0 45.6,18.0 56.5,21.0 67.5,15.0 78.4,12.0 89.3,12.0 100.2,6.0 111.1,3.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Medium &middot; no PTO calendar</span></div></div>
+        <details class="ev"><summary>Evidence</summary><div class="evb">Reviews: 46 of 121 team reviews in the last 5 weeks. Late commits on Sep 22, 24, 25, 29 and 5 more days through Oct 14. Counts and dates only.</div></details>
+        <div class="acts"><button class="btn p">Schedule 1:1</button><button class="btn">Move 4 reviews to Ada</button><span class="sp2"></span><button class="btn q" data-a="na">Not an issue</button><button class="btn q" data-a="done">Done</button></div>
+      </article>
+    </div></section>
+
+    <section class="sec" id="sec1"><h2>Workload</h2>
+    <div class="grid2">
+      <article class="card pc" data-id="p">
+        <div class="who"><span class="av p">PR</span><div><b>Priya Raman</b><span class="sub">Designer</span></div></div>
+        <div class="sig" style="border-top:0"><span>Weekend activity 3 of last 5 weekends (baseline 0 in 5)</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="25.5" width="124" height="1.5" rx="0.7"><title>Usual range</title></rect><polyline class="ln" points="2.0,27.0 12.9,27.0 23.8,27.0 34.7,27.0 45.6,27.0 56.5,27.0 67.5,27.0 78.4,3.0 89.3,27.0 100.2,3.0 111.1,3.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Low &middot; Slack only</span></div>
+        <div class="sig"><span>Meetings 21 h/wk, up from 13, over 4 weeks</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="15.0" width="124" height="12.0" rx="2"><title>Usual range</title></rect><polyline class="ln" points="2.0,24.6 12.9,22.2 23.8,19.8 34.7,22.2 45.6,24.6 56.5,19.8 67.5,22.2 78.4,15.0 89.3,7.8 100.2,5.4 111.1,3.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Medium &middot; no PTO calendar</span></div>
+        <details class="ev"><summary>Evidence</summary><div class="evb">Weekend days with activity: Sep 27, Oct 4, Oct 11. Meetings: 21 h/wk over the last 4 weeks, 13 h/wk before. Counts and dates only.</div></details>
+        <div class="acts"><button class="btn p">Invite Priya to a focus block</button><span class="sp2"></span><button class="btn q" data-a="na">Not an issue</button><button class="btn q" data-a="done">Done</button></div>
+      </article>
+      <article class="card pc" data-id="t">
+        <div class="who"><span class="av p">TL</span><div><b>Theo Lindqvist</b><span class="sub">Support</span></div></div>
+        <div class="sig" style="border-top:0"><span>After 8 PM replies on 8 of last 15 weekdays (baseline 2)</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="15.0" width="124" height="12.0" rx="2"><title>Usual range</title></rect><polyline class="ln" points="2.0,24.0 12.9,21.0 23.8,21.0 34.7,24.0 45.6,18.0 56.5,21.0 67.5,21.0 78.4,15.0 89.3,12.0 100.2,9.0 111.1,6.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Medium &middot; no PTO calendar</span></div>
+        <div class="sig"><span>Tickets owned 31 open, up from 18, over 6 weeks</span><svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last 12 weeks against own baseline"><rect class="band" x="0" y="15.7" width="124" height="11.3" rx="2"><title>Usual range</title></rect><polyline class="ln" points="2.0,22.8 12.9,21.4 23.8,19.9 34.7,21.4 45.6,18.5 56.5,17.1 67.5,12.9 78.4,10.1 89.3,7.2 100.2,4.4 111.1,3.0 122.0,3.0"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg><span class="tag">Low &middot; Linear only</span></div>
+        <details class="ev"><summary>Evidence</summary><div class="evb">Replies after 8 PM on 8 of the last 15 weekdays, latest Oct 14. Open tickets: 31 now, 18 six weeks ago. Counts and dates only.</div></details>
+        <div class="acts"><span class="sub">Marked done Oct 14</span></div>
+      </article>
+    </div></section>
+
+    <section class="sec" id="sec2"><h2>Revenue line</h2>
+    <div class="card rv"><table>
+      <thead><tr><th>Person</th><th>Depends on them</th><th>Why</th><th></th></tr></thead>
+      <tbody id="rvb">
+      <tr data-id="sf"><td>Sam Ferreira</td><td>checkout-api</td><td class="mute">Sole author of 24 of 24 changes, last 90 days</td><td class="r"><button class="btn">Add backup</button><button class="ib act" data-m="rvrow" data-id="sf" aria-haspopup="menu" aria-label="Options for Sam Ferreira"><svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r=".6"/><circle cx="8" cy="8" r=".6"/><circle cx="12.5" cy="8" r=".6"/></svg></button></td></tr>
+      <tr data-id="aw"><td>Ada Wójcik</td><td>Kestrel Freight</td><td class="mute">Single contact on their side, 14 threads, last 90 days</td><td class="r"><button class="btn">Add backup</button><button class="ib act" data-m="rvrow" data-id="aw" aria-haspopup="menu" aria-label="Options for Ada Wójcik"><svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r=".6"/><circle cx="8" cy="8" r=".6"/><circle cx="12.5" cy="8" r=".6"/></svg></button></td></tr>
+      <tr data-id="mb"><td>Marcus Bell</td><td>Bluefin Health</td><td class="mute">Only internal sender on 11 of 11 threads, last 90 days</td><td class="r"><button class="btn">Add backup</button><button class="ib act" data-m="rvrow" data-id="mb" aria-haspopup="menu" aria-label="Options for Marcus Bell"><svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r=".6"/><circle cx="8" cy="8" r=".6"/><circle cx="12.5" cy="8" r=".6"/></svg></button></td></tr>
+      </tbody></table></div></section>
+
+    <button class="card others" id="oth" aria-expanded="false" aria-controls="olist"><span><span id="oc">8</span> others &middot; no sustained change</span><span class="chev">&#8250;</span></button>
+    <div class="card olist" id="olist"></div>
+    </div>
+    <div class="card" id="tv" hidden><div class="tscroll"><table class="tb"><thead><tr>
+      <th class="stk" scope="col"><button data-k="name">Person</button></th><th scope="col"><button data-k="group">Group</button></th><th scope="col">Revenue line</th><th scope="col"><button data-k="sig">Signals</button></th><th scope="col">Trend</th><th scope="col">Confidence</th><th scope="col"><button data-k="recent">Flagged</button></th><th scope="col"><span class="sr" style="position:absolute;left:-9999px">Actions</span></th></tr></thead><tbody id="tvb"></tbody></table></div></div>
+    <p class="none" id="none" hidden>No one matches these filters. <button class="btn" data-clear>Clear</button></p>
+    <div class="foot"><button class="btn q" id="hbtn" aria-expanded="false" aria-controls="hlist"></button><button class="btn q" id="zbtn" aria-expanded="false" aria-controls="zlist"></button></div>
+    <div class="card olist" id="hlist"></div>
+    <div class="card olist" id="zlist"></div>
+  </div>
+
+  <!-- state 4 -->
+  <div data-st="4"><div class="head"><h1>Team health</h1><div class="cov" style="margin:0"><button class="ib info" aria-label="What this reads" aria-expanded="false"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.8"/><path d="M8 7.2v3.6M8 5.2v.1"/></svg></button>
+      <div class="pop pop-info" role="dialog" aria-label="What this reads"><h3>What this reads</h3><ul><li>Metadata only: timestamps, counts, participants' domains, PR authors and reviewers.</li><li>Never message text.</li></ul></div></div></div>
+    <div class="empty"><div>Connect Slack, Gmail, Calendar, GitHub or Linear to see team health.</div><button class="btn p">Connect tools</button></div></div>
+
+  <!-- state 5 -->
+  <div data-st="5"><div class="head"><h1>Team health</h1>
+      <span class="upd">Updated 9:40 AM<button class="ib" aria-label="Refresh"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg></button></span></div>
+    <div class="cov"><span class="chip sm"><span class="sd"></span>Slack</span><span class="chip sm"><span class="sd"></span>Gmail</span><span class="chip sm"><span class="sd"></span>Calendar</span><span class="chip sm"><span class="sd"></span>GitHub</span>
+      <a class="chip sm dash" href="#integrations">Linear</a></div>
+    <div class="hist"><p class="sum" style="margin-bottom:0">Signals need 15 weeks of history. 9 weeks so far.</p>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="15" aria-valuenow="9" aria-label="History collected"><i></i></div></div></div>
+
+  <!-- state 6: syncing -->
+  <div data-st="6"><div class="head"><h1>Team health</h1>
+      <span class="upd">Updated 9:40 AM<button class="ib" aria-label="Refresh" disabled title="Next refresh at 9:55 AM"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg></button></span></div>
+    <div class="cov"><span class="chip sm"><span class="sd"></span>Slack</span><span class="chip sm"><span class="sd"></span>Gmail</span><span class="chip sm"><span class="sd"></span>Calendar</span><span class="chip sm"><span class="sd"></span>GitHub</span><span class="chip sm"><span class="sd"></span>Linear</span></div>
+    <div class="hist"><p class="sum" style="margin-bottom:0">Reading your tools…</p>
+      <div class="bar ind" role="progressbar" aria-label="Reading your tools"><i></i></div></div></div>
+
+  <!-- state 7: teammate view (own data only) -->
+  <div data-st="7"><div class="head"><h1>My workload</h1><span class="upd">Updated 9:40 AM</span></div>
+    <article class="card pc tm" id="tm"></article></div>
+
+  <!-- states 8, 10: teammate request -->
+  <div data-st="8,10"><div class="head"><h1>Team health</h1></div>
+    <div class="empty"><button class="btn p" id="req">Request my card</button><span class="sub" data-st="10">Verify your email to request access</span></div></div>
+  </main>
+</div>
+
+<div class="pop" id="rmenu" role="menu" hidden></div>
+<div class="toast" id="toast" role="status" hidden><span id="tmsg"></span><button class="btn q" id="tundo">Undo</button></div>
+
+<script>
+(function(){
+  var b=document.body;
+  function $(i){return document.getElementById(i)}
+  function go(n){
+    b.dataset.s=n;
+    document.querySelectorAll('.mock button').forEach(function(x){x.setAttribute('aria-pressed',String(x.dataset.go==n))});
+    document.querySelectorAll('[data-st]').forEach(function(e){e.hidden=e.dataset.st.split(',').indexOf(String(n))<0});
+    document.querySelectorAll('.cov').forEach(function(c){c.classList.remove('open')});
+    document.querySelectorAll('.info').forEach(function(i){i.setAttribute('aria-expanded',false)});
+    if(n==3){var i=document.querySelector('[data-st="2,3,9"] .info');i.parentNode.classList.add('open');i.setAttribute('aria-expanded',true)}
+    var r=$('req');r.disabled=n==10;
+    closeAll();$('toast').hidden=true;
+  }
+  document.querySelectorAll('.mock button').forEach(function(x){x.onclick=function(){go(x.dataset.go)}});
+  var oth=$('oth'),ol=$('olist');
+  oth.onclick=function(){var o=ol.classList.toggle('open');oth.setAttribute('aria-expanded',o)};
+  [['hbtn','hlist'],['zbtn','zlist']].forEach(function(p){$(p[0]).onclick=function(){var o=$(p[1]).classList.toggle('open');this.setAttribute('aria-expanded',o)}});
+
+  var SIG={a:'After hours',w:'Weekend',m:'Meetings',r:'Reviews',t:'Tickets'},SRC=['Slack','Gmail','Calendar','GitHub','Linear'],
+  GL=['Take care of first','Workload','Revenue line','No change'],
+  SORT={recent:'Recently flagged',name:'Name',group:'Group',sig:'Signals (count)'},
+  OPT={g:GL.map(function(l,i){return[String(i),l]}),s:Object.keys(SIG).map(function(k){return[k,SIG[k]]}),src:SRC.map(function(x){return[x,x]})},
+  FT={g:'Group',s:'Signal',src:'Source'};
+  function sp(b,h,p){return{b:b,h:h,p:p}}
+  var SPM=sp(18.4,8.6,'2.0,25.3 12.9,23.6 23.8,21.9 34.7,23.6 45.6,20.1 56.5,21.9 67.5,15.0 78.4,9.9 89.3,6.4 100.2,4.7 111.1,3.0 122.0,3.0'),
+  SPJ=sp(18.4,8.6,'2.0,23.6 12.9,21.9 23.8,22.7 34.7,24.4 45.6,21.0 56.5,22.7 67.5,15.0 78.4,9.9 89.3,6.4 100.2,4.7 111.1,3.0 122.0,3.0'),
+  SPJ2=sp(15,12,'2.0,24.0 12.9,21.0 23.8,21.0 34.7,24.0 45.6,18.0 56.5,21.0 67.5,15.0 78.4,12.0 89.3,12.0 100.2,6.0 111.1,3.0 122.0,3.0'),
+  SPP=sp(25.5,1.5,'2.0,27.0 12.9,27.0 23.8,27.0 34.7,27.0 45.6,27.0 56.5,27.0 67.5,27.0 78.4,3.0 89.3,27.0 100.2,3.0 111.1,3.0 122.0,3.0'),
+  SPT=sp(15,12,'2.0,24.0 12.9,21.0 23.8,21.0 34.7,24.0 45.6,18.0 56.5,21.0 67.5,21.0 78.4,15.0 89.3,12.0 100.2,9.0 111.1,6.0 122.0,3.0');
+  // One list drives both views. g: 0 first, 1 workload, 2 revenue line, 3 no change. wk: weeks since the change was flagged.
+  // ev: evidence text. noprof: no work-hours profile, so working hours are assumed.
+  var P=[
+  {id:'m',n:'Maya Okonkwo',r:'Account lead',g:0,rev:'Northwind Labs, Harbor &amp; Pine',s:['m','w','a'],src:['Slack','Calendar','Gmail'],top:'Meetings 26 h/wk, from 14',sp:SPM,cf:'Medium',wk:2,ev:'Meetings: 312 h over 12 weeks, 71 h in the last 3 weeks. Weekend days with activity: Sep 6, Sep 20, Sep 27, Oct 4, Oct 11. Late weekdays: Oct 1 to Oct 14. Counts and dates only.'},
+  {id:'j',n:'Jonah Petrakis',r:'Backend engineer, billing',g:0,rev:'billing-service, checkout-api',s:['r','a'],src:['GitHub','Slack'],top:'Reviews 38% of team, from 15%',sp:SPJ,cf:'Medium',wk:3,ev:'Reviews: 46 of 121 team reviews in the last 5 weeks. Late commits on Sep 22, 24, 25, 29 and 5 more days through Oct 14. Counts and dates only.'},
+  {id:'p',n:'Priya Raman',r:'Designer',g:1,s:['w','m'],src:['Slack','Calendar'],top:'Weekend 3 of last 5',sp:SPP,cf:'Low',wk:4,noprof:1,ev:'Weekend days with activity: Sep 27, Oct 4, Oct 11. Meetings: 21 h/wk over the last 4 weeks, 13 h/wk before. Counts and dates only.'},
+  {id:'t',n:'Theo Lindqvist',r:'Support',g:1,s:['a','t'],src:['Gmail','Slack','Linear'],top:'After 8 PM 8 of 15 weekdays',sp:SPT,cf:'Low',wk:6,noprof:1,ev:'Replies after 8 PM on 8 of the last 15 weekdays, latest Oct 14. Open tickets: 31 now, 18 six weeks ago. Counts and dates only.'},
+  {id:'sf',n:'Sam Ferreira',r:'Engineer',g:2,rev:'checkout-api',s:[],src:['GitHub']},
+  {id:'aw',n:'Ada Wójcik',r:'Customer success',g:2,rev:'Kestrel Freight',s:[],src:['Gmail','Slack']},
+  {id:'mb',n:'Marcus Bell',r:'Sales',g:2,rev:'Bluefin Health',s:[],src:['Gmail','Calendar']},
+  {id:'o1',n:'Kofi Mensah',r:'Sales',g:3,s:[],src:['Gmail','Calendar']},
+  {id:'o2',n:'Lena Ivanova',r:'Engineer',g:3,s:[],src:['GitHub','Slack']},
+  {id:'o3',n:'Dev Anand',r:'Engineer',g:3,s:[],src:['GitHub','Linear']},
+  {id:'o4',n:'Noor Haddad',r:'Operations',g:3,s:[],src:['Slack','Calendar']},
+  {id:'o5',n:'Carl Eriksen',r:'Engineer',g:3,s:[],src:['GitHub','Slack']},
+  {id:'o6',n:'Rosa Mendes',r:'Marketing',g:3,s:[],src:['Gmail','Slack']},
+  {id:'o7',n:'Yusuf Demir',r:'Engineer',g:3,s:[],src:['GitHub','Linear']},
+  {id:'o8',n:'Ines Moreau',r:'Finance',g:3,s:[],src:['Gmail','Calendar']},
+  {id:'h1',n:'Sasha Brandt',r:'Contractor',g:3,s:[],src:['Slack']},
+  {id:'h2',n:'Tomas Reyes',r:'Contractor',g:3,s:[],src:['Slack']}];
+  var CMP={recent:function(a,b){return(a.wk==null?99:a.wk)-(b.wk==null?99:b.wk)},name:function(a,b){return a.n.localeCompare(b.n)},
+    group:function(a,b){return a.g-b.g},sig:function(a,b){return b.s.length-a.s.length}};
+  var st={view:'cards',sort:'recent',f:{g:[],s:[],src:[]}};
+  var hid={h1:1,h2:1},dn={},nr={},op={},SN=[{id:'x',label:'Dev Anand · Tickets'}];
+  function who(id){return P.filter(function(p){return p.id==id})[0]}
+  function issn(id){return SN.some(function(s){return s.id==id})}
+  function vals(p,k){return k=='g'?[String(p.g)]:p[k]}
+  function match(p){return Object.keys(st.f).every(function(k){var f=st.f[k];return!f.length||vals(p,k).some(function(v){return f.indexOf(v)>=0})})}
+  function lab(k,v){return OPT[k].filter(function(o){return o[0]==v})[0][1]}
+  function nf(){return st.f.g.length+st.f.s.length+st.f.src.length}
+  var CH='<svg viewBox="0 0 16 16"><path d="M6 3.5L10.5 8 6 12.5"/></svg>',DOTS='<svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r=".6"/><circle cx="8" cy="8" r=".6"/><circle cx="12.5" cy="8" r=".6"/></svg>',range='12 weeks';
+  function spark(x){return'<svg class="sp" viewBox="0 0 124 30" role="img" aria-label="Last '+range+' against own baseline"><rect class="band" x="0" y="'+x.b+'" width="124" height="'+x.h+'" rx="2"><title>Usual range</title></rect><polyline class="ln" points="'+x.p+'"/><circle class="dot" cx="122.0" cy="3.0" r="2.2"/></svg>'}
+  function row(p){
+    var ini=p.n.split(' ').map(function(w){return w[0]}).join(''),n=p.s.length,o=!!op[p.id];
+    return'<tr data-id="'+p.id+'"'+(p.ev?' class="xr"':'')+'><td class="stk"><div class="who">'+(p.ev?'<button class="ib" aria-expanded="'+o+'" aria-label="Show evidence for '+p.n+'">'+CH+'</button>':'<span class="chv"></span>')+
+    '<span class="av p">'+ini+'</span><div><b>'+p.n+'</b><span class="sub">'+p.r+'</span></div></div></td>'+
+    '<td><span class="tag">'+GL[p.g]+'</span></td><td class="mute">'+(p.rev||'&mdash;')+'</td>'+
+    '<td>'+(n?'<b class="num">'+n+'</b> <span class="mute">'+p.top+'</span>':'<span class="mute">&mdash;</span>')+'</td>'+
+    '<td>'+(p.sp?spark(p.sp):'<span class="mute">&mdash;</span>')+'</td><td>'+(p.cf?'<span class="tag">'+p.cf+'</span>':'<span class="mute">&mdash;</span>')+'</td>'+
+    '<td class="mute num">'+(p.wk!=null?p.wk+' wk ago':'&mdash;')+'</td>'+
+    '<td class="r"><button class="ib act" data-m="person" data-id="'+p.id+'" aria-haspopup="menu" aria-label="Actions for '+p.n+'">'+DOTS+'</button></td></tr>'+
+    (p.ev?'<tr class="evr"'+(o?'':' hidden')+'><td colspan="8"><div class="evb">'+p.ev+(p.noprof?'<div class="sub" style="margin-top:4px">Hours assumed 9–18 ET</div>':'')+'</div></td></tr>':'');
+  }
+  function render(){
+    if(st.view=='cards'&&st.sort=='group')st.sort='recent';
+    var L=P.filter(function(p){return!hid[p.id]&&!dn[p.id]&&!issn(p.id)}).filter(match).sort(CMP[st.sort]),ids={};L.forEach(function(p){ids[p.id]=1});
+    var cards=st.view=='cards';
+    $('cv').hidden=!cards||!L.length;$('tv').hidden=cards||!L.length;$('none').hidden=!!L.length;
+    $('vc').setAttribute('aria-pressed',cards);$('vt').setAttribute('aria-pressed',!cards);
+    document.querySelectorAll('#cv [data-id]').forEach(function(e){e.hidden=!ids[e.dataset.id]||!!nr[e.dataset.id]});
+    L.forEach(function(p){var e=document.querySelector('#cv [data-id="'+p.id+'"]');if(e)e.parentNode.appendChild(e)});
+    [0,1,2].forEach(function(i){var c=$('sec'+i);c.hidden=!c.querySelector('[data-id]:not([hidden])')});
+    var O=L.filter(function(p){return p.g==3}),only=L.length&&O.length==L.length;
+    $('oc').textContent=O.length;oth.hidden=!O.length;
+    if(!O.length)ol.classList.remove('open');else if(only)ol.classList.add('open');
+    oth.setAttribute('aria-expanded',ol.classList.contains('open'));
+    ol.innerHTML=O.map(function(p){return'<div><span>'+p.n+' <span class="mute">'+p.r+'</span></span><button class="ib act" data-m="person" data-id="'+p.id+'" aria-haspopup="menu" aria-label="Actions for '+p.n+'">'+DOTS+'</button></div>'}).join('');
+    // table view, with group dividers when sorted by group
+    var h='',last=-1;L.forEach(function(p){if(st.sort=='group'&&p.g!=last){h+='<tr class="gd"><td colspan="8">'+GL[p.g]+'</td></tr>';last=p.g}h+=row(p)});
+    $('tvb').innerHTML=h;
+    document.querySelectorAll('.tb th:has(button[data-k])').forEach(function(th){
+      var k=th.querySelector('button').dataset.k;th.setAttribute('aria-sort',k==st.sort?(k=='sig'?'descending':'ascending'):'none')});
+    // toolbar
+    $('flab').textContent='Filter'+(nf()?' · '+nf():'');$('slab').textContent='Sort: '+SORT[st.sort];
+    $('fclear').hidden=!nf()||!L.length;
+    $('fchips').innerHTML=Object.keys(st.f).map(function(k){return st.f[k].map(function(v){return'<button class="chip sm" data-k="'+k+'" data-v="'+v+'" aria-label="Remove filter '+lab(k,v)+'">'+lab(k,v)+' &times;</button>'}).join('')}).join('');
+    document.querySelectorAll('#fpop input').forEach(function(i){i.checked=st.f[i.name].indexOf(i.value)>=0});
+    $('spop').innerHTML=Object.keys(SORT).filter(function(k){return!(cards&&k=='group')}).map(function(k){return'<button class="mi" role="menuitemradio" aria-checked="'+(k==st.sort)+'" data-k="'+k+'">'+SORT[k]+'</button>'}).join('');
+    // hidden and snoozed
+    var H=P.filter(function(p){return hid[p.id]});
+    $('hbtn').hidden=!H.length;$('hbtn').textContent='Hidden ('+H.length+')';
+    $('hlist').innerHTML=H.map(function(p){return'<div><span>'+p.n+' <span class="mute">'+p.r+'</span></span><button class="btn q" data-rs="h" data-id="'+p.id+'">Restore</button></div>'}).join('');
+    $('zbtn').hidden=!SN.length;$('zbtn').textContent='Snoozed ('+SN.length+')';
+    $('zlist').innerHTML=SN.map(function(s){return'<div><span>'+s.label+'</span><button class="btn q" data-rs="z" data-id="'+s.id+'">Restore</button></div>'}).join('');
+    if(!H.length)$('hlist').classList.remove('open');if(!SN.length)$('zlist').classList.remove('open');
+  }
+  $('fpop').innerHTML=Object.keys(OPT).map(function(k){return'<h3>'+FT[k]+'</h3>'+OPT[k].map(function(o){return'<label><input type="checkbox" name="'+k+'" value="'+o[0]+'">'+o[1]+'</label>'}).join('')}).join('');
+  function menu(btn,pop){btn.onclick=function(e){e.stopPropagation();var o=pop.hidden;closeAll();pop.hidden=!o;btn.setAttribute('aria-expanded',o)}}
+  function closeM(){['fpop','spop'].forEach(function(i){$(i).hidden=true});$('fbtn').setAttribute('aria-expanded',false);$('sbtn').setAttribute('aria-expanded',false)}
+  function closeAll(){closeM();$('rmenu').hidden=true}
+  menu($('fbtn'),$('fpop'));menu($('sbtn'),$('spop'));
+  function clear(){st.f={g:[],s:[],src:[]};render()}
+  $('fclear').onclick=clear;document.querySelector('[data-clear]').onclick=clear;
+  $('fpop').onchange=function(e){var f=st.f[e.target.name],i=f.indexOf(e.target.value);i<0?f.push(e.target.value):f.splice(i,1);render()};
+  $('fchips').onclick=function(e){var c=e.target.closest('.chip');if(c){var f=st.f[c.dataset.k];f.splice(f.indexOf(c.dataset.v),1);render()}};
+  $('spop').onclick=function(e){var m=e.target.closest('.mi');if(m){st.sort=m.dataset.k;closeM();render()}};
+  $('vc').onclick=function(){st.view='cards';render()};$('vt').onclick=function(){st.view='table';render()};
+  document.querySelector('.tb thead').onclick=function(e){var b=e.target.closest('button[data-k]');if(b){st.sort=b.dataset.k;render()}};
+  $('tvb').onclick=function(e){
+    if(e.target.closest('.act'))return;
+    var tr=e.target.closest('tr.xr');if(!tr)return;
+    var ev=tr.nextElementSibling;ev.hidden=!ev.hidden;op[tr.dataset.id]=!ev.hidden;tr.querySelector('.ib').setAttribute('aria-expanded',!ev.hidden)};
+
+  // toast with undo
+  var tt;
+  function toast(msg,undo){
+    $('tmsg').textContent=msg;$('tundo').hidden=!undo;$('tundo').onclick=function(){$('toast').hidden=true;undo()};
+    $('toast').hidden=false;clearTimeout(tt);tt=setTimeout(function(){$('toast').hidden=true},8000)}
+  // row and card actions
+  var MENU={person:[['hide','Hide'],['split','Split…']],rvrow:[['nr','Not revenue'],['note','Add note'],['na','Not an issue']],rvblk:[['nr','Not revenue'],['note','Add note']]},ctx;
+  function snooze(id){var p=who(id),e={id:id,label:p.n+' · '+(p.s.length?p.s.map(function(k){return SIG[k]}).join(', '):'Revenue line')};
+    SN.push(e);render();toast('Snoozed for 8 weeks',function(){SN.splice(SN.indexOf(e),1);render()})}
+  function act(a,id,btn){
+    if(a=='hide'){hid[id]=1;render();toast('Hidden '+who(id).n,function(){delete hid[id];render()})}
+    else if(a=='na')snooze(id);
+    else if(a=='done'){dn[id]=1;render();toast('Marked done',function(){delete dn[id];render()})}
+    else if(a=='nr'){
+      if(ctx.m=='rvblk'){var k=btn.closest('.blk');k.hidden=true;toast('Removed from revenue line',function(){k.hidden=false})}
+      else{nr[id]=1;render();toast('Removed from revenue line',function(){delete nr[id];render()})}}
+    else if(a=='note')toast('Note added');
+  }
+  document.addEventListener('click',function(e){
+    var t=e.target,m=t.closest('.act[data-m]'),r=$('rmenu');
+    if(!t.closest('.anch'))closeM();
+    if(m){
+      var wasOpen=!r.hidden&&ctx&&ctx.btn==m;closeAll();if(wasOpen)return;
+      var c=m.closest('[data-id]');ctx={m:m.dataset.m,id:m.dataset.id||(c&&c.dataset.id),btn:m};
+      r.innerHTML=MENU[ctx.m].map(function(i){return'<button class="mi n" role="menuitem" data-a="'+i[0]+'">'+i[1]+'</button>'}).join('');
+      r.hidden=false;var q=m.getBoundingClientRect();r.style.top=q.bottom+4+'px';r.style.left=Math.max(8,Math.min(q.right-r.offsetWidth,innerWidth-r.offsetWidth-8))+'px';return}
+    var a=t.closest('[data-a]');
+    if(a){
+      if(r.contains(a)){r.hidden=true;act(a.dataset.a,ctx.id,ctx.btn)}
+      else{var c2=a.closest('[data-id]');if(c2)act(a.dataset.a,c2.dataset.id,a)}return}
+    var rs=t.closest('[data-rs]');
+    if(rs){if(rs.dataset.rs=='h')delete hid[rs.dataset.id];else SN=SN.filter(function(s){return s.id!=rs.dataset.id});render();return}
+    var ap=t.closest('[data-ap]');if(ap){$('appr').classList.add('gone');toast(ap.textContent=='Approve'?'Approved':'Declined');return}
+    var inf=t.closest('.info');if(inf){var o=inf.parentNode.classList.toggle('open');inf.setAttribute('aria-expanded',o);return}
+    var rc=t.closest('[data-r]');
+    if(rc&&rc.classList.contains('chip')){range=rc.dataset.r;document.querySelectorAll('.chips .chip').forEach(function(c){c.classList.toggle('on',c==rc);c.setAttribute('aria-pressed',c==rc)});render();
+      document.querySelectorAll('.sig .sp').forEach(function(s){s.setAttribute('aria-label','Last '+range+' against own baseline')});return}
+    if(!t.closest('#rmenu'))closeAll();
+  });
+  document.addEventListener('keydown',function(e){if(e.key=='Escape')closeAll()});
+  $('req').onclick=function(){this.disabled=true;this.textContent='Request sent'};
+
+  // teammate view: the member's own data only
+  function sigrow(t,s,tag,first){return'<div class="sig"'+(first?' style="border-top:0"':'')+'><span>'+t+'</span>'+spark(s)+'<span class="tag">'+tag+'</span></div>'}
+  $('tm').innerHTML='<div class="who"><span class="av p lg">JP</span><div><b>Jonah Petrakis</b><span class="sub">Backend engineer, billing</span></div></div>'+
+    sigrow("Reviews: 38% of team's PR reviews, up from 15%, over 5 weeks. Role may explain part.",SPJ,'Medium · GitHub only',1)+
+    sigrow('Commits after 10 PM on 9 of last 20 workdays (baseline 3)',SPJ2,'Medium · no PTO calendar')+
+    '<details class="ev"><summary>Evidence</summary><div class="evb">'+who('j').ev+'</div></details>'+
+    '<div class="acts"><button class="btn p" data-a="note">Add a note</button><span class="sub">The space owner sees your notes.</span></div>';
+  $('tm').onclick=function(e){if(e.target.closest('[data-a]'))toast('Note added')};
+  go(2);
+  render();
+})();
+</script>
+</body>
+</html>
