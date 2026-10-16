@@ -13,7 +13,7 @@ import type {
 import { BotPinsSchema, PinListSchema } from "@rakazo/contracts";
 import { connectorToolRequiresApproval } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
-import { Prisma } from "@rakazo/db";
+import { isUniqueViolation, Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { unwrapToolResult } from "./finance-call-tool.js";
 import type { McpConnector } from "./mcp-connector.js";
@@ -123,10 +123,6 @@ function toBotPins(row: PinsRow): BotPins {
     updatedAt: row.updatedAt.toISOString(),
     refreshedAt: row.refreshedAt?.toISOString() ?? null,
   };
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
 }
 
 export async function getBotPins(

@@ -115,6 +115,7 @@ import {
   findModelCredential,
   InvalidSpaceNameError,
   isTooManyDatabaseConnections,
+  isUniqueViolation,
   loadRunHistoryMessages,
   parseComputerMode,
   readHistory,
@@ -8426,10 +8427,6 @@ function redactBlocks(blocks: MessageBlock[], secrets: string[]): MessageBlock[]
     }
     return block;
   });
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
 }
 
 async function publishMessage(

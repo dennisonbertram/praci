@@ -208,7 +208,9 @@ import {
   formatMessagingLinkCode,
   InvalidSpaceNameError,
   IsolationError,
+  isRecordNotFound,
   issueMessagingLinkCode,
+  isUniqueViolation,
   listBoards,
   listSpaceBackupModels,
   listTicketComments,
@@ -7519,14 +7521,6 @@ async function messagingIdentityDto(
     botId: identity.botId,
     botName: bot?.name ?? "Assistant",
   };
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
-}
-
-function isRecordNotFound(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2025");
 }
 
 function messagingChannelDto(membership: {

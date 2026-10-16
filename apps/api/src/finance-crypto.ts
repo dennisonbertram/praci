@@ -28,6 +28,7 @@ import {
 } from "@rakazo/contracts";
 import { exchangeParts, parseWalletInput, summarizeCrypto } from "@rakazo/core";
 import type { Prisma } from "@rakazo/db";
+import { isUniqueViolation } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { FinanceDeps } from "./finance.js";
 import { assignFinanceServers } from "./finance-agent.js";
@@ -185,7 +186,7 @@ export async function financeWalletAdd(
     })
     // A concurrent add of the same address hits the unique index.
     .catch((error: unknown) => {
-      throw (error as { code?: string }).code === "P2002" ? conflict() : error;
+      throw isUniqueViolation(error) ? conflict() : error;
     });
   await syncCryptoQuietly(deps, actor, { walletIds: [row.id], signal });
   return toWallet(row);
