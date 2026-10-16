@@ -116,9 +116,12 @@ reachable through it. PR 1 records this in this file.
    `@carta-audit-response` and report new requests. The investor-update routine
    (monthly or quarterly) is offered the same way. Both use the existing `Routine`
    table and `@Skill` mentions.
-9. **No new tables in v1.** Open audit requests live in Gmail threads and the
-   agent's replies; Rakazo stores nothing new about investors. An audit tracker is
-   a v2 decision once the skill shows what needs tracking.
+9. **One new table: contacts.** Each user keeps a contact list (`Contact`: name, email,
+   organization, kind investor/auditor/other, notes), scoped to space and user and
+   deleted with the user. The Cap Table page lists it and the Carta agent reads it
+   with `contacts_list` and saves to it with `contacts_save`, which asks first. The
+   investor update takes its recipients from it. Open audit requests still live in
+   Gmail threads; an audit tracker is a v2 decision.
 
 ## Not in v1
 
@@ -129,8 +132,8 @@ reachable through it. PR 1 records this in this file.
 - Reading email attachments (comes with the Data room).
 - Confirmation.com and other auditor portals.
 - The fund (LP-side) persona and the CRM scopes.
-- A cap table dashboard (the Cap Table page is the agent's chat).
-- An investor CRM in Rakazo.
+- A cap table dashboard (the Cap Table page is the contact list plus the agent).
+- An investor CRM beyond the contact list (deal stages, interactions).
 
 ## Tests
 
