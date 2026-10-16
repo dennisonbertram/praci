@@ -72,6 +72,8 @@ it("shows counts and contracts, with the value formatted from the decimal string
   expect(page).toContain("Master Services Agreement");
   expect(page).toContain("$50,000");
   expect(page).toContain("Auto-renews, 60 days notice");
+  // A Term range shows the year on both ends, whatever year it is now.
+  expect(page).toContain("Mar 1, 2023 – Feb 28, 2026");
   expect(page).toContain("Unreviewed documents");
   expect(container.querySelector(`a[href="/app/data-room?item=${id(101)}"]`)).not.toBeNull();
   expect(container.querySelector('[aria-label="Allow"]')).toBeNull();

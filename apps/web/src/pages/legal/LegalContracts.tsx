@@ -5,7 +5,7 @@ import { cn } from "@rakazo/ui-web";
 import { Link } from "react-router-dom";
 import { Th } from "../../components/finance/ui";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
-import { shortDay } from "../../lib/finance-format";
+import { fullDay, shortDay } from "../../lib/finance-format";
 import { contractValue } from "../../lib/legal-format";
 
 const statusName = (status: LegalContractStatus): string =>
@@ -87,8 +87,8 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
               </td>
               <td className="whitespace-nowrap tabular-nums">
                 {contract.effectiveDate || contract.expirationDate
-                  ? `${contract.effectiveDate ? shortDay(contract.effectiveDate) : dash} – ${
-                      contract.expirationDate ? shortDay(contract.expirationDate) : dash
+                  ? `${contract.effectiveDate ? fullDay(contract.effectiveDate) : dash} – ${
+                      contract.expirationDate ? fullDay(contract.expirationDate) : dash
                     }`
                   : dash}
               </td>
