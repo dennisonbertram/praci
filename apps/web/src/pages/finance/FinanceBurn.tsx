@@ -54,7 +54,9 @@ export function FinanceBurnPage() {
   const first = data?.windowMonths[0];
   const last = data?.windowMonths.at(-1);
   const brexCents = data?.brexCents ?? 0;
-  const accountTotal = (data?.byAccount.reduce((sum, a) => sum + a.cents, 0) ?? 0) + brexCents || 1;
+  // An account where deposits or refunds outweigh charges spent nothing; it is not shown as spend.
+  const spentAccounts = data?.byAccount.filter((a) => a.cents > 0) ?? [];
+  const accountTotal = spentAccounts.reduce((sum, a) => sum + a.cents, 0) + brexCents || 1;
   const series = data ? fromFirstData(data.series) : [];
   return (
     <DetailPage
@@ -115,7 +117,7 @@ export function FinanceBurnPage() {
             <Section title={<Trans>By account</Trans>}>
               <table className="w-full border-collapse">
                 <tbody>
-                  {data.byAccount.map(({ account, cents }) => (
+                  {spentAccounts.map(({ account, cents }) => (
                     <tr
                       key={account.id}
                       className={rowClass}

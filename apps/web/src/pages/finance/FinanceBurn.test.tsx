@@ -94,3 +94,38 @@ it("adds Brex to By account so the shares cover all spend, and hides months befo
   expect(page).toContain("Jul 2026");
   expect(page).not.toContain("May 2026");
 });
+
+it("leaves an account that took in more than it spent out of By account and its shares", async () => {
+  const account = (id: string, name: string) => ({
+    id,
+    provider: "statement" as const,
+    externalId: id,
+    name,
+    lastFour: null,
+    kind: "checking" as const,
+    balanceCents: 0,
+    currency: "USD",
+  });
+  rpcMock.burn.mockResolvedValue({
+    monthlyCents: 100_000,
+    series: [month("2026-07", 300_000)],
+    windowMonths: ["2026-07"],
+    whereItWent: [],
+    byAccount: [
+      { account: account("a1", "Checking"), cents: 300_000 },
+      { account: account("a2", "mock firstbank"), cents: -50_000 },
+    ],
+    brexCents: 0,
+  } satisfies FinanceBurnOutput);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceBurnPage />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => {});
+  const page = container.textContent ?? "";
+  expect(page).toContain("Checking$3,000100%");
+  expect(page).not.toContain("mock firstbank");
+});
