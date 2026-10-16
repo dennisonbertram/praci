@@ -33,7 +33,8 @@ test("a mail send waits in the chat as an editable card and approving it runs th
 
   const card = page.getByTestId("mail-approval-card");
   await expect(card).toBeVisible({ timeout: 60_000 });
-  await expect(card.getByRole("heading", { name: "New email" })).toBeVisible();
+  await expect(card.getByText("Needs approval", { exact: true })).toBeVisible();
+  await expect(card.getByRole("heading", { name: "Offsite dates" })).toBeVisible();
   await expect(card).toContainText("first@example.test");
   await expect(card).toContainText("Sam Rivera <sam@example.test>");
   await expect(card).toContainText("Offsite dates");
@@ -47,7 +48,12 @@ test("a mail send waits in the chat as an editable card and approving it runs th
 
   await card.getByRole("button", { name: "Send", exact: true }).click();
   await expect(card.getByText("Sent", { exact: true })).toBeVisible({ timeout: 30_000 });
+  // A finished card folds to its header; the chevron opens it again.
+  const toggle = card.getByRole("button", { expanded: false });
+  await expect(toggle).toBeVisible();
+  await captureScreenshot(page, testInfo, "mail-approval-card-sent-collapsed");
+  await toggle.click();
   await expect(card).toContainText("Offsite dates, confirmed");
   await expect(card.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
-  await captureScreenshot(page, testInfo, "mail-approval-card-approved");
+  await captureScreenshot(page, testInfo, "mail-approval-card-sent-expanded");
 });

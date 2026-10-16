@@ -3583,6 +3583,10 @@ msgstr "Low"
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 
+#: src/components/MailApprovalCard.tsx
+msgid "Mail"
+msgstr "Mail"
+
 #: src/components/integrations/AppDetail.tsx
 msgid "Mail data from this account that Rakazo cached is removed."
 msgstr "Mail data from this account that Rakazo cached is removed."
@@ -3880,6 +3884,7 @@ msgid "Monthly trend"
 msgstr "Monthly trend"
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr "More"
@@ -3976,10 +3981,6 @@ msgstr "New account"
 #: src/pages/Shell.tsx
 msgid "New Bot"
 msgstr "New Bot"
-
-#: src/components/MailApprovalCard.tsx
-msgid "New email"
-msgstr "New email"
 
 #: src/pages/GroupPanel.tsx
 msgid "New group"
@@ -4966,7 +4967,6 @@ msgstr "Replace value"
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
-#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "Reply"

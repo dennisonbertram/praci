@@ -2,7 +2,6 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { MailApproval, MailEdits } from "@rakazo/contracts";
 import {
-  Badge,
   Button,
   cn,
   DropdownMenu,
@@ -13,8 +12,8 @@ import {
   Input,
   Textarea,
 } from "@rakazo/ui-web";
-import { ChevronDown } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronsUpDown, Mail, MoreHorizontal } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { parseRecipient, splitEntries } from "../lib/recipients";
 import { errorText } from "../lib/user-error";
 import { invalidAddressText } from "./compose/RecipientField";
@@ -31,10 +30,10 @@ const toFields = (mail: MailApproval): Fields => ({
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex min-h-9 flex-col px-3 py-1 @sm:flex-row @sm:items-start @sm:gap-2">
+    <div className="flex flex-col border-b border-border py-2 @sm:flex-row @sm:items-start @sm:gap-2.5">
       <span
         aria-hidden="true"
-        className="shrink-0 text-xs leading-5 text-muted-foreground @sm:w-12 @sm:text-sm @sm:leading-7"
+        className="shrink-0 text-xs leading-5 text-muted-foreground @sm:w-11 @sm:text-sm @sm:leading-7"
       >
         {label}
       </span>
@@ -71,6 +70,8 @@ export function MailApprovalCard({
   const initial = toFields(mail);
   const [fields, setFields] = useState<Fields>(initial);
   const [editing, setEditing] = useState(false);
+  const outcomeNeedsAttention = mail.outcome === "failed" || mail.outcome === "unknown";
+  const [open, setOpen] = useState(status !== "answered" || outcomeNeedsAttention);
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -81,6 +82,11 @@ export function MailApprovalCard({
   const busy = pendingAction !== null;
   const draft = mail.tool === "mail_draft";
   const shown = answered ? initial : fields;
+
+  // A finished card folds up to its header, unless the person still has something to do with it.
+  useEffect(() => {
+    if (answered) setOpen(outcomeNeedsAttention);
+  }, [answered, outcomeNeedsAttention]);
 
   useLayoutEffect(() => {
     const body = bodyRef.current;
@@ -128,196 +134,254 @@ export function MailApprovalCard({
     ] as const
   ).filter(([, , value, always]) => always || value.trim() || (editing && interactive));
 
+  const firstRecipient = mail.to[0] ? parseRecipient(mail.to[0]).address : "";
+  const statusText = answered ? (
+    mail.outcome === "sent" ? (
+      <Trans>Sent</Trans>
+    ) : mail.outcome === "saved" ? (
+      <Trans>Draft saved</Trans>
+    ) : mail.outcome === "failed" ? (
+      <Trans>Not sent</Trans>
+    ) : mail.outcome === "unknown" ? (
+      <Trans>Unknown</Trans>
+    ) : answer === "deny" && mail.connectionId ? (
+      draft ? (
+        <Trans>Saving…</Trans>
+      ) : (
+        <Trans>Sending…</Trans>
+      )
+    ) : answer === "deny" ? (
+      <Trans>Discarded</Trans>
+    ) : (
+      <Trans>Approved</Trans>
+    )
+  ) : canAnswer ? (
+    <Trans>Needs approval</Trans>
+  ) : (
+    <Trans>No longer active</Trans>
+  );
+  const headerText = (
+    <span className="min-w-0 flex-1 truncate text-start text-[15px]">
+      <span className="font-medium text-foreground">
+        <Trans>Mail</Trans>
+      </span>{" "}
+      <span className="text-muted-foreground">
+        <span>{statusText}</span>
+        {firstRecipient ? (
+          <span className={cn(interactive && "hidden @sm:inline")}> · {firstRecipient}</span>
+        ) : null}
+      </span>
+    </span>
+  );
+  const tile = (
+    <span
+      className={cn(
+        "flex size-[30px] shrink-0 items-center justify-center rounded-lg bg-card text-foreground",
+        interactive && "hidden @sm:flex",
+      )}
+    >
+      <Mail aria-hidden="true" className="size-4" />
+    </span>
+  );
+
   return (
     <div
       data-testid="mail-approval-card"
       data-editing={editing || undefined}
       className={cn(
-        "@container w-xl max-w-full overflow-hidden rounded-2xl border border-border bg-card",
-        editing && "ring-2 ring-primary",
+        "@container w-xl max-w-full overflow-hidden rounded-3xl bg-muted",
+        editing ? "ring-2 ring-primary" : interactive && "ring-1 ring-inset ring-border",
       )}
     >
-      <div className="flex min-h-12 items-center justify-between gap-2 px-4 py-2">
-        <h3 className="text-[15px] font-medium text-foreground">
-          {mail.reply ? <Trans>Reply</Trans> : <Trans>New email</Trans>}
-        </h3>
+      <div className="flex items-center gap-3 px-5 py-3.5">
         {answered ? (
-          <Badge variant="secondary">
-            {mail.outcome === "sent" ? (
-              <Trans>Sent</Trans>
-            ) : mail.outcome === "saved" ? (
-              <Trans>Draft saved</Trans>
-            ) : mail.outcome === "failed" ? (
-              <Trans>Not sent</Trans>
-            ) : mail.outcome === "unknown" ? (
-              <Trans>Unknown</Trans>
-            ) : answer === "deny" && mail.connectionId ? (
-              draft ? (
-                <Trans>Saving…</Trans>
-              ) : (
-                <Trans>Sending…</Trans>
-              )
-            ) : answer === "deny" ? (
-              <Trans>Discarded</Trans>
-            ) : (
-              <Trans>Approved</Trans>
-            )}
-          </Badge>
-        ) : !canAnswer ? (
-          <Badge variant="secondary">
-            <Trans>No longer active</Trans>
-          </Badge>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            aria-pressed={editing}
-            onClick={() => setEditing((value) => !value)}
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+            className="flex min-w-0 flex-1 items-center gap-3 text-start"
           >
-            {editing ? <Trans>Done</Trans> : <Trans>Edit</Trans>}
-          </Button>
-        )}
-      </div>
-      <div
-        className={cn(
-          "mx-4 divide-y divide-border rounded-lg border border-border",
-          editing && "bg-muted",
-        )}
-      >
-        {mail.account ? (
-          <Row label={t`From`}>
-            <span className="text-muted-foreground">{mail.account}</span>
-          </Row>
-        ) : null}
-        {recipientRows.map(([key, label, value]) => (
-          <Row key={key} label={label}>
-            {editing ? (
-              <Input
-                aria-label={label}
-                className="h-7 w-full bg-background"
-                disabled={busy}
-                value={fields[key.toLowerCase() as "to" | "cc" | "bcc"]}
-                onChange={(event) =>
-                  set(key.toLowerCase() as "to" | "cc" | "bcc")(event.target.value)
-                }
-              />
-            ) : (
-              value
-            )}
-          </Row>
-        ))}
-        <Row label={t`Subject`}>
-          {editing ? (
-            <Input
-              aria-label={t`Subject`}
-              className="h-7 w-full bg-background"
-              disabled={busy}
-              value={fields.subject}
-              onChange={(event) => set("subject")(event.target.value)}
-            />
-          ) : (
-            shown.subject
-          )}
-        </Row>
-      </div>
-      <div className="px-4 pt-3">
-        {editing ? (
-          <Textarea
-            aria-label={t`Message`}
-            className="min-h-32 bg-background text-sm leading-6"
-            disabled={busy}
-            value={fields.body}
-            onChange={(event) => set("body")(event.target.value)}
-          />
+            {tile}
+            {headerText}
+            <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+          </button>
         ) : (
           <>
-            <div className="relative">
-              <div
-                ref={bodyRef}
-                data-testid="mail-approval-body"
-                className={cn(
-                  "whitespace-pre-wrap break-words text-sm leading-6 text-foreground",
-                  !expanded && "max-h-36 overflow-hidden",
-                )}
-              >
-                {shown.body}
-              </div>
-              {overflows && !expanded ? (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card to-transparent" />
-              ) : null}
-            </div>
-            {overflows || expanded ? (
+            {tile}
+            {headerText}
+            {interactive ? (
               <Button
-                variant="link"
+                variant="ghost"
                 size="sm"
-                className="px-0"
-                aria-expanded={expanded}
-                onClick={() => setExpanded((value) => !value)}
+                className="rounded-full"
+                disabled={busy}
+                aria-pressed={editing}
+                onClick={() => setEditing((value) => !value)}
               >
-                {expanded ? <Trans>Show less</Trans> : <Trans>Show more</Trans>}
-                <ChevronDown
-                  aria-hidden="true"
-                  className={cn("transition-transform", expanded && "rotate-180")}
-                />
+                {editing ? <Trans>Done</Trans> : <Trans>Edit</Trans>}
               </Button>
             ) : null}
           </>
         )}
       </div>
-      {interactive ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-          <div className="flex gap-2">
-            <Button disabled={busy} onClick={() => void submit("allow")}>
-              {pendingAction === "allow" ? (
-                draft ? (
-                  <Trans>Saving…</Trans>
-                ) : (
-                  <Trans>Sending…</Trans>
-                )
-              ) : draft ? (
-                <Trans>Save draft</Trans>
-              ) : (
-                <Trans>Send</Trans>
-              )}
-            </Button>
-            <Button variant="outline" disabled={busy} onClick={() => void submit("deny")}>
-              <Trans>Discard</Trans>
-            </Button>
+      {open ? (
+        <div className="px-5 pb-5 @sm:px-6">
+          <div className="mt-1.5 mb-3">
+            {editing ? (
+              <Input
+                aria-label={t`Subject`}
+                className="h-8 w-full bg-background text-base font-semibold"
+                disabled={busy}
+                value={fields.subject}
+                onChange={(event) => set("subject")(event.target.value)}
+              />
+            ) : (
+              <h3 className="break-words text-base font-semibold text-foreground">
+                {shown.subject}
+              </h3>
+            )}
           </div>
-          {botName && onDisableTool ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" size="sm" disabled={busy} />}>
-                <Trans>Needs approval</Trans>
-                <ChevronDown aria-hidden="true" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuCheckboxItem checked onCheckedChange={() => undefined}>
-                  <Trans>Needs approval</Trans>
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuItem onClick={() => void submit("disable")}>
-                  {draft ? t`Disable drafts for ${botName}` : t`Disable sending for ${botName}`}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div>
+            {mail.account ? (
+              <Row label={t`From`}>
+                <span>{mail.account}</span>
+              </Row>
+            ) : null}
+            {recipientRows.map(([key, label, value]) => (
+              <Row key={key} label={label}>
+                {editing ? (
+                  <Input
+                    aria-label={label}
+                    className="h-7 w-full bg-background"
+                    disabled={busy}
+                    value={fields[key.toLowerCase() as "to" | "cc" | "bcc"]}
+                    onChange={(event) =>
+                      set(key.toLowerCase() as "to" | "cc" | "bcc")(event.target.value)
+                    }
+                  />
+                ) : (
+                  value
+                )}
+              </Row>
+            ))}
+          </div>
+          <div className="pt-4">
+            {editing ? (
+              <Textarea
+                aria-label={t`Message`}
+                className="min-h-32 bg-background text-sm leading-6"
+                disabled={busy}
+                value={fields.body}
+                onChange={(event) => set("body")(event.target.value)}
+              />
+            ) : (
+              <>
+                <div className="relative">
+                  <div
+                    ref={bodyRef}
+                    data-testid="mail-approval-body"
+                    className={cn(
+                      "whitespace-pre-wrap break-words text-sm leading-6 text-foreground",
+                      !expanded && "max-h-36 overflow-hidden",
+                    )}
+                  >
+                    {shown.body}
+                  </div>
+                  {overflows && !expanded ? (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-muted to-transparent" />
+                  ) : null}
+                </div>
+                {overflows || expanded ? (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="px-0"
+                    aria-expanded={expanded}
+                    onClick={() => setExpanded((value) => !value)}
+                  >
+                    {expanded ? <Trans>Show less</Trans> : <Trans>Show more</Trans>}
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={cn("transition-transform", expanded && "rotate-180")}
+                    />
+                  </Button>
+                ) : null}
+              </>
+            )}
+          </div>
+          {interactive ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
+              <div className="flex gap-2">
+                <Button
+                  className="rounded-full"
+                  disabled={busy}
+                  onClick={() => void submit("allow")}
+                >
+                  {pendingAction === "allow" ? (
+                    draft ? (
+                      <Trans>Saving…</Trans>
+                    ) : (
+                      <Trans>Sending…</Trans>
+                    )
+                  ) : draft ? (
+                    <Trans>Save draft</Trans>
+                  ) : (
+                    <Trans>Send</Trans>
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="rounded-full"
+                  disabled={busy}
+                  onClick={() => void submit("deny")}
+                >
+                  <Trans>Discard</Trans>
+                </Button>
+              </div>
+              {botName && onDisableTool ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="rounded-full"
+                        aria-label={t`More`}
+                        disabled={busy}
+                      />
+                    }
+                  >
+                    <MoreHorizontal aria-hidden="true" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuCheckboxItem checked onCheckedChange={() => undefined}>
+                      <Trans>Needs approval</Trans>
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuItem onClick={() => void submit("disable")}>
+                      {draft ? t`Disable drafts for ${botName}` : t`Disable sending for ${botName}`}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
+            </div>
           ) : null}
+          {mail.outcome === "unknown" ? (
+            <p className="pt-3 text-[13px] text-muted-foreground">
+              <Trans>Not confirmed as sent. Check Sent before trying again.</Trans>
+            </p>
+          ) : null}
+          {mail.outcome === "failed" && onOpenComposer ? (
+            <div className="pt-3">
+              <Button variant="outline" size="sm" onClick={() => onOpenComposer(mail)}>
+                <Trans>Open in composer</Trans>
+              </Button>
+            </div>
+          ) : null}
+          {error ? <p className="pt-3 text-[13px] text-destructive">{error}</p> : null}
         </div>
-      ) : (
-        <div className="h-3" />
-      )}
-      {mail.outcome === "unknown" ? (
-        <p className="px-4 pb-3 text-[13px] text-muted-foreground">
-          <Trans>Not confirmed as sent. Check Sent before trying again.</Trans>
-        </p>
+      ) : error ? (
+        <p className="px-5 pb-4 text-[13px] text-destructive">{error}</p>
       ) : null}
-      {mail.outcome === "failed" && onOpenComposer ? (
-        <div className="px-4 pb-3">
-          <Button variant="outline" size="sm" onClick={() => onOpenComposer(mail)}>
-            <Trans>Open in composer</Trans>
-          </Button>
-        </div>
-      ) : null}
-      {error ? <p className="px-4 pb-3 text-[13px] text-destructive">{error}</p> : null}
     </div>
   );
 }

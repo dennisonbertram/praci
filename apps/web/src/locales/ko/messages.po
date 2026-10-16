@@ -3583,6 +3583,10 @@ msgstr ""
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr ""
 
+#: src/components/MailApprovalCard.tsx
+msgid "Mail"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 msgid "Mail data from this account that Rakazo cached is removed."
 msgstr ""
@@ -3880,6 +3884,7 @@ msgid "Monthly trend"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "More"
 msgstr ""
@@ -3975,10 +3980,6 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "New Bot"
-msgstr ""
-
-#: src/components/MailApprovalCard.tsx
-msgid "New email"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
@@ -4966,7 +4967,6 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
-#: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Reply"
 msgstr "답장"

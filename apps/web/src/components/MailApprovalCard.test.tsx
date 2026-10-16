@@ -17,7 +17,6 @@ vi.mock("@lingui/react/macro", () => ({
 vi.mock("@rakazo/ui-web", () => {
   const Plain = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
   return {
-    Badge: ({ children }: { children?: ReactNode }) => <span data-testid="pill">{children}</span>,
     Button: ({
       variant: _variant,
       size: _size,
@@ -113,22 +112,26 @@ const type = (el: HTMLInputElement | HTMLTextAreaElement, value: string) =>
     el.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
-it("shows the message fields without a pill while pending", async () => {
+const header = () =>
+  (host.querySelector("[data-testid=mail-approval-card] > div") as HTMLElement).textContent ?? "";
+const toggle = () => host.querySelector("button[aria-expanded]") as HTMLButtonElement | null;
+
+it("starts expanded while pending, with the status and first recipient in the header", async () => {
   await render();
   const text = host.textContent ?? "";
-  for (const part of ["New email", "From", "me@example.test", "To", "Jana <jana@example.test>"]) {
+  for (const part of ["From", "me@example.test", "To", "Jana <jana@example.test>"]) {
     expect(text).toContain(part);
   }
-  expect(text).toContain("Friday");
+  expect(header()).toBe("Mail Needs approval · jana@example.testEdit");
+  expect(host.querySelector("h3")?.textContent).toBe("Friday");
   expect(text).toContain("See you then.");
   expect(text).not.toContain("Cc");
   expect(text).not.toContain("Bcc");
-  expect(host.querySelector("[data-testid=pill]")).toBeNull();
+  expect(toggle()).toBeNull();
 });
 
-it("titles a reply and offers Save draft for a draft", async () => {
+it("offers Save draft for a draft", async () => {
   await render({ mail: { ...mail, tool: "mail_draft", reply: true } });
-  expect(host.querySelector("h3")?.textContent).toBe("Reply");
   expect(button("Save draft")).toBeDefined();
   expect(button("Send")).toBeUndefined();
 });
@@ -230,40 +233,59 @@ it("disables the actions while an answer is in flight", async () => {
   await act(async () => finish());
 });
 
-it("shows the outcome and no buttons once answered", async () => {
+it("folds a finished card to its header and opens it with the chevron", async () => {
   await render({ status: "answered", answer: "allow", mail: { ...mail, subject: "Monday" } });
-  expect(host.querySelector("[data-testid=pill]")?.textContent).toBe("Approved");
-  expect(host.textContent).toContain("Monday");
+  expect(header()).toBe("Mail Approved · jana@example.test");
+  expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
+  expect(host.querySelector("h3")).toBeNull();
+  await click(toggle() ?? undefined);
+  expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
+  expect(host.querySelector("h3")?.textContent).toBe("Monday");
+  expect(host.textContent).toContain("See you then.");
   expect(button("Send")).toBeUndefined();
   expect(button("Edit")).toBeUndefined();
   await render({ status: "answered", answer: "deny" });
-  expect(host.querySelector("[data-testid=pill]")?.textContent).toBe("Discarded");
+  expect(header()).toContain("Discarded");
+});
+
+it("folds up once the pending card is answered", async () => {
+  await render();
+  expect(host.querySelector("h3")).not.toBeNull();
+  await render({ status: "answered", answer: "allow" });
+  expect(host.querySelector("h3")).toBeNull();
 });
 
 it("shows what became of the person's own edited send", async () => {
   const edited = { ...mail, connectionId: "conn-1" };
-  const pill = () => host.querySelector("[data-testid=pill]")?.textContent;
+  const status = () => header().replace("Mail ", "").split(" · ")[0];
   await render({ status: "answered", answer: "deny", mail: edited });
-  expect(pill()).toBe("Sending…");
+  expect(status()).toBe("Sending…");
   await render({ status: "answered", answer: "deny", mail: { ...edited, outcome: "sent" } });
-  expect(pill()).toBe("Sent");
+  expect(status()).toBe("Sent");
   await render({
     status: "answered",
     answer: "deny",
     mail: { ...edited, tool: "mail_draft", outcome: "saved" },
   });
-  expect(pill()).toBe("Draft saved");
+  expect(status()).toBe("Draft saved");
   await render({ status: "answered", answer: "deny", mail: { ...edited, outcome: "unknown" } });
-  expect(pill()).toBe("Unknown");
+  expect(status()).toBe("Unknown");
   expect(host.textContent).toContain("Check Sent before trying again");
   expect(button("Open in composer")).toBeUndefined();
 });
 
-it("offers the composer when the edited send did not go out", async () => {
+it("keeps a failed send open and offers the composer", async () => {
   const onOpenComposer = vi.fn();
   const failed = { ...mail, connectionId: "conn-1", outcome: "failed" as const };
   await render({ status: "answered", answer: "deny", mail: failed, onOpenComposer });
-  expect(host.querySelector("[data-testid=pill]")?.textContent).toBe("Not sent");
+  expect(header()).toContain("Not sent");
   await click(button("Open in composer"));
   expect(onOpenComposer).toHaveBeenCalledWith(failed);
+});
+
+it("shows Cc and Bcc rows only when the message has them", async () => {
+  await render({ mail: { ...mail, cc: ["lee@example.test"], bcc: ["pat@example.test"] } });
+  expect(host.textContent).toContain("Cc");
+  expect(host.textContent).toContain("lee@example.test");
+  expect(host.textContent).toContain("Bcc");
 });
