@@ -104,9 +104,11 @@ export function storiesFor(sourceFile, files, read) {
   const set = new Set(files);
   const exists = (f) => set.has(f);
   const sibling = sourceFile.replace(/\.tsx$/, ".stories.tsx");
-  const out = new Set(exists(sibling) ? [sibling] : []);
+  // An empty or meta-only stories file is not coverage.
+  const hasStory = (f) => /export\s+default\b/.test(read(f)) && /export\s+const\s+\w+/.test(read(f));
+  const out = new Set(exists(sibling) && hasStory(sibling) ? [sibling] : []);
   for (const f of files) {
-    if (!f.endsWith(".stories.tsx") || out.has(f)) continue;
+    if (!f.endsWith(".stories.tsx") || out.has(f) || !hasStory(f)) continue;
     for (const m of read(f).matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g)) {
       if (resolveImport(m[1], f, exists) === sourceFile) out.add(f);
     }

@@ -10,7 +10,11 @@ const files = [
   "apps/web/src/screens/Host.stories.tsx",
   "packages/chat-ui/src/md.tsx",
 ];
-const sources = { "apps/web/src/screens/Host.stories.tsx": 'import { C } from "../components/C";' };
+const story = "export default {};\nexport const Basic = {};\n";
+const sources = {
+  "apps/web/src/components/A.stories.tsx": story,
+  "apps/web/src/screens/Host.stories.tsx": `import { C } from "../components/C";\n${story}`,
+};
 const read = (f) => sources[f] ?? "";
 
 describe("storiesFor", () => {
@@ -37,5 +41,9 @@ describe("findComponents", () => {
   it("finds compact one-line components", () => {
     expect(findComponents("export const Foo = () => <div />;\n")).toEqual(["Foo"]);
     expect(findComponents("export function Bar() { return <div />; }\n")).toEqual(["Bar"]);
+  });
+  it("ignores a stories file with no story export", () => {
+    const empty = { ...sources, "apps/web/src/components/A.stories.tsx": "export default {};\n" };
+    expect(storiesFor("apps/web/src/components/A.tsx", files, (f) => empty[f] ?? "")).toEqual([]);
   });
 });
