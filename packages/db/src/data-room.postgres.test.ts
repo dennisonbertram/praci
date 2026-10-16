@@ -164,6 +164,8 @@ describePostgres("data room repository (PostgreSQL)", () => {
     const folder = await dr.createFolder(a, { name: "Full" });
     const { item } = await upload(a, "in-folder.txt", `full-${run}`, { folderId: folder.id });
     await expect(dr.deleteFolder(a, folder.id)).rejects.toThrow(DataRoomConflictError);
+    expect((await dr.moveItem(a, item.id, null)).folderId).toBeNull();
+    expect((await dr.moveItem(a, item.id, folder.id)).folderId).toBe(folder.id);
     await dr.moveItem(a, item.id, null);
     await dr.deleteFolder(a, folder.id);
     expect((await dr.listFolders(a)).some((f) => f.id === folder.id)).toBe(false);

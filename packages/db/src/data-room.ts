@@ -107,8 +107,12 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     return folder;
   }
 
-  async function requireItem(actor: Actor, id: string): Promise<DataRoomItemRecord> {
-    const item = await prisma.dataRoomItem.findFirst({ where: { id, ...eligibleWhere(actor) } });
+  async function requireItem(
+    actor: Actor,
+    id: string,
+    db: Pick<PrismaClient, "dataRoomItem"> = prisma,
+  ): Promise<DataRoomItemRecord> {
+    const item = await db.dataRoomItem.findFirst({ where: { id, ...eligibleWhere(actor) } });
     if (!item) throw new IsolationError();
     return item;
   }
@@ -317,7 +321,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
           data: { folderId },
         });
         if (!count) throw new IsolationError();
-        return requireItem(actor, id);
+        return requireItem(actor, id, tx);
       });
     },
 
