@@ -4,7 +4,7 @@ import { Card } from "@rakazo/ui-web";
 import { ChevronRight, MessageSquareQuote } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { money, shortDay, transactionAmount } from "../lib/finance-format";
+import { dayRange, money, shortDay, transactionAmount } from "../lib/finance-format";
 import { financePath } from "../lib/finance-route";
 
 type FinanceBlock = Extract<MessageBlock, { kind: "finance" }>;
@@ -119,7 +119,8 @@ function Preview({ card }: { card: FinanceCard }) {
     const kpis = [
       [t`Cash`, money(card.cashCents)],
       [t`Burn / mo`, money(card.burnCents)],
-      [t`Runway`, card.runwayMonths === null ? "–" : t`${Math.round(card.runwayMonths)} mo`],
+      // One decimal, as on the dashboard.
+      [t`Runway`, card.runwayMonths === null ? "–" : t`${card.runwayMonths.toFixed(1)} mo`],
       [t`Spend this month`, money(card.monthSpendCents)],
     ] as const;
     return (
@@ -174,11 +175,19 @@ function Preview({ card }: { card: FinanceCard }) {
     );
   }
   if (card.card === "transactions") {
+    const period =
+      card.from && card.to
+        ? dayRange(card.from, card.to)
+        : card.from
+          ? t`since ${shortDay(card.from)}`
+          : card.to
+            ? t`until ${shortDay(card.to)}`
+            : t`all dates`;
     return (
       <Card size="sm" className="gap-1 py-2">
         <Header
           to={financePath.spend()}
-          title={t`${card.count} transactions`}
+          title={t`${card.count} transactions · ${period}`}
           value={transactionAmount(card.totalCents)}
         />
         <ul className="flex flex-col px-3">

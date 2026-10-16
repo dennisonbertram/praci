@@ -115,8 +115,11 @@ async function show() {
   );
   await flush();
 }
-const byLabel = (label: string) =>
-  document.body.querySelector(`[aria-label="${label}"]`) as HTMLInputElement;
+/** The field a visible label names, as a user finds it. */
+const byLabel = (label: string) => {
+  const found = [...document.body.querySelectorAll("label")].find((l) => l.textContent === label);
+  return document.getElementById(found?.htmlFor ?? "") as HTMLInputElement;
+};
 beforeEach(() => {
   container = document.createElement("div");
   document.body.append(container);
@@ -228,18 +231,18 @@ it("shows the server's error inline when adding a wallet fails", async () => {
   expect(document.body.querySelector('[role="alert"]')?.textContent).toContain("already added");
 });
 
-it("offers Connect, opening the modal, only when there is no API key", async () => {
+it("offers to add the Blockscout key, opening the modal, only when there is no API key", async () => {
   rpcMock.crypto.mockResolvedValue(data({ hasApiKey: true }));
   await show();
-  expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Connect")).toBe(
-    false,
-  );
+  expect(
+    [...container.querySelectorAll("button")].some((b) => /Blockscout/.test(b.textContent ?? "")),
+  ).toBe(false);
   await act(async () => root.unmount());
   root = createRoot(container);
   rpcMock.crypto.mockResolvedValue(data({ connected: true, hasApiKey: false }));
   await show();
   const connect = [...container.querySelectorAll("button")].find(
-    (b) => b.textContent === "Connect",
+    (b) => b.textContent === "Add Blockscout API key",
   );
   await act(async () => (connect as HTMLElement).click());
   expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain(

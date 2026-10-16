@@ -125,7 +125,7 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
-#. placeholder {0}: Math.round(card.runwayMonths)
+#. placeholder {0}: card.runwayMonths.toFixed(1)
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
 msgstr ""
@@ -157,11 +157,14 @@ msgstr ""
 msgid "{0} runs · {1} tokens"
 msgstr "{0} çalıştırma · {1} token"
 
-#. placeholder {0}: card.count
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
-#: src/components/FinanceCards.tsx
 msgid "{0} transactions"
+msgstr ""
+
+#. placeholder {0}: card.count
+#: src/components/FinanceCards.tsx
+msgid "{0} transactions · {period}"
 msgstr ""
 
 #. placeholder {0}: data.crypto.unpricedTokenCount
@@ -378,16 +381,32 @@ msgstr ""
 msgid "A bit of everything"
 msgstr ""
 
+#: src/components/finance/WalletDialog.tsx
+msgid "A deposit address at an exchange."
+msgstr ""
+
+#: src/components/finance/WalletDialog.tsx
+msgid "A Safe multisig. Its owners and threshold are shown."
+msgstr ""
+
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
 msgstr ""
 
+#: src/components/finance/WalletDialog.tsx
+msgid "A smart contract that holds funds."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "A subscription credential is stored securely."
 msgstr "Bir abonelik kimlik bilgisi güvenli şekilde saklanıyor."
+
+#: src/components/finance/WalletDialog.tsx
+msgid "A wallet you hold the keys to."
+msgstr ""
 
 #: src/pages/shell/bot-picker.tsx
 msgid "About groups"
@@ -520,6 +539,15 @@ msgstr ""
 msgid "Add another account"
 msgstr ""
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Add API key"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Add Blockscout API key"
+msgstr ""
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Add connected model"
 msgstr "Bağlı model ekle"
@@ -631,6 +659,10 @@ msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "All crypto"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "all dates"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -770,6 +802,10 @@ msgstr "API anahtarı üstbilgisi"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "API key name"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "API key needed"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1688,7 +1724,6 @@ msgstr "URL'nin bu tarayıcı oturumundan erişilebilir olduğunu doğrula, sonr
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
-#: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -1735,6 +1770,7 @@ msgstr "API anahtarıyla bağlan"
 
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/finance/FinanceCrypto.tsx
 msgid "Connect Blockscout"
 msgstr ""
 
@@ -3588,10 +3624,6 @@ msgid "Knowledge"
 msgstr "Bilgi"
 
 #: src/components/finance/WalletDialog.tsx
-msgid "Label"
-msgstr ""
-
-#: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
 msgstr ""
 
@@ -4615,6 +4647,10 @@ msgstr "Çalışma alanın açılıyor…"
 msgid "Optional"
 msgstr "İsteğe bağlı"
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Optional faster balance reads"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "Veya bir API anahtarı bağla"
@@ -4938,10 +4974,6 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "Yanıtları sesli oku"
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "Read wallet balances"
-msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Read-only API key"
@@ -5848,6 +5880,11 @@ msgstr ""
 msgid "Sign-in was denied or failed."
 msgstr ""
 
+#. placeholder {0}: shortDay(card.from)
+#: src/components/FinanceCards.tsx
+msgid "since {0}"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Site"
 msgstr ""
@@ -6523,6 +6560,11 @@ msgstr ""
 msgid "Unsupported file type: {0}"
 msgstr "Desteklenmeyen dosya türü: {0}"
 
+#. placeholder {0}: shortDay(card.to)
+#: src/components/FinanceCards.tsx
+msgid "until {0}"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Until {runOutMonth}"
 msgstr ""
@@ -6779,6 +6821,10 @@ msgstr "Bekleniyor…"
 
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Wallet"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Wallet balances and history"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx

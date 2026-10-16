@@ -277,7 +277,10 @@ it("reloads accounts after a wallet is added, since crypto can count in total ca
       ) as HTMLElement
     ).click(),
   );
-  const input = document.body.querySelector('[aria-label="Address or ENS"]') as HTMLInputElement;
+  const label = [...document.body.querySelectorAll("label")].find(
+    (l) => l.textContent === "Address or ENS",
+  );
+  const input = document.getElementById(label?.htmlFor ?? "") as HTMLInputElement;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
       input,

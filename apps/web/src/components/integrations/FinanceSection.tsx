@@ -31,13 +31,18 @@ function useMounted() {
   return mounted;
 }
 
-/** Blockscout needs a PRO API key: a server without one does not count as connected. */
+/**
+ * Blockscout needs a PRO API key for balances: a server without one (added as a plain MCP server,
+ * which the Connected list shows) asks for the key instead of claiming it is not connected.
+ */
 function CryptoTile({
   hasKey,
+  hasServer,
   reload,
   children,
 }: {
   hasKey: boolean | null;
+  hasServer?: boolean;
   reload: () => void;
   children?: ReactNode;
 }) {
@@ -51,7 +56,7 @@ function CryptoTile({
         <div className="min-w-0">
           <div className="truncate font-semibold">Blockscout</div>
           <div className="truncate text-xs text-muted-foreground">
-            <Trans>Read wallet balances</Trans>
+            <Trans>Wallet balances and history</Trans>
           </div>
         </div>
       </div>
@@ -72,17 +77,17 @@ function CryptoTile({
         ) : (
           <>
             <span className="text-xs text-muted-foreground">
-              <Trans>Not connected</Trans>
+              {hasServer ? <Trans>API key needed</Trans> : <Trans>Not connected</Trans>}
             </span>
             <Button
               size="sm"
               variant="outline"
               className="ms-auto"
               disabled={hasKey === null}
-              aria-label={t`Connect Blockscout`}
+              aria-label={hasServer ? t`Add Blockscout API key` : t`Connect Blockscout`}
               onClick={() => setDialog(true)}
             >
-              <Trans>Connect</Trans>
+              {hasServer ? <Trans>Add API key</Trans> : <Trans>Connect</Trans>}
             </Button>
           </>
         )}
@@ -107,7 +112,7 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
         <div className="min-w-0">
           <div className="truncate font-semibold">Alchemy</div>
           <div className="truncate text-xs text-muted-foreground">
-            <Trans>Read wallet balances</Trans>
+            <Trans>Optional faster balance reads</Trans>
           </div>
         </div>
       </div>
@@ -238,6 +243,8 @@ type AlchemyState = { connected: boolean; lastError: string | null };
 /** What the crypto and exchange endpoints say is connected. `null` means not loaded yet. */
 export type FinanceStatus = {
   blockscout: boolean | null;
+  /** A Blockscout server exists, with or without its key. */
+  blockscoutServer?: boolean;
   alchemy: AlchemyState | null;
   exchanges: FinanceExchange[] | null;
   reload: () => void;
@@ -247,6 +254,7 @@ export type FinanceStatus = {
 export function useFinanceStatus(): FinanceStatus {
   const [crypto, setCrypto] = useState<{
     blockscout: boolean;
+    blockscoutServer: boolean;
     alchemy: AlchemyState;
   } | null>(null);
   const [exchanges, setExchanges] = useState<FinanceExchange[] | null>(null);
@@ -259,13 +267,18 @@ export function useFinanceStatus(): FinanceStatus {
           mounted.current &&
           setCrypto({
             blockscout: c.connected && c.hasApiKey,
+            blockscoutServer: c.connected,
             alchemy: c.alchemy ?? { connected: false, lastError: null },
           }),
       )
       .catch(
         () =>
           mounted.current &&
-          setCrypto({ blockscout: false, alchemy: { connected: false, lastError: null } }),
+          setCrypto({
+            blockscout: false,
+            blockscoutServer: false,
+            alchemy: { connected: false, lastError: null },
+          }),
       );
     rpc.finance
       .exchanges()
@@ -275,6 +288,7 @@ export function useFinanceStatus(): FinanceStatus {
   useEffect(reload, [reload]);
   return {
     blockscout: crypto ? crypto.blockscout : null,
+    blockscoutServer: crypto?.blockscoutServer ?? false,
     alchemy: crypto ? crypto.alchemy : null,
     exchanges,
     reload,
@@ -414,7 +428,7 @@ export function FinanceSection({
         },
       )}
       {shown("crypto") ? (
-        <CryptoTile hasKey={status.blockscout} reload={reload}>
+        <CryptoTile hasKey={status.blockscout} hasServer={status.blockscoutServer} reload={reload}>
           {mode === "available" ? null : cryptoExtra}
         </CryptoTile>
       ) : null}

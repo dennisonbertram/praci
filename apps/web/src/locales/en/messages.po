@@ -125,7 +125,7 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
-#. placeholder {0}: Math.round(card.runwayMonths)
+#. placeholder {0}: card.runwayMonths.toFixed(1)
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
 msgstr "{0} mo"
@@ -157,12 +157,15 @@ msgstr "{0} rollup hours"
 msgid "{0} runs · {1} tokens"
 msgstr "{0} runs · {1} tokens"
 
-#. placeholder {0}: card.count
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
-#: src/components/FinanceCards.tsx
 msgid "{0} transactions"
 msgstr "{0} transactions"
+
+#. placeholder {0}: card.count
+#: src/components/FinanceCards.tsx
+msgid "{0} transactions · {period}"
+msgstr "{0} transactions · {period}"
 
 #. placeholder {0}: data.crypto.unpricedTokenCount
 #: src/pages/Finance.tsx
@@ -378,16 +381,32 @@ msgstr "3-mo avg, after revenue"
 msgid "A bit of everything"
 msgstr "A bit of everything"
 
+#: src/components/finance/WalletDialog.tsx
+msgid "A deposit address at an exchange."
+msgstr "A deposit address at an exchange."
+
+#: src/components/finance/WalletDialog.tsx
+msgid "A Safe multisig. Its owners and threshold are shown."
+msgstr "A Safe multisig. Its owners and threshold are shown."
+
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
 msgstr "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
 
+#: src/components/finance/WalletDialog.tsx
+msgid "A smart contract that holds funds."
+msgstr "A smart contract that holds funds."
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "A subscription credential is stored securely."
 msgstr "A subscription credential is stored securely."
+
+#: src/components/finance/WalletDialog.tsx
+msgid "A wallet you hold the keys to."
+msgstr "A wallet you hold the keys to."
 
 #: src/pages/shell/bot-picker.tsx
 msgid "About groups"
@@ -520,6 +539,15 @@ msgstr "Add an account to see cash, burn, runway and spend."
 msgid "Add another account"
 msgstr "Add another account"
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Add API key"
+msgstr "Add API key"
+
+#: src/components/integrations/FinanceSection.tsx
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Add Blockscout API key"
+msgstr "Add Blockscout API key"
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Add connected model"
 msgstr "Add connected model"
@@ -632,6 +660,10 @@ msgstr "All bots"
 #: src/components/finance/CountCryptoButton.tsx
 msgid "All crypto"
 msgstr "All crypto"
+
+#: src/components/FinanceCards.tsx
+msgid "all dates"
+msgstr "all dates"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
@@ -771,6 +803,10 @@ msgstr "API key header"
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "API key name"
 msgstr "API key name"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "API key needed"
+msgstr "API key needed"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "App connections aren't set up on this server yet."
@@ -1688,7 +1724,6 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
-#: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -1735,6 +1770,7 @@ msgstr "Connect API key"
 
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/finance/FinanceCrypto.tsx
 msgid "Connect Blockscout"
 msgstr "Connect Blockscout"
 
@@ -3588,10 +3624,6 @@ msgid "Knowledge"
 msgstr "Knowledge"
 
 #: src/components/finance/WalletDialog.tsx
-msgid "Label"
-msgstr "Label"
-
-#: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
 msgstr "Label (optional)"
 
@@ -4615,6 +4647,10 @@ msgstr "Opening your Space…"
 msgid "Optional"
 msgstr "Optional"
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Optional faster balance reads"
+msgstr "Optional faster balance reads"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "Or connect an API key"
@@ -4938,10 +4974,6 @@ msgstr "Read posts, DMs and bookmarks"
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "Read replies aloud"
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "Read wallet balances"
-msgstr "Read wallet balances"
 
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Read-only API key"
@@ -5848,6 +5880,11 @@ msgstr "Sign-in was cancelled or did not finish. Try again."
 msgid "Sign-in was denied or failed."
 msgstr "Sign-in was denied or failed."
 
+#. placeholder {0}: shortDay(card.from)
+#: src/components/FinanceCards.tsx
+msgid "since {0}"
+msgstr "since {0}"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Site"
 msgstr "Site"
@@ -6523,6 +6560,11 @@ msgstr "Unsupported file name"
 msgid "Unsupported file type: {0}"
 msgstr "Unsupported file type: {0}"
 
+#. placeholder {0}: shortDay(card.to)
+#: src/components/FinanceCards.tsx
+msgid "until {0}"
+msgstr "until {0}"
+
 #: src/pages/Finance.tsx
 msgid "Until {runOutMonth}"
 msgstr "Until {runOutMonth}"
@@ -6780,6 +6822,10 @@ msgstr "Waiting…"
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Wallet"
 msgstr "Wallet"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Wallet balances and history"
+msgstr "Wallet balances and history"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Wallets"

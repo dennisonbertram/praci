@@ -171,7 +171,11 @@ export function FinanceCryptoPage() {
           {data.connected && data.hasApiKey ? null : (
             <div>
               <Button size="sm" onClick={() => setConnecting(true)}>
-                <Trans>Connect</Trans>
+                {data.connected ? (
+                  <Trans>Add Blockscout API key</Trans>
+                ) : (
+                  <Trans>Connect Blockscout</Trans>
+                )}
               </Button>
             </div>
           )}
