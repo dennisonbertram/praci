@@ -60,7 +60,7 @@ RAKAZO_IMAGE=registry.example.com/mirror/rakazo/app
 RAKAZO_IMAGE_TAG=edge
 RAKAZO_COMPUTER_IMAGE=registry.example.com/mirror/rakazo/computer
 RAKAZO_COMPUTER_IMAGE_TAG=edge
-POSTGRES_IMAGE=registry.example.com/library/postgres@sha256:<trusted-postgres-digest>
+POSTGRES_IMAGE=registry.example.com/library/pgvector@sha256:<trusted-postgres-digest>
 BUSYBOX_IMAGE=registry.example.com/library/busybox@sha256:<trusted-busybox-digest>
 ```
 
@@ -86,7 +86,7 @@ Run `bash install-images.sh --prepare-only` in the installation directory first 
 for pre-copied files). This prepares the Compose file and validates the required secrets without
 starting containers.
 
-Treat a mirror as a transport, not as the source of truth. Obtain the expected `postgres:16` and
+Treat a mirror as a transport, not as the source of truth. Obtain the expected `pgvector/pgvector:pg16-trixie` and
 `busybox:1` digests from a trusted upstream or an out-of-band trusted workstation. Put the digest in
 each mirrored image reference, then pull, compare the local repository digests, and start without
 pulling again. Replace every example value below before running it:
@@ -95,7 +95,7 @@ pulling again. Replace every example value below before running it:
 (
 set -euo pipefail
 
-export POSTGRES_IMAGE='registry.example.com/library/postgres@sha256:<trusted-postgres-digest>'
+export POSTGRES_IMAGE='registry.example.com/library/pgvector@sha256:<trusted-postgres-digest>'
 export BUSYBOX_IMAGE='registry.example.com/library/busybox@sha256:<trusted-busybox-digest>'
 
 docker compose --env-file .env -f docker-compose.images.yml pull
