@@ -1,15 +1,16 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
 import type { ArtifactStore, JobPublisher, MailProvider } from "@rakazo/adapter-kit";
-import {
-  DATA_ROOM_EMBEDDING_DIMENSIONS,
-  dataRoomBlobDeleteJob,
-  dataRoomStepJob,
-} from "@rakazo/adapter-kit";
+import { dataRoomBlobDeleteJob, dataRoomStepJob } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
 import {
+  createFileDataRoomItem as createFileItem,
+  DATA_ROOM_MIME,
   DriveFileError,
   type DriveFilesDeps,
+  dataRoomBlobContext,
+  dataRoomFileFields,
+  dataRoomQueryVector,
   downloadDriveFile,
   listDriveAccounts,
   listDriveFiles,
@@ -104,17 +105,6 @@ export async function dataRoomCall<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-function blobContext(actor: Actor, operation: string, signal?: AbortSignal) {
-  const operationId = `${operation}:${randomUUID()}`;
-  return {
-    operationId,
-    traceId: operationId,
-    spaceId: actor.spaceId,
-    userId: actor.userId,
-    signal: signal ?? new AbortController().signal,
-  };
-}
-
 const toFilters = (input: {
   folderId?: string | null;
   docDateFrom?: string;
@@ -158,100 +148,28 @@ async function withDrive<T>(
   }
 }
 
-export interface FileDataRoomInput {
-  bytes: Uint8Array;
-  sha256: string;
-  name: string;
-  mimeType: string;
-  folderId: string | null;
-  source: "upload" | "gmail" | "drive";
-  sourceConnectionId?: string;
-  externalId?: string;
-  sourceUrl?: string;
-  sourceUpdatedAt?: Date;
-}
-
 /**
- * Stores the bytes, files the item and queues ingest. A repeat (same upload bytes, or the same
- * external id) returns the existing item with created=false and drops the blob this call stored.
+ * The shared filing helper from the adapters, with repository errors mapped to API errors.
+ * Agents file through the same helper, so an import is stored and queued one way everywhere.
  */
 export function createFileDataRoomItem(
   deps: DataRoomDeps,
   repo: ReturnType<typeof createDataRoomRepos>,
 ) {
-  /** A duplicate of an item stuck in `pending` or `failed` runs ingest again. */
-  const requeueStuck = async (actor: Actor, item: DataRoomItemRecord) => {
-    if (!(await repo.restartItem(actor, item.id))) return;
-    await deps.jobs
-      .enqueue(dataRoomStepJob("dataroom.ingest", actor, item.id))
-      .catch((error: unknown) => getLogger().error("data room ingest enqueue failed", error));
+  const files = createFileItem(deps, repo);
+  return {
+    ...files,
+    fileItem: (...args: Parameters<typeof files.fileItem>) =>
+      dataRoomCall(() => files.fileItem(...args)),
   };
-
-  const fileItem = async (actor: Actor, input: FileDataRoomInput) => {
-    const { bytes, ...fields } = input;
-    const stored = await deps.artifacts.put(
-      { name: input.name, mimeType: input.mimeType, bytes },
-      blobContext(actor, input.source === "upload" ? "data-room.upload" : "data-room.import"),
-    );
-    const { item, created } = await dataRoomCall(() =>
-      repo.createItem(actor, { ...fields, size: bytes.byteLength, storageKey: stored.id }),
-    ).catch(async (error: unknown) => {
-      await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
-      throw error;
-    });
-    // Lost a race with a concurrent identical request: drop the blob this request stored.
-    if (!created) {
-      await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
-      await requeueStuck(actor, item);
-    } else {
-      // The file itself is saved; a queue outage must not turn it into a failure.
-      await deps.jobs
-        .enqueue(dataRoomStepJob("dataroom.ingest", actor, item.id))
-        .catch((error: unknown) => getLogger().error("data room ingest enqueue failed", error));
-    }
-    return { item, created };
-  };
-  return { fileItem, requeueStuck };
 }
 
-const QUERY_EMBED_TIMEOUT_MS = 10_000;
 const REINDEX_BATCH = 200;
 
 /** Procedure bodies for `dataRoom.*`; the router adds the Actor. */
 export function createDataRoomService(deps: DataRoomDeps) {
   const repo = createDataRoomRepos(deps.prisma);
-  const { fileItem, requeueStuck } = createFileDataRoomItem(deps, repo);
-
-  /**
-   * The query's vector, only when an embedder exists and the user consented. Any failure means
-   * keyword-only search, never an error.
-   */
-  async function queryVector(actor: Actor, query: string) {
-    try {
-      const ai = await deps.resolveAi?.(actor);
-      if (!ai?.embedder || !ai.allowed) return {};
-      const operationId = `data-room.search:${randomUUID()}`;
-      const { model, vectors } = await ai.embedder.embed([query], {
-        operationId,
-        traceId: operationId,
-        spaceId: actor.spaceId,
-        userId: actor.userId,
-        signal: AbortSignal.timeout(QUERY_EMBED_TIMEOUT_MS),
-      });
-      const vector = vectors[0];
-      if (
-        !vector ||
-        vector.length !== DATA_ROOM_EMBEDDING_DIMENSIONS ||
-        !vector.every(Number.isFinite)
-      ) {
-        return {};
-      }
-      return { vector, embeddingModel: model };
-    } catch (error) {
-      getLogger().error("data room query embedding failed; using keyword search", error);
-      return {};
-    }
-  }
+  const { fileItem, known } = createFileDataRoomItem(deps, repo);
 
   /** The name and folder path live in the item's metadata chunk, so a change re-indexes it. */
   const enqueueIndex = async (actor: Actor, ids: string[]) => {
@@ -444,11 +362,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
         if (!message) continue;
         const sourceConnectionId = message.connectionId;
         const externalId = `gmail:${message.providerMessageId}:${pick.attachmentId}`;
-        const known = await deps.prisma.dataRoomItem.findFirst({
-          where: { spaceId: actor.spaceId, userId: actor.userId, sourceConnectionId, externalId },
-        });
-        if (known) {
-          await requeueStuck(actor, known);
+        if (await known(actor, externalId, sourceConnectionId)) {
           duplicates += 1;
           continue;
         }
@@ -459,13 +373,12 @@ export function createDataRoomService(deps: DataRoomDeps) {
             pick,
             signal,
           );
-          const mimeType = file.mimeType.toLowerCase();
           const { created } = await fileItem(actor, {
             source: "gmail",
-            sha256: createHash("sha256").update(file.bytes).digest("hex"),
-            name: file.filename.replace(PATH_OR_CONTROL, "_").trim().slice(0, 255) || "attachment",
-            mimeType: MIME.test(mimeType) ? mimeType : "application/octet-stream",
-            bytes: file.bytes,
+            ...dataRoomFileFields(
+              { name: file.filename, mimeType: file.mimeType, bytes: file.bytes },
+              "attachment",
+            ),
             folderId,
             sourceConnectionId,
             externalId,
@@ -491,7 +404,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
       signal?: AbortSignal,
     ) =>
       withDrive(deps, actor, (drive, connectionId) =>
-        listDriveFiles(drive, blobContext(actor, "data-room.drive", signal), {
+        listDriveFiles(drive, dataRoomBlobContext(actor, "data-room.drive", signal), {
           ...input,
           connectionId,
         }),
@@ -512,16 +425,12 @@ export function createDataRoomService(deps: DataRoomDeps) {
         if (!folder) throw new ORPCError("NOT_FOUND");
       }
       return withDrive(deps, actor, async (drive, sourceConnectionId) => {
-        const context = blobContext(actor, "data-room.drive", signal);
+        const context = dataRoomBlobContext(actor, "data-room.drive", signal);
         let imported = 0;
         let duplicates = 0;
         let failed = 0;
         for (const externalId of new Set(input.fileIds)) {
-          const known = await deps.prisma.dataRoomItem.findFirst({
-            where: { spaceId: actor.spaceId, userId: actor.userId, sourceConnectionId, externalId },
-          });
-          if (known) {
-            await requeueStuck(actor, known);
+          if (await known(actor, externalId, sourceConnectionId)) {
             duplicates += 1;
             continue;
           }
@@ -541,14 +450,10 @@ export function createDataRoomService(deps: DataRoomDeps) {
             failed += 1;
             continue;
           }
-          const mimeType = file.mimeType.toLowerCase();
           const modified = new Date(file.modifiedTime);
           const { created } = await fileItem(actor, {
             source: "drive",
-            sha256: createHash("sha256").update(file.bytes).digest("hex"),
-            name: file.name.replace(PATH_OR_CONTROL, "_").trim().slice(0, 255) || "file",
-            mimeType: MIME.test(mimeType) ? mimeType : "application/octet-stream",
-            bytes: file.bytes,
+            ...dataRoomFileFields(file, "file"),
             folderId,
             sourceConnectionId,
             externalId,
@@ -575,7 +480,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
       dataRoomCall(async () => {
         const page = await repo.searchPage(actor, {
           ...input,
-          ...(await queryVector(actor, input.query)),
+          ...(await dataRoomQueryVector(deps.resolveAi, actor, input.query)),
           filters: input.filters && toFilters(input.filters),
         });
         return {
@@ -585,10 +490,6 @@ export function createDataRoomService(deps: DataRoomDeps) {
       }),
   };
 }
-
-// biome-ignore lint/suspicious/noControlCharactersInRegex: names must not hold control characters.
-const PATH_OR_CONTROL = /[/\\\u0000-\u001f\u007f]/g;
-const MIME = /^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/i;
 
 /**
  * Reads the body into one buffer, hashing as it goes, and gives up (cancelling the body) the moment
@@ -656,7 +557,7 @@ export function mountDataRoomRoutes(
       return reject("Folder not found", 404);
     }
     const mimeType = (c.req.header("content-type") ?? "").split(";")[0]?.trim().toLowerCase();
-    const type = mimeType && MIME.test(mimeType) ? mimeType : "application/octet-stream";
+    const type = mimeType && DATA_ROOM_MIME.test(mimeType) ? mimeType : "application/octet-stream";
 
     const body = await readCapped(c.req.raw, max);
     if (!body) return c.json({ error: "File is too large." }, 413);
@@ -701,7 +602,7 @@ export function mountDataRoomRoutes(
     if (!item?.storageKey) return c.json({ error: "Not found" }, 404);
     const bytes = await deps.artifacts.get(
       item.storageKey,
-      blobContext(actor, "data-room.download"),
+      dataRoomBlobContext(actor, "data-room.download"),
     );
     // Documents are untrusted: always a download, never active content on the API origin.
     return new Response(new Uint8Array(bytes), {

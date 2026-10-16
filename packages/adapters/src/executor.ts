@@ -251,6 +251,13 @@ import {
 import { checkpointRunComputerWorkspace } from "./computer-workspace.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
 import { formatCurrentTimeInstruction } from "./current-time.js";
+import { resolveDataRoomAi } from "./data-room-models.js";
+import {
+  DATA_ROOM_GUIDANCE,
+  DATA_ROOM_TOOL_NAMES,
+  dataRoomToolFromTool,
+  dataRoomToolsAllowed,
+} from "./data-room-tools.js";
 import { resolveDeploymentModel } from "./deployment-model.js";
 import {
   DRIVE_TOOL_NAMES,
@@ -452,6 +459,8 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "calendar_get_event",
   "drive_search",
   "drive_read",
+  "search_data_room",
+  "read_data_room_item",
   "browser_snapshot",
   "list_secrets",
   "cloud_agent_status",
@@ -3003,6 +3012,79 @@ export function isTerminalModelSetupError(error: unknown): boolean {
   );
 }
 
+/** The model a run for this scope would use: the bot override, else the space default, else the deployment. */
+async function resolveRunModel(
+  deps: ExecutorDeps,
+  scope: { userId: string; spaceId: string; botId?: string },
+): Promise<AgentRunRequest["model"]> {
+  const override = scope.botId
+    ? await deps.prisma.bot.findFirst({
+        where: {
+          id: scope.botId,
+          userId: scope.userId,
+          spaceId: scope.spaceId,
+        },
+        select: { modelProvider: true, modelId: true, thinkingLevel: true },
+      })
+    : null;
+  const hasOverride = Boolean(override?.modelProvider && override.modelId);
+  const [overrideCredential, defaultCredential, settings] = await Promise.all([
+    hasOverride
+      ? findModelCredential(deps.prisma, scope, override!.modelProvider!, override!.modelId)
+      : Promise.resolve(null),
+    findDefaultModelCredential(deps.prisma, scope),
+    deps.prisma.deploymentSettings.findUnique({
+      where: { id: "default" },
+    }),
+  ]);
+  const selected = selectConfiguredModel({
+    override,
+    overrideCredential,
+    defaultCredential,
+    settings,
+    deployment: deps.deploymentModelConfigured ? resolveDeploymentModel() : null,
+  });
+  const { credential, thinkingLevel } = selected;
+  let { provider, id } = selected;
+  if (!provider || !id) {
+    const runtimeFallback = runtimeFallbackModel(deps.runtime);
+    provider ??= runtimeFallback?.provider;
+    id ??= runtimeFallback?.id ?? null;
+  }
+  if (!provider || !id) throw new Error(MISSING_MODEL_MESSAGE);
+  // The key is resolved for the provider that won above, not before it is known.
+  const resolved = await resolveModelKey(
+    deps,
+    scope.userId,
+    scope.spaceId,
+    credential,
+    provider,
+    id,
+  );
+  return {
+    provider,
+    id,
+    apiKey: resolved.oauth ? undefined : resolved.apiKey,
+    ...cloudflareRunFields(resolved),
+    baseUrl: resolved.baseUrl,
+    cacheCapabilities: resolved.cacheCapabilities,
+    contextWindow: resolved.contextWindow,
+
+    reasoning: resolved.reasoning,
+    maxTokens: resolved.maxTokens,
+    acceptsImages: resolved.acceptsImages,
+    maxImagesPerPrompt: resolved.maxImagesPerPrompt,
+    thinkingLevel: thinkingLevel ?? resolved.thinkingLevel ?? null,
+    oauth: resolved.oauth
+      ? {
+          credential: resolved.oauth,
+          persist: resolved.persistOAuth,
+          retire: resolved.retireOAuth,
+        }
+      : undefined,
+  };
+}
+
 export function createRunExecutor(deps: ExecutorDeps) {
   const contextStrategy = deps.contextStrategy ?? DEFAULT_CONTEXT_STRATEGY;
   const web = deps.web ?? createWebProvider();
@@ -3071,78 +3153,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
   return {
     resolveConnectedModel,
     contextStrategy,
-    async resolveModel(scope: {
-      userId: string;
-      spaceId: string;
-      botId?: string;
-    }): Promise<AgentRunRequest["model"]> {
-      const override = scope.botId
-        ? await deps.prisma.bot.findFirst({
-            where: {
-              id: scope.botId,
-              userId: scope.userId,
-              spaceId: scope.spaceId,
-            },
-            select: { modelProvider: true, modelId: true, thinkingLevel: true },
-          })
-        : null;
-      const hasOverride = Boolean(override?.modelProvider && override.modelId);
-      const [overrideCredential, defaultCredential, settings] = await Promise.all([
-        hasOverride
-          ? findModelCredential(deps.prisma, scope, override!.modelProvider!, override!.modelId)
-          : Promise.resolve(null),
-        findDefaultModelCredential(deps.prisma, scope),
-        deps.prisma.deploymentSettings.findUnique({
-          where: { id: "default" },
-        }),
-      ]);
-      const selected = selectConfiguredModel({
-        override,
-        overrideCredential,
-        defaultCredential,
-        settings,
-        deployment: deps.deploymentModelConfigured ? resolveDeploymentModel() : null,
-      });
-      const { credential, thinkingLevel } = selected;
-      let { provider, id } = selected;
-      if (!provider || !id) {
-        const runtimeFallback = runtimeFallbackModel(deps.runtime);
-        provider ??= runtimeFallback?.provider;
-        id ??= runtimeFallback?.id ?? null;
-      }
-      if (!provider || !id) throw new Error(MISSING_MODEL_MESSAGE);
-      // The key is resolved for the provider that won above, not before it is known.
-      const resolved = await resolveModelKey(
-        deps,
-        scope.userId,
-        scope.spaceId,
-        credential,
-        provider,
-        id,
-      );
-      return {
-        provider,
-        id,
-        apiKey: resolved.oauth ? undefined : resolved.apiKey,
-        ...cloudflareRunFields(resolved),
-        baseUrl: resolved.baseUrl,
-        cacheCapabilities: resolved.cacheCapabilities,
-        contextWindow: resolved.contextWindow,
-
-        reasoning: resolved.reasoning,
-        maxTokens: resolved.maxTokens,
-        acceptsImages: resolved.acceptsImages,
-        maxImagesPerPrompt: resolved.maxImagesPerPrompt,
-        thinkingLevel: thinkingLevel ?? resolved.thinkingLevel ?? null,
-        oauth: resolved.oauth
-          ? {
-              credential: resolved.oauth,
-              persist: resolved.persistOAuth,
-              retire: resolved.retireOAuth,
-            }
-          : undefined,
-      };
-    },
+    resolveModel: (scope: { userId: string; spaceId: string; botId?: string }) =>
+      resolveRunModel(deps, scope),
 
     async wakeRoutine(routineId: string, scheduledFor: string) {
       const scheduledAt = new Date(scheduledFor);
@@ -3946,6 +3958,17 @@ export function createRunExecutor(deps: ExecutorDeps) {
             botUserId: bot.userId,
             messagingChannelRun,
           }) && (await driveAccounts().catch(() => [])).length > 0;
+        // Owner-only, like mail and Drive. Consent is checked by the add tool itself, so a
+        // person who has not accepted the Data room still gets the tools and a clear "off" answer.
+        const dataRoomEnabled =
+          Boolean(deps.artifacts) &&
+          dataRoomToolsAllowed({
+            hasProvider: true,
+            groupId: thread.groupId,
+            runUserId: run.userId,
+            botUserId: bot.userId,
+            messagingChannelRun,
+          });
         const financeEnabled =
           financeToolsAllowed({
             hasProvider: true,
@@ -3973,6 +3996,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             mailEnabled,
             calendarEnabled,
             driveEnabled,
+            dataRoomEnabled,
             financeEnabled,
             messagingChannelRun,
             voiceCall,
@@ -5390,6 +5414,30 @@ export function createRunExecutor(deps: ExecutorDeps) {
               ),
             );
           }
+          if (DATA_ROOM_TOOL_NAMES.has(name) && deps.artifacts && dataRoomEnabled) {
+            return finish(
+              await dataRoomToolFromTool(
+                name,
+                {
+                  prisma: deps.prisma,
+                  artifacts: deps.artifacts,
+                  jobs: deps.jobs,
+                  resolveAi: (scope) =>
+                    resolveDataRoomAi(
+                      { prisma: deps.prisma, resolveModel: (s) => resolveRunModel(deps, s) },
+                      scope,
+                    ),
+                  scope: { spaceId: run.spaceId, userId: bot.userId },
+                  mail: deps.mail,
+                  mailAccounts,
+                  connectors: deps.connectors,
+                  driveAccounts,
+                },
+                context,
+                args,
+              ),
+            );
+          }
           if (FINANCE_TOOL_NAMES.has(name) && financeEnabled) {
             return finish(
               await financeToolFromTool(
@@ -6762,6 +6810,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 botDirectory,
                 pluginLine,
                 mailSearchGuidance: mailSkill.guidance,
+                dataRoomEnabled,
                 agentSkillsLine,
                 taughtSkillsLine,
                 replyGuidance: runReplyGuidance(run.trigger),
@@ -7707,6 +7756,8 @@ export function selectBuiltinToolsForRun(options: {
   calendarEnabled?: boolean;
   /** The run's requester owns the bot and has a connected native Google Drive. */
   driveEnabled?: boolean;
+  /** The run's requester owns the bot, so the Data room tools are offered. */
+  dataRoomEnabled?: boolean;
   /** The run's requester owns the bot and has a connected finance source. */
   financeEnabled?: boolean;
   messagingChannelRun: boolean;
@@ -7741,6 +7792,7 @@ export function selectBuiltinToolsForRun(options: {
     (tool) =>
       !disabled.has(tool.name) &&
       (options.driveEnabled || !DRIVE_TOOL_NAMES.has(tool.name)) &&
+      (options.dataRoomEnabled || !DATA_ROOM_TOOL_NAMES.has(tool.name)) &&
       (options.financeEnabled || !FINANCE_TOOL_NAMES.has(tool.name)) &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
@@ -8039,6 +8091,8 @@ export function userTurnInstructions(parts: {
   botDirectory: string | undefined;
   pluginLine: string | undefined;
   mailSearchGuidance?: string | undefined;
+  /** add_to_data_room is offered in this run. */
+  dataRoomEnabled?: boolean;
   agentSkillsLine: string | undefined;
   taughtSkillsLine: string | undefined;
   replyGuidance: string;
@@ -8080,6 +8134,9 @@ export function userTurnInstructions(parts: {
     ),
     parts.pluginLine,
     parts.mailSearchGuidance,
+    parts.dataRoomEnabled
+      ? offeredBuiltinClause(parts.disabledBuiltinTools, "add_to_data_room", DATA_ROOM_GUIDANCE)
+      : undefined,
     parts.agentSkillsLine,
     parts.taughtSkillsLine,
     offeredBuiltinClause(

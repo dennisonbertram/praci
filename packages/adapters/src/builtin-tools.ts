@@ -982,6 +982,65 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "search_data_room",
+    description:
+      "Search the user's Data room, their private store of documents. Returns id, name, doc type, date and a short snippet for each match. Use read_data_room_item for the full text.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Words to find in names and content." },
+        filters: {
+          type: "object",
+          description: "Optional narrowing.",
+          properties: {
+            folderId: {
+              type: ["string", "null"],
+              description: "null for items outside any folder.",
+            },
+            docType: { type: "string" },
+            party: { type: "string" },
+            tag: { type: "string" },
+            docDateFrom: { type: "string", description: "ISO 8601 date-time." },
+            docDateTo: { type: "string", description: "ISO 8601 date-time." },
+            status: { type: "string" },
+            source: { type: "string", description: "upload, gmail, drive, chat or finance." },
+          },
+        },
+        limit: { type: "number", description: "Default 10, max 20." },
+      },
+      required: ["query"],
+    },
+    readOnly: true,
+  },
+  {
+    name: "read_data_room_item",
+    description:
+      "Read one Data room item: name, folder, summary, type, date, parties, tags and the extracted text. Long text is truncated (truncated: true).",
+    inputSchema: {
+      type: "object",
+      properties: { item_id: { type: "string", description: "The id from search_data_room." } },
+      required: ["item_id"],
+    },
+    readOnly: true,
+  },
+  {
+    name: "add_to_data_room",
+    description:
+      "Add a document to the user's Data room without being asked: an email attachment (message_id and attachment_id, as listed by mail_get), a Drive file (drive_file_id), or an artifact (artifact_id). Files only, not message text. Don't choose a folder, name or tags; the Data room agent files it. Adding the same document again does nothing. Small inline images, calendar invites and contact cards return \"Not a document.\"",
+    inputSchema: {
+      type: "object",
+      properties: {
+        message_id: {
+          type: "string",
+          description: "The Message ID from mail_get. Needs attachment_id.",
+        },
+        attachment_id: { type: "string", description: "An attachment id from mail_get." },
+        drive_file_id: { type: "string", description: "The id from drive_search." },
+        artifact_id: { type: "string", description: "The id of a file or report you created." },
+      },
+    },
+  },
+  {
     name: "cloud_agent_launch",
     description:
       "Launch a remote cloud coding agent on a connected repository. Returns immediately with a tracking id and status; the agent link appears when launched. Opens a PR when openPr is true. Not the bot computer.",
