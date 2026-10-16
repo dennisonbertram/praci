@@ -113,10 +113,22 @@ describe("GraphileJobPublisher.enqueue", () => {
 
   // graphile-worker 0.17.3 add_job: unsafe_dedupe on conflict bumps revision only.
   // replace sets attempts = 0 and run_at = excluded.run_at.
-  function graphileJobs(jobs: Map<string, { attempts: number; maxAttempts: number; runAt: Date }>) {
+  function graphileJobs(
+    jobs: Map<string, { attempts: number; maxAttempts: number; runAt: Date; lockedAt?: Date }>,
+  ) {
     const query = vi.fn(async (_sql: string, params?: readonly unknown[]) => {
       const job = jobs.get(String(params?.[0]));
-      return { rows: job ? [{ attempts: job.attempts, max_attempts: job.maxAttempts }] : [] };
+      return {
+        rows: job
+          ? [
+              {
+                attempts: job.attempts,
+                max_attempts: job.maxAttempts,
+                locked_at: job.lockedAt ?? null,
+              },
+            ]
+          : [],
+      };
     });
     const addJob = vi.fn(
       async (
@@ -143,7 +155,7 @@ describe("GraphileJobPublisher.enqueue", () => {
   }
 
   function publisherOver(
-    jobs: Map<string, { attempts: number; maxAttempts: number; runAt: Date }>,
+    jobs: Map<string, { attempts: number; maxAttempts: number; runAt: Date; lockedAt?: Date }>,
   ) {
     const graphile = graphileJobs(jobs);
     vi.mocked(makeWorkerUtils).mockResolvedValue({
@@ -167,7 +179,7 @@ describe("GraphileJobPublisher.enqueue", () => {
       keepExisting: true,
     });
     expect(query).toHaveBeenCalledWith(
-      "select attempts, max_attempts from graphile_worker._private_jobs where key = $1",
+      "select attempts, max_attempts, locked_at from graphile_worker._private_jobs where key = $1",
       ["run:run-1"],
     );
     expect(addJob).toHaveBeenCalledWith(
@@ -198,6 +210,25 @@ describe("GraphileJobPublisher.enqueue", () => {
     const options = addJob.mock.calls[0]?.[2] as { jobKeyMode?: string } | undefined;
     expect(options?.jobKeyMode).toBeUndefined();
     expect(jobs.get("run:run-1")).toEqual({ attempts: 0, maxAttempts: 25, runAt: revivedAt });
+    await publisher.close();
+  });
+
+  it("replaces a job still locked by a worker so a dead worker's lock cannot block it", async () => {
+    const runAt = new Date("2030-01-01T00:00:00.000Z");
+    const lockedAt = new Date("2030-01-01T00:00:00.000Z");
+    const jobs = new Map([["run:run-1", { attempts: 1, maxAttempts: 25, runAt, lockedAt }]]);
+    const { publisher, addJob } = publisherOver(jobs);
+    const retryAt = new Date("2030-01-01T00:06:00.000Z");
+    await publisher.enqueue({
+      name: "run.continue",
+      payload: { runId: "reclaimed" },
+      replaceKey: "run:run-1",
+      availableAt: retryAt,
+      keepExisting: true,
+    });
+    const options = addJob.mock.calls[0]?.[2] as { jobKeyMode?: string } | undefined;
+    expect(options?.jobKeyMode).toBeUndefined();
+    expect(jobs.get("run:run-1")).toEqual({ attempts: 0, maxAttempts: 25, runAt: retryAt });
     await publisher.close();
   });
 
