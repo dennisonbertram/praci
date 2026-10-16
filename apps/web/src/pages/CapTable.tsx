@@ -20,7 +20,8 @@ import {
   Textarea,
 } from "@rakazo/ui-web";
 import { PanelRightOpen, Plus } from "lucide-react";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { mcpStatus } from "../lib/integrations";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -183,12 +184,17 @@ export function CapTablePage({
   const [editing, setEditing] = useState<Contact | "new" | null>(null);
   const names = kindNames();
 
+  const latestLoad = useRef(0);
   const load = useCallback(() => {
+    const request = ++latestLoad.current;
     setError("");
     rpc.contacts
       .list({})
-      .then(setContacts)
-      .catch((cause) => setError(errorText(cause, t`Could not load contacts`)));
+      .then((list) => request === latestLoad.current && setContacts(list))
+      .catch(
+        (cause) =>
+          request === latestLoad.current && setError(errorText(cause, t`Could not load contacts`)),
+      );
   }, []);
   useEffect(load, [load]);
   useEffect(() => {
@@ -197,7 +203,11 @@ export function CapTablePage({
       .then((servers) =>
         setCartaConnected(
           servers.some(
-            (server) => server.enabled && "endpoint" in server && isCartaEndpoint(server.endpoint),
+            (server) =>
+              server.enabled &&
+              "endpoint" in server &&
+              isCartaEndpoint(server.endpoint) &&
+              mcpStatus(server) === "connected",
           ),
         ),
       )

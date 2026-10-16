@@ -127,13 +127,14 @@ describe("contacts_save approval card", () => {
         email: "ada@example.test",
         organization: "Example Capital",
         kind: "auditor",
+        notes: "Met at the audit kickoff",
       },
       [],
     );
     if (block.kind !== "ask") throw new Error("expected ask block");
     expect(block.text).toContain("Ada Fund");
     expect(block.detail).toBe(
-      "name: Ada Fund\nemail: ada@example.test\norganization: Example Capital\nkind: auditor",
+      "name: Ada Fund\nemail: ada@example.test\norganization: Example Capital\nkind: auditor\nnotes: Met at the audit kickoff",
     );
   });
 });

@@ -114,7 +114,7 @@ function formatApprovalDetail(
   }
   const keys =
     toolName === "contacts_save"
-      ? ["name", "email", "organization", "kind"]
+      ? ["name", "email", "organization", "kind", "notes"]
       : ["collection", "title", "to", "subject", "amount", "body"];
   for (const key of keys) {
     const value = args[key];

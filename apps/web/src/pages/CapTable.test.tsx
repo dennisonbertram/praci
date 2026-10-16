@@ -113,3 +113,30 @@ it("shows Connect Carta only without a Carta server", async () => {
   await show();
   expect(button("Connect Carta")).toBeDefined();
 });
+
+it("shows Connect Carta when the Carta sign-in needs attention", async () => {
+  rpcMock.servers.mockResolvedValue([{ ...cartaServer, oauthStatus: "reconnect" }]);
+  await show();
+  expect(button("Connect Carta")).toBeDefined();
+});
+
+it("ignores a contacts response that arrives after a newer reload", async () => {
+  let resolveFirst: (value: Contact[]) => void = () => {};
+  rpcMock.list.mockReset();
+  rpcMock.list
+    .mockReturnValueOnce(new Promise<Contact[]>((resolve) => (resolveFirst = resolve)))
+    .mockResolvedValue([contact("c3", "Newer", "investor")]);
+  rpcMock.save.mockResolvedValue({});
+  await show();
+  await click(button("Add contact"));
+  const name = document.getElementById("contact-name") as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(name, "Cy");
+    name.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(button("Save"));
+  expect(container.textContent).toContain("Newer");
+  await act(async () => resolveFirst([contact("c1", "Stale", "investor")]));
+  expect(container.textContent).toContain("Newer");
+  expect(container.textContent).not.toContain("Stale");
+});
