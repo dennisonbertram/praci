@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { fetchAccountSecurity, requestAccountDeletionCode } from "../lib/account-security";
 import { authClient } from "../lib/auth";
 import { runSsoFlow } from "../lib/sso-flow";
-import { authErrorText } from "../lib/user-error";
+import { authErrorText, errorText } from "../lib/user-error";
 
 export function AccountAccess({
   onSecurity,
@@ -46,7 +46,7 @@ export function AccountAccess({
     try {
       await run();
     } catch (error) {
-      setError(error instanceof Error ? error.message : t`Could not continue`);
+      setError(errorText(error, t`Could not continue`));
     } finally {
       if (!sso) setPending(false);
     }

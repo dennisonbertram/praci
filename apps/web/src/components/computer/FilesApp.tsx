@@ -7,11 +7,11 @@ import { decodeArtifactBase64, downloadArtifactBytes } from "../../lib/artifact-
 import {
   basename,
   type ComputerFileEntry,
-  formatSize,
   parentPath,
   sortEntries,
   subscribeComputerCommands,
 } from "../../lib/computer-workspace";
+import { formatBytes } from "../../lib/format-bytes";
 import { isFileDrag, readFileAsBase64 } from "../../lib/pending-attachments";
 import { rpc } from "../../lib/rpc";
 import { useObjectUrl } from "../../lib/use-object-url";
@@ -250,7 +250,7 @@ export function FilesApp({
                   </span>
                   {entry.kind === "file" ? (
                     <span className="ml-auto shrink-0 text-muted-foreground tabular-nums">
-                      {formatSize(entry.size)}
+                      {formatBytes(entry.size)}
                     </span>
                   ) : null}
                 </button>

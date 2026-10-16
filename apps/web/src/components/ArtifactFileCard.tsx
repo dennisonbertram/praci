@@ -1,5 +1,3 @@
-import { i18n } from "@lingui/core";
-import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import { Button, Dialog, DialogClose, DialogContent, DialogTitle } from "@rakazo/ui-web";
@@ -8,6 +6,7 @@ import type { RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { downloadArtifact, downloadArtifactBytes, fetchArtifactBytes } from "../lib/artifact-open";
+import { formatBytes } from "../lib/format-bytes";
 import { errorText } from "../lib/user-error";
 import { PdfViewer } from "./PdfViewer";
 import { SandboxedHtmlViewer } from "./SandboxedHtmlViewer";
@@ -226,16 +225,4 @@ function DownloadError({ message }: { message: string }) {
       {message}
     </div>
   );
-}
-
-function formatBytes(size: number) {
-  const locale = i18n.locale || "en";
-  if (size < 1024) return t`${size} B`;
-  const format = (value: number) =>
-    new Intl.NumberFormat(locale, {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    }).format(value);
-  if (size < 1024 * 1024) return t`${format(size / 1024)} KB`;
-  return t`${format(size / (1024 * 1024))} MB`;
 }

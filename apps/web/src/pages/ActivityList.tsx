@@ -13,6 +13,7 @@ import {
   filterActivityRuns,
 } from "../lib/activity-list-filters";
 import { rpc } from "../lib/rpc";
+import { errorText } from "../lib/user-error";
 
 export function statusTone(status: RunActivityRow["status"], updatedAt?: string): string {
   if (status === "failed") return "text-destructive";
@@ -60,7 +61,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           setError(null);
         } catch (err) {
           if (cancelled || requestId !== generation) return;
-          setError(err instanceof Error ? err.message : t`Could not load activity`);
+          setError(errorText(err, t`Could not load activity`));
         } finally {
           if (!cancelled && requestId === generation) {
             setLoading(false);
