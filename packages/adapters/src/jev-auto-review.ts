@@ -11,15 +11,16 @@ import {
   autoReviewMinConfidence,
   autoReviewTimeoutMs,
   DEFAULT_JEV_MODEL,
+  MAX_ARGS_CHARS,
+  MAX_BOT_CHARS,
+  MAX_TASK_CHARS,
   sanitizeAutoReviewReason,
+  truncate,
 } from "./auto-review.js";
 import { readBodyCapped } from "./web-ssrf.js";
 
 const JEV_URL = "https://api.typesafe.ai/v1/systemone";
 const MAX_JSON_BYTES = 64_000;
-const MAX_TASK_CHARS = 400;
-const MAX_BOT_CHARS = 240;
-const MAX_ARGS_CHARS = 1_200;
 
 const choiceAnswerSchema = z.object({
   type: z.literal("choice"),
@@ -40,12 +41,6 @@ export interface JevAutoReviewOptions {
   timeoutMs?: number;
   model?: string;
   minConfidence?: number;
-}
-
-function truncate(value: string, max: number): string {
-  const trimmed = value.trim();
-  if (trimmed.length <= max) return trimmed;
-  return `${trimmed.slice(0, max - 1)}…`;
 }
 
 function boundArgs(args: Record<string, unknown>): Record<string, unknown> {

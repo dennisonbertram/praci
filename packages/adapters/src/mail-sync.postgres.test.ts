@@ -122,7 +122,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
   const state = (connectionId: string) =>
     prisma.mailSyncState.findUniqueOrThrow({ where: { connectionId } });
   const expireThrottle = (connectionId: string) =>
-    prisma.$executeRaw`UPDATE mail_sync_states SET "lastSyncedAt" = now() - interval '5 minutes' WHERE "connectionId" = ${connectionId}`;
+    prisma.$executeRaw`UPDATE mail_sync_states SET "lastSyncedAt" = now() - interval '5 minutes', "backoffUntil" = NULL WHERE "connectionId" = ${connectionId}`;
   const seed = (ref: string, messages: EmulatedMessage[]) => {
     gmail = new GmailApiEmulator({
       mailboxes: { [ref]: { address: `${ref}@example.test`, messages } },
@@ -439,6 +439,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       expect((await state(account.id)).lastErrorAt).toBeNull();
 
       gmail.clearFailures();
+      await expireThrottle(account.id);
       expect(await sync(account)).toBe("synced");
       expect(Object.keys(await byId(account.id)).sort()).toEqual(["limited", "ok"]);
       expect(await cursorOf(account.id)).not.toBe(first);
@@ -569,7 +570,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     expect(byId.earlier?.inInbox).toBe(true);
   });
 
-  it("does not record an incomplete sync as a failure, and still allows an immediate retry", async () => {
+  it("does not record an incomplete sync as a failure, but waits before calling Gmail again", async () => {
     seed("incomplete", [message("ok", 1, ["INBOX"]), message("limited", 2, ["INBOX"])]);
     const account = await connect("incomplete");
     gmail.failNext(429, { times: 1000, urlIncludes: "messages/limited" });
@@ -581,10 +582,36 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     expect(after.needsReconnect).toBe(false);
     expect(after.lastSyncedAt).toBeNull();
     expect(after.claimToken).toBeNull();
-    // Nothing started the 60-second throttle, so the next sync calls the provider again.
+    // A rate-limited sync backs off, so repeated page loads do not keep hitting Gmail.
     const before = listCalls();
+    expect(await sync(account)).toBe("skipped");
+    expect(listCalls()).toBe(before);
+    // Once the pause is over the next sync calls the provider again.
+    await prisma.mailSyncState.update({
+      where: { connectionId: account.id },
+      data: { backoffUntil: new Date(Date.now() - 1000) },
+    });
     await sync(account);
     expect(listCalls()).toBeGreaterThan(before);
+  });
+
+  it("pauses syncing after a rate-limited failure, and a good sync clears the pause", async () => {
+    seed("limited-list", [message("ok", 1, ["INBOX"])]);
+    const account = await connect("limited-list");
+    gmail.failNext(429, { times: 1000 });
+    expect(await sync(account)).toBe("failed");
+    expect((await state(account.id)).backoffUntil).not.toBeNull();
+    const before = listCalls();
+    expect(await sync(account)).toBe("skipped");
+    expect(listCalls()).toBe(before);
+
+    gmail.failNext(429, { times: 0 });
+    await prisma.mailSyncState.update({
+      where: { connectionId: account.id },
+      data: { backoffUntil: new Date(Date.now() - 1000) },
+    });
+    expect(await sync(account)).toBe("synced");
+    expect((await state(account.id)).backoffUntil).toBeNull();
   });
 
   it("clears an earlier failure when a later sync is only incomplete", async () => {

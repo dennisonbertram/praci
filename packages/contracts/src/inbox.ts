@@ -218,6 +218,8 @@ export const ComposePrefillOutputSchema = z.object({
   ),
   /** The original had attachments, but together they are over the attachment limit. */
   attachmentsTooLarge: z.boolean().optional(),
+  /** Gmail could not be read, so To and Subject come from the cached copy and the quote is empty. */
+  quoteUnavailable: z.boolean().optional(),
 });
 
 export const MAX_COMPOSE_BODY = 150_000;

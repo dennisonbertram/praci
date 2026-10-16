@@ -53,6 +53,7 @@ import {
   newClientId,
   plainTextFromMarkdown,
   projectMessageReactions,
+  rankMentionOptions,
   reorderBotTo,
   replyAttachment,
   resolveComposerSendPlan,
@@ -86,6 +87,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   resolvePersonaColorDef,
+  Spinner,
 } from "@rakazo/ui-web";
 import {
   ArrowDown,
@@ -168,6 +170,8 @@ import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/Err
 import { FinanceCardGroup } from "../components/FinanceCards";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
+import { SidebarPageLink } from "../components/SidebarPageLink";
+import { SidebarPages } from "../components/SidebarPages";
 import {
   LIVE_TOOL_STEP_WINDOW,
   StandaloneToolActivity,
@@ -200,7 +204,7 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
-import { findCartaAgent } from "../lib/carta-agent";
+import { findCartaAgent, useAutoCreateCartaAgent } from "../lib/carta-agent";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -422,41 +426,6 @@ function readCollapsedSidebarSections(userId: string | null | undefined): Set<st
 
 function readCollapsedRosterParents(userId: string | null | undefined): Set<string> {
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
-}
-
-/** A page-level row at the top of the sidebar (Inbox, Finance). */
-function SidebarPageLink({
-  testId,
-  current,
-  icon,
-  label,
-  onOpen,
-  children,
-}: {
-  testId: string;
-  current: boolean;
-  icon: ReactNode;
-  label: ReactNode;
-  onOpen: () => void;
-  children?: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      data-testid={testId}
-      aria-current={current ? "page" : undefined}
-      onClick={onOpen}
-      className={`mx-2.5 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-start hover:bg-sidebar-accent ${
-        current ? "bg-sidebar-accent" : ""
-      }`}
-    >
-      <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
-        {icon}
-      </span>
-      <span className="text-[14px] font-medium text-foreground/90">{label}</span>
-      {children}
-    </button>
-  );
 }
 
 export function ShellPage() {
@@ -2561,6 +2530,7 @@ export function ShellPage() {
       await refreshBots();
     } catch (error) {
       setCartaAgentError(errorText(error, t`Could not create the Carta agent`));
+      return false;
     } finally {
       setCreatingCartaAgent(false);
     }
@@ -2583,6 +2553,14 @@ export function ShellPage() {
       setCreatingInboxAgent(false);
     }
   }
+
+  // Carta needs no Create click: the agent appears once Carta is connected.
+  useAutoCreateCartaAgent(
+    capTableMode && initialBotsLoaded && Boolean(userId),
+    findCartaAgent(bots, userId) !== undefined,
+    createCartaAgent,
+    bots,
+  );
 
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
   const agentPanel = inboxMode
@@ -2616,8 +2594,8 @@ export function ShellPage() {
             open: cartaAgentOpen,
             collapse: () => setCartaAgentOpen(false),
             collapseLabel: t`Collapse Carta agent`,
-            create: createCartaAgent,
-            createLabel: t`Create Carta agent`,
+            create: undefined,
+            createLabel: "",
             creating: creatingCartaAgent,
             error: cartaAgentError,
           }
@@ -3349,6 +3327,7 @@ export function ShellPage() {
             navigate("/app/data-room");
           }}
         />
+        <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {showSpaceSearch ? (
             <SpaceSearchResults
@@ -4190,9 +4169,13 @@ export function ShellPage() {
                 threadView
               ) : (
                 <div className="grid flex-1 place-content-center justify-items-center gap-3 px-5">
-                  <Button disabled={agentPanel.creating} onClick={() => void agentPanel.create()}>
-                    {agentPanel.createLabel}
-                  </Button>
+                  {agentPanel.create ? (
+                    <Button disabled={agentPanel.creating} onClick={() => void agentPanel.create()}>
+                      {agentPanel.createLabel}
+                    </Button>
+                  ) : agentPanel.creating ? (
+                    <Spinner aria-label={t`Loading`} />
+                  ) : null}
                   {agentPanel.error ? (
                     <p role="alert" className="text-center text-sm text-destructive">
                       {agentPanel.error}
@@ -6138,11 +6121,15 @@ export const Composer = memo(function Composer({
 
   const mentionOptions = useMemo(() => {
     if (mentionQuery === null || !mentionTargets?.length) return [];
-    const query = mentionQuery.trim().toLowerCase();
-    return mentionTargets
-      .filter((target) => !query || target.name.toLowerCase().startsWith(query))
-      .slice(0, 10);
+    // Prefix, then word-start, then substring matches, so the cap never hides a better match.
+    return rankMentionOptions(mentionTargets, mentionQuery).slice(0, 10);
   }, [mentionQuery, mentionTargets]);
+  // A typed query with no match shows "No matches" instead of closing, so `@zz` is not sent unnoticed.
+  const mentionNoMatches =
+    mentionQuery !== null &&
+    mentionQuery !== "" &&
+    mentionOptions.length === 0 &&
+    Boolean(mentionTargets?.length);
 
   // Reset to the first option only when the typed query changes.
   useEffect(() => {
@@ -6183,7 +6170,8 @@ export const Composer = memo(function Composer({
     (slashSkillOptions.length > 0 || slashActionOptions.length > 0);
 
   async function send() {
-    if (!canSend || sending || disabled) return;
+    // Same as Enter: while "No matches" shows, Escape first, then send as typed.
+    if (!canSend || sending || disabled || mentionNoMatches) return;
     const revision = editRevision.current;
     const clientNonce = retryNonce.current ?? newClientId();
     retryNonce.current = null;
@@ -6505,6 +6493,16 @@ export const Composer = memo(function Composer({
           })}
         </div>
       ) : null}
+      {mentionNoMatches ? (
+        <div
+          id={mentionListboxId}
+          role="status"
+          data-testid="mention-picker-empty"
+          className="mb-2 rounded-[14px] border border-border bg-muted px-4 py-2.5 text-[14px] text-muted-foreground"
+        >
+          <Trans>No matches. Press Escape to send as typed.</Trans>
+        </div>
+      ) : null}
       {showSlashPicker ? (
         <div
           data-testid="slash-picker"
@@ -6614,6 +6612,15 @@ export const Composer = memo(function Composer({
               <span dir="auto" className="truncate">
                 {mention.name}
               </span>
+              {mention.kind === "routine" ? (
+                <span className="shrink-0 text-muted-foreground">
+                  <Trans>Runs on send</Trans>
+                </span>
+              ) : mention.authStatus === "needs_auth" ? (
+                <span className="shrink-0 text-muted-foreground">
+                  <Trans>Needs sign-in</Trans>
+                </span>
+              ) : null}
               <button
                 type="button"
                 aria-label={t`Remove mention ${mention.name}`}
@@ -6646,13 +6653,24 @@ export const Composer = memo(function Composer({
                 removeLastChip();
                 return;
               }
+              const composing = event.nativeEvent.isComposing || event.keyCode === 229;
               const action = resolveMentionPickerKey({
                 key: event.key,
                 shiftKey: event.shiftKey,
-                isComposing: event.nativeEvent.isComposing || event.keyCode === 229,
+                isComposing: composing,
                 optionCount: mentionOptions.length,
                 highlightedIndex: activeMentionIndex,
               });
+              if (mentionNoMatches && !composing && event.key === "Enter" && !event.shiftKey) {
+                // Escape dismisses the empty state first; Enter then sends the text as typed.
+                event.preventDefault();
+                return;
+              }
+              if (mentionNoMatches && !composing && event.key === "Escape") {
+                event.preventDefault();
+                setMentionQuery(null);
+                return;
+              }
               if (action.type === "complete") {
                 const mention = mentionOptions[action.index];
                 if (!mention) return;
@@ -6713,8 +6731,8 @@ export const Composer = memo(function Composer({
             role="combobox"
             aria-autocomplete="list"
             aria-haspopup="listbox"
-            aria-expanded={mentionPickerOpen}
-            aria-controls={mentionPickerOpen ? mentionListboxId : undefined}
+            aria-expanded={mentionPickerOpen || mentionNoMatches}
+            aria-controls={mentionPickerOpen || mentionNoMatches ? mentionListboxId : undefined}
             aria-activedescendant={activeMentionOptionId}
             name="chat-message"
             autoComplete="off"

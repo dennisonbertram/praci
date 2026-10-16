@@ -95,9 +95,9 @@ it("tells the owner to connect a provider when only native Google is configured"
   expect(container.querySelector('[data-testid="catalog-not-set-up"]')?.textContent).toContain(
     "Connect a Composio or Pipedream account to add apps like Slack, Notion and GitHub.",
   );
-  expect(container.querySelector('a[href="/integrations/setup"]')?.textContent).toBe(
-    "Set up app catalog",
-  );
+  expect(
+    container.querySelector('a[href="/integrations/setup?next=/app/integrations"]')?.textContent,
+  ).toBe("Set up app catalog");
   expect(container.querySelector('input[type="search"]')).toBeNull();
   expect(container.querySelector('[aria-label="Category"]')).toBeNull();
   expect(container.textContent).toContain("Add a custom connection");
@@ -166,13 +166,16 @@ it("shows Carta but not Zernio under the Finance chip", async () => {
   expect(container.querySelector('[aria-label="Connect Zernio"]')).toBeNull();
 });
 
-it("offers Treg and prefills the custom dialog", async () => {
+it("opens the Treg token form from its tile", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Treg"]');
   expect(connect).not.toBeNull();
   await act(async () => connect?.click());
-  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
-  expect(input?.value).toBe("https://treg.to/mcp/");
+  // Treg connects with an API token, under a dialog named for it.
+  expect(document.querySelector('input[aria-label="Token"]')).not.toBeNull();
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("Connect Treg");
+  expect(dialog?.textContent).not.toContain("Add a custom connection");
 });
 
 it("hides the Treg tile once the token preset source is installed", async () => {
@@ -331,4 +334,21 @@ it("hides the Finance heading when every provider is connected", async () => {
   await show(value);
   expect(financeHeading()).toBe(false);
   expect(container.querySelector('[data-testid="finance-section"]')).toBeNull();
+});
+
+it("names the dialog after the service for a first-party tile", async () => {
+  await show(data(true, false));
+  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Carta"]');
+  await act(async () => connect?.click());
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("Connect Carta");
+  expect(dialog?.textContent).not.toContain("Add a custom connection");
+});
+
+it("still lists native Google apps when the managed catalog is not set up", async () => {
+  const value = data(false, false);
+  value.catalog = value.catalog.map((item) => ({ ...item, connected: false }));
+  await show(value);
+  expect(container.querySelector('[data-testid="catalog-not-set-up"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Connect gmail"]')).not.toBeNull();
 });

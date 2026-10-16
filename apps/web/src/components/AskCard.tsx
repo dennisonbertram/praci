@@ -98,7 +98,7 @@ export function AskCard({
   return (
     <div
       data-testid={secretInput ? "secret-ask-card" : undefined}
-      className="max-w-[74%] rounded-2xl border border-border bg-card px-5 py-4"
+      className="max-w-full rounded-2xl border border-border bg-card px-5 py-4"
     >
       <div className="text-[15.5px] leading-[1.5] text-foreground">
         <ChatMarkdown>{block.text}</ChatMarkdown>

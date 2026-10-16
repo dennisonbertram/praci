@@ -15,6 +15,10 @@ afterEach(() => {
 });
 
 describe("openai-compatible URL policy", () => {
+  it.each(["metadata.google.internal", "metadata.goog"])("rejects metadata host %s", (host) => {
+    expect(() => assertAllowedOpenAiCompatibleUrl(`http://${host}/v1`)).toThrow();
+  });
+
   it("normalizes missing /v1 suffix without doubling it", () => {
     expect(normalizeOpenAiCompatibleBaseUrl("http://127.0.0.1:8000")).toBe(
       "http://127.0.0.1:8000/v1",

@@ -91,6 +91,12 @@ export const PrefillFailed: Story = {
     }),
 };
 
+export const QuoteUnavailable: Story = {
+  args: { seed: { kind: "reply", messageId: "msg_busy" } },
+  beforeEach: () =>
+    mockRpc({ "inbox.compose.prefill": { ...prefill, body: "", quoteUnavailable: true } }),
+};
+
 export const ManyRecipientsFolded: Story = {
   name: "Many recipients (summary line)",
   args: {

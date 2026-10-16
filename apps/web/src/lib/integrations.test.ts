@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import type { Connection, ConnectionCatalogItem, McpServer } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  appPath,
   appStatus,
   classifyTool,
   FINANCE_PROVIDERS,
@@ -90,6 +91,7 @@ describe("status badges", () => {
     oauthStatus: "connected",
     oauthAttempted: false,
     enabled: true,
+    writesEnabled: false,
     revision: 1,
     createdAt: "2026-10-01T00:00:00.000Z",
     updatedAt: "2026-10-01T00:00:00.000Z",
@@ -184,5 +186,23 @@ describe("isSameMcpEndpoint", () => {
     expect(isSameMcpEndpoint("http://api.x.com/mcp", x)).toBe(false);
     expect(isSameMcpEndpoint("https://x.com/mcp", x)).toBe(false);
     expect(isSameMcpEndpoint(null, x)).toBe(false);
+  });
+});
+
+describe("first-party services", () => {
+  it("are not offered a second time from the managed catalog", () => {
+    const catalog = ["x", "twitter", "treg", "notion"].map((slug) => item(slug, "other"));
+    expect(popularApps(catalog, []).map((i) => i.slug)).toEqual(["notion"]);
+  });
+});
+
+describe("appPath", () => {
+  it("builds the connect link a caller can return from", () => {
+    expect(appPath({ connectorId: "google", slug: "gmail" })).toBe(
+      "/app/integrations/app/google/gmail",
+    );
+    expect(
+      appPath({ connectorId: "google", slug: "gmail" }, { connect: true, next: "/app/data-room" }),
+    ).toBe("/app/integrations/app/google/gmail?connect=1&next=%2Fapp%2Fdata-room");
   });
 });

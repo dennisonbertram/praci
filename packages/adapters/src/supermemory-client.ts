@@ -1,7 +1,7 @@
 import { isIP } from "node:net";
 import { isLocalMcpHost } from "@rakazo/contracts";
 import type { ResolvedAddress, ResolveHostname } from "./network-address.js";
-import { defaultResolveHostname } from "./network-address.js";
+import { defaultResolveHostname, normalizeUrlHostname as hostnameOf } from "./network-address.js";
 import { createPrivateNetworkFetch } from "./remote-mcp.js";
 import { readBodyCapped } from "./web-ssrf.js";
 
@@ -72,13 +72,6 @@ function resolverFor(config: SupermemoryConnectionConfig): ResolveHostname {
   if (!config.pinnedAddresses) return config.resolveHostname ?? defaultResolveHostname;
   const addresses = config.pinnedAddresses;
   return async () => addresses;
-}
-
-function hostnameOf(url: URL): string {
-  return url.hostname
-    .replace(/^\[|\]$/g, "")
-    .replace(/\.$/, "")
-    .toLowerCase();
 }
 
 /** Loopback and IP literals have no DNS to rebind. Compose names pin to private addresses. */

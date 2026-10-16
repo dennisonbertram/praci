@@ -32,16 +32,12 @@ export async function waitForModelOAuthCompletion(
   const attempts = options.attempts ?? 180;
   const pollIntervalMs = options.pollIntervalMs ?? 5000;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    throwIfAborted(options.signal);
+    options.signal?.throwIfAborted();
     const result = await complete();
-    throwIfAborted(options.signal);
+    options.signal?.throwIfAborted();
     if (result.status === "ready") return result;
     if (result.status === "error") throw new Error(result.error);
     if (attempt < attempts) await abortableDelay(pollIntervalMs, options.signal);
   }
   throw new Error("Sign-in timed out. Try again.");
-}
-
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) throw signal.reason ?? new Error("OAuth polling cancelled");
 }

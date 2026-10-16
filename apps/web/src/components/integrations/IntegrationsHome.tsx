@@ -22,6 +22,7 @@ import { Search } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
+  appPath,
   CATEGORY_IDS,
   type CategoryFilter,
   type ConnectedApp,
@@ -162,7 +163,7 @@ function AppCard({
         name={app.name}
         logo={app.logo}
         sub={accounts || app.rows[0]?.displayName}
-        to={`/app/integrations/app/${encodeURIComponent(app.connectorId)}/${encodeURIComponent(app.provider)}`}
+        to={appPath({ connectorId: app.connectorId, slug: app.provider })}
       />
       <div className="flex items-center gap-2">
         <StatusBadge status={app.status} />
@@ -271,8 +272,11 @@ export function IntegrationsHome({
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
   const [custom, setCustom] = useState<{
     url: string;
+    /** The first-party service this dialog connects; titles the dialog. */
+    service?: string;
     oauthClient?: boolean;
     scope?: string;
+    token?: boolean;
   } | null>(null);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -455,7 +459,7 @@ export function IntegrationsHome({
                 </b>
                 <div className="mt-3">
                   <Link
-                    to="/integrations/setup"
+                    to="/integrations/setup?next=/app/integrations"
                     className="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
                   >
                     <Trans>Set up app catalog</Trans>
@@ -476,7 +480,25 @@ export function IntegrationsHome({
               </>
             )}
           </div>
-        ) : (
+        ) : null}
+        {notSetUp && results.length > 0 ? (
+          // Native Google apps need no managed provider, so they stay connectable here.
+          <div
+            data-testid="app-grid"
+            className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+          >
+            {results.map((item) => (
+              <AppTile
+                key={`${item.connectorId}:${item.slug}`}
+                name={item.name}
+                logo={item.logo}
+                description={item.description}
+                onConnect={() => setConnecting(item)}
+              />
+            ))}
+          </div>
+        ) : null}
+        {notSetUp ? null : (
           <>
             <SectionTitle>
               <Trans>Find an app</Trans>
@@ -591,6 +613,9 @@ export function IntegrationsHome({
                     onConnect={() =>
                       setCustom({
                         url: entry.endpoint,
+                        service: entry.name,
+                        // Treg takes an API token, not a sign-in.
+                        ...(entry.id === "treg" ? { token: true } : {}),
                         ...("oauthClient" in entry
                           ? { oauthClient: true, scope: entry.scope }
                           : {}),
@@ -634,6 +659,8 @@ export function IntegrationsHome({
         <CustomConnectionDialog
           data={data}
           initialUrl={custom.url}
+          service={custom.service}
+          tokenSource={custom.token}
           oauthClient={custom.oauthClient}
           oauthScope={custom.scope}
           onClose={() => setCustom(null)}

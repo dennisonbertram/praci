@@ -412,10 +412,22 @@ export function FinanceSection({
                     variant="outline"
                     className="ms-auto"
                     disabled={busy !== null}
-                    aria-label={reconnect ? t`Reconnect ${name}` : t`Connect ${name}`}
+                    aria-label={
+                      status === "error"
+                        ? t`Try ${name} again`
+                        : reconnect
+                          ? t`Reconnect ${name}`
+                          : t`Connect ${name}`
+                    }
                     onClick={() => void connect(provider, reconnect)}
                   >
-                    {reconnect ? <Trans>Reconnect</Trans> : <Trans>Connect</Trans>}
+                    {status === "error" ? (
+                      <Trans>Try again</Trans>
+                    ) : reconnect ? (
+                      <Trans>Reconnect</Trans>
+                    ) : (
+                      <Trans>Connect</Trans>
+                    )}
                   </Button>
                 )}
               </div>

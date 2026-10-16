@@ -8,6 +8,7 @@ import type {
 } from "@rakazo/contracts";
 import { ServerUpdateRunSchema } from "@rakazo/contracts";
 import {
+  cancelResponseBody,
   DEFAULT_UPDATE_BRANCH,
   detectRestartSupervisor,
   isOfficialRepoUrl,
@@ -17,6 +18,7 @@ import {
   readBoundedResponseBytes,
   resolveInstallKind,
   restartSupervisorAdvice,
+  withAbort,
 } from "@rakazo/core";
 import { outgoingCorrelationHeaders } from "@rakazo/logging";
 
@@ -377,32 +379,6 @@ async function sidecarJson<T>(
     );
   }
   return payload;
-}
-
-function cancelResponseBody(response: Response): void {
-  try {
-    void Promise.resolve(response.body?.cancel()).catch(() => undefined);
-  } catch {
-    // Best-effort release only; an untrusted cancellation must not delay the error.
-  }
-}
-
-function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-  if (signal.aborted) return Promise.reject(signal.reason ?? new Error("Request timed out"));
-  return new Promise<T>((resolve, reject) => {
-    const onAbort = () => reject(signal.reason ?? new Error("Request timed out"));
-    signal.addEventListener("abort", onAbort, { once: true });
-    promise.then(
-      (value) => {
-        signal.removeEventListener("abort", onAbort);
-        resolve(value);
-      },
-      (error: unknown) => {
-        signal.removeEventListener("abort", onAbort);
-        reject(error);
-      },
-    );
-  });
 }
 
 /** Exported for tests that assert the API never treats a source tree as applyable. */

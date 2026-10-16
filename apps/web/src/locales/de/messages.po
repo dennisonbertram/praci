@@ -281,6 +281,10 @@ msgstr "{name} ist fertig"
 msgid "{name} is not connected."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} isn't available on this server."
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} stopped"
@@ -568,6 +572,10 @@ msgstr ""
 msgid "Add custom connection"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Add email"
+msgstr ""
+
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr ""
@@ -580,6 +588,10 @@ msgstr "Element hinzufügen"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add MCP server"
 msgstr "MCP-Server hinzufügen"
+
+#: src/components/AddSidebarPage.tsx
+msgid "Add page"
+msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
@@ -705,6 +717,18 @@ msgstr "{0} ohne Nachfrage erlauben"
 msgid "Allow {name}"
 msgstr ""
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Allow changes"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Allow changes in Carta"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Allow changes in Carta?"
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow email actions without asking"
 msgstr "E-Mail-Aktionen ohne Nachfrage erlauben"
@@ -749,6 +773,10 @@ msgstr "Immer erlaubt"
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Amount raised"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -835,7 +863,11 @@ msgid "Approve this server to let your agent use its tools."
 msgstr "Genehmige diesen Server, damit dein Agent seine Tools verwenden kann."
 
 #: src/components/MailApprovalCard.tsx
-msgid "Approved"
+msgid "Approved to save"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Approved to send"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -918,6 +950,7 @@ msgstr "Vor dem Senden externer E-Mails nachfragen"
 msgid "Ask the server owner to configure this provider."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
 msgstr ""
@@ -1254,10 +1287,12 @@ msgstr "Server nicht erreichbar."
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectionDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
@@ -1723,6 +1758,7 @@ msgid "Confirm the URL is reachable from this browser session, then test again."
 msgstr "Prüfe, ob die URL aus dieser Browsersitzung erreichbar ist, und teste erneut."
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -1745,6 +1781,10 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect {name}"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect {service}"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2152,6 +2192,10 @@ msgstr "Skill konnte nicht geladen werden"
 msgid "Could not load the app list. Reload to try again."
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Could not load the cap table"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Could not load this artifact."
 msgstr ""
@@ -2210,6 +2254,10 @@ msgstr ""
 
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Could not refresh from Carta"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -2359,6 +2407,10 @@ msgstr "Aktualisierung fehlgeschlagen"
 msgid "Could not update agent access"
 msgstr "Agent-Zugriff konnte nicht aktualisiert werden"
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Could not update changes"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Could not update computer"
 msgstr ""
@@ -2449,10 +2501,6 @@ msgstr "Erstelle einen Abschnitt und verschiebe {0} dorthin."
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "Konto erstellen"
-
-#: src/pages/Shell.tsx
-msgid "Create Carta agent"
-msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Create Finance agent"
@@ -2870,14 +2918,25 @@ msgstr ""
 msgid "Draft discarded"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
+msgid "Draft not saved"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Draft saved"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Draft saved by you"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
 msgstr "Skill-Entwurf"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Drafts are off for {botName}. Turn them back on in its tools."
+msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Drag, drop, or paste an image"
@@ -3297,6 +3356,10 @@ msgstr ""
 msgid "Fullscreen"
 msgstr "Vollbild"
 
+#: src/pages/CapTable.tsx
+msgid "Fully diluted shares"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Gateway ID"
@@ -3431,6 +3494,10 @@ msgstr "Hoch"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "High"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Holding"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
@@ -3662,6 +3729,10 @@ msgstr ""
 msgid "Later"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Latest 409A"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
 msgstr "{app} gestartet"
@@ -3732,6 +3803,10 @@ msgstr "Ältere Ausführungen laden"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Load web images automatically"
 msgstr "Webbilder automatisch laden"
+
+#: src/pages/Shell.tsx
+msgid "Loading"
+msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
@@ -3890,6 +3965,14 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Marked noise"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked read"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked unread"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4209,6 +4292,10 @@ msgstr ""
 msgid "Needs reply"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Needs sign-in"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "Übernahme erforderlich"
@@ -4344,7 +4431,6 @@ msgid "No group chats yet."
 msgstr ""
 
 #: src/components/AskCard.tsx
-#: src/components/MailApprovalCard.tsx
 msgid "No longer active"
 msgstr "Nicht mehr aktiv"
 
@@ -4358,6 +4444,10 @@ msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -4466,9 +4556,16 @@ msgstr ""
 msgid "Not a valid email address"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
+msgid "Not confirmed as saved. Check Drafts in your mail before trying again."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Not confirmed as sent. Check Sent in your mail before trying again."
 msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
@@ -4503,6 +4600,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not sent. {text}"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Not waiting for approval"
 msgstr ""
 
 #: src/pages/CapTable.tsx
@@ -4665,6 +4766,10 @@ msgstr "Chat wird geöffnet…"
 msgid "Opening your Space…"
 msgstr "Dein Arbeitsbereich wird geöffnet…"
 
+#: src/pages/CapTable.tsx
+msgid "Option pool available"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -4737,6 +4842,10 @@ msgstr ""
 msgid "Owner"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Ownership"
+msgstr ""
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page"
@@ -4744,6 +4853,10 @@ msgstr ""
 
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page changed. Reload"
+msgstr ""
+
+#: src/components/SidebarPages.tsx
+msgid "Page options"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5008,6 +5121,10 @@ msgstr ""
 msgid "Reading"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Reading Carta…"
+msgstr ""
+
 #: src/components/finance/StatementImport.tsx
 msgid "Reading…"
 msgstr ""
@@ -5131,6 +5248,10 @@ msgstr ""
 msgid "Refresh"
 msgstr "Aktualisieren"
 
+#: src/pages/CapTable.tsx
+msgid "Refresh from Carta"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Refresh view"
 msgstr ""
@@ -5208,6 +5329,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Remove filter {label}"
+msgstr ""
+
+#: src/components/SidebarPages.tsx
+msgid "Remove from sidebar"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5479,6 +5604,10 @@ msgstr "Wird ausgeführt · Stoppen"
 msgid "Running…"
 msgstr "Wird ausgeführt…"
 
+#: src/pages/Shell.tsx
+msgid "Runs on send"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Runs when this bot receives a verified message from this provider."
 msgstr ""
@@ -5699,8 +5828,16 @@ msgstr "Senden"
 msgid "Send reset link"
 msgstr "Link zum Zurücksetzen senden"
 
+#: src/components/MailApprovalCard.tsx
+msgid "Send saved draft"
+msgstr ""
+
 #: src/components/AiDataSharing.tsx
 msgid "Senders, recipients, subjects and short previews are sent to {name}."
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -5713,9 +5850,12 @@ msgstr ""
 msgid "Sending…"
 msgstr "Wird gesendet…"
 
-#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Sent by you"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5739,6 +5879,7 @@ msgstr ""
 msgid "Server URL"
 msgstr "Server-URL"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Set up app catalog"
 msgstr ""
@@ -5783,6 +5924,10 @@ msgstr "Geteilte Dokumente"
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared skills"
 msgstr "Geteilte Skills"
+
+#: src/pages/CapTable.tsx
+msgid "Shares"
+msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Shell"
@@ -6210,6 +6355,10 @@ msgstr "Team-Computer"
 msgid "Team conversations"
 msgstr ""
 
+#: src/lib/sidebar-page-copy.ts
+msgid "Team health"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
 msgstr ""
@@ -6255,6 +6404,10 @@ msgstr ""
 msgid "The bot changed this list. Your last edit wasn't saved."
 msgstr ""
 
+#: src/components/integrations/McpDetail.tsx
+msgid "The Carta agent will be able to change your Carta data. It asks before each change."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "Zeitüberschreitung der Verbindung."
@@ -6265,6 +6418,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "The original message didn't load."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -6490,9 +6647,14 @@ msgstr ""
 msgid "Trial ends {day}"
 msgstr ""
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Try {name} again"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/pages/ActivityList.tsx
@@ -6505,6 +6667,18 @@ msgstr "Erneut versuchen"
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
 msgstr "Teste erneut."
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off drafts for {botName}?"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off sending for {botName}?"
+msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -6635,6 +6809,11 @@ msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Updated"
+msgstr ""
+
+#. placeholder {0}: formatRelativeTime(snapshot.updatedAt)
+#: src/pages/CapTable.tsx
+msgid "Updated {0}"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -6941,6 +7120,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "Wird verarbeitet…"
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Workload and key people, from your connected tools"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"

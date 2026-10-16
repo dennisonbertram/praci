@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { loadRootEnv } from "@rakazo/core/node/load-root-env";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
-import type { createApp } from "../../../../apps/api/src/app.ts";
+import type { createEmulatedApp } from "./emulated-app.js";
 import { runProcess } from "./process.js";
 
 loadRootEnv();
@@ -91,7 +91,7 @@ async function main() {
     });
 
     if (integration) {
-      const suites = [
+      const listed = [
         "packages/testkit/src/pi-offline.postgres.test.ts",
         "packages/testkit/src/usage-accounting.postgres.test.ts",
         "packages/db/src/history-retrieval.postgres.test.ts",
@@ -112,6 +112,9 @@ async function main() {
         "packages/testkit/src/executor-lifecycle.test.ts",
         "packages/testkit/src/connections.test.ts",
         "packages/testkit/src/bot-secrets.test.ts",
+        "packages/testkit/src/messaging.test.ts",
+        "packages/testkit/src/mention-targets.test.ts",
+        "packages/testkit/src/runs-list.test.ts",
         "packages/db/src/space-membership.postgres.test.ts",
         "packages/db/src/messaging.postgres.test.ts",
         "packages/db/src/billing.postgres.test.ts",
@@ -122,6 +125,11 @@ async function main() {
         "packages/adapters/src/job-reconciler.postgres.test.ts",
         "packages/adapters/src/cloud-agent.postgres.test.ts",
       ];
+      // Every *.postgres.test.ts runs here, so a new suite cannot be forgotten in the list above.
+      const discovered = execSync("git ls-files '*.postgres.test.ts'", { encoding: "utf8" })
+        .split("\n")
+        .filter(Boolean);
+      const suites = [...new Set([...listed, ...discovered])];
       // Each app reconciles all durable work in its database, including intentionally
       // unfinished fixture runs. Clone the pristine migrated schema so one suite
       // cannot execute another suite's backlog or wait for it during shutdown.
@@ -167,41 +175,9 @@ async function main() {
       return;
     }
 
-    const [
-      { EmailEmulator, PipedreamConnector, ThirdPartyConnectorEmulator },
-      { createApp },
-      { createE2eComposio },
-    ] = await Promise.all([
-      import("@rakazo/adapters"),
-      import("../../../../apps/api/src/app.ts"),
-      import("./e2e-mail.js"),
-    ]);
+    const { createEmulatedApp } = await import("./emulated-app.js");
     const { serve } = await import("@hono/node-server");
-    const thirdParties = new ThirdPartyConnectorEmulator();
-    const pipedream = new PipedreamConnector(
-      {
-        clientId: "fake-client-id",
-        clientSecret: "fake-client-secret",
-        projectId: "fake-project-id",
-        environment: "development",
-        identitySecret: process.env.ENCRYPTION_KEY,
-      },
-      { fetch: thirdParties.fetch, resolveHostname: thirdParties.resolveHostname },
-    );
-    const email = new EmailEmulator();
-    const composio = createE2eComposio();
-    const handles = await createApp({
-      databaseUrl,
-      prisma: undefined,
-      composio,
-      pipedream,
-      email,
-      remoteConnectors: {
-        fetch: thirdParties.fetch,
-        resolveHostname: thirdParties.resolveHostname,
-      },
-      integrationsCatalogUrl: "https://catalog.example.test/",
-    });
+    const { handles, email, composio } = await createEmulatedApp(databaseUrl);
     let activeRequests = 0;
     const requestWaiters = new Set<() => void>();
     const server = serve({
@@ -317,7 +293,7 @@ async function main() {
   }
 }
 
-type AppHandles = Awaited<ReturnType<typeof createApp>>;
+type AppHandles = Awaited<ReturnType<typeof createEmulatedApp>>["handles"];
 
 async function managedComputers(handles: AppHandles) {
   if (!["e2b", "daytona", "box"].includes(sandboxProvider)) return [];
