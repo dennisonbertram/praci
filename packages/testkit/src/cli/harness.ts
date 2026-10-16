@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { loadRootEnv } from "@rakazo/core/node/load-root-env";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
-import type { createApp } from "../../../../apps/api/src/app.ts";
+import type { createEmulatedApp } from "./emulated-app.js";
 import { runProcess } from "./process.js";
 
 loadRootEnv();
@@ -167,41 +167,9 @@ async function main() {
       return;
     }
 
-    const [
-      { EmailEmulator, PipedreamConnector, ThirdPartyConnectorEmulator },
-      { createApp },
-      { createE2eComposio },
-    ] = await Promise.all([
-      import("@rakazo/adapters"),
-      import("../../../../apps/api/src/app.ts"),
-      import("./e2e-mail.js"),
-    ]);
+    const { createEmulatedApp } = await import("./emulated-app.js");
     const { serve } = await import("@hono/node-server");
-    const thirdParties = new ThirdPartyConnectorEmulator();
-    const pipedream = new PipedreamConnector(
-      {
-        clientId: "fake-client-id",
-        clientSecret: "fake-client-secret",
-        projectId: "fake-project-id",
-        environment: "development",
-        identitySecret: process.env.ENCRYPTION_KEY,
-      },
-      { fetch: thirdParties.fetch, resolveHostname: thirdParties.resolveHostname },
-    );
-    const email = new EmailEmulator();
-    const composio = createE2eComposio();
-    const handles = await createApp({
-      databaseUrl,
-      prisma: undefined,
-      composio,
-      pipedream,
-      email,
-      remoteConnectors: {
-        fetch: thirdParties.fetch,
-        resolveHostname: thirdParties.resolveHostname,
-      },
-      integrationsCatalogUrl: "https://catalog.example.test/",
-    });
+    const { handles, email, composio } = await createEmulatedApp(databaseUrl);
     let activeRequests = 0;
     const requestWaiters = new Set<() => void>();
     const server = serve({
@@ -317,7 +285,7 @@ async function main() {
   }
 }
 
-type AppHandles = Awaited<ReturnType<typeof createApp>>;
+type AppHandles = Awaited<ReturnType<typeof createEmulatedApp>>["handles"];
 
 async function managedComputers(handles: AppHandles) {
   if (!["e2b", "daytona", "box"].includes(sandboxProvider)) return [];
