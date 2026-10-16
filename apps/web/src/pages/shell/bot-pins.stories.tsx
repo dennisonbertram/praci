@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { mockPins } from "../../lib/__mocks__/rpc";
+import { mockPins } from "../../stories/fixtures";
 import { PinsList, PinsStrip } from "./bot-pins";
 
 const meta = { title: "Shell/Bot pins" } satisfies Meta;

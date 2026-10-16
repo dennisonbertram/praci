@@ -1,7 +1,9 @@
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 import type { Preview } from "@storybook/react-vite";
+import { MemoryRouter } from "react-router-dom";
 import { sb } from "storybook/test";
+import { resetRpcMocks } from "../src/lib/__mocks__/rpc";
 import { bootstrapI18n } from "../src/lib/i18n";
 import { applyResolvedAppearance } from "../src/lib/ui-appearance";
 import { resolveUiLocale } from "../src/lib/ui-locale";
@@ -26,13 +28,16 @@ const preview: Preview = {
   },
   initialGlobals: { theme: "light" },
   loaders: [async () => void (await ready)],
+  beforeEach: () => resetRpcMocks(),
   decorators: [
     (Story, { globals }) => {
       const theme = globals.theme === "dark" ? "dark" : "light";
       applyResolvedAppearance(theme);
       return (
         <I18nProvider i18n={i18n}>
-          <Story />
+          <MemoryRouter>
+            <Story />
+          </MemoryRouter>
         </I18nProvider>
       );
     },
