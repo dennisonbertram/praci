@@ -105,7 +105,10 @@ describe("mail approval payload", () => {
       return block.kind === "ask" ? block.mail : "not ask";
     };
     expect(mailOf("mail_modify", args)).toBeUndefined();
-    expect(mailOf("mail_send", { draftId: "d1" })).toBeUndefined();
+    expect(mailOf("mail_send", { draftId: "d1" })).toMatchObject({
+      tool: "mail_send",
+      locked: true,
+    });
     expect(mailOf("mail_draft", { ...args, body: "x".repeat(150_001) })).toBeUndefined();
     expect(mailOf("mail_draft", { draftId: "d1", subject: "s", body: "b" })).toMatchObject({
       tool: "mail_draft",

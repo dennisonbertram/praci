@@ -5,7 +5,6 @@ import {
   Button,
   cn,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -85,6 +84,8 @@ export function MailApprovalCard({
   const [overflows, setOverflows] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDisable, setConfirmDisable] = useState(false);
+  const [disabledNotice, setDisabledNotice] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -93,6 +94,8 @@ export function MailApprovalCard({
   const interactive = !answered && canAnswer;
   const busy = pendingAction !== null;
   const draft = mail.tool === "mail_draft";
+  // A send of a saved draft: the agent named only the draft, so there is nothing to edit or show.
+  const savedDraftSend = !draft && Boolean(mail.locked);
   const shown = answered ? initial : fields;
 
   // A finished card folds up to its header, unless the person still has something to do with it.
@@ -133,17 +136,23 @@ export function MailApprovalCard({
       );
       const invalid = recipients.find((recipient) => !recipient.valid);
       if (invalid) return setError(invalidAddressText(invalid.address));
-      if (!draft && recipients.length === 0) return setError(t`Add a recipient.`);
+      if (!draft && !savedDraftSend && recipients.length === 0)
+        return setError(t`Add a recipient.`);
     }
     setPendingAction(action);
     setError(null);
     ownAnswer.current = true;
     try {
-      if (action === "disable") await onDisableTool?.(mail.tool);
+      if (action === "disable") {
+        await onDisableTool?.(mail.tool);
+        setDisabledNotice(true);
+      }
       await onAnswer(action === "allow" ? "allow" : "deny", undefined, edits);
       setEditing(false);
+      setConfirmDisable(false);
     } catch (err) {
       ownAnswer.current = false;
+      setConfirmDisable(false);
       setError(errorText(err, t`Could not submit this answer`));
     } finally {
       setPendingAction(null);
@@ -156,16 +165,23 @@ export function MailApprovalCard({
       ["Cc", t`Cc`, shown.cc, false],
       ["Bcc", t`Bcc`, shown.bcc, false],
     ] as const
-  ).filter(([, , value, always]) => always || value.trim() || (editing && interactive));
+  ).filter(
+    ([, , value, always]) =>
+      (always && !savedDraftSend) || value.trim() || (editing && interactive),
+  );
 
   const firstRecipient = mail.to[0] ? parseRecipient(mail.to[0]).address : "";
   const statusText = answered ? (
     mail.outcome === "sent" ? (
-      <Trans>Sent</Trans>
+      <Trans>Sent by you</Trans>
     ) : mail.outcome === "saved" ? (
-      <Trans>Draft saved</Trans>
+      <Trans>Draft saved by you</Trans>
     ) : mail.outcome === "failed" ? (
-      <Trans>Not sent</Trans>
+      draft ? (
+        <Trans>Draft not saved</Trans>
+      ) : (
+        <Trans>Not sent</Trans>
+      )
     ) : mail.outcome === "unknown" ? (
       <Trans>Unknown</Trans>
     ) : answer === "deny" && mail.connectionId ? (
@@ -176,25 +192,30 @@ export function MailApprovalCard({
       )
     ) : answer === "deny" ? (
       <Trans>Discarded</Trans>
+    ) : draft ? (
+      <Trans>Approved to save</Trans>
     ) : (
-      <Trans>Approved</Trans>
+      <Trans>Approved to send</Trans>
     )
   ) : canAnswer ? (
     <Trans>Needs approval</Trans>
   ) : (
-    <Trans>No longer active</Trans>
+    <Trans>Not waiting for approval</Trans>
   );
   const headerText = (
-    <span className="min-w-0 flex-1 truncate text-start text-[15px]">
-      <span className="font-medium text-foreground">
-        <Trans>Mail</Trans>
-      </span>{" "}
-      <span className="text-muted-foreground">
-        <span>{statusText}</span>
+    <span className="min-w-0 flex-1 text-start text-[15px]">
+      <span className="flex min-w-0 gap-1">
+        <span className="shrink-0 font-medium text-foreground">
+          <Trans>Mail</Trans>
+        </span>{" "}
+        <span className="shrink-0 text-muted-foreground">{statusText}</span>{" "}
         {firstRecipient ? (
-          <span className={cn(interactive && "hidden @sm:inline")}> · {firstRecipient}</span>
+          <span className="min-w-0 truncate text-muted-foreground">· {firstRecipient}</span>
         ) : null}
       </span>
+      {answered && !open && mail.subject ? (
+        <span className="block truncate text-sm text-muted-foreground">{mail.subject}</span>
+      ) : null}
     </span>
   );
   const tile = (
@@ -252,7 +273,7 @@ export function MailApprovalCard({
       </div>
       {open ? (
         <div className="px-5 pb-5 @sm:px-6">
-          <div className="mt-1.5 mb-3">
+          <div className={cn("mt-1.5 mb-3", !shown.subject && !editing && "hidden")}>
             {editing ? (
               <Input
                 aria-label={t`Subject`}
@@ -291,7 +312,7 @@ export function MailApprovalCard({
               </Row>
             ))}
           </div>
-          <div className="pt-4">
+          <div className={cn("pt-4", savedDraftSend && !shown.body && "hidden")}>
             {editing ? (
               <Textarea
                 aria-label={t`Message`}
@@ -335,7 +356,31 @@ export function MailApprovalCard({
               </>
             )}
           </div>
-          {interactive ? (
+          {interactive && confirmDisable && botName ? (
+            <div className="flex flex-wrap items-center gap-2 pt-4">
+              <span className="text-sm text-foreground">
+                {draft ? t`Turn off drafts for ${botName}?` : t`Turn off sending for ${botName}?`}
+              </span>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="rounded-full"
+                disabled={busy}
+                onClick={() => void submit("disable")}
+              >
+                <Trans>Turn off</Trans>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="rounded-full"
+                disabled={busy}
+                onClick={() => setConfirmDisable(false)}
+              >
+                <Trans>Cancel</Trans>
+              </Button>
+            </div>
+          ) : interactive ? (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
               <div className="flex gap-2">
                 <Button
@@ -351,6 +396,8 @@ export function MailApprovalCard({
                     )
                   ) : draft ? (
                     <Trans>Save draft</Trans>
+                  ) : savedDraftSend ? (
+                    <Trans>Send saved draft</Trans>
                   ) : (
                     <Trans>Send</Trans>
                   )}
@@ -380,10 +427,7 @@ export function MailApprovalCard({
                     <MoreHorizontal aria-hidden="true" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuCheckboxItem checked onCheckedChange={() => undefined}>
-                      <Trans>Needs approval</Trans>
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuItem onClick={() => void submit("disable")}>
+                    <DropdownMenuItem onClick={() => setConfirmDisable(true)}>
                       {draft ? t`Disable drafts for ${botName}` : t`Disable sending for ${botName}`}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -392,8 +436,14 @@ export function MailApprovalCard({
             </div>
           ) : null}
           {mail.outcome === "unknown" ? (
-            <p className="pt-3 text-[13px] text-muted-foreground">
-              <Trans>Not confirmed as sent. Check Sent before trying again.</Trans>
+            <p role="status" className="pt-3 text-[13px] text-muted-foreground">
+              {draft ? (
+                <Trans>
+                  Not confirmed as saved. Check Drafts in your mail before trying again.
+                </Trans>
+              ) : (
+                <Trans>Not confirmed as sent. Check Sent in your mail before trying again.</Trans>
+              )}
             </p>
           ) : null}
           {mail.outcome === "failed" && onOpenComposer ? (
@@ -403,10 +453,23 @@ export function MailApprovalCard({
               </Button>
             </div>
           ) : null}
-          {error ? <p className="pt-3 text-[13px] text-destructive">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="pt-3 text-[13px] text-destructive">
+              {error}
+            </p>
+          ) : null}
         </div>
       ) : error ? (
-        <p className="px-5 pb-4 text-[13px] text-destructive">{error}</p>
+        <p role="alert" className="px-5 pb-4 text-[13px] text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {disabledNotice && botName ? (
+        <p role="status" className="px-5 pb-4 text-[13px] text-muted-foreground">
+          {draft
+            ? t`Drafts are off for ${botName}. Turn them back on in its tools.`
+            : t`Sending is off for ${botName}. Turn it back on in its tools.`}
+        </p>
       ) : null}
     </div>
   );
