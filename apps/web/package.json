@@ -11,7 +11,9 @@
     "test": "vitest run --root ../.. apps/web/src",
     "e2e": "playwright test",
     "intl:extract": "lingui extract --clean",
-    "intl:compile": "lingui compile"
+    "intl:compile": "lingui compile",
+    "storybook": "storybook dev -p 6106",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@lingui/core": "6.6.0",
@@ -48,6 +50,8 @@
     "@lingui/vite-plugin": "6.6.0",
     "@playwright/test": "1.63.0",
     "@rolldown/plugin-babel": "0.2.4",
+    "@storybook/addon-a11y": "10.6.1",
+    "@storybook/react-vite": "10.6.1",
     "@tailwindcss/vite": "4.3.3",
     "@types/babel__core": "7.20.5",
     "@types/react": "19.2.18",
@@ -55,6 +59,7 @@
     "@vitejs/plugin-react": "6.1.1",
     "agentation": "3.1.2",
     "cross-env": "10.1.0",
+    "storybook": "10.6.1",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
     "vite": "8.3.0",
