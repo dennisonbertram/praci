@@ -9,7 +9,8 @@
 type Response = unknown | ((input: unknown) => unknown);
 
 const store = globalThis as { __rakazoRpcMocks?: Map<string, Response> };
-const responses = (store.__rakazoRpcMocks ??= new Map<string, Response>());
+store.__rakazoRpcMocks ??= new Map<string, Response>();
+const responses = store.__rakazoRpcMocks;
 
 export function mockRpc(map: Record<string, Response>): void {
   for (const [key, value] of Object.entries(map)) responses.set(key, value);
@@ -29,7 +30,7 @@ function node(path: string[]): unknown {
   });
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: mirrors the real typed client for stories.
+// Mirrors the real typed client for stories.
 export const rpc = node([]) as any;
 
 // The rest of lib/rpc's surface, so components that import it still load.

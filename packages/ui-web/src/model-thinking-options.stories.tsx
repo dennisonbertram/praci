@@ -86,7 +86,7 @@ export const Disabled: Story = {
 export const Toggling: Story = {
   play: async (context) => {
     await open(context);
-    await userEvent.click(within(context.canvasElement).getAllByRole("checkbox")[0]);
+    await userEvent.click(within(context.canvasElement).getAllByRole("checkbox")[0] as HTMLElement);
     await expect(within(context.canvasElement).getByLabelText("Thinking level")).toBeTruthy();
   },
 };

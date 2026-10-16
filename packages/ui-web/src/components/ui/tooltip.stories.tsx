@@ -3,7 +3,7 @@ import { expect, userEvent, within } from "storybook/test";
 import { Button } from "./button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 
-const meta = {
+const meta: Meta<typeof Tooltip> = {
   title: "UI/Tooltip",
   component: Tooltip,
   decorators: [
@@ -15,7 +15,7 @@ const meta = {
       </TooltipProvider>
     ),
   ],
-} satisfies Meta<typeof Tooltip>;
+};
 export default meta;
 type Story = StoryObj<typeof meta>;
 

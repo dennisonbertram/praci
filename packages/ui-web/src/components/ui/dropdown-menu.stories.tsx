@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu";
 
-const meta = {
+const meta: Meta<typeof DropdownMenu> = {
   title: "UI/DropdownMenu",
   component: DropdownMenu,
   // Opens on load so the menu is visible without a click.
@@ -31,7 +31,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof DropdownMenu>;
+};
 export default meta;
 type Story = StoryObj<typeof meta>;
 

@@ -748,6 +748,9 @@ importers:
         specifier: 4.0.1
         version: 4.0.1
     devDependencies:
+      '@storybook/react-vite':
+        specifier: 10.6.1
+        version: 10.6.1(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(storybook@10.6.1(@types/react@19.2.18)(prettier@3.9.6)(react@19.2.3))(typescript@7.0.2)(vite@8.3.0(@types/node@26.5.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.13)(yaml@2.9.0))
       '@types/react':
         specifier: 19.2.18
         version: 19.2.18
@@ -763,6 +766,9 @@ importers:
       react-native:
         specifier: 0.86.3
         version: 0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3)
+      storybook:
+        specifier: 10.6.1
+        version: 10.6.1(@types/react@19.2.18)(prettier@3.9.6)(react@19.2.3)
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -1001,6 +1007,9 @@ importers:
       react-dom:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
+      storybook:
+        specifier: 10.6.1
+        version: 10.6.1(@types/react@19.2.18)(prettier@3.9.6)(react@19.2.3)
       typescript:
         specifier: 7.0.2
         version: 7.0.2
