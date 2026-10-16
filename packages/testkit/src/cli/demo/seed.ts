@@ -1,9 +1,10 @@
 import { createSecretStore, syncFinanceForUser } from "@rakazo/adapters";
-import { FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
-import { createDb } from "@rakazo/db";
+import { CARTA_MCP_ENDPOINT, FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
+import { createDb, saveCapTableSnapshot } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   DEMO_BOTS,
+  DEMO_CAP_TABLE,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENTS,
@@ -107,7 +108,8 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     const user = await prisma.user.findUniqueOrThrow({ where: { email: options.email } });
     const scope = { spaceId, userId: user.id };
     const secrets = createSecretStore(options.encryptionKey, {});
-    for (const provider of ["mercury", "brex"] as const) {
+    // A fake stored login, so a server counts as signed in. Calls to it reach only the emulators.
+    const fakeLogin = async () => {
       const stored = await secrets.put(
         JSON.stringify({
           oauth: { tokens: { access_token: "mock-demo-token", token_type: "bearer" } },
@@ -123,6 +125,9 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       await prisma.secret.create({
         data: { id: stored.id, ...scope, kind: "mcp", ciphertext: stored.ciphertext },
       });
+      return stored.id;
+    };
+    for (const provider of ["mercury", "brex"] as const) {
       await prisma.mcpServer.create({
         data: {
           ...scope,
@@ -130,7 +135,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
           name: provider === "mercury" ? "Mercury" : "Brex",
           transport: "streamable_http",
           endpoint: FINANCE_MCP_ENDPOINTS[provider],
-          secretId: stored.id,
+          secretId: await fakeLogin(),
         },
       });
     }
@@ -143,6 +148,21 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       throw new Error(`Finance seed did not sync: ${JSON.stringify(result)}`);
     await session.rpc("finance/agent");
     done.push("Mercury and Brex (canned tools), Finance agent");
+
+    // Cap Table: a signed-in Carta server and the Carta agent's last read of the mock cap table.
+    await prisma.mcpServer.create({
+      data: {
+        ...scope,
+        slug: "carta",
+        name: "Carta (MOCK DEMO)",
+        transport: "streamable_http",
+        endpoint: CARTA_MCP_ENDPOINT,
+        secretId: await fakeLogin(),
+      },
+    });
+    await saveCapTableSnapshot(prisma, scope, DEMO_CAP_TABLE);
+    await session.rpc("carta/agent");
+    done.push("Carta (mock login; its tools reach only the emulator), mock cap table, Carta agent");
   } finally {
     await prisma.$disconnect();
     await pool.end();

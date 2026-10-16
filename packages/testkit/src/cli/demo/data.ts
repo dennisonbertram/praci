@@ -481,6 +481,76 @@ export const DEMO_CONTACTS = [
   },
 ];
 
+/** The Carta agent's last read of the mock cap table; matches the MOCK Cap Table Summary in the data room. */
+export const DEMO_CAP_TABLE = {
+  companyName: DEMO_COMPANY,
+  asOf: "2026-10-01",
+  fullyDilutedShares: 10_000_000,
+  amountRaisedUsd: 300_000,
+  optionPoolAvailable: 600_000,
+  latest409a: { pricePerShareUsd: 0.42, date: "2026-07-01" },
+  shareClasses: [
+    { name: "Common (Mock)", shares: 8_500_000, percent: 85 },
+    { name: "Option pool (Mock)", shares: 1_500_000, percent: 15 },
+  ],
+  holders: [
+    {
+      name: DEMO_USER_NAME,
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 4_000_000,
+      amountUsd: null,
+      percent: 40,
+    },
+    {
+      name: "River Cofounder (Mock)",
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 3_000_000,
+      amountUsd: null,
+      percent: 30,
+    },
+    {
+      name: "Early employees (Mock)",
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 1_500_000,
+      amountUsd: null,
+      percent: 15,
+    },
+    {
+      name: "Granted options (Mock)",
+      email: null,
+      organization: null,
+      security: "Options",
+      shares: 900_000,
+      amountUsd: null,
+      percent: 9,
+    },
+    {
+      name: "Priya Placeholder",
+      email: "priya@quill-capital.example.test",
+      organization: "Quill Capital (Mock)",
+      security: "SAFE",
+      shares: null,
+      amountUsd: 250_000,
+      percent: null,
+    },
+    {
+      name: "Lee Notarealperson",
+      email: "lee@angel.example.test",
+      organization: "Independent angel (Mock)",
+      security: "SAFE",
+      shares: null,
+      amountUsd: 50_000,
+      percent: null,
+    },
+  ],
+};
+
 export interface DemoDocument {
   folder: string;
   name: string;

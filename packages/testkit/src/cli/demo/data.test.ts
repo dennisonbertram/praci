@@ -1,5 +1,7 @@
+import { CapTableSnapshotInputSchema } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  DEMO_CAP_TABLE,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENTS,
@@ -17,6 +19,16 @@ describe("mock demo data", () => {
       expect(document.name).toContain("MOCK");
       expect(document.text).toContain(MOCK_NOTE);
     }
+  });
+
+  it("has a valid mock cap table whose classes add up to the fully diluted count", () => {
+    const table = CapTableSnapshotInputSchema.parse(DEMO_CAP_TABLE);
+    expect(table.companyName).toBe(DEMO_COMPANY);
+    const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
+    expect(sum(table.shareClasses.map((c) => c.shares))).toBe(table.fullyDilutedShares);
+    expect(sum(table.shareClasses.map((c) => c.percent))).toBe(100);
+    for (const holder of table.holders)
+      expect(`${holder.name} ${holder.organization ?? ""}`).toMatch(/Mock|Placeholder|Notareal/);
   });
 
   it("builds a mailbox of 25 mock threads with unread mail and one attachment", () => {
