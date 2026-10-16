@@ -9,6 +9,8 @@ const models = vi.hoisted(() => ({
   list: vi.fn(),
   backups: vi.fn(async () => []),
   setBackups: vi.fn(async () => ({ ok: true })),
+  embeddingModel: vi.fn(async () => ({ modelId: null })),
+  setEmbeddingModel: vi.fn(),
   credentials: vi.fn(),
   connect: vi.fn(),
   disconnect: vi.fn(),

@@ -221,6 +221,7 @@ model Space {
   dataRoomFolders             DataRoomFolder[]
   dataRoomItems               DataRoomItem[]
   dataRoomChunks              DataRoomChunk[]
+  dataRoomItemTexts           DataRoomItemText[]
   dataRoomSyncStates          DataRoomSyncState[]
   events                      Event[]
   tasks                       Task[]
@@ -364,6 +365,8 @@ model SpaceModelPreference {
   credential   UserModelCredential @relation(fields: [credentialId, userId], references: [id, userId], onDelete: Cascade)
   modelId      String?
   thinkingLevel String?
+  /// Embedding model for the Data room, served by this credential's connection. Null: keyword search only.
+  embeddingModel String?
   isDefault    Boolean             @default(false)
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -2174,9 +2177,18 @@ model DataRoomItem {
   currency           String?
   tags               String[]
   summary            String?
+  /// Bumped by every pipeline write; a step writes only if it still matches what the step read.
+  revision           Int             @default(0)
+  /// Consecutive failed attempts of the current pipeline step; the item fails at the retry limit.
+  failures           Int             @default(0)
+  /// Set when the classifier filled the facets. Null on a ready item means classification was skipped.
+  classifiedAt       DateTime?
+  /// Held by the pipeline step that claimed the item; a step starts only when this is null or past.
+  leaseUntil         DateTime?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
   chunks             DataRoomChunk[]
+  text               DataRoomItemText?
 
   @@index([spaceId, folderId])
   @@index([spaceId, status])
@@ -2187,6 +2199,20 @@ model DataRoomItem {
   @@index([parties], type: Gin)
   @@index([tags], type: Gin)
   @@map("data_room_items")
+}
+
+/// Extracted document text, kept apart from the item so lists never load it. Lets indexing run
+/// again (new embedding model, consent granted) without reading the blob or calling vision again.
+model DataRoomItemText {
+  itemId  String       @id
+  item    DataRoomItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  spaceId String
+  space   Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId  String
+  text    String
+
+  @@index([spaceId, userId])
+  @@map("data_room_item_texts")
 }
 
 model DataRoomChunk {

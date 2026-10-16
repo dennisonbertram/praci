@@ -115,6 +115,7 @@ import {
   resolveBotUploadPath,
   resolveBotWorkspaceCwd,
   resolveBotWorkspacePath,
+  resolveDataRoomAi,
   revokeScreenControl,
   routineRunModelPin,
   sanitizeComposioError,
@@ -955,6 +956,8 @@ export function createRouter(deps: RouterDeps) {
     prisma: deps.prisma,
     artifacts: deps.artifacts,
     jobs: deps.jobs,
+    resolveAi: (scope) =>
+      resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.resolveModel }, scope),
   });
 
   const authed = os.use(async ({ context, next }) => {
@@ -1291,6 +1294,12 @@ export function createRouter(deps: RouterDeps) {
       }),
     },
     models: {
+      embeddingModel: authed.models.embeddingModel.handler(({ context }) =>
+        dataRoom.embeddingModel(context.actor),
+      ),
+      setEmbeddingModel: authed.models.setEmbeddingModel.handler(({ context, input }) =>
+        dataRoom.setEmbeddingModel(context.actor, input),
+      ),
       list: authed.models.list.handler(async ({ context }) => {
         const auth = await modelCredentialAuthKindsForSpace(
           deps.prisma,
@@ -6310,6 +6319,10 @@ export function createRouter(deps: RouterDeps) {
       ),
       search: authed.dataRoom.search.handler(({ context, input }) =>
         dataRoom.search(context.actor, input),
+      ),
+      consent: authed.dataRoom.consent.handler(({ context }) => dataRoom.consent(context.actor)),
+      consentGrant: authed.dataRoom.consentGrant.handler(({ context, input }) =>
+        dataRoom.consentGrant(context.actor, input),
       ),
     },
     finance: {
