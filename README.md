@@ -229,6 +229,14 @@ pnpm test:e2e
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development workflow and test matrix.
 
+### Mock demo stack
+
+`pnpm demo:up` starts an isolated stack (web 5373, API 3300, throwaway Postgres 5450 in Docker) on
+the e2e emulators, with one demo account filled with invented company data. Every record is labeled
+`MOCK`. The command prints the URL and the path of the gitignored login file,
+`.demo/credentials.local`. `pnpm demo:down` stops it and deletes its database. If a model key is in
+your environment or `~/develop/rakazo/.env`, agents use it; otherwise they use the scripted runtime.
+
 ## Documentation
 
 - [Self-hosting](./docs/self-host.md)
