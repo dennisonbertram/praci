@@ -197,6 +197,7 @@ import {
   createSpaceForMember,
   createThreadMessageInTransaction,
   defaultModelCredentialCandidates,
+  deleteContact,
   deleteEmptySpaceForMember,
   deleteUnreferencedCredentialSecret,
   ensureBoard,
@@ -212,6 +213,7 @@ import {
   issueMessagingLinkCode,
   isUniqueViolation,
   listBoards,
+  listContacts,
   listSpaceBackupModels,
   listTicketComments,
   lockOwnedGroup,
@@ -230,6 +232,7 @@ import {
   SpaceLimitError,
   SpaceNotEmptyError,
   SpaceNotFoundError,
+  saveContact,
   selectSpaceModelPreference,
   selectSpaceVoicePreference,
   toBoardDto,
@@ -751,6 +754,12 @@ function mapSpaceLifecycleError(error: unknown): unknown {
     return new ORPCError("BAD_REQUEST", { message: error.message });
   }
   return error;
+}
+
+function contactNotFound(error: unknown): never {
+  throw error instanceof IsolationError
+    ? new ORPCError("NOT_FOUND", { message: error.message })
+    : error;
 }
 
 const BOT_SECRET_INPUT_ERRORS = [
@@ -6189,6 +6198,18 @@ export function createRouter(deps: RouterDeps) {
           update: { enabled: input.enabled },
         });
         return loadAutoReviewSettings(deps, context.actor);
+      }),
+    },
+    contacts: {
+      list: authed.contacts.list.handler(({ context, input }) =>
+        listContacts(deps.prisma, context.actor, input),
+      ),
+      save: authed.contacts.save.handler(({ context, input }) =>
+        saveContact(deps.prisma, context.actor, input).catch(contactNotFound),
+      ),
+      delete: authed.contacts.delete.handler(async ({ context, input }) => {
+        await deleteContact(deps.prisma, context.actor, input.id).catch(contactNotFound);
+        return { ok: true as const };
       }),
     },
     finance: {
