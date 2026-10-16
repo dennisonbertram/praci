@@ -21,6 +21,7 @@ export function isCartaEndpoint(endpoint: string | null | undefined): boolean {
 /**
  * The tools the Carta agent may call on Carta's server, even when its assignment allows all tools.
  * Taken from Carta's public tool list (2026-10-15); all are reads. set_context only picks the company.
+ * cap_table_healthcheck was listed then but the signed-in server no longer offers it (2026-10-16).
  * Write tools Carta adds later stay out until a plan adds them with approval.
  */
 export const CARTA_READ_TOOLS = [
@@ -32,5 +33,4 @@ export const CARTA_READ_TOOLS = [
   "list_accounts",
   "get_current_user",
   "cap_table_chart",
-  "cap_table_healthcheck",
 ] as const;

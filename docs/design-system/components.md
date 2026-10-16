@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 154 of 154
-- Web and shared components: 447
+- Web and shared component files with stories: 165 of 165
+- Web and shared components: 471
 - Mobile components: 124 in 82 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -58,6 +58,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | AccountAccess | [apps/web/src/components/AccountAccess.tsx](../../apps/web/src/components/AccountAccess.tsx) | [AccountAccess.stories.tsx](../../apps/web/src/components/AccountAccess.stories.tsx) | web |
+| AddSidebarPage | [apps/web/src/components/AddSidebarPage.tsx](../../apps/web/src/components/AddSidebarPage.tsx) | [AddSidebarPage.stories.tsx](../../apps/web/src/components/AddSidebarPage.stories.tsx) | web |
 | InboxConsentPrompt, AiDataSharingSection | [apps/web/src/components/AiDataSharing.tsx](../../apps/web/src/components/AiDataSharing.tsx) | [AiDataSharing.stories.tsx](../../apps/web/src/components/AiDataSharing.stories.tsx) | web |
 | ApprovalRulesSettings | [apps/web/src/components/ApprovalRulesSettings.tsx](../../apps/web/src/components/ApprovalRulesSettings.tsx) | [ApprovalRulesSettings.stories.tsx](../../apps/web/src/components/ApprovalRulesSettings.stories.tsx) | web |
 | ArtifactFileCard, FilePreview, DownloadError | [apps/web/src/components/ArtifactFileCard.tsx](../../apps/web/src/components/ArtifactFileCard.tsx) | [ArtifactFileCard.stories.tsx](../../apps/web/src/components/ArtifactFileCard.stories.tsx) | web |
@@ -79,6 +80,8 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ModelPreflightFeedback | [apps/web/src/components/ModelConnectionPreflightNotice.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.tsx) | [ModelConnectionPreflightNotice.stories.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |
 | SandboxedHtmlViewer | [apps/web/src/components/SandboxedHtmlViewer.tsx](../../apps/web/src/components/SandboxedHtmlViewer.tsx) | [SandboxedHtmlViewer.stories.tsx](../../apps/web/src/components/SandboxedHtmlViewer.stories.tsx) | web |
+| SidebarPageLink | [apps/web/src/components/SidebarPageLink.tsx](../../apps/web/src/components/SidebarPageLink.tsx) | [SidebarPageLink.stories.tsx](../../apps/web/src/components/SidebarPageLink.stories.tsx) | web |
+| SidebarPages | [apps/web/src/components/SidebarPages.tsx](../../apps/web/src/components/SidebarPages.tsx) | [SidebarPages.stories.tsx](../../apps/web/src/components/SidebarPages.stories.tsx) | web |
 | SoftwareUpdatePanel, SoftwareUpdateSection, CheckSummary | [apps/web/src/components/SoftwareUpdateSection.tsx](../../apps/web/src/components/SoftwareUpdateSection.tsx) | [SoftwareUpdateSection.stories.tsx](../../apps/web/src/components/SoftwareUpdateSection.stories.tsx) | web |
 | SubscriptionGate | [apps/web/src/components/SubscriptionGate.tsx](../../apps/web/src/components/SubscriptionGate.tsx) | [SubscriptionGate.stories.tsx](../../apps/web/src/components/SubscriptionGate.stories.tsx) | web |
 | ToolSteps, ToolActivityDisclosure, StandaloneToolActivity, ToolOnlyNarration | [apps/web/src/components/ToolActivityDisclosure.tsx](../../apps/web/src/components/ToolActivityDisclosure.tsx) | [ToolActivityDisclosure.stories.tsx](../../apps/web/src/components/ToolActivityDisclosure.stories.tsx) | web |
@@ -111,6 +114,18 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ComputerWorkspace, WorkspaceWindow | [apps/web/src/components/computer/ComputerWorkspace.tsx](../../apps/web/src/components/computer/ComputerWorkspace.tsx) | [ComputerWorkspace.stories.tsx](../../apps/web/src/components/computer/ComputerWorkspace.stories.tsx) | web |
 | FilesApp, FilePreview, ImagePreview | [apps/web/src/components/computer/FilesApp.tsx](../../apps/web/src/components/computer/FilesApp.tsx) | [FilesApp.stories.tsx](../../apps/web/src/components/computer/FilesApp.stories.tsx) | web |
 | TerminalApp, ActivityTerminal, ShellTerminal, TerminalPane | [apps/web/src/components/computer/TerminalApp.tsx](../../apps/web/src/components/computer/TerminalApp.tsx) | [TerminalApp.stories.tsx](../../apps/web/src/components/computer/TerminalApp.stories.tsx) | web |
+
+## Web components/data-room
+
+| Component | File | Story file | Surface |
+| --- | --- | --- | --- |
+| DataRoomDropZone | [apps/web/src/components/data-room/DropZone.tsx](../../apps/web/src/components/data-room/DropZone.tsx) | [DropZone.stories.tsx](../../apps/web/src/components/data-room/DropZone.stories.tsx) | web |
+| Chip, TextFilter, DateFilter, SourceFilter, FilterBar | [apps/web/src/components/data-room/FilterBar.tsx](../../apps/web/src/components/data-room/FilterBar.tsx) | [FilterBar.stories.tsx](../../apps/web/src/components/data-room/FilterBar.stories.tsx) | web |
+| FolderTree | [apps/web/src/components/data-room/FolderTree.tsx](../../apps/web/src/components/data-room/FolderTree.tsx) | [FolderTree.stories.tsx](../../apps/web/src/components/data-room/FolderTree.stories.tsx) | web |
+| ItemDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
+| ItemMenu | [apps/web/src/components/data-room/ItemMenu.tsx](../../apps/web/src/components/data-room/ItemMenu.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx), [ItemMenu.stories.tsx](../../apps/web/src/components/data-room/ItemMenu.stories.tsx) | web |
+| SourceIcon, Marker, TableHead, ItemRow, ListView, GridView, Snippet, ResultsView | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
+| Field, Tag, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
 
 ## Web components/finance
 
@@ -176,6 +191,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | BoardPage, TicketDialog | [apps/web/src/pages/Board.tsx](../../apps/web/src/pages/Board.tsx) | [Board.stories.tsx](../../apps/web/src/pages/Board.stories.tsx) | web |
 | BotContextMenu | [apps/web/src/pages/BotContextMenu.tsx](../../apps/web/src/pages/BotContextMenu.tsx) | [BotContextMenu.stories.tsx](../../apps/web/src/pages/BotContextMenu.stories.tsx) | web |
 | ContactDialog, CapTablePage | [apps/web/src/pages/CapTable.tsx](../../apps/web/src/pages/CapTable.tsx) | [CapTable.stories.tsx](../../apps/web/src/pages/CapTable.stories.tsx) | web |
+| FileInputButton, DataRoomPage | [apps/web/src/pages/DataRoom.tsx](../../apps/web/src/pages/DataRoom.tsx) | [DataRoom.stories.tsx](../../apps/web/src/pages/DataRoom.stories.tsx) | web |
 | ExternalConversationSettings | [apps/web/src/pages/ExternalConversationSettings.tsx](../../apps/web/src/pages/ExternalConversationSettings.tsx) | [ExternalConversationSettings.stories.tsx](../../apps/web/src/pages/ExternalConversationSettings.stories.tsx) | web |
 | FinancePage, Dashboard, EmptyState, DashboardSkeleton, SourceChip, Overview, ShowAll, HoverRow, Legend, UpcomingRow, SubscriptionsTable | [apps/web/src/pages/Finance.tsx](../../apps/web/src/pages/Finance.tsx) | [Finance.stories.tsx](../../apps/web/src/pages/Finance.stories.tsx) | web |
 | AccountTable, CryptoGroup, FinanceAccountsPage, FinanceAccountPage | [apps/web/src/pages/finance/FinanceAccounts.tsx](../../apps/web/src/pages/finance/FinanceAccounts.tsx) | [FinanceAccounts.stories.tsx](../../apps/web/src/pages/finance/FinanceAccounts.stories.tsx) | web |
@@ -208,7 +224,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | RoutineSchedule | [apps/web/src/pages/RoutineSchedule.tsx](../../apps/web/src/pages/RoutineSchedule.tsx) | [RoutineSchedule.stories.tsx](../../apps/web/src/pages/RoutineSchedule.stories.tsx) | web |
 | ScratchpadSection | [apps/web/src/pages/ScratchpadSection.tsx](../../apps/web/src/pages/ScratchpadSection.tsx) | [ScratchpadSection.stories.tsx](../../apps/web/src/pages/ScratchpadSection.stories.tsx) | web |
 | SettingsOverlay | [apps/web/src/pages/SettingsOverlay.tsx](../../apps/web/src/pages/SettingsOverlay.tsx) | [SettingsOverlay.stories.tsx](../../apps/web/src/pages/SettingsOverlay.stories.tsx) | web |
-| SidebarPageLink, ShellPage, Transcript, QuoteSelectionButton, Composer, MessageHoverActions, ComputerReleaseActions, SpeakerHeader, MessageView, DesktopKindEmptyState | [apps/web/src/pages/Shell.tsx](../../apps/web/src/pages/Shell.tsx) | [Shell.stories.tsx](../../apps/web/src/pages/Shell.stories.tsx) | web |
+| ShellPage, Transcript, QuoteSelectionButton, Composer, MessageHoverActions, ComputerReleaseActions, SpeakerHeader, MessageView, DesktopKindEmptyState | [apps/web/src/pages/Shell.tsx](../../apps/web/src/pages/Shell.tsx) | [Shell.stories.tsx](../../apps/web/src/pages/Shell.stories.tsx) | web |
 | AvatarStudioPopover | [apps/web/src/pages/shell/avatar-studio-popover.tsx](../../apps/web/src/pages/shell/avatar-studio-popover.tsx) | [avatar-studio-popover.stories.tsx](../../apps/web/src/pages/shell/avatar-studio-popover.stories.tsx) | web |
 | BotCredentialsSection | [apps/web/src/pages/shell/bot-credentials.tsx](../../apps/web/src/pages/shell/bot-credentials.tsx) | [bot-credentials.stories.tsx](../../apps/web/src/pages/shell/bot-credentials.stories.tsx) | web |
 | ChartView, BotPagePanel | [apps/web/src/pages/shell/bot-page-panel.tsx](../../apps/web/src/pages/shell/bot-page-panel.tsx) | [bot-page-panel.stories.tsx](../../apps/web/src/pages/shell/bot-page-panel.stories.tsx) | web |

@@ -523,6 +523,10 @@ msgstr ""
 msgid "Add custom connection"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Add files"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Add item"
@@ -531,6 +535,10 @@ msgstr "Element hinzufügen"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add MCP server"
 msgstr "MCP-Server hinzufügen"
+
+#: src/components/AddSidebarPage.tsx
+msgid "Add page"
+msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
@@ -612,6 +620,11 @@ msgstr ""
 msgid "All crypto"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderTree.tsx
+msgid "All items"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "All providers"
 msgstr ""
@@ -687,6 +700,7 @@ msgstr "Dieses Tool immer erlauben"
 msgid "Always allowed"
 msgstr "Immer erlaubt"
 
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
@@ -754,6 +768,7 @@ msgid "Appearance"
 msgstr "Erscheinungsbild"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
 
@@ -771,7 +786,11 @@ msgid "Approve this server to let your agent use its tools."
 msgstr "Genehmige diesen Server, damit dein Agent seine Tools verwenden kann."
 
 #: src/components/MailApprovalCard.tsx
-msgid "Approved"
+msgid "Approved to save"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Approved to send"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -805,6 +824,10 @@ msgstr "Argumente"
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 msgid "Artifacts"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Ascending"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -1169,6 +1192,7 @@ msgstr "Server nicht erreichbar."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/WalletDialog.tsx
@@ -1177,6 +1201,7 @@ msgstr "Server nicht erreichbar."
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
@@ -1309,6 +1334,7 @@ msgstr ""
 msgid "Chart failed to render: {error}"
 msgstr "Diagramm konnte nicht angezeigt werden: {error}"
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Chat"
 msgstr ""
@@ -1413,6 +1439,10 @@ msgstr "Wähle ein neues Passwort"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
 msgstr "Datei wählen"
+
+#: src/pages/DataRoom.tsx
+msgid "Choose files"
+msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
@@ -1520,6 +1550,7 @@ msgid "Close panel"
 msgstr "Panel schließen"
 
 #: src/components/ArtifactFileCard.tsx
+#: src/components/data-room/Preview.tsx
 msgid "Close preview"
 msgstr "Vorschau schließen"
 
@@ -2304,6 +2335,10 @@ msgstr "Datei konnte nicht hochgeladen werden"
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Couldn't classify"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
 msgstr ""
@@ -2470,6 +2505,14 @@ msgstr "Bot-Avatar anpassen"
 msgid "Dark"
 msgstr "Dunkel"
 
+#: src/pages/DataRoom.tsx
+#: src/pages/Shell.tsx
+msgid "Data room"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Date"
@@ -2520,6 +2563,8 @@ msgstr "Standard ({0})"
 msgid "Default scope"
 msgstr "Standardbereich"
 
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
@@ -2546,6 +2591,7 @@ msgstr "{0} löschen"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "{0} löschen?"
@@ -2594,6 +2640,10 @@ msgstr "Ablehnen"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "Bereitstellungsstandard"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Descending"
+msgstr ""
 
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -2684,6 +2734,7 @@ msgid "Disconnecting…"
 msgstr "Verbindung wird getrennt…"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/shell/message-cards.tsx
@@ -2741,6 +2792,7 @@ msgid "Done"
 msgstr "Fertig"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/Artifacts.tsx
 msgid "Download"
 msgstr ""
@@ -2776,18 +2828,33 @@ msgstr ""
 msgid "Draft discarded"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
+msgid "Draft not saved"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Draft saved"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Draft saved by you"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
 msgstr "Skill-Entwurf"
 
+#: src/components/MailApprovalCard.tsx
+msgid "Drafts are off for {botName}. Turn them back on in its tools."
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Drag, drop, or paste an image"
 msgstr "Bild ziehen, ablegen oder einfügen"
+
+#: src/pages/DataRoom.tsx
+msgid "Drop files here"
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Drop files to attach"
@@ -2795,6 +2862,10 @@ msgstr ""
 
 #: src/components/finance/StatementImport.tsx
 msgid "Drop statements here or choose files"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Drop to add to Data room"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -2857,6 +2928,10 @@ msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a name without slashes"
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -3006,6 +3081,9 @@ msgstr ""
 msgid "failed"
 msgstr "fehlgeschlagen"
 
+#: src/components/data-room/format.ts
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
@@ -3040,12 +3118,24 @@ msgstr ""
 msgid "File is too large to upload."
 msgstr "Datei ist zu groß zum Hochladen."
 
+#: src/components/data-room/DropZone.tsx
+msgid "Filed"
+msgstr ""
+
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Files"
 msgstr "Dateien"
 
+#: src/components/data-room/format.ts
+msgid "Filing"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Filter"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Filter by {label}"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -3060,6 +3150,7 @@ msgstr ""
 msgid "Filters"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/finance/ui.tsx
 #: src/components/FinanceCards.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -3128,6 +3219,15 @@ msgstr ""
 msgid "Flag unexpected actions"
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/Preview.tsx
+msgid "Folder"
+msgstr ""
+
+#: src/components/data-room/FolderTree.tsx
+msgid "Folders"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "Passwort vergessen?"
@@ -3151,6 +3251,7 @@ msgid "Free"
 msgstr "Kostenlos"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "From"
@@ -3195,6 +3296,10 @@ msgstr ""
 msgid "Git event"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Gmail"
+msgstr ""
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now. Try again in a minute."
 msgstr ""
@@ -3206,6 +3311,14 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Gmail tabs"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Google Drive"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Grid view"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -3440,6 +3553,10 @@ msgstr ""
 msgid "Italic"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Items"
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "Seine Unterhaltung, Dateien und Routinen werden dauerhaft gelöscht. Von ihm erstellte Bots bleiben in deiner Liste."
@@ -3551,6 +3668,7 @@ msgid "List"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
+#: src/pages/DataRoom.tsx
 msgid "List view"
 msgstr ""
 
@@ -3571,6 +3689,7 @@ msgid "Load earlier messages"
 msgstr "Frühere Nachrichten laden"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/Inbox.tsx
 msgid "Load more"
 msgstr ""
@@ -3976,8 +4095,18 @@ msgstr ""
 msgid "More"
 msgstr ""
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemMenu.tsx
+msgid "More actions for {0}"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "More computer actions"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
+msgid "Move"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -4000,6 +4129,9 @@ msgstr "Verschieben nach"
 msgid "Mute"
 msgstr "Stummschalten"
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Auth.tsx
@@ -4170,12 +4302,15 @@ msgstr ""
 msgid "No credentials saved for this bot."
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "No folder"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
 msgstr ""
 
 #: src/components/AskCard.tsx
-#: src/components/MailApprovalCard.tsx
 msgid "No longer active"
 msgstr "Nicht mehr aktiv"
 
@@ -4228,6 +4363,7 @@ msgid "No remote MCP servers found"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "No results"
 msgstr "Keine Ergebnisse"
@@ -4264,6 +4400,10 @@ msgstr ""
 msgid "No trigger"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "None"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
 msgstr "Noch keine"
@@ -4276,9 +4416,16 @@ msgstr ""
 msgid "Not a valid email address"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
+msgid "Not confirmed as saved. Check Drafts in your mail before trying again."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Not confirmed as sent. Check Sent in your mail before trying again."
 msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
@@ -4308,6 +4455,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not sent. {text}"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Not waiting for approval"
 msgstr ""
 
 #: src/pages/CapTable.tsx
@@ -4526,6 +4677,10 @@ msgstr "Anderes Modell…"
 msgid "Out"
 msgstr ""
 
+#: src/components/data-room/DropZone.tsx
+msgid "Over the 50 MB limit"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "overlaps"
 msgstr ""
@@ -4543,6 +4698,10 @@ msgstr ""
 msgid "Page changed. Reload"
 msgstr ""
 
+#: src/components/SidebarPages.tsx
+msgid "Page options"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr ""
@@ -4554,6 +4713,15 @@ msgstr ""
 #: src/pages/ScratchpadSection.tsx
 msgid "Park"
 msgstr "Zurückstellen"
+
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
+msgid "Parties"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Party"
+msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/pages/AccountSettingsOverlay.tsx
@@ -4617,6 +4785,7 @@ msgstr ""
 msgid "pending"
 msgstr ""
 
+#: src/components/data-room/format.ts
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
@@ -4671,6 +4840,10 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Posted"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Preview"
 msgstr ""
 
 #. placeholder {0}: props.name
@@ -4791,6 +4964,10 @@ msgstr ""
 msgid "Read-only API key"
 msgstr ""
 
+#: src/components/data-room/format.ts
+msgid "Reading"
+msgstr ""
+
 #: src/components/finance/StatementImport.tsx
 msgid "Reading…"
 msgstr ""
@@ -4821,6 +4998,10 @@ msgstr ""
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Recent"
 msgstr "Kürzlich"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Recently added"
+msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -4934,6 +5115,10 @@ msgstr "Kontrolle abgeben"
 msgid "Release interrupted computer?"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Relevance"
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/StatementReviewCard.tsx
@@ -4979,6 +5164,14 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Remove filter {label}"
+msgstr ""
+
+#: src/components/SidebarPages.tsx
+msgid "Remove from sidebar"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5031,6 +5224,8 @@ msgstr ""
 msgid "Removes the connection and agent access."
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Rename"
@@ -5148,8 +5343,13 @@ msgstr ""
 msgid "Restoring your workspace"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Results"
+msgstr ""
+
 #: src/components/AccountAccess.tsx
 #: src/pages/Auth.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Retry"
 msgstr "Erneut versuchen"
@@ -5262,6 +5462,7 @@ msgid "Sales & CRM"
 msgstr ""
 
 #: src/components/AskCard.tsx
+#: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
@@ -5383,6 +5584,10 @@ msgstr ""
 msgid "Search directory"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Search documents"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Search integrations.sh"
 msgstr ""
@@ -5458,8 +5663,16 @@ msgstr "Senden"
 msgid "Send reset link"
 msgstr "Link zum Zurücksetzen senden"
 
+#: src/components/MailApprovalCard.tsx
+msgid "Send saved draft"
+msgstr ""
+
 #: src/components/AiDataSharing.tsx
 msgid "Senders, recipients, subjects and short previews are sent to {name}."
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -5472,9 +5685,12 @@ msgstr ""
 msgid "Sending…"
 msgstr "Wird gesendet…"
 
-#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Sent by you"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5668,6 +5884,10 @@ msgstr ""
 msgid "Site"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Size"
+msgstr ""
+
 #. placeholder {0}: skill.name
 #: src/pages/Shell.tsx
 msgid "Skill {0}"
@@ -5710,6 +5930,13 @@ msgstr ""
 msgid "Something went wrong. Try again."
 msgstr "Etwas ist schiefgelaufen. Versuche es erneut."
 
+#. placeholder {0}: labels[field]
+#: src/components/data-room/FilterBar.tsx
+msgid "Sort: {0}"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Source"
 msgstr ""
@@ -5918,6 +6145,10 @@ msgstr ""
 msgid "System"
 msgstr "System"
 
+#: src/components/data-room/Preview.tsx
+msgid "Tags"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Take control"
 msgstr "Kontrolle übernehmen"
@@ -5940,6 +6171,10 @@ msgstr "Team-Computer"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Team conversations"
+msgstr ""
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Team health"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -6123,6 +6358,7 @@ msgid "Title"
 msgstr "Titel"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
 msgid "To"
@@ -6237,6 +6473,21 @@ msgstr "Erneut versuchen"
 msgid "Try the test again."
 msgstr "Teste erneut."
 
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off drafts for {botName}?"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off sending for {botName}?"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
@@ -6298,6 +6549,10 @@ msgstr "Lösen"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Unsupported file name"
 msgstr ""
 
 #. placeholder {0}: pending.file.name
@@ -6378,6 +6633,7 @@ msgid "Updating…"
 msgstr ""
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
@@ -6385,6 +6641,10 @@ msgstr "Hochladen"
 
 #: src/components/finance/StatementImport.tsx
 msgid "Upload a PDF, CSV, OFX or QFX file"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Upload failed"
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -6498,6 +6758,11 @@ msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "via MCP · {host}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+#: src/pages/DataRoom.tsx
+msgid "View"
 msgstr ""
 
 #: src/pages/RoutineRunHistory.tsx
@@ -6645,6 +6910,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "Wird verarbeitet…"
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Workload and key people, from your connected tools"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"
