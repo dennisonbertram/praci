@@ -145,3 +145,16 @@ it("asks for a client ID when the server cannot register one", async () => {
   expect(field("Client ID")).not.toBeNull();
   expect(document.body.textContent).toContain("This server needs an OAuth client ID");
 });
+
+it("locks the connection fields after the error and retries on the same server", async () => {
+  api.begin.mockRejectedValueOnce(new Error("This server needs an OAuth client ID"));
+  api.begin.mockResolvedValue({ status: "already_connected" });
+  await mount();
+  await click("Connect");
+  expect((field("Server URL") as HTMLInputElement).readOnly).toBe(true);
+  expect(field("Transport")).toBeNull();
+  await type("Client ID", "abc");
+  await click("Connect");
+  expect(api.create).toHaveBeenCalledTimes(1);
+  expect(api.begin).toHaveBeenLastCalledWith("srv-1", { oauthClient: { clientId: "abc" } });
+});

@@ -235,6 +235,11 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
     } as OAuthClientMetadata;
   }
 
+  /** Stored secrets (tokens, client secret) that errors and logs must not repeat. */
+  secrets(): string[] {
+    return oauthMaterialSecrets(this.material);
+  }
+
   state(): string {
     return this.options.state ?? this.runtimeState;
   }
@@ -417,6 +422,7 @@ function oauthFetch(
   network: RemoteTransportDependencies,
   material: OAuthMaterial = {},
   allowPrivateEndpoint = false,
+  redact: string[] = [],
 ): {
   fetch: typeof fetch;
   close: () => Promise<void>;
@@ -472,7 +478,7 @@ function oauthFetch(
     close: () => safeFetch.close(),
     publicError: (error, message) => {
       if (error instanceof Error && networkErrors.has(error)) return error;
-      const secrets = oauthMaterialSecrets(material);
+      const secrets = [...oauthMaterialSecrets(material), ...redact];
       const sdk = sanitizeConnectorError(error, secrets);
       const surfaced = rejection ? formatOAuthRejection(rejection, sdk, secrets) : undefined;
       getLogger().warn(`${message}: ${surfaced ?? sdk}`);
@@ -620,8 +626,19 @@ export class McpOAuthBroker {
     const context = { spaceId: input.spaceId, userId: input.userId };
     const loaded = await this.loadMaterial(server, context);
     let authorizationUrl: URL | undefined;
-    if (input.oauthClient)
-      loaded.material.oauth = { ...loaded.material.oauth, clientSupplied: true };
+    if (input.oauthClient) {
+      // Tokens belong to the client that issued them: a different client starts over.
+      const stored = loaded.material.oauth?.clientInformation;
+      const changed =
+        stored?.client_id !== input.oauthClient.clientId ||
+        (stored && "client_secret" in stored ? stored.client_secret : undefined) !==
+          input.oauthClient.clientSecret;
+      const { tokens, obtainedAt, ...rest } = loaded.material.oauth ?? {};
+      loaded.material.oauth = {
+        ...(changed ? rest : { ...rest, tokens, obtainedAt }),
+        clientSupplied: true,
+      };
+    }
     const provider = this.createProvider(server, context, loaded, {
       redirectUri: input.redirectUri,
       state: sessionId,
@@ -795,6 +812,7 @@ export class McpOAuthBroker {
       this.network,
       {},
       await actorMayUsePrivateEndpoint(this.prisma, pending.userId, this.allowPrivateEndpoint),
+      pending.provider.secrets(),
     );
     const transport = new StreamableHTTPClientTransport(endpoint, {
       authProvider: pending.provider,

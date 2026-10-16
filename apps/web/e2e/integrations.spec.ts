@@ -84,6 +84,26 @@ test("Integrations page: the custom connection dialog has no finance quick picks
   await expect(dialog).toHaveCount(0);
 });
 
+test("Integrations page: first-party MCP tiles prefill the custom connection", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `integrations-first-party-${Date.now()}@rakazo.test`, "password12", "Tiles");
+  await completeOnboarding(page);
+  await openIntegrations(page);
+
+  for (const name of ["Zernio", "Carta", "Treg", "X"]) {
+    await expect(page.getByRole("button", { name: `Connect ${name}`, exact: true })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Connect Carta", exact: true }).scrollIntoViewIfNeeded();
+  await captureScreenshot(page, testInfo, "integrations-first-party");
+
+  // X has no dynamic client registration, so its dialog asks for a client ID up front.
+  await page.getByRole("button", { name: "Connect X", exact: true }).click();
+  await expect(page.getByLabel("Server URL")).toHaveValue("https://api.x.com/mcp");
+  await expect(page.getByLabel("Client ID")).toBeVisible();
+  await captureScreenshot(page, testInfo, "integrations-x-client-id");
+});
+
 test("Integrations page fits a phone", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signup(page, `integrations-phone-${Date.now()}@rakazo.test`, "password12", "Phone");
