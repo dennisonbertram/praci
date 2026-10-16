@@ -935,6 +935,7 @@ export function createRouter(deps: RouterDeps) {
   const legalDeps = {
     prisma: deps.prisma,
     jobs: deps.jobs,
+    artifacts: deps.artifacts,
     repos,
     // The Legal agent's own model decides who receives Data Room text, not the space default.
     resolveAi: (actor: Actor, botId: string) =>

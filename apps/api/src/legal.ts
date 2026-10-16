@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import type { JobPublisher } from "@rakazo/adapter-kit";
+import type { ArtifactStore, JobPublisher } from "@rakazo/adapter-kit";
 import { runContinueJob } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
 import { toLegalContract, toLegalDeadline } from "@rakazo/adapters";
@@ -17,11 +17,13 @@ import {
 } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
 import { createLegalRepos, IsolationError } from "@rakazo/db";
+import { createDataRoomService } from "./data-room.js";
 import { ensureLegalAgent, ensureLegalRoutine, lockLegalBot } from "./legal-agent.js";
 
 export interface LegalDeps {
   prisma: PrismaClient;
   jobs: JobPublisher;
+  artifacts: ArtifactStore;
   repos: Pick<ReturnType<typeof createRepos>, "createBot">;
   /** The Data Room AI resolver for the Legal agent's own model (not the space default). */
   resolveAi: (actor: Actor, botId: string) => Promise<DataRoomAi>;
@@ -175,49 +177,31 @@ export async function legalScanNow(deps: LegalDeps, actor: Actor) {
 
 // ---- Data Room consent for the Legal agent's model ----
 
-async function consentStatus(deps: LegalDeps, actor: Actor) {
+/**
+ * The Data room's own consent logic, pointed at the Legal agent's model: one place checks the key and
+ * version, writes the consent row, and re-queues items that were waiting for it. The re-queued jobs
+ * still check consent for the space's default model themselves, so this grant for the Legal
+ * agent's recipient never lets them send text anywhere else.
+ */
+async function legalDataRoom(deps: LegalDeps, actor: Actor) {
   const bot = await ensureLegalAgent(deps, actor);
-  const ai = await deps.resolveAi(actor, bot.id);
-  const status: DataRoomConsentStatus = {
-    key: ai.consentKey,
-    version: DATA_ROOM_DISCLOSURE_VERSION,
-    allowed: ai.allowed,
-    disclosure: DATA_ROOM_DISCLOSURE,
-    recipients: ai.recipients.map(({ name, detail }) => ({ name, detail })),
-  };
-  return { ai, status };
+  return createDataRoomService({
+    prisma: deps.prisma,
+    artifacts: deps.artifacts,
+    jobs: deps.jobs,
+    resolveAi: () => deps.resolveAi(actor, bot.id),
+  });
 }
 
 /** Who would receive Data Room text when the Legal agent reads it, and whether the user allowed that. */
 export async function legalConsent(deps: LegalDeps, actor: Actor) {
-  return (await consentStatus(deps, actor)).status;
+  return (await legalDataRoom(deps, actor)).consent(actor);
 }
 
-/** Records consent for exactly the recipients shown, like dataRoom.consentGrant but without re-queueing items. */
 export async function legalConsentGrant(
   deps: LegalDeps,
   actor: Actor,
   input: { key: string; version: string },
 ) {
-  const { ai, status } = await consentStatus(deps, actor);
-  if (!ai.recipients.length || input.key !== status.key || input.version !== status.version) {
-    throw new ORPCError("CONFLICT", { message: "AI data sharing changed. Review it again." });
-  }
-  await deps.prisma.aiDataConsent.upsert({
-    where: {
-      userId_spaceId_recipientKey: {
-        userId: actor.userId,
-        spaceId: actor.spaceId,
-        recipientKey: status.key,
-      },
-    },
-    create: {
-      userId: actor.userId,
-      spaceId: actor.spaceId,
-      recipientKey: status.key,
-      version: status.version,
-    },
-    update: { version: status.version, grantedAt: new Date() },
-  });
-  return { ...status, allowed: true };
+  return (await legalDataRoom(deps, actor)).consentGrant(actor, input);
 }

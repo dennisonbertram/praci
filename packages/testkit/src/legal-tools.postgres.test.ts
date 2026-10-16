@@ -6,11 +6,20 @@ import {
   selectBuiltinToolsForRun,
 } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
-import { LEGAL_AGENT_BUILTIN_TOOLS, legalAgentSpawnKey } from "@rakazo/contracts";
+import {
+  DATA_ROOM_DISCLOSURE_VERSION,
+  LEGAL_AGENT_BUILTIN_TOOLS,
+  legalAgentSpawnKey,
+} from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { legalOverview, legalScanNow, legalUpdateDeadline } from "../../../apps/api/src/legal.ts";
+import {
+  legalConsentGrant,
+  legalOverview,
+  legalScanNow,
+  legalUpdateDeadline,
+} from "../../../apps/api/src/legal.ts";
 import { ensureLegalAgent, ensureLegalRoutine } from "../../../apps/api/src/legal-agent.ts";
 
 const databaseAvailable = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
@@ -323,6 +332,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const api = {
       prisma,
       repos: createRepos(prisma),
+      artifacts: {} as never,
       jobs: { enqueue: async (job: { name: string }) => void queued.push(job.name) } as never,
       resolveAi: async () => {
         throw new Error("unused");
@@ -357,6 +367,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const api = (model: { provider: string; id: string } | null) => ({
       prisma,
       repos: createRepos(prisma),
+      artifacts: {} as never,
       jobs: { enqueue: async () => {} } as never,
       resolveAi: async () => ({ model }) as never,
     });
@@ -375,6 +386,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const api = {
       prisma,
       repos: createRepos(prisma),
+      artifacts: {} as never,
       jobs: { enqueue: async () => {} } as never,
       resolveAi: async () => ({ model: null }) as never,
     };
@@ -418,6 +430,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const api = {
       prisma,
       repos: createRepos(prisma),
+      artifacts: {} as never,
       jobs: { enqueue: async () => {} } as never,
       resolveAi: async () =>
         ({ model: { provider: "openrouter", id: "meta/muse-spark-1.2" } }) as never,
@@ -529,6 +542,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const api = {
       prisma,
       repos: createRepos(prisma),
+      artifacts: {} as never,
       jobs: { enqueue: async () => {} } as never,
       resolveAi: async () => ({ model: null }) as never,
     };
@@ -540,5 +554,38 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(new Set(runs.map((r) => r.runId)).size).toBe(1);
     expect(await prisma.run.count({ where: { botId: runs[0]!.botId } })).toBe(1);
     expect(await prisma.routine.count({ where: { botId: runs[0]!.botId } })).toBe(1);
+  });
+
+  it("re-queues Data room items that were waiting for consent when the Legal grant is given", async () => {
+    const c = await makeActor("f");
+    extra.push(c);
+    const waiting = await addItem(c, "waiting.txt", "A ready item nobody classified yet.");
+    const queued: { name: string; payload: any }[] = [];
+    const ai = {
+      model: { provider: "openrouter", id: "meta/muse-spark-1.2" },
+      embedder: null,
+      embeddingModel: null,
+      recipients: [{ key: "r", name: "OpenRouter", detail: "meta/muse-spark-1.2" }],
+      consentKey: "data-room:legal-test",
+      allowed: false,
+    };
+    const api = {
+      prisma,
+      repos: createRepos(prisma),
+      artifacts: {} as never,
+      jobs: { enqueue: async (job: any) => void queued.push(job) } as never,
+      resolveAi: async () => ai as never,
+    };
+    await legalConsentGrant(api, c, { key: ai.consentKey, version: DATA_ROOM_DISCLOSURE_VERSION });
+    expect(
+      queued.filter((j) => j.name === "dataroom.classify").map((j) => j.payload.itemId),
+    ).toEqual([waiting.id]);
+    expect(await prisma.aiDataConsent.count({ where: { userId: c.userId } })).toBe(1);
+    // A stale key is refused and nothing more is queued.
+    queued.length = 0;
+    await expect(
+      legalConsentGrant(api, c, { key: "other", version: DATA_ROOM_DISCLOSURE_VERSION }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(queued).toEqual([]);
   });
 });
