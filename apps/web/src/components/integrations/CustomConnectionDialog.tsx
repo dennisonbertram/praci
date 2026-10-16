@@ -4,7 +4,11 @@ import type {
   IntegrationCatalogSurface,
   McpServer,
 } from "@rakazo/contracts";
-import { MCP_OAUTH_CLIENT_ID_REQUIRED } from "@rakazo/contracts";
+import {
+  isCartaAgentSpawnKey,
+  isCartaEndpoint,
+  MCP_OAUTH_CLIENT_ID_REQUIRED,
+} from "@rakazo/contracts";
 import { deriveMcpName, newClientId } from "@rakazo/core";
 import {
   Button,
@@ -745,7 +749,11 @@ export function CustomConnectionDialog({
         ) : view.kind === "agents" ? (
           <AgentStep
             appName={serverName}
-            bots={data.bots}
+            bots={
+              isCartaEndpoint(server?.endpoint)
+                ? data.bots.filter((bot) => isCartaAgentSpawnKey(bot.spawnKey))
+                : data.bots
+            }
             busy={busy}
             error={error}
             onContinue={(ids) => void assign(ids)}

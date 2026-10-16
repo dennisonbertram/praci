@@ -1,6 +1,11 @@
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { MailApproval, MailEdits, MessageBlock } from "@rakazo/contracts";
-import { isCartaAgentSpawnKey, MAX_COMPOSE_BODY } from "@rakazo/contracts";
+import {
+  CARTA_WRITE_TOOLS,
+  isCartaAgentSpawnKey,
+  isCartaEndpoint,
+  MAX_COMPOSE_BODY,
+} from "@rakazo/contracts";
 import { redactSecrets } from "@rakazo/core";
 import { buildRawMessage, displayAddress, parseRecipients } from "./mail-compose.js";
 
@@ -12,12 +17,15 @@ export function buildApprovalAskBlock(
   toolName: string,
   args: Record<string, unknown>,
   secrets: string[],
-  options?: { reviewReason?: string; fullMail?: boolean },
+  options?: { reviewReason?: string; fullMail?: boolean; cartaWriteTool?: string },
 ): MessageBlock {
   const summary = describeApprovalAction(toolName, args);
+  const fullDetail = options?.fullMail || options?.cartaWriteTool !== undefined;
   const detail = options?.fullMail
     ? fullMailDetail(args, options.reviewReason)
-    : formatApprovalDetail(toolName, args, options?.reviewReason);
+    : options?.cartaWriteTool !== undefined
+      ? cartaWriteDetail(options.cartaWriteTool, args, options.reviewReason)
+      : formatApprovalDetail(toolName, args, options?.reviewReason);
   const safeDetail = detail ? redactSecrets(detail, secrets) : undefined;
   return {
     kind: "ask",
@@ -31,7 +39,7 @@ export function buildApprovalAskBlock(
     ),
     // A full mail send shows every recipient and the whole body, never a cut-off one.
     detail: safeDetail
-      ? options?.fullMail
+      ? fullDetail
         ? safeDetail
         : truncate(safeDetail, MAX_APPROVAL_DETAIL_LENGTH)
       : undefined,
@@ -55,6 +63,19 @@ export function buildApprovalAskBlock(
 export const isCartaMailSend = (botSpawnKey: string | null | undefined, toolName: string) =>
   toolName === "mail_send" && isCartaAgentSpawnKey(botSpawnKey);
 
+/**
+ * The Carta agent's write tools on Carta's server: every call asks, whatever the saved rules say.
+ * The executor names MCP tools `mcp__<slug>__<tool>`, so this reads the server and raw tool name
+ * from the route, not the model-facing name.
+ */
+export const isCartaWrite = (
+  botSpawnKey: string | null | undefined,
+  route: { toolName: string; endpoint?: string } | undefined,
+) =>
+  isCartaAgentSpawnKey(botSpawnKey) &&
+  isCartaEndpoint(route?.endpoint) &&
+  (CARTA_WRITE_TOOLS as readonly string[]).includes(route?.toolName ?? "");
+
 /** Whether a mail_send call carries the whole message (no draftId shortcut). */
 export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean {
   const filled = (value: unknown) => typeof value === "string" && value.trim() !== "";
@@ -64,6 +85,17 @@ export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean 
     filled(args.subject) &&
     filled(args.body)
   );
+}
+
+/** The raw tool name and every argument, nested ones included, so the user sees the operation. */
+function cartaWriteDetail(
+  rawTool: string,
+  args: Record<string, unknown>,
+  reviewReason?: string,
+): string {
+  const lines = reviewReason?.trim() ? [reviewReason.trim()] : [];
+  lines.push(`tool: ${rawTool}`, `arguments: ${JSON.stringify(args, null, 2)}`);
+  return lines.join("\n");
 }
 
 /** Every recipient, Bcc included, and the whole body. */

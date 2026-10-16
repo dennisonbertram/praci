@@ -527,6 +527,10 @@ msgstr "Add credential"
 msgid "Add custom connection"
 msgstr "Add custom connection"
 
+#: src/pages/CapTable.tsx
+msgid "Add email"
+msgstr "Add email"
+
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr "Add files"
@@ -664,6 +668,18 @@ msgstr "Allow {0} without asking"
 msgid "Allow {name}"
 msgstr "Allow {name}"
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Allow changes"
+msgstr "Allow changes"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Allow changes in Carta"
+msgstr "Allow changes in Carta"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Allow changes in Carta?"
+msgstr "Allow changes in Carta?"
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow email actions without asking"
 msgstr "Allow email actions without asking"
@@ -709,6 +725,10 @@ msgstr "Always allowed"
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
 msgstr "Amount"
+
+#: src/pages/CapTable.tsx
+msgid "Amount raised"
+msgstr "Amount raised"
 
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
@@ -2119,6 +2139,10 @@ msgstr "Could not load skill"
 msgid "Could not load the app list. Reload to try again."
 msgstr "Could not load the app list. Reload to try again."
 
+#: src/pages/CapTable.tsx
+msgid "Could not load the cap table"
+msgstr "Could not load the cap table"
+
 #: src/pages/Artifacts.tsx
 msgid "Could not load this artifact."
 msgstr "Could not load this artifact."
@@ -2178,6 +2202,10 @@ msgstr "Could not read this file"
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
 msgstr "Could not reconnect"
+
+#: src/pages/CapTable.tsx
+msgid "Could not refresh from Carta"
+msgstr "Could not refresh from Carta"
 
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/ScratchpadSection.tsx
@@ -2326,6 +2354,10 @@ msgstr "Could not update"
 msgid "Could not update agent access"
 msgstr "Could not update agent access"
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Could not update changes"
+msgstr "Could not update changes"
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Could not update computer"
 msgstr "Could not update computer"
@@ -2416,10 +2448,6 @@ msgstr "Create a section and move {0} into it."
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "Create account"
-
-#: src/pages/Shell.tsx
-msgid "Create Carta agent"
-msgstr "Create Carta agent"
 
 #: src/pages/Shell.tsx
 msgid "Create Finance agent"
@@ -3277,6 +3305,10 @@ msgstr "From {0}"
 msgid "Fullscreen"
 msgstr "Fullscreen"
 
+#: src/pages/CapTable.tsx
+msgid "Fully diluted shares"
+msgstr "Fully diluted shares"
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Gateway ID"
@@ -3412,6 +3444,10 @@ msgstr "High"
 #: src/lib/model-catalog.ts
 msgid "High"
 msgstr "High"
+
+#: src/pages/CapTable.tsx
+msgid "Holding"
+msgstr "Holding"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
@@ -3642,6 +3678,10 @@ msgstr "Last charge"
 msgid "Later"
 msgstr "Later"
 
+#: src/pages/CapTable.tsx
+msgid "Latest 409A"
+msgstr "Latest 409A"
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
 msgstr "Launched {app}"
@@ -3712,6 +3752,10 @@ msgstr "Load older runs"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Load web images automatically"
 msgstr "Load web images automatically"
+
+#: src/pages/Shell.tsx
+msgid "Loading"
+msgstr "Loading"
 
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
@@ -4648,6 +4692,10 @@ msgstr "Opening chat…"
 msgid "Opening your Space…"
 msgstr "Opening your Space…"
 
+#: src/pages/CapTable.tsx
+msgid "Option pool available"
+msgstr "Option pool available"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -4715,6 +4763,10 @@ msgstr "overlaps"
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr "Owner"
+
+#: src/pages/CapTable.tsx
+msgid "Ownership"
+msgstr "Ownership"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
@@ -4995,6 +5047,10 @@ msgstr "Read-only API key"
 msgid "Reading"
 msgstr "Reading"
 
+#: src/pages/CapTable.tsx
+msgid "Reading Carta…"
+msgstr "Reading Carta…"
+
 #: src/components/finance/StatementImport.tsx
 msgid "Reading…"
 msgstr "Reading…"
@@ -5117,6 +5173,10 @@ msgstr "Redirect URI"
 #: src/pages/shell/bot-pins.tsx
 msgid "Refresh"
 msgstr "Refresh"
+
+#: src/pages/CapTable.tsx
+msgid "Refresh from Carta"
+msgstr "Refresh from Carta"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Refresh view"
@@ -5791,6 +5851,10 @@ msgstr "Shared documents"
 msgid "Shared skills"
 msgstr "Shared skills"
 
+#: src/pages/CapTable.tsx
+msgid "Shares"
+msgstr "Shares"
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Shell"
 msgstr "Shell"
@@ -6254,6 +6318,10 @@ msgstr "The API did not come back. Refresh this page."
 msgid "The bot changed this list. Your last edit wasn't saved."
 msgstr "The bot changed this list. Your last edit wasn't saved."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "The Carta agent will be able to change your Carta data. It asks before each change."
+msgstr "The Carta agent will be able to change your Carta data. It asks before each change."
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "The connection timed out."
@@ -6642,6 +6710,11 @@ msgstr "Update progress"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Updated"
 msgstr "Updated"
+
+#. placeholder {0}: formatRelativeTime(snapshot.updatedAt)
+#: src/pages/CapTable.tsx
+msgid "Updated {0}"
+msgstr "Updated {0}"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceCrypto.tsx

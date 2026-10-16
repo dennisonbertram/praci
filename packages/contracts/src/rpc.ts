@@ -22,6 +22,7 @@ import {
   UpdateTicketInput,
 } from "./board.js";
 import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot-secrets.js";
+import { CapTableStateSchema } from "./carta.js";
 import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from "./contacts.js";
 import {
   DataRoomApiFolderSchema,
@@ -792,6 +793,8 @@ export const appContract = {
         .input(z.object({ id: Id, name: z.string().trim().min(1).max(120) }))
         .output(McpServerSchema),
       remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+      /** Turns the server's known write tools on or off (Carta only for now). */
+      setWrites: oc.input(z.object({ id: Id, enabled: z.boolean() })).output(McpServerSchema),
     },
     assignments: {
       list: oc.input(botId).output(z.array(BotMcpServerSchema)),
@@ -1115,6 +1118,10 @@ export const appContract = {
   },
   carta: {
     agent: oc.output(BotSchema),
+    /** The Cap Table page's snapshot and whether the Carta agent is refreshing it. */
+    capTable: oc.output(CapTableStateSchema),
+    /** Starts a Carta agent run that refreshes the snapshot and the investor contacts. */
+    refresh: oc.output(z.object({ ok: z.literal(true) })),
   },
   contacts: {
     list: oc.input(ContactListInputSchema).output(z.array(ContactSchema)),
