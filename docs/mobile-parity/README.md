@@ -24,7 +24,7 @@ These areas are at parity:
 Most of the gaps fall in five places:
 
 1. **Finance** has no mobile screen at all. A finance card in chat renders as nothing, so the message disappears (`blockText` in `apps/mobile/lib/api.ts` returns an empty string).
-2. **Email is read-only.** Mobile Inbox only calls `inbox/list`, `inbox/get`, `inbox/refresh` and `inbox/agent`. You cannot archive, mark read or unread, search, filter, open attachments, compose, reply or forward. You also cannot review an email an agent drafted.
+2. **Email is read-only.** Mobile Inbox reads mail (`inbox/list`, `inbox/get`, `inbox/refresh`, `inbox/agent`) and can complete to-dos, but has no message actions. You cannot archive, mark read or unread, search, filter, open attachments, compose, reply or forward. You also cannot review an email an agent drafted.
 3. **Routines** can be viewed but not listed, created, edited, scheduled, test-run or reviewed in run history.
 4. **Safety settings are desktop-only.** These cover approval rules and Auto Review, and approving or revoking agent and channel connections in messaging. A user can answer an approval on the phone but cannot see or revoke an "always allow" rule there.
 5. **Bot configuration** is missing these on mobile:
@@ -65,7 +65,7 @@ This is the cheapest phase and matters most for trust, because it stops mobile f
 
 - Add approval rules and Auto Review to mobile space settings, so a user can view and revoke "always allow" rules.
 - In messaging settings, approve, decline and revoke agent connections, and approve, decline and leave group channels.
-- Reconnect an expired integration sign-in through the existing `connections/connect`.
+- Reconnect an expired integration sign-in Web uses `mcp.oauth.begin` with `reauthorize: true`; mobile needs the same call.
 - Add a subscription gate. When hosted billing blocks runs, show why instead of failing silently. The checkout question is under Decisions.
 
 ### Phase 3: Inbox actions (S, then M)

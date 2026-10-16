@@ -71,7 +71,7 @@ Mobile renders these blocks through `blockText` in apps/mobile/lib/api.ts. Email
 
 ### Biggest gaps (by user impact)
 
-1. Email, finance, and chart cards are not rendered on mobile. Core bot output (inbox summaries, finance numbers, charts) is invisible in the thread, and nothing says so.
+1. Email, finance and chart blocks have no interactive card on mobile. Email shows as a plain-text list and charts as "[chart: name]", but finance renders nothing.
 2. Skill draft card is missing, so a taught skill cannot be reviewed, saved, or added to a routine from a phone.
 3. Peer messages cannot be opened (chip only), so bot-to-bot work is unreadable on mobile.
 4. Group archive and restore, bot and group duplicate, and mark-unread are missing from the mobile chat list (all have existing RPCs, S each); rename space is also missing.
@@ -133,7 +133,7 @@ Web hosts: apps/web/src/pages/Shell.tsx. Mobile hosts: apps/mobile/app/thread.ts
 | Computer maintenance: update, recover, reset | components/ComputerMaintenanceActions.tsx | components/computer-maintenance-actions.tsx (`computer/reset`) | FULL | - | |
 | Computer update/recover progress and release | components/ComputerUpdateProgress.tsx | components/computer-update-progress.tsx, lib/computer-updates.ts | FULL | - | |
 | Host computer choice ("Where should bots run?", Docker check) | pages/HostComputerPrompt.tsx | none | N/A | - | Local host-machine control exists only with the desktop app. |
-| Desktop auto-updates / software update | components/DesktopUpdates.tsx, SoftwareUpdateSection.tsx | app/lib/app-version.ts (version only) | N/A | - | Electron updater; mobile updates come from the store. |
+| Desktop auto-updates / software update | components/DesktopUpdates.tsx, SoftwareUpdateSection.tsx | lib/app-version.ts (version only) | N/A | - | Electron updater; mobile updates come from the store. |
 | Artifacts list: search, bot filter, load more, delete | pages/Artifacts.tsx; `rpc.artifacts.listSpace/remove` | app/artifacts.tsx (search, bot filter, paging, long-press delete) | FULL | - | |
 | Artifacts list: date filter, card/list view toggle | Artifacts.tsx ("Filter by date", "Card view", "List view") | none | PARTIAL | S | Cosmetic. |
 | Artifact viewer: sandboxed HTML | components/SandboxedHtmlViewer.tsx | components/sandboxed-html-preview.tsx, app/artifact.tsx | FULL | - | |
@@ -161,7 +161,7 @@ Also worth planning: Avatar Studio shapes/upload (M), computer Files and Termina
 
 ## Parity: Inbox, email, finance, integrations, messaging
 
-RPC names below are the web `rpc.<ns>.<method>` calls; mobile only calls `rpc("...")` paths directly (grep of `apps/mobile` found no `inbox/` mutation, `finance/*`, `messaging/*`, `externalConversations/*`, `mcp/*` calls).
+RPC names below are the web `rpc.<ns>.<method>` calls; mobile only calls `rpc("...")` paths directly (grep of `apps/mobile` found no inbox message mutation (only `inbox/todos/setDone` for to-dos), `finance/*`, `messaging/*`, `externalConversations/*`, `mcp/*` calls).
 
 | Feature | Web evidence | Mobile evidence | Status | Size | Notes |
 |---|---|---|---|---|---|
@@ -196,13 +196,13 @@ RPC names below are the web `rpc.<ns>.<method>` calls; mobile only calls `rpc(".
 | Finance provider connect (Mercury/Brex, Alchemy, Blockscout, exchanges) | `components/integrations/FinanceSection.tsx`, `AlchemyConnectDialog.tsx`, `BlockscoutConnectDialog.tsx`, `ExchangeConnectDialog.tsx`, `lib/finance-connect.ts` | none (no finance section in `app/(settings)/integrations.tsx`) | MISSING | L | |
 | Calendar features | no calendar UI in `apps/web/src` (grep) | none | N/A | - | Calendar is only reachable through agents/connectors on both. |
 | Integrations list, search, category filter, connected apps | `components/integrations/IntegrationsHome.tsx` (`useIntegrations.ts`) | `app/(settings)/integrations.tsx` (`connections/catalog`, `connections/list`, search "Search apps", Show more) | PARTIAL | S | Mobile has no category filter (web has All/Email & calendar/Chat/Docs/Finance/Developer/Sales). Mobile uses `connections/*` + `capabilities/*` RPCs; web uses `rpc.mcp.*` for custom servers. Same server? UNSURE, not traced. |
-| App connect (OAuth via browser, poll complete) | `lib/mcp-connect.ts` (`mcp.oauth.begin`), `pages/GoogleOAuthCallback.tsx`, `McpOAuthCallback.tsx` | `app/(settings)/integrations.tsx` L377-392 (`connections/connect` then `Linking.openURL`, `connections/complete`) | FULL | - | Mobile "Connection pending, finish in browser then refresh" is a manual refresh; no deep-link callback. |
+| App connect (OAuth via browser, poll complete) | `lib/mcp-connect.ts` (`mcp.oauth.begin`), `pages/GoogleOAuthCallback.tsx`, `McpOAuthCallback.tsx` | `app/(settings)/integrations.tsx` L377-392 (`connections/begin` then `Linking.openURL`, `connections/complete`) | FULL | - | Mobile "Connection pending, finish in browser then refresh" appears only after automatic completion polling (up to 45 tries) gives up; no deep-link callback. |
 | Native Google sign-in (Rakazo session) | web Google OAuth callback page | `preferNativeGoogle(catalog, {nativeGoogle:false})` in `integrations.tsx` L236 hides it | N/A | - | Mobile auth browser has no Rakazo session; reason given in code comment. |
 | App detail: accounts list, rename, remove, add another | `components/integrations/AppDetail.tsx` | `integrations.tsx` L649-674 | FULL | - | |
 | App detail: tools list (read/write grouping) | `AppDetail.tsx` L293-330 | `integrations.tsx` L689-701 (flat list, `connections/tools`) | PARTIAL | S | No read/write grouping on mobile. |
 | "Used by": per-agent access to a connection | `AppDetail.tsx` L283, `McpDetail.tsx` L173, `IntegrationsHome.tsx` L88 (`mcp.assignments.*`) | none ("Used by" absent) | MISSING | M | Mobile cannot choose which agents may use a connection. |
 | Disconnect/uninstall app | `AppDetail.tsx` L344 | `integrations.tsx` L639 "Uninstall" | FULL | - | |
-| Reconnect expired sign-in | `IntegrationsHome.tsx` L116, `useMcpReconnect.ts`, `McpDetail.tsx` L150 | none | MISSING | S | Add via existing `connections/connect`. |
+| Reconnect expired sign-in | `IntegrationsHome.tsx` L116, `useMcpReconnect.ts`, `McpDetail.tsx` L150 | none | MISSING | S | Web reconnects MCP sign-in with `mcp.oauth.begin` and `reauthorize: true`; mobile has no equivalent call yet. |
 | Custom connection (remote MCP URL, token) | `CustomConnectionDialog.tsx`, `IntegrationSetup.tsx` (`mcp.servers.create`) | `integrations.tsx` "Advanced" (MCP, GraphQL, OpenAPI, Treg, Executor via `capabilities/install`) | FULL | - | Mobile covers more source types than the web list; different RPC family. |
 | MCP server detail: rename, disconnect sign-in, remove | `McpDetail.tsx` | `integrations.tsx` "Tool sources" remove only (L953-967) | PARTIAL | S | No rename or sign-in disconnect. |
 | Search integrations.sh directory | `components/integrations/IntegrationSetup.tsx` L299 | none | MISSING | S | |
@@ -226,7 +226,7 @@ Also worth sizing: per-agent "Used by" access for connections (M) and reconnect 
 ## Parity: Settings, account and onboarding
 
 
-Mobile settings live in `app/(settings)/*` plus `app/account.tsx` (the Account sheet, reached from the header in `app/index.tsx`). Mobile calls the same RPC namespace as web by string name (for example `rpc("models/list")`), so most gaps below are S.
+Mobile settings live in `app/(settings)/*` plus `app/(settings)/account.tsx` (the Account sheet, reached from the header in `app/index.tsx`). Mobile calls the same RPC namespace as web by string name (for example `rpc("models/list")`), so most gaps below are S.
 
 | Feature | Web evidence | Mobile evidence | Status | Size | Notes |
 |---|---|---|---|---|---|
