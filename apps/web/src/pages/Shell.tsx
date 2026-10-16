@@ -7001,7 +7001,7 @@ const MessageView = memo(function MessageView({
             identity={message.botId}
             size={22}
           />
-          {speakerName}
+          <span className="min-w-0 truncate">{speakerName}</span>
           {isLive ? null : (
             <time
               dateTime={message.createdAt}
