@@ -105,7 +105,8 @@ export function storiesFor(sourceFile, files, read) {
   const exists = (f) => set.has(f);
   const sibling = sourceFile.replace(/\.tsx$/, ".stories.tsx");
   // An empty or meta-only stories file is not coverage.
-  const hasStory = (f) => /export\s+default\b/.test(read(f)) && /export\s+const\s+\w+/.test(read(f));
+  const hasStory = (f) =>
+    /export\s+default\b/.test(read(f)) && /export\s+const\s+\w+/.test(read(f));
   const out = new Set(exists(sibling) && hasStory(sibling) ? [sibling] : []);
   for (const f of files) {
     if (!f.endsWith(".stories.tsx") || out.has(f) || !hasStory(f)) continue;

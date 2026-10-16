@@ -3,8 +3,8 @@
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, resolve } from "node:path";
-import { insideRoot } from "./safe-path.mjs";
 import { chromium } from "@playwright/test";
+import { insideRoot } from "./safe-path.mjs";
 
 const root = resolve(process.argv[2] ?? "storybook-static");
 const filter = process.argv[3];
