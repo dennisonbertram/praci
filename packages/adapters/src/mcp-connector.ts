@@ -9,8 +9,11 @@ import type {
 } from "@rakazo/adapter-kit";
 import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
 import {
+  CARTA_READ_TOOLS,
   FINANCE_READ_TOOLS,
   financeProviderForEndpoint,
+  isCartaAgentSpawnKey,
+  isCartaEndpoint,
   isFinanceAgentSpawnKey,
   isLocalMcpHost,
 } from "@rakazo/contracts";
@@ -88,6 +91,13 @@ export function assignmentAllowsTool(
     const provider = financeProviderForEndpoint(assignment.server.endpoint);
     if (provider && !(FINANCE_READ_TOOLS[provider] as readonly string[]).includes(toolName))
       return false;
+  }
+  if (
+    isCartaAgentSpawnKey(assignment.bot?.spawnKey) &&
+    isCartaEndpoint(assignment.server.endpoint) &&
+    !(CARTA_READ_TOOLS as readonly string[]).includes(toolName)
+  ) {
+    return false;
   }
   return assignment.allowAllTools || (assignment.allowedTools as unknown[]).includes(toolName);
 }
