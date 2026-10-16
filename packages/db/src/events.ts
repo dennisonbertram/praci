@@ -226,6 +226,9 @@ export interface AnswerRunInput {
 
 const MAIL_APPROVAL_TOOLS = new Set(["mail_draft", "mail_send"]);
 
+/** The compose record key of an edited mail approval: one record per approval effect. */
+export const mailApprovalComposeClientId = (effectId: string) => `approval_${effectId}`;
+
 export interface SendUserMessageInput {
   spaceId: string;
   threadId: string;
@@ -757,6 +760,21 @@ async function commitAnswerRunInput(
         ...(input.mailDenial ? { result: { note: input.mailDenial.note } } : {}),
       },
     });
+    // The person's own send is recorded in the same commit as the claim, so a crash before the
+    // provider call still leaves a durable record for the reconciler to settle the card from.
+    const connectionId = input.mailDenial?.mail.connectionId;
+    if (input.mailDenial && connectionId) {
+      const key = {
+        spaceId: input.spaceId,
+        userId: input.answeredByUserId,
+        clientId: mailApprovalComposeClientId(approvalEffect!.id),
+      };
+      await tx.composeSend.upsert({
+        where: { spaceId_userId_clientId: key },
+        create: { ...key, connectionId },
+        update: {},
+      });
+    }
     if (input.answer === "always") {
       await tx.actionApprovalRule.upsert({
         where: {
