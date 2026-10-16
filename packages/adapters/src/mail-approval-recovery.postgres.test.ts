@@ -168,7 +168,7 @@ describePostgres("mail approval recovery (PostgreSQL)", () => {
     expect((await card(a.message.id))?.outcome).toBe("failed");
     expect(await note(a.effect.id)).toContain("nothing was sent");
     expect((await prisma.composeSend.findUniqueOrThrow({ where: { id: row.id } })).state).toBe(
-      "failed",
+      "abandoned",
     );
 
     // Idempotent: a second pass finds nothing left to settle.
@@ -227,6 +227,70 @@ describePostgres("mail approval recovery (PostgreSQL)", () => {
     await prisma.composeSend.deleteMany({ where: { clientId: `approval_${a.effect.id}` } });
     await reconcile(later());
     expect((await card(a.message.id))?.outcome).toBe("unknown");
+  });
+
+  it("skips its write when the send finished after the scan read the row", async () => {
+    const a = await waitingApproval("mail_send");
+    await claim(a);
+    const clientId = `approval_${a.effect.id}`;
+    // The scan reads the row (still "draft"), then the inline path sends and settles the card.
+    const realFind = prisma.message.findMany.bind(prisma.message);
+    const racing = {
+      ...prisma,
+      message: {
+        findMany: async (args: Parameters<typeof realFind>[0]) => {
+          await prisma.composeSend.updateMany({
+            where: { clientId },
+            data: { state: "sent" },
+          });
+          await events().setMailApprovalOutcome({
+            spaceId: ids.space,
+            threadId,
+            messageId: a.message.id,
+            effectId: a.effect.id,
+            outcome: "sent",
+            note: "inline note",
+          });
+          return realFind(args);
+        },
+      },
+    } as unknown as PrismaClient;
+    await reconcileMailApprovals({
+      prisma: racing,
+      events: events(),
+      now: later(),
+      batchSize: 100,
+    });
+    expect((await card(a.message.id))?.outcome).toBe("sent");
+    expect(await note(a.effect.id)).toBe("inline note");
+  });
+
+  it("skips its write when only the compose record changed under the scan", async () => {
+    const a = await waitingApproval("mail_send");
+    await claim(a);
+    const realFind = prisma.message.findMany.bind(prisma.message);
+    const racing = {
+      ...prisma,
+      message: {
+        findMany: async (args: Parameters<typeof realFind>[0]) => {
+          await prisma.composeSend.updateMany({
+            where: { clientId: `approval_${a.effect.id}` },
+            data: { state: "sent" },
+          });
+          return realFind(args);
+        },
+      },
+    } as unknown as PrismaClient;
+    await reconcileMailApprovals({
+      prisma: racing,
+      events: events(),
+      now: later(),
+      batchSize: 100,
+    });
+    expect((await card(a.message.id))?.outcome).toBeUndefined();
+    // The next pass sees the real state.
+    await reconcile(later());
+    expect((await card(a.message.id))?.outcome).toBe("sent");
   });
 
   it("leaves a plain denial alone", async () => {

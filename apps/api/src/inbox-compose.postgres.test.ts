@@ -395,6 +395,25 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(sendRequests()).toHaveLength(2);
     });
 
+    it("refuses to send a record that recovery abandoned, and reports failed", async () => {
+      const input = fields();
+      await prisma.composeSend.create({
+        data: {
+          spaceId: spaceA,
+          userId: userA,
+          connectionId: connA,
+          clientId: input.clientId,
+          state: "abandoned",
+        },
+      });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "failed" });
+      expect(gmail.sentOf("box-a")).toHaveLength(0);
+      expect(sendRequests()).toHaveLength(0);
+      expect(
+        (await prisma.composeSend.findFirstOrThrow({ where: { clientId: input.clientId } })).state,
+      ).toBe("abandoned");
+    });
+
     it("sends the latest text even when no draft was saved first, and threads a reply", async () => {
       const row = await cache(a, connA, "a-1", "t-a1");
       const input = fields({ replyToMessageId: row.id, subject: "Re: Subject a-1" });

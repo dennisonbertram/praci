@@ -29,7 +29,8 @@ export function mailApprovalAgentNote(send: boolean, outcome?: Outcome): string 
  * Settles edited mail approvals whose process died after the claim, so the card does not stay on
  * "Sending..." forever. An unsettled one is a denied mail effect still carrying the claim's cautious
  * note. The compose record made with the claim says how far it got:
- * - send: still "draft" means the provider was never called, so it failed and nothing was sent;
+ * - send: still "draft" means the provider was never called, so the row is fenced as "abandoned"
+ *   (never claimable again) and the card says failed;
  *   "pending" may have reached the provider, so the outcome is unknown. Nothing is ever resent.
  * - draft save: a stored draft id means it was saved; otherwise the provider may have created one.
  * Safe with several workers: record changes are conditional on the row being unchanged, and the
@@ -55,7 +56,14 @@ export async function reconcileMailApprovals(deps: {
     },
     orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
     take: deps.batchSize,
-    select: { id: true, spaceId: true, kind: true, runId: true, run: { select: { userId: true } } },
+    select: {
+      id: true,
+      spaceId: true,
+      kind: true,
+      runId: true,
+      result: true,
+      run: { select: { userId: true } },
+    },
   });
   for (const effect of effects) {
     try {
@@ -72,8 +80,11 @@ export async function reconcileMailApprovals(deps: {
       });
       if (row && row.updatedAt > cutoff) continue;
       let outcome: Outcome = "unknown";
+      let after: string | null = row?.state ?? null;
       if (row && send) {
-        const settle = async (state: "failed" | "unknown") => {
+        // "abandoned" fences the row: the inline sender only claims draft or failed rows, so a
+        // stalled request that resumes later cannot send after the card says nothing was sent.
+        const settle = async (state: "abandoned" | "unknown") => {
           const { count } = await deps.prisma.composeSend.updateMany({
             where: { id: row.id, state: row.state, updatedAt: row.updatedAt },
             data: { state },
@@ -83,9 +94,14 @@ export async function reconcileMailApprovals(deps: {
         if (row.state === "sent") outcome = "sent";
         else if (row.state === "failed") outcome = "failed";
         else if (row.state === "draft") {
-          if (!(await settle("failed"))) continue;
+          if (!(await settle("abandoned"))) continue;
           outcome = "failed";
-        } else if (row.state === "pending" && !(await settle("unknown"))) continue;
+          after = "abandoned";
+        } else if (row.state === "abandoned") outcome = "failed";
+        else if (row.state === "pending") {
+          if (!(await settle("unknown"))) continue;
+          after = "unknown";
+        }
       } else if (row && row.state === "draft" && row.draftId) {
         outcome = "saved";
       }
@@ -112,6 +128,14 @@ export async function reconcileMailApprovals(deps: {
         effectId: effect.id,
         outcome,
         note: mailApprovalAgentNote(send, outcome),
+        onlyIf: {
+          note: (effect.result as { note: string }).note,
+          compose: {
+            userId: effect.run.userId,
+            clientId: mailApprovalComposeClientId(effect.id),
+            state: after,
+          },
+        },
       });
     } catch (error) {
       getLogger().error("mail approval reconciliation", error);

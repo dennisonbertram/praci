@@ -925,6 +925,12 @@ export interface SetMailApprovalOutcomeInput {
   outcome: NonNullable<MailApproval["outcome"]>;
   /** Replaces the note the agent reads when it resumes, so it matches how the send ended. */
   note?: string;
+  /**
+   * For a recovery write: apply only while the approval is still unsettled (the effect still has
+   * this note) and the compose record is in this state (null: there is none). Checked under the
+   * same thread lock, so a send that finished meanwhile is never overwritten.
+   */
+  onlyIf?: { note: string; compose: { userId: string; clientId: string; state: string | null } };
 }
 
 /** Records how the person's own send of an edited mail approval ended, for the card to show. */
@@ -935,6 +941,25 @@ export async function setMailApprovalOutcome(
 ): Promise<void> {
   const committed = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$queryRaw`SELECT id FROM threads WHERE id = ${input.threadId} FOR UPDATE`;
+    if (input.onlyIf) {
+      const { note, compose } = input.onlyIf;
+      const effect = await tx.externalEffect.findFirst({
+        where: { id: input.effectId, spaceId: input.spaceId, status: "denied" },
+        select: { result: true },
+      });
+      if ((effect?.result as { note?: unknown } | null)?.note !== note) return null;
+      const row = await tx.composeSend.findUnique({
+        where: {
+          spaceId_userId_clientId: {
+            spaceId: input.spaceId,
+            userId: compose.userId,
+            clientId: compose.clientId,
+          },
+        },
+        select: { state: true },
+      });
+      if ((row?.state ?? null) !== compose.state) return null;
+    }
     if (input.note) {
       await tx.externalEffect.updateMany({
         where: { id: input.effectId, spaceId: input.spaceId, status: "denied" },
