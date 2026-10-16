@@ -1,6 +1,6 @@
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { MailApproval, MailEdits, MessageBlock } from "@rakazo/contracts";
-import { MAX_COMPOSE_BODY } from "@rakazo/contracts";
+import { isCartaAgentSpawnKey, MAX_COMPOSE_BODY } from "@rakazo/contracts";
 import { redactSecrets } from "@rakazo/core";
 import { buildRawMessage, displayAddress, parseRecipients } from "./mail-compose.js";
 
@@ -12,10 +12,12 @@ export function buildApprovalAskBlock(
   toolName: string,
   args: Record<string, unknown>,
   secrets: string[],
-  options?: { reviewReason?: string },
+  options?: { reviewReason?: string; fullMail?: boolean },
 ): MessageBlock {
   const summary = describeApprovalAction(toolName, args);
-  const detail = formatApprovalDetail(toolName, args, options?.reviewReason);
+  const detail = options?.fullMail
+    ? fullMailDetail(args, options.reviewReason)
+    : formatApprovalDetail(toolName, args, options?.reviewReason);
   const safeDetail = detail ? redactSecrets(detail, secrets) : undefined;
   return {
     kind: "ask",
@@ -27,7 +29,12 @@ export function buildApprovalAskBlock(
       ),
       MAX_APPROVAL_SUMMARY_LENGTH,
     ),
-    detail: safeDetail ? truncate(safeDetail, MAX_APPROVAL_DETAIL_LENGTH) : undefined,
+    // A full mail send shows every recipient and the whole body, never a cut-off one.
+    detail: safeDetail
+      ? options?.fullMail
+        ? safeDetail
+        : truncate(safeDetail, MAX_APPROVAL_DETAIL_LENGTH)
+      : undefined,
     mail: mailApproval(toolName, args, secrets),
     status: "pending",
     actions:
@@ -38,10 +45,36 @@ export function buildApprovalAskBlock(
           ]
         : [
             { id: "allow", label: "Allow once" },
-            { id: "always", label: "Always allow this tool" },
+            ...(options?.fullMail ? [] : [{ id: "always", label: "Always allow this tool" }]),
             { id: "deny", label: "Deny" },
           ],
   };
+}
+
+/** The Carta agent's mail_send: always asks, never from a saved rule or Auto Review. */
+export const isCartaMailSend = (botSpawnKey: string | null | undefined, toolName: string) =>
+  toolName === "mail_send" && isCartaAgentSpawnKey(botSpawnKey);
+
+/** Whether a mail_send call carries the whole message (no draftId shortcut). */
+export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean {
+  const filled = (value: unknown) => typeof value === "string" && value.trim() !== "";
+  return (
+    !filled(args.draftId) &&
+    strings(args.to).length > 0 &&
+    filled(args.subject) &&
+    filled(args.body)
+  );
+}
+
+/** Every recipient, Bcc included, and the whole body. */
+function fullMailDetail(args: Record<string, unknown>, reviewReason?: string): string {
+  const lines = reviewReason?.trim() ? [reviewReason.trim()] : [];
+  for (const key of ["to", "cc", "bcc"]) {
+    const list = strings(args[key]);
+    lines.push(`${key}: ${list.length ? list.join(", ") : "(none)"}`);
+  }
+  lines.push(`subject: ${String(args.subject ?? "")}`, `body: ${String(args.body ?? "")}`);
+  return lines.join("\n");
 }
 
 function describeApprovalAction(toolName: string, args: Record<string, unknown>): string {
@@ -57,6 +90,9 @@ function describeApprovalAction(toolName: string, args: Record<string, unknown>)
   if (toolName === "create_space") {
     const name = args.name ? String(args.name) : "Untitled";
     return `Create space “${name}”`;
+  }
+  if (toolName === "contacts_save") {
+    return `Save contact “${args.name ? String(args.name) : "Untitled"}”`;
   }
   const target = pickScopeLabel(args);
   return target ? `${toolName} → ${target}` : toolName;
@@ -76,7 +112,11 @@ function formatApprovalDetail(
       "Bots, groups, chats, files, memory, and integrations in this space stay separate from other spaces.",
     );
   }
-  for (const key of ["collection", "title", "to", "subject", "amount", "body"]) {
+  const keys =
+    toolName === "contacts_save"
+      ? ["name", "email", "organization", "kind", "notes"]
+      : ["collection", "title", "to", "subject", "amount", "body"];
+  for (const key of keys) {
     const value = args[key];
     if (value == null || value === "") continue;
     lines.push(`${key}: ${String(value)}`);

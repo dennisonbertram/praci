@@ -50,6 +50,8 @@ export const BUILTIN_TOOL_NAMES = [
   "finance_transactions",
   "finance_recurring",
   "finance_crypto",
+  "contacts_list",
+  "contacts_save",
   "drive_search",
   "drive_read",
   "drive_create_file",

@@ -24,6 +24,7 @@ model AiDataConsent {
 model User {
   aiDataConsents AiDataConsent[]
   mailSearches   MailSearch[]
+  contacts       Contact[]
   id                          String                       @id
   name                        String
   email                       String
@@ -237,6 +238,7 @@ model Space {
   memoryDocuments             MemoryDocument[]
   botPages                    BotPage[]
   botPins                     BotPins[]
+  contacts                    Contact[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
   artifacts                   Artifact[]
@@ -2078,6 +2080,27 @@ model FinanceExchangeSnapshot {
   @@unique([connectionId, day])
   @@index([spaceId, userId, day])
   @@map("finance_exchange_snapshots")
+}
+
+model Contact {
+  id           String   @id @default(cuid())
+  spaceId      String
+  space        Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  email        String?
+  /// For example the investor's fund.
+  organization String?
+  /// "investor", "auditor" or "other"
+  kind         String   @default("investor")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([spaceId, userId, email])
+  @@index([spaceId, userId])
+  @@map("contacts")
 }
 
 // Data room. Every row carries spaceId (cascade) and userId; every query filters on spaceId.
