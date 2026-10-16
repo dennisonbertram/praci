@@ -16,7 +16,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const beforeEach = () => mockRpc({ "memory.list": [] });
+const beforeEach = () => mockRpc({ "memory.list": [], "bots.list": [], "bots.listArchived": [] });
 
 const connected: SpaceMemoryConfig = {
   provider: "serenity",
