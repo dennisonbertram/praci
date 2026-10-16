@@ -90,6 +90,7 @@ describe("status badges", () => {
     oauthStatus: "connected",
     oauthAttempted: false,
     enabled: true,
+    writesEnabled: false,
     revision: 1,
     createdAt: "2026-10-01T00:00:00.000Z",
     updatedAt: "2026-10-01T00:00:00.000Z",
