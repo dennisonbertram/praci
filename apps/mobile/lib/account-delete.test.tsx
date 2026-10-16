@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   fetchAccountSecurity: vi.fn(),
   replaceWithSignIn: vi.fn(),
   prompt: vi.fn(),
+  requestCode: vi.fn(),
 }));
 
 vi.mock("expo-router", () => ({
@@ -37,8 +38,20 @@ vi.mock("react-native", () => {
     Text: ({ children, accessibilityRole }: Record<string, unknown>) => (
       <span role={accessibilityRole as string}>{children as ReactNode}</span>
     ),
-    TextInput: ({ accessibilityLabel }: { accessibilityLabel?: string }) => (
-      <input aria-label={accessibilityLabel} />
+    TextInput: ({
+      accessibilityLabel,
+      value,
+      onChangeText,
+    }: {
+      accessibilityLabel?: string;
+      value?: string;
+      onChangeText?: (value: string) => void;
+    }) => (
+      <input
+        aria-label={accessibilityLabel}
+        value={value ?? ""}
+        onChange={(event) => onChangeText?.(event.target.value)}
+      />
     ),
     Pressable: ({
       children,
@@ -109,7 +122,7 @@ vi.mock("./api", () => ({
   deleteAccount: state.deleteAccount,
   fetchAccountSecurity: state.fetchAccountSecurity,
   loadSessionToken: async () => "token",
-  requestAccountDeletionCode: vi.fn(),
+  requestAccountDeletionCode: state.requestCode,
   rpc: async (proc: string) => {
     if (proc === "me") return { email: "me@example.test", name: "Me" };
     if (proc === "usage/summary") return { runs: 1, totalTokens: 2 };
@@ -172,6 +185,7 @@ beforeEach(() => {
     fn.mockReset();
   }
   state.prompt.mockReset();
+  state.requestCode.mockReset().mockResolvedValue(undefined);
   state.fetchAccountSecurity.mockReset().mockImplementation(async () => state.security);
   container = document.createElement("div");
   document.body.append(container);
@@ -188,6 +202,12 @@ const buttons = (label: string) =>
 const press = (label: string, index = 0) =>
   act(async () => {
     buttons(label)[index]!.click();
+  });
+const type = (label: string, value: string) =>
+  act(async () => {
+    const el = container.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(el, value);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
   });
 const alerts = () => [...container.querySelectorAll('[role="alert"]')].map((a) => a.textContent);
 /** Runs the "Delete" action of the iOS secure prompt, as the user typing a password would. */
@@ -263,6 +283,30 @@ describe("Account delete", () => {
     expect(state.deleteAccount).not.toHaveBeenCalled();
     expect(state.replaceWithSignIn).not.toHaveBeenCalled();
     expect(container.textContent).toContain("Delete your account?");
+  });
+
+  it("sends the trimmed email code once a code was requested", async () => {
+    state.security = { hasPassword: false, freshOidcAuth: false, emailDeletion: true };
+    await render();
+    await press("Delete account");
+    await press("Send deletion code");
+    expect(state.requestCode).toHaveBeenCalledOnce();
+    await type("Deletion code", " 123456 ");
+    await press("Delete");
+    expect(state.deleteAccount).toHaveBeenCalledWith(undefined, "123456");
+    expect(state.replaceWithSignIn).toHaveBeenCalledWith("/sign-in");
+  });
+
+  it("does not submit a whitespace-only code after authentication expired", async () => {
+    state.security = { hasPassword: false, freshOidcAuth: false, emailDeletion: true };
+    await render();
+    await press("Delete account");
+    await press("Send deletion code");
+    await type("Deletion code", "   ");
+    expect(buttons("Delete")[0]!.disabled).toBe(true);
+    await press("Delete");
+    expect(state.deleteAccount).not.toHaveBeenCalled();
+    expect(state.replaceWithSignIn).not.toHaveBeenCalled();
   });
 
   it("shows a sign-out failure next to Sign out, not on the delete row", async () => {

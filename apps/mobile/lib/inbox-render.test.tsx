@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
 import type { ReactElement } from "react";
-import { act } from "react";
+import { act, cloneElement } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { BotRow, GroupRow } from "../components/inbox-rows";
+import { type InboxItem, useInboxRenderItem } from "../components/inbox-render-item";
+import { BotRow } from "../components/inbox-rows";
 import type { MobileBot } from "./api";
 import { formatThreadTime } from "./inbox";
 import { retainInboxValue } from "./inbox-retention";
@@ -54,6 +55,8 @@ vi.mock("./bot-avatar", () => ({
     return { kind: "color", color: "gray" };
   },
 }));
+vi.mock("./api", () => ({}));
+vi.mock("@expo/ui/community/menu", () => ({ MenuView: () => null }));
 vi.mock("../components/native-symbol", () => ({ NativeSymbol: () => null }));
 vi.mock("../components/WorkingIndicator", () => ({ WorkingIndicator: () => null }));
 vi.mock("../components/group-avatar", () => ({ GroupAvatar: () => null }));
@@ -82,6 +85,34 @@ vi.mock("../components/conversation-row", () => ({
   ),
 }));
 
+const noop = () => undefined;
+const collapsed = new Set<string>();
+const noStyles = {};
+/** Renders items through the production renderer with the same stable inputs the screen gives it. */
+function useRows(items: InboxItem[], day: number, seen?: unknown[]) {
+  const renderItem = useInboxRenderItem({
+    appearance: "light",
+    chooseInboxSpace: noop,
+    collapsedRosterParents: collapsed,
+    confirmDeleteSpace: noop,
+    day,
+    meSpaceId: "space-1",
+    openBot: noop,
+    openGroup: noop,
+    openSearchHit: noop,
+    organizeBot: noop,
+    organizeGroup: noop,
+    spaceBusy: false,
+    spaceRecoveryId: null,
+    styles: noStyles,
+    t: identity,
+    toggleRosterParent: noop,
+  });
+  seen?.push(renderItem);
+  return items.map((item, index) => cloneElement(renderItem({ item }), { key: index }));
+}
+const identity = (text: string) => text;
+
 const bot = (index: number) =>
   ({
     id: `bot-${index}`,
@@ -97,11 +128,16 @@ const bot = (index: number) =>
 
 it("skips unchanged inbox rows for 12 idle polls and renders only the changed bot", () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  const noop = () => undefined;
-  const List = ({ bots }: { bots: MobileBot[] }) =>
-    bots.map((item) => (
-      <BotRow key={item.id} bot={item} day={0} onPress={noop} onLongPress={noop} />
-    ));
+  const identities: unknown[] = [];
+  const List = ({ bots }: { bots: MobileBot[] }) => (
+    <>
+      {useRows(
+        bots.map((item) => ({ type: "bot", bot: item, depth: 0, hasChildren: false }) as InboxItem),
+        0,
+        identities,
+      )}
+    </>
+  );
   let bots = Array.from({ length: 30 }, (_, index) => bot(index));
   const container = document.createElement("div");
   const root = createRoot(container);
@@ -115,6 +151,8 @@ it("skips unchanged inbox rows for 12 idle polls and renders only the changed bo
       act(() => root.render(<List bots={bots} />));
     }
     expect(state.avatarRenders).toBe(30);
+    // The renderer keeps one identity, so the list never re-renders rows on its account.
+    expect(new Set(identities).size).toBe(1);
     const fetched = structuredClone(bots);
     fetched[0]!.status = "running";
     fetched[0]!.unread = true;
@@ -138,25 +176,15 @@ it.each(["midnight", "focus", "foreground"])(
     const today = new Date(2026, 9, 10, 12, 30).toISOString();
     const sixDaysAgo = new Date(2026, 9, 4, 12, 30).toISOString();
     // Keep the response and every row object identical throughout the date change.
-    const bots = [today, sixDaysAgo].map(
-      (updatedAt) => ({ id: updatedAt, name: "Helper", preview: "", updatedAt }) as MobileBot,
-    );
-    const groups = [today, sixDaysAgo].map(
-      (updatedAt) =>
-        ({ id: updatedAt, name: "Team", preview: "", members: [], updatedAt }) as never,
-    );
+    const items = [today, sixDaysAgo].flatMap((updatedAt) => [
+      { type: "bot", bot: { id: updatedAt, name: "Helper", preview: "", updatedAt }, depth: 0 },
+      {
+        type: "group",
+        group: { id: updatedAt, name: "Team", preview: "", members: [], updatedAt },
+      },
+    ]) as InboxItem[];
     function List() {
-      const day = useInboxDay();
-      return (
-        <>
-          {bots.map((item, index) => (
-            <div key={item.id}>
-              <BotRow bot={item} day={day} onPress={() => undefined} />
-              <GroupRow group={groups[index]!} day={day} onPress={() => undefined} />
-            </div>
-          ))}
-        </>
-      );
+      return <>{useRows(items, useInboxDay())}</>;
     }
     const container = document.createElement("div");
     const root = createRoot(container);

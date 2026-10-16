@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BotAvatar } from "../components/bot-avatar";
 import { BotOrganizeModal } from "../components/bot-organize-modal";
 import { ConversationRow } from "../components/conversation-row";
+import { type InboxItem, useInboxRenderItem } from "../components/inbox-render-item";
 import { BotRow, FALLBACK_COLOR, GroupRow } from "../components/inbox-rows";
 import { createHomeStyles } from "../components/inbox-styles";
 import { NativeSymbol } from "../components/native-symbol";
@@ -82,8 +83,6 @@ import {
 } from "../lib/session";
 import { useInboxDay } from "../lib/use-inbox-day";
 import { errorText } from "../lib/user-error";
-
-type InboxItem = InboxSpaceItem | { type: "search"; hit: SearchHit };
 
 async function openMobileSpace(spaceId: string | undefined, open: () => void) {
   if (spaceId && !(await selectSpace(spaceId))) {
@@ -640,94 +639,24 @@ function Home() {
     setOrganizeTarget({ kind: "group", id: group.id });
   }, []);
 
-  const renderItem = useCallback(
-    ({ item }: { item: InboxItem }) =>
-      item.type === "search" ? (
-        <SearchRow hit={item.hit} onPress={openSearchHit} />
-      ) : item.type === "heading" ? (
-        item.space ? (
-          <View style={styles.spaceHeading}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={item.title}
-              accessibilityState={{
-                selected: item.space.id === me?.spaceId,
-                disabled: spaceBusy,
-              }}
-              disabled={spaceBusy}
-              onPress={() => {
-                if (item.space) void chooseInboxSpace(item.space.id);
-              }}
-              style={({ pressed }) => [styles.spaceSelect, pressed && styles.rowPressed]}
-            >
-              <Text style={styles.spaceTitle}>{item.title}</Text>
-            </Pressable>
-            {canDeleteInboxSpace(item.space) ? (
-              <MenuView
-                actions={[
-                  {
-                    id: "delete",
-                    title: t("Delete space"),
-                    image: "trash",
-                    attributes: { destructive: true, disabled: spaceBusy || !!spaceRecoveryId },
-                  },
-                ]}
-                colorScheme={appearance}
-                onPressAction={() => {
-                  if (item.space) confirmDeleteSpace(item.space);
-                }}
-              >
-                <View
-                  accessibilityLabel={t("Space actions for {name}", { name: item.title })}
-                  accessibilityRole="button"
-                  style={styles.spaceActions}
-                >
-                  <NativeSymbol ios="ellipsis" android="ellipsis-horizontal" size={20} />
-                </View>
-              </MenuView>
-            ) : null}
-          </View>
-        ) : (
-          <Text style={styles.sectionHeading}>{item.title}</Text>
-        )
-      ) : item.type === "group" ? (
-        <GroupRow
-          group={item.group}
-          day={day}
-          onPress={openGroup}
-          onLongPress={item.group.spaceId === me?.spaceId ? organizeGroup : undefined}
-        />
-      ) : (
-        <BotRow
-          bot={item.bot}
-          day={day}
-          depth={item.depth}
-          hasChildren={item.hasChildren}
-          collapsed={collapsedRosterParents.has(item.bot.id)}
-          onToggleChildren={toggleRosterParent}
-          onPress={openBot}
-          onLongPress={item.bot.spaceId === me?.spaceId ? organizeBot : undefined}
-        />
-      ),
-    [
-      appearance,
-      chooseInboxSpace,
-      collapsedRosterParents,
-      confirmDeleteSpace,
-      day,
-      me?.spaceId,
-      openBot,
-      openGroup,
-      openSearchHit,
-      organizeBot,
-      organizeGroup,
-      spaceBusy,
-      spaceRecoveryId,
-      styles,
-      t,
-      toggleRosterParent,
-    ],
-  );
+  const renderItem = useInboxRenderItem({
+    appearance,
+    chooseInboxSpace,
+    collapsedRosterParents,
+    confirmDeleteSpace,
+    day,
+    meSpaceId: me?.spaceId,
+    openBot,
+    openGroup,
+    openSearchHit,
+    organizeBot,
+    organizeGroup,
+    spaceBusy,
+    spaceRecoveryId,
+    styles,
+    t,
+    toggleRosterParent,
+  });
 
   if (!ready) {
     return (
@@ -1070,31 +999,3 @@ function HeaderButton({
     </Pressable>
   );
 }
-
-const SearchRow = memo(function SearchRow({
-  hit,
-  onPress,
-}: {
-  hit: SearchHit;
-  onPress: (hit: SearchHit) => void;
-}) {
-  const styles = useThemedStyles(createHomeStyles);
-  return (
-    <Pressable
-      onPress={() => onPress(hit)}
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-    >
-      <View style={styles.rowBody}>
-        <View style={styles.rowTop}>
-          <Text style={styles.name} numberOfLines={1}>
-            {hit.title}
-          </Text>
-          <Text style={styles.time}>{hit.kind}</Text>
-        </View>
-        <Text style={styles.preview} numberOfLines={2}>
-          {searchHitRowPreview(hit)}
-        </Text>
-      </View>
-    </Pressable>
-  );
-});
