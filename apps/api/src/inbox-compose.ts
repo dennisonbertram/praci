@@ -267,6 +267,7 @@ export async function inboxComposeDraftSave(
   const draft = draftOf(input, original?.providerMessageId, true);
   const row = await composeRow(deps, actor, input);
   // A send in flight, or one that already happened, owns the draft.
+  if (row.state === "abandoned") return { status: "failed" };
   if (row.state === "sent" || row.state === "unknown" || row.state === "pending")
     return { status: savedStatus(row.state) };
   try {

@@ -407,6 +407,8 @@ describePostgres("inbox compose (PostgreSQL)", () => {
         },
       });
       expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "failed" });
+      expect(await inboxComposeDraftSave(deps(), a, input)).toEqual({ status: "failed" });
+      expect(gmail.draftsOf("box-a")).toHaveLength(0);
       expect(gmail.sentOf("box-a")).toHaveLength(0);
       expect(sendRequests()).toHaveLength(0);
       expect(

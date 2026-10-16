@@ -92,12 +92,13 @@ export async function reconcileMailApprovals(deps: {
           return count === 1;
         };
         if (row.state === "sent") outcome = "sent";
-        else if (row.state === "failed") outcome = "failed";
-        else if (row.state === "draft") {
+        else if (row.state === "draft" || row.state === "failed") {
           if (!(await settle("abandoned"))) continue;
           outcome = "failed";
           after = "abandoned";
         } else if (row.state === "abandoned") outcome = "failed";
+        // Known gap, accepted: if the inline sender records "sent" after we wrote "unknown" and the
+        // API then dies before its card update, the card stays "unknown, check Sent" (conservative).
         else if (row.state === "pending") {
           if (!(await settle("unknown"))) continue;
           after = "unknown";

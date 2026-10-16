@@ -948,17 +948,12 @@ export async function setMailApprovalOutcome(
         select: { result: true },
       });
       if ((effect?.result as { note?: unknown } | null)?.note !== note) return null;
-      const row = await tx.composeSend.findUnique({
-        where: {
-          spaceId_userId_clientId: {
-            spaceId: input.spaceId,
-            userId: compose.userId,
-            clientId: compose.clientId,
-          },
-        },
-        select: { state: true },
-      });
-      if ((row?.state ?? null) !== compose.state) return null;
+      // Locked, so a state change by the inline sender waits for us or is already visible.
+      const rows = await tx.$queryRaw<Array<{ state: string }>>`
+        SELECT state FROM compose_sends
+        WHERE "spaceId" = ${input.spaceId} AND "userId" = ${compose.userId}
+          AND "clientId" = ${compose.clientId} FOR UPDATE`;
+      if ((rows[0]?.state ?? null) !== compose.state) return null;
     }
     if (input.note) {
       await tx.externalEffect.updateMany({

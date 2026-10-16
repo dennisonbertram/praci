@@ -293,6 +293,40 @@ describePostgres("mail approval recovery (PostgreSQL)", () => {
     expect((await card(a.message.id))?.outcome).toBe("sent");
   });
 
+  it("fences a failed send record too, so a retry cannot claim it", async () => {
+    const a = await waitingApproval("mail_send");
+    await claim(a);
+    const where = { clientId: `approval_${a.effect.id}` };
+    await prisma.composeSend.updateMany({ where, data: { state: "failed" } });
+    await reconcile(later());
+    expect((await card(a.message.id))?.outcome).toBe("failed");
+    expect((await prisma.composeSend.findFirstOrThrow({ where })).state).toBe("abandoned");
+  });
+
+  it("waits on the compose row lock, then skips when the state changed", async () => {
+    const a = await waitingApproval("mail_send");
+    await claim(a);
+    const clientId = `approval_${a.effect.id}`;
+    const claimNote = await note(a.effect.id);
+    let write: Promise<void> | undefined;
+    await prisma.$transaction(async (tx) => {
+      await tx.composeSend.updateMany({ where: { clientId }, data: { state: "sent" } });
+      write = events().setMailApprovalOutcome({
+        spaceId: ids.space,
+        threadId,
+        messageId: a.message.id,
+        effectId: a.effect.id,
+        outcome: "failed",
+        note: "recovery note",
+        onlyIf: { note: claimNote, compose: { userId: ids.user, clientId, state: "draft" } },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+    await write;
+    expect((await card(a.message.id))?.outcome).toBeUndefined();
+    expect(await note(a.effect.id)).toBe(claimNote);
+  });
+
   it("leaves a plain denial alone", async () => {
     const a = await waitingApproval("mail_send");
     await prisma.externalEffect.update({
