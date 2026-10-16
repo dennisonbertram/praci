@@ -121,7 +121,7 @@ function Preview({ card }: { card: FinanceCard }) {
       [t`Burn / mo`, money(card.burnCents)],
       // One decimal, as on the dashboard.
       [t`Runway`, card.runwayMonths === null ? "–" : t`${card.runwayMonths.toFixed(1)} mo`],
-      [t`Spend this month`, money(card.monthSpendCents)],
+      [t`Spent this month`, money(card.monthSpendCents)],
     ] as const;
     return (
       <Card size="sm" className="gap-1 py-2">

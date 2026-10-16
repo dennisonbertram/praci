@@ -88,6 +88,7 @@ it("shows the four numbers of the overview", async () => {
     "9.2 mo",
     "$1,200",
   ]);
+  expect(view.textContent).toContain("Spent this month");
   expect(hrefs(view)).toEqual(["/app/finance"]);
 });
 
