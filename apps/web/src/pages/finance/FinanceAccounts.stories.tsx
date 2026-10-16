@@ -227,6 +227,27 @@ export const CardDetail: StoryObj<typeof FinanceAccountPage> = {
     }),
 };
 
+/** An account made from an uploaded statement: named from the file, with Rename in the title row. */
+export const StatementAccountDetail: StoryObj<typeof FinanceAccountPage> = {
+  render: () => <FinanceAccountPage id="acct_statement" />,
+  beforeEach: () =>
+    mockRpc({
+      "finance.account": {
+        ...account,
+        account: {
+          ...treasury,
+          id: "acct_statement",
+          provider: "statement",
+          kind: "checking",
+          name: "mock firstbank",
+          lastFour: null,
+          annualYieldPct: null,
+        },
+        treasuryYield: [],
+      },
+    }),
+};
+
 export const AccountLoadFailed: StoryObj<typeof FinanceAccountPage> = {
   render: () => <FinanceAccountPage id="acct_missing" />,
   beforeEach: () =>

@@ -15,6 +15,7 @@ import { AddAccountDialog } from "../../components/finance/AddAccountDialog";
 import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
 import { LineChart } from "../../components/finance/charts";
 import { exchangeName } from "../../components/finance/ExchangeGroup";
+import { RenameAccountDialog } from "../../components/finance/RenameAccountDialog";
 import {
   Chevron,
   cashSubtitle,
@@ -337,6 +338,7 @@ export function FinanceAccountPage({ id }: { id: string }) {
   const name = account?.name ?? "";
   const isCard = account?.kind === "card";
   const pct = account ? yieldText(account.annualYieldPct) : null;
+  const [renaming, setRenaming] = useState(false);
   return (
     <DetailPage
       crumbs={[
@@ -354,11 +356,26 @@ export function FinanceAccountPage({ id }: { id: string }) {
           </>
         ) : null
       }
+      action={
+        // A statement account is named from its file; a synced account keeps the bank's name.
+        account?.provider === "statement" ? (
+          <Button variant="outline" size="sm" onClick={() => setRenaming(true)}>
+            <Trans>Rename</Trans>
+          </Button>
+        ) : null
+      }
       loading={!data}
       error={q.error}
       notFound={q.notFound}
       onRetry={q.retry}
     >
+      {renaming && account ? (
+        <RenameAccountDialog
+          account={account}
+          onClose={() => setRenaming(false)}
+          onSaved={q.reload}
+        />
+      ) : null}
       {data && account ? (
         <>
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">

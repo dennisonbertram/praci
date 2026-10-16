@@ -30,6 +30,7 @@ const rpcMock = vi.hoisted(() => ({
   balanceSeries: vi.fn(),
   overview: vi.fn(),
   setPreferences: vi.fn(),
+  statementAccountRename: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
@@ -401,4 +402,67 @@ it("says an account has no transactions yet, without mentioning a period it does
   await flush();
   expect(container.textContent).toContain("No transactions on this account yet");
   expect(container.textContent).not.toContain("in this period");
+});
+
+it("renames a statement account and shows the new name, and offers no rename on a synced bank", async () => {
+  const statementAccount = (name: string) => ({
+    account: {
+      id: "s1",
+      provider: "statement",
+      kind: "checking",
+      name,
+      lastFour: null,
+      balanceCents: 1_050_000,
+      annualYieldPct: null,
+    },
+    history: [],
+    treasuryYield: [],
+    transactions: [],
+  });
+  rpcMock.account.mockResolvedValueOnce(statementAccount("mock firstbank"));
+  rpcMock.account.mockResolvedValueOnce(statementAccount("Operating account"));
+  rpcMock.statementAccountRename.mockResolvedValue({ ok: true });
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountPage id="s1" />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  const rename = [...container.querySelectorAll("button")].find((b) => b.textContent === "Rename");
+  await act(async () => rename?.click());
+  const input = document.body.querySelector<HTMLInputElement>('input[maxlength="200"]');
+  expect(input?.value).toBe("mock firstbank");
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setter?.call(input, "  Operating account ");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => input?.form?.requestSubmit());
+  await flush();
+  expect(rpcMock.statementAccountRename).toHaveBeenCalledWith({
+    id: "s1",
+    name: "Operating account",
+  });
+  expect(container.querySelector("h1")?.textContent).toBe("Operating account");
+
+  // A Mercury account keeps the bank's name.
+  rpcMock.account.mockResolvedValue({
+    ...statementAccount("Checking"),
+    account: { ...statementAccount("Checking").account, id: "m1", provider: "mercury" },
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountPage id="m1" />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Rename")).toBe(
+    false,
+  );
 });
