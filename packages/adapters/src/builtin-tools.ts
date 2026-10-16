@@ -965,7 +965,14 @@ export const builtinAgentTools: ConnectorTool[] = [
       type: "object",
       properties: {
         dataRoomItemId: { type: "string" },
-        notLegal: { type: "boolean", description: "Only dataRoomItemId is needed with this." },
+        revision: {
+          type: "number",
+          description: "The revision returned with the document when you read it.",
+        },
+        notLegal: {
+          type: "boolean",
+          description: "Only dataRoomItemId and revision are needed with this.",
+        },
         title: { type: "string" },
         contractType: { type: "string", description: "For example NDA, lease, MSA, employment." },
         counterparties: { type: "array", items: { type: "string" } },
@@ -979,7 +986,7 @@ export const builtinAgentTools: ConnectorTool[] = [
         currency: { type: "string", description: "ISO 4217 code, for example USD." },
         summary: { type: "string", description: "Two or three plain sentences." },
       },
-      required: ["dataRoomItemId"],
+      required: ["dataRoomItemId", "revision"],
     },
   },
   {

@@ -15,28 +15,29 @@ export const LEGAL_SCAN_PROMPT =
 /** Every morning at 06:00 UTC. */
 const SCAN_CRONS = ["0 6 * * *"];
 
+/** Serializes work on one Legal agent (routine creation, scan runs) across API processes. */
+export async function lockLegalBot(tx: Pick<PrismaClient, "$executeRaw">, botId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`legal-bot:${botId}`}, 0))`;
+}
+
 /**
- * Creates the daily scan routine once per Legal agent. Routines run on the bot's own model, so no model
- * is set on it. A partial unique index keeps it to one per bot even when two calls race.
+ * Creates the daily scan routine once per Legal agent. Routines run on the bot's own model, so no
+ * model is set on it. The check and the create run under a per-bot advisory lock, so two racing
+ * calls leave one routine.
  */
 export async function ensureLegalRoutine(
-  deps: { prisma: Pick<PrismaClient, "routine">; jobs: JobPublisher },
+  deps: { prisma: Pick<PrismaClient, "$transaction">; jobs: JobPublisher },
   actor: Actor,
   botId: string,
 ) {
-  const existing = await deps.prisma.routine.findFirst({
-    where: {
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      botId,
-      name: LEGAL_SCAN_ROUTINE_NAME,
-    },
-  });
-  if (existing) return existing;
   const nextRunAt = nextCronDateAcrossStrict(SCAN_CRONS, new Date(), "UTC");
-  // A unique index on (botId) for this routine name makes a racing second create fail; read the winner.
-  const routine = await deps.prisma.routine
-    .create({
+  const { routine, created } = await deps.prisma.$transaction(async (tx) => {
+    await lockLegalBot(tx, botId);
+    const existing = await tx.routine.findFirst({
+      where: { spaceId: actor.spaceId, userId: actor.userId, botId, name: LEGAL_SCAN_ROUTINE_NAME },
+    });
+    if (existing) return { routine: existing, created: false };
+    const row = await tx.routine.create({
       data: {
         spaceId: actor.spaceId,
         userId: actor.userId,
@@ -49,17 +50,10 @@ export async function ensureLegalRoutine(
         notify: false,
         nextRunAt,
       },
-    })
-    .catch(async (error: unknown) => {
-      if ((error as { code?: string }).code !== "P2002") throw error;
-      return null;
     });
-  if (!routine) {
-    return deps.prisma.routine.findFirstOrThrow({
-      where: { spaceId: actor.spaceId, userId: actor.userId, botId, name: LEGAL_SCAN_ROUTINE_NAME },
-    });
-  }
-  if (nextRunAt) await deps.jobs.enqueue(routineWakeupJob(routine.id, nextRunAt));
+    return { routine: row, created: true };
+  });
+  if (created && nextRunAt) await deps.jobs.enqueue(routineWakeupJob(routine.id, nextRunAt));
   return routine;
 }
 
@@ -70,7 +64,7 @@ export async function ensureLegalRoutine(
  */
 export async function ensureLegalAgent(
   deps: {
-    prisma: Pick<PrismaClient, "routine" | "bot">;
+    prisma: Pick<PrismaClient, "routine" | "bot" | "$transaction">;
     jobs: JobPublisher;
     repos: Pick<ReturnType<typeof createRepos>, "createBot">;
   },

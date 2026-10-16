@@ -3814,6 +3814,35 @@ export function createRunExecutor(deps: ExecutorDeps) {
           return;
         }
         runSecrets.push(...resolved.redact);
+        // Data Room consent for the model this run actually uses. Read on every use, so a revoked
+        // consent applies at once.
+        const legalRunAi = () =>
+          resolveDataRoomAi(
+            {
+              prisma: deps.prisma,
+              resolveModel: async () => ({
+                provider: runModelProvider,
+                id: runModelId,
+                baseUrl: resolved.baseUrl,
+                apiKey: resolved.apiKey,
+              }),
+            },
+            { spaceId: run.spaceId, userId: bot.userId },
+          );
+        if (legalOnly) {
+          // The Legal agent's history and tools carry document content, so the model that receives
+          // them must be one the user allowed. Without that consent the run ends before any model call.
+          const ai = await legalRunAi();
+          if (!ai.allowed) {
+            const who = ai.recipients[0]?.name ?? runModelProvider;
+            const message = `Data Room consent is required for ${who} before the Legal agent can run. Allow it on the Legal page.`;
+            await publishMessage(deps, run, "bot", [{ kind: "text", text: message }]).catch(
+              (error) => getLogger().error("legal consent notice", error),
+            );
+            await failRunBeforeModel(message);
+            return;
+          }
+        }
         // A pin stays as it was created. Unpinned runs still record the model they
         // used; modelPinned is what keeps that record from becoming the next choice.
         if (!run.modelPinned) {
@@ -5433,21 +5462,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if ((LEGAL_TOOL_NAMES.has(name) || DATA_ROOM_TOOL_NAMES.has(name)) && legalEnabled) {
             // Consent is for the model this run uses; it is read on every call so revoking it applies at once.
-            const allowed = async () =>
-              (
-                await resolveDataRoomAi(
-                  {
-                    prisma: deps.prisma,
-                    resolveModel: async () => ({
-                      provider: runModelProvider ?? "",
-                      id: runModelId ?? "",
-                      baseUrl: resolved.baseUrl,
-                      apiKey: resolved.apiKey,
-                    }),
-                  },
-                  { spaceId: run.spaceId, userId: bot.userId },
-                )
-              ).allowed;
+            const allowed = async () => (await legalRunAi()).allowed;
             const toolDeps = {
               prisma: deps.prisma,
               scope: { spaceId: run.spaceId, userId: bot.userId },
@@ -6760,7 +6775,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
         }
 
         let fallbackModels: { provider: string; modelId: string }[] = [];
-        if (!scripted) {
+        // Backup models would receive the Legal agent's history under a consent given for another
+        // recipient, so the Legal agent has none.
+        if (!scripted && !legalOnly) {
           try {
             fallbackModels = await deps.prisma.spaceBackupModel.findMany({
               where: { userId: run.userId, spaceId: run.spaceId },

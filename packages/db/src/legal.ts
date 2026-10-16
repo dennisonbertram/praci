@@ -43,6 +43,8 @@ const relationOf = (relation: string) =>
 
 export interface LegalContractInput {
   dataRoomItemId: string;
+  /** DataRoomItem.revision the agent read. Stored as given, so a document that changed since stays unreviewed. */
+  revision: number;
   title: string;
   contractType: string;
   counterparties?: string[];
@@ -65,6 +67,8 @@ export interface LegalDeadlineInput {
   dueDate: Date;
   kind: string;
   status?: string;
+  /** True for deadlines opened from a contract's dates. */
+  derived?: boolean;
   sourceQuote?: string | null;
   notes?: string | null;
 }
@@ -123,7 +127,7 @@ export function createLegalRepos(prisma: PrismaClient) {
     async upsertContract(actor: Actor, input: LegalContractInput): Promise<LegalContractRecord> {
       const item = await prisma.dataRoomItem.findFirst({
         where: { id: input.dataRoomItemId, ...scope(actor) },
-        select: { revision: true },
+        select: { id: true },
       });
       if (!item) throw new IsolationError();
       const data = {
@@ -139,7 +143,7 @@ export function createLegalRepos(prisma: PrismaClient) {
         valueCents: input.valueCents ?? null,
         currency: input.currency ?? null,
         summary: input.summary ?? null,
-        analyzedRevision: item.revision,
+        analyzedRevision: input.revision,
         analyzedAt: new Date(),
       };
       return prisma.legalContract.upsert({
@@ -180,6 +184,7 @@ export function createLegalRepos(prisma: PrismaClient) {
         ...(input.contractId !== undefined ? { contractId: input.contractId } : {}),
         ...(input.dataRoomItemId !== undefined ? { dataRoomItemId: input.dataRoomItemId } : {}),
         ...(input.status ? { status: input.status } : {}),
+        ...(input.derived !== undefined ? { derived: input.derived } : {}),
         ...(input.sourceQuote !== undefined ? { sourceQuote: input.sourceQuote } : {}),
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
       };
@@ -292,6 +297,13 @@ export function createLegalRepos(prisma: PrismaClient) {
       const relation = relationOf(input.relation);
       if (!relation) throw new Error("An edge needs a relation");
       await Promise.all([requireNode(actor, input.fromId), requireNode(actor, input.toId)]);
+      if (input.dataRoomItemId) {
+        const item = await prisma.dataRoomItem.findFirst({
+          where: { id: input.dataRoomItemId, ...scope(actor) },
+          select: { id: true },
+        });
+        if (!item) throw new IsolationError();
+      }
       const source = {
         ...(input.dataRoomItemId !== undefined ? { dataRoomItemId: input.dataRoomItemId } : {}),
         ...(input.sourceQuote !== undefined ? { sourceQuote: input.sourceQuote } : {}),

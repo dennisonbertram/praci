@@ -18,7 +18,7 @@ import {
 } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
 import { createLegalRepos, IsolationError } from "@rakazo/db";
-import { ensureLegalAgent, ensureLegalRoutine } from "./legal-agent.js";
+import { ensureLegalAgent, ensureLegalRoutine, lockLegalBot } from "./legal-agent.js";
 
 export interface LegalDeps {
   prisma: PrismaClient;
@@ -138,16 +138,18 @@ export async function legalScanNow(deps: LegalDeps, actor: Actor) {
   const bot = await ensureLegalAgent(deps, actor);
   const routine = await ensureLegalRoutine(deps, actor, bot.id);
   const threadId = bot.threadId;
-  const active = await deps.prisma.run.findFirst({
-    where: {
-      botId: bot.id,
-      routineId: routine.id,
-      status: { in: ["queued", "leased", "running", "waiting_input", "waiting_takeover"] },
-    },
-    select: { id: true },
-  });
-  if (active) return { runId: active.id, botId: bot.id };
-  const run = await deps.prisma.$transaction(async (tx) => {
+  // The active-run check and the create share one per-bot lock, so two clicks make one run.
+  const { run, existing } = await deps.prisma.$transaction(async (tx) => {
+    await lockLegalBot(tx, bot.id);
+    const active = await tx.run.findFirst({
+      where: {
+        botId: bot.id,
+        routineId: routine.id,
+        status: { in: ["queued", "leased", "running", "waiting_input", "waiting_takeover"] },
+      },
+      select: { id: true },
+    });
+    if (active) return { run: active, existing: true };
     const task = await tx.task.create({
       data: {
         ...scope(actor),
@@ -157,7 +159,7 @@ export async function legalScanNow(deps: LegalDeps, actor: Actor) {
         status: "queued",
       },
     });
-    return tx.run.create({
+    const created = await tx.run.create({
       data: {
         ...scope(actor),
         botId: bot.id,
@@ -169,7 +171,9 @@ export async function legalScanNow(deps: LegalDeps, actor: Actor) {
       },
       select: { id: true },
     });
+    return { run: created, existing: false };
   });
+  if (existing) return { runId: run.id, botId: bot.id };
   await deps.jobs.enqueue(runContinueJob(run.id));
   return { runId: run.id, botId: bot.id };
 }

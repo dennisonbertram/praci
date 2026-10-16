@@ -107,6 +107,8 @@ const Cents = z.union([
 
 const ContractArgs = z.object({
   dataRoomItemId: Id,
+  /** The revision returned with the document when you read it. */
+  revision: z.number().int().min(0),
   /** true: the document was read and is not a contract or legal document; nothing else is needed. */
   notLegal: z.boolean().optional(),
   title: z.string().trim().min(1).max(300).optional(),
@@ -187,6 +189,7 @@ const REFUSAL =
   "The user has not agreed to send Data Room documents to this agent's model provider, so the Data Room cannot be read. Ask the user to allow it for this agent, then try again.";
 const DAY_MS = 86_400_000;
 const NOTICE_NOTE = "Derived from the expiration date and the notice period.";
+const DISMISSED_NOTE = "Dismissed: the contract no longer has this date.";
 
 const actorOf = (scope: LegalToolDeps["scope"]): Actor => ({
   ...scope,
@@ -267,7 +270,11 @@ export async function legalToolFromTool(
       const row = await repo.link(actor, parsed.data);
       return { edge: { id: row.id, fromId: row.fromId, toId: row.toId, relation: row.relation } };
     }
-    if (name === "legal_query") return await query(deps, args);
+    if (name === "legal_query") {
+      // Summaries, quotes and graph evidence are document content, so this follows the same consent.
+      if (!(await deps.allowed())) return { error: REFUSAL, consentRequired: true };
+      return await query(deps, args);
+    }
     return { error: `Unknown legal tool ${name}` };
   } catch (error) {
     if (error instanceof IsolationError) {
@@ -286,6 +293,7 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
   if (input.notLegal) {
     const row = await repo.upsertContract(actor, {
       dataRoomItemId: input.dataRoomItemId,
+      revision: input.revision,
       title: input.title ?? "Not a legal document",
       contractType: LEGAL_NOT_LEGAL_TYPE,
       status: "unknown",
@@ -297,6 +305,7 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
   }
   const row = await repo.upsertContract(actor, {
     dataRoomItemId: input.dataRoomItemId,
+    revision: input.revision,
     title: input.title,
     contractType: input.contractType,
     counterparties: input.counterparties,
@@ -319,9 +328,10 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
 }
 
 /**
- * Opens the expiration and notice-of-non-renewal deadlines of a live contract, so the agent never does
- * date arithmetic itself. Each keeps one row (found by contract, kind and title): a changed
- * date moves it, and a deadline the user already closed stays closed.
+ * Keeps the expiration and notice-of-non-renewal deadlines of a contract in line with its dates, so
+ * the agent never does date arithmetic itself. They are marked `derived`. A date change moves the
+ * open one, a deadline the user closed stays closed, and an open derived deadline that no longer
+ * applies (contract terminated, renamed, no expiry) is dismissed. Deadlines made by hand are never touched.
  */
 async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecord) {
   const repo = createLegalRepos(deps.prisma);
@@ -342,12 +352,21 @@ async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecor
       });
     }
   }
+  const previous = await deps.prisma.legalDeadline.findMany({
+    where: { ...deps.scope, contractId: contract.id, derived: true },
+  });
+  const sameKey = (a: { kind: string; title: string }, b: { kind: string; title: string }) =>
+    a.kind === b.kind && a.title === b.title;
   const out: LegalDeadlineRecord[] = [];
+  for (const row of previous) {
+    if (row.status === "open" && !wanted.some((item) => sameKey(item, row))) {
+      out.push(
+        await repo.updateDeadline(actor, row.id, { status: "dismissed", notes: DISMISSED_NOTE }),
+      );
+    }
+  }
   for (const item of wanted) {
-    const existing = await deps.prisma.legalDeadline.findFirst({
-      where: { ...deps.scope, contractId: contract.id, kind: item.kind, title: item.title },
-      select: { id: true, status: true },
-    });
+    const existing = previous.find((row) => sameKey(item, row));
     if (existing && existing.status !== "open") continue;
     out.push(
       await repo.upsertDeadline(actor, {
@@ -355,6 +374,7 @@ async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecor
         contractId: contract.id,
         dataRoomItemId: contract.dataRoomItemId,
         ...item,
+        derived: true,
         notes: NOTICE_NOTE,
       }),
     );

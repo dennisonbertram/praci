@@ -35,6 +35,7 @@ CREATE TABLE "legal_deadlines" (
     "dueDate" DATE NOT NULL,
     "kind" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'open',
+    "derived" BOOLEAN NOT NULL DEFAULT false,
     "sourceQuote" TEXT,
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

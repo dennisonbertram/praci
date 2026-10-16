@@ -786,7 +786,6 @@ model ExternalEffect {
   @@map("external_effects")
 }
 
-/// routines_legal_scan_key is raw SQL (partial unique on botId where name = 'Daily legal scan').
 model Routine {
   id             String    @id @default(cuid())
   spaceId        String
@@ -2265,6 +2264,8 @@ model LegalDeadline {
   kind           String
   /// "open" | "done" | "dismissed"
   status         String         @default("open")
+  /// Opened by legal_upsert_contract from the contract's dates; re-derived (not hand-made) when they change.
+  derived        Boolean        @default(false)
   sourceQuote    String?
   notes          String?
   createdAt      DateTime       @default(now())
