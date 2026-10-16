@@ -96,7 +96,8 @@ export function useFinanceQuery<T>(load: () => Promise<T>, deps: readonly unknow
   };
 }
 
-export type Crumb = { label: string; to?: string };
+/** `back` is where the crumb's own page was opened from, so returning to it restores its Back too. */
+export type Crumb = { label: string; to?: string; back?: Crumb };
 
 /** The place a link is clicked from (a dashboard card, a detail page), so Back can return to it. */
 const HereContext = createContext<Crumb | null>(null);
@@ -116,14 +117,29 @@ export function HereLink(props: LinkProps) {
 
 /** The origin a page was opened from, when a HereLink opened it. */
 function useCameFrom(): Crumb | null {
-  const state = useLocation().state as { back?: Partial<Crumb> } | null;
-  const back = state?.back;
-  return typeof back?.label === "string" &&
-    typeof back.to === "string" &&
-    back.to.startsWith(financePath.dashboard())
-    ? { label: back.label, to: back.to }
-    : null;
+  const state = useLocation().state as { back?: unknown } | null;
+  return parseBack(state?.back, 5);
 }
+
+/** A Finance origin from router state, with its own origins up to `depth` levels. */
+export function parseBack(raw: unknown, depth: number): Crumb | null {
+  const back = raw as Partial<Crumb> | undefined;
+  if (
+    depth <= 0 ||
+    typeof back?.label !== "string" ||
+    typeof back.to !== "string" ||
+    !back.to.startsWith(financePath.dashboard())
+  ) {
+    return null;
+  }
+  const parent = parseBack(back.back, depth - 1);
+  return parent
+    ? { label: back.label, to: back.to, back: parent }
+    : { label: back.label, to: back.to };
+}
+
+/** Router state that reopens a crumb's page as it was opened, so its own Back still works. */
+const crumbState = (crumb: Crumb | undefined) => (crumb?.back ? { back: crumb.back } : undefined);
 
 /**
  * The trail shown above a page: its own crumbs, or, when it was opened from somewhere else (the
@@ -148,6 +164,7 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
     <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
       <Link
         to={previous?.to ?? financePath.dashboard()}
+        state={crumbState(previous)}
         className="inline-flex h-8 items-center whitespace-nowrap rounded-lg border border-border bg-card px-2.5 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
       >
         <span aria-hidden="true">←</span>
@@ -157,9 +174,12 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
         <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
           {crumbs.map((crumb, i) => (
             <li key={i} className="flex items-center gap-1">
-              {i > 0 ? <span aria-hidden="true">/</span> : null}
               {crumb.to && i < crumbs.length - 1 ? (
-                <Link to={crumb.to} className="hover:text-foreground hover:underline">
+                <Link
+                  to={crumb.to}
+                  state={crumbState(crumb)}
+                  className="hover:text-foreground hover:underline"
+                >
                   {crumb.label}
                 </Link>
               ) : (
@@ -170,6 +190,8 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
                   {crumb.label}
                 </span>
               )}
+              {/* The slash ends a crumb, so a wrapped trail never starts a line with one. */}
+              {i < crumbs.length - 1 ? <span aria-hidden="true">/</span> : null}
             </li>
           ))}
         </ol>
@@ -229,8 +251,15 @@ export function DetailPage({
   children?: ReactNode;
 }) {
   const location = useLocation();
+  const cameFrom = useCameFrom();
   const label = crumbs.at(-1)?.label;
-  const here = label ? { label, to: `${location.pathname}${location.search}` } : null;
+  const here = label
+    ? {
+        label,
+        to: `${location.pathname}${location.search}`,
+        ...(cameFrom ? { back: cameFrom } : {}),
+      }
+    : null;
   return (
     <BackHere value={here}>
       <div>

@@ -8,6 +8,7 @@ import type {
   UpcomingItem,
 } from "@rakazo/contracts";
 import { Button, Skeleton, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web";
+import { cn } from "@rakazo/ui-web/lib/utils";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -332,7 +333,23 @@ function Overview({
           <Trans>Finance</Trans>
         </h1>
         <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
-          {syncing ? <Trans>Syncing…</Trans> : updated ? <Trans>Updated {updated}</Trans> : null}
+          {/* Both labels share one cell, so the chips beside them do not move when it changes. */}
+          <span className="grid">
+            <span
+              aria-hidden={!syncing}
+              className={cn("col-start-1 row-start-1", syncing ? "" : "invisible")}
+            >
+              <Trans>Syncing…</Trans>
+            </span>
+            {updated ? (
+              <span
+                aria-hidden={syncing}
+                className={cn("col-start-1 row-start-1", syncing ? "invisible" : "")}
+              >
+                <Trans>Updated {updated}</Trans>
+              </span>
+            ) : null}
+          </span>
           <Tooltip>
             <TooltipTrigger
               render={
@@ -341,6 +358,8 @@ function Overview({
                   size="icon-xs"
                   aria-label={t`Refresh`}
                   disabled={syncing}
+                  // Keeps keyboard focus on the button while it syncs instead of dropping it.
+                  focusableWhenDisabled
                   onClick={onRefresh}
                 />
               }
@@ -666,9 +685,10 @@ function UpcomingRow({ item }: { item: UpcomingItem }) {
       <span className="text-muted-foreground">
         {item.dates.map((d) => shortDay(d)).join(" · ")}
       </span>
-      <span className="min-w-0 truncate">
-        {item.name}
-        <span className="ms-1.5 rounded-full border border-border px-1.5 text-[10px] text-muted-foreground">
+      {/* The name gives way to the tag, so a long name never pushes the tag out of view. */}
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="min-w-0 truncate">{item.name}</span>
+        <span className="shrink-0 rounded-full border border-border px-1.5 text-[10px] text-muted-foreground">
           {upcomingTag(item.kind)}
         </span>
       </span>

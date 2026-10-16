@@ -539,11 +539,17 @@ it("shows Syncing on a click even when the refresh answers at once", async () =>
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance");
   await flush();
-  await act(async () => button(/^Refresh$/)?.click());
-  expect(container.textContent).toContain("Syncing…");
+  // The label that is shown; the other one only holds its width so the chips do not move.
+  const status = () =>
+    [...container.querySelectorAll('[aria-hidden="false"]')].map((n) => n.textContent).join("");
+  const refresh = button(/^Refresh$/);
+  await act(async () => refresh?.click());
+  expect(status()).toBe("Syncing…");
+  // While syncing the button is unavailable but keeps focus (a disabled button would drop it).
+  expect(refresh?.getAttribute("aria-disabled")).toBe("true");
+  expect(refresh?.disabled).toBe(false);
   await act(() => new Promise((resolve) => setTimeout(resolve, 900)));
-  expect(container.textContent).not.toContain("Syncing…");
-  expect(container.textContent).toContain("Updated");
+  expect(status()).toMatch(/^Updated /);
 });
 
 it("shows an error with Try again when the dashboard cannot load", async () => {
@@ -989,6 +995,43 @@ it("sends Back from a vendor opened in Breakdown to the Breakdown card", async (
   await act(async () => (back as HTMLElement).click());
   await flush();
   expect(button("Vendor")?.getAttribute("aria-pressed")).toBe("true");
+});
+
+it("keeps the vendor's Breakdown origin after opening one of its charges and coming back", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  rpcMock.transaction.mockResolvedValue(spendTransaction(false));
+  rpcMock.vendor.mockResolvedValue({
+    key: "acme-hosting",
+    name: "Acme Hosting",
+    isSubscription: true,
+    monthlyAvgCents: 50_000,
+    monthlyAvgMonths: 3,
+    changePct: null,
+    firstSeenAt: "2026-07-02T00:00:00.000Z",
+    paidWith: [],
+    monthly: [],
+    charges: [spendTransaction(false).transaction],
+  });
+  await show("/app/finance");
+  await flush();
+  await act(async () => button("Vendor")?.click());
+  const row = container.querySelector('#breakdown a[href="/app/finance/vendor/acme-hosting"]');
+  await act(async () => (row as HTMLElement).click());
+  await flush();
+  const charge = container.querySelector('a[href="/app/finance/transaction/t1"]');
+  await act(async () => (charge as HTMLElement).click());
+  await flush();
+  // The charge's Back names the vendor it was opened from.
+  const toVendor = container.querySelector('a[href="/app/finance/vendor/acme-hosting"]');
+  expect(toVendor?.textContent).toContain("Acme Hosting");
+  await act(async () => (toVendor as HTMLElement).click());
+  await flush();
+  expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
+  // Back on the vendor still returns to Breakdown in Vendor mode, not to Subscriptions.
+  expect(
+    container.querySelector('a[href="/app/finance?by=vendor#breakdown"]')?.textContent,
+  ).toContain("Breakdown");
+  expect(container.querySelector("nav")?.textContent).not.toContain("Subscriptions");
 });
 
 it("leaves no empty crumb and no guessed origin on a missing vendor", async () => {
