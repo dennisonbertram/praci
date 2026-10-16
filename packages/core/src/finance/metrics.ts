@@ -413,10 +413,9 @@ export function breakdown(
     if (day >= row.latest) Object.assign(row, { label, latest: day });
     rows.set(key, row);
   }
-  // A row that refunds outweigh is not spend; showing it unsigned would read as money out.
   return [...rows]
     .map(([key, row]) => ({ key, label: row.label, cents: row.cents }))
-    .filter((row) => row.cents > 0)
+    .filter((row) => row.cents !== 0)
     .sort((a, b) => b.cents - a.cents || a.label.localeCompare(b.label));
 }
 

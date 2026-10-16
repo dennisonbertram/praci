@@ -1003,3 +1003,24 @@ it("shows a day from the chart as a removable chip with no period tab selected",
   await flush();
   expect(container.textContent?.replace(/[\s ]+/g, " ")).toContain("Oct 1 – 14");
 });
+
+it("never shows a category that refunds outweigh as money spent", async () => {
+  rpcMock.overview.mockResolvedValue(
+    connectedOverview({
+      breakdown: {
+        category: [
+          { key: "software", label: "Software", cents: 120_000 },
+          // $250 + $450 of charges against a $1,200 deposit: net -$500.
+          { key: "uncategorized", label: "Uncategorized", cents: -50_000 },
+        ],
+        vendor: [],
+      },
+    }),
+  );
+  await show("/app/finance");
+  await flush();
+  const breakdown = container.querySelector("#breakdown")?.textContent ?? "";
+  expect(breakdown).toContain("Software");
+  expect(breakdown).not.toContain("Uncategorized");
+  expect(breakdown).not.toContain("$500");
+});

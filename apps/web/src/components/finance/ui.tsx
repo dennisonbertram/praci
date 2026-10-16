@@ -344,10 +344,12 @@ export function BreakdownRows({
   to: (row: BreakdownRow) => string;
   swatches?: boolean;
 }) {
-  const top = rows[0]?.cents || 1;
+  // A row that refunds outweigh is not spend; shown unsigned it would read as money out.
+  const spent = rows.filter((row) => row.cents > 0);
+  const top = spent[0]?.cents || 1;
   return (
     <div className="-mx-2">
-      {rows.map((row, i) => (
+      {spent.map((row, i) => (
         <HereLink
           key={row.key}
           to={to(row)}

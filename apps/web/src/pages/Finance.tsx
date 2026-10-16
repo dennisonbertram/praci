@@ -530,7 +530,7 @@ function Overview({
                     by === "category" ? financePath.category(row.key) : financePath.vendor(row.key)
                   }
                 />
-                {breakdownRows.length === 0 ? (
+                {breakdownRows.every((row) => row.cents <= 0) ? (
                   <div className="py-2 text-muted-foreground">
                     <Trans>No spend in this period</Trans>
                   </div>
