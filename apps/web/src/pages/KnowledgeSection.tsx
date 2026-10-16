@@ -69,15 +69,19 @@ export function SpaceMemorySection() {
 
   useEffect(() => {
     // Documents still show, with whatever names loaded, if a bot list fails.
-    void Promise.allSettled([rpc.bots.list(), rpc.bots.listArchived()]).then((lists) =>
-      setBotNames(
-        new Map(
-          lists.flatMap((list) =>
-            list.status === "fulfilled" ? list.value.map((bot) => [bot.id, bot.name] as const) : [],
+    void Promise.allSettled([rpc.bots.list(), rpc.bots.listArchived()])
+      .then((lists) =>
+        setBotNames(
+          new Map(
+            lists.flatMap((list) =>
+              list.status === "fulfilled"
+                ? list.value.map((bot) => [bot.id, bot.name] as const)
+                : [],
+            ),
           ),
         ),
-      ),
-    );
+      )
+      .catch(() => undefined);
   }, []);
 
   return (
