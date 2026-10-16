@@ -1,5 +1,6 @@
 import type { MessageBlock, ThreadMessage } from "@rakazo/contracts";
 import { cloudAgentBlockFromPayload } from "./cloud-agent.js";
+import { asRecord } from "./record.js";
 
 export function projectMessages(
   events: Array<{
@@ -51,7 +52,7 @@ export function projectMessages(
     else liveById.clear();
   };
   for (const event of events) {
-    const payload = asRecord(event.payload);
+    const payload = asRecord(event.payload) ?? {};
     const createdAt =
       typeof event.createdAt === "string" ? event.createdAt : event.createdAt.toISOString();
     if (event.type === "thread.message.created") {
@@ -532,10 +533,4 @@ export function createStreamingRedactor(secrets: string[]) {
       return drain(true);
     },
   };
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
 }

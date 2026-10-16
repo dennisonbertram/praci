@@ -1376,7 +1376,8 @@ describeJourneys("required product journeys", () => {
     const bot = await rpc<Bot>(app, cookie, "bots/create", {
       name: "Sequencer",
       title: "",
-      description: "",
+      // A blank profile seeds a greeting (one extra event and message), so give it a role.
+      description: "Checks cursor allocation.",
       instructions: "",
       notifyOnFinish: false,
     });

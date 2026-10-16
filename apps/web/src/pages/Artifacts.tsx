@@ -2,6 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import type { Artifact, ArtifactVersion, Bot } from "@rakazo/contracts";
 import { isAttachmentImageMimeType } from "@rakazo/contracts";
+import { matchesArtifactQuery, mimeBadgeLabel } from "@rakazo/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -163,14 +164,9 @@ export function ArtifactsPage() {
   const filteredItems = useMemo(() => {
     if (!items) return null;
     const now = new Date();
-    const query = searchQuery.trim().toLowerCase();
     return items.filter((item) => {
       if (!matchesCalendarDateFilter(item.createdAt, dateFilter, now)) return false;
-      if (!query) return true;
-      return (
-        item.name.toLowerCase().includes(query) ||
-        (item.description?.toLowerCase().includes(query) ?? false)
-      );
+      return matchesArtifactQuery(item, searchQuery);
     });
   }, [items, searchQuery, dateFilter]);
 
@@ -663,7 +659,7 @@ function ArtifactCard({
               </span>
             ) : null}
             <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
-              {mimeLabel(artifact.mimeType)}
+              {mimeBadgeLabel(artifact.mimeType)}
             </span>
           </div>
         </div>
@@ -789,14 +785,6 @@ function ArtifactMimeIcon({ mimeType, small }: { mimeType: string; small?: boole
       )}
     </svg>
   );
-}
-
-function mimeLabel(mimeType: string): string {
-  if (mimeType === "text/html") return "HTML";
-  if (mimeType === "text/markdown") return "MD";
-  if (mimeType === "application/pdf") return "PDF";
-  const slash = mimeType.indexOf("/");
-  return (slash === -1 ? mimeType : mimeType.slice(slash + 1)).toUpperCase().slice(0, 6);
 }
 
 function PreviewPane({

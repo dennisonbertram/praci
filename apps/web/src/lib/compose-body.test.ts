@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, prefillHtml, textToHtml } from "./compose-body";
+import { prefillHtml, textToHtml } from "./compose-body";
 
 describe("textToHtml", () => {
   it("keeps the blank lines above a quoted reply and escapes markup", () => {
@@ -14,14 +14,6 @@ describe("textToHtml links", () => {
     expect(textToHtml("> see https://x.test/a?b=1&c=2, or <http://y.test>. ok")).toBe(
       '<blockquote><p>see <a href="https://x.test/a?b=1&amp;c=2">https://x.test/a?b=1&amp;c=2</a>, or &lt;<a href="http://y.test">http://y.test</a>&gt;. ok</p></blockquote>',
     );
-  });
-});
-
-describe("formatBytes", () => {
-  it("uses B, KB and MB", () => {
-    expect(formatBytes(512)).toBe("512 B");
-    expect(formatBytes(12_345)).toBe("12 KB");
-    expect(formatBytes(2_500_000)).toBe("2.5 MB");
   });
 });
 

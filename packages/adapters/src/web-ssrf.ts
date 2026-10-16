@@ -1,9 +1,10 @@
-import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { readBoundedResponseBytes } from "@rakazo/core";
 import { Agent } from "undici";
+import { combineSignals } from "./connector-safety.js";
 import {
   createAddressCheckedLookup,
+  defaultResolveHostname,
   isPrivateAddress,
   type ResolvedAddress,
   type ResolveHostname,
@@ -41,9 +42,6 @@ export interface SafeWebFetchOptions {
    */
   destroy?: () => void | Promise<void>;
 }
-
-const defaultResolveHostname: ResolveHostname = (hostname) =>
-  lookup(hostname, { all: true, verbatim: true });
 
 export async function assertSafeWebUrl(
   value: string,
@@ -306,11 +304,4 @@ export function withAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise
       },
     );
   });
-}
-
-function combineSignals(...signals: Array<AbortSignal | undefined>): AbortSignal {
-  const active = signals.filter((signal): signal is AbortSignal => Boolean(signal));
-  if (active.length === 0) return new AbortController().signal;
-  if (active.length === 1) return active[0]!;
-  return AbortSignal.any(active);
 }

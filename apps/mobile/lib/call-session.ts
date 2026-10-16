@@ -8,19 +8,15 @@ import {
   isFarewell,
   isInterimCallBargeIn,
   latestSpokenCallReply,
+  newClientId,
+  reduceThreadSnapshot,
   spokenMemory,
 } from "@rakazo/core";
 import type { AudioRecorder } from "expo-audio";
 import { File } from "expo-file-system";
 import { useSyncExternalStore } from "react";
 import type { MobileSnapshot } from "./api";
-import {
-  applyMobileThreadEvent,
-  blockText,
-  captureApiRequestContext,
-  rpc,
-  subscribeThread,
-} from "./api";
+import { blockText, captureApiRequestContext, rpc, subscribeThread } from "./api";
 import type { CallCue } from "./call-sounds";
 import {
   playCallCue,
@@ -190,7 +186,7 @@ export function startCall(
   endCall();
   deps = { ...productionDeps(), ...overrides };
   switchBot = call.switchBot;
-  callId = randomId();
+  callId = newClientId();
   callRunId = null;
   canTranscribe = call.transcribe ?? true;
   onDevice = null;
@@ -772,7 +768,7 @@ function watchReplies(
               });
               return;
             }
-            snapshot = applyMobileThreadEvent(snapshot, event) ?? snapshot;
+            snapshot = reduceThreadSnapshot(snapshot, event) ?? snapshot;
             if (!snapshot) return;
             const message = latestSpokenCallReply(snapshot.messages, watchedCallId);
             if (!message || message.id === lastSeen) return;
@@ -812,10 +808,4 @@ function trackPendingCallSend(callId: string, request: Promise<unknown>): () => 
     pending.delete(request);
     if (pending.size === 0) pendingCallSends.delete(callId);
   };
-}
-
-function randomId(): string {
-  const webCrypto = globalThis.crypto;
-  if (webCrypto && typeof webCrypto.randomUUID === "function") return webCrypto.randomUUID();
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }

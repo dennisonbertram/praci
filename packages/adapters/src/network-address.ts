@@ -1,10 +1,14 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import dns from "node:dns";
+import { lookup } from "node:dns/promises";
 import type { LookupFunction } from "node:net";
 import { isIP } from "node:net";
 
 export type ResolvedAddress = { address: string; family: number };
 export type ResolveHostname = (hostname: string) => Promise<ResolvedAddress[]>;
+
+export const defaultResolveHostname: ResolveHostname = (hostname) =>
+  lookup(hostname, { all: true, verbatim: true });
 
 type PinnedDns = { hostname: string; addresses: ResolvedAddress[] };
 

@@ -106,12 +106,12 @@ msgid "{0} is ready."
 msgstr ""
 
 #. placeholder {0}: format(size / 1024)
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{0} KB"
 msgstr "{0} KB"
 
 #. placeholder {0}: format(size / (1024 * 1024))
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{0} MB"
 msgstr "{0} MB"
 
@@ -211,7 +211,6 @@ msgid "{count} years"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{days}d ago"
 msgstr "{days} g önce"
 
@@ -224,7 +223,6 @@ msgid "{hiddenCount} more"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{hours}h ago"
 msgstr "{hours} sa önce"
 
@@ -233,7 +231,6 @@ msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "{minutes}m ago"
 msgstr "{minutes} dk önce"
 
@@ -292,7 +289,7 @@ msgstr ""
 msgid "{serverName} connected"
 msgstr ""
 
-#: src/components/ArtifactFileCard.tsx
+#: src/lib/format-bytes.ts
 msgid "{size} B"
 msgstr "{size} B"
 
@@ -517,6 +514,7 @@ msgid "Add custom connection"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Add item"
 msgstr "Öğe ekle"
 
@@ -1132,6 +1130,10 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Callback URL"
+msgstr ""
+
 #: src/App.tsx
 msgid "Can't reach the server."
 msgstr "Sunucuya ulaşılamıyor."
@@ -1179,6 +1181,10 @@ msgstr "iptal edildi"
 #: src/pages/ActivityList.tsx
 msgid "Cancelled"
 msgstr "İptal edildi"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Cap table, equity and investors"
+msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -1413,12 +1419,17 @@ msgstr ""
 msgid "Clearing…"
 msgstr "Temizleniyor…"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client ID"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client secret"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Client secret (optional)"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -1764,11 +1775,13 @@ msgid "Contract"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Copied"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -2248,6 +2261,10 @@ msgstr ""
 msgid "Couldn't save the draft"
 msgstr ""
 
+#: src/pages/shell/bot-pins.tsx
+msgid "Couldn't save. Try again."
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Couldn't send. Try again."
 msgstr ""
@@ -2463,6 +2480,7 @@ msgstr ""
 #. placeholder {0}: group.name
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Delete {0}"
 msgstr "{0} sil"
 
@@ -2797,6 +2815,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Enter the URL, starting with https://."
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Equity"
 msgstr ""
 
 #: src/lib/roster-status.ts
@@ -3333,7 +3355,6 @@ msgid "Junk"
 msgstr ""
 
 #: src/lib/relative-time.ts
-#: src/pages/ActivityList.tsx
 msgid "just now"
 msgstr "az önce"
 
@@ -3419,6 +3440,10 @@ msgstr ""
 msgid "Link SSO"
 msgstr "SSO bağla"
 
+#: src/pages/Shell.tsx
+msgid "List"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "List view"
 msgstr ""
@@ -3429,6 +3454,10 @@ msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Listening"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Live data, enrichment and generation tools"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4481,6 +4510,10 @@ msgstr "Eklenti"
 msgid "Popular"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Post and schedule to social accounts"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "POST to"
 msgstr ""
@@ -4590,6 +4623,10 @@ msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read exchange balances"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Read posts, DMs and bookmarks"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -4719,6 +4756,7 @@ msgstr ""
 #: src/components/ErrorBoundary.tsx
 #: src/pages/Finance.tsx
 #: src/pages/RoutineRunHistory.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Refresh"
 msgstr "Yenile"
 
@@ -5493,6 +5531,7 @@ msgstr ""
 msgid "Slack not enabled"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/Inbox.tsx
 msgid "Social"
 msgstr ""
@@ -5778,6 +5817,10 @@ msgstr ""
 msgid "The API did not come back. Refresh this page."
 msgstr ""
 
+#: src/pages/shell/bot-pins.tsx
+msgid "The bot changed this list. Your last edit wasn't saved."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "Bağlantı zaman aşımına uğradı."
@@ -5887,6 +5930,10 @@ msgstr "Bu sunucu bir bot olmadan atanamaz."
 msgid "This server did not ask for a sign-in."
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "This server needs an OAuth client ID."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 msgstr "Bu abonelik girişi Rakazo'da henüz kullanılamıyor. Bir dağıtım kimlik bilgisi kullan veya başka bir sağlayıcı seç."
@@ -5943,6 +5990,7 @@ msgid "Token"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "Tools"
 msgstr ""
 
@@ -6126,6 +6174,7 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/bot-pins.tsx
 msgid "Updated {updated}"
 msgstr ""
 

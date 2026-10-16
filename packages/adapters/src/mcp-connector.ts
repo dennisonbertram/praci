@@ -1,4 +1,4 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type {
   AdapterContext,
   ConnectorCall,
@@ -75,7 +75,7 @@ export function allowlistDrift(
  * Whether the assignment exposes a tool. The Finance agent is read-only whatever its assignment row
  * says: on a Mercury or Brex server only that provider's read tools pass, even with allowAllTools.
  */
-function assignmentAllowsTool(
+export function assignmentAllowsTool(
   assignment: {
     allowAllTools: boolean;
     allowedTools: unknown;
@@ -345,6 +345,18 @@ export class McpConnector implements ConnectorProvider {
       const secrets = material ? oauthMaterialSecrets(material) : [];
       await this.evict(sessionKey);
       throw new Error(sanitizeConnectorError(error, secrets));
+    }
+  }
+
+  /** Lists a stored server's tools, with their annotations, outside a bot run. */
+  async listServerTools(server: McpServer, context: AdapterContext): Promise<Tool[]> {
+    const sessionKey = this.sessionKey(server, context);
+    try {
+      const session = await this.sessionFor(server, context);
+      return (await session.listTools({ signal: context.signal })).tools;
+    } catch (error) {
+      await this.evict(sessionKey);
+      throw new Error(sanitizeConnectorError(error));
     }
   }
 

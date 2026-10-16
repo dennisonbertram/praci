@@ -26,13 +26,16 @@ function PerformanceProbe() {
 
 // Dev-only annotation toolbar. The dynamic import is necessary deferred loading: Vite
 // replaces import.meta.env.DEV with false in production builds, so the package is never bundled.
-const DevAnnotations = import.meta.env.DEV
-  ? lazy(() =>
-      import("agentation").then(({ Agentation }) => ({
-        default: () => <Agentation endpoint="http://localhost:4747" />,
-      })),
-    )
-  : null;
+// Skipped in automated browsers: its buttons ("Settings", "Start feedback mode") collide with
+// the app's own accessible names in Playwright locators.
+const DevAnnotations =
+  import.meta.env.DEV && !navigator.webdriver
+    ? lazy(() =>
+        import("agentation").then(({ Agentation }) => ({
+          default: () => <Agentation endpoint="http://localhost:4747" />,
+        })),
+      )
+    : null;
 
 function AppearanceSync() {
   useEffect(() => watchSystemAppearance(), []);

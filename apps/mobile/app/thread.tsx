@@ -15,6 +15,7 @@ import {
   appendNewerThreadPage,
   attachmentsForThread,
   buildComposerMentionOptions,
+  channelMessageLine,
   cloudAgentHttpsUrl,
   formatFileSize,
   formatMessageTime,
@@ -24,15 +25,20 @@ import {
   isPeerReceiptBlocks,
   isRunTerminalEvent,
   isSecretAskBlock,
+  isThreadSnapshotEvent,
   latestAnswerableAskMessageId,
   leaveThreadWindow,
+  messageProviderLabel,
+  newClientId,
   openThreadWindow,
   plainTextFromMarkdown,
   projectMessageReactions,
   reconcileThreadScrollState,
+  reduceThreadSnapshot,
   replyAttachment,
   resolveComposerSendPlan,
   resolvePersonaColorDef,
+  selectableMessageText,
   selectedAskActionLabel,
   threadWindowMessages,
   timeSeparatorIds,
@@ -103,6 +109,7 @@ import { MessageCaption } from "../components/message-caption";
 import { MessageContextMenu } from "../components/message-context-menu";
 import { NativeActionButton } from "../components/native-action-button";
 import { NativeSymbol } from "../components/native-symbol";
+import { PinsStrip, useBotPins } from "../components/PinsStrip";
 import { ReplyDismissButton } from "../components/reply-dismiss-button";
 import { ReplyLine } from "../components/reply-line";
 import { SelectTextSheet } from "../components/select-text-sheet";
@@ -121,17 +128,14 @@ import type {
   MobileSnapshot,
 } from "../lib/api";
 import {
-  applyMobileThreadEvent,
   blockText,
   copyableMobileMessageText,
   currentApiBase,
   loadSessionToken,
   mergeMobileSnapshot,
-  messagingProviderLabel,
   mobileThreadRefreshResult,
   prependMobileMessagePage,
   rpc,
-  selectableMobileMessageText,
   selectedSpaceId,
   selectSpace,
   subscribeThread,
@@ -216,14 +220,6 @@ import {
 
 type PendingAttachment = PickedAttachment & { threadKey: string };
 type AskAction = NonNullable<Extract<MessageBlock, { kind: "ask" }>["actions"]>[number];
-
-function newClientNonce(): string {
-  const webCrypto = globalThis.crypto;
-  if (webCrypto && typeof webCrypto.randomUUID === "function") {
-    return webCrypto.randomUUID();
-  }
-  return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
 
 function formatApprovalAnswer(
   answer: string | undefined,
@@ -449,6 +445,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const styles = useThemedStyles(createThreadHeaderStyles);
   const [botActionsOpen, setBotActionsOpen] = useState(false);
   const [hasPage, setHasPage] = useState(false);
+  const [pinsTick, setPinsTick] = useState(0);
   const { t, locale } = useI18n();
   const navigation = useNavigation();
   const router = useRouter();
@@ -476,6 +473,9 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const [restoring, setRestoring] = useState(false);
   const requestedThreadId = typeof threadId === "string" && threadId ? threadId : undefined;
   const inGroup = Boolean(groupId);
+  const { pins, setPins } = useBotPins(botId, Boolean(botId) && !inGroup, pinsTick);
+  const hasList = pins?.list != null;
+  const hasStats = (pins?.stats.length ?? 0) > 0;
   const call = useCallSession();
   const onCall = Boolean(botId) && call?.botId === botId;
   const voiceCallStarting = useRef(false);
@@ -581,7 +581,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const preparingSend = useRef(false);
-  const feedback = useThreadFeedback(threadKey, newClientNonce);
+  const feedback = useThreadFeedback(threadKey, newClientId);
   const { error, setError } = feedback;
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [selectableText, setSelectableText] = useState<string | null>(null);
@@ -874,6 +874,16 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                     },
                   ]
                 : []),
+              ...(hasList
+                ? [
+                    {
+                      type: "button" as const,
+                      accessibilityLabel: t("List"),
+                      icon: { type: "sfSymbol" as const, name: "checklist" },
+                      onPress: openList,
+                    },
+                  ]
+                : []),
               {
                 type: "button" as const,
                 accessibilityLabel: inGroup ? t("Group settings") : t("Bot actions"),
@@ -926,6 +936,21 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                 />
               </Pressable>
             ) : null}
+            {hasList ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("List")}
+                hitSlop={8}
+                onPress={openList}
+              >
+                <NativeSymbol
+                  ios="checklist"
+                  android="list-outline"
+                  size={21}
+                  color={tokens.foreground}
+                />
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("Bot actions")}
@@ -955,6 +980,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     groupId,
     inGroup,
     hasPage,
+    hasList,
     navigation,
     router,
     t,
@@ -965,6 +991,10 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
 
   function openPage() {
     if (botId) router.push({ pathname: "/agent-page", params: { botId } });
+  }
+
+  function openList() {
+    if (botId) router.push({ pathname: "/agent-list", params: { botId } });
   }
 
   // The page header item shows only when the bot has a page; re-check on every focus.
@@ -1443,20 +1473,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
               if (sessionGeneration !== currentSessionGeneration()) return;
               cursor = Math.max(cursor, event.seq ?? -1);
               retryMs = 250;
-              if (
-                event.type === "thread.progress" ||
-                event.type === "agent.tool.called" ||
-                event.type === "agent.tool.completed" ||
-                event.type === "thread.message.created" ||
-                event.type === "thread.message.updated" ||
-                event.type === "thread.message.reaction" ||
-                event.type === "thread.subagent" ||
-                event.type === "thread.cloud_agent" ||
-                event.type === "thread.cleared" ||
-                event.type === "run.waiting_input" ||
-                event.type === "computer.takeover.requested" ||
-                isRunTerminalEvent(event)
-              ) {
+              if (isThreadSnapshotEvent(event)) {
                 if (event.type === "thread.cleared") {
                   expandedHistoryThread.current = null;
                   pinnedAroundRef.current = null;
@@ -1464,9 +1481,10 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                   jumpAnchor.current.release();
                   historyEpoch.current += 1;
                 }
-                commitSnap(applyMobileThreadEvent(snapRef.current, event));
+                commitSnap(reduceThreadSnapshot(snapRef.current, event));
               }
               if (event.type === "page.updated") setHasPage(true);
+              if (event.type === "pins.updated") setPinsTick((n) => n + 1);
               if (event.type === "bot.updated") {
                 void refreshMentionBots();
               }
@@ -2044,7 +2062,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
         ...(targetGroupId ? { groupId: targetGroupId } : { botId: targetBotId! }),
         messageId: message.id,
         reaction,
-        clientNonce: newClientNonce(),
+        clientNonce: newClientId(),
       });
     } catch (err) {
       if (!isCurrentTarget(targetBotId, targetGroupId)) return;
@@ -2217,10 +2235,10 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   );
   const listContentStyle = useMemo(
     () => ({
-      paddingBottom: headerHeight + 8,
+      paddingBottom: (hasStats ? 0 : headerHeight) + 8,
       paddingTop: readOnly ? insets.bottom + 16 : 16,
     }),
-    [headerHeight, readOnly, insets.bottom],
+    [headerHeight, hasStats, readOnly, insets.bottom],
   );
 
   const workingFooter =
@@ -2319,6 +2337,14 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           {runError}
         </Text>
       ) : null}
+      {pins && hasStats && botId ? (
+        <PinsStrip
+          botId={botId}
+          stats={pins.stats}
+          topInset={error || runError ? 8 : headerHeight}
+          onRefreshed={setPins}
+        />
+      ) : null}
       {/* The floor keeps a tall suggestion list from sliding under the transparent header. */}
       <View style={{ flex: 1, minHeight: headerHeight, position: "relative" }}>
         {showPinnedPage ? (
@@ -2326,7 +2352,10 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
             key={jumpScrollTarget.current ?? pinnedTarget?.messageId ?? threadKey}
             ref={pinnedScroll}
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingTop: headerHeight + 8, paddingBottom: 16 }}
+            contentContainerStyle={{
+              paddingTop: (hasStats ? 0 : headerHeight) + 8,
+              paddingBottom: 16,
+            }}
             maintainVisibleContentPosition={messageListPosition}
             scrollEventThrottle={16}
             onLayout={(event) => {
@@ -2790,9 +2819,7 @@ function previewMessageText(message: MobileMessage): string {
   const text = message.blocks
     .flatMap((block) => {
       if (block.kind === "channel_message" && block.text) {
-        return [
-          `${messagingProviderLabel(block.provider, block.transport)} · ${block.fromLabel}: ${block.text}`,
-        ];
+        return [channelMessageLine(block)];
       }
       if (block.kind === "text" && block.text) {
         // Bot text is Markdown; user text is already plain.
@@ -2935,7 +2962,7 @@ const MessageRow = memo(function MessageRow({
     menu: ReturnType<typeof buildMessageContextMenu>;
     onMenuAction: (id: string) => void;
   }>(() => {
-    const messageText = selectableMobileMessageText(message);
+    const messageText = selectableMessageText(message);
     const includeQuote =
       !readOnly &&
       !message.id.startsWith("progress:") &&
@@ -3305,7 +3332,7 @@ const MessageBubble = memo(function MessageBubble({
         style={{ width: "100%", paddingVertical: 4, alignItems: "center" }}
       >
         <Text style={{ color: tokens.mutedForeground, fontSize: 13.5, textAlign: "center" }}>
-          {messagingProviderLabel(channelMessage.provider, channelMessage.transport)} ·{" "}
+          {messageProviderLabel(channelMessage.provider, channelMessage.transport)} ·{" "}
           {channelMessage.fromLabel}: {channelMessage.text}
         </Text>
       </Pressable>
@@ -3608,9 +3635,7 @@ const MessageBubble = memo(function MessageBubble({
   const caption = message.blocks
     .flatMap((block) => {
       if (block.kind === "channel_message" && block.text) {
-        return [
-          `${messagingProviderLabel(block.provider, block.transport)} · ${block.fromLabel}: ${block.text}`,
-        ];
+        return [channelMessageLine(block)];
       }
       return block.kind === "text" && block.text ? [block.text] : [];
     })

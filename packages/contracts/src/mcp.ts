@@ -3,6 +3,17 @@ import * as z from "zod";
 export const McpTransportSchema = z.enum(["streamable_http", "sse", "stdio"]);
 export type McpTransport = z.infer<typeof McpTransportSchema>;
 
+/** OAuth begin error for a server without dynamic client registration; the web app keys on this text. */
+export const MCP_OAUTH_CLIENT_ID_REQUIRED = "This server needs an OAuth client ID";
+
+/** A client registered by the user with the server's provider, for servers that refuse dynamic registration. */
+export const McpOauthClientSchema = z.object({
+  clientId: z.string().min(1).max(256),
+  clientSecret: z.string().min(1).max(1024).optional(),
+  /** Space-separated scopes to request instead of everything the server lists. */
+  scope: z.string().min(1).max(1000).optional(),
+});
+
 export function isLocalMcpHost(hostname: string): boolean {
   return (
     hostname === "localhost" ||

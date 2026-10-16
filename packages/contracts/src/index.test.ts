@@ -10,6 +10,7 @@ import {
   CreateGroupInput,
   CreateRoutineInput,
   canReactToThreadMessage,
+  connectionMaxTokensField,
   McpServerConfigInput,
   MessageBlock,
   ModelConnectInputSchema,
@@ -494,5 +495,14 @@ describe("contracts", () => {
         data: rows.slice(0, 2_501),
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("connectionMaxTokensField", () => {
+  it("defaults for compatible endpoints and stays blank for other providers", () => {
+    expect(connectionMaxTokensField("openai-compatible", undefined)).toBe("4096");
+    expect(connectionMaxTokensField("openai-compatible", 2048)).toBe("2048");
+    expect(connectionMaxTokensField("anthropic", undefined)).toBe("");
+    expect(connectionMaxTokensField("anthropic", 512)).toBe("512");
   });
 });

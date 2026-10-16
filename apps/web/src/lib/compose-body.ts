@@ -73,12 +73,6 @@ export function prefillHtml(prefill: { body: string; quotedHtml?: string }): str
   return `${textToHtml(body.slice(0, end < 0 ? body.length : end))}<p></p>${quotedHtml}`;
 }
 
-export function formatBytes(bytes: number): string {
-  if (bytes < 1_000) return `${bytes} B`;
-  if (bytes < 1_000_000) return `${Math.round(bytes / 1_000)} KB`;
-  return `${(bytes / 1_000_000).toFixed(1)} MB`;
-}
-
 /** Base64 of the file's bytes, without a data: prefix. */
 export async function fileToBase64(file: File): Promise<string> {
   const bytes = new Uint8Array(await file.arrayBuffer());

@@ -16,6 +16,8 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   const stamp = Date.now();
   await signup(page, `group-${stamp}@rakazo.test`, "password12", "Group E2E");
   await completeOnboarding(page);
+  // These assertions target the robot avatar markup; organic is the default style.
+  await rpc(page, "preferences/update", { avatarStyle: "robot" });
   await page.goto("/app");
   await page.waitForURL(/\/app\/[^/]+$/);
 

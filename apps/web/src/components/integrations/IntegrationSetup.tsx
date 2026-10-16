@@ -4,11 +4,10 @@ import {
   type IntegrationCatalogResult,
   type IntegrationSetupState,
 } from "@rakazo/contracts";
-import { deriveMcpName } from "@rakazo/core";
+import { deriveMcpName, newClientId } from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
 import { Check } from "lucide-react";
 import { useEffect, useId, useState } from "react";
-import { newClientId } from "../../lib/client-id";
 import { connectMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";

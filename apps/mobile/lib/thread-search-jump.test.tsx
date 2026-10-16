@@ -36,9 +36,11 @@ describe("mobile search jump", () => {
         run: null,
         messages: [1, 2].map((seq) => ({
           id: `message-${seq}`,
+          threadId: "thread-1",
           seq,
-          role: "user",
-          blocks: [{ kind: "text", text: `Message ${seq}` }],
+          role: "user" as const,
+          blocks: [{ kind: "text" as const, text: `Message ${seq}` }],
+          createdAt: "2026-01-01T00:00:00.000Z",
         })),
       };
       const page = {

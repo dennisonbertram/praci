@@ -38,6 +38,7 @@ import {
   buildComposerMentionOptions,
   clampMentionHighlightIndex,
   cronFromPreset,
+  DEFAULT_BOT_COLOR,
   formatMessageTime,
   groupVoiceChats,
   inferAttachmentMimeType,
@@ -48,6 +49,7 @@ import {
   latestAnswerableAskMessageId,
   mentionChipKey,
   nestRosterByParent,
+  newClientId,
   plainTextFromMarkdown,
   projectMessageReactions,
   reorderBotTo,
@@ -91,12 +93,12 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
-  Clock,
   Copy,
   FileText,
   FolderOpen,
   Gauge,
   LayoutGrid,
+  ListTodo,
   Lock,
   LogOut,
   Mail,
@@ -111,7 +113,6 @@ import {
   Paperclip,
   Pencil,
   Plus,
-  Puzzle,
   Reply,
   Search,
   Settings,
@@ -188,7 +189,6 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
-import { newClientId } from "../lib/client-id";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -226,6 +226,7 @@ import {
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import { sharedInflight } from "../lib/shared-inflight";
+import { slashSkillOptions as pickSlashSkills } from "../lib/slash-skills";
 import {
   activeThreadRuns,
   applyThreadSendReceipt,
@@ -281,6 +282,7 @@ import { SpaceSearchResults } from "./SpaceSearch";
 import { BotPagePanel, type PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { BotCreatePicker } from "./shell/bot-picker";
+import { PinsList, PinsStrip, useBotPins } from "./shell/bot-pins";
 import { ComposerReplyPreview, ReplyLine, TimeSeparator } from "./shell/chat-context";
 import { CommandPalette, isCommandPaletteHotkey } from "./shell/command-palette";
 import {
@@ -293,6 +295,7 @@ import {
   RenameBotSectionDialog,
   RenameSpaceDialog,
 } from "./shell/dialogs";
+import { MentionIcon } from "./shell/mention-icon";
 import {
   AppConnectCard,
   ArtifactImage,
@@ -334,8 +337,6 @@ type PendingBrowserNotification = {
 };
 
 const ATTACHMENT_ACCEPT = [...ATTACHMENT_ALLOWED_MIME_TYPES, ".zip"].join(",");
-/** Identity colour for bots the roster no longer knows about. */
-const FALLBACK_BOT_COLOR = "#85858A";
 const THREAD_SNAPSHOT_TIMEOUT_MS = 2_000;
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
 const VOICE_STATUS_REFRESH_TIMEOUT_MS = 10_000;
@@ -529,6 +530,7 @@ export function ShellPage() {
   // The bot whose page exists (the Page control shows only then), and its latest page.updated event.
   const [pageBotId, setPageBotId] = useState<string | null>(null);
   const [pageRemote, setPageRemote] = useState<PageRemoteUpdate | null>(null);
+  const [pinsSeq, setPinsSeq] = useState(0);
   const [restoredPanelKey, setRestoredPanelKey] = useState<string | null>(null);
   const panelStorageKeyRef = useRef<string | null>(null);
   const observedPanelKey = useRef<string | null>(null);
@@ -880,6 +882,7 @@ export function ShellPage() {
         : financeMode
           ? findFinanceAgent(bots, userId)
           : (bots.find((b) => b.id === botId) ?? bots[0]);
+  const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
   const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =
     (computerBotId ? bots.find((bot) => bot.id === computerBotId) : undefined) ?? active;
@@ -1489,6 +1492,7 @@ export function ShellPage() {
           setPageBotId(active.id);
           setPageRemote({ revision, updatedBy, seq: event.seq });
         }
+        if (event.type === "pins.updated") setPinsSeq(event.seq);
         if (event.type === "thread.cleared") {
           expandedHistoryThread.current = null;
           pinnedAroundRef.current = null;
@@ -1960,7 +1964,7 @@ export function ShellPage() {
     const bot = resolveTranscriptBot(run.botId);
     return {
       botId: run.botId,
-      color: bot?.color ?? FALLBACK_BOT_COLOR,
+      color: bot?.color ?? DEFAULT_BOT_COLOR,
       name: bot?.name,
       status: run.status,
     };
@@ -2161,7 +2165,7 @@ export function ShellPage() {
           ...(groupId ? { groupId } : { botId: botId! }),
           messageId: message.id,
           reaction,
-          clientNonce: newClientNonce(),
+          clientNonce: newClientId(),
         });
       } catch (error) {
         const stillHere = groupId
@@ -2896,115 +2900,127 @@ export function ShellPage() {
     .slice(0, 2)
     .toUpperCase();
 
+  const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
   const threadView = (
     <>
-      <Transcript
-        key={activeSnapshot?.threadId}
-        scrollRef={messageScroll}
-        scrollRequest={scrollRequest}
-        onScrollRequestHandled={clearScrollRequest}
-        artifactTarget={transcriptArtifactTarget}
-        messages={transcriptMessages}
-        showToolActivity={showToolActivity}
-        olderCursor={activeSnapshot?.olderCursor ?? null}
-        loadingOlder={loadingOlder}
-        answerableAskMessageId={answerableAskMessageId}
-        running={transcriptRunning}
-        workingBots={workingBots}
-        workingActivity={soleWorkingActivity}
-        workingStartedAt={workingStartedAt}
-        onLoadOlder={loadOlder}
-        onOpenBot={openBot}
-        onAnswer={answerMessage}
-        onReply={(message) => {
-          setReplyTarget(message);
-          setReplyQuote(null);
-        }}
-        onQuote={(message, quote) => {
-          setReplyTarget(message);
-          setReplyQuote(quote);
-        }}
-        onReact={reactToMessage}
-        onJumpToMessage={jumpToReplyMessage}
-        onOpenPeerMessages={(peer) => {
-          setPeerConversation(peer);
-        }}
-        memberName={resolveTranscriptMemberName}
-        peerBot={resolveTranscriptBot}
-        onRefresh={refreshActiveThread}
-        onBotChanged={refreshBots}
-        onAddRoutine={addSkillRoutine}
-        voiceReady={Boolean(voiceStatus?.ready)}
-        speakingMessageId={speakingMessageId}
-        onSpeak={speakMessage}
-        onOpenComputer={onOpenComputer}
-      />
-      {recordingSkill ? (
-        <div className="px-6 pb-2 text-center text-[13px] text-destructive">
-          <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
-        </div>
-      ) : null}
-      {active || activeGroup ? (
-        <Composer
-          key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
-          activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
-          running={composerRunning}
-          disabled={Boolean(recordingSkill)}
-          pendingAttachments={activePendingAttachments}
-          attachmentNotice={attachmentNotice}
-          sendError={sendError}
-          runError={displayedRunError}
-          runErrorId={displayedRunErrorId}
-          onRunErrorPresented={handleRunErrorPresented}
-          onDismissError={dismissComposerError}
-          sending={sending}
-          fileInputRef={fileInputRef}
-          onAttachmentPick={onAttachmentPick}
-          onRemoveAttachment={removeAttachment}
-          onSend={sendMessage}
-          onStop={stopRun}
-          onVoice={
-            !inGroup && active
-              ? () => {
-                  if (!voiceStatus?.ready) {
-                    openSettings("voice");
-                    return;
-                  }
-                  startCall({
-                    botId: active.id,
-                    botName: active.name,
-                    botColor: active.color,
-                    transcribe: voiceStatus ? Boolean(voiceStatus.transcribe) : undefined,
-                  });
+      {!inGroup && !pageMode && botPins ? <PinsStrip pins={botPins} onPins={setBotPins} /> : null}
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <Transcript
+            key={activeSnapshot?.threadId}
+            scrollRef={messageScroll}
+            scrollRequest={scrollRequest}
+            onScrollRequestHandled={clearScrollRequest}
+            artifactTarget={transcriptArtifactTarget}
+            messages={transcriptMessages}
+            showToolActivity={showToolActivity}
+            olderCursor={activeSnapshot?.olderCursor ?? null}
+            loadingOlder={loadingOlder}
+            answerableAskMessageId={answerableAskMessageId}
+            running={transcriptRunning}
+            workingBots={workingBots}
+            workingActivity={soleWorkingActivity}
+            workingStartedAt={workingStartedAt}
+            onLoadOlder={loadOlder}
+            onOpenBot={openBot}
+            onAnswer={answerMessage}
+            onReply={(message) => {
+              setReplyTarget(message);
+              setReplyQuote(null);
+            }}
+            onQuote={(message, quote) => {
+              setReplyTarget(message);
+              setReplyQuote(quote);
+            }}
+            onReact={reactToMessage}
+            onJumpToMessage={jumpToReplyMessage}
+            onOpenPeerMessages={(peer) => {
+              setPeerConversation(peer);
+            }}
+            memberName={resolveTranscriptMemberName}
+            peerBot={resolveTranscriptBot}
+            onRefresh={refreshActiveThread}
+            onBotChanged={refreshBots}
+            onAddRoutine={addSkillRoutine}
+            voiceReady={Boolean(voiceStatus?.ready)}
+            speakingMessageId={speakingMessageId}
+            onSpeak={speakMessage}
+            onOpenComputer={onOpenComputer}
+          />
+          {recordingSkill ? (
+            <div className="px-6 pb-2 text-center text-[13px] text-destructive">
+              <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
+            </div>
+          ) : null}
+          {active || activeGroup ? (
+            <Composer
+              key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
+              activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
+              running={composerRunning}
+              disabled={Boolean(recordingSkill)}
+              pendingAttachments={activePendingAttachments}
+              attachmentNotice={attachmentNotice}
+              sendError={sendError}
+              runError={displayedRunError}
+              runErrorId={displayedRunErrorId}
+              onRunErrorPresented={handleRunErrorPresented}
+              onDismissError={dismissComposerError}
+              sending={sending}
+              fileInputRef={fileInputRef}
+              onAttachmentPick={onAttachmentPick}
+              onRemoveAttachment={removeAttachment}
+              onSend={sendMessage}
+              onStop={stopRun}
+              onVoice={
+                !inGroup && active
+                  ? () => {
+                      if (!voiceStatus?.ready) {
+                        openSettings("voice");
+                        return;
+                      }
+                      startCall({
+                        botId: active.id,
+                        botName: active.name,
+                        botColor: active.color,
+                        transcribe: voiceStatus ? Boolean(voiceStatus.transcribe) : undefined,
+                      });
+                    }
+                  : undefined
+              }
+              artifactTarget={transcriptArtifactTarget}
+              replyTarget={activeReplyTarget}
+              replyQuote={activeReplyQuote}
+              replyTargetName={replyTargetName}
+              onClearReply={clearReply}
+              mentionTargets={composerMentionTargets}
+              agentSkills={agentSkills}
+              onSlashOpen={refreshAgentSkills}
+              sentHistory={sentHistory}
+              onSlashAction={(action) => {
+                if (action === "chat-settings") {
+                  setPanel(inGroup ? "group-settings" : "settings");
+                  // Page modes render no settings panel; they open on the agent's own page.
+                  if (pageMode && active) openBot(active.id);
+                  return;
                 }
-              : undefined
-          }
-          artifactTarget={transcriptArtifactTarget}
-          replyTarget={activeReplyTarget}
-          replyQuote={activeReplyQuote}
-          replyTargetName={replyTargetName}
-          onClearReply={clearReply}
-          mentionTargets={composerMentionTargets}
-          agentSkills={agentSkills}
-          onSlashOpen={refreshAgentSkills}
-          sentHistory={sentHistory}
-          onSlashAction={(action) => {
-            if (action === "chat-settings") {
-              setPanel(inGroup ? "group-settings" : "settings");
-              // Page modes render no settings panel; they open on the agent's own page.
-              if (pageMode && active) openBot(active.id);
-              return;
-            }
-            if (action === "settings-general") {
-              openSettings("general");
-              return;
-            }
-            if (action === "settings-usage") {
-              openSettings("usage");
-            }
-          }}
-        />
-      ) : null}
+                if (action === "settings-general") {
+                  openSettings("general");
+                  return;
+                }
+                if (action === "settings-usage") {
+                  openSettings("usage");
+                }
+              }}
+            />
+          ) : null}
+        </div>
+        {pinsList && panel === null ? (
+          // 316px sidebar + 288px column leaves 676px of transcript at 1280px; at lg (1024px) only 420px.
+          <aside className="rk-scroll hidden w-72 shrink-0 overflow-y-auto border-s border-border px-4 py-3 xl:block">
+            <PinsList pins={pinsList} onPins={setBotPins} />
+          </aside>
+        ) : null}
+      </div>
     </>
   );
 
@@ -3938,6 +3954,18 @@ export function ShellPage() {
                 <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
               </button>
             ) : null}
+            {!inGroup && !pageMode && active && botPins?.list ? (
+              <button
+                type="button"
+                title={t`List`}
+                aria-label={t`List`}
+                onClick={() => setPanel(panel === "list" ? null : "list")}
+                data-active={panel === "list" ? "" : undefined}
+                className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent ${panel === null ? "xl:hidden" : ""}`}
+              >
+                <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
+              </button>
+            ) : null}
             {!inGroup && !pageMode && active ? (
               <button
                 type="button"
@@ -4057,6 +4085,8 @@ export function ShellPage() {
                     <Trans>Settings</Trans>
                   ) : panel === "page" ? (
                     <Trans>Page</Trans>
+                  ) : panel === "list" ? (
+                    <Trans>List</Trans>
                   ) : active ? (
                     (computer?.state ?? active.status)
                   ) : (
@@ -4100,6 +4130,9 @@ export function ShellPage() {
             ) : null}
             {panel === "page" && active ? (
               <BotPagePanel key={active.id} botId={active.id} remote={pageRemote} />
+            ) : null}
+            {panel === "list" && botPins?.list ? (
+              <PinsList pins={botPins} onPins={setBotPins} />
             ) : null}
             {panel === "computer" && active ? (
               <div>
@@ -4884,7 +4917,7 @@ export function ShellPage() {
             peerBotId={peerConversation.peerBotId}
             peerBotName={peerConversation.peerBotName}
             peerBotColor={
-              resolveTranscriptBot(peerConversation.peerBotId)?.color ?? FALLBACK_BOT_COLOR
+              resolveTranscriptBot(peerConversation.peerBotId)?.color ?? DEFAULT_BOT_COLOR
             }
             onClose={() => setPeerConversation(null)}
           />
@@ -5953,20 +5986,10 @@ export const Composer = memo(function Composer({
     ? `${mentionListboxId}-option-${activeMentionIndex}`
     : undefined;
 
-  const slashSkillOptions = useMemo(() => {
-    if (slashQuery === null) return [];
-    const query = slashQuery.trim().toLowerCase();
-    const skills = agentSkills ?? [];
-    return skills
-      .filter((skill) => {
-        if (!query) return true;
-        return (
-          skill.name.toLowerCase().includes(query) ||
-          skill.description.toLowerCase().includes(query)
-        );
-      })
-      .slice(0, 8);
-  }, [agentSkills, slashQuery]);
+  const slashSkillOptions = useMemo(
+    () => (slashQuery === null ? [] : pickSlashSkills(agentSkills ?? [], slashQuery)),
+    [agentSkills, slashQuery],
+  );
 
   const slashActionOptions = useMemo(() => {
     if (slashQuery === null) return [];
@@ -5982,7 +6005,7 @@ export const Composer = memo(function Composer({
   async function send() {
     if (!canSend || sending || disabled) return;
     const revision = editRevision.current;
-    const clientNonce = retryNonce.current ?? newClientNonce();
+    const clientNonce = retryNonce.current ?? newClientId();
     retryNonce.current = null;
     const text = serializeComposerPrompt(draft, selectedSkill, selectedMentions);
     historyIndex.current = null;
@@ -6286,7 +6309,7 @@ export const Composer = memo(function Composer({
                   highlighted ? "bg-accent" : ""
                 }`}
               >
-                <MentionOptionIcon mention={mention} />
+                <MentionIcon mention={mention} variant="option" />
                 <span className="min-w-0">
                   <span dir="auto" className="block text-[14px] text-foreground">
                     @{mention.name}
@@ -6407,7 +6430,7 @@ export const Composer = memo(function Composer({
               data-mention-kind={mention.kind}
               className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-[13px] text-foreground"
             >
-              <MentionChipIcon mention={mention} />
+              <MentionIcon mention={mention} variant="chip" />
               <span dir="auto" className="truncate">
                 {mention.name}
               </span>
@@ -6618,47 +6641,6 @@ function slashActionLabel(id: SlashActionId) {
     case "settings-usage":
       return t`Settings: Usage`;
   }
-}
-
-function MentionOptionIcon({ mention }: { mention: ComposerMention }) {
-  if (mention.kind === "routine") {
-    return <Clock size={16} strokeWidth={1.7} className="mt-0.5 shrink-0 text-muted-foreground" />;
-  }
-  if (mention.kind === "connector") {
-    return <Puzzle size={16} strokeWidth={1.7} className="mt-0.5 shrink-0 text-muted-foreground" />;
-  }
-  if (mention.kind === "group") {
-    return (
-      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent text-[9px] text-foreground/75">
-        G
-      </span>
-    );
-  }
-  if (mention.kind === "everyone") {
-    return (
-      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent text-[9px] text-foreground/75">
-        @
-      </span>
-    );
-  }
-  return <BotAvatar color={mention.color ?? FALLBACK_BOT_COLOR} identity={mention.id} size={16} />;
-}
-
-function MentionChipIcon({ mention }: { mention: ComposerMention }) {
-  if (mention.kind === "routine") {
-    return <Clock size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />;
-  }
-  if (mention.kind === "connector") {
-    return <Puzzle size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />;
-  }
-  if (mention.kind === "group" || mention.kind === "everyone") {
-    return (
-      <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent text-[9px] text-foreground/75">
-        {mention.kind === "group" ? "G" : "@"}
-      </span>
-    );
-  }
-  return <BotAvatar color={mention.color ?? FALLBACK_BOT_COLOR} identity={mention.id} size={16} />;
 }
 
 function previewMessageText(message: ThreadMessage): string {
@@ -6936,7 +6918,7 @@ const MessageView = memo(function MessageView({
           style={{ color: speakerColorDef.light }}
         >
           <BotAvatar
-            color={speakerBot?.color ?? FALLBACK_BOT_COLOR}
+            color={speakerBot?.color ?? DEFAULT_BOT_COLOR}
             identity={message.botId}
             size={22}
           />
@@ -7061,7 +7043,7 @@ const MessageView = memo(function MessageView({
             <CollaborationMarker
               key={i}
               ariaLabel={label}
-              color={peerBot(peerBotId)?.color ?? FALLBACK_BOT_COLOR}
+              color={peerBot(peerBotId)?.color ?? DEFAULT_BOT_COLOR}
               identity={peerBotId}
               label={label}
               onClick={() => onOpenPeerMessages({ peerBotId, peerBotName: peer })}
@@ -7402,8 +7384,4 @@ function computerPlaceholder(
 
 function computerLabel(mode: ComputerStatus["mode"] | undefined, botName: string) {
   return mode === "dedicated" ? t`${botName}’s computer` : t`Team Computer`;
-}
-
-function newClientNonce(): string {
-  return newClientId();
 }

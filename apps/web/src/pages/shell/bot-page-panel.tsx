@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isNewerRemote, resolveRemotePage } from "../../lib/page-sync";
 import { rpc } from "../../lib/rpc";
+import { errorText } from "../../lib/user-error";
 import { ChartCanvas } from "./message-cards";
 import { PageChartNode, usePageChartRows } from "./page-chart-extension";
 import { PAGE_EXTENSIONS } from "./page-extensions";
@@ -143,7 +144,7 @@ export function BotPagePanel({
         }
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t`Could not save the page.`);
+      setError(errorText(cause, t`Could not save the page.`));
     } finally {
       saving.current = false;
     }
@@ -166,7 +167,7 @@ export function BotPagePanel({
         setLoaded(page);
         show(page);
       })
-      .catch((cause) => live && setError(cause instanceof Error ? cause.message : String(cause)));
+      .catch((cause) => live && setError(errorText(cause)));
     const onUpdate = () => {
       latest.current = editor.getMarkdown();
       clearTimeout(timer.current);

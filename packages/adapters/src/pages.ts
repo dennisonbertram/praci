@@ -2,6 +2,7 @@ import type { BotPage, PageAuthor, PageChart } from "@rakazo/contracts";
 import { BOT_PAGE_MAX_CHARS, BOT_PAGE_MAX_CHARTS } from "@rakazo/contracts";
 import { splitPage } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
+import { isUniqueViolation } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { PlotSpec } from "./plot-tool.js";
 import { renderPlotSpecToSvg } from "./plot-tool.js";
@@ -102,10 +103,6 @@ function toBotPage(row: PageRow): BotPage {
     updatedBy: row.updatedBy === "user" ? "user" : "bot",
     updatedAt: row.updatedAt.toISOString(),
   };
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
 }
 
 export async function getBotPage(

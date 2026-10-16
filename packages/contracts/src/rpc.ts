@@ -164,12 +164,21 @@ import {
   IntegrationProviderConfigSchema,
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
+import { McpOauthClientSchema } from "./mcp.js";
 import {
   BotPageGetInputSchema,
   BotPageSaveInputSchema,
   BotPageSaveOutputSchema,
   BotPageSchema,
 } from "./pages.js";
+import {
+  BotPinsGetInputSchema,
+  BotPinsRefreshInputSchema,
+  BotPinsRefreshOutputSchema,
+  BotPinsSaveInputSchema,
+  BotPinsSaveOutputSchema,
+  BotPinsSchema,
+} from "./pins.js";
 import { MessageReactionSchema } from "./reactions.js";
 import { RoutineHistorySchema, RoutineRunCursorSchema, RunsListOutputSchema } from "./runs.js";
 import { SearchQueryOutputSchema } from "./search.js";
@@ -565,6 +574,11 @@ export const appContract = {
     get: oc.input(BotPageGetInputSchema).output(BotPageSchema.nullable()),
     save: oc.input(BotPageSaveInputSchema).output(BotPageSaveOutputSchema),
   },
+  pins: {
+    get: oc.input(BotPinsGetInputSchema).output(BotPinsSchema.nullable()),
+    save: oc.input(BotPinsSaveInputSchema).output(BotPinsSaveOutputSchema),
+    refresh: oc.input(BotPinsRefreshInputSchema).output(BotPinsRefreshOutputSchema),
+  },
   routines: {
     list: oc.input(botId).output(z.array(RoutineSchema)),
     history: oc
@@ -792,6 +806,8 @@ export const appContract = {
             /** Ask the user to sign in again even though a token is stored. The old
              * token stays until the new authorization completes. */
             reauthorize: z.boolean().optional(),
+            /** Stored with the server and reused on later sign-ins. */
+            oauthClient: McpOauthClientSchema.optional(),
           }),
         )
         .output(

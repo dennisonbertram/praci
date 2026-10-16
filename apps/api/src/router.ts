@@ -31,6 +31,7 @@ import type {
   FinanceSyncDeps,
   getBotSecretMetadata,
   IntegrationProviderSettings,
+  McpConnector,
   MemoryProviderResolver,
   PiOAuthLogins,
   RemoteConnectorDependencies,
@@ -72,6 +73,7 @@ import {
   expireComputerControl,
   forgetBotSecret,
   getBotPage,
+  getBotPins,
   hasActiveComputerControl,
   hostCredentialSource,
   isAutoReviewCheckerConfigured,
@@ -90,6 +92,7 @@ import {
   modelCredentialDto,
   normalizeSecretDestination,
   PageValidationError,
+  PinsValidationError,
   PushSessionEndedError,
   parseModelSecret,
   persistPreparedSecret,
@@ -103,6 +106,7 @@ import {
   probeOpenAiCompatibleModels,
   provisionComputer,
   queueComputerUpdate,
+  refreshBotPins,
   releaseComputerExecutionLease,
   renderPageChartSvg,
   replaceComputer,
@@ -114,6 +118,7 @@ import {
   routineRunModelPin,
   sanitizeComposioError,
   saveBotPage,
+  saveBotPins,
   savePushToken,
   scheduleComputerControlExpiry,
   scheduleComputerSleep,
@@ -203,7 +208,9 @@ import {
   formatMessagingLinkCode,
   InvalidSpaceNameError,
   IsolationError,
+  isRecordNotFound,
   issueMessagingLinkCode,
+  isUniqueViolation,
   listBoards,
   listSpaceBackupModels,
   listTicketComments,
@@ -673,6 +680,8 @@ export interface RouterDeps {
   mcpOAuth?: McpOAuthBroker;
   /** Builds the read-tool caller for finance servers (refresh, receipts); unset where finance sync is off. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
+  mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
   /** Reads an uploaded bank statement; wired in app.ts. */
   parseStatement?: ParseStatement;
   financeCrypto?: FinanceCryptoDeps;
@@ -875,6 +884,7 @@ export function createRouter(deps: RouterDeps) {
     userId: string;
     redirectUri: string;
     reauthorize?: boolean;
+    oauthClient?: { clientId: string; clientSecret?: string; scope?: string };
   }) => {
     const expectedRedirect = new URL("/mcp/oauth/callback", deps.env.webOrigin).toString();
     if (new URL(input.redirectUri).toString() !== expectedRedirect) {
@@ -3437,6 +3447,42 @@ export function createRouter(deps: RouterDeps) {
         }
       }),
     },
+    pins: {
+      get: authed.pins.get.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        return getBotPins(deps.prisma, { spaceId: bot.spaceId, botId: bot.id });
+      }),
+      save: authed.pins.save.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        try {
+          const result = await saveBotPins(
+            { prisma: deps.prisma, events: deps.events, mcp: deps.mcp },
+            { spaceId: bot.spaceId, botId: bot.id, userId: bot.userId },
+            { list: input.list, baseRevision: input.baseRevision, updatedBy: "user" },
+          );
+          if (result.ok) return result;
+          if (!result.pins) {
+            throw new ORPCError("CONFLICT", { message: "The pins were changed or removed." });
+          }
+          return { ok: false as const, reason: "conflict" as const, pins: result.pins };
+        } catch (error) {
+          if (error instanceof PinsValidationError) {
+            throw new ORPCError("BAD_REQUEST", { message: error.message });
+          }
+          throw error;
+        }
+      }),
+      refresh: authed.pins.refresh.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        await assertTeachingSendAllowed(deps.prisma, bot.spaceId, bot.id);
+        const result = await refreshBotPins(
+          { prisma: deps.prisma, events: deps.events, jobs: deps.jobs, mcp: deps.mcp },
+          { spaceId: bot.spaceId, botId: bot.id, userId: bot.userId },
+        );
+        if (!result) throw new ORPCError("NOT_FOUND", { message: "This bot has no pins." });
+        return result;
+      }),
+    },
     routines: {
       history: authed.routines.history.handler(async ({ context, input }) =>
         listRoutineRuns(deps.prisma, context.actor, input.routineId, input.before),
@@ -4814,6 +4860,9 @@ export function createRouter(deps: RouterDeps) {
             userId: context.actor.userId,
             status: { in: ["connected", "pending", "error"] },
           },
+          // Without an order Postgres returns rows in storage order, which changes when a row is
+          // updated, so the accounts of one app swapped places between loads.
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         });
         return rows.map((row) => ({
           id: row.id,
@@ -7476,14 +7525,6 @@ async function messagingIdentityDto(
     botId: identity.botId,
     botName: bot?.name ?? "Assistant",
   };
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
-}
-
-function isRecordNotFound(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2025");
 }
 
 function messagingChannelDto(membership: {
