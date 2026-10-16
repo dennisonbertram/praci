@@ -273,6 +273,11 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
           ...provider,
           listAccounts: provider.listAccounts.bind(provider),
           getMessage: provider.getMessage.bind(provider),
+          getCursor: provider.getCursor.bind(provider),
+          listChanges: (...args) => {
+            if (failing) throw new Error("gmail down");
+            return provider.listChanges(...args);
+          },
           listMessages: (...args) => {
             if (failing) throw new Error("gmail down");
             return provider.listMessages(...args);
@@ -375,6 +380,8 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
           ...provider,
           listAccounts: provider.listAccounts.bind(provider),
           getMessage: provider.getMessage.bind(provider),
+          getCursor: provider.getCursor.bind(provider),
+          listChanges: provider.listChanges.bind(provider),
           listMessages: (account, ...rest) => {
             if (account.address === "b@example.test") throw new Error("gmail down for b");
             return provider.listMessages(account, ...rest);

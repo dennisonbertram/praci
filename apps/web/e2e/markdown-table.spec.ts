@@ -29,14 +29,36 @@ test("markdown tables render as an interactive card", async ({ page }, testInfo)
   await expect(card.getByRole("button", { name: "Download CSV" })).toBeVisible();
   await expect(card.getByRole("button", { name: "Expand table" })).toBeVisible();
 
+  // Tools overlay the card's top-right corner (no band above the header row).
   const toolbar = card.locator(":scope > .rk-table-head");
-  const headers = card.locator("thead");
-  await expect(toolbar).toHaveCSS("position", "static");
+  await card.hover();
+  await expect(toolbar).toHaveCSS("position", "absolute");
+  await expect(toolbar).toHaveCSS("opacity", "1");
+  const cardBox = await card.boundingBox();
   const toolbarBox = await toolbar.boundingBox();
-  const headerBox = await headers.boundingBox();
+  const headerBox = await card.locator("thead").boundingBox();
+  expect(cardBox).not.toBeNull();
   expect(toolbarBox).not.toBeNull();
   expect(headerBox).not.toBeNull();
-  expect(toolbarBox!.y + toolbarBox!.height).toBeLessThanOrEqual(headerBox!.y + 1);
+  expect(toolbarBox!.y).toBeLessThan(headerBox!.y + headerBox!.height);
+  expect(Math.abs(toolbarBox!.x + toolbarBox!.width - (cardBox!.x + cardBox!.width))).toBeLessThan(
+    8,
+  );
+  // The overlay must not cover the last header's sort button.
+  const lastSort = card
+    .locator("thead th")
+    .last()
+    .getByRole("button", { name: /^Sort by/ });
+  await expect(lastSort).toBeVisible();
+  const sortBox = await lastSort.boundingBox();
+  expect(sortBox).not.toBeNull();
+  expect(sortBox!.x + sortBox!.width).toBeLessThanOrEqual(toolbarBox!.x + 1);
+  const hitIsSort = await lastSort.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    return el === hit || el.contains(hit);
+  });
+  expect(hitIsSort).toBe(true);
 
   // Numeric sort: desc puts qty 12 first; lexicographic would put 9 first.
   // thead th nth(0) is the row-number gutter, so Qty sits at index 2.
@@ -190,6 +212,7 @@ test("expanded tables show long cell content without truncation", async ({ page 
   expect(inlineMetrics.textOverflow).toBe("ellipsis");
   expect(inlineMetrics.scrollWidth).toBeGreaterThan(inlineMetrics.clientWidth);
 
+  await card.hover();
   await card.getByRole("button", { name: "Expand table" }).click();
   const dialogCell = page
     .getByRole("dialog", { name: "Table" })
@@ -238,6 +261,7 @@ test("backdrop dismissal restores focus and page scroll", async ({ page }) => {
   await card.scrollIntoViewIfNeeded();
   const scrollY = await page.evaluate(() => window.scrollY);
 
+  await card.hover();
   const expand = card.getByRole("button", { name: "Expand table" });
   await expand.click();
   await expect(page.getByRole("dialog", { name: "Table" })).toBeVisible();
@@ -253,6 +277,7 @@ test("streaming rows preserve state while schema changes reset it", async ({ pag
   const card = page.getByTestId("table-card");
   await card.getByRole("button", { name: "Sort by Qty" }).click();
   await card.getByRole("button", { name: "Next page" }).click();
+  await card.hover();
   await card.getByRole("button", { name: "Copy rows" }).click();
   await expect(card.getByRole("button", { name: "Copied" })).toBeVisible();
   await card.getByRole("button", { name: "Expand table" }).click();
@@ -356,6 +381,7 @@ test("wide tables scroll inside a focusable card region", async ({ page }) => {
 test("the expanded dialog sizes to content instead of the viewport", async ({ page }, testInfo) => {
   await page.goto(`${fixture}?long=1`);
   const card = page.getByTestId("table-card");
+  await card.hover();
   await card.getByRole("button", { name: "Expand table" }).click();
   const dialog = page.getByRole("dialog", { name: "Table" });
   await expect(dialog).toBeVisible();
@@ -396,15 +422,26 @@ test.describe("touch table controls", () => {
     await page.goto(fixture);
     const card = page.getByTestId("table-card");
     const toolbar = card.locator(":scope > .rk-table-head");
-    const scroll = card.locator(":scope > .rk-table-scroll");
     await expect(toolbar).toBeVisible();
-    await expect(toolbar).toHaveCSS("position", "static");
+    // Touch: the overlay is always shown and never covers the last header's sort button.
+    await expect(toolbar).toHaveCSS("position", "absolute");
+    await expect(toolbar).toHaveCSS("opacity", "1");
 
     const toolbarBox = await toolbar.boundingBox();
-    const scrollBox = await scroll.boundingBox();
+    const lastSort = card
+      .locator("thead th")
+      .last()
+      .getByRole("button", { name: /^Sort by/ });
+    const lastSortBox = await lastSort.boundingBox();
     expect(toolbarBox).not.toBeNull();
-    expect(scrollBox).not.toBeNull();
-    expect(toolbarBox!.y + toolbarBox!.height).toBeLessThanOrEqual(scrollBox!.y + 1);
+    expect(lastSortBox).not.toBeNull();
+    expect(lastSortBox!.x + lastSortBox!.width).toBeLessThanOrEqual(toolbarBox!.x + 1);
+    const hitIsSort = await lastSort.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return el === hit || el.contains(hit);
+    });
+    expect(hitIsSort).toBe(true);
 
     for (const name of ["Copy rows", "Download CSV", "Expand table"]) {
       const box = await card.getByRole("button", { name }).boundingBox();
@@ -417,6 +454,7 @@ test.describe("touch table controls", () => {
     expect(sortBox).not.toBeNull();
     expect(sortBox!.height).toBeGreaterThanOrEqual(44);
 
+    await card.hover();
     await card.getByRole("button", { name: "Expand table" }).click();
     const dialog = page.getByRole("dialog", { name: "Table" });
     for (const name of ["Copy rows", "Download CSV", "Close table"]) {

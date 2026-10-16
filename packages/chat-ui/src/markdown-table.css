@@ -68,8 +68,8 @@
   display: flex;
   width: 100%;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.6em;
+  justify-content: flex-start;
+  gap: 0.35em;
 }
 
 button.rk-table-sort {
@@ -100,6 +100,7 @@ button.rk-table-sort {
 }
 
 .rk-table-sort-icon {
+  opacity: 0;
   display: inline-flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -161,6 +162,12 @@ button.rk-table-sort {
   flex-direction: row;
 }
 
+.rk-table thead th:hover .rk-table-sort-icon,
+.rk-table thead th:focus-within .rk-table-sort-icon,
+.rk-table thead th[aria-sort] .rk-table-sort-icon {
+  opacity: 1;
+}
+
 .rk-table-sort-icon .rk-sort-off {
   color: var(--muted-foreground);
   opacity: 0.45;
@@ -183,19 +190,32 @@ button.rk-table-sort {
   overflow: hidden;
 }
 
-/* Inline card: reserved static strip so tools never overlay sortable headers.
-   Tools fade in on hover/focus; the dialog head stays always-visible. */
+/* Inline card: tools overlay the top-right corner so the header row is the
+   first thing in the card. Hidden until hover/focus; always shown on touch. */
 .rk-table-card > .rk-table-head {
-  position: static;
-  padding: 0.3em 0.45em;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  background: transparent;
+  position: absolute;
+  top: 0.15em;
+  inset-inline-end: 0.15em;
+  z-index: 2;
+  padding: 0.1em;
+  border-radius: 0.55em;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--border);
+  opacity: 0;
+  pointer-events: none;
 }
 
-.rk-table-card > .rk-table-head .rk-table-tool {
-  opacity: 0;
+/* Reserve room under the overlay in the last header cell so it never covers a
+   sort button. 3 tools (1.7em) + gaps + padding + inset = ~5.75em of card font;
+   th is 0.85em, so ~6.8em here. Always reserved: hover must not shift layout. */
+.rk-table-card .rk-table thead th:last-child {
+  padding-inline-end: 7em;
+}
+
+.rk-table-card:hover > .rk-table-head,
+.rk-table-card:focus-within > .rk-table-head {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .rk-table-dialog .rk-table-head {
@@ -225,11 +245,6 @@ button.rk-table-sort {
   overflow-wrap: normal;
 }
 
-.rk-table-card:hover > .rk-table-head .rk-table-tool,
-.rk-table-card:focus-within > .rk-table-head .rk-table-tool {
-  opacity: 1;
-}
-
 @media (hover: none), (pointer: coarse) {
   .rk-table-tool {
     width: 44px;
@@ -242,8 +257,18 @@ button.rk-table-sort {
     min-height: 44px;
   }
 
-  .rk-table-card > .rk-table-head .rk-table-tool {
+  /* 3 x 44px tools + gaps/padding/inset. */
+  .rk-table-card .rk-table thead th:last-child {
+    padding-inline-end: calc(140px + 0.5em);
+  }
+
+  .rk-table-card > .rk-table-head {
     opacity: 1;
+    pointer-events: auto;
+  }
+
+  .rk-table-sort-icon {
+    opacity: 1 !important;
   }
 }
 
