@@ -12,7 +12,7 @@ import {
   Textarea,
 } from "@rakazo/ui-web";
 import { ChevronDown, ChevronsUpDown, Mail, MoreHorizontal } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { parseRecipient, splitEntries } from "../lib/recipients";
 import { errorText } from "../lib/user-error";
 import { invalidAddressText } from "./compose/RecipientField";
@@ -89,6 +89,10 @@ export function MailApprovalCard({
   const bodyRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const askedToDisable = useRef(false);
+  const confirmId = useId();
   const ownAnswer = useRef(false);
   const answered = status === "answered";
   const interactive = !answered && canAnswer;
@@ -112,6 +116,18 @@ export function MailApprovalCard({
       toggleRef.current?.focus();
     }
   }, [answered]);
+
+  // The confirmation replaces the menu that opened it: focus the safe choice, and put focus back on
+  // "More" when it closes (after a successful answer the card's header takes focus instead).
+  useEffect(() => {
+    if (confirmDisable) {
+      askedToDisable.current = true;
+      cancelRef.current?.focus();
+    } else if (askedToDisable.current) {
+      askedToDisable.current = false;
+      moreRef.current?.focus();
+    }
+  }, [confirmDisable]);
 
   useLayoutEffect(() => {
     const body = bodyRef.current;
@@ -357,8 +373,11 @@ export function MailApprovalCard({
             )}
           </div>
           {interactive && confirmDisable && botName ? (
-            <div className="flex flex-wrap items-center gap-2 pt-4">
-              <span className="text-sm text-foreground">
+            <fieldset
+              aria-labelledby={confirmId}
+              className="flex flex-wrap items-center gap-2 pt-4"
+            >
+              <span id={confirmId} className="text-sm text-foreground">
                 {draft ? t`Turn off drafts for ${botName}?` : t`Turn off sending for ${botName}?`}
               </span>
               <Button
@@ -371,6 +390,7 @@ export function MailApprovalCard({
                 <Trans>Turn off</Trans>
               </Button>
               <Button
+                ref={cancelRef}
                 variant="secondary"
                 size="sm"
                 className="rounded-full"
@@ -379,7 +399,7 @@ export function MailApprovalCard({
               >
                 <Trans>Cancel</Trans>
               </Button>
-            </div>
+            </fieldset>
           ) : interactive ? (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
               <div className="flex gap-2">
@@ -416,6 +436,7 @@ export function MailApprovalCard({
                   <DropdownMenuTrigger
                     render={
                       <Button
+                        ref={moreRef}
                         variant="ghost"
                         size="icon-sm"
                         className="rounded-full"

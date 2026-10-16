@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import type { MailApproval } from "@rakazo/contracts";
-import type { ComponentProps, ReactNode } from "react";
-import { act } from "react";
+import type { ComponentProps, ReactElement, ReactNode } from "react";
+import { act, cloneElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MailApprovalCard } from "./MailApprovalCard";
@@ -43,11 +43,14 @@ vi.mock("@rakazo/ui-web", () => {
         {children}
       </button>
     ),
-    DropdownMenuTrigger: ({ children, render }: { children?: ReactNode; render?: ReactNode }) => (
-      <button type="button" aria-label="menu trigger" data-has-render={Boolean(render)}>
-        {children}
-      </button>
-    ),
+    DropdownMenuTrigger: ({ children, render }: { children?: ReactNode; render?: ReactElement }) =>
+      render ? (
+        cloneElement(render, undefined, children)
+      ) : (
+        <button type="button" aria-label="menu trigger">
+          {children}
+        </button>
+      ),
     Input: (props: ComponentProps<"input">) => <input {...props} />,
     Textarea: (props: ComponentProps<"textarea">) => <textarea {...props} />,
   };
@@ -370,4 +373,22 @@ it("keeps the recipient in the pending header on a narrow panel", async () => {
     el.textContent?.startsWith("· jana@"),
   );
   expect(recipient?.className).not.toContain("hidden");
+});
+
+it("moves focus into the disable confirmation, and back to More on cancel or failure", async () => {
+  const onDisableTool = vi.fn(async () => {
+    throw new Error("nope");
+  });
+  await render({ onDisableTool });
+  await click(button("Disable sending for Ada"));
+  const group = host.querySelector("fieldset") as HTMLElement;
+  expect(group.getAttribute("aria-labelledby")).toBe(group.querySelector("span")?.id);
+  expect(document.activeElement).toBe(button("Cancel"));
+  await click(button("Cancel"));
+  expect(host.querySelector("fieldset")).toBeNull();
+  expect(document.activeElement).toBe(host.querySelector("[aria-label=More]"));
+  await click(button("Disable sending for Ada"));
+  await click(button("Turn off"));
+  expect(host.querySelector("[role=alert]")?.textContent).toContain("nope");
+  expect(document.activeElement).toBe(host.querySelector("[aria-label=More]"));
 });
