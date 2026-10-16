@@ -103,10 +103,17 @@ export async function openMcpOauthPopup(authorizationUrl: string): Promise<McpOa
 }
 
 /** Start an MCP sign-in without opening it, so the caller can show its own waiting state. */
-export function beginMcpOauth(serverId: string, options: { reauthorize?: boolean } = {}) {
+export function beginMcpOauth(
+  serverId: string,
+  options: {
+    reauthorize?: boolean;
+    oauthClient?: { clientId: string; clientSecret?: string };
+  } = {},
+) {
   return rpc.mcp.oauth.begin({
     serverId,
     redirectUri: `${window.location.origin}/mcp/oauth/callback`,
     ...(options.reauthorize ? { reauthorize: true } : {}),
+    ...(options.oauthClient ? { oauthClient: options.oauthClient } : {}),
   });
 }

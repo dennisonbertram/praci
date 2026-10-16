@@ -14,7 +14,7 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { SecretStore } from "@rakazo/adapter-kit";
 import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
-import { isLocalMcpHost } from "@rakazo/contracts";
+import { isLocalMcpHost, MCP_OAUTH_CLIENT_ID_REQUIRED } from "@rakazo/contracts";
 import { readBoundedResponseBytes } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -28,6 +28,10 @@ type OAuthState = {
   tokens?: OAuthTokens;
   obtainedAt?: number;
   clientInformation?: OAuthClientInformationMixed;
+  /** The user registered this client with the provider; the SDK must not discard it. */
+  clientSupplied?: boolean;
+  /** Replaces the scope the SDK would request (the server's whole `scopes_supported` list). */
+  scopeOverride?: string;
   discoveryState?: OAuthDiscoveryState;
   redirectUri?: string;
   codeVerifier?: string;
@@ -315,6 +319,10 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
       }
       throw error;
     }
+    // The SDK calls auth() inside the transport, so its scope choice cannot be set from here;
+    // the token request carries no scope, so rewriting the authorization URL is enough.
+    const override = this.material.oauth?.scopeOverride;
+    if (override) authorizationUrl.searchParams.set("scope", override);
     this.authorizationUrl = authorizationUrl;
     if (this.options.onAuthorization) {
       this.options.onAuthorization(authorizationUrl);
@@ -358,9 +366,13 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
   ): Promise<void> {
     if (scope === "all") {
       const redirectUri = this.redirectUrl;
-      this.material.oauth = redirectUri ? { redirectUri } : undefined;
+      const { clientSupplied, clientInformation, scopeOverride } = this.material.oauth ?? {};
+      const kept = clientSupplied ? { clientSupplied, clientInformation, scopeOverride } : {};
+      this.material.oauth = redirectUri || clientSupplied ? { ...kept, redirectUri } : undefined;
     } else if (this.material.oauth) {
-      if (scope === "client") delete this.material.oauth.clientInformation;
+      // A client ID the user typed in is not the SDK's to throw away.
+      if (scope === "client" && !this.material.oauth.clientSupplied)
+        delete this.material.oauth.clientInformation;
       if (scope === "tokens") {
         delete this.material.oauth.tokens;
         delete this.material.oauth.obtainedAt;
@@ -574,6 +586,7 @@ export class McpOAuthBroker {
     userId: string;
     redirectUri: string;
     reauthorize?: boolean;
+    oauthClient?: { clientId: string; clientSecret?: string; scope?: string };
   }): Promise<
     | { status: "authorization_required"; sessionId: string; authorizationUrl: string }
     | { status: "already_connected" | "authorization_not_requested" }
@@ -607,6 +620,8 @@ export class McpOAuthBroker {
     const context = { spaceId: input.spaceId, userId: input.userId };
     const loaded = await this.loadMaterial(server, context);
     let authorizationUrl: URL | undefined;
+    if (input.oauthClient)
+      loaded.material.oauth = { ...loaded.material.oauth, clientSupplied: true };
     const provider = this.createProvider(server, context, loaded, {
       redirectUri: input.redirectUri,
       state: sessionId,
@@ -615,6 +630,16 @@ export class McpOAuthBroker {
         authorizationUrl = url;
       },
     });
+    if (input.oauthClient) {
+      const { clientId, clientSecret, scope } = input.oauthClient;
+      if (scope) loaded.material.oauth = { ...loaded.material.oauth, scopeOverride: scope };
+      await provider.saveClientInformation({
+        client_id: clientId,
+        ...(clientSecret ? { client_secret: clientSecret } : {}),
+        redirect_uris: [input.redirectUri],
+        token_endpoint_auth_method: clientSecret ? "client_secret_basic" : "none",
+      });
+    }
     // Never destroy working tokens here: if this attempt fails (network error,
     // cancelled popup), the server keeps its valid connection. The SDK itself
     // invalidates dead tokens when a refresh is rejected with invalid_grant.
@@ -635,7 +660,15 @@ export class McpOAuthBroker {
     try {
       await client.connect(transport, { signal, timeout: 15_000 });
     } catch (error) {
-      if (!authorizationUrl) throw networkFetch.publicError(error, "Could not start MCP OAuth");
+      if (!authorizationUrl) {
+        if (
+          error instanceof Error &&
+          error.message.includes("does not support dynamic client registration")
+        ) {
+          throw new Error(MCP_OAUTH_CLIENT_ID_REQUIRED);
+        }
+        throw networkFetch.publicError(error, "Could not start MCP OAuth");
+      }
     } finally {
       await client.close().catch(() => undefined);
       await networkFetch.close().catch(() => undefined);

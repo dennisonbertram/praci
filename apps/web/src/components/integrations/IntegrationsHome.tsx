@@ -256,7 +256,11 @@ export function IntegrationsHome({
   const jumpToFinance = useRef(params.get("category") === "finance");
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
-  const [custom, setCustom] = useState<{ url: string } | null>(null);
+  const [custom, setCustom] = useState<{
+    url: string;
+    oauthClient?: boolean;
+    scope?: string;
+  } | null>(null);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const labels: Record<CategoryFilter, string> = {
@@ -281,6 +285,7 @@ export function IntegrationsHome({
   const firstPartyDescription = {
     zernio: t`Post and schedule to social accounts`,
     carta: t`Cap table, equity and investors`,
+    x: t`Read posts, DMs and bookmarks`,
     treg: t`Live data, enrichment and generation tools`,
   };
   const financeNames = FINANCE_PROVIDERS.map((entry) => entry.name.toLowerCase());
@@ -530,7 +535,14 @@ export function IntegrationsHome({
                     name={entry.name}
                     logo={entry.logo}
                     description={firstPartyDescription[entry.id]}
-                    onConnect={() => setCustom({ url: entry.endpoint })}
+                    onConnect={() =>
+                      setCustom({
+                        url: entry.endpoint,
+                        ...("oauthClient" in entry
+                          ? { oauthClient: true, scope: entry.scope }
+                          : {}),
+                      })
+                    }
                   />
                 ))}
               </div>
@@ -569,6 +581,8 @@ export function IntegrationsHome({
         <CustomConnectionDialog
           data={data}
           initialUrl={custom.url}
+          oauthClient={custom.oauthClient}
+          oauthScope={custom.scope}
           onClose={() => setCustom(null)}
         />
       ) : null}

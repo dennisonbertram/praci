@@ -1133,6 +1133,10 @@ msgstr "By month"
 msgid "Cadence"
 msgstr "Cadence"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Callback URL"
+msgstr "Callback URL"
+
 #: src/App.tsx
 msgid "Can't reach the server."
 msgstr "Can't reach the server."
@@ -1418,6 +1422,7 @@ msgstr "Clear formatting"
 msgid "Clearing…"
 msgstr "Clearing…"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client ID"
 msgstr "Client ID"
@@ -1425,6 +1430,10 @@ msgstr "Client ID"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client secret"
 msgstr "Client secret"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Client secret (optional)"
+msgstr "Client secret (optional)"
 
 #: src/components/ComposeEmail.tsx
 #: src/components/ErrorBoundary.tsx
@@ -1769,11 +1778,13 @@ msgid "Contract"
 msgstr "Contract"
 
 #: src/components/ComputersUnavailableHint.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Copied"
 msgstr "Copied"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -4618,6 +4629,10 @@ msgstr "Read cards, expenses and bills"
 msgid "Read exchange balances"
 msgstr "Read exchange balances"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Read posts, DMs and bookmarks"
+msgstr "Read posts, DMs and bookmarks"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "Read replies aloud"
@@ -5918,6 +5933,10 @@ msgstr "This server cannot be assigned without a bot."
 #: src/components/integrations/useMcpReconnect.ts
 msgid "This server did not ask for a sign-in."
 msgstr "This server did not ask for a sign-in."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "This server needs an OAuth client ID."
+msgstr "This server needs an OAuth client ID."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."

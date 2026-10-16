@@ -4,6 +4,7 @@ import type {
   IntegrationCatalogSurface,
   McpServer,
 } from "@rakazo/contracts";
+import { MCP_OAUTH_CLIENT_ID_REQUIRED } from "@rakazo/contracts";
 import { deriveMcpName } from "@rakazo/core";
 import {
   Button,
@@ -17,6 +18,7 @@ import {
 } from "@rakazo/ui-web";
 import { useRef, useState } from "react";
 import { newClientId } from "../../lib/client-id";
+import { useCopyText } from "../../lib/copy-text";
 import { beginMcpOauth, openMcpAuthorization, waitForMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { watchWindowClosed } from "../../lib/sign-in-window";
@@ -47,10 +49,15 @@ function isHttpUrl(value: string) {
 export function CustomConnectionDialog({
   data,
   initialUrl = "",
+  oauthClient = false,
+  oauthScope,
   onClose,
 }: {
   data: IntegrationsData;
   initialUrl?: string;
+  /** Show the OAuth client ID fields up front, for servers that refuse dynamic registration. */
+  oauthClient?: boolean;
+  oauthScope?: string;
   onClose: () => void;
 }) {
   const { t } = useLingui();
@@ -60,6 +67,11 @@ export function CustomConnectionDialog({
   const [headerValue, setHeaderValue] = useState("");
   const [transport, setTransport] = useState<"streamable_http" | "sse">("streamable_http");
   const [token, setToken] = useState("");
+  const [needsClient, setNeedsClient] = useState(oauthClient);
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [copied, copy] = useCopyText();
+  const callbackUrl = `${window.location.origin}/mcp/oauth/callback`;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [server, setServer] = useState<McpServer | null>(null);
@@ -107,7 +119,17 @@ export function CustomConnectionDialog({
     setView({ kind: "signin", state: { kind: "waiting" } });
     const addedHint = t`${target.name} was added and shows Needs reconnect until you sign in.`;
     try {
-      const started = await beginMcpOauth(target.id);
+      const started = await beginMcpOauth(target.id, {
+        ...(clientId.trim()
+          ? {
+              oauthClient: {
+                clientId: clientId.trim(),
+                ...(oauthScope ? { scope: oauthScope } : {}),
+                ...(clientSecret.trim() ? { clientSecret: clientSecret.trim() } : {}),
+              },
+            }
+          : {}),
+      });
       // Closing the dialog while the request was in flight must not open a window afterwards.
       if (controller.signal.aborted) return;
       if (started.status !== "authorization_required") {
@@ -141,6 +163,12 @@ export function CustomConnectionDialog({
     } catch (err) {
       if (controller.signal.aborted) return;
       void refresh();
+      if (err instanceof Error && err.message.includes(MCP_OAUTH_CLIENT_ID_REQUIRED)) {
+        setNeedsClient(true);
+        setError(t`This server needs an OAuth client ID.`);
+        setView({ kind: "form" });
+        return;
+      }
       setView({
         kind: "signin",
         state: {
@@ -411,6 +439,44 @@ export function CustomConnectionDialog({
                 onKeyDown={(event) => event.key === "Enter" && void connectUrl()}
               />
             </div>
+            {needsClient ? (
+              <div className="mt-3 space-y-3 text-xs text-muted-foreground">
+                <div>
+                  <Trans>Client ID</Trans>
+                  <Input
+                    aria-label={t`Client ID`}
+                    className="mt-1 font-mono text-sm"
+                    value={clientId}
+                    onChange={(event) => setClientId(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <Trans>Client secret (optional)</Trans>
+                  <Input
+                    aria-label={t`Client secret (optional)`}
+                    className="mt-1 font-mono text-sm"
+                    type="password"
+                    autoComplete="new-password"
+                    value={clientSecret}
+                    onChange={(event) => setClientSecret(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <Trans>Callback URL</Trans>
+                  <div className="mt-1 flex gap-2">
+                    <Input
+                      aria-label={t`Callback URL`}
+                      className="font-mono text-sm"
+                      readOnly
+                      value={callbackUrl}
+                    />
+                    <Button variant="outline" onClick={() => copy(callbackUrl)}>
+                      {copied ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             <details className="mt-4 border-t border-border pt-3">
               <summary className="cursor-pointer text-sm text-muted-foreground">
                 <Trans>Advanced</Trans>
@@ -516,7 +582,10 @@ export function CustomConnectionDialog({
               <Button variant="outline" onClick={close}>
                 <Trans>Cancel</Trans>
               </Button>
-              <Button disabled={busy || !url.trim()} onClick={() => void connectUrl()}>
+              <Button
+                disabled={busy || !url.trim() || (needsClient && !clientId.trim())}
+                onClick={() => void connectUrl()}
+              >
                 {busy ? <Trans>Connecting…</Trans> : <Trans>Connect</Trans>}
               </Button>
             </div>

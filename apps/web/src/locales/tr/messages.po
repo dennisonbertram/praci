@@ -1133,6 +1133,10 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Callback URL"
+msgstr ""
+
 #: src/App.tsx
 msgid "Can't reach the server."
 msgstr "Sunucuya ulaşılamıyor."
@@ -1418,12 +1422,17 @@ msgstr ""
 msgid "Clearing…"
 msgstr "Temizleniyor…"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client ID"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client secret"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Client secret (optional)"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -1769,11 +1778,13 @@ msgid "Contract"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Copied"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -4618,6 +4629,10 @@ msgstr ""
 msgid "Read exchange balances"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Read posts, DMs and bookmarks"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "Yanıtları sesli oku"
@@ -5917,6 +5932,10 @@ msgstr "Bu sunucu bir bot olmadan atanamaz."
 
 #: src/components/integrations/useMcpReconnect.ts
 msgid "This server did not ask for a sign-in."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "This server needs an OAuth client ID."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx

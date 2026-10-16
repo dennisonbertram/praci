@@ -109,6 +109,19 @@ export const FIRST_PARTY_MCP = [
     category: null,
   },
   {
+    id: "x",
+    name: "X",
+    logo: "https://cdn.simpleicons.org/x",
+    endpoint: "https://api.x.com/mcp",
+    section: "social",
+    category: null,
+    // X does not register clients on the fly: the user brings the Client ID of their own X app.
+    oauthClient: true,
+    // Read scopes only: X's metadata also lists billing and developer write scopes.
+    scope:
+      "tweet.read users.read follows.read like.read list.read bookmark.read dm.read offline.access",
+  },
+  {
     id: "carta",
     name: "Carta",
     logo: null,
@@ -124,7 +137,16 @@ export const FIRST_PARTY_MCP = [
     section: "tools",
     category: "developer",
   },
-] as const;
+] as const satisfies readonly {
+  id: string;
+  name: string;
+  logo: string | null;
+  endpoint: string;
+  section: string;
+  category: string | null;
+  oauthClient?: boolean;
+  scope?: string;
+}[];
 
 /** True when an MCP server endpoint is the https server at the same host as `endpoint`. */
 export function isMcpEndpointHost(candidate: string | null | undefined, endpoint: string): boolean {

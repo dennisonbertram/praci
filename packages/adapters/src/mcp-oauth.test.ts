@@ -1,3 +1,4 @@
+import { MCP_OAUTH_CLIENT_ID_REQUIRED } from "@rakazo/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OAuthMaterial } from "./mcp-oauth.js";
 import {
@@ -1420,4 +1421,150 @@ describe("MCP setup with an existing access token", () => {
       expect(secrets.put).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("MCP OAuth with a pre-registered client", () => {
+  const redirectUri = "http://127.0.0.1:5173/mcp/oauth/callback";
+
+  // An authorization server like X's: no registration_endpoint.
+  function setup() {
+    const requested: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const request = input instanceof Request ? input : new Request(input, init);
+        const url = logicalHref(input, init);
+        requested.push(`${request.method} ${url}`);
+        if (url === "https://mcp.example.test/mcp" && request.method === "POST") {
+          return new Response(null, {
+            status: 401,
+            headers: {
+              "WWW-Authenticate":
+                'Bearer resource_metadata="https://mcp.example.test/.well-known/oauth-protected-resource/mcp"',
+            },
+          });
+        }
+        if (url === "https://mcp.example.test/.well-known/oauth-protected-resource/mcp") {
+          return Response.json({
+            resource: "https://mcp.example.test/mcp",
+            authorization_servers: ["https://auth.example.test"],
+            scopes_supported: ["read", "billing.write"],
+          });
+        }
+        if (url === "https://auth.example.test/.well-known/oauth-authorization-server") {
+          return Response.json({
+            issuer: "https://auth.example.test",
+            authorization_endpoint: "https://auth.example.test/authorize",
+            token_endpoint: "https://auth.example.test/token",
+            response_types_supported: ["code"],
+            grant_types_supported: ["authorization_code", "refresh_token"],
+            code_challenge_methods_supported: ["S256"],
+          });
+        }
+        throw new Error(`Unexpected request: ${request.method} ${url}`);
+      }),
+    );
+    const stored: string[] = [];
+    const secrets = {
+      put: vi.fn(async (plaintext: string) => {
+        stored.push(plaintext);
+        return { id: "secret-1", ciphertext: `encrypted-${stored.length}` };
+      }),
+    };
+    const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(1),
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      mcpServer: {
+        findFirst: vi.fn().mockResolvedValue({
+          endpoint: "https://mcp.example.test/mcp",
+          secretId: null,
+        }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      secret: {
+        findFirst: vi.fn(),
+        create: vi.fn().mockResolvedValue({}),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const prisma = {
+      mcpServer: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "server-1",
+          endpoint: "https://mcp.example.test/mcp",
+          secretId: null,
+        }),
+      },
+      secret: { findFirst: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
+      mcpOAuthSession: oauthSessionStore(),
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    };
+    const broker = new McpOAuthBroker(prisma as never, secrets as never, TEST_NETWORK);
+    const scope = { serverId: "server-1", spaceId: "workspace-1", userId: "user-1", redirectUri };
+    return { broker, scope, requested, stored };
+  }
+
+  it("uses the supplied client ID without registering and keeps the secret out of errors", async () => {
+    const { broker, scope, requested, stored } = setup();
+    const started = await broker.begin({
+      ...scope,
+      oauthClient: { clientId: "client-abc", clientSecret: "s3cret-value" },
+    });
+    if (started.status !== "authorization_required") throw new Error("OAuth was not requested");
+    expect(new URL(started.authorizationUrl).searchParams.get("client_id")).toBe("client-abc");
+    expect(requested.some((entry) => entry.includes("/register"))).toBe(false);
+    expect(JSON.stringify(started)).not.toContain("s3cret-value");
+    const material = JSON.parse(stored[0] as string);
+    expect(material.oauth.clientInformation).toEqual({
+      client_id: "client-abc",
+      client_secret: "s3cret-value",
+      redirect_uris: [redirectUri],
+      token_endpoint_auth_method: "client_secret_basic",
+    });
+  });
+
+  it("requests the override scope instead of every scope the server lists", async () => {
+    const { broker, scope } = setup();
+    const started = await broker.begin({
+      ...scope,
+      oauthClient: { clientId: "client-abc", scope: "read offline.access" },
+    });
+    if (started.status !== "authorization_required") throw new Error("OAuth was not requested");
+    expect(new URL(started.authorizationUrl).searchParams.get("scope")).toBe("read offline.access");
+  });
+
+  it("requests the server's listed scopes when there is no override", async () => {
+    const { broker, scope } = setup();
+    const started = await broker.begin({ ...scope, oauthClient: { clientId: "client-abc" } });
+    if (started.status !== "authorization_required") throw new Error("OAuth was not requested");
+    expect(new URL(started.authorizationUrl).searchParams.get("scope")).toBe("read billing.write");
+  });
+
+  it("registers a public client when no secret is supplied", async () => {
+    const { broker, scope, stored } = setup();
+    await broker.begin({ ...scope, oauthClient: { clientId: "client-abc" } });
+    const material = JSON.parse(stored[0] as string);
+    expect(material.oauth.clientInformation.token_endpoint_auth_method).toBe("none");
+    expect(material.oauth.clientInformation.client_secret).toBeUndefined();
+  });
+
+  it("asks for a client ID when the server cannot register one", async () => {
+    const { broker, scope } = setup();
+    await expect(broker.begin(scope)).rejects.toThrow(MCP_OAUTH_CLIENT_ID_REQUIRED);
+  });
+
+  it("keeps a supplied client when the SDK invalidates client credentials", async () => {
+    const material: OAuthMaterial = {
+      oauth: {
+        clientSupplied: true,
+        clientInformation: { client_id: "client-abc" },
+        tokens: { access_token: "a", token_type: "Bearer" },
+      },
+    };
+    const provider = new StoredMcpOAuthProvider("server-1", material, vi.fn(), { redirectUri });
+    await provider.invalidateCredentials("client");
+    await provider.invalidateCredentials("all");
+    expect(provider.clientInformation()?.client_id).toBe("client-abc");
+    expect(await provider.tokens()).toBeUndefined();
+  });
 });

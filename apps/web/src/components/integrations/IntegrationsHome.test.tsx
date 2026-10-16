@@ -176,3 +176,12 @@ it("hides the Treg tile once the token preset source is installed", async () => 
   await show({ ...data(true, false), sources: [source] });
   expect(container.querySelector('[aria-label="Connect Treg"]')).toBeNull();
 });
+
+it("opens the X tile with its URL and the client ID fields", async () => {
+  await show(data(true, false));
+  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect X"]');
+  await act(async () => connect?.click());
+  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
+  expect(input?.value).toBe("https://api.x.com/mcp");
+  expect(document.querySelector('[aria-label="Client ID"]')).not.toBeNull();
+});
