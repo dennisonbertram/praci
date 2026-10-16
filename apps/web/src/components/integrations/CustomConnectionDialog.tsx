@@ -48,12 +48,15 @@ function isHttpUrl(value: string) {
 
 export function CustomConnectionDialog({
   data,
+  existingServer,
   initialUrl = "",
   oauthClient = false,
   oauthScope,
   onClose,
 }: {
   data: IntegrationsData;
+  /** Sign in an existing server that needs a client ID; its connection fields stay locked. */
+  existingServer?: McpServer;
   initialUrl?: string;
   /** Show the OAuth client ID fields up front, for servers that refuse dynamic registration. */
   oauthClient?: boolean;
@@ -62,19 +65,19 @@ export function CustomConnectionDialog({
 }) {
   const { t } = useLingui();
   const [view, setView] = useState<View>({ kind: "form" });
-  const [url, setUrl] = useState(initialUrl);
+  const [url, setUrl] = useState(existingServer?.endpoint ?? initialUrl);
   const [authHeader, setAuthHeader] = useState("");
   const [headerValue, setHeaderValue] = useState("");
   const [transport, setTransport] = useState<"streamable_http" | "sse">("streamable_http");
   const [token, setToken] = useState("");
-  const [needsClient, setNeedsClient] = useState(oauthClient);
+  const [needsClient, setNeedsClient] = useState(oauthClient || existingServer !== undefined);
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [copied, copy] = useCopyText();
   const callbackUrl = `${window.location.origin}/mcp/oauth/callback`;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [server, setServer] = useState<McpServer | null>(null);
+  const [server, setServer] = useState<McpServer | null>(existingServer ?? null);
   const [name, setName] = useState("");
   const [command, setCommand] = useState("");
   const [args, setArgs] = useState("");

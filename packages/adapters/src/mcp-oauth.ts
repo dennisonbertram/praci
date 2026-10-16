@@ -188,6 +188,8 @@ type ProviderOptions = {
   redirectUri?: string;
   state?: string;
   onAuthorization?: (url: URL) => void;
+  /** Keep changes in memory only; the caller persists them later. */
+  memoryOnly?: boolean;
   onPersisted?: (record: { id: string; ref: string; material: OAuthMaterial }) => void;
   /** Network for renewing an expired access token through its stored refresh token. */
   refreshNetwork?: () => Promise<{ fetch: typeof fetch; close: () => Promise<void> }>;
@@ -477,8 +479,11 @@ function oauthFetch(
     fetch: recordingFetch,
     close: () => safeFetch.close(),
     publicError: (error, message) => {
-      if (error instanceof Error && networkErrors.has(error)) return error;
       const secrets = [...oauthMaterialSecrets(material), ...redact];
+      if (error instanceof Error && networkErrors.has(error)) {
+        const clean = sanitizeConnectorError(error, secrets);
+        return clean === error.message ? error : new Error(clean);
+      }
       const sdk = sanitizeConnectorError(error, secrets);
       const surfaced = rejection ? formatOAuthRejection(rejection, sdk, secrets) : undefined;
       getLogger().warn(`${message}: ${surfaced ?? sdk}`);
@@ -624,39 +629,57 @@ export class McpOAuthBroker {
     }
     const sessionId = randomUUID();
     const context = { spaceId: input.spaceId, userId: input.userId };
-    const loaded = await this.loadMaterial(server, context);
+    let loaded = await this.loadMaterial(server, context);
     let authorizationUrl: URL | undefined;
-    if (input.oauthClient) {
-      // Tokens belong to the client that issued them: a different client starts over.
+    const supplied = input.oauthClient;
+    let memoryOnly = false;
+    if (supplied) {
       const stored = loaded.material.oauth?.clientInformation;
       const changed =
-        stored?.client_id !== input.oauthClient.clientId ||
+        stored?.client_id !== supplied.clientId ||
         (stored && "client_secret" in stored ? stored.client_secret : undefined) !==
-          input.oauthClient.clientSecret;
-      const { tokens, obtainedAt, ...rest } = loaded.material.oauth ?? {};
-      loaded.material.oauth = {
-        ...(changed ? rest : { ...rest, tokens, obtainedAt }),
-        clientSupplied: true,
-      };
+          supplied.clientSecret;
+      const clientInformation = {
+        client_id: supplied.clientId,
+        ...(supplied.clientSecret ? { client_secret: supplied.clientSecret } : {}),
+        redirect_uris: [input.redirectUri],
+        token_endpoint_auth_method: supplied.clientSecret ? "client_secret_basic" : "none",
+      } as OAuthClientInformationMixed;
+      if (changed) {
+        // Tokens and scope belong to the client that got them. Build the new state in
+        // memory only: the stored material changes when sign-in completes, so an
+        // abandoned attempt leaves the old client and tokens working.
+        const { tokens, obtainedAt, scopeOverride, ...rest } = loaded.material.oauth ?? {};
+        loaded = {
+          ...loaded,
+          material: {
+            ...structuredClone(loaded.material),
+            oauth: {
+              ...structuredClone(rest),
+              clientInformation,
+              clientSupplied: true,
+              ...(supplied.scope ? { scopeOverride: supplied.scope } : {}),
+            },
+          },
+        };
+        memoryOnly = true;
+      } else {
+        loaded.material.oauth = {
+          ...loaded.material.oauth,
+          clientSupplied: true,
+          ...(supplied.scope ? { scopeOverride: supplied.scope } : {}),
+        };
+      }
     }
+    const providerOptions = { redirectUri: input.redirectUri, state: sessionId };
     const provider = this.createProvider(server, context, loaded, {
-      redirectUri: input.redirectUri,
-      state: sessionId,
+      ...providerOptions,
       reauthorize: input.reauthorize,
+      memoryOnly,
       onAuthorization: (url) => {
         authorizationUrl = url;
       },
     });
-    if (input.oauthClient) {
-      const { clientId, clientSecret, scope } = input.oauthClient;
-      if (scope) loaded.material.oauth = { ...loaded.material.oauth, scopeOverride: scope };
-      await provider.saveClientInformation({
-        client_id: clientId,
-        ...(clientSecret ? { client_secret: clientSecret } : {}),
-        redirect_uris: [input.redirectUri],
-        token_endpoint_auth_method: clientSecret ? "client_secret_basic" : "none",
-      });
-    }
     // Never destroy working tokens here: if this attempt fails (network error,
     // cancelled popup), the server keeps its valid connection. The SDK itself
     // invalidates dead tokens when a refresh is rejected with invalid_grant.
@@ -666,6 +689,7 @@ export class McpOAuthBroker {
       this.network,
       loaded.material,
       await actorMayUsePrivateEndpoint(this.prisma, input.userId, this.allowPrivateEndpoint),
+      supplied?.clientSecret ? [supplied.clientSecret] : [],
     );
     const transport = new StreamableHTTPClientTransport(endpoint, {
       requestInit: { headers: networkFetch.headers },
@@ -731,7 +755,10 @@ export class McpOAuthBroker {
       spaceId: input.spaceId,
       userId: input.userId,
       endpoint: server.endpoint,
-      provider,
+      // A memory-only provider would drop the tokens complete() has to store.
+      provider: memoryOnly
+        ? this.createProvider(server, context, loaded, providerOptions)
+        : provider,
       createdAt: Date.now(),
       expiry,
     });
@@ -889,6 +916,7 @@ export class McpOAuthBroker {
       server.id,
       loaded.material,
       async (material) => {
+        if (options.memoryOnly) return;
         await this.replaceMaterial(
           server.id,
           material,

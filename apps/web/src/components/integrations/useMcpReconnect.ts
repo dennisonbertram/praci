@@ -1,4 +1,5 @@
 import { useLingui } from "@lingui/react/macro";
+import { MCP_OAUTH_CLIENT_ID_REQUIRED } from "@rakazo/contracts";
 import { useState } from "react";
 import { connectMcpOauth } from "../../lib/mcp-connect";
 import { errorText } from "../../lib/user-error";
@@ -8,6 +9,7 @@ export function useMcpReconnect(serverId: string, onDone: () => void) {
   const { t } = useLingui();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsClient, setNeedsClient] = useState(false);
   async function run() {
     setBusy(true);
     setError(null);
@@ -19,11 +21,16 @@ export function useMcpReconnect(serverId: string, onDone: () => void) {
         setError(t`This server did not ask for a sign-in.`);
       }
     } catch (err) {
+      // The server has no dynamic registration: the add dialog collects a client ID.
+      if (err instanceof Error && err.message.includes(MCP_OAUTH_CLIENT_ID_REQUIRED)) {
+        setNeedsClient(true);
+        return;
+      }
       setError(errorText(err, t`Could not reconnect`));
     } finally {
       setBusy(false);
       onDone();
     }
   }
-  return { busy, error, run };
+  return { busy, error, run, needsClient, dismiss: () => setNeedsClient(false) };
 }

@@ -1516,6 +1516,7 @@ describe("MCP OAuth with a pre-registered client", () => {
       scope,
       requested,
       stored,
+      prisma,
       setTokenResponse: (fn: () => Response) => (tokenResponse = fn),
     };
   }
@@ -1603,6 +1604,64 @@ describe("MCP OAuth with a pre-registered client", () => {
     const started = await broker.begin({ ...scope, oauthClient: { clientId: "client-new" } });
     expect(started.status).toBe("authorization_required");
     for (const payload of stored) expect(payload).not.toContain("old-access");
+  });
+
+  it("leaves the stored material alone until the new client signs in", async () => {
+    const { broker, scope, stored, prisma } = setup(storedMaterial("client-old"));
+    const started = await broker.begin({ ...scope, oauthClient: { clientId: "client-new" } });
+    if (started.status !== "authorization_required") throw new Error("OAuth was not requested");
+    // An abandoned sign-in persists nothing, so the old client and token keep working.
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    await broker.complete({
+      sessionId: started.sessionId,
+      code: "code",
+      state: started.sessionId,
+      spaceId: scope.spaceId,
+      userId: scope.userId,
+    });
+    const final = stored.at(-1) as string;
+    expect(final).toContain("client-new");
+    expect(final).toContain("new-access");
+    expect(final).not.toContain("old-access");
+  });
+
+  it("drops the old scope override for a new client and keeps it for the same client", async () => {
+    const material = () => {
+      const m = storedMaterial("client-old");
+      (m.oauth as { scopeOverride?: string }).scopeOverride = "old.scope";
+      return m;
+    };
+    const scopeOf = (url: string) => new URL(url).searchParams.get("scope");
+    const changed = setup(material());
+    const a = await changed.broker.begin({
+      ...changed.scope,
+      oauthClient: { clientId: "client-new" },
+    });
+    const same = setup(material());
+    const b = await same.broker.begin({ ...same.scope, oauthClient: { clientId: "client-old" } });
+    if (a.status !== "authorization_required" || b.status !== "authorization_required") {
+      throw new Error("OAuth was not requested");
+    }
+    expect(scopeOf(a.authorizationUrl)).toBe("read billing.write");
+    expect(scopeOf(b.authorizationUrl)).toBe("old.scope");
+  });
+
+  it("redacts the supplied secret from network errors", async () => {
+    const { broker, scope } = setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("connect failed for s3cret-value");
+      }),
+    );
+    const error = await broker
+      .begin({ ...scope, oauthClient: { clientId: "client-abc", clientSecret: "s3cret-value" } })
+      .then(
+        () => null,
+        (caught: unknown) => caught,
+      );
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain("s3cret-value");
   });
 
   it("keeps the tokens when the client is unchanged", async () => {

@@ -148,11 +148,13 @@ export const FIRST_PARTY_MCP = [
   scope?: string;
 }[];
 
-/** True when an MCP server endpoint is the https server at the same host as `endpoint`. */
-export function isMcpEndpointHost(candidate: string | null | undefined, endpoint: string): boolean {
+/** True when `candidate` is the same https endpoint as `endpoint`: same host and path, ignoring a trailing slash. */
+export function isSameMcpEndpoint(candidate: string | null | undefined, endpoint: string): boolean {
   try {
-    const url = new URL(candidate ?? "");
-    return url.protocol === "https:" && url.host === new URL(endpoint).host;
+    const a = new URL(candidate ?? "");
+    const b = new URL(endpoint);
+    const path = (url: URL) => url.pathname.replace(/\/+$/, "");
+    return a.protocol === "https:" && a.host === b.host && path(a) === path(b);
   } catch {
     return false;
   }

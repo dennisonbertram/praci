@@ -24,7 +24,7 @@ import {
   FIRST_PARTY_MCP,
   filterCatalog,
   groupConnections,
-  isMcpEndpointHost,
+  isSameMcpEndpoint,
   mcpStatus,
   popularApps,
 } from "../../lib/integrations";
@@ -125,6 +125,9 @@ function McpCard({ server, data }: { server: McpServer; data: IntegrationsData }
         </p>
       ) : null}
       <UsedBy bots={data.bots.filter((bot) => assigned.includes(bot.id))} />
+      {reconnect.needsClient ? (
+        <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
+      ) : null}
     </Card>
   );
 }
@@ -297,9 +300,9 @@ export function IntegrationsHome({
       (category === "all" || category === entry.category) &&
       entry.name.toLowerCase().includes(query.trim().toLowerCase()) &&
       !data.servers.some(
-        (server) => "endpoint" in server && isMcpEndpointHost(server.endpoint, entry.endpoint),
+        (server) => "endpoint" in server && isSameMcpEndpoint(server.endpoint, entry.endpoint),
       ) &&
-      !data.sources.some((source) => isMcpEndpointHost(source.source, entry.endpoint)),
+      !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)),
   );
   const otherMatches = showFinance || firstPartyMcp.length > 0;
   const financeServerIds = data.financeSources.flatMap((source) =>
