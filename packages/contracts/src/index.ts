@@ -8,6 +8,7 @@ export * from "./builtin-tools.js";
 export * from "./carta.js";
 export * from "./cloudflare-ai-gateway.js";
 export * from "./contacts.js";
+export * from "./sidebar-pages.js";
 export * from "./data-room.js";
 export * from "./desktop.js";
 export * from "./domain.js";
