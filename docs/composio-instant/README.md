@@ -101,11 +101,17 @@ to run Rakazo.
    appear in the directory, what `instantCharge` looks like, whether prices come
    back from search, and how Instant behaves in a session that also passes
    `connectedAccounts`. Run the existing Composio tests after the upgrade.
-2. Setup switch and toolkit list for the deployment owner; Instant tiles in the
-   catalog; no-auth-style connect.
-3. Session option, approval rule for paid calls, `InstantCharge` table, cap,
-   emulator support and tests.
-4. Spend line on Integrations; CI screenshot.
+2. `instant: false` on every catalog and execute session, in the cache key. Ships
+   first and on its own, because it closes a gap that exists today: a project
+   where someone turns on Instant in the Composio dashboard would otherwise spend
+   without Rakazo knowing.
+3. The safeguards, with nothing able to turn Instant on yet: mandatory approval
+   for paid calls, the batch-execution refusal, the `InstantCharge` reservation,
+   the per-user cap, emulator support and tests.
+4. Only now the owner's setup switch and toolkit list, Instant tiles in the
+   catalog, and the no-auth-style connect. No release can offer paid tools
+   before the approval and the cap exist.
+5. Spend line on Integrations; CI screenshot.
 
 ## Open risks
 
