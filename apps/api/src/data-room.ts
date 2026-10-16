@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { ORPCError } from "@orpc/server";
-import type { ArtifactStore, JobPublisher } from "@rakazo/adapter-kit";
+import type { ArtifactStore, JobPublisher, MailProvider } from "@rakazo/adapter-kit";
 import {
   DATA_ROOM_EMBEDDING_DIMENSIONS,
   dataRoomBlobDeleteJob,
@@ -32,6 +32,7 @@ import { createDataRoomRepos, DataRoomConflictError, IsolationError } from "@rak
 import { getLogger } from "@rakazo/logging";
 import type { Hono } from "hono";
 import { cancelBody } from "./http-body.js";
+import { inboxAttachment } from "./inbox.js";
 import { contentDisposition, downloadType } from "./inbox-attachment.js";
 
 export interface DataRoomDeps {
@@ -43,6 +44,8 @@ export interface DataRoomDeps {
    * search is keyword-only.
    */
   resolveAi?: (scope: { userId: string; spaceId: string }) => Promise<DataRoomAi>;
+  /** Needed only to import mail attachments. */
+  mail?: MailProvider;
   /** Injectable so tests can use a small cap. */
   maxUploadBytes?: number;
   /** How long the blob cleanup waits, so a failed row delete can be seen first. Tests shorten it. */
@@ -64,6 +67,7 @@ export const itemDto = (item: DataRoomItemRecord): DataRoomApiItem => ({
   size: item.size,
   folderId: item.folderId,
   source: item.source,
+  sourceUrl: item.sourceUrl,
   status: item.status,
   error: item.error,
   facets: {
@@ -116,12 +120,69 @@ const toFilters = (input: {
   };
 };
 
+export interface FileDataRoomInput {
+  bytes: Uint8Array;
+  sha256: string;
+  name: string;
+  mimeType: string;
+  folderId: string | null;
+  source: "upload" | "gmail";
+  sourceConnectionId?: string;
+  externalId?: string;
+  sourceUrl?: string;
+  sourceUpdatedAt?: Date;
+}
+
+/**
+ * Stores the bytes, files the item and queues ingest. A repeat (same upload bytes, or the same
+ * external id) returns the existing item with created=false and drops the blob this call stored.
+ */
+export function createFileDataRoomItem(
+  deps: DataRoomDeps,
+  repo: ReturnType<typeof createDataRoomRepos>,
+) {
+  /** A duplicate of an item stuck in `pending` or `failed` runs ingest again. */
+  const requeueStuck = async (actor: Actor, item: DataRoomItemRecord) => {
+    if (!(await repo.restartItem(actor, item.id))) return;
+    await deps.jobs
+      .enqueue(dataRoomStepJob("dataroom.ingest", actor, item.id))
+      .catch((error: unknown) => getLogger().error("data room ingest enqueue failed", error));
+  };
+
+  const fileItem = async (actor: Actor, input: FileDataRoomInput) => {
+    const { bytes, ...fields } = input;
+    const stored = await deps.artifacts.put(
+      { name: input.name, mimeType: input.mimeType, bytes },
+      blobContext(actor, input.source === "upload" ? "data-room.upload" : "data-room.import"),
+    );
+    const { item, created } = await dataRoomCall(() =>
+      repo.createItem(actor, { ...fields, size: bytes.byteLength, storageKey: stored.id }),
+    ).catch(async (error: unknown) => {
+      await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
+      throw error;
+    });
+    // Lost a race with a concurrent identical request: drop the blob this request stored.
+    if (!created) {
+      await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
+      await requeueStuck(actor, item);
+    } else {
+      // The file itself is saved; a queue outage must not turn it into a failure.
+      await deps.jobs
+        .enqueue(dataRoomStepJob("dataroom.ingest", actor, item.id))
+        .catch((error: unknown) => getLogger().error("data room ingest enqueue failed", error));
+    }
+    return { item, created };
+  };
+  return { fileItem, requeueStuck };
+}
+
 const QUERY_EMBED_TIMEOUT_MS = 10_000;
 const REINDEX_BATCH = 200;
 
 /** Procedure bodies for `dataRoom.*`; the router adds the Actor. */
 export function createDataRoomService(deps: DataRoomDeps) {
   const repo = createDataRoomRepos(deps.prisma);
+  const { fileItem, requeueStuck } = createFileDataRoomItem(deps, repo);
 
   /**
    * The query's vector, only when an embedder exists and the user consented. Any failure means
@@ -306,6 +367,67 @@ export function createDataRoomService(deps: DataRoomDeps) {
       return { modelId };
     },
 
+    /**
+     * Copies attachments of the caller's own mail into the Data room through the upload pipeline.
+     * The attachment id is stable for a message, so `gmail:<message>:<attachment>` names a repeat.
+     */
+    importEmail: async (
+      actor: Actor,
+      input: { picks: { messageId: string; attachmentId: string }[]; folderId?: string | null },
+      signal?: AbortSignal,
+    ) => {
+      const mail = deps.mail;
+      if (!mail) throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
+      const folderId = input.folderId ?? null;
+      if (folderId) {
+        const folder = await deps.prisma.dataRoomFolder.findFirst({
+          where: { id: folderId, spaceId: actor.spaceId, userId: actor.userId },
+          select: { id: true },
+        });
+        if (!folder) throw new ORPCError("NOT_FOUND");
+      }
+      let imported = 0;
+      let duplicates = 0;
+      for (const pick of input.picks) {
+        const message = await deps.prisma.cachedMailMessage.findFirst({
+          where: { id: pick.messageId, spaceId: actor.spaceId, userId: actor.userId },
+          select: { connectionId: true, providerMessageId: true },
+        });
+        if (!message) throw new ORPCError("NOT_FOUND");
+        const sourceConnectionId = message.connectionId;
+        const externalId = `gmail:${message.providerMessageId}:${pick.attachmentId}`;
+        const known = await deps.prisma.dataRoomItem.findFirst({
+          where: { spaceId: actor.spaceId, userId: actor.userId, sourceConnectionId, externalId },
+        });
+        if (known) {
+          await requeueStuck(actor, known);
+          duplicates += 1;
+          continue;
+        }
+        const file = await inboxAttachment(
+          { prisma: deps.prisma, mail, jobs: deps.jobs },
+          actor,
+          pick,
+          signal,
+        );
+        const mimeType = file.mimeType.toLowerCase();
+        const { created } = await fileItem(actor, {
+          source: "gmail",
+          sha256: createHash("sha256").update(file.bytes).digest("hex"),
+          name: file.filename.replace(PATH_OR_CONTROL, "_").trim().slice(0, 255) || "attachment",
+          mimeType: MIME.test(mimeType) ? mimeType : "application/octet-stream",
+          bytes: file.bytes,
+          folderId,
+          sourceConnectionId,
+          externalId,
+          sourceUrl: `/app/inbox?mail=${pick.messageId}`,
+        });
+        if (created) imported += 1;
+        else duplicates += 1;
+      }
+      return { imported, duplicates };
+    },
+
     search: (
       actor: Actor,
       input: {
@@ -330,6 +452,8 @@ export function createDataRoomService(deps: DataRoomDeps) {
   };
 }
 
+// biome-ignore lint/suspicious/noControlCharactersInRegex: names must not hold control characters.
+const PATH_OR_CONTROL = /[/\\\u0000-\u001f\u007f]/g;
 const MIME = /^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/i;
 
 /**
@@ -375,13 +499,7 @@ export function mountDataRoomRoutes(
   const repo = createDataRoomRepos(deps.prisma);
   const max = deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES;
 
-  /** A duplicate of an item stuck in `pending` or `failed` runs ingest again. */
-  const requeueStuck = async (actor: Actor, item: DataRoomItemRecord) => {
-    if (!(await repo.restartItem(actor, item.id))) return;
-    await deps.jobs
-      .enqueue(dataRoomStepJob("dataroom.ingest", actor, item.id))
-      .catch((error: unknown) => getLogger().error("data room ingest enqueue failed", error));
-  };
+  const { fileItem, requeueStuck } = createFileDataRoomItem(deps, repo);
 
   app.post("/api/data-room/upload", async (c) => {
     const actor = await authenticate(c.req.raw);
@@ -428,34 +546,14 @@ export function mountDataRoomRoutes(
       return respond(existing, true);
     }
 
-    const stored = await deps.artifacts.put(
-      { name: name.data, mimeType: type, bytes: body.bytes },
-      blobContext(actor, "data-room.upload"),
-    );
-    const { item, created } = await dataRoomCall(() =>
-      repo.createItem(actor, {
-        source: "upload",
-        sha256: body.sha256,
-        name: name.data,
-        mimeType: type,
-        size: body.bytes.byteLength,
-        storageKey: stored.id,
-        folderId,
-      }),
-    ).catch(async (error: unknown) => {
-      await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
-      throw error;
+    const { item, created } = await fileItem(actor, {
+      source: "upload",
+      sha256: body.sha256,
+      name: name.data,
+      mimeType: type,
+      bytes: body.bytes,
+      folderId,
     });
-    // Lost a race with a concurrent identical upload: drop the blob this request stored.
-    if (!created) {
-      await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
-      await requeueStuck(actor, item);
-    } else {
-      // The upload itself succeeded; a queue outage must not turn it into a failed upload.
-      await deps.jobs
-        .enqueue(dataRoomStepJob("dataroom.ingest", actor, item.id))
-        .catch((error: unknown) => getLogger().error("data room ingest enqueue failed", error));
-    }
     return respond(item, !created);
   });
 

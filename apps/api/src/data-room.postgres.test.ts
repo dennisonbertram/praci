@@ -50,9 +50,23 @@ describePostgres("Data room API (PostgreSQL)", () => {
           },
         },
         artifacts: new LocalArtifactStore(root),
+        mail,
       } as unknown as RouterDeps),
       { context: { actor: who } as never },
     );
+
+  /** A mailbox with one attachment per connection id; accounts are the connections of the asked user. */
+  const accounts: { id: string; userId: string }[] = [];
+  const mail = {
+    listAccounts: async (scope: { userId: string }) =>
+      accounts.filter((a) => a.userId === scope.userId),
+    getAttachment: async () => ({
+      filename: "invoice/2026.pdf",
+      mimeType: "application/pdf",
+      size: 5,
+      bytes: new TextEncoder().encode("%PDF-"),
+    }),
+  };
 
   const send = (who: string | null, url: string, init: RequestInit = {}) =>
     app.request(url, {
@@ -555,5 +569,75 @@ describePostgres("Data room API (PostgreSQL)", () => {
     ).resolves.toBeInstanceOf(Uint8Array);
     await client(actors.a).dataRoom.itemDelete({ id: target.id });
     enqueued.length = 0;
+  });
+
+  it("imports a mail attachment once, and only from the caller's own mail and folders", async () => {
+    const connection = await prisma.connection.create({
+      data: {
+        spaceId: actors.A.spaceId,
+        userId: actors.a.userId,
+        connectorId: "google",
+        provider: "gmail",
+        displayName: "Test mail",
+        status: "connected",
+      },
+    });
+    accounts.push({ id: connection.id, userId: actors.a.userId });
+    const message = await prisma.cachedMailMessage.create({
+      data: {
+        spaceId: actors.A.spaceId,
+        userId: actors.a.userId,
+        connectionId: connection.id,
+        providerMessageId: `pm-${run}`,
+        threadId: "t1",
+        fromAddress: "billing@example.com",
+        toAddresses: [],
+        ccAddresses: [],
+        subject: "Invoice",
+        snippet: "",
+        receivedAt: new Date(),
+        unread: false,
+        seenAt: new Date(),
+      },
+    });
+    const pick = { messageId: message.id, attachmentId: "att1" };
+    const before = enqueued.length;
+
+    await expect(client(actors.a).dataRoom.importEmail({ picks: [pick] })).resolves.toEqual({
+      imported: 1,
+      duplicates: 0,
+    });
+    const row = await prisma.dataRoomItem.findFirstOrThrow({
+      where: { spaceId: actors.A.spaceId, externalId: `gmail:pm-${run}:att1` },
+    });
+    expect(row).toMatchObject({
+      source: "gmail",
+      sourceConnectionId: connection.id,
+      name: "invoice_2026.pdf",
+      sourceUrl: `/app/inbox?mail=${message.id}`,
+    });
+    expect(enqueued.slice(before).map((j) => j.name)).toEqual(["dataroom.ingest"]);
+
+    // The same pick again stores no second item or blob.
+    const blobs = await blobCount(actors.A.spaceId);
+    await expect(client(actors.a).dataRoom.importEmail({ picks: [pick] })).resolves.toEqual({
+      imported: 0,
+      duplicates: 1,
+    });
+    expect(await blobCount(actors.A.spaceId)).toBe(blobs);
+
+    // Another member of the same space and a user in another space cannot reach the message.
+    await expect(client(actors.a2).dataRoom.importEmail({ picks: [pick] })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(client(actors.b).dataRoom.importEmail({ picks: [pick] })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+
+    // A folder that is not the caller's is refused before anything is stored.
+    const folderB = await client(actors.b).dataRoom.folderCreate({ name: "B import" });
+    await expect(
+      client(actors.a).dataRoom.importEmail({ picks: [pick], folderId: folderB.id }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });

@@ -318,3 +318,92 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
   await expect(sheet).toHaveCount(0);
   await expect(rows.nth(1)).toBeFocused();
 });
+
+test("Data room imports a mail attachment through the picker", async ({ page }, testInfo) => {
+  const { calls } = await mockDataRoom(page);
+  const json = (body: unknown) => ({
+    contentType: "application/json",
+    body: JSON.stringify({ json: body, meta: [] }),
+  });
+  await page.route("**/rpc/connections/list", (route) =>
+    route.fulfill(
+      json([
+        {
+          id: "c0000000000000000000000c1",
+          connectorId: "google",
+          provider: "gmail",
+          displayName: "Example mail",
+          status: "connected",
+        },
+      ]),
+    ),
+  );
+  await page.route("**/rpc/inbox/list", (route) =>
+    route.fulfill(
+      json({
+        accounts: [],
+        agent: null,
+        rows: [
+          {
+            id: "c0000000000000000000000m1",
+            connectionId: "c0000000000000000000000c1",
+            threadId: "t1",
+            from: "Example Billing <billing@example.com>",
+            subject: "Invoice 1042",
+            snippet: "",
+            receivedAt: "2026-10-10T00:00:00.000Z",
+            unread: false,
+            inInbox: true,
+            needsReply: null,
+            priority: null,
+            reason: null,
+            category: null,
+            feedback: null,
+          },
+        ],
+        syncedAt: null,
+        failedAccounts: [],
+        reconnectAccounts: [],
+        enabled: false,
+        triageBlocked: null,
+        triagePending: false,
+      }),
+    ),
+  );
+  await page.route("**/rpc/inbox/get", (route) =>
+    route.fulfill(
+      json({
+        from: "Example Billing <billing@example.com>",
+        to: "me@example.com",
+        cc: "",
+        date: "2026-10-10T00:00:00.000Z",
+        subject: "Invoice 1042",
+        html: null,
+        text: "Synthetic invoice.",
+        attachments: [
+          { id: "att1", filename: "invoice-1042.pdf", mimeType: "application/pdf", size: 52_000 },
+        ],
+      }),
+    ),
+  );
+  await page.route("**/rpc/dataRoom/importEmail", (route) =>
+    route.fulfill(json({ imported: 1, duplicates: 0 })),
+  );
+
+  await signup(page, `data-room-mail-${Date.now()}@rakazo.test`, "password12", "Data Room User");
+  await completeOnboarding(page);
+  await page.getByTestId("sidebar-data-room").click();
+  await expect(page.getByTestId("data-room-list").locator("li[data-item-id]")).toHaveCount(3);
+
+  await page.getByRole("button", { name: "Import from email" }).click();
+  const dialog = page.getByRole("dialog", { name: "Import from email" });
+  await expect(dialog.getByPlaceholder("Search mail")).toBeVisible();
+  await dialog.getByRole("button", { name: /Invoice 1042/ }).click();
+  await dialog.getByRole("checkbox", { name: "invoice-1042.pdf" }).click();
+  await captureScreenshot(page, testInfo, "data-room-import-email");
+  await dialog.getByRole("button", { name: "Import", exact: true }).click();
+
+  await expect(page.getByRole("status").filter({ hasText: "Imported 1 file" })).toBeVisible();
+  // The list reloads so the new item shows up.
+  await expect.poll(() => calls.filter((c) => c.name === "items/list").length).toBeGreaterThan(1);
+});

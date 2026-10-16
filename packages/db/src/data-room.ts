@@ -309,7 +309,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       });
     },
 
-    /** Uploads dedupe on sha256 per space: an existing upload is returned with created=false. */
+    /** A repeated upload (same bytes) or import (same connection and external id) returns the existing item with created=false. */
     async createItem(
       actor: Actor,
       input: {
@@ -354,8 +354,20 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         });
         return { item, created: true };
       } catch (error) {
-        if (input.source === "upload" && isUniqueViolation(error)) {
-          const existing = await findExisting();
+        if (isUniqueViolation(error)) {
+          // An upload repeats by bytes; an import repeats by its source id.
+          const existing =
+            input.source === "upload"
+              ? await findExisting()
+              : input.sourceConnectionId && input.externalId
+                ? await prisma.dataRoomItem.findFirst({
+                    where: {
+                      ...eligibleWhere(actor),
+                      sourceConnectionId: input.sourceConnectionId,
+                      externalId: input.externalId,
+                    },
+                  })
+                : null;
           if (existing) return { item: existing, created: false };
         }
         throw error;

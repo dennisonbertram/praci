@@ -926,6 +926,7 @@ export function createRouter(deps: RouterDeps) {
     prisma: deps.prisma,
     artifacts: deps.artifacts,
     jobs: deps.jobs,
+    mail: deps.mail,
     resolveAi: (scope) =>
       resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.resolveModel }, scope),
   });
@@ -6236,6 +6237,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       itemDelete: authed.dataRoom.itemDelete.handler(({ context, input }) =>
         dataRoom.deleteItem(context.actor, input.id),
+      ),
+      importEmail: authed.dataRoom.importEmail.handler(({ context, input }) =>
+        dataRoom.importEmail(context.actor, input, context.signal),
       ),
       search: authed.dataRoom.search.handler(({ context, input }) =>
         dataRoom.search(context.actor, input),
