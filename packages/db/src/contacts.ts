@@ -1,6 +1,14 @@
 import type { Contact, ContactKind, ContactSaveInput } from "@rakazo/contracts";
 import type { Prisma, PrismaClient } from "./client.js";
+import { isUniqueViolation } from "./prisma-errors.js";
 import { IsolationError } from "./scope.js";
+
+export class ContactEmailTakenError extends Error {
+  constructor() {
+    super("Another contact already has this email.");
+    this.name = "ContactEmailTakenError";
+  }
+}
 
 type Scope = { spaceId: string; userId: string };
 type Db = Pick<PrismaClient, "contact">;
@@ -41,11 +49,7 @@ export async function listContacts(
  * Creates a contact, or updates one: by `id`, else the user's contact with the same email.
  * Omitted fields are kept on update. Throws IsolationError for an `id` that is not the user's.
  */
-export async function saveContact(
-  prisma: Db,
-  scope: Scope,
-  input: ContactSaveInput,
-): Promise<Contact> {
+async function writeContact(prisma: Db, scope: Scope, input: ContactSaveInput): Promise<Contact> {
   const { id, ...fields } = input;
   if (id) {
     const { count } = await prisma.contact.updateMany({ where: { id, ...scope }, data: fields });
@@ -67,3 +71,8 @@ export async function deleteContact(prisma: Db, scope: Scope, id: string): Promi
   const { count } = await prisma.contact.deleteMany({ where: { id, ...scope } });
   if (count === 0) throw new IsolationError("Contact not found");
 }
+
+export const saveContact = (prisma: Db, scope: Scope, input: ContactSaveInput) =>
+  writeContact(prisma, scope, input).catch((error: unknown) => {
+    throw isUniqueViolation(error) ? new ContactEmailTakenError() : error;
+  });
