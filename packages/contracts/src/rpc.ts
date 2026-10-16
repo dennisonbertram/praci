@@ -22,7 +22,6 @@ import {
   UpdateTicketInput,
 } from "./board.js";
 import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot-secrets.js";
-import { SidebarPageInputSchema, SidebarPageSchema } from "./sidebar-pages.js";
 import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from "./contacts.js";
 import {
   ActionApprovalRuleSchema,
@@ -184,6 +183,7 @@ import {
 import { MessageReactionSchema } from "./reactions.js";
 import { RoutineHistorySchema, RoutineRunCursorSchema, RunsListOutputSchema } from "./runs.js";
 import { SearchQueryOutputSchema } from "./search.js";
+import { SidebarPageInputSchema, SidebarPageSchema } from "./sidebar-pages.js";
 
 const botId = z.object({ botId: Id });
 const groupId = z.object({ groupId: Id });

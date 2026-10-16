@@ -26,7 +26,11 @@ export type SidebarPageTemplate = {
 
 export const SidebarPageKeySchema = z.string().trim().min(1).max(64);
 
-export const SidebarPageSchema = z.object({ templateKey: SidebarPageKeySchema });
+export const SidebarPageSchema = z.object({
+  templateKey: SidebarPageKeySchema,
+});
 export type SidebarPage = z.infer<typeof SidebarPageSchema>;
 
-export const SidebarPageInputSchema = z.object({ templateKey: SidebarPageKeySchema });
+export const SidebarPageInputSchema = z.object({
+  templateKey: SidebarPageKeySchema,
+});

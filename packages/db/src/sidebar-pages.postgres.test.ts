@@ -1,5 +1,5 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SidebarPageTemplate } from "@rakazo/contracts";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
 import { addSidebarPage, listSidebarPages, removeSidebarPage } from "./sidebar-pages.js";
@@ -27,9 +27,15 @@ const templates = [
 describePostgres("sidebar pages (PostgreSQL)", () => {
   const suffix = `${process.pid}-${Date.now()}`;
   const organizationId = `sidebar-org-${suffix}`;
-  const owner = { spaceId: `sidebar-space-a-${suffix}`, userId: `sidebar-user-a-${suffix}` };
+  const owner = {
+    spaceId: `sidebar-space-a-${suffix}`,
+    userId: `sidebar-user-a-${suffix}`,
+  };
   const member = { spaceId: owner.spaceId, userId: `sidebar-user-b-${suffix}` };
-  const otherSpace = { spaceId: `sidebar-space-b-${suffix}`, userId: owner.userId };
+  const otherSpace = {
+    spaceId: `sidebar-space-b-${suffix}`,
+    userId: owner.userId,
+  };
   const userIds = [owner.userId, member.userId];
   let prisma: PrismaClient;
   let close: () => Promise<void>;
@@ -42,13 +48,26 @@ describePostgres("sidebar pages (PostgreSQL)", () => {
       await db.pool.end();
     };
     await prisma.user.createMany({
-      data: userIds.map((id) => ({ id, name: id, email: `${id}@example.test` })),
+      data: userIds.map((id) => ({
+        id,
+        name: id,
+        email: `${id}@example.test`,
+      })),
     });
     await prisma.organization.create({
-      data: { id: organizationId, name: "Sidebar Org", slug: organizationId, createdAt: new Date() },
+      data: {
+        id: organizationId,
+        name: "Sidebar Org",
+        slug: organizationId,
+        createdAt: new Date(),
+      },
     });
     await prisma.space.createMany({
-      data: [owner.spaceId, otherSpace.spaceId].map((id) => ({ id, organizationId, name: id })),
+      data: [owner.spaceId, otherSpace.spaceId].map((id) => ({
+        id,
+        organizationId,
+        name: id,
+      })),
     });
     await prisma.member.createMany({
       data: userIds.map((userId) => ({
@@ -64,7 +83,12 @@ describePostgres("sidebar pages (PostgreSQL)", () => {
         { ...owner, role: "owner" },
         { ...member, role: "member" },
         { ...otherSpace, role: "member" },
-      ].map((m) => ({ id: `sm-${m.spaceId}-${m.userId}`, organizationId, createdAt: new Date(), ...m })),
+      ].map((m) => ({
+        id: `sm-${m.spaceId}-${m.userId}`,
+        organizationId,
+        createdAt: new Date(),
+        ...m,
+      })),
     });
   });
   afterAll(async () => {

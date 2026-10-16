@@ -532,6 +532,10 @@ msgstr "Add item"
 msgid "Add MCP server"
 msgstr "Add MCP server"
 
+#: src/components/AddSidebarPage.tsx
+msgid "Add page"
+msgstr "Add page"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
 msgstr "Add server URL"
@@ -4531,6 +4535,10 @@ msgstr "Page"
 msgid "Page changed. Reload"
 msgstr "Page changed. Reload"
 
+#: src/components/SidebarPages.tsx
+msgid "Page options"
+msgstr "Page options"
+
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty incident"
@@ -4968,6 +4976,10 @@ msgstr "Remove {name}?"
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
 msgstr "Remove {secretName}? This bot will no longer be able to use it."
+
+#: src/components/SidebarPages.tsx
+msgid "Remove from sidebar"
+msgstr "Remove from sidebar"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"

@@ -532,6 +532,10 @@ msgstr "आइटम जोड़ें"
 msgid "Add MCP server"
 msgstr "MCP सर्वर जोड़ें"
 
+#: src/components/AddSidebarPage.tsx
+msgid "Add page"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
 msgstr ""
@@ -4531,6 +4535,10 @@ msgstr ""
 msgid "Page changed. Reload"
 msgstr ""
 
+#: src/components/SidebarPages.tsx
+msgid "Page options"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr ""
@@ -4967,6 +4975,10 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
+msgstr ""
+
+#: src/components/SidebarPages.tsx
+msgid "Remove from sidebar"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx

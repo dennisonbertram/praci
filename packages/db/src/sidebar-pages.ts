@@ -1,5 +1,5 @@
-import { SIDEBAR_PAGE_TEMPLATES } from "@rakazo/contracts";
 import type { SidebarPage, SidebarPageTemplate } from "@rakazo/contracts";
+import { SIDEBAR_PAGE_TEMPLATES } from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
 
 export class SidebarPageError extends Error {
@@ -51,7 +51,12 @@ export async function addSidebarPage(
   });
   await prisma.sidebarPage.upsert({
     where: { spaceId_userId_templateKey: { spaceId, userId, templateKey } },
-    create: { spaceId, userId, templateKey, position: (last._max.position ?? -1) + 1 },
+    create: {
+      spaceId,
+      userId,
+      templateKey,
+      position: (last._max.position ?? -1) + 1,
+    },
     update: {},
   });
 }
@@ -63,5 +68,7 @@ export async function removeSidebarPage(
   templateKey: string,
 ): Promise<void> {
   const { spaceId, userId } = actor;
-  await prisma.sidebarPage.deleteMany({ where: { spaceId, userId, templateKey } });
+  await prisma.sidebarPage.deleteMany({
+    where: { spaceId, userId, templateKey },
+  });
 }
