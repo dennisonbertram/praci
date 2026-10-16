@@ -882,6 +882,7 @@ export function createRouter(deps: RouterDeps) {
     userId: string;
     redirectUri: string;
     reauthorize?: boolean;
+    oauthClient?: { clientId: string; clientSecret?: string; scope?: string };
   }) => {
     const expectedRedirect = new URL("/mcp/oauth/callback", deps.env.webOrigin).toString();
     if (new URL(input.redirectUri).toString() !== expectedRedirect) {

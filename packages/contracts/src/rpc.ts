@@ -164,6 +164,7 @@ import {
   IntegrationProviderConfigSchema,
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
+import { McpOauthClientSchema } from "./mcp.js";
 import {
   BotPageGetInputSchema,
   BotPageSaveInputSchema,
@@ -805,6 +806,8 @@ export const appContract = {
             /** Ask the user to sign in again even though a token is stored. The old
              * token stays until the new authorization completes. */
             reauthorize: z.boolean().optional(),
+            /** Stored with the server and reused on later sign-ins. */
+            oauthClient: McpOauthClientSchema.optional(),
           }),
         )
         .output(
