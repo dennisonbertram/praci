@@ -187,12 +187,7 @@ describeWithDatabase("Composio catalog reconciliation", () => {
     await rpc(app, cookie, "connections/revoke", { connectionId: first.connectionId });
     await expect(
       rpc<Array<{ id: string; status: string }>>(app, cookie, "connections/list"),
-    ).resolves.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: first.connectionId, status: "revoked" }),
-        expect.objectContaining({ id: second.connectionId, status: "connected" }),
-      ]),
-    );
+    ).resolves.toEqual([expect.objectContaining({ id: second.connectionId, status: "connected" })]);
 
     // Uninstall the remaining account: catalog must flip off Added (slug-only
     // emulator refs used to skip remote revoke and leave Gmail stuck connected).
@@ -385,9 +380,7 @@ describeWithDatabase("Composio catalog reconciliation", () => {
     await rpc(app, cookie, "connections/revoke", { connectionId: started.connectionId });
     await expect(
       rpc<Array<{ id: string; status: string }>>(app, cookie, "connections/list"),
-    ).resolves.toContainEqual(
-      expect.objectContaining({ id: started.connectionId, status: "revoked" }),
-    );
+    ).resolves.not.toContainEqual(expect.objectContaining({ id: started.connectionId }));
   });
 
   it("installs Treg, Executor, and custom MCP sources and routes their calls", async () => {

@@ -230,6 +230,16 @@ export default function Layout() {
                     <Stack.Screen name="inbox-message" options={{ title: "" }} />
                     <Stack.Screen name="artifacts" options={glassHeaderOptions(t("Artifacts"))} />
                     <Stack.Screen name="artifact" options={{ title: t("Artifact") }} />
+                    <Stack.Screen name="agent-page" options={{ title: t("Page") }} />
+                    <Stack.Screen
+                      name="agent-list"
+                      options={{
+                        title: t("List"),
+                        presentation: "formSheet",
+                        sheetAllowedDetents: [0.6, 1],
+                        sheetGrabberVisible: true,
+                      }}
+                    />
                     <Stack.Screen name="group-thread" options={{ title: t("Group") }} />
                     <Stack.Screen
                       name="group-settings"

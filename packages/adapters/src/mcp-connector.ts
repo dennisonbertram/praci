@@ -1,3 +1,4 @@
+import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type {
   AdapterContext,
   ConnectorCall,
@@ -7,7 +8,12 @@ import type {
   SecretStore,
 } from "@rakazo/adapter-kit";
 import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
-import { isLocalMcpHost } from "@rakazo/contracts";
+import {
+  FINANCE_READ_TOOLS,
+  financeProviderForEndpoint,
+  isFinanceAgentSpawnKey,
+  isLocalMcpHost,
+} from "@rakazo/contracts";
 import type { McpServer, PrismaClient, ThreadEvents } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { catalogToolPrefix } from "./approval-effect.js";
@@ -63,6 +69,27 @@ export function allowlistDrift(
     offered: names.size,
     stringAllowedCount: stringAllowed.length,
   };
+}
+
+/**
+ * Whether the assignment exposes a tool. The Finance agent is read-only whatever its assignment row
+ * says: on a Mercury or Brex server only that provider's read tools pass, even with allowAllTools.
+ */
+export function assignmentAllowsTool(
+  assignment: {
+    allowAllTools: boolean;
+    allowedTools: unknown;
+    server: { endpoint?: string | null };
+    bot?: { spawnKey: string | null } | null;
+  },
+  toolName: string,
+): boolean {
+  if (isFinanceAgentSpawnKey(assignment.bot?.spawnKey)) {
+    const provider = financeProviderForEndpoint(assignment.server.endpoint);
+    if (provider && !(FINANCE_READ_TOOLS[provider] as readonly string[]).includes(toolName))
+      return false;
+  }
+  return assignment.allowAllTools || (assignment.allowedTools as unknown[]).includes(toolName);
 }
 
 function reportAllowlistDrift(
@@ -151,7 +178,7 @@ export class McpConnector implements ConnectorProvider {
         userId: context.userId,
         server: { enabled: true },
       },
-      include: { server: true },
+      include: { server: true, bot: { select: { spawnKey: true } } },
     });
     const groups = await Promise.all(
       assignments.map(async (assignment): Promise<ConnectorTool[]> => {
@@ -161,11 +188,7 @@ export class McpConnector implements ConnectorProvider {
           const listed = await session.listTools({ signal: context.signal });
           reportAllowlistDrift(assignment, listed.tools, context);
           return listed.tools
-            .filter(
-              (tool) =>
-                assignment.allowAllTools ||
-                (assignment.allowedTools as unknown[]).includes(tool.name),
-            )
+            .filter((tool) => assignmentAllowsTool(assignment, tool.name))
             .map((tool) => ({
               name: `mcp__${assignment.server.slug}__${tool.name}`,
               description: tool.description ?? tool.name,
@@ -274,13 +297,9 @@ export class McpConnector implements ConnectorProvider {
         userId: context.userId,
         server: { enabled: true },
       },
-      include: { server: true },
+      include: { server: true, bot: { select: { spawnKey: true } } },
     });
-    if (
-      !assignment ||
-      (!assignment.allowAllTools &&
-        !(assignment.allowedTools as unknown[]).includes(call.route.toolName))
-    ) {
+    if (!assignment || !assignmentAllowsTool(assignment, call.route.toolName)) {
       yield { type: "error", message: "MCP tool is not assigned to this bot" };
       return;
     }
@@ -302,6 +321,42 @@ export class McpConnector implements ConnectorProvider {
       const secrets = material ? oauthMaterialSecrets(material) : [];
       await this.evict(sessionKey);
       yield { type: "error", message: sanitizeConnectorError(error, secrets) };
+    }
+  }
+
+  /**
+   * Calls one tool on a stored server without a bot or an assignment, for server-side jobs that
+   * use a user's own connection (Finance sync). The caller decides which tools are allowed. It
+   * reuses the live session, OAuth refresh and secret handling of bot runs.
+   */
+  async callServerTool(
+    server: McpServer,
+    context: AdapterContext,
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult> {
+    const sessionKey = this.sessionKey(server, context);
+    let material: OAuthMaterial | undefined;
+    try {
+      const session = await this.sessionFor(server, context);
+      material = this.sessions.get(sessionKey)?.material;
+      return await session.callTool(toolName, args, { signal: context.signal });
+    } catch (error) {
+      const secrets = material ? oauthMaterialSecrets(material) : [];
+      await this.evict(sessionKey);
+      throw new Error(sanitizeConnectorError(error, secrets));
+    }
+  }
+
+  /** Lists a stored server's tools, with their annotations, outside a bot run. */
+  async listServerTools(server: McpServer, context: AdapterContext): Promise<Tool[]> {
+    const sessionKey = this.sessionKey(server, context);
+    try {
+      const session = await this.sessionFor(server, context);
+      return (await session.listTools({ signal: context.signal })).tools;
+    } catch (error) {
+      await this.evict(sessionKey);
+      throw new Error(sanitizeConnectorError(error));
     }
   }
 

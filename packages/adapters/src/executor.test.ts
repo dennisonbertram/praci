@@ -427,11 +427,40 @@ describe("run tool selection", () => {
       "mail_grep",
       "mail_modify",
       "mail_search",
+      "mail_send",
     ]);
     expect(mailNames(offered(true, ["mail_grep", "inbox_overview", "mail_draft"]))).toEqual([
       "mail_get",
       "mail_modify",
       "mail_search",
+      "mail_send",
+    ]);
+  });
+
+  it("offers the Drive tools only when a Drive account is connected", () => {
+    const offered = (driveEnabled: boolean) =>
+      selectBuiltinToolsForRun({
+        graphicalToolsAllowed: false,
+        pageBrowserAllowed: false,
+        groupId: null,
+        trigger: "message",
+        semanticMemoryEnabled: false,
+        messagingChannelRun: false,
+        driveEnabled,
+      })
+        .map((tool) => tool.name)
+        .filter((name) => name.startsWith("drive_"))
+        .sort();
+    expect(offered(false)).toEqual([]);
+    expect(offered(true)).toEqual([
+      "drive_create_file",
+      "drive_read",
+      "drive_search",
+      "drive_update_file",
+    ]);
+    expect([...READ_ONLY_AGENT_TOOLS].filter((name) => name.startsWith("drive_")).sort()).toEqual([
+      "drive_read",
+      "drive_search",
     ]);
   });
 
@@ -1125,6 +1154,8 @@ describe("userTurnInstructions", () => {
     "During long work, send a few short progress updates with message_user so the user can see what you are doing. Keep them brief and high-signal (a sentence or two, not a dump). Do not narrate every tool call. Thinking stays private. message_user is capped at 500 characters and will be silently cut off if you exceed it \u2014 never put your final answer, a report, or any long-form deliverable in it. Always put the complete final answer in your normal reply, never split across message_user calls, and never assume a message_user update already delivered your content.";
   const stableTail = [
     'For charts and data visualization, use the render_plot tool: it renders bar, line, scatter, histogram, heatmap, faceted and many more chart types from a JSON spec and attaches the PNG to the chat. Call render_plot with {"help": true} before your first chart to read the full guide.',
+    'You have one persistent page. Put durable output the user will revisit there (a summary, tracker, or dashboard); keep ordinary replies in chat. Call page_read first, then page_write (whole page) or page_edit (one unique piece; prefer it for small changes). Charts are a ```chart fence holding one line of JSON {"name", "spec", "data"}, where spec is {title?, x?, y?, marks: [{type, options}]} and data holds the rows. Scale settings go in the spec\'s x and y objects and channels in the mark options; use ISO dates (YYYY-MM-DD) with x: {type: "utc"} for time series, and x: {domain: [...]} listing ordered categories in order.',
+    "Use pins for numbers the user checks often (stats) and for an ongoing list. Call pins_read first, then pins_write. When asked to update your pinned numbers, recheck the data each one came from with your tools and rewrite them with pins_write; if a number has no data you can recheck, keep it and say so in one line. Give a stat a source when a single read-only MCP tool call returns it, so it refreshes without you. List items are short imperatives of at most 60 characters; keep details in chat.",
     "When the user asks you to add or connect an MCP server (and gives you its details), use add_mcp_server. If it uses browser sign-in, an approval card appears in the chat — tell the user to click Authorize on it.",
     "Never print API keys, access tokens, or secret values. Prefer tools over claiming you already did the work.",
     "Treat pagination cursors as opaque: copy the returned continuation value exactly, never calculate or guess it. When the tool reports no next page, stop; if a cursor is rejected, recheck the last successful result before retrying.",
@@ -1319,6 +1350,8 @@ describe("userTurnInstructions", () => {
         "run_subagent",
         "archive_bot",
         "render_plot",
+        "page_write",
+        "pins_write",
         "add_mcp_server",
         "message_user",
         "schedule_create",
@@ -1341,6 +1374,8 @@ describe("userTurnInstructions", () => {
     expect(text).not.toContain("run_subagent");
     expect(text).not.toContain("archive_bot");
     expect(text).not.toContain("render_plot");
+    expect(text).not.toContain("page_write");
+    expect(text).not.toContain("pins_write");
     expect(text).not.toContain("add_mcp_server");
     expect(text).not.toContain("message_user");
     expect(text).toContain("list_secrets");

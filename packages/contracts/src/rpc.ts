@@ -100,6 +100,49 @@ import {
   VoiceStatusSchema,
 } from "./domain.js";
 import { ComputerCommandSchema, ProductEventSchema } from "./events.js";
+import {
+  BalanceSeriesInputSchema,
+  BalanceSeriesOutputSchema,
+  FinanceAccountOutputSchema,
+  FinanceAccountsOutputSchema,
+  FinanceBurnOutputSchema,
+  FinanceCategoryOutputSchema,
+  FinanceConnectInputSchema,
+  FinanceConnectOutputSchema,
+  FinanceCryptoConnectInputSchema,
+  FinanceCryptoConnectOutputSchema,
+  FinanceCryptoHistoryInputSchema,
+  FinanceCryptoHistoryOutputSchema,
+  FinanceCryptoOutputSchema,
+  FinanceCryptoProviderConnectInputSchema,
+  FinanceCryptoProviderRemoveInputSchema,
+  FinanceExchangeConnectInputSchema,
+  FinanceExchangeRemoveInputSchema,
+  FinanceExchangeSchema,
+  FinanceExchangesOutputSchema,
+  FinanceMonthOutputSchema,
+  FinanceOverviewSchema,
+  FinancePreferencesSchema,
+  FinanceReceiptUrlOutputSchema,
+  FinanceRecurringOutputSchema,
+  FinanceRunwayOutputSchema,
+  FinanceSpendInputSchema,
+  FinanceSpendOutputSchema,
+  FinanceTransactionOutputSchema,
+  FinanceVendorOutputSchema,
+  FinanceWalletAddInputSchema,
+  FinanceWalletRemoveInputSchema,
+  FinanceWalletSchema,
+  FinanceWalletsOutputSchema,
+  FinanceWalletUpdateInputSchema,
+} from "./finance.js";
+import {
+  FinanceStatementConfirmInputSchema,
+  FinanceStatementDiscardInputSchema,
+  FinanceStatementSchema,
+  FinanceStatementsOutputSchema,
+  FinanceStatementUploadInputSchema,
+} from "./finance-statements.js";
 import { Id, IsoDate } from "./ids.js";
 import {
   ComposeClientId,
@@ -121,6 +164,20 @@ import {
   IntegrationProviderConfigSchema,
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
+import {
+  BotPageGetInputSchema,
+  BotPageSaveInputSchema,
+  BotPageSaveOutputSchema,
+  BotPageSchema,
+} from "./pages.js";
+import {
+  BotPinsGetInputSchema,
+  BotPinsRefreshInputSchema,
+  BotPinsRefreshOutputSchema,
+  BotPinsSaveInputSchema,
+  BotPinsSaveOutputSchema,
+  BotPinsSchema,
+} from "./pins.js";
 import { MessageReactionSchema } from "./reactions.js";
 import { RoutineHistorySchema, RoutineRunCursorSchema, RunsListOutputSchema } from "./runs.js";
 import { SearchQueryOutputSchema } from "./search.js";
@@ -183,6 +240,8 @@ const threadSendInput = threadTarget
       });
     }
   });
+
+const ConnectionAccessSchema = z.object({ allAgents: z.boolean(), botIds: z.array(Id) });
 
 const spaceName = z.string().trim().min(1).max(60);
 
@@ -510,6 +569,15 @@ export const appContract = {
       .output(SpaceMemoryConfigSchema),
     disconnectProvider: oc.output(z.object({ ok: z.literal(true) })),
   },
+  pages: {
+    get: oc.input(BotPageGetInputSchema).output(BotPageSchema.nullable()),
+    save: oc.input(BotPageSaveInputSchema).output(BotPageSaveOutputSchema),
+  },
+  pins: {
+    get: oc.input(BotPinsGetInputSchema).output(BotPinsSchema.nullable()),
+    save: oc.input(BotPinsSaveInputSchema).output(BotPinsSaveOutputSchema),
+    refresh: oc.input(BotPinsRefreshInputSchema).output(BotPinsRefreshOutputSchema),
+  },
   routines: {
     list: oc.input(botId).output(z.array(RoutineSchema)),
     history: oc
@@ -816,6 +884,11 @@ export const appContract = {
       .input(z.object({ connectionId: Id, displayName: z.string().trim().min(1).max(80) }))
       .output(ConnectionSchema),
     revoke: oc.input(z.object({ connectionId: Id })).output(z.object({ ok: z.literal(true) })),
+    /** Which agents may use this connection's tools. */
+    access: oc.input(z.object({ connectionId: Id })).output(ConnectionAccessSchema),
+    setAccess: oc
+      .input(z.object({ connectionId: Id, allAgents: z.boolean(), botIds: z.array(Id).max(500) }))
+      .output(ConnectionAccessSchema),
     /** Tools the connected provider exposes. Read-only; no per-tool allowlist yet. */
     tools: oc.input(z.object({ connectorId: z.string(), provider: z.string() })).output(
       z.array(
@@ -1003,6 +1076,7 @@ export const appContract = {
     feedback: oc.input(InboxFeedbackInputSchema).output(InboxFeedbackOutputSchema),
     markRead: oc.input(InboxMarkReadInputSchema).output(z.object({ ok: z.literal(true) })),
     archive: oc.input(z.object({ messageId: Id })).output(z.object({ ok: z.literal(true) })),
+    unarchive: oc.input(z.object({ messageId: Id })).output(z.object({ ok: z.literal(true) })),
     compose: {
       prefill: oc.input(ComposePrefillInputSchema).output(ComposePrefillOutputSchema),
       draftSave: oc.input(ComposeFieldsSchema).output(ComposeResultSchema),
@@ -1015,6 +1089,64 @@ export const appContract = {
       list: oc.input(InboxScopeInputSchema).output(InboxTodosOutputSchema),
       setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoSchema),
     },
+  },
+  finance: {
+    agent: oc.output(BotSchema),
+    overview: oc.output(FinanceOverviewSchema),
+    refresh: oc.output(z.object({ ok: z.literal(true) })),
+    connect: oc.input(FinanceConnectInputSchema).output(FinanceConnectOutputSchema),
+    accounts: oc.output(FinanceAccountsOutputSchema),
+    balanceSeries: oc.input(BalanceSeriesInputSchema).output(BalanceSeriesOutputSchema),
+    account: oc.input(z.object({ id: Id })).output(FinanceAccountOutputSchema),
+    burn: oc.output(FinanceBurnOutputSchema),
+    month: oc
+      .input(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }))
+      .output(FinanceMonthOutputSchema),
+    runway: oc.output(FinanceRunwayOutputSchema),
+    preferences: oc.output(FinancePreferencesSchema),
+    setPreferences: oc.input(FinancePreferencesSchema).output(FinancePreferencesSchema),
+    cryptoHistory: oc
+      .input(FinanceCryptoHistoryInputSchema)
+      .output(FinanceCryptoHistoryOutputSchema),
+    spend: oc.input(FinanceSpendInputSchema).output(FinanceSpendOutputSchema),
+    category: oc
+      .input(z.object({ slug: z.string().min(1).max(200) }))
+      .output(FinanceCategoryOutputSchema),
+    recurring: oc
+      .input(z.object({ key: z.string().min(1).max(200) }))
+      .output(FinanceRecurringOutputSchema),
+    vendor: oc
+      .input(z.object({ key: z.string().min(1).max(200) }))
+      .output(FinanceVendorOutputSchema),
+    transaction: oc.input(z.object({ id: Id })).output(FinanceTransactionOutputSchema),
+    receiptUrl: oc.input(z.object({ transactionId: Id })).output(FinanceReceiptUrlOutputSchema),
+    wallets: oc.output(FinanceWalletsOutputSchema),
+    walletAdd: oc.input(FinanceWalletAddInputSchema).output(FinanceWalletSchema),
+    walletUpdate: oc.input(FinanceWalletUpdateInputSchema).output(FinanceWalletSchema),
+    walletRemove: oc
+      .input(FinanceWalletRemoveInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    crypto: oc.output(FinanceCryptoOutputSchema),
+    cryptoConnect: oc
+      .input(FinanceCryptoConnectInputSchema)
+      .output(FinanceCryptoConnectOutputSchema),
+    exchanges: oc.output(FinanceExchangesOutputSchema),
+    exchangeConnect: oc.input(FinanceExchangeConnectInputSchema).output(FinanceExchangeSchema),
+    exchangeRemove: oc
+      .input(FinanceExchangeRemoveInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    cryptoProviderConnect: oc
+      .input(FinanceCryptoProviderConnectInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    cryptoProviderRemove: oc
+      .input(FinanceCryptoProviderRemoveInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    statements: oc.output(FinanceStatementsOutputSchema),
+    statementUpload: oc.input(FinanceStatementUploadInputSchema).output(FinanceStatementSchema),
+    statementConfirm: oc.input(FinanceStatementConfirmInputSchema).output(FinanceStatementSchema),
+    statementDiscard: oc
+      .input(FinanceStatementDiscardInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
   },
   botSecrets: {
     list: oc.input(z.object({ botId: Id })).output(z.array(BotSecretMetadata)),

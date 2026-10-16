@@ -1179,6 +1179,10 @@ describe("connections.complete", () => {
       expect(elapsed).toBe(15_000);
       expect(load).toHaveBeenCalledTimes(1);
       expect(operation === "complete" ? complete : revoke).toHaveBeenCalledTimes(changed ? 0 : 1);
+      if (operation === "revoke" && !changed)
+        expect(revoke).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+          provider: "gmail",
+        });
     },
   );
 

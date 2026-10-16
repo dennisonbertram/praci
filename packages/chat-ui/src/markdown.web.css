@@ -1,6 +1,14 @@
 .rk-chat-markdown {
   min-width: 0;
   overflow-wrap: anywhere;
+  /* Body text sits a step below full foreground so bold reads as emphasis by contrast, not weight. */
+  color: color-mix(in srgb, var(--foreground) 86%, var(--background));
+}
+
+.rk-chat-markdown strong,
+.rk-chat-markdown b {
+  color: var(--foreground);
+  font-weight: 600;
 }
 
 .rk-chat-markdown > :first-child,

@@ -7,6 +7,9 @@ const MAX_ENTRIES = 40;
 // Switching spaces reloads the page (no in-app event exists), which resets this module.
 const promises = new Map<string, Promise<InboxMessageOutput>>();
 const values = new Map<string, InboxMessageOutput>();
+const PREFETCH_PAUSE_MS = 30_000;
+// After a failed load, background prefetches stop for a while; opening a message still loads.
+let pausedUntil = 0;
 
 export function peekInboxMessage(messageId: string): InboxMessageOutput | undefined {
   return values.get(messageId);
@@ -22,6 +25,7 @@ export function loadInboxMessage(messageId: string): Promise<InboxMessageOutput>
     },
     (cause) => {
       promises.delete(messageId);
+      pausedUntil = Date.now() + PREFETCH_PAUSE_MS;
       throw cause;
     },
   );
@@ -37,5 +41,6 @@ export function loadInboxMessage(messageId: string): Promise<InboxMessageOutput>
 }
 
 export function prefetchInboxMessage(messageId: string): void {
+  if (Date.now() < pausedUntil) return;
   loadInboxMessage(messageId).catch(() => {});
 }

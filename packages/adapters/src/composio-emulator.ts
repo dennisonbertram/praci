@@ -16,12 +16,22 @@ import {
 } from "./release-watch.js";
 
 const DEFAULT_CATALOG: ReadonlyArray<Omit<ComposioCatalogItem, "connected">> = [
-  { slug: "GMAIL", name: "Gmail", logo: null, noAuth: false },
-  { slug: "GOOGLECALENDAR", name: "Google Calendar", logo: null, noAuth: false },
-  { slug: "GOOGLEDRIVE", name: "Google Drive", logo: null, noAuth: false },
-  { slug: "SLACK", name: "Slack", logo: null, noAuth: false },
-  { slug: "GITHUB", name: "GitHub", logo: null, noAuth: false },
-  { slug: "NOTION", name: "Notion", logo: null, noAuth: false },
+  { slug: "GMAIL", name: "Gmail", logo: "https://cdn.simpleicons.org/gmail", noAuth: false },
+  {
+    slug: "GOOGLECALENDAR",
+    name: "Google Calendar",
+    logo: "https://cdn.simpleicons.org/googlecalendar",
+    noAuth: false,
+  },
+  {
+    slug: "GOOGLEDRIVE",
+    name: "Google Drive",
+    logo: "https://cdn.simpleicons.org/googledrive",
+    noAuth: false,
+  },
+  { slug: "SLACK", name: "Slack", logo: "https://cdn.simpleicons.org/slack", noAuth: false },
+  { slug: "GITHUB", name: "GitHub", logo: "https://cdn.simpleicons.org/github", noAuth: false },
+  { slug: "NOTION", name: "Notion", logo: "https://cdn.simpleicons.org/notion", noAuth: false },
 ];
 
 type MailMessage = {

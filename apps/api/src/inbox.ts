@@ -166,6 +166,7 @@ function toMailRow(m: CachedMessage, enabled: boolean, marks: Map<string, InboxM
     snippet: m.snippet,
     receivedAt: m.receivedAt.toISOString(),
     unread: m.unread,
+    inInbox: m.inInbox,
     needsReply: triage.needsReply,
     priority: asPriority(triage.priority),
     reason: enabled ? m.reason : null,

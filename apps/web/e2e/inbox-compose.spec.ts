@@ -1,5 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
+import {
+  captureScreenshot,
+  completeOnboarding,
+  connectTwoGmailAccounts,
+  rpc,
+  signup,
+} from "./helpers";
 
 const api = () => process.env.API_URL ?? "http://127.0.0.1:3110";
 
@@ -15,10 +21,11 @@ const count = (snapshot: Snapshot, ref: string, kind: "drafts" | "sent") =>
 
 /**
  * What the Gmail emulator behind the API holds. No real mailbox is involved anywhere in this spec.
- * The emulator lives as long as the test run, so each test counts against what it found at the start.
+ * Each user has their own accounts, so a test counts against what it found at the start.
  */
 async function gmail(page: Page): Promise<Snapshot> {
-  const response = await page.request.get(`${api()}/__e2e/gmail`);
+  const { userId } = await rpc<{ userId: string }>(page, "me", {});
+  const response = await page.request.get(`${api()}/__e2e/gmail?userId=${userId}`);
   return (await response.json()) as Snapshot;
 }
 
@@ -37,26 +44,11 @@ function partOf(raw: string, type: "plain" | "html"): string {
 const textOf = (raw: string) => partOf(raw, "plain");
 const htmlOf = (raw: string) => partOf(raw, "html");
 
-async function connectTwoGmailAccounts(page: Page) {
+async function connectGmail(page: Page) {
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  const gmailRow = page
-    .getByRole("dialog")
-    .getByText("Gmail", { exact: true })
-    .first()
-    .locator("xpath=ancestor::*[.//button][1]");
-  await gmailRow.getByRole("button", { name: "Add", exact: true }).click();
-  await gmailRow.getByRole("button", { name: "Added", exact: true }).click();
-  const detail = page.getByTestId("connection-detail");
-  await detail.getByRole("button", { name: "Add another", exact: true }).click();
-  await expect(detail.getByLabel("Account label")).toHaveCount(2);
-  const renamed = page.waitForResponse(
-    (response) => response.url().includes("connections/rename") && response.ok(),
-  );
-  await detail.getByLabel("Account label").nth(1).fill("Work");
-  await detail.getByLabel("Account label").nth(1).blur();
-  await renamed;
-  await page.getByRole("button", { name: "Close integrations" }).click();
+  await connectTwoGmailAccounts(page);
+  await page.getByTestId("sidebar-inbox").click();
 }
 
 test("replying to a message saves a draft, sends it into the same thread, and shows it as sent", async ({
@@ -64,7 +56,7 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
 }, testInfo) => {
   await signup(page, `compose-${Date.now()}@rakazo.test`, "password12", "Compose User");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
   const before = await gmail(page);
 
   const main = page.getByRole("main");
@@ -159,7 +151,7 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
 }, testInfo) => {
   await signup(page, `compose-new-${Date.now()}@rakazo.test`, "password12", "Compose New");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
   const before = await gmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
@@ -209,7 +201,7 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
 test("closing a composer with text in it keeps the draft in Gmail", async ({ page }) => {
   await signup(page, `compose-keep-${Date.now()}@rakazo.test`, "password12", "Compose Keep");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
   const before = await gmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
@@ -231,7 +223,7 @@ test("several recipients, rich text, a link and an attachment arrive as one mult
 }, testInfo) => {
   await signup(page, `compose-rich-${Date.now()}@rakazo.test`, "password12", "Compose Rich");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
   const before = await gmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
@@ -285,7 +277,7 @@ test("forwarding keeps the original's attachments, and a removed one stays behin
 }, testInfo) => {
   await signup(page, `compose-fwd-${Date.now()}@rakazo.test`, "password12", "Compose Forward");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
   const before = await gmail(page);
 
   await page
@@ -328,11 +320,11 @@ test("many recipients fold into one line, Send stays in view, and Discard can be
 }) => {
   await signup(page, `compose-many-${Date.now()}@rakazo.test`, "password12", "Compose Many");
   await completeOnboarding(page);
-  await connectTwoGmailAccounts(page);
+  await connectGmail(page);
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
   const composer = page.getByRole("dialog", { name: "New message" });
-  const crowd = Array.from({ length: 30 }, (_, i) => `person${i}.long.address@example.test`);
+  const crowd = Array.from({ length: 30 }, (_, i) => `person${i}.long@example.test`);
   await composer.getByLabel("To").fill(`${crowd.join(", ")},`);
   // The rows stay capped, so the body and the footer are still inside the dialog.
   const box = async (locator: ReturnType<typeof composer.locator>) =>
@@ -355,63 +347,3 @@ test("many recipients fold into one line, Send stays in view, and Discard can be
     "Crowd",
   );
 });
-
-// TEMP-SHOTS-BEGIN
-const SHOTS = "/private/tmp/claude-501/-Users-dennison-develop-rakazo/052c12c2-b38a-4b9b-a848-b847ac1382d1/scratchpad/compose5";
-for (const mode of ["light", "dark", "phone"] as const) {
-  test(`temp shots ${mode}`, async ({ page }) => {
-    test.setTimeout(240_000);
-    if (mode === "dark") await page.emulateMedia({ colorScheme: "dark" });
-    if (mode === "phone") await page.setViewportSize({ width: 390, height: 844 });
-    await signup(page, `shots-${mode}-${Date.now()}@rakazo.test`, "password12", "Shots");
-    await completeOnboarding(page);
-    if (mode === "dark") {
-      await page.evaluate(() => document.documentElement.classList.add("dark"));
-    }
-    await connectTwoGmailAccounts(page);
-    const shot = async (name: string) => {
-      await page.waitForTimeout(500);
-      await page.screenshot({ path: `${SHOTS}/${mode}-${name}.png` });
-    };
-    const open = async () => {
-      await page.getByRole("button", { name: "Compose", exact: true }).click();
-      return page.getByRole("dialog", { name: "New message" });
-    };
-    let c = await open();
-    await c.getByLabel("To").fill("Ana Ruiz <ana@example.test>,");
-    await shot("to-row");
-    const crowd = Array.from({ length: 16 }, (_, i) => `person${i}.long@example.test`);
-    await c.getByLabel("To").fill(`${crowd.join(", ")},`);
-    await shot("many-expanded");
-    await c.getByLabel("Subject").fill("Crowd");
-    await shot("many-collapsed");
-    // invalid
-    await c.getByRole("button", { name: /more/ }).focus();
-    await c.getByLabel("To").fill("josé@example.test, nope@,");
-    await c.getByRole("button", { name: "Send", exact: true }).click();
-    await shot("invalid-several");
-    await c.getByRole("button", { name: /Remove nope@/ }).click();
-    await c.getByRole("button", { name: "Send", exact: true }).click();
-    await shot("invalid-one");
-    // attachments
-    const files = Array.from({ length: 8 }, (_, i) => ({ name: i === 3 ? "a-really-long-file-name-for-the-quarterly-financial-reconciliation-statement-final-v7.pdf" : `invoice-${i}.pdf`, mimeType: "application/pdf", buffer: Buffer.from("x") }));
-    await c.locator("input[type=file]").setInputFiles(files);
-    await shot("attachments");
-    // discard undo
-    await c.getByRole("button", { name: "Discard", exact: true }).click();
-    // attachments prompt
-    const alert = page.getByRole("alertdialog");
-    if (await alert.isVisible().catch(() => false)) await alert.getByRole("button", { name: "Discard" }).click();
-    await shot("discard-undo");
-    await page.getByRole("button", { name: "Undo", exact: true }).click();
-    // failed send
-    c = page.getByRole("dialog", { name: "New message" });
-    await page.route("**/rpc/inbox/compose/send", (route) => route.abort("internetdisconnected"));
-    await c.getByLabel("To").fill("ana@example.test,");
-    await c.locator("input[type=file]").evaluate((el) => { (el as HTMLInputElement).value = ""; });
-    await c.getByRole("button", { name: "Send", exact: true }).click();
-    await page.waitForTimeout(6_500);
-    await shot("failed-send");
-  });
-}
-// TEMP-SHOTS-END

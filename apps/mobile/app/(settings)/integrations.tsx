@@ -1,5 +1,5 @@
 import type { CapabilityInstall, Connection, ConnectionCatalogItem } from "@rakazo/contracts";
-import { preferNativeGmail } from "@rakazo/contracts";
+import { preferNativeGoogle } from "@rakazo/contracts";
 import {
   abortableDelay,
   buildFeaturedConnectorTiles,
@@ -233,7 +233,7 @@ export default function Integrations() {
         rpc<Connection[]>("connections/list"),
       ]);
       // Native Google needs the Rakazo session, which this app's auth browser does not have.
-      next = { catalog: preferNativeGmail(catalog, { nativeGoogle: false }), connections };
+      next = { catalog: preferNativeGoogle(catalog, { nativeGoogle: false }), connections };
     } catch (reason) {
       if (!mounted.current || focus !== focusGeneration.current) return;
       if (!isIntegrationsScopeCurrent(scope)) return refresh();

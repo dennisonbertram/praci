@@ -59,10 +59,11 @@ export function windowChromeKind(desktop?: RakazoDesktop): "spacer" | "darwin" |
 
 /**
  * Google refuses sign-in inside Electron's embedded browser, so native Google is offered on
- * desktop only when the shell can open the system browser and catch the loopback redirect.
+ * desktop only when the shell can open the system browser and catch the loopback redirect. Desktop
+ * builds older than that bridge have no `oauth` at all, despite the type.
  */
 export function nativeGoogleAvailable(desktop: RakazoDesktop | undefined): boolean {
-  return !desktop || Boolean(desktop.oauth.open);
+  return !desktop || Boolean(desktop.oauth?.open);
 }
 
 const SYSTEM_BROWSER_SIGN_IN_TIMEOUT_MS = 5 * 60_000;

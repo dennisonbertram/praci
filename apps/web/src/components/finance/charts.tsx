@@ -1,0 +1,519 @@
+import type { CashPoint } from "@rakazo/contracts";
+import { useEffect, useId, useRef, useState } from "react";
+import {
+  axisMoney,
+  dayAxisLabels,
+  dayMonth,
+  money,
+  monthAxisLabels,
+  weekdayShort,
+} from "../../lib/finance-format";
+
+/** Gridline step and top value (in cents) so about three to four lines cover `max`. */
+export function niceScale(max: number): { step: number; top: number } {
+  const safe = Math.max(max, 1);
+  const unit = 10 ** Math.floor(Math.log10(safe / 3));
+  let step = unit;
+  for (const m of [1, 2, 5, 10]) {
+    step = m * unit;
+    if (safe / step <= 4) break;
+  }
+  return { step, top: Math.max(step, Math.ceil(safe / step) * step) };
+}
+
+/** Monochrome fills for stacked segments and their legend swatches; index 0 is darkest. */
+export const shade = (index: number) =>
+  `color-mix(in srgb, var(--foreground) ${[100, 78, 60, 46, 34, 24, 16][index % 7]}%, var(--card))`;
+
+/** An SVG drawn at the container's width, so text keeps a fixed size at any width. */
+export function Chart({
+  height,
+  label,
+  children,
+}: {
+  height: number;
+  label: string;
+  children: (width: number) => React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setWidth(Math.floor(el.clientWidth));
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className="w-full" style={{ height }}>
+      {width > 0 ? (
+        <svg
+          role="img"
+          aria-label={label}
+          width={width}
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          className="block"
+        >
+          {children(width)}
+        </svg>
+      ) : null}
+    </div>
+  );
+}
+
+function Grid({
+  width,
+  height,
+  left,
+  right,
+  top,
+  bottom,
+  scale,
+}: {
+  width: number;
+  height: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  scale: { step: number; top: number };
+}) {
+  const lines: number[] = [];
+  for (let v = 0; v <= scale.top; v += scale.step) lines.push(v);
+  return (
+    <>
+      {lines.map((v) => {
+        const y = top + (height - top - bottom) * (1 - v / scale.top);
+        return (
+          <g key={v}>
+            <line
+              x1={left}
+              x2={width - right}
+              y1={y}
+              y2={y}
+              className="stroke-border"
+              strokeWidth={1}
+            />
+            <text
+              x={left - 6}
+              y={y + 3}
+              textAnchor="end"
+              className="fill-muted-foreground"
+              fontSize={10}
+            >
+              {axisMoney(v)}
+            </text>
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * A line over equally spaced points. Points after `solidUntil` are dashed, `endMarker` draws a hollow
+ * dot on the last point (a projection that reaches zero). Without axes it is a bare trend line.
+ */
+export function LineChart({
+  values,
+  labels,
+  height,
+  label,
+  axes = true,
+  solidUntil,
+  endMarker,
+}: {
+  values: number[];
+  labels: string[];
+  height: number;
+  label: string;
+  axes?: boolean;
+  solidUntil?: number;
+  endMarker?: boolean;
+}) {
+  return (
+    <Chart height={height} label={label}>
+      {(width) => {
+        if (values.length === 0) return null;
+        const left = axes ? 46 : 4;
+        const right = axes ? 10 : 4;
+        const top = axes ? 10 : 4;
+        const bottom = axes ? 22 : 4;
+        const maxValue = Math.max(...values, 0);
+        const scale = niceScale(maxValue);
+        const hi = axes ? scale.top : maxValue;
+        const lo = axes ? 0 : Math.min(...values);
+        const x = (i: number) =>
+          values.length < 2 ? left : left + (i * (width - left - right)) / (values.length - 1);
+        const y = (v: number) => top + (height - top - bottom) * (1 - (v - lo) / (hi - lo || 1));
+        const points = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+        const solid = Math.min(solidUntil ?? values.length - 1, values.length - 1);
+        const every = Math.max(
+          1,
+          Math.ceil(46 / ((width - left - right) / (values.length - 1 || 1))),
+        );
+        return (
+          <>
+            {axes ? (
+              <>
+                <Grid
+                  width={width}
+                  height={height}
+                  left={left}
+                  right={right}
+                  top={top}
+                  bottom={bottom}
+                  scale={scale}
+                />
+                {labels.map((text, i) =>
+                  i % every === 0 ? (
+                    <text
+                      key={i}
+                      x={x(i)}
+                      y={height - 6}
+                      textAnchor="middle"
+                      className="fill-muted-foreground"
+                      fontSize={10}
+                    >
+                      {text}
+                    </text>
+                  ) : null,
+                )}
+              </>
+            ) : null}
+            <polyline
+              points={points.slice(0, solid + 1).join(" ")}
+              fill="none"
+              className="stroke-foreground"
+              strokeWidth={1.75}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            {solid < values.length - 1 ? (
+              <polyline
+                points={points.slice(solid).join(" ")}
+                fill="none"
+                className="stroke-foreground"
+                strokeWidth={1.75}
+                strokeDasharray="5 4"
+                strokeLinecap="round"
+              />
+            ) : null}
+            <circle cx={x(solid)} cy={y(values[solid] ?? 0)} r={3} className="fill-foreground" />
+            {endMarker ? (
+              <circle
+                cx={x(values.length - 1)}
+                cy={y(values[values.length - 1] ?? 0)}
+                r={3}
+                className="fill-card stroke-foreground"
+                strokeWidth={1.5}
+              />
+            ) : null}
+          </>
+        );
+      }}
+    </Chart>
+  );
+}
+
+/** A 60x20 trend line for a table cell. Flat data draws a line across the middle. */
+export function Sparkline({ values, label }: { values: number[]; label: string }) {
+  if (values.length < 2) return null;
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const points = values
+    .map((v, i) => {
+      const x = 2 + (i * 56) / (values.length - 1);
+      const y = hi === lo ? 10 : 16 - ((v - lo) / (hi - lo)) * 12;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return (
+    <svg role="img" aria-label={label} viewBox="0 0 60 20" className="ms-auto block h-5 w-[60px]">
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+const keyActivate = (action: () => void) => (event: React.KeyboardEvent) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    action();
+  }
+};
+
+export type BarGranularity = "day" | "week" | "month";
+
+/** Axis labels: weekdays for a week of days, day numbers for more days, `Oct 6` for weeks, `Oct` for months (years on the first tick and January). */
+function barLabels(series: CashPoint[], granularity: BarGranularity): string[] {
+  if (granularity === "month") return monthAxisLabels(series.map((p) => p.start.slice(0, 7)));
+  if (granularity === "week") return dayAxisLabels(series.map((p) => p.start));
+  return series.map((p) =>
+    series.length <= 7 ? weekdayShort(p.start) : String(Number(p.start.slice(8, 10))),
+  );
+}
+
+/** Out, revenue and financing for each bucket; each bucket opens its detail. */
+export function BurnBars({
+  series,
+  granularity = "month",
+  height = 230,
+  onOpen,
+  label,
+}: {
+  series: CashPoint[];
+  granularity?: BarGranularity;
+  height?: number;
+  onOpen: (point: CashPoint) => void;
+  label: string;
+}) {
+  const hatch = useId();
+  return (
+    <Chart height={height} label={label}>
+      {(width) => {
+        const left = 40;
+        const right = 4;
+        const top = 10;
+        const bottom = 24;
+        const max = Math.max(
+          ...series.flatMap((m) => [m.outCents, m.revenueCents, m.financingCents]),
+          0,
+        );
+        const scale = niceScale(max);
+        const slot = (width - left - right) / Math.max(series.length, 1);
+        const bw = Math.min(17, slot * 0.28);
+        // Skip labels that would collide, counting back from the newest bar.
+        const labelEvery = Math.max(1, Math.ceil(36 / slot));
+        const names = barLabels(series, granularity);
+        const y = (v: number) => top + (height - top - bottom) * (1 - v / scale.top);
+        const bar = (v: number) => Math.max(height - bottom - y(v), 0);
+        return (
+          <>
+            <defs>
+              <pattern
+                id={hatch}
+                width={5}
+                height={5}
+                patternUnits="userSpaceOnUse"
+                patternTransform="rotate(45)"
+              >
+                <rect width={5} height={5} className="fill-card" />
+                <line x1={0} y1={0} x2={0} y2={5} className="stroke-foreground" strokeWidth={2} />
+              </pattern>
+            </defs>
+            <Grid
+              width={width}
+              height={height}
+              left={left}
+              right={right}
+              top={top}
+              bottom={bottom}
+              scale={scale}
+            />
+            {series.map((m, i) => {
+              const c = left + slot * (i + 0.5);
+              const two = m.revenueCents > 0 || m.financingCents > 0;
+              const outX = two ? c - bw - 1 : c - bw / 2;
+              const name = names[i] ?? "";
+              const showLabel = (series.length - 1 - i) % labelEvery === 0;
+              return (
+                // biome-ignore lint/a11y/useSemanticElements: an SVG group cannot be an <a> that the router can drive
+                <g
+                  key={m.start}
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`${granularity === "month" ? name : dayMonth(m.start)}: ${money(m.outCents)}`}
+                  className="group cursor-pointer outline-none"
+                  onClick={() => onOpen(m)}
+                  onKeyDown={keyActivate(() => onOpen(m))}
+                >
+                  <rect
+                    x={left + slot * i}
+                    y={top}
+                    width={slot}
+                    height={height - top - bottom}
+                    className="fill-transparent group-hover:fill-muted group-focus-visible:fill-muted"
+                  />
+                  <rect
+                    x={outX}
+                    y={y(m.outCents)}
+                    width={bw}
+                    height={bar(m.outCents)}
+                    rx={2}
+                    className={m.partial ? "fill-card stroke-foreground" : "fill-foreground"}
+                    strokeWidth={m.partial ? 1.5 : 0}
+                    strokeDasharray={m.partial ? "3 2" : undefined}
+                  />
+                  {m.revenueCents > 0 ? (
+                    <rect
+                      x={c + 1}
+                      y={y(m.revenueCents)}
+                      width={bw}
+                      height={bar(m.revenueCents)}
+                      rx={2}
+                      className="fill-muted-foreground"
+                    />
+                  ) : null}
+                  {m.financingCents > 0 ? (
+                    <rect
+                      x={c + 1}
+                      y={y(m.financingCents)}
+                      width={bw}
+                      height={bar(m.financingCents)}
+                      rx={2}
+                      fill={`url(#${hatch})`}
+                      className="stroke-foreground"
+                      strokeWidth={1}
+                    />
+                  ) : null}
+                  {showLabel ? (
+                    <text
+                      x={c}
+                      y={height - 8}
+                      textAnchor="middle"
+                      className="fill-muted-foreground"
+                      fontSize={10}
+                      fontWeight={m.partial ? 700 : 400}
+                    >
+                      {name}
+                      {m.partial ? "*" : ""}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
+          </>
+        );
+      }}
+    </Chart>
+  );
+}
+
+/** One bar per item with its amount above it. */
+export function MonthBars({
+  items,
+  height = 200,
+  label,
+}: {
+  items: { label: string; cents: number }[];
+  height?: number;
+  label: string;
+}) {
+  return (
+    <Chart height={height} label={label}>
+      {(width) => {
+        const left = 46;
+        const right = 6;
+        const top = 18;
+        const bottom = 22;
+        const scale = niceScale(Math.max(...items.map((x) => x.cents), 0));
+        const slot = (width - left - right) / Math.max(items.length, 1);
+        const bw = Math.min(40, slot * 0.5);
+        return (
+          <>
+            <Grid
+              width={width}
+              height={height}
+              left={left}
+              right={right}
+              top={top}
+              bottom={bottom}
+              scale={scale}
+            />
+            {items.map((item, i) => {
+              const cx = left + slot * (i + 0.5);
+              const y = top + (height - top - bottom) * (1 - item.cents / scale.top);
+              return (
+                <g key={i}>
+                  <rect
+                    x={cx - bw / 2}
+                    y={y}
+                    width={bw}
+                    height={Math.max(height - bottom - y, 0)}
+                    rx={2}
+                    className="fill-foreground"
+                  />
+                  <text
+                    x={cx}
+                    y={y - 4}
+                    textAnchor="middle"
+                    className="fill-muted-foreground"
+                    fontSize={10}
+                  >
+                    {money(item.cents)}
+                  </text>
+                  <text
+                    x={cx}
+                    y={height - 6}
+                    textAnchor="middle"
+                    className="fill-muted-foreground"
+                    fontSize={10}
+                  >
+                    {item.label}
+                  </text>
+                </g>
+              );
+            })}
+          </>
+        );
+      }}
+    </Chart>
+  );
+}
+
+/** One stacked bar split into segments; each opens its target. */
+export function StackBar({
+  segments,
+  onOpen,
+  label,
+}: {
+  segments: { key: string; label: string; cents: number }[];
+  onOpen: (key: string) => void;
+  label: string;
+}) {
+  return (
+    <Chart height={26} label={label}>
+      {(width) => {
+        const total = segments.reduce((sum, s) => sum + s.cents, 0);
+        if (total <= 0) return null;
+        let x = 0;
+        return segments.map((segment, i) => {
+          const w = (segment.cents / total) * width;
+          const at = x;
+          x += w;
+          return (
+            // biome-ignore lint/a11y/useSemanticElements: an SVG shape cannot be an <a> that the router can drive
+            <rect
+              key={segment.key}
+              role="link"
+              tabIndex={0}
+              aria-label={segment.label}
+              x={at}
+              y={0}
+              width={Math.max(w - 1, 0)}
+              height={26}
+              rx={2}
+              className="cursor-pointer outline-none focus-visible:stroke-foreground"
+              style={{ fill: shade(i) }}
+              onClick={() => onOpen(segment.key)}
+              onKeyDown={keyActivate(() => onOpen(segment.key))}
+            >
+              <title>{segment.label}</title>
+            </rect>
+          );
+        });
+      }}
+    </Chart>
+  );
+}

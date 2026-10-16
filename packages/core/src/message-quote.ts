@@ -174,6 +174,8 @@ function replyBlockText(block: MessageBlock): string {
       return block.name;
     case "emails":
       return block.emails[0]?.subject ?? "";
+    case "finance":
+      return "";
     case "image":
     case "file":
       return block.name || blocksToAgentHistoryText([block]);

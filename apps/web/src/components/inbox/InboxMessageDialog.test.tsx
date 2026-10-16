@@ -43,13 +43,18 @@ const message = (id: string) => ({
   attachments: [],
 });
 
+let clock = Date.now();
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  clock += 60_000; // each test starts past the j/k throttle the previous one left
+  vi.setSystemTime(clock);
   get.mockReset();
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   root = createRoot(document.body.appendChild(document.createElement("div")));
 });
 afterEach(() => {
+  vi.useRealTimers();
   act(() => root.unmount());
   document.body.innerHTML = "";
 });
@@ -58,9 +63,9 @@ const flush = () =>
   act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
-const press = (key: string, target: Element = document.body) =>
+const press = (key: string, target: Element = document.body, init: KeyboardEventInit = {}) =>
   act(() => {
-    target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, ...init }));
   });
 
 async function open(onNavigate = vi.fn()) {
@@ -84,8 +89,27 @@ it("j and k navigate to next and previous", async () => {
   const onNavigate = await open();
   await press("j");
   expect(onNavigate).toHaveBeenLastCalledWith("m3");
+  vi.setSystemTime(Date.now() + 200);
   await press("k");
   expect(onNavigate).toHaveBeenLastCalledWith("m1");
+});
+
+it("takes one step from a burst of j presses, and another after 150ms", async () => {
+  const onNavigate = await open();
+  act(() => {
+    for (let i = 0; i < 20; i++)
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "j", bubbles: true }));
+  });
+  expect(onNavigate).toHaveBeenCalledTimes(1);
+  vi.setSystemTime(Date.now() + 200);
+  await press("j");
+  expect(onNavigate).toHaveBeenCalledTimes(2);
+});
+
+it("ignores auto-repeated j", async () => {
+  const onNavigate = await open();
+  await press("j", document.body, { repeat: true });
+  expect(onNavigate).not.toHaveBeenCalled();
 });
 
 it("ignores keys typed in inputs", async () => {

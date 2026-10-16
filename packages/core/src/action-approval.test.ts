@@ -219,7 +219,7 @@ describe("resolveActionApproval", () => {
   });
 
   it("applies the email category to the built-in mail write tools", () => {
-    for (const toolName of ["mail_draft", "mail_modify"])
+    for (const toolName of ["mail_draft", "mail_modify", "mail_send"])
       expect(resolveActionApproval({ toolName, rules: requireEmail })).toBe("ask");
     expect(resolveActionApproval({ toolName: "mail_read", rules: requireEmail })).toBe("allow");
   });
@@ -382,9 +382,32 @@ describe("applyJudgeDecision", () => {
 });
 
 describe("mail write tools", () => {
-  it.each(["mail_draft", "mail_modify"])("%s needs approval, also on an unattended run", (name) => {
+  it.each(["mail_draft", "mail_modify", "mail_send"])(
+    "%s needs approval, also on an unattended run",
+    (name) => {
+      expect(toolRequiresApproval(name, false)).toBe(true);
+      expect(unattendedTriggerToolRequiresApproval("webhook", name, false)).toBe(true);
+      expect(toolRequiresExplicitApproval(name)).toBe(false);
+    },
+  );
+});
+
+describe("calendar write tools", () => {
+  it.each(["calendar_create_event", "calendar_update_event", "calendar_delete_event"])(
+    "%s needs approval, also on an unattended run",
+    (name) => {
+      expect(toolRequiresApproval(name, false)).toBe(true);
+      expect(unattendedTriggerToolRequiresApproval("webhook", name, false)).toBe(true);
+    },
+  );
+});
+
+describe("drive write tools", () => {
+  it.each(["drive_create_file", "drive_update_file"])("%s needs approval", (name) => {
     expect(toolRequiresApproval(name, false)).toBe(true);
     expect(unattendedTriggerToolRequiresApproval("webhook", name, false)).toBe(true);
-    expect(toolRequiresExplicitApproval(name)).toBe(false);
+  });
+  it.each(["drive_search", "drive_read"])("%s does not", (name) => {
+    expect(toolRequiresApproval(name, false)).toBe(false);
   });
 });

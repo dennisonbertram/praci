@@ -4,6 +4,8 @@ export type Panel =
   | "routine"
   | "create"
   | "create-group"
+  | "page"
+  | "list"
   | "group-settings"
   | null;
 export type RightPanelState = { panel: Panel; routineId?: string };

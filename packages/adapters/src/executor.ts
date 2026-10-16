@@ -51,6 +51,7 @@ import {
   HistoryReadInputSchema,
   HistorySearchInputSchema,
   isAttachmentImageMimeType,
+  isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@rakazo/contracts";
@@ -197,6 +198,13 @@ import {
 } from "./browser-tools.js";
 import { INBOX_SEARCH_SKILL_NAME } from "./builtin-skills.js";
 import { agentConnectionTools, builtinAgentTools, sharedMemorySaveError } from "./builtin-tools.js";
+import {
+  CALENDAR_TOOL_NAMES,
+  type CalendarAccount,
+  calendarToolFromTool,
+  listCalendarAccounts,
+  selectCalendarTools,
+} from "./calendar-tools.js";
 import { archiveSpawnedBot, spawnBot } from "./child-bots.js";
 import type { CloudAgentConnection } from "./cloud-agent-factory.js";
 import { cloudAgentsEnabled } from "./cloud-agent-factory.js";
@@ -243,6 +251,18 @@ import { checkpointRunComputerWorkspace } from "./computer-workspace.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
 import { formatCurrentTimeInstruction } from "./current-time.js";
 import { resolveDeploymentModel } from "./deployment-model.js";
+import {
+  DRIVE_TOOL_NAMES,
+  driveToolFromTool,
+  driveToolsAllowed,
+  listDriveAccounts,
+} from "./drive-tools.js";
+import {
+  FINANCE_TOOL_NAMES,
+  financeToolFromTool,
+  financeToolsAllowed,
+  hasFinanceSource,
+} from "./finance-tools.js";
 import { handoffToGroupBot, loadGroupContext } from "./group-handoff.js";
 import {
   COMPACTION_BATCH_SIZE,
@@ -266,6 +286,7 @@ import {
   mailToolsAllowed,
   selectMailTools,
 } from "./mail-tools.js";
+import type { McpConnector } from "./mcp-connector.js";
 import {
   buildMcpCredentialBlob,
   needsOAuthProbe,
@@ -291,6 +312,7 @@ import {
   modelAcceptsImageInput,
   modelIdSupportsImages,
 } from "./model-vision.js";
+import { pageToolFromTool } from "./pages.js";
 import type { CodexLiveCatalog } from "./pi-codex-catalog.js";
 import { codexLiveListsModel } from "./pi-codex-catalog.js";
 import { toOAuthCredential } from "./pi-credentials.js";
@@ -304,6 +326,7 @@ import {
   serializeModelSecret,
   withModelCredentialLock,
 } from "./pi-oauth.js";
+import { pinsToolFromTool } from "./pins.js";
 import type { PlotSpec } from "./plot-tool.js";
 import {
   assertPlotDataWithinLimits,
@@ -419,6 +442,15 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "mail_get",
   "show_emails",
   "inbox_overview",
+  "finance_overview",
+  "finance_breakdown",
+  "finance_transactions",
+  "finance_recurring",
+  "finance_crypto",
+  "calendar_list_events",
+  "calendar_get_event",
+  "drive_search",
+  "drive_read",
   "browser_snapshot",
   "list_secrets",
   "cloud_agent_status",
@@ -2663,6 +2695,8 @@ export interface ExecutorDeps {
   artifacts?: ArtifactStore;
   connector?: ConnectorProvider;
   connectors?: { managed(id: string): ManagedConnectorProvider | undefined };
+  /** Lists a server's tools so pins_write can check a pin source's annotations. */
+  mcp?: Pick<McpConnector, "listServerTools">;
   secrets: string[];
   secretStore: SecretStore;
   deploymentModelKey?: string;
@@ -2688,7 +2722,7 @@ export interface ExecutorDeps {
   cloudAgent?: CloudAgentConnection | null;
   /** Mail tools (mail_search, mail_grep, mail_get, show_emails, inbox_overview). Null/omit means they are never offered. */
   mail?: MailProvider | null;
-  /** MAIL_WRITES_DISABLED: mail_draft and mail_modify change nothing. */
+  /** MAIL_WRITES_DISABLED: mail_draft, mail_modify and mail_send change nothing. */
   mailWritesDisabled?: boolean;
   /** Optional Auto Review verifier. When omitted, the factory selects from env (llm | jev | scripted). */
   autoReview?: AutoReviewProvider;
@@ -3417,6 +3451,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
               providerRef: true,
               displayName: true,
               status: true,
+              allAgents: true,
+              botAccess: { where: { botId: run.botId }, select: { botId: true } },
             },
           }),
           findDefaultModelCredential(deps.prisma, run),
@@ -3481,9 +3517,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // as well sent it through their search and execute round trips first (about 28s of an
         // 89s run), so it gets none of them and skips the discovery calls.
         const mailOnly = isInboxAgentSpawnKey(bot.spawnKey);
-        const composioRows = mailOnly
-          ? []
-          : storedConnections.filter((connection) => connection.connectorId === "composio");
+        // The Finance agent reads synced finance data through finance_* tools, with its Mercury and
+        // Brex MCP tools for details. Composio and the other connectors only slow it down.
+        const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey);
+        // Connections limited to chosen agents stay out of this run unless the bot was granted access.
+        const deniedIds = deniedConnectionIds(storedConnections);
+        const composioRows =
+          mailOnly || financeOnly
+            ? []
+            : storedConnections.filter(
+                (connection) =>
+                  connection.connectorId === "composio" && !deniedIds.has(connection.id),
+              );
         let liveSlugs: string[] = [];
         if (needsLivePluginSync(composioRows)) {
           const listing = await loadLivePluginSlugs(deps.listConnectedPluginSlugs, run.userId);
@@ -3495,12 +3540,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
         }
         const connectedComposio = mergeConnectedPlugins(composioRows, liveSlugs);
-        const connectedPlugins = mailOnly
-          ? []
-          : selectRunConnections(
-              storedConnections,
-              connectedComposio.map((connection) => connection.provider),
-            );
+        const connectedPlugins =
+          mailOnly || financeOnly
+            ? []
+            : selectRunConnections(
+                storedConnections.filter((row) => !deniedIds.has(row.id)),
+                connectedComposio.map((connection) => connection.provider),
+              );
         const context = {
           operationId: runId,
           traceId: runId,
@@ -3534,7 +3580,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
 
         const discoveredPromise =
-          deps.connector && !mailOnly ? deps.connector.discoverTools(context) : Promise.resolve([]);
+          deps.connector && !mailOnly
+            ? deps.connector
+                .discoverTools(context, financeOnly ? ["mcp"] : undefined)
+                .then((tools) =>
+                  financeOnly ? tools.filter((tool) => tool.route?.connectorId === "mcp") : tools,
+                )
+            : Promise.resolve([]);
         const threadContext = threadContextForRun(
           run.trigger,
           {
@@ -3847,10 +3899,29 @@ export function createRunExecutor(deps: ExecutorDeps) {
         let mailAccountsPromise: Promise<MailAccount[]> | undefined;
         const mailAccounts = () => {
           mailAccountsPromise ??= deps.mail
-            ? deps.mail.listAccounts({ spaceId: run.spaceId, userId: bot.userId }, context)
+            ? deps.mail
+                .listAccounts({ spaceId: run.spaceId, userId: bot.userId }, context)
+                .then((accounts) => accounts.filter((a) => !deniedIds.has(a.id)))
             : Promise.resolve([]);
           return mailAccountsPromise;
         };
+        // Native Google Calendar accounts of the bot owner, looked up once per run.
+        let calendarAccountsPromise: Promise<CalendarAccount[]> | undefined;
+        const calendarAccounts = () => {
+          calendarAccountsPromise ??= listCalendarAccounts(deps.prisma, {
+            spaceId: run.spaceId,
+            userId: bot.userId,
+          }).then((accounts) => accounts.filter((a) => !deniedIds.has(a.id)));
+          return calendarAccountsPromise;
+        };
+        const calendarEnabled =
+          mailToolsAllowed({
+            hasProvider: Boolean(deps.connectors),
+            groupId: thread.groupId,
+            runUserId: run.userId,
+            botUserId: bot.userId,
+            messagingChannelRun,
+          }) && (await calendarAccounts().catch(() => [])).length > 0;
         const mailEnabled =
           mailToolsAllowed({
             hasProvider: Boolean(deps.mail),
@@ -3859,6 +3930,37 @@ export function createRunExecutor(deps: ExecutorDeps) {
             botUserId: bot.userId,
             messagingChannelRun,
           }) && (await mailAccounts().catch(() => [])).length > 0;
+        // Connected Google Drive accounts of the bot owner, looked up once per run.
+        let driveAccountsPromise: ReturnType<typeof listDriveAccounts> | undefined;
+        const driveAccounts = () => {
+          driveAccountsPromise ??= listDriveAccounts(deps.prisma, {
+            spaceId: run.spaceId,
+            userId: bot.userId,
+          }).then((accounts) => accounts.filter((a) => !deniedIds.has(a.id)));
+          return driveAccountsPromise;
+        };
+        const driveEnabled =
+          driveToolsAllowed({
+            hasProvider: Boolean(deps.connectors),
+            groupId: thread.groupId,
+            runUserId: run.userId,
+            botUserId: bot.userId,
+            messagingChannelRun,
+          }) && (await driveAccounts().catch(() => [])).length > 0;
+        const financeEnabled =
+          financeToolsAllowed({
+            hasProvider: true,
+            groupId: thread.groupId,
+            runUserId: run.userId,
+            botUserId: bot.userId,
+            botSpawnKey: bot.spawnKey,
+            trigger: run.trigger,
+            messagingChannelRun,
+          }) &&
+          (await hasFinanceSource(deps.prisma, {
+            spaceId: run.spaceId,
+            userId: bot.userId,
+          }).catch(() => false));
         const builtins = [
           ...selectBuiltinToolsForRun({
             ticketBoardEnabled: deps.ticketBoardEnabled,
@@ -3870,6 +3972,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
             semanticMemoryEnabled,
             cloudAgentEnabled: cloudAgentsEnabled(cloudAgent, run.spaceId),
             mailEnabled,
+            calendarEnabled,
+            driveEnabled,
+            financeEnabled,
             messagingChannelRun,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
@@ -4928,6 +5033,26 @@ export function createRunExecutor(deps: ExecutorDeps) {
               });
             }
           }
+          if (name === "page_read" || name === "page_write" || name === "page_edit") {
+            return finish(
+              await pageToolFromTool(
+                name,
+                { prisma: deps.prisma, events: deps.events },
+                { spaceId: run.spaceId, botId: bot.id, userId: bot.userId, runId },
+                args,
+              ),
+            );
+          }
+          if (name === "pins_read" || name === "pins_write") {
+            return finish(
+              await pinsToolFromTool(
+                name,
+                { prisma: deps.prisma, events: deps.events, mcp: deps.mcp },
+                { spaceId: run.spaceId, botId: bot.id, userId: bot.userId, runId },
+                args,
+              ),
+            );
+          }
           if (name === "attach_file") {
             const filePath = String(args.path ?? "");
             const failAttach = async (error: string) => {
@@ -5233,6 +5358,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
           if (name === "web_fetch") {
             return finish(await webFetchFromTool(web, context, args));
           }
+          if (CALENDAR_TOOL_NAMES.has(name) && deps.connectors && calendarEnabled) {
+            return finish(
+              await calendarToolFromTool(
+                name,
+                {
+                  accounts: calendarAccounts,
+                  connectors: deps.connectors,
+                  idempotencyKey: effectKey,
+                },
+                context,
+                args,
+              ),
+            );
+          }
           if (MAIL_TOOL_NAMES.has(name) && deps.mail && mailEnabled) {
             return finish(
               await mailToolFromTool(
@@ -5244,7 +5383,36 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   accounts: mailAccounts,
                   publish: (blocks) => publishMessage(deps, run, "bot", blocks),
                   writesDisabled: deps.mailWritesDisabled,
+                  idempotencyKey: effectKey,
                   scope: { spaceId: run.spaceId, userId: bot.userId, botId: bot.id },
+                },
+                context,
+                args,
+              ),
+            );
+          }
+          if (FINANCE_TOOL_NAMES.has(name) && financeEnabled) {
+            return finish(
+              await financeToolFromTool(
+                name,
+                {
+                  prisma: deps.prisma,
+                  scope: { spaceId: run.spaceId, userId: bot.userId },
+                  publish: (blocks) => publishMessage(deps, run, "bot", blocks),
+                },
+                args,
+              ),
+            );
+          }
+          if (DRIVE_TOOL_NAMES.has(name) && deps.connectors && driveEnabled) {
+            return finish(
+              await driveToolFromTool(
+                name,
+                {
+                  prisma: deps.prisma,
+                  connectors: deps.connectors,
+                  accounts: driveAccounts,
+                  scope: { spaceId: run.spaceId, userId: bot.userId },
                 },
                 context,
                 args,
@@ -6383,9 +6551,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
 
         const pluginLine = mailOnly
           ? undefined
-          : connectedPlugins.length > 0
-            ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
-            : "No plugins are connected yet.";
+          : financeOnly
+            ? financeEnabled
+              ? "Start with finance_overview, finance_breakdown, finance_transactions and finance_recurring: they read the synced finance data in one call and match the Finance page. Use the Mercury and Brex tools only for details the sync does not have."
+              : undefined
+            : connectedPlugins.length > 0
+              ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
+              : "No plugins are connected yet.";
         const taughtSkillIndex = savedSkills.slice(0, 20);
         const taughtSkillsLine =
           taughtSkillIndex.length > 0
@@ -7530,6 +7702,12 @@ export function selectBuiltinToolsForRun(options: {
   cloudAgentEnabled?: boolean;
   /** The run's requester owns the bot and has a connected mail account. */
   mailEnabled?: boolean;
+  /** The run's requester owns the bot and has a connected native Google Calendar. */
+  calendarEnabled?: boolean;
+  /** The run's requester owns the bot and has a connected native Google Drive. */
+  driveEnabled?: boolean;
+  /** The run's requester owns the bot and has a connected finance source. */
+  financeEnabled?: boolean;
   messagingChannelRun: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
@@ -7537,27 +7715,32 @@ export function selectBuiltinToolsForRun(options: {
   disabledBuiltinTools?: readonly string[];
 }) {
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
-  return selectMailTools(
-    selectCloudAgentTools(
-      selectMemoryTools(
-        filterBuiltinToolsForRun(
-          filterBuiltinToolsForThread(
-            filterPageBrowserTools(
-              filterImageReturningComputerTools(builtinAgentTools, options.graphicalToolsAllowed),
-              options.pageBrowserAllowed ?? options.graphicalToolsAllowed,
+  return selectCalendarTools(
+    selectMailTools(
+      selectCloudAgentTools(
+        selectMemoryTools(
+          filterBuiltinToolsForRun(
+            filterBuiltinToolsForThread(
+              filterPageBrowserTools(
+                filterImageReturningComputerTools(builtinAgentTools, options.graphicalToolsAllowed),
+                options.pageBrowserAllowed ?? options.graphicalToolsAllowed,
+              ),
+              options.groupId,
             ),
-            options.groupId,
+            options.trigger,
           ),
-          options.trigger,
+          options.semanticMemoryEnabled,
         ),
-        options.semanticMemoryEnabled,
+        Boolean(options.cloudAgentEnabled),
       ),
-      Boolean(options.cloudAgentEnabled),
+      Boolean(options.mailEnabled),
     ),
-    Boolean(options.mailEnabled),
+    Boolean(options.calendarEnabled),
   ).filter(
     (tool) =>
       !disabled.has(tool.name) &&
+      (options.driveEnabled || !DRIVE_TOOL_NAMES.has(tool.name)) &&
+      (options.financeEnabled || !FINANCE_TOOL_NAMES.has(tool.name)) &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
       (!isBackgroundRunTrigger(options.trigger) ||
@@ -7902,6 +8085,16 @@ export function userTurnInstructions(parts: {
       parts.disabledBuiltinTools,
       "render_plot",
       'For charts and data visualization, use the render_plot tool: it renders bar, line, scatter, histogram, heatmap, faceted and many more chart types from a JSON spec and attaches the PNG to the chat. Call render_plot with {"help": true} before your first chart to read the full guide.',
+    ),
+    offeredBuiltinClause(
+      parts.disabledBuiltinTools,
+      "page_write",
+      'You have one persistent page. Put durable output the user will revisit there (a summary, tracker, or dashboard); keep ordinary replies in chat. Call page_read first, then page_write (whole page) or page_edit (one unique piece; prefer it for small changes). Charts are a ```chart fence holding one line of JSON {"name", "spec", "data"}, where spec is {title?, x?, y?, marks: [{type, options}]} and data holds the rows. Scale settings go in the spec\'s x and y objects and channels in the mark options; use ISO dates (YYYY-MM-DD) with x: {type: "utc"} for time series, and x: {domain: [...]} listing ordered categories in order.',
+    ),
+    offeredBuiltinClause(
+      parts.disabledBuiltinTools,
+      "pins_write",
+      "Use pins for numbers the user checks often (stats) and for an ongoing list. Call pins_read first, then pins_write. When asked to update your pinned numbers, recheck the data each one came from with your tools and rewrite them with pins_write; if a number has no data you can recheck, keep it and say so in one line. Give a stat a source when a single read-only MCP tool call returns it, so it refreshes without you. List items are short imperatives of at most 60 characters; keep details in chat.",
     ),
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
@@ -8674,6 +8867,35 @@ function cloudflareRunFields(resolved: { accountId?: string; gatewayId?: string 
     ...(resolved.accountId ? { accountId: resolved.accountId } : {}),
     ...(resolved.gatewayId ? { gatewayId: resolved.gatewayId } : {}),
   };
+}
+
+/** A connection limited to chosen agents is usable only by a bot with an access row. */
+export function botMayUseConnection(row: {
+  allAgents: boolean;
+  botAccess: { botId: string }[];
+}): boolean {
+  return row.allAgents || row.botAccess.length > 0;
+}
+
+/**
+ * Agent access is per app: if any live account of an app (connected, pending or error) is limited
+ * to other agents, every account of that app is denied, so no sibling can stand in for it.
+ */
+export function deniedConnectionIds(
+  rows: {
+    id: string;
+    connectorId: string;
+    provider: string;
+    status: string;
+    allAgents: boolean;
+    botAccess: { botId: string }[];
+  }[],
+): Set<string> {
+  const appKey = (row: { connectorId: string; provider: string }) =>
+    `${row.connectorId}\u0000${row.provider}`;
+  const live = rows.filter((row) => row.status !== "revoked");
+  const deniedApps = new Set(live.filter((row) => !botMayUseConnection(row)).map(appKey));
+  return new Set(live.filter((row) => deniedApps.has(appKey(row))).map((row) => row.id));
 }
 
 export function selectRunConnections<

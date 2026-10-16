@@ -3,6 +3,8 @@ import {
   activeBotId,
   captureScreenshot,
   completeOnboarding,
+  connectTwoGmailAccounts,
+  openIntegrations,
   realSandboxTimeout,
   rpc,
   signup,
@@ -146,169 +148,102 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   await expect(page.getByText("Monday briefing")).toBeVisible();
   await captureScreenshot(page, testInfo, "10-routine-created");
 
-  await page.getByText("Integrations").click();
+  await openIntegrations(page);
   await expect(page.getByPlaceholder("Search apps")).toBeVisible();
-  const featured = page.getByTestId("featured-connectors");
-  await expect(featured).toContainText(
-    /Gmail[\s\S]*Google Calendar[\s\S]*Google Drive[\s\S]*Slack[\s\S]*Notion/,
-  );
-  await expect(page.getByText("GitHub", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add Executor", exact: true })).toBeHidden();
-  await expect(page.getByRole("button", { name: "Add Treg", exact: true })).toBeHidden();
-  await expect(page.getByRole("button", { name: "Add MCP server", exact: true })).toBeHidden();
-  await expect(page.getByRole("button", { name: "Add OpenAPI", exact: true })).toBeHidden();
-  await expect(page.getByRole("button", { name: "Add GraphQL", exact: true })).toBeHidden();
-  await expect(page.getByText("Tool sources", { exact: true })).toBeHidden();
-  await expect(
-    page.getByText("Connect apps or add Treg, MCP, and OpenAPI tool sources.", { exact: true }),
-  ).toBeHidden();
+  await expect(page.getByRole("button", { name: "Connect Gmail", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Connect Slack", exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "11-plugins-catalog");
 
-  // Nearest ancestor with an Add/Added control (featured tile or catalog row).
-  const gmailRow = featured
-    .getByText("Gmail", { exact: true })
-    .locator("xpath=ancestor::*[.//button][1]");
-  await gmailRow.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(gmailRow.getByRole("button", { name: "Added", exact: true })).toBeVisible();
-  await expect(page.getByTestId("connection-tile-gmail")).toBeVisible();
-  await captureScreenshot(page, testInfo, "11a-connected-plugins");
-
-  await gmailRow.getByRole("button", { name: "Added", exact: true }).click();
-  const detail = page.getByTestId("connection-detail");
-  await expect(detail).toBeVisible();
-  await expect(page.getByTestId("connection-accounts")).toBeVisible();
-  await expect(page.getByTestId("connection-tools")).toBeVisible();
-
-  await detail.getByRole("button", { name: "Add another", exact: true }).click();
-  await expect(detail.getByLabel("Account label")).toHaveCount(2);
-  await detail.getByLabel("Account label").nth(1).fill("Work");
-  const renamed = page.waitForResponse(
-    (response) => response.url().includes("connections/rename") && response.ok(),
-  );
-  await detail.getByLabel("Account label").nth(1).blur();
-  await renamed;
-  await expect(detail.getByLabel("Account label").nth(1)).toHaveValue("Work");
+  await connectTwoGmailAccounts(page);
+  await expect(page.getByTestId("tools-read")).toBeVisible();
   await captureScreenshot(page, testInfo, "11a2-multi-account-plugins");
 
-  await page.getByRole("button", { name: "Close integrations" }).click();
-  await page.getByText("Integrations").click();
-  await expect(page.getByPlaceholder("Search apps")).toBeVisible();
-  const gmailTileAgain = page.getByTestId("connection-tile-gmail");
-  await expect(gmailTileAgain.getByRole("button", { name: "Added", exact: true })).toBeVisible();
-  await gmailTileAgain.click();
-  const detailAgain = page.getByTestId("connection-detail");
-  await expect(detailAgain.getByLabel("Account label")).toHaveCount(2);
-  await expect(detailAgain.getByLabel("Account label").nth(1)).toHaveValue("Work");
-
-  await detailAgain.getByRole("button", { name: "Remove", exact: true }).last().click();
-  await expect(detailAgain.getByLabel("Account label")).toHaveCount(1);
-  await detailAgain.getByRole("button", { name: "Uninstall", exact: true }).click();
-  await expect(page.getByTestId("connection-detail")).toHaveCount(0);
-  const gmailRowEmpty = page
-    .getByTestId("featured-connectors")
-    .getByText("Gmail", { exact: true })
-    .locator("xpath=ancestor::*[.//button][1]");
-  await expect(gmailRowEmpty.getByRole("button", { name: "Add", exact: true })).toBeVisible();
+  // Removing one account keeps the other; disconnecting the app removes the rest.
+  await page.getByRole("button", { name: "Remove Work", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Rename", exact: true })).toHaveCount(1);
+  await page.getByRole("button", { name: "Disconnect Gmail", exact: true }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Disconnect Gmail", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/app\/integrations$/);
+  await expect(page.getByRole("button", { name: "Connect Gmail", exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "11b-connected-plugins-empty");
 
-  const linearRow = page
-    .getByText("Linear", { exact: true })
-    .locator("xpath=ancestor::*[.//button][1]");
+  // An app that opens a sign-in window: closing it reports a cancelled sign-in, and the
+  // connection still finishes once the provider completes it.
   const connectPopup = page.waitForEvent("popup");
-  await linearRow.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("button", { name: "Connect Linear", exact: true }).click();
   const popup = await connectPopup;
   await popup.close();
-  await expect(linearRow.getByRole("button", { name: "Added", exact: true })).toBeVisible();
-  await linearRow.getByRole("button", { name: "Added", exact: true }).click();
-  const linearDetail = page.getByTestId("connection-detail");
-  await expect(linearDetail).toBeVisible();
-  await linearDetail.getByRole("button", { name: "Uninstall", exact: true }).click();
-  await expect(page.getByTestId("connection-detail")).toHaveCount(0);
-  await expect(linearRow.getByRole("button", { name: "Add", exact: true })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByRole("link", { name: "Linear", exact: true }).click();
+  await page.getByRole("button", { name: "Disconnect Linear", exact: true }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Disconnect Linear", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: "Connect Linear", exact: true })).toBeVisible();
 
-  const advanced = page.getByTestId("integrations-advanced");
-  await advanced.evaluate((element) => {
-    (element as HTMLDetailsElement).open = true;
-  });
-  await expect(page.getByRole("button", { name: "Manage MCP servers", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add MCP server", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add OpenAPI", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add GraphQL", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add Executor", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add Treg", exact: true })).toBeVisible();
-  await expect(page.getByText("Tool sources", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "MCP servers", exact: true })).toBeHidden();
-  // Thin Advanced smoke only. GraphQL install and order screenshots live in graphql-integrations.spec.ts.
-  await expect(page.getByTestId("integrations-catalog-feed")).toBeVisible();
-  // Catalog Search is optional chrome; add buttons stay MCP → OpenAPI → GraphQL → Executor → Treg.
-  const advancedActions = advanced.getByTestId("integrations-advanced-add").locator("button");
-  await expect(advancedActions).toHaveCount(5);
-  await expect(advancedActions.nth(0)).toHaveText("Add MCP server");
-  await expect(advancedActions.nth(1)).toHaveText("Add OpenAPI");
-  await expect(advancedActions.nth(2)).toHaveText("Add GraphQL");
-  await expect(advancedActions.nth(3)).toHaveText("Add Executor");
-  await expect(advancedActions.nth(4)).toHaveText("Add Treg");
+  // Other connection types live under the custom connection dialog's Advanced section.
+  const customDialog = page.getByRole("dialog");
+  const openAdvanced = async () => {
+    await page.getByRole("button", { name: "Add custom connection", exact: true }).click();
+    await customDialog.getByText("Advanced", { exact: true }).click();
+  };
+  await openAdvanced();
+  for (const label of ["OpenAPI", "GraphQL", "Executor", "Treg", "Local command"]) {
+    await expect(customDialog.getByRole("button", { name: label, exact: true })).toBeVisible();
+  }
+  await captureScreenshot(page, testInfo, "11-custom-advanced");
 
-  const feed = page.getByTestId("integrations-catalog-feed");
-  await feed.getByRole("textbox", { name: "Integration domain" }).fill("github.com");
-  await feed.getByRole("button", { name: "Search", exact: true }).click();
-  await expect(feed.getByText("GitHub", { exact: true })).toBeVisible();
-  await expect(feed.getByRole("button", { name: "MCP · Add", exact: true })).toBeVisible();
-  await expect(feed.getByRole("button", { name: "OPENAPI · Add", exact: true })).toBeVisible();
-  await expect(feed.getByRole("button", { name: "GRAPHQL · Manual", exact: true })).toBeDisabled();
-  await expect(feed.getByRole("button", { name: "CLI · Manual", exact: true })).toBeDisabled();
-  // Editing the query must drop prior results so a stale Add cannot run for the old domain.
-  await feed.getByRole("textbox", { name: "Integration domain" }).fill("gitlab.com");
-  await expect(feed.getByText("GitHub", { exact: true })).toBeHidden();
-  await feed.getByRole("textbox", { name: "Integration domain" }).fill("github.com");
-  await feed.getByRole("button", { name: "Search", exact: true }).click();
-  await expect(feed.getByText("GitHub", { exact: true })).toBeVisible();
+  // Catalog Search is optional chrome; it must drop stale results when the query changes.
+  await customDialog.getByRole("button", { name: "Search by domain", exact: true }).click();
+  const search = customDialog.getByRole("textbox", { name: "Search" });
+  await search.fill("github.com");
+  await customDialog.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(customDialog.getByText("GitHub", { exact: true })).toBeVisible();
+  await expect(customDialog.getByRole("button", { name: "MCP", exact: true })).toBeVisible();
+  await expect(customDialog.getByRole("button", { name: "OPENAPI", exact: true })).toBeVisible();
+  await expect(customDialog.getByRole("button", { name: "GRAPHQL", exact: true })).toBeDisabled();
+  await expect(customDialog.getByRole("button", { name: "CLI", exact: true })).toBeDisabled();
   await captureScreenshot(page, testInfo, "11c-catalog-feed");
-
-  await feed.getByRole("button", { name: "MCP · Add", exact: true }).click();
-  await expect(page.getByPlaceholder("Display name")).toHaveValue("GitHub");
-  await expect(page.getByPlaceholder("https://example.com/mcp")).toHaveValue(
+  await customDialog.getByRole("button", { name: "MCP", exact: true }).click();
+  await expect(customDialog.getByRole("textbox", { name: "Server URL" })).toHaveValue(
     "https://mcp.example.test/mcp",
   );
-  await expect(page.locator("select")).toHaveValue("bearer");
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await customDialog.getByRole("button", { name: "Cancel", exact: true }).click();
 
-  await page.getByRole("button", { name: "Add Treg", exact: true }).click();
-  await page.getByPlaceholder("Treg token").fill("fake-treg-browser-credential");
-  await page.getByRole("button", { name: "Verify and add", exact: true }).click();
-  await expect(page.getByText(/MCP · https:\/\/treg\.to\/mcp\/ · credential saved/)).toBeVisible();
-
-  await page.getByRole("button", { name: "Add MCP server", exact: true }).click();
-  await page.getByPlaceholder("Display name").fill("Browser MCP");
-  await page.getByPlaceholder("https://example.com/mcp").fill("https://mcp.example.test/mcp");
-  await page.getByRole("button", { name: "Verify and add", exact: true }).click();
-  await expect(page.getByText(/MCP · https:\/\/mcp\.example\.test\/mcp · no auth/)).toBeVisible();
-
-  await page.getByRole("button", { name: "Add OpenAPI", exact: true }).click();
-  await page.getByPlaceholder("Display name").fill("Browser API");
-  await page
-    .getByPlaceholder("https://example.com/openapi.json")
-    .fill("https://api.example.test/openapi.json");
-  await page.locator("select").selectOption("bearer");
-  await page.getByPlaceholder("Credential").fill("fake-openapi-browser-credential");
-  await page.getByRole("button", { name: "Verify and add", exact: true }).click();
-  await expect(
-    page.getByText(/API · https:\/\/api\.example\.test\/v1 · credential saved/),
-  ).toBeVisible();
-
-  await page.getByRole("button", { name: "Add Executor", exact: true }).click();
-  await expect(page.getByPlaceholder("Display name")).toHaveValue("Executor");
-  await page
-    .getByPlaceholder("https://executor.example/mcp")
-    .fill("https://executor.example.test/mcp");
-  await page.getByPlaceholder("Executor token").fill("fake-executor-browser-credential");
-  await page.getByRole("button", { name: "Verify and add", exact: true }).click();
-  await expect(
-    page.getByText(/MCP · https:\/\/executor\.example\.test\/mcp · credential saved/),
-  ).toBeVisible();
+  const installSource = async (kind: string, fill: () => Promise<void>) => {
+    await openAdvanced();
+    await customDialog.getByRole("button", { name: kind, exact: true }).click();
+    await fill();
+    await customDialog.getByRole("button", { name: "Verify and add", exact: true }).click();
+    await customDialog.getByRole("button", { name: "Done", exact: true }).click();
+  };
+  await installSource("Treg", () =>
+    customDialog.getByPlaceholder("Token").fill("fake-treg-browser-credential"),
+  );
+  await expect(page.getByText(/MCP · treg\.to/)).toBeVisible();
+  await installSource("OpenAPI", async () => {
+    await customDialog.getByPlaceholder("Display name").fill("Browser API");
+    await customDialog
+      .getByPlaceholder("https://example.com/openapi.json")
+      .fill("https://api.example.test/openapi.json");
+    await customDialog.locator("select").selectOption("bearer");
+    await customDialog.getByPlaceholder("Token").fill("fake-openapi-browser-credential");
+  });
+  await expect(page.getByText(/API · api\.example\.test/)).toBeVisible();
+  await installSource("Executor", async () => {
+    await customDialog
+      .getByPlaceholder("https://executor.example/mcp")
+      .fill("https://executor.example.test/mcp");
+    await customDialog.getByPlaceholder("Token").fill("fake-executor-browser-credential");
+  });
+  await expect(page.getByText(/MCP · executor\.example\.test/)).toBeVisible();
   await captureScreenshot(page, testInfo, "11d-provider-emulators");
-
-  await page.getByRole("button", { name: "Close integrations" }).click();
 
   await page.getByText("Chief").first().click();
   const gear = page.getByRole("button", { name: "Show settings" });

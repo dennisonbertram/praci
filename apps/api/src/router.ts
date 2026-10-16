@@ -28,8 +28,10 @@ import type {
   ComputerExecutionLease,
   ConnectorRegistry,
   FaviconResolver,
+  FinanceSyncDeps,
   getBotSecretMetadata,
   IntegrationProviderSettings,
+  McpConnector,
   MemoryProviderResolver,
   PiOAuthLogins,
   RemoteConnectorDependencies,
@@ -70,6 +72,8 @@ import {
   ensureComputerWorkspaceLayout,
   expireComputerControl,
   forgetBotSecret,
+  getBotPage,
+  getBotPins,
   hasActiveComputerControl,
   hostCredentialSource,
   isAutoReviewCheckerConfigured,
@@ -87,6 +91,8 @@ import {
   modelCredentialAuthKindsForSpace,
   modelCredentialDto,
   normalizeSecretDestination,
+  PageValidationError,
+  PinsValidationError,
   PushSessionEndedError,
   parseModelSecret,
   persistPreparedSecret,
@@ -100,7 +106,9 @@ import {
   probeOpenAiCompatibleModels,
   provisionComputer,
   queueComputerUpdate,
+  refreshBotPins,
   releaseComputerExecutionLease,
+  renderPageChartSvg,
   replaceComputer,
   resolveAutoReviewChecker,
   resolveBotUploadPath,
@@ -109,6 +117,8 @@ import {
   revokeScreenControl,
   routineRunModelPin,
   sanitizeComposioError,
+  saveBotPage,
+  saveBotPins,
   savePushToken,
   scheduleComputerControlExpiry,
   scheduleComputerSleep,
@@ -150,6 +160,7 @@ import {
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
+  isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   parseTicketRef,
@@ -162,10 +173,13 @@ import {
   callClientNonce,
   clampCatalogThinkingLevel,
   containsSecret,
+  dedupeCatalogBySlug,
   expandSkillReferencesInPrompt,
   hasMixedOneShotSchedule,
   isOneShotRoutineCrons,
   nextCronDateAcrossStrict,
+  splitPage,
+  withAppDirectory,
 } from "@rakazo/core";
 import type { BoardEvents, Board as BoardRow, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
@@ -242,7 +256,51 @@ import {
   resolveBusyBotName,
   toComputerStatus,
 } from "./computer-status.js";
-import { completeNativeOAuth } from "./connection-oauth.js";
+import { completeNativeOAuth, connectionError } from "./connection-oauth.js";
+import {
+  type FinanceCryptoDeps,
+  financeAccountDetail,
+  financeAccounts,
+  financeAgent,
+  financeBalanceSeries,
+  financeBurn,
+  financeCategory,
+  financeConnect,
+  financeCryptoHistory,
+  financeMonth,
+  financeOverview,
+  financePreferences,
+  financeReceiptUrl,
+  financeRecurring,
+  financeRefresh,
+  financeRunway,
+  financeSetPreferences,
+  financeSpend,
+  financeTransaction,
+  financeVendor,
+} from "./finance.js";
+import {
+  financeCrypto,
+  financeCryptoConnect,
+  financeCryptoProviderConnect,
+  financeCryptoProviderRemove,
+  financeWalletAdd,
+  financeWalletRemove,
+  financeWallets,
+  financeWalletUpdate,
+} from "./finance-crypto.js";
+import {
+  financeExchangeConnect,
+  financeExchangeRemove,
+  financeExchanges,
+} from "./finance-exchange.js";
+import type { ParseStatement } from "./finance-statements.js";
+import {
+  financeStatementConfirm,
+  financeStatementDiscard,
+  financeStatements,
+  financeStatementUpload,
+} from "./finance-statements.js";
 import {
   inboxFeedbackSet,
   inboxGet,
@@ -259,7 +317,7 @@ import {
   inboxComposePrefill,
   inboxComposeSend,
 } from "./inbox-compose.js";
-import { inboxArchive, inboxMarkRead } from "./inbox-modify.js";
+import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
   dismissMcpServerApprovals,
@@ -479,6 +537,7 @@ function mcpServerDto(
     updatedAt: Date;
   },
   oauthStatus: McpServer["oauthStatus"] = "none",
+  oauthAttempted = false,
 ): McpServer {
   const args = Array.isArray(row.args)
     ? row.args.filter((item): item is string => typeof item === "string")
@@ -503,11 +562,28 @@ function mcpServerDto(
     headerKeys,
     hasSecret: row.secretId !== null,
     oauthStatus,
+    oauthAttempted,
     enabled: row.enabled,
     revision: row.revision,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+async function connectionAccess(prisma: PrismaClient, actor: Actor, connectionId: string) {
+  const row = await prisma.connection.findFirst({
+    where: { id: connectionId, spaceId: actor.spaceId, userId: actor.userId },
+    select: {
+      allAgents: true,
+      botAccess: {
+        where: { spaceId: actor.spaceId, userId: actor.userId },
+        select: { botId: true },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+  if (!row) throw new IsolationError();
+  return { allAgents: row.allAgents, botIds: row.botAccess.map((entry) => entry.botId) };
 }
 
 function connectionContext(
@@ -600,6 +676,13 @@ export interface RouterDeps {
   integrationSettings?: IntegrationProviderSettings;
   composio?: ComposioProvider;
   mcpOAuth?: McpOAuthBroker;
+  /** Builds the read-tool caller for finance servers (refresh, receipts); unset where finance sync is off. */
+  financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
+  mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
+  /** Reads an uploaded bank statement; wired in app.ts. */
+  parseStatement?: ParseStatement;
+  financeCrypto?: FinanceCryptoDeps;
   connectors: ConnectorRegistry;
   remoteConnectors?: RemoteConnectorDependencies;
   artifacts: ArtifactStore;
@@ -793,6 +876,30 @@ export function createRouter(deps: RouterDeps) {
   const repos = createRepos(deps.prisma);
   const onboardingDeps = { prisma: deps.prisma, events: deps.events, connectors: deps.connectors };
   const mcpOAuth = deps.mcpOAuth ?? new McpOAuthBroker(deps.prisma, deps.secrets);
+  const beginMcpOAuth = (input: {
+    serverId: string;
+    spaceId: string;
+    userId: string;
+    redirectUri: string;
+    reauthorize?: boolean;
+  }) => {
+    const expectedRedirect = new URL("/mcp/oauth/callback", deps.env.webOrigin).toString();
+    if (new URL(input.redirectUri).toString() !== expectedRedirect) {
+      throw new Error("MCP OAuth redirect URI is not allowed");
+    }
+    return mcpOAuth.begin(input);
+  };
+  const financeDeps = {
+    prisma: deps.prisma,
+    jobs: deps.jobs,
+    repos,
+    mcpOAuth,
+    beginMcpOAuth,
+    callToolFor: deps.financeCallToolFor,
+    secrets: deps.secrets,
+    crypto: deps.financeCrypto,
+    parseStatement: deps.parseStatement,
+  };
   const codexCatalog = deps.codexCatalog ?? new CodexCatalogCache();
   const favicons = deps.favicons ?? createFaviconResolver();
   const refreshExpiredCredential =
@@ -1612,7 +1719,7 @@ export function createRouter(deps: RouterDeps) {
       }),
       create: authed.bots.create.handler(async ({ context, input }) => {
         // inbox.agent is the only way to create an Inbox agent; reserve its key prefix.
-        if (isInboxAgentSpawnKey(input.spawnKey)) {
+        if (isInboxAgentSpawnKey(input.spawnKey) || isFinanceAgentSpawnKey(input.spawnKey)) {
           throw new ORPCError("BAD_REQUEST", { message: "Reserved spawn key" });
         }
         let bot: Bot;
@@ -3298,6 +3405,81 @@ export function createRouter(deps: RouterDeps) {
         disconnectMemoryProvider(deps, context.actor),
       ),
     },
+    pages: {
+      get: authed.pages.get.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        const page = await getBotPage(deps.prisma, { spaceId: bot.spaceId, botId: bot.id });
+        if (!page || !input.chartSvgs) return page;
+        const chartSvgs = await Promise.all(
+          splitPage(page.content).flatMap((segment) =>
+            segment.kind === "chart" ? [renderPageChartSvg(segment.chart)] : [],
+          ),
+        );
+        return { ...page, chartSvgs };
+      }),
+      save: authed.pages.save.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        try {
+          const result = await saveBotPage(
+            { prisma: deps.prisma, events: deps.events },
+            {
+              spaceId: bot.spaceId,
+              botId: bot.id,
+              userId: bot.userId,
+              content: input.content,
+              baseRevision: input.baseRevision,
+              updatedBy: "user",
+            },
+          );
+          if (result.ok) return result;
+          if (!result.page) {
+            throw new ORPCError("CONFLICT", { message: "The page was changed or removed." });
+          }
+          return { ok: false as const, reason: "conflict" as const, page: result.page };
+        } catch (error) {
+          if (error instanceof PageValidationError) {
+            throw new ORPCError("BAD_REQUEST", { message: error.message });
+          }
+          throw error;
+        }
+      }),
+    },
+    pins: {
+      get: authed.pins.get.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        return getBotPins(deps.prisma, { spaceId: bot.spaceId, botId: bot.id });
+      }),
+      save: authed.pins.save.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        try {
+          const result = await saveBotPins(
+            { prisma: deps.prisma, events: deps.events, mcp: deps.mcp },
+            { spaceId: bot.spaceId, botId: bot.id, userId: bot.userId },
+            { list: input.list, baseRevision: input.baseRevision, updatedBy: "user" },
+          );
+          if (result.ok) return result;
+          if (!result.pins) {
+            throw new ORPCError("CONFLICT", { message: "The pins were changed or removed." });
+          }
+          return { ok: false as const, reason: "conflict" as const, pins: result.pins };
+        } catch (error) {
+          if (error instanceof PinsValidationError) {
+            throw new ORPCError("BAD_REQUEST", { message: error.message });
+          }
+          throw error;
+        }
+      }),
+      refresh: authed.pins.refresh.handler(async ({ context, input }) => {
+        const bot = await repos.getBot(context.actor, input.botId);
+        await assertTeachingSendAllowed(deps.prisma, bot.spaceId, bot.id);
+        const result = await refreshBotPins(
+          { prisma: deps.prisma, events: deps.events, jobs: deps.jobs, mcp: deps.mcp },
+          { spaceId: bot.spaceId, botId: bot.id, userId: bot.userId },
+        );
+        if (!result) throw new ORPCError("NOT_FOUND", { message: "This bot has no pins." });
+        return result;
+      }),
+    },
     routines: {
       history: authed.routines.history.handler(async ({ context, input }) =>
         listRoutineRuns(deps.prisma, context.actor, input.routineId, input.before),
@@ -4098,6 +4280,11 @@ export function createRouter(deps: RouterDeps) {
               })
             : [];
           const ciphertextById = new Map(secrets.map((secret) => [secret.id, secret.ciphertext]));
+          const open = await deps.prisma.mcpOAuthSession.findMany({
+            where: { spaceId: context.actor.spaceId, userId: context.actor.userId },
+            select: { serverId: true },
+          });
+          const attempted = new Set(open.map((session) => session.serverId));
           return Promise.all(
             rows.map(async (row) =>
               mcpServerDto(
@@ -4106,6 +4293,7 @@ export function createRouter(deps: RouterDeps) {
                   row.secretId ? ciphertextById.get(row.secretId) : undefined,
                   row.secretId ?? undefined,
                 ),
+                attempted.has(row.id),
               ),
             ),
           );
@@ -4525,11 +4713,7 @@ export function createRouter(deps: RouterDeps) {
       oauth: {
         begin: authed.mcp.oauth.begin.handler(async ({ context, input }) => {
           try {
-            const expectedRedirect = new URL("/mcp/oauth/callback", deps.env.webOrigin).toString();
-            if (new URL(input.redirectUri).toString() !== expectedRedirect) {
-              throw new Error("MCP OAuth redirect URI is not allowed");
-            }
-            return await mcpOAuth.begin({
+            return await beginMcpOAuth({
               ...input,
               spaceId: context.actor.spaceId,
               userId: context.actor.userId,
@@ -4664,11 +4848,18 @@ export function createRouter(deps: RouterDeps) {
             }
           }),
         );
-        return catalogs.flat();
+        return dedupeCatalogBySlug(withAppDirectory(catalogs.flat()));
       }),
       list: authed.connections.list.handler(async ({ context }) => {
         const rows = await deps.prisma.connection.findMany({
-          where: { spaceId: context.actor.spaceId, userId: context.actor.userId },
+          where: {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            status: { in: ["connected", "pending", "error"] },
+          },
+          // Without an order Postgres returns rows in storage order, which changes when a row is
+          // updated, so the accounts of one app swapped places between loads.
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         });
         return rows.map((row) => ({
           id: row.id,
@@ -4676,6 +4867,7 @@ export function createRouter(deps: RouterDeps) {
           provider: row.provider,
           displayName: row.displayName,
           status: row.status as "pending" | "connected" | "revoked" | "error",
+          error: connectionError(row),
           capabilities: [],
           createdAt: row.createdAt.toISOString(),
         }));
@@ -4709,7 +4901,12 @@ export function createRouter(deps: RouterDeps) {
               connectorId: input.connectorId,
               provider: input.provider,
             },
-            select: { id: true, status: true },
+            select: {
+              id: true,
+              status: true,
+              allAgents: true,
+              botAccess: { select: { botId: true } },
+            },
             orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
           });
           const reusable = pickReusableConnection(existing);
@@ -4724,7 +4921,9 @@ export function createRouter(deps: RouterDeps) {
               },
             });
           }
-          return tx.connection.create({
+          // A new account of an app inherits the app's agent access.
+          const inherited = existing[0];
+          const created = await tx.connection.create({
             data: {
               spaceId: context.actor.spaceId,
               userId: context.actor.userId,
@@ -4732,8 +4931,20 @@ export function createRouter(deps: RouterDeps) {
               provider: input.provider,
               displayName: input.displayName,
               status: "pending",
+              allAgents: inherited?.allAgents ?? true,
             },
           });
+          if (inherited && inherited.botAccess.length > 0) {
+            await tx.botConnectionAccess.createMany({
+              data: inherited.botAccess.map((entry) => ({
+                connectionId: created.id,
+                botId: entry.botId,
+                spaceId: context.actor.spaceId,
+                userId: context.actor.userId,
+              })),
+            });
+          }
+          return created;
         });
         try {
           const auth = await connector.begin(
@@ -4816,7 +5027,9 @@ export function createRouter(deps: RouterDeps) {
                   }
                 }
                 if (revokeRef) {
-                  await connector.revoke(revokeRef, adapterContext).catch(() => undefined);
+                  await connector
+                    .revoke(revokeRef, adapterContext, { provider: input.provider })
+                    .catch(() => undefined);
                 }
               }
             } else if (state === input.provider) {
@@ -5017,7 +5230,9 @@ export function createRouter(deps: RouterDeps) {
                         revokeRef = resolved ?? "";
                       }
                       if (revokeRef) {
-                        await transactionConnector.revoke(revokeRef, revokedContext);
+                        await transactionConnector.revoke(revokeRef, revokedContext, {
+                          provider: current.provider,
+                        });
                       }
                     }
                   } else {
@@ -5218,6 +5433,7 @@ export function createRouter(deps: RouterDeps) {
           provider: row.provider,
           displayName: row.displayName,
           status: row.status as "pending" | "connected" | "revoked" | "error",
+          error: connectionError(row),
           capabilities: [],
           createdAt: row.createdAt.toISOString(),
         };
@@ -5241,14 +5457,65 @@ export function createRouter(deps: RouterDeps) {
           provider: row.provider,
           displayName: row.displayName,
           status: row.status as "pending" | "connected" | "revoked" | "error",
+          error: connectionError(row),
           capabilities: [],
           createdAt: row.createdAt.toISOString(),
         };
+      }),
+      access: authed.connections.access.handler(async ({ context, input }) => {
+        return connectionAccess(deps.prisma, context.actor, input.connectionId);
+      }),
+      setAccess: authed.connections.setAccess.handler(async ({ context, input }) => {
+        const { actor } = context;
+        const botIds = [...new Set(input.botIds)];
+        await deps.prisma.$transaction(async (tx) => {
+          const connection = await tx.connection.findFirst({
+            where: { id: input.connectionId, spaceId: actor.spaceId, userId: actor.userId },
+            select: { id: true, connectorId: true, provider: true },
+          });
+          if (!connection) throw new IsolationError();
+          const bots = await tx.bot.count({
+            where: { id: { in: botIds }, spaceId: actor.spaceId, userId: actor.userId },
+          });
+          if (bots !== botIds.length) throw new IsolationError();
+          // Agent access belongs to the app, so every account of it gets the same setting.
+          const siblings = await tx.connection.findMany({
+            where: {
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+              connectorId: connection.connectorId,
+              provider: connection.provider,
+            },
+            select: { id: true },
+          });
+          const ids = siblings.map((row) => row.id);
+          await tx.connection.updateMany({
+            where: { id: { in: ids }, spaceId: actor.spaceId, userId: actor.userId },
+            data: { allAgents: input.allAgents },
+          });
+          await tx.botConnectionAccess.deleteMany({
+            where: { connectionId: { in: ids }, spaceId: actor.spaceId, userId: actor.userId },
+          });
+          if (botIds.length > 0) {
+            await tx.botConnectionAccess.createMany({
+              data: ids.flatMap((connectionId) =>
+                botIds.map((botId) => ({
+                  connectionId,
+                  botId,
+                  spaceId: actor.spaceId,
+                  userId: actor.userId,
+                })),
+              ),
+            });
+          }
+        });
+        return connectionAccess(deps.prisma, actor, input.connectionId);
       }),
       revoke: authed.connections.revoke.handler(async ({ context, input }) => {
         type RemoteRevoke = {
           connectorId: string;
           connectionRef: string;
+          provider: string;
           accountSpecific: boolean;
         };
         const snapshot = await deps.prisma.connection.findFirst({
@@ -5379,6 +5646,7 @@ export function createRouter(deps: RouterDeps) {
                 await connector.revoke(
                   connectionRef,
                   connectionContext(context.actor, "connections.revoke", revokeSignal),
+                  { provider: row.provider },
                 );
               } catch (error) {
                 if (error instanceof ORPCError) throw error;
@@ -5394,6 +5662,7 @@ export function createRouter(deps: RouterDeps) {
               remote: {
                 connectorId: row.connectorId,
                 connectionRef,
+                provider: row.provider,
                 accountSpecific,
               },
               previousStatus: row.status,
@@ -5435,6 +5704,7 @@ export function createRouter(deps: RouterDeps) {
             await connector.revoke(
               outcome.remote.connectionRef,
               connectionContext(context.actor, "connections.revoke", context.signal),
+              { provider: outcome.remote.provider },
             );
           } catch (error) {
             // Restore when DELETE clearly did not run (including pre-delete list
@@ -5901,6 +6171,110 @@ export function createRouter(deps: RouterDeps) {
         return loadAutoReviewSettings(deps, context.actor);
       }),
     },
+    finance: {
+      agent: authed.finance.agent.handler(({ context }) =>
+        financeAgent(financeDeps, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
+      overview: authed.finance.overview.handler(({ context }) =>
+        financeOverview(financeDeps, context.actor, context.signal),
+      ),
+      refresh: authed.finance.refresh.handler(({ context }) =>
+        financeRefresh(financeDeps, context.actor, context.signal),
+      ),
+      connect: authed.finance.connect.handler(({ context, input }) =>
+        financeConnect(financeDeps, context.actor, input),
+      ),
+      wallets: authed.finance.wallets.handler(({ context }) =>
+        financeWallets(financeDeps, context.actor),
+      ),
+      walletAdd: authed.finance.walletAdd.handler(({ context, input }) =>
+        financeWalletAdd(financeDeps, context.actor, input, context.signal),
+      ),
+      walletUpdate: authed.finance.walletUpdate.handler(({ context, input }) =>
+        financeWalletUpdate(financeDeps, context.actor, input),
+      ),
+      walletRemove: authed.finance.walletRemove.handler(({ context, input }) =>
+        financeWalletRemove(financeDeps, context.actor, input),
+      ),
+      crypto: authed.finance.crypto.handler(({ context }) =>
+        financeCrypto(financeDeps, context.actor),
+      ),
+      cryptoConnect: authed.finance.cryptoConnect.handler(({ context, input }) =>
+        financeCryptoConnect(financeDeps, context.actor, input),
+      ),
+      exchanges: authed.finance.exchanges.handler(({ context }) =>
+        financeExchanges(financeDeps, context.actor),
+      ),
+      exchangeConnect: authed.finance.exchangeConnect.handler(({ context, input }) =>
+        financeExchangeConnect(financeDeps, context.actor, input, context.signal),
+      ),
+      exchangeRemove: authed.finance.exchangeRemove.handler(({ context, input }) =>
+        financeExchangeRemove(financeDeps, context.actor, input),
+      ),
+      cryptoProviderConnect: authed.finance.cryptoProviderConnect.handler(({ context, input }) =>
+        financeCryptoProviderConnect(financeDeps, context.actor, input),
+      ),
+      statements: authed.finance.statements.handler(({ context }) =>
+        financeStatements(financeDeps, context.actor),
+      ),
+      statementUpload: authed.finance.statementUpload.handler(({ context, input }) =>
+        financeStatementUpload(financeDeps, context.actor, input),
+      ),
+      statementConfirm: authed.finance.statementConfirm.handler(({ context, input }) =>
+        financeStatementConfirm(financeDeps, context.actor, input),
+      ),
+      statementDiscard: authed.finance.statementDiscard.handler(({ context, input }) =>
+        financeStatementDiscard(financeDeps, context.actor, input),
+      ),
+      cryptoProviderRemove: authed.finance.cryptoProviderRemove.handler(({ context }) =>
+        financeCryptoProviderRemove(financeDeps, context.actor),
+      ),
+      accounts: authed.finance.accounts.handler(({ context }) =>
+        financeAccounts(financeDeps, context.actor),
+      ),
+      account: authed.finance.account.handler(({ context, input }) =>
+        financeAccountDetail(financeDeps, context.actor, input),
+      ),
+      burn: authed.finance.burn.handler(({ context }) => financeBurn(financeDeps, context.actor)),
+      month: authed.finance.month.handler(({ context, input }) =>
+        financeMonth(financeDeps, context.actor, input),
+      ),
+      runway: authed.finance.runway.handler(({ context }) =>
+        financeRunway(financeDeps, context.actor),
+      ),
+      balanceSeries: authed.finance.balanceSeries.handler(({ context, input }) =>
+        financeBalanceSeries(financeDeps, context.actor, input),
+      ),
+      preferences: authed.finance.preferences.handler(({ context }) =>
+        financePreferences(financeDeps, context.actor),
+      ),
+      setPreferences: authed.finance.setPreferences.handler(({ context, input }) =>
+        financeSetPreferences(financeDeps, context.actor, input),
+      ),
+      cryptoHistory: authed.finance.cryptoHistory.handler(({ context, input }) =>
+        financeCryptoHistory(financeDeps, context.actor, input),
+      ),
+      spend: authed.finance.spend.handler(({ context, input }) =>
+        financeSpend(financeDeps, context.actor, input),
+      ),
+      category: authed.finance.category.handler(({ context, input }) =>
+        financeCategory(financeDeps, context.actor, input),
+      ),
+      recurring: authed.finance.recurring.handler(({ context, input }) =>
+        financeRecurring(financeDeps, context.actor, input),
+      ),
+      vendor: authed.finance.vendor.handler(({ context, input }) =>
+        financeVendor(financeDeps, context.actor, input),
+      ),
+      transaction: authed.finance.transaction.handler(({ context, input }) =>
+        financeTransaction(financeDeps, context.actor, input),
+      ),
+      receiptUrl: authed.finance.receiptUrl.handler(({ context, input }) =>
+        financeReceiptUrl(financeDeps, context.actor, input, context.signal),
+      ),
+    },
     inbox: {
       agent: authed.inbox.agent.handler(async ({ context }) =>
         ensureInboxAgent(repos, context.actor).catch((error: unknown) => {
@@ -5932,6 +6306,14 @@ export function createRouter(deps: RouterDeps) {
       ),
       archive: authed.inbox.archive.handler(({ context, input }) =>
         inboxArchive(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
+      unarchive: authed.inbox.unarchive.handler(({ context, input }) =>
+        inboxUnarchive(
           { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
           context.actor,
           input,

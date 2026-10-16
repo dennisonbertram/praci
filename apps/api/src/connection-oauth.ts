@@ -37,6 +37,7 @@ export async function completeNativeOAuth(options: {
       {
         state,
         code: options.code,
+        provider: pending.provider,
         ...(typeof redirectUrl === "string" ? { redirectUrl } : {}),
       },
       options.context,
@@ -84,6 +85,7 @@ export async function completeNativeOAuth(options: {
       provider: row.provider,
       displayName: row.displayName,
       status: row.status as "pending" | "connected" | "revoked" | "error",
+      error: connectionError(row),
       capabilities: [],
       createdAt: row.createdAt.toISOString(),
     };
@@ -94,4 +96,9 @@ export async function completeNativeOAuth(options: {
     await prisma.secret.deleteMany({ where: { id: secretId, ...owner } });
     throw error;
   }
+}
+
+/** Short user-safe reason for a failed connection; never provider internals. */
+export function connectionError(row: { status: string }): string | null {
+  return row.status === "error" ? "Connection failed. Reconnect to try again." : null;
 }

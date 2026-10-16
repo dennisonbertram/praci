@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
+import { captureScreenshot, completeOnboarding, rpc, signup } from "./helpers";
 
 test("bot settings open Avatar Studio on the Bot tab", async ({ page }, testInfo) => {
   const stamp = Date.now();
   await signup(page, `avatar-studio-${stamp}@rakazo.test`, "password12", "Avatar Studio");
   await completeOnboarding(page);
+  // These assertions target the robot avatar markup; organic is the default style.
+  await rpc(page, "preferences/update", { avatarStyle: "robot" });
   await page.goto("/app");
   await page.waitForURL(/\/app\/[^/]+$/);
 

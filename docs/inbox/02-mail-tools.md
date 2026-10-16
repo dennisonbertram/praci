@@ -14,6 +14,11 @@ year") without pulling hundreds of messages into the conversation:
 2. `mail_grep` searches those saved rows and returns bounded matching rows.
 3. `mail_get` opens one message body.
 
+Later additions: `mail_draft`, `mail_modify` and `mail_send` change the user's mail. The agent can
+send with `mail_send` (a draft id from `mail_draft`, or a new message), but only with the user's
+approval of each send. A send with an unclear outcome is reported, never retried, and
+`MAIL_WRITES_DISABLED=true` blocks all three.
+
 This ports the "big search, save the results, grep" approach from the reference
 implementation. The reference kept results in a local file; Rakazo keeps them in
 Postgres, because the search and the grep can run on different API or worker

@@ -29,7 +29,9 @@ test("create opens a greeted chat; picker lists bots; sidebar collapses", async 
   await page.waitForURL(/\/app\/[^/]+$/);
   await expect(page.getByPlaceholder("Message New Bot")).toBeVisible();
   await expect(page.getByTestId("create-bot-form")).toHaveCount(0);
-  await expect(page.getByTestId("message-bot-bubble").getByText(/I'm New Bot, and I'm a blank slate/)).toBeVisible();
+  await expect(
+    page.getByTestId("message-bot-bubble").getByText(/I'm New Bot, and I'm a blank slate/),
+  ).toBeVisible();
   await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "create-chat-sidepanel-closed");
 
@@ -126,6 +128,10 @@ test("second bot from plus is created immediately with a greeting", async ({ pag
   await create;
   await page.waitForURL(/\/app\/[^/]+$/);
   await expect(page.getByPlaceholder("Message New Bot")).toBeVisible();
-  await expect(page.getByTestId("message-bot-bubble").getByText(/Hi Second, I'm New Bot, and I'm a blank slate/)).toBeVisible();
+  await expect(
+    page
+      .getByTestId("message-bot-bubble")
+      .getByText(/Hi Second, I'm New Bot, and I'm a blank slate/),
+  ).toBeVisible();
   await captureScreenshot(page, testInfo, "second-bot-created");
 });

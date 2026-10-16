@@ -172,6 +172,23 @@ export class GmailApiEmulator {
     this.mailboxes.set(accountRef, mailbox);
   }
 
+  /**
+   * Serves `accountRef` from its own copy of `seed`'s messages, drafts and sent mail, so nothing
+   * done in one account shows in another. `seededRef` supplies the address.
+   */
+  isolate(accountRef: string, seededRef: string, seed: { messages: EmulatedMessage[] }): void {
+    const shared = this.mailboxes.get(seededRef);
+    if (!shared) throw new Error(`No seeded mailbox ${seededRef}`);
+    this.mailboxes.set(accountRef, {
+      address: shared.address,
+      messages: seed.messages.map(store).sort(newestFirst),
+      drafts: new Map(),
+      historyId: HISTORY_START,
+      historyFloor: HISTORY_START,
+      history: [],
+    });
+  }
+
   /** Delivers a message, as if it arrived from outside. It lands in the change log. */
   addMessage(accountRef: string, message: EmulatedMessage): void {
     const mailbox = this.mailbox(accountRef);

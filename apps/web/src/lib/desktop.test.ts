@@ -68,7 +68,7 @@ describe("window chrome", () => {
     expect(shell).toContain("app-drag flex items-center justify-between px-3 md:px-[22px]");
     expect(shell).toContain('className="app-no-drag grid h-8 w-8');
     expect(shell).toContain('className="app-no-drag flex min-w-0 items-center gap-3"');
-    expect(shell.match(/className="app-no-drag grid h-\[30px\] w-\[34px\]/g)).toHaveLength(1);
+    expect(shell.match(/className="app-no-drag grid h-\[30px\] w-\[34px\]/g)).toHaveLength(2);
   });
 
   it("moves window chrome into the conversation header when the bots sidebar is collapsed", () => {
@@ -164,6 +164,11 @@ describe("nativeGoogleAvailable", () => {
         oauth: { open: async () => undefined, onCallback: () => () => {} },
       }),
     ).toBe(true);
+  });
+
+  it("is off in a desktop app built before the sign-in bridge existed", () => {
+    const { oauth: _missing, ...older } = desktop("darwin");
+    expect(nativeGoogleAvailable(older as RakazoDesktop)).toBe(false);
   });
 });
 

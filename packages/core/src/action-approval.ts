@@ -36,9 +36,15 @@ const APPROVAL_REQUIRED_BUILTIN_TOOLS = new Set([
   "cloud_agent_cancel",
   "mail_draft",
   "mail_modify",
+  "mail_send",
+  "calendar_create_event",
+  "calendar_update_event",
+  "calendar_delete_event",
+  "drive_create_file",
+  "drive_update_file",
 ]);
 /** Built-in mail tools that write; the "email" approval category covers them. */
-const BUILTIN_MAIL_WRITE_TOOLS = new Set(["mail_draft", "mail_modify"]);
+const BUILTIN_MAIL_WRITE_TOOLS = new Set(["mail_draft", "mail_modify", "mail_send"]);
 const EXPLICIT_APPROVAL_BUILTIN_TOOLS = new Set(["create_space"]);
 
 const UNATTENDED_SAFE_BUILTIN_TOOLS = new Set([

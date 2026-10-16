@@ -116,7 +116,7 @@ describe("connections.complete with { state, code }", () => {
     const result = await h.complete({ state: STATE, code: "auth-code" });
     expect(result.status).toBe(200);
     expect(complete).toHaveBeenCalledWith(
-      { state: STATE, code: "auth-code" },
+      { state: STATE, code: "auth-code", provider: "gmail" },
       expect.objectContaining({ spaceId: "space-1", userId: "user-1" }),
     );
     expect(h.rows[0]).toMatchObject({
@@ -137,7 +137,12 @@ describe("connections.complete with { state, code }", () => {
     );
     expect((await h.complete({ state: STATE, code: "auth-code" })).status).toBe(200);
     expect(complete).toHaveBeenCalledWith(
-      { state: STATE, code: "auth-code", redirectUrl: GOOGLE_DESKTOP_REDIRECT_URI },
+      {
+        state: STATE,
+        code: "auth-code",
+        provider: "gmail",
+        redirectUrl: GOOGLE_DESKTOP_REDIRECT_URI,
+      },
       expect.anything(),
     );
   });

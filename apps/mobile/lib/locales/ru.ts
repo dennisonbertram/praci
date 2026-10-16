@@ -805,4 +805,15 @@ export const RU_MESSAGES: Record<string, string> = {
   Spam: "Спам",
   Junk: "Нежелательное",
   "To do": "К выполнению",
+  "Chart could not be drawn.": "Не удалось построить диаграмму.",
+  "Could not load this page.": "Не удалось загрузить эту страницу.",
+  "No page yet.": "Страницы пока нет.",
+  Page: "Страница",
+  Refresh: "Обновить",
+  List: "Список",
+  "Add item": "Добавить пункт",
+  "The bot changed this list. Your last edit wasn't saved.":
+    "Бот изменил этот список. Ваша последняя правка не сохранена.",
+  "Could not load this list.": "Не удалось загрузить список.",
+  "Could not save this list.": "Не удалось сохранить список.",
 };

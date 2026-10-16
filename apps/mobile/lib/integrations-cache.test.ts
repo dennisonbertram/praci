@@ -71,6 +71,8 @@ const snapshot = {
       logo: "https://example.test/logo.svg",
       connected: true,
       noAuth: false,
+      description: null,
+      category: "other" as const,
     },
   ],
   connections: [
@@ -80,6 +82,7 @@ const snapshot = {
       provider: "example",
       displayName: "Example",
       status: "connected" as const,
+      error: null,
       capabilities: [],
       createdAt: "2026-01-01",
     },

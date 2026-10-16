@@ -1,0 +1,219 @@
+import { RPCHandler } from "@orpc/server/fetch";
+import type { Actor } from "@rakazo/contracts";
+import type { PrismaClient } from "@rakazo/db";
+import { describe, expect, it, vi } from "vitest";
+import type { RouterDeps } from "./router.js";
+import { createRouter } from "./router.js";
+
+type Row = Record<string, unknown>;
+const owner: Actor = {
+  spaceId: "s1",
+  userId: "u1",
+  email: "a@rakazo.test",
+  isDeploymentOwner: true,
+};
+const stranger: Actor = { ...owner, userId: "u2" };
+
+function matches(row: Row, where: Row): boolean {
+  return Object.entries(where).every(([key, want]) => {
+    if (want && typeof want === "object" && "in" in want)
+      return (want as { in: unknown[] }).in.includes(row[key]);
+    return row[key] === want;
+  });
+}
+
+const conn = (id: string, status: string, extra: Row = {}): Row => ({
+  id,
+  spaceId: "s1",
+  userId: "u1",
+  connectorId: "composio",
+  provider: "slack",
+  displayName: id,
+  status,
+  allAgents: true,
+  createdAt: new Date("2026-10-01T00:00:00Z"),
+  ...extra,
+});
+
+function harness(connections: Row[], bots: Row[], access: Row[] = []) {
+  const client = {
+    connection: {
+      findMany: vi.fn(async ({ where }: { where: Row }) => {
+        return connections
+          .filter((r) => matches(r, where))
+          .map((r) => ({ ...r, botAccess: access.filter((a) => a.connectionId === r.id) }));
+      }),
+      findFirst: vi.fn(async ({ where }: { where: Row }) => {
+        const row = connections.find((r) => matches(r, where));
+        if (!row) return null;
+        return {
+          ...row,
+          botAccess: access.filter((a) => a.connectionId === row.id && a.userId === where.userId),
+        };
+      }),
+      update: vi.fn(async ({ where, data }: { where: Row; data: Row }) =>
+        Object.assign(connections.find((r) => matches(r, where)) as Row, data),
+      ),
+      updateMany: vi.fn(async ({ where, data }: { where: Row; data: Row }) => {
+        const rows = connections.filter((r) => matches(r, where));
+        for (const row of rows) Object.assign(row, data);
+        return { count: rows.length };
+      }),
+      create: vi.fn(async ({ data }: { data: Row }) => {
+        const row = { ...conn(`new${connections.length}`, "pending"), ...data };
+        connections.push(row);
+        return row;
+      }),
+    },
+    $executeRaw: vi.fn(async () => 0),
+    bot: {
+      count: vi.fn(
+        async ({ where }: { where: Row }) => bots.filter((r) => matches(r, where)).length,
+      ),
+    },
+    botConnectionAccess: {
+      deleteMany: vi.fn(async ({ where }: { where: Row }) => {
+        for (let i = access.length - 1; i >= 0; i--)
+          if (matches(access[i] as Row, where)) access.splice(i, 1);
+      }),
+      createMany: vi.fn(async ({ data }: { data: Row[] }) => void access.push(...data)),
+    },
+  };
+  const prisma = {
+    ...client,
+    $transaction: vi.fn(async (fn: (tx: typeof client) => Promise<unknown>) => fn(client)),
+  };
+  const deps = {
+    prisma: prisma as unknown as PrismaClient,
+    connectors: {
+      managed: vi.fn(() => ({
+        begin: vi.fn(async () => ({ authorizationUrl: "https://x.test", state: "st" })),
+      })),
+    },
+    env: { webOrigin: "http://localhost" },
+  } as unknown as RouterDeps;
+  const handler = new RPCHandler(createRouter(deps));
+  async function call(path: string, input: unknown, actor: Actor = owner) {
+    const { response } = await handler.handle(
+      new Request(`http://127.0.0.1/rpc/${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ json: input }),
+      }),
+      { prefix: "/rpc", context: { actor } },
+    );
+    const body = JSON.parse(await response!.text());
+    return { status: response!.status, json: body.json };
+  }
+  return { call, access, connections };
+}
+
+const bot = (id: string, userId = "u1"): Row => ({ id, spaceId: "s1", userId });
+
+describe("connections.list", () => {
+  it("returns connected, pending and error rows with a reason, never revoked", async () => {
+    const h = harness(
+      [conn("a", "connected"), conn("b", "pending"), conn("c", "error"), conn("d", "revoked")],
+      [],
+    );
+    const { json } = await h.call("connections/list", undefined);
+    expect(json.map((r: Row) => [r.id, r.status, r.error])).toEqual([
+      ["a", "connected", null],
+      ["b", "pending", null],
+      ["c", "error", expect.any(String)],
+    ]);
+  });
+
+  it("does not list another user's rows", async () => {
+    const h = harness([conn("a", "connected")], []);
+    expect((await h.call("connections/list", undefined, stranger)).json).toEqual([]);
+  });
+});
+
+describe("connections.access and setAccess", () => {
+  it("defaults to all agents with no bot list", async () => {
+    const h = harness([conn("a", "connected")], []);
+    expect((await h.call("connections/access", { connectionId: "a" })).json).toEqual({
+      allAgents: true,
+      botIds: [],
+    });
+  });
+
+  it("round-trips a restricted list", async () => {
+    const h = harness([conn("a", "connected")], [bot("b1"), bot("b2")]);
+    const set = await h.call("connections/setAccess", {
+      connectionId: "a",
+      allAgents: false,
+      botIds: ["b1", "b2", "b1"],
+    });
+    expect(set.json).toEqual({ allAgents: false, botIds: ["b1", "b2"] });
+    expect((await h.call("connections/access", { connectionId: "a" })).json).toEqual(set.json);
+    const reset = await h.call("connections/setAccess", {
+      connectionId: "a",
+      allAgents: true,
+      botIds: [],
+    });
+    expect(reset.json).toEqual({ allAgents: true, botIds: [] });
+  });
+
+  it("rejects another user's connection and another user's bot", async () => {
+    const h = harness([conn("a", "connected")], [bot("theirs", "u2")]);
+    expect(
+      (await h.call("connections/access", { connectionId: "a" }, stranger)).status,
+    ).toBeGreaterThanOrEqual(400);
+    expect(
+      (
+        await h.call(
+          "connections/setAccess",
+          { connectionId: "a", allAgents: false, botIds: [] },
+          stranger,
+        )
+      ).status,
+    ).toBeGreaterThanOrEqual(400);
+    const withForeignBot = await h.call("connections/setAccess", {
+      connectionId: "a",
+      allAgents: false,
+      botIds: ["theirs"],
+    });
+    expect(withForeignBot.status).toBeGreaterThanOrEqual(400);
+    expect(h.connections[0]?.allAgents).toBe(true);
+    expect(h.access).toEqual([]);
+  });
+
+  it("applies one setting to every account of the app and leaves other apps alone", async () => {
+    const h = harness(
+      [
+        conn("a", "connected"),
+        conn("b", "pending"),
+        conn("c", "connected", { provider: "github" }),
+      ],
+      [bot("b1")],
+    );
+    await h.call("connections/setAccess", { connectionId: "a", allAgents: false, botIds: ["b1"] });
+    expect(h.connections.map((r) => [r.id, r.allAgents])).toEqual([
+      ["a", false],
+      ["b", false],
+      ["c", true],
+    ]);
+    expect(h.access.map((r) => [r.connectionId, r.botId])).toEqual([
+      ["a", "b1"],
+      ["b", "b1"],
+    ]);
+  });
+
+  it("gives a newly connected account the app's existing setting", async () => {
+    const h = harness(
+      [conn("a", "connected", { allAgents: false })],
+      [bot("b1")],
+      [{ connectionId: "a", botId: "b1", userId: "u1", spaceId: "s1" }],
+    );
+    await h.call("connections/begin", {
+      connectorId: "composio",
+      provider: "slack",
+      displayName: "Second",
+    });
+    const created = h.connections[1] as Row;
+    expect(created.allAgents).toBe(false);
+    expect(h.access.map((r) => [r.connectionId, r.botId])).toContainEqual([created.id, "b1"]);
+  });
+});

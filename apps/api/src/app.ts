@@ -26,13 +26,16 @@ import {
   createBackgroundJobHandlers,
   createCloudAgentConnection,
   createConnectorStack,
+  createFinanceCallToolFor,
   createJobReconciler,
   createMailProvider,
   createMessagingContextLoader,
   createMessagingTeamChatSender,
+  createRpcClient,
   createRunExecutor,
   createRunSandbox,
   createRunSecretWriter,
+  createRuntimeExtract,
   createSecretStore,
   createTicketChangeNotifier,
   createWebProvider,
@@ -58,18 +61,22 @@ import {
   PiOAuthLogins,
   PipedreamConnector,
   PostgresRealtimeFanout,
+  parseStatement,
   pipedreamConfigFromEnv,
   piSessionsRoot,
   reconcileCloudAgents,
   reconcileComputerUpdates,
   removePiUserSessions,
+  resolveEnsName,
   ScriptedAgentRuntime,
   SmtpEmailProvider,
   SpaceMemoryProviderResolver,
   StripeBillingProvider,
   sandboxProviderOptionsFromEnv,
   stripeBillingConfigFromEnv,
+  syncCryptoHoldings,
   toTeamChatInbound,
+  triageStatus,
   withSecretPersistence,
 } from "@rakazo/adapters";
 import { createAuth, isBlockedAuthPath, loopbackTwinOrigins } from "@rakazo/auth";
@@ -85,6 +92,7 @@ import {
   parsePositiveInteger,
   provisionMessagingIdentity,
   pushSessionExpiresAt,
+  recordUsage,
   requireMembership,
 } from "@rakazo/db";
 import type { Logger } from "@rakazo/logging";
@@ -474,6 +482,7 @@ export async function createApp(
     home,
     artifacts,
     connector: stack.connector,
+    mcp,
     connectors: stack.connector,
     listConnectedPluginSlugs: async (userId) => {
       const provider = await integrationSettings.resolve("composio");
@@ -526,6 +535,7 @@ export async function createApp(
     deploymentModelConfigured: env.deploymentModelConfigured,
     messaging,
     cloudAgent,
+    financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
   });
   if (inMemoryJobs) {
     await inMemoryJobs.start(jobHandlers);
@@ -564,6 +574,50 @@ export async function createApp(
     remoteConnectors,
     artifacts,
     mail,
+    financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
+    mcp,
+    parseStatement: async (file, scope) => {
+      // Only a PDF from an unknown bank reaches the model, and only with the consent the Inbox
+      // triage model already needs. Without it the parser says no model is configured.
+      const ready = (await triageStatus({ prisma, resolveModel: executor.resolveModel }, scope))
+        .ready;
+      const metered: AgentRuntime = {
+        describe: () => runtime.describe(),
+        abort: (runId) => runtime.abort(runId),
+        run: (request, context) =>
+          runtime.run(
+            {
+              ...request,
+              usageOperationKind: "triage",
+              onUsage: async (usage) => {
+                await recordUsage(prisma, usage, {
+                  ...scope,
+                  operationId: request.runId,
+                  operationKind: "triage",
+                });
+              },
+            },
+            context,
+          ),
+      };
+      const operationId = `statement:${randomUUID()}`;
+      return parseStatement(file, {
+        ...(ready
+          ? {
+              extract: createRuntimeExtract(metered, ready.model, {
+                operationId,
+                traceId: operationId,
+                ...scope,
+                signal: AbortSignal.timeout(120_000),
+              }),
+            }
+          : {}),
+      });
+    },
+    financeCrypto: {
+      sync: (scope, opts) => syncCryptoHoldings({ prisma, secrets }, scope, opts),
+      resolveEns: (_scope, name, signal) => resolveEnsName(createRpcClient({ signal }), name),
+    },
     resolveModel: executor.resolveModel,
     dataDir: env.dataDir,
     billing,
