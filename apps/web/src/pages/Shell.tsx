@@ -5517,24 +5517,37 @@ const Transcript = memo(function Transcript({
             {loadingOlder ? t`Loading…` : t`Load earlier messages`}
           </button>
         ) : null}
-        {foldFinanceRuns(groupVoiceChats(reactionView.visibleMessages)).map((item) => {
+        {foldFinanceRuns(groupVoiceChats(reactionView.visibleMessages), (id) =>
+          reactionView.reactions.has(id),
+        ).map((item) => {
           if (item.kind === "financeRun") {
             const first = item.messages[0];
             if (!first) return null;
+            const speaker = memberName?.(first.botId);
             return (
-              <div key={first.id} data-message-id={first.id} className="relative py-0.5">
+              <div key={first.id} className="relative py-0.5">
                 {separatorIds.has(first.id) ? (
                   <TimeSeparator createdAt={first.createdAt} locale={i18n.locale || "en"} />
+                ) : null}
+                {speaker ? (
+                  <SpeakerHeader
+                    botId={first.botId}
+                    name={speaker}
+                    color={first.botId ? peerBot?.(first.botId)?.color : undefined}
+                  />
                 ) : null}
                 <FinanceCardGroup
                   items={item.messages.flatMap((m) =>
                     m.blocks.flatMap((block, i) =>
-                      block.kind === "finance" ? [{ id: `${m.id}:${i}`, block }] : [],
+                      block.kind === "finance"
+                        ? [{ id: `${m.id}:${i}`, messageId: m.id, block }]
+                        : [],
                     ),
                   )}
-                  onAsk={(id, quote) => {
-                    const message = item.messages.find((m) => id.startsWith(`${m.id}:`));
-                    if (message) onQuote(message, quote);
+                  revealMessageId={scrollRequest?.messageId}
+                  onAsk={(messageId) => {
+                    const message = item.messages.find((m) => m.id === messageId);
+                    if (message) onReply(message);
                   }}
                 />
               </div>
@@ -5616,7 +5629,7 @@ const Transcript = memo(function Transcript({
                       speaking={speakingMessageId === message.id}
                       onSpeak={() => onSpeak(message)}
                       onOpenComputer={onOpenComputer}
-                      onQuote={onQuote}
+                      onReply={onReply}
                       showToolActivity={showToolActivity}
                     />
                     {peerReceipt ? null : (
@@ -6956,7 +6969,10 @@ const isFinanceOnly = (message: ThreadMessage) =>
   message.blocks.every((block) => block.kind === "finance");
 
 /** Each finance tool call is its own bot message; fold 2+ consecutive ones from the same bot so they tile as one group. A lone one stays a normal message. */
-function foldFinanceRuns(items: TranscriptItem[]): (TranscriptItem | FinanceRun)[] {
+function foldFinanceRuns(
+  items: TranscriptItem[],
+  hasReactions: (messageId: string) => boolean = () => false,
+): (TranscriptItem | FinanceRun)[] {
   const out: (TranscriptItem | FinanceRun)[] = [];
   let run: TranscriptItem[] = [];
   const flush = () => {
@@ -6969,7 +6985,7 @@ function foldFinanceRuns(items: TranscriptItem[]): (TranscriptItem | FinanceRun)
     run = [];
   };
   for (const item of items) {
-    if (item.kind === "message" && isFinanceOnly(item.message)) {
+    if (item.kind === "message" && isFinanceOnly(item.message) && !hasReactions(item.message.id)) {
       const prev = run[0];
       if (prev?.kind === "message" && prev.message.botId !== item.message.botId) flush();
       run.push(item);
@@ -6980,6 +6996,32 @@ function foldFinanceRuns(items: TranscriptItem[]): (TranscriptItem | FinanceRun)
   }
   flush();
   return out;
+}
+
+/** Group-chat speaker line: bot avatar and name, with optional trailing content. */
+function SpeakerHeader({
+  botId,
+  name,
+  color,
+  children,
+}: {
+  botId?: string;
+  name: string;
+  color?: string;
+  children?: ReactNode;
+}) {
+  const colorDef = resolvePersonaColorDef(botId ?? "bot", color);
+  return (
+    <div
+      className="mb-1.5 flex items-center gap-2 text-[13px] font-semibold tracking-tight"
+      dir="auto"
+      style={{ color: colorDef.light }}
+    >
+      <BotAvatar color={color ?? DEFAULT_BOT_COLOR} identity={botId} size={22} />
+      <span className="min-w-0 truncate">{name}</span>
+      {children}
+    </div>
+  );
 }
 
 const MessageView = memo(function MessageView({
@@ -7001,7 +7043,7 @@ const MessageView = memo(function MessageView({
   speaking,
   onSpeak,
   onOpenComputer,
-  onQuote,
+  onReply,
   showToolActivity,
 }: {
   artifactTarget: ArtifactTarget;
@@ -7027,7 +7069,7 @@ const MessageView = memo(function MessageView({
   speaking: boolean;
   onSpeak: () => void;
   onOpenComputer: (botId?: string) => void;
-  onQuote: (message: ThreadMessage, quote: string) => void;
+  onReply: (message: ThreadMessage) => void;
   showToolActivity: boolean;
 }) {
   const { t } = useLingui();
@@ -7044,24 +7086,10 @@ const MessageView = memo(function MessageView({
 
   const replyBotId = message.replyPreview?.botId ?? replyParent?.botId;
   const speakerBot = message.botId ? peerBot?.(message.botId) : undefined;
-  const speakerColorDef = useMemo(
-    () => resolvePersonaColorDef(message.botId ?? "bot", speakerBot?.color),
-    [message.botId, speakerBot?.color],
-  );
   const messageContext = (
     <>
       {speakerName ? (
-        <div
-          className="mb-1.5 flex items-center gap-2 text-[13px] font-semibold tracking-tight"
-          dir="auto"
-          style={{ color: speakerColorDef.light }}
-        >
-          <BotAvatar
-            color={speakerBot?.color ?? DEFAULT_BOT_COLOR}
-            identity={message.botId}
-            size={22}
-          />
-          <span className="min-w-0 truncate">{speakerName}</span>
+        <SpeakerHeader botId={message.botId} name={speakerName} color={speakerBot?.color}>
           {isLive ? null : (
             <time
               dateTime={message.createdAt}
@@ -7071,7 +7099,7 @@ const MessageView = memo(function MessageView({
               {formatMessageTime(message.createdAt, i18n.locale || "en")}
             </time>
           )}
-        </div>
+        </SpeakerHeader>
       ) : null}
       <ReplyLine
         target={artifactTarget}
@@ -7488,8 +7516,8 @@ const MessageView = memo(function MessageView({
           return (
             <div key={i} className="flex justify-start">
               <FinanceCardGroup
-                items={[{ id: `${message.id}:${i}`, block }]}
-                onAsk={(_, quote) => onQuote(message, quote)}
+                items={[{ id: `${message.id}:${i}`, messageId: message.id, block }]}
+                onAsk={() => onReply(message)}
               />
             </div>
           );

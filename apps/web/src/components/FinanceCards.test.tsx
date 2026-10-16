@@ -18,7 +18,7 @@ vi.mock("@lingui/react/macro", () => {
   };
 });
 
-import { FinanceCardGroup, FinanceCards, financeCardQuote } from "./FinanceCards";
+import { FinanceCardGroup, FinanceCards } from "./FinanceCards";
 
 type Block = Extract<MessageBlock, { kind: "finance" }>;
 
@@ -163,19 +163,12 @@ const recurring: Block = {
   },
 };
 
-it("summarizes every card variant as one line of plain text", () => {
-  expect(financeCardQuote(breakdown.card)).toBe(
-    "Vendors · Last 90 days: $108,640 — Justworks $49,876; Coo ley $21,884",
-  );
-  expect(financeCardQuote(overview.card)).toContain("Finance overview: Cash $1,000");
-  expect(financeCardQuote(overview.card)).toContain("Runway –");
-  expect(financeCardQuote(transactions.card)).toMatch(/^1 transactions: .*— Acme \(.*\)/);
-  expect(financeCardQuote(recurring.card)).toBe(
-    "Subscriptions / mo: $99 — Figma $99; next 30 days $40",
-  );
-});
-
 async function renderGroup(blocks: Block[], onAsk = vi.fn()) {
+  const view = await mountGroup(blocks, onAsk);
+  return { ...view, onAsk };
+}
+
+async function mountGroup(blocks: Block[], onAsk = vi.fn(), reveal?: string) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
@@ -184,22 +177,23 @@ async function renderGroup(blocks: Block[], onAsk = vi.fn()) {
     root.render(
       <MemoryRouter>
         <FinanceCardGroup
-          items={blocks.map((block, i) => ({ id: `m${i}`, block }))}
+          items={blocks.map((block, i) => ({ id: `m${i}:0`, messageId: `m${i}`, block }))}
           onAsk={onAsk}
+          revealMessageId={reveal}
         />
       </MemoryRouter>,
     ),
   );
-  return { container, onAsk };
+  return { container, root };
 }
 
-it("starts a pair expanded, tiles it, and asks with the card summary", async () => {
+it("starts a pair expanded, tiles it, and asks with the message id", async () => {
   const { container, onAsk } = await renderGroup([breakdown, overview]);
   expect(container.querySelectorAll('[data-testid="finance-card"]')).toHaveLength(2);
   expect(container.querySelector(".grid")?.className).toContain("minmax(18rem,1fr)");
   const ask = container.querySelectorAll<HTMLButtonElement>('button[aria-label="Ask about this"]');
   await act(async () => ask[0]?.click());
-  expect(onAsk).toHaveBeenCalledWith("m0", financeCardQuote(breakdown.card));
+  expect(onAsk).toHaveBeenCalledWith("m0");
 });
 
 it("collapses three or more cards until the header is toggled", async () => {
@@ -217,4 +211,44 @@ it("shows a lone card with no header", async () => {
   const { container } = await renderGroup([breakdown]);
   expect(container.querySelector("button[aria-expanded]")).toBeNull();
   expect(container.querySelector('[data-testid="finance-card"]')?.className).toContain("w-80");
+});
+
+it("gives every tile its own message id, and keeps anchors while collapsed", async () => {
+  const open = await mountGroup([breakdown, overview]);
+  expect(
+    [...open.container.querySelectorAll("[data-message-id]")].map((n) =>
+      n.getAttribute("data-message-id"),
+    ),
+  ).toEqual(["m0", "m1"]);
+  document.body.innerHTML = "";
+  const closed = await mountGroup([breakdown, overview, recurring]);
+  expect(closed.container.querySelectorAll("[data-message-id]")).toHaveLength(3);
+  expect(closed.container.querySelectorAll('[data-testid="finance-card"]')).toHaveLength(0);
+});
+
+it("opens a collapsed group when a reply-jump targets one of its messages", async () => {
+  const { container } = await mountGroup([breakdown, overview, recurring], vi.fn(), "m2");
+  expect(container.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded")).toBe(
+    "true",
+  );
+});
+
+it("follows the count until the user toggles, then keeps their choice", async () => {
+  const { container, root } = await mountGroup([breakdown, overview]);
+  const toggle = () => container.querySelector<HTMLButtonElement>("button[aria-expanded]");
+  const rerender = (blocks: Block[]) =>
+    act(async () =>
+      root.render(
+        <MemoryRouter>
+          <FinanceCardGroup
+            items={blocks.map((block, i) => ({ id: `m${i}:0`, messageId: `m${i}`, block }))}
+          />
+        </MemoryRouter>,
+      ),
+    );
+  await rerender([breakdown, overview, recurring]);
+  expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
+  await act(async () => toggle()?.click());
+  await rerender([breakdown, overview, recurring, transactions]);
+  expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
 });
