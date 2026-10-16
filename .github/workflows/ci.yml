@@ -119,10 +119,34 @@ jobs:
     with:
       upload_artifacts: true
 
+  storybook:
+    name: Storybook
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm --filter @rakazo/web build-storybook
+      - name: Install Chromium
+        timeout-minutes: 5
+        run: pnpm --filter @rakazo/web exec playwright install chromium
+      - run: pnpm --filter @rakazo/web storybook:smoke
+
   publish-mobile-update:
     name: Publish compatible mobile update
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [lint, check, build, test, test-integration, test-e2e]
+    needs: [lint, check, build, test, test-integration, test-e2e, storybook]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:
@@ -275,7 +299,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       vars.PRODUCTION_DEPLOY_ENABLED == 'true'
-    needs: [lint, check, build, test, test-integration, test-e2e]
+    needs: [lint, check, build, test, test-integration, test-e2e, storybook]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
