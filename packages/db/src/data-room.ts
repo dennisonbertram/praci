@@ -49,20 +49,28 @@ export interface DataRoomSearchResult {
 
 const DATE_SORTS = new Set<DataRoomSortField>(["date", "createdAt"]);
 
-function encodeCursor(value: Date | string | number | null, id: string) {
+type CursorSort = { field: DataRoomSortField | "relevance"; direction: "asc" | "desc" };
+const RELEVANCE_SORT: CursorSort = { field: "relevance", direction: "desc" };
+
+/** The cursor records its sort, so a cursor from another field or direction is rejected. */
+function encodeCursor(sort: CursorSort, value: Date | string | number | null, id: string) {
   const v = value instanceof Date ? value.toISOString() : value;
-  return Buffer.from(JSON.stringify([v, id])).toString("base64url");
+  return Buffer.from(JSON.stringify([sort.field, sort.direction, v, id])).toString("base64url");
 }
 
 function decodeCursor(
   cursor: string,
-  field: DataRoomSortField | "relevance",
+  sort: CursorSort,
 ): { value: Date | string | number | null; id: string } {
+  const { field } = sort;
   try {
-    const [v, id] = JSON.parse(Buffer.from(cursor, "base64url").toString()) as [
+    const [f, d, v, id] = JSON.parse(Buffer.from(cursor, "base64url").toString()) as [
+      string,
+      string,
       string | number | null,
       string,
     ];
+    if (f !== field || d !== sort.direction) throw new Error();
     const kind = field === "relevance" ? "number" : "string";
     if (typeof id !== "string" || (v !== null && typeof v !== kind)) throw new Error();
     if (field === "relevance" && v === null) throw new Error();
@@ -90,7 +98,7 @@ function keysetSql(
   const direction = Prisma.raw(sort.direction === "asc" ? "ASC" : "DESC");
   let where: Prisma.Sql | undefined;
   if (cursor) {
-    const { value, id } = decodeCursor(cursor, sort.field);
+    const { value, id } = decodeCursor(cursor, sort);
     where =
       value === null
         ? Prisma.sql`(${column} IS NULL AND ${idColumn} > ${id})`
@@ -377,7 +385,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       const last = pageRows.at(-1);
       return {
         items: pageRows.flatMap((row) => byId.get(row.id) ?? []),
-        nextCursor: rows.length > limit && last ? encodeCursor(last.sortValue, last.id) : null,
+        nextCursor: rows.length > limit && last ? encodeCursor(sort, last.sortValue, last.id) : null,
       };
     },
 
@@ -508,7 +516,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         ));
       } else {
         if (input.cursor) {
-          const { value, id } = decodeCursor(input.cursor, "relevance");
+          const { value, id } = decodeCursor(input.cursor, RELEVANCE_SORT);
           where = Prisma.sql`(r.rank < ${value} OR (r.rank = ${value} AND r."itemId" > ${id}))`;
         }
         order = Prisma.sql`r.rank DESC, r."itemId" ASC`;
@@ -563,7 +571,9 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         }),
         nextCursor:
           rows.length > limit && last
-            ? encodeCursor(input.sort ? last.sortValue : last.rank, last.itemId)
+            ? input.sort
+              ? encodeCursor(input.sort, last.sortValue, last.itemId)
+              : encodeCursor(RELEVANCE_SORT, last.rank, last.itemId)
             : null,
       };
     },

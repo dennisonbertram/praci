@@ -387,4 +387,22 @@ describePostgres("data room repository (PostgreSQL)", () => {
     await expect(dr.deleteFolder(a, parent.id)).rejects.toThrow(DataRoomConflictError);
     expect(await prisma.dataRoomFolder.count({ where: { parentId: parent.id } })).toBe(1);
   });
+
+  it("rejects a page cursor from another sort direction or field", async () => {
+    for (const n of ["x", "y", "z"]) await upload(b, `cursor-${n}.txt`, `cursor-sha-${n}-${run}`);
+    const asc = { field: "name", direction: "asc" } as const;
+    const first = await dr.listItemsPage(b, {}, { sort: asc, limit: 1 });
+    expect(first.nextCursor).toBeTruthy();
+    // Same sort continues where the first page stopped.
+    const next = await dr.listItemsPage(b, {}, { sort: asc, limit: 1, cursor: first.nextCursor! });
+    expect(next.items[0]?.id).not.toBe(first.items[0]?.id);
+    for (const sort of [
+      { field: "name", direction: "desc" },
+      { field: "type", direction: "asc" },
+    ] as const) {
+      await expect(
+        dr.listItemsPage(b, {}, { sort, limit: 1, cursor: first.nextCursor! }),
+      ).rejects.toThrow(DataRoomConflictError);
+    }
+  });
 });
