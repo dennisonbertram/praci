@@ -1,4 +1,3 @@
-import { lookup } from "node:dns/promises";
 import { isIP, type LookupFunction } from "node:net";
 import {
   createProvider,
@@ -13,6 +12,7 @@ import { Agent } from "undici";
 import { declaredVisionModelIds, inputModalities } from "./model-modalities.js";
 import {
   createAddressCheckedLookup,
+  defaultResolveHostname,
   isCloudMetadataAddress,
   isLinkLocalAddress,
   isPrivateAddress,
@@ -55,9 +55,6 @@ function modelsProbeLimits(catalogProbe?: boolean): { maxBytes: number; maxModel
 }
 
 const OPENAI_COMPAT_BASE = "http://127.0.0.1:1/v1";
-const resolveHostname: ResolveHostname = (hostname) =>
-  lookup(hostname, { all: true, verbatim: true });
-
 export function openAiCompatibleModel(
   id: string,
   baseUrl: string,
@@ -122,7 +119,7 @@ function openAiCompatibleProvider(models: Model<"openai-completions">[]): Provid
 
 export function createOpenAiCompatibleLookup(
   url: URL,
-  resolve: ResolveHostname = resolveHostname,
+  resolve: ResolveHostname = defaultResolveHostname,
 ): LookupFunction {
   const hostname = url.hostname.replace(/^\[|\]$/g, "");
   const privateHostname = isPrivateOpenAiCompatibleHostname(hostname);
@@ -170,7 +167,7 @@ function requestCarriesAuthorization(input: RequestInfo | URL, init?: RequestIni
 
 export function createOpenAiCompatibleFetch(
   baseFetch: typeof globalThis.fetch = dispatcherFetch,
-  resolve: ResolveHostname = resolveHostname,
+  resolve: ResolveHostname = defaultResolveHostname,
   opts?: { allowPublic?: boolean },
 ): typeof globalThis.fetch {
   return async (input, init) => {
