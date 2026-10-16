@@ -113,6 +113,22 @@ function pressEnter(textarea: HTMLTextAreaElement) {
 }
 
 describe("Composer", () => {
+  it("keeps the arrow-key highlight when the mention targets reload", () => {
+    const researcher: ComposerMention = { kind: "bot", id: "bot-3", name: "Researcher" };
+    const writer: ComposerMention = { kind: "bot", id: "bot-4", name: "Research Writer" };
+    const textarea = renderComposer(vi.fn(), { mentionTargets: [researcher, writer] });
+    type(textarea, "@Res");
+    act(() => {
+      textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    });
+    const selected = () =>
+      container?.querySelector("[role='option'][aria-selected='true']")?.textContent;
+    expect(selected()).toContain("Research Writer");
+    // Routines and connectors load asynchronously and hand the composer a new targets array.
+    rerenderComposer({ mentionTargets: [researcher, writer] });
+    expect(selected()).toContain("Research Writer");
+  });
+
   it("clears the draft once the message is sent", async () => {
     const onSend = vi.fn().mockResolvedValue(true);
     const textarea = renderComposer(onSend);

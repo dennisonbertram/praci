@@ -6040,9 +6040,12 @@ export const Composer = memo(function Composer({
       .slice(0, 10);
   }, [mentionQuery, mentionTargets]);
 
+  // Reset only when the typed query changes. Routines and connectors load asynchronously and hand
+  // the composer a new targets array, which must not undo an ArrowDown or redirect Enter/Tab.
+  // clampMentionHighlightIndex keeps the index valid if the list shrinks.
   useEffect(() => {
     setMentionHighlightIndex(0);
-  }, [mentionQuery, mentionOptions]);
+  }, [mentionQuery]);
 
   const activeMentionIndex = clampMentionHighlightIndex(
     mentionHighlightIndex,
