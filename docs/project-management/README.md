@@ -481,9 +481,11 @@ so that I know which system holds the truth.
    cascade preview and blocked state, with unit tests on synthetic data. No chart or
    Gantt dependency; board and timeline are built from shadcn components and inline
    SVG, with Storybook stories (AGENTS.md).
-9. **Native projects are shared within the space.** Every member of the space can
-   see and edit them. Connected tracker data stays scoped to the user who connected
-   it (S25).
+9. **Native projects are shared within the space.** This is a maintainer decision.
+   Every native project and task row stores `spaceId` and `createdByUserId`, and every
+   read and write is authorized by the actor's membership in that space through one
+   actor-scoped helper (AGENTS.md). Tracker-synced rows additionally stay scoped to the
+   user who connected the tracker (S25).
 10. **Routes** `/app/projects` (board/timeline toggle as a segmented control),
    `/app/projects/:projectId`, `/app/projects/tasks/:taskId`.
 11. **Not in v1.** Webhooks, a generic MCP tracker, scheduled reports, nudges,

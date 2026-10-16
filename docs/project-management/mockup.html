@@ -360,6 +360,7 @@ const S={fo:'',fa:'',fl:'',panelBot:'project',panelTask:null,
  projs:['Product launch','Docs refresh'],proj:PJ,detail:null,last:null,theme:'auto',modal:null,note:'',col:'Todo',blkOpen:null,menuOpen:null,
  dismissed:{},done:{},brk:[1,1,1,1],del:{},cm:{},dk:'keep'};
 const $=s=>document.querySelector(s);
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); // user text is escaped once, where it enters
 const byId=id=>T.find(t=>t.id===id)||null;
 const deps=t=>t.d.map(byId).filter(Boolean);
 const pid=t=>t.sid||t.t;
@@ -411,12 +412,14 @@ function canWrite(t){
 }
 const wr=t=>t.src==='nat'?'':` and written to ${target(t)}`;
 function moveTask(t,to,lane){
-  if(!canWrite(t))return render();
   const o={st:t.st,a:t.a,bot:t.bot},parts=[];
+  const ln=lane&&lane!==laneOfOld(o)?lane:null,toBot=ln&&ln.startsWith('b:');
+  // a bot assignment lives on Rakazo's row; only status or a person assignment writes to the tracker
+  if((o.st!==to||(ln&&!toBot))&&!canWrite(t))return render();
   const bl=blocked(t);let botOnly=false;
   if(o.st!==to){t.st=to;parts.push(`moved to ${to}`+((to==='In progress'||to==='Done')&&bl.length?` (still blocked by ${bl[0].t})`:''))}
-  if(lane&&lane!==laneOfOld(o)){
-    const [ty,k]=lane.split(':');
+  if(ln){
+    const [ty,k]=ln.split(':');
     if(ty==='b'){t.bot=k;botOnly=true;parts.push(`assigned to ${BOTS[k][0]}`+(t.src==='nat'?'':', tracker assignee unchanged'))}
     else{t.bot=null;t.a=k||null;parts.push(k?`assigned to ${P[k][0]}`:'unassigned')}
   }
@@ -425,13 +428,13 @@ function moveTask(t,to,lane){
   render();toast(`${pid(t)} ${parts.join(', ')}`+(wroteTracker?` and written to ${target(t)}`:''),()=>{Object.assign(t,o);render()});
 }
 const laneOfOld=o=>o.bot?'b:'+o.bot:'p:'+(o.a||'');
-function setDates(t,s,e){
+function setDates(t,s,e,onUndo){
   if(!canWrite(t))return render();
   const o={s:t.s,e:t.e,u:t.u};t.s=s;t.e=t.ms?s:e;t.u=0;
-  render();toast(`${pid(t)} dates set to ${dt(t.s)}${t.ms?'':' to '+dt(t.e)}`+wr(t),()=>{Object.assign(t,o);render()});
+  render();toast(`${pid(t)} dates set to ${dt(t.s)}${t.ms?'':' to '+dt(t.e)}`+wr(t),()=>{Object.assign(t,o);if(onUndo)onUndo();render()});
 }
 function newTask(title){
-  const t={id:NEXT++,pj:S.proj,o:'ada',src:'nat',sid:'PL-'+(NEXT-1),t:title||'Untitled task',p:0,st:'Backlog',a:null,u:1,l:'',d:[]};
+  const t={id:NEXT++,pj:S.proj,o:'ada',src:'nat',sid:'PL-'+(NEXT-1),t:esc(title||'Untitled task'),p:0,st:'Backlog',a:null,u:1,l:'',d:[]};
   T.push(t);return t;
 }
 
@@ -498,7 +501,7 @@ function board(){
   else if(!items.length) body=`<div class="emptyline">No tasks<button class="btn sm" data-act="clearf">Clear filters</button></div>`;
   else if(!S.group) body=`<div class="bgrid" ${gc}>${lane(items,'')}</div>`;
   else body=[...Object.keys(P).map(k=>['p',k]),...Object.keys(BOTS).map(k=>['b',k]),['p','']].map(([ty,a])=>{
-    const ln=ty+':'+a,l=items.filter(t=>laneOf(t)===ln);if(!l.length)return '';
+    const ln=ty+':'+a,l=items.filter(t=>laneOf(t)===ln);if(!l.length&&ty==='p'&&a)return '';
     return `<div class="lane-h">${ty==='b'?bav(a,22):av(a||null)}${ty==='b'?BOTS[a][0]:a?P[a][0]:'Unassigned'}<span class="sub">${l.length}</span></div><div class="bgrid" ${gc}>${lane(l,ln)}</div>`}).join('');
   return `<div class="board">${picker}<div class="bgrid colrow" style="margin-bottom:6px">${heads.join('')}</div>${body}</div>`;
 }
@@ -723,7 +726,7 @@ document.addEventListener('click',e=>{
   if(el=g('[data-dismiss]')){S.dismissed[el.dataset.dismiss]=1;return render()}
   if(el=g('[data-sgapply]')){const t=byId(+el.dataset.sgapply),sg=sugg(t);
     if(sg.k==='assign'){t.a='cy';S.dismissed['sg-'+t.id]=1;render();toast('Assigned to Cy Novak',()=>{t.a=null;delete S.dismissed['sg-'+t.id];render()})}
-    else if(sg.k==='start'){const bb=conflicts(t)[0],d=t.e-t.s;S.dismissed['sg-'+t.id]=1;setDates(t,bb.e,bb.e+d)}
+    else if(sg.k==='start'){const bb=conflicts(t)[0],d=t.e-t.s,key='sg-'+t.id;if(!canWrite(t))return render();S.dismissed[key]=1;setDates(t,bb.e,bb.e+d,()=>{delete S.dismissed[key]})}
     else{const o=[t.s,t.e];S.dismissed['sg-'+t.id]=1;t.s+=7;t.e+=7;render();toast(`Due date moved to ${dt(t.e)}`,()=>{t.s=o[0];t.e=o[1];delete S.dismissed['sg-'+t.id];render()})}
     return}
   if(el=g('[data-do]')){const a=el.dataset.do;
@@ -746,7 +749,7 @@ document.addEventListener('click',e=>{
     else if(a==='addsrc'){S.modal={k:'conn'};S.step=null}
     else if(a==='newproj'){S.modal={k:'name'}}
     else if(a==='addtask'){S.modal={k:'task'}}
-    else if(a==='mkproj'){const n=($('#mName').value||'Untitled project').trim();S.projs.push(n);S.proj=n;S.empty=false;S.view='board';S.modal=null}
+    else if(a==='mkproj'){const n=esc(($('#mName').value||'Untitled project').trim());S.projs.push(n);S.proj=n;S.empty=false;S.view='board';S.modal=null}
     else if(a==='mktask'){const t=newTask($('#mTask').value.trim());S.modal=null;S.view='board';S.empty=false;render();toast(`${t.sid} added`);return}
     else if(a==='dodisc'){const k=S.modal.src;if(S.dk==='del'){S.del[k]=T.filter(t=>t.src===k);S.del[k].forEach(t=>T.splice(T.indexOf(t),1));S.s[k].conn=0;S.s[k].disc=0}else{S.s[k].conn=0;S.s[k].disc=1}S.s[k].err=null;S.modal=null;menu()}
     else if(a==='connect'){const k={GitHub:'gh',Linear:'lin',Notion:'no'}[S.step],was=S.del[k];
@@ -758,7 +761,7 @@ document.addEventListener('click',e=>{
     else if(a==='clearf'){S.fo=S.fa=S.fl=''}
     else if(a==='toast'){toast(el.dataset.msg)}
     else if(a==='openin'){e.preventDefault();toast(`Opened in ${el.dataset.n}. Rakazo updates on next sync`)}
-    else if(a==='postcm'){const i=$('#cmIn'),v=i.value.trim();if(v){const t=S.detail;S.cm[t]=(S.cm[t]||[['bo','Bo Reyes','2h','Waiting on the pricing sign-off.'],['di','Di Okafor','Yesterday','Draft is ready for a first look.']]).concat([['ada','Ada Park','Just now',v.replace(/</g,'&lt;')]])}}
+    else if(a==='postcm'){const i=$('#cmIn'),v=i.value.trim();if(v){const t=S.detail;S.cm[t]=(S.cm[t]||[['bo','Bo Reyes','2h','Waiting on the pricing sign-off.'],['di','Di Okafor','Yesterday','Draft is ready for a first look.']]).concat([['ada','Ada Park','Just now',esc(v)]])}}
     else if(a==='addrel'){S.relAsk=true;S.chat=true;S.panelBot='project';S.panelTask=null;render();const th=$('#thread');th.scrollTop=th.scrollHeight;return}
     return render();
   }
@@ -786,7 +789,6 @@ document.addEventListener('dragstart',e=>{
   if(u){chipId=+u.dataset.uchip;e.dataTransfer.setData('text/plain','u');return}
   const c=e.target.closest&&e.target.closest('.card');if(!c)return;
   const t=byId(+c.dataset.id);
-  if(locked(t)){e.preventDefault();setNote(lockWhy(t)+'. Change access in Sources');return}
   dragId=t.id;c.classList.add('drag');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(dragId))});
 document.addEventListener('dragend',()=>{document.querySelectorAll('.drag,.drop').forEach(x=>x.classList.remove('drag','drop'));dragId=null;chipId=null});
 document.addEventListener('dragover',e=>{
@@ -853,7 +855,7 @@ document.addEventListener('change',e=>{
   else if(t.id==='lblF'){S.fl=t.value}
   else if(t.dataset.st){const x=byId(+t.dataset.st);moveTask(x,t.value);return}
   else if(t.dataset.edit){const x=byId(S.detail);
-    if(t.dataset.edit==='t')x.t=t.value||x.t;else x.a=t.value||null;}
+    if(t.dataset.edit==='t')x.t=t.value?esc(t.value):x.t;else x.a=t.value||null;}
   else if(t.dataset.dt){const x=byId(S.detail),v=fromIso(t.value);if(isNaN(v))return;
     let s2=x.s,e2=x.e;if(t.dataset.dt==='s'){s2=v;e2=x.u||x.e<v?v+7:x.e}else{e2=v;s2=x.u||x.s>v?v-7:x.s}
     return setDates(x,s2,e2)}
