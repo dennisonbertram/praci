@@ -31,13 +31,24 @@ const entries = Object.values(
 ).filter((e) => e.type === "story" && (!filter || e.importPath.includes(filter)));
 const browser = await chromium.launch();
 const failures = [];
-for (const entry of entries) {
+
+async function check(entry) {
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (msg) => msg.type() === "error" && errors.push(msg.text()));
   await page.goto(`${base}/iframe.html?id=${entry.id}&viewMode=story`);
-  await page.waitForTimeout(400);
+  // Wait until the story renders or Storybook shows its error, then give late async work a moment.
+  await page
+    .waitForFunction(
+      () =>
+        document.querySelector("#storybook-root")?.innerHTML.trim() ||
+        document.body.classList.contains("sb-show-errordisplay"),
+      undefined,
+      { timeout: 5_000 },
+    )
+    .catch(() => undefined);
+  await page.waitForTimeout(250);
   const empty = await page.evaluate(
     () => !document.querySelector("#storybook-root")?.innerHTML.trim(),
   );
@@ -52,6 +63,14 @@ for (const entry of entries) {
     });
   await page.close();
 }
+
+// A few stories at a time keeps the run inside CI's time limit.
+const queue = [...entries];
+await Promise.all(
+  Array.from({ length: 6 }, async () => {
+    for (let entry = queue.shift(); entry; entry = queue.shift()) await check(entry);
+  }),
+);
 await browser.close();
 server.close();
 console.log(`${entries.length - failures.length}/${entries.length} stories rendered cleanly`);
