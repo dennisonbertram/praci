@@ -30,6 +30,7 @@ import {
   plainTextFromMarkdown,
   projectMessageReactions,
   reconcileThreadScrollState,
+  reduceThreadSnapshot,
   replyAttachment,
   resolveComposerSendPlan,
   resolvePersonaColorDef,
@@ -122,7 +123,6 @@ import type {
   MobileSnapshot,
 } from "../lib/api";
 import {
-  applyMobileThreadEvent,
   blockText,
   copyableMobileMessageText,
   currentApiBase,
@@ -1499,7 +1499,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                   jumpAnchor.current.release();
                   historyEpoch.current += 1;
                 }
-                commitSnap(applyMobileThreadEvent(snapRef.current, event));
+                commitSnap(reduceThreadSnapshot(snapRef.current, event));
               }
               if (event.type === "page.updated") setHasPage(true);
               if (event.type === "pins.updated") setPinsTick((n) => n + 1);
