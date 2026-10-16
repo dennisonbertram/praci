@@ -143,4 +143,18 @@ describePostgres("sidebar pages (PostgreSQL)", () => {
     expect(ownerState.addable).not.toContain("off");
     expect(ownerState.addable).not.toContain("beta");
   });
+
+  it("hides a saved owner-only page from a caller who is no longer the owner", async () => {
+    await addSidebarPage(prisma, owner, "owned", templates);
+    await prisma.spaceMember.update({
+      where: { spaceId_userId: owner },
+      data: { role: "member" },
+    });
+    expect((await pages(owner)).map((p) => p.templateKey)).not.toContain("owned");
+    await prisma.spaceMember.update({
+      where: { spaceId_userId: owner },
+      data: { role: "owner" },
+    });
+    expect((await pages(owner)).map((p) => p.templateKey)).toContain("owned");
+  });
 });

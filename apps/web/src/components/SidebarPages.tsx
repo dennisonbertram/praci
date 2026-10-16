@@ -10,6 +10,7 @@ import {
 import { Ellipsis, LayoutDashboard } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
+import { desktopBridge } from "../lib/desktop";
 import { rpc } from "../lib/rpc";
 import { sidebarPageCopy } from "../lib/sidebar-page-copy";
 import { errorText } from "../lib/user-error";
@@ -42,7 +43,7 @@ export function SidebarPages({
     void rpc.sidebarPages
       .list()
       .then((next) => active && latest.current === seen && setState(next))
-      .catch(() => {});
+      .catch((cause) => active && setError(errorText(cause)));
     return () => {
       active = false;
     };
@@ -62,7 +63,13 @@ export function SidebarPages({
     }
   }, []);
 
-  const add = (templateKey: string) => mutate(() => rpc.sidebarPages.add({ templateKey }));
+  const add = async (template: SidebarPageTemplate) => {
+    const added = await mutate(() => rpc.sidebarPages.add({ templateKey: template.key }));
+    if (added) {
+      onOpen?.();
+      navigate(template.route);
+    }
+  };
 
   const remove = async (template: SidebarPageTemplate) => {
     const removed = await mutate(() => rpc.sidebarPages.remove({ templateKey: template.key }));
@@ -72,7 +79,11 @@ export function SidebarPages({
   };
 
   const added = state?.pages.map((page) => page.templateKey) ?? [];
-  const rows = added.flatMap((key) => templates.find((template) => template.key === key) ?? []);
+  const surface = desktopBridge() ? "desktop" : "web";
+  const rows = added.flatMap((key) => {
+    const template = templates.find((candidate) => candidate.key === key);
+    return template?.available && template.platforms.includes(surface) ? template : [];
+  });
   const addable = templates.filter((template) => state?.addable.includes(template.key));
 
   return (
@@ -92,7 +103,7 @@ export function SidebarPages({
           <DropdownMenu>
             <DropdownMenuTrigger
               aria-label={t`Page options`}
-              className="absolute end-4 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted-foreground opacity-0 hover:bg-accent focus-visible:opacity-100 group-hover:opacity-100 data-[popup-open]:opacity-100"
+              className="absolute end-4 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted-foreground opacity-0 pointer-coarse:opacity-100 hover:bg-accent focus-visible:opacity-100 group-hover:opacity-100 data-[popup-open]:opacity-100"
             >
               <Ellipsis size={15} strokeWidth={1.8} aria-hidden="true" />
             </DropdownMenuTrigger>
@@ -104,7 +115,14 @@ export function SidebarPages({
           </DropdownMenu>
         </div>
       ))}
-      <AddSidebarPage templates={addable} onAdd={(key) => void add(key)} />
+      <AddSidebarPage
+        templates={addable}
+        onAdd={(key) => {
+          const template = templates.find((candidate) => candidate.key === key);
+          if (template) void add(template);
+        }}
+        onOpenMenu={() => setError("")}
+      />
       {error ? (
         <p role="alert" className="mx-5 mb-1 text-xs text-destructive">
           {error}

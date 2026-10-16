@@ -44,8 +44,11 @@ export async function listSidebarPages(
     where: { spaceId, userId },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
   });
-  const pages = rows.map((row) => ({ templateKey: row.templateKey }));
   const owner = templates.some((t) => t.ownerOnly) && (await isSpaceOwner(prisma, actor));
+  // A saved owner-only page stays hidden while the user is not the space owner.
+  const pages = rows
+    .filter((row) => owner || !templates.find((t) => t.key === row.templateKey)?.ownerOnly)
+    .map((row) => ({ templateKey: row.templateKey }));
   const addable = templates
     .filter((t) => !addBlocker(t, owner) && !pages.some((p) => p.templateKey === t.key))
     .map((t) => t.key);

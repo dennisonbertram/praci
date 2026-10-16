@@ -133,11 +133,20 @@ it("adds an available page and shows its link", async () => {
 
 it("shows the error and adds no row when add fails", async () => {
   rpcMock.add.mockRejectedValue(new Error("nope"));
+  // The jsdom pointer events can reopen the menu afterwards, which clears the error as designed,
+  // so record that the alert appeared.
+  const seen: string[] = [];
+  const observer = new MutationObserver(() => {
+    const alert = container.querySelector("[role=alert]")?.textContent;
+    if (alert) seen.push(alert);
+  });
+  observer.observe(container, { childList: true, subtree: true, characterData: true });
   await render([template()]);
   await click(addRow());
   await click(byText("Team health"));
+  observer.disconnect();
+  expect(seen).toContain("Could not add the page");
   expect(pageRow()).toBeNull();
-  expect(container.querySelector("[role=alert]")?.textContent).toBe("Could not add the page");
   expect(addRow()).not.toBeNull();
 });
 
@@ -193,4 +202,24 @@ it("applies only the latest mutation when responses arrive out of order", async 
   await act(async () => slowAdd.resolve(state(["alpha"], ["beta"])));
   expect(container.querySelector("[data-testid=sidebar-page-beta]")).not.toBeNull();
   expect(container.querySelector("[data-testid=sidebar-page-alpha]")).toBeNull();
+});
+
+it("shows an alert when the initial list fails", async () => {
+  rpcMock.list.mockRejectedValue(new Error("down"));
+  await render([template()]);
+  expect(container.querySelector("[role=alert]")?.textContent).toBe("Could not add the page");
+  expect(addRow()).toBeNull();
+});
+
+it("opens the page after adding it", async () => {
+  await render([template()]);
+  await click(addRow());
+  await click(byText("Team health"));
+  expect(path).toBe("/app/team-health");
+});
+
+it("does not render saved pages whose template is not available", async () => {
+  rpcMock.list.mockResolvedValue(state(["team-health"], []));
+  await render([template({ available: false }), template({ key: "other", available: true })]);
+  expect(pageRow()).toBeNull();
 });

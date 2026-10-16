@@ -5,7 +5,7 @@ export const SIDEBAR_PAGE_TEMPLATES = [
   {
     key: "team-health",
     route: "/app/team-health",
-    platforms: ["web"],
+    platforms: ["web", "desktop"],
     available: false,
     ownerOnly: true,
   },
