@@ -1,7 +1,7 @@
-import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { isLocalMcpHost } from "@rakazo/contracts";
 import type { ResolvedAddress, ResolveHostname } from "./network-address.js";
+import { defaultResolveHostname } from "./network-address.js";
 import { createPrivateNetworkFetch } from "./remote-mcp.js";
 import { readBodyCapped } from "./web-ssrf.js";
 
@@ -67,9 +67,6 @@ function requestUrl(baseUrl: string, path: string): string {
   url.pathname = `${url.pathname.replace(/\/+$/, "")}${path}`;
   return url.href;
 }
-
-const defaultResolveHostname: ResolveHostname = (hostname) =>
-  lookup(hostname, { all: true, verbatim: true });
 
 function resolverFor(config: SupermemoryConnectionConfig): ResolveHostname {
   if (!config.pinnedAddresses) return config.resolveHostname ?? defaultResolveHostname;

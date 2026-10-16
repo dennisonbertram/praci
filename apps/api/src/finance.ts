@@ -40,9 +40,9 @@ import type {
   TreasuryYieldMonth,
 } from "@rakazo/contracts";
 import {
+  actorScope,
   FINANCE_MCP_ENDPOINTS,
   FinanceProviderSchema,
-  financeAgentSpawnKey,
   financeProviderForEndpoint,
   RunwayCryptoScopeSchema,
 } from "@rakazo/contracts";
@@ -72,7 +72,11 @@ import {
 } from "@rakazo/core";
 import type { createRepos, Prisma, PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
-import { assignFinanceServers, ensureFinanceAgent } from "./finance-agent.js";
+import {
+  assignToExistingFinanceAgent,
+  ensureFinanceAgent,
+  financeAgentWhere,
+} from "./finance-agent.js";
 import { loadCryptoSummary, syncCryptoQuietly } from "./finance-crypto.js";
 import {
   exchangesDue,
@@ -137,7 +141,6 @@ const LIST_LIMIT = 500;
 // Every number comes from the pure calculations in @rakazo/core. Handlers load rows (always scoped
 // to the actor's space and user), slice them by date and hand them over.
 
-const scopeOf = (actor: Actor) => ({ spaceId: actor.spaceId, userId: actor.userId });
 const nowOf = (deps: FinanceDeps) => deps.now?.() ?? new Date();
 const dayOf = (date: Date) => date.toISOString().slice(0, 10);
 const addDays = (day: string, days: number) =>
@@ -214,7 +217,7 @@ const toYield = (row: Prisma.FinanceTreasuryYieldGetPayload<object>): TreasuryYi
 
 async function loadTransactions(deps: FinanceDeps, actor: Actor) {
   const rows = await deps.prisma.financeTransaction.findMany({
-    where: scopeOf(actor),
+    where: actorScope(actor),
     orderBy: { postedAt: "desc" },
   });
   return rows.map(toTransaction);
@@ -222,7 +225,7 @@ async function loadTransactions(deps: FinanceDeps, actor: Actor) {
 
 async function loadAccounts(deps: FinanceDeps, actor: Actor) {
   const rows = await deps.prisma.financeAccount.findMany({
-    where: scopeOf(actor),
+    where: actorScope(actor),
     orderBy: [{ kind: "asc" }, { name: "asc" }],
   });
   return rows.map(toAccount);
@@ -263,7 +266,7 @@ export async function financeAgent(deps: FinanceDeps, actor: Actor): Promise<Bot
 
 async function financeServers(deps: FinanceDeps, actor: Actor) {
   const rows = await deps.prisma.mcpServer.findMany({
-    where: { ...scopeOf(actor), enabled: true },
+    where: { ...actorScope(actor), enabled: true },
     orderBy: { createdAt: "asc" },
   });
   return rows.flatMap((row) => {
@@ -280,7 +283,7 @@ export async function financeConnect(
   // A disabled server is reused (and turned back on), not left to block the fixed slug.
   const forProvider = async () => {
     const rows = await deps.prisma.mcpServer.findMany({
-      where: scopeOf(actor),
+      where: actorScope(actor),
       orderBy: { createdAt: "asc" },
     });
     const own = rows.filter((r) => financeProviderForEndpoint(r.endpoint) === input.provider);
@@ -298,7 +301,7 @@ export async function financeConnect(
     (await deps.prisma.mcpServer
       .create({
         data: {
-          ...scopeOf(actor),
+          ...actorScope(actor),
           slug: `finance-${input.provider}`,
           name: input.provider === "mercury" ? "Mercury" : "Brex",
           transport: "streamable_http",
@@ -313,14 +316,10 @@ export async function financeConnect(
         return raced;
       }));
   // An agent that already exists gets the new server, with read tools only, without waiting for the panel.
-  const bot = await deps.prisma.bot.findFirst({
-    where: { ...scopeOf(actor), spawnKey: financeAgentSpawnKey(actor.userId), archivedAt: null },
-    select: { id: true },
-  });
-  if (bot) await assignFinanceServers(deps.prisma, actor, bot.id);
+  await assignToExistingFinanceAgent(deps.prisma, actor);
   // A stored token the vendor refused would otherwise be reused and the sign-in never asked for.
   const state = await deps.prisma.financeSyncState.findFirst({
-    where: { mcpServerId: server.id, ...scopeOf(actor) },
+    where: { mcpServerId: server.id, ...actorScope(actor) },
     select: { needsReconnect: true },
   });
   const reauthorize =
@@ -330,7 +329,7 @@ export async function financeConnect(
   try {
     const begun = await deps.beginMcpOAuth({
       serverId: server.id,
-      ...scopeOf(actor),
+      ...actorScope(actor),
       redirectUri: input.redirectUri,
       ...(reauthorize ? { reauthorize: true } : {}),
     });
@@ -353,7 +352,7 @@ export async function financeRefresh(
   }
   await syncFinanceForUser(
     { prisma: deps.prisma, callToolFor: deps.callToolFor, now: deps.now },
-    scopeOf(actor),
+    actorScope(actor),
     { force: true, signal },
   );
   await syncCryptoQuietly(deps, actor, { signal });
@@ -366,7 +365,7 @@ export async function financeRefresh(
 /** Each provider's connection status, and whether a connected one is due for a background sync. */
 async function financeSources(deps: FinanceDeps, actor: Actor, now: Date) {
   const servers = await financeServers(deps, actor);
-  const states = await deps.prisma.financeSyncState.findMany({ where: scopeOf(actor) });
+  const states = await deps.prisma.financeSyncState.findMany({ where: actorScope(actor) });
   const stateOf = new Map(states.map((s) => [s.mcpServerId, s]));
   const sources: FinanceSource[] = [];
   const syncedAt: (Date | null)[] = [];
@@ -416,14 +415,10 @@ export async function financeOverview(
       financeSources(deps, actor, now),
       loadAccounts(deps, actor),
       loadTransactions(deps, actor),
-      deps.prisma.financeBill.findMany({ where: scopeOf(actor), orderBy: { dueAt: "asc" } }),
-      deps.prisma.financeTreasuryYield.findMany({ where: scopeOf(actor) }),
+      deps.prisma.financeBill.findMany({ where: actorScope(actor), orderBy: { dueAt: "asc" } }),
+      deps.prisma.financeTreasuryYield.findMany({ where: actorScope(actor) }),
       deps.prisma.bot.findFirst({
-        where: {
-          ...scopeOf(actor),
-          spawnKey: financeAgentSpawnKey(actor.userId),
-          archivedAt: null,
-        },
+        where: financeAgentWhere(actor),
         select: { id: true, name: true },
       }),
       loadCryptoSummary(deps, actor),
@@ -536,7 +531,7 @@ export async function financeAccounts(
   const [accounts, txns, yieldRows, crypto, scope, snapshots] = await Promise.all([
     loadAccounts(deps, actor),
     loadTransactions(deps, actor),
-    deps.prisma.financeTreasuryYield.findMany({ where: scopeOf(actor) }),
+    deps.prisma.financeTreasuryYield.findMany({ where: actorScope(actor) }),
     loadCryptoSummary(deps, actor),
     loadRunwayCrypto(deps.prisma, actor),
     loadSnapshots(deps, actor),
@@ -564,12 +559,12 @@ export async function financeAccountDetail(
 ): Promise<FinanceAccountOutput> {
   const now = nowOf(deps);
   const found = await deps.prisma.financeAccount.findFirst({
-    where: { id: input.id, ...scopeOf(actor) },
+    where: { id: input.id, ...actorScope(actor) },
   });
   if (!found) throw notFound();
   const account = toAccount(found);
   const own = {
-    ...scopeOf(actor),
+    ...actorScope(actor),
     mcpServerId: found.mcpServerId,
     accountExternalId: account.externalId,
   };
@@ -713,7 +708,7 @@ export async function financeBalanceSeries(
 
 async function loadSnapshots(deps: FinanceDeps, actor: Actor, walletId?: string) {
   const rows = await deps.prisma.financeCryptoSnapshot.findMany({
-    where: { ...scopeOf(actor), ...(walletId ? { walletId } : {}) },
+    where: { ...actorScope(actor), ...(walletId ? { walletId } : {}) },
   });
   // ponytail: reads every snapshot (wallets x days); bound by a day window if it grows large.
   const wallets = rows.map((r) => ({
@@ -733,7 +728,7 @@ export async function financeCryptoHistory(
 ): Promise<{ points: CryptoBalancePoint[] }> {
   if (input.walletId) {
     const wallet = await deps.prisma.financeWallet.findFirst({
-      where: { id: input.walletId, ...scopeOf(actor) },
+      where: { id: input.walletId, ...actorScope(actor) },
       select: { id: true },
     });
     if (!wallet) throw notFound();
@@ -756,8 +751,8 @@ export async function financeSetPreferences(
   input: FinancePreferences,
 ): Promise<FinancePreferences> {
   const row = await deps.prisma.financePreference.upsert({
-    where: { spaceId_userId: scopeOf(actor) },
-    create: { ...scopeOf(actor), runwayCrypto: input.runwayCrypto },
+    where: { spaceId_userId: actorScope(actor) },
+    create: { ...actorScope(actor), runwayCrypto: input.runwayCrypto },
     update: { runwayCrypto: input.runwayCrypto },
   });
   return { runwayCrypto: RunwayCryptoScopeSchema.parse(row.runwayCrypto) };
@@ -895,7 +890,7 @@ export async function financeTransaction(
   input: { id: string },
 ): Promise<FinanceTransactionOutput> {
   const row = await deps.prisma.financeTransaction.findFirst({
-    where: { id: input.id, ...scopeOf(actor) },
+    where: { id: input.id, ...actorScope(actor) },
   });
   if (!row) throw notFound();
   const transaction = toTransaction(row);
@@ -925,12 +920,12 @@ export async function financeReceiptUrl(
   signal?: AbortSignal,
 ): Promise<FinanceReceiptUrlOutput> {
   const row = await deps.prisma.financeTransaction.findFirst({
-    where: { id: input.transactionId, ...scopeOf(actor) },
+    where: { id: input.transactionId, ...actorScope(actor) },
   });
   // Mercury's listing never says whether a row has attachments, so only the vendor lookup can tell.
   if (!row?.mcpServerId || (!row.hasReceipt && row.provider !== "mercury")) throw notFound();
   const server = await deps.prisma.mcpServer.findFirst({
-    where: { id: row.mcpServerId, ...scopeOf(actor), enabled: true },
+    where: { id: row.mcpServerId, ...actorScope(actor), enabled: true },
   });
   const provider = financeProviderForEndpoint(server?.endpoint);
   if (!server?.endpoint || !provider) throw notFound();

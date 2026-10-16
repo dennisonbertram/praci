@@ -339,3 +339,31 @@ describe("alias", () => {
     expect(() => gmail.alias("GMAIL:10", "missing")).toThrow("No seeded mailbox missing");
   });
 });
+
+describe("isolate", () => {
+  it("gives each account its own copy of the mail, so a change stays with that account", () => {
+    const seed = {
+      address: "me@example.test",
+      messages: [
+        {
+          id: "m1",
+          date: NOW.toISOString(),
+          labels: ["INBOX", "UNREAD"],
+          from: "a@example.test",
+          to: "me@example.test",
+          subject: "Hi",
+        },
+      ],
+    };
+    const gmail = new GmailApiEmulator({ now: NOW, mailboxes: { seeded: seed } });
+    gmail.isolate("GMAIL:1", "seeded", seed);
+    gmail.isolate("GMAIL:2", "seeded", seed);
+    const read = gmail.handle("GMAIL:1", `${BASE}/messages/m1/modify`, "POST", {
+      removeLabelIds: ["UNREAD"],
+    });
+    expect(read.status).toBe(200);
+    expect(ids(gmail, "GMAIL:1", "is:unread")).toEqual([]);
+    expect(ids(gmail, "GMAIL:2", "is:unread")).toEqual(["m1"]);
+    expect(() => gmail.isolate("GMAIL:3", "missing", seed)).toThrow("No seeded mailbox missing");
+  });
+});

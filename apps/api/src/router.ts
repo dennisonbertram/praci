@@ -208,7 +208,9 @@ import {
   formatMessagingLinkCode,
   InvalidSpaceNameError,
   IsolationError,
+  isRecordNotFound,
   issueMessagingLinkCode,
+  isUniqueViolation,
   listBoards,
   listSpaceBackupModels,
   listTicketComments,
@@ -4857,6 +4859,9 @@ export function createRouter(deps: RouterDeps) {
             userId: context.actor.userId,
             status: { in: ["connected", "pending", "error"] },
           },
+          // Without an order Postgres returns rows in storage order, which changes when a row is
+          // updated, so the accounts of one app swapped places between loads.
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         });
         return rows.map((row) => ({
           id: row.id,
@@ -7519,14 +7524,6 @@ async function messagingIdentityDto(
     botId: identity.botId,
     botName: bot?.name ?? "Assistant",
   };
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
-}
-
-function isRecordNotFound(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2025");
 }
 
 function messagingChannelDto(membership: {

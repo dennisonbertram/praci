@@ -1,11 +1,11 @@
+import { i18n } from "@lingui/core";
 import type { ComputerCommand, ProductEvent } from "@rakazo/contracts";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   applyComputerCommandHistory,
   COMPUTER_COMMAND_FEED_LIMIT,
   formatComputerCommand,
   formatComputerCommandFeed,
-  formatSize,
   mergeComputerCommand,
   parentPath,
   publishComputerCommand,
@@ -33,6 +33,8 @@ const labels = {
 };
 
 describe("computer terminal feed", () => {
+  beforeAll(() => i18n.loadAndActivate({ locale: "en", messages: {} }));
+
   it("strips control sequences from command text and output before rendering", () => {
     expect(
       formatComputerCommand(
@@ -164,13 +166,5 @@ describe("computer files", () => {
   it("navigates up to the bot home", () => {
     expect(parentPath("notes/drafts")).toBe("notes");
     expect(parentPath("notes")).toBe("");
-  });
-
-  it("formats sizes compactly", () => {
-    expect([formatSize(512), formatSize(2048), formatSize(3 * 1024 * 1024)]).toEqual([
-      "512 B",
-      "2.0 KB",
-      "3.0 MB",
-    ]);
   });
 });

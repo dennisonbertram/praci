@@ -1,7 +1,7 @@
-import type { PinList } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import type { PinOp } from "./pin-list";
-import { addItem, deleteItem, editItem, rebasePins, toggleItem } from "./pin-list";
+import type { PinOp } from "./pin-list.js";
+import { addItem, deleteItem, editItem, rebasePins, setItemDone, toggleItem } from "./pin-list.js";
+import type { PinList } from "./pins.js";
 
 const list = (): PinList => ({
   title: "Todo",
@@ -56,5 +56,12 @@ describe("rebasePins", () => {
     const gone = deleteItem(server(), "b");
     const queued: PinOp[] = [(l) => toggleItem(l, "b"), (l) => editItem(l, "b", "x")];
     expect(rebasePins(gone, queued)).toEqual(gone);
+  });
+});
+
+describe("setItemDone", () => {
+  it("sets the flag explicitly instead of flipping it", () => {
+    expect(setItemDone(list(), "b", true).items.map((i) => i.done)).toEqual([false, true]);
+    expect(setItemDone(list(), "a", true).items.map((i) => i.done)).toEqual([true, true]);
   });
 });

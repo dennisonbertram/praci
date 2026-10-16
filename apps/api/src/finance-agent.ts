@@ -1,5 +1,6 @@
 import type { Actor, Bot } from "@rakazo/contracts";
 import {
+  actorScope,
   CRYPTO_READ_TOOLS,
   FINANCE_READ_TOOLS,
   financeAgentSpawnKey,
@@ -44,6 +45,22 @@ export async function assignFinanceServers(
       update: { allowAllTools: false, allowedTools },
     });
   }
+}
+
+/** Matches the user's live Finance agent, found by its spawn key. */
+export const financeAgentWhere = (actor: Actor) => ({
+  ...actorScope(actor),
+  spawnKey: financeAgentSpawnKey(actor.userId),
+  archivedAt: null,
+});
+
+/** Gives the finance servers to the user's Finance agent when one already exists. */
+export async function assignToExistingFinanceAgent(
+  prisma: Pick<PrismaClient, "bot" | "mcpServer" | "botMcpServer">,
+  actor: Actor,
+): Promise<void> {
+  const bot = await prisma.bot.findFirst({ where: financeAgentWhere(actor), select: { id: true } });
+  if (bot) await assignFinanceServers(prisma, actor, bot.id);
 }
 
 /**

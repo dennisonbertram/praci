@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, finishConnectDialog, signup } from "./helpers";
+import { captureScreenshot, completeOnboarding, finishConnectDialog, rpc, signup } from "./helpers";
 
 const api = () => process.env.API_URL ?? "http://127.0.0.1:3110";
 
@@ -88,10 +88,10 @@ test("a reply quote dates the original in the browser's time zone and a forward 
   await expect
     .poll(
       async () => {
-        const snapshot = (await (await page.request.get(`${api()}/__e2e/gmail`)).json()) as Record<
-          string,
-          { sent: { raw: string }[] }
-        >;
+        const { userId } = await rpc<{ userId: string }>(page, "me", {});
+        const snapshot = (await (
+          await page.request.get(`${api()}/__e2e/gmail?userId=${userId}`)
+        ).json()) as Record<string, { sent: { raw: string }[] }>;
         return snapshot["e2e-first"]?.sent.at(-1)?.raw ?? "";
       },
       { timeout: 30_000 },

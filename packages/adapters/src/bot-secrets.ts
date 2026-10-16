@@ -11,6 +11,7 @@ import {
   isPrivateNetworkHost,
   SecretHttpRequest,
 } from "@rakazo/contracts";
+import { isRecord } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "@rakazo/db";
 import { withTransactionRetry } from "@rakazo/db";
 import { combineSignals, redactConnectorPayload } from "./connector-safety.js";
@@ -255,10 +256,6 @@ export function connectionIdArgument(value: unknown): string | undefined {
   return trimmed;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
 /**
  * `{ name, origin, auth }` only. Secret fields must not survive, including ones nested in
  * `auth` or carried in an origin string. The effect request is this object, and destination
@@ -295,7 +292,7 @@ function destinationMetadata(record: Record<string, unknown>): Record<string, un
 function authMetadata(value: unknown): unknown {
   const parsed = BotSecretAuth.safeParse(value);
   if (parsed.success) return parsed.data;
-  if (!isPlainObject(value)) return undefined;
+  if (!isRecord(value)) return undefined;
   if (value.type === "header") {
     if (typeof value.name !== "string") return { type: "header" };
     const header = BotSecretAuth.safeParse({ type: "header", name: value.name });
@@ -337,13 +334,13 @@ function originMetadata(value: unknown): string | undefined {
 function parsedCredentialObject(value: unknown): unknown {
   if (typeof value !== "string") {
     // Not metadata. Keep the attempt, but do not forward the raw value into the effect.
-    return isPlainObject(value) ? destinationMetadata(value) : {};
+    return isRecord(value) ? destinationMetadata(value) : {};
   }
   const trimmed = value.trim();
   if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return {};
   try {
     const parsed = JSON.parse(trimmed) as unknown;
-    if (isPlainObject(parsed)) return destinationMetadata(parsed);
+    if (isRecord(parsed)) return destinationMetadata(parsed);
   } catch {
     return {};
   }

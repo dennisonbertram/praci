@@ -219,9 +219,11 @@ export function saveInbox(
 }
 
 export function savedThreadSnapshot(snapshot: MobileSnapshot): MobileSnapshot {
-  const { cursor: _cursor, activeRuns: _activeRuns, computer: _computer, ...rest } = snapshot;
+  const { activeRuns: _activeRuns, computer: _computer, ...rest } = snapshot;
   return {
     ...rest,
+    // -1 is "no replay cursor": a saved thread must resubscribe from the live snapshot.
+    cursor: -1,
     messages: snapshot.messages.slice(-SAVED_CHAT_MESSAGES).map((message) => ({
       ...message,
       blocks: message.blocks.map((block) => {

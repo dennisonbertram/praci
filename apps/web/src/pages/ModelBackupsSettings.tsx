@@ -10,6 +10,7 @@ import {
 import { Button, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { rpc, selectedSpaceId } from "../lib/rpc";
+import { errorText } from "../lib/user-error";
 
 type Scope = { userId: string; spaceId: string };
 type BackupsState = {
@@ -123,7 +124,7 @@ export function ModelBackupsSettings({
                 ...previous,
                 loading: false,
                 ready: false,
-                error: error instanceof Error ? error.message : t`Could not load backup models`,
+                error: errorText(error, t`Could not load backup models`),
               }
             : previous,
         );
@@ -212,7 +213,7 @@ export function ModelBackupsSettings({
           ? {
               ...previous,
               saving: false,
-              error: error instanceof Error ? error.message : t`Could not save backup models`,
+              error: errorText(error, t`Could not save backup models`),
               notice: null,
             }
           : previous,

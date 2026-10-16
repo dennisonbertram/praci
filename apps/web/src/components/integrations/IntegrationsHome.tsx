@@ -32,7 +32,7 @@ import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
 import { FinanceSection } from "./FinanceSection";
-import { AgentStack, StatusBadge } from "./parts";
+import { AgentStack, IntegrationTile, StatusBadge } from "./parts";
 import { agentsFor, type IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
@@ -47,9 +47,9 @@ function hostOf(value: string | null) {
 
 function Card({ children }: { children: ReactNode }) {
   return (
-    <div className="relative flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 transition-colors hover:bg-muted/40">
+    <IntegrationTile className="relative  transition-colors hover:bg-muted/40">
       {children}
-    </div>
+    </IntegrationTile>
   );
 }
 
@@ -220,7 +220,7 @@ function AppTile({
 }) {
   const { t } = useLingui();
   return (
-    <div className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5">
+    <IntegrationTile>
       <CardHead name={name} logo={logo} sub={description ?? undefined} />
       <div className="mt-auto flex">
         <Button
@@ -233,7 +233,7 @@ function AppTile({
           <Trans>Connect</Trans>
         </Button>
       </div>
-    </div>
+    </IntegrationTile>
   );
 }
 
@@ -285,14 +285,17 @@ export function IntegrationsHome({
   const servers = data.servers.filter((server) => !financeServerIds.includes(server.id));
   const filtering = Boolean(query.trim()) || category !== "all";
   const hasConnected = apps.length + servers.length + data.sources.length > 0;
-  // Native Google items fill the catalog without a managed provider, so ask the setup state.
-  // Without it (the call failed), fall back to whether the catalog has anything.
-  const managedConfigured = data.setup
-    ? data.setup.providers.some(
-        (provider) =>
-          provider.configured && (provider.id === "composio" || provider.id === "pipedream"),
-      )
-    : data.catalog.length > 0;
+  // Native Google items fill the catalog without a managed provider, so ask the setup state. Only
+  // the deployment owner is told which providers are configured; a member (whose list is empty)
+  // can tell from the catalog itself, and a failed call falls back to whether it has anything.
+  const managedConfigured = !data.setup
+    ? data.catalog.length > 0
+    : data.setup.canConfigure
+      ? data.setup.providers.some(
+          (provider) =>
+            provider.configured && (provider.id === "composio" || provider.id === "pipedream"),
+        )
+      : data.catalog.some((item) => item.connectorId !== "google");
   const notSetUp = data.loaded && !managedConfigured && !data.catalogFailed;
 
   // /app/integrations?category=finance preselects the chip; scroll once the page has content.

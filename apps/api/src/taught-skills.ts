@@ -44,6 +44,7 @@ import {
   type createRepos,
   expireComputerExecutionLeases,
   IsolationError,
+  isUniqueViolation,
   type PrismaClient,
   type ThreadEvents,
 } from "@rakazo/db";
@@ -388,11 +389,7 @@ export function createTaughtSkillsService(deps: TaughtSkillsDeps) {
         });
       } catch (error) {
         if (error instanceof ORPCError) throw error;
-        if (
-          error instanceof Error &&
-          "code" in error &&
-          (error as { code?: string }).code === "P2002"
-        ) {
+        if (isUniqueViolation(error)) {
           throw new ORPCError("CONFLICT", { message: "A teaching session is already active" });
         }
         throw error;

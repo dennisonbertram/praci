@@ -6,7 +6,7 @@ import type {
   FinanceSource,
 } from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { connectFinanceProvider } from "../../lib/finance-connect";
 import { financePath } from "../../lib/finance-route";
@@ -17,28 +17,38 @@ import { AlchemyConnectDialog } from "./AlchemyConnectDialog";
 import { AppLogo } from "./AppLogo";
 import { BlockscoutConnectDialog } from "./BlockscoutConnectDialog";
 import { ExchangeConnectDialog } from "./ExchangeConnectDialog";
-import { StatusBadge } from "./parts";
+import { IntegrationTile, StatusBadge } from "./parts";
+
+/** False once the tile has unmounted, so a slow request does not set state afterwards. */
+function useMounted() {
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  return mounted;
+}
 
 /** Blockscout needs a PRO API key: a server without one does not count as connected. */
 function CryptoTile() {
   const { t } = useLingui();
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [dialog, setDialog] = useState(false);
+  const mounted = useMounted();
 
   const load = () =>
     rpc.finance
       .crypto()
-      .then((crypto) => setHasKey(crypto.connected && crypto.hasApiKey))
-      .catch(() => setHasKey(false));
+      .then((crypto) => mounted.current && setHasKey(crypto.connected && crypto.hasApiKey))
+      .catch(() => mounted.current && setHasKey(false));
   useEffect(() => {
     void load();
   }, []);
 
   return (
-    <div
-      data-testid="finance-tile-crypto"
-      className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
-    >
+    <IntegrationTile data-testid="finance-tile-crypto">
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Blockscout" logo="/logos/blockscout.svg" />
         <div className="min-w-0">
@@ -83,7 +93,7 @@ function CryptoTile() {
       {dialog ? (
         <BlockscoutConnectDialog onConnected={() => void load()} onClose={() => setDialog(false)} />
       ) : null}
-    </div>
+    </IntegrationTile>
   );
 }
 
@@ -92,21 +102,19 @@ function AlchemyTile() {
   const { t } = useLingui();
   const [state, setState] = useState<{ connected: boolean; lastError: string | null } | null>(null);
   const [dialog, setDialog] = useState(false);
+  const mounted = useMounted();
 
   const load = () =>
     rpc.finance
       .crypto()
-      .then((crypto) => setState(crypto.alchemy))
-      .catch(() => setState({ connected: false, lastError: null }));
+      .then((crypto) => mounted.current && setState(crypto.alchemy))
+      .catch(() => mounted.current && setState({ connected: false, lastError: null }));
   useEffect(() => {
     void load();
   }, []);
 
   return (
-    <div
-      data-testid="finance-tile-alchemy"
-      className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
-    >
+    <IntegrationTile data-testid="finance-tile-alchemy">
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Alchemy" logo="/logos/alchemy.svg" />
         <div className="min-w-0">
@@ -159,7 +167,7 @@ function AlchemyTile() {
       {dialog ? (
         <AlchemyConnectDialog onConnected={() => void load()} onClose={() => setDialog(false)} />
       ) : null}
-    </div>
+    </IntegrationTile>
   );
 }
 
@@ -169,22 +177,20 @@ function ExchangeTile({ provider }: { provider: ExchangeProvider }) {
   const exchange = EXCHANGES.find((e) => e.provider === provider) ?? EXCHANGES[0];
   const [found, setFound] = useState<FinanceExchange | null | undefined>(undefined);
   const [dialog, setDialog] = useState(false);
+  const mounted = useMounted();
 
   const load = () =>
     rpc.finance
       .exchanges()
-      .then((all) => setFound(all.find((e) => e.provider === provider) ?? null))
-      .catch(() => setFound(null));
+      .then((all) => mounted.current && setFound(all.find((e) => e.provider === provider) ?? null))
+      .catch(() => mounted.current && setFound(null));
   useEffect(() => {
     void load();
   }, []);
 
   const connected = found?.connected === true;
   return (
-    <div
-      data-testid={`finance-tile-${provider}`}
-      className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
-    >
+    <IntegrationTile data-testid={`finance-tile-${provider}`}>
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name={exchange.name} logo={exchange.logo} />
         <div className="min-w-0">
@@ -233,7 +239,7 @@ function ExchangeTile({ provider }: { provider: ExchangeProvider }) {
           onClose={() => setDialog(false)}
         />
       ) : null}
-    </div>
+    </IntegrationTile>
   );
 }
 
@@ -284,11 +290,7 @@ export function FinanceSection({
         const reconnect = status === "needs_reconnect" || status === "error";
         const error = errors[provider];
         return (
-          <div
-            key={provider}
-            data-testid={`finance-tile-${provider}`}
-            className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5"
-          >
+          <IntegrationTile key={provider} data-testid={`finance-tile-${provider}`}>
             <div className="flex min-w-0 items-center gap-3">
               <AppLogo name={name} logo={logo} />
               <div className="min-w-0">
@@ -337,7 +339,7 @@ export function FinanceSection({
                 {error}
               </p>
             ) : null}
-          </div>
+          </IntegrationTile>
         );
       })}
       <CryptoTile />

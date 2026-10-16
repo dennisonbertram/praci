@@ -1116,6 +1116,14 @@ export const ModelBackupListSchema = z
 
 export const OPENAI_COMPATIBLE_PROVIDER_ID = "openai-compatible";
 
+/** The max-tokens input text for a provider: compatible endpoints default, others stay blank. */
+export function connectionMaxTokensField(providerId: string, stored: number | undefined): string {
+  if (providerId === OPENAI_COMPATIBLE_PROVIDER_ID) {
+    return String(stored ?? DEFAULT_MODEL_MAX_TOKENS);
+  }
+  return stored !== undefined ? String(stored) : "";
+}
+
 export const ModelConnectInputSchema = z
   .object({
     ...ModelContextLimitsSchema.shape,

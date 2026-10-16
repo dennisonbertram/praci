@@ -2,6 +2,7 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { ComposeMode, ComposeResult } from "@rakazo/contracts";
 import { MAX_COMPOSE_ATTACHMENT_BYTES, MAX_COMPOSE_ATTACHMENT_MB } from "@rakazo/contracts";
+import { newClientId } from "@rakazo/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,14 +26,9 @@ import {
 import { EditorContent } from "@tiptap/react";
 import { Paperclip, Trash2, Type, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  clientLocale,
-  fileToBase64,
-  formatBytes,
-  prefillHtml,
-  textToHtml,
-} from "../lib/compose-body";
+import { clientLocale, fileToBase64, prefillHtml, textToHtml } from "../lib/compose-body";
 import { createDraftSaver } from "../lib/compose-draft";
+import { formatBytes } from "../lib/format-bytes";
 import { holdDiscard, holdSend } from "../lib/outbox";
 import { invalidRecipients, summarizeRecipients, takeEntries } from "../lib/recipients";
 import { rpc } from "../lib/rpc";
@@ -85,13 +81,6 @@ export interface ComposeRestore {
 }
 
 type Notice = { kind: "saved" | "error"; text: string };
-
-/** Random enough to name one composer: it is the key that keeps a retried send from sending twice. */
-function newClientId(): string {
-  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
-}
 
 const isBlank = (f: Fields) =>
   [f.subject, f.text].every((text) => text.trim() === "") &&

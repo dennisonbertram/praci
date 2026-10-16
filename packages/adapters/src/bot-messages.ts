@@ -12,6 +12,7 @@ import {
 import {
   appendEventInTransaction,
   createThreadMessageInTransaction,
+  isUniqueViolation,
   type PrismaClient,
   withTransactionRetry,
 } from "@rakazo/db";
@@ -290,7 +291,7 @@ export async function messageBot(
   } catch (error) {
     // Two concurrent retries can both miss the in-transaction lookup; the
     // loser hits the unique key. Treat that as a successful replay.
-    if (deliveryKey && isUniqueConstraintError(error)) {
+    if (deliveryKey && isUniqueViolation(error)) {
       const winner = await deps.prisma.message.findUnique({
         where: { threadId_clientNonce: { threadId: targetThreadId, clientNonce: deliveryKey } },
         select: { id: true },
@@ -395,8 +396,4 @@ async function markBotOutcomeReturned(prisma: PrismaClient, runId: string) {
     },
     data: { botOutcomeReturnedAt: new Date() },
   });
-}
-
-function isUniqueConstraintError(error: unknown) {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
 }

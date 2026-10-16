@@ -147,13 +147,13 @@ describe("ModelBackupsSettings", () => {
   });
 
   it("keeps editing disabled after a failed load so an unseen saved list cannot be replaced", async () => {
-    backupApi.backups.mockRejectedValueOnce(new Error("Load failed"));
+    backupApi.backups.mockRejectedValueOnce(new Error("Backups are unavailable"));
     backupApi.backups.mockResolvedValueOnce([]);
     await act(async () => {
       root.render(<ModelBackupsSettings {...scope} catalog={catalog} credentials={credentials} />);
     });
     await flush();
-    expect(container.querySelector('[role="alert"]')?.textContent).toBe("Load failed");
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("Backups are unavailable");
     expect(container.querySelector<HTMLSelectElement>("select")?.disabled).toBe(true);
     expect(button("Add").disabled).toBe(true);
     expect(button("Save backups").disabled).toBe(true);

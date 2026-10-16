@@ -9,6 +9,7 @@ import {
   sandboxCheckFailureMessage,
   sandboxEnvGuidanceText,
 } from "../lib/computer-sandbox";
+import { useCopyText } from "../lib/copy-text";
 import { SuccessPop } from "./ai/primitives";
 
 export { computersAreUnavailable } from "../lib/computer-sandbox";
@@ -38,7 +39,7 @@ export function ComputersUnavailableHint({
   const [provider, setProvider] = useState(initialProvider);
   const [phase, setPhase] = useState<SandboxAvailabilityPhase>("idle");
   const [failureMessage, setFailureMessage] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, copy] = useCopyText();
   const onRecoveredRef = useRef(onRecovered);
   onRecoveredRef.current = onRecovered;
   const onRecoveryDismissedRef = useRef(onRecoveryDismissed);
@@ -78,17 +79,6 @@ export function ComputersUnavailableHint({
       setFailureMessage(sandboxCheckFailureMessage(error));
       // Do not treat stale cached provider as authoritative after a failed check.
       setProvider(null);
-    }
-  }
-
-  async function handleCopyGuidance() {
-    const text = sandboxEnvGuidanceText();
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
     }
   }
 
@@ -140,7 +130,7 @@ export function ComputersUnavailableHint({
             variant="ghost"
             size="sm"
             className="rounded-full"
-            onClick={() => void handleCopyGuidance()}
+            onClick={() => copy(sandboxEnvGuidanceText())}
           >
             {copied ? <Trans>Copied</Trans> : <Trans>Copy .env example</Trans>}
           </Button>

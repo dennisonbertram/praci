@@ -54,7 +54,6 @@ vi.mock("react-native", () => {
 vi.mock("../components/glass-icon-button", () => ({ GlassIconButton: () => null }));
 vi.mock("./api", () => ({
   rpc: vi.fn().mockResolvedValue({ name: "Test" }),
-  applyMobileThreadEvent: vi.fn(),
   blockText: vi.fn(),
   captureApiRequestContext: vi.fn(),
   subscribeThread: vi.fn(),

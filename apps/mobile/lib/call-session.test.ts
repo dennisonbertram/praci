@@ -14,7 +14,6 @@ vi.mock("expo-file-system", () => ({ File: class {}, Paths: {} }));
 vi.mock("./voice", () => ({ speakText: vi.fn(), stopSpeaking: vi.fn() }));
 vi.mock("./call-sounds", () => ({ playCallCue: vi.fn() }));
 vi.mock("./api", () => ({
-  applyMobileThreadEvent: vi.fn(),
   blockText: vi.fn(),
   captureApiRequestContext: vi.fn(),
   rpc: vi.fn(),
