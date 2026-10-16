@@ -2097,6 +2097,10 @@ msgstr "Could not load skill"
 msgid "Could not load the app list. Reload to try again."
 msgstr "Could not load the app list. Reload to try again."
 
+#: src/pages/CapTable.tsx
+msgid "Could not load the cap table"
+msgstr "Could not load the cap table"
+
 #: src/pages/Artifacts.tsx
 msgid "Could not load this artifact."
 msgstr "Could not load this artifact."

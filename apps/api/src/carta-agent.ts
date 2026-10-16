@@ -6,6 +6,7 @@ import {
   cartaAgentSpawnKey,
   isCartaEndpoint,
 } from "@rakazo/contracts";
+import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
 import type { createRepos, PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 
@@ -94,9 +95,6 @@ export async function ensureCartaAgent(
   return bot;
 }
 
-/** Run states that mean a populate run is still going. */
-const ACTIVE_RUN_STATUSES = ["queued", "leased", "running"];
-
 /** Matches the user's populate runs: the Carta agent's runs that no routine and no typed message started. */
 const syncRunWhere = (actor: Actor, botId?: string) => ({
   ...actorScope(actor),
@@ -112,7 +110,7 @@ export async function isCartaSyncing(
 ): Promise<boolean> {
   return Boolean(
     await prisma.run.findFirst({
-      where: { ...syncRunWhere(actor), status: { in: ACTIVE_RUN_STATUSES } },
+      where: { ...syncRunWhere(actor), status: { in: [...ACTIVE_RUN_STATUSES] } },
       select: { id: true },
     }),
   );
@@ -144,7 +142,7 @@ export async function startCartaSync(
     // One populate run at a time per user, even for two requests at once.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('carta-sync'), hashtext(${actor.userId}))`;
     const active = await tx.run.findFirst({
-      where: { ...syncRunWhere(actor, bot.id), status: { in: ACTIVE_RUN_STATUSES } },
+      where: { ...syncRunWhere(actor, bot.id), status: { in: [...ACTIVE_RUN_STATUSES] } },
       select: { id: true },
     });
     if (active) return null;

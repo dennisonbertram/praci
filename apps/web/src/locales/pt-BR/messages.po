@@ -2097,6 +2097,10 @@ msgstr "Não foi possível carregar a habilidade"
 msgid "Could not load the app list. Reload to try again."
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Could not load the cap table"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Could not load this artifact."
 msgstr ""

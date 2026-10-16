@@ -26,10 +26,17 @@ export function hasConnectedCarta(servers: readonly McpServer[]): boolean {
 }
 
 /**
- * Creates the user's Carta agent once per visit when Carta is connected and the agent is missing.
- * `ready` is false until the bot list has loaded, so an existing agent is not mistaken for a missing one.
+ * Creates the user's Carta agent when Carta is connected and the agent is missing. `ready` is false
+ * until the bot list has loaded, so an existing agent is not mistaken for a missing one. When `create`
+ * resolves to `false` (it failed), the next change of `botsVersion` (a bot list refresh) tries once
+ * more; nothing else retries.
  */
-export function useAutoCreateCartaAgent(ready: boolean, hasAgent: boolean, create: () => unknown) {
+export function useAutoCreateCartaAgent(
+  ready: boolean,
+  hasAgent: boolean,
+  create: () => unknown,
+  botsVersion?: unknown,
+) {
   const started = useRef(false);
   const createRef = useRef(create);
   createRef.current = create;
@@ -42,7 +49,14 @@ export function useAutoCreateCartaAgent(ready: boolean, hasAgent: boolean, creat
     started.current = true;
     rpc.mcp.servers
       .list()
-      .then((servers) => hasConnectedCarta(servers) && createRef.current())
-      .catch(() => undefined);
-  }, [ready, hasAgent]);
+      .then(async (servers) => {
+        if (hasConnectedCarta(servers) && (await createRef.current()) === false) {
+          started.current = false;
+        }
+      })
+      .catch(() => {
+        started.current = false;
+      });
+    // biome-ignore lint/correctness/useExhaustiveDependencies: botsVersion only re-runs the effect
+  }, [ready, hasAgent, botsVersion]);
 }

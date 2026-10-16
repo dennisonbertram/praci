@@ -14,8 +14,16 @@ import { useAutoCreateCartaAgent } from "./carta-agent";
 const carta = { id: "s1", enabled: true, endpoint: "https://mcp.app.carta.com/mcp" };
 const create = vi.fn();
 
-function Probe({ ready, hasAgent }: { ready: boolean; hasAgent: boolean }) {
-  useAutoCreateCartaAgent(ready, hasAgent, create);
+function Probe({
+  ready,
+  hasAgent,
+  botsVersion,
+}: {
+  ready: boolean;
+  hasAgent: boolean;
+  botsVersion?: number;
+}) {
+  useAutoCreateCartaAgent(ready, hasAgent, create, botsVersion);
   return null;
 }
 
@@ -47,4 +55,18 @@ it("waits for the bot list, and skips when the agent exists or Carta is not conn
   await show(false, false);
   await show(true, false);
   expect(create).not.toHaveBeenCalled();
+});
+
+it("retries a failed creation once per bot list refresh, not on every render", async () => {
+  servers.mockResolvedValue([carta]);
+  create.mockResolvedValue(false);
+  const showAt = (version: number) =>
+    act(async () => root.render(<Probe ready hasAgent={false} botsVersion={version} />));
+  await showAt(1);
+  await showAt(1);
+  expect(create).toHaveBeenCalledTimes(1);
+  await showAt(2);
+  expect(create).toHaveBeenCalledTimes(2);
+  await showAt(2);
+  expect(create).toHaveBeenCalledTimes(2);
 });

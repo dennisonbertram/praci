@@ -5,7 +5,12 @@ import {
   financeAgentSpawnKey,
 } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import { buildApprovalAskBlock, cartaMailSendIsComplete, isCartaMailSend } from "./approval-ask.js";
+import {
+  buildApprovalAskBlock,
+  cartaMailSendIsComplete,
+  isCartaMailSend,
+  isCartaWrite,
+} from "./approval-ask.js";
 import { selectBuiltinToolsForRun } from "./executor.js";
 import { financeToolsAllowed } from "./finance-tools.js";
 import { assignmentAllowsTool } from "./mcp-connector.js";
@@ -161,5 +166,30 @@ describe("contacts_save approval card", () => {
     expect(block.detail).toBe(
       "name: Ada Fund\nemail: ada@example.test\norganization: Example Capital\nkind: auditor\nnotes: Met at the audit kickoff",
     );
+  });
+});
+
+describe("Carta write approval", () => {
+  const route = { toolName: "call_tool", endpoint: "https://mcp.app.carta.com/mcp" };
+  it("recognises a write by server and raw tool, not by name", () => {
+    expect(isCartaWrite(carta, route)).toBe(true);
+    expect(isCartaWrite(carta, { ...route, endpoint: "https://mcp.example.test/mcp" })).toBe(false);
+    expect(isCartaWrite(carta, { ...route, toolName: "search" })).toBe(false);
+    expect(isCartaWrite(null, route)).toBe(false);
+  });
+  it("shows the raw tool and the full nested arguments, untruncated", () => {
+    const args = {
+      name: "issue_draft",
+      arguments: { company_id: "c1", draft_set: { note: "x".repeat(5000), shares: 100 } },
+    };
+    const block = buildApprovalAskBlock("e1", "mcp__integration-1__call_tool", args, ["c1"], {
+      cartaWriteTool: "call_tool",
+    });
+    if (block.kind !== "ask") throw new Error("expected ask block");
+    expect(block.detail).toContain("tool: call_tool");
+    expect(block.detail).toContain('"name": "issue_draft"');
+    expect(block.detail).toContain('"shares": 100');
+    expect(block.detail).toContain("x".repeat(5000));
+    expect(block.detail).not.toContain('"c1"');
   });
 });

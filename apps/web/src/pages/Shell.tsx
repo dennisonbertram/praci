@@ -2560,6 +2560,7 @@ export function ShellPage() {
       await refreshBots();
     } catch (error) {
       setCartaAgentError(errorText(error, t`Could not create the Carta agent`));
+      return false;
     } finally {
       setCreatingCartaAgent(false);
     }
@@ -2588,6 +2589,7 @@ export function ShellPage() {
     capTableMode && initialBotsLoaded && Boolean(userId),
     findCartaAgent(bots, userId) !== undefined,
     createCartaAgent,
+    bots,
   );
 
   // The agent panel of the current page; null on bot and group routes, which have their own panels.

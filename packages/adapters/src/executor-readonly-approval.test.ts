@@ -64,7 +64,9 @@ function fixture({
   advanceRevisionAfterRead = false,
   spawnKey = null,
   mail,
+  route,
 }: {
+  route?: ConnectorTool["route"];
   spawnKey?: string | null;
   mail?: unknown;
   builtin?: boolean;
@@ -92,7 +94,7 @@ function fixture({
       properties: { id: { type: "string" } },
       required: ["id"],
     },
-    route: { connectorId: "demo", resourceId: "resource-1", toolName: name },
+    route: route ?? { connectorId: "demo", resourceId: "resource-1", toolName: name },
   };
   const effects: Effect[] = [];
   const results: unknown[] = [];
@@ -761,11 +763,27 @@ describe("Carta write tools", () => {
   beforeEach(() => {
     reviewMock.mockReset();
   });
-  const rules: ActionApprovalRule[] = [
-    { effect: "always_allow", matchKind: "tool", matchValue: "mutate" },
-  ];
-  const mutate = (spawnKey: string | null) =>
-    fixture({ name: "mutate", readOnly: false, autoReview: true, rules, spawnKey });
+  // The executor sees MCP tools by their namespaced name; the raw name lives on the route.
+  const mutate = (spawnKey: string | null, endpoint = "https://mcp.app.carta.com/mcp") =>
+    fixture({
+      name: "mcp__integration-5f783c95__mutate",
+      readOnly: false,
+      autoReview: true,
+      rules: [
+        {
+          effect: "always_allow",
+          matchKind: "tool",
+          matchValue: "mcp__integration-5f783c95__mutate",
+        },
+      ],
+      spawnKey,
+      route: {
+        connectorId: "mcp",
+        resourceId: "server-1",
+        toolName: "mutate",
+        endpoint,
+      },
+    });
 
   it("asks for the Carta agent despite an always-allow rule and Auto Review", async () => {
     const f = mutate(cartaAgentSpawnKey("user-1"));
@@ -774,6 +792,12 @@ describe("Carta write tools", () => {
     expect(isApprovalPausedResult(f.results[0])).toBe(true);
     expect(reviewMock).not.toHaveBeenCalled();
     expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("does not gate another server's mutate for the Carta agent", async () => {
+    const f = mutate(cartaAgentSpawnKey("user-1"), "https://mcp.example.test/mcp");
+    await f.run();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
   });
 
   it("follows the saved rule for an ordinary bot's tool of the same name", async () => {

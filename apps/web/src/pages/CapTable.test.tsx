@@ -246,3 +246,29 @@ it("shows no snapshot UI when Carta is not connected", async () => {
   expect(container.querySelector("[aria-label='Refresh from Carta']")).toBeNull();
   expect(button("Connect Carta")).toBeDefined();
 });
+
+it("reloads contacts when a sync finishes", async () => {
+  vi.useFakeTimers();
+  rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: true });
+  await show();
+  expect(rpcMock.list).toHaveBeenCalledTimes(1);
+  rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: false });
+  await act(async () => vi.advanceTimersByTimeAsync(10_000));
+  expect(rpcMock.list).toHaveBeenCalledTimes(2);
+});
+
+it("shows a retry when the cap table cannot be read, and stops polling", async () => {
+  vi.useFakeTimers();
+  rpcMock.capTable.mockResolvedValueOnce({ snapshot: null, syncing: true });
+  await show();
+  rpcMock.capTable.mockRejectedValue(new Error("down"));
+  await act(async () => vi.advanceTimersByTimeAsync(10_000));
+  expect(container.textContent).toContain("Could not load the cap table");
+  expect(container.textContent).not.toContain("Reading Carta");
+  const calls = rpcMock.capTable.mock.calls.length;
+  await act(async () => vi.advanceTimersByTimeAsync(30_000));
+  expect(rpcMock.capTable.mock.calls.length).toBe(calls);
+  rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: false });
+  await click(button("Try again"));
+  expect(container.textContent).not.toContain("Could not load the cap table");
+});

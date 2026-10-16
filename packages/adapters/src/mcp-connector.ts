@@ -217,6 +217,7 @@ export class McpConnector implements ConnectorProvider {
                 resourceRevision: assignment.server.revision,
                 toolName: tool.name,
                 catalogGroup: assignment.server.slug,
+                ...(assignment.server.endpoint ? { endpoint: assignment.server.endpoint } : {}),
               },
             }));
         } catch (error) {

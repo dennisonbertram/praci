@@ -297,15 +297,20 @@ export function CapTablePage({
   }, []);
   useEffect(load, [load]);
 
+  const [capFailed, setCapFailed] = useState(false);
   const latestCap = useRef(0);
   const loadCap = useCallback(() => {
     const request = ++latestCap.current;
     return rpc.carta
       .capTable()
       .then((state) => {
-        if (request === latestCap.current) setCap(state);
+        if (request !== latestCap.current) return;
+        setCap(state);
+        setCapFailed(false);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (request === latestCap.current) setCapFailed(true);
+      });
   }, []);
   useEffect(() => {
     rpc.mcp.servers
@@ -319,14 +324,20 @@ export function CapTablePage({
   }, [loadCap]);
 
   const syncing = cap?.syncing ?? false;
+  // Contacts are filled in by the same run, so reload them when it ends.
+  const wasSyncing = useRef(false);
   useEffect(() => {
-    if (!syncing) return;
+    if (wasSyncing.current && !syncing) load();
+    wasSyncing.current = syncing;
+  }, [syncing, load]);
+  useEffect(() => {
+    if (!syncing || capFailed) return;
     const timer = setInterval(() => void loadCap(), POLL_MS);
     return () => {
       clearInterval(timer);
       latestCap.current++;
     };
-  }, [syncing, loadCap]);
+  }, [syncing, capFailed, loadCap]);
 
   const refresh = () =>
     rpc.carta
@@ -335,7 +346,7 @@ export function CapTablePage({
       .catch((cause) => setError(errorText(cause, t`Could not refresh from Carta`)));
 
   const snapshot = cartaConnected ? (cap?.snapshot ?? null) : null;
-  const reading = cartaConnected && syncing && !snapshot;
+  const reading = cartaConnected && syncing && !snapshot && !capFailed;
   const rows = joinRows(snapshot, contacts ?? []);
   const kindOf = (row: Row) => row.contact?.kind ?? "investor";
   const shown = rows.filter((row) => filter === "all" || kindOf(row) === filter);
@@ -367,7 +378,7 @@ export function CapTablePage({
             size="icon-sm"
             className="pointer-coarse:size-10"
             aria-label={t`Refresh from Carta`}
-            disabled={syncing}
+            disabled={syncing && !capFailed}
             onClick={() => void refresh()}
           >
             <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
@@ -411,6 +422,17 @@ export function CapTablePage({
           ))}
         </TabsList>
       </Tabs>
+
+      {capFailed && cartaConnected ? (
+        <div role="alert" className="mb-3 flex items-center gap-3 text-sm text-destructive">
+          <span>
+            <Trans>Could not load the cap table</Trans>
+          </span>
+          <Button variant="outline" size="sm" onClick={() => void loadCap()}>
+            <Trans>Try again</Trans>
+          </Button>
+        </div>
+      ) : null}
 
       {error ? (
         <div role="alert" className="flex items-center gap-3 text-sm text-destructive">

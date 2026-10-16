@@ -203,6 +203,14 @@ describe("Carta populate run", () => {
     expect(f.runCreate).not.toHaveBeenCalled();
     expect(f.enqueueRun).not.toHaveBeenCalled();
     expect(await startCartaSync(f.deps, actor)).toBe("running");
+    // A run paused for approval or takeover is still going.
+    expect(f.runFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: { in: expect.arrayContaining(["waiting_input", "waiting_takeover"]) },
+        }),
+      }),
+    );
   });
 
   it("refresh starts the same run, and reports a missing model", async () => {
@@ -237,7 +245,9 @@ describe("Carta populate run", () => {
           userId: "user-1",
           trigger: "routine",
           routineId: null,
-          status: { in: ["queued", "leased", "running"] },
+          status: {
+            in: ["queued", "leased", "running", "waiting_input", "waiting_takeover"],
+          },
         }),
       }),
     );
