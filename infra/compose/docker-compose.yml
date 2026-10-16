@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: ${POSTGRES_IMAGE:-postgres:16}
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg16-trixie}
     environment:
       # USER/PASSWORD/DB apply only on first pgdata init. Keep existing values in
       # .env, or ALTER ROLE / rename in place. Recreate pgdata only after backup

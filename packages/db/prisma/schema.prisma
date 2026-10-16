@@ -217,6 +217,10 @@ model Space {
   botSections                 BotSection[]
   botDeletions                BotDeletion[]
   threads                     Thread[]
+  dataRoomFolders             DataRoomFolder[]
+  dataRoomItems               DataRoomItem[]
+  dataRoomChunks              DataRoomChunk[]
+  dataRoomSyncStates          DataRoomSyncState[]
   events                      Event[]
   tasks                       Task[]
   runs                        Run[]
@@ -930,6 +934,8 @@ model Connection {
   cachedMailMessages CachedMailMessage[]
   inboxTodos         InboxTodo[]
   mailSyncState      MailSyncState?
+  dataRoomSyncState  DataRoomSyncState?
+  dataRoomItems      DataRoomItem[]
   composeSends       ComposeSend[]
   /// false: only bots with a BotConnectionAccess row may use this connection's tools.
   allAgents          Boolean  @default(true)
@@ -2095,4 +2101,110 @@ model Contact {
   @@unique([spaceId, userId, email])
   @@index([spaceId, userId])
   @@map("contacts")
+}
+
+// Data room. Every row carries spaceId (cascade) and userId; every query filters on spaceId.
+// Partial unique indexes, the generated tsv column and the HNSW index live in the migration SQL
+// because Prisma cannot express them.
+model DataRoomFolder {
+  id        String           @id @default(cuid())
+  spaceId   String
+  space     Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  parentId  String?
+  parent    DataRoomFolder?  @relation("DataRoomFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  DataRoomFolder[] @relation("DataRoomFolderTree")
+  name      String
+  /// "user" or "agent".
+  createdBy String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  items     DataRoomItem[]
+
+  @@index([spaceId, parentId])
+  @@map("data_room_folders")
+}
+
+model DataRoomItem {
+  id                 String          @id @default(cuid())
+  spaceId            String
+  space              Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId             String
+  folderId           String?
+  folder             DataRoomFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  /// "upload", "drive", "gmail", "chat" or "finance".
+  source             String
+  sourceConnectionId String?
+  sourceConnection   Connection?     @relation(fields: [sourceConnectionId], references: [id], onDelete: SetNull)
+  externalId         String?
+  sha256             String
+  /// Null when the source keeps the bytes.
+  storageKey         String?
+  name               String
+  mimeType           String
+  size               Int
+  sourceUrl          String?
+  sourceUpdatedAt    DateTime?
+  /// "pending", "extracting", "classifying", "indexing", "ready" or "failed".
+  status             String          @default("pending")
+  error              String?
+  docType            String?
+  docDate            DateTime?
+  parties            String[]
+  amountCents        BigInt?
+  currency           String?
+  tags               String[]
+  summary            String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  chunks             DataRoomChunk[]
+
+  @@index([spaceId, folderId])
+  @@index([spaceId, status])
+  @@index([parties], type: Gin)
+  @@index([tags], type: Gin)
+  @@map("data_room_items")
+}
+
+model DataRoomChunk {
+  id             String                       @id @default(cuid())
+  spaceId        String
+  space          Space                        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId         String
+  itemId         String
+  item           DataRoomItem                 @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  ordinal        Int
+  text           String
+  contentHash    String
+  /// GENERATED ALWAYS AS (to_tsvector('english', text)) STORED.
+  tsv            Unsupported("tsvector")? @default(dbgenerated("to_tsvector('english'::regconfig, text)"))
+
+  embedding      Unsupported("vector(1024)")?
+  embeddingModel String?
+
+  @@unique([itemId, ordinal])
+  @@index([tsv], type: Gin)
+  @@index([spaceId, userId])
+  @@map("data_room_chunks")
+}
+
+/// Sync throttle and in-flight claim for one source connection (the MailSyncState pattern).
+model DataRoomSyncState {
+  connectionId String     @id
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  spaceId      String
+  space        Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId       String
+  /// Provider change cursor (Drive page token, Gmail historyId).
+  cursor       String?
+  lastSyncedAt DateTime?
+  /// Claim held by the process that is syncing; stale after 2 minutes.
+  claimedAt    DateTime?
+  /// Random id of the sync holding the claim; every write checks it.
+  claimToken   String?
+  /// Short failure reason; never a vendor payload or credential.
+  error        String?
+
+  @@index([spaceId])
+  @@map("data_room_sync_states")
 }
