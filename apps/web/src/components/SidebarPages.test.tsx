@@ -1,0 +1,225 @@
+// @vitest-environment jsdom
+
+import type { SidebarPageTemplate } from "@rakazo/contracts";
+import type { ReactNode } from "react";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+const text = vi.hoisted(
+  () =>
+    (parts: TemplateStringsArray, ...values: unknown[]) =>
+      parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
+);
+const tt = vi.hoisted(
+  () =>
+    (x: unknown, ...v: unknown[]) =>
+      Array.isArray(x)
+        ? (text as (...a: unknown[]) => string)(x, ...v)
+        : typeof x === "string"
+          ? x
+          : (x as { message: string }).message,
+);
+vi.mock("@lingui/core/macro", () => ({ msg: text }));
+vi.mock("@lingui/react/macro", () => ({
+  useLingui: () => ({ t: tt, i18n: { locale: "en" } }),
+  Trans: ({ children }: { children: ReactNode }) => children,
+}));
+
+const rpcMock = vi.hoisted(() => ({
+  list: vi.fn(),
+  add: vi.fn(),
+  remove: vi.fn(),
+}));
+vi.mock("../lib/user-error", () => ({ errorText: () => "Could not add the page" }));
+vi.mock("../lib/rpc", () => ({ rpc: { sidebarPages: rpcMock } }));
+
+import { SidebarPages } from "./SidebarPages";
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const template = (over: Partial<SidebarPageTemplate> = {}): SidebarPageTemplate => ({
+  key: "team-health",
+  route: "/app/team-health",
+  platforms: ["web"],
+  available: true,
+  ...over,
+});
+
+let container: HTMLDivElement;
+let root: ReturnType<typeof createRoot>;
+let path = "";
+let goTo: (to: string) => void;
+function Path() {
+  path = useLocation().pathname;
+  goTo = useNavigate();
+  return null;
+}
+
+async function render(templates: SidebarPageTemplate[], at = "/app") {
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={[at]}>
+        <Path />
+        <SidebarPages templates={templates} />
+      </MemoryRouter>,
+    );
+  });
+}
+const state = (pages: string[], addable: string[]) => ({
+  pages: pages.map((templateKey) => ({ templateKey })),
+  addable,
+});
+const byText = (value: string) =>
+  [...document.body.querySelectorAll<HTMLElement>("[role=menuitem], button")].find((el) =>
+    el.textContent?.includes(value),
+  );
+const click = async (el: Element | null | undefined) => {
+  await act(async () => {
+    el?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    el?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    el?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    (el as HTMLElement | null | undefined)?.click();
+  });
+};
+
+beforeEach(() => {
+  rpcMock.list.mockReset().mockResolvedValue(state([], ["team-health"]));
+  rpcMock.add.mockReset().mockResolvedValue(state(["team-health"], []));
+  rpcMock.remove.mockReset().mockResolvedValue(state([], ["team-health"]));
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+});
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  document.body.innerHTML = "";
+});
+
+const addRow = () => container.querySelector("[data-testid=sidebar-add-page]");
+const pageRow = () => container.querySelector("[data-testid=sidebar-page-team-health]");
+
+it("hides the add row when no template is available", async () => {
+  await render([template({ available: false })]);
+  expect(addRow()).toBeNull();
+  expect(rpcMock.list).not.toHaveBeenCalled();
+});
+
+it("shows the add row only after the list has loaded", async () => {
+  let resolve!: (value: unknown) => void;
+  rpcMock.list.mockReturnValue(new Promise((r) => (resolve = r)));
+  await render([template()]);
+  expect(addRow()).toBeNull();
+  await act(async () => resolve(state([], ["team-health"])));
+  expect(addRow()).not.toBeNull();
+});
+
+it("does not offer a template the server did not list as addable", async () => {
+  rpcMock.list.mockResolvedValue(state([], []));
+  await render([template()]);
+  expect(addRow()).toBeNull();
+});
+
+it("adds an available page and shows its link", async () => {
+  await render([template()]);
+  await click(addRow());
+  await click(byText("Team health"));
+  expect(rpcMock.add).toHaveBeenCalledWith({ templateKey: "team-health" });
+  expect(pageRow()).not.toBeNull();
+  expect(addRow()).toBeNull();
+});
+
+it("shows the error and adds no row when add fails", async () => {
+  rpcMock.add.mockRejectedValue(new Error("nope"));
+  // The jsdom pointer events can reopen the menu afterwards, which clears the error as designed,
+  // so record that the alert appeared.
+  const seen: string[] = [];
+  const observer = new MutationObserver(() => {
+    const alert = container.querySelector("[role=alert]")?.textContent;
+    if (alert) seen.push(alert);
+  });
+  observer.observe(container, { childList: true, subtree: true, characterData: true });
+  await render([template()]);
+  await click(addRow());
+  await click(byText("Team health"));
+  observer.disconnect();
+  expect(seen).toContain("Could not add the page");
+  expect(pageRow()).toBeNull();
+  expect(addRow()).not.toBeNull();
+});
+
+it("shows pages the user already added, and opens the route", async () => {
+  rpcMock.list.mockResolvedValue(state(["team-health"], []));
+  await render([template()]);
+  await click(pageRow());
+  expect(path).toBe("/app/team-health");
+});
+
+it("removes a page and leaves its route", async () => {
+  rpcMock.list.mockResolvedValue(state(["team-health"], []));
+  await render([template()], "/app/team-health");
+  await click(container.querySelector("[aria-label='Page options']"));
+  await click(byText("Remove from sidebar"));
+  expect(rpcMock.remove).toHaveBeenCalledWith({ templateKey: "team-health" });
+  expect(pageRow()).toBeNull();
+  expect(path).toBe("/app");
+});
+
+const deferred = () => {
+  let resolve!: (value: unknown) => void;
+  const promise = new Promise((r) => (resolve = r));
+  return { promise, resolve };
+};
+
+it("does not redirect when the user navigated elsewhere before remove finished", async () => {
+  rpcMock.list.mockResolvedValue(state(["team-health"], []));
+  const pending = deferred();
+  rpcMock.remove.mockReturnValue(pending.promise);
+  await render([template()], "/app/team-health");
+  await click(container.querySelector("[aria-label='Page options']"));
+  await click(byText("Remove from sidebar"));
+  await act(async () => goTo("/app/inbox"));
+  await act(async () => pending.resolve(state([], ["team-health"])));
+  expect(path).toBe("/app/inbox");
+  expect(pageRow()).toBeNull();
+});
+
+it("applies only the latest mutation when responses arrive out of order", async () => {
+  const alpha = template({ key: "alpha", route: "/app/alpha" });
+  const beta = template({ key: "beta", route: "/app/beta" });
+  rpcMock.list.mockResolvedValue(state([], ["alpha", "beta"]));
+  const slowAdd = deferred();
+  rpcMock.add
+    .mockReturnValueOnce(slowAdd.promise)
+    .mockResolvedValueOnce(state(["beta"], ["alpha"]));
+  await render([alpha, beta]);
+  await click(addRow());
+  await click(byText("alpha"));
+  await click(addRow());
+  await click(byText("beta"));
+  await act(async () => slowAdd.resolve(state(["alpha"], ["beta"])));
+  expect(container.querySelector("[data-testid=sidebar-page-beta]")).not.toBeNull();
+  expect(container.querySelector("[data-testid=sidebar-page-alpha]")).toBeNull();
+});
+
+it("shows an alert when the initial list fails", async () => {
+  rpcMock.list.mockRejectedValue(new Error("down"));
+  await render([template()]);
+  expect(container.querySelector("[role=alert]")?.textContent).toBe("Could not add the page");
+  expect(addRow()).toBeNull();
+});
+
+it("opens the page after adding it", async () => {
+  await render([template()]);
+  await click(addRow());
+  await click(byText("Team health"));
+  expect(path).toBe("/app/team-health");
+});
+
+it("does not render saved pages whose template is not available", async () => {
+  rpcMock.list.mockResolvedValue(state(["team-health"], []));
+  await render([template({ available: false }), template({ key: "other", available: true })]);
+  expect(pageRow()).toBeNull();
+});

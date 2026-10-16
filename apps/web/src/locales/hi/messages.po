@@ -536,6 +536,10 @@ msgstr "आइटम जोड़ें"
 msgid "Add MCP server"
 msgstr "MCP सर्वर जोड़ें"
 
+#: src/components/AddSidebarPage.tsx
+msgid "Add page"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
 msgstr ""
@@ -4694,6 +4698,10 @@ msgstr ""
 msgid "Page changed. Reload"
 msgstr ""
 
+#: src/components/SidebarPages.tsx
+msgid "Page options"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr ""
@@ -5160,6 +5168,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Remove filter {label}"
+msgstr ""
+
+#: src/components/SidebarPages.tsx
+msgid "Remove from sidebar"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -6161,6 +6173,10 @@ msgstr "टीम कंप्यूटर"
 msgid "Team conversations"
 msgstr ""
 
+#: src/lib/sidebar-page-copy.ts
+msgid "Team health"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
 msgstr ""
@@ -6890,6 +6906,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "काम चल रहा है…"
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Workload and key people, from your connected tools"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"

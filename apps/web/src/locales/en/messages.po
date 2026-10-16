@@ -536,6 +536,10 @@ msgstr "Add item"
 msgid "Add MCP server"
 msgstr "Add MCP server"
 
+#: src/components/AddSidebarPage.tsx
+msgid "Add page"
+msgstr "Add page"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
 msgstr "Add server URL"
@@ -4694,6 +4698,10 @@ msgstr "Page"
 msgid "Page changed. Reload"
 msgstr "Page changed. Reload"
 
+#: src/components/SidebarPages.tsx
+msgid "Page options"
+msgstr "Page options"
+
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty incident"
@@ -5161,6 +5169,10 @@ msgstr "Remove {secretName}? This bot will no longer be able to use it."
 #: src/components/data-room/FilterBar.tsx
 msgid "Remove filter {label}"
 msgstr "Remove filter {label}"
+
+#: src/components/SidebarPages.tsx
+msgid "Remove from sidebar"
+msgstr "Remove from sidebar"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove Git event"
@@ -6161,6 +6173,10 @@ msgstr "Team Computer"
 msgid "Team conversations"
 msgstr "Team conversations"
 
+#: src/lib/sidebar-page-copy.ts
+msgid "Team health"
+msgstr "Team health"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
 msgstr "Teams message"
@@ -6890,6 +6906,10 @@ msgstr "Won't do"
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "Working…"
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Workload and key people, from your connected tools"
+msgstr "Workload and key people, from your connected tools"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"

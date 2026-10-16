@@ -536,6 +536,10 @@ msgstr "Добавить элемент"
 msgid "Add MCP server"
 msgstr "Добавить MCP-сервер"
 
+#: src/components/AddSidebarPage.tsx
+msgid "Add page"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
 msgstr "Добавьте URL сервера"
@@ -4694,6 +4698,10 @@ msgstr ""
 msgid "Page changed. Reload"
 msgstr ""
 
+#: src/components/SidebarPages.tsx
+msgid "Page options"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "Инцидент PagerDuty"
@@ -5160,6 +5168,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Remove filter {label}"
+msgstr ""
+
+#: src/components/SidebarPages.tsx
+msgid "Remove from sidebar"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -6161,6 +6173,10 @@ msgstr "Командный компьютер"
 msgid "Team conversations"
 msgstr "Командные диалоги"
 
+#: src/lib/sidebar-page-copy.ts
+msgid "Team health"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
 msgstr "Сообщение Teams"
@@ -6890,6 +6906,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "Выполняется…"
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Workload and key people, from your connected tools"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"
