@@ -34,24 +34,46 @@ the operator's money. Every decision below follows from that.
    same, so per-agent access (`BotConnectionAccess`) and the catalog keep working.
    The catalog tile says the call is paid, with the price when Composio returns
    one.
-3. **One SDK upgrade, one session option.** `@composio/core` 0.18.1 → 0.24.0 (the
-   Instant contract landed in 0.22.0, and prices in search in 0.24.0). Execute
-   sessions pass `instant: { toolkits: { enable: [...] }, returnInstantCharge:
-   true }` for the enabled toolkits the user has connected. A toolkit the user
-   connected with their own account is left out of `enable`, so it is never
-   charged.
+3. **One SDK upgrade, and every session states its Instant policy.**
+   `@composio/core` 0.18.1 → 0.24.0 (the Instant contract landed in 0.22.0, and
+   prices in search in 0.24.0). Composio's docs say that leaving out `instant`
+   **permits** Instant once the project allows it, including in existing
+   sessions, and that allowing one toolkit does not exclude the others. So:
+   - When Instant is off for the deployment, every catalog and execute session
+     passes `instant: false`. This is needed even before Rakazo uses Instant,
+     in case someone turns it on in the Composio dashboard.
+   - When it is on, execute sessions allow only the toolkits the owner enabled
+     **and** the user connected through Instant, excluding everything else (the
+     exact allow-only shape is confirmed in the spike), with
+     `returnInstantCharge: true`. A toolkit the user connected with their own
+     account is never charged.
+   - The policy is part of the execute-session cache key
+     (`executeSessionKey` in `composio-connector.ts`), so changing it never
+     reuses an old session.
 4. **Every paid call needs approval, every time.** Instant tools are often named
    `search` or `find`, which `action-approval.ts` treats as read-only and runs
-   without asking. A paid Instant call always shows the approval card with the
-   tool, the price when known and "Paid with Composio credit", and an "Always
-   allow" rule does not apply to it. Removing this gate is a later decision, once
-   decision 5 has a spend cap.
-5. **Charges are stored and capped.** `session.execute` returns `instantCharge`.
-   A new `InstantCharge` row (spaceId, userId, botId, toolkit, tool, USD amount as
-   a decimal string, created at) is written after each charged call. The
-   deployment owner sets a monthly cap per user; a call that would pass it is
-   refused with a plain message. The Integrations page shows the user's spend this
-   month. All of this lives in Postgres, scoped to space and user.
+   without asking. A paid Instant call goes through the mandatory approval path
+   (`toolRequiresExplicitApproval`), which ignores saved rules and Auto Review.
+   The approval card shows the tool, its arguments, the reserved amount and
+   "Paid with Composio credit". **Paid tools are refused inside
+   `COMPOSIO_MULTI_EXECUTE_TOOL`** in v1, because the approval gate sees only the
+   outer tool name; the agent calls them one at a time.
+5. **Spending is reserved before the call and reconciled after.** Composio has no
+   spending cap, and `instantCharge` arrives only after execution. Its docs
+   prescribe an application-side budget, which Rakazo implements in Postgres:
+   - An `InstantCharge` row is **reserved** before the call with a trusted upper
+     bound on its cost, in the same transaction that checks the user's remaining
+     monthly budget, so concurrent workers cannot spend the same balance. A call
+     whose cost cannot be bounded is refused while a cap is set.
+   - The row is keyed by the approval effect's idempotency key, so a retry after a
+     crash finds the earlier reservation instead of paying twice.
+   - After the call, the row is settled to the actual `instantCharge`. A timeout or
+     missing charge leaves it reserved until it is reconciled against Composio's
+     execution log.
+   - The cap is **per user across the whole deployment**, because every space
+     shares one wallet. The deployment owner sets it; rows also carry spaceId and
+     botId for the spend view. Amounts are exact decimals, never floats.
+   - The Integrations page shows the user's spend this month.
 6. **Tests stay offline.** The Composio emulator (`composio-emulator.ts`) learns
    the `instant` option and returns a fixed `instantCharge`, so execute, approval,
    charge recording and the cap are tested without the network.
@@ -91,7 +113,8 @@ to run Rakazo.
   connection behavior Rakazo relies on (multi-account selection,
   `connectedAccounts`). The spike runs the full Composio test set first.
 - **Price before the call is not guaranteed.** Search prices are an experimental
-  option. Without them the approval card says the call is paid but not how much.
+  option, and Composio says not to treat the published price as a quote. If the
+  spike finds no reliable upper bound for a toolkit, that toolkit stays off.
 - **Shared wallet abuse.** Until the cap ships, an enabled deployment depends on
   the per-call approval alone.
 - **Unknowns.** Which Instant toolkits exist today, and whether the deployment's
