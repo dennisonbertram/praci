@@ -4,6 +4,7 @@ import type {
   IntegrationCatalogSurface,
   McpServer,
 } from "@rakazo/contracts";
+import { MCP_OAUTH_CLIENT_ID_REQUIRED } from "@rakazo/contracts";
 import { deriveMcpName, newClientId } from "@rakazo/core";
 import {
   Button,
@@ -16,6 +17,7 @@ import {
   NativeSelectOption,
 } from "@rakazo/ui-web";
 import { useRef, useState } from "react";
+import { useCopyText } from "../../lib/copy-text";
 import { beginMcpOauth, openMcpAuthorization, waitForMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { watchWindowClosed } from "../../lib/sign-in-window";
@@ -45,23 +47,36 @@ function isHttpUrl(value: string) {
 
 export function CustomConnectionDialog({
   data,
+  existingServer,
   initialUrl = "",
+  oauthClient = false,
+  oauthScope,
   onClose,
 }: {
   data: IntegrationsData;
+  /** Sign in an existing server that needs a client ID; its connection fields stay locked. */
+  existingServer?: McpServer;
   initialUrl?: string;
+  /** Show the OAuth client ID fields up front, for servers that refuse dynamic registration. */
+  oauthClient?: boolean;
+  oauthScope?: string;
   onClose: () => void;
 }) {
   const { t } = useLingui();
   const [view, setView] = useState<View>({ kind: "form" });
-  const [url, setUrl] = useState(initialUrl);
+  const [url, setUrl] = useState(existingServer?.endpoint ?? initialUrl);
   const [authHeader, setAuthHeader] = useState("");
   const [headerValue, setHeaderValue] = useState("");
   const [transport, setTransport] = useState<"streamable_http" | "sse">("streamable_http");
   const [token, setToken] = useState("");
+  const [needsClient, setNeedsClient] = useState(oauthClient || existingServer !== undefined);
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [copied, copy] = useCopyText();
+  const callbackUrl = `${window.location.origin}/mcp/oauth/callback`;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [server, setServer] = useState<McpServer | null>(null);
+  const [server, setServer] = useState<McpServer | null>(existingServer ?? null);
   const [name, setName] = useState("");
   const [command, setCommand] = useState("");
   const [args, setArgs] = useState("");
@@ -106,7 +121,17 @@ export function CustomConnectionDialog({
     setView({ kind: "signin", state: { kind: "waiting" } });
     const addedHint = t`${target.name} was added and shows Needs reconnect until you sign in.`;
     try {
-      const started = await beginMcpOauth(target.id);
+      const started = await beginMcpOauth(target.id, {
+        ...(clientId.trim()
+          ? {
+              oauthClient: {
+                clientId: clientId.trim(),
+                ...(oauthScope ? { scope: oauthScope } : {}),
+                ...(clientSecret.trim() ? { clientSecret: clientSecret.trim() } : {}),
+              },
+            }
+          : {}),
+      });
       // Closing the dialog while the request was in flight must not open a window afterwards.
       if (controller.signal.aborted) return;
       if (started.status !== "authorization_required") {
@@ -140,6 +165,12 @@ export function CustomConnectionDialog({
     } catch (err) {
       if (controller.signal.aborted) return;
       void refresh();
+      if (err instanceof Error && err.message.includes(MCP_OAUTH_CLIENT_ID_REQUIRED)) {
+        setNeedsClient(true);
+        setError(t`This server needs an OAuth client ID.`);
+        setView({ kind: "form" });
+        return;
+      }
       setView({
         kind: "signin",
         state: {
@@ -405,117 +436,162 @@ export function CustomConnectionDialog({
                 autoFocus
                 className="mt-1 font-mono text-sm"
                 value={url}
+                // The server already exists; only the client fields can still change.
+                readOnly={server !== null}
                 onChange={(event) => setUrl(event.target.value)}
                 placeholder="https://example.com/mcp"
                 onKeyDown={(event) => event.key === "Enter" && void connectUrl()}
               />
             </div>
-            <details className="mt-4 border-t border-border pt-3">
-              <summary className="cursor-pointer text-sm text-muted-foreground">
-                <Trans>Advanced</Trans>
-              </summary>
-              <div className="mt-3 text-xs text-muted-foreground">
-                <Trans>Transport</Trans>
-                <NativeSelect
-                  className="mt-1 w-full"
-                  value={transport}
-                  aria-label={t`Transport`}
-                  onChange={(event) => setTransport(event.target.value as typeof transport)}
-                >
-                  <NativeSelectOption value="streamable_http">{t`Streamable HTTP`}</NativeSelectOption>
-                  <NativeSelectOption value="sse">SSE</NativeSelectOption>
-                </NativeSelect>
-              </div>
-              <div className="mt-3 text-xs text-muted-foreground">
-                <Trans>Auth header</Trans>
-                <Input
-                  aria-label={t`Auth header`}
-                  className="mt-1 font-mono text-sm"
-                  value={authHeader}
-                  onChange={(event) => setAuthHeader(event.target.value)}
-                  placeholder="Authorization"
-                />
-              </div>
-              <div className="mt-3 text-xs text-muted-foreground">
-                <Trans>Header value</Trans>
-                <Input
-                  aria-label={t`Header value`}
-                  className="mt-1 font-mono text-sm"
-                  type="password"
-                  autoComplete="new-password"
-                  value={headerValue}
-                  onChange={(event) => setHeaderValue(event.target.value)}
-                  placeholder={t`Optional`}
-                />
-              </div>
-              <div className="mt-3 text-xs text-muted-foreground">
-                <Trans>Token</Trans>
-                <Input
-                  aria-label={t`Token`}
-                  className="mt-1 font-mono text-sm"
-                  type="password"
-                  autoComplete="new-password"
-                  value={token}
-                  onChange={(event) => setToken(event.target.value)}
-                  placeholder={t`Only if the server does not use sign-in`}
-                />
-              </div>
-              <div className="mt-3 text-xs text-muted-foreground">
-                <Trans>Other connection types</Trans>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {(
-                    [
-                      ["api", "OpenAPI"],
-                      ["graphql", "GraphQL"],
-                      ["executor", "Executor"],
-                      ["treg", "Treg"],
-                    ] as const
-                  ).map(([kind, label]) => (
-                    <Button
-                      key={kind}
-                      variant="outline"
-                      size="xs"
-                      onClick={() => chooseSource(kind)}
-                    >
-                      {label}
+            {needsClient ? (
+              <div className="mt-3 space-y-3 text-xs text-muted-foreground">
+                <div>
+                  <Trans>Client ID</Trans>
+                  <Input
+                    aria-label={t`Client ID`}
+                    className="mt-1 font-mono text-sm"
+                    value={clientId}
+                    onChange={(event) => setClientId(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <Trans>Client secret (optional)</Trans>
+                  <Input
+                    aria-label={t`Client secret (optional)`}
+                    className="mt-1 font-mono text-sm"
+                    type="password"
+                    autoComplete="new-password"
+                    value={clientSecret}
+                    onChange={(event) => setClientSecret(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <Trans>Callback URL</Trans>
+                  <div className="mt-1 flex gap-2">
+                    <Input
+                      aria-label={t`Callback URL`}
+                      className="font-mono text-sm"
+                      readOnly
+                      value={callbackUrl}
+                    />
+                    <Button variant="outline" onClick={() => copy(callbackUrl)}>
+                      {copied ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
                     </Button>
-                  ))}
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => {
-                      setError(null);
-                      setName("");
-                      setView({ kind: "stdio" });
-                    }}
-                  >
-                    <Trans>Local command</Trans>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => setView({ kind: "directory", publicCatalog: true })}
-                  >
-                    <Trans>Search directory</Trans>
-                  </Button>
-                  {data.feedEnabled ? (
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      onClick={() => setView({ kind: "directory", publicCatalog: false })}
-                    >
-                      <Trans>Search by domain</Trans>
-                    </Button>
-                  ) : null}
+                  </div>
                 </div>
               </div>
-            </details>
+            ) : null}
+            {server === null ? (
+              <details className="mt-4 border-t border-border pt-3">
+                <summary className="cursor-pointer text-sm text-muted-foreground">
+                  <Trans>Advanced</Trans>
+                </summary>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  <Trans>Transport</Trans>
+                  <NativeSelect
+                    className="mt-1 w-full"
+                    value={transport}
+                    aria-label={t`Transport`}
+                    onChange={(event) => setTransport(event.target.value as typeof transport)}
+                  >
+                    <NativeSelectOption value="streamable_http">{t`Streamable HTTP`}</NativeSelectOption>
+                    <NativeSelectOption value="sse">SSE</NativeSelectOption>
+                  </NativeSelect>
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  <Trans>Auth header</Trans>
+                  <Input
+                    aria-label={t`Auth header`}
+                    className="mt-1 font-mono text-sm"
+                    value={authHeader}
+                    onChange={(event) => setAuthHeader(event.target.value)}
+                    placeholder="Authorization"
+                  />
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  <Trans>Header value</Trans>
+                  <Input
+                    aria-label={t`Header value`}
+                    className="mt-1 font-mono text-sm"
+                    type="password"
+                    autoComplete="new-password"
+                    value={headerValue}
+                    onChange={(event) => setHeaderValue(event.target.value)}
+                    placeholder={t`Optional`}
+                  />
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  <Trans>Token</Trans>
+                  <Input
+                    aria-label={t`Token`}
+                    className="mt-1 font-mono text-sm"
+                    type="password"
+                    autoComplete="new-password"
+                    value={token}
+                    onChange={(event) => setToken(event.target.value)}
+                    placeholder={t`Only if the server does not use sign-in`}
+                  />
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  <Trans>Other connection types</Trans>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {(
+                      [
+                        ["api", "OpenAPI"],
+                        ["graphql", "GraphQL"],
+                        ["executor", "Executor"],
+                        ["treg", "Treg"],
+                      ] as const
+                    ).map(([kind, label]) => (
+                      <Button
+                        key={kind}
+                        variant="outline"
+                        size="xs"
+                        onClick={() => chooseSource(kind)}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => {
+                        setError(null);
+                        setName("");
+                        setView({ kind: "stdio" });
+                      }}
+                    >
+                      <Trans>Local command</Trans>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => setView({ kind: "directory", publicCatalog: true })}
+                    >
+                      <Trans>Search directory</Trans>
+                    </Button>
+                    {data.feedEnabled ? (
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setView({ kind: "directory", publicCatalog: false })}
+                      >
+                        <Trans>Search by domain</Trans>
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </details>
+            ) : null}
             {errorLine}
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="outline" onClick={close}>
                 <Trans>Cancel</Trans>
               </Button>
-              <Button disabled={busy || !url.trim()} onClick={() => void connectUrl()}>
+              <Button
+                disabled={busy || !url.trim() || (needsClient && !clientId.trim())}
+                onClick={() => void connectUrl()}
+              >
                 {busy ? <Trans>Connecting…</Trans> : <Trans>Connect</Trans>}
               </Button>
             </div>

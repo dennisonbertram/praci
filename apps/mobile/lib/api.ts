@@ -4,6 +4,7 @@ import type {
   AvatarStyle,
   Bot,
   BotSection,
+  FinanceCard,
   Group,
   Me,
   ModelCatalogEntry,
@@ -1044,6 +1045,45 @@ export function copyableMobileMessageText(message: MobileMessage): string {
   return selectableMessageText(message).trim();
 }
 
+const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const dollars = (cents: number) => usd.format(cents / 100);
+
+/** Plain text for a finance card; labels are untranslated, like the other block fallbacks. */
+function financeCardText(card: FinanceCard): string {
+  const rows = (items: { label: string; cents: number }[]) =>
+    items.map((row) => `${row.label}: ${dollars(row.cents)}`);
+  switch (card.card) {
+    case "overview":
+      return [
+        `Cash ${dollars(card.cashCents)}`,
+        `Burn ${dollars(card.burnCents)}/mo`,
+        card.runwayMonths === null ? null : `Runway ${Math.round(card.runwayMonths)} mo`,
+        `Spend this month ${dollars(card.monthSpendCents)}`,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    case "breakdown":
+      return [`By ${card.by}, ${card.range}: ${dollars(card.totalCents)}`, ...rows(card.rows)].join(
+        "\n",
+      );
+    case "transactions":
+      return [
+        `${card.count} transactions: ${dollars(card.totalCents)}`,
+        ...rows(
+          card.rows.map((row) => ({
+            label: `${row.day.slice(0, 10)} ${row.label}`,
+            cents: row.cents,
+          })),
+        ),
+      ].join("\n");
+    case "recurring":
+      return [
+        `Recurring ${dollars(card.monthlyCents)}/mo, ${dollars(card.upcomingCents)} upcoming`,
+        ...rows(card.rows),
+      ].join("\n");
+  }
+}
+
 export function blockText(message: MobileMessage) {
   return message.blocks
     .map((block) => {
@@ -1057,7 +1097,11 @@ export function blockText(message: MobileMessage) {
         return `${block.status === "archived" ? "Archived" : block.status === "deleted" ? "Deleted" : "Bot"} ${block.name ?? ""}`;
       }
       if (block.kind === "emails") return emailCardsText(block.emails);
-      if (block.kind === "finance") return "";
+      if (block.kind === "finance") return financeCardText(block.card);
+      if (block.kind === "skill_draft") {
+        const steps = block.playbook.steps.map((step, i) => `${i + 1}. ${step}`);
+        return [`${block.name} (${block.status}): ${block.goal}`, ...steps].join("\n");
+      }
       if (block.kind === "chart") return `[chart: ${block.name ?? "chart"}]`;
       if (block.kind === "image") return `[image: ${block.name ?? "attachment"}]`;
       if (block.kind === "file") {

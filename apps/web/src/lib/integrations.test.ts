@@ -8,6 +8,7 @@ import {
   filterCatalog,
   groupConnections,
   groupTools,
+  isSameMcpEndpoint,
   mcpStatus,
   popularApps,
   toggleAccess,
@@ -169,5 +170,19 @@ describe("FINANCE_PROVIDERS logos", () => {
       if (logo.startsWith("/"))
         expect(existsSync(new URL(`../../public${logo}`, import.meta.url))).toBe(true);
     }
+  });
+});
+
+describe("isSameMcpEndpoint", () => {
+  const x = "https://api.x.com/mcp";
+  it("matches the same https host and path, ignoring a trailing slash", () => {
+    expect(isSameMcpEndpoint("https://api.x.com/mcp", x)).toBe(true);
+    expect(isSameMcpEndpoint("https://api.x.com/mcp/", x)).toBe(true);
+  });
+  it("does not match another path, protocol or host", () => {
+    expect(isSameMcpEndpoint("https://api.x.com/other", x)).toBe(false);
+    expect(isSameMcpEndpoint("http://api.x.com/mcp", x)).toBe(false);
+    expect(isSameMcpEndpoint("https://x.com/mcp", x)).toBe(false);
+    expect(isSameMcpEndpoint(null, x)).toBe(false);
   });
 });
