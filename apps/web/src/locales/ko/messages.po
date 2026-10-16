@@ -5942,6 +5942,10 @@ msgstr "팀 컴퓨터"
 msgid "Team conversations"
 msgstr ""
 
+#: src/lib/sidebar-page-copy.ts
+msgid "Team health"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
 msgstr "Teams 메시지"
@@ -6641,6 +6645,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "처리 중…"
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Workload and key people, from your connected tools"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"

@@ -734,5 +734,7 @@
   "Could not rename section": "No se pudo renombrar la sección",
   "Add page": "Agregar página",
   "Page options": "Opciones de la página",
-  "Remove from sidebar": "Quitar de la barra lateral"
+  "Remove from sidebar": "Quitar de la barra lateral",
+  "Team health": "Salud del equipo",
+  "Workload and key people, from your connected tools": "Carga de trabajo y personas clave, desde tus herramientas conectadas"
 }

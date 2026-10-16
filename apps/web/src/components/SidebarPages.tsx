@@ -11,6 +11,7 @@ import { Ellipsis, LayoutDashboard } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import { rpc } from "../lib/rpc";
+import { sidebarPageCopy } from "../lib/sidebar-page-copy";
 import { AddSidebarPage } from "./AddSidebarPage";
 import { SidebarPageLink } from "./SidebarPageLink";
 
@@ -63,7 +64,7 @@ export function SidebarPages({
             testId={`sidebar-page-${template.key}`}
             current={matchPath({ path: template.route, end: false }, pathname) != null}
             icon={<LayoutDashboard size={15} strokeWidth={1.8} aria-hidden="true" />}
-            label={template.label}
+            label={t(sidebarPageCopy(template.key).label)}
             onOpen={() => {
               onOpen?.();
               navigate(template.route);

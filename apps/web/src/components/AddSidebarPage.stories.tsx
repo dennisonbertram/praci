@@ -3,8 +3,6 @@ import { AddSidebarPage } from "./AddSidebarPage";
 
 const team = {
   key: "team-health",
-  label: "Team health",
-  description: "Workload and key people, from your connected tools",
   route: "/app/team-health",
   platforms: ["web"],
   available: true,

@@ -4,8 +4,6 @@ import * as z from "zod";
 export const SIDEBAR_PAGE_TEMPLATES = [
   {
     key: "team-health",
-    label: "Team health",
-    description: "Workload and key people, from your connected tools",
     route: "/app/team-health",
     platforms: ["web"],
     available: false,
@@ -15,8 +13,6 @@ export const SIDEBAR_PAGE_TEMPLATES = [
 
 export type SidebarPageTemplate = {
   key: string;
-  label: string;
-  description: string;
   route: string;
   platforms: readonly ("web" | "desktop" | "mobile")[];
   available: boolean;

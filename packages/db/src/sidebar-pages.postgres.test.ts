@@ -10,8 +10,6 @@ const describePostgres =
 
 const page = (key: string, over: Partial<SidebarPageTemplate> = {}): SidebarPageTemplate => ({
   key,
-  label: key,
-  description: "",
   route: `/app/${key}`,
   platforms: ["web"],
   available: true,

@@ -12,8 +12,18 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
+const tt = vi.hoisted(
+  () =>
+    (x: unknown, ...v: unknown[]) =>
+      Array.isArray(x)
+        ? (text as (...a: unknown[]) => string)(x, ...v)
+        : typeof x === "string"
+          ? x
+          : (x as { message: string }).message,
+);
+vi.mock("@lingui/core/macro", () => ({ msg: text }));
 vi.mock("@lingui/react/macro", () => ({
-  useLingui: () => ({ t: text, i18n: { locale: "en" } }),
+  useLingui: () => ({ t: tt, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
@@ -30,8 +40,6 @@ import { SidebarPages } from "./SidebarPages";
 
 const template = (over: Partial<SidebarPageTemplate> = {}): SidebarPageTemplate => ({
   key: "team-health",
-  label: "Team health",
-  description: "Workload and key people",
   route: "/app/team-health",
   platforms: ["web"],
   available: true,

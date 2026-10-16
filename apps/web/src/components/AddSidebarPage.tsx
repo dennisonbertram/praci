@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
 import { Plus } from "lucide-react";
+import { sidebarPageCopy } from "../lib/sidebar-page-copy";
 
 /** The "+ Add page" row and its menu. Renders nothing when there is no page left to add. */
 export function AddSidebarPage({
@@ -35,14 +36,17 @@ export function AddSidebarPage({
         </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-56">
-        {templates.map((template) => (
-          <DropdownMenuItem key={template.key} onClick={() => onAdd(template.key)}>
-            <span className="flex flex-col">
-              <span>{template.label}</span>
-              <span className="text-xs text-muted-foreground">{template.description}</span>
-            </span>
-          </DropdownMenuItem>
-        ))}
+        {templates.map((template) => {
+          const copy = sidebarPageCopy(template.key);
+          return (
+            <DropdownMenuItem key={template.key} onClick={() => onAdd(template.key)}>
+              <span className="flex flex-col">
+                <span>{t(copy.label)}</span>
+                <span className="text-xs text-muted-foreground">{t(copy.description)}</span>
+              </span>
+            </DropdownMenuItem>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );

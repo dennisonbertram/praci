@@ -5942,6 +5942,10 @@ msgstr "Командный компьютер"
 msgid "Team conversations"
 msgstr "Командные диалоги"
 
+#: src/lib/sidebar-page-copy.ts
+msgid "Team health"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
 msgstr "Сообщение Teams"
@@ -6641,6 +6645,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "Выполняется…"
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Workload and key people, from your connected tools"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"
