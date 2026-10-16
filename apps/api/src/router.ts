@@ -162,6 +162,7 @@ import {
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
   isCartaAgentSpawnKey,
+  isCartaEndpoint,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -4385,7 +4386,8 @@ export function createRouter(deps: RouterDeps) {
             });
           });
           // An existing Carta agent gets a newly added Carta server, with read tools only.
-          await assignToExistingCartaAgent(deps.prisma, context.actor);
+          if (isCartaEndpoint(row.endpoint))
+            await assignToExistingCartaAgent(deps.prisma, context.actor);
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         update: authed.mcp.servers.update.handler(async ({ context, input }) => {
@@ -4530,7 +4532,8 @@ export function createRouter(deps: RouterDeps) {
                 }),
             );
             if (row) {
-              await assignToExistingCartaAgent(deps.prisma, context.actor);
+              if (isCartaEndpoint(row.endpoint))
+                await assignToExistingCartaAgent(deps.prisma, context.actor);
               return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
             }
           }
