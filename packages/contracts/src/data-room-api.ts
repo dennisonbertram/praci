@@ -138,4 +138,6 @@ export const DataRoomApiImportEmailInputSchema = z.object({
 export const DataRoomApiImportEmailOutputSchema = z.object({
   imported: z.number().int(),
   duplicates: z.number().int(),
+  /** Files that could not be fetched or stored; the rest of the picks are still filed. */
+  failed: z.number().int(),
 });

@@ -214,6 +214,10 @@ msgstr "{count} years"
 msgid "{days}d ago"
 msgstr "{days}d ago"
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
+msgstr "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
@@ -2298,6 +2302,10 @@ msgstr "Could not verify computer setup ({failureMessage}). Fix the connection, 
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
 msgstr "Couldn't classify"
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Couldn't load mail"
+msgstr "Couldn't load mail"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
@@ -4901,6 +4909,7 @@ msgstr "Recent"
 msgid "Recently added"
 msgstr "Recently added"
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx

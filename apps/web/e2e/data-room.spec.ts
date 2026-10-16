@@ -387,7 +387,7 @@ test("Data room imports a mail attachment through the picker", async ({ page }, 
     ),
   );
   await page.route("**/rpc/dataRoom/importEmail", (route) =>
-    route.fulfill(json({ imported: 1, duplicates: 0 })),
+    route.fulfill(json({ imported: 1, duplicates: 0, failed: 0 })),
   );
 
   await signup(page, `data-room-mail-${Date.now()}@rakazo.test`, "password12", "Data Room User");

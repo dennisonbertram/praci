@@ -1,6 +1,6 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { InboxMessage, MailRow } from "@rakazo/contracts";
+import type { InboxListOutput, InboxMessage, MailRow } from "@rakazo/contracts";
 import {
   Button,
   Checkbox,
@@ -12,13 +12,17 @@ import {
   Input,
 } from "@rakazo/ui-web";
 import { Mail } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { syncErrorText } from "../../lib/inbox-sync-error";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { sizeText } from "./format";
 
 const SEARCH_DEBOUNCE_MS = 300;
+/** The most attachments one import call accepts. */
+const MAX_PICKS = 20;
+const GMAIL_PAGE = "/app/integrations/app/google/gmail";
 
 type Attachment = InboxMessage["attachments"][number];
 type Picks = Map<string, { messageId: string; attachmentId: string }>;
@@ -27,10 +31,13 @@ const pickKey = (messageId: string, attachmentId: string) => `${messageId}\u0000
 function MessageRow({
   row,
   picks,
+  full,
   onToggle,
 }: {
   row: MailRow;
   picks: Picks;
+  /** No more files can be ticked. */
+  full: boolean;
   onToggle: (messageId: string, attachmentId: string) => void;
 }) {
   const [files, setFiles] = useState<Attachment[] | null>(null);
@@ -68,6 +75,7 @@ function MessageRow({
             <div key={file.id} className="flex items-center gap-2 text-sm">
               <Checkbox
                 aria-label={file.filename}
+                disabled={full && !picks.has(pickKey(row.id, file.id))}
                 checked={picks.has(pickKey(row.id, file.id))}
                 onCheckedChange={() => onToggle(row.id, file.id)}
               />
@@ -88,13 +96,19 @@ function EmailPicker({
 }: {
   folderId: string | null;
   onClose: () => void;
-  onDone: (message: string) => void;
+  onDone: (message: string, changed: boolean) => void;
 }) {
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<MailRow[]>([]);
   const [next, setNext] = useState<string | undefined>();
+  const [mailProblem, setMailProblem] = useState<Pick<
+    InboxListOutput,
+    "failedAccounts" | "reconnectAccounts"
+  > | null>(null);
   const [loading, setLoading] = useState(true);
+  // Counts searches; an answer for an older one is dropped.
+  const search = useRef(0);
   const [error, setError] = useState("");
   const [picks, setPicks] = useState<Picks>(new Map());
   const [busy, setBusy] = useState(false);
@@ -104,39 +118,47 @@ function EmailPicker({
     return () => clearTimeout(timer);
   }, [input]);
 
-  // Only the answer for the search still on screen is kept.
+  const listInput = (pageToken?: string) => ({
+    filter: "attachment" as const,
+    ...(query ? { query } : {}),
+    ...(pageToken ? { pageToken } : {}),
+  });
+  /** Failed accounts are an error only when they leave nothing to show. */
+  const problemOf = (page: InboxListOutput) =>
+    page.failedAccounts.length > 0 &&
+    (page.rows.length === 0 || page.failedAccounts.length >= page.accounts.length)
+      ? { failedAccounts: page.failedAccounts, reconnectAccounts: page.reconnectAccounts }
+      : null;
+
   useEffect(() => {
-    let current = true;
+    const mine = ++search.current;
     setLoading(true);
     setError("");
+    setMailProblem(null);
     rpc.inbox
-      .list({ filter: "attachment", ...(query ? { query } : {}) })
+      .list(listInput())
       .then((page) => {
-        if (!current) return;
+        if (mine !== search.current) return;
         setRows(page.rows);
         setNext(page.nextPageToken);
+        setMailProblem(problemOf(page));
       })
-      .catch((cause) => current && setError(errorText(cause)))
-      .finally(() => current && setLoading(false));
-    return () => {
-      current = false;
-    };
+      .catch((cause) => mine === search.current && setError(errorText(cause)))
+      .finally(() => mine === search.current && setLoading(false));
   }, [query]);
 
   async function loadMore() {
+    const mine = search.current;
     setLoading(true);
     try {
-      const page = await rpc.inbox.list({
-        filter: "attachment",
-        ...(query ? { query } : {}),
-        pageToken: next,
-      });
+      const page = await rpc.inbox.list(listInput(next));
+      if (mine !== search.current) return;
       setRows((prev) => [...prev, ...page.rows]);
       setNext(page.nextPageToken);
     } catch (cause) {
-      setError(errorText(cause));
+      if (mine === search.current) setError(errorText(cause));
     } finally {
-      setLoading(false);
+      if (mine === search.current) setLoading(false);
     }
   }
 
@@ -154,16 +176,22 @@ function EmailPicker({
     setBusy(true);
     setError("");
     try {
-      const { imported, duplicates } = await rpc.dataRoom.importEmail({
+      const { imported, duplicates, failed } = await rpc.dataRoom.importEmail({
         picks: [...picks.values()],
         folderId,
       });
-      onDone(
-        imported === 0 && duplicates > 0
+      const done =
+        imported === 0 && duplicates > 0 && failed === 0
           ? t`Already in the Data room`
-          : plural(imported, { one: "Imported # file", other: "Imported # files" }),
-      );
-      onClose();
+          : imported > 0
+            ? plural(imported, { one: "Imported # file", other: "Imported # files" })
+            : "";
+      const failure = failed
+        ? plural(failed, { one: "Couldn't import # file", other: "Couldn't import # files" })
+        : "";
+      onDone(done, imported > 0 || duplicates > 0);
+      if (failed === 0) onClose();
+      else setError(failure);
     } catch (cause) {
       setError(errorText(cause));
     } finally {
@@ -188,14 +216,30 @@ function EmailPicker({
         />
         <div className="rk-scroll max-h-80 overflow-y-auto rounded-md border border-border">
           {error ? <p className="p-3 text-sm text-destructive">{error}</p> : null}
-          {!loading && !error && rows.length === 0 ? (
+          {mailProblem ? (
+            <p className="p-3 text-sm text-destructive">
+              {syncErrorText(mailProblem) || t`Couldn't load mail`}{" "}
+              {mailProblem.reconnectAccounts.length > 0 ? (
+                <Link to={GMAIL_PAGE} className="underline underline-offset-2">
+                  <Trans>Reconnect</Trans>
+                </Link>
+              ) : null}
+            </p>
+          ) : null}
+          {!loading && !error && !mailProblem && rows.length === 0 ? (
             <p className="p-6 text-center text-sm text-muted-foreground">
               <Trans>No files found</Trans>
             </p>
           ) : (
             <ul>
               {rows.map((row) => (
-                <MessageRow key={row.id} row={row} picks={picks} onToggle={toggle} />
+                <MessageRow
+                  key={row.id}
+                  row={row}
+                  picks={picks}
+                  full={picks.size >= MAX_PICKS}
+                  onToggle={toggle}
+                />
               ))}
             </ul>
           )}
@@ -232,7 +276,7 @@ export function ImportSources({
   compact = false,
 }: {
   folderId: string | null;
-  onDone: (message: string) => void;
+  onDone: (message: string, changed: boolean) => void;
   compact?: boolean;
 }) {
   const navigate = useNavigate();
@@ -247,10 +291,7 @@ export function ImportSources({
           current &&
           setConnected(
             rows.some(
-              (row) =>
-                row.connectorId === "google" &&
-                row.provider === "gmail" &&
-                row.status === "connected",
+              (row) => row.status === "connected" && row.provider.trim().toLowerCase() === "gmail",
             ),
           ),
       )
@@ -267,7 +308,7 @@ export function ImportSources({
         variant="outline"
         size={compact ? "icon" : "default"}
         aria-label={compact ? label : undefined}
-        onClick={() => (connected ? setOpen(true) : navigate("/app/integrations/app/google/gmail"))}
+        onClick={() => (connected ? setOpen(true) : navigate(GMAIL_PAGE))}
       >
         <Mail aria-hidden="true" />
         {compact ? null : label}

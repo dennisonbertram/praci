@@ -214,6 +214,10 @@ msgstr ""
 msgid "{days}d ago"
 msgstr "vor {days} T."
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
+msgstr ""
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr ""
@@ -2297,6 +2301,10 @@ msgstr ""
 
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Couldn't load mail"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -4901,6 +4909,7 @@ msgstr "Kürzlich"
 msgid "Recently added"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx

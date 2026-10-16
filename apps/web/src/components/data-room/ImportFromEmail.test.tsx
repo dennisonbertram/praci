@@ -44,12 +44,15 @@ function Where() {
 
 beforeEach(() => {
   rpcMock.list.mockResolvedValue({
+    accounts: [{ id: "c1" }],
+    failedAccounts: [],
+    reconnectAccounts: [],
     rows: [{ id: "m1", subject: "Invoice", from: "billing@example.com" }],
   });
   rpcMock.get.mockResolvedValue({
     attachments: [{ id: "a1", filename: "invoice.pdf", mimeType: "application/pdf", size: 2000 }],
   });
-  rpcMock.importEmail.mockResolvedValue({ imported: 1, duplicates: 0 });
+  rpcMock.importEmail.mockResolvedValue({ imported: 1, duplicates: 0, failed: 0 });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -101,15 +104,66 @@ it("imports the ticked attachment into the open folder", async () => {
     picks: [{ messageId: "m1", attachmentId: "a1" }],
     folderId: "f1",
   });
-  expect(onDone).toHaveBeenCalledWith("Imported 1 file");
+  expect(onDone).toHaveBeenCalledWith("Imported 1 file", true);
 });
 
 it("says so when everything picked was already imported", async () => {
-  rpcMock.importEmail.mockResolvedValue({ imported: 0, duplicates: 1 });
+  rpcMock.importEmail.mockResolvedValue({ imported: 0, duplicates: 1, failed: 0 });
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
   await click(button("Import from email"));
   await click(button("Invoicebilling@example.com"));
   await click(document.body.querySelector('[role="checkbox"]'));
   await click(button("Import"));
-  expect(onDone).toHaveBeenCalledWith("Already in the Data room");
+  expect(onDone).toHaveBeenCalledWith("Already in the Data room", true);
+});
+
+it("treats a Composio-style Gmail connection as connected", async () => {
+  await render([{ connectorId: "composio", provider: " GMAIL ", status: "connected" }]);
+  expect(button("Import from email")).toBeDefined();
+});
+
+it("keeps the picker open and says how many files failed", async () => {
+  rpcMock.importEmail.mockResolvedValue({ imported: 1, duplicates: 0, failed: 2 });
+  await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
+  await click(button("Import from email"));
+  await click(button("Invoicebilling@example.com"));
+  await click(document.body.querySelector('[role="checkbox"]'));
+  await click(button("Import"));
+  expect(onDone).toHaveBeenCalledWith("Imported 1 file", true);
+  expect(document.body.textContent).toContain("Couldn't import 2 files");
+});
+
+it("shows a mail error instead of an empty list, with a reconnect link", async () => {
+  rpcMock.list.mockResolvedValue({
+    accounts: [{ id: "c1" }],
+    failedAccounts: ["c1"],
+    reconnectAccounts: ["c1"],
+    rows: [],
+  });
+  await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
+  await click(button("Import from email"));
+  expect(document.body.textContent).toContain("Gmail needs to be reconnected.");
+  expect(document.body.textContent).not.toContain("No files found");
+  expect(
+    document.body.querySelector('a[href="/app/integrations/app/google/gmail"]'),
+  ).not.toBeNull();
+});
+
+it("stops offering unticked boxes once 20 files are picked", async () => {
+  rpcMock.get.mockResolvedValue({
+    attachments: Array.from({ length: 21 }, (_, n) => ({
+      id: `a${n}`,
+      filename: `f${n}.pdf`,
+      mimeType: "application/pdf",
+      size: 1,
+    })),
+  });
+  await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
+  await click(button("Import from email"));
+  await click(button("Invoicebilling@example.com"));
+  const boxes = () => Array.from(document.body.querySelectorAll<HTMLElement>('[role="checkbox"]'));
+  for (const box of boxes().slice(0, 20)) await click(box);
+  expect(
+    boxes()[20]?.getAttribute("aria-disabled") ?? boxes()[20]?.hasAttribute("disabled"),
+  ).toBeTruthy();
 });

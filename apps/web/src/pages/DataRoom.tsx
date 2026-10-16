@@ -213,9 +213,9 @@ export function DataRoomPage() {
   }
 
   const [notice, setNotice] = useState("");
-  const showNotice = useCallback((message: string) => {
+  const showNotice = useCallback((message: string, changed: boolean) => {
     setNotice(message);
-    window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
+    if (changed) window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
   }, []);
   useEffect(() => {
     if (!notice) return;

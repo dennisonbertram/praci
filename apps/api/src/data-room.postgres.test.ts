@@ -60,12 +60,15 @@ describePostgres("Data room API (PostgreSQL)", () => {
   const mail = {
     listAccounts: async (scope: { userId: string }) =>
       accounts.filter((a) => a.userId === scope.userId),
-    getAttachment: async () => ({
-      filename: "invoice/2026.pdf",
-      mimeType: "application/pdf",
-      size: 5,
-      bytes: new TextEncoder().encode("%PDF-"),
-    }),
+    getAttachment: async (_account: unknown, _message: string, attachmentId: string) => {
+      if (attachmentId === "broken") throw new Error("provider down");
+      return {
+        filename: "invoice/2026.pdf",
+        mimeType: "application/pdf",
+        size: 5,
+        bytes: new TextEncoder().encode(`%PDF-${attachmentId}`),
+      };
+    },
   };
 
   const send = (who: string | null, url: string, init: RequestInit = {}) =>
@@ -606,6 +609,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await expect(client(actors.a).dataRoom.importEmail({ picks: [pick] })).resolves.toEqual({
       imported: 1,
       duplicates: 0,
+      failed: 0,
     });
     const row = await prisma.dataRoomItem.findFirstOrThrow({
       where: { spaceId: actors.A.spaceId, externalId: `gmail:pm-${run}:att1` },
@@ -623,6 +627,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await expect(client(actors.a).dataRoom.importEmail({ picks: [pick] })).resolves.toEqual({
       imported: 0,
       duplicates: 1,
+      failed: 0,
     });
     expect(await blobCount(actors.A.spaceId)).toBe(blobs);
 
@@ -639,5 +644,26 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await expect(
       client(actors.a).dataRoom.importEmail({ picks: [pick], folderId: folderB.id }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("files the other picks when one attachment cannot be fetched", async () => {
+    const connection = await prisma.connection.findFirstOrThrow({
+      where: { spaceId: actors.A.spaceId, userId: actors.a.userId, provider: "gmail" },
+    });
+    const message = await prisma.cachedMailMessage.findFirstOrThrow({
+      where: { connectionId: connection.id },
+    });
+    const result = await client(actors.a).dataRoom.importEmail({
+      picks: [
+        { messageId: message.id, attachmentId: "broken" },
+        { messageId: message.id, attachmentId: "att2" },
+      ],
+    });
+    expect(result).toEqual({ imported: 1, duplicates: 0, failed: 1 });
+    expect(
+      await prisma.dataRoomItem.count({
+        where: { spaceId: actors.A.spaceId, externalId: `gmail:${message.providerMessageId}:att2` },
+      }),
+    ).toBe(1);
   });
 });

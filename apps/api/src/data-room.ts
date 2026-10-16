@@ -388,12 +388,22 @@ export function createDataRoomService(deps: DataRoomDeps) {
       }
       let imported = 0;
       let duplicates = 0;
-      for (const pick of input.picks) {
+      let failed = 0;
+      // Every message is checked before anything is filed, so a pick that is not the caller's
+      // refuses the whole request instead of leaving a partial import.
+      const messages = new Map<string, { connectionId: string; providerMessageId: string }>();
+      for (const { messageId } of input.picks) {
+        if (messages.has(messageId)) continue;
         const message = await deps.prisma.cachedMailMessage.findFirst({
-          where: { id: pick.messageId, spaceId: actor.spaceId, userId: actor.userId },
+          where: { id: messageId, spaceId: actor.spaceId, userId: actor.userId },
           select: { connectionId: true, providerMessageId: true },
         });
         if (!message) throw new ORPCError("NOT_FOUND");
+        messages.set(messageId, message);
+      }
+      for (const pick of input.picks) {
+        const message = messages.get(pick.messageId);
+        if (!message) continue;
         const sourceConnectionId = message.connectionId;
         const externalId = `gmail:${message.providerMessageId}:${pick.attachmentId}`;
         const known = await deps.prisma.dataRoomItem.findFirst({
@@ -404,28 +414,37 @@ export function createDataRoomService(deps: DataRoomDeps) {
           duplicates += 1;
           continue;
         }
-        const file = await inboxAttachment(
-          { prisma: deps.prisma, mail, jobs: deps.jobs },
-          actor,
-          pick,
-          signal,
-        );
-        const mimeType = file.mimeType.toLowerCase();
-        const { created } = await fileItem(actor, {
-          source: "gmail",
-          sha256: createHash("sha256").update(file.bytes).digest("hex"),
-          name: file.filename.replace(PATH_OR_CONTROL, "_").trim().slice(0, 255) || "attachment",
-          mimeType: MIME.test(mimeType) ? mimeType : "application/octet-stream",
-          bytes: file.bytes,
-          folderId,
-          sourceConnectionId,
-          externalId,
-          sourceUrl: `/app/inbox?mail=${pick.messageId}`,
-        });
-        if (created) imported += 1;
-        else duplicates += 1;
+        try {
+          const file = await inboxAttachment(
+            { prisma: deps.prisma, mail, jobs: deps.jobs },
+            actor,
+            pick,
+            signal,
+          );
+          const mimeType = file.mimeType.toLowerCase();
+          const { created } = await fileItem(actor, {
+            source: "gmail",
+            sha256: createHash("sha256").update(file.bytes).digest("hex"),
+            name: file.filename.replace(PATH_OR_CONTROL, "_").trim().slice(0, 255) || "attachment",
+            mimeType: MIME.test(mimeType) ? mimeType : "application/octet-stream",
+            bytes: file.bytes,
+            folderId,
+            sourceConnectionId,
+            externalId,
+            sourceUrl: `/app/inbox?mail=${pick.messageId}`,
+          });
+          if (created) imported += 1;
+          else duplicates += 1;
+        } catch (error) {
+          // The message was already shown to be the caller's; a provider or storage failure only
+          // skips this file so the others are still filed.
+          getLogger().warn("data room mail import failed", {
+            reason: error instanceof Error ? error.message : "unknown",
+          });
+          failed += 1;
+        }
       }
-      return { imported, duplicates };
+      return { imported, duplicates, failed };
     },
 
     search: (
