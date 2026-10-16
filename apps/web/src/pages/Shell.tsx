@@ -227,6 +227,7 @@ import {
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import { sharedInflight } from "../lib/shared-inflight";
+import { slashSkillOptions as pickSlashSkills } from "../lib/slash-skills";
 import {
   activeThreadRuns,
   applyThreadSendReceipt,
@@ -5987,20 +5988,10 @@ export const Composer = memo(function Composer({
     ? `${mentionListboxId}-option-${activeMentionIndex}`
     : undefined;
 
-  const slashSkillOptions = useMemo(() => {
-    if (slashQuery === null) return [];
-    const query = slashQuery.trim().toLowerCase();
-    const skills = agentSkills ?? [];
-    return skills
-      .filter((skill) => {
-        if (!query) return true;
-        return (
-          skill.name.toLowerCase().includes(query) ||
-          skill.description.toLowerCase().includes(query)
-        );
-      })
-      .slice(0, 8);
-  }, [agentSkills, slashQuery]);
+  const slashSkillOptions = useMemo(
+    () => (slashQuery === null ? [] : pickSlashSkills(agentSkills ?? [], slashQuery)),
+    [agentSkills, slashQuery],
+  );
 
   const slashActionOptions = useMemo(() => {
     if (slashQuery === null) return [];
