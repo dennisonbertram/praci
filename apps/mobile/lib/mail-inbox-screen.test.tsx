@@ -488,11 +488,11 @@ it("shows one triage label per row, and none on an untriaged row", async () => {
       ?.textContent?.replace(`Sender ${id}`, "")
       .replace(`Subject ${id}`, "")
       .replace(`Snippet ${id}`, "");
-  expect(rowText("r1")).toContain("Needs attention");
+  expect(rowText("r1")).toContain("Needs reply");
   expect(rowText("r2")).toContain("Newsletter");
   expect(rowText("r3")).toContain("Spam");
   expect(rowText("r4")).toContain("Junk");
   expect(rowText("r5")).toContain("Junk");
-  expect(rowText("r6")).not.toMatch(/Needs attention|Newsletter|Spam|Junk/);
-  expect(rowText("r7")).not.toMatch(/Needs attention|Newsletter|Spam|Junk/);
+  expect(rowText("r6")).not.toMatch(/Needs reply|Newsletter|Spam|Junk/);
+  expect(rowText("r7")).not.toMatch(/Needs reply|Newsletter|Spam|Junk/);
 });

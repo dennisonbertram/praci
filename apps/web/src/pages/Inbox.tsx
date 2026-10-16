@@ -124,6 +124,8 @@ export function InboxPage({
   const [error, setError] = useState("");
   // Shown briefly at the bottom; a mark stays undoable even after its row left the list.
   const [status, setStatus] = useState<Status | null>(null);
+  // Spoken by screen readers only; the toast covers sighted users.
+  const [announcement, setAnnouncement] = useState("");
   const [todosByTab, setTodosByTab] = useState<Record<string, InboxTodo[]>>({});
   const [todoRefresh, setTodoRefresh] = useState(0);
   const [selectedId, setSelectedId] = useState<string | undefined>();
@@ -308,6 +310,7 @@ export function InboxPage({
     });
   };
   const setRead = (messageId: string, read: boolean) => {
+    setAnnouncement(read ? t`Marked read` : t`Marked unread`);
     patchRows((list) =>
       list.map((row) => (row.id === messageId ? { ...row, unread: !read } : row)),
     );
@@ -320,6 +323,7 @@ export function InboxPage({
     if (selectedId === messageId) setSelectedId(neighbor);
     patchRows((list) => list.filter((row) => row.id !== messageId));
     setStatus({ kind: "archived", messageId });
+    setAnnouncement(t`Archived`);
     const call = rpc.inbox.archive({ messageId });
     // Resolves to whether the archive saved, so Undo never overtakes it.
     archiving.current.set(
@@ -836,6 +840,9 @@ export function InboxPage({
         notice={openId ? toast : null}
       />
       <InboxShortcuts open={help} onClose={() => setHelp(false)} />
+      <div aria-live="polite" className="sr-only">
+        {announcement}
+      </div>
       <div
         role="status"
         className="pointer-events-none fixed inset-x-0 bottom-4 z-100 flex justify-center px-4"

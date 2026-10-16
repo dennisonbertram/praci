@@ -3732,6 +3732,14 @@ msgstr "Marked important"
 msgid "Marked noise"
 msgstr "Marked noise"
 
+#: src/pages/Inbox.tsx
+msgid "Marked read"
+msgstr "Marked read"
+
+#: src/pages/Inbox.tsx
+msgid "Marked unread"
+msgstr "Marked unread"
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -4020,10 +4028,6 @@ msgstr "Needs an answer"
 msgid "Needs approval"
 msgstr "Needs approval"
 
-#: src/components/inbox/InboxRow.tsx
-msgid "Needs attention"
-msgstr "Needs attention"
-
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Needs input"
@@ -4032,9 +4036,14 @@ msgstr "Needs input"
 msgid "Needs reconnect"
 msgstr "Needs reconnect"
 
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Needs reply"
 msgstr "Needs reply"
+
+#: src/pages/Shell.tsx
+msgid "Needs sign-in"
+msgstr "Needs sign-in"
 
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
@@ -4180,6 +4189,7 @@ msgid "No mail matches this filter"
 msgstr "No mail matches this filter"
 
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/Shell.tsx
 msgid "No matches"
 msgstr "No matches"
 
@@ -5234,6 +5244,10 @@ msgstr "Running · Stop"
 #: src/pages/RoutineEditor.tsx
 msgid "Running…"
 msgstr "Running…"
+
+#: src/pages/Shell.tsx
+msgid "Runs on send"
+msgstr "Runs on send"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Runs when this bot receives a verified message from this provider."

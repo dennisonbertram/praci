@@ -53,6 +53,7 @@ import {
   newClientId,
   plainTextFromMarkdown,
   projectMessageReactions,
+  rankMentionOptions,
   reorderBotTo,
   replyAttachment,
   resolveComposerSendPlan,
@@ -6124,11 +6125,15 @@ export const Composer = memo(function Composer({
 
   const mentionOptions = useMemo(() => {
     if (mentionQuery === null || !mentionTargets?.length) return [];
-    const query = mentionQuery.trim().toLowerCase();
-    return mentionTargets
-      .filter((target) => !query || target.name.toLowerCase().startsWith(query))
-      .slice(0, 10);
+    // Prefix, then word-start, then substring matches, so the cap never hides a better match.
+    return rankMentionOptions(mentionTargets, mentionQuery).slice(0, 10);
   }, [mentionQuery, mentionTargets]);
+  // A typed query with no match shows "No matches" instead of closing, so `@zz` is not sent unnoticed.
+  const mentionNoMatches =
+    mentionQuery !== null &&
+    mentionQuery !== "" &&
+    mentionOptions.length === 0 &&
+    Boolean(mentionTargets?.length);
 
   // Reset to the first option only when the typed query changes.
   useEffect(() => {
@@ -6491,6 +6496,14 @@ export const Composer = memo(function Composer({
           })}
         </div>
       ) : null}
+      {mentionNoMatches ? (
+        <div
+          data-testid="mention-picker-empty"
+          className="mb-2 rounded-[14px] border border-border bg-muted px-4 py-2.5 text-[14px] text-muted-foreground"
+        >
+          <Trans>No matches</Trans>
+        </div>
+      ) : null}
       {showSlashPicker ? (
         <div
           data-testid="slash-picker"
@@ -6600,6 +6613,15 @@ export const Composer = memo(function Composer({
               <span dir="auto" className="truncate">
                 {mention.name}
               </span>
+              {mention.kind === "routine" ? (
+                <span className="shrink-0 text-muted-foreground">
+                  <Trans>Runs on send</Trans>
+                </span>
+              ) : mention.authStatus === "needs_auth" ? (
+                <span className="shrink-0 text-muted-foreground">
+                  <Trans>Needs sign-in</Trans>
+                </span>
+              ) : null}
               <button
                 type="button"
                 aria-label={t`Remove mention ${mention.name}`}
@@ -6639,6 +6661,16 @@ export const Composer = memo(function Composer({
                 optionCount: mentionOptions.length,
                 highlightedIndex: activeMentionIndex,
               });
+              if (mentionNoMatches && event.key === "Enter" && !event.shiftKey) {
+                // Escape dismisses the empty state first; Enter then sends the text as typed.
+                event.preventDefault();
+                return;
+              }
+              if (mentionNoMatches && event.key === "Escape") {
+                event.preventDefault();
+                setMentionQuery(null);
+                return;
+              }
               if (action.type === "complete") {
                 const mention = mentionOptions[action.index];
                 if (!mention) return;

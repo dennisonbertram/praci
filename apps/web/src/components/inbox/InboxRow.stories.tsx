@@ -153,6 +153,27 @@ export const NarrowWithMenu: Story = {
   ],
 };
 
+/** In a narrow pane each label shrinks to a dot before the subject: hollow Newsletter, solid Needs reply, warning Spam and Junk. */
+export const NarrowLabels: StoryObj = {
+  render: () => (
+    <div className="@container w-[320px]">
+      {(["attention", "newsletter", "spam", "bulk"] as const).map((kind) => (
+        <InboxRow
+          key={kind}
+          row={row(`label_${kind}`, {
+            category: kind === "attention" ? "action" : kind,
+            needsReply: kind === "attention" ? true : null,
+            from: "Sample Sender",
+            subject: `A ${kind} message`,
+          })}
+          onOpen={noop}
+          onMark={undefined}
+        />
+      ))}
+    </div>
+  ),
+};
+
 export const Group: StoryObj = {
   render: () => (
     <InboxGroup

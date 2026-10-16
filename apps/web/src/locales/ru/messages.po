@@ -3732,6 +3732,14 @@ msgstr ""
 msgid "Marked noise"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Marked read"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked unread"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -4020,10 +4028,6 @@ msgstr ""
 msgid "Needs approval"
 msgstr ""
 
-#: src/components/inbox/InboxRow.tsx
-msgid "Needs attention"
-msgstr ""
-
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Требуется ввод данных"
@@ -4032,8 +4036,13 @@ msgstr "Требуется ввод данных"
 msgid "Needs reconnect"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Needs reply"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Needs sign-in"
 msgstr ""
 
 #: src/pages/ActivityList.tsx
@@ -4180,6 +4189,7 @@ msgid "No mail matches this filter"
 msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/Shell.tsx
 msgid "No matches"
 msgstr ""
 
@@ -5234,6 +5244,10 @@ msgstr "Выполняется · Остановить"
 #: src/pages/RoutineEditor.tsx
 msgid "Running…"
 msgstr "Выполняется…"
+
+#: src/pages/Shell.tsx
+msgid "Runs on send"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Runs when this bot receives a verified message from this provider."

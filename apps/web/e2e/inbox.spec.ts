@@ -783,7 +783,7 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
 
   // One label per row, by triage; the scam row keeps its warning icon beside "Junk".
   const labelOf = (name: RegExp) => row(name).locator('[data-slot="badge"]');
-  // Needs reply already says it, so its rows carry no "Needs attention" label.
+  // Needs reply already says it, so its rows carry no "Needs reply" label.
   await expect(labelOf(/Offsite dates/)).toHaveCount(0);
   await expect(labelOf(/CI passed on main/)).toHaveText("Newsletter");
   await expect(labelOf(/You won a free cruise/)).toHaveText("Spam");
