@@ -242,6 +242,25 @@ it("shows connected crypto and exchanges once, under Connected", async () => {
     expect(inConnected(`finance-tile-${id}`)).toBe(true);
   }
   expect(inConnected("finance-tile-coinbase")).toBe(false);
+  expect(
+    container.querySelector('[data-testid="finance-tile-alchemy"] a')?.getAttribute("href"),
+  ).toBe("/app/finance/crypto");
+});
+
+it("keeps Alchemy and exchanges that report an error under Finance", async () => {
+  financeRpc.crypto.mockResolvedValue({
+    ...cryptoOn,
+    alchemy: { connected: true, lastError: "The key was refused" },
+  });
+  financeRpc.exchanges.mockResolvedValue([
+    { provider: "kraken", connected: true, lastError: "Read failed" },
+  ]);
+  await show(data(true, true));
+  for (const id of ["alchemy", "kraken"]) {
+    expect(count(`finance-tile-${id}`)).toBe(1);
+    expect(inConnected(`finance-tile-${id}`)).toBe(false);
+  }
+  expect(container.textContent).toContain("The key was refused");
 });
 
 it("shows one Blockscout tile when its key and MCP server both exist", async () => {

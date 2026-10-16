@@ -127,6 +127,12 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
             >
               <Trans>Remove</Trans>
             </Button>
+            <Link
+              to={financePath.crypto()}
+              className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+            >
+              <Trans>Open</Trans>
+            </Link>
           </>
         ) : (
           <>
@@ -282,9 +288,10 @@ export function connectedFinanceKeys(sources: FinanceSource[], status: FinanceSt
   for (const { provider } of FINANCE_PROVIDERS)
     if (sources.find((s) => s.provider === provider)?.status === "ok") keys.add(provider);
   if (status.blockscout) keys.add("crypto");
-  if (status.alchemy?.connected) keys.add("alchemy");
+  if (status.alchemy?.connected && !status.alchemy.lastError) keys.add("alchemy");
   for (const { provider } of EXCHANGES)
-    if (status.exchanges?.find((x) => x.provider === provider)?.connected) keys.add(provider);
+    if (status.exchanges?.find((x) => x.provider === provider && x.connected && !x.lastError))
+      keys.add(provider);
   return keys;
 }
 
@@ -317,6 +324,11 @@ export function FinanceSection({
   };
 
   const connectedKeys = connectedFinanceKeys(sources, status);
+  // A crypto connect can create an MCP server, so refresh the page data too, not just this status.
+  const reload = () => {
+    status.reload();
+    onChanged();
+  };
   const shown = (key: string) =>
     mode === "all" || (mode === "connected") === connectedKeys.has(key);
 
@@ -402,11 +414,11 @@ export function FinanceSection({
         },
       )}
       {shown("crypto") ? (
-        <CryptoTile hasKey={status.blockscout} reload={status.reload}>
+        <CryptoTile hasKey={status.blockscout} reload={reload}>
           {mode === "available" ? null : cryptoExtra}
         </CryptoTile>
       ) : null}
-      {shown("alchemy") ? <AlchemyTile state={status.alchemy} reload={status.reload} /> : null}
+      {shown("alchemy") ? <AlchemyTile state={status.alchemy} reload={reload} /> : null}
       {EXCHANGES.filter(({ provider }) => shown(provider)).map(({ provider }) => (
         <ExchangeTile
           key={provider}
@@ -416,7 +428,7 @@ export function FinanceSection({
               ? (status.exchanges.find((e) => e.provider === provider) ?? null)
               : undefined
           }
-          reload={status.reload}
+          reload={reload}
         />
       ))}
     </>

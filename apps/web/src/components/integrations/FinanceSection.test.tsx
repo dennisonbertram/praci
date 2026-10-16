@@ -129,7 +129,7 @@ it("opens a modal from Connect, saves the key and then shows Connected", async (
     .mockResolvedValueOnce({ connected: false, hasApiKey: false })
     .mockResolvedValue({ connected: true, hasApiKey: true });
   cryptoRpc.cryptoConnect.mockResolvedValue({ serverId: "s2", hasApiKey: true });
-  await show([source("mercury", "ok"), source("brex", "ok")]);
+  const onChanged = await show([source("mercury", "ok"), source("brex", "ok")]);
   expect(crypto().querySelector("input")).toBeNull();
   await press2(crypto(), "Connect");
   const dialog = document.body.querySelector('[role="dialog"]') as Element;
@@ -138,6 +138,7 @@ it("opens a modal from Connect, saves the key and then shows Connected", async (
   await typeKey("k-123");
   await press2(dialog, "Save");
   expect(cryptoRpc.cryptoConnect).toHaveBeenCalledWith({ apiKey: "k-123" });
+  expect(onChanged).toHaveBeenCalled(); // page data refreshes: the connect may create an MCP server
   expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   expect(crypto().textContent).toContain("Connected");
   expect(crypto().textContent).toContain("Replace API key");
