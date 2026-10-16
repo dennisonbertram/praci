@@ -154,6 +154,16 @@ describe("Composer", () => {
       expect(chips()).toEqual(["Research Writer"]);
     });
 
+    it("keeps the default highlight on the first option when an option is inserted before it", () => {
+      const textarea = renderComposer(vi.fn(), { mentionTargets: [researcher, writer] });
+      type(textarea, "@Res");
+      expect(selected()).toContain("Researcher");
+      rerenderComposer({ mentionTargets: [routine, researcher, writer] });
+      expect(selected()).toContain("Researcher");
+      pressKey(textarea, "Enter");
+      expect(chips()).toEqual(["Researcher"]);
+    });
+
     it("falls back to the first option when the highlighted option disappears", () => {
       const textarea = openOnWriter([researcher, writer]);
       rerenderComposer({ mentionTargets: [researcher] });

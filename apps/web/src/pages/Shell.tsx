@@ -6045,6 +6045,13 @@ export const Composer = memo(function Composer({
     setMentionHighlightKey(null);
   }, [mentionQuery]);
 
+  // Pin the default highlight to the first shown option so a later insert cannot take it over.
+  useEffect(() => {
+    if (mentionHighlightKey === null && mentionOptions[0]) {
+      setMentionHighlightKey(mentionChipKey(mentionOptions[0]));
+    }
+  }, [mentionHighlightKey, mentionOptions]);
+
   // A highlighted option that left the list falls back to the first one.
   const activeMentionIndex = Math.max(
     0,
