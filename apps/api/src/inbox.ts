@@ -19,7 +19,7 @@ import type {
   InboxTodo,
   MailRow,
 } from "@rakazo/contracts";
-import { InboxCategorySchema, inboxAgentSpawnKey } from "@rakazo/contracts";
+import { InboxCategorySchema, InboxPrioritySchema, inboxAgentSpawnKey } from "@rakazo/contracts";
 import { applySenderMark, senderMarkMap, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
@@ -107,8 +107,8 @@ async function enqueueTriage(deps: InboxDeps, actor: Actor): Promise<void> {
   });
 }
 
-const PRIORITIES = ["critical", "important", "normal", "low"] as const;
-const asPriority = (value: string | null) => PRIORITIES.find((p) => p === value) ?? null;
+const asPriority = (value: string | null) =>
+  InboxPrioritySchema.options.find((p) => p === value) ?? null;
 
 /** True when the triage job would run for this user: the one check the job itself makes. */
 async function triageEnabled(deps: InboxDeps, actor: Actor): Promise<boolean> {

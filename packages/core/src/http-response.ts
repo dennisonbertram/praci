@@ -80,6 +80,30 @@ function readWithAbort(
   });
 }
 
+export function abortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new Error("Request timed out");
+}
+
+/** Race a promise against an AbortSignal so stalled work cannot outlive the deadline. */
+export function withAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(abortError(signal));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortError(signal));
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
 export function cancelResponseBody(response: Response): void {
   try {
     void Promise.resolve(response.body?.cancel()).catch(() => undefined);

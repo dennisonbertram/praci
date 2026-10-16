@@ -11,15 +11,15 @@ import type {
   CacheCapabilities,
 } from "@rakazo/adapter-kit";
 import type { AutoReviewJudgeDecision } from "@rakazo/core";
-import { redactSecrets } from "@rakazo/core";
+import { escapePromptData, redactSecrets } from "@rakazo/core";
 import { formatCurrentTimeInstruction } from "./current-time.js";
 import { resolveDeploymentModel } from "./deployment-model.js";
 import { LOCAL_PROVIDER_ID } from "./pi-local-provider.js";
 
 const DEFAULT_TIMEOUT_MS = 1_500;
-const MAX_TASK_CHARS = 400;
-const MAX_BOT_CHARS = 240;
-const MAX_ARGS_CHARS = 1_200;
+export const MAX_TASK_CHARS = 400;
+export const MAX_BOT_CHARS = 240;
+export const MAX_ARGS_CHARS = 1_200;
 const MAX_REASON_CHARS = 160;
 const SENSITIVE_REVIEW_ARG_KEY =
   /password|secret|token|api[_-]?key|authorization|cookie|credential/i;
@@ -200,14 +200,10 @@ function redactNestedReviewValue(value: unknown, secrets: string[]): unknown {
   );
 }
 
-function truncate(value: string, max: number): string {
+export function truncate(value: string, max: number): string {
   const trimmed = value.trim();
   if (trimmed.length <= max) return trimmed;
   return `${trimmed.slice(0, max - 1)}…`;
-}
-
-function escapePromptData(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
 export function sanitizeAutoReviewReason(reason: string | undefined): string | undefined {

@@ -133,7 +133,8 @@ export function renderGroupMembersContext(
 
 export const BOT_MESSAGE_WAKE_CUE = "[bot]";
 
-function escapePromptData(value: string): string {
+/** Escape untrusted text before wrapping it in a prompt tag. The one copy; do not re-declare. */
+export function escapePromptData(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
