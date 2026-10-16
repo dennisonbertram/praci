@@ -173,3 +173,24 @@ export const ReceiptPageUnsafeLink: Story = {
     }),
   render: () => <FinanceReceiptPage id="txn_demo" />,
 };
+
+export const NotFound: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "finance.transaction": () =>
+        Promise.reject(Object.assign(new Error("Not found"), { code: "NOT_FOUND" })),
+    }),
+  render: () => <FinanceTransactionPage id="missing" />,
+};
+
+export const PurchasedBeforePosted: Story = {
+  name: "Card charge posted a day after purchase",
+  beforeEach: () =>
+    mockRpc({
+      "finance.transaction": withTxn({
+        provider: "brex",
+        purchasedAt: "2026-01-14T12:00:00.000Z",
+      }),
+    }),
+  render: () => <FinanceTransactionPage id="txn_demo" />,
+};

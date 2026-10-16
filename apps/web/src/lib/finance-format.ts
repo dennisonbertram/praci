@@ -1,4 +1,4 @@
-import type { PaidWithEntry } from "@rakazo/contracts";
+import type { FinanceTransaction, PaidWithEntry } from "@rakazo/contracts";
 
 const dollars = (locale?: string) =>
   new Intl.NumberFormat(locale, {
@@ -24,7 +24,8 @@ export const transactionAmount = (cents: number, locale?: string) =>
 /** Axis labels: `$1.5k`, `$40k`, `$800`. */
 export function axisMoney(cents: number): string {
   const d = Math.round(Math.abs(cents) / 100);
-  return d >= 1000 ? `$${+(d / 1000).toFixed(1)}k` : `$${d}`;
+  const sign = cents < 0 && d > 0 ? "−" : "";
+  return d >= 1000 ? `${sign}$${+(d / 1000).toFixed(1)}k` : `${sign}$${d}`;
 }
 
 const dayDate = (day: string) => new Date(`${day.slice(0, 10)}T00:00:00Z`);
@@ -116,11 +117,26 @@ export const monthLabel = (month: string, locale?: string) =>
 export const monthFull = (month: string, locale?: string) =>
   monthFormat(month, { month: "long", year: "numeric" }, locale);
 
-/** `↓ 53%`, with the arrow showing the direction of the change; null when there is no comparison. */
+/** `↓ 53%`, with the arrow showing the direction of the change; `0%` has no arrow; null when there is no comparison. */
 export function changeText(pct: number | null): string | null {
   if (pct === null || !Number.isFinite(pct)) return null;
   const rounded = Math.round(Math.abs(pct));
+  if (rounded === 0) return "0%";
   return `${pct < 0 ? "↓" : "↑"} ${rounded}%`;
+}
+
+/**
+ * The day a transaction counts on and is shown with: the purchase date when there is one (a Brex
+ * card charge posts a day or two later), else the posted date. Totals and date filters use the same day.
+ */
+export const txnDay = (t: Pick<FinanceTransaction, "purchasedAt" | "postedAt">): string =>
+  (t.purchasedAt ?? t.postedAt).slice(0, 10);
+
+/** `Checking ••1111`; the digits are not added again when the name already ends with them. */
+export function accountLabel(name: string, lastFour: string | null | undefined): string {
+  if (!lastFour) return name;
+  const tail = `••${lastFour}`;
+  return name.trimEnd().endsWith(tail) ? name : `${name} ${tail}`;
 }
 
 /** The sentence shown on the paid-with pill and the Paid with figure: `Brex ••0003 + Mercury Checking ••1234`. */
@@ -141,7 +157,7 @@ export function paidWithLabel(entries: readonly PaidWithEntry[]): string {
     }
   }
   for (const entry of entries) {
-    if (entry.kind === "account") parts.push(joinName(entry.name, last(entry)));
+    if (entry.kind === "account") parts.push(accountLabel(entry.name, entry.lastFour));
   }
   return parts.join(" + ");
 }

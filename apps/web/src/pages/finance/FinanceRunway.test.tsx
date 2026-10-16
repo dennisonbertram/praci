@@ -99,3 +99,10 @@ it("hides the scope control when there is no crypto", async () => {
   expect(toggle()).toBeUndefined();
   expect(container.textContent).not.toContain("Other crypto");
 });
+
+it("says revenue is subtracted from burn, as the burn figure is calculated", async () => {
+  rpcMock.runway.mockResolvedValue(runway());
+  await show();
+  expect(container.textContent).toContain("RevenueSubtracted from burn");
+  expect(container.textContent).not.toContain("RevenueExcluded");
+});

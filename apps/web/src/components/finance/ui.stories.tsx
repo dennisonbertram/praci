@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   AskAgentButton,
   BreakdownRows,
+  BurnLegend,
   Chevron,
   Chip,
   DetailHead,
@@ -13,6 +14,7 @@ import {
   Kpi,
   Kv,
   KvRow,
+  NotFoundNotice,
   PeriodTabs,
   Section,
   Th,
@@ -265,4 +267,30 @@ export const KeyValues: Story = {
       </KvRow>
     </Kv>
   ),
+};
+
+export const NotFound: Story = {
+  name: "Not found notice",
+  render: () => <NotFoundNotice />,
+};
+
+export const DetailPageNotFound: Story = {
+  render: () => (
+    <DetailPage
+      crumbs={crumbs}
+      loading={false}
+      error="Not found"
+      notFound
+      onRetry={() => undefined}
+    />
+  ),
+};
+
+export const BurnChartLegend: Story = {
+  render: () => <BurnLegend />,
+};
+
+export const PeriodsNoneSelected: Story = {
+  name: "Periods with none selected (a custom range is shown)",
+  render: () => <PeriodTabs value={null} onChange={() => undefined} />,
 };

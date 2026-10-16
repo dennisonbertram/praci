@@ -232,3 +232,9 @@ export const RunwayError: Story = {
   render: () => <FinanceRunwayPage />,
   beforeEach: () => mockRpc({ "finance.runway": failing }),
 };
+
+export const BurnWithBrexSpend: Story = {
+  name: "Burn with Brex card spend in By account",
+  render: () => <FinanceBurnPage />,
+  beforeEach: () => mockRpc({ "finance.burn": { ...burn, brexCents: 1_250_000 } }),
+};

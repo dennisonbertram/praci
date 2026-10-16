@@ -1,4 +1,4 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type {
   BreakdownRow,
@@ -21,8 +21,8 @@ import {
 } from "@rakazo/ui-web";
 import { ChevronRight, MessageSquare } from "lucide-react";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { money, shortDay, transactionAmount } from "../../lib/finance-format";
+import { Link, type LinkProps, useLocation, useNavigate } from "react-router-dom";
+import { money, shortDay, transactionAmount, txnDay } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { errorText } from "../../lib/user-error";
 import { shade } from "./charts";
@@ -49,7 +49,12 @@ export function AskAgentButton() {
 /** Loads one Finance RPC. A changed `deps` shows loading, not the previous answer; `reload` keeps the data on screen. */
 export function useFinanceQuery<T>(load: () => Promise<T>, deps: readonly unknown[]) {
   const key = JSON.stringify(deps);
-  const [state, setState] = useState<{ key: string; data: T | null; error: string }>({
+  const [state, setState] = useState<{
+    key: string;
+    data: T | null;
+    error: string;
+    notFound?: boolean;
+  }>({
     key,
     data: null,
     error: "",
@@ -66,7 +71,12 @@ export function useFinanceQuery<T>(load: () => Promise<T>, deps: readonly unknow
       .catch(
         (cause) =>
           live &&
-          setState((s) => ({ key, data: s.key === key ? s.data : null, error: errorText(cause) })),
+          setState((s) => ({
+            key,
+            data: s.key === key ? s.data : null,
+            error: errorText(cause),
+            notFound: (cause as { code?: string } | null)?.code === "NOT_FOUND",
+          })),
       );
     return () => {
       live = false;
@@ -76,6 +86,8 @@ export function useFinanceQuery<T>(load: () => Promise<T>, deps: readonly unknow
   return {
     data: current ? state.data : null,
     error: current ? state.error : "",
+    /** The server answered NOT_FOUND: retrying will not help. */
+    notFound: current && state.notFound === true,
     reload: () => setAttempt((n) => n + 1),
     retry: () => {
       setState({ key, data: null, error: "" });
@@ -86,8 +98,47 @@ export function useFinanceQuery<T>(load: () => Promise<T>, deps: readonly unknow
 
 export type Crumb = { label: string; to?: string };
 
+/** The place a link is clicked from (a dashboard card, a detail page), so Back can return to it. */
+const HereContext = createContext<Crumb | null>(null);
+export const BackHere = HereContext.Provider;
+
+/** Router state for a link: where Back on the next page returns to. */
+export function useBackState(): { back: Crumb } | undefined {
+  const here = useContext(HereContext);
+  return here ? { back: here } : undefined;
+}
+
+/** A Link that tells the page it opens where it was opened from. */
+export function HereLink(props: LinkProps) {
+  const state = useBackState();
+  return <Link state={state} {...props} />;
+}
+
+/** The origin a page was opened from, when a HereLink opened it. */
+function useCameFrom(): Crumb | null {
+  const state = useLocation().state as { back?: Partial<Crumb> } | null;
+  const back = state?.back;
+  return typeof back?.label === "string" &&
+    typeof back.to === "string" &&
+    back.to.startsWith(financePath.dashboard())
+    ? { label: back.label, to: back.to }
+    : null;
+}
+
+/**
+ * The trail shown above a page: its own crumbs, or, when it was opened from somewhere else (the
+ * dashboard's Breakdown, a category page), Finance, that origin and the page itself.
+ */
+export function trailFor(crumbs: Crumb[], cameFrom: Crumb | null): Crumb[] {
+  const [root, ...rest] = crumbs;
+  const here = rest.at(-1);
+  if (!cameFrom || !root || !here) return crumbs;
+  return cameFrom.to === root.to ? [root, here] : [root, cameFrom, here];
+}
+
 /** Back button, breadcrumb and Ask agent for every detail page; the last crumb is the page itself. */
-export function DetailHead({ crumbs }: { crumbs: Crumb[] }) {
+export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
+  const crumbs = trailFor(own, useCameFrom());
   const previous = crumbs.length > 1 ? crumbs[crumbs.length - 2] : undefined;
   return (
     <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
@@ -124,6 +175,20 @@ export function DetailHead({ crumbs }: { crumbs: Crumb[] }) {
   );
 }
 
+/** What a missing page says: retrying cannot bring it back, and Back above leads out. */
+export function NotFoundNotice() {
+  return (
+    <div className="mt-1.5">
+      <h1 className="text-xl font-semibold">
+        <Trans>Not found</Trans>
+      </h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        <Trans>This page doesn't exist or was removed.</Trans>
+      </p>
+    </div>
+  );
+}
+
 export function ErrorNotice({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div role="alert" className="my-4 flex items-center gap-3 text-sm text-destructive">
@@ -143,6 +208,7 @@ export function DetailPage({
   action,
   loading,
   error,
+  notFound,
   onRetry,
   children,
 }: {
@@ -153,50 +219,69 @@ export function DetailPage({
   action?: ReactNode;
   loading: boolean;
   error: string;
+  /** The item does not exist: say so instead of offering a retry. */
+  notFound?: boolean;
   onRetry: () => void;
   children?: ReactNode;
 }) {
+  const location = useLocation();
+  const label = crumbs.at(-1)?.label;
+  const here = label ? { label, to: `${location.pathname}${location.search}` } : null;
   return (
-    <div>
-      <DetailHead crumbs={crumbs} />
-      {error ? (
-        <ErrorNotice message={error} onRetry={onRetry} />
-      ) : loading ? (
-        <div className="mt-4 flex flex-col gap-3" aria-busy="true">
-          <Skeleton className="h-7 w-48" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
-      ) : (
-        <>
-          <div className="mt-1.5 flex items-center gap-3">
-            <h1 className="text-xl font-semibold">{title}</h1>
-            {action ? <div className="ms-auto">{action}</div> : null}
+    <BackHere value={here}>
+      <div>
+        <DetailHead crumbs={crumbs} />
+        {notFound ? (
+          <NotFoundNotice />
+        ) : error ? (
+          <ErrorNotice message={error} onRetry={onRetry} />
+        ) : loading ? (
+          <div className="mt-4 flex flex-col gap-3" aria-busy="true">
+            <span className="text-xs text-muted-foreground">
+              <Trans>Loading…</Trans>
+            </span>
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-48 w-full" />
           </div>
-          {subtitle ? <div className="mb-3 text-xs text-muted-foreground">{subtitle}</div> : null}
-          <div className={cn("flex flex-col gap-3", subtitle ? "" : "mt-3")}>{children}</div>
-        </>
-      )}
-    </div>
+        ) : (
+          <>
+            <div className="mt-1.5 flex items-center gap-3">
+              <h1 className="text-xl font-semibold">{title}</h1>
+              {action ? <div className="ms-auto">{action}</div> : null}
+            </div>
+            {subtitle ? <div className="mb-3 text-xs text-muted-foreground">{subtitle}</div> : null}
+            <div className={cn("flex flex-col gap-3", subtitle ? "" : "mt-3")}>{children}</div>
+          </>
+        )}
+      </div>
+    </BackHere>
   );
 }
 
 export function Section({
+  id,
   title,
   action,
   className,
   children,
 }: {
+  /** An anchor, so Back can return to this card. */
+  id?: string;
   title?: ReactNode;
   action?: ReactNode;
   className?: string;
   children: ReactNode;
 }) {
   return (
-    <Card size="sm" className={cn("px-3.5", className)}>
+    <Card id={id} size="sm" className={cn("scroll-mt-3 px-3.5", className)}>
       {title || action ? (
         <div className="flex items-center gap-3">
-          {title ? <h2 className="text-xs font-semibold text-muted-foreground">{title}</h2> : null}
+          {title ? (
+            <h2 className="whitespace-nowrap text-xs font-semibold text-muted-foreground">
+              {title}
+            </h2>
+          ) : null}
           {action ? <div className="ms-auto flex items-center gap-3">{action}</div> : null}
         </div>
       ) : null}
@@ -263,7 +348,7 @@ export function BreakdownRows({
   return (
     <div className="-mx-2">
       {rows.map((row, i) => (
-        <Link
+        <HereLink
           key={row.key}
           to={to(row)}
           className="group grid grid-cols-[minmax(0,7.5rem)_1fr_4.5rem_0.75rem] items-center gap-2.5 rounded-lg px-2 py-1.5 outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground @md:grid-cols-[minmax(0,9rem)_1fr_4.5rem_0.75rem]"
@@ -292,7 +377,7 @@ export function BreakdownRows({
             aria-hidden="true"
             className="size-3.5 text-muted-foreground group-hover:text-foreground"
           />
-        </Link>
+        </HereLink>
       ))}
     </div>
   );
@@ -304,12 +389,19 @@ const statusLabel = (status: FinanceTxnStatus) =>
 /** Navigates when a table row (outside its own links) is clicked. */
 export function useRowNavigate() {
   const navigate = useNavigate();
-  return (to: string) => ({
+  const back = useBackState();
+  return (to: string, state: object | undefined = back) => ({
     onClick: (event: React.MouseEvent) => {
       if ((event.target as HTMLElement).closest("a,button")) return;
-      navigate(to);
+      navigate(to, { state });
     },
   });
+}
+
+/** The row a transaction link was clicked on, so the transaction page can show it before it loads. */
+export function previewFrom(state: unknown, id: string): FinanceTransaction | null {
+  const preview = (state as { preview?: FinanceTransaction } | null)?.preview;
+  return preview && preview.id === id && typeof preview.counterparty === "string" ? preview : null;
 }
 
 export const Th = ({
@@ -345,6 +437,7 @@ export const rowClass =
 /** Transactions: date, counterparty and memo, category, signed amount, status. Each row opens the transaction. */
 export function TransactionTable({ rows }: { rows: FinanceTransaction[] }) {
   const rowProps = useRowNavigate();
+  const back = useBackState();
   return (
     <table className="w-full border-collapse">
       <thead>
@@ -368,13 +461,25 @@ export function TransactionTable({ rows }: { rows: FinanceTransaction[] }) {
         </tr>
       </thead>
       <tbody>
+        {rows.length === 0 ? (
+          <tr className="border-t border-border">
+            <td colSpan={6} className="py-3 text-muted-foreground">
+              <Trans>No transactions in this period</Trans>
+            </td>
+          </tr>
+        ) : null}
         {rows.map((row) => (
-          <tr key={row.id} className={rowClass} {...rowProps(financePath.transaction(row.id))}>
+          <tr
+            key={row.id}
+            className={rowClass}
+            {...rowProps(financePath.transaction(row.id), { ...back, preview: row })}
+          >
             <td className="w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground">
-              {shortDay(row.postedAt)}
+              {shortDay(txnDay(row))}
             </td>
             <td className="min-w-0">
               <Link
+                state={{ ...back, preview: row }}
                 to={financePath.transaction(row.id)}
                 className="outline-none hover:underline focus-visible:underline"
               >
@@ -426,12 +531,12 @@ export const periodNames = (): Record<SpendPeriod, string> => ({
   year: t`Year`,
 });
 
-/** Week, Month, Quarter, Year as one tab strip. */
+/** Week, Month, Quarter, Year as one tab strip; `null` selects none (a custom range is shown). */
 export function PeriodTabs({
   value,
   onChange,
 }: {
-  value: SpendPeriod;
+  value: SpendPeriod | null;
   onChange: (period: SpendPeriod) => void;
 }) {
   const names = periodNames();
@@ -445,6 +550,32 @@ export function PeriodTabs({
         ))}
       </TabsList>
     </Tabs>
+  );
+}
+
+function Legend({ className, children }: { className: string; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center">
+      <i aria-hidden="true" className={`me-1.5 inline-block size-2.5 rounded-xs ${className}`} />
+      {children}
+    </span>
+  );
+}
+
+/** The key for a BurnBars chart: Out, Revenue and Financing. */
+export function BurnLegend() {
+  return (
+    <div className="flex gap-3.5 text-[11px] text-muted-foreground">
+      <Legend className="bg-foreground">
+        <Trans>Out</Trans>
+      </Legend>
+      <Legend className="bg-muted-foreground">
+        <Trans>Revenue</Trans>
+      </Legend>
+      <Legend className="border border-foreground bg-[repeating-linear-gradient(45deg,var(--foreground)_0_1.5px,var(--card)_1.5px_3.5px)]">
+        <Trans>Financing</Trans>
+      </Legend>
+    </div>
   );
 }
 
@@ -473,6 +604,25 @@ export function ValueLink({ to, children }: { to: string; children: ReactNode })
       {children} <span aria-hidden="true">›</span>
     </Link>
   );
+}
+
+/**
+ * What a Cash figure adds up, built from the accounts actually counted: `3 bank accounts`, plus the
+ * crypto the saved scope counts. Without a count (an older payload) it says `Bank accounts`.
+ */
+export function cashSubtitle(
+  count: number | undefined,
+  crypto: "none" | "stablecoins" | "all",
+): string {
+  const accounts =
+    count === undefined
+      ? t`Bank accounts`
+      : plural(count, { one: "# bank account", other: "# bank accounts" });
+  return crypto === "all"
+    ? t`${accounts} + crypto`
+    : crypto === "stablecoins"
+      ? t`${accounts} + stablecoins`
+      : accounts;
 }
 
 /** Up/down tone: spending more or burning more is bad news. */

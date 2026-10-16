@@ -17,7 +17,9 @@ import { LineChart } from "../../components/finance/charts";
 import { exchangeName } from "../../components/finance/ExchangeGroup";
 import {
   Chevron,
+  cashSubtitle,
   DetailPage,
+  HereLink,
   Kpi,
   PeriodTabs,
   rowClass,
@@ -30,6 +32,7 @@ import {
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { ExchangeConnectDialog } from "../../components/integrations/ExchangeConnectDialog";
 import {
+  accountLabel,
   dayAxisLabels,
   money,
   moneyExact,
@@ -58,13 +61,13 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
               {...rowProps(financePath.account(account.id))}
             >
               <td className="font-semibold">
-                <Link
+                <HereLink
                   to={financePath.account(account.id)}
                   className="outline-none hover:underline focus-visible:underline"
                 >
                   {account.name}
-                </Link>
-                {account.lastFour ? (
+                </HereLink>
+                {accountLabel(account.name, account.lastFour) !== account.name ? (
                   <span className="ms-1.5 font-normal text-muted-foreground">
                     ••{account.lastFour}
                   </span>
@@ -142,7 +145,14 @@ function CryptoGroup({
   );
 }
 
-export function FinanceAccountsPage({ source = null }: { source?: FinanceProvider | null }) {
+export function FinanceAccountsPage({
+  source = null,
+  unknownSource,
+}: {
+  source?: FinanceProvider | null;
+  /** A `?source=` that is not a provider: every account is listed and the filter is flagged. */
+  unknownSource?: string;
+}) {
   const accounts = useFinanceQuery(() => rpc.finance.accounts(), []);
   // Whatever reloads the accounts total (a wallet added, the crypto scope changed) reloads the chart too.
   const [balanceStamp, setBalanceStamp] = useState(0);
@@ -168,14 +178,13 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
   ).data;
   const scope = prefs.data?.runwayCrypto ?? "bank";
   const sourceName = FINANCE_PROVIDERS.find((p) => p.provider === source)?.name;
-  // Cash accounts and cards both carry a provider; the total and chart stay unfiltered.
+  // Cash accounts and cards both carry a provider; a source filter narrows the total with the list.
   const fromSource = (rows: AccountRow[]) =>
     source ? rows.filter((a) => a.provider === source) : rows;
-  const cashSub = {
-    bank: t`Checking + Savings + Treasury`,
-    stablecoins: t`Checking + Savings + Treasury + Stablecoins`,
-    all: t`Checking + Savings + Treasury + Crypto`,
-  }[scope];
+  const shownCash = data ? fromSource(data.cash) : [];
+  // Brex shares no card balance owed, so with Brex and no card row the figure is unknown, not zero.
+  const brexOwedUnknown =
+    data !== null && data.cardOwedCents === null && data.cash.some((a) => a.provider === "brex");
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Accounts` }]}
@@ -192,6 +201,14 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
             >
               {sourceName} ×
             </Badge>
+          ) : unknownSource ? (
+            <Badge
+              variant="outline"
+              className="ms-2 align-middle"
+              render={<Link to={financePath.accounts()} aria-label={t`Clear filter`} />}
+            >
+              {t`Unknown source: ${unknownSource}`} ×
+            </Badge>
           ) : null}
         </>
       }
@@ -202,6 +219,7 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
       }
       loading={!data}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
       {data ? (
@@ -236,7 +254,22 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
             />
           ) : null}
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
-            <Kpi title={t`Total cash`} value={money(data.totalCashCents)} sub={cashSub} />
+            {sourceName ? (
+              <Kpi
+                title={t`${sourceName} cash`}
+                value={money(shownCash.reduce((sum, a) => sum + a.balanceCents, 0))}
+                sub={cashSubtitle(shownCash.length, "none")}
+              />
+            ) : (
+              <Kpi
+                title={t`Total cash`}
+                value={money(data.totalCashCents)}
+                sub={cashSubtitle(
+                  data.cash.length,
+                  scope === "bank" ? "none" : scope === "stablecoins" ? "stablecoins" : "all",
+                )}
+              />
+            )}
             {data.cardOwedCents !== null ? (
               <Kpi
                 title={t`Card balance owed`}
@@ -244,6 +277,8 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
                 sub={t`Not counted in cash`}
                 to={data.cards[0] ? financePath.account(data.cards[0].id) : undefined}
               />
+            ) : brexOwedUnknown ? (
+              <Kpi title={t`Card balance owed`} value="—" sub={t`Brex does not share it`} />
             ) : null}
           </div>
           {prefs.data && crypto && crypto.summary.totalCents > 0 ? (
@@ -277,7 +312,7 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
             </div>
           </Section>
           <Section title={<Trans>Cash accounts</Trans>}>
-            <AccountTable rows={fromSource(data.cash)} />
+            <AccountTable rows={shownCash} />
           </Section>
           {fromSource(data.cards).length > 0 ? (
             <Section title={<Trans>Card balance owed</Trans>}>
@@ -311,7 +346,7 @@ export function FinanceAccountPage({ id }: { id: string }) {
         account ? (
           <>
             {account.name}
-            {account.lastFour ? (
+            {accountLabel(account.name, account.lastFour) !== account.name ? (
               <span className="ms-2 font-normal text-muted-foreground">••{account.lastFour}</span>
             ) : null}
           </>
@@ -319,6 +354,7 @@ export function FinanceAccountPage({ id }: { id: string }) {
       }
       loading={!data}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
       {data && account ? (

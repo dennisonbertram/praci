@@ -236,3 +236,33 @@ export const AccountLoadFailed: StoryObj<typeof FinanceAccountPage> = {
       },
     }),
 };
+
+export const BrexCashWithUnknownCardBalance: Story = {
+  name: "Brex filter, card balance not shared",
+  args: { source: "brex" },
+  beforeEach: () =>
+    mockRpc({
+      ...loaded,
+      "finance.accounts": {
+        ...accounts,
+        cardOwedCents: null,
+        cards: [],
+        cash: [
+          ...accounts.cash,
+          {
+            ...accounts.cash[0],
+            id: "acct_brex",
+            provider: "brex",
+            name: "Business account",
+            lastFour: null,
+            balanceCents: 30_000,
+          },
+        ],
+      },
+    }),
+};
+
+export const UnknownSourceFilter: Story = {
+  args: { unknownSource: "chase" },
+  beforeEach: () => mockRpc(loaded),
+};

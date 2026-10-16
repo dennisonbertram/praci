@@ -163,6 +163,7 @@ export function FinanceCryptoPage() {
       subtitle={updated ? <Trans>Updated {updated}</Trans> : undefined}
       loading={!data}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
       {data ? (

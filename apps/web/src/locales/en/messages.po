@@ -48,6 +48,11 @@ msgstr "{0, plural, one {# subscription} other {# subscriptions}}"
 msgid "{0, plural, one {#+ result} other {#+ results}}"
 msgstr "{0, plural, one {#+ result} other {#+ results}}"
 
+#. placeholder {0}: data.monthlyAvgMonths ?? 6
+#: src/pages/finance/FinanceSpend.tsx
+msgid "{0, plural, one {Last full month} other {Last # full months}}"
+msgstr "{0, plural, one {Last full month} other {Last # full months}}"
+
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -179,6 +184,14 @@ msgstr "{0} will still respond to direct mentions."
 msgid "{0}'s screen"
 msgstr "{0}'s screen"
 
+#: src/components/finance/ui.tsx
+msgid "{accounts} + crypto"
+msgstr "{accounts} + crypto"
+
+#: src/components/finance/ui.tsx
+msgid "{accounts} + stablecoins"
+msgstr "{accounts} + stablecoins"
+
 #: src/components/compose/RecipientField.tsx
 msgid "{address} isn't a valid email address"
 msgstr "{address} isn't a valid email address"
@@ -198,6 +211,10 @@ msgstr "{botName}’s computer"
 #: src/pages/shell/bot-credentials.tsx
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 msgstr "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
+
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# bank account} other {# bank accounts}}"
+msgstr "{count, plural, one {# bank account} other {# bank accounts}}"
 
 #: src/lib/billing.ts
 msgid "{count} days"
@@ -298,6 +315,10 @@ msgstr "{serverName} connected"
 msgid "{size} B"
 msgstr "{size} B"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "{sourceName} cash"
+msgstr "{sourceName} cash"
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
 msgstr "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
@@ -350,12 +371,8 @@ msgstr "3 mo"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
-msgid "3-mo avg"
-msgstr "3-mo avg"
-
-#: src/pages/finance/FinanceSpend.tsx
-msgid "6 mo"
-msgstr "6 mo"
+msgid "3-mo avg, after revenue"
+msgstr "3-mo avg, after revenue"
 
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
@@ -1018,6 +1035,10 @@ msgstr "Balance owed"
 msgid "Bank"
 msgstr "Bank"
 
+#: src/components/finance/ui.tsx
+msgid "Bank accounts"
+msgstr "Bank accounts"
+
 #: src/pages/Finance.tsx
 msgid "Bank only: {bankRunwayMonths} mo"
 msgstr "Bank only: {bankRunwayMonths} mo"
@@ -1134,6 +1155,10 @@ msgstr "Breadcrumb"
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Breakdown"
 msgstr "Breakdown"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Brex does not share it"
+msgstr "Brex does not share it"
 
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Browser"
@@ -1376,30 +1401,6 @@ msgstr "Check the server URL and network, then test again."
 msgid "Check your email"
 msgstr "Check your email"
 
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury"
-msgstr "Checking + Savings + Treasury"
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury + Crypto"
-msgstr "Checking + Savings + Treasury + Crypto"
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury + Stablecoins"
-msgstr "Checking + Savings + Treasury + Stablecoins"
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury"
-msgstr "Checking + Treasury"
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury + Crypto"
-msgstr "Checking + Treasury + Crypto"
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury + Stablecoins"
-msgstr "Checking + Treasury + Stablecoins"
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
 msgstr "Checking computer setup…"
@@ -1453,6 +1454,10 @@ msgstr "Clear"
 msgid "Clear {0}’s conversation?"
 msgstr "Clear {0}’s conversation?"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Clear {rangeLabel}"
+msgstr "Clear {rangeLabel}"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Clear {sourceName} filter"
 msgstr "Clear {sourceName} filter"
@@ -1461,6 +1466,10 @@ msgstr "Clear {sourceName} filter"
 #: src/pages/shell/bot-panel.tsx
 msgid "Clear conversation"
 msgstr "Clear conversation"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Clear filter"
+msgstr "Clear filter"
 
 #: src/pages/ActivityList.tsx
 msgid "Clear filter {label}"
@@ -2506,12 +2515,9 @@ msgstr "Data room"
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
+#: src/pages/finance/FinanceTransaction.tsx
 msgid "Date"
 msgstr "Date"
-
-#: src/pages/finance/FinanceTransaction.tsx
-msgid "Date posted"
-msgstr "Date posted"
 
 #: src/lib/billing.ts
 #: src/pages/RoutineSchedule.tsx
@@ -3145,7 +3151,7 @@ msgstr "Filters"
 msgid "Finance"
 msgstr "Finance"
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Financing"
 msgstr "Financing"
@@ -3711,8 +3717,10 @@ msgid "Loading voice providers…"
 msgstr "Loading voice providers…"
 
 #: src/App.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
+#: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -4365,6 +4373,10 @@ msgstr "No runs yet"
 msgid "No skills yet"
 msgstr "No skills yet"
 
+#: src/pages/Finance.tsx
+msgid "No spend in this period"
+msgstr "No spend in this period"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No team conversations yet."
 msgstr "No team conversations yet."
@@ -4376,6 +4388,10 @@ msgstr "No tickets yet"
 #: src/components/integrations/AppDetail.tsx
 msgid "No tools available."
 msgstr "No tools available."
+
+#: src/components/finance/ui.tsx
+msgid "No transactions in this period"
+msgstr "No transactions in this period"
 
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
@@ -4415,6 +4431,7 @@ msgstr "Not counted"
 msgid "Not counted in cash"
 msgstr "Not counted in cash"
 
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"
 msgstr "Not found"
@@ -4642,7 +4659,7 @@ msgstr "Other crypto"
 msgid "Other model…"
 msgstr "Other model…"
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
@@ -5335,7 +5352,7 @@ msgstr "Return to Rakazo"
 msgid "rev {0}"
 msgstr "rev {0}"
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
 msgstr "Revenue"
@@ -5937,9 +5954,12 @@ msgid "Spend"
 msgstr "Spend"
 
 #: src/components/FinanceCards.tsx
-#: src/pages/Finance.tsx
 msgid "Spend this month"
 msgstr "Spend this month"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Spending minus revenue, 3-mo avg"
+msgstr "Spending minus revenue, 3-mo avg"
 
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
@@ -6065,6 +6085,10 @@ msgstr "Subscriptions"
 #: src/components/FinanceCards.tsx
 msgid "Subscriptions / mo"
 msgstr "Subscriptions / mo"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Subtracted from burn"
+msgstr "Subtracted from burn"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -6245,6 +6269,10 @@ msgstr "this Mac"
 #: src/pages/Artifacts.tsx
 msgid "This month"
 msgstr "This month"
+
+#: src/components/finance/ui.tsx
+msgid "This page doesn't exist or was removed."
+msgstr "This page doesn't exist or was removed."
 
 #: src/components/AccountAccess.tsx
 msgid "This permanently deletes your account and data."
@@ -6462,6 +6490,10 @@ msgstr "Unknown"
 msgid "Unknown bot"
 msgstr "Unknown bot"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Unknown source: {unknownSource}"
+msgstr "Unknown source: {unknownSource}"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Unknown tool"
 msgstr "Unknown tool"
@@ -6500,6 +6532,7 @@ msgstr "Until {runOutMonth}"
 msgid "Up to date"
 msgstr "Up to date"
 
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Upcoming"
 msgstr "Upcoming"
@@ -6714,10 +6747,6 @@ msgstr "Voice chat"
 #: src/pages/Finance.tsx
 msgid "vs {previousRange}"
 msgstr "vs {previousRange}"
-
-#: src/pages/Finance.tsx
-msgid "vs {previousSpend} for {monthPreviousRange}"
-msgstr "vs {previousSpend} for {monthPreviousRange}"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "vs 3 mo ago"

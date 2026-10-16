@@ -15,7 +15,7 @@ describe("parseFinanceRoute", () => {
     expect(parseFinanceRoute("/app/finance/crypto/x")).toEqual({ page: "not-found" });
   });
 
-  it("builds and reads the accounts source filter, ignoring unknown sources", () => {
+  it("builds and reads the accounts source filter, flagging unknown sources", () => {
     expect(financePath.accounts()).toBe("/app/finance/accounts");
     expect(financePath.accounts("brex")).toBe("/app/finance/accounts?source=brex");
     expect(parseFinanceRoute("/app/finance/accounts", "?source=mercury")).toEqual({
@@ -25,6 +25,7 @@ describe("parseFinanceRoute", () => {
     expect(parseFinanceRoute("/app/finance/accounts", "?source=plaid")).toEqual({
       page: "accounts",
       source: null,
+      unknownSource: "plaid",
     });
   });
 

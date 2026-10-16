@@ -21,6 +21,17 @@ export function niceScale(max: number): { step: number; top: number } {
   return { step, top: Math.max(step, Math.ceil(safe / step) * step) };
 }
 
+/** Like `niceScale`, but also reaching down to `min` when it is below zero (`floor` is then negative). */
+export function niceRange(min: number, max: number): { step: number; top: number; floor: number } {
+  if (min >= 0) return { ...niceScale(max), floor: 0 };
+  const { step } = niceScale(Math.max(max, 0) - min);
+  return {
+    step,
+    top: Math.max(step, Math.ceil(Math.max(max, 0) / step) * step),
+    floor: Math.floor(min / step) * step,
+  };
+}
+
 /** Monochrome fills for stacked segments and their legend swatches; index 0 is darkest. */
 export const shade = (index: number) =>
   `color-mix(in srgb, var(--foreground) ${[100, 78, 60, 46, 34, 24, 16][index % 7]}%, var(--card))`;
@@ -80,14 +91,15 @@ function Grid({
   right: number;
   top: number;
   bottom: number;
-  scale: { step: number; top: number };
+  scale: { step: number; top: number; floor?: number };
 }) {
+  const floor = scale.floor ?? 0;
   const lines: number[] = [];
-  for (let v = 0; v <= scale.top; v += scale.step) lines.push(v);
+  for (let v = floor; v <= scale.top; v += scale.step) lines.push(v);
   return (
     <>
       {lines.map((v) => {
-        const y = top + (height - top - bottom) * (1 - v / scale.top);
+        const y = top + (height - top - bottom) * (1 - (v - floor) / (scale.top - floor));
         return (
           <g key={v}>
             <line
@@ -144,9 +156,10 @@ export function LineChart({
         const top = axes ? 10 : 4;
         const bottom = axes ? 22 : 4;
         const maxValue = Math.max(...values, 0);
-        const scale = niceScale(maxValue);
+        // A balance can dip below zero; the axis reaches down to it instead of clipping the line.
+        const scale = niceRange(Math.min(...values), maxValue);
         const hi = axes ? scale.top : maxValue;
-        const lo = axes ? 0 : Math.min(...values);
+        const lo = axes ? scale.floor : Math.min(...values);
         const x = (i: number) =>
           values.length < 2 ? left : left + (i * (width - left - right)) / (values.length - 1);
         const y = (v: number) => top + (height - top - bottom) * (1 - (v - lo) / (hi - lo || 1));

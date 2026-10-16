@@ -11,7 +11,11 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
@@ -179,7 +183,7 @@ const subtitle = () =>
 
 it("offers Count crypto, off under the bank scope, and keeps the plain subtitle", () => {
   expect(toggle()?.textContent).toBe("Count crypto");
-  expect(subtitle()).toBe("Checking + Savings + Treasury");
+  expect(subtitle()).toBe("1 bank account");
 });
 
 it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
@@ -187,11 +191,64 @@ it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
   root = createRoot(container);
   await show("stablecoins");
   expect(toggle()?.textContent).toBe("Counting stablecoins");
-  expect(subtitle()).toBe("Checking + Savings + Treasury + Stablecoins");
+  expect(subtitle()).toBe("1 bank account + stablecoins");
   await act(async () => root.unmount());
   root = createRoot(container);
   await show("all");
-  expect(subtitle()).toBe("Checking + Savings + Treasury + Crypto");
+  expect(subtitle()).toBe("1 bank account + crypto");
+});
+
+it("narrows the cash total to the chosen source and says Brex does not share the card balance", async () => {
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.accounts.mockResolvedValue({
+    ...accounts,
+    totalCashCents: 7_530_000,
+    cash: [
+      ...accounts.cash.map((a) => ({ ...a, provider: "mercury" })),
+      {
+        id: "a2",
+        provider: "brex",
+        name: "Acme business account",
+        lastFour: null,
+        balanceCents: 30_000,
+        annualYieldPct: null,
+      },
+    ],
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountsPage source="brex" />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  const kpi = (title: string) =>
+    [...container.querySelectorAll("h2")].find((h) => h.textContent === title)?.parentElement
+      ?.textContent;
+  expect(kpi("Brex cash")).toContain("$300");
+  expect(kpi("Brex cash")).toContain("1 bank account");
+  expect(container.textContent).not.toContain("$75,300");
+  expect(kpi("Card balance owed")).toContain("Brex does not share it");
+});
+
+it("shows an account's last four digits once when its name already ends with them", async () => {
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.accounts.mockResolvedValue({
+    ...accounts,
+    cash: [{ ...accounts.cash[0], name: "MOCK Checking ••0002" }],
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountsPage />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  expect(container.textContent?.match(/••0002/g)).toHaveLength(1);
 });
 
 it("saves the scope and reloads accounts and the scope", async () => {

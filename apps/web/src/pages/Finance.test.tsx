@@ -332,7 +332,7 @@ it("hides Cash and Runway when only Brex is connected, and still shows spend", a
   expect(container.querySelector('a[href="/app/finance/runway"]')).toBeNull();
   expect(container.textContent).not.toContain("Runway");
   expect(container.textContent).not.toContain("Cash");
-  expect(container.textContent).toContain("Spend this month");
+  expect(container.textContent).toContain("Spent Oct 1");
   expect(container.textContent).toContain("Monthly burn");
   expect(container.textContent).toContain("Add Mercury");
 });
@@ -561,7 +561,9 @@ it("labels a vendor page, breadcrumb and back link", async () => {
   expect(rpcMock.vendor).toHaveBeenCalledWith({ key: "acme-hosting" });
   expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
   expect(container.querySelector("nav")?.textContent).toContain("Subscriptions");
-  expect(container.querySelector('a[href="/app/finance"]')?.textContent).toContain("Subscriptions");
+  expect(container.querySelector('a[href="/app/finance#subscriptions"]')?.textContent).toContain(
+    "Subscriptions",
+  );
   expect(container.textContent).toContain("↑ 25%");
   expect(container.textContent).toContain("Brex ••0001");
 });
@@ -748,9 +750,9 @@ it("shows the Crypto card only when the overview has crypto, apart from cash", a
   const card = container.querySelector('a[href="/app/finance/crypto"]');
   expect(card?.textContent).toContain("$123,456");
   expect(card?.textContent).toContain("2 unpriced");
-  // One row of five on desktop: crypto shares the grid with the other stat cards.
+  // One row of four on desktop: crypto shares the grid with the other stat cards.
   const grid = card?.parentElement;
-  expect(grid?.className).toContain("@3xl:grid-cols-5");
+  expect(grid?.className).toContain("@3xl:grid-cols-4");
   expect(grid?.querySelector('a[href="/app/finance/accounts"]')).not.toBeNull();
   expect(container.querySelector('a[href="/app/finance/accounts"]')?.textContent).toBe(cashBefore);
 });
@@ -813,7 +815,7 @@ it("counts stablecoins in Cash and Runway, and the hovers show the figures witho
   await flush();
   const cash = kpi("Cash");
   expect(cash?.textContent).toContain("$125,000");
-  expect(cash?.textContent).toContain("Checking + Treasury + Stablecoins");
+  expect(cash?.textContent).toContain("Bank accounts + stablecoins");
   const cashTip = await hoverOver("Cash");
   expect(cashTip).toContain("Bank$100,000");
   expect(cashTip).toContain("Stablecoins$25,000");
@@ -834,7 +836,7 @@ it("keeps the plain Cash subtitle and no runway hover without stablecoins", asyn
   await show("/app/finance");
   await flush();
   const cash = kpi("Cash");
-  expect(cash?.textContent).toContain("Checking + Treasury");
+  expect(cash?.textContent).toContain("Bank accounts");
   expect(cash?.textContent).not.toContain("Stablecoins");
   expect(await hoverOver("Runway")).toBe("");
 });
@@ -856,7 +858,7 @@ it("shows plain bank cash under the bank scope, with held crypto in the hover", 
   await show("/app/finance");
   await flush();
   expect(kpi("Cash")?.textContent).toContain("$100,000");
-  expect(kpi("Cash")?.textContent).toContain("Checking + Treasury");
+  expect(kpi("Cash")?.textContent).toContain("Bank accounts");
   expect(kpi("Cash")?.textContent).not.toContain("Stablecoins");
   const tip = await hoverOver("Cash");
   expect(tip).toContain("Stablecoins$25,000");
@@ -869,6 +871,135 @@ it("counts all crypto under the all scope", async () => {
   await show("/app/finance");
   await flush();
   expect(kpi("Cash")?.textContent).toContain("$155,000");
-  expect(kpi("Cash")?.textContent).toContain("Checking + Treasury + Crypto");
+  expect(kpi("Cash")?.textContent).toContain("Bank accounts + crypto");
   expect(await hoverOver("Cash")).toContain("Total incl. crypto$155,000");
+});
+
+it("names the accounts Cash adds up instead of a fixed list of account types", async () => {
+  const base = connectedOverview();
+  rpcMock.overview.mockResolvedValue({ ...base, cash: { ...base.cash, cashAccountCount: 3 } });
+  await show("/app/finance");
+  await flush();
+  const cash = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Cash");
+  expect(cash?.parentElement?.textContent).toContain("3 bank accounts");
+  expect(container.textContent).not.toContain("Treasury +");
+});
+
+it("shows the breakdown for the selected period, labelled with its days", async () => {
+  const empty = { category: [], vendor: [] };
+  rpcMock.overview.mockResolvedValue(
+    connectedOverview({
+      breakdownByPeriod: {
+        week: empty,
+        month: { category: [{ key: "software", label: "Software", cents: 120_000 }], vendor: [] },
+        quarter: { category: [{ key: "payroll", label: "Payroll", cents: 999_900 }], vendor: [] },
+        year: empty,
+      },
+    }),
+  );
+  await show("/app/finance");
+  await flush();
+  const breakdown = () =>
+    container.querySelector("#breakdown")?.textContent?.replace(/[\s ]+/g, " ");
+  expect(breakdown()).toContain("Software");
+  expect(breakdown()).toContain("Oct 1 – 14");
+  expect(breakdown()).not.toContain("Last 90 days");
+  const tab = (name: string) =>
+    [...container.querySelectorAll('[role="tab"]')].find((n) => n.textContent === name);
+  await act(async () => (tab("Quarter") as HTMLElement).click());
+  expect(breakdown()).toContain("Payroll");
+  expect(breakdown()).not.toContain("Software");
+  await act(async () => (tab("Week") as HTMLElement).click());
+  expect(breakdown()).toContain("No spend in this period");
+});
+
+it("sends Back from a vendor opened in Breakdown to the Breakdown card", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  rpcMock.vendor.mockResolvedValue({
+    key: "acme-hosting",
+    name: "Acme Hosting",
+    isSubscription: true,
+    monthlyAvgCents: 50_000,
+    monthlyAvgMonths: 3,
+    changePct: null,
+    firstSeenAt: "2026-07-02T00:00:00.000Z",
+    paidWith: [],
+    monthly: [],
+    charges: [],
+  });
+  await show("/app/finance");
+  await flush();
+  await act(async () => button("Vendor")?.click());
+  const row = container.querySelector('#breakdown a[href="/app/finance/vendor/acme-hosting"]');
+  await act(async () => (row as HTMLElement).click());
+  await flush();
+  expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
+  // Opened from Breakdown, although the vendor is also a subscription.
+  const back = container.querySelector('a[href="/app/finance#breakdown"]');
+  expect(back?.textContent).toContain("Breakdown");
+  expect(container.querySelector("nav")?.textContent).not.toContain("Subscriptions");
+  expect(container.textContent).toContain("Last 3 full months");
+});
+
+it("shows the clicked transaction at once while the rest loads", async () => {
+  rpcMock.transaction.mockReturnValue(new Promise(() => {}));
+  const row = spendTransaction(false).transaction;
+  await act(async () => {
+    root.render(
+      <MemoryRouter
+        initialEntries={[{ pathname: "/app/finance/transaction/t1", state: { preview: row } }]}
+      >
+        <FinancePage />
+      </MemoryRouter>,
+    );
+  });
+  expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
+  expect(container.textContent).toContain("$42.00");
+  // The purchase day, the day lists and totals use; the posting day follows.
+  expect(container.textContent).toContain("DateOct 2, 2026");
+  expect(container.textContent).toContain("PostedOct 3, 2026");
+  expect(container.textContent).toContain("Loading…");
+});
+
+it("says a missing transaction does not exist instead of offering Try again", async () => {
+  rpcMock.transaction.mockRejectedValue({ code: "NOT_FOUND", message: "Not found" });
+  await show("/app/finance/transaction/missing");
+  await flush();
+  expect(container.textContent).toContain("This page doesn't exist or was removed.");
+  expect(button("Try again")).toBeUndefined();
+});
+
+it("shows a day from the chart as a removable chip with no period tab selected", async () => {
+  const spend = {
+    period: "month",
+    range: { from: "2026-09-28", to: "2026-09-28" },
+    start: "2026-09-28",
+    end: "2026-09-29",
+    category: null,
+    totalCents: 0,
+    categories: [],
+    transactions: [],
+  };
+  rpcMock.spend.mockResolvedValue(spend);
+  await show("/app/finance/spend?period=month&from=2026-09-28&to=2026-09-28");
+  await flush();
+  const selected = [...container.querySelectorAll('[role="tab"]')].filter(
+    (n) => n.getAttribute("aria-selected") === "true",
+  );
+  expect(selected).toHaveLength(0);
+  const chip = container.querySelector('a[aria-label="Clear Sep 28"]');
+  expect(chip?.getAttribute("href")).toBe("/app/finance/spend?period=month");
+  expect(container.textContent).toContain("No transactions in this period");
+
+  rpcMock.spend.mockResolvedValue({
+    ...spend,
+    range: null,
+    start: "2026-10-01",
+    end: "2026-10-15",
+  });
+  act(() => root.unmount());
+  root = createRoot(container);
+  await show("/app/finance/spend?period=month");
+  await flush();
+  expect(container.textContent?.replace(/[\s ]+/g, " ")).toContain("Oct 1 – 14");
 });

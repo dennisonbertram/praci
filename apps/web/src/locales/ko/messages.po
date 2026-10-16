@@ -48,6 +48,11 @@ msgstr ""
 msgid "{0, plural, one {#+ result} other {#+ results}}"
 msgstr ""
 
+#. placeholder {0}: data.monthlyAvgMonths ?? 6
+#: src/pages/finance/FinanceSpend.tsx
+msgid "{0, plural, one {Last full month} other {Last # full months}}"
+msgstr ""
+
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -179,6 +184,14 @@ msgstr ""
 msgid "{0}'s screen"
 msgstr "{0}의 화면"
 
+#: src/components/finance/ui.tsx
+msgid "{accounts} + crypto"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "{accounts} + stablecoins"
+msgstr ""
+
 #: src/components/compose/RecipientField.tsx
 msgid "{address} isn't a valid email address"
 msgstr ""
@@ -198,6 +211,10 @@ msgstr "{botName}의 컴퓨터"
 #: src/pages/shell/bot-credentials.tsx
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 msgstr "{commandVariable}은(는) 예약되어 있어 명령 변수로 사용할 수 없습니다. 다른 이름을 선택하세요."
+
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# bank account} other {# bank accounts}}"
+msgstr ""
 
 #: src/lib/billing.ts
 msgid "{count} days"
@@ -298,6 +315,10 @@ msgstr ""
 msgid "{size} B"
 msgstr "{size} B"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "{sourceName} cash"
+msgstr ""
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
 msgstr ""
@@ -350,11 +371,7 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
-msgid "3-mo avg"
-msgstr ""
-
-#: src/pages/finance/FinanceSpend.tsx
-msgid "6 mo"
+msgid "3-mo avg, after revenue"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -1018,6 +1035,10 @@ msgstr ""
 msgid "Bank"
 msgstr ""
 
+#: src/components/finance/ui.tsx
+msgid "Bank accounts"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Bank only: {bankRunwayMonths} mo"
 msgstr ""
@@ -1133,6 +1154,10 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Breakdown"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Brex does not share it"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
@@ -1376,30 +1401,6 @@ msgstr "서버 URL과 네트워크를 확인한 뒤 다시 테스트하세요."
 msgid "Check your email"
 msgstr "이메일을 확인하세요"
 
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury"
-msgstr ""
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury + Crypto"
-msgstr ""
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury + Stablecoins"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury + Crypto"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury + Stablecoins"
-msgstr ""
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
 msgstr ""
@@ -1453,6 +1454,10 @@ msgstr "비우기"
 msgid "Clear {0}’s conversation?"
 msgstr "{0}와의 대화 내용을 비울까요?"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Clear {rangeLabel}"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Clear {sourceName} filter"
 msgstr ""
@@ -1461,6 +1466,10 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Clear conversation"
 msgstr "대화 내용 비우기"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Clear filter"
+msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "Clear filter {label}"
@@ -2506,11 +2515,8 @@ msgstr ""
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
-msgid "Date"
-msgstr ""
-
 #: src/pages/finance/FinanceTransaction.tsx
-msgid "Date posted"
+msgid "Date"
 msgstr ""
 
 #: src/lib/billing.ts
@@ -3145,7 +3151,7 @@ msgstr ""
 msgid "Finance"
 msgstr ""
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Financing"
 msgstr ""
@@ -3711,8 +3717,10 @@ msgid "Loading voice providers…"
 msgstr "음성 서비스를 불러오는 중…"
 
 #: src/App.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
+#: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -4365,6 +4373,10 @@ msgstr "아직 실행 기록이 없습니다"
 msgid "No skills yet"
 msgstr "아직 스킬이 없습니다"
 
+#: src/pages/Finance.tsx
+msgid "No spend in this period"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No team conversations yet."
 msgstr ""
@@ -4375,6 +4387,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "No tools available."
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "No transactions in this period"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -4415,6 +4431,7 @@ msgstr ""
 msgid "Not counted in cash"
 msgstr ""
 
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"
 msgstr ""
@@ -4642,7 +4659,7 @@ msgstr ""
 msgid "Other model…"
 msgstr "다른 모델 직접 입력…"
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr ""
@@ -5335,7 +5352,7 @@ msgstr "Rakazo로 돌아가기"
 msgid "rev {0}"
 msgstr "리비전 {0}"
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
 msgstr ""
@@ -5937,8 +5954,11 @@ msgid "Spend"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
-#: src/pages/Finance.tsx
 msgid "Spend this month"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Spending minus revenue, 3-mo avg"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -6064,6 +6084,10 @@ msgstr ""
 
 #: src/components/FinanceCards.tsx
 msgid "Subscriptions / mo"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Subtracted from burn"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6244,6 +6268,10 @@ msgstr "이 Mac"
 
 #: src/pages/Artifacts.tsx
 msgid "This month"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "This page doesn't exist or was removed."
 msgstr ""
 
 #: src/components/AccountAccess.tsx
@@ -6462,6 +6490,10 @@ msgstr ""
 msgid "Unknown bot"
 msgstr ""
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Unknown source: {unknownSource}"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Unknown tool"
 msgstr ""
@@ -6500,6 +6532,7 @@ msgstr ""
 msgid "Up to date"
 msgstr "최신 상태"
 
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Upcoming"
 msgstr ""
@@ -6713,10 +6746,6 @@ msgstr "음성 대화"
 
 #: src/pages/Finance.tsx
 msgid "vs {previousRange}"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "vs {previousSpend} for {monthPreviousRange}"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx

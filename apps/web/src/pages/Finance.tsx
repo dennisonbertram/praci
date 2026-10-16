@@ -7,7 +7,7 @@ import type {
   SpendPeriod,
   UpcomingItem,
 } from "@rakazo/contracts";
-import { Button, Skeleton } from "@rakazo/ui-web";
+import { Button, Skeleton, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -16,10 +16,14 @@ import { type BarGranularity, BurnBars, Sparkline } from "../components/finance/
 import { StatementReminderBanner } from "../components/finance/StatementReminderBanner";
 import {
   AskAgentButton,
+  BackHere,
   BreakdownRows,
+  BurnLegend,
   Chevron,
+  cashSubtitle,
   ErrorNotice,
   FinanceChromeProvider,
+  HereLink,
   Kpi,
   PeriodTabs,
   rowClass,
@@ -83,7 +87,7 @@ export function FinancePage({ onAskAgent }: { onAskAgent?: () => void }) {
         {route.page === "dashboard" ? (
           <Dashboard />
         ) : route.page === "accounts" ? (
-          <FinanceAccountsPage source={route.source} />
+          <FinanceAccountsPage source={route.source} unknownSource={route.unknownSource} />
         ) : route.page === "account" ? (
           <FinanceAccountPage id={route.id} />
         ) : route.page === "burn" ? (
@@ -264,15 +268,18 @@ function Overview({
   onReload: () => void;
 }) {
   const navigate = useNavigate();
+  const { hash } = useLocation();
+  // Back from a detail page lands on the card it was opened from, not the top of the page.
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });
+  }, [hash]);
   const [uploading, setUploading] = useState(false);
   const [period, setPeriod] = useState<SpendPeriod>("month");
   const [by, setBy] = useState<"category" | "vendor">("category");
   const [allBreakdown, setAllBreakdown] = useState(false);
   const [allUpcoming, setAllUpcoming] = useState(false);
   const totals = data.spendTotals[period];
-  const month = data.spendTotals.month;
   const change = changeText(totals.changePct);
-  const monthChange = changeText(month.changePct);
   // Less spend than before is good news.
   const tone = (pct: number | null) => ((pct ?? 0) <= 0 ? "text-success" : "text-destructive");
   const burning = data.burn.monthlyCents > 0;
@@ -280,7 +287,9 @@ function Overview({
   const hasCash = data.hasCashAccounts;
   const missing = data.sources.filter((source) => source.status === "not_connected");
   const onlyOne = missing.length === 1 && data.sources.length > 1 ? missing[0] : undefined;
-  const breakdownRows = data.breakdown[by];
+  // The breakdown follows the period tabs; an older payload only has the last 90 days.
+  const periodBreakdown = data.breakdownByPeriod?.[period];
+  const breakdownRows = (periodBreakdown ?? data.breakdown)[by];
   const rowCap = Math.max(MIN_ROWS, Math.min(MAX_ROWS, breakdownRows.length));
   const upcomingRows = [...data.upcoming.items].sort((a, b) =>
     (a.dates[0] ?? "").localeCompare(b.dates[0] ?? ""),
@@ -293,11 +302,9 @@ function Overview({
   const heldTotal = data.crypto?.totalCents ?? 0;
   const bankRunwayMonths = data.bankRunway?.months?.toFixed(1);
   const runOutMonth = data.runway.runOutDate ? monthFull(data.runway.runOutDate.slice(0, 7)) : "";
-  const previousSpend = month.previousCents === null ? null : money(month.previousCents);
   const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
   const spentRange = range(totals);
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
-  const monthPreviousRange = range({ start: month.previousStart, end: month.previousEnd });
   const bars = data.cashSeries[period];
   const barGranularity = BAR_GRANULARITY[period];
   const subs = data.subscriptions;
@@ -316,15 +323,24 @@ function Overview({
         </h1>
         <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
           {syncing ? <Trans>Syncing…</Trans> : updated ? <Trans>Updated {updated}</Trans> : null}
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label={t`Refresh`}
-            disabled={syncing}
-            onClick={onRefresh}
-          >
-            <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={t`Refresh`}
+                  disabled={syncing}
+                  onClick={onRefresh}
+                />
+              }
+            >
+              <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
+            </TooltipTrigger>
+            <TooltipContent>
+              <Trans>Refresh</Trans>
+            </TooltipContent>
+          </Tooltip>
         </span>
         {data.excludedNonUsdCount > 0 ? (
           <span className="text-[11px] text-muted-foreground">
@@ -376,26 +392,17 @@ function Overview({
         <div className="flex flex-col gap-3">
           <div
             className={`grid grid-cols-2 gap-3 ${
-              hasCash
-                ? data.crypto
-                  ? "@3xl:grid-cols-5"
-                  : "@3xl:grid-cols-4"
-                : data.crypto
-                  ? "@3xl:grid-cols-3"
-                  : "@3xl:grid-cols-2"
+              hasCash ? (data.crypto ? "@3xl:grid-cols-4" : "@3xl:grid-cols-3") : "@3xl:grid-cols-2"
             }`}
           >
             {hasCash ? (
               <Kpi
                 title={t`Cash`}
                 value={money(data.cash.cashCents)}
-                sub={
-                  otherCounted > 0
-                    ? t`Checking + Treasury + Crypto`
-                    : stablecoins > 0
-                      ? t`Checking + Treasury + Stablecoins`
-                      : t`Checking + Treasury`
-                }
+                sub={cashSubtitle(
+                  data.cash.cashAccountCount,
+                  otherCounted > 0 ? "all" : stablecoins > 0 ? "stablecoins" : "none",
+                )}
                 to={financePath.accounts()}
                 hover={
                   data.crypto ? (
@@ -415,7 +422,7 @@ function Overview({
             <Kpi
               title={t`Monthly burn`}
               value={burning ? money(data.burn.monthlyCents) : "—"}
-              sub={t`3-mo avg`}
+              sub={t`3-mo avg, after revenue`}
               to={financePath.burn()}
             />
             {hasCash ? (
@@ -431,21 +438,6 @@ function Overview({
                 }
               />
             ) : null}
-            <Kpi
-              title={t`Spend this month`}
-              value={money(month.currentCents)}
-              sub={
-                previousSpend === null ? undefined : monthChange ? (
-                  <>
-                    <span className={tone(month.changePct)}>{monthChange}</span>{" "}
-                    {t`vs ${previousSpend} for ${monthPreviousRange}`}
-                  </>
-                ) : (
-                  t`vs ${previousSpend} for ${monthPreviousRange}`
-                )
-              }
-              to={financePath.spend("month")}
-            />
             {data.crypto ? (
               <Kpi
                 title={t`Crypto`}
@@ -489,19 +481,7 @@ function Overview({
                 <ChevronRight aria-hidden="true" className="size-3" />
               </Link>
             }
-            action={
-              <div className="flex gap-3.5 text-[11px] text-muted-foreground">
-                <Legend className="bg-foreground">
-                  <Trans>Out</Trans>
-                </Legend>
-                <Legend className="bg-muted-foreground">
-                  <Trans>Revenue</Trans>
-                </Legend>
-                <Legend className="border border-foreground bg-[repeating-linear-gradient(45deg,var(--foreground)_0_1.5px,var(--card)_1.5px_3.5px)]">
-                  <Trans>Financing</Trans>
-                </Legend>
-              </div>
-            }
+            action={<BurnLegend />}
           >
             <BurnBars
               series={bars}
@@ -523,73 +503,88 @@ function Overview({
           </Section>
 
           <div className="grid gap-3 @3xl:grid-cols-2">
-            <Section
-              title={<Trans>Breakdown</Trans>}
-              action={
-                <div className="flex gap-1">
-                  {(["category", "vendor"] as const).map((mode) => (
-                    <Button
-                      key={mode}
-                      size="xs"
-                      variant={by === mode ? "default" : "outline"}
-                      className="rounded-full"
-                      aria-pressed={by === mode}
-                      onClick={() => setBy(mode)}
-                    >
-                      {mode === "category" ? <Trans>Category</Trans> : <Trans>Vendor</Trans>}
-                    </Button>
+            <BackHere value={{ label: t`Breakdown`, to: `${financePath.dashboard()}#breakdown` }}>
+              <Section
+                id="breakdown"
+                title={<Trans>Breakdown</Trans>}
+                action={
+                  <div className="flex gap-1">
+                    {(["category", "vendor"] as const).map((mode) => (
+                      <Button
+                        key={mode}
+                        size="xs"
+                        variant={by === mode ? "default" : "outline"}
+                        className="rounded-full"
+                        aria-pressed={by === mode}
+                        onClick={() => setBy(mode)}
+                      >
+                        {mode === "category" ? <Trans>Category</Trans> : <Trans>Vendor</Trans>}
+                      </Button>
+                    ))}
+                  </div>
+                }
+              >
+                <BreakdownRows
+                  rows={allBreakdown ? breakdownRows : breakdownRows.slice(0, rowCap)}
+                  to={(row) =>
+                    by === "category" ? financePath.category(row.key) : financePath.vendor(row.key)
+                  }
+                />
+                {breakdownRows.length === 0 ? (
+                  <div className="py-2 text-muted-foreground">
+                    <Trans>No spend in this period</Trans>
+                  </div>
+                ) : null}
+                <div className="mt-auto flex items-center justify-between text-[11px] text-muted-foreground">
+                  {periodBreakdown ? spentRange : <Trans>Last 90 days</Trans>}
+                  <ShowAll
+                    total={breakdownRows.length}
+                    cap={rowCap}
+                    expanded={allBreakdown}
+                    onToggle={() => setAllBreakdown((v) => !v)}
+                  />
+                </div>
+              </Section>
+            </BackHere>
+
+            <BackHere value={{ label: t`Upcoming`, to: `${financePath.dashboard()}#upcoming` }}>
+              <Section
+                id="upcoming"
+                title={<Trans>Upcoming · 30 days</Trans>}
+                action={
+                  <span className="text-xs font-semibold tabular-nums">
+                    ~{money(data.upcoming.totalCents)}
+                  </span>
+                }
+              >
+                <div className="-mx-2">
+                  {(allUpcoming ? upcomingRows : upcomingRows.slice(0, rowCap)).map((item) => (
+                    <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
                   ))}
                 </div>
-              }
-            >
-              <BreakdownRows
-                rows={allBreakdown ? breakdownRows : breakdownRows.slice(0, rowCap)}
-                to={(row) =>
-                  by === "category" ? financePath.category(row.key) : financePath.vendor(row.key)
-                }
-              />
-              <div className="mt-auto flex items-center justify-between text-[11px] text-muted-foreground">
-                <Trans>Last 90 days</Trans>
-                <ShowAll
-                  total={breakdownRows.length}
-                  cap={rowCap}
-                  expanded={allBreakdown}
-                  onToggle={() => setAllBreakdown((v) => !v)}
-                />
-              </div>
-            </Section>
-
-            <Section
-              title={<Trans>Upcoming · 30 days</Trans>}
-              action={
-                <span className="text-xs font-semibold tabular-nums">
-                  ~{money(data.upcoming.totalCents)}
-                </span>
-              }
-            >
-              <div className="-mx-2">
-                {(allUpcoming ? upcomingRows : upcomingRows.slice(0, rowCap)).map((item) => (
-                  <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
-                ))}
-              </div>
-              <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
-                <ShowAll
-                  total={upcomingRows.length}
-                  cap={rowCap}
-                  expanded={allUpcoming}
-                  onToggle={() => setAllUpcoming((v) => !v)}
-                />
-              </div>
-            </Section>
+                <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
+                  <ShowAll
+                    total={upcomingRows.length}
+                    cap={rowCap}
+                    expanded={allUpcoming}
+                    onToggle={() => setAllUpcoming((v) => !v)}
+                  />
+                </div>
+              </Section>
+            </BackHere>
           </div>
 
-          <Section title={<Trans>Subscriptions</Trans>}>
-            <SubscriptionsTable subs={subs} />
-            <div className="border-t border-border pt-2 text-xs text-muted-foreground">
-              {plural(subs.items.length, { one: "# subscription", other: "# subscriptions" })} ·{" "}
-              {t`${monthlyTotal}/mo`}
-            </div>
-          </Section>
+          <BackHere
+            value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
+          >
+            <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
+              <SubscriptionsTable subs={subs} />
+              <div className="border-t border-border pt-2 text-xs text-muted-foreground">
+                {plural(subs.items.length, { one: "# subscription", other: "# subscriptions" })} ·{" "}
+                {t`${monthlyTotal}/mo`}
+              </div>
+            </Section>
+          </BackHere>
 
           {data.treasuryYieldLastMonth ? (
             <Link
@@ -640,15 +635,6 @@ function HoverRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Legend({ className, children }: { className: string; children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center">
-      <i aria-hidden="true" className={`me-1.5 inline-block size-2.5 rounded-xs ${className}`} />
-      {children}
-    </span>
-  );
-}
-
 const upcomingTag = (kind: UpcomingItem["kind"]) =>
   kind === "recurring" ? t`recurring` : kind === "pending" ? t`pending` : t`bill`;
 
@@ -684,12 +670,12 @@ function UpcomingRow({ item }: { item: UpcomingItem }) {
   const cls =
     "grid grid-cols-[minmax(5rem,auto)_1fr_auto_0.875rem] items-center gap-2.5 border-t border-border px-2 py-2 first:border-t-0";
   return to ? (
-    <Link
+    <HereLink
       to={to}
       className={`${cls} outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground`}
     >
       {body}
-    </Link>
+    </HereLink>
   ) : (
     <div className={cls}>{body}</div>
   );
@@ -723,13 +709,13 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
           return (
             <tr key={sub.key} className={rowClass} {...rowProps(financePath.vendor(sub.key))}>
               <td className="font-semibold">
-                <Link
+                <HereLink
                   to={financePath.vendor(sub.key)}
                   aria-label={paidWith ? t`${name}, paid with ${paidWith}` : name}
                   className="outline-none hover:underline focus-visible:underline"
                 >
                   {sub.name}
-                </Link>
+                </HereLink>
                 {sub.overlapGroup ? (
                   <span className="ms-1.5 rounded-full border border-border px-1.5 text-[10px] font-normal text-muted-foreground">
                     <Trans>overlaps</Trans>

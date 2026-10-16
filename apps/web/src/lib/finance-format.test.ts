@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  accountLabel,
   axisMoney,
   changeText,
   dayAxisLabels,
@@ -13,6 +14,7 @@ import {
   paidWithLabel,
   shortDay,
   transactionAmount,
+  txnDay,
 } from "./finance-format";
 
 const en = "en-US";
@@ -35,6 +37,7 @@ describe("finance formatting", () => {
     expect(axisMoney(150_000)).toBe("$1.5k");
     expect(axisMoney(80_000)).toBe("$800");
     expect(axisMoney(0)).toBe("$0");
+    expect(axisMoney(-500_000)).toBe("−$5k");
   });
 
   it("reads the date part of a day or ISO datetime, adding the year only when it differs", () => {
@@ -56,6 +59,26 @@ describe("finance formatting", () => {
     expect(changeText(-53.2)).toBe("↓ 53%");
     expect(changeText(12.5)).toBe("↑ 13%");
     expect(changeText(null)).toBeNull();
+    expect(changeText(0.2)).toBe("0%");
+    expect(changeText(-0.4)).toBe("0%");
+  });
+
+  it("shows a charge on its purchase day, the day its totals and filters use", () => {
+    expect(
+      txnDay({ purchasedAt: "2026-10-16T00:00:00.000Z", postedAt: "2026-10-17T00:00:00.000Z" }),
+    ).toBe("2026-10-16");
+    expect(txnDay({ purchasedAt: null, postedAt: "2026-10-17T00:00:00.000Z" })).toBe("2026-10-17");
+  });
+
+  it("names an account with its last four digits once", () => {
+    expect(accountLabel("MOCK Checking ••1111", "1111")).toBe("MOCK Checking ••1111");
+    expect(accountLabel("Checking", "1111")).toBe("Checking ••1111");
+    expect(accountLabel("Checking", null)).toBe("Checking");
+    expect(
+      paidWithLabel([
+        { provider: "mercury", kind: "account", name: "MOCK Checking ••1111", lastFour: "1111" },
+      ]),
+    ).toBe("MOCK Checking ••1111");
   });
 
   it("describes what paid a vendor", () => {
