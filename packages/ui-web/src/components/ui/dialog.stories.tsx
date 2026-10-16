@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { withPageBehind } from "../../stories/decorators";
 import { Button } from "./button";
 import {
   Dialog,
@@ -15,14 +16,7 @@ const meta = {
   title: "UI/Dialog",
   component: Dialog,
   // Dialogs render in a portal, so give the story root something to show.
-  decorators: [
-    (Story) => (
-      <>
-        <p className="text-sm text-muted-foreground">Page behind the dialog</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
   parameters: {
     docs: {
       description: {

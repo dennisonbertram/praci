@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
+import { withPageBehind } from "../../stories/decorators";
 import {
   Command,
   CommandDialog,
@@ -54,14 +55,12 @@ export const NoResults: StoryObj<typeof meta> = {
 };
 
 export const Dialog: StoryObj<typeof meta> = {
+  decorators: [withPageBehind()],
   render: () => (
-    <>
-      <p className="text-sm text-muted-foreground">The dialog renders in a portal above.</p>
-      <CommandDialog open>
-        <Command>
-          <Palette />
-        </Command>
-      </CommandDialog>
-    </>
+    <CommandDialog open>
+      <Command>
+        <Palette />
+      </Command>
+    </CommandDialog>
   ),
 };

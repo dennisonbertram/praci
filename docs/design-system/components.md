@@ -3,7 +3,7 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 144 of 152
+- Web and shared component files with stories: 152 of 152
 - Web and shared components: 440
 - Mobile components: 124 in 82 files, mobile — native story pending
 
@@ -12,7 +12,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | CopyIcon, CheckIcon, ImageIcon, GlobeIcon | [packages/chat-ui/src/icons.tsx](../../packages/chat-ui/src/icons.tsx) | [icons.stories.tsx](../../packages/chat-ui/src/icons.stories.tsx) | shared |
-| MarkdownTable, TableCard, TableView, SortableColumnHeader, SortIndicator, DownloadIcon, ExpandIcon, CloseIcon, ChevronUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon | [packages/chat-ui/src/markdown-table.tsx](../../packages/chat-ui/src/markdown-table.tsx) | missing | shared |
+| MarkdownTable, TableCard, TableView, SortableColumnHeader, SortIndicator, DownloadIcon, ExpandIcon, CloseIcon, ChevronUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon | [packages/chat-ui/src/markdown-table.tsx](../../packages/chat-ui/src/markdown-table.tsx) | [markdown-table.stories.tsx](../../packages/chat-ui/src/markdown-table.stories.tsx) | shared |
 | CodeBlock, ExternalLinkUrl, ExternalLinkAlert, ConfirmableAnchor, RemoteImageButton, MarkdownImage, LinkedRemoteImage, LinkFavicon, WebsiteLink, MarkdownAnchor, LinkifiedText, ChatMarkdown | [packages/chat-ui/src/markdown.web.tsx](../../packages/chat-ui/src/markdown.web.tsx) | [markdown.web.stories.tsx](../../packages/chat-ui/src/markdown.web.stories.tsx) | shared |
 
 ## Primitives (packages/ui-web)
@@ -32,7 +32,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Input | [packages/ui-web/src/components/ui/input.tsx](../../packages/ui-web/src/components/ui/input.tsx) | [input.stories.tsx](../../packages/ui-web/src/components/ui/input.stories.tsx) | shared |
 | Kbd, KbdGroup | [packages/ui-web/src/components/ui/kbd.tsx](../../packages/ui-web/src/components/ui/kbd.tsx) | [kbd.stories.tsx](../../packages/ui-web/src/components/ui/kbd.stories.tsx) | shared |
 | Label | [packages/ui-web/src/components/ui/label.tsx](../../packages/ui-web/src/components/ui/label.tsx) | [label.stories.tsx](../../packages/ui-web/src/components/ui/label.stories.tsx) | shared |
-| NativeSelect, NativeSelectOption, NativeSelectOptGroup | [packages/ui-web/src/components/ui/native-select.tsx](../../packages/ui-web/src/components/ui/native-select.tsx) | missing | shared |
+| NativeSelect, NativeSelectOption, NativeSelectOptGroup | [packages/ui-web/src/components/ui/native-select.tsx](../../packages/ui-web/src/components/ui/native-select.tsx) | [native-select.stories.tsx](../../packages/ui-web/src/components/ui/native-select.stories.tsx) | shared |
 | Popover, PopoverTrigger, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescription | [packages/ui-web/src/components/ui/popover.tsx](../../packages/ui-web/src/components/ui/popover.tsx) | [popover.stories.tsx](../../packages/ui-web/src/components/ui/popover.stories.tsx) | shared |
 | ScrollArea, ScrollBar | [packages/ui-web/src/components/ui/scroll-area.tsx](../../packages/ui-web/src/components/ui/scroll-area.tsx) | [scroll-area.stories.tsx](../../packages/ui-web/src/components/ui/scroll-area.stories.tsx) | shared |
 | SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator, SelectScrollUpButton, SelectScrollDownButton | [packages/ui-web/src/components/ui/select.tsx](../../packages/ui-web/src/components/ui/select.tsx) | [select.stories.tsx](../../packages/ui-web/src/components/ui/select.stories.tsx) | shared |
@@ -73,7 +73,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | FinanceCards, Header, Preview | [apps/web/src/components/FinanceCards.tsx](../../apps/web/src/components/FinanceCards.tsx) | [FinanceCards.stories.tsx](../../apps/web/src/components/FinanceCards.stories.tsx) | web |
 | I18nBootstrap | [apps/web/src/components/I18nBootstrap.tsx](../../apps/web/src/components/I18nBootstrap.tsx) | [I18nBootstrap.stories.tsx](../../apps/web/src/components/I18nBootstrap.stories.tsx) | web |
 | MailOutbox | [apps/web/src/components/MailOutbox.tsx](../../apps/web/src/components/MailOutbox.tsx) | [MailOutbox.stories.tsx](../../apps/web/src/components/MailOutbox.stories.tsx) | web |
-| MarkdownLinkPrompt | [apps/web/src/components/markdown-link-prompt.tsx](../../apps/web/src/components/markdown-link-prompt.tsx) | missing | web |
+| MarkdownLinkPrompt | [apps/web/src/components/markdown-link-prompt.tsx](../../apps/web/src/components/markdown-link-prompt.tsx) | [markdown-link-prompt.stories.tsx](../../apps/web/src/components/markdown-link-prompt.stories.tsx) | web |
 | MessageHoverMetadata | [apps/web/src/components/MessageHoverMetadata.tsx](../../apps/web/src/components/MessageHoverMetadata.tsx) | [MessageHoverMetadata.stories.tsx](../../apps/web/src/components/MessageHoverMetadata.stories.tsx) | web |
 | ModelPreflightFeedback | [apps/web/src/components/ModelConnectionPreflightNotice.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.tsx) | [ModelConnectionPreflightNotice.stories.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |
@@ -182,22 +182,22 @@ Every rendered React component, grouped by area. A web or shared component file 
 | FinanceNotFound | [apps/web/src/pages/finance/FinanceNotFound.tsx](../../apps/web/src/pages/finance/FinanceNotFound.tsx) | [FinanceNotFound.stories.tsx](../../apps/web/src/pages/finance/FinanceNotFound.stories.tsx) | web |
 | FinanceSpendPage, FinanceCategoryPage, FinanceRecurringPage, FinanceVendorPage | [apps/web/src/pages/finance/FinanceSpend.tsx](../../apps/web/src/pages/finance/FinanceSpend.tsx) | [FinanceSpend.stories.tsx](../../apps/web/src/pages/finance/FinanceSpend.stories.tsx) | web |
 | ReceiptIcon, ReceiptThumb, CheckReceipt, FinanceTransactionPage, FinanceReceiptPage | [apps/web/src/pages/finance/FinanceTransaction.tsx](../../apps/web/src/pages/finance/FinanceTransaction.tsx) | [FinanceTransaction.stories.tsx](../../apps/web/src/pages/finance/FinanceTransaction.stories.tsx) | web |
-| GoogleOAuthCallbackPage | [apps/web/src/pages/GoogleOAuthCallback.tsx](../../apps/web/src/pages/GoogleOAuthCallback.tsx) | missing | web |
+| GoogleOAuthCallbackPage | [apps/web/src/pages/GoogleOAuthCallback.tsx](../../apps/web/src/pages/GoogleOAuthCallback.tsx) | [GoogleOAuthCallback.stories.tsx](../../apps/web/src/pages/GoogleOAuthCallback.stories.tsx) | web |
 | MemberPicker, CreateGroupForm, GroupSettings | [apps/web/src/pages/GroupPanel.tsx](../../apps/web/src/pages/GroupPanel.tsx) | [GroupPanel.stories.tsx](../../apps/web/src/pages/GroupPanel.stories.tsx) | web |
 | HostComputerPrompt | [apps/web/src/pages/HostComputerPrompt.tsx](../../apps/web/src/pages/HostComputerPrompt.tsx) | [HostComputerPrompt.stories.tsx](../../apps/web/src/pages/HostComputerPrompt.stories.tsx) | web |
 | InboxPage | [apps/web/src/pages/Inbox.tsx](../../apps/web/src/pages/Inbox.tsx) | [Inbox.stories.tsx](../../apps/web/src/pages/Inbox.stories.tsx) | web |
 | IntegrationsPage | [apps/web/src/pages/Integrations.tsx](../../apps/web/src/pages/Integrations.tsx) | [Integrations.stories.tsx](../../apps/web/src/pages/Integrations.stories.tsx) | web |
-| IntegrationSetupPage | [apps/web/src/pages/IntegrationSetup.tsx](../../apps/web/src/pages/IntegrationSetup.tsx) | missing | web |
+| IntegrationSetupPage | [apps/web/src/pages/IntegrationSetup.tsx](../../apps/web/src/pages/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/pages/IntegrationSetup.stories.tsx) | web |
 | KnowledgeSection, SpaceMemorySection, MemoryDocumentList, SkillSourceBadge, AgentSkills | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
 | LocalSettingsPage | [apps/web/src/pages/LocalSettings.tsx](../../apps/web/src/pages/LocalSettings.tsx) | [LocalSettings.stories.tsx](../../apps/web/src/pages/LocalSettings.stories.tsx) | web |
-| McpOAuthCallbackPage | [apps/web/src/pages/McpOAuthCallback.tsx](../../apps/web/src/pages/McpOAuthCallback.tsx) | missing | web |
+| McpOAuthCallbackPage | [apps/web/src/pages/McpOAuthCallback.tsx](../../apps/web/src/pages/McpOAuthCallback.tsx) | [McpOAuthCallback.stories.tsx](../../apps/web/src/pages/McpOAuthCallback.stories.tsx) | web |
 | SerenitySettingsForm | [apps/web/src/pages/memory-providers/SerenitySettingsForm.tsx](../../apps/web/src/pages/memory-providers/SerenitySettingsForm.tsx) | [SerenitySettingsForm.stories.tsx](../../apps/web/src/pages/memory-providers/SerenitySettingsForm.stories.tsx) | web |
 | SupermemorySettingsForm | [apps/web/src/pages/memory-providers/SupermemorySettingsForm.tsx](../../apps/web/src/pages/memory-providers/SupermemorySettingsForm.tsx) | [SupermemorySettingsForm.stories.tsx](../../apps/web/src/pages/memory-providers/SupermemorySettingsForm.stories.tsx) | web |
 | ScopePicker, MemorySettingsOverlay | [apps/web/src/pages/MemorySettingsOverlay.tsx](../../apps/web/src/pages/MemorySettingsOverlay.tsx) | [MemorySettingsOverlay.stories.tsx](../../apps/web/src/pages/MemorySettingsOverlay.stories.tsx) | web |
 | MessagingSettingsOverlay | [apps/web/src/pages/MessagingSettingsOverlay.tsx](../../apps/web/src/pages/MessagingSettingsOverlay.tsx) | [MessagingSettingsOverlay.stories.tsx](../../apps/web/src/pages/MessagingSettingsOverlay.stories.tsx) | web |
 | ModelBackupsSettings | [apps/web/src/pages/ModelBackupsSettings.tsx](../../apps/web/src/pages/ModelBackupsSettings.tsx) | [ModelBackupsSettings.stories.tsx](../../apps/web/src/pages/ModelBackupsSettings.stories.tsx) | web |
 | ModelSettingsOverlay, ModelPicker, ModelOption | [apps/web/src/pages/ModelSettingsOverlay.tsx](../../apps/web/src/pages/ModelSettingsOverlay.tsx) | [ModelSettingsOverlay.stories.tsx](../../apps/web/src/pages/ModelSettingsOverlay.stories.tsx) | web |
-| OnboardingPage | [apps/web/src/pages/Onboarding.tsx](../../apps/web/src/pages/Onboarding.tsx) | missing | web |
+| OnboardingPage | [apps/web/src/pages/Onboarding.tsx](../../apps/web/src/pages/Onboarding.tsx) | [Onboarding.stories.tsx](../../apps/web/src/pages/Onboarding.stories.tsx) | web |
 | PaywallPage | [apps/web/src/pages/Paywall.tsx](../../apps/web/src/pages/Paywall.tsx) | [Paywall.stories.tsx](../../apps/web/src/pages/Paywall.stories.tsx) | web |
 | PeerMessagesOverlay | [apps/web/src/pages/PeerMessagesOverlay.tsx](../../apps/web/src/pages/PeerMessagesOverlay.tsx) | [PeerMessagesOverlay.stories.tsx](../../apps/web/src/pages/PeerMessagesOverlay.stories.tsx) | web |
 | ResizableSidePanel | [apps/web/src/pages/ResizableSidePanel.tsx](../../apps/web/src/pages/ResizableSidePanel.tsx) | [ResizableSidePanel.stories.tsx](../../apps/web/src/pages/ResizableSidePanel.stories.tsx) | web |
@@ -220,7 +220,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, McpApprovalCard, ChartBlockView, ArtifactImage | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
 | SpaceSearchResults | [apps/web/src/pages/SpaceSearch.tsx](../../apps/web/src/pages/SpaceSearch.tsx) | [SpaceSearch.stories.tsx](../../apps/web/src/pages/SpaceSearch.stories.tsx) | web |
 | VoiceSettingsOverlay | [apps/web/src/pages/VoiceSettingsOverlay.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.tsx) | [VoiceSettingsOverlay.stories.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.stories.tsx) | web |
-| WelcomePage | [apps/web/src/pages/Welcome.tsx](../../apps/web/src/pages/Welcome.tsx) | missing | web |
+| WelcomePage | [apps/web/src/pages/Welcome.tsx](../../apps/web/src/pages/Welcome.tsx) | [Welcome.stories.tsx](../../apps/web/src/pages/Welcome.stories.tsx) | web |
 | WindowChrome | [apps/web/src/pages/WindowChrome.tsx](../../apps/web/src/pages/WindowChrome.tsx) | [WindowChrome.stories.tsx](../../apps/web/src/pages/WindowChrome.stories.tsx) | web |
 
 ## Web root

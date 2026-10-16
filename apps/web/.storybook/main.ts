@@ -4,7 +4,11 @@ import type { StorybookConfig } from "@storybook/react-vite";
 // are shared with the app and not repeated here.
 const config: StorybookConfig = {
   framework: "@storybook/react-vite",
-  stories: ["../src/**/*.stories.tsx", "../../../packages/ui-web/src/**/*.stories.tsx"],
+  stories: [
+    "../src/**/*.stories.tsx",
+    "../../../packages/ui-web/src/**/*.stories.tsx",
+    "../../../packages/chat-ui/src/**/*.stories.tsx",
+  ],
   addons: ["@storybook/addon-a11y"],
 };
 

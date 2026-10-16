@@ -18,6 +18,6 @@ Shared helpers:
 - `src/stories/decorators.tsx` has `withPageBehind(label?)` for dialogs (they render in a portal, so the story root would be empty) and `withVisibleRoot(message)` for components that render null.
 - `.storybook/stubs.ts` is imported first by `preview.tsx`. It answers the auth session request and replaces remote image URLs with an empty data URI, so stories need no network and logos show their letter fallback. Stories do not stub either themselves.
 
-Every story is wrapped in Lingui's provider and a `MemoryRouter`.
+Every story is wrapped in Lingui's provider and a `MemoryRouter`. Set `parameters: { initialEntries: ["/path?x=1"] }` to start it at another URL (the OAuth callback pages read query params).
 
 Smoke test: after `build-storybook`, run `node .storybook/smoke.mjs storybook-static [path-filter]` from `apps/web`. It opens every story in headless Chromium and fails on a page error, a console error or an empty render.

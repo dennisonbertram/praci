@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { withPageBehind } from "../../stories/decorators";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,14 +25,7 @@ const meta = {
       },
     },
   },
-  decorators: [
-    (Story) => (
-      <>
-        <p className="p-4 text-sm text-muted-foreground">Page behind the dialog</p>
-        <Story />
-      </>
-    ),
-  ],
+  decorators: [withPageBehind()],
 } satisfies Meta<typeof AlertDialog>;
 export default meta;
 type Story = StoryObj<typeof meta>;

@@ -31,12 +31,12 @@ const preview: Preview = {
   loaders: [async () => void (await ready)],
   beforeEach: () => resetRpcMocks(),
   decorators: [
-    (Story, { globals }) => {
+    (Story, { globals, parameters }) => {
       const theme = globals.theme === "dark" ? "dark" : "light";
       applyResolvedAppearance(theme);
       return (
         <I18nProvider i18n={i18n}>
-          <MemoryRouter>
+          <MemoryRouter initialEntries={parameters.initialEntries}>
             <Story />
           </MemoryRouter>
         </I18nProvider>
