@@ -1175,6 +1175,8 @@ export function ModelSettingsOverlay({
         </div>
       </div>
 
+      <EmbeddingModelField />
+
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden px-6 py-6 sm:px-8 md:flex-row">
         <div className="flex min-h-0 shrink-0 flex-col md:w-[310px]">
           <div className="mb-3 text-[13.5px] text-muted-foreground">
@@ -1518,6 +1520,68 @@ export function ModelSettingsOverlay({
         {body}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** The Data room's embedding model, served by the default connection. Saved when the field loses focus. */
+function EmbeddingModelField() {
+  const { t } = useLingui();
+  const [saved, setSaved] = useState<string | null>(null);
+  const [value, setValue] = useState("");
+  const [failed, setFailed] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    rpc.models
+      .embeddingModel()
+      .then(({ modelId }) => {
+        if (!live) return;
+        setSaved(modelId);
+        setValue(modelId ?? "");
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  async function save() {
+    const next = value.trim() || null;
+    if (next === saved) return;
+    setFailed(null);
+    try {
+      setSaved((await rpc.models.setEmbeddingModel({ modelId: next })).modelId);
+    } catch (err) {
+      setFailed(errorText(err, t`Could not save the embedding model`));
+    }
+  }
+
+  return (
+    <div className="mx-6 mt-3 sm:mx-8">
+      <div className="flex items-baseline gap-3">
+        <label
+          htmlFor="data-room-embedding-model"
+          className="shrink-0 text-[12.5px] uppercase tracking-[0.08em] text-muted-foreground/80"
+        >
+          <Trans>Embedding model</Trans>
+        </label>
+        <Input
+          id="data-room-embedding-model"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onBlur={() => void save()}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+          }}
+          className="h-8 max-w-xs rounded-lg px-3"
+        />
+      </div>
+      {failed ? (
+        <p className="mt-1 text-sm text-destructive" role="alert">
+          {failed}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

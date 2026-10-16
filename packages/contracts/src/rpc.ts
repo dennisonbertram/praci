@@ -31,6 +31,8 @@ import {
   DataRoomApiName,
   DataRoomApiSearchInputSchema,
   DataRoomApiSearchOutputSchema,
+  DataRoomConsentGrantInputSchema,
+  DataRoomConsentStatusSchema,
 } from "./data-room-api.js";
 import {
   ActionApprovalRuleSchema,
@@ -317,6 +319,11 @@ export const appContract = {
     list: oc.output(z.array(ModelCatalogEntrySchema)),
     credentials: oc.output(z.array(ModelCredentialSchema)),
     backups: oc.output(z.array(ModelBackupChoiceSchema)),
+    /** The Data room embedding model on the default connection; null when unset. */
+    embeddingModel: oc.output(z.object({ modelId: z.string().nullable() })),
+    setEmbeddingModel: oc
+      .input(z.object({ modelId: z.string().trim().max(200).nullable() }))
+      .output(z.object({ modelId: z.string().nullable() })),
     setBackups: oc.input(ModelBackupListSchema).output(z.object({ ok: z.literal(true) })),
     connect: oc.input(ModelConnectInputSchema).output(ModelCredentialSchema),
     probeOpenAiCompatible: oc
@@ -1133,6 +1140,8 @@ export const appContract = {
     itemMove: oc.input(z.object({ id: Id, folderId: Id.nullable() })).output(DataRoomApiItemSchema),
     itemDelete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
     search: oc.input(DataRoomApiSearchInputSchema).output(DataRoomApiSearchOutputSchema),
+    consent: oc.output(DataRoomConsentStatusSchema),
+    consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),
   },
   finance: {
     agent: oc.output(BotSchema),

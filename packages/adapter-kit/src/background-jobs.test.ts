@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  dataRoomStepJob,
   dispatchBackgroundJob,
   financeSyncJob,
   HISTORY_COMPACT_MAX_ATTEMPTS,
@@ -27,6 +28,9 @@ function handlers(): BackgroundJobHandlers {
     "inbox.triage": vi.fn(async () => undefined),
     "finance.sync": vi.fn(async () => undefined),
     "dataroom.blob.delete": vi.fn(async () => undefined),
+    "dataroom.ingest": vi.fn(async () => undefined),
+    "dataroom.classify": vi.fn(async () => undefined),
+    "dataroom.index": vi.fn(async () => undefined),
   };
 }
 
@@ -157,5 +161,22 @@ describe("historyCompactJob", () => {
 
   it("keys different threads differently", () => {
     expect(historyCompactJobKey("thread-1")).not.toBe(historyCompactJobKey("thread-2"));
+  });
+
+  it("validates and dispatches the data room pipeline steps, one keyed job per item and step", async () => {
+    const target = handlers();
+    const scope = { spaceId: "s1", userId: "u1" };
+    for (const name of ["dataroom.ingest", "dataroom.classify", "dataroom.index"] as const) {
+      const job = dataRoomStepJob(name, scope, "i1");
+      expect(job).toEqual({
+        name,
+        payload: { ...scope, itemId: "i1" },
+        replaceKey: `${name}:i1`,
+        maxAttempts: 3,
+      });
+      await dispatchBackgroundJob(target, name, job.payload);
+      expect(target[name]).toHaveBeenCalledWith(job.payload);
+    }
+    expect(() => parseBackgroundJob("dataroom.index", { spaceId: "s1" })).toThrow();
   });
 });

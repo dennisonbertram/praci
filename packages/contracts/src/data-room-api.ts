@@ -43,6 +43,7 @@ export const DataRoomApiItemSchema = z.object({
   folderId: NullableId,
   source: z.string(),
   status: z.string(),
+  /** Why the last step failed. A `ready` item can carry one (for example, filing was skipped). */
   error: z.string().nullable(),
   facets: DataRoomApiFacetsSchema,
   createdAt: z.string().datetime(),
@@ -105,3 +106,21 @@ export const DataRoomApiUploadResponseSchema = z.object({
   duplicate: z.boolean(),
 });
 export type DataRoomApiUploadResponse = z.infer<typeof DataRoomApiUploadResponseSchema>;
+
+/** Bump when the disclosure below changes; it invalidates earlier consent. */
+export const DATA_ROOM_DISCLOSURE_VERSION = "2026-10-22";
+export const DATA_ROOM_DISCLOSURE =
+  "The full text of your documents and, for images, the page images are sent to the providers below to read, file and search them.";
+
+export const DataRoomConsentStatusSchema = z.object({
+  /** Binds the consent to the exact providers below; it changes when they do. */
+  key: z.string(),
+  version: z.string(),
+  allowed: z.boolean(),
+  disclosure: z.string(),
+  /** Empty when no model is set up, in which case nothing is sent anywhere. */
+  recipients: z.array(z.object({ name: z.string(), detail: z.string() })),
+});
+export type DataRoomConsentStatus = z.infer<typeof DataRoomConsentStatusSchema>;
+
+export const DataRoomConsentGrantInputSchema = z.object({ key: z.string(), version: z.string() });
