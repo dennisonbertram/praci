@@ -5596,16 +5596,25 @@ const Transcript = memo(function Transcript({
                       onOpenComputer={onOpenComputer}
                       showToolActivity={showToolActivity}
                     />
-                    {peerReceipt || message.id.startsWith("progress:") ? null : (
+                    {peerReceipt ? null : (
+                      <MessageHoverActions
+                        message={message}
+                        hasReactions={Boolean(messageReactions)}
+                        side={message.role === "user" ? "start" : "end"}
+                        onReply={onReply}
+                        onReact={onReact}
+                      />
+                    )}
+                    {peerReceipt ||
+                    message.id.startsWith("progress:") ||
+                    (message.role === "bot" && memberName?.(message.botId)) ? null : (
                       <time
                         dateTime={message.createdAt}
                         data-testid="message-hover-time"
                         className={cn(
                           "pointer-events-none absolute end-0 z-10 whitespace-nowrap text-xs tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100 group-has-[[aria-expanded=true]]/message:opacity-100 [@media(hover:none)]:transition-none",
-                          // Bot speaker header shares the line; otherwise the time sits just above the bubble.
-                          message.role === "bot" && memberName?.(message.botId)
-                            ? "top-0 flex h-[22px] items-center"
-                            : "bottom-full pb-0.5",
+                          // Bot speaker header renders its own time in the header row; here it sits just above the bubble.
+                          "bottom-full pb-0.5",
                           // Touch has no hover margin: drop the revealed time in-flow under the bubble.
                           "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
                           "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
@@ -5618,15 +5627,6 @@ const Transcript = memo(function Transcript({
                       >
                         {formatMessageTime(message.createdAt, i18n.locale || "en")}
                       </time>
-                    )}
-                    {peerReceipt ? null : (
-                      <MessageHoverActions
-                        message={message}
-                        hasReactions={Boolean(messageReactions)}
-                        side={message.role === "user" ? "start" : "end"}
-                        onReply={onReply}
-                        onReact={onReact}
-                      />
                     )}
                   </div>
                 </div>
@@ -7002,6 +7002,15 @@ const MessageView = memo(function MessageView({
             size={22}
           />
           {speakerName}
+          {isLive ? null : (
+            <time
+              dateTime={message.createdAt}
+              data-testid="message-hover-time"
+              className="pointer-events-none ms-auto whitespace-nowrap text-xs font-normal tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100 group-has-[[aria-expanded=true]]/message:opacity-100 [@media(hover:none)]:transition-none"
+            >
+              {formatMessageTime(message.createdAt, i18n.locale || "en")}
+            </time>
+          )}
         </div>
       ) : null}
       <ReplyLine
