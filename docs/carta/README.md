@@ -38,6 +38,8 @@ Observed on 2026-10-15 without signing in:
   `list_contexts`, `set_context`, `list_accounts`, `get_current_user`,
   `cap_table_chart`, `cap_table_healthcheck`. Public sources describe read and
   analysis use only; Carta has said write tools are coming.
+- On 2026-10-16 the signed-in server no longer offered `cap_table_healthcheck`,
+  so the Carta agent's allowlist drops it.
 
 TBD before build: the real `tools/list` and input schemas after sign-in, whether
 `fetch` can return holdings **as of a past date** (the core of an audit
