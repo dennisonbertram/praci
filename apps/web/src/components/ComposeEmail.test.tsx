@@ -380,7 +380,7 @@ it("retries a failed reply prefill", async () => {
   expect(chips()).toEqual(["Remove sam@example.test"]);
 });
 
-it("opens a reply with the cached recipient and offers a retry when the quote did not load", async () => {
+it("opens a reply with the cached recipient and no retry when the quote did not load", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   prefill.mockResolvedValue({
     connectionId: "c1",
@@ -401,7 +401,9 @@ it("opens a reply with the cached recipient and offers a retry when the quote di
   );
   expect(chips()).toEqual(["Remove sam@example.test"]);
   expect(container.textContent).toContain("The original message didn't load.");
-  expect(button("Try again")).toBeTruthy();
+  expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Try again")).toBe(
+    false,
+  );
 });
 
 it("asks before closing with attachments", async () => {

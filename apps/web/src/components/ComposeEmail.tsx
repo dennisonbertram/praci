@@ -281,10 +281,9 @@ export function ComposeEmail({
         pendingContent.current = prefillHtml(next);
         // An older server sends no attachment list.
         setForwarded(next.attachments ?? []);
-        // The server filled To and Subject from its cached copy; the user can retry for the quote.
+        // The server filled To and Subject from its cached copy. The form is usable, so no retry that would overwrite edits.
         if (next.quoteUnavailable) {
           setNotice({ kind: "error", text: t`The original message didn't load.` });
-          setPrefillFailed(true);
         } else if (next.attachmentsTooLarge)
           setNotice({
             kind: "error",
