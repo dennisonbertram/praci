@@ -253,3 +253,12 @@ it("moves focus from an email frame to the surrounding dialog when the window re
   expect(document.activeElement).toBe(view.container);
   await view.cleanup();
 });
+
+it("dims the frame in dark mode for email only", async () => {
+  const email = await render("<p>hi</p>", false, true);
+  expect(email.iframe?.classList.contains("dark:brightness-85")).toBe(true);
+  await email.cleanup();
+  const plain = await render("<p>hi</p>");
+  expect(plain.iframe?.classList.contains("dark:brightness-85")).toBe(false);
+  await plain.cleanup();
+});

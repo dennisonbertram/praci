@@ -110,7 +110,7 @@ export function SandboxedHtmlViewer({
       srcDoc={shellDocument(withPreviewDocument(html, runScripts, email), runScripts, email)}
       sandbox={email ? `allow-scripts ${POPUP_FLAGS}` : "allow-scripts"}
       referrerPolicy="no-referrer"
-      className="h-full w-full border-0 bg-white"
+      className={`h-full w-full border-0 bg-white${email ? " dark:brightness-85" : ""}`}
     />
   );
 }
