@@ -2,7 +2,7 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { cn, Spinner } from "@rakazo/ui-web";
-import { FileText, Mail, Upload } from "lucide-react";
+import { FileImage, FileSpreadsheet, FileText } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { splitSnippet } from "../../lib/data-room";
 import { sourceLabel } from "./FilterBar";
@@ -35,7 +35,8 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction) {
     "data-item-id": item.id,
     tabIndex: 0,
     onClick: () => o.onToggle(item),
-    onMouseEnter: () => o.onHover(item),
+    // Not mouseenter: that also fires when a popover or dialog closes over a still pointer.
+    onMouseMove: () => o.onHover(item),
     onFocus: (event: React.FocusEvent<HTMLElement>) => {
       if (event.target === event.currentTarget) o.onFocusItem(item);
     },
@@ -50,16 +51,6 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction) {
       }
     },
   };
-}
-
-function SourceIcon({ source }: { source: string }) {
-  const Icon = source === "upload" ? Upload : source === "gmail" ? Mail : FileText;
-  return (
-    <span className="grid place-items-center text-muted-foreground" title={sourceLabel(source)}>
-      <Icon aria-hidden="true" className="size-3.5" />
-      <span className="sr-only">{sourceLabel(source)}</span>
-    </span>
-  );
 }
 
 /** A document icon, or the state marker while a file is being read or has failed. */
@@ -85,54 +76,83 @@ function Marker({ item }: { item: DataRoomApiItem }) {
       />
     );
   }
-  return <FileText aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />;
+  const Icon = fileIcon(item);
+  return <Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />;
 }
 
+const SHEET = /^text\/(csv|tab-separated-values)$|spreadsheet|ms-excel/;
+const fileIcon = ({ mimeType, name }: DataRoomApiItem) =>
+  mimeType.startsWith("image/")
+    ? FileImage
+    : SHEET.test(mimeType) || /\.(csv|tsv|xlsx?)$/i.test(name)
+      ? FileSpreadsheet
+      : FileText;
+
+/** True when some row has a type, document date or party, so those columns are worth their width. */
+export const hasFacets = (rows: Row[]) =>
+  rows.some(({ item: { facets } }) => facets.docType || facets.docDate || facets.parties.length);
+
 // One grid template for the header and every row. Name never goes below 200px and takes the rest;
-// as the list pane narrows, Parties goes first, then Type, then Date. The source icon and menu stay.
+// as the list pane narrows, Parties goes first, then Type, then Date. The menu stays.
 const ROW_GRID =
-  "grid items-center gap-2.5 px-2 grid-cols-[minmax(200px,1fr)_28px_28px] " +
-  "@min-[400px]/list:grid-cols-[minmax(200px,1fr)_90px_28px_28px] " +
-  "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_28px_28px] " +
-  "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_110px_28px_28px]";
+  "grid items-center gap-2.5 px-2 grid-cols-[minmax(200px,1fr)_28px] " +
+  "@min-[400px]/list:grid-cols-[minmax(200px,1fr)_90px_28px] " +
+  "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_28px] " +
+  "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_110px_28px]";
+/** Without facets the name takes every column but the menu. */
+const PLAIN_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_28px]";
 const DATE_CELL = "hidden @min-[400px]/list:block";
 const TYPE_CELL = "hidden @min-[500px]/list:block";
 const PARTIES_CELL = "hidden @min-[620px]/list:block";
 const CELL = "min-w-0 truncate text-muted-foreground";
 
-function TableHead() {
+function TableHead({ facets }: { facets: boolean }) {
   return (
     <div
       aria-hidden="true"
       data-testid="data-room-head"
-      className={cn(ROW_GRID, "sticky top-0 z-10 bg-background py-2 text-xs text-muted-foreground")}
+      className={cn(
+        facets ? ROW_GRID : PLAIN_GRID,
+        "sticky top-0 z-10 bg-background py-2 text-xs text-muted-foreground",
+      )}
     >
       <span>
         <Trans>Name</Trans>
       </span>
-      <span className={TYPE_CELL}>
-        <Trans>Type</Trans>
-      </span>
-      <span className={DATE_CELL}>
-        <Trans>Date</Trans>
-      </span>
-      <span className={PARTIES_CELL}>
-        <Trans>Parties</Trans>
-      </span>
-      <span />
+      {facets ? (
+        <>
+          <span className={TYPE_CELL}>
+            <Trans>Type</Trans>
+          </span>
+          <span className={DATE_CELL}>
+            <Trans>Date</Trans>
+          </span>
+          <span className={PARTIES_CELL}>
+            <Trans>Parties</Trans>
+          </span>
+        </>
+      ) : null}
       <span />
     </div>
   );
 }
 
-function ItemRow({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) {
+function ItemRow({
+  item,
+  o,
+  facets,
+}: {
+  item: DataRoomApiItem;
+  o: RowInteraction;
+  facets: boolean;
+}) {
   const label = statusLabel(item.status);
   return (
     <li
       aria-current={o.shownId === item.id}
       {...rowProps(item, o)}
       className={cn(
-        ROW_GRID,
+        facets ? ROW_GRID : PLAIN_GRID,
         "cursor-pointer border-b border-border py-1.5 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         o.shownId === item.id && "bg-sidebar-accent",
       )}
@@ -148,20 +168,32 @@ function ItemRow({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) {
         >
           {item.name}
         </span>
+        {!facets && label ? (
+          <span
+            className={cn(
+              "shrink-0 text-muted-foreground",
+              item.status === "failed" && "text-destructive",
+            )}
+            title={item.status === "failed" ? (item.error ?? undefined) : undefined}
+          >
+            {label}
+          </span>
+        ) : null}
       </span>
-      <span
-        className={cn(TYPE_CELL, CELL, item.status === "failed" && "text-destructive")}
-        title={item.status === "failed" ? (item.error ?? undefined) : undefined}
-      >
-        {item.status === "ready" ? item.facets.docType : label}
-      </span>
-      <span className={cn(DATE_CELL, CELL)}>{dateText(item.facets.docDate)}</span>
-      <span className={cn(PARTIES_CELL, CELL)} title={item.facets.parties.join(", ")}>
-        {item.facets.parties.join(", ")}
-      </span>
-      <span>
-        <SourceIcon source={item.source} />
-      </span>
+      {facets ? (
+        <>
+          <span
+            className={cn(TYPE_CELL, CELL, item.status === "failed" && "text-destructive")}
+            title={item.status === "failed" ? (item.error ?? undefined) : undefined}
+          >
+            {item.status === "ready" ? item.facets.docType : label}
+          </span>
+          <span className={cn(DATE_CELL, CELL)}>{dateText(item.facets.docDate)}</span>
+          <span className={cn(PARTIES_CELL, CELL)} title={item.facets.parties.join(", ")}>
+            {item.facets.parties.join(", ")}
+          </span>
+        </>
+      ) : null}
       <span>
         <ItemMenu item={item} onAction={o.onAction} />
       </span>
@@ -170,12 +202,13 @@ function ItemRow({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) {
 }
 
 export function ListView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
+  const facets = hasFacets(rows);
   return (
     <div>
-      <TableHead />
+      <TableHead facets={facets} />
       <ul aria-label={t`Items`} data-rows onMouseLeave={o.onLeave}>
         {rows.map(({ item }) => (
-          <ItemRow key={item.id} item={item} o={o} />
+          <ItemRow key={item.id} item={item} o={o} facets={facets} />
         ))}
       </ul>
     </div>
@@ -197,14 +230,14 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
           aria-current={o.shownId === item.id}
           className={cn(
             "relative flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
-            o.shownId === item.id && "bg-sidebar-accent",
+            o.shownId === item.id && "border-primary bg-sidebar-accent ring-1 ring-primary",
           )}
         >
-          <span className="grid h-20 place-items-center rounded-md bg-muted">
+          <span className="grid h-20 place-items-center rounded-md bg-muted [&>svg]:size-6">
             <Marker item={item} />
           </span>
           <ItemMenu item={item} onAction={o.onAction} className="absolute top-3 right-3" />
-          <span className="truncate font-medium" title={item.name}>
+          <span className="line-clamp-2 font-medium break-words" title={item.name}>
             {item.name}
           </span>
           <span className="truncate text-xs text-muted-foreground">

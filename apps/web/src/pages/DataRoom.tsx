@@ -5,6 +5,7 @@ import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web"
 import { LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
 import { FilterBar } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderNodes } from "../components/data-room/folders";
@@ -17,13 +18,16 @@ import {
   type RowInteraction,
 } from "../components/data-room/ItemRows";
 import { Preview } from "../components/data-room/Preview";
-import { uploadFilesToDataRoom } from "../components/data-room/upload-toasts";
+import {
+  setOpenDataRoomFolder,
+  uploadFilesToDataRoom,
+} from "../components/data-room/upload-toasts";
 import {
   type Filters,
   type Sort,
   useDataRoomList,
 } from "../components/data-room/use-data-room-list";
-import { DATA_ROOM_CHANGED } from "../lib/data-room";
+import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
 
 const HOVER_MS = 150;
@@ -66,12 +70,15 @@ function FileInputButton({ children, ...props }: React.ComponentProps<typeof But
 export function DataRoomPage() {
   const [params] = useSearchParams();
   const linkedItem = params.get("item");
-  const [view, setView] = useState<"list" | "grid">("list");
+  // View and sort are remembered for this browser.
+  const [saved] = useState(readDataRoomView);
+  const [view, setView] = useState<"list" | "grid">(saved.view);
   const [queryInput, setQueryInput] = useState("");
   const query = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
   const [filters, setFilters] = useState<Filters>({});
   // "Recently added" first, so a file just filed is on top even before it has a document date.
-  const [listSort, setListSort] = useState<Sort>({ field: "createdAt", direction: "desc" });
+  const [listSort, setListSort] = useState<Sort>(saved.sort);
+  useEffect(() => saveDataRoomView({ view, sort: listSort }), [view, listSort]);
   // Null orders a search by relevance.
   const [searchSort, setSearchSort] = useState<Sort | null>(null);
   const searching = query !== "";
@@ -79,12 +86,18 @@ export function DataRoomPage() {
   const list = useDataRoomList({ query, filters, sort });
 
   const [folders, setFolders] = useState<DataRoomApiFolder[]>([]);
-  useEffect(() => {
+  const reloadFolders = useCallback(() => {
     rpc.dataRoom
       .folders()
       .then(setFolders)
       .catch(() => undefined);
   }, []);
+  useEffect(reloadFolders, [reloadFolders]);
+  // Files added while a folder is open go into it, wherever they are dropped.
+  useEffect(() => {
+    setOpenDataRoomFolder(filters.folderId);
+    return () => setOpenDataRoomFolder(undefined);
+  }, [filters.folderId]);
   const nodes = useMemo(() => folderNodes(folders), [folders]);
   const folderPath = useCallback(
     (id: string | null) => nodes.find(({ folder }) => folder.id === id)?.path ?? "",
@@ -116,6 +129,12 @@ export function DataRoomPage() {
     return () => observer.disconnect();
   }, [bodyEl]);
   const autoPinned = useRef(false);
+  // Narrow, the preview is a dialog that only a tap opens: drop a pin made while wide.
+  useEffect(() => {
+    if (narrow) setPinned(null);
+  }, [narrow]);
+  /** The row the pointer is over, so moving within it does not restart the hover delay. */
+  const hoverTarget = useRef<string | null>(null);
   useEffect(() => () => clearTimeout(timer.current), []);
 
   useEffect(() => {
@@ -127,6 +146,9 @@ export function DataRoomPage() {
       .then((item) => {
         if (!current || item.id !== linkedItem) return;
         autoPinned.current = true;
+        // Show the folder the item is in, so the list and the preview agree.
+        setQueryInput("");
+        setFilters(item.folderId ? { folderId: item.folderId } : {});
         setPinned(item);
         setHovered(null);
         setPreviewOpen(true);
@@ -182,11 +204,13 @@ export function DataRoomPage() {
   const interaction: RowInteraction = {
     shownId: shown?.id,
     onHover: (item) => {
-      if (narrow) return;
+      if (narrow || hoverTarget.current === item.id) return;
+      hoverTarget.current = item.id;
       clearTimeout(timer.current);
       timer.current = setTimeout(() => setHovered(item), HOVER_MS);
     },
     onLeave: () => {
+      hoverTarget.current = null;
       if (narrow) return;
       clearTimeout(timer.current);
       timer.current = setTimeout(() => setHovered(null), HOVER_MS);
@@ -230,6 +254,7 @@ export function DataRoomPage() {
   const empty = !list.loading && list.rows.length === 0 && !list.error && !searching && !hasFilters;
   const rows = list.rows;
   const uniq = (values: string[]) => [...new Set(values)].sort();
+  const clearFilters = () => setFilters(filters.folderId ? { folderId: filters.folderId } : {});
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
@@ -278,6 +303,9 @@ export function DataRoomPage() {
         </div>
       ) : (
         <>
+          <div className="px-3 pb-2.5 empty:hidden md:px-5">
+            <DataRoomConsentPrompt onAllowed={list.reload} />
+          </div>
           <FilterBar
             query={queryInput}
             onQuery={setQueryInput}
@@ -286,8 +314,10 @@ export function DataRoomPage() {
             onFilters={setFilters}
             sort={sort}
             onSort={(next) => (searching ? setSearchSort(next) : next && setListSort(next))}
-            typeSuggestions={uniq(rows.flatMap(({ item }) => item.facets.docType ?? []))}
-            partySuggestions={uniq(rows.flatMap(({ item }) => item.facets.parties))}
+            types={uniq(rows.flatMap(({ item }) => item.facets.docType ?? []))}
+            parties={uniq(rows.flatMap(({ item }) => item.facets.parties))}
+            sources={uniq(rows.map(({ item }) => item.source))}
+            hasDates={rows.some(({ item }) => item.facets.docDate)}
             folders={nodes}
             folderId={filters.folderId}
             onFolder={(folderId) => setFilters({ ...filters, folderId })}
@@ -319,9 +349,21 @@ export function DataRoomPage() {
                   ))}
                 </div>
               ) : rows.length === 0 && !list.error ? (
-                <p className="p-6 text-center text-sm text-muted-foreground">
-                  <Trans>No results</Trans>
-                </p>
+                <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
+                  <p>
+                    <Trans>No results</Trans>
+                  </p>
+                  {searching ? (
+                    <p className="text-xs">
+                      <Trans>Search matches words in names and text. Try one word.</Trans>
+                    </p>
+                  ) : null}
+                  {Object.entries(filters).some(([key, value]) => key !== "folderId" && value) ? (
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
+                      <Trans>Clear filters</Trans>
+                    </Button>
+                  ) : null}
+                </div>
               ) : searching ? (
                 <ResultsView rows={rows} o={interaction} />
               ) : view === "grid" ? (
@@ -380,6 +422,7 @@ export function DataRoomPage() {
               setPinned(updated);
             }
             list.reload();
+            reloadFolders();
           }}
         />
       ) : null}

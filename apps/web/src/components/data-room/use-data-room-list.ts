@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/client";
 import type { DataRoomApiItem } from "@rakazo/contracts";
+import { DATA_ROOM_METADATA_ORDINAL } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isInProgress } from "../../lib/data-room";
 import { rpc } from "../../lib/rpc";
@@ -16,6 +17,12 @@ export type Filters = {
 };
 export type SortField = "date" | "name" | "type" | "createdAt";
 export type Sort = { field: SortField; direction: "asc" | "desc" };
+/** A newly chosen sort starts in the order people expect: names A to Z, dates newest first. */
+export const naturalSort = (field: SortField): Sort => ({
+  field,
+  direction: field === "name" || field === "type" ? "asc" : "desc",
+});
+
 /** `sort` null means relevance, which only a search has. */
 export type ListQuery = { query: string; filters: Filters; sort: Sort | null };
 /** One document, with the search snippets that matched in it. */
@@ -70,7 +77,11 @@ async function fetchPage(q: ListQuery, cursor?: string) {
     return {
       rows: mergeRows(
         [],
-        page.results.map((hit) => ({ item: hit.item, snippets: [hit.snippet] })),
+        // A name match would only repeat the name and folder shown above it.
+        page.results.map((hit) => ({
+          item: hit.item,
+          snippets: hit.ordinal === DATA_ROOM_METADATA_ORDINAL ? [] : [hit.snippet],
+        })),
       ),
       nextCursor: page.nextCursor,
     };

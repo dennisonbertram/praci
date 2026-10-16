@@ -137,11 +137,17 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                     style={{ width: `${Math.round(state.fraction * 100)}%` }}
                   />
                 </div>
-              ) : state.kind === "filed" ? (
-                <div className="mt-1 flex items-center justify-between text-xs">
-                  <span className="text-success">
-                    <Trans>Filed</Trans>
-                  </span>
+              ) : state.kind === "uploaded" ? (
+                <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                  {state.existing ? (
+                    <span className="min-w-0 text-muted-foreground">
+                      <Trans>Already in your Data room as {state.existing}</Trans>
+                    </span>
+                  ) : (
+                    <span className="text-success">
+                      <Trans>Uploaded</Trans>
+                    </span>
+                  )}
                   <Link
                     to={dataRoomItemPath(state.itemId)}
                     className="font-medium underline-offset-2 hover:underline"

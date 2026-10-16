@@ -31,5 +31,17 @@ export default meta;
 type Story = StoryObj;
 
 export const List: Story = { render: () => <ListView rows={rows} o={o} /> };
+/** Nothing classified yet: the facet columns give their width to the name. */
+export const ListWithoutFacets: Story = {
+  render: () => (
+    <ListView
+      rows={rows.map(({ item }) => ({
+        item: { ...item, facets: { ...item.facets, docType: null, docDate: null, parties: [] } },
+        snippets: [],
+      }))}
+      o={o}
+    />
+  ),
+};
 export const Grid: Story = { render: () => <GridView rows={rows} o={o} /> };
 export const Results: Story = { render: () => <ResultsView rows={hits} o={o} /> };

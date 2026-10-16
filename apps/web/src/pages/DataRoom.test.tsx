@@ -24,6 +24,7 @@ const rpcMock = vi.hoisted(() => ({
   list: vi.fn(),
   search: vi.fn(),
   item: vi.fn(),
+  consent: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -32,6 +33,7 @@ vi.mock("../lib/rpc", () => ({
       items: { list: rpcMock.list },
       search: rpcMock.search,
       item: rpcMock.item,
+      consent: rpcMock.consent,
     },
   },
   withSpaceHeaders: () => new Headers(),
@@ -73,6 +75,14 @@ beforeEach(() => {
   rpcMock.list.mockResolvedValue({ items: [item("b.txt"), item("a.txt")], nextCursor: null });
   rpcMock.search.mockResolvedValue({ results: [], nextCursor: null });
   rpcMock.item.mockResolvedValue(item("b.txt"));
+  rpcMock.consent.mockResolvedValue({
+    key: "k",
+    version: "v",
+    allowed: true,
+    disclosure: "",
+    recipients: [],
+  });
+  localStorage.clear();
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -417,4 +427,130 @@ it("reads the first page again when a status poll changes the value the list is 
     await vi.advanceTimersByTimeAsync(3_100);
   });
   expect(rpcMock.list.mock.calls.length).toBe(calls + 1);
+});
+
+const previewName = () =>
+  container.querySelector('[data-testid="data-room-preview"] h3')?.textContent;
+
+it("previews a row only when the pointer moves over it, not when an overlay closes above it", async () => {
+  await renderPage();
+  expect(previewName()).toBe("b.txt");
+  const row = container.querySelectorAll<HTMLElement>("li[data-item-id]")[1];
+  // A closing popover or dialog leaves the pointer over a row: the browser sends mouseover only.
+  await act(async () => {
+    row?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    await vi.advanceTimersByTimeAsync(300);
+  });
+  expect(previewName()).toBe("b.txt");
+  await act(async () => {
+    row?.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+    await vi.advanceTimersByTimeAsync(300);
+  });
+  expect(previewName()).toBe("a.txt");
+});
+
+it("hides the Type, Party, Date and Source filters and columns while no item has them", async () => {
+  const bare = (name: string) => ({
+    ...item(name),
+    facets: { ...item(name).facets, docType: null },
+  });
+  rpcMock.list.mockResolvedValue({ items: [bare("a.txt"), bare("b.txt")], nextCursor: null });
+  await renderPage();
+  const labels = () =>
+    Array.from(container.querySelectorAll("button")).map((b) => b.getAttribute("aria-label"));
+  expect(labels()).not.toContain("Filter by Type");
+  expect(labels()).not.toContain("Filter by Party");
+  expect(labels()).not.toContain("Filter by Document date");
+  expect(labels()).not.toContain("Filter by Source");
+  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toBe("Name");
+
+  rpcMock.list.mockResolvedValue({
+    items: [item("a.txt"), { ...bare("m.txt"), source: "gmail" }],
+    nextCursor: null,
+  });
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  await settle();
+  expect(labels()).toContain("Filter by Type");
+  expect(labels()).toContain("Filter by Source");
+  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toContain("Type");
+});
+
+it("offers to clear filters when they leave no results, keeping the folder", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage();
+  const typeChip = container.querySelector<HTMLElement>('button[aria-label="Filter by Type"]');
+  await act(async () => {
+    typeChip?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  rpcMock.list.mockResolvedValue({ items: [], nextCursor: null });
+  const memo = Array.from(document.querySelectorAll('[role="menuitemradio"]')).find(
+    (el) => el.textContent === "Memo",
+  );
+  await act(async () => {
+    (memo as HTMLElement).click();
+  });
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ docType: "Memo" }));
+  const clear = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Clear filters",
+  );
+  rpcMock.list.mockResolvedValue({ items: [item("a.txt")], nextCursor: null });
+  await act(async () => {
+    clear?.click();
+  });
+  await settle();
+  expect(rpcMock.list.mock.lastCall?.[0]).not.toHaveProperty("docType", "Memo");
+  expect(names()).toEqual(["a.txt"]);
+});
+
+it("opens a linked item in its own folder, so the list shows it", async () => {
+  rpcMock.item.mockResolvedValue({ ...item("x.txt"), id: "X", folderId: "f2" });
+  await renderPage("/?item=X");
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f2" }));
+  expect(previewName()).toBe("x.txt");
+});
+
+it("shows no snippet when only the name matched", async () => {
+  await renderPage();
+  rpcMock.search.mockResolvedValue({
+    results: [
+      { item: item("lease.pdf"), ordinal: -1, snippet: "\u0001lease\u0002.pdf Legal", score: 1 },
+      { item: item("memo.txt"), ordinal: 0, snippet: "the \u0001lease\u0002 ends", score: 1 },
+    ],
+    nextCursor: null,
+  });
+  const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    set?.call(input, "lease");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  const rows = container.querySelectorAll('ul[aria-label="Results"] > li');
+  expect(rows[0]?.querySelector("mark")).toBeNull();
+  expect(rows[1]?.querySelector("mark")?.textContent).toBe("lease");
+});
+
+it("remembers the view and sort across visits", async () => {
+  await renderPage();
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('button[aria-label="Grid view"]')?.click();
+    container.querySelector<HTMLButtonElement>('button[aria-label="Descending"]')?.click();
+  });
+  act(() => root.unmount());
+  root = createRoot(container);
+  await renderPage();
+  expect(
+    container.querySelector('button[aria-label="Grid view"]')?.getAttribute("aria-pressed"),
+  ).toBe("true");
+  expect(rpcMock.list).toHaveBeenLastCalledWith(
+    expect.objectContaining({ sort: { field: "createdAt", direction: "asc" } }),
+  );
 });

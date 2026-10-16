@@ -684,6 +684,11 @@ msgstr "Autorisé une fois"
 msgid "Already have an account?"
 msgstr "Vous avez déjà un compte ?"
 
+#. placeholder {0}: state.existing
+#: src/components/data-room/DropZone.tsx
+msgid "Already in your Data room as {0}"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr "Agir toujours"
@@ -1464,6 +1469,10 @@ msgstr "Effacer la conversation"
 
 #: src/pages/ActivityList.tsx
 msgid "Clear filter {label}"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Clear filters"
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -2764,6 +2773,14 @@ msgstr "Docker limite l'accès à votre ordinateur pour une sécurité renforcé
 msgid "Docs & files"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Document date"
+msgstr ""
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Documents are stored but not read. Set up a model in Settings to tag and file them."
+msgstr ""
+
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
 msgstr ""
@@ -2909,6 +2926,10 @@ msgstr ""
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
 msgstr "Répondre quand... Ignorer..."
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a folder name without slashes"
+msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Enter a name without slashes"
@@ -3096,10 +3117,6 @@ msgstr ""
 
 #: src/components/computer/FilesApp.tsx
 msgid "File is too large to upload."
-msgstr ""
-
-#: src/components/data-room/DropZone.tsx
-msgid "Filed"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
@@ -3619,6 +3636,10 @@ msgstr ""
 msgid "Leave"
 msgstr "Quitter"
 
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Let Rakazo read your documents"
+msgstr ""
+
 #: src/components/AiDataSharing.tsx
 msgid "Let Rakazo sort your mail"
 msgstr ""
@@ -4084,9 +4105,13 @@ msgstr ""
 msgid "More computer actions"
 msgstr "Plus d'actions pour l'ordinateur"
 
-#: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Move {0} to"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -4180,6 +4205,14 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "New Bot"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "New folder name"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "New folder…"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
@@ -5186,11 +5219,15 @@ msgstr ""
 msgid "Removes the connection and agent access."
 msgstr ""
 
-#: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Rename"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Rename {0}"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -5558,9 +5595,17 @@ msgstr "Rechercher sur integrations.sh"
 msgid "Search mail"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Search matches words in names and text. Try one word."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
 msgstr "Rechercher des modèles"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Search names and text"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Search older mail"
@@ -6209,6 +6254,7 @@ msgstr ""
 msgid "This bot runs on this computer, not a Linux desktop. Shell and files use your home folder."
 msgstr "Ce bot s'exécute sur cet ordinateur, pas sur un bureau Linux. Le shell et les fichiers utilisent votre dossier personnel."
 
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Artifacts.tsx
 msgid "This can't be undone."
 msgstr "Cette action est irréversible."
@@ -6320,6 +6366,10 @@ msgstr ""
 #: src/components/inbox/TodoCard.tsx
 #: src/lib/ticket-status.ts
 msgid "To do"
+msgstr ""
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "To tag, file and search them, their text (and images) is sent to {names}. Until then they are stored but not read."
 msgstr ""
 
 #: src/pages/shell/bot-picker.tsx
@@ -6585,6 +6635,10 @@ msgstr ""
 #. placeholder {0}: first.accountName
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "Upload the {month} statement for {0}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded"
 msgstr ""
 
 #: src/lib/ticket-priority.ts

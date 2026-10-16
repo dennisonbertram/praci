@@ -7,6 +7,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -26,7 +27,10 @@ import { errorText } from "../../lib/user-error";
 import type { FolderNode } from "./folders";
 import type { ItemAction } from "./ItemMenu";
 
-/** Rename, Move or Delete (after a confirmation) for one item. `onDone` runs after the server accepts it. */
+/** The Move select's value for "put it in a new folder", which no folder id can equal. */
+const NEW_FOLDER = "__new__";
+
+/** Rename, Move (optionally into a new folder) or Delete (after a confirmation) for one item. `onDone` runs after the server accepts it. */
 export function ItemDialog({
   action,
   item,
@@ -42,6 +46,7 @@ export function ItemDialog({
 }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [target, setTarget] = useState(item.folderId ?? "");
 
   async function run(work: () => Promise<DataRoomApiItem | null>) {
     setBusy(true);
@@ -62,6 +67,9 @@ export function ItemDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t`Delete ${item.name}?`}</AlertDialogTitle>
+            <AlertDialogDescription>
+              <Trans>This can't be undone.</Trans>
+            </AlertDialogDescription>
           </AlertDialogHeader>
           {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
           <AlertDialogFooter>
@@ -95,10 +103,15 @@ export function ItemDialog({
       const name = DataRoomApiName.safeParse(String(data.get("name") ?? "").trim());
       if (!name.success) return setError(t`Enter a name without slashes`);
       void run(() => rpc.dataRoom.itemRename({ id: item.id, name: name.data }));
+    } else if (target === NEW_FOLDER) {
+      const name = DataRoomApiName.safeParse(String(data.get("folderName") ?? "").trim());
+      if (!name.success) return setError(t`Enter a folder name without slashes`);
+      void run(async () => {
+        const folder = await rpc.dataRoom.folderCreate({ name: name.data });
+        return rpc.dataRoom.itemMove({ id: item.id, folderId: folder.id });
+      });
     } else {
-      void run(() =>
-        rpc.dataRoom.itemMove({ id: item.id, folderId: String(data.get("folder") ?? "") || null }),
-      );
+      void run(() => rpc.dataRoom.itemMove({ id: item.id, folderId: target || null }));
     }
   };
 
@@ -107,24 +120,45 @@ export function ItemDialog({
       <DialogContent>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>{action === "rename" ? t`Rename` : t`Move`}</DialogTitle>
+            <DialogTitle className="break-words leading-snug">
+              {action === "rename" ? t`Rename ${item.name}` : t`Move ${item.name} to`}
+            </DialogTitle>
           </DialogHeader>
           {action === "rename" ? (
-            <Input name="name" aria-label={t`Name`} defaultValue={item.name} autoFocus />
+            <Input
+              name="name"
+              aria-label={t`Name`}
+              aria-invalid={error ? true : undefined}
+              defaultValue={item.name}
+              autoFocus
+            />
           ) : (
-            <NativeSelect
-              name="folder"
-              aria-label={t`Folder`}
-              defaultValue={item.folderId ?? ""}
-              className="w-full"
-            >
-              <NativeSelectOption value="">{t`No folder`}</NativeSelectOption>
-              {folders.map(({ folder, path }) => (
-                <NativeSelectOption key={folder.id} value={folder.id}>
-                  {path}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+            <>
+              <NativeSelect
+                name="folder"
+                aria-label={t`Folder`}
+                value={target}
+                onChange={(event) => setTarget(event.target.value)}
+                className="w-full"
+              >
+                <NativeSelectOption value="">{t`No folder`}</NativeSelectOption>
+                {folders.map(({ folder, path }) => (
+                  <NativeSelectOption key={folder.id} value={folder.id}>
+                    {path}
+                  </NativeSelectOption>
+                ))}
+                <NativeSelectOption value={NEW_FOLDER}>{t`New folder…`}</NativeSelectOption>
+              </NativeSelect>
+              {target === NEW_FOLDER ? (
+                <Input
+                  name="folderName"
+                  aria-label={t`New folder name`}
+                  placeholder={t`New folder name`}
+                  aria-invalid={error ? true : undefined}
+                  autoFocus
+                />
+              ) : null}
+            </>
           )}
           {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
           <DialogFooter>

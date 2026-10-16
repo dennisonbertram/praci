@@ -14,6 +14,7 @@ import {
   EmbedderMisconfiguredError,
 } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
+import { DATA_ROOM_METADATA_ORDINAL } from "@rakazo/contracts";
 import type { DataRoomItemRecord, PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, DataRoomStaleError, IsolationError, recordUsage } from "@rakazo/db";
 import type { DataRoomAi } from "./data-room-models.js";
@@ -397,7 +398,7 @@ function breakPoint(text: string, from: number, to: number): number {
 }
 
 /** Chunk ordinal of the item's name and facets; text chunks start at 0. */
-export const METADATA_ORDINAL = -1;
+export const METADATA_ORDINAL = DATA_ROOM_METADATA_ORDINAL;
 
 function folderPathOf(
   folderId: string | null,

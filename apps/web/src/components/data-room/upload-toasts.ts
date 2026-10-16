@@ -8,11 +8,12 @@ export type UploadToast = {
   name: string;
   state:
     | { kind: "uploading"; fraction: number }
-    | { kind: "filed"; itemId: string }
+    /** `existing` is the name of the identical file that was already there; nothing new was stored. */
+    | { kind: "uploaded"; itemId: string; existing?: string }
     | { kind: "error"; reason: UploadFailure };
 };
 
-const FILED_TOAST_MS = 8_000;
+const DONE_TOAST_MS = 8_000;
 const FAILED_TOAST_MS = 15_000;
 let nextId = 1;
 let toasts: UploadToast[] = [];
@@ -60,7 +61,7 @@ export const getUploadToasts = () => {
   return toasts;
 };
 
-async function uploadOne(file: File) {
+async function uploadOne(file: File, folderId: string | undefined) {
   const id = nextId++;
   const mine = epoch;
   const current = () => mine === epoch;
@@ -73,13 +74,17 @@ async function uploadOne(file: File) {
   // The server enforces the limit; this only avoids sending a file that will be refused.
   if (file.size > DATA_ROOM_UPLOAD_MAX_BYTES) return fail("too-large");
   try {
-    const { item } = await uploadToDataRoom(file, (fraction) => {
+    const { item, duplicate } = await uploadToDataRoom(file, folderId, (fraction) => {
       if (current()) update(id, { kind: "uploading", fraction });
     });
     if (!current()) return;
-    update(id, { kind: "filed", itemId: item.id });
+    update(id, {
+      kind: "uploaded",
+      itemId: item.id,
+      ...(duplicate ? { existing: item.name } : {}),
+    });
     window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
-    setTimeout(() => dismissUploadToast(id), FILED_TOAST_MS);
+    setTimeout(() => dismissUploadToast(id), DONE_TOAST_MS);
   } catch (error) {
     if (!current()) return;
     fail(
@@ -91,8 +96,15 @@ async function uploadOne(file: File) {
   }
 }
 
-/** Uploads each file to the Data room root, one toast per file. */
+/** The folder the open Data room page shows, if any; uploads from anywhere go there. */
+let openFolder: string | undefined;
+export function setOpenDataRoomFolder(folderId: string | undefined) {
+  openFolder = folderId;
+}
+
+/** Uploads each file into the folder the Data room page shows (else the root), one toast per file. */
 export function uploadFilesToDataRoom(files: Iterable<File>) {
   sync();
-  for (const file of files) void uploadOne(file);
+  const folderId = openFolder;
+  for (const file of files) void uploadOne(file, folderId);
 }

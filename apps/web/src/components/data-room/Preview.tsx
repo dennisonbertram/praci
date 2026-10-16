@@ -4,8 +4,8 @@ import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
 import { Download, FileText, X } from "lucide-react";
-import { type ReactNode, useState } from "react";
-import { saveDataRoomItem } from "../../lib/data-room";
+import { type ReactNode, useEffect, useState } from "react";
+import { canPreviewImage, dataRoomImageUrl, saveDataRoomItem } from "../../lib/data-room";
 import { errorText } from "../../lib/user-error";
 import { sourceLabel } from "./FilterBar";
 import { dateText, statusLabel } from "./format";
@@ -55,6 +55,31 @@ const Tag = ({ children }: { children: ReactNode }) => (
   </Badge>
 );
 
+/** The picture itself, for an image item; nothing while it loads or when it cannot be read. */
+function ImagePreview({ item }: { item: DataRoomApiItem }) {
+  const [url, setUrl] = useState("");
+  const { id, mimeType } = item;
+  useEffect(() => {
+    let live = true;
+    let made = "";
+    setUrl("");
+    dataRoomImageUrl({ id, mimeType })
+      .then((next) => {
+        made = next;
+        if (live) setUrl(next);
+        else URL.revokeObjectURL(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+      if (made) URL.revokeObjectURL(made);
+    };
+  }, [id, mimeType]);
+  return url ? (
+    <img src={url} alt={item.name} className="max-h-64 w-full rounded-md bg-muted object-contain" />
+  ) : null;
+}
+
 /** The summary, facets and source of one item, with Download and the item menu. */
 export function Preview({
   item,
@@ -79,11 +104,12 @@ export function Preview({
       data-testid="data-room-preview"
       className={
         inDialog
-          ? "flex flex-col gap-3 p-4 pe-12"
+          ? "flex flex-col gap-3 p-4"
           : "flex w-80 shrink-0 flex-col gap-3 overflow-y-auto border-s border-border bg-background p-3"
       }
     >
-      <div className="flex items-center gap-1">
+      {/* In a dialog, leave room for its close button. */}
+      <div className={inDialog ? "flex items-center gap-1 pe-8" : "flex items-center gap-1"}>
         <FileText aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         {inDialog ? (
           <DialogTitle className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -102,6 +128,7 @@ export function Preview({
         )}
       </div>
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
+      {canPreviewImage(item) ? <ImagePreview key={item.id} item={item} /> : null}
       {item.status === "failed" ? (
         <p className="text-sm text-destructive">{item.error ?? t`Failed`}</p>
       ) : item.status !== "ready" ? (
