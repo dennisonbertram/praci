@@ -150,6 +150,10 @@ export async function answerEditedMailApproval(
           : "failed";
     } catch (error) {
       getLogger().error("edited mail approval send failed", error);
+      // The compose path rejects with an ORPCError only before it reaches the provider
+      // (validation, account, record). Anything else may have come after the provider acted,
+      // for example a database write that failed once the draft or message already existed.
+      if (!(error instanceof ORPCError)) outcome = "unknown";
     }
     await deps.events.setMailApprovalOutcome({
       spaceId: actor.spaceId,

@@ -174,13 +174,32 @@ describe("answerEditedMailApproval", () => {
     expect(failed.effect.status).toBe("denied");
   });
 
-  it("tells the agent a thrown send failed and nothing went out", async () => {
+  it("tells the agent a rejection before the provider was reached failed and nothing went out", async () => {
     const t = setup();
-    t.compose.send.mockRejectedValueOnce(new Error("boom"));
+    t.compose.send.mockRejectedValueOnce(new ORPCError("BAD_REQUEST", { message: "bad" }));
     await t.edit();
     expect(t.outcomes).toEqual(["failed"]);
     expect((t.effect.result as { note: string }).note).toContain("nothing was sent");
   });
+
+  it.each([
+    ["mail_send", "send", "sent", "Sent"],
+    ["mail_draft", "draftSave", "saved", "Drafts"],
+  ] as const)(
+    "treats an error after the provider acted as unknown for %s, not as nothing happened",
+    async (kind, method, _done, folder) => {
+      const t = setup({ kind });
+      // The provider call succeeded, then the database bookkeeping threw.
+      t.compose[method].mockRejectedValueOnce(new Error("database write failed"));
+      await t.edit();
+      expect(t.outcomes).toEqual(["unknown"]);
+      const note = (t.effect.result as { note: string }).note;
+      expect(note).not.toContain("nothing was");
+      expect(note).toContain("unknown");
+      expect(note).toContain(`check ${folder}`);
+      expect(t.compose[method]).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("rejects without claiming for another user, invalid edits and a merged message over the limit", async () => {
     const other = setup();
