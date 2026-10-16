@@ -160,6 +160,14 @@ describe("classify", () => {
       ),
     ).toBe("spend");
   });
+  it("counts a deposit on an uploaded statement as revenue, never as a refund against spend", () => {
+    const line = raw({ provider: "statement", kind: "statement", counterparty: "Customer Beta" });
+    expect(classify({ ...line, amountCents: 120000 }, ctx)).toBe("revenue");
+    expect(classify({ ...line, amountCents: -25000 }, ctx)).toBe("spend");
+    expect(classify({ ...line, amountCents: 5000, counterparty: "Mercury Savings" }, ctx)).toBe(
+      "internal_transfer",
+    );
+  });
   it("counts other outgoing money and every Brex expense as spend", () => {
     expect(classify(raw({ category: "Payroll" }), ctx)).toBe("spend");
     expect(classify(raw({ provider: "brex", amountCents: -2000, kind: "CARD" }), ctx)).toBe(
@@ -383,6 +391,9 @@ describe("breakdown", () => {
     }),
     txn("2026-09-05", -20, { counterparty: "Cafe" }),
     txn("2026-09-05", 5, { counterparty: "Cafe" }), // refund
+    // Refunds larger than the spend leave nothing spent: the row must not show as $15 out.
+    txn("2026-09-08", -10, { counterparty: "Refundy", category: "Travel" }),
+    txn("2026-09-09", 25, { counterparty: "Refundy", category: "Travel" }),
     txn("2026-10-01", -999), // end is exclusive
     txn("2026-08-31", -999),
     txn("2026-09-06", -999, as("card_payment")),
@@ -405,7 +416,7 @@ describe("breakdown", () => {
   it("groups by account", () => {
     expect(breakdown(txns, "account", range)).toEqual(
       [
-        { key: "acct-checking", label: "acct-checking", cents: 16500 },
+        { key: "acct-checking", label: "acct-checking", cents: 15000 },
         { key: "acct-2", label: "acct-2", cents: 30000 },
       ].sort((a, b) => b.cents - a.cents),
     );
