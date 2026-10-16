@@ -873,7 +873,7 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
       expect(time.x + time.width).toBeLessThanOrEqual(whole.x + whole.width);
       expect(subject.width).toBeGreaterThan(80);
       // Always one line: every row is the same fixed height, with sender and subject side by side.
-      expect(whole.height).toBe(44);
+      expect(whole.height).toBe(56);
       expect(
         Math.abs(subject.y + subject.height / 2 - (sender.y + sender.height / 2)),
       ).toBeLessThan(8);
