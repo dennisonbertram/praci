@@ -20,6 +20,7 @@ const rpcMock = vi.hoisted(() => ({
   statementUpload: vi.fn(),
   statementConfirm: vi.fn(),
   statementDiscard: vi.fn(),
+  statements: vi.fn(),
   overview: vi.fn(),
   exchanges: vi.fn(),
 }));
@@ -95,6 +96,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   rpcMock.statementDiscard.mockResolvedValue({ ok: true });
+  rpcMock.statements.mockResolvedValue({ statements: [], reminders: [] });
   rpcMock.overview.mockResolvedValue({ sources: [] });
   rpcMock.exchanges.mockResolvedValue([]);
 });
@@ -196,15 +198,52 @@ it("imports each file as soon as it is read, grouped under one account", async (
 
 const labelsOf = () => [...dialog().querySelectorAll("button")].map((b) => b.textContent);
 
-it("still imports a balance mismatch and keeps the warning on the row", async () => {
+it("holds a statement whose balances do not add up until Import anyway", async () => {
   rpcMock.statementUpload.mockResolvedValue(
     statement({ check: { balances: "mismatch", differenceCents: -1_240 } }),
   );
   rpcMock.statementConfirm.mockResolvedValue(statement({ status: "imported" }));
   await open("bank");
   await choose(new File(["x"], "march.pdf"));
-  expect(rpcMock.statementConfirm).toHaveBeenCalledWith({ id: "s1", acceptMismatch: true });
+  expect(rpcMock.statementConfirm).not.toHaveBeenCalled();
+  expect(onImported).not.toHaveBeenCalled();
   expect(dialog().textContent).toContain("Transactions are $12.40 off the closing balance");
+  expect(dialog().textContent).not.toContain("Imported");
+  await click("Import anyway");
+  expect(rpcMock.statementConfirm).toHaveBeenCalledWith({ id: "s1", acceptMismatch: true });
+  expect(onImported).toHaveBeenCalledTimes(1);
+  expect(dialog().textContent).toContain("Imported");
+});
+
+it("discards a held statement without importing it", async () => {
+  rpcMock.statementUpload.mockResolvedValue(
+    statement({ check: { balances: "mismatch", differenceCents: -1_240 } }),
+  );
+  await open("bank");
+  await choose(new File(["x"], "march.pdf"));
+  await click("Discard");
+  expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "s1" });
+  expect(rpcMock.statementConfirm).not.toHaveBeenCalled();
+  expect(onImported).not.toHaveBeenCalled();
+  expect(dialog().textContent).not.toContain("Example Bank");
+});
+
+it("lists statements uploaded before, so they can be found and removed later", async () => {
+  rpcMock.statements.mockResolvedValue({
+    statements: [
+      statement({ id: "old", status: "imported", createsAccount: false }),
+      statement({ id: "bad", status: "failed", fileName: "broken.pdf" }),
+    ],
+    reminders: [],
+  });
+  await open("bank");
+  const text = dialog().textContent ?? "";
+  expect(text).toContain("Example Bank ••1234");
+  expect(text).toContain("Imported");
+  expect(text).not.toContain("broken.pdf");
+  await click("Remove");
+  expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "old" });
+  expect(onImported).toHaveBeenCalledTimes(1);
 });
 
 it("removes an imported statement and reloads", async () => {

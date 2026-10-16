@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { FinanceStatement } from "@rakazo/contracts";
 import { STATEMENT_EXTENSIONS, STATEMENT_MAX_BYTES } from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { StatementGroup, type StatementRow, statementAccountKey } from "./StatementReviewCard";
@@ -10,7 +10,7 @@ import { StatementGroup, type StatementRow, statementAccountKey } from "./Statem
 type Item = {
   key: number;
   name: string;
-  state: "uploading" | "failed" | "imported";
+  state: "uploading" | "failed" | "imported" | "review";
   statement?: FinanceStatement;
   error?: string;
   busy?: boolean;
@@ -28,8 +28,9 @@ function toBase64(file: File): Promise<string> {
 }
 
 /**
- * Upload one or more statement files. Each is read and imported straight away; Remove undoes an
- * import. Statements of the same account are listed together.
+ * Upload one or more statement files. A file whose balances add up is imported straight away; one
+ * that does not waits for Import anyway or Discard. Earlier statements are listed too, so any can
+ * be removed later. Statements of the same account are listed together.
  */
 export function StatementImport({ onImported }: { onImported: () => void }) {
   const { t } = useLingui();
@@ -38,6 +39,30 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
   const counter = useRef(0);
   const patch = (key: number, next: Partial<Item>) =>
     setItems((all) => all.map((i) => (i.key === key ? { ...i, ...next } : i)));
+
+  useEffect(() => {
+    let live = true;
+    rpc.finance
+      .statements()
+      .then(({ statements }) => {
+        if (!live) return;
+        const past = statements
+          .filter((s) => s.status === "imported" || s.status === "review")
+          .map(
+            (statement): Item => ({
+              key: ++counter.current,
+              name: statement.fileName,
+              state: statement.status === "review" ? "review" : "imported",
+              statement,
+            }),
+          );
+        setItems((all) => [...past, ...all]);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
 
   async function add(files: File[]) {
     const fresh = files.map((file) => ({ file, key: ++counter.current }));
@@ -64,12 +89,11 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
             });
             // The server keeps a failed statement; nothing in it is worth keeping.
             void rpc.finance.statementDiscard({ id: statement.id }).catch(() => {});
+          } else if (statement.check?.balances === "mismatch") {
+            patch(key, { state: "review", statement });
           } else {
             try {
-              await rpc.finance.statementConfirm({
-                id: statement.id,
-                ...(statement.check?.balances === "mismatch" ? { acceptMismatch: true } : {}),
-              });
+              await rpc.finance.statementConfirm({ id: statement.id });
               patch(key, { state: "imported", statement });
               onImported();
             } catch (cause) {
@@ -84,6 +108,17 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
     }
   }
 
+  async function importAnyway(row: StatementRow) {
+    patch(row.key, { busy: true, error: undefined });
+    try {
+      await rpc.finance.statementConfirm({ id: row.statement.id, acceptMismatch: true });
+      patch(row.key, { busy: false, state: "imported" });
+      onImported();
+    } catch (cause) {
+      patch(row.key, { busy: false, error: errorText(cause) });
+    }
+  }
+
   async function remove(row: StatementRow) {
     const item = items.find((i) => i.key === row.key);
     if (!item) return;
@@ -91,7 +126,7 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
     try {
       await rpc.finance.statementDiscard({ id: row.statement.id });
       setItems((all) => all.filter((i) => i.key !== item.key));
-      onImported();
+      if (item.state === "imported") onImported();
     } catch (cause) {
       patch(item.key, { busy: false, error: errorText(cause) });
     }
@@ -99,17 +134,18 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
 
   const groups = new Map<string, StatementRow[]>();
   for (const item of items) {
-    if (item.state !== "imported" || !item.statement) continue;
+    if ((item.state !== "imported" && item.state !== "review") || !item.statement) continue;
     const row = {
       key: item.key,
       statement: item.statement,
       busy: Boolean(item.busy),
       error: item.error,
+      review: item.state === "review",
     };
     const key = statementAccountKey(row);
     groups.set(key, [...(groups.get(key) ?? []), row]);
   }
-  const others = items.filter((i) => i.state !== "imported");
+  const others = items.filter((i) => i.state === "uploading" || i.state === "failed");
 
   return (
     <div className="flex flex-col gap-3">
@@ -145,7 +181,12 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
       {items.length > 0 ? (
         <ul className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
           {[...groups.entries()].map(([key, rows]) => (
-            <StatementGroup key={key} rows={rows} onRemove={(row) => void remove(row)} />
+            <StatementGroup
+              key={key}
+              rows={rows}
+              onRemove={(row) => void remove(row)}
+              onImport={(row) => void importAnyway(row)}
+            />
           ))}
           {others.map((item) => (
             <li

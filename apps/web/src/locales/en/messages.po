@@ -2721,6 +2721,7 @@ msgid "Disabled tools"
 msgstr "Disabled tools"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/finance/StatementReviewCard.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Discard"
 msgstr "Discard"
@@ -3468,6 +3469,10 @@ msgstr "Image upload area"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Import an OpenAPI description"
 msgstr "Import an OpenAPI description"
+
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Import anyway"
+msgstr "Import anyway"
 
 #: src/pages/Inbox.tsx
 msgid "Important"

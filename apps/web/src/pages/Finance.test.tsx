@@ -36,6 +36,7 @@ const rpcMock = vi.hoisted(() => ({
   month: vi.fn(),
   transaction: vi.fn(),
   receiptUrl: vi.fn(),
+  statements: vi.fn(),
   connect: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
@@ -183,6 +184,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   rpcMock.refresh.mockResolvedValue({ ok: true });
+  rpcMock.statements.mockResolvedValue({ statements: [], reminders: [] });
 });
 afterEach(() => {
   act(() => root.unmount());
