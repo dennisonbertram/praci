@@ -77,8 +77,12 @@ function context(p: Payload, step: string): AdapterContext {
   };
 }
 
+/** The file's own bytes cannot be read; another attempt would read the same bytes and fail again. */
+class DataRoomUnreadableError extends Error {}
+
 /** A short reason for the item. Never the cause chain, which may hold provider payloads. */
 function failureText(error: unknown): string {
+  if (error instanceof DataRoomUnreadableError) return error.message;
   const text = error instanceof Error ? `${error.name}: ${error.message}` : "Unknown error";
   return text.slice(0, 200);
 }
@@ -114,7 +118,8 @@ async function runStep(
     if (!(await work(claimed, revision))) return;
   } catch (error) {
     if (error instanceof IsolationError || error instanceof DataRoomStaleError) return;
-    const failures = claimed.failures + 1;
+    const unreadable = error instanceof DataRoomUnreadableError;
+    const failures = unreadable ? DATA_ROOM_JOB_ATTEMPTS : claimed.failures + 1;
     if (step === "classify" && failures >= DATA_ROOM_JOB_ATTEMPTS) {
       // Facets are a bonus: keep the item searchable by text and name, and show why they are missing.
       if (
@@ -133,6 +138,7 @@ async function runStep(
       failures,
       ...(failures >= DATA_ROOM_JOB_ATTEMPTS ? { status: "failed" } : {}),
     });
+    if (unreadable) return;
     throw error;
   }
   await queueNext();
@@ -265,8 +271,19 @@ export async function extractItemText(
 ): Promise<string> {
   const type = effectiveType(item.mimeType, item.name);
   let text = "";
-  if (type === "application/pdf") text = await extractPdfText(bytes);
-  else if (type === "text/html" || type === "application/xhtml+xml")
+  if (type === "application/pdf") {
+    text = await extractPdfText(bytes).catch((cause: unknown) => {
+      const name = cause instanceof Error ? cause.name : "";
+      throw new DataRoomUnreadableError(
+        name === "PasswordException"
+          ? "This PDF is password-protected."
+          : // A plain Error is one of the page or text limits; the parser's own errors are named.
+            name === "Error"
+            ? "This PDF is too long to read."
+            : "This file isn't a readable PDF.",
+      );
+    });
+  } else if (type === "text/html" || type === "application/xhtml+xml")
     text = stripHtml(decodeUtf8(bytes));
   else if (TEXT_TYPES.has(type)) text = decodeUtf8(bytes);
   else if (IMAGE_TYPES.has(type)) text = await readImageText(deps, ai, item, bytes, type, ctx);
