@@ -263,13 +263,16 @@ export function useConnectedFinance(sources: FinanceSource[]): ConnectedFinance[
     rpc.finance
       .crypto()
       .then((c) => {
-        if (mounted.current)
-          setCrypto({ blockscout: c.connected && c.hasApiKey, alchemy: c.alchemy.connected });
+        if (mounted.current && c)
+          setCrypto({
+            blockscout: c.connected && c.hasApiKey,
+            alchemy: Boolean(c.alchemy?.connected),
+          });
       })
       .catch(() => {});
     rpc.finance
       .exchanges()
-      .then((all) => mounted.current && setExchanges(all))
+      .then((all) => mounted.current && setExchanges(Array.isArray(all) ? all : []))
       .catch(() => {});
   }, [mounted]);
 
