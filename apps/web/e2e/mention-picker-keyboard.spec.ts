@@ -4,6 +4,7 @@ import {
   completeOnboarding,
   createNamedBot,
   openNewGroup,
+  rpc,
   signup,
 } from "./helpers";
 
@@ -22,6 +23,17 @@ test("mention picker completes with Enter and Tab", async ({ page }, testInfo) =
   const writerId = await createBot(page, "Research Writer");
   expect(researcherId).toBeTruthy();
   expect(writerId).toBeTruthy();
+  await rpc(page, "routines/create", {
+    botId: researcherId,
+    name: "Research digest",
+    prompt: "Summarize today",
+    crons: ["0 9 * * *"],
+    timezone: "UTC",
+    active: false,
+    notify: false,
+  });
+  // Mention routines load with the roster, so reload to pick the new one up.
+  await page.reload();
 
   await openNewGroup(page);
   await page.locator("label:has-text('Name') input").fill("Mention keys team");
@@ -71,6 +83,22 @@ test("mention picker completes with Enter and Tab", async ({ page }, testInfo) =
   await expect(composer).toHaveValue("@Res");
   await expect(page.getByTestId("mention-chip")).toHaveCount(0);
   await expect(composer).toBeFocused();
+
+  await composer.fill("@dig");
+  const routineOption = page.getByTestId("mention-picker").getByRole("option");
+  await expect(routineOption).toHaveCount(1);
+  await expect(routineOption).toContainText("Runs on send");
+  await captureScreenshot(page, testInfo, "mention-picker-routine");
+
+  await composer.fill("@Writer");
+  await expect(page.getByTestId("mention-picker").getByRole("option")).toHaveCount(1);
+  await composer.fill("@zz");
+  await expect(page.getByTestId("mention-picker-empty")).toContainText("No matches");
+  await captureScreenshot(page, testInfo, "mention-picker-no-matches");
+  await composer.press("Enter");
+  await expect(composer).toHaveValue("@zz");
+  await composer.press("Escape");
+  await expect(page.getByTestId("mention-picker-empty")).toHaveCount(0);
 
   await composer.fill("hello without a picker");
   await composer.press("Enter");

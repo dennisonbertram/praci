@@ -1767,7 +1767,9 @@ model MailSyncState {
   needsReconnect Boolean    @default(false)
   /// MailProviderError.kind of the last failure ("rate_limited", "auth", ...); "unknown" for a
   /// non-provider error. Cleared with lastErrorAt.
-  lastErrorKind  String?
+  lastErrorKind String?
+  /// A rate-limited sync sets this; no sync for the connection starts before it. Cleared by a complete sync.
+  backoffUntil  DateTime?
   /// Random id of the sync holding the claim; every write checks it.
   claimToken     String?
   /// Provider change cursor (Gmail historyId) as of the last complete sync. Null until the first

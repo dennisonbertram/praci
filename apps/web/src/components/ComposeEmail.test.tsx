@@ -380,6 +380,44 @@ it("retries a failed reply prefill", async () => {
   expect(chips()).toEqual(["Remove sam@example.test"]);
 });
 
+it("opens a reply with the cached recipient and no retry when the quote did not load", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  prefill.mockResolvedValue({
+    connectionId: "c1",
+    replyToMessageId: "m1",
+    to: "sam@example.test",
+    cc: "",
+    subject: "Re: Offsite",
+    body: "",
+    attachments: [],
+    quoteUnavailable: true,
+  });
+  vi.useFakeTimers();
+  draftSave.mockResolvedValue({ status: "saved" });
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () =>
+    createRoot(container).render(
+      <ComposeEmail seed={reply("reply")} accounts={[]} connectionId="c1" onClose={() => {}} />,
+    ),
+  );
+  expect(chips()).toEqual(["Remove sam@example.test"]);
+  expect(container.textContent).toContain("The original message didn't load.");
+  expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Try again")).toBe(
+    false,
+  );
+  try {
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(draftSave).toHaveBeenCalled();
+    expect(container.textContent).toContain("The original message didn't load.");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it("asks before closing with attachments", async () => {
   const onClose = vi.fn();
   await open(reply("reply"), onClose);

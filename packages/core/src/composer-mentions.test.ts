@@ -38,7 +38,7 @@ describe("buildComposerMentionOptions", () => {
     ]);
     expect(options.find((option) => option.kind === "bot")?.subtitle).toBe("Bot");
     expect(options.find((option) => option.name === "Gmail")?.subtitle).toBe("Connected");
-    expect(options.find((option) => option.name === "Stripe")?.subtitle).toBe("Needs auth");
+    expect(options.find((option) => option.name === "Stripe")?.subtitle).toBe("Needs sign-in");
     expect(options.find((option) => option.kind === "routine")?.subtitle).toMatch(/Weekdays/i);
   });
 
@@ -58,6 +58,17 @@ describe("buildComposerMentionOptions", () => {
     expect(options[1]?.subtitle).toContain("Writer");
     expect(mentionChipKey(options[0]!)).toBe("routine:r1");
     expect(mentionChipKey(options[1]!)).toBe("routine:r2");
+  });
+
+  it("ranks prefix, then word-start, then substring matches ahead of kind order", () => {
+    const options = buildComposerMentionOptions({
+      query: "mail",
+      bots: [{ id: "b1", name: "Outmailer" }],
+      groups: [{ id: "g1", name: "Team Mail" }],
+      routines: [],
+      connectors: [{ id: "c1", name: "Mailchimp", authStatus: "connected", connectionId: "c1" }],
+    });
+    expect(options.map((option) => option.name)).toEqual(["Mailchimp", "Team Mail", "Outmailer"]);
   });
 
   it("skips the current group", () => {

@@ -3914,6 +3914,14 @@ msgstr ""
 msgid "Marked noise"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Marked read"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Marked unread"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Max"
@@ -4231,6 +4239,10 @@ msgstr ""
 msgid "Needs reply"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Needs sign-in"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "Necesita toma de control"
@@ -4379,6 +4391,10 @@ msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -5514,6 +5530,10 @@ msgstr "En ejecución · Detener"
 msgid "Running…"
 msgstr "Ejecutando…"
 
+#: src/pages/Shell.tsx
+msgid "Runs on send"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Runs when this bot receives a verified message from this provider."
 msgstr ""
@@ -6312,6 +6332,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "The original message didn't load."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts

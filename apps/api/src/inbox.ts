@@ -511,9 +511,16 @@ export function providerFailure(error: unknown, operation: string, connectionId:
     if (error.kind === "auth") {
       throw new ORPCError("PRECONDITION_FAILED", { message: error.message });
     }
-    throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
+    throw mailUnavailable(error);
   }
   throw error;
+}
+
+/** Gmail answering "slow down" is its own message, so the user knows to wait, not to reconnect. */
+export function mailUnavailable(error: MailProviderError): ORPCError<string, unknown> {
+  return error.kind === "rate_limited"
+    ? new ORPCError("TOO_MANY_REQUESTS", { message: "Gmail is busy. Try again in a moment." })
+    : new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
 }
 
 export async function inboxGet(

@@ -5,7 +5,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 - Web and shared component files with stories: 165 of 165
 - Web and shared components: 474
-- Mobile components: 124 in 82 files, mobile — native story pending
+- Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -271,7 +271,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ImageScreen | [apps/mobile/app/image.tsx](../../apps/mobile/app/image.tsx) | mobile — native story pending | mobile |
 | InboxMessageScreen | [apps/mobile/app/inbox-message.tsx](../../apps/mobile/app/inbox-message.tsx) | mobile — native story pending | mobile |
 | InboxScreen, TodoCard, MailListRow | [apps/mobile/app/inbox.tsx](../../apps/mobile/app/inbox.tsx) | mobile — native story pending | mobile |
-| HomeSession, Home, ActivitySection, ActivityRow, ConversationRow, MailInboxRow, HeaderButton, SearchRow, BotRow, GroupRow | [apps/mobile/app/index.tsx](../../apps/mobile/app/index.tsx) | mobile — native story pending | mobile |
+| HomeSession, Home, ActivitySection, ActivityRow, MailInboxRow, HeaderButton | [apps/mobile/app/index.tsx](../../apps/mobile/app/index.tsx) | mobile — native story pending | mobile |
 | NewGroup | [apps/mobile/app/new-group.tsx](../../apps/mobile/app/new-group.tsx) | mobile — native story pending | mobile |
 | NewSpace | [apps/mobile/app/new-space.tsx](../../apps/mobile/app/new-space.tsx) | mobile — native story pending | mobile |
 | NewBot | [apps/mobile/app/new.tsx](../../apps/mobile/app/new.tsx) | mobile — native story pending | mobile |
@@ -302,6 +302,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ComputerUpdateProgress | [apps/mobile/components/computer-update-progress.tsx](../../apps/mobile/components/computer-update-progress.tsx) | mobile — native story pending | mobile |
 | ComputerCard | [apps/mobile/components/ComputerCard.tsx](../../apps/mobile/components/ComputerCard.tsx) | mobile — native story pending | mobile |
 | ConnectorIcon | [apps/mobile/components/connector-icon.tsx](../../apps/mobile/components/connector-icon.tsx) | mobile — native story pending | mobile |
+| ConversationRow | [apps/mobile/components/conversation-row.tsx](../../apps/mobile/components/conversation-row.tsx) | mobile — native story pending | mobile |
 | FailedSendBubble | [apps/mobile/components/failed-send-bubble.tsx](../../apps/mobile/components/failed-send-bubble.tsx) | mobile — native story pending | mobile |
 | GlassIconButton | [apps/mobile/components/glass-icon-button.tsx](../../apps/mobile/components/glass-icon-button.tsx) | mobile — native story pending | mobile |
 | GlassSurface | [apps/mobile/components/glass-surface.ios.tsx](../../apps/mobile/components/glass-surface.ios.tsx) | mobile — native story pending | mobile |
@@ -309,6 +310,8 @@ Every rendered React component, grouped by area. A web or shared component file 
 | GlassTitle | [apps/mobile/components/glass-title.ios.tsx](../../apps/mobile/components/glass-title.ios.tsx) | mobile — native story pending | mobile |
 | GroupAvatar | [apps/mobile/components/group-avatar.tsx](../../apps/mobile/components/group-avatar.tsx) | mobile — native story pending | mobile |
 | ZoomableImage, ImageArtifactViewer | [apps/mobile/components/image-artifact-viewer.tsx](../../apps/mobile/components/image-artifact-viewer.tsx) | mobile — native story pending | mobile |
+| SearchRow | [apps/mobile/components/inbox-render-item.tsx](../../apps/mobile/components/inbox-render-item.tsx) | mobile — native story pending | mobile |
+| BotRow, GroupRow | [apps/mobile/components/inbox-rows.tsx](../../apps/mobile/components/inbox-rows.tsx) | mobile — native story pending | mobile |
 | InlineImageAttachment | [apps/mobile/components/inline-image-attachment.tsx](../../apps/mobile/components/inline-image-attachment.tsx) | mobile — native story pending | mobile |
 | MarkdownArtifactPreview | [apps/mobile/components/markdown-artifact-preview.tsx](../../apps/mobile/components/markdown-artifact-preview.tsx) | mobile — native story pending | mobile |
 | McpApprovalCard | [apps/mobile/components/McpApprovalCard.tsx](../../apps/mobile/components/McpApprovalCard.tsx) | mobile — native story pending | mobile |

@@ -193,6 +193,7 @@ export function ComposeEmail({
   const [confirmClose, setConfirmClose] = useState(false);
   const [prefillAttempt, setPrefillAttempt] = useState(0);
   const [prefillFailed, setPrefillFailed] = useState(false);
+  const [quoteMissing, setQuoteMissing] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(
     restore?.notice ? { kind: "error", text: restore.notice } : null,
   );
@@ -239,6 +240,12 @@ export function ComposeEmail({
     [],
   );
 
+  // The missing quote stays visible through autosave; other errors take the slot while they last.
+  const shownNotice: Notice | null =
+    quoteMissing && notice?.kind !== "error"
+      ? { kind: "error", text: t`The original message didn't load.` }
+      : notice;
+
   const update = (patch: Partial<Fields>) => {
     touched.current = true;
     const next = { ...fieldsRef.current, ...patch };
@@ -272,6 +279,7 @@ export function ComposeEmail({
     if (seed.kind === "new" || restore) return;
     let live = true;
     setPrefillFailed(false);
+    setQuoteMissing(false);
     setNotice(null);
     rpc.inbox.compose
       .prefill({ messageId: seed.messageId, mode: seed.kind, ...clientLocale() })
@@ -281,7 +289,9 @@ export function ComposeEmail({
         pendingContent.current = prefillHtml(next);
         // An older server sends no attachment list.
         setForwarded(next.attachments ?? []);
-        if (next.attachmentsTooLarge)
+        // The server filled To and Subject from its cached copy. The form is usable, so no retry that would overwrite edits.
+        if (next.quoteUnavailable) setQuoteMissing(true);
+        else if (next.attachmentsTooLarge)
           setNotice({
             kind: "error",
             text: t`Attachments can't be over ${MAX_COMPOSE_ATTACHMENT_MB} MB.`,
@@ -778,14 +788,14 @@ export function ComposeEmail({
             </Button>
           ) : null}
           <p
-            role={notice?.kind === "error" ? "alert" : "status"}
-            title={notice?.text}
+            role={shownNotice?.kind === "error" ? "alert" : "status"}
+            title={shownNotice?.text}
             className={cn(
               "min-w-0 flex-1 px-2 text-end text-xs md:truncate max-md:order-first max-md:basis-full max-md:pb-1 max-md:text-start max-md:empty:hidden",
-              notice?.kind === "error" ? "text-destructive" : "text-muted-foreground",
+              shownNotice?.kind === "error" ? "text-destructive" : "text-muted-foreground",
             )}
           >
-            {notice?.text}
+            {shownNotice?.text}
           </p>
           <Tooltip>
             <TooltipTrigger
