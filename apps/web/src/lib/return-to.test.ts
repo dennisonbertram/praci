@@ -32,3 +32,18 @@ it("rejects absolute, external and out-of-app targets", () => {
     expect(appReturnPath(bad), String(bad)).toBeNull();
   }
 });
+
+it("allows an encoded dot in a query value but not in the path", () => {
+  expect(appReturnPath("/app/data-room?name=a%2Eb")).toBe("/app/data-room?name=a%2Eb");
+  expect(appReturnPath("/app/x?next=%2Fapp%2F%2e%2e")).not.toBeNull();
+  expect(appReturnPath("/app/%2e/x")).toBeNull();
+  expect(appReturnPath("/app/%2E%2E/x?ok=1")).toBeNull();
+});
+
+it("round-trips the nested setup continuation", () => {
+  const app = "/app/integrations/app/google/gmail?connect=1&next=%2Fapp%2Fdata-room%3Fa%3Db%252Ec";
+  const setupNext = new URLSearchParams(`next=${encodeURIComponent(app)}`).get("next");
+  expect(appReturnPath(setupNext)).toBe(app);
+  const inner = new URLSearchParams(app.split("?")[1]).get("next");
+  expect(appReturnPath(inner)).toBe("/app/data-room?a=b%2Ec");
+});
