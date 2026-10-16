@@ -1,5 +1,10 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { CapabilityInstall, ConnectionCatalogItem, McpServer } from "@rakazo/contracts";
+import {
+  type CapabilityInstall,
+  type ConnectionCatalogItem,
+  isCryptoEndpoint,
+  type McpServer,
+} from "@rakazo/contracts";
 import { CONNECTION_CATALOG_PAGE_SIZE } from "@rakazo/core";
 import {
   AlertDialog,
@@ -310,7 +315,12 @@ export function IntegrationsHome({
   );
   const servers = data.servers.filter((server) => !financeServerIds.includes(server.id));
   const filtering = Boolean(query.trim()) || category !== "all";
-  const connectedFinance = useConnectedFinance(data.financeSources);
+  // A Blockscout key is stored as its MCP server, which already shows in `servers`.
+  const connectedFinance = useConnectedFinance(data.financeSources).filter(
+    (item) =>
+      item.key !== "crypto" ||
+      !servers.some((server) => "endpoint" in server && isCryptoEndpoint(server.endpoint)),
+  );
   const hasConnected =
     apps.length + servers.length + data.sources.length + connectedFinance.length > 0;
   // Native Google items fill the catalog without a managed provider, so ask the setup state. Only

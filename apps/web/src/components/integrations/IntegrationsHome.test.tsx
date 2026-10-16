@@ -236,6 +236,22 @@ it("lists connected crypto and exchange connections under Connected", async () =
   }
 });
 
+it("does not repeat Blockscout under Connected when its MCP server is already listed", async () => {
+  financeRpc.crypto.mockResolvedValue({
+    connected: true,
+    hasApiKey: true,
+    alchemy: { connected: false, lastError: null },
+  });
+  const blockscoutServer = {
+    ...zernioServer,
+    id: "s2",
+    name: "Blockscout",
+    endpoint: "https://mcp.blockscout.com/mcp",
+  } as unknown as IntegrationsData["servers"][number];
+  await show({ ...data(true, true), servers: [blockscoutServer] });
+  expect(connectedTiles().some((tile) => tile.includes("Blockscout"))).toBe(false);
+});
+
 it("shows no finance tile under Connected when nothing is connected", async () => {
   const value = data(true, true);
   value.financeSources = [
