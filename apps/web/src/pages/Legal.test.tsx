@@ -191,3 +191,20 @@ it("handles an empty graph and caps a very large one", async () => {
     `Showing the ${MAX_GRAPH_NODES} most connected of ${MAX_GRAPH_NODES + 30}`,
   );
 });
+
+it("warns when the Legal agent runs on a different model than Muse Spark 1.2", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    model: { provider: "openrouter", id: "openai/gpt-6-luna", isPreferred: false },
+  });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain(
+    "Using openai/gpt-6-luna. Add an OpenRouter key in Settings to run Muse Spark 1.2.",
+  );
+});
+
+it("shows no model warning when the agent runs on Muse Spark 1.2", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  await render(<LegalPage />);
+  expect(container.textContent).not.toContain("Add an OpenRouter key");
+});

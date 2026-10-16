@@ -82,6 +82,7 @@ export const overview: LegalOverview = {
     unreviewedDocuments: 3,
   },
   agent: { botId: id(900), lastScanAt: "2026-10-15T08:00:00.000Z" },
+  model: { provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true },
 };
 
 export const emptyOverview: LegalOverview = {
@@ -95,6 +96,7 @@ export const emptyOverview: LegalOverview = {
     unreviewedDocuments: 0,
   },
   agent: { botId: null, lastScanAt: null },
+  model: null,
 };
 
 export const graph: LegalGraph = {

@@ -17,7 +17,7 @@ const SCAN_CRONS = ["0 6 * * *"];
 
 /**
  * Creates the daily scan routine once per Legal agent. Routines run on the bot's own model, so no model
- * is set on it. Two racing calls could create two; ponytail: add a unique key if that ever shows up.
+ * is set on it. A partial unique index keeps it to one per bot even when two calls race.
  */
 export async function ensureLegalRoutine(
   deps: { prisma: Pick<PrismaClient, "routine">; jobs: JobPublisher },
@@ -34,20 +34,31 @@ export async function ensureLegalRoutine(
   });
   if (existing) return existing;
   const nextRunAt = nextCronDateAcrossStrict(SCAN_CRONS, new Date(), "UTC");
-  const routine = await deps.prisma.routine.create({
-    data: {
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      botId,
-      name: LEGAL_SCAN_ROUTINE_NAME,
-      prompt: LEGAL_SCAN_PROMPT,
-      crons: SCAN_CRONS,
-      timezone: "UTC",
-      active: true,
-      notify: false,
-      nextRunAt,
-    },
-  });
+  // A unique index on (botId) for this routine name makes a racing second create fail; read the winner.
+  const routine = await deps.prisma.routine
+    .create({
+      data: {
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        botId,
+        name: LEGAL_SCAN_ROUTINE_NAME,
+        prompt: LEGAL_SCAN_PROMPT,
+        crons: SCAN_CRONS,
+        timezone: "UTC",
+        active: true,
+        notify: false,
+        nextRunAt,
+      },
+    })
+    .catch(async (error: unknown) => {
+      if ((error as { code?: string }).code !== "P2002") throw error;
+      return null;
+    });
+  if (!routine) {
+    return deps.prisma.routine.findFirstOrThrow({
+      where: { spaceId: actor.spaceId, userId: actor.userId, botId, name: LEGAL_SCAN_ROUTINE_NAME },
+    });
+  }
   if (nextRunAt) await deps.jobs.enqueue(routineWakeupJob(routine.id, nextRunAt));
   return routine;
 }
@@ -59,7 +70,7 @@ export async function ensureLegalRoutine(
  */
 export async function ensureLegalAgent(
   deps: {
-    prisma: Pick<PrismaClient, "routine">;
+    prisma: Pick<PrismaClient, "routine" | "bot">;
     jobs: JobPublisher;
     repos: Pick<ReturnType<typeof createRepos>, "createBot">;
   },
@@ -74,7 +85,30 @@ export async function ensureLegalAgent(
     notifyOnFinish: true,
     modelProvider: LEGAL_AGENT_MODEL.provider,
     modelId: LEGAL_AGENT_MODEL.id,
+    thinkingLevel: LEGAL_AGENT_MODEL.thinkingLevel,
   });
+  // An older Legal agent may lack these; fill only empty fields so a model the user chose is kept.
+  const owner = { id: bot.id, spaceId: actor.spaceId, userId: actor.userId };
+  const noModel = !bot.modelProvider && !bot.modelId;
+  const noThinking = !bot.thinkingLevel;
+  if (noModel) {
+    await deps.prisma.bot.updateMany({
+      where: { ...owner, modelProvider: null, modelId: null },
+      data: { modelProvider: LEGAL_AGENT_MODEL.provider, modelId: LEGAL_AGENT_MODEL.id },
+    });
+  }
+  if (noThinking) {
+    await deps.prisma.bot.updateMany({
+      where: { ...owner, thinkingLevel: null },
+      data: { thinkingLevel: LEGAL_AGENT_MODEL.thinkingLevel },
+    });
+  }
   await ensureLegalRoutine(deps, actor, bot.id);
-  return bot;
+  return {
+    ...bot,
+    ...(noModel
+      ? { modelProvider: LEGAL_AGENT_MODEL.provider, modelId: LEGAL_AGENT_MODEL.id }
+      : {}),
+    ...(noThinking ? { thinkingLevel: LEGAL_AGENT_MODEL.thinkingLevel } : {}),
+  };
 }

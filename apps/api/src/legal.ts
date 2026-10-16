@@ -13,6 +13,7 @@ import type {
 import {
   DATA_ROOM_DISCLOSURE,
   DATA_ROOM_DISCLOSURE_VERSION,
+  LEGAL_AGENT_MODEL,
   legalAgentSpawnKey,
 } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
@@ -55,6 +56,8 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
         select: { completedAt: true },
       })
     : null;
+  // The same resolution path a run uses: the bot's own model if the user has its credential, else the default.
+  const resolved = bot ? (await deps.resolveAi(actor, bot.id).catch(() => null))?.model : null;
   const titles = new Map(contracts.map((c) => [c.id, c.title]));
   const next = new Map<string, string>();
   for (const d of openDeadlines) {
@@ -75,6 +78,15 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
       unreviewedDocuments: unreviewed,
     },
     agent: { botId: bot?.id ?? null, lastScanAt: lastScan?.completedAt?.toISOString() ?? null },
+    model: resolved
+      ? {
+          provider: resolved.provider,
+          id: resolved.id,
+          isPreferred:
+            resolved.provider === LEGAL_AGENT_MODEL.provider &&
+            resolved.id === LEGAL_AGENT_MODEL.id,
+        }
+      : null,
   };
 }
 

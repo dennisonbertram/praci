@@ -10,7 +10,12 @@ export const isLegalAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith(legalAgentSpawnKey("")));
 
 /** The model the Legal agent runs on: Meta Muse Spark 1.2 via OpenRouter (never a -contributor SKU). */
-export const LEGAL_AGENT_MODEL = { provider: "openrouter", id: "meta/muse-spark-1.2" } as const;
+export const LEGAL_AGENT_MODEL = {
+  provider: "openrouter",
+  id: "meta/muse-spark-1.2",
+  /** The level the model was benchmarked at; the catalog lists xhigh as supported for it. */
+  thinkingLevel: "xhigh",
+} as const;
 
 /** Name of the Legal agent's daily routine. */
 export const LEGAL_SCAN_ROUTINE_NAME = "Daily legal scan";
@@ -132,6 +137,12 @@ export const LegalOverviewSchema = z.object({
   }),
   /** Whether the Legal agent exists, and when it last finished a scan run (ISO) if known. */
   agent: z.object({ botId: Id.nullable(), lastScanAt: z.string().datetime().nullable() }),
+  /**
+   * The model the Legal agent will actually run on. Without the user's own credential for the
+   * preferred provider, Rakazo falls back to the space default, so this can differ from LEGAL_AGENT_MODEL.
+   * Null when the agent does not exist yet or no model resolves.
+   */
+  model: z.object({ provider: z.string(), id: z.string(), isPreferred: z.boolean() }).nullable(),
 });
 export type LegalOverview = z.infer<typeof LegalOverviewSchema>;
 

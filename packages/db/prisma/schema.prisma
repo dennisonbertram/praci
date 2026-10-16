@@ -786,6 +786,7 @@ model ExternalEffect {
   @@map("external_effects")
 }
 
+/// routines_legal_scan_key is raw SQL (partial unique on botId where name = 'Daily legal scan').
 model Routine {
   id             String    @id @default(cuid())
   spaceId        String

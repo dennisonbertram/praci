@@ -79,6 +79,13 @@ function Legal({ onAskAgent }: { onAskAgent?: () => void }) {
           <AskAgentButton />
         </div>
       </div>
+      {data.model && !data.model.isPreferred ? (
+        <p className="mb-3 text-xs text-muted-foreground">
+          <Trans>
+            Using {data.model.id}. Add an OpenRouter key in Settings to run Muse Spark 1.2.
+          </Trans>
+        </p>
+      ) : null}
       {scanError ? (
         <p role="alert" className="mb-3 text-sm text-destructive">
           {scanError}

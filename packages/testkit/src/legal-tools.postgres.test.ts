@@ -11,7 +11,7 @@ import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { legalOverview, legalScanNow, legalUpdateDeadline } from "../../../apps/api/src/legal.ts";
-import { ensureLegalAgent } from "../../../apps/api/src/legal-agent.ts";
+import { ensureLegalAgent, ensureLegalRoutine } from "../../../apps/api/src/legal-agent.ts";
 
 const databaseAvailable = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
 
@@ -22,6 +22,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
   let a: Actor;
   let b: Actor;
   let consent = true;
+  const extra: Actor[] = [];
 
   const deps = (actor: Actor) => ({
     prisma,
@@ -96,7 +97,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
 
   afterAll(async () => {
     if (!prisma) return;
-    for (const actor of [a, b]) {
+    for (const actor of [a, b, ...extra]) {
       await prisma.space.deleteMany({ where: { id: actor.spaceId } });
       await prisma.organization.deleteMany({
         where: { slug: actor.userId.replace("user", "org") },
@@ -326,5 +327,64 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     ).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
+  });
+
+  it("reports the model the agent will really use, and whether it is the preferred one", async () => {
+    const api = (model: { provider: string; id: string } | null) => ({
+      prisma,
+      repos: createRepos(prisma),
+      jobs: { enqueue: async () => {} } as never,
+      resolveAi: async () => ({ model }) as never,
+    });
+    expect(
+      (await legalOverview(api({ provider: "openrouter", id: "meta/muse-spark-1.2" }), a)).model,
+    ).toEqual({ provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true });
+    expect(
+      (await legalOverview(api({ provider: "openrouter", id: "openai/gpt-6-luna" }), a)).model,
+    ).toEqual({ provider: "openrouter", id: "openai/gpt-6-luna", isPreferred: false });
+    expect((await legalOverview(api(null), a)).model).toBeNull();
+  });
+
+  it("starts the Legal agent at xhigh, fills empty model fields on an old agent, and never starts a run", async () => {
+    const c = await makeActor("c");
+    extra.push(c);
+    const api = {
+      prisma,
+      repos: createRepos(prisma),
+      jobs: { enqueue: async () => {} } as never,
+      resolveAi: async () => ({ model: null }) as never,
+    };
+    const bot = await ensureLegalAgent(api, c);
+    expect(bot.thinkingLevel).toBe("xhigh");
+    expect(await prisma.run.count({ where: { botId: bot.id } })).toBe(0);
+
+    // An older agent with empty fields gets them; one the user changed keeps its choice.
+    await prisma.bot.update({
+      where: { id: bot.id },
+      data: { modelProvider: null, modelId: null, thinkingLevel: null },
+    });
+    expect(await ensureLegalAgent(api, c)).toMatchObject({
+      modelId: "meta/muse-spark-1.2",
+      thinkingLevel: "xhigh",
+    });
+    await prisma.bot.update({
+      where: { id: bot.id },
+      data: { modelProvider: "anthropic", modelId: "x", thinkingLevel: "low" },
+    });
+    await ensureLegalAgent(api, c);
+    expect(await prisma.bot.findUniqueOrThrow({ where: { id: bot.id } })).toMatchObject({
+      modelProvider: "anthropic",
+      modelId: "x",
+      thinkingLevel: "low",
+    });
+
+    // Two racing calls still leave one routine.
+    await prisma.routine.deleteMany({ where: { botId: bot.id } });
+    const [r1, r2] = await Promise.all([
+      ensureLegalRoutine(api, c, bot.id),
+      ensureLegalRoutine(api, c, bot.id),
+    ]);
+    expect(r1.id).toBe(r2.id);
+    expect(await prisma.routine.count({ where: { botId: bot.id } })).toBe(1);
   });
 });
