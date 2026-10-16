@@ -321,8 +321,8 @@ export function IntegrationsHome({
   const financeServerIds = data.financeSources.flatMap((source) =>
     source.serverId ? [source.serverId] : [],
   );
-  // A Blockscout key is stored as its MCP server. Once the key is connected, the finance tile
-  // under Connected replaces that server's own tile.
+  // A Blockscout key is stored as its MCP server. Once that server exists, the finance tile under
+  // Connected replaces the server's own tile, so Blockscout has one status on the page.
   const isCrypto = (server: McpServer) => "endpoint" in server && isCryptoEndpoint(server.endpoint);
   const cryptoServer = connectedKeys.has("crypto") ? data.servers.find(isCrypto) : undefined;
   const servers = data.servers.filter(

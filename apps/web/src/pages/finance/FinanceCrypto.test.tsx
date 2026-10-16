@@ -241,6 +241,8 @@ it("offers to add the Blockscout key, opening the modal, only when there is no A
   root = createRoot(container);
   rpcMock.crypto.mockResolvedValue(data({ connected: true, hasApiKey: false }));
   await show();
+  // Says why a connected Blockscout still asks for a key.
+  expect(container.textContent).toContain("reading wallet balances needs its API key");
   const connect = [...container.querySelectorAll("button")].find(
     (b) => b.textContent === "Add Blockscout API key",
   );
@@ -248,6 +250,12 @@ it("offers to add the Blockscout key, opening the modal, only when there is no A
   expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain(
     "Connect Blockscout",
   );
+});
+
+it("says there are no wallets yet instead of an empty Wallets card", async () => {
+  rpcMock.crypto.mockResolvedValue(data({ wallets: [] }));
+  await show();
+  expect(container.textContent).toContain("No wallets yet.");
 });
 
 it("shows each exchange as its own group and reloads everything after removing one", async () => {

@@ -169,7 +169,16 @@ export function FinanceCryptoPage() {
       {data ? (
         <>
           {data.connected && data.hasApiKey ? null : (
-            <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                {data.connected ? (
+                  <Trans>
+                    Blockscout is connected, but reading wallet balances needs its API key.
+                  </Trans>
+                ) : (
+                  <Trans>Connect Blockscout to read wallet balances and history.</Trans>
+                )}
+              </span>
               <Button size="sm" onClick={() => setConnecting(true)}>
                 {data.connected ? (
                   <Trans>Add Blockscout API key</Trans>
@@ -209,7 +218,11 @@ export function FinanceCryptoPage() {
                 </div>
                 <WalletRows data={data} onEdit={setEditing} onRemove={setRemoving} />
               </>
-            ) : null}
+            ) : (
+              <p className="py-2 text-sm text-muted-foreground">
+                <Trans>No wallets yet. Add a wallet address to see its balances here.</Trans>
+              </p>
+            )}
           </Section>
           {(exchanges.data ?? []).map((exchange) => (
             <ExchangeGroup key={exchange.id} exchange={exchange} onChanged={reloadAll} />

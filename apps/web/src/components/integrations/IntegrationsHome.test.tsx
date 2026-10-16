@@ -285,7 +285,8 @@ it("shows one Blockscout tile when its key and MCP server both exist", async () 
   );
 });
 
-it("keeps the Blockscout MCP server when no key is connected", async () => {
+it("shows one Blockscout tile, asking for the key, when its MCP server has none", async () => {
+  financeRpc.crypto.mockResolvedValue({ ...cryptoOn, hasApiKey: false });
   const blockscoutServer = {
     ...zernioServer,
     id: "s2",
@@ -293,7 +294,12 @@ it("keeps the Blockscout MCP server when no key is connected", async () => {
     endpoint: "https://mcp.blockscout.com/mcp",
   } as unknown as IntegrationsData["servers"][number];
   await show({ ...data(true, true), servers: [blockscoutServer] });
-  expect(container.textContent).toContain("mcp.blockscout.com");
+  expect(count("finance-tile-crypto")).toBe(1);
+  expect(inConnected("finance-tile-crypto")).toBe(true);
+  expect(container.textContent).not.toContain("mcp.blockscout.com");
+  const tile = container.querySelector('[data-testid="finance-tile-crypto"]');
+  expect(tile?.textContent).toContain("API key needed");
+  expect(tile?.querySelector('a[aria-label="Manage Blockscout"]')).not.toBeNull();
 });
 
 it("lists every finance provider under Finance when nothing is connected", async () => {

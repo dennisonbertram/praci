@@ -295,13 +295,14 @@ export function useFinanceStatus(): FinanceStatus {
   };
 }
 
-/** Keys of every working finance connection. Mercury/Brex are `ok`, Blockscout needs its PRO key,
- * exchanges need a good read. Anything else (including needs-reconnect) is still "available". */
+/** Keys of every finance connection placed under Connected. Mercury/Brex are `ok`; Blockscout once
+ * its MCP server exists (its one tile then says whether the PRO key is still needed); exchanges need a
+ * good read. Anything else (including needs-reconnect) is still "available". */
 export function connectedFinanceKeys(sources: FinanceSource[], status: FinanceStatus) {
   const keys = new Set<string>();
   for (const { provider } of FINANCE_PROVIDERS)
     if (sources.find((s) => s.provider === provider)?.status === "ok") keys.add(provider);
-  if (status.blockscout) keys.add("crypto");
+  if (status.blockscout || status.blockscoutServer) keys.add("crypto");
   if (status.alchemy?.connected && !status.alchemy.lastError) keys.add("alchemy");
   for (const { provider } of EXCHANGES)
     if (status.exchanges?.find((x) => x.provider === provider && x.connected && !x.lastError))
