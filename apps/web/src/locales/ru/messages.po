@@ -3616,8 +3616,14 @@ msgstr ""
 msgid "Make sure nothing is still running on this computer."
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
+msgstr ""
+
+#. placeholder {0}: cryptoServer.name
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Manage {0}"
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -4295,7 +4301,6 @@ msgstr ""
 
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -4332,7 +4337,6 @@ msgid "Open external link?"
 msgstr "Открыть внешнюю ссылку?"
 
 #: src/components/integrations/FinanceSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Finance"
 msgstr ""
 
