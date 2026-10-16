@@ -219,6 +219,10 @@ msgstr ""
 msgid "{days}d ago"
 msgstr "hace {days} d"
 
+#: src/components/data-room/format.ts
+msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
+msgstr ""
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr ""
@@ -230,6 +234,10 @@ msgstr ""
 #: src/lib/relative-time.ts
 msgid "{hours}h ago"
 msgstr "hace {hours} h"
+
+#: src/components/data-room/format.ts
+msgid "{imported, plural, one {Imported # file} other {Imported # files}}"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
@@ -691,6 +699,10 @@ msgstr "Permitido una vez"
 msgid "Already have an account?"
 msgstr "¿Ya tienes una cuenta?"
 
+#: src/components/data-room/format.ts
+msgid "Already in the Data room"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr ""
@@ -991,6 +1003,7 @@ msgid "Avatars"
 msgstr "Avatares"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
@@ -1761,6 +1774,14 @@ msgstr ""
 msgid "Connect Executor"
 msgstr "Conectar Executor"
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Connect Gmail"
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Connect Google Drive"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Connect mail"
 msgstr ""
@@ -2363,6 +2384,10 @@ msgstr ""
 
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Couldn't load mail"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -3300,6 +3325,14 @@ msgstr ""
 msgid "From {0}"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "From email"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "From Google Drive"
+msgstr ""
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "Pantalla completa"
@@ -3485,8 +3518,21 @@ msgstr ""
 msgid "Image upload area"
 msgstr "Área de carga de imagen"
 
+#: src/components/data-room/ImportFromDrive.tsx
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Import"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Import an OpenAPI description"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Import from email"
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Import from Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3751,6 +3797,8 @@ msgstr ""
 msgid "Load earlier messages"
 msgstr "Cargar mensajes anteriores"
 
+#: src/components/data-room/ImportFromDrive.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Inbox.tsx
@@ -4370,6 +4418,11 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "No files found"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -5095,6 +5148,7 @@ msgstr "Recientes"
 msgid "Recently added"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -5696,10 +5750,15 @@ msgstr ""
 msgid "Search documents"
 msgstr ""
 
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Search Drive"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Search integrations.sh"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
 msgid "Search mail"
 msgstr ""

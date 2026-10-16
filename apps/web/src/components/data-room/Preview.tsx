@@ -5,10 +5,11 @@ import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
 import { Download, FileText, X } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { Link } from "react-router-dom";
 import { saveDataRoomItem } from "../../lib/data-room";
 import { errorText } from "../../lib/user-error";
 import { sourceLabel } from "./FilterBar";
-import { dateText, statusLabel } from "./format";
+import { dateText, sizeText, statusLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
 
 function amountText(item: DataRoomApiItem) {
@@ -23,21 +24,6 @@ function amountText(item: DataRoomApiItem) {
   } catch {
     return String(amount);
   }
-}
-
-function sizeText(bytes: number) {
-  const [unit, divisor] =
-    bytes < 1_000
-      ? (["byte", 1] as const)
-      : bytes < 1_000_000
-        ? (["kilobyte", 1_000] as const)
-        : (["megabyte", 1_000_000] as const);
-  return new Intl.NumberFormat(i18n.locale || undefined, {
-    style: "unit",
-    unit,
-    unitDisplay: "narrow",
-    maximumFractionDigits: 1,
-  }).format(bytes / divisor);
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -131,7 +117,28 @@ export function Preview({
           </Field>
         ) : null}
         <Field label={t`Folder`}>{folderPath || t`None`}</Field>
-        <Field label={t`Source`}>{sourceLabel(item.source)}</Field>
+        <Field label={t`Source`}>
+          {item.source === "gmail" ? (
+            item.sourceUrl?.startsWith("/app/") ? (
+              <Link to={item.sourceUrl} className="underline-offset-2 hover:underline">
+                {t`From email`}
+              </Link>
+            ) : (
+              t`From email`
+            )
+          ) : item.source === "drive" && item.sourceUrl?.startsWith("https://") ? (
+            <a
+              href={item.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline-offset-2 hover:underline"
+            >
+              {t`From Google Drive`}
+            </a>
+          ) : (
+            sourceLabel(item.source)
+          )}
+        </Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
       </dl>
       <div className="flex flex-col gap-1.5">

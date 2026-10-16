@@ -1,12 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
-  dataRoomToolFromTool,
+  legalDataRoomGate,
   legalToolFromTool,
   legalToolsAllowed,
   selectBuiltinToolsForRun,
 } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
-import { legalAgentSpawnKey } from "@rakazo/contracts";
+import { LEGAL_AGENT_BUILTIN_TOOLS, legalAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -31,8 +31,13 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
   });
   const legal = (actor: Actor, name: string, args: Record<string, unknown>) =>
     legalToolFromTool(name, deps(actor), args) as Promise<any>;
-  const room = (actor: Actor, name: string, args: Record<string, unknown>) =>
-    dataRoomToolFromTool(name, deps(actor), args) as Promise<any>;
+  let dataRoomCalls = 0;
+  /** The Legal wrapper around a (stubbed) Data room tool; the tools themselves are tested with the Data room. */
+  const room = (actor: Actor, name: string, result: Record<string, unknown>) =>
+    legalDataRoomGate(deps(actor), name, async () => {
+      dataRoomCalls++;
+      return result;
+    }) as Promise<any>;
 
   async function makeActor(tag: string): Promise<Actor> {
     const userId = `lg-user-${tag}-${run}`;
@@ -243,8 +248,8 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(
       await legal(b, "legal_link", { fromId: mine.node.id, toId: node.id, relation: "owns" }),
     ).toHaveProperty("error");
-    expect((await room(b, "search_data_room", { query: "agreement" })).results).toEqual([]);
-    expect(await room(b, "read_data_room_item", { id: item.id })).toHaveProperty("error");
+    // B reading A's id gets no revision back, so nothing about A's item leaks through the wrapper.
+    expect(await room(b, "read_data_room_item", { id: item.id })).not.toHaveProperty("revision");
   });
 
   it("searches and reads the Data Room with consent, and refuses without it", async () => {
@@ -252,20 +257,17 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       where: { userId: a.userId, name: "msa.txt" },
     });
     consent = true;
-    const found = await room(a, "search_data_room", { query: "agreement", docType: "contract" });
-    expect(found.results.map((r: any) => r.id)).toContain(item.id);
-    const read = await room(a, "read_data_room_item", { id: item.id, offset: 7, limit: 10 });
-    expect(read).toMatchObject({ text: "services a", offset: 7, nextOffset: 17 });
+    const read = await room(a, "read_data_room_item", { id: item.id, text: "Master" });
+    expect(read).toMatchObject({ text: "Master", revision: item.revision });
 
     consent = false;
-    for (const [name, args] of [
-      ["search_data_room", { query: "agreement" }],
-      ["read_data_room_item", { id: item.id }],
-    ] as const) {
-      const refused = await room(a, name, args);
+    dataRoomCalls = 0;
+    for (const name of ["search_data_room", "read_data_room_item"]) {
+      const refused = await room(a, name, { id: item.id, text: "Master" });
       expect(refused.consentRequired).toBe(true);
       expect(JSON.stringify(refused)).not.toContain("Master");
     }
+    expect(dataRoomCalls).toBe(0);
     const refusedList = await legal(a, "legal_unreviewed_documents", {});
     expect(refusedList.consentRequired).toBe(true);
     for (const args of [
@@ -294,7 +296,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(
       legalToolsAllowed({ ...base, botSpawnKey: legalAgentSpawnKey("u"), trigger: "webhook" }),
     ).toBe(false);
-    const offered = (legalEnabled: boolean) =>
+    const offered = (legalEnabled: boolean, dataRoomEnabled: boolean) =>
       selectBuiltinToolsForRun({
         graphicalToolsAllowed: false,
         groupId: null,
@@ -302,11 +304,18 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
         semanticMemoryEnabled: false,
         messagingChannelRun: false,
         legalEnabled,
+        dataRoomEnabled,
       }).map((tool) => tool.name);
-    expect(offered(true)).toEqual(expect.arrayContaining(["search_data_room", "legal_link"]));
-    expect(
-      offered(false).filter((n) => n.startsWith("legal_") || n.endsWith("data_room_item")),
-    ).toEqual([]);
+    const roomTools = ["search_data_room", "read_data_room_item"];
+    expect(offered(true, true)).toEqual(expect.arrayContaining([...roomTools, "legal_link"]));
+    // The Data room tools keep their owner-only gate: being a Legal run does not bypass it.
+    expect(offered(true, false).filter((n) => roomTools.includes(n))).toEqual([]);
+    expect(offered(true, false)).toContain("legal_link");
+    expect(offered(false, true)).toEqual(expect.arrayContaining(roomTools));
+    expect(offered(false, true).filter((n) => n.startsWith("legal_"))).toEqual([]);
+    // The Legal allowlist reads the Data room but does not add to it.
+    expect(LEGAL_AGENT_BUILTIN_TOOLS).toEqual(expect.arrayContaining(roomTools));
+    expect(LEGAL_AGENT_BUILTIN_TOOLS).not.toContain("add_to_data_room");
   });
 
   it("creates one Legal agent on the Muse model with one daily routine, and queues one scan at a time", async () => {
@@ -430,7 +439,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(
       (await legal(a, "legal_unreviewed_documents", {})).documents.map((d: any) => d.id),
     ).toContain(item.id);
-    const read = await room(a, "read_data_room_item", { id: item.id });
+    const read = await room(a, "read_data_room_item", { id: item.id, text: "x" });
     await legal(a, "legal_upsert_contract", {
       dataRoomItemId: item.id,
       revision: read.revision,

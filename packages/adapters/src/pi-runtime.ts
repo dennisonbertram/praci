@@ -37,7 +37,6 @@ import { connectionIdArgument, credentialArgument } from "./bot-secrets.js";
 import { DELEGATION_TOOL_NAMES } from "./builtin-tools.js";
 import { withCloudflareGatewayAuth } from "./cloudflare-ai-gateway.js";
 import { shortenToolResultText } from "./context-selection.js";
-import { describeDataRoomActivity } from "./data-room-tools.js";
 import { DEFAULT_OPENROUTER_MODEL_ID } from "./deployment-model.js";
 import { describeFinanceActivity } from "./finance-tools.js";
 import { describeLegalActivity } from "./legal-tools.js";
@@ -889,8 +888,7 @@ export function describeToolActivity(toolName: string, args: unknown): string {
     return `Deleting skill: ${detail(record.name ?? record.skillId)}`;
   const finance = describeFinanceActivity(toolName, record);
   if (finance) return finance;
-  const legal =
-    describeLegalActivity(toolName, record) ?? describeDataRoomActivity(toolName, record);
+  const legal = describeLegalActivity(toolName, record);
   if (legal) return legal;
   const mcp = toolName.match(/^mcp__(.+?)__(.+)$/);
   if (mcp) return `Using ${mcp[1]}: ${mcp[2]}`;

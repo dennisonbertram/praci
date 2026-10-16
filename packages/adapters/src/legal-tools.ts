@@ -9,7 +9,6 @@ import {
 import type { LegalContractRecord, LegalDeadlineRecord, PrismaClient } from "@rakazo/db";
 import { createLegalRepos, IsolationError, LEGAL_NOT_LEGAL_TYPE, parseLegalDay } from "@rakazo/db";
 import * as z from "zod";
-import { DATA_ROOM_TOOL_NAMES } from "./data-room-tools.js";
 import { mailToolsAllowed } from "./mail-tools.js";
 
 export const LEGAL_TOOL_NAMES = new Set([
@@ -21,8 +20,11 @@ export const LEGAL_TOOL_NAMES = new Set([
   "legal_query",
 ]);
 
-/** Offered only to the Legal agent: its own tools plus the Data Room tools. */
-export const LEGAL_GATED_TOOL_NAMES = new Set([...LEGAL_TOOL_NAMES, ...DATA_ROOM_TOOL_NAMES]);
+/**
+ * Offered only to the Legal agent. The Data Room tools are not in this set: they have their own owner-only
+ * gate, and the Legal agent gets them only when that gate and its allowlist both allow them.
+ */
+export const LEGAL_GATED_TOOL_NAMES = LEGAL_TOOL_NAMES;
 
 /** Only the Legal agent, on a run its owner started (a direct message, a follow-up or its own routine). */
 const OWNER_INITIATED_TRIGGERS = new Set(["user", "follow_up", "routine"]);
@@ -430,4 +432,24 @@ async function query(deps: LegalToolDeps, args: Record<string, unknown>) {
       sourceQuote: e.sourceQuote,
     })),
   };
+}
+
+/**
+ * Wraps a Data Room tool call made by the Legal agent: no document text leaves without the Data Room
+ * consent for the run's model, and a read also reports the item's current revision, which
+ * legal_upsert_contract needs.
+ */
+export async function legalDataRoomGate(
+  deps: Pick<LegalToolDeps, "prisma" | "scope" | "allowed">,
+  name: string,
+  call: () => Promise<Record<string, unknown>>,
+): Promise<Record<string, unknown>> {
+  if (!(await deps.allowed())) return { error: REFUSAL, consentRequired: true };
+  const result = await call();
+  if (name !== "read_data_room_item" || typeof result.id !== "string") return result;
+  const item = await deps.prisma.dataRoomItem.findFirst({
+    where: { id: result.id, ...deps.scope },
+    select: { revision: true },
+  });
+  return item ? { ...result, revision: item.revision } : result;
 }

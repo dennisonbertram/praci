@@ -42,6 +42,8 @@ export const DataRoomApiItemSchema = z.object({
   size: z.number().int(),
   folderId: NullableId,
   source: z.string(),
+  /** An app path back to where an imported file came from; null for uploads. */
+  sourceUrl: z.string().nullable(),
   status: z.string(),
   /** Why the last step failed. A `ready` item can carry one (for example, filing was skipped). */
   error: z.string().nullable(),
@@ -124,3 +126,46 @@ export const DataRoomConsentStatusSchema = z.object({
 export type DataRoomConsentStatus = z.infer<typeof DataRoomConsentStatusSchema>;
 
 export const DataRoomConsentGrantInputSchema = z.object({ key: z.string(), version: z.string() });
+
+/** Attachments of the caller's own cached messages, copied into the Data room. */
+export const DataRoomApiImportEmailInputSchema = z.object({
+  picks: z
+    .array(z.object({ messageId: Id, attachmentId: z.string().min(1).max(500) }))
+    .min(1)
+    .max(20),
+  folderId: NullableId.optional(),
+});
+export const DataRoomApiImportEmailOutputSchema = z.object({
+  imported: z.number().int(),
+  duplicates: z.number().int(),
+  /** Files that could not be fetched or stored; the rest of the picks are still filed. */
+  failed: z.number().int(),
+});
+
+/** The caller's Google Drive for the import picker: a text search, or the children of a folder. */
+export const DataRoomApiDriveListInputSchema = z.object({
+  query: z.string().max(200).optional(),
+  folderId: z.string().min(1).max(200).optional(),
+  pageToken: z.string().min(1).max(2000).optional(),
+});
+export const DataRoomApiDriveFileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  mimeType: z.string(),
+  size: z.number().optional(),
+  isFolder: z.boolean(),
+});
+export type DataRoomApiDriveFile = z.infer<typeof DataRoomApiDriveFileSchema>;
+export const DataRoomApiDriveListOutputSchema = z.object({
+  files: z.array(DataRoomApiDriveFileSchema),
+  nextPageToken: z.string().optional(),
+});
+export const DataRoomApiImportDriveInputSchema = z.object({
+  fileIds: z.array(z.string().min(1).max(200)).min(1).max(20),
+  folderId: NullableId.optional(),
+});
+export const DataRoomApiImportDriveOutputSchema = z.object({
+  imported: z.number().int(),
+  duplicates: z.number().int(),
+  failed: z.number().int(),
+});
