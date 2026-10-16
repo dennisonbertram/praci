@@ -43,3 +43,25 @@ export const ListWithoutFacets: Story = {
 };
 export const Grid: Story = { render: () => <GridView rows={rows} o={o} /> };
 export const Results: Story = { render: () => <ResultsView rows={hits} o={o} /> };
+/** A phone-width list: long names wrap to a second line and each row names its folder. */
+export const ListNarrow: Story = {
+  decorators: [
+    (Story) => (
+      <div className="@container/list w-[358px]">
+        <Story />
+      </div>
+    ),
+  ],
+  render: () => (
+    <ListView
+      rows={rows.map(({ item }, index) => ({
+        item:
+          index === 0
+            ? { ...item, name: "Sample Master Services Agreement - Example Logistics Holdings.pdf" }
+            : item,
+        snippets: [],
+      }))}
+      o={o}
+    />
+  ),
+};

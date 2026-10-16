@@ -2,8 +2,9 @@
 
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-const hoisted = vi.hoisted(() => ({ upload: vi.fn(), space: { id: "s1" } }));
+const hoisted = vi.hoisted(() => ({ upload: vi.fn(), folders: vi.fn(), space: { id: "s1" } }));
 vi.mock("../../lib/rpc", () => ({
+  rpc: { dataRoom: { folders: hoisted.folders } },
   selectedSpaceId: () => hoisted.space.id,
   withSpaceHeaders: () => new Headers(),
 }));
@@ -19,6 +20,7 @@ import {
   holdUploadToasts,
   setOpenDataRoomFolder,
   setUploadScope,
+  showDeletedToast,
   uploadFilesToDataRoom,
 } from "./upload-toasts";
 
@@ -88,17 +90,46 @@ it("uploads into the folder the Data room page has open, else the root", async (
   expect(hoisted.upload.mock.calls.map((call) => call[1])).toEqual(["f-product", undefined]);
 });
 
-it("says uploaded, or names the identical file already there", async () => {
+it("says uploaded, or where the identical file already is and its name when it differs", async () => {
   setUploadScope("u1");
+  hoisted.folders.mockResolvedValue([
+    { id: "f-legal", parentId: null, name: "Legal" },
+    { id: "f-leases", parentId: "f-legal", name: "Leases" },
+  ]);
   hoisted.upload
-    .mockResolvedValueOnce({ item: { id: "i1", name: "new.txt" }, duplicate: false })
-    .mockResolvedValueOnce({ item: { id: "i0", name: "lease.pdf" }, duplicate: true });
-  uploadFilesToDataRoom([file("new.txt"), file("lease copy.pdf")]);
+    .mockResolvedValueOnce({
+      item: { id: "i1", name: "new.txt", folderId: null },
+      duplicate: false,
+    })
+    .mockResolvedValueOnce({
+      item: { id: "i0", name: "lease.pdf", folderId: "f-leases" },
+      duplicate: true,
+    })
+    .mockResolvedValueOnce({
+      item: { id: "i2", name: "same.txt", folderId: null },
+      duplicate: true,
+    });
+  uploadFilesToDataRoom([file("new.txt"), file("lease copy.pdf"), file("same.txt")]);
   await flush();
   expect(getUploadToasts().map((toast) => toast.state)).toEqual([
     { kind: "uploaded", itemId: "i1" },
-    { kind: "uploaded", itemId: "i0", existing: "lease.pdf" },
+    {
+      kind: "uploaded",
+      itemId: "i0",
+      existing: { name: "lease.pdf", folder: "Legal / Leases" },
+    },
+    { kind: "uploaded", itemId: "i2", existing: {} },
   ]);
+});
+
+it("shows a Deleted toast that goes away by itself", async () => {
+  setUploadScope("u1");
+  showDeletedToast("old.txt");
+  expect(getUploadToasts().map((toast) => [toast.name, toast.state.kind])).toEqual([
+    ["old.txt", "deleted"],
+  ]);
+  await vi.advanceTimersByTimeAsync(11_000);
+  expect(names()).toEqual([]);
 });
 
 it("keeps a finished toast while the pointer is over the toasts, then lets it go", async () => {

@@ -708,9 +708,20 @@ msgstr "Permitido uma vez"
 msgid "Already have an account?"
 msgstr "Você já tem cadastro?"
 
-#. placeholder {0}: state.existing
 #: src/components/data-room/DropZone.tsx
-msgid "Already in your Data room as {0}"
+msgid "Already in {folder}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in {folder} as {name}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in your Data room"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in your Data room as {name}"
 msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
@@ -1512,6 +1523,10 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Clear formatting"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Clear search"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -2673,6 +2688,10 @@ msgstr ""
 msgid "deleted"
 msgstr "excluído"
 
+#: src/components/data-room/DropZone.tsx
+msgid "Deleted"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Deleting…"
@@ -3180,10 +3199,6 @@ msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Files"
-msgstr ""
-
-#: src/components/data-room/format.ts
-msgid "Filing"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -4897,7 +4912,6 @@ msgstr ""
 msgid "pending"
 msgstr ""
 
-#: src/components/data-room/format.ts
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"

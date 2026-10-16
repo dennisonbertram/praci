@@ -10,6 +10,7 @@ import {
   Input,
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
   Popover,
   PopoverContent,
@@ -271,7 +272,26 @@ export function FilterBar({
           aria-label={t`Search documents`}
           autoComplete="off"
           name="data-room-search"
+          onKeyDown={(event) => event.key === "Escape" && query && onQuery("")}
+          className="[&::-webkit-search-cancel-button]:appearance-none"
         />
+        {query ? (
+          <InputGroupAddon align="inline-end">
+            <InputGroupButton
+              size="icon-xs"
+              aria-label={t`Clear search`}
+              onClick={(event) => {
+                onQuery("");
+                event.currentTarget
+                  .closest("[data-slot=input-group]")
+                  ?.querySelector("input")
+                  ?.focus();
+              }}
+            >
+              <X aria-hidden="true" />
+            </InputGroupButton>
+          </InputGroupAddon>
+        ) : null}
       </InputGroup>
       <div className="@min-[800px]/bd:hidden">
         <DropdownMenu>

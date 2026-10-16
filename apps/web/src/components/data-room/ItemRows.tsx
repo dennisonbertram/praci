@@ -19,6 +19,8 @@ export type RowInteraction = {
   onToggle: (item: DataRoomApiItem) => void;
   onAction: (action: ItemAction, item: DataRoomApiItem) => void;
   folderPath: (id: string | null) => string;
+  /** The folder the page shows; rows elsewhere (All items) name their folder. */
+  openFolderId?: string;
 };
 
 /** True while an arrow key moves the focus, so only that focus (not a click or Tab) selects. */
@@ -148,6 +150,7 @@ function ItemRow({
   facets: boolean;
 }) {
   const label = statusLabel(item.status);
+  const folder = item.folderId === (o.openFolderId ?? null) ? "" : o.folderPath(item.folderId);
   return (
     <li
       aria-current={o.shownId === item.id}
@@ -161,14 +164,20 @@ function ItemRow({
     >
       <span data-testid="data-room-name" className="flex min-w-0 items-center gap-2">
         <Marker item={item} />
-        <span
-          className={cn(
-            "min-w-0 truncate",
-            item.status !== "ready" && item.status !== "failed" && "text-muted-foreground",
-          )}
-          title={item.name}
-        >
-          {item.name}
+        <span className="flex min-w-0 flex-col">
+          {/* Two lines before cutting, so long names that share a start can still be told apart. */}
+          <span
+            className={cn(
+              "line-clamp-2 break-words",
+              item.status !== "ready" && item.status !== "failed" && "text-muted-foreground",
+            )}
+            title={item.name}
+          >
+            {item.name}
+          </span>
+          {folder ? (
+            <span className="truncate text-xs font-normal text-muted-foreground">{folder}</span>
+          ) : null}
         </span>
         {!facets && label ? (
           <span
@@ -285,7 +294,7 @@ export function ResultsView({ rows, o }: { rows: Row[]; o: RowInteraction }): Re
         >
           <div className="flex items-center gap-2 text-sm">
             <Marker item={item} />
-            <span className="min-w-0 flex-1 truncate font-medium" title={item.name}>
+            <span className="line-clamp-2 min-w-0 flex-1 font-medium break-words" title={item.name}>
               {item.name}
             </span>
             <span className="truncate text-xs text-muted-foreground">

@@ -20,6 +20,7 @@ import {
 import { Preview } from "../components/data-room/Preview";
 import {
   setOpenDataRoomFolder,
+  showDeletedToast,
   uploadFilesToDataRoom,
 } from "../components/data-room/upload-toasts";
 import {
@@ -216,6 +217,7 @@ export function DataRoomPage() {
     },
     onAction: (kind, item) => setAction({ kind, item }),
     folderPath,
+    openFolderId: filters.folderId,
   };
 
   const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomApiItem } | null>(null);
@@ -412,6 +414,7 @@ export function DataRoomPage() {
           onDone={(kind, updated) => {
             if (kind === "delete") {
               if (pinned?.id === action.item.id) setPinned(null);
+              showDeletedToast(action.item.name);
             } else if (updated && pinned?.id === updated.id) {
               setPinned(updated);
             }

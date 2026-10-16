@@ -708,10 +708,21 @@ msgstr "Allowed once"
 msgid "Already have an account?"
 msgstr "Already have an account?"
 
-#. placeholder {0}: state.existing
 #: src/components/data-room/DropZone.tsx
-msgid "Already in your Data room as {0}"
-msgstr "Already in your Data room as {0}"
+msgid "Already in {folder}"
+msgstr "Already in {folder}"
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in {folder} as {name}"
+msgstr "Already in {folder} as {name}"
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in your Data room"
+msgstr "Already in your Data room"
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in your Data room as {name}"
+msgstr "Already in your Data room as {name}"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
@@ -1513,6 +1524,10 @@ msgstr "Clear filters"
 #: src/components/compose/RichTextEditor.tsx
 msgid "Clear formatting"
 msgstr "Clear formatting"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Clear search"
+msgstr "Clear search"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Clearing…"
@@ -2673,6 +2688,10 @@ msgstr "Delete space"
 msgid "deleted"
 msgstr "deleted"
 
+#: src/components/data-room/DropZone.tsx
+msgid "Deleted"
+msgstr "Deleted"
+
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Deleting…"
@@ -3181,10 +3200,6 @@ msgstr "File is too large to upload."
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Files"
 msgstr "Files"
-
-#: src/components/data-room/format.ts
-msgid "Filing"
-msgstr "Filing"
 
 #: src/pages/Inbox.tsx
 msgid "Filter"
@@ -4897,7 +4912,6 @@ msgstr "PDF, CSV, OFX or QFX"
 msgid "pending"
 msgstr "pending"
 
-#: src/components/data-room/format.ts
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"

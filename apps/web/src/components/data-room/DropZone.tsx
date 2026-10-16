@@ -22,6 +22,15 @@ const failureText = (reason: UploadFailure) =>
       ? t`Unsupported file name`
       : t`Upload failed`;
 
+const duplicateText = ({ name, folder }: { name?: string; folder?: string }) =>
+  folder
+    ? name
+      ? t`Already in ${folder} as ${name}`
+      : t`Already in ${folder}`
+    : name
+      ? t`Already in your Data room as ${name}`
+      : t`Already in your Data room`;
+
 /** A full-window drop target for files, plus one toast per upload. Mounted once for every signed-in page. */
 export function DataRoomDropZone({ userId }: { userId: string | null }) {
   const [dragging, setDragging] = useState(false);
@@ -144,7 +153,7 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                 <div className="mt-1 flex items-center justify-between gap-2 text-xs">
                   {state.existing ? (
                     <span className="min-w-0 text-muted-foreground">
-                      <Trans>Already in your Data room as {state.existing}</Trans>
+                      {duplicateText(state.existing)}
                     </span>
                   ) : (
                     <span className="text-success">
@@ -159,6 +168,10 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                     <Trans>View</Trans>
                   </Link>
                 </div>
+              ) : state.kind === "deleted" ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  <Trans>Deleted</Trans>
+                </p>
               ) : (
                 <p className="mt-1 text-xs text-destructive">{failureText(state.reason)}</p>
               )}

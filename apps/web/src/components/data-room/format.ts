@@ -9,13 +9,9 @@ export const dateText = (iso: string | null) =>
       }).format(new Date(iso))
     : "";
 
+/**
+ * The word for an item's status. Every working step is "Reading": whether the item is then tagged
+ * and filed depends on consent, so the list never promises filing it may not do.
+ */
 export const statusLabel = (status: string) =>
-  status === "failed"
-    ? t`Failed`
-    : status === "extracting"
-      ? t`Reading`
-      : status === "classifying" || status === "indexing"
-        ? t`Filing`
-        : status === "pending"
-          ? t`Pending`
-          : "";
+  status === "failed" ? t`Failed` : status === "ready" ? "" : t`Reading`;

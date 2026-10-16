@@ -1,6 +1,7 @@
 import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
 import { DATA_ROOM_CHANGED, DataRoomUploadError, uploadToDataRoom } from "../../lib/data-room";
-import { selectedSpaceId } from "../../lib/rpc";
+import { rpc, selectedSpaceId } from "../../lib/rpc";
+import { folderNodes } from "./folders";
 
 export type UploadFailure = "too-large" | "invalid" | "failed";
 export type UploadToast = {
@@ -8,9 +9,13 @@ export type UploadToast = {
   name: string;
   state:
     | { kind: "uploading"; fraction: number }
-    /** `existing` is the name of the identical file that was already there; nothing new was stored. */
-    | { kind: "uploaded"; itemId: string; existing?: string }
-    | { kind: "error"; reason: UploadFailure };
+    /**
+     * `existing` is set when an identical file was already there and nothing new was stored: its
+     * name when it differs from the upload's, and the folder path it is in, if any.
+     */
+    | { kind: "uploaded"; itemId: string; existing?: { name?: string; folder?: string } }
+    | { kind: "error"; reason: UploadFailure }
+    | { kind: "deleted" };
 };
 
 const DONE_TOAST_MS = 10_000;
@@ -90,11 +95,26 @@ async function uploadOne(file: File, folderId: string | undefined) {
     const { item, duplicate } = await uploadToDataRoom(file, folderId, (fraction) => {
       if (current()) update(id, { kind: "uploading", fraction });
     });
+    // Where the file already is: without it "Already there" leaves the user to go looking.
+    const folder =
+      duplicate && item.folderId
+        ? await rpc.dataRoom
+            .folders()
+            .then((all) => folderNodes(all).find((node) => node.folder.id === item.folderId)?.path)
+            .catch(() => undefined)
+        : undefined;
     if (!current()) return;
     update(id, {
       kind: "uploaded",
       itemId: item.id,
-      ...(duplicate ? { existing: item.name } : {}),
+      ...(duplicate
+        ? {
+            existing: {
+              ...(item.name !== file.name ? { name: item.name } : {}),
+              ...(folder ? { folder } : {}),
+            },
+          }
+        : {}),
     });
     window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
     dismissLater(id, DONE_TOAST_MS);
@@ -120,4 +140,13 @@ export function uploadFilesToDataRoom(files: Iterable<File>) {
   sync();
   const folderId = openFolder;
   for (const file of files) void uploadOne(file, folderId);
+}
+
+/** A toast saying the item was deleted; deleting has no other visible trace. */
+export function showDeletedToast(name: string) {
+  sync();
+  const id = nextId++;
+  toasts = [...toasts, { id, name, state: { kind: "deleted" } }];
+  notify();
+  dismissLater(id, DONE_TOAST_MS);
 }
