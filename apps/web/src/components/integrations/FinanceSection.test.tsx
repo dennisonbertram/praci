@@ -90,6 +90,9 @@ it("reconnects a source that needs it and reports a cancelled sign-in", async ()
   await show([source("mercury", "needs_reconnect"), source("brex", "error")]);
   expect(tile("mercury")?.textContent).toContain("Needs reconnect");
   expect(tile("brex")?.textContent).toContain("Failed");
+  // The same word pair as app tiles: Failed offers "Try again", Needs reconnect offers "Reconnect".
+  expect(tile("brex")?.querySelector("button")?.textContent).toBe("Try again");
+  expect(tile("mercury")?.querySelector("button")?.textContent).toBe("Reconnect");
   await press("mercury");
   expect(connect).toHaveBeenCalledWith("mercury", true);
   expect(tile("mercury")?.querySelector('[role="alert"]')?.textContent).toContain("cancelled");

@@ -24,7 +24,6 @@ const DIRECTORY: Record<string, AppEntry> = {
   zoom: { category: chat, description: "Schedule meetings and read recordings" },
   intercom: { category: chat, description: "Read conversations and reply to customers" },
   zendesk: { category: chat, description: "Read and update support tickets" },
-  x: { category: chat, description: "Read your timeline and publish posts" },
   github: { category: dev, description: "Read repos, issues and pull requests, and comment" },
   linear: { category: dev, description: "Search, create and update issues" },
   jira: { category: dev, description: "Search, create and update issues" },
@@ -44,7 +43,6 @@ const ALIASES: Record<string, string> = {
   gdrive: "googledrive",
   microsoftoutlook: "outlook",
   microsoftteams: "teams",
-  twitter: "x",
 };
 
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");

@@ -4,6 +4,7 @@ import { NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { IntegrationSetup } from "../components/integrations/IntegrationSetup";
+import { appReturnPath } from "../lib/return-to";
 import { rpc } from "../lib/rpc";
 
 export function IntegrationSetupPage() {
@@ -66,7 +67,9 @@ export function IntegrationSetupPage() {
             serverSetup={serverSetup}
             initialState={setupState}
             botId={botId || undefined}
-            onDone={() => navigate(bots.length ? "/app" : "/onboarding")}
+            onDone={() =>
+              navigate(bots.length ? (appReturnPath(params.get("next")) ?? "/app") : "/onboarding")
+            }
           />
         ) : (
           <p>{error ? t`Could not load bots. Reload to try again.` : t`Loading…`}</p>

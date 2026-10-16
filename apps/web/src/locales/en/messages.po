@@ -261,6 +261,10 @@ msgstr "{name} finished"
 msgid "{name} is not connected."
 msgstr "{name} is not connected."
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} isn't available on this server."
+msgstr "{name} isn't available on this server."
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} stopped"
@@ -850,6 +854,7 @@ msgstr "Ask before sending external email"
 msgid "Ask the server owner to configure this provider."
 msgstr "Ask the server owner to configure this provider."
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
 msgstr "Ask the server owner to set up the app catalog."
@@ -1676,6 +1681,10 @@ msgstr "Connect {0}"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect {name}"
 msgstr "Connect {name}"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect {service}"
+msgstr "Connect {service}"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect a Composio or Pipedream account to add apps like Slack, Notion and GitHub."
@@ -5490,6 +5499,7 @@ msgstr "Server integrations"
 msgid "Server URL"
 msgstr "Server URL"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Set up app catalog"
 msgstr "Set up app catalog"
@@ -6209,9 +6219,14 @@ msgstr "Trial"
 msgid "Trial ends {day}"
 msgstr "Trial ends {day}"
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Try {name} again"
+msgstr "Try {name} again"
+
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/pages/ActivityList.tsx

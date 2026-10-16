@@ -30,11 +30,14 @@ export function ConnectAppDialog({
   data,
   activeBotId,
   onClose,
+  onConnected,
 }: {
   item: ConnectionCatalogItem;
   data: IntegrationsData;
   activeBotId?: string;
   onClose: () => void;
+  /** Runs after the dialog closes on a successful connect, e.g. to return the person to where they came from. */
+  onConnected?: () => void;
 }) {
   const { t } = useLingui();
   const [phase, setPhase] = useState<Phase>({ kind: "signin", state: { kind: "waiting" } });
@@ -181,6 +184,7 @@ export function ConnectAppDialog({
       void refresh();
     }
     onClose();
+    if (finished.current) onConnected?.();
   }
 
   async function saveAccess(botIds: string[]) {

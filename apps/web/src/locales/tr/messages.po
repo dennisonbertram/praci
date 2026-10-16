@@ -261,6 +261,10 @@ msgstr "{name} çalışmasını tamamladı"
 msgid "{name} is not connected."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} isn't available on this server."
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} stopped"
@@ -850,6 +854,7 @@ msgstr "Dışarıya e-posta göndermeden önce sor"
 msgid "Ask the server owner to configure this provider."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
 msgstr ""
@@ -1675,6 +1680,10 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect {name}"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect {service}"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -5490,6 +5499,7 @@ msgstr ""
 msgid "Server URL"
 msgstr "Sunucu URL'si"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Set up app catalog"
 msgstr ""
@@ -6209,9 +6219,14 @@ msgstr ""
 msgid "Trial ends {day}"
 msgstr ""
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Try {name} again"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/pages/ActivityList.tsx

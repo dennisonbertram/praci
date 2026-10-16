@@ -194,7 +194,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
     await customDialog.getByText("Advanced", { exact: true }).click();
   };
   await openAdvanced();
-  for (const label of ["OpenAPI", "GraphQL", "Executor", "Treg", "Local command"]) {
+  for (const label of ["OpenAPI", "GraphQL", "Executor", "Local command"]) {
     await expect(customDialog.getByRole("button", { name: label, exact: true })).toBeVisible();
   }
   await captureScreenshot(page, testInfo, "11-custom-advanced");
@@ -223,9 +223,11 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
     await customDialog.getByRole("button", { name: "Verify and add", exact: true }).click();
     await customDialog.getByRole("button", { name: "Done", exact: true }).click();
   };
-  await installSource("Treg", () =>
-    customDialog.getByPlaceholder("Token").fill("fake-treg-browser-credential"),
-  );
+  // Treg connects from its own tile, with a token.
+  await page.getByRole("button", { name: "Connect Treg", exact: true }).click();
+  await customDialog.getByPlaceholder("Token").fill("fake-treg-browser-credential");
+  await customDialog.getByRole("button", { name: "Verify and add", exact: true }).click();
+  await customDialog.getByRole("button", { name: "Done", exact: true }).click();
   await expect(page.getByText(/MCP · treg\.to/)).toBeVisible();
   await installSource("OpenAPI", async () => {
     await customDialog.getByPlaceholder("Display name").fill("Browser API");

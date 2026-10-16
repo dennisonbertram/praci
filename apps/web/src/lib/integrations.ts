@@ -148,6 +148,11 @@ export const FIRST_PARTY_MCP = [
   scope?: string;
 }[];
 
+const FIRST_PARTY_SLUGS: ReadonlySet<string> = new Set([
+  ...FIRST_PARTY_MCP.map((entry) => entry.id),
+  "twitter",
+]);
+
 /** True when `candidate` is the same https endpoint as `endpoint`: same host and path, ignoring a trailing slash. */
 export function isSameMcpEndpoint(candidate: string | null | undefined, endpoint: string): boolean {
   try {
@@ -179,6 +184,21 @@ export const EXCHANGES = [
 
 export function appKey(item: Pick<ConnectionCatalogItem, "connectorId" | "slug">) {
   return `${item.connectorId}:${item.slug}`;
+}
+
+/**
+ * An app's detail page. `connect` opens its connect dialog on arrival; `next` (a path under /app) is
+ * where the person lands once connected.
+ */
+export function appPath(
+  item: Pick<ConnectionCatalogItem, "connectorId" | "slug">,
+  { connect, next }: { connect?: boolean; next?: string } = {},
+): string {
+  const query = new URLSearchParams();
+  if (connect) query.set("connect", "1");
+  if (next) query.set("next", next);
+  const suffix = query.toString() ? `?${query}` : "";
+  return `/app/integrations/app/${encodeURIComponent(item.connectorId)}/${encodeURIComponent(item.slug)}${suffix}`;
 }
 
 export function providerLabel(connectorId: string): string {
@@ -244,7 +264,13 @@ export function popularApps(
       .filter((row) => row.status !== "revoked")
       .map((row) => `${row.connectorId}:${row.provider}`),
   );
-  const open = catalog.filter((item) => !item.connected && !used.has(appKey(item)));
+  // First-party services (X, Treg, ...) have their own tile; listing them here too would give two ways in.
+  const open = catalog.filter(
+    (item) =>
+      !item.connected &&
+      !used.has(appKey(item)) &&
+      !FIRST_PARTY_SLUGS.has(item.slug.toLowerCase().replace(/[^a-z0-9]+/g, "")),
+  );
   const featured = (item: ConnectionCatalogItem) =>
     matchFeaturedConnectorId(item.slug) !== null || matchFeaturedConnectorId(item.name) !== null;
   return [...open.filter(featured), ...open.filter((item) => !featured(item))];
