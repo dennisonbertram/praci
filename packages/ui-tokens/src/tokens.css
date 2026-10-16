@@ -19,7 +19,7 @@
   --muted-foreground: #9c9a93;
   --accent: #2a2927;
   --accent-foreground: #ecebe6;
-  --destructive: #ef4444;
+  --destructive: #f46262;
   --destructive-foreground: #ffffff;
   --border: #2e2d2a;
   --input: #282826;
@@ -29,11 +29,11 @@
   --sidebar-border: #2a2926;
   --sidebar-accent: #2a2927;
   --sidebar-accent-foreground: #ecebe6;
-  --link: #3b82f6;
+  --link: #4f8ff7;
   --favicon-plate: #ffffff;
   --success: #4ecb71;
   --warning: #e9c46a;
-  --status-working: #3b82f6;
+  --status-working: #4f8ff7;
   --overlay: rgba(8, 8, 7, 0.72);
   --scrollbar: #2e2d2a;
   --scrollbar-hover: #45443f;

@@ -153,6 +153,33 @@ describe("text contrast", () => {
     });
   }
 
+  const statusText = ["destructive", "link", "statusWorking", "success", "warning"] as const;
+  const raised = ["background", "card", "popover", "muted", "accent", "secondary"] as const;
+
+  it("keeps every dark status and link colour at AA as text on every dark surface", () => {
+    for (const color of statusText) {
+      for (const surface of raised) {
+        expect(
+          contrast(darkTokens[color], darkTokens[surface]),
+          `${color} on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  // Light destructive and link pass on the page and cards. Light success and warning, and every
+  // light status colour on muted/accent fills, are below AA today; those light tokens are unchanged.
+  it("keeps light error and link text at AA on the page, cards and popovers", () => {
+    for (const color of ["destructive", "link"] as const) {
+      for (const surface of ["background", "card", "popover"] as const) {
+        expect(
+          contrast(lightTokens[color], lightTokens[surface]),
+          `${color} on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
   it("keeps the dark palette warm and its surfaces stepped in order", () => {
     const warm = (hex: string) =>
       Number.parseInt(hex.slice(1, 3), 16) >= Number.parseInt(hex.slice(5, 7), 16);
