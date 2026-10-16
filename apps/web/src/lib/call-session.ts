@@ -7,6 +7,7 @@ import {
   isFarewell,
   isInterimCallBargeIn,
   isSecretAskBlock,
+  newClientId,
   runThreadSubscription,
   speechFromBlocks,
   spokenDecision,
@@ -104,7 +105,7 @@ export function startCall(call: {
   transcribe?: boolean;
 }): void {
   endCall();
-  callId = randomId();
+  callId = newClientId();
   transcribe = call.transcribe;
   spokenMemory.clear();
   clearInterim();
@@ -518,11 +519,4 @@ function trackPendingCallSend(callId: string, request: Promise<unknown>): () => 
     pending.delete(request);
     if (pending.size === 0) pendingCallSends.delete(callId);
   };
-}
-
-function randomId(): string {
-  const webCrypto = globalThis.crypto;
-  return typeof webCrypto?.randomUUID === "function"
-    ? webCrypto.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }

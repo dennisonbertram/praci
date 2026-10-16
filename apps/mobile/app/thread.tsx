@@ -28,6 +28,7 @@ import {
   latestAnswerableAskMessageId,
   leaveThreadWindow,
   messageProviderLabel,
+  newClientId,
   openThreadWindow,
   plainTextFromMarkdown,
   projectMessageReactions,
@@ -218,14 +219,6 @@ import {
 
 type PendingAttachment = PickedAttachment & { threadKey: string };
 type AskAction = NonNullable<Extract<MessageBlock, { kind: "ask" }>["actions"]>[number];
-
-function newClientNonce(): string {
-  const webCrypto = globalThis.crypto;
-  if (webCrypto && typeof webCrypto.randomUUID === "function") {
-    return webCrypto.randomUUID();
-  }
-  return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
 
 function formatApprovalAnswer(
   answer: string | undefined,
@@ -587,7 +580,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const preparingSend = useRef(false);
-  const feedback = useThreadFeedback(threadKey, newClientNonce);
+  const feedback = useThreadFeedback(threadKey, newClientId);
   const { error, setError } = feedback;
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [selectableText, setSelectableText] = useState<string | null>(null);
@@ -2081,7 +2074,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
         ...(targetGroupId ? { groupId: targetGroupId } : { botId: targetBotId! }),
         messageId: message.id,
         reaction,
-        clientNonce: newClientNonce(),
+        clientNonce: newClientId(),
       });
     } catch (err) {
       if (!isCurrentTarget(targetBotId, targetGroupId)) return;

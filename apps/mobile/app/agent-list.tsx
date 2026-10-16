@@ -7,6 +7,7 @@ import {
   rebasePins,
   toggleItem,
 } from "@rakazo/contracts";
+import { newClientId } from "@rakazo/core";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -24,8 +25,6 @@ import { getPins, savePins } from "../lib/agent-pins";
 import { useI18n } from "../lib/i18n";
 import { native, useThemedStyles } from "../lib/native";
 import { errorText } from "../lib/user-error";
-const newId = () =>
-  globalThis.crypto?.randomUUID?.().slice(0, 36) ?? Math.random().toString(36).slice(2, 12);
 
 export default function AgentListScreen() {
   const { botId } = useLocalSearchParams<{ botId: string }>();
@@ -151,7 +150,7 @@ export default function AgentListScreen() {
           returnKeyType="done"
           blurOnSubmit={false}
           onSubmitEditing={() => {
-            change((l) => addItem(l, newId(), draft));
+            change((l) => addItem(l, newClientId(), draft));
             setDraft("");
           }}
           style={styles.input}

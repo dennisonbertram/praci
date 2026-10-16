@@ -48,6 +48,7 @@ import {
   latestAnswerableAskMessageId,
   mentionChipKey,
   nestRosterByParent,
+  newClientId,
   plainTextFromMarkdown,
   projectMessageReactions,
   reorderBotTo,
@@ -189,7 +190,6 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
-import { newClientId } from "../lib/client-id";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -2166,7 +2166,7 @@ export function ShellPage() {
           ...(groupId ? { groupId } : { botId: botId! }),
           messageId: message.id,
           reaction,
-          clientNonce: newClientNonce(),
+          clientNonce: newClientId(),
         });
       } catch (error) {
         const stillHere = groupId
@@ -6016,7 +6016,7 @@ export const Composer = memo(function Composer({
   async function send() {
     if (!canSend || sending || disabled) return;
     const revision = editRevision.current;
-    const clientNonce = retryNonce.current ?? newClientNonce();
+    const clientNonce = retryNonce.current ?? newClientId();
     retryNonce.current = null;
     const text = serializeComposerPrompt(draft, selectedSkill, selectedMentions);
     historyIndex.current = null;
@@ -7436,8 +7436,4 @@ function computerPlaceholder(
 
 function computerLabel(mode: ComputerStatus["mode"] | undefined, botName: string) {
   return mode === "dedicated" ? t`${botName}’s computer` : t`Team Computer`;
-}
-
-function newClientNonce(): string {
-  return newClientId();
 }
