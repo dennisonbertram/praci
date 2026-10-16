@@ -154,6 +154,7 @@ import type {
 } from "@rakazo/contracts";
 import {
   ATTACHMENT_MAX_BYTES,
+  actorScope,
   appContract,
   BotSecretAuth,
   ComputerCommandSchema,
@@ -6223,13 +6224,15 @@ export function createRouter(deps: RouterDeps) {
     },
     contacts: {
       list: authed.contacts.list.handler(({ context, input }) =>
-        listContacts(deps.prisma, context.actor, input),
+        listContacts(deps.prisma, actorScope(context.actor), input),
       ),
       save: authed.contacts.save.handler(({ context, input }) =>
-        saveContact(deps.prisma, context.actor, input).catch(contactNotFound),
+        saveContact(deps.prisma, actorScope(context.actor), input).catch(contactNotFound),
       ),
       delete: authed.contacts.delete.handler(async ({ context, input }) => {
-        await deleteContact(deps.prisma, context.actor, input.id).catch(contactNotFound);
+        await deleteContact(deps.prisma, actorScope(context.actor), input.id).catch(
+          contactNotFound,
+        );
         return { ok: true as const };
       }),
     },

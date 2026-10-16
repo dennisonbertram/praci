@@ -22,3 +22,4 @@ CREATE UNIQUE INDEX "contacts_spaceId_userId_email_key" ON "contacts"("spaceId",
 
 -- AddForeignKey
 ALTER TABLE "contacts" ADD CONSTRAINT "contacts_spaceId_fkey" FOREIGN KEY ("spaceId") REFERENCES "spaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "contacts" ADD CONSTRAINT "contacts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -91,6 +91,9 @@ function describeApprovalAction(toolName: string, args: Record<string, unknown>)
     const name = args.name ? String(args.name) : "Untitled";
     return `Create space “${name}”`;
   }
+  if (toolName === "contacts_save") {
+    return `Save contact “${args.name ? String(args.name) : "Untitled"}”`;
+  }
   const target = pickScopeLabel(args);
   return target ? `${toolName} → ${target}` : toolName;
 }
@@ -109,7 +112,11 @@ function formatApprovalDetail(
       "Bots, groups, chats, files, memory, and integrations in this space stay separate from other spaces.",
     );
   }
-  for (const key of ["collection", "title", "to", "subject", "amount", "body"]) {
+  const keys =
+    toolName === "contacts_save"
+      ? ["name", "email", "organization", "kind"]
+      : ["collection", "title", "to", "subject", "amount", "body"];
+  for (const key of keys) {
     const value = args[key];
     if (value == null || value === "") continue;
     lines.push(`${key}: ${String(value)}`);

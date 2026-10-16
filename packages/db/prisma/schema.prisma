@@ -24,6 +24,7 @@ model AiDataConsent {
 model User {
   aiDataConsents AiDataConsent[]
   mailSearches   MailSearch[]
+  contacts       Contact[]
   id                          String                       @id
   name                        String
   email                       String
@@ -2080,6 +2081,7 @@ model Contact {
   spaceId      String
   space        Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
   email        String?
   /// For example the investor's fund.

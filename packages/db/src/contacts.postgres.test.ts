@@ -24,6 +24,13 @@ describePostgres("contacts (PostgreSQL)", () => {
       await prisma.$disconnect();
       await db.pool.end();
     };
+    await prisma.user.createMany({
+      data: [mine.userId, sameSpace.userId].map((id) => ({
+        id,
+        name: id,
+        email: `${id}@example.test`,
+      })),
+    });
     await prisma.organization.create({
       data: {
         id: organizationId,
@@ -39,6 +46,7 @@ describePostgres("contacts (PostgreSQL)", () => {
   afterAll(async () => {
     if (!prisma) return;
     await prisma.organization.deleteMany({ where: { id: organizationId } });
+    await prisma.user.deleteMany({ where: { id: { in: [mine.userId, sameSpace.userId] } } });
     await close();
   });
 
@@ -62,6 +70,17 @@ describePostgres("contacts (PostgreSQL)", () => {
       notes: "Lead",
     });
     expect(await listContacts(prisma, mine)).toHaveLength(1);
+  });
+
+  it("ignores extra actor fields such as email", async () => {
+    const actor = { ...sameSpace, email: "someone@example.test", isDeploymentOwner: true };
+    const saved = await saveContact(prisma, actor, {
+      name: "Actor Contact",
+      email: "a@example.test",
+    });
+    expect((await listContacts(prisma, actor)).map((c) => c.id)).toEqual([saved.id]);
+    await deleteContact(prisma, actor, saved.id);
+    expect(await listContacts(prisma, actor)).toEqual([]);
   });
 
   it("allows several contacts without an email and updates by id", async () => {

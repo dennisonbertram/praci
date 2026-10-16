@@ -11,6 +11,8 @@ export class ContactEmailTakenError extends Error {
 }
 
 type Scope = { spaceId: string; userId: string };
+/** Only space and user: callers may pass a whole actor, which must not reach a Prisma query. */
+const ownerOf = ({ spaceId, userId }: Scope): Scope => ({ spaceId, userId });
 type Db = Pick<PrismaClient, "contact">;
 
 export const toContact = (row: Prisma.ContactGetPayload<object>): Contact => ({
@@ -27,9 +29,10 @@ export const toContact = (row: Prisma.ContactGetPayload<object>): Contact => ({
 /** The user's contacts by name, optionally one kind and/or text found in name, email or organization. */
 export async function listContacts(
   prisma: Db,
-  scope: Scope,
+  actor: Scope,
   filter: { kind?: ContactKind; text?: string } = {},
 ): Promise<Contact[]> {
+  const scope = ownerOf(actor);
   const text = filter.text?.trim();
   const contains = (field: "name" | "email" | "organization") => ({
     [field]: { contains: text, mode: "insensitive" as const },
@@ -49,7 +52,8 @@ export async function listContacts(
  * Creates a contact, or updates one: by `id`, else the user's contact with the same email.
  * Omitted fields are kept on update. Throws IsolationError for an `id` that is not the user's.
  */
-async function writeContact(prisma: Db, scope: Scope, input: ContactSaveInput): Promise<Contact> {
+async function writeContact(prisma: Db, actor: Scope, input: ContactSaveInput): Promise<Contact> {
+  const scope = ownerOf(actor);
   const { id, ...fields } = input;
   if (id) {
     const { count } = await prisma.contact.updateMany({ where: { id, ...scope }, data: fields });
@@ -67,12 +71,13 @@ async function writeContact(prisma: Db, scope: Scope, input: ContactSaveInput): 
   );
 }
 
-export async function deleteContact(prisma: Db, scope: Scope, id: string): Promise<void> {
+export async function deleteContact(prisma: Db, actor: Scope, id: string): Promise<void> {
+  const scope = ownerOf(actor);
   const { count } = await prisma.contact.deleteMany({ where: { id, ...scope } });
   if (count === 0) throw new IsolationError("Contact not found");
 }
 
-export const saveContact = (prisma: Db, scope: Scope, input: ContactSaveInput) =>
-  writeContact(prisma, scope, input).catch((error: unknown) => {
+export const saveContact = (prisma: Db, actor: Scope, input: ContactSaveInput) =>
+  writeContact(prisma, actor, input).catch((error: unknown) => {
     throw isUniqueViolation(error) ? new ContactEmailTakenError() : error;
   });

@@ -92,12 +92,10 @@ export function assignmentAllowsTool(
     if (provider && !(FINANCE_READ_TOOLS[provider] as readonly string[]).includes(toolName))
       return false;
   }
-  if (
-    isCartaAgentSpawnKey(assignment.bot?.spawnKey) &&
-    isCartaEndpoint(assignment.server.endpoint) &&
-    !(CARTA_READ_TOOLS as readonly string[]).includes(toolName)
-  ) {
-    return false;
+  if (isCartaAgentSpawnKey(assignment.bot?.spawnKey)) {
+    // Only Carta's read tools: another server (say, email) would send mail without the mail_send approval.
+    if (!isCartaEndpoint(assignment.server.endpoint)) return false;
+    if (!(CARTA_READ_TOOLS as readonly string[]).includes(toolName)) return false;
   }
   return assignment.allowAllTools || (assignment.allowedTools as unknown[]).includes(toolName);
 }

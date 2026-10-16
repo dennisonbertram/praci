@@ -3991,11 +3991,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
             financeEnabled,
             contactsEnabled,
             messagingChannelRun,
+            cartaAgent,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
           }),
           // Cross-owner agent connections only exist for chat-linked bots.
-          ...(hasMessagingIdentity && !isBackgroundRunTrigger(run.trigger)
+          ...(hasMessagingIdentity && !cartaAgent && !isBackgroundRunTrigger(run.trigger)
             ? agentConnectionTools.filter((tool) => !disabledBuiltinTools.has(tool.name))
             : []),
         ];
@@ -7728,6 +7729,15 @@ function computerRetryDelay(fence: number): number {
   return Math.min(10_000, 250 * 2 ** Math.min(Math.max(fence - 1, 0), 5));
 }
 
+const CARTA_BLOCKED_DELEGATION_TOOLS = new Set([
+  "spawn_bot",
+  "message_bot",
+  "handoff_to_bot",
+  "message_agent",
+  "connect_agent",
+  "respond_agent_connection",
+]);
+
 export function selectBuiltinToolsForRun(options: {
   ticketBoardEnabled?: boolean;
   historyRetrievalEnabled?: boolean;
@@ -7749,6 +7759,8 @@ export function selectBuiltinToolsForRun(options: {
   /** The Carta agent on a run its owner started. */
   contactsEnabled?: boolean;
   messagingChannelRun: boolean;
+  /** The Carta agent: no delegation to other bots, whose runs would skip its mail approval. */
+  cartaAgent?: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
   /** Built-in names this bot turned off. Unknown names are ignored. */
@@ -7782,6 +7794,7 @@ export function selectBuiltinToolsForRun(options: {
       (options.driveEnabled || !DRIVE_TOOL_NAMES.has(tool.name)) &&
       (options.financeEnabled || !FINANCE_TOOL_NAMES.has(tool.name)) &&
       (options.contactsEnabled || !CONTACT_TOOL_NAMES.has(tool.name)) &&
+      !(options.cartaAgent && CARTA_BLOCKED_DELEGATION_TOOLS.has(tool.name)) &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
       (!isBackgroundRunTrigger(options.trigger) ||
