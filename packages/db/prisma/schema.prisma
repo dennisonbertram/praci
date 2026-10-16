@@ -1730,8 +1730,9 @@ model ComposeSend {
   clientId          String
   /// The Gmail draft, once one is saved.
   draftId           String?
-  /// "draft" | "pending" | "sent" | "failed" | "unknown". A send that may have happened is
-  /// "unknown" and is never retried.
+  /// "draft" | "pending" | "sent" | "failed" | "unknown" | "abandoned". A send that may have
+  /// happened is "unknown" and is never retried. "abandoned": recovery settled a claim that never
+  /// reached the provider; it can no longer be claimed, so nothing is ever sent.
   state             String     @default("draft")
   providerMessageId String?
   threadId          String?

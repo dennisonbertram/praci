@@ -3261,6 +3261,7 @@ describe("answerRunInput with a mail denial", () => {
         update: vi.fn().mockResolvedValue({ id: "effect-1" }),
       },
       actionApprovalRule: { upsert: vi.fn() },
+      composeSend: { upsert: vi.fn().mockResolvedValue({ id: "compose-1" }) },
       thread: { update: vi.fn().mockResolvedValue({ nextEventSeq: 10 }) },
       event: {
         create: vi.fn(async ({ data }: { data: { seq: number; type: string } }) => ({
@@ -3305,6 +3306,27 @@ describe("answerRunInput with a mail denial", () => {
     });
   });
 
+  it("creates the approval's compose record in the same transaction as the claim", async () => {
+    const { tx, answer } = setup();
+    await expect(answer()).resolves.toBe(true);
+    expect(tx.composeSend.upsert).toHaveBeenCalledWith({
+      where: {
+        spaceId_userId_clientId: {
+          spaceId: "workspace-1",
+          userId: "user-1",
+          clientId: "approval_effect-1",
+        },
+      },
+      create: {
+        spaceId: "workspace-1",
+        userId: "user-1",
+        clientId: "approval_effect-1",
+        connectionId: "conn-1",
+      },
+      update: {},
+    });
+  });
+
   it.each([
     ["an allow", {}, { answer: "allow" }],
     ["an always-allow", {}, { answer: "always" }],
@@ -3317,6 +3339,7 @@ describe("answerRunInput with a mail denial", () => {
     expect(tx.externalEffect.update).not.toHaveBeenCalled();
     expect(tx.run.updateMany).not.toHaveBeenCalled();
     expect(tx.message.update).not.toHaveBeenCalled();
+    expect(tx.composeSend.upsert).not.toHaveBeenCalled();
   });
 });
 
