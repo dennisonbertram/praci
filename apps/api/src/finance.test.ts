@@ -1,6 +1,6 @@
 import type { Actor } from "@rakazo/contracts";
 import { FINANCE_MCP_ENDPOINTS, financeAgentSpawnKey } from "@rakazo/contracts";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { notFound } from "./inbox.js";
 
 // The calculations are tested in @rakazo/core. Here they are stand-ins that record what they were
@@ -59,6 +59,7 @@ import {
   financeAccountDetail,
   financeAccounts,
   financeBalanceSeries,
+  financeBurn,
   financeCategory,
   financeConnect,
   financeCryptoHistory,
@@ -999,5 +1000,86 @@ describe("balance series", () => {
     const week = (await financeBalanceSeries(deps, a, { range: "week" })).points;
     expect(week).toHaveLength(7);
     expect(week.map((p) => p.balanceCents)).toEqual([300, 300, 400, 400, 400, 400, 700]);
+  });
+});
+
+describe("finance pages with the real calculations", () => {
+  type Name = keyof typeof metrics;
+  const standIns = new Map<Name, unknown>();
+  beforeEach(async () => {
+    const real = await vi.importActual<typeof import("@rakazo/core")>("@rakazo/core");
+    for (const name of Object.keys(metrics) as Name[]) {
+      standIns.set(name, metrics[name].getMockImplementation());
+      metrics[name].mockImplementation(real[name] as never);
+    }
+  });
+  afterEach(() => {
+    for (const [name, impl] of standIns) metrics[name].mockImplementation(impl as never);
+  });
+
+  const monthlyCharge = (month: string, over: Row = {}) =>
+    txn(a, {
+      id: `t-${month}`,
+      externalId: `x-${month}`,
+      postedAt: new Date(`2026-${month}-09T00:00:00Z`),
+      amountCents: -481_200n,
+      counterparty: "Cloudnine Hosting",
+      vendorKey: "cloudnine-hosting",
+      ...over,
+    });
+
+  it("averages a vendor over the months since it was first seen, not six", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: ["07", "08", "09", "10"].map((m) => monthlyCharge(m)),
+    });
+    const vendor = await financeVendor(deps, a, { key: "cloudnine-hosting" });
+    // Jul, Aug and Sep are the full months since first seen; October is still partial.
+    expect(vendor.monthlyAvgCents).toBe(481_200);
+    expect(vendor.monthlyAvgMonths).toBe(3);
+  });
+
+  it("counts Brex spend in By account, so the shares add up to all spend", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [
+        ...["07", "08", "09"].map((m) => monthlyCharge(m)),
+        ...["07", "08", "09"].map((m) =>
+          monthlyCharge(m, {
+            id: `b-${m}`,
+            externalId: `bx-${m}`,
+            provider: "brex",
+            mcpServerId: "srv-2",
+            accountExternalId: "brex-card",
+            amountCents: -10_000n,
+            counterparty: "Globex",
+            vendorKey: "globex",
+          }),
+        ),
+      ],
+    });
+    const burn = await financeBurn(deps, a);
+    expect(burn.byAccount.map((r) => r.cents)).toEqual([3 * 481_200]);
+    expect(burn.brexCents).toBe(30_000);
+  });
+
+  it("shows each period's chart and breakdown over the same days as its total", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [
+        monthlyCharge("09", { postedAt: new Date("2026-09-30T00:00:00Z") }),
+        monthlyCharge("10", { postedAt: new Date("2026-10-02T00:00:00Z") }),
+      ],
+    });
+    const overview = await financeOverview(deps, a);
+    const month = overview.cashSeries.month;
+    expect(month[0]?.start).toBe(overview.spendTotals.month.start);
+    expect(month.at(-1)?.start).toBe("2026-10-14");
+    expect(month.reduce((sum, p) => sum + p.outCents, 0)).toBe(
+      overview.spendTotals.month.currentCents,
+    );
+    expect(overview.breakdownByPeriod?.month.vendor).toEqual([
+      { key: "cloudnine-hosting", label: "Cloudnine Hosting", cents: 481_200 },
+    ]);
   });
 });

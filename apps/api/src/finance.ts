@@ -153,8 +153,14 @@ const monthOf = (date: Date, offset = 0) => monthStartOf(date, offset).slice(0, 
 const txnDay = (t: FinanceTransaction) => (t.purchasedAt ?? t.postedAt).slice(0, 10);
 const inRange = (t: FinanceTransaction, start: string, end: string) =>
   txnDay(t) >= start && txnDay(t) < end;
+/** Newest first by the day a transaction counts on, the day every page shows. */
 const newest = (txns: FinanceTransaction[], count: number) =>
-  [...txns].sort((a, b) => Date.parse(b.postedAt) - Date.parse(a.postedAt)).slice(0, count);
+  [...txns]
+    .sort(
+      (a, b) =>
+        txnDay(b).localeCompare(txnDay(a)) || Date.parse(b.postedAt) - Date.parse(a.postedAt),
+    )
+    .slice(0, count);
 /** The last 90 days including today, as a half-open range. */
 const last90 = (now: Date) => ({ start: addDays(dayOf(now), -89), end: addDays(dayOf(now), 1) });
 /** Bank cash and the crypto held, before the scope picks what counts. */
@@ -450,6 +456,16 @@ export async function financeOverview(
   const since = earliestDay(txns);
   const range = last90(now);
   const recurring = detectRecurring(txns, now, accounts);
+  const totals = {
+    week: spendTotals(txns, "week", now, since),
+    month: spendTotals(txns, "month", now, since),
+    quarter: spendTotals(txns, "quarter", now, since),
+    year: spendTotals(txns, "year", now, since),
+  };
+  const breakdownOver = (r: { start: string; end: string }) => ({
+    category: breakdown(txns, "category", r),
+    vendor: breakdown(txns, "vendor", r),
+  });
   const lastMonth = monthOf(now, -1);
   const lastMonthYields = yields.filter((y) => y.month === lastMonth);
   const statementReminders = await loadStatementReminders(deps, actor, dayOf(now));
@@ -466,21 +482,20 @@ export async function financeOverview(
     bankRunway: hasCashAccounts
       ? runway(cash.bankCashCents ?? 0, burn.monthlyCents, now)
       : { months: null, runOutDate: null },
-    spendTotals: {
-      week: spendTotals(txns, "week", now, since),
-      month: spendTotals(txns, "month", now, since),
-      quarter: spendTotals(txns, "quarter", now, since),
-      year: spendTotals(txns, "year", now, since),
-    },
+    spendTotals: totals,
+    // The chart covers the same days as the total above it.
     cashSeries: {
-      week: cashSeries(txns, { granularity: "day", buckets: 7, now }),
-      month: cashSeries(txns, { granularity: "day", buckets: 30, now }),
-      quarter: cashSeries(txns, { granularity: "week", buckets: 13, now }),
-      year: cashSeries(txns, { granularity: "month", buckets: 12, now }),
+      week: cashSeries(txns, { granularity: "day", from: totals.week.start, now }),
+      month: cashSeries(txns, { granularity: "day", from: totals.month.start, now }),
+      quarter: cashSeries(txns, { granularity: "week", from: totals.quarter.start, now }),
+      year: cashSeries(txns, { granularity: "month", from: totals.year.start, now }),
     },
-    breakdown: {
-      category: breakdown(txns, "category", range),
-      vendor: breakdown(txns, "vendor", range),
+    breakdown: breakdownOver(range),
+    breakdownByPeriod: {
+      week: breakdownOver(totals.week),
+      month: breakdownOver(totals.month),
+      quarter: breakdownOver(totals.quarter),
+      year: breakdownOver(totals.year),
     },
     upcoming: upcoming(
       recurring,
@@ -602,18 +617,21 @@ export async function financeBurn(deps: FinanceDeps, actor: Actor): Promise<Fina
       ? { start: `${first}-01`, end: monthStartOf(new Date(`${last}-01T00:00:00Z`), 1) }
       : null;
   const byExternalId = new Map(accounts.map((a) => [a.externalId, a]));
+  const accountRows = window ? breakdown(txns, "account", window) : [];
   return {
     monthlyCents: burn.monthlyCents,
     series: monthlySeries(txns, now),
     windowMonths: burn.months,
     whereItWent: window ? breakdown(txns, "category", window) : [],
     // Spend on an account that is no longer synced has no account to show, so it is left out here.
-    byAccount: window
-      ? breakdown(txns, "account", window).flatMap((row) => {
-          const account = byExternalId.get(row.key);
-          return account ? [{ account, cents: row.cents }] : [];
-        })
-      : [],
+    byAccount: accountRows.flatMap((row) => {
+      const account = byExternalId.get(row.key);
+      return account ? [{ account, cents: row.cents }] : [];
+    }),
+    // Brex expenses sit on synthetic per-type ids (`brex-card`, ...), not on an account row.
+    brexCents: accountRows
+      .filter((row) => !byExternalId.has(row.key) && row.key.startsWith("brex-"))
+      .reduce((sum, row) => sum + row.cents, 0),
   };
 }
 
@@ -777,6 +795,8 @@ export async function financeSpend(
   return {
     period: input.period,
     range: customRange,
+    start,
+    end,
     category,
     totalCents: category
       ? (categories.find((row) => row.key === category)?.cents ?? 0)
@@ -864,17 +884,24 @@ export async function financeVendor(
   const lastFull = full[5]?.cents ?? 0;
   const threeBefore = full[2]?.cents ?? 0;
   const sixMonthsFrom = `${seven[1]?.month ?? monthOf(now, -5)}-01`;
+  const firstSeenAt = own.reduce(
+    (min, t) => (t.postedAt < min ? t.postedAt : min),
+    latest.postedAt,
+  );
+  // Months before the vendor first charged are not months of zero spend.
+  const avgMonths = Math.max(full.filter((m) => m.month >= firstSeenAt.slice(0, 7)).length, 1);
   return {
     key: input.key,
     name: latest.counterparty,
     isSubscription: subscriptions(recurring).items.some((s) => s.key === input.key),
-    monthlyAvgCents: Math.round(full.reduce((total, m) => total + m.cents, 0) / 6),
+    monthlyAvgCents: Math.round(full.reduce((total, m) => total + m.cents, 0) / avgMonths),
+    monthlyAvgMonths: avgMonths,
     // Null when the earlier month starts before the first synced data, so it is incomplete.
     changePct:
       lastFull && threeBefore && `${seven[2]?.month}-01` >= (earliestDay(all) ?? "")
         ? Math.round(((lastFull - threeBefore) / threeBefore) * 100)
         : null,
-    firstSeenAt: own.reduce((min, t) => (t.postedAt < min ? t.postedAt : min), latest.postedAt),
+    firstSeenAt,
     paidWith: recurring.find((r) => r.key === input.key)?.paidWith ?? paidWithFor(own, accounts),
     monthly: seven.slice(1),
     charges: newest(

@@ -206,6 +206,7 @@ describe("cashSummary", () => {
       savingsCents: 20,
       treasuryCents: 1000,
       cardOwedCents: 400,
+      cashAccountCount: 4,
     });
   });
   it("reports no card balance when there is no card account", () => {
@@ -890,6 +891,23 @@ describe("subscriptions", () => {
     });
     expect(subs.totalMonthlyCents).toBe(70000 + 68000 + 800 + 5000 + 1000);
   });
+  it("leaves payroll and rent out: they recur but are fixed costs, not subscriptions", () => {
+    const fixed = detectRecurring(
+      [
+        ...monthly("Paylodex Payroll", "15", 5_840_000, 4, { category: "Payroll" }),
+        ...monthly("Landlord Placeholder LLC", "01", 750_000, 4),
+        ...monthly("Office Space Co", "02", 300_000, 4, { category: "Rent" }),
+        ...monthly("Notion", "20", 1000, 4, { category: "Software" }),
+      ],
+      NOW,
+    );
+    expect(fixed.filter((r) => r.fixedCost).map((r) => r.key)).toEqual([
+      "paylodex-payroll",
+      "landlord-placeholder",
+      "office-space",
+    ]);
+    expect(subscriptions(fixed).items.map((s) => s.key)).toEqual(["notion"]);
+  });
   it("tags no overlap when only one vendor of a group is subscribed", () => {
     const only = subscriptions(detectRecurring(monthly("Anthropic", "06", 70000, 4), NOW));
     expect(only.items[0]?.overlapGroup).toBeNull();
@@ -963,6 +981,24 @@ describe("cashSeries", () => {
     ]);
     expect(weeks.map((w) => w.outCents)).toEqual([70000, 150000, 60000]);
     expect(weeks[2]?.partial).toBe(true);
+  });
+  it("covers exactly the period to date when given its first day", () => {
+    // Quarter to date from Wed Oct 1: the first week bucket starts on Oct 1, not Monday Sep 29.
+    const quarter = cashSeries(txns, { granularity: "week", from: "2026-10-01", now: today });
+    expect(quarter.map((w) => [w.start, w.end])).toEqual([
+      ["2026-10-01", "2026-10-04"],
+      ["2026-10-05", "2026-10-11"],
+      ["2026-10-12", "2026-10-18"],
+    ]);
+    // Sep 30 is before the quarter, so it is not in the first bucket.
+    expect(quarter[0]?.outCents).toBe(0);
+    const month = cashSeries(txns, { granularity: "day", from: "2026-10-01", now: today });
+    expect(month).toHaveLength(14);
+    expect(month[0]?.start).toBe("2026-10-01");
+    const year = cashSeries(txns, { granularity: "month", from: "2026-01-01", now: today });
+    expect(year.map((m) => m.start.slice(0, 7))).toEqual(
+      Array.from({ length: 10 }, (_, i) => `2026-${String(i + 1).padStart(2, "0")}`),
+    );
   });
   it("is on the same Monday for a Sunday and the next Monday", () => {
     const sunday = cashSeries([], {
