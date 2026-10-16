@@ -153,7 +153,7 @@ export const NarrowWithMenu: Story = {
   ],
 };
 
-/** In a narrow pane each label shrinks to a dot before the subject: hollow Newsletter, solid Needs reply, warning Spam and Junk. */
+/** In a narrow pane each label shrinks to a dot before the subject: hollow Newsletter, solid Needs attention, solid warning Spam, warning ring Junk. */
 export const NarrowLabels: StoryObj = {
   render: () => (
     <div className="@container w-[320px]">

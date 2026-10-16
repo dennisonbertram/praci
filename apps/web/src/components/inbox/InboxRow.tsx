@@ -27,12 +27,12 @@ function formatMailTime(iso: string, today: boolean): string {
       });
 }
 
-/** Narrow panes drop the badge for a dot: warning for Spam/Junk, solid for Needs reply, hollow for Newsletter. */
+/** Narrow panes drop the badge for a dot: warning for Spam/Junk, solid for Needs attention, hollow for Newsletter; Spam is a solid warning dot and Junk a warning ring. */
 const LABEL_DOT = {
   attention: "bg-foreground/60",
   newsletter: "border border-muted-foreground",
   spam: "bg-warning",
-  junk: "bg-warning",
+  junk: "border-2 border-warning",
 } as const;
 
 export function InboxGroup({
@@ -111,7 +111,7 @@ export function InboxRow({
   const received = new Date(row.receivedAt);
   const isToday = today ?? received.toDateString() === new Date().toDateString();
   const labelNames = {
-    attention: t`Needs reply`,
+    attention: t`Needs attention`,
     newsletter: t`Newsletter`,
     spam: t`Spam`,
     junk: t`Junk`,

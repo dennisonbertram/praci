@@ -361,7 +361,7 @@ function MailListRow({ row, onPress }: { row: MailRow; onPress: () => void }) {
   const styles = useThemedStyles(createStyles);
   const label = inboxLabel(row);
   const labelNames = {
-    attention: t("Needs reply"),
+    attention: t("Needs attention"),
     newsletter: t("Newsletter"),
     spam: t("Spam"),
     junk: t("Junk"),

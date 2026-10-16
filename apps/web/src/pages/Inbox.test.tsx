@@ -409,12 +409,6 @@ it("offers Undo after an archive, which restores the thread and reloads the list
   expect(c.querySelector('[role="status"]')?.textContent).toBe("");
 });
 
-it("announces an archive in a polite live region", async () => {
-  const c = await render();
-  await click(byText(c, "archive b"));
-  expect(c.querySelector('[aria-live="polite"]')?.textContent).toBe("Archived");
-});
-
 it("waits for a slow archive to finish before Undo restores the thread", async () => {
   let finish: (value: unknown) => void = () => {};
   rpcMock.archive.mockReturnValue(new Promise((r) => (finish = r)));

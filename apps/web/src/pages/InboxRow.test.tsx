@@ -82,7 +82,7 @@ it("shows one label naming why the row needs attention", async () => {
     mail({ needsReply: true, priority: "important", category: "reply" }),
   );
   expect(container.querySelectorAll('[data-slot="badge"]')).toHaveLength(1);
-  expect(badge(container)?.textContent).toBe("Needs reply");
+  expect(badge(container)?.textContent).toBe("Needs attention");
 });
 
 it.each([

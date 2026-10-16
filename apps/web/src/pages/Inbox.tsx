@@ -124,7 +124,7 @@ export function InboxPage({
   const [error, setError] = useState("");
   // Shown briefly at the bottom; a mark stays undoable even after its row left the list.
   const [status, setStatus] = useState<Status | null>(null);
-  // Spoken by screen readers only; the toast covers sighted users.
+  // Spoken by screen readers only, for read changes; the Archived toast is already a status region.
   const [announcement, setAnnouncement] = useState("");
   const [todosByTab, setTodosByTab] = useState<Record<string, InboxTodo[]>>({});
   const [todoRefresh, setTodoRefresh] = useState(0);
@@ -323,7 +323,6 @@ export function InboxPage({
     if (selectedId === messageId) setSelectedId(neighbor);
     patchRows((list) => list.filter((row) => row.id !== messageId));
     setStatus({ kind: "archived", messageId });
-    setAnnouncement(t`Archived`);
     const call = rpc.inbox.archive({ messageId });
     // Resolves to whether the archive saved, so Undo never overtakes it.
     archiving.current.set(

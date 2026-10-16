@@ -4028,6 +4028,10 @@ msgstr ""
 msgid "Needs approval"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+msgid "Needs attention"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Nécessite une saisie"
@@ -4036,7 +4040,6 @@ msgstr "Nécessite une saisie"
 msgid "Needs reconnect"
 msgstr ""
 
-#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Needs reply"
 msgstr ""
