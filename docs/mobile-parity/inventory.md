@@ -116,7 +116,7 @@ Web hosts: apps/web/src/pages/Shell.tsx. Mobile hosts: apps/mobile/app/thread.ts
 | Page charts (render) | shell/page-chart-extension.ts, ChartBlockView | app/agent-page.tsx (`chart` blocks, "Chart could not be drawn.") | FULL | - | Delete-chart action is web only (part of page editing). |
 | Inline chart message block in chat | Shell.tsx:7235 `block.kind === "chart"` ChartBlockView | none; only text fallback `[chart: name]` in lib/api.ts:1131 | MISSING | M | Reuse the agent-page SVG chart path (packages/core, lib/agent-page.ts). |
 | Pins: stats strip + refresh | shell/bot-pins.tsx PinsStrip | components/PinsStrip.tsx, lib/agent-pins.ts | FULL | - | |
-| Pins: checklist list (add, toggle, edit, delete, conflict handling) | bot-pins.tsx PinsList | app/agent-list.tsx, lib/pin-list.ts | FULL | - | Edit text on mobile: `editItem` exists in lib/pin-list.ts; UI not confirmed. UNSURE (checked agent-list.tsx t() strings: no edit prompt). |
+| Pins: checklist list (add, toggle, edit, delete, conflict handling) | bot-pins.tsx PinsList | app/agent-list.tsx, lib/pin-list.ts | FULL | - | Mobile edits item text inline (`onEndEditing` calls `editItem` in app/agent-list.tsx). |
 | Board (tickets: list, create, status/priority/owner, comments, live subscribe) | pages/Board.tsx; `rpc.tickets.*`, `rpc.boards.subscribe`; gated by `me.ticketBoardEnabled`; contracts/src/board.ts | none (grep ticket/board in apps/mobile: no hits) | MISSING | M | Feature-flagged on web. |
 | Activity list (Now/Recent runs) | pages/ActivityList.tsx; `rpc.runs.list` | app/index.tsx ActivitySection, lib/activity.ts (`runs/list` active + recent) | FULL | - | |
 | Activity filters (search, status, from/to bot, date range, reset) | ActivityList.tsx, lib/activity-list-filters.ts | none (only the bell toggle) | PARTIAL | M | |
@@ -311,4 +311,3 @@ Web route table is `App.tsx`. Items below are not in chat/threads, bots/agents/r
 3. Memory settings (provider connect/disconnect, default scope) are missing; each provider has a React form on web with no native counterpart.
 4. Messaging settings (link chat apps, channel and agent-connection approvals, team conversation policy) are missing on mobile.
 5. Approval rules and Auto Review (space-level action confirmations) cannot be changed on mobile; API exists, so this is a small UI task. Also missing: model preflight tests, archived groups, space rename, and the "Show tool activity" toggle (all S/M).
-
