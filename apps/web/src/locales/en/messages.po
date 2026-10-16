@@ -23,6 +23,11 @@ msgstr " (unread)"
 msgid ", {0} already imported"
 msgstr ", {0} already imported"
 
+#. placeholder {0}: items.length
+#: src/components/FinanceCards.tsx
+msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
+msgstr "{0, plural, one {# finance lookup} other {# finance lookups}}"
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -801,6 +806,10 @@ msgstr "Arguments"
 #: src/pages/Shell.tsx
 msgid "Artifacts"
 msgstr "Artifacts"
+
+#: src/components/FinanceCards.tsx
+msgid "Ask about this"
+msgstr "Ask about this"
 
 #: src/components/finance/ui.tsx
 msgid "Ask agent"
@@ -3035,6 +3044,10 @@ msgstr "Filter"
 msgid "Filter by date"
 msgstr "Filter by date"
 
+#: src/pages/KnowledgeSection.tsx
+msgid "Filter memory"
+msgstr "Filter memory"
+
 #: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr "Filters"
@@ -4159,6 +4172,10 @@ msgstr "No mail"
 #: src/pages/Inbox.tsx
 msgid "No mail matches this filter"
 msgstr "No mail matches this filter"
+
+#: src/pages/KnowledgeSection.tsx
+msgid "No matches"
+msgstr "No matches"
 
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
@@ -6242,6 +6259,10 @@ msgstr "Undo"
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
 msgstr "Unknown"
+
+#: src/pages/KnowledgeSection.tsx
+msgid "Unknown bot"
+msgstr "Unknown bot"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Unknown tool"

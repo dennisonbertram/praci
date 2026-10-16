@@ -24,10 +24,16 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
   await expect(page.getByLabel("Close memory settings")).toBeVisible();
   const spaceDocs = page.getByTestId("space-memory-documents");
   await expect(spaceDocs.getByText("Shared documents")).toBeVisible();
-  const memoryRow = spaceDocs.getByRole("button", { name: /MEMORY\.md/ });
+  const sharedGroup = spaceDocs.getByTestId("memory-group-shared");
+  const memoryRow = sharedGroup.getByRole("button", { name: /MEMORY\.md/ });
   await expect(memoryRow).toBeVisible();
+  // The bot's own document (seeded MEMORY.md) is browsable here too, under its name.
+  const botGroup = spaceDocs.getByTestId(`memory-group-${activeBotId(page)}`);
+  await expect(botGroup.getByText("Chief", { exact: true })).toBeVisible();
+  await expect(botGroup.getByRole("button", { name: /MEMORY\.md/ })).toBeVisible();
+  await captureScreenshot(page, testInfo, "86-memory-browser");
   await memoryRow.click();
-  const docEditor = spaceDocs.locator("textarea");
+  const docEditor = sharedGroup.locator("textarea");
   const marker = `Edited in e2e ${stamp}`;
   await docEditor.fill(`# Memory\n\n${marker}\n`);
   await captureScreenshot(page, testInfo, "83-space-memory-editor");
@@ -52,6 +58,16 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
     releaseSave();
   }
   await expect(spaceDocs.getByText("rev 2")).toBeVisible();
+
+  // Filtering by text only the saved shared document contains hides the bot group.
+  const filterInput = spaceDocs.getByLabel("Filter memory");
+  await filterInput.fill(marker);
+  await expect(sharedGroup).toBeVisible();
+  await expect(botGroup).toBeHidden();
+  await filterInput.fill("zzz-no-such-doc");
+  await expect(spaceDocs.getByText("No matches")).toBeVisible();
+  await filterInput.fill("");
+  await expect(botGroup).toBeVisible();
 
   // The save persisted: reopen the document and find the marker.
   await memoryRow.click();

@@ -23,6 +23,11 @@ msgstr " (não lido)"
 msgid ", {0} already imported"
 msgstr ""
 
+#. placeholder {0}: items.length
+#: src/components/FinanceCards.tsx
+msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
+msgstr ""
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -800,6 +805,10 @@ msgstr "Argumentos:"
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 msgid "Artifacts"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "Ask about this"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -3035,6 +3044,10 @@ msgstr ""
 msgid "Filter by date"
 msgstr ""
 
+#: src/pages/KnowledgeSection.tsx
+msgid "Filter memory"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr ""
@@ -4158,6 +4171,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "No mail matches this filter"
+msgstr ""
+
+#: src/pages/KnowledgeSection.tsx
+msgid "No matches"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -6241,6 +6258,10 @@ msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
+msgstr ""
+
+#: src/pages/KnowledgeSection.tsx
+msgid "Unknown bot"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx

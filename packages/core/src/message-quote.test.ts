@@ -340,3 +340,24 @@ it("keeps a filename in file-only previews for older clients", () => {
   expect(messageReplyPreview([file], "user").text).toBe("notes.txt");
   expect(messageReplyPreview([file, ...textBlock("Caption")], "user").text).toBe("Caption");
 });
+
+it("previews a finance block with its card title, total and rows", () => {
+  const blocks: MessageBlock[] = [
+    {
+      kind: "finance",
+      card: {
+        card: "breakdown",
+        by: "vendor",
+        range: "Last 90 days",
+        totalCents: 10_864_000,
+        rows: [
+          { key: "justworks", label: "Justworks", cents: 4_987_600 },
+          { key: "cooley", label: "Coo\nley", cents: 2_188_400 },
+        ],
+      },
+    },
+  ];
+  expect(messageReplyExcerpt(blocks, "bot")).toBe(
+    "Vendors · Last 90 days: $108,640 — Justworks $49,876; Coo ley $21,884",
+  );
+});

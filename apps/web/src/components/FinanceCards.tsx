@@ -1,15 +1,105 @@
-import { Trans, useLingui } from "@lingui/react/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { FinanceCard, MessageBlock } from "@rakazo/contracts";
 import { Card } from "@rakazo/ui-web";
+import { ChevronRight, MessageSquareQuote } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { money, shortDay, transactionAmount } from "../lib/finance-format";
 import { financePath } from "../lib/finance-route";
 
+type FinanceBlock = Extract<MessageBlock, { kind: "finance" }>;
+
 /** A compact preview of what a finance tool read, so the chat shows the agent is looking at real data. Names are untrusted text. */
-export function FinanceCards({ block }: { block: Extract<MessageBlock, { kind: "finance" }> }) {
+export function FinanceCards({
+  block,
+  onAsk,
+  tiled,
+}: {
+  block: FinanceBlock;
+  /** Called when the user chooses "Ask about this"; the caller sets the message as the reply target. */
+  onAsk?: () => void;
+  /** Inside a group the card fills its grid cell instead of using the fixed width. */
+  tiled?: boolean;
+}) {
+  const { t } = useLingui();
   return (
-    <div data-testid="finance-card" className="w-80 max-w-full py-1">
+    <div
+      data-testid="finance-card"
+      className={`group/fcard relative max-w-full py-1 ${tiled ? "min-w-0" : "w-80"}`}
+    >
       <Preview card={block.card} />
+      {onAsk ? (
+        <button
+          type="button"
+          aria-label={t`Ask about this`}
+          title={t`Ask about this`}
+          onClick={onAsk}
+          className="absolute -end-1.5 -top-0.5 rounded-full border border-border bg-background p-1 text-muted-foreground opacity-0 shadow-sm hover:text-foreground focus-visible:opacity-100 group-hover/fcard:opacity-100 [@media(hover:none)]:opacity-100"
+        >
+          <MessageSquareQuote className="size-3.5" aria-hidden="true" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Several finance lookups from one turn, tiled in a grid. Three or more start collapsed until the user chooses. */
+export function FinanceCardGroup({
+  items,
+  onAsk,
+  revealMessageId,
+}: {
+  items: readonly { id: string; messageId: string; block: FinanceBlock }[];
+  /** Asks about the message that holds the card. */
+  onAsk?: (messageId: string) => void;
+  /** A reply-jump target; if it is one of this group's messages the group opens. */
+  revealMessageId?: string;
+}) {
+  const [chosen, setChosen] = useState<boolean | null>(null);
+  const open = chosen ?? items.length < 3;
+  useEffect(() => {
+    if (revealMessageId && items.some((item) => item.messageId === revealMessageId)) {
+      setChosen(true);
+    }
+  }, [revealMessageId, items]);
+  if (items.length === 1) {
+    const [item] = items;
+    return item ? (
+      <FinanceCards block={item.block} onAsk={onAsk && (() => onAsk(item.messageId))} />
+    ) : null;
+  }
+  return (
+    <div className="w-full min-w-0" data-testid="finance-group">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setChosen(!open)}
+        className="flex items-center gap-1 rounded-md px-1 py-0.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+      >
+        <ChevronRight
+          className={`size-3.5 transition-transform ${open ? "rotate-90" : ""}`}
+          aria-hidden="true"
+        />
+        <Plural value={items.length} one="# finance lookup" other="# finance lookups" />
+      </button>
+      {open ? (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-2">
+          {items.map((item) => (
+            <div key={item.id} data-message-id={item.messageId} className="min-w-0">
+              <FinanceCards
+                block={item.block}
+                tiled
+                onAsk={onAsk && (() => onAsk(item.messageId))}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        // Collapsed: keep a zero-height anchor per message so a reply-jump still finds its row.
+        items.map((item) => (
+          <span key={item.id} data-message-id={item.messageId} className="block h-0" />
+        ))
+      )}
     </div>
   );
 }
