@@ -34,7 +34,7 @@ import {
   upcoming,
 } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "@rakazo/db";
-import { mailToolsAllowed } from "./mail-tools.js";
+import { mailToolsAllowed, OWNER_INITIATED_TRIGGERS } from "./mail-tools.js";
 
 export const FINANCE_TOOL_NAMES = new Set([
   "finance_overview",
@@ -45,7 +45,7 @@ export const FINANCE_TOOL_NAMES = new Set([
 ]);
 
 /** Only the Finance agent, on a run its owner started (a direct message or their own routine). */
-export const OWNER_INITIATED_TRIGGERS = new Set(["user", "follow_up", "routine"]);
+export { OWNER_INITIATED_TRIGGERS };
 export function financeToolsAllowed(
   options: Parameters<typeof mailToolsAllowed>[0] & {
     botSpawnKey: string | null | undefined;

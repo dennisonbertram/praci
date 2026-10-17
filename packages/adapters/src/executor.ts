@@ -3941,6 +3941,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
+            trigger: run.trigger,
           }) && (await calendarAccounts().catch(() => [])).length > 0;
         const mailEnabled =
           mailToolsAllowed({
@@ -3949,6 +3950,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
+            trigger: run.trigger,
           }) && (await mailAccounts().catch(() => [])).length > 0;
         // Connected Google Drive accounts of the bot owner, looked up once per run.
         let driveAccountsPromise: ReturnType<typeof listDriveAccounts> | undefined;
@@ -3966,6 +3968,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
+            trigger: run.trigger,
           }) && (await driveAccounts().catch(() => [])).length > 0;
         const financeEnabled =
           financeToolsAllowed({
@@ -4031,9 +4034,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ? agentConnectionTools.filter((tool) => !disabledBuiltinTools.has(tool.name))
             : []),
         ];
-        const exposedConnectorTools = discovered.filter(
-          (tool) => !builtinAgentTools.some((builtin) => builtin.name === tool.name),
-        );
+        // Generic connector tools (Composio, Pipedream, MCP) reach the owner's accounts, so a run
+        // another agent started (bot_message, possibly from another account) gets none of them.
+        // Webhook and messaging runs keep them: they have their own approval rules.
+        const exposedConnectorTools =
+          run.trigger !== "bot_message"
+            ? discovered.filter(
+                (tool) => !builtinAgentTools.some((builtin) => builtin.name === tool.name),
+              )
+            : [];
         const connectorTools = new Map(
           exposedConnectorTools.map((tool) => [tool.name, tool] as const),
         );
@@ -6598,6 +6607,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return archived;
           }
           if (deps.connector) {
+            // A model can call a name it was never offered; refuse connector calls on a peer-started run.
+            if (run.trigger === "bot_message" && !BUILTIN_AGENT_TOOL_NAMES.has(name)) {
+              return { error: `unknown tool ${name}` };
+            }
             let result: unknown = { error: `unknown tool ${name}` };
             for await (const event of deps.connector.execute(
               { ...connectorCall, tool: name, args, executionId: effectKey },
