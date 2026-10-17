@@ -26,7 +26,10 @@ export function transcriptShouldSnap(input: {
   atEnd: boolean;
   previousLastId: string | undefined;
   last: { id: string; role: string } | undefined;
+  /** A jump-to-message scroll owns the viewport; only the user's own new message may snap. */
+  jumping?: boolean;
 }): boolean {
+  if (input.jumping) return input.last?.role === "user" && input.last.id !== input.previousLastId;
   if (input.following || input.atEnd) return true;
   return input.last?.role === "user" && input.last.id !== input.previousLastId;
 }

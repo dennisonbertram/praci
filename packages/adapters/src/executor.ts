@@ -4002,6 +4002,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               )?.userId
             : undefined,
           messagingChannelRun,
+          trigger: run.trigger,
         });
         const builtins = [
           ...selectBuiltinToolsForRun({

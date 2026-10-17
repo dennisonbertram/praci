@@ -61,4 +61,15 @@ describe("transcriptShouldSnap", () => {
       transcriptShouldSnap({ following: false, atEnd: false, previousLastId: "u2", last: sent }),
     ).toBe(false);
   });
+  it("does not snap a reader at the end while a jump scroll owns the viewport", () => {
+    expect(
+      transcriptShouldSnap({
+        following: false,
+        atEnd: true,
+        previousLastId: "u2",
+        last: bot,
+        jumping: true,
+      }),
+    ).toBe(false);
+  });
 });

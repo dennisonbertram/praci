@@ -1,7 +1,9 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { SearchHit, SearchHitKind } from "@rakazo/contracts";
+import { Button } from "@rakazo/ui-web";
 import { FileText, Mail } from "lucide-react";
 import type { ReactNode } from "react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 
 /** A non-chat result: an app page or a Data room document. */
 export type SearchLink = { id: string; label: string; detail?: string; icon?: ReactNode };
@@ -18,16 +20,18 @@ function Section({ title, children }: { title: ReactNode; children: ReactNode })
 }
 
 function LinkRow({ link, onSelect }: { link: SearchLink; onSelect: () => void }) {
+  useHideAmounts();
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={onSelect}
-      className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-start hover:bg-background"
+      className="h-auto w-full justify-start gap-2.5 rounded-xl px-2.5 py-2 text-start font-normal hover:bg-background"
     >
       {link.icon ? <span className="shrink-0 text-muted-foreground">{link.icon}</span> : null}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium text-foreground" dir="auto">
-          {link.label}
+          {maskCurrencyWhenHidden(link.label)}
         </span>
         {link.detail ? (
           <span className="block truncate text-[13px] text-muted-foreground" dir="auto">
@@ -35,7 +39,7 @@ function LinkRow({ link, onSelect }: { link: SearchLink; onSelect: () => void })
           </span>
         ) : null}
       </span>
-    </button>
+    </Button>
   );
 }
 

@@ -45,7 +45,7 @@ export const FINANCE_TOOL_NAMES = new Set([
 ]);
 
 /** Only the Finance agent, on a run its owner started (a direct message or their own routine). */
-const OWNER_INITIATED_TRIGGERS = new Set(["user", "follow_up", "routine"]);
+export const OWNER_INITIATED_TRIGGERS = new Set(["user", "follow_up", "routine"]);
 export function financeToolsAllowed(
   options: Parameters<typeof mailToolsAllowed>[0] & {
     botSpawnKey: string | null | undefined;

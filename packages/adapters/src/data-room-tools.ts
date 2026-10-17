@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos } from "@rakazo/db";
+import { OWNER_INITIATED_TRIGGERS } from "./finance-tools.js";
 
 /** Read-only access to the bot owner's Data room documents. */
 export const DATA_ROOM_TOOL_NAMES = new Set(["data_room_search", "data_room_read"]);
@@ -18,8 +19,11 @@ export function dataRoomToolsAllowed(options: {
   groupUserId: string | null | undefined;
   groupId: string | null;
   messagingChannelRun: boolean;
+  /** The run trigger: a bot_message run (another agent asked) is under the owner's id but not started by them. */
+  trigger: string;
 }): boolean {
   return (
+    OWNER_INITIATED_TRIGGERS.has(options.trigger) &&
     options.runUserId === options.botUserId &&
     !options.messagingChannelRun &&
     (!options.groupId || options.groupUserId === options.runUserId)

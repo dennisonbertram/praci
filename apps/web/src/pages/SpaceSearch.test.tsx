@@ -10,6 +10,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
+import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { SpaceSearchResults } from "./SpaceSearch";
 
 it("shows a matching Data room document and a mail search instead of No results", () => {
@@ -49,4 +50,22 @@ it("does not repeat a conversation's name before its snippet", () => {
   expect(html).not.toContain("Finance agent · ");
   expect(html).toContain(">Chat<");
   expect(html).toContain(">Finance<");
+});
+
+it("masks amounts in document names while amounts are hidden", () => {
+  setHideAmounts(true);
+  try {
+    const html = renderToStaticMarkup(
+      <SpaceSearchResults
+        hits={[]}
+        loading={false}
+        documents={[{ id: "doc-1", label: "SAFE $1,000,000.pdf" }]}
+        onSelect={() => undefined}
+      />,
+    );
+    expect(html).not.toContain("1,000,000");
+    expect(html).toContain("SAFE $•••.pdf");
+  } finally {
+    setHideAmounts(false);
+  }
 });

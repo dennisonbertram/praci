@@ -16,7 +16,7 @@ vi.mock("@lingui/react/macro", () => {
 });
 
 import { setHideAmounts } from "../lib/hide-amounts-preference";
-import { Composer } from "./Shell";
+import { Composer, Transcript } from "./Shell";
 
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
@@ -456,5 +456,80 @@ describe("Composer", () => {
     await act(async () => {});
     expect(onSend.mock.calls[1]?.[2]).toBe(onSend.mock.calls[0]?.[2]);
     expect(onSend.mock.calls[2]?.[2]).not.toBe(onSend.mock.calls[0]?.[2]);
+  });
+});
+
+describe("Transcript jump to a search result", () => {
+  const msg = (id: string, seq: number): ThreadMessage => ({
+    id,
+    threadId: "t1",
+    seq,
+    role: "bot",
+    blocks: [{ kind: "text", text: `message ${id}` }],
+    createdAt: "2026-10-01T00:00:00.000Z",
+  });
+
+  it("does not snap to the end when older messages mount for the jump", () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    window.matchMedia ??= () =>
+      ({
+        matches: true,
+        addEventListener() {},
+        removeEventListener() {},
+      }) as unknown as MediaQueryList;
+    Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.animate = vi.fn() as never;
+    const scrollTo = vi.fn();
+    Element.prototype.scrollTo = scrollTo as never;
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    const scrollRef = createRef<HTMLDivElement>();
+    const noop = () => {};
+    const props = {
+      scrollRef,
+      onScrollRequestHandled: noop,
+      artifactTarget: { botId: "bot-1" },
+      showToolActivity: false,
+      olderCursor: null,
+      loadingOlder: false,
+      answerableAskMessageId: null,
+      running: false,
+      workingBots: [],
+      onLoadOlder: noop,
+      onOpenBot: noop,
+      onAnswer: async () => {},
+      onReply: noop,
+      onQuote: noop,
+      onReact: async () => {},
+      onJumpToMessage: noop,
+      onOpenPeerMessages: noop,
+      peerBot: () => undefined,
+      onRefresh: async () => {},
+      onBotChanged: async () => {},
+      onAddRoutine: noop,
+      voiceReady: false,
+      speakingMessageId: null,
+      onSpeak: noop,
+      onOpenComputer: noop,
+    } as unknown as ComponentProps<typeof Transcript>;
+    const render = (
+      messages: ThreadMessage[],
+      scrollRequest: { messageId: string; nonce: number } | null,
+    ) =>
+      act(() =>
+        root?.render(<Transcript {...props} messages={messages} scrollRequest={scrollRequest} />),
+      );
+
+    // The reader sits at the end of the newest page.
+    render([msg("m10", 10), msg("m11", 11)], null);
+    scrollTo.mockClear();
+    // A search hit loads an older window around m3 and asks to scroll to it.
+    render([msg("m3", 3), msg("m4", 4), msg("m10", 10), msg("m11", 11)], {
+      messageId: "m3",
+      nonce: 1,
+    });
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });

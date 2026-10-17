@@ -23,6 +23,7 @@ describe("data room tools", () => {
     groupId: null,
     groupUserId: undefined,
     messagingChannelRun: false,
+    trigger: "user",
   };
 
   it("are for the owner's bot in their chat or their own group", () => {
@@ -31,6 +32,12 @@ describe("data room tools", () => {
     expect(dataRoomToolsAllowed({ ...base, groupId: "g", groupUserId: "other" })).toBe(false);
     expect(dataRoomToolsAllowed({ ...base, runUserId: "other" })).toBe(false);
     expect(dataRoomToolsAllowed({ ...base, messagingChannelRun: true })).toBe(false);
+  });
+
+  it("only open on runs the owner started, never a connected agent's bot_message", () => {
+    for (const trigger of ["user", "follow_up", "routine"])
+      expect(dataRoomToolsAllowed({ ...base, trigger })).toBe(true);
+    expect(dataRoomToolsAllowed({ ...base, trigger: "bot_message" })).toBe(false);
   });
 
   it("are offered only when enabled", () => {
