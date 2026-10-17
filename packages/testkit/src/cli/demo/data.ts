@@ -482,6 +482,7 @@ export const DEMO_CONTACTS = [
 ];
 
 export interface DemoDocument {
+  /** Folder path; "Finance/Invoices" is the sub-folder Invoices inside Finance. */
   folder: string;
   name: string;
   /** "broken" is bytes that claim to be a PDF but are not, so the demo shows a failed item. */
@@ -530,6 +531,16 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
     "csv",
   ),
   doc(
+    "Finance/Invoices",
+    "MOCK Invoice NW-1044 - Acme Servo Supply.pdf",
+    "Invoice NW-1044 from Acme Servo Supply Mock to Northwind Robotics Mock. 40 servo motors. Amount due 3200 dollars by 15 November.",
+  ),
+  doc(
+    "Finance/Invoices",
+    "MOCK Invoice 2209 - Cobalt Cloud Hosting.pdf",
+    "Invoice 2209 from Cobalt Cloud Hosting Mock to Northwind Robotics Mock. October hosting. Amount due 1850 dollars.",
+  ),
+  doc(
     "Fundraising",
     "MOCK Investor Update Draft.pdf",
     "Draft investor update. Highlights: pilot converted to an annual contract; runway 8.9 months.",
@@ -552,6 +563,16 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
     "broken",
   ),
 ];
+
+/** Every folder path the documents use, each parent before its children ("A" before "A/B"). */
+export function demoFolderPaths(documents: DemoDocument[]): string[] {
+  const paths = new Set<string>();
+  for (const { folder } of documents) {
+    const parts = folder.split("/");
+    for (let i = 1; i <= parts.length; i++) paths.add(parts.slice(0, i).join("/"));
+  }
+  return [...paths].sort((a, b) => a.split("/").length - b.split("/").length);
+}
 
 export const DEMO_BOTS = [
   {

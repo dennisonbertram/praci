@@ -4,6 +4,7 @@ import {
   DEMO_CONTACTS,
   DEMO_DOCUMENTS,
   demoFinance,
+  demoFolderPaths,
   demoMailboxes,
   MOCK_NOTE,
   MOCK_SUBJECT_PREFIX,
@@ -21,6 +22,16 @@ describe("mock demo data", () => {
 
   it("includes one document that fails to read, so the failed state can be seen", () => {
     expect(DEMO_DOCUMENTS.filter((document) => document.kind === "broken")).toHaveLength(1);
+  });
+
+  it("creates each parent folder before its sub-folders", () => {
+    expect(demoFolderPaths([{ folder: "A/B/C" }, { folder: "D" }] as never)).toEqual([
+      "A",
+      "D",
+      "A/B",
+      "A/B/C",
+    ]);
+    expect(demoFolderPaths(DEMO_DOCUMENTS)).toContain("Finance/Invoices");
   });
 
   it("builds a mailbox of 25 mock threads with unread mail and one attachment", () => {
