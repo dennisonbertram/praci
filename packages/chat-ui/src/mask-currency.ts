@@ -20,8 +20,58 @@ const CURRENCY = new RegExp(
 
 export type CurrencyMatch = { start: number; end: number; replacement: string };
 
-/** Where currency amounts sit in `text`, each with its mask (`$•••`, keeping the symbol and sign). */
+// Runway figures the Finance page also hides: "9.2 months of runway", "runs out around July 23, 2027".
+const MONTHS = String.raw`\d+(?:[.,]\d+)?(?=\s?(?:months?|mos?)\b)`;
+const MONTH_NAME = String.raw`(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?`;
+const DATE = new RegExp(
+  String.raw`\b(?:${MONTH_NAME}\s\d{1,2}(?:st|nd|rd|th)?(?:,?\s\d{4})?|${MONTH_NAME}\s\d{4}|\d{4}-\d{2}-\d{2})\b`,
+  "gi",
+);
+const RUNWAY = /\brunway\b/i;
+const RUN_OUT = /\bruns?[\s-]?out\b|\bout of (?:cash|money)\b|\bzero cash\b/i;
+
+/** The sentence (or line) around `index`; a decimal point such as 9.2 does not end one. */
+function sentenceAround(text: string, index: number): string {
+  const boundary = /[.!?](?=\s|$)|\n/g;
+  let start = 0;
+  let end = text.length;
+  for (const m of text.matchAll(boundary)) {
+    const at = m.index ?? 0;
+    if (at < index) start = at + 1;
+    else {
+      end = at;
+      break;
+    }
+  }
+  return text.slice(start, end);
+}
+
+/** Runway months and run-out dates, masked like amounts, only in a sentence about runway. */
+function runwayMatches(text: string): CurrencyMatch[] {
+  const out: CurrencyMatch[] = [];
+  for (const m of text.matchAll(new RegExp(MONTHS, "gi"))) {
+    const start = m.index ?? 0;
+    if (RUNWAY.test(sentenceAround(text, start)))
+      out.push({ start, end: start + m[0].length, replacement: "•••" });
+  }
+  for (const m of text.matchAll(DATE)) {
+    const start = m.index ?? 0;
+    if (RUN_OUT.test(sentenceAround(text, start)))
+      out.push({ start, end: start + m[0].length, replacement: "•••" });
+  }
+  return out;
+}
+
+/** Where currency amounts sit in `text`, each with its mask (`$•••`, keeping the symbol and sign),
+ * plus runway months and run-out dates in sentences about runway. Sorted and non-overlapping. */
 export function currencyMatches(text: string): CurrencyMatch[] {
+  const all = [...moneyMatches(text), ...runwayMatches(text)].sort((a, b) => a.start - b.start);
+  const out: CurrencyMatch[] = [];
+  for (const m of all) if (!out.length || m.start >= (out.at(-1) as CurrencyMatch).end) out.push(m);
+  return out;
+}
+
+function moneyMatches(text: string): CurrencyMatch[] {
   const out: CurrencyMatch[] = [];
   for (const m of text.matchAll(CURRENCY)) {
     const g = m.groups ?? {};
@@ -35,7 +85,8 @@ export function currencyMatches(text: string): CurrencyMatch[] {
   return out;
 }
 
-/** Replaces each currency amount with a fixed mask. Plain numbers, dates and counts stay. */
+/** Replaces each currency amount (and each runway figure) with a fixed mask. Other numbers, dates
+ * and counts stay. */
 export function maskCurrencyText(text: string): string {
   let out = "";
   let at = 0;
