@@ -6,6 +6,7 @@ import { Button, Card, cn, Switch } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { aiConsentStatus, allowRecipient, revokeRecipient } from "../lib/ai-consent";
+import { INBOX_CHANGED_EVENT } from "../lib/inbox-message-cache";
 import { errorText } from "../lib/user-error";
 
 /** A card that asks once for consent: a heading, what is sent where, and one Allow button. */
@@ -118,7 +119,11 @@ export function AiDataSharingSection() {
     setPending(true);
     setError("");
     (allowed ? allowRecipient(recipient.key) : revokeRecipient(recipient.key))
-      .then(show)
+      .then((status) => {
+        show(status);
+        // An open Inbox reloads, so its sorting and the consent prompt match the switch.
+        window.dispatchEvent(new Event(INBOX_CHANGED_EVENT));
+      })
       .catch((cause) => setError(errorText(cause)))
       .finally(() => setPending(false));
   };
@@ -127,7 +132,10 @@ export function AiDataSharingSection() {
       <h3 className="text-[15px] font-medium text-foreground">
         <Trans>AI data sharing</Trans>
       </h3>
-      <p className="mt-1 text-[13px] text-muted-foreground">{i18n._(AI_DATA_DISCLOSURES.model)}</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">
+        {i18n._(AI_DATA_DISCLOSURES.model)}{" "}
+        <Trans>The Inbox sorts and reads your mail only while its model is allowed here.</Trans>
+      </p>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
