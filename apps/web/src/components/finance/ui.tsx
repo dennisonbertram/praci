@@ -421,14 +421,22 @@ export function BreakdownRows({
 const statusLabel = (status: FinanceTxnStatus) =>
   status === "pending" ? t`Pending` : status === "posted" ? t`Posted` : t`Other`;
 
-/** Navigates when a table row (outside its own links) is clicked. */
+/**
+ * Navigates when a table row (outside its own links) is clicked. The row follows its own link to
+ * `to` when it has one: that link renders inside the page, so it carries the page's Back state,
+ * while this hook is often called by the page itself, outside it, where that state is unknown.
+ */
 export function useRowNavigate() {
   const navigate = useNavigate();
   const back = useBackState();
   return (to: string, state: object | undefined = back) => ({
-    onClick: (event: React.MouseEvent) => {
+    onClick: (event: React.MouseEvent<HTMLElement>) => {
       if ((event.target as HTMLElement).closest("a,button")) return;
-      navigate(to, { state });
+      const own = [...event.currentTarget.querySelectorAll("a")].find(
+        (link) => link.getAttribute("href") === to,
+      );
+      if (own) own.click();
+      else navigate(to, { state });
     },
   });
 }

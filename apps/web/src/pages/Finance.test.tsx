@@ -1018,8 +1018,9 @@ it("keeps the vendor's Breakdown origin after opening one of its charges and com
   const row = container.querySelector('#breakdown a[href="/app/finance/vendor/acme-hosting"]');
   await act(async () => (row as HTMLElement).click());
   await flush();
+  // A founder clicks the row (its date), not only the link in it.
   const charge = container.querySelector('a[href="/app/finance/transaction/t1"]');
-  await act(async () => (charge as HTMLElement).click());
+  await act(async () => (charge?.closest("tr")?.querySelector("td") as HTMLElement).click());
   await flush();
   // The charge's Back names the vendor it was opened from.
   const toVendor = container.querySelector('a[href="/app/finance/vendor/acme-hosting"]');
