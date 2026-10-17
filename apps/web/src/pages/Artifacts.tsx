@@ -18,9 +18,12 @@ import {
   NativeSelectOption,
   parseBotAvatar,
   resolvePersonaColorDef,
+  Skeleton,
 } from "@rakazo/ui-web";
 import {
+  ArrowLeft,
   Download,
+  FileText,
   Filter,
   LayoutGrid,
   List,
@@ -32,6 +35,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { PageEmptyState } from "../components/PageEmptyState";
 import { PdfViewer } from "../components/PdfViewer";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
@@ -295,6 +299,7 @@ export function ArtifactsPage() {
             {!maximized ? (
               <IndexPane
                 items={filteredItems}
+                filtered={clientFilterActive || activeBotId !== null}
                 loadError={loadError}
                 botsById={botsById}
                 selectedId={artifactId}
@@ -314,6 +319,7 @@ export function ArtifactsPage() {
         ) : (
           <BrowsingPane
             items={filteredItems}
+            filtered={clientFilterActive || activeBotId !== null}
             loadError={loadError}
             viewMode={viewMode}
             botsById={botsById}
@@ -370,6 +376,7 @@ export function ArtifactsPage() {
 
 function BrowsingPane({
   items,
+  filtered,
   loadError,
   viewMode,
   botsById,
@@ -379,6 +386,7 @@ function BrowsingPane({
   onLoadMore,
 }: {
   items: ArtifactSummary[] | null;
+  filtered: boolean;
   loadError: string | null;
   viewMode: ViewMode;
   botsById: Map<string, Bot>;
@@ -397,6 +405,7 @@ function BrowsingPane({
   if (items.length === 0) {
     return (
       <EmptyArtifacts
+        filtered={filtered}
         className="grid flex-1 place-items-center text-sm text-muted-foreground/80"
         nextCursor={nextCursor}
         loadingMore={loadingMore}
@@ -446,19 +455,41 @@ function LoadMoreButton({ loading, onClick }: { loading: boolean; onClick: () =>
 
 function EmptyArtifacts({
   className,
+  filtered,
   nextCursor,
   loadingMore,
   onLoadMore,
 }: {
   className: string;
+  /** A search, date or bot filter is narrowing the list. */
+  filtered: boolean;
   nextCursor: string | null;
   loadingMore: boolean;
   onLoadMore: () => void;
 }) {
+  if (!nextCursor && !filtered) {
+    return (
+      <PageEmptyState
+        className="flex-1"
+        icon={<FileText className="size-8" aria-hidden="true" />}
+        title={<Trans>No artifacts yet</Trans>}
+        description={
+          <Trans>
+            Files your bots make, like investor updates and board decks, appear here. Ask a bot to
+            write one.
+          </Trans>
+        }
+      >
+        <Button render={<Link to="/app" />}>
+          <Trans>Open chat</Trans>
+        </Button>
+      </PageEmptyState>
+    );
+  }
   if (!nextCursor) {
     return (
       <div className={className}>
-        <Trans>No artifacts found.</Trans>
+        <Trans>No artifacts match these filters.</Trans>
       </div>
     );
   }
@@ -480,6 +511,7 @@ function EmptyArtifacts({
 
 function IndexPane({
   items,
+  filtered,
   loadError,
   botsById,
   selectedId,
@@ -489,6 +521,7 @@ function IndexPane({
   onLoadMore,
 }: {
   items: ArtifactSummary[] | null;
+  filtered: boolean;
   loadError: string | null;
   botsById: Map<string, Bot>;
   selectedId: string;
@@ -498,13 +531,15 @@ function IndexPane({
   onLoadMore: () => void;
 }) {
   return (
-    <aside className="flex w-[320px] shrink-0 flex-col overflow-y-auto border-e border-border">
+    // Phones show the list or the open artifact, never both side by side.
+    <aside className="hidden w-[320px] shrink-0 flex-col overflow-y-auto border-e border-border md:flex">
       {items === null ? (
         <div className="grid flex-1 place-items-center p-6 text-center text-sm text-muted-foreground/80">
           {loadError ?? <Trans>Loading…</Trans>}
         </div>
       ) : items.length === 0 ? (
         <EmptyArtifacts
+          filtered={filtered}
           className="grid flex-1 place-items-center p-6 text-center text-sm text-muted-foreground/80"
           nextCursor={nextCursor}
           loadingMore={loadingMore}
@@ -840,11 +875,24 @@ function PreviewPane({
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <header className="flex items-center gap-3 border-b border-border px-6 py-3">
+      <header className="flex items-center gap-2 border-b border-border px-3 py-3 md:gap-3 md:px-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 md:hidden"
+          render={<Link to="/app/artifacts" />}
+          aria-label={t`Back to artifacts`}
+        >
+          <ArrowLeft size={18} strokeWidth={1.9} />
+        </Button>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[16px] font-semibold">
-            {state.status === "ready" ? state.artifact.name : t`Loading…`}
-          </h2>
+          {state.status === "loading" ? (
+            <Skeleton className="h-5 w-48 max-w-full" />
+          ) : (
+            <h2 className="truncate text-[16px] font-semibold">
+              {state.status === "ready" ? state.artifact.name : t`Artifact`}
+            </h2>
+          )}
           {state.status === "ready" && state.artifact.description ? (
             <p className="truncate text-[12.5px] text-muted-foreground">
               {state.artifact.description}
@@ -870,19 +918,22 @@ function PreviewPane({
             <Button
               variant="outline"
               size="sm"
+              aria-label={t`Download`}
               onClick={() =>
                 downloadArtifactBytes(state.artifact.name, state.artifact.mimeType, state.bytes)
               }
             >
-              <Download className="me-1.5" size={15} strokeWidth={1.9} />
-              <Trans>Download</Trans>
+              <Download className="sm:me-1.5" size={15} strokeWidth={1.9} />
+              <span className="hidden sm:inline">
+                <Trans>Download</Trans>
+              </span>
             </Button>
             <button
               type="button"
               aria-label={maximized ? t`Show list` : t`Maximize`}
               title={maximized ? t`Show list` : t`Maximize`}
               onClick={onToggleMaximize}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-accent"
+              className="hidden h-8 w-8 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-accent md:grid"
             >
               {maximized ? (
                 <Minimize2 size={15} strokeWidth={1.9} />
@@ -894,7 +945,7 @@ function PreviewPane({
         ) : null}
       </header>
 
-      <div className="min-h-0 flex-1 p-5">
+      <div className="min-h-0 flex-1 p-3 md:p-5">
         {state.status === "loading" ? (
           <div className="grid h-full place-items-center text-sm text-muted-foreground/80">
             <Trans>Loading…</Trans>
