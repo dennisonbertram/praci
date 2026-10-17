@@ -406,7 +406,7 @@ it("caps Breakdown and Upcoming at the same row count and expands inline", async
   expect(rows().upcoming).toBe(7);
 });
 
-it("uses the Breakdown row count (minimum 5) as the cap and hides Show all when everything fits", async () => {
+it("previews the same number of Upcoming rows whatever Breakdown shows, and hides Show all when everything fits", async () => {
   const base = manyRows();
   rpcMock.overview.mockResolvedValue({
     ...base,
@@ -426,11 +426,11 @@ it("uses the Breakdown row count (minimum 5) as the cap and hides Show all when 
   });
   await show("/app/finance");
   await flush();
-  // Fewer than 5 breakdown rows: both cards cap at 5.
+  // A short Breakdown (or the other Breakdown mode) does not shorten the Upcoming preview.
   expect(button("Show all 24")).toBeDefined();
   expect(
     [...container.querySelectorAll("a")].filter((a) => a.textContent?.includes("Upcoming ")).length,
-  ).toBe(5);
+  ).toBe(7);
 });
 
 it("hides the comparison when the previous period is not fully synced", async () => {
@@ -615,6 +615,26 @@ const spendTransaction = (hasReceipt: boolean): FinanceTransactionOutput => ({
   vendorIsSubscription: true,
 });
 
+it("keeps a deep trail on one line on a narrow screen: Finance, …, the page before and this one", async () => {
+  rpcMock.transaction.mockResolvedValue(spendTransaction(false));
+  await show("/app/finance/transaction/t1");
+  await flush();
+  const items = [...container.querySelectorAll("nav li")] as HTMLElement[];
+  expect(items.map((li) => li.textContent)).toEqual([
+    "Finance/…/",
+    "Subscriptions/",
+    "Acme Hosting/",
+    "Oct 2 · $42.00",
+  ]);
+  // Only Subscriptions folds into the ellipsis below the container's md width.
+  expect(items.map((li) => li.className.includes("hidden @md:flex"))).toEqual([
+    false,
+    true,
+    false,
+    false,
+  ]);
+});
+
 it("shows No receipt without an upload action when a charge has no receipt", async () => {
   rpcMock.transaction.mockResolvedValue(spendTransaction(false));
   await show("/app/finance/transaction/t1");
@@ -626,7 +646,7 @@ it("shows No receipt without an upload action when a charge has no receipt", asy
   // and amount, so the merchant is not named twice.
   expect(container.querySelector('nav a[href="/app/finance/vendor/acme-hosting"]')).not.toBeNull();
   expect(container.querySelector("nav")?.textContent?.replace(/\s+/g, " ")).toBe(
-    "Finance/Subscriptions/Acme Hosting/Oct 2 · $42.00",
+    "Finance/…/Subscriptions/Acme Hosting/Oct 2 · $42.00",
   );
   const external = container.querySelector('a[href="https://dashboard.example.test/expenses/e1"]');
   expect(external?.getAttribute("rel")).toContain("noopener");

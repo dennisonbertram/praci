@@ -45,6 +45,7 @@ import {
   Section,
   SpaceName,
   Th,
+  toneClass,
   useFinanceQuery,
   useRowNavigate,
 } from "../components/finance/ui";
@@ -86,7 +87,6 @@ const CONNECT_PATH = "/app/integrations?category=finance";
 
 /** The most rows a Breakdown or Upcoming card shows before "Show all". */
 const MAX_ROWS = 7;
-const MIN_ROWS = 5;
 /** The Burn chart's bucket size for each period. */
 const BAR_GRANULARITY: Record<SpendPeriod, BarGranularity> = {
   week: "day",
@@ -124,7 +124,12 @@ export function FinancePage({
         ) : route.page === "crypto" ? (
           <FinanceCryptoPage />
         ) : route.page === "spend" ? (
-          <FinanceSpendPage period={route.period} category={route.category} range={route.range} />
+          <FinanceSpendPage
+            period={route.period}
+            category={route.category}
+            range={route.range}
+            source={route.source ?? null}
+          />
         ) : route.page === "category" ? (
           <FinanceCategoryPage slug={route.slug} />
         ) : route.page === "recurring" ? (
@@ -318,8 +323,6 @@ function Overview({
   const [allUpcoming, setAllUpcoming] = useState(false);
   const totals = data.spendTotals[period];
   const change = changeText(totals.changePct);
-  // Less spend than before is good news.
-  const tone = (pct: number | null) => ((pct ?? 0) <= 0 ? "text-success" : "text-destructive");
   const burning = data.burn.monthlyCents > 0;
   // Without a cash balance (Brex only, or no cash accounts) there is nothing to run out of.
   const hasCash = data.hasCashAccounts;
@@ -328,7 +331,6 @@ function Overview({
   // The breakdown follows the period tabs; an older payload only has the last 90 days.
   const periodBreakdown = data.breakdownByPeriod?.[period];
   const breakdownRows = (periodBreakdown ?? data.breakdown)[by];
-  const rowCap = Math.max(MIN_ROWS, Math.min(MAX_ROWS, breakdownRows.length));
   const upcomingRows = [...data.upcoming.items].sort((a, b) =>
     (a.dates[0] ?? "").localeCompare(b.dates[0] ?? ""),
   );
@@ -523,7 +525,7 @@ function Overview({
                 {totals.previousCents === null ? null : (
                   <>
                     {" · "}
-                    {change ? <span className={tone(totals.changePct)}>{change} </span> : null}
+                    {change ? <span className={toneClass(totals.changePct)}>{change} </span> : null}
                     {t`vs ${previousRange}`}
                   </>
                 )}
@@ -588,7 +590,7 @@ function Overview({
                 }
               >
                 <BreakdownRows
-                  rows={allBreakdown ? breakdownRows : breakdownRows.slice(0, rowCap)}
+                  rows={allBreakdown ? breakdownRows : breakdownRows.slice(0, MAX_ROWS)}
                   to={(row) =>
                     by === "category" ? financePath.category(row.key) : financePath.vendor(row.key)
                   }
@@ -602,7 +604,7 @@ function Overview({
                   {periodBreakdown ? spentRange : <Trans>Last 90 days</Trans>}
                   <ShowAll
                     total={breakdownRows.length}
-                    cap={rowCap}
+                    cap={MAX_ROWS}
                     expanded={allBreakdown}
                     onToggle={() => setAllBreakdown((v) => !v)}
                   />
@@ -621,14 +623,14 @@ function Overview({
                 }
               >
                 <div className="-mx-2">
-                  {(allUpcoming ? upcomingRows : upcomingRows.slice(0, rowCap)).map((item) => (
+                  {(allUpcoming ? upcomingRows : upcomingRows.slice(0, MAX_ROWS)).map((item) => (
                     <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
                   ))}
                 </div>
                 <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
                   <ShowAll
                     total={upcomingRows.length}
-                    cap={rowCap}
+                    cap={MAX_ROWS}
                     expanded={allUpcoming}
                     onToggle={() => setAllUpcoming((v) => !v)}
                   />

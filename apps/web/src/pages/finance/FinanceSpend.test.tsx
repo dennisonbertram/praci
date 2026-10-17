@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { FinanceVendorOutput } from "@rakazo/contracts";
+import type { FinanceSpendOutput, FinanceVendorOutput } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -17,10 +17,10 @@ vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
-const rpcMock = vi.hoisted(() => ({ vendor: vi.fn() }));
+const rpcMock = vi.hoisted(() => ({ vendor: vi.fn(), spend: vi.fn() }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
-import { FinanceVendorPage } from "./FinanceSpend";
+import { FinanceSpendPage, FinanceVendorPage } from "./FinanceSpend";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -62,4 +62,41 @@ it("shows a new vendor's steady spend as 0% against the month it compares with",
   const page = container.textContent ?? "";
   expect(page).toContain("Change0%vs Jul");
   expect(page).not.toContain("Not enough history");
+  // No change is neither good nor bad news, so it is not shown in green.
+  const zero = [...container.querySelectorAll("span")].find((s) => s.textContent === "0%");
+  expect(zero?.className).not.toContain("text-success");
+});
+
+it("asks for and names only the chosen source's spend, and keeps it across the filters", async () => {
+  rpcMock.spend.mockResolvedValue({
+    period: "month",
+    range: { from: "2026-07-01", to: "2026-09-30" },
+    category: null,
+    totalCents: 2_287_100,
+    categories: [{ key: "travel", label: "Travel", cents: 2_287_100 }],
+    transactions: [],
+  } satisfies FinanceSpendOutput);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceSpendPage
+          period="month"
+          category={null}
+          range={{ from: "2026-07-01", to: "2026-09-30" }}
+          source="brex"
+        />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => {});
+  expect(rpcMock.spend).toHaveBeenCalledWith({
+    period: "month",
+    from: "2026-07-01",
+    to: "2026-09-30",
+    source: "brex",
+  });
+  expect(container.textContent).toContain("Brex ×");
+  expect(container.textContent).toContain("$22,871");
+  const chip = [...container.querySelectorAll("a")].find((a) => a.textContent === "Travel");
+  expect(chip?.getAttribute("href")).toContain("source=brex");
 });

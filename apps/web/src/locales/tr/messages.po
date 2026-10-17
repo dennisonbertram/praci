@@ -330,6 +330,10 @@ msgstr "{size} B"
 msgid "{sourceName} cash"
 msgstr ""
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "{sourceName} spend"
+msgstr ""
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
 msgstr ""
@@ -552,7 +556,6 @@ msgstr ""
 msgid "Add API key"
 msgstr ""
 
-#: src/components/integrations/FinanceSection.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Add Blockscout API key"
 msgstr ""
@@ -1533,6 +1536,7 @@ msgid "Clear {rangeLabel}"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "Clear {sourceName} filter"
 msgstr ""
 
@@ -3927,14 +3931,12 @@ msgstr ""
 msgid "Make sure nothing is still running on this computer."
 msgstr "Bu bilgisayarda hâlâ çalışan bir şey olmadığından emin ol."
 
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr ""
 
-#. placeholder {0}: cryptoServer.name
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Manage {0}"
+#: src/components/integrations/FinanceSection.tsx
+msgid "Manage agents"
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -4235,6 +4237,10 @@ msgstr ""
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemMenu.tsx
 msgid "More actions for {0}"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More Blockscout actions"
 msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
@@ -6535,6 +6541,7 @@ msgid "this Mac"
 msgstr "bu Mac"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "This month"
 msgstr ""
 

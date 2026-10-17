@@ -174,6 +174,7 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
   const crumbs = trailFor(own, cameFrom);
   // Before the page's own name loads (or when it never will), Back still returns to the real origin.
   const previous = crumbs.length > 1 ? crumbs[crumbs.length - 2] : (cameFrom ?? undefined);
+  const collapsed = (i: number) => crumbs.length > 3 && i > 0 && i < crumbs.length - 2;
   return (
     <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
       <Link
@@ -191,7 +192,11 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
       >
         <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
           {crumbs.map((crumb, i) => (
-            <li key={i} className="flex items-center gap-1">
+            <li
+              key={i}
+              // Narrow, a deep trail keeps Finance, the page before and this page; Back names the one before.
+              className={cn("flex items-center gap-1", collapsed(i) && "hidden @md:flex")}
+            >
               {crumb.to && i < crumbs.length - 1 ? (
                 <Link
                   to={crumb.to}
@@ -210,6 +215,12 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
               )}
               {/* The slash ends a crumb, so a wrapped trail never starts a line with one. */}
               {i < crumbs.length - 1 ? <span aria-hidden="true">/</span> : null}
+              {i === 0 && crumbs.length > 3 ? (
+                <span aria-hidden="true" className="flex items-center gap-1 @md:hidden">
+                  <span>…</span>
+                  <span>/</span>
+                </span>
+              ) : null}
             </li>
           ))}
         </ol>
@@ -695,5 +706,10 @@ export function cashSubtitle(
 }
 
 /** Up/down tone: spending more or burning more is bad news. */
+/** Less spend reads as good news and more as bad; a change that rounds to 0% is neither. */
 export const toneClass = (change: number | null) =>
-  change === null ? "" : change <= 0 ? "text-success" : "text-destructive";
+  change === null || Math.round(change) === 0
+    ? ""
+    : change < 0
+      ? "text-success"
+      : "text-destructive";

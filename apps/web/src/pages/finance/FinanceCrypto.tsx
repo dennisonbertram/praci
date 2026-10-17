@@ -22,7 +22,7 @@ import { DetailPage, Section, Th, useFinanceQuery } from "../../components/finan
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { BlockscoutConnectDialog } from "../../components/integrations/BlockscoutConnectDialog";
 import { chainName, tokenAmount } from "../../lib/crypto-format";
-import { dayMonth, moneyExact } from "../../lib/finance-format";
+import { dayMonth, money, moneyExact } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { rpc } from "../../lib/rpc";
@@ -101,7 +101,7 @@ function WalletRows({
                   {threshold ? ` · ${threshold}` : null}
                 </span>
               </td>
-              <td className="text-end tabular-nums">{moneyExact(cents.get(wallet.id) ?? 0)}</td>
+              <td className="text-end tabular-nums">{money(cents.get(wallet.id) ?? 0)}</td>
               <td className="w-8 text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger
@@ -203,7 +203,7 @@ export function FinanceCryptoPage() {
               <>
                 <div>
                   <div className="text-[22px] font-semibold leading-tight tabular-nums">
-                    {moneyExact(walletCents)}
+                    {money(walletCents)}
                   </div>
                   {unpriced > 0 ? (
                     <div className="text-[11px] text-muted-foreground">
@@ -239,7 +239,7 @@ export function FinanceCryptoPage() {
                   {data.summary.byChain.map((row) => (
                     <tr key={row.chainId} className={rowBorder}>
                       <td>{chainName(row.chainId)}</td>
-                      <td className="text-end tabular-nums">{moneyExact(row.cents)}</td>
+                      <td className="text-end tabular-nums">{money(row.cents)}</td>
                     </tr>
                   ))}
                 </tbody>

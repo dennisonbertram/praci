@@ -137,7 +137,9 @@ it("renders totals, wallets, chains and holdings from the data", async () => {
   rpcMock.crypto.mockResolvedValue(data());
   await show();
   const page = container.textContent ?? "";
-  expect(page).toContain("$3,002.50");
+  // Totals are whole dollars like the other balances; a token's own value keeps its cents.
+  expect(page).toContain("$3,003");
+  expect(page).not.toContain("$3,002.50");
   expect(page).toContain("1 unpriced");
   expect(page).toContain("Treasury");
   expect(page).toContain("Safe · 2 of 3");
@@ -290,7 +292,8 @@ it("shows each exchange as its own group and reloads everything after removing o
   expect(page).toContain("Kraken");
   expect(page).toContain("0.004");
   expect(page).toContain("$200.00");
-  expect(page).toContain("$250.00");
+  expect(page).toContain("$250");
+  expect(page).not.toContain("$250.00");
   expect(page).toContain("rate limit reached");
   expect(rpcMock.exchanges).toHaveBeenCalledTimes(1);
   await act(async () => {
@@ -347,8 +350,8 @@ it("shows wallet-only totals in the Wallets section when exchanges add to the su
   await show();
   const heading = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Wallets");
   const wallets = heading?.parentElement?.parentElement;
-  expect(wallets?.textContent).toContain("$3,002.50");
-  expect(wallets?.textContent).not.toContain("$3,252.50");
+  expect(wallets?.textContent).toContain("$3,003");
+  expect(wallets?.textContent).not.toContain("$3,253");
   expect(wallets?.textContent).toContain("1 unpriced");
   expect(wallets?.textContent).not.toContain("4 unpriced");
 });
