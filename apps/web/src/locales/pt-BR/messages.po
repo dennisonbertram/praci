@@ -566,6 +566,10 @@ msgstr ""
 msgid "Add a local command"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Add a model"
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Add a model in Settings to use this."
 msgstr ""
@@ -682,6 +686,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Add your investors, auditors and counsel here. Contacts are your address book."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Adding a contact"
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -1676,6 +1684,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Choose which connected model Rakazo uses."
 msgstr "Escolha qual modelo conectado a Rakazo usa."
+
+#: src/pages/Shell.tsx
+msgid "Choosing your company in Carta"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
@@ -5364,6 +5376,10 @@ msgstr ""
 msgid "Opened its thread."
 msgstr "Abriu a conversa."
 
+#: src/pages/Shell.tsx
+msgid "Opening an email"
+msgstr ""
+
 #: src/pages/Onboarding.tsx
 msgid "Opening chat…"
 msgstr "Abrindo o chat…"
@@ -5765,8 +5781,28 @@ msgstr ""
 msgid "Reading"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Reading a connected app"
+msgstr ""
+
 #: src/pages/CapTable.tsx
 msgid "Reading Carta…"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Reading the cap table"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Reading your cap table from Carta"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Reading your contacts"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Reading your finances"
 msgstr ""
 
 #: src/components/finance/StatementImport.tsx
@@ -6181,6 +6217,10 @@ msgstr "Restaurar o último espaço de trabalho salvo."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr "Restaure o último espaço de trabalho salvo. O trabalho não salvo no computador será perdido."
 
+#: src/pages/CapTable.tsx
+msgid "Restored {name}"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Restoring your workspace"
 msgstr ""
@@ -6388,6 +6428,10 @@ msgstr "Salvo."
 msgid "Saved. Rotate to reveal."
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Saving a contact"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Saving your workspace"
 msgstr ""
@@ -6516,6 +6560,10 @@ msgstr ""
 #. placeholder {0}: filters.query.trim()
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Searching your mail"
 msgstr ""
 
 #: src/pages/SpaceSearch.tsx
@@ -7219,6 +7267,10 @@ msgstr ""
 msgid "The Carta agent loses access to Carta."
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "The Carta agent needs a model before it can read your cap table."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
 msgstr ""
@@ -7703,6 +7755,10 @@ msgstr ""
 msgid "Updating Team Computer"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Updating the cap table"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Updating…"
@@ -8031,6 +8087,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Writing"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Writing a draft email"
 msgstr ""
 
 #: src/components/computer/TerminalApp.tsx

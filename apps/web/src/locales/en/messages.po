@@ -566,6 +566,10 @@ msgstr "Add a GraphQL endpoint"
 msgid "Add a local command"
 msgstr "Add a local command"
 
+#: src/pages/CapTable.tsx
+msgid "Add a model"
+msgstr "Add a model"
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Add a model in Settings to use this."
 msgstr "Add a model in Settings to use this."
@@ -683,6 +687,10 @@ msgstr "Add wallet"
 #: src/pages/CapTable.tsx
 msgid "Add your investors, auditors and counsel here. Contacts are your address book."
 msgstr "Add your investors, auditors and counsel here. Contacts are your address book."
+
+#: src/pages/Shell.tsx
+msgid "Adding a contact"
+msgstr "Adding a contact"
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
@@ -1676,6 +1684,10 @@ msgstr "Choose the account to connect, then come back here."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Choose which connected model Rakazo uses."
 msgstr "Choose which connected model Rakazo uses."
+
+#: src/pages/Shell.tsx
+msgid "Choosing your company in Carta"
+msgstr "Choosing your company in Carta"
 
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
@@ -5364,6 +5376,10 @@ msgstr "Opened {path}"
 msgid "Opened its thread."
 msgstr "Opened its thread."
 
+#: src/pages/Shell.tsx
+msgid "Opening an email"
+msgstr "Opening an email"
+
 #: src/pages/Onboarding.tsx
 msgid "Opening chat…"
 msgstr "Opening chat…"
@@ -5765,9 +5781,29 @@ msgstr "Read-only API key"
 msgid "Reading"
 msgstr "Reading"
 
+#: src/pages/Shell.tsx
+msgid "Reading a connected app"
+msgstr "Reading a connected app"
+
 #: src/pages/CapTable.tsx
 msgid "Reading Carta…"
 msgstr "Reading Carta…"
+
+#: src/pages/Shell.tsx
+msgid "Reading the cap table"
+msgstr "Reading the cap table"
+
+#: src/pages/Shell.tsx
+msgid "Reading your cap table from Carta"
+msgstr "Reading your cap table from Carta"
+
+#: src/pages/Shell.tsx
+msgid "Reading your contacts"
+msgstr "Reading your contacts"
+
+#: src/pages/Shell.tsx
+msgid "Reading your finances"
+msgstr "Reading your finances"
 
 #: src/components/finance/StatementImport.tsx
 msgid "Reading…"
@@ -6181,6 +6217,10 @@ msgstr "Restore the last saved workspace."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr "Restore the last saved workspace. Unsaved work on the computer is lost."
 
+#: src/pages/CapTable.tsx
+msgid "Restored {name}"
+msgstr "Restored {name}"
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Restoring your workspace"
 msgstr "Restoring your workspace"
@@ -6388,6 +6428,10 @@ msgstr "Saved."
 msgid "Saved. Rotate to reveal."
 msgstr "Saved. Rotate to reveal."
 
+#: src/pages/Shell.tsx
+msgid "Saving a contact"
+msgstr "Saving a contact"
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Saving your workspace"
 msgstr "Saving your workspace"
@@ -6517,6 +6561,10 @@ msgstr "Search the directory"
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
 msgstr "Search: {0}"
+
+#: src/pages/Shell.tsx
+msgid "Searching your mail"
+msgstr "Searching your mail"
 
 #: src/pages/SpaceSearch.tsx
 msgid "Searching…"
@@ -7219,6 +7267,10 @@ msgstr "The Carta agent has not read your cap table yet."
 msgid "The Carta agent loses access to Carta."
 msgstr "The Carta agent loses access to Carta."
 
+#: src/pages/CapTable.tsx
+msgid "The Carta agent needs a model before it can read your cap table."
+msgstr "The Carta agent needs a model before it can read your cap table."
+
 #: src/pages/Shell.tsx
 msgid "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
 msgstr "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
@@ -7703,6 +7755,10 @@ msgstr "Updating {0}’s Computer"
 msgid "Updating Team Computer"
 msgstr "Updating Team Computer"
 
+#: src/pages/Shell.tsx
+msgid "Updating the cap table"
+msgstr "Updating the cap table"
+
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Updating…"
@@ -8032,6 +8088,10 @@ msgstr "Write"
 #: src/pages/Shell.tsx
 msgid "Writing"
 msgstr "Writing"
+
+#: src/pages/Shell.tsx
+msgid "Writing a draft email"
+msgstr "Writing a draft email"
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Wrote {path}"

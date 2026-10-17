@@ -25,12 +25,14 @@ const rpcMock = vi.hoisted(() => ({
   servers: vi.fn(),
   capTable: vi.fn(),
   refresh: vi.fn(),
+  me: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
     contacts: { list: rpcMock.list, save: rpcMock.save, delete: rpcMock.remove },
     mcp: { servers: { list: rpcMock.servers } },
     carta: { capTable: rpcMock.capTable, refresh: rpcMock.refresh },
+    me: rpcMock.me,
   },
 }));
 
@@ -79,11 +81,11 @@ const button = (label: string) =>
     | undefined;
 const click = (el: HTMLElement | undefined) => act(async () => el?.click());
 
-async function show(url = "/app/cap-table") {
+async function show(url = "/app/cap-table", props: Parameters<typeof CapTablePage>[0] = {}) {
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={[url]}>
-        <CapTablePage />
+        <CapTablePage {...props} />
       </MemoryRouter>,
     ),
   );
@@ -107,6 +109,7 @@ beforeEach(() => {
   ]);
   rpcMock.servers.mockResolvedValue([cartaServer]);
   rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: false });
+  rpcMock.me.mockResolvedValue({ needsModel: false });
 });
 afterEach(() => {
   setHideAmounts(false);
@@ -439,6 +442,7 @@ it("keeps the contact restorable when Undo fails, and restores it on Try again",
     notes: null,
   });
   expect(document.body.textContent).not.toContain("offline");
+  expect(document.body.textContent).toContain("Restored Bo");
 });
 
 it("confirms a save and closes the dialog with Cancel", async () => {
@@ -452,6 +456,12 @@ it("confirms a save and closes the dialog with Cancel", async () => {
   await typeInto("contact-name", "Cy");
   await click(button("Save"));
   expect(document.body.textContent).toContain("Contact saved");
+  // The notice sits above the table in the page flow, so it never covers a row.
+  const status = container.querySelector("[role=status]") as HTMLElement;
+  expect(status.textContent).toContain("Contact saved");
+  expect(status.closest(".fixed")).toBeNull();
+  const table = container.querySelector("table") as HTMLElement;
+  expect(status.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
 it("reads the kind filter from the URL and names the kind when it is empty", async () => {
@@ -636,6 +646,16 @@ it("offers to read the cap table when Carta is connected but nothing was read", 
   await flush();
   expect(rpcMock.refresh).toHaveBeenCalled();
   expect(container.textContent).toContain("Add a model before refreshing");
+});
+
+it("says a model is needed and opens Models settings when none is set up", async () => {
+  rpcMock.me.mockResolvedValue({ needsModel: true });
+  const onOpenModelSettings = vi.fn();
+  await show("/app/cap-table", { onOpenModelSettings });
+  await flush();
+  expect(container.textContent).toContain("needs a model before it can read your cap table");
+  await click(button("Add a model"));
+  expect(onOpenModelSettings).toHaveBeenCalled();
 });
 
 it("says Reading Carta instead of an update time while a refresh runs", async () => {

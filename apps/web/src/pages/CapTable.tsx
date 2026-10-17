@@ -430,9 +430,12 @@ export function ContactDialog({
 export function CapTablePage({
   onShowAgent,
   onCartaStatus,
+  onOpenModelSettings,
   agentBusy = false,
 }: {
   onShowAgent?: () => void;
+  /** Opens Settings, Models: the Carta agent cannot read Carta until a model is set up. */
+  onOpenModelSettings?: () => void;
   /** Told whether Carta is signed in, each time the page checks. */
   onCartaStatus?: (connected: boolean) => void;
   /** Whether the Carta agent is answering in the panel; its contacts and cap table changes load when it ends. */
@@ -572,7 +575,10 @@ export function CapTablePage({
     setRefreshError("");
     return rpc.carta
       .refresh()
-      .then(loadCap)
+      .then(() => {
+        setNeedsModel(false);
+        return loadCap();
+      })
       .catch((cause) => setRefreshError(errorText(cause, t`Could not refresh from Carta`)));
   };
 
@@ -580,6 +586,15 @@ export function CapTablePage({
   const reading = cartaConnected && syncing && !snapshot && !capFailed;
   // Connected, but nothing has been read and no read is running, e.g. no model was set up yet.
   const neverRead = cartaConnected && cap !== null && !snapshot && !syncing && !capFailed;
+  const [needsModel, setNeedsModel] = useState(false);
+  useEffect(() => {
+    if (!neverRead) return;
+    // Unknown on failure: the card then offers a plain read, whose error names the cause.
+    rpc
+      .me()
+      .then((me) => setNeedsModel(me.needsModel))
+      .catch(() => {});
+  }, [neverRead]);
   const rows = joinRows(snapshot, contacts ?? []);
   const filters = FILTERS.filter((value) => snapshot || !CARTA_FILTERS.includes(value));
   const shown = rows.filter((row) => filter === "all" || rowKind(row) === filter);
@@ -615,7 +630,7 @@ export function CapTablePage({
       rpc.contacts
         .save({ name, email, organization, kind, notes })
         .then(() => {
-          setToast(null);
+          setToast({ text: t`Restored ${name}` });
           load();
         })
         .catch((cause) => {
@@ -634,17 +649,34 @@ export function CapTablePage({
   };
 
   return (
-    // Bottom padding lets the last row scroll clear of the toast.
-    <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-5">
-      {/* The title never truncates; on a narrow screen the buttons wrap onto their own row. */}
-      <div
-        className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${snapshot ? "mb-0.5" : "mb-4"}`}
-      >
-        <h1 className="me-auto text-lg font-semibold">
-          <Trans>Cap table</Trans>
-        </h1>
+    <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+      {/* Title and subtitle stay together and never truncate; on a narrow screen the buttons wrap
+          onto their own row below them. */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-2">
+        <div className="me-auto min-w-0">
+          <h1 className="text-lg font-semibold">
+            <Trans>Cap table</Trans>
+          </h1>
+          {snapshot ? (
+            // The update time never truncates; a long company name gives way first.
+            <p className="mt-0.5 flex min-w-0 gap-1 text-xs text-muted-foreground">
+              <span className="truncate" title={snapshot.companyName}>
+                {snapshot.companyName}
+              </span>
+              <span className="shrink-0">
+                ·{" "}
+                {syncing ? (
+                  <Trans>Reading Carta…</Trans>
+                ) : (
+                  <Trans>Updated {formatRelativeTime(snapshot.updatedAt)}</Trans>
+                )}
+              </span>
+            </p>
+          ) : null}
+        </div>
         <div className="flex items-center gap-2">
-          <HideAmountsButton />
+          {/* Only figures from Carta can be hidden. */}
+          {snapshot ? <HideAmountsButton /> : null}
           {cartaConnected ? (
             <Tooltip>
               <TooltipTrigger
@@ -673,23 +705,6 @@ export function CapTablePage({
           {onShowAgent ? <AskBotButton botName="Carta agent" onClick={onShowAgent} /> : null}
         </div>
       </div>
-      {snapshot ? (
-        // Under the header row, not beside its buttons, so a phone shows the company and the time.
-        // The update time never truncates; a long company name gives way first.
-        <p className="mb-4 flex min-w-0 gap-1 text-xs text-muted-foreground">
-          <span className="truncate" title={snapshot.companyName}>
-            {snapshot.companyName}
-          </span>
-          <span className="shrink-0">
-            ·{" "}
-            {syncing ? (
-              <Trans>Reading Carta…</Trans>
-            ) : (
-              <Trans>Updated {formatRelativeTime(snapshot.updatedAt)}</Trans>
-            )}
-          </span>
-        </p>
-      ) : null}
 
       {serversFailed ? (
         <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 text-sm">
@@ -710,12 +725,26 @@ export function CapTablePage({
               <Trans>Carta is connected</Trans>
             </h2>
             <p className="text-sm text-muted-foreground">
-              <Trans>The Carta agent has not read your cap table yet.</Trans>
+              {needsModel ? (
+                <Trans>The Carta agent needs a model before it can read your cap table.</Trans>
+              ) : (
+                <Trans>The Carta agent has not read your cap table yet.</Trans>
+              )}
             </p>
           </div>
-          <Button onClick={() => void refresh()}>
-            <Trans>Read cap table</Trans>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {needsModel && onOpenModelSettings ? (
+              <Button onClick={onOpenModelSettings}>
+                <Trans>Add a model</Trans>
+              </Button>
+            ) : null}
+            <Button
+              variant={needsModel && onOpenModelSettings ? "outline" : "default"}
+              onClick={() => void refresh()}
+            >
+              <Trans>Read cap table</Trans>
+            </Button>
+          </div>
         </Card>
       ) : null}
 
@@ -795,6 +824,25 @@ export function CapTablePage({
         </div>
       ) : null}
 
+      {/* In the page flow above the table, so it never covers a row and stays inside the column. */}
+      <div role="status" className="mb-3 empty:hidden">
+        {toast ? (
+          <div className="flex flex-wrap items-center gap-x-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground">
+            <span className="min-w-0 flex-1 py-1">{toast.text}</span>
+            {toast.undo ? (
+              <Button variant="ghost" size="sm" onClick={toast.undo}>
+                {toast.sticky ? <Trans>Try again</Trans> : <Trans>Undo</Trans>}
+              </Button>
+            ) : null}
+            {toast.sticky ? (
+              <Button variant="ghost" size="sm" onClick={() => setToast(null)}>
+                <Trans>Dismiss</Trans>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
       {error ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-destructive">{error}</span>
@@ -820,17 +868,21 @@ export function CapTablePage({
         </div>
       ) : (
         // Fixed widths: the same columns, in the same places, with or without Carta and the panel.
-        // Without Carta the table is a short contact list, so it stays narrow.
-        <table className={`w-full table-fixed text-sm ${snapshot ? "" : "max-w-3xl"}`}>
+        // Without Carta's Shares and Ownership columns, Kind takes the space Email would leave empty.
+        <table className="w-full table-fixed text-sm">
           <thead className="text-start text-xs text-muted-foreground">
             <tr>
               <th className="py-2 pe-3 text-start font-medium @md:w-[48%] @lg:w-[25%]">
                 <Trans>Name</Trans>
               </th>
-              <th className="hidden py-2 pe-3 text-start font-medium @md:table-cell">
+              <th
+                className={`hidden py-2 pe-3 text-start font-medium @md:table-cell ${snapshot ? "" : "@lg:w-[45%]"}`}
+              >
                 <Trans>Email</Trans>
               </th>
-              <th className="hidden w-28 py-2 pe-3 text-start font-medium @lg:table-cell">
+              <th
+                className={`hidden py-2 pe-3 text-start font-medium @lg:table-cell ${snapshot ? "w-28" : ""}`}
+              >
                 <Trans>Kind</Trans>
               </th>
               {snapshot ? (
@@ -977,28 +1029,6 @@ export function CapTablePage({
           onOpenContact={setEditing}
         />
       ) : null}
-      <div
-        role="status"
-        className="pointer-events-none fixed inset-x-0 bottom-4 z-100 flex justify-center px-4"
-      >
-        {toast ? (
-          <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
-            <span className="py-1">{toast.text}</span>
-            {toast.undo ? (
-              <Button variant="ghost" size="sm" onClick={toast.undo}>
-                {toast.sticky ? <Trans>Try again</Trans> : <Trans>Undo</Trans>}
-              </Button>
-            ) : (
-              <span className="pe-2" />
-            )}
-            {toast.sticky ? (
-              <Button variant="ghost" size="sm" onClick={() => setToast(null)}>
-                <Trans>Dismiss</Trans>
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
     </div>
   );
 }
