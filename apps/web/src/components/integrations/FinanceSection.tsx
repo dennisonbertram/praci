@@ -61,11 +61,18 @@ function CryptoTile({
         </div>
       </div>
       <div className="mt-auto flex items-center gap-2">
-        {hasKey ? (
+        {hasKey || hasServer ? (
           <>
             <StatusBadge status="connected" />
-            <Button size="sm" variant="ghost" className="ms-auto" onClick={() => setDialog(true)}>
-              <Trans>Replace API key</Trans>
+            {/* The key is optional: without one, balances still come from public RPC. */}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="ms-auto"
+              aria-label={hasKey ? undefined : t`Add Blockscout API key`}
+              onClick={() => setDialog(true)}
+            >
+              {hasKey ? <Trans>Replace API key</Trans> : <Trans>Add API key</Trans>}
             </Button>
             <Link
               to={financePath.crypto()}
@@ -77,17 +84,17 @@ function CryptoTile({
         ) : (
           <>
             <span className="text-xs text-muted-foreground">
-              {hasServer ? <Trans>No API key (optional)</Trans> : <Trans>Not connected</Trans>}
+              <Trans>Not connected</Trans>
             </span>
             <Button
               size="sm"
               variant="outline"
               className="ms-auto"
               disabled={hasKey === null}
-              aria-label={hasServer ? t`Add Blockscout API key` : t`Connect Blockscout`}
+              aria-label={t`Connect Blockscout`}
               onClick={() => setDialog(true)}
             >
-              {hasServer ? <Trans>Add API key</Trans> : <Trans>Connect</Trans>}
+              <Trans>Connect</Trans>
             </Button>
           </>
         )}
