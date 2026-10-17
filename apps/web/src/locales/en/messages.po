@@ -120,7 +120,7 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
-#. placeholder {0}: Math.round(card.runwayMonths)
+#. placeholder {0}: runwayText(Math.round(card.runwayMonths), 0)
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
 msgstr "{0} mo"
@@ -3422,6 +3422,10 @@ msgstr "Hear a sample"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Hi, this is how I'll sound when I read replies out loud."
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Hide amounts"
+msgstr "Hide amounts"
+
 #: src/pages/Shell.tsx
 msgid "Hide bots"
 msgstr "Hide bots"
@@ -3433,6 +3437,10 @@ msgstr "Hide password"
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
 msgstr "Hide transcript"
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Hides amounts on finance screens. Chat replies may still mention amounts."
+msgstr "Hides amounts on finance screens. Chat replies may still mention amounts."
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -5862,6 +5870,10 @@ msgstr "Shell"
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
 msgstr "Show all {total}"
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Show amounts"
+msgstr "Show amounts"
 
 #: src/pages/Shell.tsx
 msgid "Show bots"

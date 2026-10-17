@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { FinanceCards } from "./FinanceCards";
 
 type Card = Parameters<typeof FinanceCards>[0]["block"]["card"];
@@ -20,6 +21,15 @@ export const Overview: Story = {
     runwayMonths: 14.7,
     monthSpendCents: 790_000,
   }),
+};
+
+/** Hide amounts is on: every dollar figure and the runway read as a fixed mask. */
+export const OverviewAmountsHidden: Story = {
+  ...Overview,
+  beforeEach: () => {
+    setHideAmounts(true);
+    return () => setHideAmounts(false);
+  },
 };
 
 export const OverviewNoRunway: Story = {

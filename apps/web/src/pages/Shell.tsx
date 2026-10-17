@@ -168,6 +168,7 @@ import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
+import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { SidebarPageLink } from "../components/SidebarPageLink";
@@ -3885,6 +3886,7 @@ export function ShellPage() {
                 <Settings className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Settings</Trans>
               </Button>
+              <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
               <Button
                 variant="ghost"
                 className="w-full justify-start font-normal"
