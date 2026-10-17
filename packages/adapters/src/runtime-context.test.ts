@@ -142,6 +142,60 @@ describe("runtime context policy", () => {
     expect(body("shell-1")).toContain("[Tool result truncated to fit context");
     expect(body("shell-2")).toBe(shellOutput);
   });
+  it("keeps an earlier Inbox overview whole after later tool calls", () => {
+    const { request, context } = fixture(2);
+    const overview = JSON.stringify({
+      needsReply: Array.from(
+        { length: 12 },
+        (_, i) =>
+          `2026-10-17T12:00Z | acct:founder@example.test | id:message-${i} | Sender ${i} | Subject ${i} | ${"preview text ".repeat(10)} | normal: asks for an answer`,
+      ),
+    });
+    context.messages.push(
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "o", name: "inbox_overview", arguments: {} }],
+        timestamp: 101,
+      } as unknown as Message,
+      {
+        role: "toolResult",
+        toolCallId: "o",
+        toolName: "inbox_overview",
+        content: [{ type: "text", text: overview }],
+        isError: false,
+        timestamp: 102,
+      } as Message,
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "s", name: "show_emails", arguments: {} }],
+        timestamp: 103,
+      } as unknown as Message,
+      {
+        role: "toolResult",
+        toolCallId: "s",
+        toolName: "show_emails",
+        content: [{ type: "text", text: '{"shown":12}' }],
+        isError: false,
+        timestamp: 104,
+      } as Message,
+    );
+    const policy = createRuntimeContextPolicy({
+      ...request,
+      contextStrategy: DEFAULT_CONTEXT_STRATEGY,
+    });
+    const prepared = policy.prepareContext(context, model);
+    const kept = prepared.messages.find(
+      (message) => message.role === "toolResult" && message.toolCallId === "o",
+    ) as Extract<Message, { role: "toolResult" }>;
+    process.stderr.write(
+      `\nDBG ${overview.length} ${JSON.stringify(kept?.content).length} ${prepared.messages.map((m) => m.role).join(",")}\n`,
+    );
+    expect(overview.length).toBeGreaterThan(1024);
+    expect(kept.content.map((part) => (part.type === "text" ? part.text : "")).join("")).toBe(
+      overview,
+    );
+  });
+
   it("leaves the baseline provider payload untouched", () => {
     const { request, context } = fixture();
     const policy = createRuntimeContextPolicy({ ...request, contextStrategy: "current" });
