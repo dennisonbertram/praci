@@ -19,6 +19,7 @@ import {
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_UNTAGGED_DOCUMENT,
   DEMO_WALLET,
   demoCarta,
   demoCrypto,
@@ -106,6 +107,23 @@ describe("mock demo data", () => {
     expect(DEMO_DOCUMENTS.filter((document) => document.kind === "broken")).toHaveLength(1);
   });
 
+  it("has more documents than one list page, in the folders a founder keeps", () => {
+    // The web list pages at 50, so "Load more" shows.
+    expect(DEMO_DOCUMENTS.length).toBeGreaterThan(50);
+    const folders = demoFolderPaths(DEMO_DOCUMENTS);
+    for (const path of [
+      "Investors",
+      "HR",
+      "Finance/Bank statements",
+      "Legal/Contracts",
+      "Archive/Old drafts/2025",
+    ])
+      expect(folders).toContain(path);
+    expect(
+      Object.values(DEMO_DOCUMENT_FACETS).filter((facets) => facets.docType === "Bank statement"),
+    ).toHaveLength(3);
+  });
+
   it("creates each parent folder before its sub-folders", () => {
     expect(demoFolderPaths([{ folder: "A/B/C" }, { folder: "D" }] as never)).toEqual([
       "A",
@@ -129,7 +147,7 @@ describe("mock demo data", () => {
   it("gives every mock Data room document a type and date for the list columns", () => {
     expect(Object.keys(DEMO_DOCUMENT_FACETS).sort()).toEqual(
       // The unreadable scan stays unclassified, so the failed state shows.
-      DEMO_DOCUMENTS.filter((d) => d.kind !== "broken")
+      DEMO_DOCUMENTS.filter((d) => d.kind !== "broken" && d !== DEMO_UNTAGGED_DOCUMENT)
         .map((d) => d.name)
         .sort(),
     );

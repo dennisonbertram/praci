@@ -909,6 +909,85 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   ),
 ];
 
+/**
+ * Enough more documents to page the list (over 50), with the folders a founder keeps: investor
+ * updates, bank statements, HR, contracts and an archive. Each one has its type, date and parties.
+ */
+const MORE_DOCUMENTS: (DemoDocument & {
+  facets: { docType: string; daysAgo: number; parties: string[] };
+})[] = [
+  ...["July", "August", "September"].map((month, index) => ({
+    ...doc(
+      "Finance/Bank statements",
+      `MOCK Mercury Statement - ${month}.pdf`,
+      `Mercury checking statement for ${month}. Opening balance and closing balance for Northwind Robotics Mock.`,
+    ),
+    facets: { docType: "Bank statement", daysAgo: 75 - index * 30, parties: ["Mercury (Mock)"] },
+  })),
+  ...Array.from({ length: 12 }, (_, index) => ({
+    ...doc(
+      "Investors",
+      `MOCK Monthly Investor Update ${String(index + 1).padStart(2, "0")}.pdf`,
+      `Monthly investor update number ${index + 1}. Revenue, burn and hiring for the month.`,
+    ),
+    facets: { docType: "Investor update", daysAgo: 30 * (index + 2), parties: [] },
+  })),
+  ...Array.from({ length: 24 }, (_, index) => {
+    const vendor = ["Acme Servo Supply", "Cobalt Cloud Hosting", "Delta Desk Rentals"][index % 3];
+    return {
+      ...doc(
+        "Finance/Invoices",
+        `MOCK Invoice ${3000 + index} - ${vendor}.pdf`,
+        `Invoice ${3000 + index} from ${vendor} Mock to Northwind Robotics Mock. Amount due ${400 + index * 25} dollars.`,
+      ),
+      facets: { docType: "Invoice", daysAgo: 20 + index * 14, parties: [`${vendor} (Mock)`] },
+    };
+  }),
+  ...["Offer Letter - Sam Engineer", "Offer Letter - Jo Designer", "Employee Handbook"].map(
+    (name, index) => ({
+      ...doc("HR", `MOCK ${name}.pdf`, `${name} for Northwind Robotics Mock.`),
+      facets: {
+        docType: index === 2 ? "Handbook" : "Offer letter",
+        daysAgo: 100 + index * 40,
+        parties: [],
+      },
+    }),
+  ),
+  ...["Halcyon Logistics", "Bolt Freight"].map((party, index) => ({
+    ...doc(
+      "Legal/Contracts",
+      `MOCK Pilot Agreement - ${party}.pdf`,
+      `Pilot agreement between Northwind Robotics Mock and ${party} Mock. Term 6 months.`,
+    ),
+    facets: { docType: "Contract", daysAgo: 200 + index * 30, parties: [`${party} (Mock)`] },
+  })),
+  ...["Pitch Deck v1", "Pitch Deck v2", "Old Budget"].map((name, index) => ({
+    ...doc(
+      "Archive/Old drafts/2025",
+      `MOCK ${name}.pdf`,
+      `${name}, an old draft kept for reference.`,
+    ),
+    facets: {
+      docType: index === 2 ? "Budget" : "Pitch deck",
+      daysAgo: 300 + index * 10,
+      parties: [],
+    },
+  })),
+];
+DEMO_DOCUMENTS.push(...MORE_DOCUMENTS.map(({ facets: _facets, ...document }) => document));
+for (const { name, facets } of MORE_DOCUMENTS) DEMO_DOCUMENT_FACETS[name] = facets;
+
+/**
+ * Read but never tagged (AI sharing was off when it arrived), so "Allow" has something to tag
+ * while every other document keeps the type and date it already has.
+ */
+export const DEMO_UNTAGGED_DOCUMENT = doc(
+  "Fundraising",
+  "MOCK Term Sheet Draft - Quill Capital.pdf",
+  "Draft term sheet from Quill Capital Mock for a seed round. Pre money valuation 9000000 dollars.",
+);
+DEMO_DOCUMENTS.push(DEMO_UNTAGGED_DOCUMENT);
+
 /** Every folder path the documents use, each parent before its children ("A" before "A/B"). */
 export function demoFolderPaths(documents: DemoDocument[]): string[] {
   const paths = new Set<string>();
