@@ -331,6 +331,7 @@ import {
   RenameBotSectionDialog,
   RenameSpaceDialog,
 } from "./shell/dialogs";
+import { GroupIntro } from "./shell/GroupIntro";
 import { MentionIcon } from "./shell/mention-icon";
 import {
   AppConnectCard,
@@ -3124,6 +3125,17 @@ export function ShellPage() {
             !transcriptRunning &&
             !sending ? (
               <InboxAgentIntro onAsk={(text) => void sendMessage(text, [], newClientId())} />
+            ) : inGroup &&
+              activeGroup &&
+              activeSnapshot &&
+              transcriptMessages.length === 0 &&
+              activeSnapshot.olderCursor == null &&
+              !transcriptRunning &&
+              !sending ? (
+              <GroupIntro
+                members={activeGroup.members}
+                onAsk={(text) => void sendMessage(text, [], newClientId())}
+              />
             ) : (
               <Transcript
                 key={activeSnapshot?.threadId}
@@ -7769,14 +7781,12 @@ const MessageView = memo(function MessageView({
               key={i}
               className="flex flex-col items-center gap-0.5 py-1 text-center text-[13.5px] text-muted-foreground"
             >
+              {/* The handoff note is the bot-to-bot prompt, not something written for the reader. */}
               <span>
                 <Trans>
                   {from} handed off to {to}
                 </Trans>
               </span>
-              {block.text ? (
-                <span className="max-w-prose">{maskCurrencyWhenHidden(block.text)}</span>
-              ) : null}
             </div>
           );
         }

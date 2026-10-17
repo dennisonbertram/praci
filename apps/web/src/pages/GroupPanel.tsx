@@ -29,9 +29,18 @@ function MemberPicker({
   bots: Bot[];
   selected: string[];
   onChange: (selected: string[]) => void;
-  maxHeight: "max-h-[240px]" | "max-h-[280px]";
+  /** Omitted where the surrounding panel scrolls, so the whole list shows. */
+  maxHeight?: "max-h-[280px]";
 }) {
-  const selectable = useMemo(() => bots.filter((bot) => !bot.archivedAt), [bots]);
+  // Members chosen when the picker opened come first; the order holds while toggling.
+  const [initial] = useState(() => new Set(selected));
+  const selectable = useMemo(
+    () =>
+      bots
+        .filter((bot) => !bot.archivedAt)
+        .sort((a, b) => Number(initial.has(b.id)) - Number(initial.has(a.id))),
+    [bots, initial],
+  );
 
   function toggle(botId: string) {
     if (selected.includes(botId)) {
@@ -42,7 +51,7 @@ function MemberPicker({
   }
 
   return (
-    <div className={`mt-2 ${maxHeight} space-y-1 overflow-y-auto`}>
+    <div className={`mt-2 space-y-1 ${maxHeight ? `${maxHeight} overflow-y-auto` : ""}`}>
       {selectable.map((bot) => {
         const checked = selected.includes(bot.id);
         return (
@@ -256,12 +265,7 @@ export function GroupSettings({
           Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})
         </Trans>
       </div>
-      <MemberPicker
-        bots={bots}
-        selected={selected}
-        onChange={setSelected}
-        maxHeight="max-h-[240px]"
-      />
+      <MemberPicker bots={bots} selected={selected} onChange={setSelected} />
       <Button
         className="mt-5 w-full"
         disabled={saving || !validSelection(name, selected)}
@@ -269,14 +273,17 @@ export function GroupSettings({
       >
         {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
       </Button>
-      <Button
-        variant="destructive"
-        className="mt-4 w-full"
-        disabled={saving}
-        onClick={() => setConfirmingDelete(true)}
-      >
-        <Trans>Delete group</Trans>
-      </Button>
+      {/* Apart from Save, so a destructive action is never one slip away. */}
+      <div className="mt-8 border-t border-border pt-4">
+        <Button
+          variant="destructive"
+          className="w-full"
+          disabled={saving}
+          onClick={() => setConfirmingDelete(true)}
+        >
+          <Trans>Delete group</Trans>
+        </Button>
+      </div>
       {confirmingDelete ? (
         <DeleteItemDialog
           item={group}

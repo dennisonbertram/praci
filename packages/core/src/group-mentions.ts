@@ -41,7 +41,11 @@ export function resolveGroupTargetBotIds(input: {
     if (membersById.has(mentionId)) targetIds.add(mentionId);
   }
 
-  if (hasMentionToken(input.text, "everyone")) {
+  // "@everyone", or asking "everyone"/"everybody" in plain words, wakes every member.
+  if (
+    hasMentionToken(input.text, "everyone") ||
+    /(?<![\w@.])(?:everyone|everybody)\b/i.test(input.text)
+  ) {
     for (const member of input.members) targetIds.add(member.id);
   } else {
     for (const member of input.members) {

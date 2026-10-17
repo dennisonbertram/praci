@@ -590,5 +590,25 @@ describe("Transcript jump to a search result", () => {
     });
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
     expect(scrollTo).not.toHaveBeenCalled();
+
+    // A handoff shows who handed off to whom, never the bot-to-bot prompt.
+    render(
+      [
+        {
+          ...msg("m12", 12),
+          blocks: [
+            {
+              kind: "handoff",
+              fromBotId: "bot-1",
+              toBotId: "bot-2",
+              text: "INTERNAL: summarize contract status for the user",
+            } as never,
+          ],
+        },
+      ],
+      null,
+    );
+    expect(container?.textContent).toContain("handed off to");
+    expect(container?.textContent).not.toContain("INTERNAL: summarize");
   });
 });
