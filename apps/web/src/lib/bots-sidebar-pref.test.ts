@@ -49,13 +49,14 @@ describe("Inbox agent panel collapse preference", () => {
         },
       },
     });
-    expect(readInboxAgentCollapsed("user-1")).toBe(false);
-    writeInboxAgentCollapsed("user-1", true);
-    expect(store.get("rakazo:inbox-agent-collapsed:user-1")).toBe("1");
+    // Closed until the person opens it, like the other pages' agents.
     expect(readInboxAgentCollapsed("user-1")).toBe(true);
-    expect(readInboxAgentCollapsed("user-2")).toBe(false);
-    expect(readBotsSidebarCollapsed("user-1")).toBe(false);
     writeInboxAgentCollapsed("user-1", false);
+    expect(store.get("rakazo:inbox-agent-open:user-1")).toBe("1");
+    expect(readInboxAgentCollapsed("user-1")).toBe(false);
+    expect(readInboxAgentCollapsed("user-2")).toBe(true);
+    expect(readBotsSidebarCollapsed("user-1")).toBe(false);
+    writeInboxAgentCollapsed("user-1", true);
     expect(store.size).toBe(0);
     vi.unstubAllGlobals();
   });

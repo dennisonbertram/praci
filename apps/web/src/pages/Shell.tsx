@@ -474,8 +474,8 @@ export function ShellPage() {
   useEffect(() => {
     setBotsSidebarCollapsed(readBotsSidebarCollapsed(userId));
   }, [userId]);
-  // On a phone the panel covers the Inbox list, so it starts collapsed there.
-  const [inboxAgentCollapsed, setInboxAgentCollapsed] = useState(() => !wideScreen());
+  // Closed until Ask opens it, like the other pages' agents; an explicit open is remembered on wide screens.
+  const [inboxAgentCollapsed, setInboxAgentCollapsed] = useState(true);
   // With no Inbox agent the panel only holds a Create button, so it stays closed until asked for.
   const [showEmptyInboxAgent, setShowEmptyInboxAgent] = useState(false);
   const [creatingInboxAgent, setCreatingInboxAgent] = useState(false);
@@ -2053,6 +2053,7 @@ export function ShellPage() {
         query: "",
         includeEveryone: inGroup,
         currentGroupId: groupId,
+        currentBotId: inGroup ? null : active?.id,
         bots: bots.map((bot) => ({ id: bot.id, name: bot.name, color: bot.color })),
         groups: groups.map((group) => ({ id: group.id, name: group.name })),
         routines: mentionRoutines.map((routine) => ({
@@ -2064,7 +2065,7 @@ export function ShellPage() {
         })),
         connectors: mentionConnectors,
       }),
-    [bots, groupId, groups, inGroup, mentionConnectors, mentionRoutines],
+    [active?.id, bots, groupId, groups, inGroup, mentionConnectors, mentionRoutines],
   );
   const shellReady =
     initialBotsLoaded &&
@@ -3457,6 +3458,17 @@ export function ShellPage() {
             navigate("/app/data-room");
           }}
         />
+        <SidebarPageLink
+          testId="sidebar-artifacts"
+          current={artifactsMode}
+          // Not the Data room's folder icon: these are files bots made.
+          icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+          label={<Trans>Artifacts</Trans>}
+          onOpen={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/artifacts");
+          }}
+        />
         <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {showSpaceSearch ? (
@@ -3565,11 +3577,14 @@ export function ShellPage() {
                                   : t`Collapse ${group.title}`
                             }
                           >
-                            <span className="flex min-w-0 items-center gap-1.5 truncate">
+                            <span className="flex min-w-0 items-center gap-1.5">
                               {group.showLock ? (
                                 <Lock size={11} strokeWidth={2} aria-hidden="true" />
                               ) : null}
-                              <span className="truncate">{group.title}</span>
+                              {/* Long space names wrap to a second line instead of being cut off. */}
+                              <span className="line-clamp-2 text-start break-words">
+                                {group.title}
+                              </span>
                             </span>
                             {group.emptySpaceId ? null : (
                               <ChevronDown
@@ -3786,13 +3801,13 @@ export function ShellPage() {
                                 />
                               )}
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between gap-1.5">
+                                <div className="flex items-start justify-between gap-1.5">
                                   <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
                                     <span
                                       dir="auto"
                                       data-roster-bot-name={item.kind === "bot" ? "" : undefined}
                                       title={item.chat.name}
-                                      className={`min-w-0 truncate text-[14.5px] leading-[18px] font-normal text-foreground ${
+                                      className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
                                         item.chat.unread ? "font-medium" : ""
                                       }`}
                                     >
@@ -3998,7 +4013,7 @@ export function ShellPage() {
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger
             data-testid="user-menu-trigger"
-            className="flex items-center gap-[11px] px-[18px] py-3.5"
+            className="flex items-center gap-[11px] rounded-lg px-[18px] py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             <span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-[12px] text-foreground/75">
               {initials}
@@ -4023,22 +4038,9 @@ export function ShellPage() {
                   }}
                 >
                   <SquareKanban className="text-muted-foreground" strokeWidth={1.75} />
-                  <Trans>Board</Trans>
+                  <Trans>Task board</Trans>
                 </Button>
               ) : null}
-              <Button
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setMobileSidebarOpen(false);
-                  navigate("/app/artifacts");
-                }}
-              >
-                {/* Not the Data room's folder icon: these are files bots made. */}
-                <Files className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Artifacts</Trans>
-              </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-start font-normal"
@@ -7518,12 +7520,14 @@ const MessageView = memo(function MessageView({
           return (
             <div
               key={i}
-              className="flex items-center justify-center gap-2 py-1 text-[13.5px] text-muted-foreground"
+              className="flex flex-col items-center gap-0.5 py-1 text-center text-[13.5px] text-muted-foreground"
             >
               <span>
-                ↪ {to} ← {from}
+                <Trans>
+                  {from} handed off to {to}
+                </Trans>
               </span>
-              <span>{block.text}</span>
+              {block.text ? <span className="max-w-prose">{block.text}</span> : null}
             </div>
           );
         }

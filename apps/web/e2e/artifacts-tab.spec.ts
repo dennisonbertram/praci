@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { activeBotId, captureScreenshot, completeOnboarding, rpc, signup } from "./helpers";
 
-test("opens Artifacts from the account menu and lists created files", async ({
-  page,
-}, testInfo) => {
+test("opens Artifacts from the sidebar and lists created files", async ({ page }, testInfo) => {
   const stamp = Date.now();
   await signup(page, `artifacts-tab-${stamp}@rakazo.test`, "password12", "Artifacts Tab");
   await completeOnboarding(page);
@@ -15,20 +13,17 @@ test("opens Artifacts from the account menu and lists created files", async ({
   const sidebar = page.getByTestId("bots-sidebar");
   await expect(sidebar).toBeVisible();
   expect((await sidebar.boundingBox())?.x).toBe(0);
-  await expect(sidebar.getByRole("link", { name: "Artifacts" })).toHaveCount(0);
-  await expect(sidebar.getByRole("button", { name: "Artifacts", exact: true })).toHaveCount(0);
   await expect(sidebar.getByRole("button", { name: "Integrations" })).toBeVisible();
-  await page.getByTestId("user-menu-trigger").click();
-  const artifactsItem = page.getByRole("button", { name: "Artifacts", exact: true });
-  const settingsItem = page.getByRole("button", { name: "Settings", exact: true });
+  // Artifacts sits with the other pages in the sidebar, not in the account menu.
+  const artifactsItem = sidebar.getByTestId("sidebar-artifacts");
   await expect(artifactsItem).toBeVisible();
-  await expect(settingsItem).toBeVisible();
-  expect((await artifactsItem.boundingBox())?.y).toBeLessThan(
-    (await settingsItem.boundingBox())?.y ?? 0,
-  );
-  await captureScreenshot(page, testInfo, "account-menu-artifacts");
+  await page.getByTestId("user-menu-trigger").click();
+  await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Artifacts", exact: true })).toHaveCount(1);
+  await page.keyboard.press("Escape");
 
   await artifactsItem.click();
+  await expect(artifactsItem).toHaveAttribute("aria-current", "page");
   await expect(page).toHaveURL(/\/app\/artifacts$/);
   await expect(page.getByRole("heading", { name: "Artifacts", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Filters" })).toBeVisible();
@@ -76,13 +71,6 @@ test("opens Artifacts from the account menu and lists created files", async ({
   await expect(page.getByTestId("app-rail")).toHaveCount(0);
   await page.getByRole("button", { name: "Open navigation" }).click();
   const mobileSidebar = page.getByTestId("bots-sidebar");
-  await expect(mobileSidebar.getByRole("link", { name: "Artifacts" })).toHaveCount(0);
-  await expect(mobileSidebar.getByRole("button", { name: "Artifacts", exact: true })).toHaveCount(
-    0,
-  );
-  await mobileSidebar.getByTestId("user-menu-trigger").click();
-  const mobileArtifacts = page.getByRole("button", { name: "Artifacts", exact: true });
-  await expect(mobileArtifacts).toBeVisible();
-  await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
-  await captureScreenshot(page, testInfo, "account-menu-artifacts-mobile");
+  await expect(mobileSidebar.getByTestId("sidebar-artifacts")).toBeVisible();
+  await captureScreenshot(page, testInfo, "sidebar-artifacts-mobile");
 });
