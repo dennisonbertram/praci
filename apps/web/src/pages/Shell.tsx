@@ -271,6 +271,7 @@ import {
   activeThreadRuns,
   applyThreadSendReceipt,
   clearActiveThreadRuns,
+  composerShowsStop,
   computerPanelAutoBoot,
   computerPanelAutoUsesBoot,
   computerPanelNeedsMaintenance,
@@ -3314,7 +3315,7 @@ export function ShellPage() {
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
               draftKey={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
               activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
-              running={composerRunning}
+              running={composerShowsStop(currentRuns)}
               disabled={Boolean(recordingSkill)}
               pendingAttachments={activePendingAttachments}
               attachmentNotice={attachmentNotice}
@@ -3583,84 +3584,85 @@ export function ShellPage() {
             </InputGroupAddon>
           ) : null}
         </InputGroup>
-        {/* While searching, matching pages are listed with the results instead. */}
-        {showSpaceSearch ? null : (
-          <>
-            <SidebarPageLink
-              testId="sidebar-inbox"
-              current={inboxMode}
-              icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-              label={<Trans>Inbox</Trans>}
-              onOpen={() => {
-                setMobileSidebarOpen(false);
-                navigate("/app/inbox");
-              }}
-            >
-              {inboxUnread > 0 ? (
-                <span
-                  role="img"
-                  aria-label={plural(inboxUnread, { one: "# unread", other: "# unread" })}
-                  className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
-                >
-                  {inboxUnread}
-                </span>
-              ) : null}
-            </SidebarPageLink>
-            <SidebarPageLink
-              testId="sidebar-finance"
-              current={financeMode}
-              icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-              label={<Trans>Finance</Trans>}
-              onOpen={() => {
-                setMobileSidebarOpen(false);
-                navigate("/app/finance");
-              }}
-            />
-            <SidebarPageLink
-              testId="sidebar-legal"
-              current={legalMode}
-              icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-              label={<Trans>Legal</Trans>}
-              onOpen={() => {
-                setMobileSidebarOpen(false);
-                navigate("/app/legal");
-              }}
-            />
-            <SidebarPageLink
-              testId="sidebar-cap-table"
-              current={capTableMode}
-              icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-              label={<Trans>Cap table</Trans>}
-              onOpen={() => {
-                setMobileSidebarOpen(false);
-                navigate("/app/cap-table");
-              }}
-            />
-            <SidebarPageLink
-              testId="sidebar-data-room"
-              current={dataRoomMode}
-              icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-              label={<Trans>Data room</Trans>}
-              onOpen={() => {
-                setMobileSidebarOpen(false);
-                navigate("/app/data-room");
-              }}
-            />
-            <SidebarPageLink
-              testId="sidebar-artifacts"
-              current={artifactsMode}
-              // Not the Data room's folder icon: these are files bots made.
-              icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-              label={<Trans>Artifacts</Trans>}
-              onOpen={() => {
-                setMobileSidebarOpen(false);
-                navigate("/app/artifacts");
-              }}
-            />
-            <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
-          </>
-        )}
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
+          {/* While searching, matching pages are listed with the results instead. */}
+          {showSpaceSearch ? null : (
+            // Inside the scroll area, so on a short screen the chats are never squeezed out.
+            <div className="-mx-2.5 flex shrink-0 flex-col">
+              <SidebarPageLink
+                testId="sidebar-inbox"
+                current={inboxMode}
+                icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Inbox</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/inbox");
+                }}
+              >
+                {inboxUnread > 0 ? (
+                  <span
+                    role="img"
+                    aria-label={plural(inboxUnread, { one: "# unread", other: "# unread" })}
+                    className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
+                  >
+                    {inboxUnread}
+                  </span>
+                ) : null}
+              </SidebarPageLink>
+              <SidebarPageLink
+                testId="sidebar-finance"
+                current={financeMode}
+                icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Finance</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/finance");
+                }}
+              />
+              <SidebarPageLink
+                testId="sidebar-legal"
+                current={legalMode}
+                icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Legal</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/legal");
+                }}
+              />
+              <SidebarPageLink
+                testId="sidebar-cap-table"
+                current={capTableMode}
+                icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Cap table</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/cap-table");
+                }}
+              />
+              <SidebarPageLink
+                testId="sidebar-data-room"
+                current={dataRoomMode}
+                icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Data room</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/data-room");
+                }}
+              />
+              <SidebarPageLink
+                testId="sidebar-artifacts"
+                current={artifactsMode}
+                // Not the Data room's folder icon: these are files bots made.
+                icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Artifacts</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/artifacts");
+                }}
+              />
+              <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
+            </div>
+          )}
           {showSpaceSearch ? (
             <SpaceSearchResults
               query={spaceQuery}
@@ -6218,6 +6220,11 @@ export const Transcript = memo(function Transcript({
                           message.role === "user"
                             ? "end-full bottom-8 pe-3"
                             : "start-full bottom-8 ps-3",
+                          // A narrow chat has no gutter beside a wide bubble: sit under it instead.
+                          "@max-sm:[@media(hover:hover)]:top-full @max-sm:[@media(hover:hover)]:bottom-auto @max-sm:[@media(hover:hover)]:pt-1",
+                          message.role === "user"
+                            ? "@max-sm:[@media(hover:hover)]:end-0 @max-sm:[@media(hover:hover)]:pe-0"
+                            : "@max-sm:[@media(hover:hover)]:start-0 @max-sm:[@media(hover:hover)]:ps-0",
                           // Touch has no hover margin: drop the revealed time in-flow under the bubble.
                           "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
                           "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
