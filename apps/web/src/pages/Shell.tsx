@@ -272,6 +272,7 @@ import {
   transcriptCanSnapAfterFrame,
   transcriptIsNearEnd,
   transcriptMovedDown,
+  transcriptShouldSnap,
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
 import { errorText } from "../lib/user-error";
@@ -366,6 +367,9 @@ const COMPOSER_SINGLE_LINE_MAX_PX = 36;
 const COMPOSER_ONE_LINE_GAP_PX = 14;
 /** Narrower than the expand check so a draft at the edge cannot flip. */
 const COMPOSER_COLLAPSE_SLACK_PX = 16;
+
+/** Phones get page agents collapsed by default: there the side panel covers the page. */
+const wideScreen = () => window.matchMedia("(min-width: 768px)").matches;
 
 function threadSnapshotSignal(parent: AbortSignal): AbortSignal {
   return AbortSignal.any([parent, AbortSignal.timeout(THREAD_SNAPSHOT_TIMEOUT_MS)]);
@@ -463,9 +467,7 @@ export function ShellPage() {
     setBotsSidebarCollapsed(readBotsSidebarCollapsed(userId));
   }, [userId]);
   // On a phone the panel covers the Inbox list, so it starts collapsed there.
-  const [inboxAgentCollapsed, setInboxAgentCollapsed] = useState(
-    () => !window.matchMedia("(min-width: 768px)").matches,
-  );
+  const [inboxAgentCollapsed, setInboxAgentCollapsed] = useState(() => !wideScreen());
   // With no Inbox agent the panel only holds a Create button, so it stays closed until asked for.
   const [showEmptyInboxAgent, setShowEmptyInboxAgent] = useState(false);
   const [creatingInboxAgent, setCreatingInboxAgent] = useState(false);
@@ -474,13 +476,13 @@ export function ShellPage() {
   const [financeAgentOpen, setFinanceAgentOpen] = useState(false);
   const [creatingFinanceAgent, setCreatingFinanceAgent] = useState(false);
   const [financeAgentError, setFinanceAgentError] = useState("");
-  // The Carta agent panel is open on every visit to Cap Table and can be collapsed.
-  const [cartaAgentOpen, setCartaAgentOpen] = useState(true);
+  // The Carta agent panel opens on every wide-screen visit to Cap Table; on a phone it would cover the page.
+  const [cartaAgentOpen, setCartaAgentOpen] = useState(wideScreen);
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
   const [cartaAgentError, setCartaAgentError] = useState("");
   useEffect(() => {
     setInboxAgentCollapsed(
-      readInboxAgentCollapsed(userId) || !window.matchMedia("(min-width: 768px)").matches,
+      readInboxAgentCollapsed(userId) || !wideScreen(),
     );
   }, [userId]);
   const [query, setQuery] = useState("");
@@ -864,7 +866,7 @@ export function ShellPage() {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
   useEffect(() => {
-    if (!capTableMode) setCartaAgentOpen(true);
+    if (!capTableMode) setCartaAgentOpen(wideScreen());
   }, [capTableMode]);
   const active =
     inGroup || integrationsMode || dataRoomMode
@@ -2591,7 +2593,8 @@ export function ShellPage() {
         ? {
             name: "carta-agent",
             testId: "carta-agent-panel",
-            open: cartaAgentOpen,
+            // With no Carta agent yet the panel would be empty.
+            open: cartaAgentOpen && Boolean(active || creatingCartaAgent || cartaAgentError),
             collapse: () => setCartaAgentOpen(false),
             collapseLabel: t`Collapse Carta agent`,
             create: undefined,
@@ -4096,7 +4099,11 @@ export function ShellPage() {
           <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
         ) : capTableMode ? (
           <CapTablePage
-            onShowAgent={cartaAgentOpen ? undefined : () => setCartaAgentOpen(true)}
+            onShowAgent={
+              cartaAgentOpen || !findCartaAgent(bots, userId)
+                ? undefined
+                : () => setCartaAgentOpen(true)
+            }
             onConnectCarta={() => navigate("/app/integrations?q=carta")}
           />
         ) : inboxMode ? (
@@ -5476,9 +5483,27 @@ const Transcript = memo(function Transcript({
     onScrollRequestHandled();
   }, [messages, scrollRequest, scrollRef, endJumpScroll, onScrollRequestHandled]);
 
+  // Mirrors atEnd for the layout effect below, which must not re-run on every scroll.
+  const atEndRef = useRef(true);
+  atEndRef.current = atEnd;
+  const lastMessageId = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
-    if (following.current) snapToEnd();
-  }, [messages, running, snapToEnd]);
+    const last = messages.at(-1);
+    const snap = transcriptShouldSnap({
+      following: following.current,
+      atEnd: atEndRef.current,
+      previousLastId: lastMessageId.current,
+      last,
+    });
+    lastMessageId.current = last?.id;
+    if (snap) {
+      snapToEnd();
+      return;
+    }
+    // Content grew below a reader who scrolled up: offer the Jump to latest button.
+    const element = scrollRef.current;
+    if (element) setAtEnd(transcriptIsNearEnd(element));
+  }, [messages, running, snapToEnd, scrollRef]);
 
   useLayoutEffect(() => {
     const button = jumpButtonRef.current;

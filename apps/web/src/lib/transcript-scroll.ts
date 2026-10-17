@@ -15,3 +15,18 @@ export function transcriptCanSnapAfterFrame(
 export function transcriptMovedDown(previousScrollTop: number | null, scrollTop: number): boolean {
   return previousScrollTop !== null && scrollTop >= previousScrollTop;
 }
+
+/**
+ * Whether new transcript content should pull the viewport to the end: while following the tail,
+ * while the reader still sits at the end (a click on a card unfollows without scrolling away),
+ * or when the newest message is one the user just sent.
+ */
+export function transcriptShouldSnap(input: {
+  following: boolean;
+  atEnd: boolean;
+  previousLastId: string | undefined;
+  last: { id: string; role: string } | undefined;
+}): boolean {
+  if (input.following || input.atEnd) return true;
+  return input.last?.role === "user" && input.last.id !== input.previousLastId;
+}

@@ -3,6 +3,7 @@ import {
   transcriptCanSnapAfterFrame,
   transcriptIsNearEnd,
   transcriptMovedDown,
+  transcriptShouldSnap,
 } from "./transcript-scroll.js";
 
 describe("transcriptIsNearEnd", () => {
@@ -36,5 +37,28 @@ describe("transcriptMovedDown", () => {
     expect(transcriptMovedDown(null, 920)).toBe(false);
     expect(transcriptMovedDown(950, 920)).toBe(false);
     expect(transcriptMovedDown(920, 950)).toBe(true);
+  });
+});
+
+describe("transcriptShouldSnap", () => {
+  const bot = { id: "b1", role: "bot" };
+  const sent = { id: "u2", role: "user" };
+  it("snaps to the user's own new message even after a click unfollowed the tail", () => {
+    expect(
+      transcriptShouldSnap({ following: false, atEnd: false, previousLastId: "b1", last: sent }),
+    ).toBe(true);
+  });
+  it("keeps following a reply while the reader sits at the end", () => {
+    expect(
+      transcriptShouldSnap({ following: false, atEnd: true, previousLastId: "u2", last: bot }),
+    ).toBe(true);
+  });
+  it("leaves a reader who scrolled up in place", () => {
+    expect(
+      transcriptShouldSnap({ following: false, atEnd: false, previousLastId: "u2", last: bot }),
+    ).toBe(false);
+    expect(
+      transcriptShouldSnap({ following: false, atEnd: false, previousLastId: "u2", last: sent }),
+    ).toBe(false);
   });
 });
