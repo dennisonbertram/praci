@@ -1,4 +1,3 @@
-import { i18n } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { InboxMark, MailRow } from "@rakazo/contracts";
 import { inboxLabel, isSuspiciousCategory } from "@rakazo/core";
@@ -10,22 +9,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@rakazo/ui-web";
 import { Archive, BellOff, Ellipsis, Mail, MailOpen, Star, TriangleAlert } from "lucide-react";
-
-/** Time of day for today's mail, month and day otherwise, with the year for another year. */
-function formatMailTime(iso: string, today: boolean): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const locale = i18n.locale || "en";
-  return today
-    ? date.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })
-    : date.toLocaleDateString(locale, {
-        month: "short",
-        day: "numeric",
-        ...(date.getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" }),
-      });
-}
+import { formatMailTime } from "../../lib/mail-time";
 
 /** Narrow panes drop the badge for a dot: warning for Spam/Junk, solid for Needs attention, hollow for Newsletter; Spam is a solid warning dot and Junk a warning ring. */
 const LABEL_DOT = {
@@ -42,7 +31,6 @@ export function InboxGroup({
   onMark,
   onArchive,
   onRead,
-  today,
   selectedId,
   hideAttention,
 }: {
@@ -54,8 +42,6 @@ export function InboxGroup({
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   onArchive?: (messageId: string) => void;
   onRead?: (messageId: string, read: boolean) => void;
-  /** Omitted for mixed-date lists: each row then decides from its own date. */
-  today?: boolean;
   selectedId?: string;
   /** Set when the group heading already says the rows need attention. */
   hideAttention?: boolean;
@@ -78,7 +64,6 @@ export function InboxGroup({
             onMark={onMark}
             onArchive={onArchive}
             onRead={onRead}
-            today={today}
             selected={row.id === selectedId}
             hideAttention={hideAttention}
           />
@@ -94,7 +79,6 @@ export function InboxRow({
   onMark,
   onArchive,
   onRead,
-  today,
   selected = false,
   hideAttention = false,
 }: {
@@ -103,13 +87,10 @@ export function InboxRow({
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   onArchive?: (messageId: string) => void;
   onRead?: (messageId: string, read: boolean) => void;
-  today?: boolean;
   selected?: boolean;
   hideAttention?: boolean;
 }) {
   const { t } = useLingui();
-  const received = new Date(row.receivedAt);
-  const isToday = today ?? received.toDateString() === new Date().toDateString();
   const labelNames = {
     attention: t`Needs attention`,
     newsletter: t`Newsletter`,
@@ -119,6 +100,11 @@ export function InboxRow({
   const found = inboxLabel(row);
   const label = hideAttention && found === "attention" ? null : found;
   const muted = row.feedback === "noise";
+  // Marks belong to the sender, so the hint says so.
+  const markHint = {
+    important: t`Mark important: all mail from ${row.from}`,
+    noise: t`Mark noise: all mail from ${row.from}`,
+  };
   const marks = onMark
     ? ([
         { mark: "important", name: t`Mark important`, Icon: Star },
@@ -149,7 +135,7 @@ export function InboxRow({
           aria-current={selected ? "true" : undefined}
           data-row-id={row.id}
           onClick={onOpen}
-          className={`grid h-14 w-full min-w-0 grid-cols-[8px_72px_minmax(0,1fr)_auto] items-center gap-x-2 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal hover:bg-muted @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
+          className={`grid h-16 w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] content-center items-center gap-x-2 gap-y-0.5 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal hover:bg-muted @md:h-14 @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
         >
           <span
             aria-hidden="true"
@@ -167,7 +153,7 @@ export function InboxRow({
                 className="me-1 inline size-3.5 align-text-bottom text-destructive"
               />
             ) : null}
-            {row.from}
+            {row.fromSelf ? t`You` : row.from}
             {row.unread ? (
               <span className="sr-only">
                 <Trans> (unread)</Trans>
@@ -176,7 +162,7 @@ export function InboxRow({
           </span>
           <span
             dir="auto"
-            className={`col-start-3 row-start-1 truncate ${muted ? "text-muted-foreground" : "text-foreground/70"}`}
+            className={`col-span-2 col-start-2 row-start-2 truncate text-sm @md:col-span-1 @md:col-start-3 @md:row-start-1 @md:text-[15px] ${muted ? "text-muted-foreground" : "text-foreground/70"} ${marks.length + actions.length ? `@md:group-hover/row:pe-24 @md:group-focus-within/row:pe-24 ${selected ? "@md:pe-24" : ""}` : ""}`}
           >
             {label ? (
               <span
@@ -192,7 +178,7 @@ export function InboxRow({
           {label ? (
             <Badge
               variant={label === "newsletter" ? "outline" : "secondary"}
-              className={`col-start-4 row-start-1 hidden @md:inline-flex ${label === "spam" || label === "junk" ? "bg-warning/15 text-warning" : ""}`}
+              className={`col-start-4 row-start-1 hidden @md:inline-flex ${label === "spam" || label === "junk" ? "bg-warning/15 text-warning" : ""} ${marks.length + actions.length ? `group-focus-within/row:invisible group-hover/row:invisible ${selected ? "invisible" : ""}` : ""}`}
             >
               {labelNames[label]}
             </Badge>
@@ -200,9 +186,9 @@ export function InboxRow({
           {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
           <time
             dateTime={row.receivedAt}
-            className={`col-start-4 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
+            className={`col-start-3 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
           >
-            {formatMailTime(row.receivedAt, isToday)}
+            {formatMailTime(row.receivedAt)}
           </time>
         </button>
         {marks.length + actions.length ? (
@@ -211,39 +197,51 @@ export function InboxRow({
               className={`absolute end-22 top-1/2 flex -translate-y-1/2 items-center gap-0.5 bg-muted pointer-coarse:hidden @max-md:hidden ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
             >
               {actions.map(({ name, Icon, run }) => (
-                <Button
-                  key={name}
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={name}
-                  tabIndex={selected ? 0 : -1}
-                  className="text-muted-foreground"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    run();
-                  }}
-                >
-                  <Icon aria-hidden="true" />
-                </Button>
+                <Tooltip key={name}>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={name}
+                        tabIndex={selected ? 0 : -1}
+                        className="text-muted-foreground"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          run();
+                        }}
+                      />
+                    }
+                  >
+                    <Icon aria-hidden="true" />
+                  </TooltipTrigger>
+                  <TooltipContent>{name}</TooltipContent>
+                </Tooltip>
               ))}
               {marks.map(({ mark, name, Icon }) => {
                 const pressed = row.feedback === mark;
                 return (
-                  <Button
-                    key={mark}
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={name}
-                    aria-pressed={pressed}
-                    tabIndex={selected ? 0 : -1}
-                    className={pressed ? "text-foreground" : "text-muted-foreground"}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onMark?.(row.id, pressed ? null : mark);
-                    }}
-                  >
-                    <Icon aria-hidden="true" className={pressed ? "fill-current" : ""} />
-                  </Button>
+                  <Tooltip key={mark}>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={name}
+                          aria-pressed={pressed}
+                          tabIndex={selected ? 0 : -1}
+                          className={pressed ? "text-foreground" : "text-muted-foreground"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onMark?.(row.id, pressed ? null : mark);
+                          }}
+                        />
+                      }
+                    >
+                      <Icon aria-hidden="true" className={pressed ? "fill-current" : ""} />
+                    </TooltipTrigger>
+                    <TooltipContent>{markHint[mark]}</TooltipContent>
+                  </Tooltip>
                 );
               })}
             </div>

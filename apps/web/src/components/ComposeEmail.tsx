@@ -8,6 +8,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogTitle,
   Button,
@@ -64,7 +65,14 @@ interface Forwarded {
   size: number;
 }
 
-type Accounts = Array<{ connectionId: string; label: string }>;
+type Account = { connectionId: string; label: string; address?: string };
+type Accounts = Account[];
+
+/** The From line: the address when Gmail has reported it, with the account's name. */
+const accountText = (account: Account) =>
+  account.address && account.address !== account.label
+    ? `${account.label} <${account.address}>`
+    : account.label;
 
 /** Everything in a composer, so a held or failed send can open it again as it was. */
 export interface ComposeRestore {
@@ -142,7 +150,7 @@ const hasFiles = (event: React.DragEvent) => event.dataTransfer.types.includes("
  * because the server keys it by `clientId`. Closing keeps the draft unless nothing was written.
  */
 export function ComposeEmail({
-  seed,
+  seed: seedProp,
   accounts,
   connectionId,
   restore: restoreProp,
@@ -158,8 +166,17 @@ export function ComposeEmail({
   onClose: () => void;
 }) {
   // Reply, reply all and forward continue the composer closed last time for the same message.
-  const [restore] = useState(() => restoreProp ?? recallClosed(seed));
-  const [clientId] = useState(() => restore?.clientId ?? newClientId());
+  const [recalled] = useState(() => restoreProp ?? recallClosed(seedProp));
+  // A reply typed under Reply comes back under Reply all too, but with the recipients of the button
+  // pressed: the text carries over and the prefill fills To and Cc again.
+  const [carried] = useState(() =>
+    !restoreProp && recalled && seedProp.kind !== "new" && recalled.seed.kind !== seedProp.kind
+      ? recalled
+      : undefined,
+  );
+  const restore = carried ? undefined : recalled;
+  const seed = restore?.seed ?? seedProp;
+  const [clientId] = useState(() => recalled?.clientId ?? newClientId());
   const initial: Fields = restore?.fields ?? {
     connectionId: connectionId ?? accounts[0]?.connectionId ?? "",
     to: [],
@@ -187,20 +204,28 @@ export function ComposeEmail({
   const [linkOpen, setLinkOpen] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [forwarded, setForwarded] = useState<Forwarded[]>(restore?.forwarded ?? []);
-  const [files, setFiles] = useState<File[]>(restore?.files ?? []);
+  const [files, setFiles] = useState<File[]>(recalled?.files ?? []);
   const [dragging, setDragging] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [prefillAttempt, setPrefillAttempt] = useState(0);
   const [prefillFailed, setPrefillFailed] = useState(false);
   const [quoteMissing, setQuoteMissing] = useState(false);
+  const [skipped, setSkipped] = useState("");
+  // A reply or forward goes from the account the original came to, which the prefill names.
+  const [sentFrom, setSentFrom] = useState<Account | undefined>(
+    () =>
+      recalled?.accounts.find((a) => a.connectionId === recalled.fields.connectionId) ??
+      accounts.find((a) => a.connectionId === initial.connectionId),
+  );
   const [notice, setNotice] = useState<Notice | null>(
     restore?.notice ? { kind: "error", text: restore.notice } : null,
   );
-  // Set once the person edits; an untouched reply is not worth keeping.
-  const touched = useRef(Boolean(restore));
+  // Set once the person edits; an untouched reply is not worth keeping. A draft opened under the
+  // other reply button counts once it is edited, so a glance leaves it as it was written.
+  const touched = useRef(Boolean(recalled) && !carried);
   // A Gmail draft may exist once a save has succeeded.
-  const saved = useRef(restore?.saved ?? false);
+  const saved = useRef(recalled?.saved ?? false);
   const done = useRef(false);
   const toRef = useRef<HTMLInputElement>(null);
   const ccRef = useRef<HTMLInputElement>(null);
@@ -286,7 +311,10 @@ export function ComposeEmail({
       .then((next) => {
         if (!live) return;
         replyToRef.current = next.replyToMessageId;
-        pendingContent.current = prefillHtml(next);
+        if (next.account) setSentFrom(next.account);
+        pendingContent.current = carried
+          ? carried.fields.html || textToHtml(carried.fields.text)
+          : prefillHtml(next);
         // An older server sends no attachment list.
         setForwarded(next.attachments ?? []);
         // The server filled To and Subject from its cached copy. The form is usable, so no retry that would overwrite edits.
@@ -301,9 +329,9 @@ export function ComposeEmail({
           to: takeEntries(next.to, [], true).added,
           cc: takeEntries(next.cc, [], true).added,
           bcc: [],
-          subject: next.subject,
-          html: "",
-          text: next.body,
+          subject: carried?.fields.subject ?? next.subject,
+          html: carried?.fields.html ?? "",
+          text: carried?.fields.text ?? next.body,
         };
         fieldsRef.current = loaded;
         setFields(loaded);
@@ -332,13 +360,13 @@ export function ComposeEmail({
       text: editor.getText({ blockSeparator: "\n" }),
     };
     setFields(fieldsRef.current);
-    if (restore) focusRestored(editor, seed.kind === "reply" || seed.kind === "replyAll");
+    if (recalled) focusRestored(editor, seed.kind === "reply" || seed.kind === "replyAll");
     else if (seed.kind === "forward") {
       // Focus starts at To; tabbing down lands above the forwarded block.
       editor.commands.setTextSelection(1);
       toRef.current?.focus({ preventScroll: true });
     } else editor.commands.focus("start", { scrollIntoView: false });
-  }, [loading, editor, seed.kind, restore]);
+  }, [loading, editor, seed.kind, recalled]);
 
   // Closing the page or the message view keeps what was typed.
   useEffect(
@@ -357,7 +385,8 @@ export function ComposeEmail({
     forwarded,
     files: kept,
     saved: hasDraft,
-    accounts,
+    // A reply has no picker, so it keeps the one account it is sent from.
+    accounts: accounts.length > 0 ? accounts : sentFrom ? [sentFrom] : [],
   });
 
   /** Drops the Gmail draft, if one was saved, once any save in flight has finished. */
@@ -384,7 +413,12 @@ export function ComposeEmail({
   };
 
   const closeNow = () => {
-    if (!touched.current || (isBlank(fieldsRef.current) && files.length === 0)) discardNow();
+    if (carried && !touched.current) {
+      // Opened under the other button and left alone: the draft stays in the mode it was written in.
+      done.current = true;
+      saver.cancel();
+      onClose();
+    } else if (!touched.current || (isBlank(fieldsRef.current) && files.length === 0)) discardNow();
     else {
       // Closing saves a draft; attachments are not part of it, so they are not kept.
       rememberClosed(seed, snapshot([], true));
@@ -403,22 +437,23 @@ export function ComposeEmail({
     if (incoming.length === 0) return;
     let total = [...files, ...forwarded].reduce((sum, file) => sum + file.size, 0);
     const accepted: File[] = [];
-    let tooBig = false;
+    const rejected: File[] = [];
     for (const file of incoming) {
       if (total + file.size > MAX_COMPOSE_ATTACHMENT_BYTES) {
-        tooBig = true;
+        rejected.push(file);
         continue;
       }
       total += file.size;
       accepted.push(file);
     }
-    setNotice(
-      tooBig
-        ? {
-            kind: "error",
-            text: t`Attachments can't be over ${MAX_COMPOSE_ATTACHMENT_MB} MB.`,
-          }
-        : null,
+    const [first] = rejected;
+    // Shown under the attachment chips, where the file would have appeared.
+    setSkipped(
+      first
+        ? rejected.length === 1
+          ? t`${first.name} (${formatBytes(first.size)}) was not added. Attachments can be up to ${MAX_COMPOSE_ATTACHMENT_MB} MB in total.`
+          : t`${rejected.length} files were not added. Attachments can be up to ${MAX_COMPOSE_ATTACHMENT_MB} MB in total.`
+        : "",
     );
     if (accepted.length) {
       touched.current = true;
@@ -554,10 +589,16 @@ export function ComposeEmail({
               >
                 {accounts.map((account) => (
                   <NativeSelectOption key={account.connectionId} value={account.connectionId}>
-                    {account.label}
+                    {accountText(account)}
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
+            </Row>
+          ) : sentFrom ? (
+            <Row label={t`From`}>
+              <span dir="auto" className="min-w-0 flex-1 truncate text-sm leading-7">
+                {accountText(sentFrom)}
+              </span>
             </Row>
           ) : null}
           {/* biome-ignore lint/a11y/noStaticElementInteractions: the handlers only track whether focus is inside */}
@@ -673,16 +714,14 @@ export function ComposeEmail({
             <EditorContent editor={editor} />
           </div>
           {collapsed ? (
-            <button
-              type="button"
-              aria-label={t`Show quoted text`}
-              className="group mx-4 mb-3 flex h-6 items-center rounded-full outline-none"
+            <Button
+              variant="secondary"
+              size="xs"
+              className="mx-4 mb-3 rounded-full text-muted-foreground"
               onClick={() => setQuoteOpen(true)}
             >
-              <span className="flex h-3 w-6 items-center justify-center rounded-full bg-muted pb-0.5 text-xs leading-none text-muted-foreground group-hover:bg-border group-focus-visible:ring-2 group-focus-visible:ring-ring/50">
-                …
-              </span>
-            </button>
+              <Trans>Show original message</Trans>
+            </Button>
           ) : null}
         </div>
 
@@ -735,6 +774,17 @@ export function ComposeEmail({
               </li>
             ))}
           </ul>
+        ) : null}
+        {skipped ? (
+          <p
+            role="alert"
+            className={cn(
+              "shrink-0 px-4 pb-2 text-xs text-destructive",
+              files.length + forwarded.length ? "" : "border-t border-border pt-2",
+            )}
+          >
+            {skipped}
+          </p>
         ) : null}
 
         {showFormat ? (
@@ -819,8 +869,11 @@ export function ComposeEmail({
         <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
           <AlertDialogContent size="sm">
             <AlertDialogTitle>
-              <Trans>Discard attachments?</Trans>
+              <Trans>Remove attachments?</Trans>
             </AlertDialogTitle>
+            <AlertDialogDescription>
+              <Trans>Your text is saved as a draft. Attachments are not kept.</Trans>
+            </AlertDialogDescription>
             <AlertDialogFooter>
               <AlertDialogCancel>
                 <Trans>Keep editing</Trans>
@@ -831,7 +884,7 @@ export function ComposeEmail({
                   closeNow();
                 }}
               >
-                <Trans>Discard</Trans>
+                <Trans>Close and remove</Trans>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

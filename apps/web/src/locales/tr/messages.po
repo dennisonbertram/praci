@@ -28,6 +28,11 @@ msgstr ""
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
 msgstr ""
 
+#. placeholder {0}: (message.thread?.length ?? 0) + (message.later?.length ?? 0) + 1
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "{0, plural, one {# message} other {# messages}}"
+msgstr ""
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -60,6 +65,12 @@ msgstr ""
 msgid "{0, plural, one {Waiting for sign-in — the link expires in about # minute.} other {Waiting for sign-in — the link expires in about # minutes.}}"
 msgstr ""
 
+#. placeholder {0}: first.name
+#. placeholder {1}: formatBytes(first.size)
+#: src/components/ComposeEmail.tsx
+msgid "{0} ({1}) was not added. Attachments can be up to {MAX_COMPOSE_ATTACHMENT_MB} MB in total."
+msgstr ""
+
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx
 msgid "{0} (max {ATTACHMENT_MAX_COUNT} attachments)"
@@ -67,8 +78,8 @@ msgstr "{0} (en fazla {ATTACHMENT_MAX_COUNT} ek)"
 
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx
-msgid "{0} (over 10 MiB)"
-msgstr "{0} (10 MiB üzeri)"
+msgid "{0} (over 10 MB)"
+msgstr ""
 
 #. placeholder {0}: preset.n
 #: src/pages/RoutineSchedule.tsx
@@ -98,6 +109,11 @@ msgstr ""
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "{0} did not accept the sign-in."
+msgstr ""
+
+#. placeholder {0}: rejected.length
+#: src/components/ComposeEmail.tsx
+msgid "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHMENT_MB} MB in total."
 msgstr ""
 
 #. placeholder {0}: sender.name
@@ -1576,6 +1592,10 @@ msgstr "Kapat"
 msgid "Close {title}"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Close and remove"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Close chart"
 msgstr "Grafiği kapat"
@@ -1896,6 +1916,10 @@ msgstr "Bağlam sınırı"
 #: src/pages/Onboarding.tsx
 msgid "Continue"
 msgstr "Devam"
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Continue draft"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Continue in Background"
@@ -2418,6 +2442,11 @@ msgstr ""
 msgid "Couldn't classify"
 msgstr ""
 
+#. placeholder {0}: result.filename
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Couldn't download {0}"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
 msgstr ""
@@ -2628,7 +2657,7 @@ msgstr "Varsayılan"
 #. placeholder {0}: thinkingLevelLabel("medium")
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Default ({0})"
-msgstr ""
+msgstr "Varsayılan ({0})"
 
 #. placeholder {0}: thinkingLevelLabel("medium")
 #. placeholder {0}: thinkingLevelLabel(defaultThinkingLevel)
@@ -2781,10 +2810,6 @@ msgstr ""
 msgid "Discard"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
-msgid "Discard attachments?"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Discarded"
 msgstr ""
@@ -2826,6 +2851,7 @@ msgstr "Bağlantı kesiliyor…"
 #: src/components/data-room/DropZone.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
+#: src/pages/Shell.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr ""
@@ -2909,8 +2935,9 @@ msgstr "Markdown olarak indir"
 msgid "Download Executor"
 msgstr ""
 
+#. placeholder {0}: result.filename
 #: src/components/inbox/InboxMessageDialog.tsx
-msgid "Download failed"
+msgid "Downloaded {0}"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
@@ -3172,7 +3199,7 @@ msgstr "Çok yüksek"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Extra high"
-msgstr ""
+msgstr "Çok yüksek"
 
 #: src/components/CloudAgentCard.tsx
 msgid "failed"
@@ -3266,6 +3293,10 @@ msgstr ""
 #: src/pages/Onboarding.tsx
 msgid "Find models"
 msgstr "Model bul"
+
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "Find the latest invoice"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -3501,7 +3532,7 @@ msgstr "Yüksek"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "High"
-msgstr ""
+msgstr "Yüksek"
 
 #: src/pages/CapTable.tsx
 msgid "Holding"
@@ -3527,6 +3558,10 @@ msgstr "Ne sıklıkla"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "How to check"
 msgstr "Nasıl kontrol edilir"
+
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "I’m done"
@@ -3740,6 +3775,10 @@ msgstr ""
 msgid "Later"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Later in this conversation"
+msgstr ""
+
 #: src/pages/CapTable.tsx
 msgid "Latest 409A"
 msgstr ""
@@ -3899,7 +3938,7 @@ msgstr "Düşük"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Low"
-msgstr ""
+msgstr "Düşük"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
@@ -3915,6 +3954,16 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Mail data Rakazo cached from these accounts is removed."
+msgstr ""
+
+#. placeholder {0}: status.sender
+#: src/pages/Inbox.tsx
+msgid "Mail from {0} is now marked as noise"
+msgstr ""
+
+#. placeholder {0}: status.sender
+#: src/pages/Inbox.tsx
+msgid "Mail from {0} is now marked important"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -3959,8 +4008,18 @@ msgstr "Okunmadı olarak işaretle"
 msgid "Mark important"
 msgstr ""
 
+#. placeholder {0}: row.from
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark important: all mail from {0}"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark noise"
+msgstr ""
+
+#. placeholder {0}: row.from
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark noise: all mail from {0}"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -3971,14 +4030,6 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark unread"
-msgstr ""
-
-#: src/pages/Inbox.tsx
-msgid "Marked important"
-msgstr ""
-
-#: src/pages/Inbox.tsx
-msgid "Marked noise"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3997,7 +4048,7 @@ msgstr "Maksimum"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Max"
-msgstr ""
+msgstr "Maksimum"
 
 #: src/pages/Artifacts.tsx
 msgid "Maximize"
@@ -4029,7 +4080,7 @@ msgstr "Orta"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Medium"
-msgstr ""
+msgstr "Orta"
 
 #: src/pages/GroupPanel.tsx
 msgid "Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
@@ -4117,7 +4168,7 @@ msgstr "Minimal"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Minimal"
-msgstr ""
+msgstr "Minimal"
 
 #: src/pages/WindowChrome.tsx
 msgid "Minimize"
@@ -4603,6 +4654,7 @@ msgstr ""
 msgid "Not found"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "Şimdi değil"
@@ -5091,6 +5143,10 @@ msgstr "Kuyrukta"
 msgid "Quote"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to {name}."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "React"
 msgstr "Tepki ver"
@@ -5345,6 +5401,10 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Remove attachments?"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -5741,7 +5801,6 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
 msgid "Search"
@@ -5769,6 +5828,10 @@ msgstr ""
 msgid "Search by domain"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Search chats"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search directory"
 msgstr ""
@@ -5783,6 +5846,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Search mail"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Search mail, e.g. from:sam has:attachment"
 msgstr ""
 
 #: src/pages/DataRoom.tsx
@@ -5866,10 +5933,6 @@ msgstr "Sıfırlama bağlantısı gönder"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Send saved draft"
-msgstr ""
-
-#: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews are sent to {name}."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -6008,12 +6071,12 @@ msgstr ""
 msgid "Show more"
 msgstr "Daha fazla göster"
 
-#: src/pages/Auth.tsx
-msgid "Show password"
+#: src/components/ComposeEmail.tsx
+msgid "Show original message"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
-msgid "Show quoted text"
+#: src/pages/Auth.tsx
+msgid "Show password"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -6143,6 +6206,14 @@ msgstr "Bir şeyler ters gitti. Tekrar deneyin."
 #. placeholder {0}: labels[field]
 #: src/components/data-room/FilterBar.tsx
 msgid "Sort: {0}"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Sorting is taking longer than usual. Your mail is below."
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Sorting your mail…"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -6328,6 +6399,10 @@ msgstr ""
 
 #: src/components/FinanceCards.tsx
 msgid "Subscriptions / mo"
+msgstr ""
+
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "Summarize what's new this week"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6705,6 +6780,10 @@ msgstr ""
 #: src/pages/Onboarding.tsx
 msgid "Try again"
 msgstr "Tekrar dene"
+
+#: src/pages/Inbox.tsx
+msgid "Try sorting again"
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
@@ -7109,6 +7188,10 @@ msgstr "Hafızası ne olsun?"
 msgid "What do you want me on first?"
 msgstr ""
 
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "What needs my reply today?"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "What result will you demonstrate?"
 msgstr "Hangi sonucu göstereceksin?"
@@ -7195,6 +7278,8 @@ msgstr "Dün"
 msgid "Yield"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid "You"
 msgstr "Sen"
@@ -7214,6 +7299,10 @@ msgstr "Bu pencereyi kapatabilirsin."
 
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "You can search documents by name and text and move them into folders yourself. Set up a model in Settings to have new files tagged and sorted into folders for you."
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "You have an unsent reply to this email."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -7244,3 +7333,7 @@ msgstr "Adın"
 #: src/pages/Welcome.tsx
 msgid "Your team of always-on agents<0/>that you can give real work to."
 msgstr "Gerçek işler verebileceğin,<0/>her zaman açık agent takımın."
+
+#: src/components/ComposeEmail.tsx
+msgid "Your text is saved as a draft. Attachments are not kept."
+msgstr ""

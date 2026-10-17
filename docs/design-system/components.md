@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 167 of 167
-- Web and shared components: 482
+- Web and shared component files with stories: 168 of 168
+- Web and shared components: 485
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -147,7 +147,8 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
-| InboxMessageDialog, InboxMessage, AttachmentIcon, InboxAttachments | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
+| InboxAgentIntro | [apps/web/src/components/inbox/InboxAgentIntro.tsx](../../apps/web/src/components/inbox/InboxAgentIntro.tsx) | [InboxAgentIntro.stories.tsx](../../apps/web/src/components/inbox/InboxAgentIntro.stories.tsx) | web |
+| InboxMessageDialog, InboxMessage, AttachmentIcon, InboxAttachments, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
 | InboxGroup, InboxRow | [apps/web/src/components/inbox/InboxRow.tsx](../../apps/web/src/components/inbox/InboxRow.tsx) | [InboxRow.stories.tsx](../../apps/web/src/components/inbox/InboxRow.stories.tsx) | web |
 | InboxShortcuts | [apps/web/src/components/inbox/InboxShortcuts.tsx](../../apps/web/src/components/inbox/InboxShortcuts.tsx) | [InboxShortcuts.stories.tsx](../../apps/web/src/components/inbox/InboxShortcuts.stories.tsx) | web |
 | TodoCard | [apps/web/src/components/inbox/TodoCard.tsx](../../apps/web/src/components/inbox/TodoCard.tsx) | [TodoCard.stories.tsx](../../apps/web/src/components/inbox/TodoCard.stories.tsx) | web |

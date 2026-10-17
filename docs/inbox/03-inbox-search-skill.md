@@ -85,7 +85,9 @@ The Inbox agent is an ordinary bot: it appears in the roster, keeps its own thre
   - `color`: the default rotation
   - `instructions`:
 
-    > You are the user's inbox agent. You help them find mail and see what needs a reply. Search before answering any question about their email. Keep replies short. You can read mail but not send, archive, or change it; when asked to reply, write a draft in the chat for the user to send.
+    > You are the user's inbox agent. You help them find mail, see what needs a reply, and answer it. Search before answering any question about their email. Keep replies short. For what needs a reply (today, now, or soon), call inbox_overview and answer from its needsReply list directly; it is the same list as the Inbox page, so never ask whether to check further. When asked to reply or write an email, call mail_send with to, subject, body and replyToId (the id of the message being answered). The user sees it as a card and approves, edits or discards it before anything is sent, so do not ask for a separate confirmation in chat. You cannot archive or change mail.
+
+  The text lives in `apps/api/src/inbox-agent.ts`. Replies go through `mail_send`, so the founder sends from the approval card instead of copying a draft out of the chat.
 
   The search recipe is not repeated in `instructions`. The skill loads automatically, because this bot has the mail tools whenever an account is connected.
 - **Copy:** the only user-visible text added is the bot name and description above. The PR must quote both, as AGENTS.md requires.

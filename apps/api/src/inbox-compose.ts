@@ -12,7 +12,7 @@ import {
   parseRecipients,
   replyPrefill,
   sanitizeComposeHtml,
-  syncMailbox,
+  syncAfterSend,
 } from "@rakazo/adapters";
 import type {
   Actor,
@@ -37,8 +37,6 @@ const PENDING_STALE_MS = 2 * 60_000;
 /** How long a duplicate request waits for the first one to finish before answering "unknown". */
 const WAIT_MS = 15_000;
 const POLL_MS = 200;
-/** The sync after a send is awaited this long, so Sent usually shows when the composer closes. */
-const SYNC_WAIT_MS = 4_000;
 const SEND_DEADLINE_MS = 100_000;
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -99,6 +97,12 @@ async function ownMessage(
   return row;
 }
 
+const accountOut = (account: MailAccount) => ({
+  connectionId: account.id,
+  label: account.label,
+  ...(account.address ? { address: account.address } : {}),
+});
+
 export async function inboxComposePrefill(
   deps: ComposeDeps,
   actor: Actor,
@@ -123,6 +127,7 @@ export async function inboxComposePrefill(
     const tooLarge = files.reduce((sum, file) => sum + file.size, 0) > MAX_COMPOSE_ATTACHMENT_BYTES;
     return {
       connectionId: account.id,
+      account: accountOut(account),
       ...prefill,
       ...(htmlToText(quotedHtml) && quotedHtml.length <= MAX_COMPOSE_HTML / 2
         ? { quotedHtml }
@@ -169,6 +174,7 @@ export async function inboxComposePrefill(
       );
       return {
         connectionId: account.id,
+        account: accountOut(account),
         ...prefill,
         ...(original.fromSelf ? {} : { to: "", cc: "" }),
         body: "",
@@ -469,29 +475,6 @@ async function record(
   } catch (error) {
     getLogger().error("inbox compose record failed", error, { state: data.state });
   }
-}
-
-/**
- * Syncs the account again so the sent message is in the cache (and triage can see the thread was
- * answered). A send is a real change, so it skips the 60-second sync throttle.
- */
-async function syncAfterSend(
-  deps: ComposeDeps,
-  account: MailAccount,
-  context: AdapterContext,
-): Promise<void> {
-  const sync = (async () => {
-    await deps.prisma.mailSyncState.updateMany({
-      where: { connectionId: account.id },
-      data: { lastSyncedAt: null },
-    });
-    await syncMailbox(deps, account, context);
-  })().catch((error: unknown) => {
-    getLogger().warn("inbox compose sync failed", {
-      reason: error instanceof Error ? error.name : "error",
-    });
-  });
-  await Promise.race([sync, sleep(SYNC_WAIT_MS)]);
 }
 
 export async function inboxComposeDiscard(

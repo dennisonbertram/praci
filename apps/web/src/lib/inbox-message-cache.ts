@@ -1,6 +1,10 @@
+import { MAIL_SENT_EVENT } from "./outbox";
 import { rpc } from "./rpc";
 
 export type InboxMessageOutput = Awaited<ReturnType<typeof rpc.inbox.get>>;
+
+/** Fired on `window` after mail is archived or marked outside the Inbox page, so its list reloads. */
+export const INBOX_CHANGED_EVENT = "rakazo:inbox-changed";
 
 const MAX_ENTRIES = 40;
 // Keyed by message id (globally unique). Holds the in-flight promise until it settles, then the value.
@@ -10,6 +14,18 @@ const values = new Map<string, InboxMessageOutput>();
 const PREFETCH_PAUSE_MS = 30_000;
 // After a failed load, background prefetches stop for a while; opening a message still loads.
 let pausedUntil = 0;
+
+/** Forgets every loaded message, so the next open shows the conversation as it is now. */
+export function clearInboxMessages(): void {
+  promises.clear();
+  values.clear();
+}
+
+// A sent reply joins its conversation, and an archive or mark changes a message's state.
+if (typeof window !== "undefined") {
+  window.addEventListener(MAIL_SENT_EVENT, clearInboxMessages);
+  window.addEventListener(INBOX_CHANGED_EVENT, clearInboxMessages);
+}
 
 export function peekInboxMessage(messageId: string): InboxMessageOutput | undefined {
   return values.get(messageId);

@@ -534,7 +534,7 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await rowButtons.getByRole("button", { name: "Mark noise" }).click();
   await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: "noise" });
   const status = main.getByRole("status");
-  await expect(status).toContainText("Marked noise");
+  await expect(status).toContainText("is now marked as noise");
   await expect(main.getByRole("heading", { name: "Needs reply" })).toHaveCount(0);
   await expect(row(/Offsite dates/)).toBeVisible();
   await expect(row(/Offsite dates/)).toHaveClass(/text-muted-foreground/);
@@ -872,14 +872,23 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
       expect(time.height).toBeLessThan(20);
       expect(time.x + time.width).toBeLessThanOrEqual(whole.x + whole.width);
       expect(subject.width).toBeGreaterThan(80);
-      // Always one line: every row is the same fixed height, with sender and subject side by side.
-      expect(whole.height).toBe(56);
-      expect(
-        Math.abs(subject.y + subject.height / 2 - (sender.y + sender.height / 2)),
-      ).toBeLessThan(8);
-      expect(subject.x).toBeGreaterThanOrEqual(sender.x + sender.width);
-      expect(subject.x + subject.width).toBeLessThanOrEqual(time.x + 1);
+      // A row narrower than the @md container breakpoint (28rem) stacks: sender and time on the first
+      // line, the subject on a second line under the sender. A wider row keeps all three on one line,
+      // sender and subject side by side. Either way every row has one fixed height.
+      const stacked = whole.width < 448;
+      expect(whole.height).toBe(stacked ? 64 : 56);
       expect(Math.abs(time.y + time.height / 2 - (sender.y + sender.height / 2))).toBeLessThan(8);
+      if (stacked) {
+        expect(subject.y).toBeGreaterThanOrEqual(sender.y + sender.height - 1);
+        expect(subject.x).toBeLessThanOrEqual(sender.x + 24);
+        expect(subject.x + subject.width).toBeLessThanOrEqual(whole.x + whole.width);
+      } else {
+        expect(
+          Math.abs(subject.y + subject.height / 2 - (sender.y + sender.height / 2)),
+        ).toBeLessThan(8);
+        expect(subject.x).toBeGreaterThanOrEqual(sender.x + sender.width);
+        expect(subject.x + subject.width).toBeLessThanOrEqual(time.x + 1);
+      }
     }
     await captureScreenshot(
       page,

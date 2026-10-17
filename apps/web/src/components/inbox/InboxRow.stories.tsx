@@ -120,6 +120,11 @@ export const WidePane: StoryObj = {
   ),
 };
 
+/** The user's own sent message, as a search result shows it. */
+export const SentByYou: Story = {
+  args: { row: { ...base, from: "me@example.test", fromSelf: true, inInbox: false } },
+};
+
 export const Suspicious: Story = { args: { row: rows[2] as MailRow } };
 
 export const WithTriageMarks: Story = {

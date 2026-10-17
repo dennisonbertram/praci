@@ -172,6 +172,7 @@ function toMailRow(m: CachedMessage, enabled: boolean, marks: Map<string, InboxM
     reason: enabled ? m.reason : null,
     category: enabled ? (InboxCategorySchema.options.find((c) => c === m.category) ?? null) : null,
     feedback: mark,
+    ...(m.fromSelf ? { fromSelf: true } : {}),
   };
 }
 
@@ -309,7 +310,14 @@ export async function inboxList(
     },
     select: { id: true, name: true },
   });
-  const accounts = connections.map((c) => ({ connectionId: c.id, label: c.displayName }));
+  const accounts = connections.map((c) => {
+    const address = (c.metadata as { mailAddress?: unknown } | null)?.mailAddress;
+    return {
+      connectionId: c.id,
+      label: c.displayName,
+      ...(typeof address === "string" && address ? { address } : {}),
+    };
+  });
   const agentOut = agent ? { botId: agent.id, name: agent.name } : null;
   const { ready, blocked: triageBlocked } = await triageStatus(deps, actor);
   const enabled = ready !== null;
@@ -498,7 +506,7 @@ async function ownMessage(
   );
   const account: MailAccount | undefined = accounts.find((a) => a.id === row.connectionId);
   if (!account) throw notFound();
-  return { account, providerMessageId: row.providerMessageId };
+  return { account, providerMessageId: row.providerMessageId, row };
 }
 
 export function providerFailure(error: unknown, operation: string, connectionId: string): never {
@@ -530,11 +538,41 @@ export async function inboxGet(
   signal?: AbortSignal,
 ) {
   const context = mailContext(actor, "inbox.get", signal);
-  const { account, providerMessageId } = await ownMessage(deps, actor, input.messageId, context);
+  const { account, providerMessageId, row } = await ownMessage(
+    deps,
+    actor,
+    input.messageId,
+    context,
+  );
+  const thread = await deps.prisma.cachedMailMessage.findMany({
+    where: {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      connectionId: row.connectionId,
+      threadId: row.threadId,
+      id: { not: row.id },
+    },
+    orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+    take: 50,
+  });
+  // The user's reply sorts after the message it answers, not among the earlier ones.
+  const isLater = (m: (typeof thread)[number]) => m.receivedAt > row.receivedAt;
+  const threadItem = (m: (typeof thread)[number]) => ({
+    id: m.id,
+    from: m.fromName || m.fromAddress,
+    receivedAt: m.receivedAt.toISOString(),
+    snippet: m.snippet,
+    ...(m.fromSelf ? { fromSelf: true } : {}),
+  });
   try {
     const message = await deps.mail.getMessage(account, providerMessageId, context);
     return {
+      unread: row.unread,
+      inInbox: row.inInbox,
+      thread: thread.filter((m) => !isLater(m)).map(threadItem),
+      later: thread.filter(isLater).map(threadItem),
       from: formatAddress(message.from),
+      ...(row.fromSelf ? { fromSelf: true } : {}),
       to: message.to.map(formatAddress).join(", "),
       cc: message.cc.map(formatAddress).join(", "),
       date: message.date,

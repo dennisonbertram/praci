@@ -95,12 +95,18 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   // Inbox: the same connect path the Integrations page uses, against the Gmail emulator.
   const gmail = await session.rpc<{ connectionId: string }>("connections/begin", {
     provider: "GMAIL",
-    displayName: "Gmail (MOCK DEMO mailbox)",
+    displayName: "Founder mail (Mock)",
   });
   await session.rpc("connections/complete", { connectionId: gmail.connectionId });
+  // A second account, so the account tabs and the From picker show.
+  const sales = await session.rpc<{ connectionId: string }>("connections/begin", {
+    provider: "GMAIL",
+    displayName: "Sales mail (Mock)",
+  });
+  await session.rpc("connections/complete", { connectionId: sales.connectionId });
   await session.rpc("inbox/agent");
   await session.rpc("inbox/refresh", {});
-  done.push("Gmail emulator mailbox, Inbox agent");
+  done.push("Two Gmail emulator mailboxes, Inbox agent");
 
   // Finance: servers with a stored (fake) login, one sync from the canned tools, the Finance agent.
   const { prisma, pool } = createDb(options.databaseUrl);

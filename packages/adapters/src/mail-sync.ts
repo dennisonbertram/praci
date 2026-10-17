@@ -389,3 +389,30 @@ export async function deleteMailConnectionData(
   await tx.cachedMailMessage.deleteMany({ where: { connectionId, spaceId, userId } });
   await tx.mailSyncState.deleteMany({ where: { connectionId, connection: { spaceId, userId } } });
 }
+
+/**
+ * Syncs the account again right after a send, so the sent message is in the cache and triage can
+ * see the thread was answered. A send is a real change, so it skips the 60-second throttle. Waits
+ * at most `waitMs`; the sync carries on in the background after that. Never throws.
+ */
+export async function syncAfterSend(
+  deps: MailSyncDeps,
+  account: MailAccount,
+  context: AdapterContext,
+  waitMs = 4_000,
+): Promise<void> {
+  const sync = (async () => {
+    await deps.prisma.mailSyncState.updateMany({
+      where: { connectionId: account.id },
+      data: { lastSyncedAt: null },
+    });
+    await syncMailbox(deps, account, context);
+  })().catch((error: unknown) => {
+    getLogger().warn("mail sync after send failed", {
+      reason: error instanceof Error ? error.name : "error",
+    });
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([sync, new Promise<void>((resolve) => (timer = setTimeout(resolve, waitMs)))]);
+  clearTimeout(timer);
+}

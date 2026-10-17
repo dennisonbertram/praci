@@ -108,6 +108,24 @@ it("names the recipient and allows exactly its key when the user presses Allow",
   expect(onAllowed).toHaveBeenCalledTimes(1);
 });
 
+it("says what sorting gives, and Not now dismisses without allowing", async () => {
+  const onAllowed = vi.fn();
+  const onDismiss = vi.fn();
+  await render(
+    <InboxConsentPrompt
+      recipient={{ key: "model-key", name: "OpenRouter" }}
+      onAllowed={onAllowed}
+      onDismiss={onDismiss}
+    />,
+  );
+  expect(container.textContent).toContain("finds what needs a reply");
+  const notNow = [...container.querySelectorAll("button")].find((b) => b.textContent === "Not now");
+  await click(notNow ?? null);
+  expect(onDismiss).toHaveBeenCalledTimes(1);
+  expect(consent.allowRecipient).not.toHaveBeenCalled();
+  expect(onAllowed).not.toHaveBeenCalled();
+});
+
 it("shows the error and does not report consent when allowing fails", async () => {
   consent.allowRecipient.mockRejectedValue(new Error("AI data sharing changed. Review it again."));
   const onAllowed = vi.fn();

@@ -14,6 +14,7 @@ export function ConsentCard({
   heading,
   children,
   onAllow,
+  onDismiss,
   className,
 }: {
   /** Prefix for the heading's id, unique on the page. */
@@ -22,6 +23,8 @@ export function ConsentCard({
   children: ReactNode;
   /** Rejects with the reason to show. */
   onAllow: () => Promise<unknown>;
+  /** Not now: when given, a second button hides the card for this visit. */
+  onDismiss?: () => void;
   className?: string;
 }) {
   const [pending, setPending] = useState(false);
@@ -49,10 +52,15 @@ export function ConsentCard({
           {error}
         </p>
       ) : null}
-      <div>
+      <div className="flex gap-2">
         <Button size="sm" disabled={pending} onClick={allow}>
           <Trans>Allow</Trans>
         </Button>
+        {onDismiss ? (
+          <Button size="sm" variant="ghost" disabled={pending} onClick={onDismiss}>
+            <Trans>Not now</Trans>
+          </Button>
+        ) : null}
       </div>
     </Card>
   );
@@ -62,9 +70,12 @@ export function ConsentCard({
 export function InboxConsentPrompt({
   recipient,
   onAllowed,
+  onDismiss,
 }: {
   recipient: { key: string; name: string };
   onAllowed: () => void;
+  /** Not now: hides the prompt for this visit; it shows again next time. */
+  onDismiss?: () => void;
 }) {
   const { name } = recipient;
   return (
@@ -73,8 +84,12 @@ export function InboxConsentPrompt({
       className="mb-5"
       heading={<Trans>Let Rakazo sort your mail</Trans>}
       onAllow={() => allowRecipient(recipient.key).then(onAllowed)}
+      onDismiss={onDismiss}
     >
-      <Trans>Senders, recipients, subjects and short previews are sent to {name}.</Trans>
+      <Trans>
+        Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and
+        newsletters. Senders, recipients, subjects and short previews are sent to {name}.
+      </Trans>
     </ConsentCard>
   );
 }

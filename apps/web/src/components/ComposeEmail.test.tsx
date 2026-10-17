@@ -35,6 +35,7 @@ vi.mock("@rakazo/ui-web", () => {
     AlertDialogAction: (props: ComponentProps<"button">) => <button type="button" {...props} />,
     AlertDialogCancel: (props: ComponentProps<"button">) => <button type="button" {...props} />,
     AlertDialogContent: Container,
+    AlertDialogDescription: Container,
     AlertDialogFooter: Container,
     AlertDialogTitle: Container,
     Button: ({
@@ -72,7 +73,7 @@ vi.mock("@rakazo/ui-web", () => {
 
 import { closeRestored, getOutbox, UNDO_SEND_MS, undoSend } from "../lib/outbox";
 import { ComposeEmail, type ComposeSeed } from "./ComposeEmail";
-import { forgetClosed } from "./compose/draft-memory";
+import { forgetClosed, recallClosed } from "./compose/draft-memory";
 
 const body = "\n\nOn Mon, Sam wrote:\n> quoted line\n> second line";
 const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
@@ -219,12 +220,16 @@ async function attach(file: File) {
   });
 }
 
-it("names the attachment limit the way the server does", async () => {
+it("names the file it left out and the limit the server applies", async () => {
   await open({ kind: "new" });
   await attach(new File([new Uint8Array(11 * 1024 * 1024)], "big.bin"));
-  expect(document.querySelector("[role=alert]")?.textContent).toBe(
-    "Attachments can't be over 10 MB.",
+  const alert = document.querySelector("[role=alert]");
+  expect(alert?.textContent).toBe(
+    "big.bin (11.0 MB) was not added. Attachments can be up to 10 MB in total.",
   );
+  // Beside the attachments, not squeezed into the footer next to Send.
+  const sendButton = [...document.querySelectorAll("button")].find((b) => b.textContent === "Send");
+  expect(alert?.parentElement).not.toBe(sendButton?.parentElement);
 });
 
 it("holds a send for the undo window, and Undo reopens the message untouched", async () => {
@@ -275,9 +280,7 @@ it("hides the quoted original behind a button and still sends it", async () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(50);
     });
-    const toggle = document.querySelector<HTMLButtonElement>(
-      "button[aria-label='Show quoted text']",
-    );
+    const toggle = button("Show original message");
     expect(toggle).not.toBeNull();
     expect(document.querySelector("[data-collapsed=true]")).not.toBeNull();
     await act(async () => button("Send").click());
@@ -292,11 +295,9 @@ it("hides the quoted original behind a button and still sends it", async () => {
 
 it("shows the quote after the button is pressed", async () => {
   await open(reply("reply"));
-  await act(async () =>
-    document.querySelector<HTMLButtonElement>("button[aria-label='Show quoted text']")?.click(),
-  );
+  await act(async () => button("Show original message")?.click());
   expect(document.querySelector("[data-collapsed=true]")).toBeNull();
-  expect(document.querySelector("button[aria-label='Show quoted text']")).toBeNull();
+  expect(button("Show original message")).toBeUndefined();
 });
 
 it("shows a forward's attachments as removable chips and sends the ones left", async () => {
@@ -423,9 +424,11 @@ it("asks before closing with attachments", async () => {
   await open(reply("reply"), onClose);
   await attach(new File(["hi"], "a.txt"));
   await act(async () => requestClose.current());
-  expect(document.querySelector("[role=alertdialog]")).not.toBeNull();
+  expect(document.querySelector("[role=alertdialog]")?.textContent).toContain(
+    "Your text is saved as a draft. Attachments are not kept.",
+  );
   expect(onClose).not.toHaveBeenCalled();
-  await act(async () => button("Discard").click());
+  await act(async () => button("Close and remove").click());
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
@@ -565,4 +568,87 @@ it("opens the same reply again as it was closed, so the same draft is updated", 
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("carries a Reply all draft into Reply with only the sender as recipient", async () => {
+  vi.useFakeTimers();
+  draftSave.mockResolvedValue({ status: "saved" });
+  try {
+    const first = await open(reply("replyAll"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => requestClose.current());
+    await act(async () => first.root.unmount());
+    document.body.innerHTML = "";
+    prefill.mockResolvedValueOnce({
+      connectionId: "c1",
+      replyToMessageId: "m1",
+      to: "Sam Lee <sam@example.test>",
+      cc: "",
+      subject: "Re: Offsite",
+      body,
+      attachments: [],
+    });
+    await open(reply("reply"));
+    expect(prefill).toHaveBeenLastCalledWith(expect.objectContaining({ mode: "reply" }));
+    expect(chips()).toEqual(["Remove sam@example.test"]);
+    expect(field("Cc")).toBeNull();
+    expect((field("Subject") as HTMLInputElement).value).toBe("Re: Offsite!");
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!!");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    // Still the same Gmail draft.
+    expect(new Set(draftSave.mock.calls.map(([call]) => call.clientId)).size).toBe(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("leaves a Reply all draft as written when Reply opens it and closes without an edit", async () => {
+  draftSave.mockResolvedValue({ status: "saved" });
+  const first = await open(reply("replyAll"));
+  await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+  await act(async () => requestClose.current());
+  await act(async () => first.root.unmount());
+  document.body.innerHTML = "";
+  const second = await open(reply("reply"));
+  await act(async () => requestClose.current());
+  await act(async () => second.root.unmount());
+  const kept = recallClosed(reply("reply"));
+  expect(kept?.seed.kind).toBe("replyAll");
+  expect(kept?.fields.cc).toEqual(["kim@example.test", "lee@example.test"]);
+  expect(discardDraft).not.toHaveBeenCalled();
+});
+
+it("shows the address a reply is sent from", async () => {
+  prefill.mockResolvedValueOnce({
+    connectionId: "c2",
+    account: { connectionId: "c2", label: "Sales mail", address: "sales@example.test" },
+    replyToMessageId: "m1",
+    to: "Sam Lee <sam@example.test>",
+    cc: "",
+    subject: "Re: Offsite",
+    body,
+    attachments: [],
+  });
+  await open(reply("reply"));
+  const from = [...document.querySelectorAll("span")].find((el) => el.textContent === "From");
+  expect(from?.nextElementSibling?.textContent).toBe("Sales mail <sales@example.test>");
+});
+
+it("shows the one account a new message is sent from", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const root = createRoot(document.body.appendChild(document.createElement("div")));
+  mounted.push(root);
+  await act(async () =>
+    root.render(
+      <ComposeEmail
+        seed={{ kind: "new" }}
+        accounts={[{ connectionId: "c1", label: "me@example.test" }]}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  const from = [...document.querySelectorAll("span")].find((el) => el.textContent === "From");
+  expect(from?.nextElementSibling?.textContent).toBe("me@example.test");
 });

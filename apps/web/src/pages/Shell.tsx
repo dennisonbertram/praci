@@ -169,6 +169,7 @@ import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
+import { InboxAgentIntro } from "../components/inbox/InboxAgentIntro";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { SidebarPageLink } from "../components/SidebarPageLink";
@@ -221,6 +222,7 @@ import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
 import { messageProviderLabel } from "../lib/messaging";
 import { parseModelOptionKey } from "../lib/model-catalog";
+import { createAgentSendWatch } from "../lib/outbox";
 import {
   isFileDrag,
   isFilePaste,
@@ -274,6 +276,7 @@ import {
   transcriptCanSnapAfterFrame,
   transcriptIsNearEnd,
   transcriptMovedDown,
+  transcriptUserJustSent,
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
 import { errorText } from "../lib/user-error";
@@ -2132,11 +2135,19 @@ export function ShellPage() {
     const botId = activeBotId.current;
     if (botId) void jumpToMessageRef.current({ botId, messageId }).catch(() => undefined);
   }, []);
+  const sentHere = useRef(false);
+  const agentSendWatch = useRef(createAgentSendWatch());
+  useEffect(() => agentSendWatch.current.running(transcriptRunning), [transcriptRunning]);
   const answerMessage = useCallback(
     async (message: ThreadMessage, text: string, username?: string, mail?: MailEdits) => {
       const botId = activeBotId.current;
       const groupId = activeGroupId.current;
       if (!botId && !groupId) return;
+      if (
+        text === "allow" &&
+        message.blocks.some((block) => block.kind === "ask" && block.mail?.tool === "mail_send")
+      )
+        agentSendWatch.current.sendApproved();
       await rpc.threads.answer({
         ...(groupId ? { groupId } : { botId: botId! }),
         runId: message.runId ?? "",
@@ -2205,7 +2216,7 @@ export function ShellPage() {
           continue;
         }
         if (file.size > ATTACHMENT_MAX_BYTES) {
-          skipped.push(t`${file.name} (over 10 MiB)`);
+          skipped.push(t`${file.name} (over 10 MB)`);
           continue;
         }
         const mimeType = inferAttachmentMimeType(file.name, file.type);
@@ -2308,6 +2319,8 @@ export function ShellPage() {
           );
           artifactIds.push(artifact.id);
         }
+        // The transcript follows the message this composer sends, not one that arrives from elsewhere.
+        sentHere.current = true;
         if (groupTarget) {
           await rpc.threads.send({
             groupId: groupTarget,
@@ -2361,6 +2374,7 @@ export function ShellPage() {
         else if (botTarget) void refreshThreadRef.current(botTarget).catch(() => undefined);
         return true;
       } catch (error) {
+        sentHere.current = false;
         if (reroutedToGroup && groupTarget) {
           setSendError(errorText(error, t`Failed to send message`));
         } else if (groupTarget && activeGroupId.current === groupTarget) {
@@ -2956,47 +2970,57 @@ export function ShellPage() {
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <BotToolControlsContext.Provider value={botToolControls}>
-            <Transcript
-              key={activeSnapshot?.threadId}
-              scrollRef={messageScroll}
-              scrollRequest={scrollRequest}
-              onScrollRequestHandled={clearScrollRequest}
-              artifactTarget={transcriptArtifactTarget}
-              messages={transcriptMessages}
-              showToolActivity={showToolActivity}
-              olderCursor={activeSnapshot?.olderCursor ?? null}
-              loadingOlder={loadingOlder}
-              answerableAskMessageId={answerableAskMessageId}
-              running={transcriptRunning}
-              workingBots={workingBots}
-              workingActivity={soleWorkingActivity}
-              workingStartedAt={workingStartedAt}
-              onLoadOlder={loadOlder}
-              onOpenBot={openBot}
-              onAnswer={answerMessage}
-              onReply={(message) => {
-                setReplyTarget(message);
-                setReplyQuote(null);
-              }}
-              onQuote={(message, quote) => {
-                setReplyTarget(message);
-                setReplyQuote(quote);
-              }}
-              onReact={reactToMessage}
-              onJumpToMessage={jumpToReplyMessage}
-              onOpenPeerMessages={(peer) => {
-                setPeerConversation(peer);
-              }}
-              memberName={resolveTranscriptMemberName}
-              peerBot={resolveTranscriptBot}
-              onRefresh={refreshActiveThread}
-              onBotChanged={refreshBots}
-              onAddRoutine={addSkillRoutine}
-              voiceReady={Boolean(voiceStatus?.ready)}
-              speakingMessageId={speakingMessageId}
-              onSpeak={speakMessage}
-              onOpenComputer={onOpenComputer}
-            />
+            {inboxMode &&
+            activeSnapshot &&
+            transcriptMessages.length === 0 &&
+            activeSnapshot.olderCursor == null &&
+            !transcriptRunning &&
+            !sending ? (
+              <InboxAgentIntro onAsk={(text) => void sendMessage(text, [], newClientId())} />
+            ) : (
+              <Transcript
+                key={activeSnapshot?.threadId}
+                scrollRef={messageScroll}
+                sentHere={sentHere}
+                scrollRequest={scrollRequest}
+                onScrollRequestHandled={clearScrollRequest}
+                artifactTarget={transcriptArtifactTarget}
+                messages={transcriptMessages}
+                showToolActivity={showToolActivity}
+                olderCursor={activeSnapshot?.olderCursor ?? null}
+                loadingOlder={loadingOlder}
+                answerableAskMessageId={answerableAskMessageId}
+                running={transcriptRunning}
+                workingBots={workingBots}
+                workingActivity={soleWorkingActivity}
+                workingStartedAt={workingStartedAt}
+                onLoadOlder={loadOlder}
+                onOpenBot={openBot}
+                onAnswer={answerMessage}
+                onReply={(message) => {
+                  setReplyTarget(message);
+                  setReplyQuote(null);
+                }}
+                onQuote={(message, quote) => {
+                  setReplyTarget(message);
+                  setReplyQuote(quote);
+                }}
+                onReact={reactToMessage}
+                onJumpToMessage={jumpToReplyMessage}
+                onOpenPeerMessages={(peer) => {
+                  setPeerConversation(peer);
+                }}
+                memberName={resolveTranscriptMemberName}
+                peerBot={resolveTranscriptBot}
+                onRefresh={refreshActiveThread}
+                onBotChanged={refreshBots}
+                onAddRoutine={addSkillRoutine}
+                voiceReady={Boolean(voiceStatus?.ready)}
+                speakingMessageId={speakingMessageId}
+                onSpeak={speakMessage}
+                onOpenComputer={onOpenComputer}
+              />
+            )}
           </BotToolControlsContext.Provider>
           {composerDraft ? (
             <ComposeEmail
@@ -3040,6 +3064,7 @@ export function ShellPage() {
               disabled={Boolean(recordingSkill)}
               pendingAttachments={activePendingAttachments}
               attachmentNotice={attachmentNotice}
+              onDismissAttachmentNotice={() => setAttachmentNotice(null)}
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}
@@ -3275,7 +3300,8 @@ export function ShellPage() {
           <InputGroupInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t`Search`}
+            // Chats, files and links; the Inbox has its own mail search.
+            placeholder={t`Search chats`}
             autoComplete="off"
             name="sidebar-search"
           />
@@ -5225,6 +5251,7 @@ export function ShellPage() {
 
 const Transcript = memo(function Transcript({
   scrollRef,
+  sentHere,
   scrollRequest,
   onScrollRequestHandled,
   artifactTarget,
@@ -5256,6 +5283,8 @@ const Transcript = memo(function Transcript({
   onOpenComputer,
 }: {
   scrollRef: RefObject<HTMLDivElement | null>;
+  /** Set by the composer while its own message is on the way in. */
+  sentHere: RefObject<boolean>;
   scrollRequest: { messageId: string; nonce: number } | null;
   onScrollRequestHandled: () => void;
   artifactTarget: ArtifactTarget;
@@ -5480,9 +5509,21 @@ const Transcript = memo(function Transcript({
     onScrollRequestHandled();
   }, [messages, scrollRequest, scrollRef, endJumpScroll, onScrollRequestHandled]);
 
+  // A message sent from this composer brings the transcript to the end even after the reader
+  // scrolled up (or clicked a card, which stops following), so the reply that follows is in view.
+  // A user message that arrives from elsewhere (another tab, a steer) leaves the reader in place.
+  const lastMessageId = useRef<string | null>(null);
   useLayoutEffect(() => {
+    const last = messages.at(-1);
+    if (last?.id !== lastMessageId.current) {
+      if (sentHere.current && transcriptUserJustSent(lastMessageId.current, last)) {
+        following.current = true;
+      }
+      sentHere.current = false;
+    }
+    lastMessageId.current = last?.id ?? null;
     if (following.current) snapToEnd();
-  }, [messages, running, snapToEnd]);
+  }, [messages, running, snapToEnd, sentHere]);
 
   useLayoutEffect(() => {
     const button = jumpButtonRef.current;
@@ -5559,7 +5600,7 @@ const Transcript = memo(function Transcript({
             following.current = false;
           }
         }}
-        className="rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-5 md:px-7 md:py-6"
+        className="@container rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-5 md:px-7 md:py-6"
       >
         {olderCursor != null ? (
           <button
@@ -5631,7 +5672,13 @@ const Transcript = memo(function Transcript({
               ) : null}
               <div
                 data-message-id={message.id}
-                className={peerReceipt ? "relative py-0.5" : "group/message relative hover:z-20"}
+                className={
+                  peerReceipt
+                    ? "relative py-0.5"
+                    : // A narrow transcript (the Inbox agent panel) has no gutter beside the bubbles, so the
+                      // hover time above and the actions below need room of their own.
+                      "group/message relative hover:z-20 @max-sm:[@media(hover:hover)]:pt-3 @max-sm:[@media(hover:hover)]:pb-5"
+                }
               >
                 <div
                   className={
@@ -5646,11 +5693,12 @@ const Transcript = memo(function Transcript({
                       peerReceipt
                         ? undefined
                         : `relative w-fit min-w-0 ${
+                            // A narrow transcript (the Inbox agent panel) cannot spare 8rem beside each bubble.
                             message.role === "user"
-                              ? "max-w-[min(84%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[84%]"
+                              ? "max-w-[min(84%,calc(100%_-_8rem))] @max-sm:max-w-[84%] [@media(hover:none)]:max-w-[84%]"
                               : message.blocks.some((block) => block.kind === "ask" && block.mail)
-                                ? "max-w-[calc(100%_-_5rem)] [@media(hover:none)]:max-w-full"
-                                : "max-w-[min(88%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[88%]"
+                                ? "max-w-[calc(100%_-_5rem)] @max-sm:max-w-full [@media(hover:none)]:max-w-full"
+                                : "max-w-[min(88%,calc(100%_-_8rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
                           }`
                     }
                   >
@@ -5863,6 +5911,7 @@ export const Composer = memo(function Composer({
   disabled,
   pendingAttachments,
   attachmentNotice,
+  onDismissAttachmentNotice,
   sendError,
   runError,
   runErrorId,
@@ -5890,6 +5939,7 @@ export const Composer = memo(function Composer({
   disabled?: boolean;
   pendingAttachments: PendingAttachment[];
   attachmentNotice: string | null;
+  onDismissAttachmentNotice?: () => void;
   sendError: string | null;
   runError: string | null;
   runErrorId: string | null;
@@ -6417,8 +6467,22 @@ export const Composer = memo(function Composer({
         />
       ) : null}
       {attachmentNotice ? (
-        <div className="mb-3 rounded-[14px] border border-warning/40 bg-warning/10 px-4 py-2 text-[13px] text-warning">
-          {attachmentNotice}
+        <div
+          role="status"
+          className="mb-3 flex items-center gap-2 rounded-[14px] border border-warning/40 bg-warning/10 py-1 ps-4 pe-1 text-[13px] text-warning"
+        >
+          <span className="min-w-0 flex-1 py-1">{attachmentNotice}</span>
+          {onDismissAttachmentNotice ? (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label={t`Dismiss`}
+              className="shrink-0 text-warning"
+              onClick={onDismissAttachmentNotice}
+            >
+              <X aria-hidden="true" />
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {pendingAttachments.length ? (
@@ -6767,15 +6831,18 @@ export const Composer = memo(function Composer({
           ) : null}
           {running ? (
             <>
-              <Button
-                size="icon"
-                aria-label={t`Send`}
-                disabled={sending || !canSend || disabled}
-                onClick={send}
-                className="size-8 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95"
-              >
-                <ArrowUp size={16} strokeWidth={2.2} />
-              </Button>
+              {/* Two buttons at most, so the message field keeps its width while a run goes on. */}
+              {canSend ? (
+                <Button
+                  size="icon"
+                  aria-label={t`Send`}
+                  disabled={sending || disabled}
+                  onClick={send}
+                  className="size-8 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95"
+                >
+                  <ArrowUp size={16} strokeWidth={2.2} />
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
                 size="icon"

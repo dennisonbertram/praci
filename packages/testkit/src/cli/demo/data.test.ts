@@ -34,15 +34,25 @@ describe("mock demo data", () => {
     expect(demoFolderPaths(DEMO_DOCUMENTS)).toContain("Finance/Invoices");
   });
 
-  it("builds a mailbox of 25 mock threads with unread mail and one attachment", () => {
-    const { messages } = demoMailboxes()["mock-demo-mailbox"];
-    for (const message of messages) {
-      expect(message.subject.startsWith(MOCK_SUBJECT_PREFIX)).toBe(true);
+  it("builds two mock mailboxes with a Cc thread, sent mail and attachments of every size", () => {
+    const boxes = demoMailboxes();
+    const { messages } = boxes["mock-demo-mailbox"];
+    for (const message of [...messages, ...boxes["mock-demo-sales"].messages]) {
+      expect(message.subject).toMatch(/^(Re: )?\[MOCK\] /);
       expect(message.text).toContain(MOCK_NOTE);
     }
-    expect(new Set(messages.map((m) => m.threadId)).size).toBe(25);
+    expect(new Set(messages.map((m) => m.threadId)).size).toBe(26);
     expect(messages.some((m) => m.labels.includes("UNREAD"))).toBe(true);
-    expect(messages.filter((m) => m.attachments?.length)).toHaveLength(1);
+    const redlines = messages.filter((m) => m.threadId.endsWith("msa-redlines"));
+    expect(redlines).toHaveLength(4);
+    expect(redlines.every((m) => m.cc)).toBe(true);
+    expect(redlines.filter((m) => m.labels.includes("SENT"))).toHaveLength(1);
+    expect(redlines.at(-1)?.subject).toBe(
+      `Re: ${MOCK_SUBJECT_PREFIX} Redlines on the Master Services Agreement`,
+    );
+    const sizes = messages.flatMap((m) => m.attachments ?? []).map((a) => a.data?.length ?? 0);
+    expect(sizes.some((size) => size > 10 * 1024 * 1024)).toBe(true);
+    expect(boxes["mock-demo-sales"].messages.length).toBeGreaterThan(0);
   });
 
   it("serves about three months of mock finance history", async () => {
