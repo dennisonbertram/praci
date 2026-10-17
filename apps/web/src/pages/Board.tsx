@@ -29,7 +29,8 @@ import { useTicketStatusLabels } from "../lib/ticket-status";
 import { errorText } from "../lib/user-error";
 import { WindowChrome } from "./WindowChrome";
 
-export function BoardPage() {
+/** `embedded`: inside the app shell, which already gives the window chrome and navigation. */
+export function BoardPage({ embedded = false }: { embedded?: boolean }) {
   const { t } = useLingui();
   const statuses = useTicketStatusLabels();
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -103,12 +104,18 @@ export function BoardPage() {
   }, []);
 
   return (
-    <div className="flex h-screen min-w-0 flex-col overflow-hidden bg-background text-foreground">
-      <WindowChrome />
-      <header className="flex items-center gap-3 border-b px-4 py-3">
-        <Button variant="ghost" size="icon" render={<Link to="/app" />} aria-label={t`Back`}>
-          <ChevronLeft />
-        </Button>
+    <div
+      className={`flex min-w-0 flex-col overflow-hidden bg-background text-foreground ${
+        embedded ? "min-h-0 flex-1" : "h-screen"
+      }`}
+    >
+      {embedded ? null : <WindowChrome />}
+      <header className="flex items-center gap-3 border-b px-4 py-3 md:px-7">
+        {embedded ? null : (
+          <Button variant="ghost" size="icon" render={<Link to="/app" />} aria-label={t`Back`}>
+            <ChevronLeft />
+          </Button>
+        )}
         <h1 className="flex-1 font-medium">
           <Trans>Task board</Trans>
         </h1>
@@ -121,33 +128,10 @@ export function BoardPage() {
           {error}
         </p>
       ) : null}
-      <main className="relative min-h-0 min-w-0 flex-1 overflow-auto p-4">
-        <div data-testid="board-columns" className="flex min-h-full gap-3">
-          {TICKET_STATUSES.map((status) => (
-            <section key={status} className="min-w-40 flex-1 space-y-2">
-              <h2 className="px-1 text-sm font-medium">{statuses[status]}</h2>
-              {tickets
-                .filter((ticket) => ticket.status === status)
-                .map((ticket) => (
-                  <Button
-                    key={ticket.id}
-                    data-testid={`board-card-${ticket.id}`}
-                    variant="outline"
-                    className="h-auto w-full flex-col items-start gap-1 whitespace-normal p-3 text-left font-normal"
-                    onClick={() => setSelected(ticket)}
-                  >
-                    <span className="text-xs text-muted-foreground">{ticket.ref}</span>
-                    <span>{ticket.title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {bots.find((bot) => bot.id === ticket.assigneeBotId)?.name}
-                    </span>
-                  </Button>
-                ))}
-            </section>
-          ))}
-        </div>
+      <main className="relative min-h-0 min-w-0 flex-1 overflow-auto p-4 md:px-7">
+        {/* With no tickets, empty columns are noise and would crowd the explanation. */}
         {tickets.length === 0 && !error ? (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 text-center text-sm text-muted-foreground">
+          <div className="flex min-h-full flex-col items-center justify-center gap-1 px-6 text-center text-sm text-muted-foreground">
             <p className="font-medium text-foreground">
               <Trans>No tickets yet</Trans>
             </p>
@@ -158,7 +142,35 @@ export function BoardPage() {
               </Trans>
             </p>
           </div>
-        ) : null}
+        ) : (
+          <>
+            {/* Phones stack the columns; side by side they would need sideways scrolling. */}
+            <div data-testid="board-columns" className="flex min-h-full flex-col gap-3 md:flex-row">
+              {TICKET_STATUSES.map((status) => (
+                <section key={status} className="flex-1 space-y-2 md:min-w-40">
+                  <h2 className="px-1 text-sm font-medium">{statuses[status]}</h2>
+                  {tickets
+                    .filter((ticket) => ticket.status === status)
+                    .map((ticket) => (
+                      <Button
+                        key={ticket.id}
+                        data-testid={`board-card-${ticket.id}`}
+                        variant="outline"
+                        className="h-auto w-full flex-col items-start gap-1 whitespace-normal p-3 text-left font-normal"
+                        onClick={() => setSelected(ticket)}
+                      >
+                        <span className="text-xs text-muted-foreground">{ticket.ref}</span>
+                        <span>{ticket.title}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {bots.find((bot) => bot.id === ticket.assigneeBotId)?.name}
+                        </span>
+                      </Button>
+                    ))}
+                </section>
+              ))}
+            </div>
+          </>
+        )}
       </main>
       {selected ? (
         <TicketDialog

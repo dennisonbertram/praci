@@ -53,7 +53,7 @@ import { App } from "./App";
 
 i18n.loadAndActivate({ locale: "en", messages: {} });
 
-it("loads the board chunk only after bootstrap enables the route", async () => {
+it("opens the board inside the shell, so the sidebar stays, without App loading the board chunk", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   const root = createRoot(container);
@@ -63,18 +63,16 @@ it("loads the board chunk only after bootstrap enables the route", async () => {
     </MemoryRouter>
   );
   try {
-    await act(async () => root.render(render()));
-    expect(container.textContent).toBe("Shell");
-    expect(capability.boardLoaded).not.toHaveBeenCalled();
     capability.enabled = true;
     await act(async () => {
       root.render(render());
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(capability.boardLoaded).toHaveBeenCalledOnce();
-    expect(container.textContent).toBe("Board page");
+    expect(container.textContent).toBe("Shell");
+    expect(capability.boardLoaded).not.toHaveBeenCalled();
   } finally {
     await act(async () => root.unmount());
+    capability.enabled = false;
     vi.unstubAllGlobals();
   }
 });

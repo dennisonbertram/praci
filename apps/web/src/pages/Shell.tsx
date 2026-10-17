@@ -355,6 +355,9 @@ import { WindowChrome } from "./WindowChrome";
 const ArtifactsPage = lazy(() =>
   import("./Artifacts").then((module) => ({ default: module.ArtifactsPage })),
 );
+const BoardPage = lazy(() =>
+  import("./Board").then((module) => ({ default: module.BoardPage })),
+);
 const BotContextMenu = lazyOverlay(() =>
   import("./BotContextMenu").then((module) => module.BotContextMenu),
 );
@@ -917,6 +920,8 @@ export function ShellPage() {
   const dataRoomMode = useMatch("/app/data-room") != null;
   const legalMode = useMatch("/app/legal") != null;
   const artifactsMode = useMatch("/app/artifacts/*") != null;
+  // The route exists only while bootstrap enables the board (see App).
+  const boardMode = useMatch("/app/board") != null;
   const capTableMode = useMatch("/app/cap-table/*") != null;
   // Inbox, Finance, Legal, Data room, Cap Table and Integrations are pages of their own: no bot
   // route. Inbox, Finance, Legal and Cap Table keep their agent in a side panel.
@@ -927,7 +932,8 @@ export function ShellPage() {
     capTableMode ||
     integrationsMode ||
     dataRoomMode ||
-    artifactsMode;
+    artifactsMode ||
+    boardMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
@@ -935,7 +941,7 @@ export function ShellPage() {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
   const active =
-    inGroup || integrationsMode || dataRoomMode || artifactsMode
+    inGroup || integrationsMode || dataRoomMode || artifactsMode || boardMode
       ? undefined
       : inboxMode
         ? findInboxAgent(bots, userId)
@@ -4475,6 +4481,12 @@ export function ShellPage() {
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
               <ArtifactsPage />
+            </Suspense>
+          </ErrorBoundary>
+        ) : boardMode ? (
+          <ErrorBoundary fallback={<SectionLoadFailed />}>
+            <Suspense fallback={null}>
+              <BoardPage embedded />
             </Suspense>
           </ErrorBoundary>
         ) : financeMode ? (

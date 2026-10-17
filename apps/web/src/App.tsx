@@ -53,9 +53,6 @@ const WelcomePage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import("./pages/NotFound").then((module) => ({ default: module.NotFoundPage })),
 );
-const BoardPage = lazy(() =>
-  import("./pages/Board").then((module) => ({ default: module.BoardPage })),
-);
 
 function SsoCallbackPage() {
   useEffect(() => {
@@ -190,7 +187,8 @@ function SessionApp() {
             <Route path="/app/g/:groupId" element={<ShellPage />} />
             <Route path="/app/artifacts" element={<ShellPage />} />
             <Route path="/app/artifacts/:artifactId" element={<ShellPage />} />
-            {ticketBoardEnabled ? <Route path="/app/board" element={<BoardPage />} /> : null}
+            {/* The board opens inside the shell, so the sidebar stays. */}
+            {ticketBoardEnabled ? <Route path="/app/board" element={<ShellPage />} /> : null}
             <Route path="/app/inbox" element={<ShellPage />} />
             <Route path="/app/integrations/*" element={<ShellPage />} />
             <Route path="/app/finance/*" element={<ShellPage />} />
