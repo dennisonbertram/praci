@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { assertDemoContainer, assertStateSlot, childEnv, slotConfig, stateDir } from "./safety.js";
+import {
+  assertDemoContainer,
+  assertStateSlot,
+  childEnv,
+  demoModelEnv,
+  slotConfig,
+  stateDir,
+} from "./safety.js";
 
 describe("demo safety", () => {
   it("keeps real-service credentials out of the child environment", () => {
@@ -79,5 +86,21 @@ describe("demo safety", () => {
     expect(() => assertStateSlot({}, 0)).not.toThrow();
     expect(() => assertStateSlot({ slot: 2 }, 0)).toThrow(/slot 2, not slot 0/);
     expect(() => assertStateSlot({}, 2)).toThrow(/slot 0, not slot 2/);
+  });
+
+  it("seeds a no-model state on request, and otherwise uses the keys it found", () => {
+    expect(demoModelEnv({ OPENROUTER_API_KEY: "k" }, true)).toEqual({
+      OPENROUTER_API_KEY: "",
+      ANTHROPIC_API_KEY: "",
+      AGENT_RUNTIME: "pi",
+    });
+    expect(demoModelEnv({ OPENROUTER_API_KEY: "k" }, false)).toEqual({
+      OPENROUTER_API_KEY: "k",
+      AGENT_RUNTIME: "pi",
+    });
+    expect(demoModelEnv({ ANTHROPIC_API_KEY: "a" }, false)).toMatchObject({
+      PI_DEFAULT_PROVIDER: "anthropic",
+    });
+    expect(demoModelEnv({}, false)).toEqual({ AGENT_RUNTIME: "scripted" });
   });
 });

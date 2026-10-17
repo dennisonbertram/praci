@@ -23,6 +23,7 @@ import {
   type ContainerInfo,
   childEnv,
   DEMO_LABEL,
+  demoModelEnv,
   SLOT_LABEL,
   slotConfig,
   stateDir,
@@ -104,8 +105,7 @@ function modelEnv(): NodeJS.ProcessEnv {
     const value = process.env[key] || fromFile?.trim().replace(/^["']|["']$/g, "");
     if (value) found[key] = value;
   }
-  if (!found.OPENROUTER_API_KEY && found.ANTHROPIC_API_KEY) found.PI_DEFAULT_PROVIDER = "anthropic";
-  return { ...found, AGENT_RUNTIME: Object.keys(found).length ? "pi" : "scripted" };
+  return demoModelEnv(found, process.env.DEMO_NO_MODEL === "1");
 }
 
 /** The environment the demo API and its seeding run with. Throwaway values for a local stack. */
@@ -305,7 +305,7 @@ async function up() {
     });
     console.log(`Seeded: ${done.join("; ")}`);
     console.log(
-      `Agent runtime: ${env.AGENT_RUNTIME === "pi" ? "pi with a model key from your environment" : "scripted (no model key found)"}`,
+      `Agent runtime: ${process.env.DEMO_NO_MODEL === "1" ? "none (DEMO_NO_MODEL=1: no model set up)" : env.AGENT_RUNTIME === "pi" ? "pi with a model key from your environment" : "scripted (no model key found)"}`,
     );
     printInfo(email);
   } catch (error) {

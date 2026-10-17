@@ -236,6 +236,7 @@ the e2e emulators, with one demo account filled with invented company data. Ever
 `MOCK`. The command prints the URL and the path of the gitignored login file,
 `.demo-credentials.local` (kept by `demo:down`, so the same login works after a restart). `pnpm demo:down` stops it and deletes its database. If a model key is in
 your environment or `~/develop/rakazo/.env`, agents use it; otherwise they use the scripted runtime.
+`DEMO_NO_MODEL=1 pnpm demo:up` starts it with no model set up, to show the "add a model" states.
 
 To run several demo stacks side by side (for example one per branch worktree), set `DEMO_SLOT` to
 an integer from 0 to 9 (default 0) on both commands: `DEMO_SLOT=2 pnpm demo:up`. Slot N uses web
