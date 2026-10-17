@@ -130,7 +130,7 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
-#. placeholder {0}: card.runwayMonths.toFixed(1)
+#. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
 msgstr ""
@@ -217,6 +217,10 @@ msgstr "{commandVariable} आरक्षित है और कमांड �
 
 #: src/components/finance/ui.tsx
 msgid "{count, plural, one {# bank account} other {# bank accounts}}"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# transaction} other {# transactions}}"
 msgstr ""
 
 #: src/lib/billing.ts
@@ -1268,6 +1272,10 @@ msgstr ""
 msgid "By month"
 msgstr ""
 
+#: src/components/finance/ui.tsx
+msgid "By vendor"
+msgstr ""
+
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Cadence"
 msgstr ""
@@ -1426,6 +1434,10 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Chart failed to render: {error}"
 msgstr "चार्ट रेंडर नहीं हो सका: {error}"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Chart hidden while amounts are hidden"
+msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -3483,6 +3495,10 @@ msgstr "एक नमूना सुनें"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "नमस्ते, उत्तर पढ़कर सुनाते समय मेरी आवाज़ ऐसी होगी।"
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Hide amounts"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Hide bots"
 msgstr ""
@@ -3494,6 +3510,10 @@ msgstr ""
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
 msgstr "ट्रांसक्रिप्ट छिपाएँ"
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
+msgstr ""
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -3789,6 +3809,7 @@ msgstr ""
 msgid "Link SSO"
 msgstr "SSO लिंक करें"
 
+#: src/components/finance/ui.tsx
 #: src/pages/Shell.tsx
 msgid "List"
 msgstr ""
@@ -4142,6 +4163,10 @@ msgstr "मिनट"
 #: src/pages/RoutineSchedule.tsx
 msgid "minutes"
 msgstr "मिनट"
+
+#: src/components/finance/ui.tsx
+msgid "Mixed"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5187,6 +5212,10 @@ msgstr ""
 msgid "Receipt"
 msgstr ""
 
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Receipt hidden while amounts are hidden"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Receipts"
 msgstr ""
@@ -5983,6 +6012,10 @@ msgstr "शेल"
 msgid "Show all {total}"
 msgstr ""
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Show amounts"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Show bots"
 msgstr ""
@@ -6770,6 +6803,7 @@ msgstr ""
 msgid "Undo"
 msgstr ""
 
+#: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
 msgstr ""

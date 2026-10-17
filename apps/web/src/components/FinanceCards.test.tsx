@@ -18,6 +18,7 @@ vi.mock("@lingui/react/macro", () => {
   };
 });
 
+import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { FinanceCardGroup, FinanceCards } from "./FinanceCards";
 
 type Block = Extract<MessageBlock, { kind: "finance" }>;
@@ -38,6 +39,7 @@ async function render(block: Block) {
 }
 
 afterEach(() => {
+  setHideAmounts(false);
   document.body.innerHTML = "";
   vi.unstubAllGlobals();
 });
@@ -271,4 +273,22 @@ it("follows the count until the user toggles, then keeps their choice", async ()
   await act(async () => toggle()?.click());
   await rerender([breakdown, overview, recurring, transactions]);
   expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
+});
+
+it("masks every amount on the overview card while amounts are hidden", async () => {
+  setHideAmounts(true);
+  const view = await render({
+    kind: "finance",
+    card: {
+      card: "overview",
+      cashCents: 1_000_000,
+      burnCents: 200_000,
+      runwayMonths: 5,
+      monthSpendCents: 123_456,
+    },
+  });
+  const text = view.textContent ?? "";
+  for (const real of ["10,000", "2,000", "1,234", "1,235", "5 mo", "5.0"])
+    expect(text).not.toContain(real);
+  expect([...view.querySelectorAll("dd")].map((dd) => dd.textContent)).toContain("$•••");
 });

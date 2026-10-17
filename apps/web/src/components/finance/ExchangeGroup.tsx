@@ -16,7 +16,8 @@ import {
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
-import { money, moneyExact } from "../../lib/finance-format";
+import { hiddenOr, money, moneyExact } from "../../lib/finance-format";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { EXCHANGES } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -33,6 +34,7 @@ export function ExchangeGroup({
   exchange: FinanceExchange;
   onChanged: () => void;
 }) {
+  useHideAmounts();
   const { t } = useLingui();
   const name = exchangeName(exchange.provider);
   const [confirming, setConfirming] = useState(false);
@@ -93,7 +95,7 @@ export function ExchangeGroup({
             {exchange.balances.map((b) => (
               <tr key={b.asset} className="border-t border-border [&>td]:py-2">
                 <td className="font-semibold">{b.asset}</td>
-                <td className="text-end tabular-nums">{b.amount}</td>
+                <td className="text-end tabular-nums">{hiddenOr(b.amount)}</td>
                 <td className="text-end tabular-nums">
                   {b.usdValueCents === null ? "—" : moneyExact(b.usdValueCents)}
                 </td>

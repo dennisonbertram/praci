@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   accountLabel,
   axisMoney,
@@ -17,6 +17,7 @@ import {
   transactionAmount,
   txnDay,
 } from "./finance-format";
+import { setHideAmounts } from "./hide-amounts-preference";
 
 const en = "en-US";
 const now = new Date("2026-10-14T12:00:00Z");
@@ -134,5 +135,19 @@ describe("shareText", () => {
     expect(shareText(0, 100)).toBe("0%");
     expect(shareText(50, 100)).toBe("50%");
     expect(shareText(5, 0)).toBe("—");
+  });
+});
+
+describe("figures the Finance pages derive from amounts", () => {
+  afterEach(() => setHideAmounts(false));
+
+  it("masks shares, changes and axis labels while amounts are hidden", () => {
+    setHideAmounts(true);
+    expect(shareText(50, 100)).not.toMatch(/\d/);
+    expect(shareText(500, 19_847_500)).not.toMatch(/\d/);
+    expect(changeText(53)).not.toMatch(/\d/);
+    expect(changeText(0)).not.toMatch(/\d/);
+    expect(axisMoney(-250_000)).not.toMatch(/\d/);
+    expect(txnDay({ purchasedAt: null, postedAt: "2026-10-01T00:00:00Z" })).toBe("2026-10-01");
   });
 });

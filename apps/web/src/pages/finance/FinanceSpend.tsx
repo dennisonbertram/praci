@@ -16,7 +16,7 @@ import {
   rowClass,
   Section,
   Th,
-  TransactionTable,
+  TransactionsSection,
   toneClass,
   useFinanceQuery,
   useRowNavigate,
@@ -36,6 +36,7 @@ import {
   txnDay,
 } from "../../lib/finance-format";
 import { financePath, type SpendRange } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { ReceiptIcon } from "./FinanceTransaction";
@@ -52,6 +53,7 @@ export function FinanceSpendPage({
   /** Only this provider's spend, as opened from Brex on the Burn page. */
   source?: FinanceProvider | null;
 }) {
+  useHideAmounts();
   const navigate = useNavigate();
   const q = useFinanceQuery(
     () =>
@@ -135,9 +137,7 @@ export function FinanceSpendPage({
               </Chip>
             ))}
           </div>
-          <Section>
-            <TransactionTable rows={data.transactions} />
-          </Section>
+          <TransactionsSection rows={data.transactions} />
         </>
       ) : null}
     </DetailPage>
@@ -145,6 +145,7 @@ export function FinanceSpendPage({
 }
 
 export function FinanceCategoryPage({ slug }: { slug: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.category({ slug }), [slug]);
   const rowProps = useRowNavigate();
   const data = q.data;
@@ -206,9 +207,7 @@ export function FinanceCategoryPage({ slug }: { slug: string }) {
               </tbody>
             </table>
           </Section>
-          <Section title={<Trans>Recent</Trans>}>
-            <TransactionTable rows={data.recent} />
-          </Section>
+          <TransactionsSection title={<Trans>Recent</Trans>} rows={data.recent} />
         </>
       ) : null}
     </DetailPage>
@@ -225,6 +224,7 @@ const cadenceLabel = (cadence: FinanceRecurringOutput["recurring"]["cadence"]) =
         : t`Yearly`;
 
 export function FinanceRecurringPage({ keyName }: { keyName: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.recurring({ key: keyName }), [keyName]);
   const data = q.data;
   const recurring = data?.recurring;
@@ -255,9 +255,7 @@ export function FinanceRecurringPage({ keyName }: { keyName: string }) {
               ) : null}
             </Kv>
           </Section>
-          <Section title={<Trans>Past charges</Trans>}>
-            <TransactionTable rows={data.pastCharges} />
-          </Section>
+          <TransactionsSection title={<Trans>Past charges</Trans>} rows={data.pastCharges} />
         </>
       ) : null}
     </DetailPage>
@@ -265,6 +263,7 @@ export function FinanceRecurringPage({ keyName }: { keyName: string }) {
 }
 
 export function FinanceVendorPage({ keyName }: { keyName: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.vendor({ key: keyName }), [keyName]);
   const rowProps = useRowNavigate();
   const data = q.data;

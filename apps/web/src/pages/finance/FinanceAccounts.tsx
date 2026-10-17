@@ -26,7 +26,7 @@ import {
   rowClass,
   Section,
   Th,
-  TransactionTable,
+  TransactionsSection,
   useFinanceQuery,
   useRowNavigate,
 } from "../../components/finance/ui";
@@ -39,16 +39,19 @@ import {
   moneyExact,
   monthAxisLabels,
   monthLabel,
+  percentFigure,
 } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 
 type AccountRow = FinanceAccountsOutput["cash"][number];
 
-const yieldText = (pct: number | null) => (pct === null ? null : `${pct.toFixed(1)}%`);
+const yieldText = (pct: number | null) => (pct === null ? null : percentFigure(pct, 1));
 
 function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
+  useHideAmounts();
   const rowProps = useRowNavigate();
   return (
     <table className="w-full border-collapse">
@@ -99,6 +102,7 @@ function CryptoGroup({
   crypto: FinanceCryptoOutput;
   exchanges: FinanceExchange[];
 }) {
+  useHideAmounts();
   const typeNames = useTypeNames();
   const rowProps = useRowNavigate();
   const cents = new Map(crypto.summary.byWallet.map((row) => [row.walletId, row.cents]));
@@ -154,6 +158,7 @@ export function FinanceAccountsPage({
   /** A `?source=` that is not a provider: every account is listed and the filter is flagged. */
   unknownSource?: string;
 }) {
+  useHideAmounts();
   const accounts = useFinanceQuery(() => rpc.finance.accounts(), []);
   // Whatever reloads the accounts total (a wallet added, the crypto scope changed) reloads the chart too.
   const [balanceStamp, setBalanceStamp] = useState(0);
@@ -346,6 +351,7 @@ export function FinanceAccountsPage({
 }
 
 export function FinanceAccountPage({ id }: { id: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.account({ id }), [id]);
   const data = q.data;
   const account = data?.account;
@@ -444,12 +450,11 @@ export function FinanceAccountPage({ id }: { id: string }) {
               </table>
             </Section>
           ) : null}
-          <Section title={<Trans>Transactions</Trans>}>
-            <TransactionTable
-              rows={data.transactions}
-              empty={<Trans>No transactions on this account yet</Trans>}
-            />
-          </Section>
+          <TransactionsSection
+            title={<Trans>Transactions</Trans>}
+            rows={data.transactions}
+            empty={<Trans>No transactions on this account yet</Trans>}
+          />
         </>
       ) : null}
     </DetailPage>

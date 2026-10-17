@@ -5,6 +5,7 @@ import { cn, Spinner } from "@rakazo/ui-web";
 import { FileText, Mail, Upload } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { splitSnippet } from "../../lib/data-room";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { sourceLabel } from "./FilterBar";
 import { dateText, statusLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
@@ -220,9 +221,10 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
 
 /** A search snippet as text and <mark> elements. The snippet is never parsed as HTML. */
 export function Snippet({ text }: { text: string }) {
+  useHideAmounts();
   return (
     <p className="text-sm text-foreground/80">
-      {splitSnippet(text).map((part, index) =>
+      {splitSnippet(maskCurrencyWhenHidden(text)).map((part, index) =>
         part.mark ? (
           <mark key={index} className="rounded-sm bg-warning/25 text-inherit">
             {part.text}

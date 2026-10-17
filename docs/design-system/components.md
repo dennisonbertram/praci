@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 166 of 166
-- Web and shared components: 480
+- Web and shared component files with stories: 167 of 167
+- Web and shared components: 486
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -72,6 +72,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | EmailCards | [apps/web/src/components/EmailCards.tsx](../../apps/web/src/components/EmailCards.tsx) | [EmailCards.stories.tsx](../../apps/web/src/components/EmailCards.stories.tsx) | web |
 | SectionLoadFailed | [apps/web/src/components/ErrorBoundary.tsx](../../apps/web/src/components/ErrorBoundary.tsx) | [ErrorBoundary.stories.tsx](../../apps/web/src/components/ErrorBoundary.stories.tsx) | web |
 | FinanceCards, FinanceCardGroup, Header, Preview | [apps/web/src/components/FinanceCards.tsx](../../apps/web/src/components/FinanceCards.tsx) | [FinanceCards.stories.tsx](../../apps/web/src/components/FinanceCards.stories.tsx) | web |
+| HideAmountsButton, HideAmountsMenuItem | [apps/web/src/components/HideAmountsToggle.tsx](../../apps/web/src/components/HideAmountsToggle.tsx) | [HideAmountsToggle.stories.tsx](../../apps/web/src/components/HideAmountsToggle.stories.tsx) | web |
 | I18nBootstrap | [apps/web/src/components/I18nBootstrap.tsx](../../apps/web/src/components/I18nBootstrap.tsx) | [I18nBootstrap.stories.tsx](../../apps/web/src/components/I18nBootstrap.stories.tsx) | web |
 | Row, MailApprovalCard | [apps/web/src/components/MailApprovalCard.tsx](../../apps/web/src/components/MailApprovalCard.tsx) | [MailApprovalCard.stories.tsx](../../apps/web/src/components/MailApprovalCard.stories.tsx) | web |
 | MailOutbox | [apps/web/src/components/MailOutbox.tsx](../../apps/web/src/components/MailOutbox.tsx) | [MailOutbox.stories.tsx](../../apps/web/src/components/MailOutbox.stories.tsx) | web |
@@ -139,7 +140,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | StatementImport | [apps/web/src/components/finance/StatementImport.tsx](../../apps/web/src/components/finance/StatementImport.tsx) | [StatementImport.stories.tsx](../../apps/web/src/components/finance/StatementImport.stories.tsx) | web |
 | StatementReminderBanner | [apps/web/src/components/finance/StatementReminderBanner.tsx](../../apps/web/src/components/finance/StatementReminderBanner.tsx) | [StatementReminderBanner.stories.tsx](../../apps/web/src/components/finance/StatementReminderBanner.stories.tsx) | web |
 | CheckLine, Row, StatementGroup | [apps/web/src/components/finance/StatementReviewCard.tsx](../../apps/web/src/components/finance/StatementReviewCard.tsx) | [StatementReviewCard.stories.tsx](../../apps/web/src/components/finance/StatementReviewCard.stories.tsx) | web |
-| SpaceName, AskAgentButton, HereLink, DetailHead, NotFoundNotice, ErrorNotice, DetailPage, Section, Kpi, BreakdownRows, Th, Chevron, TransactionTable, Chip, PeriodTabs, Legend, BurnLegend, Kv, KvRow, ValueLink | [apps/web/src/components/finance/ui.tsx](../../apps/web/src/components/finance/ui.tsx) | [ui.stories.tsx](../../apps/web/src/components/finance/ui.stories.tsx) | web |
+| SpaceName, AskAgentButton, HereLink, DetailHead, NotFoundNotice, ErrorNotice, DetailPage, Section, Kpi, BreakdownRows, Th, Chevron, TransactionRow, VendorGroupRows, TransactionTable, TransactionsSection, Chip, PeriodTabs, Legend, BurnLegend, Kv, KvRow, ValueLink | [apps/web/src/components/finance/ui.tsx](../../apps/web/src/components/finance/ui.tsx) | [ui.stories.tsx](../../apps/web/src/components/finance/ui.stories.tsx) | web |
 | WalletDialog | [apps/web/src/components/finance/WalletDialog.tsx](../../apps/web/src/components/finance/WalletDialog.tsx) | [WalletDialog.stories.tsx](../../apps/web/src/components/finance/WalletDialog.stories.tsx) | web |
 
 ## Web components/inbox
@@ -236,7 +237,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | CommandPalette | [apps/web/src/pages/shell/command-palette.tsx](../../apps/web/src/pages/shell/command-palette.tsx) | [command-palette.stories.tsx](../../apps/web/src/pages/shell/command-palette.stories.tsx) | web |
 | NewSpaceDialog, RenameSpaceDialog, PickerInfoDialog, NewBotSectionDialog, RenameBotSectionDialog, ClearConversationDialog, DeleteBotDialog, DeleteItemDialog | [apps/web/src/pages/shell/dialogs.tsx](../../apps/web/src/pages/shell/dialogs.tsx) | [dialogs.stories.tsx](../../apps/web/src/pages/shell/dialogs.stories.tsx) | web |
 | MentionIcon | [apps/web/src/pages/shell/mention-icon.tsx](../../apps/web/src/pages/shell/mention-icon.tsx) | [mention-icon.stories.tsx](../../apps/web/src/pages/shell/mention-icon.stories.tsx) | web |
-| ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, McpApprovalCard, ChartBlockView, ArtifactImage | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
+| ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, ChartCanvasPlot, McpApprovalCard, ChartBlockView, ArtifactImage | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
 | SpaceSearchResults | [apps/web/src/pages/SpaceSearch.tsx](../../apps/web/src/pages/SpaceSearch.tsx) | [SpaceSearch.stories.tsx](../../apps/web/src/pages/SpaceSearch.stories.tsx) | web |
 | VoiceSettingsOverlay | [apps/web/src/pages/VoiceSettingsOverlay.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.tsx) | [VoiceSettingsOverlay.stories.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.stories.tsx) | web |
 | WelcomePage | [apps/web/src/pages/Welcome.tsx](../../apps/web/src/pages/Welcome.tsx) | [Welcome.stories.tsx](../../apps/web/src/pages/Welcome.stories.tsx) | web |

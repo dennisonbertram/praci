@@ -23,8 +23,16 @@ import { ChevronRight, MessageSquare } from "lucide-react";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Link, type LinkProps, useLocation, useNavigate } from "react-router-dom";
 import { money, shortDay, transactionAmount, txnDay } from "../../lib/finance-format";
+import {
+  groupByVendor,
+  readGroupedPref,
+  type VendorGroup,
+  writeGroupedPref,
+} from "../../lib/finance-group";
 import { financePath } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
+import { HideAmountsButton } from "../HideAmountsToggle";
 import { shade } from "./charts";
 
 /**
@@ -225,6 +233,7 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
           ))}
         </ol>
       </nav>
+      <HideAmountsButton />
       <AskAgentButton />
     </div>
   );
@@ -406,6 +415,7 @@ export function BreakdownRows({
   to: (row: BreakdownRow) => string;
   swatches?: boolean;
 }) {
+  useHideAmounts();
   // A row that refunds outweigh is not spend; shown unsigned it would read as money out.
   const spent = rows.filter((row) => row.cents > 0);
   const top = spent[0]?.cents || 1;
@@ -507,24 +517,105 @@ export const Chevron = () => (
 export const rowClass =
   "group/row cursor-pointer border-t border-border hover:bg-background [&>td]:py-2";
 
-/** Transactions: date, counterparty and memo, category, signed amount, status. Each row opens the transaction. */
+function TransactionRow({ row }: { row: FinanceTransaction }) {
+  useHideAmounts();
+  const rowProps = useRowNavigate();
+  const back = useBackState();
+  return (
+    <tr
+      className={rowClass}
+      {...rowProps(financePath.transaction(row.id), { ...back, preview: row })}
+    >
+      <td className="w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground">
+        {shortDay(txnDay(row))}
+      </td>
+      <td className="min-w-0">
+        <Link
+          state={{ ...back, preview: row }}
+          to={financePath.transaction(row.id)}
+          className="outline-none hover:underline focus-visible:underline"
+        >
+          {row.counterparty}
+        </Link>
+        {row.memo ? (
+          <div className="line-clamp-1 text-[11px] text-muted-foreground">{row.memo}</div>
+        ) : null}
+      </td>
+      <td className="hidden max-w-[10rem] truncate text-muted-foreground @2xl:table-cell">
+        {row.category ?? t`Uncategorized`}
+      </td>
+      <td className="whitespace-nowrap ps-4 text-end tabular-nums">
+        {transactionAmount(row.amountCents, undefined, row.currency)}
+      </td>
+      <td className="hidden ps-4 text-muted-foreground @2xl:table-cell">
+        {statusLabel(row.status)}
+      </td>
+      <Chevron />
+    </tr>
+  );
+}
+
+/** One row per vendor; opening it lists that vendor's transactions in the flat list's row style. */
+function VendorGroupRows({ group }: { group: VendorGroup }) {
+  useHideAmounts();
+  const [open, setOpen] = useState(false);
+  const count = group.rows.length;
+  const name = group.name || t`Unknown`;
+  return (
+    <>
+      {/* The whole row toggles; the vendor button carries the accessible name and keyboard focus (its click bubbles here). */}
+      <tr
+        className="group/row cursor-pointer border-t border-border hover:bg-background [&>td]:py-2"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <td className="w-[4.5rem] pe-2">
+          <ChevronRight
+            aria-hidden="true"
+            className={cn("size-3.5 text-muted-foreground", open && "rotate-90")}
+          />
+        </td>
+        <td className="min-w-0">
+          <button
+            type="button"
+            aria-expanded={open}
+            className="text-start outline-none hover:underline focus-visible:underline"
+          >
+            {name}
+          </button>
+          <div className="text-[11px] text-muted-foreground">
+            {plural(count, { one: "# transaction", other: "# transactions" })}
+          </div>
+        </td>
+        <td className="hidden max-w-[10rem] truncate text-muted-foreground @2xl:table-cell">
+          {group.mixed ? t`Mixed` : (group.category ?? t`Uncategorized`)}
+        </td>
+        <td className="whitespace-nowrap ps-4 text-end tabular-nums">
+          {transactionAmount(Number(group.totalCents), undefined, group.currency)}
+        </td>
+        <td className="hidden @2xl:table-cell" />
+        <td />
+      </tr>
+      {open ? group.rows.map((row) => <TransactionRow key={row.id} row={row} />) : null}
+    </>
+  );
+}
+
+/** Transactions: date, counterparty and memo, category, signed amount, status. Each row opens the transaction. With `grouped`, one row per vendor. */
 export function TransactionTable({
   rows,
+  grouped = false,
   empty,
 }: {
   rows: FinanceTransaction[];
+  grouped?: boolean;
   /** What an empty list says; a page without a period picks its own words. */
   empty?: ReactNode;
 }) {
-  const rowProps = useRowNavigate();
-  const back = useBackState();
   return (
     <table className="w-full border-collapse">
       <thead>
         <tr>
-          <Th>
-            <Trans>Date</Trans>
-          </Th>
+          <Th>{grouped ? null : <Trans>Date</Trans>}</Th>
           <Th>
             <Trans>Counterparty</Trans>
           </Th>
@@ -534,9 +625,7 @@ export function TransactionTable({
           <Th right className="ps-4">
             <Trans>Amount</Trans>
           </Th>
-          <Th className="hidden ps-4 @2xl:table-cell">
-            <Trans>Status</Trans>
-          </Th>
+          <Th className="hidden ps-4 @2xl:table-cell">{grouped ? null : <Trans>Status</Trans>}</Th>
           <Th />
         </tr>
       </thead>
@@ -548,41 +637,51 @@ export function TransactionTable({
             </td>
           </tr>
         ) : null}
-        {rows.map((row) => (
-          <tr
-            key={row.id}
-            className={rowClass}
-            {...rowProps(financePath.transaction(row.id), { ...back, preview: row })}
-          >
-            <td className="w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground">
-              {shortDay(txnDay(row))}
-            </td>
-            <td className="min-w-0">
-              <Link
-                state={{ ...back, preview: row }}
-                to={financePath.transaction(row.id)}
-                className="outline-none hover:underline focus-visible:underline"
-              >
-                {row.counterparty}
-              </Link>
-              {row.memo ? (
-                <div className="line-clamp-1 text-[11px] text-muted-foreground">{row.memo}</div>
-              ) : null}
-            </td>
-            <td className="hidden max-w-[10rem] truncate text-muted-foreground @2xl:table-cell">
-              {row.category ?? t`Uncategorized`}
-            </td>
-            <td className="whitespace-nowrap ps-4 text-end tabular-nums">
-              {transactionAmount(row.amountCents)}
-            </td>
-            <td className="hidden ps-4 text-muted-foreground @2xl:table-cell">
-              {statusLabel(row.status)}
-            </td>
-            <Chevron />
-          </tr>
-        ))}
+        {grouped
+          ? groupByVendor(rows).map((group) => <VendorGroupRows key={group.key} group={group} />)
+          : rows.map((row) => <TransactionRow key={row.id} row={row} />)}
       </tbody>
     </table>
+  );
+}
+
+/** A Transactions card whose header switches between the flat list and one row per vendor. The choice is remembered on this device. */
+export function TransactionsSection({
+  title,
+  rows,
+  empty,
+}: {
+  title?: ReactNode;
+  rows: FinanceTransaction[];
+  empty?: ReactNode;
+}) {
+  const [grouped, setGrouped] = useState(readGroupedPref);
+  const choose = (next: boolean) => {
+    setGrouped(next);
+    writeGroupedPref(next);
+  };
+  return (
+    <Section
+      title={title}
+      action={
+        <div className="flex gap-1">
+          {([false, true] as const).map((mode) => (
+            <Button
+              key={String(mode)}
+              size="xs"
+              variant={grouped === mode ? "default" : "outline"}
+              className="rounded-full"
+              aria-pressed={grouped === mode}
+              onClick={() => choose(mode)}
+            >
+              {mode ? <Trans>By vendor</Trans> : <Trans>List</Trans>}
+            </Button>
+          ))}
+        </div>
+      }
+    >
+      <TransactionTable rows={rows} grouped={grouped} empty={empty} />
+    </Section>
   );
 }
 
