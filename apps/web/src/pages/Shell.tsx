@@ -217,6 +217,7 @@ import {
   useAutoCreateCartaAgent,
   useOnPhoneWidth,
 } from "../lib/carta-agent";
+import { readChatDraft, writeChatDraft } from "../lib/chat-draft";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -3208,6 +3209,7 @@ export function ShellPage() {
           {active || activeGroup ? (
             <Composer
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
+              draftKey={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
               activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
               running={composerRunning}
               disabled={Boolean(recordingSkill)}
@@ -6177,6 +6179,7 @@ const QuoteSelectionButton = memo(function QuoteSelectionButton({
 
 export const Composer = memo(function Composer({
   artifactTarget,
+  draftKey,
   activeName,
   running,
   disabled,
@@ -6224,6 +6227,8 @@ export const Composer = memo(function Composer({
   onStop: () => Promise<void>;
   onVoice?: () => void;
   artifactTarget: ArtifactTarget;
+  /** Which chat this composer writes to, so a half-written message survives switching chats. */
+  draftKey?: string;
   replyTarget?: ThreadMessage | null;
   replyQuote?: string | null;
   replyTargetName?: string;
@@ -6237,7 +6242,10 @@ export const Composer = memo(function Composer({
 }) {
   useHideAmounts();
   const { t } = useLingui();
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(() => readChatDraft(draftKey));
+  useEffect(() => {
+    writeChatDraft(draftKey, draft);
+  }, [draftKey, draft]);
   const historyIndex = useRef<number | null>(null);
   const historyDraft = useRef("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);

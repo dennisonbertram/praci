@@ -240,6 +240,20 @@ describe("Composer", () => {
     });
   });
 
+  it("keeps a half-written message when the user leaves the chat and comes back", () => {
+    let textarea = renderComposer(vi.fn(), { draftKey: "bot:chief" });
+    type(textarea, "Draft about board meeting agenda");
+    act(() => root?.unmount());
+    container?.remove();
+    textarea = renderComposer(vi.fn(), { draftKey: "bot:carta" });
+    expect(textarea.value).toBe("");
+    act(() => root?.unmount());
+    container?.remove();
+    textarea = renderComposer(vi.fn(), { draftKey: "bot:chief" });
+    expect(textarea.value).toBe("Draft about board meeting agenda");
+    sessionStorage.clear();
+  });
+
   it("moves through the / menu with the arrow keys and picks with Enter", () => {
     const onSend = vi.fn();
     const onSlashAction = vi.fn();
