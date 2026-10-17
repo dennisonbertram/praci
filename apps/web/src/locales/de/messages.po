@@ -6211,7 +6211,7 @@ msgid "Status"
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
-msgid "Step 1 of 3"
+msgid "Step 1 of {totalSteps}"
 msgstr ""
 
 #: src/components/integrations/AgentStep.tsx
@@ -6388,6 +6388,10 @@ msgstr ""
 
 #: src/pages/shell/bot-pins.tsx
 msgid "The bot changed this list. Your last edit wasn't saved."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "The Carta agent can now read your cap table."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -6681,6 +6685,10 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "Type your answer"
 msgstr "Gib deine Antwort ein"
+
+#: src/pages/CapTable.tsx
+msgid "Unallocated pool"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 msgid "Unassigned"

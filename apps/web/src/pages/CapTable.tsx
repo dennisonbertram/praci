@@ -87,6 +87,24 @@ function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
     if (contact) used.add(contact.id);
     return { key: `h${i}`, contact, holder };
   });
+  // The unallocated pool is part of the fully diluted count but no one holds it, so without this
+  // row the Ownership column stops short of 100%. The percent is display-only.
+  const pool = snapshot?.optionPoolAvailable;
+  if (snapshot && pool) {
+    rows.push({
+      key: "pool",
+      contact: null,
+      holder: {
+        name: t`Unallocated pool`,
+        email: null,
+        organization: null,
+        security: "Options",
+        shares: pool,
+        amountUsd: null,
+        percent: snapshot.fullyDilutedShares ? (pool * 100) / snapshot.fullyDilutedShares : null,
+      },
+    });
+  }
   for (const contact of contacts)
     if (!used.has(contact.id)) rows.push({ key: contact.id, contact, holder: null });
   return rows;
@@ -545,17 +563,11 @@ export function CapTablePage({
 
   return (
     <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
-      <div className="mb-4 flex items-center gap-2">
+      <div className={`flex items-center gap-2 ${snapshot ? "mb-0.5" : "mb-4"}`}>
         <div className="me-auto min-w-0">
           <h1 className="truncate text-lg font-medium">
             <Trans>Cap Table</Trans>
           </h1>
-          {snapshot ? (
-            <p className="truncate text-xs text-muted-foreground">
-              {snapshot.companyName} ·{" "}
-              <Trans>Updated {formatRelativeTime(snapshot.updatedAt)}</Trans>
-            </p>
-          ) : null}
         </div>
         {cartaConnected ? (
           <Button
@@ -585,6 +597,18 @@ export function CapTablePage({
           </Button>
         ) : null}
       </div>
+      {snapshot ? (
+        // Under the header row, not beside its buttons, so a phone shows the company and the time.
+        // The update time never truncates; a long company name gives way first.
+        <p className="mb-4 flex min-w-0 gap-1 text-xs text-muted-foreground">
+          <span className="truncate" title={snapshot.companyName}>
+            {snapshot.companyName}
+          </span>
+          <span className="shrink-0">
+            · <Trans>Updated {formatRelativeTime(snapshot.updatedAt)}</Trans>
+          </span>
+        </p>
+      ) : null}
 
       {cartaConnected ? null : (
         <Card className="mb-5 flex flex-col items-start gap-3 px-4 @md:flex-row @md:items-center">
@@ -676,18 +700,18 @@ export function CapTablePage({
         <table className="w-full table-fixed text-sm">
           <thead className="text-start text-xs text-muted-foreground">
             <tr>
-              <th className="w-[48%] py-2 pe-3 text-start font-medium @lg:w-[30%]">
+              <th className="w-[48%] py-2 pe-3 text-start font-medium @lg:w-[26%]">
                 <Trans>Name</Trans>
               </th>
               <th className="py-2 pe-3 text-start font-medium">
                 <Trans>Email</Trans>
               </th>
-              <th className="hidden w-40 py-2 pe-3 text-start font-medium @lg:table-cell">
+              <th className="hidden w-32 py-2 pe-3 text-start font-medium @lg:table-cell">
                 <Trans>Kind</Trans>
               </th>
               {snapshot ? (
                 <>
-                  <th className="hidden w-28 py-2 pe-3 text-end font-medium @2xl:table-cell">
+                  <th className="hidden w-24 py-2 pe-3 text-end font-medium @2xl:table-cell">
                     <Trans>Shares</Trans>
                   </th>
                   <th className="w-24 py-2 text-end font-medium">
@@ -730,15 +754,12 @@ export function CapTablePage({
                     {/* Without room for the Kind column, the kind and holding show here. */}
                     <div
                       className="truncate text-xs text-muted-foreground @lg:hidden"
-                      title={organization ?? undefined}
+                      title={holding ?? undefined}
                     >
-                      {[names[kind], holding, organization].filter(Boolean).join(" · ")}
+                      {[names[kind], holding].filter(Boolean).join(" · ")}
                     </div>
                     {organization ? (
-                      <div
-                        className="hidden truncate text-xs text-muted-foreground @lg:block"
-                        title={organization}
-                      >
+                      <div className="truncate text-xs text-muted-foreground" title={organization}>
                         {organization}
                       </div>
                     ) : null}

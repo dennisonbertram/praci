@@ -233,6 +233,16 @@ it("shows the summary, ownership legend and joined investors", async () => {
   expect(text).toContain("Bo");
 });
 
+it("lists the unallocated option pool as a row so the Ownership column adds up", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  await show();
+  const row = [...container.querySelectorAll("tr")].find((tr) =>
+    tr.textContent?.includes("Unallocated pool"),
+  );
+  expect(row?.textContent).toContain("500,000");
+  expect(row?.textContent).toContain("5.00%");
+});
+
 it("offers Add email for a holder without a contact and prefills the dialog", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
   await show();
