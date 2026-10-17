@@ -327,6 +327,9 @@ import {
 import { commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
 import { WindowChrome } from "./WindowChrome";
 
+const ArtifactsPage = lazy(() =>
+  import("./Artifacts").then((module) => ({ default: module.ArtifactsPage })),
+);
 const BotContextMenu = lazyOverlay(() =>
   import("./BotContextMenu").then((module) => module.BotContextMenu),
 );
@@ -865,10 +868,12 @@ export function ShellPage() {
   const integrationsMode = useMatch("/app/integrations/*") != null;
   const financeMode = useMatch("/app/finance/*") != null;
   const dataRoomMode = useMatch("/app/data-room") != null;
+  const artifactsMode = useMatch("/app/artifacts/*") != null;
   // Inbox, Finance, Cap Table, Data room and Integrations are pages of their own: no bot route.
   // Inbox and Finance keep their agent in a side panel.
   const capTableMode = useMatch("/app/cap-table/*") != null;
-  const pageMode = inboxMode || financeMode || capTableMode || integrationsMode || dataRoomMode;
+  const pageMode =
+    inboxMode || financeMode || capTableMode || integrationsMode || dataRoomMode || artifactsMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
@@ -4211,6 +4216,12 @@ export function ShellPage() {
           </ErrorBoundary>
         ) : dataRoomMode ? (
           <DataRoomPage />
+        ) : artifactsMode ? (
+          <ErrorBoundary fallback={<SectionLoadFailed />}>
+            <Suspense fallback={null}>
+              <ArtifactsPage />
+            </Suspense>
+          </ErrorBoundary>
         ) : financeMode ? (
           <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
         ) : capTableMode ? (

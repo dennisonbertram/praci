@@ -33,6 +33,8 @@ test("opens Artifacts from the account menu and lists created files", async ({
   await expect(page.getByRole("heading", { name: "Artifacts", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Filters" })).toBeVisible();
   await expect(page.getByText("No artifacts found.")).toBeVisible();
+  // Artifacts opens inside the app, with the sidebar still there.
+  await expect(sidebar).toBeVisible();
   await captureScreenshot(page, testInfo, "artifacts-empty");
 
   await page.setViewportSize({ width: 360, height: 700 });
@@ -66,7 +68,7 @@ test("opens Artifacts from the account menu and lists created files", async ({
   await expect(page.getByRole("heading", { name: "Artifacts tab" })).toBeVisible();
   await captureScreenshot(page, testInfo, "artifacts-preview");
 
-  await page.getByRole("link", { name: "Back" }).click();
+  await sidebar.getByRole("button", { name: /^Chief/ }).click();
   await expect(page).toHaveURL(/\/app\/(?!artifacts(?:\/|$))[^/]+$/);
   await expect(page.getByTestId("transcript")).toBeVisible();
 
