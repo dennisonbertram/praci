@@ -101,12 +101,15 @@ const categoryLabels = (): Record<InboxViewCategory, string> => ({
 
 export function InboxPage({
   onConnectMail,
+  onReconnectMail,
   onRefreshed,
   onShowAgent,
   paused,
   spaceName,
 }: {
   onConnectMail: () => void;
+  /** Opens Gmail's page, where a lapsed account can be removed and connected again. */
+  onReconnectMail?: () => void;
   /** The space's name, when the user has more than one, so they know whose mail this is. */
   spaceName?: string;
   /** Called after a sync so the sidebar can refresh its unread count. */
@@ -796,7 +799,7 @@ export function InboxPage({
           <span>{failed}</span>
           {/* A lapsed sign-in is fixed by signing in again; trying again would fail the same way. */}
           {!error && shown?.reconnectAccounts.length ? (
-            <Button variant="outline" size="sm" onClick={onConnectMail}>
+            <Button variant="outline" size="sm" onClick={onReconnectMail ?? onConnectMail}>
               <Trans>Reconnect Gmail</Trans>
             </Button>
           ) : (
