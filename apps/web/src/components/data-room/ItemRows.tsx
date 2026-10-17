@@ -213,11 +213,11 @@ function ItemRow({
             {item.status === "ready" ? item.facets.docType : item.status === "failed" ? "—" : label}
           </span>
           <span className={cn(DATE_CELL, CELL)}>{dateText(item.facets.docDate)}</span>
-          <span
-            className={cn(PARTIES_CELL, "line-clamp-2 min-w-0 break-words text-muted-foreground")}
-            title={item.facets.parties.join(", ")}
-          >
-            {item.facets.parties.join(", ")}
+          {/* The clamp sits inside: its display would otherwise undo the cell's "hidden". */}
+          <span className={cn(PARTIES_CELL, "min-w-0 text-muted-foreground")}>
+            <span className="line-clamp-2 break-words" title={item.facets.parties.join(", ")}>
+              {item.facets.parties.join(", ")}
+            </span>
           </span>
         </>
       ) : null}
