@@ -3117,12 +3117,14 @@ export function ShellPage() {
               <InboxAgentIntro onAsk={(text) => void sendMessage(text, [], newClientId())} />
             ) : !pageMode && chatStarters ? (
               // The Finance agent's own chat starts like its Finance panel: what it does, and two questions.
-              <AgentPanelIntro
-                description={active?.description ?? ""}
-                suggestions={chatStarters}
-                disabled={sending}
-                onPick={(text) => void sendMessage(text, [], newClientId())}
-              />
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                <AgentPanelIntro
+                  description={active?.description ?? ""}
+                  suggestions={chatStarters}
+                  disabled={sending}
+                  onPick={(text) => void sendMessage(text, [], newClientId())}
+                />
+              </div>
             ) : (
               <Transcript
                 key={activeSnapshot?.threadId}

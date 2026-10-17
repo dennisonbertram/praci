@@ -2,6 +2,7 @@ import type { BotPins } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { spyOn, userEvent, waitFor, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
+import { setHideAmounts } from "../../lib/hide-amounts-preference";
 import { mockPins } from "../../stories/fixtures";
 import { PinsList, PinsStrip } from "./bot-pins";
 
@@ -23,6 +24,15 @@ const list = (pins: BotPins) => (
 );
 
 export const Strip: StoryObj = {
+  render: () => <PinsStrip pins={mockPins} onPins={none} />,
+};
+
+/** While amounts are hidden, every figure is masked and its unit kept. */
+export const StripAmountsHidden: StoryObj = {
+  beforeEach: () => {
+    setHideAmounts(true);
+    return () => setHideAmounts(false);
+  },
   render: () => <PinsStrip pins={mockPins} onPins={none} />,
 };
 

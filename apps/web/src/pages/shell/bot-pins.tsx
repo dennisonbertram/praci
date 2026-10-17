@@ -12,6 +12,7 @@ import {
 import { Button, Card, Checkbox, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web";
 import { RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { rpc } from "../../lib/rpc";
 
@@ -34,7 +35,12 @@ export function useBotPins(botId: string | undefined, reloadKey: number) {
   return [pins, setPins] as const;
 }
 
+/** While amounts are hidden, every figure in a pin is masked and its unit kept: "$•••", "••• mo". */
+export const maskPinFigures = (text: string) => text.replace(/\d(?:[\d,.\s]*\d)?/g, "•••");
+
 export function PinsStrip({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPins) => void }) {
+  const hidden = useHideAmounts();
+  const shown = (text: string) => (hidden ? maskPinFigures(text) : text);
   const [refreshing, setRefreshing] = useState(false);
   if (pins.stats.length === 0) return null;
   const updated = pins.refreshedAt ? formatRelativeTime(pins.refreshedAt) : "";
@@ -70,11 +76,11 @@ export function PinsStrip({ pins, onPins }: { pins: BotPins; onPins: (pins: BotP
             ) : null}
           </div>
           <div className="text-[22px] font-semibold leading-tight tabular-nums" dir="auto">
-            {stat.value}
+            {shown(stat.value)}
           </div>
           {stat.detail ? (
             <div className="text-[11px] text-muted-foreground" dir="auto">
-              {stat.detail}
+              {shown(stat.detail)}
             </div>
           ) : null}
         </Card>
