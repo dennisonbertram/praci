@@ -3,6 +3,7 @@ import type { Actor } from "@rakazo/contracts";
 import {
   CARTA_MCP_ENDPOINT,
   FINANCE_MCP_ENDPOINTS,
+  LEGAL_AGENT_MODEL,
   LEGAL_SCAN_ROUTINE_NAME,
   legalAgentSpawnKey,
 } from "@rakazo/contracts";
@@ -20,6 +21,7 @@ import {
   DEMO_EMPTY_SPACE,
   DEMO_GROUP,
   DEMO_LEGAL,
+  DEMO_LEGAL_KEY,
   DEMO_USER_NAME,
   DEMO_WALLET,
   demoFinance,
@@ -266,6 +268,27 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     }
   }
 
+  // Legal runs only on the user's own OpenRouter key. A placeholder one lets the founder reach the
+  // consent card, Scan now and Scanning; OpenRouter rejects it, so a scan ends in "Last scan
+  // failed" with Retry and nothing is spent. It is not the space default, so other agents still
+  // use the space's shared model.
+  {
+    const credential = await session.rpc<{ id: string }>("models/connect", {
+      provider: LEGAL_AGENT_MODEL.provider,
+      apiKey: DEMO_LEGAL_KEY.apiKey,
+      label: DEMO_LEGAL_KEY.label,
+      modelId: LEGAL_AGENT_MODEL.id,
+    });
+    const db = createDb(options.databaseUrl);
+    try {
+      await db.prisma.spaceModelPreference.deleteMany({ where: { credentialId: credential.id } });
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+    done.push(`placeholder OpenRouter key for Legal (${MOCK_NOTE})`);
+  }
+
   // Artifacts: last month's investor update, filed under Chief.
   await session.rpc("artifacts/create", {
     botId: chief.id,
@@ -291,6 +314,34 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   // A second, empty space: what a founder sees before connecting anything (switch to it to test).
   await session.rpc("spaces/create", { name: DEMO_EMPTY_SPACE });
   done.push(`empty space "${DEMO_EMPTY_SPACE}"`);
+  // The Data room documents already carry a type, date and parties, as if Rakazo had read them, so the
+  // founder allowed that earlier; otherwise the Data room asks for consent it seems to have used.
+  // The row is written directly, and last, so no document is sent to the model again: granting
+  // through the API re-queues every document, and a reply would replace the seeded facets.
+  const dataRoomConsent = await session.rpc<{
+    key: string;
+    version: string;
+    allowed: boolean;
+    recipients: unknown[];
+  }>("dataRoom/consent");
+  if (!dataRoomConsent.allowed && dataRoomConsent.recipients.length > 0) {
+    const db = createDb(options.databaseUrl);
+    try {
+      const user = await db.prisma.user.findUniqueOrThrow({ where: { email: options.email } });
+      await db.prisma.aiDataConsent.create({
+        data: {
+          userId: user.id,
+          spaceId,
+          recipientKey: dataRoomConsent.key,
+          version: dataRoomConsent.version,
+        },
+      });
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+    done.push("Data room consent");
+  }
   return done;
 }
 

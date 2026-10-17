@@ -857,7 +857,7 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Legal",
     "MOCK Office Lease - 100 Placeholder Street.pdf",
-    "Office lease for 100 Placeholder Street. Monthly rent 7500 dollars. Renewal date 31 January. Notice of renewal due 30 November.",
+    "Office lease for 100 Placeholder Street. Monthly rent 7500 dollars. The lease renews automatically at the end of its term unless notice is given at least 62 days before.",
   ),
   doc(
     "Legal",
@@ -952,6 +952,12 @@ export const DEMO_BOTS = [
 
 export const DEMO_GROUP = { name: "Leadership sync (mock)" };
 
+/** A placeholder OpenRouter key for the Legal agent; OpenRouter rejects it, so it never spends. */
+export const DEMO_LEGAL_KEY = {
+  apiKey: "sk-or-v1-mock-demo-not-a-real-key",
+  label: `OpenRouter (${MOCK_NOTE}: placeholder key, scans fail)`,
+};
+
 /**
  * What the Legal agent's last daily scan recorded. Dates are days from today, so the overdue and
  * upcoming deadlines stay that way whenever the demo is seeded. Money is integer cents.
@@ -971,7 +977,8 @@ export const DEMO_LEGAL = {
       renewalNoticeDays: 62,
       valueCents: 9_000_000n,
       partyQuote: "Office lease for 100 Placeholder Street.",
-      renewalQuote: "Renewal date 31 January. Notice of renewal due 30 November.",
+      renewalQuote:
+        "The lease renews automatically at the end of its term unless notice is given at least 62 days before.",
       summary: `${MOCK_NOTE}: office lease, 7,500 dollars a month, renews automatically unless notice is given 62 days before it ends.`,
     },
     {
