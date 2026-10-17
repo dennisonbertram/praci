@@ -334,7 +334,7 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
 /**
  * Keeps the expiration and notice-of-non-renewal deadlines of a contract in line with its dates, so
  * the agent never does date arithmetic itself. They are marked `derived`. A date change moves the
- * open one, a deadline the user closed stays closed, and an open derived deadline that no longer
+ * open one, a deadline the user closed stays closed (a changed date opens a new one), and an open derived deadline that no longer
  * applies (contract terminated, renamed, no expiry) is dismissed. Deadlines made by hand are never touched.
  */
 async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecord, quote?: string) {
@@ -370,8 +370,14 @@ async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecor
     }
   }
   for (const item of wanted) {
-    const existing = previous.find((row) => sameKey(item, row));
-    if (existing && existing.status !== "open") continue;
+    const sameKind = previous.filter((row) => sameKey(item, row));
+    const existing = sameKind.find((row) => row.status === "open");
+    // A closed row stays closed for its own date; a changed date opens a new row.
+    if (
+      !existing &&
+      sameKind.some((row) => row.dueDate.getTime() === item.dueDate.getTime())
+    )
+      continue;
     out.push(
       await repo.upsertDeadline(actor, {
         id: existing?.id,

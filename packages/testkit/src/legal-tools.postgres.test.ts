@@ -514,6 +514,39 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(left.map((d: any) => d.id)).toEqual([manual.deadline.id]);
   });
 
+  it("opens a new derived deadline when a closed one's date has changed, and keeps the closed one", async () => {
+    const item = await addItem(a, "renewal.txt", "Software renewal.");
+    const base = {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: "Software licence",
+      contractType: "licence",
+      status: "active",
+      expirationDate: "2029-06-30",
+      autoRenews: true,
+      renewalNoticeDays: 60,
+    };
+    const first = await legal(a, "legal_upsert_contract", base);
+    const contractId = first.contract.id;
+    const notice = first.derivedDeadlines.find((d: any) => d.kind === "notice");
+    await legal(a, "legal_upsert_deadline", { ...notice, id: notice.id, status: "done" });
+
+    // Same date again: the closed notice stays closed and no second row appears.
+    await legal(a, "legal_upsert_contract", base);
+    expect(await prisma.legalDeadline.count({ where: { contractId, kind: "notice" } })).toBe(1);
+
+    // The contract was amended: the new notice date opens, the closed one stays as history.
+    await legal(a, "legal_upsert_contract", { ...base, expirationDate: "2031-06-30" });
+    const rows = await prisma.legalDeadline.findMany({
+      where: { contractId, kind: "notice" },
+      orderBy: { dueDate: "asc" },
+    });
+    expect(rows.map((r) => [r.dueDate.toISOString().slice(0, 10), r.status])).toEqual([
+      ["2029-05-01", "done"],
+      ["2031-05-01", "open"],
+    ]);
+  });
+
   it("refuses to link evidence from another user's document", async () => {
     const mine = await legal(a, "legal_upsert_node", { kind: "company", label: "Evidence Co" });
     const other = await legal(a, "legal_upsert_node", { kind: "company", label: "Evidence Two" });
