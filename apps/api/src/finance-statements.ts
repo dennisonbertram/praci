@@ -133,9 +133,10 @@ function knownClosing(statement: ParsedStatement): number | null {
 
 type ListRow = Prisma.FinanceStatementGetPayload<{ omit: { fileBytes: true; parsed: true } }>;
 
-const toStatement = (row: ListRow): FinanceStatement => ({
+const toStatement = (row: ListRow & { account?: { name: string } | null }): FinanceStatement => ({
   id: row.id,
   accountId: row.accountId,
+  ...(row.account ? { accountName: row.account.name } : {}),
   fileName: row.fileName,
   format: row.format as FinanceStatement["format"],
   status: row.status as FinanceStatement["status"],
@@ -246,6 +247,8 @@ export async function financeStatementUpload(
   const duplicateCount = statementTxnIds(statement.transactions).filter(
     (id, i) => known.has(id) || known.has(legacy[i] as string),
   ).length;
+  const gap = account ? await continuityWarning(deps, actor, account.id, statement) : null;
+  if (gap) statement.warnings.push(gap);
   const row = await deps.prisma.financeStatement.create({
     data: {
       ...base,
@@ -265,8 +268,60 @@ export async function financeStatementUpload(
       duplicateCount,
     },
     omit: omitBulk,
+    include: { account: { select: { name: true } } },
   });
   return toStatement(row);
+}
+
+/** Whole dollars and cents for a warning line, without floating point. */
+const dollars = (cents: number) => {
+  const abs = Math.abs(cents);
+  return `${cents < 0 ? "-" : ""}$${Math.floor(abs / 100).toLocaleString("en-US")}.${String(abs % 100).padStart(2, "0")}`;
+};
+
+/**
+ * Says when this statement's opening balance does not continue from the account's previous
+ * statement (or its closing balance from the next one), such as a missing month or a misread file.
+ */
+async function continuityWarning(
+  deps: FinanceDeps,
+  actor: Actor,
+  accountId: string,
+  statement: ParsedStatement,
+): Promise<string | null> {
+  const { periodStart, periodEnd, openingBalanceCents, closingBalanceCents } = statement;
+  const imported = { ...actorScope(actor), accountId, status: "imported" };
+  const select = {
+    periodStart: true,
+    periodEnd: true,
+    openingBalanceCents: true,
+    closingBalanceCents: true,
+  };
+  if (periodStart && openingBalanceCents !== null) {
+    const before = await deps.prisma.financeStatement.findFirst({
+      where: { ...imported, periodEnd: { lt: periodStart } },
+      orderBy: { periodEnd: "desc" },
+      select,
+    });
+    if (
+      before?.closingBalanceCents != null &&
+      Number(before.closingBalanceCents) !== openingBalanceCents
+    )
+      return `This statement opens at ${dollars(openingBalanceCents)}, but the one before it closed at ${dollars(Number(before.closingBalanceCents))}.`;
+  }
+  if (periodEnd && closingBalanceCents !== null) {
+    const after = await deps.prisma.financeStatement.findFirst({
+      where: { ...imported, periodStart: { gt: periodEnd } },
+      orderBy: { periodStart: "asc" },
+      select,
+    });
+    if (
+      after?.openingBalanceCents != null &&
+      Number(after.openingBalanceCents) !== closingBalanceCents
+    )
+      return `This statement closes at ${dollars(closingBalanceCents)}, but the one after it opens at ${dollars(Number(after.openingBalanceCents))}.`;
+  }
+  return null;
 }
 
 export async function financeStatementConfirm(
@@ -504,6 +559,7 @@ export async function financeStatements(deps: FinanceDeps, actor: Actor) {
     orderBy: { uploadedAt: "desc" },
     take: LIST_LIMIT,
     omit: omitBulk,
+    include: { account: { select: { name: true } } },
   });
   const today = (deps.now?.() ?? new Date()).toISOString().slice(0, 10);
   return {

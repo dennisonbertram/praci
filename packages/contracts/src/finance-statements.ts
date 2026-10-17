@@ -61,6 +61,8 @@ export type StatementStatus = z.infer<typeof StatementStatusSchema>;
 export const FinanceStatementSchema = z.object({
   id: z.string(),
   accountId: z.string().nullable(),
+  /** The account's current name (after any rename), when the statement has an account. */
+  accountName: z.string().nullable().optional(),
   fileName: z.string(),
   format: StatementFormatSchema,
   status: StatementStatusSchema,

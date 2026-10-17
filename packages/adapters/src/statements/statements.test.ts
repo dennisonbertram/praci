@@ -138,6 +138,30 @@ describe("CSV", () => {
     expect(statement.openingBalanceCents).toBeNull();
   });
 
+  it("reads the bank, account ending and stated balances around the table", async () => {
+    const body = [
+      "MOCK First Mock Bank,Account ending 5502",
+      "Opening balance,10000.00",
+      "Date,Description,Amount,Balance",
+      "2026-08-03,EXAMPLE DEPOSIT,20.00,10020.00",
+      "2026-08-09,EXAMPLE FEE,-7.60,10012.40",
+      "Closing balance,10000.00",
+    ].join("\n");
+    const { statement, check } = await parse("mock-firstbank-2026-08.csv", body);
+    expect(statement).toMatchObject({
+      institution: "MOCK First Mock Bank",
+      accountLast4: "5502",
+      openingBalanceCents: 1_000_000,
+      closingBalanceCents: 1_000_000,
+    });
+    expect(statement.transactions).toHaveLength(2);
+    // The balance rows are not unreadable transactions, and the bank is named, not guessed.
+    expect(statement.warnings.join()).not.toContain("skipped");
+    expect(statement.warnings.join()).not.toContain("file name");
+    // The printed closing balance is $12.40 below what the lines add up to.
+    expect(check).toEqual({ balances: "mismatch", differenceCents: -1240 });
+  });
+
   it("says in plain words how many rows it skipped", async () => {
     const one = await parse("x.csv", "Date,Description,Amount\n2026-03-04,EXAMPLE,-1.00\nbad,,\n");
     expect(one.statement.warnings).toContain("1 row could not be read and was skipped.");

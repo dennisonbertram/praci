@@ -36,10 +36,48 @@ function sniff(text: string) {
       balance: find("balance"),
     };
     if (cols.date >= 0 && (cols.amount >= 0 || (cols.debit >= 0 && cols.credit >= 0))) {
-      return { rows: rows.slice(i + 1), cols };
+      return { before: rows.slice(0, i), rows: rows.slice(i + 1), cols };
     }
   }
   return null;
+}
+
+const OPENING = /^(?:opening|beginning|starting|previous) balance\b/i;
+const CLOSING = /^(?:closing|ending|new|statement) balance\b/i;
+const LAST4 = /(?:ending(?: in)?|acct|account|no\.?|#|[x*•]{2,})\s*:?\s*[x*•]*(\d{4})\b/i;
+
+/** A "Closing balance,10000.00" style row: its label and the first amount after it. */
+function balanceRow(row: string[]): { kind: "opening" | "closing"; cents: number } | null {
+  const label = (row.find((c) => c.trim()) ?? "").trim();
+  const kind = OPENING.test(label) ? "opening" : CLOSING.test(label) ? "closing" : null;
+  if (!kind) return null;
+  const value = row.slice(row.indexOf(label) + 1).find((c) => parseCents(c) !== null);
+  // The label may carry its value ("Closing balance: 10,000.00").
+  const inline = /[-(]?\$?[\d,]+(?:\.\d{1,2})?\)?\s*$/.exec(label)?.[0];
+  const cents = value !== undefined ? parseCents(value) : inline ? parseCents(inline) : null;
+  return cents === null ? null : { kind, cents };
+}
+
+/** The bank and account ending named on a title line above the column header, if any. */
+function titleOf(before: string[][]): { institution: string | null; last4: string | null } {
+  let institution: string | null = null;
+  let last4: string | null = null;
+  for (const row of before) {
+    if (balanceRow(row)) continue;
+    for (const raw of row) {
+      const cell = raw.trim();
+      if (!cell) continue;
+      const found = LAST4.exec(cell);
+      if (found && !last4) last4 = found[1] as string;
+      const name = cell
+        .replace(LAST4, "")
+        .replace(/[\s,:–—-]+$/, "")
+        .trim();
+      if (!institution && /\p{L}{2,}/u.test(name) && !/^(?:account|statement)\b/i.test(name))
+        institution = name;
+    }
+  }
+  return { institution, last4 };
 }
 
 type DateOrder = "ymd" | "mdy" | "dmy";
@@ -78,10 +116,16 @@ export const csvParser: StatementParser = {
   async parse({ fileName, bytes }) {
     const found = sniff(decodeText(bytes));
     if (!found) throw new Error("CSV has no recognizable Date and Amount (or Debit/Credit) header");
-    const { rows, cols } = found;
+    const { before, rows, cols } = found;
     const warnings: string[] = [];
     const cell = (row: string[], i: number) => (i >= 0 ? (row[i] ?? "").trim() : "");
-    const body = rows.filter((r) => cell(r, cols.date));
+    // Stated balances may sit above the header or below the last line; they are not transactions.
+    const stated: { opening?: number; closing?: number } = {};
+    for (const row of [...before, ...rows]) {
+      const found = balanceRow(row);
+      if (found) stated[found.kind] ??= found.cents;
+    }
+    const body = rows.filter((r) => cell(r, cols.date) && !balanceRow(r));
     const { order, ambiguous } = dateOrder(body.map((r) => cell(r, cols.date)));
     if (ambiguous) warnings.push("Dates like 03/04/2026 are ambiguous; read as month/day/year.");
     let skipped = 0;
@@ -113,18 +157,21 @@ export const csvParser: StatementParser = {
     if (txns[0]!.date > txns.at(-1)!.date) txns = txns.reverse();
     const first = txns[0]!;
     const last = txns.at(-1)!;
-    warnings.push("The file does not name its institution; used the file name.");
+    const title = titleOf(before);
+    if (!title.institution)
+      warnings.push("The file does not name its institution; used the file name.");
     return {
       parser: "csv",
-      institution: fileStem(fileName).slice(0, 200),
+      institution: (title.institution ?? fileStem(fileName)).slice(0, 200),
       accountName: null,
-      accountLast4: null,
+      accountLast4: title.last4,
       currency: "USD",
       periodStart: txns.reduce((a, t) => (t.date < a ? t.date : a), first.date),
       periodEnd: txns.reduce((a, t) => (t.date > a ? t.date : a), last.date),
       openingBalanceCents:
-        first.balanceCents === null ? null : first.balanceCents - first.amountCents,
-      closingBalanceCents: last.balanceCents,
+        stated.opening ??
+        (first.balanceCents === null ? null : first.balanceCents - first.amountCents),
+      closingBalanceCents: stated.closing ?? last.balanceCents,
       transactions: txns,
       warnings,
     } satisfies ParsedStatement;
