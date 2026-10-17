@@ -1472,7 +1472,7 @@ export function ModelSettingsOverlay({
               ) : (
                 <>
                   <p className="text-sm leading-[1.5] text-muted-foreground">
-                    <Trans>Connect this provider to use it as your personal model.</Trans>
+                    <Trans>Connect {selectedProviderName} to use it as your personal model.</Trans>
                   </p>
                   {connectionControls}
                   <div className="mt-6">{catalogModelConfig}</div>

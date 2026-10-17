@@ -1980,6 +1980,10 @@ msgstr "Connect {0}"
 msgid "Connect {name}"
 msgstr "Connect {name}"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Connect {selectedProviderName} to use it as your personal model."
+msgstr "Connect {selectedProviderName} to use it as your personal model."
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect {service}"
 msgstr "Connect {service}"
@@ -2049,10 +2053,6 @@ msgstr "Connect MCP server “{name}”"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
 msgstr "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
-
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Connect this provider to use it as your personal model."
-msgstr "Connect this provider to use it as your personal model."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Treg"
