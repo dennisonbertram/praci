@@ -13,7 +13,7 @@ import type {
 import { GOOGLE_DESKTOP_REDIRECT_URI } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { filterCatalog } from "./composio-connector.js";
-import { asRecord, readBoundedText } from "./connector-http.js";
+import { asRecord, readBoundedBytes, readBoundedText } from "./connector-http.js";
 import { combineSignals, sanitizeConnectorError } from "./connector-safety.js";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -348,6 +348,7 @@ export class GoogleConnector implements ManagedConnectorProvider {
       redirect: "error",
       signal: combineSignals(context.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)),
     });
+    if (request.responseType === "bytes") return this.bytesResponse(response, request.maxBytes);
     const body = await readBoundedText(response, MAX_RESPONSE_BYTES);
     if (body.truncated) return { status: 502, data: {} };
     const retryAfter = Number(response.headers.get("retry-after"));
@@ -360,6 +361,34 @@ export class GoogleConnector implements ManagedConnectorProvider {
           ? body.text
           : parseJson(body.text),
       ...(Number.isFinite(retryAfter) && retryAfter > 0 ? { retryAfterMs: retryAfter * 1000 } : {}),
+    };
+  }
+
+  /** Success bodies are bytes; an error body is small JSON that callers inspect for the reason. */
+  private async bytesResponse(
+    response: Response,
+    maxBytes: number | undefined,
+  ): Promise<ConnectorProxyResponse> {
+    if (!maxBytes || maxBytes < 0) throw new Error("A bytes response needs maxBytes");
+    const retryAfter = Number(response.headers.get("retry-after"));
+    const retry =
+      Number.isFinite(retryAfter) && retryAfter > 0 ? { retryAfterMs: retryAfter * 1000 } : {};
+    if (!response.ok) {
+      const body = await readBoundedText(response, MAX_AUTH_RESPONSE_BYTES);
+      return { status: response.status, data: parseJson(body.text), ...retry };
+    }
+    const declared = Number(response.headers.get("content-length"));
+    const body =
+      declared > maxBytes
+        ? { bytes: new Uint8Array(), truncated: true }
+        : await readBoundedBytes(response, maxBytes);
+    if (declared > maxBytes) await response.body?.cancel().catch(() => undefined);
+    if (body.truncated) return { status: 413, data: {} };
+    return {
+      status: response.status,
+      data: body.bytes,
+      contentType: response.headers.get("content-type") ?? "application/octet-stream",
+      ...retry,
     };
   }
 

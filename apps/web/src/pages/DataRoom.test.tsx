@@ -24,11 +24,13 @@ const rpcMock = vi.hoisted(() => ({
   list: vi.fn(),
   search: vi.fn(),
   item: vi.fn(),
+  connections: vi.fn(),
   consent: vi.fn(),
   itemDelete: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
+    connections: { list: rpcMock.connections },
     dataRoom: {
       folders: rpcMock.folders,
       items: { list: rpcMock.list },
@@ -54,6 +56,7 @@ const item = (name: string): DataRoomApiItem => ({
   size: 10,
   folderId: null,
   source: "upload",
+  sourceUrl: null,
   status: "ready",
   error: null,
   facets: {
@@ -73,6 +76,7 @@ let root: ReturnType<typeof createRoot>;
 
 beforeEach(() => {
   vi.useFakeTimers();
+  rpcMock.connections.mockResolvedValue([]);
   rpcMock.folders.mockResolvedValue([]);
   rpcMock.list.mockResolvedValue({ items: [item("b.txt"), item("a.txt")], nextCursor: null });
   rpcMock.search.mockResolvedValue({ results: [], nextCursor: null });

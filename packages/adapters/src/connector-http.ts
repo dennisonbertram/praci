@@ -103,4 +103,32 @@ export async function readBoundedText(
   }
 }
 
+/** Reads at most `maximumBytes`, stopping the stream as soon as the body is larger. */
+export async function readBoundedBytes(
+  response: Response,
+  maximumBytes: number,
+): Promise<{ bytes: Uint8Array; truncated: boolean }> {
+  if (!response.body) return { bytes: new Uint8Array(), truncated: false };
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maximumBytes) {
+      await reader.cancel().catch(() => undefined);
+      return { bytes: new Uint8Array(), truncated: true };
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { bytes, truncated: false };
+}
+
 export { asRecord } from "@rakazo/core";

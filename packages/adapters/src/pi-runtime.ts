@@ -40,6 +40,7 @@ import { shortenToolResultText } from "./context-selection.js";
 import { describeDataRoomActivity } from "./data-room-tools.js";
 import { DEFAULT_OPENROUTER_MODEL_ID } from "./deployment-model.js";
 import { describeFinanceActivity } from "./finance-tools.js";
+import { describeLegalActivity } from "./legal-tools.js";
 import { estimateModelContextTokens } from "./model-context.js";
 import { IMAGE_RETURNING_COMPUTER_TOOLS } from "./model-vision.js";
 import {
@@ -888,6 +889,8 @@ export function describeToolActivity(toolName: string, args: unknown): string {
     return `Deleting skill: ${detail(record.name ?? record.skillId)}`;
   const finance = describeFinanceActivity(toolName, record);
   if (finance) return finance;
+  const legal = describeLegalActivity(toolName, record);
+  if (legal) return legal;
   const dataRoom = describeDataRoomActivity(toolName);
   if (dataRoom) return dataRoom;
   const mcp = toolName.match(/^mcp__(.+?)__(.+)$/);

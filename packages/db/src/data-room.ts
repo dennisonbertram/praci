@@ -33,6 +33,8 @@ export interface DataRoomFilters {
   docDateTo?: Date;
   status?: string;
   source?: string;
+  /** Hides items imported through these connections. Items with no connection stay visible. */
+  excludeConnectionIds?: string[];
 }
 
 const MAX_LIMIT = 50;
@@ -153,6 +155,14 @@ function eligibleWhere(actor: Actor, filters: DataRoomFilters = {}): Prisma.Data
     ...(filters.tag ? { tags: { has: filters.tag } } : {}),
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.source ? { source: filters.source } : {}),
+    ...(filters.excludeConnectionIds?.length
+      ? {
+          OR: [
+            { sourceConnectionId: null },
+            { sourceConnectionId: { notIn: filters.excludeConnectionIds } },
+          ],
+        }
+      : {}),
     ...(filters.docDateFrom || filters.docDateTo
       ? { docDate: { gte: filters.docDateFrom, lte: filters.docDateTo } }
       : {}),
@@ -177,6 +187,11 @@ function eligibleSql(actor: Actor, filters: DataRoomFilters = {}): Prisma.Sql {
   if (filters.tag) parts.push(Prisma.sql`${filters.tag} = ANY(i."tags")`);
   if (filters.status) parts.push(Prisma.sql`i."status" = ${filters.status}`);
   if (filters.source) parts.push(Prisma.sql`i."source" = ${filters.source}`);
+  if (filters.excludeConnectionIds?.length) {
+    parts.push(
+      Prisma.sql`(i."sourceConnectionId" IS NULL OR NOT (i."sourceConnectionId" = ANY(${filters.excludeConnectionIds})))`,
+    );
+  }
   if (filters.docDateFrom) parts.push(Prisma.sql`i."docDate" >= ${filters.docDateFrom}`);
   if (filters.docDateTo) parts.push(Prisma.sql`i."docDate" <= ${filters.docDateTo}`);
   return Prisma.join(parts, " AND ");
@@ -213,9 +228,12 @@ export function createDataRoomRepos(prisma: PrismaClient) {
   async function requireItem(
     actor: Actor,
     id: string,
+    filters: DataRoomFilters = {},
     db: Pick<PrismaClient, "dataRoomItem"> = prisma,
   ): Promise<DataRoomItemRecord> {
-    const item = await db.dataRoomItem.findFirst({ where: { id, ...eligibleWhere(actor) } });
+    const item = await db.dataRoomItem.findFirst({
+      where: { id, ...eligibleWhere(actor, filters) },
+    });
     if (!item) throw new IsolationError();
     return item;
   }
@@ -327,7 +345,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       });
     },
 
-    /** Uploads dedupe on sha256 per space: an existing upload is returned with created=false. */
+    /** A repeated upload (same bytes) or import (same connection and external id) returns the existing item with created=false. */
     async createItem(
       actor: Actor,
       input: {
@@ -372,15 +390,28 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         });
         return { item, created: true };
       } catch (error) {
-        if (input.source === "upload" && isUniqueViolation(error)) {
-          const existing = await findExisting();
+        if (isUniqueViolation(error)) {
+          // An upload repeats by bytes; an import repeats by its source id.
+          const existing =
+            input.source === "upload"
+              ? await findExisting()
+              : input.externalId
+                ? await prisma.dataRoomItem.findFirst({
+                    where: {
+                      ...eligibleWhere(actor),
+                      sourceConnectionId: input.sourceConnectionId ?? null,
+                      externalId: input.externalId,
+                    },
+                  })
+                : null;
           if (existing) return { item: existing, created: false };
         }
         throw error;
       }
     },
 
-    getItem: (actor: Actor, id: string) => requireItem(actor, id),
+    getItem: (actor: Actor, id: string, filters: DataRoomFilters = {}) =>
+      requireItem(actor, id, filters),
 
     /**
      * One page ordered in SQL by `sort`, ties broken by id ascending, with a keyset cursor that
@@ -457,7 +488,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
           data: { folderId },
         });
         if (!count) throw new IsolationError();
-        return requireItem(actor, id, tx);
+        return requireItem(actor, id, {}, tx);
       });
     },
 

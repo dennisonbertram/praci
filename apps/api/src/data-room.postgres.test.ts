@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRouterClient } from "@orpc/server";
 import type { BackgroundJob } from "@rakazo/adapter-kit";
-import { createBackgroundJobHandlers, LocalArtifactStore } from "@rakazo/adapters";
+import {
+  createBackgroundJobHandlers,
+  DriveApiEmulator,
+  LocalArtifactStore,
+} from "@rakazo/adapters";
 import type { Actor, DataRoomApiItem } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb } from "@rakazo/db";
@@ -50,9 +54,52 @@ describePostgres("Data room API (PostgreSQL)", () => {
           },
         },
         artifacts: new LocalArtifactStore(root),
+        mail,
+        connectors: { managed: () => driveConnector },
       } as unknown as RouterDeps),
       { context: { actor: who } as never },
     );
+
+  /** A mailbox with one attachment per connection id; accounts are the connections of the asked user. */
+  const accounts: { id: string; userId: string }[] = [];
+  const mail = {
+    listAccounts: async (scope: { userId: string }) =>
+      accounts.filter((a) => a.userId === scope.userId),
+    getAttachment: async (_account: unknown, _message: string, attachmentId: string) => {
+      if (attachmentId === "broken") throw new Error("provider down");
+      return {
+        filename: "invoice/2026.pdf",
+        mimeType: "application/pdf",
+        size: 5,
+        bytes: new TextEncoder().encode(`%PDF-${attachmentId}`),
+      };
+    },
+  };
+
+  const PDF = new TextEncoder().encode("%PDF-drive");
+  const emulator = new DriveApiEmulator({
+    accounts: {
+      "acct-a": {
+        email: "a@example.test",
+        files: [
+          {
+            id: "doc1",
+            name: "Plan/2026",
+            mimeType: "application/vnd.google-apps.doc" + "ument",
+            pdf: PDF,
+          },
+          { id: "dir1", name: "Folder", mimeType: "application/vnd.google-apps.folder" },
+        ],
+      },
+    },
+  });
+  let driveDownloads = 0;
+  const driveConnector = {
+    proxy: async (r: { accountRef: string; url: string; method: string }) => {
+      if (r.url.includes("/export")) driveDownloads += 1;
+      return emulator.handle(r.accountRef, r.url, r.method);
+    },
+  };
 
   const send = (who: string | null, url: string, init: RequestInit = {}) =>
     app.request(url, {
@@ -555,5 +602,165 @@ describePostgres("Data room API (PostgreSQL)", () => {
     ).resolves.toBeInstanceOf(Uint8Array);
     await client(actors.a).dataRoom.itemDelete({ id: target.id });
     enqueued.length = 0;
+  });
+
+  it("imports a mail attachment once, and only from the caller's own mail and folders", async () => {
+    const connection = await prisma.connection.create({
+      data: {
+        spaceId: actors.A.spaceId,
+        userId: actors.a.userId,
+        connectorId: "google",
+        provider: "gmail",
+        displayName: "Test mail",
+        status: "connected",
+      },
+    });
+    accounts.push({ id: connection.id, userId: actors.a.userId });
+    const message = await prisma.cachedMailMessage.create({
+      data: {
+        spaceId: actors.A.spaceId,
+        userId: actors.a.userId,
+        connectionId: connection.id,
+        providerMessageId: `pm-${run}`,
+        threadId: "t1",
+        fromAddress: "billing@example.com",
+        toAddresses: [],
+        ccAddresses: [],
+        subject: "Invoice",
+        snippet: "",
+        receivedAt: new Date(),
+        unread: false,
+        seenAt: new Date(),
+      },
+    });
+    const pick = { messageId: message.id, attachmentId: "att1" };
+    const before = enqueued.length;
+
+    await expect(client(actors.a).dataRoom.importEmail({ picks: [pick] })).resolves.toEqual({
+      imported: 1,
+      duplicates: 0,
+      failed: 0,
+    });
+    const row = await prisma.dataRoomItem.findFirstOrThrow({
+      where: { spaceId: actors.A.spaceId, externalId: `gmail:pm-${run}:att1` },
+    });
+    expect(row).toMatchObject({
+      source: "gmail",
+      sourceConnectionId: connection.id,
+      name: "invoice_2026.pdf",
+      sourceUrl: `/app/inbox?mail=${message.id}`,
+    });
+    expect(enqueued.slice(before).map((j) => j.name)).toEqual(["dataroom.ingest"]);
+
+    // The same pick again stores no second item or blob.
+    const blobs = await blobCount(actors.A.spaceId);
+    await expect(client(actors.a).dataRoom.importEmail({ picks: [pick] })).resolves.toEqual({
+      imported: 0,
+      duplicates: 1,
+      failed: 0,
+    });
+    expect(await blobCount(actors.A.spaceId)).toBe(blobs);
+
+    // Another member of the same space and a user in another space cannot reach the message.
+    await expect(client(actors.a2).dataRoom.importEmail({ picks: [pick] })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(client(actors.b).dataRoom.importEmail({ picks: [pick] })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+
+    // A folder that is not the caller's is refused before anything is stored.
+    const folderB = await client(actors.b).dataRoom.folderCreate({ name: "B import" });
+    await expect(
+      client(actors.a).dataRoom.importEmail({ picks: [pick], folderId: folderB.id }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("files the other picks when one attachment cannot be fetched", async () => {
+    const connection = await prisma.connection.findFirstOrThrow({
+      where: { spaceId: actors.A.spaceId, userId: actors.a.userId, provider: "gmail" },
+    });
+    const message = await prisma.cachedMailMessage.findFirstOrThrow({
+      where: { connectionId: connection.id },
+    });
+    const result = await client(actors.a).dataRoom.importEmail({
+      picks: [
+        { messageId: message.id, attachmentId: "broken" },
+        { messageId: message.id, attachmentId: "att2" },
+      ],
+    });
+    expect(result).toEqual({ imported: 1, duplicates: 0, failed: 1 });
+    expect(
+      await prisma.dataRoomItem.count({
+        where: { spaceId: actors.A.spaceId, externalId: `gmail:${message.providerMessageId}:att2` },
+      }),
+    ).toBe(1);
+  });
+
+  it("imports a Drive file once, only through the caller's own Drive and folders", async () => {
+    // No Drive account yet.
+    await expect(client(actors.a).dataRoom.driveList({})).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
+    const connection = await prisma.connection.create({
+      data: {
+        spaceId: actors.A.spaceId,
+        userId: actors.a.userId,
+        connectorId: "google",
+        provider: "googledrive",
+        providerRef: "acct-a",
+        displayName: "Test drive",
+        status: "connected",
+      },
+    });
+    const listed = await client(actors.a).dataRoom.driveList({});
+    expect(listed.files.map((f) => f.id).sort()).toEqual(["dir1", "doc1"]);
+
+    const before = enqueued.length;
+    await expect(client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] })).resolves.toEqual({
+      imported: 1,
+      duplicates: 0,
+      failed: 0,
+    });
+    const row = await prisma.dataRoomItem.findFirstOrThrow({
+      where: { spaceId: actors.A.spaceId, externalId: "doc1" },
+    });
+    expect(row).toMatchObject({
+      source: "drive",
+      sourceConnectionId: connection.id,
+      name: "Plan_2026.pdf",
+      mimeType: "application/pdf",
+    });
+    expect(row.sourceUrl).toContain("doc1");
+    expect(enqueued.slice(before).map((j) => j.name)).toEqual(["dataroom.ingest"]);
+
+    // A repeat is a duplicate and downloads nothing.
+    const downloads = driveDownloads;
+    await expect(client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] })).resolves.toEqual({
+      imported: 0,
+      duplicates: 1,
+      failed: 0,
+    });
+    expect(driveDownloads).toBe(downloads);
+
+    // Another member of the same space and a user in another space have no Drive account.
+    await expect(
+      client(actors.a2).dataRoom.importDrive({ fileIds: ["doc1"] }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
+    await expect(client(actors.b).dataRoom.driveList({})).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
+
+    // A folder that is not the caller's is refused, and one bad file does not stop the rest.
+    const folderB = await client(actors.b).dataRoom.folderCreate({ name: "B drive import" });
+    await expect(
+      client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"], folderId: folderB.id }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    // A file that cannot be imported is counted and does not stop the others.
+    await expect(
+      client(actors.a).dataRoom.importDrive({ fileIds: ["dir1", "missing", "doc1"] }),
+    ).resolves.toEqual({ imported: 0, duplicates: 1, failed: 2 });
   });
 });
