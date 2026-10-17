@@ -1,7 +1,7 @@
 import { generateKeyPairSync } from "node:crypto";
 import { createSecretStore, syncFinanceForUser } from "@rakazo/adapters";
 import { CARTA_MCP_ENDPOINT, FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
-import { createDb, saveCapTableSnapshot } from "@rakazo/db";
+import { createDb, createThreadMessage, saveCapTableSnapshot } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   DEMO_BOTS,
@@ -250,7 +250,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     // The Finance agent's pins: Cash and Runway as on the dashboard, and a month-end checklist.
     const overview = await session.rpc<{
       cash: { cashCents: number };
-      runway: { months: number | null };
+      runway: { months: number | null; runOutDate: string | null };
     }>("finance/overview");
     const usd = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
     await prisma.botPins.create({
@@ -260,12 +260,17 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
         updatedBy: "bot",
         refreshedAt: new Date(),
         stats: [
-          { id: "cash", label: "Cash", value: usd(overview.cash.cashCents), detail: MOCK_NOTE },
+          {
+            id: "cash",
+            label: "Cash",
+            value: usd(overview.cash.cashCents),
+            detail: "All bank accounts",
+          },
           {
             id: "runway",
             label: "Runway",
             value: overview.runway.months === null ? "—" : `${overview.runway.months} mo`,
-            detail: MOCK_NOTE,
+            detail: "At the last 3 months' burn",
           },
         ],
         list: {
@@ -279,6 +284,37 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       },
     });
     done.push("Finance agent pins (Cash, Runway) and a Month-end close checklist");
+    // One earlier question and answer, so Hide amounts can be checked on runway months and a
+    // run-out date in a reply without a live (paid) model call.
+    if (overview.runway.months !== null && overview.runway.runOutDate) {
+      const runOut = new Date(`${overview.runway.runOutDate}T00:00:00Z`).toLocaleDateString(
+        "en-US",
+        { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
+      );
+      const thread = await prisma.thread.upsert({
+        where: { botId: agent.id },
+        create: { ...scope, botId: agent.id },
+        update: {},
+      });
+      await createThreadMessage(prisma, {
+        threadId: thread.id,
+        role: "user",
+        blocks: [{ kind: "text", text: "What is our runway?" }],
+      });
+      await createThreadMessage(prisma, {
+        threadId: thread.id,
+        role: "bot",
+        botId: agent.id,
+        markUnread: false,
+        blocks: [
+          {
+            kind: "text",
+            text: `You have ${overview.runway.months} months of runway at the last 3 months' burn, with ${usd(overview.cash.cashCents)} in cash. At that pace cash would run out around ${runOut}. (${MOCK_NOTE})`,
+          },
+        ],
+      });
+      done.push("1 earlier Finance agent answer about runway");
+    }
 
     // A second company whose Mercury login has expired, for the Reconnect path.
     const reconnect = await session.rpc<{ id: string }>("spaces/create", {

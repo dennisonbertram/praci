@@ -623,6 +623,8 @@ export function demoFinance(now = new Date()) {
     items: brexAccountsResponse.items.map((a) => ({
       ...a,
       name: a.account_type === "CARD" ? "MOCK Brex Card" : "MOCK Brex Cash",
+      // An ending like the other accounts', so every account reads the same way.
+      account_number_last_four: a.account_type === "CARD" ? null : "3003",
       nickname: undefined,
     })),
   };
