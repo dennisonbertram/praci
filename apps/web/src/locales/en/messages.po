@@ -1430,6 +1430,10 @@ msgstr "Cap table, equity and investors"
 msgid "Card balance owed"
 msgstr "Card balance owed"
 
+#: src/components/finance/ui.tsx
+msgid "Card payment · not spend"
+msgstr "Card payment · not spend"
+
 #: src/pages/Artifacts.tsx
 msgid "Card view"
 msgstr "Card view"
@@ -7138,6 +7142,10 @@ msgstr "Transactions are {0} off the closing balance"
 msgid "Transcript"
 msgstr "Transcript"
 
+#: src/components/finance/ui.tsx
+msgid "Transfer · not spend"
+msgstr "Transfer · not spend"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Transport"
 msgstr "Transport"
@@ -7226,7 +7234,6 @@ msgid "Unavailable"
 msgstr "Unavailable"
 
 #: src/components/finance/ui.tsx
-#: src/pages/finance/FinanceTransaction.tsx
 msgid "Uncategorized"
 msgstr "Uncategorized"
 

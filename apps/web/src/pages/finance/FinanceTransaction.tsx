@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   type Crumb,
+  categoryLabel,
   DetailPage,
   Kv,
   KvRow,
@@ -25,7 +26,7 @@ import {
   txnDay,
 } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
-import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 
 export const ReceiptIcon = () => (
@@ -194,10 +195,10 @@ export function FinanceTransactionPage({ id }: { id: string }) {
                     {txn.category}
                   </ValueLink>
                 ) : (
-                  (txn.category ?? t`Uncategorized`)
+                  categoryLabel(txn)
                 )}
               </KvRow>
-              {txn.memo ? <KvRow label={t`Memo`}>{txn.memo}</KvRow> : null}
+              {txn.memo ? <KvRow label={t`Memo`}>{maskCurrencyWhenHidden(txn.memo)}</KvRow> : null}
             </Kv>
             {external ? (
               <div className="mt-3.5">

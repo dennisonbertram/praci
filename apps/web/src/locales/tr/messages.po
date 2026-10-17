@@ -1430,6 +1430,10 @@ msgstr ""
 msgid "Card balance owed"
 msgstr ""
 
+#: src/components/finance/ui.tsx
+msgid "Card payment · not spend"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Card view"
 msgstr ""
@@ -7138,6 +7142,10 @@ msgstr ""
 msgid "Transcript"
 msgstr "Döküm"
 
+#: src/components/finance/ui.tsx
+msgid "Transfer · not spend"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Transport"
 msgstr ""
@@ -7226,7 +7234,6 @@ msgid "Unavailable"
 msgstr ""
 
 #: src/components/finance/ui.tsx
-#: src/pages/finance/FinanceTransaction.tsx
 msgid "Uncategorized"
 msgstr ""
 

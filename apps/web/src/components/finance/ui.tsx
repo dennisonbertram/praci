@@ -30,7 +30,7 @@ import {
   writeGroupedPref,
 } from "../../lib/finance-group";
 import { financePath } from "../../lib/finance-route";
-import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
 import { HideAmountsButton } from "../HideAmountsToggle";
@@ -513,6 +513,16 @@ export const Chevron = () => (
 export const rowClass =
   "group/row cursor-pointer border-t border-border hover:bg-background [&>td]:py-2";
 
+/** A transaction's category, or what it is when it is not spend: a card payoff or a transfer
+ * between the company's own accounts, which Finance leaves out of spend. */
+export function categoryLabel(
+  row: Pick<FinanceTransaction, "category" | "classification">,
+): string {
+  if (row.classification === "card_payment") return t`Card payment · not spend`;
+  if (row.classification === "internal_transfer") return t`Transfer · not spend`;
+  return row.category ?? t`Uncategorized`;
+}
+
 function TransactionRow({ row }: { row: FinanceTransaction }) {
   useHideAmounts();
   const rowProps = useRowNavigate();
@@ -534,16 +544,18 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
           {row.counterparty}
         </Link>
         {row.memo ? (
-          <div className="line-clamp-1 text-[11px] text-muted-foreground">{row.memo}</div>
+          <div className="line-clamp-1 text-[11px] text-muted-foreground">
+            {maskCurrencyWhenHidden(row.memo)}
+          </div>
         ) : null}
       </td>
       <td className="hidden max-w-[10rem] truncate text-muted-foreground @2xl:table-cell">
-        {row.category ?? t`Uncategorized`}
+        {categoryLabel(row)}
       </td>
       <td className="whitespace-nowrap ps-4 text-end tabular-nums">
         {transactionAmount(row.amountCents, undefined, row.currency)}
       </td>
-      <td className="hidden ps-4 text-muted-foreground @2xl:table-cell">
+      <td className="hidden w-24 ps-4 text-muted-foreground @2xl:table-cell">
         {statusLabel(row.status)}
       </td>
       <Chevron />
@@ -583,12 +595,12 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
           </div>
         </td>
         <td className="hidden max-w-[10rem] truncate text-muted-foreground @2xl:table-cell">
-          {group.mixed ? t`Mixed` : (group.category ?? t`Uncategorized`)}
+          {group.mixed ? t`Mixed` : categoryLabel(group.rows[0] as FinanceTransaction)}
         </td>
         <td className="whitespace-nowrap ps-4 text-end tabular-nums">
           {transactionAmount(Number(group.totalCents), undefined, group.currency)}
         </td>
-        <td className="hidden @2xl:table-cell" />
+        <td className="hidden w-24 @2xl:table-cell" />
         <td />
       </tr>
       {open ? group.rows.map((row) => <TransactionRow key={row.id} row={row} />) : null}
@@ -611,7 +623,8 @@ export function TransactionTable({
     <table className="w-full border-collapse">
       <thead>
         <tr>
-          <Th>{grouped ? null : <Trans>Date</Trans>}</Th>
+          {/* Date and Status keep their width in both modes, so opening a vendor moves no column. */}
+          <Th className="w-[4.5rem]">{grouped ? null : <Trans>Date</Trans>}</Th>
           <Th>
             <Trans>Counterparty</Trans>
           </Th>
@@ -621,7 +634,9 @@ export function TransactionTable({
           <Th right className="ps-4">
             <Trans>Amount</Trans>
           </Th>
-          <Th className="hidden ps-4 @2xl:table-cell">{grouped ? null : <Trans>Status</Trans>}</Th>
+          <Th className="hidden w-24 ps-4 @2xl:table-cell">
+            {grouped ? null : <Trans>Status</Trans>}
+          </Th>
           <Th />
         </tr>
       </thead>
@@ -651,29 +666,34 @@ export function TransactionsSection({
   rows: FinanceTransaction[];
   empty?: ReactNode;
 }) {
-  const [grouped, setGrouped] = useState(readGroupedPref);
+  const [preferGrouped, setGrouped] = useState(readGroupedPref);
   const choose = (next: boolean) => {
     setGrouped(next);
     writeGroupedPref(next);
   };
+  // Grouping one vendor's charges by vendor changes nothing, so the switch is left out.
+  const manyVendors = groupByVendor(rows).length > 1;
+  const grouped = preferGrouped && manyVendors;
   return (
     <Section
       title={title}
       action={
-        <div className="flex gap-1">
-          {([false, true] as const).map((mode) => (
-            <Button
-              key={String(mode)}
-              size="xs"
-              variant={grouped === mode ? "default" : "outline"}
-              className="rounded-full"
-              aria-pressed={grouped === mode}
-              onClick={() => choose(mode)}
-            >
-              {mode ? <Trans>By vendor</Trans> : <Trans>List</Trans>}
-            </Button>
-          ))}
-        </div>
+        manyVendors ? (
+          <div className="flex gap-1">
+            {([false, true] as const).map((mode) => (
+              <Button
+                key={String(mode)}
+                size="xs"
+                variant={grouped === mode ? "default" : "outline"}
+                className="rounded-full"
+                aria-pressed={grouped === mode}
+                onClick={() => choose(mode)}
+              >
+                {mode ? <Trans>By vendor</Trans> : <Trans>List</Trans>}
+              </Button>
+            ))}
+          </div>
+        ) : null
       }
     >
       <TransactionTable rows={rows} grouped={grouped} empty={empty} />

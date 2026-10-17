@@ -23,7 +23,7 @@ vi.mock("@lingui/react/macro", () => ({
 vi.mock("../../lib/rpc", () => ({ rpc: {} }));
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
-import { TransactionTable } from "./ui";
+import { TransactionsSection, TransactionTable } from "./ui";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => setHideAmounts(false));
@@ -56,4 +56,52 @@ it("masks a grouped vendor total and its expanded rows while amounts are hidden,
   await act(async () => el.querySelector("button")?.click());
   for (const real of ["9,011", "1,234", "7,777"]) expect(el.textContent).not.toContain(real);
   expect(el.textContent).toContain("Acme Hosting");
+});
+
+const render = async (node: ReactNode) => {
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+  await act(async () => root.render(<MemoryRouter>{node}</MemoryRouter>));
+  return el;
+};
+
+it("labels card payoffs and own-account transfers as not spend instead of Uncategorized", async () => {
+  const rows = [
+    {
+      ...txn("1", -1_120_000),
+      counterparty: "Brex",
+      category: null,
+      classification: "card_payment",
+    },
+    {
+      ...txn("2", -500_000),
+      counterparty: "Savings",
+      category: null,
+      classification: "internal_transfer",
+    },
+  ] as FinanceTransaction[];
+  const el = await render(<TransactionTable rows={rows} />);
+  expect(el.textContent).toContain("Card payment · not spend");
+  expect(el.textContent).toContain("Transfer · not spend");
+  expect(el.textContent).not.toContain("Uncategorized");
+});
+
+it("masks a dollar amount in a memo while amounts are hidden", async () => {
+  const rows = [{ ...txn("1", -420_000), memo: "Invoice 4417 — $4,200 deposit" }];
+  const el = await render(<TransactionTable rows={rows} />);
+  expect(el.textContent).toContain("$4,200 deposit");
+  await act(async () => setHideAmounts(true));
+  expect(el.textContent).toContain("Invoice 4417 — $••• deposit");
+});
+
+it("offers List / By vendor only when the rows have more than one vendor", async () => {
+  const one = await render(<TransactionsSection rows={[txn("1", -100), txn("2", -200)]} />);
+  expect(one.textContent).not.toContain("By vendor");
+  const two = await render(
+    <TransactionsSection
+      rows={[txn("1", -100), { ...txn("2", -200), counterparty: "Other Co" }]}
+    />,
+  );
+  expect(two.textContent).toContain("By vendor");
 });
