@@ -107,11 +107,12 @@ function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
   return rows;
 }
 
-function Figure({ title, value }: { title: string; value: string }) {
+function Figure({ title, value, hint }: { title: string; value: string; hint?: string }) {
   return (
     <Card size="sm" className="px-3.5">
       <h2 className="text-xs font-semibold text-muted-foreground">{title}</h2>
       <div className="mt-1 text-[22px] font-semibold leading-tight tabular-nums">{value}</div>
+      {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
     </Card>
   );
 }
@@ -125,7 +126,11 @@ function Summary({ snapshot }: { snapshot: Snapshot | null }) {
         <>
           <Figure title={t`Fully diluted shares`} value={num(snapshot.fullyDilutedShares)} />
           <Figure title={t`Option pool available`} value={num(snapshot.optionPoolAvailable)} />
-          <Figure title={t`Latest 409A`} value={a ? usd(a.pricePerShareUsd, 2) : DASH} />
+          <Figure
+            title={t`Common share price`}
+            value={a ? usd(a.pricePerShareUsd, 2) : DASH}
+            hint={t`From the latest 409A valuation`}
+          />
           <Figure title={t`Amount raised`} value={usd(snapshot.amountRaisedUsd)} />
         </>
       ) : (
@@ -715,10 +720,11 @@ export function CapTablePage({
         <table className="w-full table-fixed text-sm">
           <thead className="text-start text-xs text-muted-foreground">
             <tr>
-              <th className="w-[48%] py-2 pe-3 text-start font-medium @lg:w-[25%]">
+              {/* On a phone the email moves under the name instead of being cut off. */}
+              <th className="py-2 pe-3 text-start font-medium @md:w-[48%] @lg:w-[25%]">
                 <Trans>Name</Trans>
               </th>
-              <th className="py-2 pe-3 text-start font-medium">
+              <th className="hidden py-2 pe-3 text-start font-medium @md:table-cell">
                 <Trans>Email</Trans>
               </th>
               <th className="hidden w-28 py-2 pe-3 text-start font-medium @lg:table-cell">
@@ -749,6 +755,25 @@ export function CapTablePage({
               // "Options" under the kind "Options" says nothing new.
               const holding = security === names[kind] ? null : security;
               const empty = <span className="text-muted-foreground">{DASH}</span>;
+              const email = contact?.email ? (
+                contact.email
+              ) : !contact && kind === "investor" ? (
+                <Button
+                  variant="link"
+                  size="xs"
+                  className="px-0"
+                  onClick={() =>
+                    setEditing({
+                      name,
+                      email: holder?.email ?? null,
+                      organization,
+                      kind: "investor",
+                    })
+                  }
+                >
+                  <Trans>Add email</Trans>
+                </Button>
+              ) : null;
               return (
                 <tr key={key} className="h-14 border-t border-border hover:bg-muted/50">
                   <td className="py-2 pe-3">
@@ -778,32 +803,20 @@ export function CapTablePage({
                         {organization}
                       </div>
                     ) : null}
+                    {email ? (
+                      <div
+                        data-testid="cap-table-row-email"
+                        className="break-all text-xs text-muted-foreground @md:hidden"
+                      >
+                        {email}
+                      </div>
+                    ) : null}
                   </td>
                   <td
-                    className="truncate py-2 pe-3 text-muted-foreground"
+                    className="hidden truncate py-2 pe-3 text-muted-foreground @md:table-cell"
                     title={contact?.email ?? undefined}
                   >
-                    {contact?.email ? (
-                      contact.email
-                    ) : !contact && kind === "investor" ? (
-                      <Button
-                        variant="link"
-                        size="xs"
-                        className="px-0"
-                        onClick={() =>
-                          setEditing({
-                            name,
-                            email: holder?.email ?? null,
-                            organization,
-                            kind: "investor",
-                          })
-                        }
-                      >
-                        <Trans>Add email</Trans>
-                      </Button>
-                    ) : (
-                      empty
-                    )}
+                    {email ?? empty}
                   </td>
                   <td className="hidden py-2 pe-3 @lg:table-cell">
                     <div className="truncate">{names[kind]}</div>

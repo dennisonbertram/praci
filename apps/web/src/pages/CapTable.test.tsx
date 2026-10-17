@@ -223,6 +223,8 @@ it("shows the summary, ownership legend and joined investors", async () => {
   expect(text).toContain("10,000,000");
   expect(text).toContain("500,000");
   expect(text).toContain("$1.25");
+  // The 409A figure is named for what it is, with the term explained underneath.
+  expect(text).toContain("Common share price$1.25From the latest 409A valuation");
   expect(text).toContain("Series Seed Preferred 30.00%");
   expect(text).toContain("Common 70.00%");
   expect(text).toContain("1,000,000");
@@ -578,4 +580,13 @@ it("hides dollar amounts but keeps shares and ownership in place while amounts a
       (document.querySelector("[data-testid=hide-amounts-toggle]") as HTMLElement),
   );
   expect(container.textContent).toContain("250,000");
+});
+
+it("repeats each email under the name, for phones where the Email column is hidden", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  await show();
+  const under = [...container.querySelectorAll("[data-testid=cap-table-row-email]")].map(
+    (cell) => cell.textContent,
+  );
+  expect(under).toContain("ada@example.test");
 });
