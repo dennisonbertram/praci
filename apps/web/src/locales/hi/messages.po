@@ -3544,6 +3544,10 @@ msgstr "अगर आपने वह सुना, तो आवाज़ त�
 msgid "Ignore"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Image hidden while amounts are hidden"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Image upload area"
 msgstr "छवि अपलोड क्षेत्र"

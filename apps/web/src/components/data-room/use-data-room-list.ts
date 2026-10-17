@@ -46,6 +46,19 @@ function sortValue(item: DataRoomApiItem, sort: Sort | null) {
   }
 }
 
+/**
+ * A metadata hit whose highlights all lie in the file name would only repeat the name shown above
+ * it. One that also matches the summary, parties or tags is worth showing.
+ */
+export function matchesOnlyName(snippet: string, name: string) {
+  const marked = snippet
+    .split("\u0001")
+    .slice(1)
+    .map((part) => part.split("\u0002")[0]?.toLowerCase() ?? "");
+  const words = name.toLowerCase().replace(/[._\-/]+/g, " ");
+  return marked.every((text) => name.toLowerCase().includes(text) || words.includes(text));
+}
+
 function mergeRows(rows: Row[], more: Row[]) {
   const byId = new Map(rows.map((row) => [row.item.id, row]));
   const merged = [...rows];
@@ -77,10 +90,13 @@ async function fetchPage(q: ListQuery, cursor?: string) {
     return {
       rows: mergeRows(
         [],
-        // A name match would only repeat the name and folder shown above it.
         page.results.map((hit) => ({
           item: hit.item,
-          snippets: hit.ordinal === DATA_ROOM_METADATA_ORDINAL ? [] : [hit.snippet],
+          snippets:
+            hit.ordinal === DATA_ROOM_METADATA_ORDINAL &&
+            matchesOnlyName(hit.snippet, hit.item.name)
+              ? []
+              : [hit.snippet],
         })),
       ),
       nextCursor: page.nextCursor,

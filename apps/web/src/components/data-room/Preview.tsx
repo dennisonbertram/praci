@@ -89,7 +89,7 @@ export function Preview({
 }) {
   const [error, setError] = useState("");
   const { facets } = item;
-  useHideAmounts();
+  const hidden = useHideAmounts();
   const amount = amountText(item);
   const download = () => {
     setError("");
@@ -125,7 +125,13 @@ export function Preview({
         )}
       </div>
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
-      {canPreviewImage(item) ? <ImagePreview key={item.id} item={item} /> : null}
+      {canPreviewImage(item) ? (
+        hidden ? (
+          <p className="text-sm text-muted-foreground">{t`Image hidden while amounts are hidden`}</p>
+        ) : (
+          <ImagePreview key={item.id} item={item} />
+        )
+      ) : null}
       {item.status === "failed" ? (
         <div className="flex flex-col gap-1 text-sm">
           <p className="font-medium text-destructive">

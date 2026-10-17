@@ -6,7 +6,7 @@ import { LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
-import { FilterBar } from "../components/data-room/FilterBar";
+import { FilterBar, sourceLabels } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderNodes } from "../components/data-room/folders";
 import { type DataRoomEntry, ItemDialog, isFolder } from "../components/data-room/ItemDialogs";
@@ -79,20 +79,35 @@ export function DataRoomPage() {
   const debouncedQuery = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
   // Clearing the box shows the list again at once; only typing waits for a pause.
   const query = queryInput.trim() === "" ? "" : debouncedQuery;
-  // The open folder lives in the URL, so a reload, a bookmark or a shared link opens it again.
-  const [filters, setFilters] = useState<Filters>(() => (urlFolder ? { folderId: urlFolder } : {}));
-  useEffect(() => {
-    if (filters.folderId === urlFolder) return;
-    setParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (filters.folderId) next.set("folder", filters.folderId);
-        else next.delete("folder");
-        return next;
-      },
-      { replace: true },
-    );
-  }, [filters.folderId, urlFolder, setParams]);
+  // The open folder lives in the URL and nothing else does: a reload, a bookmark, a shared link or
+  // the Back button opens the folder again. The other filters are page state.
+  const [otherFilters, setOtherFilters] = useState<Omit<Filters, "folderId">>({});
+  const filters = useMemo<Filters>(
+    () => (urlFolder ? { ...otherFilters, folderId: urlFolder } : otherFilters),
+    [otherFilters, urlFolder],
+  );
+  const urlFolderRef = useRef(urlFolder);
+  urlFolderRef.current = urlFolder;
+  // setParams changes with every navigation; the callbacks below must not.
+  const setParamsRef = useRef(setParams);
+  setParamsRef.current = setParams;
+  /** A folder the user chose is a new history entry; one the page chose replaces the current. */
+  const setFilters = useCallback(
+    ({ folderId, ...rest }: Filters, replace = false) => {
+      setOtherFilters(rest);
+      if (folderId === urlFolderRef.current) return;
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (folderId) next.set("folder", folderId);
+          else next.delete("folder");
+          return next;
+        },
+        { replace },
+      );
+    },
+    [setParams],
+  );
   // "Recently added" first, so a file just filed is on top even before it has a document date.
   const [listSort, setListSort] = useState<Sort>(saved.sort);
   useEffect(() => saveDataRoomView({ view, sort: listSort }), [view, listSort]);
@@ -109,11 +124,17 @@ export function DataRoomPage() {
       .then((next) => {
         setFolders(next);
         // A folder that no longer exists (deleted, or a stale link) falls back to All items.
-        setFilters((current) =>
-          current.folderId && !next.some((folder) => folder.id === current.folderId)
-            ? { ...current, folderId: undefined }
-            : current,
-        );
+        const open = urlFolderRef.current;
+        if (open && !next.some((folder) => folder.id === open)) {
+          setParamsRef.current(
+            (prev) => {
+              const params = new URLSearchParams(prev);
+              params.delete("folder");
+              return params;
+            },
+            { replace: true },
+          );
+        }
       })
       .catch(() => undefined);
   }, []);
@@ -166,6 +187,8 @@ export function DataRoomPage() {
     setDialogOpen(false);
   }, [narrow]);
 
+  /** The item a link opened: the first answer after it keeps it, even beyond the first page. */
+  const explicit = useRef<string | null>(null);
   useEffect(() => {
     if (!linkedItem) return;
     // Only the item that is still in the URL when the answer arrives may be shown.
@@ -176,7 +199,8 @@ export function DataRoomPage() {
         if (!current || item.id !== linkedItem) return;
         // Show the folder the item is in, so the list and the preview agree.
         setQueryInput("");
-        setFilters(item.folderId ? { folderId: item.folderId } : {});
+        setFilters(item.folderId ? { folderId: item.folderId } : {}, true);
+        explicit.current = item.id;
         setPinned(item);
         setPreviewOpen(true);
         setDialogOpen(true);
@@ -197,6 +221,10 @@ export function DataRoomPage() {
     const first = appliedKey.current === null;
     appliedKey.current = queryKey;
     if (first || !pinned || resultIds.split(",").includes(pinned.id)) return;
+    if (explicit.current === pinned.id) {
+      explicit.current = null;
+      return;
+    }
     setPinned(null);
   }, [list.loading, list.key, queryKey, resultIds, pinned]);
 
@@ -223,10 +251,12 @@ export function DataRoomPage() {
     shownId: shown?.id,
     onSelect: (item) => {
       if (narrow) return;
+      explicit.current = null;
       setPinned(item);
       setPreviewOpen(true);
     },
     onToggle: (item) => {
+      explicit.current = null;
       if (!narrow && pinned?.id === item.id && previewOpen) {
         setPinned(null);
         setPreviewOpen(false);
@@ -335,12 +365,13 @@ export function DataRoomPage() {
             onQuery={setQueryInput}
             searching={searching}
             filters={filters}
-            onFilters={setFilters}
+            onFilters={(next) => setFilters(next)}
             sort={sort}
             onSort={(next) => (searching ? setSearchSort(next) : next && setListSort(next))}
             types={uniq(rows.flatMap(({ item }) => item.facets.docType ?? []))}
             parties={uniq(rows.flatMap(({ item }) => item.facets.parties))}
-            sources={uniq(rows.map(({ item }) => item.source))}
+            // The server has no list of sources, so offer every known one beside those on screen.
+            sources={uniq([...Object.keys(sourceLabels()), ...rows.map(({ item }) => item.source)])}
             hasDates={rows.some(({ item }) => item.facets.docDate)}
             folders={nodes}
             folderId={filters.folderId}

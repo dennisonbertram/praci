@@ -3544,6 +3544,10 @@ msgstr "如果听到了，说明语音已就绪。"
 msgid "Ignore"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Image hidden while amounts are hidden"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Image upload area"
 msgstr "图片上传区域"

@@ -3544,6 +3544,10 @@ msgstr "샘플이 들렸다면 음성 설정이 완료되었습니다."
 msgid "Ignore"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Image hidden while amounts are hidden"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Image upload area"
 msgstr "이미지 업로드 영역"

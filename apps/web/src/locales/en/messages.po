@@ -3544,6 +3544,10 @@ msgstr "If you heard that, voice is ready."
 msgid "Ignore"
 msgstr "Ignore"
 
+#: src/components/data-room/Preview.tsx
+msgid "Image hidden while amounts are hidden"
+msgstr "Image hidden while amounts are hidden"
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Image upload area"
 msgstr "Image upload area"

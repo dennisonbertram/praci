@@ -3544,6 +3544,10 @@ msgstr "Bunu duyduysan ses hazır."
 msgid "Ignore"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Image hidden while amounts are hidden"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Image upload area"
 msgstr "Görüntü yükleme alanı"

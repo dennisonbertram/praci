@@ -626,7 +626,7 @@ it("says a failed file could not be read, with its reason and a Delete button", 
   expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain("junk.pdf");
 });
 
-it("hides the Type, Party, Date and Source filters and columns while no item has them", async () => {
+it("hides the Type, Party and Date filters and columns while no item has them", async () => {
   const bare = (name: string) => ({
     ...item(name),
     facets: { ...item(name).facets, docType: null },
@@ -638,7 +638,8 @@ it("hides the Type, Party, Date and Source filters and columns while no item has
   expect(labels()).not.toContain("Filter by Type");
   expect(labels()).not.toContain("Filter by Party");
   expect(labels()).not.toContain("Filter by Document date");
-  expect(labels()).not.toContain("Filter by Source");
+  // Sources cannot be listed from the server, so the filter stays even when one page is all uploads.
+  expect(labels()).toContain("Filter by Source");
   expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toBe("Name");
 
   rpcMock.list.mockResolvedValue({
@@ -692,12 +693,69 @@ it("opens a linked item in its own folder, so the list shows it", async () => {
   expect(previewName()).toBe("x.txt");
 });
 
+it("keeps a linked item selected when it is not on the first page of its folder", async () => {
+  const linked = deferred<DataRoomApiItem>();
+  rpcMock.item.mockReturnValue(linked.promise);
+  await renderPage("/?item=X");
+  await settle();
+  linked.resolve({ ...item("x.txt"), id: "X", folderId: "f2" });
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f2" }));
+  expect(previewName()).toBe("x.txt");
+});
+
+it("follows the folder in the URL when it changes, and Back returns to the previous folder", async () => {
+  rpcMock.folders.mockResolvedValue(
+    ["A", "B"].map((name) => ({
+      id: `f${name}`,
+      name,
+      parentId: null,
+      createdAt: "2026-10-01T00:00:00.000Z",
+    })),
+  );
+  let go: ReturnType<typeof useNavigate> = () => undefined;
+  function Nav() {
+    go = useNavigate();
+    return null;
+  }
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/?folder=fA"]}>
+        <DataRoomPage />
+        <Nav />
+      </MemoryRouter>,
+    );
+  });
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "fA" }));
+  await act(async () => go("/?folder=fB"));
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "fB" }));
+  // Choosing a folder adds a history entry.
+  const tree = (label: string) =>
+    Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+      (el) => el.textContent === label,
+    );
+  await act(async () => tree("A")?.click());
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "fA" }));
+  await act(async () => go(-1));
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "fB" }));
+});
+
 it("shows no snippet when only the name matched", async () => {
   await renderPage();
   rpcMock.search.mockResolvedValue({
     results: [
       { item: item("lease.pdf"), ordinal: -1, snippet: "\u0001lease\u0002.pdf Legal", score: 1 },
       { item: item("memo.txt"), ordinal: 0, snippet: "the \u0001lease\u0002 ends", score: 1 },
+      {
+        item: item("deal.pdf"),
+        ordinal: -1,
+        snippet: "deal.pdf\nOffice \u0001lease\u0002 renewal",
+        score: 1,
+      },
     ],
     nextCursor: null,
   });
@@ -713,6 +771,8 @@ it("shows no snippet when only the name matched", async () => {
   const rows = container.querySelectorAll('ul[aria-label="Results"] > li');
   expect(rows[0]?.querySelector("mark")).toBeNull();
   expect(rows[1]?.querySelector("mark")?.textContent).toBe("lease");
+  // A metadata hit on the summary is not a name match, so its snippet stays.
+  expect(rows[2]?.querySelector("mark")?.textContent).toBe("lease");
 });
 
 it("remembers the view and sort across visits", async () => {
