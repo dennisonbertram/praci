@@ -3407,6 +3407,16 @@ export function ShellPage() {
             >
               <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
             </button>
+            <button
+              type="button"
+              className="app-no-drag inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:hidden"
+              aria-label={t`Close menu`}
+              title={t`Close menu`}
+              data-testid="close-mobile-sidebar"
+              onClick={() => setMobileSidebarOpen(false)}
+            >
+              <X size={16} strokeWidth={1.8} aria-hidden="true" />
+            </button>
             <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
               <PopoverTrigger
                 className="app-no-drag text-[21px] text-muted-foreground/70 hover:text-foreground/75"
@@ -4081,25 +4091,28 @@ export function ShellPage() {
             </div>
           ) : null}
         </div>
-        <button
-          type="button"
-          data-testid="sidebar-integrations"
-          aria-current={integrationsMode ? "page" : undefined}
-          onClick={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/integrations");
-          }}
-          className={`mx-3 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
-            integrationsMode ? "bg-sidebar-accent" : ""
-          }`}
-        >
-          <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
-            <LayoutGrid size={15} strokeWidth={1.8} />
-          </span>
-          <span className="text-[14px] font-medium text-foreground/90">
-            <Trans>Integrations</Trans>
-          </span>
-        </button>
+        {/* The top border shows that the list above scrolls under this row. */}
+        <div className="border-t border-sidebar-border pt-1">
+          <button
+            type="button"
+            data-testid="sidebar-integrations"
+            aria-current={integrationsMode ? "page" : undefined}
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/app/integrations");
+            }}
+            className={`mx-3 mb-1 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
+              integrationsMode ? "bg-sidebar-accent" : ""
+            }`}
+          >
+            <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
+              <LayoutGrid size={15} strokeWidth={1.8} />
+            </span>
+            <span className="text-[14px] font-medium text-foreground/90">
+              <Trans>Integrations</Trans>
+            </span>
+          </button>
+        </div>
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger
             data-testid="user-menu-trigger"
