@@ -91,7 +91,7 @@ it("offers the collapsed panel's button when creating the agent failed, with no 
   expect(cartaPanelState({ ...base, collapsed: false }).open).toBe(false);
 });
 
-it("calls back when the window shrinks below the desktop width, not when it grows", () => {
+it("calls onPhone when the window shrinks below the desktop width, and onWide when it grows", () => {
   let listener: (() => void) | undefined;
   const query = {
     matches: true,
@@ -102,16 +102,19 @@ it("calls back when the window shrinks below the desktop width, not when it grow
   };
   vi.stubGlobal("matchMedia", () => query);
   const onPhone = vi.fn();
+  const onWide = vi.fn();
   function Phone() {
-    useOnPhoneWidth(onPhone);
+    useOnPhoneWidth(onPhone, onWide);
     return null;
   }
   act(() => root.render(<Phone />));
   query.matches = true;
   listener?.();
   expect(onPhone).not.toHaveBeenCalled();
+  expect(onWide).toHaveBeenCalledTimes(1);
   query.matches = false;
   listener?.();
   expect(onPhone).toHaveBeenCalledTimes(1);
+  expect(onWide).toHaveBeenCalledTimes(1);
   vi.unstubAllGlobals();
 });

@@ -2734,11 +2734,17 @@ export function ShellPage() {
     error: cartaAgentError,
   });
   // A window dragged down to phone width would leave a remembered-open panel covering the page.
-  // Only the view collapses; the saved preference stays for the desktop.
-  useOnPhoneWidth(() => {
-    setCartaAgentCollapsed(true);
-    setInboxAgentCollapsed(true);
-  });
+  // Only the view collapses; the saved preference comes back when the window is wide again.
+  useOnPhoneWidth(
+    () => {
+      setCartaAgentCollapsed(true);
+      setInboxAgentCollapsed(true);
+    },
+    () => {
+      setCartaAgentCollapsed(readCartaAgentCollapsed(userId));
+      setInboxAgentCollapsed(readInboxAgentCollapsed(userId));
+    },
+  );
 
   const cartaSuggestions = [t`Who are our investors?`, t`Draft this month's investor update`];
   const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
