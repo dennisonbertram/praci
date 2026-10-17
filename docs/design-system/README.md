@@ -69,7 +69,7 @@ Borders, input fills and the focus ring.
 | Token | CSS variable | Light | Dark |
 | --- | --- | --- | --- |
 | `border` | `--border` | `#f0f0ed` | `#2e2d2a` |
-| `input` | `--input` | `#eaeae6` | `#282826` |
+| `input` | `--input` | `#eaeae6` | `#3d3c38` |
 | `ring` | `--ring` | `#6c6c70` | `#3b82f6` |
 
 ### Status

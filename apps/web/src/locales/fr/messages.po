@@ -18,6 +18,10 @@ msgstr ""
 msgid " (unread)"
 msgstr " (non lu)"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "— tokens"
+msgstr "— jetons"
+
 #. placeholder {0}: statement.duplicateCount
 #: src/components/finance/StatementReviewCard.tsx
 msgid ", {0} already imported"
@@ -37,6 +41,11 @@ msgstr "{0, plural, one {# modèle} other {# modèles}}"
 #: src/pages/Inbox.tsx
 msgid "{0, plural, one {# result} other {# results}}"
 msgstr ""
+
+#. placeholder {0}: usage.runs
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "{0, plural, one {# run} other {# runs}}"
+msgstr "{0, plural, one {# exécution} other {# exécutions}}"
 
 #. placeholder {0}: subs.items.length
 #: src/pages/Finance.tsx
@@ -145,12 +154,6 @@ msgstr ""
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
 msgstr "{0} heures de regroupement"
-
-#. placeholder {0}: usage.runs
-#. placeholder {1}: usage.totalTokens ?? "—"
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "{0} runs · {1} tokens"
-msgstr "{0} exécutions · {1} jetons"
 
 #. placeholder {0}: card.count
 #. placeholder {0}: statement.transactionCount
@@ -313,6 +316,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "{title}, {label}"
 msgstr "{title}, {label}"
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "{tokens, plural, one {# token} other {# tokens}}"
+msgstr "{tokens, plural, one {# jeton} other {# jetons}}"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "{unpriced} unpriced"
@@ -615,14 +622,14 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "All agents can use {0}."
-msgstr ""
-
 #: src/pages/Artifacts.tsx
 msgid "All bots"
 msgstr "Tous les bots"
+
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "All bots can use {0}."
+msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "All crypto"
@@ -787,6 +794,10 @@ msgstr ""
 msgid "App connections aren't set up on this server yet."
 msgstr ""
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "App servers"
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Appearance"
 msgstr "Apparence"
@@ -915,6 +926,10 @@ msgstr "à {0}"
 msgid "at {timeSelect}"
 msgstr "à {timeSelect}"
 
+#: src/pages/Auth.tsx
+msgid "At least 8 characters."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Attach file"
 msgstr "Joindre un fichier"
@@ -980,8 +995,8 @@ msgid "Authorize"
 msgstr "Autoriser"
 
 #: src/pages/shell/message-cards.tsx
-msgid "Authorize this server so agents can use its tools. A popup opens."
-msgstr "Autorisez ce serveur pour que les agents puissent utiliser ses outils. Une fenêtre contextuelle s'ouvre."
+msgid "Authorize this server so bots can use its tools. A popup opens."
+msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Automated senders"
@@ -1010,7 +1025,9 @@ msgstr "Avatars"
 #: src/components/computer/FilesApp.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Board.tsx
+#: src/pages/IntegrationSetup.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Back"
 msgstr "Retour"
@@ -1116,7 +1133,6 @@ msgstr "Démarrage de l'ordinateur de {0}"
 msgid "bot"
 msgstr "bot"
 
-#: src/pages/IntegrationSetup.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bot"
@@ -1135,6 +1151,10 @@ msgstr "Écran du bot"
 msgid "Bot screen preview"
 msgstr "Aperçu de l'écran du bot"
 
+#: src/pages/IntegrationSetup.tsx
+msgid "Bot that gets the apps you connect here"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Bot to link"
 msgstr "Bot à connecter"
@@ -1143,13 +1163,17 @@ msgstr "Bot à connecter"
 msgid "Bot's model"
 msgstr "Modèle du bot"
 
-#: src/pages/Artifacts.tsx
+#: src/pages/shell/command-palette.tsx
 msgid "Bots"
 msgstr "Bots"
 
 #: src/pages/Shell.tsx
 msgid "Bots are working"
 msgstr "Les bots sont en cours d'exécution"
+
+#: src/pages/Welcome.tsx
+msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
+msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
@@ -1263,7 +1287,7 @@ msgstr "Annulé"
 
 #: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
-msgid "Cap Table"
+msgid "Cap table"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1362,6 +1386,7 @@ msgstr "Le graphique n'a pas pu s'afficher : {error}"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/SpaceSearch.tsx
 msgid "Chat"
 msgstr ""
 
@@ -1376,6 +1401,10 @@ msgstr "Applications de discussion, canaux de groupe et connexions d'agent."
 #: src/pages/Shell.tsx
 msgid "Chat Settings"
 msgstr "Paramètres de discussion"
+
+#: src/pages/SpaceSearch.tsx
+msgid "Chats"
+msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/pages/HostComputerPrompt.tsx
@@ -1470,6 +1499,11 @@ msgstr "Choisir un fichier"
 msgid "Choose files"
 msgstr ""
 
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Choose how apps connect for everyone on this server."
+msgstr ""
+
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
 msgstr ""
@@ -1503,6 +1537,10 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Clear formatting"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Clear search"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -1764,6 +1802,10 @@ msgstr ""
 msgid "Connect API key"
 msgstr "Connecter la clé API"
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Connect apps that publish a server address"
+msgstr ""
+
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Blockscout"
@@ -1771,6 +1813,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Connect Carta"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Connect Carta to see shareholders, share classes and ownership. You can also add investors and advisors by hand."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -1786,7 +1832,7 @@ msgid "Connect MCP server “{name}”"
 msgstr "Connecter le serveur MCP « {name} »"
 
 #: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect the apps you use so your agents can read and act in them. You choose which agents get access to each one."
+msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2184,6 +2230,11 @@ msgstr "Impossible d'ouvrir le terminal"
 msgid "Could not play a test clip"
 msgstr "Impossible de lire un extrait de test"
 
+#. placeholder {0}: hostOf(target.endpoint ?? url)
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Could not reach {0}. Check the address and try again."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Could not reach the model server."
 msgstr "Impossible de joindre le serveur du modèle."
@@ -2255,11 +2306,6 @@ msgstr "Impossible d'exécuter la routine"
 msgid "Could not save"
 msgstr "Impossible d'enregistrer"
 
-#: src/components/integrations/ConnectAppDialog.tsx
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Could not save agent access"
-msgstr ""
-
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Could not save Auto Review"
 msgstr "Impossible d'enregistrer la révision automatique"
@@ -2267,6 +2313,11 @@ msgstr "Impossible d'enregistrer la révision automatique"
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Could not save backup models"
 msgstr "Impossible d’enregistrer les modèles de secours."
+
+#: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Could not save bot access"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "Could not save group"
@@ -2351,8 +2402,8 @@ msgstr "Impossible de mettre à jour"
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
-msgid "Could not update agent access"
-msgstr "Impossible de mettre à jour l'accès de l'agent"
+msgid "Could not update bot access"
+msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update changes"
@@ -2461,11 +2512,6 @@ msgstr "Créer un groupe"
 msgid "Create Inbox agent"
 msgstr ""
 
-#: src/pages/Shell.tsx
-#: src/pages/shell/bot-picker.tsx
-msgid "Create new Bot"
-msgstr "Créer un nouveau bot"
-
 #: src/pages/shell/bot-picker.tsx
 msgid "Create new Group"
 msgstr "Créer un nouveau groupe"
@@ -2484,8 +2530,8 @@ msgid "Create space"
 msgstr "Créer un espace"
 
 #: src/pages/Auth.tsx
-msgid "Create your Rakazo"
-msgstr "Créez votre Rakazo"
+msgid "Create your account"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -2547,6 +2593,10 @@ msgstr "Sombre"
 #: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Data room"
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Data room search model"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -2710,10 +2760,6 @@ msgstr ""
 msgid "Didn't open?"
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "Direct MCP"
-msgstr "MCP direct"
-
 #: src/components/MailApprovalCard.tsx
 msgid "Disable drafts for {botName}"
 msgstr ""
@@ -2810,6 +2856,10 @@ msgstr "Docker limite l'accès à votre ordinateur pour une sécurité renforcé
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
+msgstr ""
+
+#: src/pages/SpaceSearch.tsx
+msgid "Documents"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -3035,11 +3085,11 @@ msgid "every {intervalAmountSelect} {intervalUnitSelect}"
 msgstr "tous les {intervalAmountSelect} {intervalUnitSelect}"
 
 #: src/components/integrations/AppDetail.tsx
-msgid "Every agent loses access to {name}."
+msgid "Every bot loses access to {name}."
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
-msgid "Every agent loses access to its tools."
+msgid "Every bot loses access to its tools."
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -3153,6 +3203,10 @@ msgstr "Gestion des échecs"
 msgid "Fee"
 msgstr ""
 
+#: src/pages/SpaceSearch.tsx
+msgid "File"
+msgstr ""
+
 #: src/components/computer/FilesApp.tsx
 msgid "File is too large to upload."
 msgstr ""
@@ -3169,6 +3223,7 @@ msgstr ""
 msgid "Filing"
 msgstr ""
 
+#: src/pages/ActivityList.tsx
 #: src/pages/Inbox.tsx
 msgid "Filter"
 msgstr ""
@@ -3236,6 +3291,10 @@ msgstr "Terminez la connexion par abonnement, puis testez à nouveau."
 #: src/components/CloudAgentCard.tsx
 msgid "finished"
 msgstr "terminé"
+
+#: src/pages/ActivityList.tsx
+msgid "Finished"
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
@@ -3328,8 +3387,8 @@ msgid "Get credentials"
 msgstr "Obtenir les identifiants"
 
 #: src/pages/shell/bot-panel.tsx
-msgid "Get notified when this Bot finishes or needs input"
-msgstr "Soyez averti lorsque ce bot termine ou a besoin d'une saisie"
+msgid "Get notified when this bot finishes or needs input"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Getting ready"
@@ -3356,6 +3415,10 @@ msgstr ""
 msgid "Gmail tabs"
 msgstr ""
 
+#: src/pages/shell/command-palette.tsx
+msgid "Go to"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 msgid "Google Drive"
 msgstr ""
@@ -3377,6 +3440,7 @@ msgstr "Paramètres du groupe"
 msgid "Group updates"
 msgstr "Mises à jour du groupe"
 
+#: src/pages/shell/command-palette.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Groups"
 msgstr "Groupes"
@@ -3422,13 +3486,13 @@ msgstr "Écouter un extrait"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Bonjour, c'est ainsi que je sonnerai quand je lirai les réponses à voix haute."
 
-#: src/pages/Shell.tsx
-msgid "Hide bots"
-msgstr "Masquer les bots"
-
 #: src/pages/Auth.tsx
 msgid "Hide password"
 msgstr "Masquer le mot de passe"
+
+#: src/pages/Shell.tsx
+msgid "Hide sidebar"
+msgstr ""
 
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
@@ -3473,6 +3537,11 @@ msgstr "Comment vérifier"
 #: src/pages/Shell.tsx
 msgid "I’m done"
 msgstr "J'ai terminé"
+
+#. placeholder {0}: email.trim()
+#: src/pages/Auth.tsx
+msgid "If {0} has an account, a reset link is on its way. It can take a minute; check your spam folder if it does not arrive."
+msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "If you closed the sign-in window, try again."
@@ -3624,6 +3693,10 @@ msgstr ""
 msgid "just now"
 msgstr "à l'instant"
 
+#: src/pages/DataRoom.tsx
+msgid "Keep contracts, board decks and investor documents in one place."
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Keep editing"
 msgstr ""
@@ -3701,6 +3774,10 @@ msgstr "Clair"
 #: src/pages/RoutineEditor.tsx
 msgid "Linear issue"
 msgstr "Incident Linear"
+
+#: src/pages/SpaceSearch.tsx
+msgid "Link"
+msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
@@ -3839,6 +3916,7 @@ msgid "Lowercase letters, numbers, hyphens and underscores, starting with a lett
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/SpaceSearch.tsx
 msgid "Mail"
 msgstr ""
 
@@ -4001,6 +4079,7 @@ msgstr ""
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
+#: src/pages/SpaceSearch.tsx
 msgid "Message"
 msgstr "Message"
 
@@ -4055,10 +4134,6 @@ msgstr ""
 #: src/pages/WindowChrome.tsx
 msgid "Minimize"
 msgstr "Réduire"
-
-#: src/pages/Shell.tsx
-msgid "Minimize bots"
-msgstr "Réduire les bots"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "minute"
@@ -4248,6 +4323,7 @@ msgid "Needs takeover"
 msgstr "Nécessite une intervention"
 
 #: src/lib/roster-status.ts
+#: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "A besoin de vous"
@@ -4263,6 +4339,11 @@ msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "New account"
+msgstr ""
+
+#: src/pages/Shell.tsx
+#: src/pages/shell/bot-picker.tsx
+msgid "New bot"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4328,11 +4409,6 @@ msgstr ""
 msgid "No agent connections yet."
 msgstr "Aucune connexion d'agent pour le moment."
 
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "No agent uses {0} yet. Choose agents on its page."
-msgstr ""
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "No apps match."
 msgstr ""
@@ -4349,20 +4425,25 @@ msgstr "Aucune authentification"
 msgid "No bot activity yet."
 msgstr "Aucune activité du bot pour le moment."
 
-#: src/pages/shell/command-palette.tsx
-msgid "No bots"
-msgstr "Aucun bot"
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "No bot uses {0} yet. Choose bots on its page."
+msgstr ""
 
 #: src/pages/shell/bot-picker.tsx
 msgid "No bots match"
 msgstr "Aucun bot ne correspond"
+
+#: src/pages/CapTable.tsx
+msgid "No cap table yet"
+msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
 msgstr "Aucune application de discussion connectée pour le moment."
 
 #: src/pages/CapTable.tsx
-msgid "No contacts yet"
+msgid "No contacts of this kind"
 msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
@@ -4435,6 +4516,7 @@ msgstr "Aucun serveur MCP distant trouvé"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "No results"
 msgstr "Aucun résultat"
@@ -4540,6 +4622,10 @@ msgstr ""
 msgid "Nothing is still running"
 msgstr "Rien ne tourne encore"
 
+#: src/pages/ActivityList.tsx
+msgid "Nothing needs you right now."
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Nothing remembered yet"
 msgstr "Rien n'est mémorisé pour le moment"
@@ -4548,10 +4634,6 @@ msgstr "Rien n'est mémorisé pour le moment"
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "Notifications"
-
-#: src/pages/ActivityList.tsx
-msgid "Now"
-msgstr "Maintenant"
 
 #. placeholder {0}: selected.label
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4597,6 +4679,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
 msgid "Open"
@@ -4784,6 +4867,11 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "Incident PagerDuty"
+
+#: src/pages/shell/command-palette.tsx
+#: src/pages/SpaceSearch.tsx
+msgid "Pages"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Paid with"
@@ -5077,7 +5165,6 @@ msgstr ""
 msgid "Receipts"
 msgstr ""
 
-#: src/pages/ActivityList.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Recent"
 msgstr "Récent"
@@ -5253,6 +5340,10 @@ msgstr ""
 msgid "Remove {secretName}? This bot will no longer be able to use it."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+msgid "Remove account"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 msgid "Remove filter {label}"
 msgstr ""
@@ -5300,15 +5391,15 @@ msgid "Removed, but list refresh failed"
 msgstr "Retiré, mais l'actualisation de la liste a échoué"
 
 #: src/components/integrations/AppDetail.tsx
-msgid "Removes all {accountCount} accounts and agent access."
+msgid "Removes all {accountCount} accounts and bot access."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
-msgid "Removes the account and agent access."
+msgid "Removes the account and bot access."
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
-msgid "Removes the connection and agent access."
+msgid "Removes the connection and bot access."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -5487,6 +5578,7 @@ msgstr "Tourner la clé"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
+#: src/pages/SpaceSearch.tsx
 msgid "Routine"
 msgstr "Routine"
 
@@ -5505,6 +5597,10 @@ msgstr "Exécuter à"
 #: src/pages/RoutineRunHistory.tsx
 msgid "Run history"
 msgstr "Historique des exécutions"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Run my company"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Run time must be in the future."
@@ -5597,6 +5693,7 @@ msgstr "Enregistrer l’espace de travail et installer les logiciels actuels."
 #: src/components/AskCard.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
+#: src/pages/shell/bot-panel.tsx
 msgid "Saved"
 msgstr "Enregistré"
 
@@ -5640,8 +5737,10 @@ msgstr "Dites oui ou non, ou répondez en une phrase."
 msgid "Scheduling"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
@@ -5663,10 +5762,6 @@ msgstr "Rechercher des applications"
 msgid "Search artifacts…"
 msgstr "Rechercher des artefacts…"
 
-#: src/pages/shell/command-palette.tsx
-msgid "Search bots and switch conversations"
-msgstr "Rechercher des bots et changer de conversation"
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search by domain"
 msgstr "Rechercher par domaine"
@@ -5679,12 +5774,12 @@ msgstr ""
 msgid "Search documents"
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "Search integrations.sh"
-msgstr "Rechercher sur integrations.sh"
-
 #: src/pages/Inbox.tsx
 msgid "Search mail"
+msgstr ""
+
+#: src/pages/SpaceSearch.tsx
+msgid "Search mail for “{query}”"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -5693,6 +5788,10 @@ msgstr "Rechercher des modèles"
 
 #: src/pages/Inbox.tsx
 msgid "Search older mail"
+msgstr ""
+
+#: src/pages/shell/command-palette.tsx
+msgid "Search pages, bots and groups"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -5738,6 +5837,10 @@ msgstr "Envoyer"
 msgid "Send <0>{linkCode}</0> to the line from your chat app within 10 minutes. You'll get a confirmation reply once linked."
 msgstr "Envoyez <0>{linkCode}</0> au numéro depuis votre application de discussion dans les 10 minutes. Vous recevrez une réponse de confirmation une fois connecté."
 
+#: src/pages/Auth.tsx
+msgid "Send again"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Send answer"
 msgstr "Envoyer la réponse"
@@ -5782,6 +5885,10 @@ msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Sent by you"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Sent to {forwardedName}"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5863,10 +5970,6 @@ msgstr "Shell"
 msgid "Show all {total}"
 msgstr ""
 
-#: src/pages/Shell.tsx
-msgid "Show bots"
-msgstr "Afficher les bots"
-
 #: src/pages/CapTable.tsx
 msgid "Show Carta agent"
 msgstr ""
@@ -5906,6 +6009,10 @@ msgstr ""
 msgid "Show settings"
 msgstr "Afficher les paramètres"
 
+#: src/pages/Shell.tsx
+msgid "Show sidebar"
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Show tool activity"
 msgstr ""
@@ -5934,6 +6041,14 @@ msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Sign in to {appName} in the new window"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Sign in to popular apps through Composio, with your API key"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Sign in to popular apps through Pipedream, with your project"
 msgstr ""
 
 #: src/pages/Auth.tsx
@@ -6225,10 +6340,6 @@ msgstr "Prend en charge la réflexion"
 msgid "Suspicious"
 msgstr ""
 
-#: src/pages/shell/command-palette.tsx
-msgid "Switch bot"
-msgstr "Changer de bot"
-
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "Basculement en cours…"
@@ -6305,17 +6416,17 @@ msgstr "Tester la connexion"
 msgid "Testing…"
 msgstr "Test en cours…"
 
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "The agents you chose can use {0}."
-msgstr ""
-
 #: src/components/SoftwareUpdateSection.tsx
 msgid "The API did not come back. Refresh this page."
 msgstr "L'API n'est pas revenue. Actualisez cette page."
 
 #: src/pages/shell/bot-pins.tsx
 msgid "The bot changed this list. Your last edit wasn't saved."
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "The bots you chose can use {0}."
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -6328,6 +6439,10 @@ msgstr "La connexion a expiré."
 
 #: src/components/finance/StatementImport.tsx
 msgid "The file is too large"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "the group"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -6504,6 +6619,10 @@ msgstr "Outils"
 #. placeholder {0}: tools.length
 #: src/components/integrations/AppDetail.tsx
 msgid "Tools · {0}"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Tools from an Executor server you run"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -6861,11 +6980,6 @@ msgstr "Vérification en cours…"
 msgid "Version"
 msgstr "Version"
 
-#. placeholder {0}: providerLabel(connectorId)
-#: src/components/integrations/AppDetail.tsx
-msgid "via {0}"
-msgstr ""
-
 #: src/components/integrations/McpDetail.tsx
 msgid "via MCP · {host}"
 msgstr ""
@@ -7005,7 +7119,7 @@ msgid "Where should bots run?"
 msgstr "Où les bots doivent-ils s'exécuter ?"
 
 #: src/components/integrations/AgentStep.tsx
-msgid "Which agents can use {appName}?"
+msgid "Which bots can use {appName}?"
 msgstr ""
 
 #: src/components/EmailCards.tsx
@@ -7014,6 +7128,10 @@ msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"
+msgstr ""
+
+#: src/pages/ActivityList.tsx
+msgid "Working"
 msgstr ""
 
 #: src/lib/roster-status.ts
@@ -7100,6 +7218,6 @@ msgstr "Votre adresse e-mail"
 msgid "Your name"
 msgstr "Votre nom"
 
-#: src/pages/Welcome.tsx
-msgid "Your team of always-on agents<0/>that you can give real work to."
-msgstr "Votre équipe d'agents toujours actifs<0/>à qui vous pouvez confier de vrais travaux."
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Your own Google sign-in for Gmail, Calendar and Drive"
+msgstr ""
