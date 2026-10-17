@@ -219,6 +219,8 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     id="name"
                     name="name"
                     autoComplete="name"
+                    // Chief greets the founder by this name; without it the email handle stood in.
+                    required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t`Your name`}

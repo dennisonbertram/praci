@@ -66,11 +66,13 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       ...group,
       sectionId: group.key.startsWith("section:") ? group.key.slice("section:".length) : null,
       key: showSpaceNames ? `space:${space.id}:${group.key}` : group.key,
+      // The only space is named on its first, untitled header too, so its actions button is
+      // not left floating beside an empty label.
       title: showSpaceNames
         ? group.title
           ? `${space.name} · ${group.title}`
           : space.name
-        : group.title,
+        : group.title || (index === 0 ? space.name : group.title),
       showLock: showSpaceNames,
       emptySpaceId: undefined as string | undefined,
       spaceId: space.id,

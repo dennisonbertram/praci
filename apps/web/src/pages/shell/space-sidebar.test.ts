@@ -30,11 +30,11 @@ function space(
 }
 
 describe("sidebarGroupsForSpaces", () => {
-  it("keeps rename on the only space without showing its name", () => {
+  it("names the only space above its chats, beside its actions", () => {
     const [group] = sidebarGroupsForSpaces([space("space-1", "Personal", { canRename: true })], "");
 
     expect(group).toMatchObject({
-      title: null,
+      title: "Personal",
       spaceName: "Personal",
       canRenameSpace: true,
       canDeleteSpace: false,
