@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { McpServer } from "@rakazo/contracts";
+import { CARTA_MCP_ENDPOINT, type McpServer } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -40,7 +40,9 @@ const data = {
   refresh: vi.fn().mockResolvedValue(undefined),
 } as unknown as IntegrationsData;
 
-async function mount(props: { oauthClient?: boolean; oauthScope?: string } = {}) {
+async function mount(
+  props: { oauthClient?: boolean; oauthScope?: string; service?: string; initialUrl?: string } = {},
+) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
@@ -157,4 +159,20 @@ it("locks the connection fields after the error and retries on the same server",
   await click("Connect");
   expect(api.create).toHaveBeenCalledTimes(1);
   expect(api.begin).toHaveBeenLastCalledWith("srv-1", { oauthClient: { clientId: "abc" } });
+});
+
+it("finishes Connect Carta right after sign-in: no agent step, and the done text is about Carta", async () => {
+  const carta = { id: "srv-c", name: "Carta", endpoint: CARTA_MCP_ENDPOINT } as McpServer;
+  api.create.mockResolvedValue(carta);
+  api.begin.mockResolvedValue({
+    status: "authorization_required",
+    authorizationUrl: "https://a/x",
+  });
+  api.open.mockReturnValue({ close: vi.fn(), closed: false });
+  api.wait.mockResolvedValue("connected");
+  await mount({ service: "Carta", initialUrl: CARTA_MCP_ENDPOINT });
+  await click("Sign in with Carta");
+  expect(document.body.textContent).toContain("Carta connected");
+  expect(document.body.textContent).toContain("The Carta agent can now read your cap table.");
+  expect(document.body.textContent).not.toContain("Step 2 of 3");
 });

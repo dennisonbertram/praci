@@ -146,6 +146,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { AgentStarter } from "../components/AgentStarter";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
@@ -196,8 +197,10 @@ import {
 import {
   BOTS_SIDEBAR_EDGE_DRAG_PX,
   readBotsSidebarCollapsed,
+  readCartaAgentCollapsed,
   readInboxAgentCollapsed,
   writeBotsSidebarCollapsed,
+  writeCartaAgentCollapsed,
   writeInboxAgentCollapsed,
 } from "../lib/bots-sidebar-pref";
 import {
@@ -206,7 +209,12 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
-import { findCartaAgent, useAutoCreateCartaAgent } from "../lib/carta-agent";
+import {
+  cartaPanelState,
+  findCartaAgent,
+  useAutoCreateCartaAgent,
+  useOnPhoneWidth,
+} from "../lib/carta-agent";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -479,14 +487,19 @@ export function ShellPage() {
   const [financeAgentOpen, setFinanceAgentOpen] = useState(false);
   const [creatingFinanceAgent, setCreatingFinanceAgent] = useState(false);
   const [financeAgentError, setFinanceAgentError] = useState("");
-  // The Carta agent panel is open on every visit to Cap Table and can be collapsed.
-  const [cartaAgentOpen, setCartaAgentOpen] = useState(true);
+  // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
+  // would cover the page.
+  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(
+    () => !window.matchMedia("(min-width: 768px)").matches,
+  );
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
+  // Reported by the Cap Table page. Without Carta the agent has nothing to read, so its panel stays shut.
+  const [cartaConnected, setCartaConnected] = useState(false);
   const [cartaAgentError, setCartaAgentError] = useState("");
   useEffect(() => {
-    setInboxAgentCollapsed(
-      readInboxAgentCollapsed(userId) || !window.matchMedia("(min-width: 768px)").matches,
-    );
+    const phone = !window.matchMedia("(min-width: 768px)").matches;
+    setInboxAgentCollapsed(readInboxAgentCollapsed(userId) || phone);
+    setCartaAgentCollapsed(readCartaAgentCollapsed(userId) || phone);
   }, [userId]);
   const [query, setQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
@@ -869,9 +882,6 @@ export function ShellPage() {
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
-  useEffect(() => {
-    if (!capTableMode) setCartaAgentOpen(true);
-  }, [capTableMode]);
   const active =
     inGroup || integrationsMode || dataRoomMode
       ? undefined
@@ -2526,6 +2536,11 @@ export function ShellPage() {
     writeInboxAgentCollapsed(userId, collapsed);
   }
 
+  function setCartaAgentCollapsedPref(collapsed: boolean) {
+    setCartaAgentCollapsed(collapsed);
+    writeCartaAgentCollapsed(userId, collapsed);
+  }
+
   async function createFinanceAgent() {
     setCreatingFinanceAgent(true);
     setFinanceAgentError("");
@@ -2573,11 +2588,25 @@ export function ShellPage() {
 
   // Carta needs no Create click: the agent appears once Carta is connected.
   useAutoCreateCartaAgent(
-    capTableMode && initialBotsLoaded && Boolean(userId),
+    capTableMode && cartaConnected && initialBotsLoaded && Boolean(userId),
     findCartaAgent(bots, userId) !== undefined,
     createCartaAgent,
     bots,
   );
+
+  const cartaPanel = cartaPanelState({
+    connected: cartaConnected,
+    collapsed: cartaAgentCollapsed,
+    hasAgent: Boolean(active),
+    creating: creatingCartaAgent,
+    error: cartaAgentError,
+  });
+  // A window dragged down to phone width would leave a remembered-open panel covering the page.
+  // Only the view collapses; the saved preference stays for the desktop.
+  useOnPhoneWidth(() => {
+    setCartaAgentCollapsed(true);
+    setInboxAgentCollapsed(true);
+  });
 
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
   const agentPanel = inboxMode
@@ -2608,11 +2637,14 @@ export function ShellPage() {
         ? {
             name: "carta-agent",
             testId: "carta-agent-panel",
-            open: cartaAgentOpen,
-            collapse: () => setCartaAgentOpen(false),
+            // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
+            // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
+            open: cartaPanel.open,
+            collapse: () => setCartaAgentCollapsedPref(true),
             collapseLabel: t`Collapse Carta agent`,
-            create: undefined,
-            createLabel: "",
+            // A failed creation is retried from the panel; the agent otherwise appears by itself.
+            create: cartaAgentError ? createCartaAgent : undefined,
+            createLabel: t`Try again`,
             creating: creatingCartaAgent,
             error: cartaAgentError,
           }
@@ -4126,8 +4158,8 @@ export function ShellPage() {
           <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
         ) : capTableMode ? (
           <CapTablePage
-            onShowAgent={cartaAgentOpen ? undefined : () => setCartaAgentOpen(true)}
-            onConnectCarta={() => navigate("/app/integrations?q=carta")}
+            onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
+            onCartaStatus={setCartaConnected}
           />
         ) : inboxMode ? (
           <InboxPage
@@ -4196,11 +4228,28 @@ export function ShellPage() {
                 </Button>
               </div>
               {active ? (
-                threadView
+                <>
+                  {capTableMode && activeSnapshot && transcriptMessages.length === 0 ? (
+                    <AgentStarter
+                      description={t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`}
+                      prompts={[
+                        t`Who owns what?`,
+                        t`How much of the option pool is left?`,
+                        t`Which SAFEs have not converted yet?`,
+                      ]}
+                      disabled={sending || transcriptRunning}
+                      onPick={(prompt) => void sendMessage(prompt, [], newClientId())}
+                    />
+                  ) : null}
+                  {threadView}
+                </>
               ) : (
                 <div className="grid flex-1 place-content-center justify-items-center gap-3 px-5">
                   {agentPanel.create ? (
-                    <Button disabled={agentPanel.creating} onClick={() => void agentPanel.create()}>
+                    <Button
+                      disabled={agentPanel.creating}
+                      onClick={() => void agentPanel.create?.()}
+                    >
                       {agentPanel.createLabel}
                     </Button>
                   ) : agentPanel.creating ? (
@@ -5695,10 +5744,10 @@ const Transcript = memo(function Transcript({
                         : `relative w-fit min-w-0 ${
                             // A narrow transcript (the Inbox agent panel) cannot spare 8rem beside each bubble.
                             message.role === "user"
-                              ? "max-w-[min(84%,calc(100%_-_8rem))] @max-sm:max-w-[84%] [@media(hover:none)]:max-w-[84%]"
+                              ? "max-w-[max(min(84%,calc(100%_-_8rem)),min(84%,20rem))] @max-sm:max-w-[84%] [@media(hover:none)]:max-w-[84%]"
                               : message.blocks.some((block) => block.kind === "ask" && block.mail)
                                 ? "max-w-[calc(100%_-_5rem)] @max-sm:max-w-full [@media(hover:none)]:max-w-full"
-                                : "max-w-[min(88%,calc(100%_-_8rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
+                                : "max-w-[max(min(88%,calc(100%_-_8rem)),min(88%,20rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
                           }`
                     }
                   >

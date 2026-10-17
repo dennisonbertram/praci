@@ -1,4 +1,4 @@
-import type { EmulatedMessage } from "@rakazo/adapters";
+import type { EmulatedMcpServer, EmulatedMessage } from "@rakazo/adapters";
 import {
   brexAccountsResponse,
   brexExpense,
@@ -573,6 +573,138 @@ export const DEMO_CONTACTS = [
     notes: `${MOCK_NOTE}: outside counsel.`,
   },
 ];
+
+/** The Carta agent's last read of the mock cap table; matches the MOCK Cap Table Summary in the data room. */
+export const DEMO_CAP_TABLE = {
+  companyName: DEMO_COMPANY,
+  asOf: "2026-10-01",
+  fullyDilutedShares: 10_000_000,
+  amountRaisedUsd: 300_000,
+  optionPoolAvailable: 600_000,
+  latest409a: { pricePerShareUsd: 0.42, date: "2026-07-01" },
+  shareClasses: [
+    { name: "Common (Mock)", shares: 8_500_000, percent: 85 },
+    { name: "Option pool (Mock)", shares: 1_500_000, percent: 15 },
+  ],
+  holders: [
+    {
+      name: DEMO_USER_NAME,
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 4_000_000,
+      amountUsd: null,
+      percent: 40,
+    },
+    {
+      name: "River Cofounder (Mock)",
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 3_000_000,
+      amountUsd: null,
+      percent: 30,
+    },
+    {
+      name: "Early employees (Mock)",
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 1_500_000,
+      amountUsd: null,
+      percent: 15,
+    },
+    {
+      name: "Granted options (Mock)",
+      email: null,
+      organization: null,
+      security: "Options",
+      shares: 900_000,
+      amountUsd: null,
+      percent: 9,
+    },
+    {
+      name: "Priya Placeholder",
+      email: "priya@quill-capital.example.test",
+      organization: "Quill Capital (Mock)",
+      security: "SAFE",
+      shares: null,
+      amountUsd: 250_000,
+      percent: null,
+    },
+    {
+      name: "Lee Notarealperson",
+      email: "lee@angel.example.test",
+      organization: "Independent angel (Mock)",
+      security: "SAFE",
+      shares: null,
+      amountUsd: 50_000,
+      percent: null,
+    },
+  ],
+};
+
+/**
+ * A mock Carta MCP server for the demo: the read tools the Carta agent uses, all answering from
+ * DEMO_CAP_TABLE, so the agent can answer ownership questions offline.
+ *
+ * With `webOrigin`, it asks for a sign-in like the real Carta does. Its mock sign-in page is the
+ * app's own OAuth callback with a mock code, so Connect Carta stores a real (mock) login and starts
+ * the first read of the cap table, with no Carta account involved.
+ */
+export function demoCarta(webOrigin?: string): EmulatedMcpServer {
+  const noInput = { type: "object", properties: {} };
+  const account = { id: "mock-demo-company", name: DEMO_COMPANY, note: MOCK_NOTE };
+  const capTable = {
+    note: `${MOCK_NOTE}: an invented cap table, not a real company.`,
+    ...DEMO_CAP_TABLE,
+    safes: DEMO_CAP_TABLE.holders
+      .filter((holder) => holder.security === "SAFE")
+      .map((holder) => ({
+        investor: holder.organization ?? holder.name,
+        contact: holder.name,
+        amountUsd: holder.amountUsd,
+        status: "unconverted",
+      })),
+  };
+  const tools = {
+    welcome: () => ({
+      note: MOCK_NOTE,
+      text: "Mock Carta. Call cap_table_chart for the cap table of the current company.",
+    }),
+    list_accounts: () => ({ accounts: [account] }),
+    get_current_user: () => ({ name: DEMO_USER_NAME, note: MOCK_NOTE }),
+    set_context: () => ({ ok: true, account }),
+    cap_table_chart: () => capTable,
+    // The generic Carta read path returns the same cap table.
+    fetch: () => capTable,
+    read_tool: () => capTable,
+  } satisfies Record<string, () => unknown>;
+  const description: Record<keyof typeof tools, string> = {
+    welcome: "How to use this Carta server.",
+    list_accounts: "List the companies you can read.",
+    get_current_user: "The signed-in Carta user.",
+    set_context: "Pick the company to read.",
+    cap_table_chart:
+      "The company's cap table: fully diluted shares, share classes, option pool, holders and SAFEs.",
+    fetch: "Read Carta data, such as the cap table.",
+    read_tool: "Read Carta data, such as the cap table.",
+  };
+  return {
+    ...(webOrigin
+      ? { authorizeUrl: `${webOrigin}/mcp/oauth/callback?code=mock-demo-carta-code` }
+      : {}),
+    tools: (Object.keys(tools) as (keyof typeof tools)[]).map((name) => ({
+      name,
+      description: description[name],
+      inputSchema: noInput,
+    })),
+    call: (name) =>
+      Object.hasOwn(tools, name)
+        ? tools[name as keyof typeof tools]()
+        : { error: `Unknown tool ${name}` },
+  };
+}
 
 export interface DemoDocument {
   /** Folder path; "Finance/Invoices" is the sub-folder Invoices inside Finance. */

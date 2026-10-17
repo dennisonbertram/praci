@@ -2,6 +2,8 @@ const STORAGE_PREFIX = "rakazo:bots-sidebar-collapsed:";
 
 const INBOX_AGENT_STORAGE_PREFIX = "rakazo:inbox-agent-collapsed:";
 
+const CARTA_AGENT_STORAGE_PREFIX = "rakazo:carta-agent-collapsed:";
+
 export function botsSidebarCollapsedStorageKey(
   userId: string | null | undefined,
   prefix = STORAGE_PREFIX,
@@ -43,6 +45,12 @@ export const readInboxAgentCollapsed = (userId: string | null | undefined) =>
 
 export const writeInboxAgentCollapsed = (userId: string | null | undefined, collapsed: boolean) =>
   writeBotsSidebarCollapsed(userId, collapsed, INBOX_AGENT_STORAGE_PREFIX);
+
+export const readCartaAgentCollapsed = (userId: string | null | undefined) =>
+  readBotsSidebarCollapsed(userId, CARTA_AGENT_STORAGE_PREFIX);
+
+export const writeCartaAgentCollapsed = (userId: string | null | undefined, collapsed: boolean) =>
+  writeBotsSidebarCollapsed(userId, collapsed, CARTA_AGENT_STORAGE_PREFIX);
 
 /** Drag distance (px) before the edge handle commits expand/collapse. */
 export const BOTS_SIDEBAR_EDGE_DRAG_PX = 40;

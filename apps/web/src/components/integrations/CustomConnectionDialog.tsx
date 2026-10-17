@@ -103,6 +103,7 @@ export function CustomConnectionDialog({
   const { refresh } = data;
 
   const serverName = server?.name ?? (name.trim() || deriveMcpName(url.trim()));
+  const carta = isCartaEndpoint(server?.endpoint ?? url.trim());
 
   function close() {
     attempt.current?.abort();
@@ -148,7 +149,7 @@ export function CustomConnectionDialog({
       if (controller.signal.aborted) return;
       if (started.status !== "authorization_required") {
         // No browser sign-in is needed (or one is already stored).
-        setView({ kind: "agents" });
+        setView(afterSignIn(target));
         return;
       }
       authUrl.current = started.authorizationUrl;
@@ -160,7 +161,7 @@ export function CustomConnectionDialog({
       popup.current?.close();
       if (result === "connected") {
         void refresh();
-        setView({ kind: "agents" });
+        setView(afterSignIn(target));
       } else {
         void refresh();
         setView({
@@ -191,6 +192,12 @@ export function CustomConnectionDialog({
         },
       });
     }
+  }
+
+  /** Carta belongs to the Carta agent alone and the API gives it the new server, so there is no
+   * agent to choose. */
+  function afterSignIn(target: McpServer): View {
+    return isCartaEndpoint(target.endpoint) ? { kind: "done", hint: null } : { kind: "agents" };
   }
 
   function openWindow(target: string) {
@@ -434,7 +441,7 @@ export function CustomConnectionDialog({
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
       <DialogContent
-        className="max-h-[calc(100%-2rem)] max-w-[440px] overflow-y-auto sm:max-w-[440px]"
+        className="max-h-[calc(100%-2rem)] max-w-[min(440px,calc(100%-2rem))] overflow-y-auto sm:max-w-[min(440px,calc(100%-2rem))]"
         aria-label={service ? t`Connect ${service}` : t`Add a custom connection`}
       >
         {view.kind === "form" ? (
@@ -442,25 +449,30 @@ export function CustomConnectionDialog({
             <DialogTitle>
               {service ? <Trans>Connect {service}</Trans> : <Trans>Add a custom connection</Trans>}
             </DialogTitle>
-            {service ? null : (
-              <DialogDescription>
+            <DialogDescription>
+              {service ? (
+                <Trans>Sign in with {service} in the window that opens.</Trans>
+              ) : (
                 <Trans>Paste the MCP server URL from the app's documentation.</Trans>
-              </DialogDescription>
+              )}
+            </DialogDescription>
+            {/* A first-party service has a known URL, so it shows no connection settings. */}
+            {service ? null : (
+              <div className="mt-3 text-xs text-muted-foreground">
+                <Trans>Server URL</Trans>
+                <Input
+                  aria-label={t`Server URL`}
+                  autoFocus
+                  className="mt-1 font-mono text-sm"
+                  value={url}
+                  // The server already exists; only the client fields can still change.
+                  readOnly={server !== null}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder="https://example.com/mcp"
+                  onKeyDown={(event) => event.key === "Enter" && void connectUrl()}
+                />
+              </div>
             )}
-            <div className="mt-3 text-xs text-muted-foreground">
-              <Trans>Server URL</Trans>
-              <Input
-                aria-label={t`Server URL`}
-                autoFocus
-                className="mt-1 font-mono text-sm"
-                value={url}
-                // The server already exists; only the client fields can still change.
-                readOnly={server !== null}
-                onChange={(event) => setUrl(event.target.value)}
-                placeholder="https://example.com/mcp"
-                onKeyDown={(event) => event.key === "Enter" && void connectUrl()}
-              />
-            </div>
             {needsClient ? (
               <div className="mt-3 space-y-3 text-xs text-muted-foreground">
                 <div>
@@ -499,7 +511,7 @@ export function CustomConnectionDialog({
                 </div>
               </div>
             ) : null}
-            {server === null ? (
+            {server === null && !service ? (
               <details className="mt-4 border-t border-border pt-3">
                 <summary className="cursor-pointer text-sm text-muted-foreground">
                   <Trans>Advanced</Trans>
@@ -609,7 +621,13 @@ export function CustomConnectionDialog({
                 disabled={busy || !url.trim() || (needsClient && !clientId.trim())}
                 onClick={() => void connectUrl()}
               >
-                {busy ? <Trans>Connecting…</Trans> : <Trans>Connect</Trans>}
+                {busy ? (
+                  <Trans>Connecting…</Trans>
+                ) : service ? (
+                  <Trans>Sign in with {service}</Trans>
+                ) : (
+                  <Trans>Connect</Trans>
+                )}
               </Button>
             </div>
           </div>
@@ -741,6 +759,7 @@ export function CustomConnectionDialog({
         ) : view.kind === "signin" ? (
           <SignInStep
             appName={serverName}
+            totalSteps={carta ? 2 : 3}
             state={view.state}
             onOpenAgain={authUrl.current ? () => openWindow(authUrl.current as string) : undefined}
             onTryAgain={() => (server ? void signIn(server) : setView({ kind: "form" }))}
@@ -768,7 +787,11 @@ export function CustomConnectionDialog({
               <Trans>{serverName} connected</Trans>
             </DialogTitle>
             <DialogDescription className="text-center">
-              <Trans>It now appears under Connected.</Trans>
+              {carta ? (
+                <Trans>The Carta agent can now read your cap table.</Trans>
+              ) : (
+                <Trans>It now appears under Connected.</Trans>
+              )}
             </DialogDescription>
             <div className="mt-4 flex justify-end">
               <Button onClick={close}>

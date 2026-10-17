@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   botsSidebarCollapsedStorageKey,
   readBotsSidebarCollapsed,
+  readCartaAgentCollapsed,
   readInboxAgentCollapsed,
   writeBotsSidebarCollapsed,
+  writeCartaAgentCollapsed,
   writeInboxAgentCollapsed,
 } from "./bots-sidebar-pref";
 
@@ -56,6 +58,12 @@ describe("Inbox agent panel collapse preference", () => {
     expect(readInboxAgentCollapsed("user-2")).toBe(false);
     expect(readBotsSidebarCollapsed("user-1")).toBe(false);
     writeInboxAgentCollapsed("user-1", false);
+    expect(store.size).toBe(0);
+    // The Carta agent panel has its own preference.
+    writeCartaAgentCollapsed("user-1", true);
+    expect(readCartaAgentCollapsed("user-1")).toBe(true);
+    expect(readInboxAgentCollapsed("user-1")).toBe(false);
+    writeCartaAgentCollapsed("user-1", false);
     expect(store.size).toBe(0);
     vi.unstubAllGlobals();
   });

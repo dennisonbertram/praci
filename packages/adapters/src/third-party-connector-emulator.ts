@@ -22,9 +22,23 @@ const PIPEDREAM_APPS = [
   { id: "app-airtable", name_slug: "airtable", name: "Airtable" },
 ];
 
+/** An extra MCP server the emulator answers for one hostname, such as a mock Carta in the demo. */
+export interface EmulatedMcpServer {
+  tools: { name: string; description: string; inputSchema: Record<string, unknown> }[];
+  call: (name: string, args: Record<string, unknown>) => unknown;
+  /**
+   * When set, the server asks for an OAuth sign-in the way a real hosted MCP server does, and its
+   * authorization page is this browser-reachable URL (for the demo, the app's own OAuth callback
+   * with a mock code). Without it the server accepts any bearer token and never asks to sign in.
+   */
+  authorizeUrl?: string;
+}
+
 /** Deterministic HTTP/MCP boundary emulator used by integration and browser journeys. */
 export class ThirdPartyConnectorEmulator {
   readonly records: EmulatorRecord[] = [];
+  /** Extra MCP servers by hostname. */
+  constructor(private readonly mcpServers: Record<string, EmulatedMcpServer> = {}) {}
   readonly resolveHostname: ResolveHostname = async () => [{ address: "203.0.113.10", family: 4 }];
 
   private readonly connectedApps = new Map<string, Set<string>>();
@@ -37,8 +51,12 @@ export class ThirdPartyConnectorEmulator {
     if (url.hostname === "remote.mcp.pipedream.net" || url.hostname === "treg.to") {
       return this.mcp(url, init);
     }
-    if (url.hostname === "mcp.example.test" || url.hostname === "executor.example.test") {
-      return this.mcp(url, init);
+    if (
+      url.hostname === "mcp.example.test" ||
+      url.hostname === "executor.example.test" ||
+      Object.hasOwn(this.mcpServers, url.hostname)
+    ) {
+      return this.mockSignIn(url, init) ?? this.mcp(url, init);
     }
     if (url.hostname === "api.example.test") return this.openapi(url, init);
     if (url.hostname === "graphql.example.test") return this.graphql(url, init);
@@ -134,6 +152,61 @@ export class ThirdPartyConnectorEmulator {
     );
   }
 
+  /** OAuth discovery, client registration and token endpoints for an extra server with `authorizeUrl`;
+   * a 401 that starts the sign-in for its unauthenticated MCP calls; undefined for everything else. */
+  private mockSignIn(url: URL, init?: RequestInit): Response | undefined {
+    const authorizeUrl = this.mcpServers[url.hostname]?.authorizeUrl;
+    if (!authorizeUrl) return undefined;
+    const resourceMetadata = "/.well-known/oauth-protected-resource";
+    if (url.pathname.startsWith(resourceMetadata)) {
+      return Response.json({
+        resource: `${url.origin}${url.pathname.slice(resourceMetadata.length)}`,
+        authorization_servers: [url.origin],
+      });
+    }
+    if (url.pathname === "/.well-known/oauth-authorization-server") {
+      return Response.json({
+        issuer: url.origin,
+        authorization_endpoint: authorizeUrl,
+        token_endpoint: `${url.origin}/oauth/token`,
+        registration_endpoint: `${url.origin}/oauth/register`,
+        response_types_supported: ["code"],
+        grant_types_supported: ["authorization_code", "refresh_token"],
+        code_challenge_methods_supported: ["S256"],
+        token_endpoint_auth_methods_supported: ["none"],
+      });
+    }
+    if (url.pathname.startsWith("/.well-known/")) return new Response(null, { status: 404 });
+    if (url.pathname === "/oauth/register") {
+      this.records.push({ provider: "mcp", operation: "oauth/register", host: url.hostname });
+      return Response.json(
+        { ...parseBody(init?.body), client_id: "mock-demo-client" },
+        { status: 201 },
+      );
+    }
+    if (url.pathname === "/oauth/token") {
+      this.records.push({ provider: "mcp", operation: "oauth/token", host: url.hostname });
+      return Response.json({
+        access_token: "mock-demo-token",
+        token_type: "bearer",
+        expires_in: 3_600,
+        refresh_token: "mock-demo-refresh-token",
+      });
+    }
+    if (!new Headers(init?.headers).get("authorization")?.startsWith("Bearer ")) {
+      return Response.json(
+        { error: "invalid_token" },
+        {
+          status: 401,
+          headers: {
+            "www-authenticate": `Bearer resource_metadata="${url.origin}${resourceMetadata}${url.pathname}"`,
+          },
+        },
+      );
+    }
+    return undefined;
+  }
+
   private async mcp(url: URL, init?: RequestInit): Promise<Response> {
     const request = parseBody(init?.body);
     const method = String(request.method ?? "");
@@ -146,6 +219,8 @@ export class ThirdPartyConnectorEmulator {
       url.hostname === "executor.example.test"
         ? authorization === EXPECTED_EXECUTOR_BEARER
         : Boolean(authorization?.startsWith("Bearer ") && authorization.length > "Bearer ".length);
+    // No server-sent stream: the client's optional GET is refused the way a plain JSON server does.
+    if ((init?.method ?? "GET") === "GET") return new Response(null, { status: 405 });
     if (method === "notifications/initialized") return new Response(null, { status: 202 });
     if (method === "initialize") {
       return jsonRpc(id, {
@@ -163,6 +238,8 @@ export class ThirdPartyConnectorEmulator {
         host: url.hostname,
         authenticated,
       });
+      const extra = this.mcpServers[url.hostname];
+      if (extra) return jsonRpc(id, { tools: extra.tools });
       return jsonRpc(id, {
         tools: [
           {
@@ -187,6 +264,12 @@ export class ThirdPartyConnectorEmulator {
         authenticated,
         args,
       });
+      const extra = this.mcpServers[url.hostname];
+      if (extra) {
+        if (!authenticated) return jsonRpcError(id, -32001, "Unauthorized");
+        const output = extra.call(String(params.name ?? ""), args);
+        return jsonRpc(id, { content: [{ type: "text", text: JSON.stringify(output) }] });
+      }
       const result = { ok: true, app, text: args.text ?? null };
       return jsonRpc(id, {
         content: [{ type: "text", text: JSON.stringify(result) }],
@@ -353,7 +436,8 @@ function urlFromPinnedFetch(input: string | URL | Request, init?: RequestInit): 
 
 function parseBody(body: RequestInit["body"] | undefined): Record<string, unknown> {
   if (typeof body === "string") return JSON.parse(body) as Record<string, unknown>;
-  if (body instanceof Uint8Array) {
+  // The agent's MCP session sends its JSON-RPC body as an ArrayBuffer.
+  if (body instanceof Uint8Array || body instanceof ArrayBuffer) {
     return JSON.parse(new TextDecoder().decode(body)) as Record<string, unknown>;
   }
   return {};

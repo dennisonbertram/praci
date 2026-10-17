@@ -11,6 +11,7 @@ export type SignInState =
 export function SignInStep({
   appName,
   logo,
+  totalSteps = 3,
   state,
   onOpenAgain,
   onTryAgain,
@@ -18,6 +19,8 @@ export function SignInStep({
 }: {
   appName: string;
   logo?: string | null;
+  /** 2 when no agent step follows the sign-in. */
+  totalSteps?: number;
   state: SignInState;
   /** Opens the sign-in window again (from the waiting or blocked state). */
   onOpenAgain?: () => void;
@@ -27,7 +30,7 @@ export function SignInStep({
   const { t } = useLingui();
   const header = (
     <div className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-      <Trans>Step 1 of 3</Trans>
+      <Trans>Step 1 of {totalSteps}</Trans>
     </div>
   );
   if (state.kind === "waiting") {

@@ -130,6 +130,19 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+describe("input borders", () => {
+  for (const [name, palette] of [
+    ["dark", darkTokens],
+    ["light", lightTokens],
+  ] as const) {
+    it(`keeps ${name} input borders visible on the page, cards and dialogs`, () => {
+      for (const surface of ["background", "card", "popover"] as const) {
+        expect(contrast(palette.input, palette[surface])).toBeGreaterThanOrEqual(1.6);
+      }
+    });
+  }
+});
+
 describe("text contrast", () => {
   const surfaces = ["background", "card", "muted", "accent", "secondary", "sidebar"] as const;
   for (const [name, palette] of [

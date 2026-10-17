@@ -527,6 +527,10 @@ msgstr "Add an account to see cash, burn, runway and spend."
 msgid "Add another account"
 msgstr "Add another account"
 
+#: src/pages/CapTable.tsx
+msgid "Add auditor"
+msgstr "Add auditor"
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Add connected model"
 msgstr "Add connected model"
@@ -554,6 +558,10 @@ msgstr "Add email"
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr "Add files"
+
+#: src/pages/CapTable.tsx
+msgid "Add investor"
+msgstr "Add investor"
 
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/shell/bot-pins.tsx
@@ -584,6 +592,10 @@ msgstr "Add trigger"
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Add wallet"
 msgstr "Add wallet"
+
+#: src/pages/CapTable.tsx
+msgid "Add your investors, auditors and counsel here. Contacts are your address book."
+msgstr "Add your investors, auditors and counsel here. Contacts are your address book."
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
@@ -1271,6 +1283,7 @@ msgstr "Can't reach the server."
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1906,6 +1919,14 @@ msgstr "Connecting…"
 msgid "Connection test failed."
 msgstr "Connection test failed."
 
+#: src/pages/CapTable.tsx
+msgid "Contact saved"
+msgstr "Contact saved"
+
+#: src/pages/CapTable.tsx
+msgid "Contacts are your address book. They do not change Carta."
+msgstr "Contacts are your address book. They do not change Carta."
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Context limit"
@@ -2304,6 +2325,10 @@ msgstr "Could not render chart"
 #: src/pages/Auth.tsx
 msgid "Could not reset password"
 msgstr "Could not reset password"
+
+#: src/pages/CapTable.tsx
+msgid "Could not restore {name}"
+msgstr "Could not restore {name}"
 
 #: src/pages/Shell.tsx
 msgid "Could not run routine"
@@ -2738,6 +2763,10 @@ msgstr "deleted"
 msgid "Deleted"
 msgstr "Deleted"
 
+#: src/pages/CapTable.tsx
+msgid "Deleted {name}"
+msgstr "Deleted {name}"
+
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Deleting…"
@@ -2851,6 +2880,7 @@ msgstr "Disconnecting…"
 #: src/components/data-room/DropZone.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
@@ -3534,10 +3564,6 @@ msgstr "High"
 msgid "High"
 msgstr "High"
 
-#: src/pages/CapTable.tsx
-msgid "Holding"
-msgstr "Holding"
-
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
 msgstr "Holdings"
@@ -3550,6 +3576,10 @@ msgstr "hour"
 #: src/pages/RoutineSchedule.tsx
 msgid "hours"
 msgstr "hours"
+
+#: src/pages/Shell.tsx
+msgid "How much of the option pool is left?"
+msgstr "How much of the option pool is left?"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "How often"
@@ -4479,6 +4509,10 @@ msgstr "No apps match."
 msgid "No artifacts found."
 msgstr "No artifacts found."
 
+#: src/pages/CapTable.tsx
+msgid "No auditors yet"
+msgstr "No auditors yet"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "No authentication"
 msgstr "No authentication"
@@ -4499,10 +4533,6 @@ msgstr "No bots match"
 msgid "No chat apps linked yet."
 msgstr "No chat apps linked yet."
 
-#: src/pages/CapTable.tsx
-msgid "No contacts yet"
-msgstr "No contacts yet"
-
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
@@ -4514,6 +4544,10 @@ msgstr "No folder"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
 msgstr "No group chats yet."
+
+#: src/pages/CapTable.tsx
+msgid "No investors yet"
+msgstr "No investors yet"
 
 #: src/components/AskCard.tsx
 msgid "No longer active"
@@ -4558,6 +4592,10 @@ msgstr "No models listed."
 #: src/pages/Inbox.tsx
 msgid "No more results"
 msgstr "No more results"
+
+#: src/pages/CapTable.tsx
+msgid "No other contacts yet"
+msgstr "No other contacts yet"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
@@ -4746,6 +4784,8 @@ msgid "Open"
 msgstr "Open"
 
 #. placeholder {0}: group.title
+#. placeholder {0}: sameEmail.name
+#: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0}"
 msgstr "Open {0}"
@@ -4846,6 +4886,10 @@ msgstr "Option pool available"
 msgid "Optional"
 msgstr "Optional"
 
+#: src/pages/CapTable.tsx
+msgid "Options"
+msgstr "Options"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "Or connect an API key"
@@ -4910,6 +4954,10 @@ msgstr "Owner"
 #: src/pages/CapTable.tsx
 msgid "Ownership"
 msgstr "Ownership"
+
+#: src/pages/CapTable.tsx
+msgid "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here. The Carta agent can answer questions about them only while Carta is connected."
+msgstr "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here. The Carta agent can answer questions about them only while Carta is connected."
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
@@ -5246,6 +5294,10 @@ msgstr "Reconnect"
 #: src/pages/Finance.tsx
 msgid "Reconnect {name}"
 msgstr "Reconnect {name}"
+
+#: src/pages/CapTable.tsx
+msgid "Reconnect Carta"
+msgstr "Reconnect Carta"
 
 #: src/App.tsx
 #: src/components/ComputerUpdateProgress.tsx
@@ -5897,6 +5949,10 @@ msgstr "Searching…"
 msgid "Security"
 msgstr "Security"
 
+#: src/pages/CapTable.tsx
+msgid "See who owns your company"
+msgstr "See who owns your company"
+
 #: src/pages/Shell.tsx
 msgid "Select a bot"
 msgstr "Select a bot"
@@ -6025,6 +6081,10 @@ msgid "Shared skills"
 msgstr "Shared skills"
 
 #: src/pages/CapTable.tsx
+msgid "Shareholder"
+msgstr "Shareholder"
+
+#: src/pages/CapTable.tsx
 msgid "Shares"
 msgstr "Shares"
 
@@ -6113,6 +6173,10 @@ msgstr "Sign in again"
 msgid "Sign in to {appName} in the new window"
 msgstr "Sign in to {appName} in the new window"
 
+#: src/pages/CapTable.tsx
+msgid "Sign in to Carta again to see who owns your company"
+msgstr "Sign in to Carta again to see who owns your company"
+
 #: src/pages/Auth.tsx
 msgid "Sign in to Rakazo"
 msgstr "Sign in to Rakazo"
@@ -6120,6 +6184,14 @@ msgstr "Sign in to Rakazo"
 #: src/lib/user-error.ts
 msgid "Sign in to your existing account to link SSO"
 msgstr "Sign in to your existing account to link SSO"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Sign in with {service}"
+msgstr "Sign in with {service}"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Sign in with {service} in the window that opens."
+msgstr "Sign in with {service} in the window that opens."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
@@ -6325,8 +6397,8 @@ msgid "Status"
 msgstr "Status"
 
 #: src/components/integrations/SignInStep.tsx
-msgid "Step 1 of 3"
-msgstr "Step 1 of 3"
+msgid "Step 1 of {totalSteps}"
+msgstr "Step 1 of {totalSteps}"
 
 #: src/components/integrations/AgentStep.tsx
 msgid "Step 2 of 3"
@@ -6511,6 +6583,14 @@ msgstr "The API did not come back. Refresh this page."
 #: src/pages/shell/bot-pins.tsx
 msgid "The bot changed this list. Your last edit wasn't saved."
 msgstr "The bot changed this list. Your last edit wasn't saved."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "The Carta agent can now read your cap table."
+msgstr "The Carta agent can now read your cap table."
+
+#: src/pages/Shell.tsx
+msgid "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
+msgstr "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
 
 #: src/components/integrations/McpDetail.tsx
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
@@ -6778,6 +6858,7 @@ msgstr "Try {name} again"
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/Shell.tsx
 msgid "Try again"
 msgstr "Try again"
 
@@ -6817,6 +6898,10 @@ msgstr "Type without recording"
 msgid "Type your answer"
 msgstr "Type your answer"
 
+#: src/pages/CapTable.tsx
+msgid "Unallocated pool"
+msgstr "Unallocated pool"
+
 #: src/pages/BotContextMenu.tsx
 msgid "Unassigned"
 msgstr "Unassigned"
@@ -6835,6 +6920,7 @@ msgid "Underline"
 msgstr "Underline"
 
 #: src/components/MailOutbox.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 msgid "Undo"
 msgstr "Undo"
@@ -7227,6 +7313,14 @@ msgstr "Where should bots run?"
 #: src/components/integrations/AgentStep.tsx
 msgid "Which agents can use {appName}?"
 msgstr "Which agents can use {appName}?"
+
+#: src/pages/Shell.tsx
+msgid "Which SAFEs have not converted yet?"
+msgstr "Which SAFEs have not converted yet?"
+
+#: src/pages/Shell.tsx
+msgid "Who owns what?"
+msgstr "Who owns what?"
 
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"

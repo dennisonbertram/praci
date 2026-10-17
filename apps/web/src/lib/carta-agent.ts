@@ -67,3 +67,36 @@ export function useAutoCreateCartaAgent(
       });
   }, [ready, hasAgent, botsVersion, focusCount]);
 }
+
+/**
+ * Whether the Carta agent panel is open, and whether the page offers a button to open it. The panel
+ * never opens empty: it holds the agent, the agent being created, or why creating it failed. The
+ * button needs an agent or a failure, so a failed creation stays reachable from a collapsed panel.
+ */
+export function cartaPanelState(input: {
+  connected: boolean;
+  collapsed: boolean;
+  hasAgent: boolean;
+  creating: boolean;
+  error: string;
+}): { open: boolean; canShow: boolean } {
+  const { connected, collapsed, hasAgent, creating, error } = input;
+  return {
+    open: connected && !collapsed && (hasAgent || creating || Boolean(error)),
+    canShow: connected && collapsed && (hasAgent || Boolean(error)),
+  };
+}
+
+/** Calls `onPhone` when the window shrinks below the desktop breakpoint, where a panel covers the page. */
+export function useOnPhoneWidth(onPhone: () => void) {
+  const callback = useRef(onPhone);
+  callback.current = onPhone;
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 768px)");
+    const onChange = () => {
+      if (!query.matches) callback.current();
+    };
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+}
