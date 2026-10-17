@@ -278,7 +278,9 @@ it("says no model is active, not the saved default, while no model is set up", a
   expect(view.container.textContent).toContain("Pick a provider below and connect it.");
   expect(view.container.textContent).not.toMatch(/Active model\s*DeepSeek Chat/);
   // The detail names the provider it is about, since none is marked as connected yet.
-  expect(view.container.textContent).toContain("Connect DeepSeek to use it as your personal model.");
+  expect(view.container.textContent).toContain(
+    "Connect DeepSeek to use it as your personal model.",
+  );
   await view.unmount();
 });
 
