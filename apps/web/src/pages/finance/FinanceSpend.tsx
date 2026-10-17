@@ -14,7 +14,7 @@ import {
   rowClass,
   Section,
   Th,
-  TransactionTable,
+  TransactionsSection,
   toneClass,
   useFinanceQuery,
   useRowNavigate,
@@ -96,9 +96,7 @@ export function FinanceSpendPage({
               </Chip>
             ))}
           </div>
-          <Section>
-            <TransactionTable rows={data.transactions} />
-          </Section>
+          <TransactionsSection rows={data.transactions} />
         </>
       ) : null}
     </DetailPage>
@@ -167,9 +165,7 @@ export function FinanceCategoryPage({ slug }: { slug: string }) {
               </tbody>
             </table>
           </Section>
-          <Section title={<Trans>Recent</Trans>}>
-            <TransactionTable rows={data.recent} />
-          </Section>
+          <TransactionsSection title={<Trans>Recent</Trans>} rows={data.recent} />
         </>
       ) : null}
     </DetailPage>
@@ -216,9 +212,7 @@ export function FinanceRecurringPage({ keyName }: { keyName: string }) {
               ) : null}
             </Kv>
           </Section>
-          <Section title={<Trans>Past charges</Trans>}>
-            <TransactionTable rows={data.pastCharges} />
-          </Section>
+          <TransactionsSection title={<Trans>Past charges</Trans>} rows={data.pastCharges} />
         </>
       ) : null}
     </DetailPage>

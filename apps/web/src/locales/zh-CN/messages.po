@@ -199,6 +199,10 @@ msgstr "{botName} 的电脑"
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 msgstr "{commandVariable} 是保留名称，不能用作命令变量。请选择其他名称。"
 
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# transaction} other {# transactions}}"
+msgstr ""
+
 #: src/lib/billing.ts
 msgid "{count} days"
 msgstr ""
@@ -1200,6 +1204,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "By month"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "By vendor"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -3726,6 +3734,7 @@ msgstr ""
 msgid "Link SSO"
 msgstr "关联 SSO"
 
+#: src/components/finance/ui.tsx
 #: src/pages/Shell.tsx
 msgid "List"
 msgstr ""
@@ -4079,6 +4088,10 @@ msgstr "分钟"
 #: src/pages/RoutineSchedule.tsx
 msgid "minutes"
 msgstr "分钟"
+
+#: src/components/finance/ui.tsx
+msgid "Mixed"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -6648,6 +6661,7 @@ msgstr ""
 msgid "Undo"
 msgstr ""
 
+#: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
 msgstr ""
