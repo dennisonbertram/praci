@@ -3,10 +3,12 @@ import type { MessageBlock } from "@rakazo/contracts";
 import { abortableDelay } from "@rakazo/core";
 import { Button, Dialog, DialogClose, DialogContent, DialogTitle } from "@rakazo/ui-web";
 import { X } from "lucide-react";
+import type { ComponentProps } from "react";
 import { useEffect, useRef, useState } from "react";
 import { BuiCard, SuccessPop } from "../../components/ai/primitives";
 import type { ArtifactTarget } from "../../lib/artifact-open";
 import { chartViewport } from "../../lib/chart-viewport";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { connectMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { useArtifactImage } from "../../lib/use-artifact-image";
@@ -241,7 +243,19 @@ export function AppConnectCard({
   );
 }
 
-export function ChartCanvas({
+/** Chart data reaches the plot renderer raw, so while amounts are hidden the chart is not drawn at all. */
+export function ChartCanvas(props: ComponentProps<typeof ChartCanvasPlot>) {
+  const hidden = useHideAmounts();
+  if (hidden)
+    return (
+      <div data-testid="chart-hidden" className="text-[13px] text-muted-foreground">
+        <Trans>Chart hidden while amounts are hidden</Trans>
+      </div>
+    );
+  return <ChartCanvasPlot {...props} />;
+}
+
+function ChartCanvasPlot({
   spec,
   data,
   width,
