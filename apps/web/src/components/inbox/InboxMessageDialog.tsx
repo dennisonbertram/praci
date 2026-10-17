@@ -30,6 +30,7 @@ import { ComposeEmail } from "../../components/ComposeEmail";
 import { recallClosed } from "../../components/compose/draft-memory";
 import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
 import { formatBytes } from "../../lib/format-bytes";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { allowStep } from "../../lib/inbox-keyboard";
 import type { InboxMessageOutput } from "../../lib/inbox-message-cache";
 import {
@@ -37,6 +38,7 @@ import {
   peekInboxMessage,
   prefetchInboxMessage,
 } from "../../lib/inbox-message-cache";
+import { MAIL_SENT_EVENT } from "../../lib/outbox";
 import { withSpaceHeaders } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
@@ -139,6 +141,7 @@ function InboxMessage({
   setComposing: (mode: ComposeMode | null) => void;
 }) {
   const { t } = useLingui();
+  useHideAmounts();
   const [message, setMessage] = useState<InboxMessageOutput | null>(
     () => peekInboxMessage(messageId) ?? null,
   );
@@ -163,6 +166,13 @@ function InboxMessage({
       live = false;
     };
   }, [messageId, attempt]);
+
+  // A reply sent from here joins the conversation; the cache is already cleared, so reload it.
+  useEffect(() => {
+    const reload = () => setAttempt((n) => n + 1);
+    window.addEventListener(MAIL_SENT_EVENT, reload);
+    return () => window.removeEventListener(MAIL_SENT_EVENT, reload);
+  }, []);
 
   // Read on every render: closing the composer re-renders, so a kept draft shows at once.
   const draft = recallClosed({ kind: "reply", messageId });
@@ -340,7 +350,7 @@ function InboxMessage({
           </div>
         ) : (
           <p dir="auto" className="whitespace-pre-wrap wrap-anywhere text-sm">
-            {message.text}
+            {maskCurrencyWhenHidden(message.text ?? "")}
           </p>
         )}
         {message?.attachments.length ? (
@@ -363,7 +373,7 @@ function hasVisibleContent(html: string): boolean {
   return Boolean(body.textContent?.trim()) || body.querySelector("img, svg, video") !== null;
 }
 
-/** Tags of a plain written message, such as one from the composer, which reads best as text in the app's own style. */
+/** Tags of a plain written message, such as one from the composer, which reads best as text in the app's own style. Links are left out: the text copy would drop their destinations. */
 const PLAIN_TAGS = new Set([
   "HTML",
   "HEAD",
@@ -379,7 +389,6 @@ const PLAIN_TAGS = new Set([
   "I",
   "EM",
   "U",
-  "A",
   "UL",
   "OL",
   "LI",
@@ -437,9 +446,9 @@ function InboxAttachments({
       <ul aria-label={t`Attachments`} className="flex flex-wrap gap-2">
         {attachments.map((attachment) => (
           <li key={attachment.id}>
-            <button
-              type="button"
-              className="flex max-w-64 items-center gap-2 rounded-lg border border-border px-3 py-2 text-start text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
+            <Button
+              variant="outline"
+              className="h-auto max-w-64 justify-start gap-2 px-3 py-2 text-start [&_svg]:size-4 [&_svg]:text-muted-foreground"
               onClick={() => {
                 setResult(null);
                 saveAttachment(messageId, attachment).then(
@@ -455,7 +464,7 @@ function InboxAttachments({
                   {formatBytes(attachment.size)}
                 </span>
               </span>
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
@@ -499,6 +508,7 @@ function ThreadMessages({
 }
 
 function ThreadMessage({ item }: { item: InboxThreadMessage }) {
+  useHideAmounts();
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState<InboxMessageOutput | null>(null);
   const [error, setError] = useState("");
@@ -511,17 +521,17 @@ function ThreadMessage({ item }: { item: InboxThreadMessage }) {
   const sent = new Date(item.receivedAt);
   return (
     <li className="border-b border-border last:border-b-0">
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         aria-expanded={open}
         onClick={toggle}
-        className="flex w-full min-w-0 items-baseline gap-2 px-3 py-2 text-start text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="h-auto w-full min-w-0 justify-start gap-2 rounded-none px-3 py-2 text-start font-normal"
       >
         <span dir="auto" className="max-w-[40%] shrink-0 truncate font-medium">
           {item.fromSelf ? <Trans>You</Trans> : item.from}
         </span>
         <span dir="auto" className="min-w-0 flex-1 truncate text-muted-foreground">
-          {open ? null : item.snippet}
+          {open ? null : maskCurrencyWhenHidden(item.snippet)}
         </span>
         <time
           dateTime={item.receivedAt}
@@ -536,7 +546,7 @@ function ThreadMessage({ item }: { item: InboxThreadMessage }) {
                 minute: "2-digit",
               })}
         </time>
-      </button>
+      </Button>
       {open ? (
         <div className="px-3 pb-3">
           {error ? (
@@ -545,7 +555,7 @@ function ThreadMessage({ item }: { item: InboxThreadMessage }) {
             </p>
           ) : body ? (
             <p dir="auto" className="whitespace-pre-wrap wrap-anywhere text-sm">
-              {body.text || item.snippet}
+              {maskCurrencyWhenHidden(body.text || item.snippet)}
             </p>
           ) : (
             <Skeleton className="h-12 w-full" />
