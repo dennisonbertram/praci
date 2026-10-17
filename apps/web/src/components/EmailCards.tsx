@@ -32,7 +32,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
     today: t`Today`,
     within_3_days: t`Within 3 days`,
     this_week: t`This week`,
-    later: t`Later`,
+    later: t`No rush`,
   };
   const attachments = (email: EmailCard) =>
     email.attachments ? (

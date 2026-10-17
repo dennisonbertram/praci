@@ -147,3 +147,57 @@ export const NoAuditors: Story = {
   beforeEach: () =>
     mockRpc({ "contacts.list": [contacts[0], contacts[2]], "mcp.servers.list": [cartaServer] }),
 };
+
+/** The connection check failed: an error with Try again, never an assumed connection. */
+export const ConnectionCheckFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": () => {
+        throw new Error("Could not reach the server");
+      },
+    }),
+};
+
+/** Connected, but the Carta agent has not read anything yet (for example, no model was set up). */
+export const ConnectedNeverRead: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "carta.capTable": { snapshot: null, syncing: false },
+    }),
+};
+
+/** A refresh in progress over an earlier read: the subtitle says Reading Carta. */
+export const Refreshing: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "carta.capTable": { snapshot, syncing: true },
+    }),
+};
+
+/** Shareholders tab: Carta's common holders only. */
+export const ShareholdersTab: Story = {
+  parameters: { initialEntries: ["/app/cap-table?kind=shareholder"] },
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "carta.capTable": { snapshot, syncing: false },
+    }),
+};
+
+/** The cap table read failed: the error sits where the figures would be. */
+export const CapTableLoadFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "carta.capTable": () => {
+        throw new Error("Could not load");
+      },
+    }),
+};

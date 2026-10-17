@@ -619,6 +619,11 @@ msgstr "Add custom connection"
 msgid "Add email"
 msgstr "Add email"
 
+#. placeholder {0}: prefill.name
+#: src/pages/CapTable.tsx
+msgid "Add email for {0}"
+msgstr "Add email for {0}"
+
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr "Add files"
@@ -1133,6 +1138,10 @@ msgstr "Avatars"
 msgid "Back"
 msgstr "Back"
 
+#: src/pages/Shell.tsx
+msgid "Back to Cap table"
+msgstr "Back to Cap table"
+
 #: src/pages/Auth.tsx
 msgid "Back to sign in"
 msgstr "Back to sign in"
@@ -1283,6 +1292,11 @@ msgstr "Bots are working"
 msgid "Bots lose access to its tools."
 msgstr "Bots lose access to its tools."
 
+#. placeholder {0}: server.name
+#: src/components/integrations/McpDetail.tsx
+msgid "Bots lose access to the tools of {0}."
+msgstr "Bots lose access to the tools of {0}."
+
 #: src/components/integrations/AppDetail.tsx
 msgid "Bots lose access to this account."
 msgstr "Bots lose access to this account."
@@ -1432,6 +1446,14 @@ msgstr "Card view"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Cardholder"
 msgstr "Cardholder"
+
+#: src/pages/CapTable.tsx
+msgid "Carta is connected"
+msgstr "Carta is connected"
+
+#: src/pages/CapTable.tsx
+msgid "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here and to ask the Carta agent about them."
+msgstr "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here and to ask the Carta agent about them."
 
 #: src/components/FinanceCards.tsx
 #: src/pages/Finance.tsx
@@ -1666,6 +1688,10 @@ msgstr "Clear search"
 #: src/pages/shell/dialogs.tsx
 msgid "Clearing…"
 msgstr "Clearing…"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Click Sign in with {service}. A {service} window opens for you to approve access."
+msgstr "Click Sign in with {service}. A {service} window opens for you to approve access."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2105,6 +2131,10 @@ msgstr "Could not check stored credentials."
 msgid "Could not check teaching status. Refresh the view to continue."
 msgstr "Could not check teaching status. Refresh the view to continue."
 
+#: src/pages/CapTable.tsx
+msgid "Could not check whether Carta is connected."
+msgstr "Could not check whether Carta is connected."
+
 #: src/pages/shell/dialogs.tsx
 msgid "Could not clear conversation"
 msgstr "Could not clear conversation"
@@ -2321,8 +2351,8 @@ msgid "Could not load the app list. Reload to try again."
 msgstr "Could not load the app list. Reload to try again."
 
 #: src/pages/CapTable.tsx
-msgid "Could not load the cap table"
-msgstr "Could not load the cap table"
+msgid "Could not load the cap table, so holdings are missing."
+msgstr "Could not load the cap table, so holdings are missing."
 
 #: src/pages/Artifacts.tsx
 msgid "Could not load this artifact."
@@ -2436,8 +2466,8 @@ msgid "Could not reset password"
 msgstr "Could not reset password"
 
 #: src/pages/CapTable.tsx
-msgid "Could not restore {name}"
-msgstr "Could not restore {name}"
+msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
+msgstr "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
 
 #: src/pages/Shell.tsx
 msgid "Could not run routine"
@@ -3245,6 +3275,10 @@ msgstr "Enter the URL, starting with https://."
 msgid "Equity"
 msgstr "Equity"
 
+#: src/pages/Shell.tsx
+msgid "equity, ownership, shares, options, Carta"
+msgstr "equity, ownership, shares, options, Carta"
+
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx
 msgid "Error"
@@ -3262,10 +3296,6 @@ msgstr "every {intervalAmountSelect} {intervalUnitSelect}"
 #: src/components/integrations/AppDetail.tsx
 msgid "Every bot loses access to {name}."
 msgstr "Every bot loses access to {name}."
-
-#: src/components/integrations/McpDetail.tsx
-msgid "Every bot loses access to its tools."
-msgstr "Every bot loses access to its tools."
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -3678,8 +3708,8 @@ msgid "Hide transcript"
 msgstr "Hide transcript"
 
 #: src/components/HideAmountsToggle.tsx
-msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
-msgstr "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
+msgid "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show."
+msgstr "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show."
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -3938,7 +3968,6 @@ msgid "Last charge"
 msgstr "Last charge"
 
 #: src/components/DesktopUpdates.tsx
-#: src/components/EmailCards.tsx
 msgid "Later"
 msgstr "Later"
 
@@ -4765,6 +4794,10 @@ msgid "No more results"
 msgstr "No more results"
 
 #: src/pages/CapTable.tsx
+msgid "No option grants in Carta"
+msgstr "No option grants in Carta"
+
+#: src/pages/CapTable.tsx
 msgid "No other contacts yet"
 msgstr "No other contacts yet"
 
@@ -4798,6 +4831,14 @@ msgstr "No runs match these filters."
 #: src/pages/RoutineRunHistory.tsx
 msgid "No runs yet"
 msgstr "No runs yet"
+
+#: src/components/EmailCards.tsx
+msgid "No rush"
+msgstr "No rush"
+
+#: src/pages/CapTable.tsx
+msgid "No shareholders in Carta"
+msgstr "No shareholders in Carta"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "No skills yet"
@@ -4898,6 +4939,10 @@ msgstr "Not in runway"
 msgid "Not now"
 msgstr "Not now"
 
+#: src/pages/CapTable.tsx
+msgid "Not on Carta? You can still keep your investors and advisors below."
+msgstr "Not on Carta? You can still keep your investors and advisors below."
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not sent"
 msgstr "Not sent"
@@ -4950,6 +4995,10 @@ msgstr "OAuth authorization was cancelled."
 msgid "OAuth connection failed"
 msgstr "OAuth connection failed"
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
+msgstr "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
+
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -4992,6 +5041,11 @@ msgstr "Open"
 msgid "Open {0}"
 msgstr "Open {0}"
 
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "Open {0} full screen"
+msgstr "Open {0} full screen"
+
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5009,6 +5063,7 @@ msgid "Open again"
 msgstr "Open again"
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
 msgid "Open Cap table"
 msgstr "Open Cap table"
 
@@ -5023,6 +5078,10 @@ msgstr "Open external link?"
 #: src/components/integrations/FinanceSection.tsx
 msgid "Open Finance"
 msgstr "Open Finance"
+
+#: src/pages/Shell.tsx
+msgid "Open full screen"
+msgstr "Open full screen"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open in Brex"
@@ -5172,10 +5231,6 @@ msgstr "Owner"
 #: src/pages/CapTable.tsx
 msgid "Ownership"
 msgstr "Ownership"
-
-#: src/pages/CapTable.tsx
-msgid "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here. The Carta agent can answer questions about them only while Carta is connected."
-msgstr "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here. The Carta agent can answer questions about them only while Carta is connected."
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
@@ -5447,6 +5502,10 @@ msgstr "Read"
 msgid "Read balances and transactions"
 msgstr "Read balances and transactions"
 
+#: src/pages/CapTable.tsx
+msgid "Read cap table"
+msgstr "Read cap table"
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read cards, expenses and bills"
@@ -5609,6 +5668,10 @@ msgstr "Refresh"
 #: src/pages/CapTable.tsx
 msgid "Refresh from Carta"
 msgstr "Refresh from Carta"
+
+#: src/pages/CapTable.tsx
+msgid "Refresh from Carta. The Carta agent reads your cap table again."
+msgstr "Refresh from Carta. The Carta agent reads your cap table again."
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Refresh view"
@@ -6025,6 +6088,15 @@ msgstr "Sales & CRM"
 msgid "Save"
 msgstr "Save"
 
+#. placeholder {0}: prefill.name
+#: src/pages/CapTable.tsx
+msgid "Save {0} as a contact"
+msgstr "Save {0} as a contact"
+
+#: src/pages/CapTable.tsx
+msgid "Save as contact"
+msgstr "Save as contact"
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Save backups"
 msgstr "Save backups"
@@ -6100,6 +6172,7 @@ msgstr "Scheduling"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
 msgid "Search"
@@ -6122,10 +6195,6 @@ msgstr "Search artifacts…"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search by domain"
 msgstr "Search by domain"
-
-#: src/pages/Shell.tsx
-msgid "Search chats"
-msgstr "Search chats"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search directory"
@@ -6340,6 +6409,10 @@ msgid "Shareholder"
 msgstr "Shareholder"
 
 #: src/pages/CapTable.tsx
+msgid "Shareholders"
+msgstr "Shareholders"
+
+#: src/pages/CapTable.tsx
 msgid "Shares"
 msgstr "Shares"
 
@@ -6435,10 +6508,6 @@ msgstr "Sign in to your existing account to link SSO"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Sign in with {service}"
 msgstr "Sign in with {service}"
-
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Sign in with {service} in the window that opens."
-msgstr "Sign in with {service} in the window that opens."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
@@ -6863,6 +6932,14 @@ msgstr "The bots you chose can use {0}."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "The Carta agent can now read your cap table."
 msgstr "The Carta agent can now read your cap table."
+
+#: src/pages/CapTable.tsx
+msgid "The Carta agent has not read your cap table yet."
+msgstr "The Carta agent has not read your cap table yet."
+
+#: src/components/integrations/McpDetail.tsx
+msgid "The Carta agent loses access to Carta."
+msgstr "The Carta agent loses access to Carta."
 
 #: src/pages/Shell.tsx
 msgid "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
@@ -7725,6 +7802,10 @@ msgstr "You have control"
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"
 msgstr "Your browser blocked the sign-in window"
+
+#: src/pages/CapTable.tsx
+msgid "Your Carta sign-in ended. Sign in again to see holders here."
+msgstr "Your Carta sign-in ended. Sign in again to see holders here."
 
 #. placeholder {0}: server.name
 #: src/components/integrations/McpDetail.tsx

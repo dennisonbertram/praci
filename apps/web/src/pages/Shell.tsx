@@ -92,6 +92,7 @@ import {
 } from "@rakazo/ui-web";
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   Bell,
   Box,
@@ -147,7 +148,14 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
-import { useLocation, useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useMatch,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { AgentPanelIntro } from "../components/AgentPanelIntro";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
@@ -1790,7 +1798,13 @@ export function ShellPage() {
     return [
       { id: "inbox", label: t`Inbox`, icon: <Mail {...icon} /> },
       { id: "finance", label: t`Finance`, icon: <ChartColumn {...icon} /> },
-      { id: "cap-table", label: t`Cap table`, icon: <PieChart {...icon} /> },
+      {
+        id: "cap-table",
+        label: t`Cap table`,
+        // Words a founder may type for this page; matched along with the label.
+        keywords: t`equity, ownership, shares, options, Carta`,
+        icon: <PieChart {...icon} />,
+      },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
@@ -1800,7 +1814,13 @@ export function ShellPage() {
   // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
   const searchPages = useMemo(() => {
     const needle = spaceQuery.toLocaleLowerCase();
-    return needle ? appPages.filter((page) => page.label.toLocaleLowerCase().includes(needle)) : [];
+    return needle
+      ? appPages.filter((page) =>
+          `${page.label} ${"keywords" in page ? page.keywords : ""}`
+            .toLocaleLowerCase()
+            .includes(needle),
+        )
+      : [];
   }, [appPages, spaceQuery]);
   const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
 
@@ -2684,6 +2704,8 @@ export function ShellPage() {
     setInboxAgentCollapsed(true);
   });
 
+  const cartaSuggestions = [t`Who are our investors?`, t`Draft this month's investor update`];
+  const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
   const agentPanel = inboxMode
     ? {
@@ -2728,9 +2750,12 @@ export function ShellPage() {
             createLabel: t`Try again`,
             creating: creatingCartaAgent,
             error: cartaAgentError,
-            suggestions: [t`Who are our investors?`, t`Draft this month's investor update`],
+            suggestions: cartaSuggestions,
           }
         : null;
+  // The Carta agent opened full screen from its panel: same intro, and a way back to Cap table.
+  const cartaAgentPage =
+    !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
 
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
@@ -3090,6 +3115,25 @@ export function ShellPage() {
   const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
   const threadView = (
     <>
+      {cartaAgentPage ? (
+        <div className="shrink-0 px-4 pt-2 md:px-7">
+          <Link
+            to="/app/cap-table"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            <Trans>Back to Cap table</Trans>
+          </Link>
+        </div>
+      ) : null}
+      {cartaAgentPage && transcriptMessages.length === 0 && !transcriptRunning && activeSnapshot ? (
+        <AgentPanelIntro
+          description={cartaAgentIntro}
+          suggestions={cartaSuggestions}
+          disabled={sending}
+          onPick={(text) => void sendMessage(text, [], newClientId())}
+        />
+      ) : null}
       {!inGroup && !pageMode && botPins ? <PinsStrip pins={botPins} onPins={setBotPins} /> : null}
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -3451,8 +3495,8 @@ export function ShellPage() {
                 setQuery("");
               }
             }}
-            // Chats, files and links; the Inbox has its own mail search.
-            placeholder={t`Search chats`}
+            // Chats, pages, files and links; the Inbox has its own mail search.
+            placeholder={t`Search`}
             autoComplete="off"
             name="sidebar-search"
           />
@@ -4342,6 +4386,7 @@ export function ShellPage() {
           <CapTablePage
             onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
             onCartaStatus={setCartaConnected}
+            agentBusy={transcriptRunning}
           />
         ) : inboxMode ? (
           <InboxPage
@@ -4383,9 +4428,10 @@ export function ShellPage() {
                 {active ? (
                   <button
                     type="button"
-                    aria-label={active.name}
+                    aria-label={t`Open ${active.name} full screen`}
+                    title={t`Open full screen`}
                     onClick={() => openBot(active.id)}
-                    className="flex min-w-0 items-center gap-2 rounded-lg"
+                    className="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
                   >
                     <BotAvatar
                       color={active.color}
@@ -4415,11 +4461,7 @@ export function ShellPage() {
                   !transcriptRunning &&
                   (!capTableMode || activeSnapshot) ? (
                     <AgentPanelIntro
-                      description={
-                        capTableMode
-                          ? t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`
-                          : active.description
-                      }
+                      description={capTableMode ? cartaAgentIntro : active.description}
                       suggestions={agentPanel.suggestions}
                       disabled={sending}
                       onPick={(text) => void sendMessage(text, [], newClientId())}
@@ -5940,7 +5982,7 @@ export const Transcript = memo(function Transcript({
                     ? "relative py-0.5"
                     : // A narrow transcript (the Inbox agent panel) has no gutter beside the bubbles, so the
                       // hover time above and the actions below need room of their own.
-                      "group/message relative hover:z-20 @max-sm:[@media(hover:hover)]:pt-3 @max-sm:[@media(hover:hover)]:pb-5"
+                      "group/message relative hover:z-20 @max-md:[@media(hover:hover)]:pt-4 @max-sm:[@media(hover:hover)]:pb-5"
                 }
               >
                 <div
@@ -6019,6 +6061,9 @@ export const Transcript = memo(function Transcript({
                           message.role === "user"
                             ? "end-full bottom-8 pe-3"
                             : "start-full bottom-8 ps-3",
+                          // A narrow transcript (a side panel on a phone) has no room beside the
+                          // bubble, so the time sits above its end edge instead of being cut off.
+                          "@max-md:start-auto @max-md:end-0 @max-md:bottom-full @max-md:ps-0 @max-md:pe-0",
                           // Touch has no hover margin: drop the revealed time in-flow under the bubble.
                           "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
                           "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
