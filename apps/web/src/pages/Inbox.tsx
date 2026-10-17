@@ -66,6 +66,9 @@ const PREFETCH_DELAY_MS = 250;
 /** Marks the `?mail=` history entry the list pushed, so closing the message can go Back. */
 const LIST_OPEN = { inboxList: true };
 
+/** The account tab last chosen in this window; a removed account falls back to All. */
+let rememberedTab: string | undefined;
+
 type Status =
   | { kind: "marked"; messageId: string; mark: InboxMark; sender: string }
   | { kind: "archived"; messageId: string; subject: string };
@@ -121,7 +124,11 @@ export function InboxPage({
   const { filter, query, view, category } = listState;
   const filtered = Boolean(filter || query);
   const [draft, setDraft] = useState(query);
-  const [tab, setTab] = useState<string | undefined>();
+  // Kept while the app is open, so leaving the Inbox and coming back keeps the chosen account.
+  const [tab, setTab] = useState<string | undefined>(() => rememberedTab);
+  useEffect(() => {
+    rememberedTab = tab;
+  }, [tab]);
   const [data, setData] = useState<InboxListOutput | null>(null);
   // Which request `data` answers, so a changed tab, filter or search shows loading, not old rows.
   const listKey = JSON.stringify([tab, filter, query, view, category]);

@@ -744,3 +744,26 @@ it("opens the shortcut list with ? while a message is open", async () => {
   await press("?");
   expect(document.body.textContent).toContain("Keyboard shortcuts");
 });
+
+it("keeps the chosen account tab after leaving the Inbox and coming back", async () => {
+  const accounts = [
+    { connectionId: "c1", label: "Me" },
+    { connectionId: "c2", label: "Sales" },
+  ] as InboxListOutput["accounts"];
+  rpcMock.list.mockResolvedValue(list([row("a")], { accounts }));
+  const c = await render();
+  const sales = [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+    (el) => el.textContent === "Sales",
+  );
+  await click(sales ?? null);
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ connectionId: "c2" }));
+  for (const cleanup of cleanups.splice(0)) await cleanup();
+  rpcMock.list.mockClear();
+  await render();
+  expect(rpcMock.list).toHaveBeenCalledWith(expect.objectContaining({ connectionId: "c2" }));
+  // Back to All for the tests that follow.
+  const again = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+    (el) => el.textContent === "All",
+  );
+  await click(again ?? null);
+});
