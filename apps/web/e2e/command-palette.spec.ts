@@ -30,7 +30,7 @@ test("command palette opens with keyboard, filters, and switches bots", async ({
 
   await page.keyboard.press("ControlOrMeta+K");
   const palette = page.getByTestId("command-palette");
-  const dialog = page.getByRole("dialog", { name: "Switch bot" });
+  const dialog = page.getByRole("dialog", { name: "Go to" });
   await expect(dialog).toBeVisible();
   await expect(palette).toBeVisible();
   await expect(page.getByRole("tab")).toHaveCount(0);
@@ -39,7 +39,7 @@ test("command palette opens with keyboard, filters, and switches bots", async ({
   await captureScreenshot(page, testInfo, "command-palette-bots");
 
   const search = page.getByTestId("command-palette-search");
-  await search.fill("Research");
+  await search.fill("Researcher");
   await expect(page.getByRole("option", { name: /Researcher/ })).toBeVisible();
   await expect(page.getByRole("option", { name: /Chief/ })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "command-palette-filtered");
@@ -55,4 +55,11 @@ test("command palette opens with keyboard, filters, and switches bots", async ({
   await page.getByTestId(`command-palette-bot-${chiefId}`).click();
   await page.waitForURL(new RegExp(`/app/${chiefId}$`));
   expect(activeBotId(page)).toBe(chiefId);
+
+  // Settings is a dialog, not a route, and is still reachable from the palette.
+  await page.keyboard.press("ControlOrMeta+K");
+  await search.fill("Sett");
+  await page.getByRole("option", { name: "Settings" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("user-settings")).toBeVisible();
 });

@@ -136,7 +136,7 @@ export function CommandPalette({
           placeholder={t`Search`}
           data-testid="command-palette-search"
         />
-        <CommandList className="max-h-80" data-testid="command-palette-list">
+        <CommandList className="max-h-[min(24rem,60vh)]" data-testid="command-palette-list">
           <CommandEmpty>
             <Trans>No results</Trans>
           </CommandEmpty>

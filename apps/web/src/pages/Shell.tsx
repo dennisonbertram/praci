@@ -1759,6 +1759,8 @@ export function ShellPage() {
       { id: "cap-table", label: t`Cap table`, icon: <PieChart {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
+      { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
+      { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
   }, [t]);
   // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
@@ -1772,6 +1774,14 @@ export function ShellPage() {
     setQuery("");
     setMobileSidebarOpen(false);
     navigate(path);
+  }
+
+  /** Opens an entry of appPages; Settings is a dialog, not a route. */
+  function openAppPage(id: string) {
+    setQuery("");
+    setMobileSidebarOpen(false);
+    if (id === "settings") openSettings("general");
+    else navigate(`/app/${id}`);
   }
 
   useEffect(() => {
@@ -3433,7 +3443,7 @@ export function ShellPage() {
               pages={searchPages}
               documents={searchDocuments}
               onSelect={(hit) => void jumpToSearchHit(hit)}
-              onSelectPage={(id) => openSearchResult(`/app/${id}`)}
+              onSelectPage={openAppPage}
               onSelectDocument={(id) =>
                 openSearchResult(`/app/data-room?item=${encodeURIComponent(id)}`)
               }
@@ -3757,6 +3767,7 @@ export function ShellPage() {
                                     <span
                                       dir="auto"
                                       data-roster-bot-name={item.kind === "bot" ? "" : undefined}
+                                      title={item.chat.name}
                                       className={`min-w-0 truncate text-[14.5px] leading-[18px] font-normal text-foreground ${
                                         item.chat.unread ? "font-medium" : ""
                                       }`}
@@ -3951,6 +3962,7 @@ export function ShellPage() {
             <PopoverContent
               side="top"
               align="start"
+              alignOffset={11}
               className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
             >
               {bootstrapMe?.ticketBoardEnabled ? (
@@ -5021,10 +5033,7 @@ export function ShellPage() {
             label: group.name,
             icon: <GroupAvatar members={group.members} size={26} />,
           }))}
-          onSelectPage={(id) => {
-            setMobileSidebarOpen(false);
-            navigate(`/app/${id}`);
-          }}
+          onSelectPage={openAppPage}
           onSelectGroup={(id) => {
             setMobileSidebarOpen(false);
             navigate(`/app/g/${id}`);
