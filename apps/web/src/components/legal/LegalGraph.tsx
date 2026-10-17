@@ -99,10 +99,10 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
   const related = selectedNode
     ? edges.filter((edge) => edge.fromId === selectedNode.id || edge.toId === selectedNode.id)
     : [];
-  const selectedLabel = selectedNode?.label ?? "";
+  const selectedLabel = maskCurrencyWhenHidden(selectedNode?.label ?? "");
   const shown = Math.min(graph.nodes.length, MAX_GRAPH_NODES);
   const total = graph.nodes.length;
-  const labelOf = (nodeId: string) => placed.get(nodeId)?.node.label ?? "";
+  const labelOf = (nodeId: string) => maskCurrencyWhenHidden(placed.get(nodeId)?.node.label ?? "");
   return (
     <div className="flex flex-col gap-3">
       {hidden > 0 ? (
@@ -157,7 +157,7 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
               key={node.id}
               role="button"
               tabIndex={0}
-              aria-label={`${kindName(node.kind)}: ${node.label}`}
+              aria-label={`${kindName(node.kind)}: ${maskCurrencyWhenHidden(node.label)}`}
               aria-pressed={selected === node.id}
               className="cursor-pointer outline-none [&:focus-visible>rect]:stroke-foreground [&:focus-visible>rect]:stroke-2"
               onClick={() => setSelected(selected === node.id ? null : node.id)}
@@ -190,7 +190,7 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
                   node.kind === "contract" && "font-medium",
                 )}
               >
-                {short(node.label)}
+                {short(maskCurrencyWhenHidden(node.label))}
               </text>
             </g>
           ))}
@@ -198,7 +198,7 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
       </div>
       {selectedNode ? (
         <section aria-label={t`Relations of ${selectedLabel}`} className="text-sm">
-          <h3 className="mb-1 font-medium">{selectedNode.label}</h3>
+          <h3 className="mb-1 font-medium">{selectedLabel}</h3>
           {related.length === 0 ? (
             <p className="text-xs text-muted-foreground">
               <Trans>No relations.</Trans>

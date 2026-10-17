@@ -390,3 +390,24 @@ it("says when a deadline is due soon and shows its notes", async () => {
   expect(page).not.toContain("Due in 136 days");
   expect(page).toContain("Derived from the expiration date.");
 });
+
+it("hides amounts in deadline titles and graph labels while amounts are hidden", async () => {
+  const priced = { ...deadlines[0]!, title: "Pay $12,500 deposit", contractTitle: "Lease $12,500" };
+  const pricedGraph = {
+    nodes: [{ ...graph.nodes[3]!, label: "Retainer $9,000 agreement" }, graph.nodes[0]!],
+    edges: [],
+  };
+  setHideAmounts(true);
+  try {
+    await render(<LegalDeadlines deadlines={[priced]} onChanged={() => {}} today="2026-10-16" />);
+    expect(container.textContent).not.toContain("12,500");
+    expect(button("Mark Pay $12,500 deposit done")).toBeUndefined();
+    await render(<LegalGraphView graph={pricedGraph} />);
+    expect(container.textContent).not.toContain("9,000");
+    expect(container.querySelector('[aria-label*="9,000"]')).toBeNull();
+  } finally {
+    setHideAmounts(false);
+  }
+  await render(<LegalDeadlines deadlines={[priced]} onChanged={() => {}} today="2026-10-16" />);
+  expect(container.textContent).toContain("Pay $12,500 deposit");
+});

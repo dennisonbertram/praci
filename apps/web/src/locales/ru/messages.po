@@ -3065,7 +3065,7 @@ msgstr "Отключение…"
 msgid "Dismiss"
 msgstr "Закрыть"
 
-#. placeholder {0}: deadline.title
+#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismiss {0}"
 msgstr ""
@@ -3074,7 +3074,7 @@ msgstr ""
 msgid "Dismiss error"
 msgstr "Закрыть ошибку"
 
-#. placeholder {0}: undo.deadline.title
+#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismissed {0}."
 msgstr ""
@@ -4347,7 +4347,7 @@ msgstr "Управляйте провайдером семантической �
 msgid "Manual setup required"
 msgstr "Требуется ручная настройка"
 
-#. placeholder {0}: deadline.title
+#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Mark {0} done"
 msgstr ""
@@ -4388,7 +4388,7 @@ msgstr ""
 msgid "Mark unread"
 msgstr ""
 
-#. placeholder {0}: undo.deadline.title
+#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Marked {0} done."
 msgstr ""

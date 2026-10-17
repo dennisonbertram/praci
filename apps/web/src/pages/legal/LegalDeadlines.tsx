@@ -71,9 +71,9 @@ export function LegalDeadlines({
   const undoBar = undo ? (
     <p role="status" className="mb-2 flex items-center gap-2 text-sm">
       {undo.status === "done" ? (
-        <Trans>Marked {undo.deadline.title} done.</Trans>
+        <Trans>Marked {maskCurrencyWhenHidden(undo.deadline.title)} done.</Trans>
       ) : (
-        <Trans>Dismissed {undo.deadline.title}.</Trans>
+        <Trans>Dismissed {maskCurrencyWhenHidden(undo.deadline.title)}.</Trans>
       )}
       <Button size="sm" variant="ghost" onClick={() => void reopen()}>
         <Trans>Undo</Trans>
@@ -110,7 +110,7 @@ export function LegalDeadlines({
             >
               <div className="min-w-0 flex-1 basis-64">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{deadline.title}</span>
+                  <span className="font-medium">{maskCurrencyWhenHidden(deadline.title)}</span>
                   {overdue ? (
                     <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-medium text-destructive">
                       {plural(late, { one: "Overdue by # day", other: "Overdue by # days" })}
@@ -133,10 +133,10 @@ export function LegalDeadlines({
                       to={`${DATA_ROOM_PATH}?item=${deadline.dataRoomItemId}`}
                       className="hover:underline"
                     >
-                      {deadline.contractTitle}
+                      {maskCurrencyWhenHidden(deadline.contractTitle)}
                     </Link>
                   ) : (
-                    deadline.contractTitle
+                    deadline.contractTitle && maskCurrencyWhenHidden(deadline.contractTitle)
                   )}
                 </div>
                 {deadline.sourceQuote ? (
@@ -161,7 +161,7 @@ export function LegalDeadlines({
                   size="sm"
                   variant="outline"
                   disabled={closing === deadline.id}
-                  aria-label={t`Mark ${deadline.title} done`}
+                  aria-label={t`Mark ${maskCurrencyWhenHidden(deadline.title)} done`}
                   onClick={() => void close(deadline, "done")}
                 >
                   <Trans>Done</Trans>
@@ -170,7 +170,7 @@ export function LegalDeadlines({
                   size="sm"
                   variant="ghost"
                   disabled={closing === deadline.id}
-                  aria-label={t`Dismiss ${deadline.title}`}
+                  aria-label={t`Dismiss ${maskCurrencyWhenHidden(deadline.title)}`}
                   onClick={() => void close(deadline, "dismissed")}
                 >
                   <Trans>Dismiss</Trans>
