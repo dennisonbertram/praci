@@ -833,10 +833,6 @@ msgstr "En-tête de clé API"
 msgid "API key name"
 msgstr ""
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "API key needed"
-msgstr ""
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "App connections aren't set up on this server yet."
 msgstr ""
@@ -1150,10 +1146,6 @@ msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "Blocked"
-msgstr ""
-
-#: src/pages/finance/FinanceCrypto.tsx
-msgid "Blockscout is connected, but reading wallet balances needs its API key."
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -1812,12 +1804,7 @@ msgstr "Connecter la clé API"
 
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
-#: src/pages/finance/FinanceCrypto.tsx
 msgid "Connect Blockscout"
-msgstr ""
-
-#: src/pages/finance/FinanceCrypto.tsx
-msgid "Connect Blockscout to read wallet balances and history."
 msgstr ""
 
 #: src/pages/CapTable.tsx
@@ -4402,6 +4389,10 @@ msgstr "Aucune connexion d'agent pour le moment."
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "No agent uses {0} yet. Choose agents on its page."
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "No API key (optional)"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -7053,6 +7044,10 @@ msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Wallet balances and history"
+msgstr ""
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Wallet balances are read from public networks and need no key. The Finance agent uses a Blockscout API key, if you add one, for wallet lookups."
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
