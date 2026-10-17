@@ -3181,6 +3181,10 @@ msgstr ""
 msgid "Email is not allowed to register"
 msgstr "इस ईमेल को पंजीकरण की अनुमति नहीं है"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Email not found"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "ईमेल सत्यापन आवश्यक है"

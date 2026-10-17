@@ -3181,6 +3181,10 @@ msgstr ""
 msgid "Email is not allowed to register"
 msgstr "Cette adresse e-mail ne peut pas s’inscrire"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Email not found"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "Vérification de l’e-mail requise"

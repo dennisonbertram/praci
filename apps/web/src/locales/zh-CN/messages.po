@@ -3181,6 +3181,10 @@ msgstr ""
 msgid "Email is not allowed to register"
 msgstr "该邮箱不允许注册"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Email not found"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "需要验证邮箱"

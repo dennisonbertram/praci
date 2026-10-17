@@ -419,6 +419,7 @@ it("explains a stale link and offers a way back instead of Try again", async () 
     ),
   );
   await flush();
+  expect(document.body.textContent).toContain("Email not found");
   expect(document.body.textContent).toContain("This email isn't in your mail any more.");
   expect(document.body.textContent).toContain("Back to Inbox");
   expect(document.body.textContent).not.toContain("Try again");

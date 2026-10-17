@@ -209,7 +209,9 @@ function InboxMessage({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onNavigate, composing, setComposing, nextId, previousId, message, canArchive]);
 
-  const title = maskCurrencyWhenHidden(message?.subject ?? subject ?? "");
+  const title = gone
+    ? t`Email not found`
+    : maskCurrencyWhenHidden(message?.subject ?? subject ?? "");
   const sent = message ? new Date(message.date) : null;
   const parsed = splitSender(message?.from ?? "");
   // The user's own message, such as their reply found by search, says "You" as the conversation does.
