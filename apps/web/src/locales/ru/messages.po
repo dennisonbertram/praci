@@ -235,6 +235,10 @@ msgstr ""
 msgid "{count} years"
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{days, plural, one {Due in # day} other {Due in # days}}"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "{days}d ago"
 msgstr "{days} дн. назад"
@@ -701,6 +705,10 @@ msgstr "Разрешить {0} без запроса"
 
 #: src/components/AiDataSharing.tsx
 msgid "Allow {name}"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Allow access below first."
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -1840,6 +1848,10 @@ msgstr ""
 msgid "Connect a model"
 msgstr "Подключить модель"
 
+#: src/pages/Legal.tsx
+msgid "Connect a model in Settings first."
+msgstr ""
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Connect a provider to add backups."
 msgstr "Подключите провайдера, чтобы добавить резервные модели."
@@ -2938,6 +2950,11 @@ msgstr ""
 msgid "Dismiss error"
 msgstr "Закрыть ошибку"
 
+#. placeholder {0}: undo.deadline.title
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Dismissed {0}."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Dismissed. Reconnect anytime from MCP settings."
 msgstr "Закрыто. Подключиться снова можно в любое время в настройках MCP."
@@ -3069,6 +3086,14 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Drop to add to Data room"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Due today"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Due tomorrow"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -3890,6 +3915,15 @@ msgstr ""
 msgid "Last scan {lastScan}"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Last scan failed"
+msgstr ""
+
+#. placeholder {0}: lastRun.error
+#: src/pages/Legal.tsx
+msgid "Last scan failed: {0}"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 #: src/components/EmailCards.tsx
 msgid "Later"
@@ -3918,6 +3952,10 @@ msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Legal relationships"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key."
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
@@ -4170,6 +4208,11 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark unread"
+msgstr ""
+
+#. placeholder {0}: undo.deadline.title
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Marked {0} done."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -4947,6 +4990,10 @@ msgstr ""
 msgid "Open deadlines"
 msgstr ""
 
+#: src/components/legal/LegalGraph.tsx
+msgid "Open document"
+msgstr ""
+
 #: src/components/markdown-link-prompt.tsx
 msgid "Open external link?"
 msgstr "Открыть внешнюю ссылку?"
@@ -4969,6 +5016,10 @@ msgstr "Открыть в полном окне"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open in Mercury"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Open Models settings"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -5791,6 +5842,7 @@ msgstr ""
 #: src/components/AccountAccess.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Legal.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Retry"
 msgstr "Повторить"
@@ -6759,10 +6811,6 @@ msgid "The Inbox page stops showing new mail until you reconnect."
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "The Legal agent cannot run until you add an OpenRouter key in Settings. It runs only on Muse Spark 1.2."
-msgstr ""
-
-#: src/pages/Legal.tsx
 msgid "The Legal agent scans your Data room for contracts and deadlines."
 msgstr ""
 
@@ -7074,6 +7122,7 @@ msgstr ""
 
 #: src/components/MailOutbox.tsx
 #: src/pages/Inbox.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"
 msgstr ""
 

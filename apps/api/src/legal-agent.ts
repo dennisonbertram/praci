@@ -1,10 +1,10 @@
 import type { JobPublisher } from "@rakazo/adapter-kit";
 import { routineWakeupJob } from "@rakazo/adapter-kit";
+import { lockLegalBot } from "@rakazo/adapters";
 import type { Actor, Bot } from "@rakazo/contracts";
 import { LEGAL_AGENT_MODEL, LEGAL_SCAN_ROUTINE_NAME, legalAgentSpawnKey } from "@rakazo/contracts";
 import { nextCronDateAcrossStrict } from "@rakazo/core";
 import type { createRepos, PrismaClient } from "@rakazo/db";
-import { lockLegalBot } from "@rakazo/adapters";
 
 export { lockLegalBot };
 

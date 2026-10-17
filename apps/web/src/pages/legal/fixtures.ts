@@ -81,7 +81,11 @@ export const overview: LegalOverview = {
     overdueDeadlines: 1,
     unreviewedDocuments: 3,
   },
-  agent: { botId: id(900), lastScanAt: "2026-10-15T08:00:00.000Z" },
+  agent: {
+    botId: id(900),
+    lastScanAt: "2026-10-15T08:00:00.000Z",
+    lastScanRun: { id: id(950), status: "completed", error: null },
+  },
   model: { provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true },
 };
 
@@ -95,7 +99,7 @@ export const emptyOverview: LegalOverview = {
     overdueDeadlines: 0,
     unreviewedDocuments: 0,
   },
-  agent: { botId: null, lastScanAt: null },
+  agent: { botId: null, lastScanAt: null, lastScanRun: null },
   model: null,
 };
 

@@ -352,12 +352,13 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
 
     const overview = await legalOverview(api, a);
     expect(overview.agent.botId).toBe(bot.id);
-    expect(overview.agent.lastScanRun).toEqual({ status: "running", error: null });
+    expect(overview.agent.lastScanRun).toEqual({ id: first.runId, status: "running", error: null });
     await prisma.run.update({
       where: { id: first.runId },
       data: { status: "failed", error: "Data Room consent is required." },
     });
     expect((await legalOverview(api, a)).agent.lastScanRun).toEqual({
+      id: first.runId,
       status: "failed",
       error: "Data Room consent is required.",
     });
@@ -630,7 +631,9 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       for (const [name, args] of calls) {
         expect(await legal(a, name, args)).toMatchObject({ consentRequired: true });
       }
-      expect(await prisma.legalNode.count({ where: { userId: a.userId, label: "No Consent Co" } })).toBe(0);
+      expect(
+        await prisma.legalNode.count({ where: { userId: a.userId, label: "No Consent Co" } }),
+      ).toBe(0);
     } finally {
       consent = true;
     }
@@ -695,7 +698,10 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const before = await runs();
     const due = async () => {
       const at = new Date(Date.now() - 1_000);
-      await prisma.routine.update({ where: { id: routine.id }, data: { nextRunAt: at, active: true } });
+      await prisma.routine.update({
+        where: { id: routine.id },
+        data: { nextRunAt: at, active: true },
+      });
       return at.toISOString();
     };
 

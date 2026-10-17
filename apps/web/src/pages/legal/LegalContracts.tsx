@@ -5,7 +5,8 @@ import { cn } from "@rakazo/ui-web";
 import { Link } from "react-router-dom";
 import { Th } from "../../components/finance/ui";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
-import { fullDay, shortDay } from "../../lib/finance-format";
+import { fullDay, hiddenOr, shortDay } from "../../lib/finance-format";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { contractValue } from "../../lib/legal-format";
 
 const statusName = (status: LegalContractStatus): string =>
@@ -28,6 +29,7 @@ function renewal(contract: LegalContract): string {
 
 /** Every contract the Legal agent found, with a link to its document in the Data room. */
 export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
+  useHideAmounts();
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[820px] border-collapse text-sm">
@@ -96,7 +98,7 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
               <td className="whitespace-nowrap text-end tabular-nums">
                 {contract.valueCents === null
                   ? dash
-                  : contractValue(contract.valueCents, contract.currency)}
+                  : hiddenOr(contractValue(contract.valueCents, contract.currency))}
               </td>
               <td className="whitespace-nowrap tabular-nums">
                 {contract.nextDeadline ? shortDay(contract.nextDeadline) : dash}

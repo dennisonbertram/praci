@@ -4188,7 +4188,11 @@ export function ShellPage() {
         ) : financeMode ? (
           <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
         ) : legalMode ? (
-          <LegalPage onAskAgent={legalAgentOpen ? undefined : askLegalAgent} />
+          <LegalPage
+            onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
+            onOpenSettings={() => openSettings("models")}
+            settingsOpen={settingsOpen}
+          />
         ) : capTableMode ? (
           <CapTablePage
             onShowAgent={cartaAgentOpen ? undefined : () => setCartaAgentOpen(true)}

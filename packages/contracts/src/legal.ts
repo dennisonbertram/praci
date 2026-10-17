@@ -146,6 +146,7 @@ export const LegalOverviewSchema = z.object({
     /** The newest scan run (daily or Scan now), whatever its outcome; `error` is set when it failed. */
     lastScanRun: z
       .object({
+        id: Id,
         status: z.enum(["running", "completed", "failed", "cancelled"]),
         error: z.string().nullable(),
       })

@@ -3,6 +3,9 @@ import { Trans } from "@lingui/react/macro";
 import type { LegalGraph as Graph, LegalNode, LegalNodeKind } from "@rakazo/contracts";
 import { cn } from "@rakazo/ui-web";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { DATA_ROOM_PATH } from "../../lib/data-room";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 
 /** Most nodes drawn; past this the busiest ones are kept and a note says so. */
 export const MAX_GRAPH_NODES = 120;
@@ -35,6 +38,9 @@ const kindName = (kind: LegalNodeKind): string =>
     jurisdiction: t`Jurisdiction`,
     other: t`Other`,
   })[kind];
+
+/** Relations are stored as short verbs like "party_to"; show them as words. */
+const relationText = (relation: string) => relation.replace(/_/g, " ");
 
 const short = (label: string) => (label.length > 27 ? `${label.slice(0, 26)}…` : label);
 
@@ -79,6 +85,7 @@ function layout(graph: Graph) {
 
 /** Nodes and edges as an SVG diagram. Selecting a node highlights its edges and lists its relations below. */
 export function LegalGraphView({ graph }: { graph: Graph }) {
+  useHideAmounts();
   const [selected, setSelected] = useState<string | null>(null);
   const { placed, edges, heads, width, height, hidden } = useMemo(() => layout(graph), [graph]);
   if (graph.nodes.length === 0) {
@@ -140,7 +147,7 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
                 )}
                 strokeWidth={on ? 2.5 : 1.5}
               >
-                <title>{edge.relation}</title>
+                <title>{relationText(edge.relation)}</title>
               </path>
             );
           })}
@@ -202,13 +209,21 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
                 <li key={edge.id}>
                   <span>
                     {labelOf(edge.fromId)}{" "}
-                    <span className="text-muted-foreground">{edge.relation}</span>{" "}
+                    <span className="text-muted-foreground">{relationText(edge.relation)}</span>{" "}
                     {labelOf(edge.toId)}
                   </span>
                   {edge.sourceQuote ? (
                     <blockquote className="mt-0.5 border-s-2 border-border ps-2 text-xs text-muted-foreground">
-                      {edge.sourceQuote}
+                      {maskCurrencyWhenHidden(edge.sourceQuote)}
                     </blockquote>
+                  ) : null}
+                  {edge.dataRoomItemId ? (
+                    <Link
+                      to={`${DATA_ROOM_PATH}?item=${edge.dataRoomItemId}`}
+                      className="text-xs text-muted-foreground hover:underline"
+                    >
+                      <Trans>Open document</Trans>
+                    </Link>
                   ) : null}
                 </li>
               ))}

@@ -87,7 +87,10 @@ export function createLegalRepos(prisma: PrismaClient) {
   }
 
   /** Ready Data Room items with no analysis yet, or analyzed at an older revision. */
-  const unreviewedCondition = (actor: Actor, excludeConnectionIds: readonly string[] = []) => Prisma.sql`
+  const unreviewedCondition = (
+    actor: Actor,
+    excludeConnectionIds: readonly string[] = [],
+  ) => Prisma.sql`
     FROM data_room_items i
     LEFT JOIN legal_contracts c
       ON c."dataRoomItemId" = i.id AND c."spaceId" = i."spaceId" AND c."userId" = i."userId"

@@ -394,10 +394,7 @@ async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecor
     const sameKind = previous.filter((row) => sameKey(item, row));
     const existing = sameKind.find((row) => row.status === "open");
     // A closed row stays closed for its own date; a changed date opens a new row.
-    if (
-      !existing &&
-      sameKind.some((row) => row.dueDate.getTime() === item.dueDate.getTime())
-    )
+    if (!existing && sameKind.some((row) => row.dueDate.getTime() === item.dueDate.getTime()))
       continue;
     out.push(
       await repo.upsertDeadline(actor, {

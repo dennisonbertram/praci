@@ -304,9 +304,9 @@ import {
   LEGAL_GATED_TOOL_NAMES,
   LEGAL_TOOL_NAMES,
   legalDataRoomGate,
-  lockLegalBot,
   legalToolFromTool,
   legalToolsAllowed,
+  lockLegalBot,
 } from "./legal-tools.js";
 import {
   MAIL_TOOL_NAMES,

@@ -31,6 +31,7 @@ const rpcMock = vi.hoisted(() => ({
 vi.mock("../lib/rpc", () => ({ rpc: { legal: rpcMock } }));
 
 import { LegalGraphView, MAX_GRAPH_NODES } from "../components/legal/LegalGraph";
+import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { LegalPage } from "./Legal";
 import { consentFixture, deadlines, emptyOverview, graph, id, overview } from "./legal/fixtures";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
@@ -143,7 +144,7 @@ it("marks overdue deadlines and closes one with Done", async () => {
   expect(page.match(/Overdue by/g)).toHaveLength(1);
   await click(button(`Mark ${deadlines[0]?.title} done`));
   expect(rpcMock.updateDeadline).toHaveBeenCalledWith({ id: deadlines[0]?.id, status: "done" });
-  expect(container.textContent).not.toContain("Return the security deposit");
+  expect(container.querySelectorAll("li")).toHaveLength(1);
   expect(onChanged).toHaveBeenCalled();
 });
 
@@ -175,6 +176,7 @@ it("lists a selected node's relations with their source quotes", async () => {
   const page = container.textContent ?? "";
   expect(page).toContain("Customer shall pay the monthly fee.");
   expect(page).toContain("Acme Hosting Inc. party to Master Services Agreement");
+  expect(container.querySelector(`a[href="/app/data-room?item=${id(101)}"]`)).not.toBeNull();
 });
 
 it("handles an empty graph and caps a very large one", async () => {
@@ -201,7 +203,7 @@ it("warns when the Legal agent runs on a different model than Muse Spark 1.2", a
   });
   await render(<LegalPage />);
   expect(container.textContent).toContain(
-    "The Legal agent cannot run until you add an OpenRouter key in Settings.",
+    "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key.",
   );
 });
 
@@ -215,9 +217,7 @@ it("warns on first load when no model resolves, and shows no consent card withou
   rpcMock.overview.mockResolvedValue({ ...overview, model: null });
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
   await render(<LegalPage />);
-  expect(container.textContent).toContain(
-    "The Legal agent cannot run until you add an OpenRouter key in Settings.",
-  );
+  expect(container.textContent).toContain("which needs an OpenRouter key");
   expect(button("Allow")).toBeUndefined();
 });
 
@@ -226,4 +226,167 @@ it("still asks for consent when a recipient exists", async () => {
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage />);
   expect(button("Allow")).toBeDefined();
+});
+
+const edgeWithUnderscore = { ...graph.edges[0]!, relation: "party_to" };
+
+it("shows a stored relation key as words", async () => {
+  await render(<LegalGraphView graph={{ ...graph, edges: [edgeWithUnderscore] }} />);
+  await click(container.querySelector('[aria-label="Contract: Master Services Agreement"]'));
+  expect(container.textContent).toContain("Example Labs LLC party to Master Services Agreement");
+  expect(container.textContent).not.toContain("party_to");
+});
+
+it("hides the contract value while amounts are hidden", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  setHideAmounts(true);
+  try {
+    await render(<LegalPage />);
+    expect(container.textContent).not.toContain("$50,000");
+    expect(container.textContent).toContain("•••");
+  } finally {
+    setHideAmounts(false);
+  }
+});
+
+it("counts the Overdue tile from the viewer's date, like the row pills", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    counts: { ...overview.counts, overdueDeadlines: 0 },
+    deadlines: [{ ...deadlines[0]!, dueDate: "2000-01-01" }],
+  });
+  await render(<LegalPage />);
+  const tile = [...container.querySelectorAll("div")].find(
+    (el) => el.textContent?.startsWith("Overdue") && el.children.length <= 3,
+  );
+  expect(tile?.textContent).toContain("1");
+});
+
+it("says why Scan now is disabled and opens Models settings from the warning", async () => {
+  const openSettings = vi.fn();
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    model: { provider: "openrouter", id: "other/model", isPreferred: false },
+  });
+  await render(<LegalPage onOpenSettings={openSettings} />);
+  expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
+  await click(button("Open Models settings"));
+  expect(openSettings).toHaveBeenCalledTimes(1);
+  expect(button("Allow")).toBeUndefined();
+
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("Allow access below first.");
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("Connect a model in Settings first.");
+});
+
+it("keeps Scanning until the run ends, then shows the new time", async () => {
+  vi.useFakeTimers();
+  try {
+    const running = {
+      ...overview,
+      agent: {
+        ...overview.agent,
+        lastScanRun: { id: id(7), status: "running" as const, error: null },
+      },
+    };
+    const done = {
+      ...overview,
+      agent: {
+        ...overview.agent,
+        lastScanAt: "2026-10-16T08:00:00.000Z",
+        lastScanRun: { id: id(7), status: "completed" as const, error: null },
+      },
+    };
+    rpcMock.overview.mockResolvedValueOnce(overview).mockResolvedValue(running);
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    expect(button("Scanning…")?.hasAttribute("disabled")).toBe(true);
+    rpcMock.overview.mockResolvedValue(done);
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(button("Scan now")).toBeDefined();
+    expect(button("Scanning…")).toBeUndefined();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("shows why the last scan failed and retries it", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    agent: {
+      ...overview.agent,
+      lastScanRun: { id: id(8), status: "failed", error: "Data Room consent is required." },
+    },
+  });
+  rpcMock.scanNow.mockResolvedValue({ runId: id(9), botId: id(2) });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("Last scan failed: Data Room consent is required.");
+  await click(button("Retry"));
+  expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
+});
+
+it("has one Scan now button on an empty page", async () => {
+  rpcMock.overview.mockResolvedValue(emptyOverview);
+  await render(<LegalPage />);
+  expect(
+    [...container.querySelectorAll("button")].filter((b) => b.textContent === "Scan now"),
+  ).toHaveLength(1);
+});
+
+it("re-reads the overview and consent when the window gets focus again", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  await render(<LegalPage />);
+  const before = rpcMock.overview.mock.calls.length;
+  await act(async () => void window.dispatchEvent(new Event("focus")));
+  expect(rpcMock.overview.mock.calls.length).toBe(before + 1);
+  expect(rpcMock.consent.mock.calls.length).toBeGreaterThan(1);
+});
+
+it("offers Undo after Done and reopens the deadline", async () => {
+  const onChanged = vi.fn();
+  rpcMock.updateDeadline.mockResolvedValue({});
+  await render(<LegalDeadlines deadlines={deadlines} onChanged={onChanged} today="2026-10-16" />);
+  await click(button(`Mark ${deadlines[0]?.title} done`));
+  expect(container.textContent).not.toContain("Tenant shall submit");
+  await click(button("Undo"));
+  expect(rpcMock.updateDeadline).toHaveBeenLastCalledWith({ id: deadlines[0]?.id, status: "open" });
+  expect(container.textContent).toContain("Return the security deposit");
+  expect(button("Undo")).toBeUndefined();
+});
+
+it("says when a deadline is due soon and shows its notes", async () => {
+  const soon = (n: number, dueDate: string, notes: string | null) => ({
+    ...deadlines[1]!,
+    id: id(60 + n),
+    title: `Soon ${n}`,
+    dueDate,
+    notes,
+  });
+  await render(
+    <LegalDeadlines
+      deadlines={[
+        soon(0, "2026-10-16", "Derived from the expiration date."),
+        soon(1, "2026-10-17", null),
+        soon(2, "2026-10-21", null),
+        soon(3, "2027-03-01", null),
+      ]}
+      onChanged={() => {}}
+      today="2026-10-16"
+    />,
+  );
+  const page = container.textContent ?? "";
+  expect(page).toContain("Due today");
+  expect(page).toContain("Due tomorrow");
+  expect(page).toContain("Due in 5 days");
+  expect(page).not.toContain("Due in 136 days");
+  expect(page).toContain("Derived from the expiration date.");
 });
