@@ -19,12 +19,14 @@ import {
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_RECONNECT_SPACE,
   DEMO_WALLET,
   demoCarta,
   demoCrypto,
   demoFinance,
   demoFolderPaths,
   demoMailboxes,
+  demoNewMail,
   demoStatementCsv,
   MOCK_NOTE,
   MOCK_SUBJECT_PREFIX,
@@ -151,7 +153,7 @@ describe("mock demo data", () => {
       expect(message.subject).toMatch(/^(Re: )?\[MOCK\] /);
       expect(message.text).toContain(MOCK_NOTE);
     }
-    expect(new Set(messages.map((m) => m.threadId)).size).toBe(26);
+    expect(new Set(messages.map((m) => m.threadId)).size).toBe(27);
     expect(messages.some((m) => m.labels.includes("UNREAD"))).toBe(true);
     const redlines = messages.filter((m) => m.threadId.endsWith("msa-redlines"));
     expect(redlines).toHaveLength(4);
@@ -163,6 +165,24 @@ describe("mock demo data", () => {
     const sizes = messages.flatMap((m) => m.attachments ?? []).map((a) => a.data?.length ?? 0);
     expect(sizes.some((size) => size > 10 * 1024 * 1024)).toBe(true);
     expect(boxes["mock-demo-sales"].messages.length).toBeGreaterThan(0);
+  });
+
+  it("has mail older than the sync window, a real PDF, and a labeled new email", () => {
+    const now = new Date("2026-10-16T12:00:00Z");
+    const { messages } = demoMailboxes(now)["mock-demo-mailbox"];
+    const old = messages.filter((m) => now.getTime() - Date.parse(m.date) > 14 * 86_400_000);
+    expect(old.map((m) => m.subject)).toContain(`${MOCK_SUBJECT_PREFIX} W-9 for the new vendor`);
+    const deck = messages
+      .flatMap((m) => m.attachments ?? [])
+      .find((a) => a.filename === "MOCK-q3-board-deck.pdf");
+    const bytes = Buffer.from(deck?.data ?? "", "base64").toString("latin1");
+    expect(bytes.startsWith("%PDF-")).toBe(true);
+    expect(bytes).toContain("%%EOF");
+    const fresh = demoNewMail(now);
+    expect(fresh.subject.startsWith(MOCK_SUBJECT_PREFIX)).toBe(true);
+    expect(fresh.text).toContain(MOCK_NOTE);
+    expect(fresh.labels).toEqual(["INBOX", "UNREAD"]);
+    expect(DEMO_RECONNECT_SPACE.startsWith("MOCK DEMO DATA —")).toBe(true);
   });
 
   it("builds last month's mock statement with balances that add up", () => {

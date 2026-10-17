@@ -57,6 +57,9 @@ const ALL = "all";
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 12;
+// ponytail: an open Inbox looks for new mail once a minute (the server syncs at most that often);
+// switch to a pushed event if the delay matters.
+const NEW_MAIL_POLL_MS = 60_000;
 // Long enough to read the toast and reach its Undo.
 const STATUS_MS = 10_000;
 const PREFETCH_DELAY_MS = 250;
@@ -171,6 +174,17 @@ export function InboxPage({
       window.removeEventListener(INBOX_CHANGED_EVENT, onSent);
     };
   }, [onRefreshed]);
+
+  // New mail shows up, and the sidebar count follows, while the page stays open.
+  useEffect(() => {
+    if (paused) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      setReload((n) => n + 1);
+      onRefreshed();
+    }, NEW_MAIL_POLL_MS);
+    return () => clearInterval(timer);
+  }, [paused, onRefreshed]);
 
   useEffect(() => {
     if (!status) return;

@@ -16,7 +16,16 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { CARTA_MCP_ENDPOINT } from "@rakazo/contracts";
 import { loadOrCreateCredentials } from "./demo/credentials.js";
-import { demoCarta, demoCrypto, demoFinance, demoMailboxes } from "./demo/data.js";
+import {
+  DEMO_BOUNCE_DOMAIN,
+  DEMO_NEW_MAIL_DELAY_MS,
+  DEMO_RECONNECT_SPACE,
+  demoCarta,
+  demoCrypto,
+  demoFinance,
+  demoMailboxes,
+  demoNewMail,
+} from "./demo/data.js";
 import {
   assertDemoContainer,
   assertStateSlot,
@@ -210,6 +219,11 @@ Mock demo stack is running (slot ${SLOT}). Every record in it is invented and la
   Login file:   ${CREDENTIALS}
   Logs:         ${DIR}/api.log, ${DIR}/web.log
   Mail outbox:  ${OUTBOX}
+Mail states to try:
+  New mail:     one email from Priya arrives ${DEMO_NEW_MAIL_DELAY_MS / 60_000} minutes after start
+  Failed send:  send to any address @${DEMO_BOUNCE_DOMAIN}
+  Reconnect:    switch to the space "${DEMO_RECONNECT_SPACE}"
+  Between accounts: mail from Sales mail to Founder mail arrives in Founder mail
 Stop and delete it with: ${SLOT ? `DEMO_SLOT=${SLOT} ` : ""}pnpm demo:down`);
 }
 
@@ -318,8 +332,17 @@ async function serve() {
   const { serve: listen } = await import("@hono/node-server");
   const { createEmulatedApp } = await import("./emulated-app.js");
   const { createE2eComposio } = await import("./e2e-mail.js");
+  const composio = createE2eComposio(demoMailboxes, {
+    deliverBetweenOwnAccounts: true,
+    bounceDomain: DEMO_BOUNCE_DOMAIN,
+  });
+  // New mail while the Inbox is open: one message lands in the founder's mailbox after a delay.
+  setTimeout(
+    () => composio.deliver("mock-demo-mailbox", demoNewMail()),
+    DEMO_NEW_MAIL_DELAY_MS,
+  ).unref();
   const { handles } = await createEmulatedApp(process.env.DATABASE_URL as string, {
-    composio: createE2eComposio(demoMailboxes),
+    composio,
     financeCallToolFor: demoFinance().callToolFor,
     mcpServers: { [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN) },
     cryptoFetch: demoCrypto().fetch,

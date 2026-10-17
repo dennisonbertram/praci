@@ -701,3 +701,17 @@ it("calls today's group 'Other mail today' when Needs reply is above it", async 
   const plain = await render();
   expect([...plain.querySelectorAll("h2")].map((h) => h.textContent)).toContain("Today");
 });
+
+it("looks for new mail once a minute while it is open", async () => {
+  vi.useFakeTimers();
+  try {
+    await render();
+    const before = rpcMock.list.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(rpcMock.list.mock.calls.length).toBe(before + 1);
+  } finally {
+    vi.useRealTimers();
+  }
+});

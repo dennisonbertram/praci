@@ -1,5 +1,6 @@
+import type { ConnectorProxyRequest } from "@rakazo/adapter-kit";
 import type { EmulatedMessage } from "@rakazo/adapters";
-import { ComposioEmulator, GmailApiEmulator } from "@rakazo/adapters";
+import { ComposioEmulator, GmailApiEmulator, parseRawMime } from "@rakazo/adapters";
 
 const MINUTE_MS = 60_000;
 const DAY_MS = 86_400_000;
@@ -135,8 +136,16 @@ export type E2eGmailSnapshot = ReturnType<GmailApiEmulator["snapshot"]>;
  */
 export function createE2eComposio(
   mailboxes: () => Record<string, { address: string; messages: EmulatedMessage[] }> = e2eMailboxes,
+  options: {
+    /** A send to the user's other connected address lands in that Inbox, as with real Gmail. */
+    deliverBetweenOwnAccounts?: boolean;
+    /** A send to an address on this domain fails, as Gmail rejects an invalid recipient. */
+    bounceDomain?: string;
+  } = {},
 ): ComposioEmulator & {
   gmailFor(userId: string): E2eGmailSnapshot;
+  /** Delivers a message to every user's copy of a seeded mailbox, as if it arrived just now. */
+  deliver(seededName: string, message: EmulatedMessage): void;
 } {
   const gmail = new GmailApiEmulator({ mailboxes: mailboxes() });
   const seeded = gmail.accountRefs();
@@ -155,6 +164,56 @@ export function createE2eComposio(
         }
       }
       return result;
+    }
+
+    override async proxy(request: ConnectorProxyRequest) {
+      const sending = request.method === "POST" && /\/drafts\/send(\?|$)/.test(request.url);
+      const id = (request.body as { id?: unknown } | undefined)?.id;
+      const draft = sending
+        ? gmail.draftsOf(request.accountRef).find((item) => item.id === id)
+        : undefined;
+      const mime = draft ? parseRawMime(draft.raw) : undefined;
+      const recipients = ["To", "Cc", "Bcc"]
+        .map((name) => mime?.header(name) ?? "")
+        .join(",")
+        .toLowerCase();
+      if (options.bounceDomain && recipients.includes(`@${options.bounceDomain.toLowerCase()}`)) {
+        const message = "Invalid To header";
+        return {
+          status: 400,
+          data: { error: { code: 400, message, errors: [{ reason: "invalidArgument", message }] } },
+        };
+      }
+      const response = await super.proxy(request);
+      if (mime && response.status === 200 && options.deliverBetweenOwnAccounts) {
+        const own = [...refsByUser.values()].find((refs) => refs.includes(request.accountRef));
+        const from = gmail.addressOf(request.accountRef) ?? "";
+        for (const ref of own ?? []) {
+          const address = gmail.addressOf(ref);
+          if (ref === request.accountRef || !address || !recipients.includes(address.toLowerCase()))
+            continue;
+          gmail.addMessage(ref, {
+            id: `in-${ref}-${Date.now()}`,
+            date: new Date().toISOString(),
+            labels: ["INBOX", "UNREAD"],
+            from,
+            to: mime.header("To") ?? address,
+            ...(mime.header("Cc") ? { cc: mime.header("Cc") } : {}),
+            subject: mime.header("Subject") ?? "",
+            ...(mime.text === undefined ? {} : { text: mime.text }),
+            ...(mime.html === undefined ? {} : { html: mime.html }),
+          });
+        }
+      }
+      return response;
+    }
+
+    deliver(seededName: string, message: EmulatedMessage) {
+      const index = seeded.indexOf(seededName);
+      for (const refs of refsByUser.values()) {
+        const ref = refs[index];
+        if (ref) gmail.addMessage(ref, message);
+      }
     }
 
     gmailFor(userId: string): E2eGmailSnapshot {
