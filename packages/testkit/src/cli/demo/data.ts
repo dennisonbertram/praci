@@ -1,4 +1,5 @@
 import type { EmulatedMcpServer, EmulatedMessage } from "@rakazo/adapters";
+import { FINANCE_MCP_ENDPOINTS, FINANCE_READ_TOOLS } from "@rakazo/contracts";
 import {
   brexAccountsResponse,
   brexExpense,
@@ -581,6 +582,31 @@ export function demoFinance(now = new Date()) {
     callToolFor: async (server: { provider: string }) =>
       server.provider === "mercury" ? mercury.callTool : brexCallTool,
   };
+}
+
+/**
+ * Mock Mercury and Brex MCP servers by hostname, so "Add account → Mercury" signs in and connects
+ * in the demo. Each asks for a sign-in like the real one; its sign-in page is the app's own OAuth
+ * callback with a mock code. Tool calls answer from the same canned history as `demoFinance`.
+ */
+export function demoFinanceMcp(
+  webOrigin: string,
+  now = new Date(),
+): Record<string, EmulatedMcpServer> {
+  const { callToolFor } = demoFinance(now);
+  const servers: Record<string, EmulatedMcpServer> = {};
+  for (const provider of ["mercury", "brex"] as const) {
+    servers[new URL(FINANCE_MCP_ENDPOINTS[provider]).hostname] = {
+      authorizeUrl: `${webOrigin}/mcp/oauth/callback?code=mock-demo-${provider}-code`,
+      tools: FINANCE_READ_TOOLS[provider].map((name) => ({
+        name,
+        description: `${MOCK_NOTE}: ${name}`,
+        inputSchema: { type: "object", properties: {} },
+      })),
+      call: async (name, args) => (await callToolFor({ provider }))(name, args),
+    };
+  }
+  return servers;
 }
 
 /** Invented treasury wallet: 0x…d3e0 is not a real holder; nothing here touches a real chain. */

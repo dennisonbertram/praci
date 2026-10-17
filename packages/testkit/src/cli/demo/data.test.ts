@@ -9,6 +9,7 @@ import {
   CARTA_MCP_ENDPOINT,
   CARTA_READ_TOOLS,
   CapTableSnapshotInputSchema,
+  FINANCE_MCP_ENDPOINTS,
 } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
@@ -23,6 +24,7 @@ import {
   demoCarta,
   demoCrypto,
   demoFinance,
+  demoFinanceMcp,
   demoFolderPaths,
   demoMailboxes,
   demoStatementCsv,
@@ -100,6 +102,34 @@ describe("mock demo data", () => {
     const result = await session.callTool("cap_table_chart");
     expect(JSON.stringify(result.content)).toContain("Quill Capital (Mock)");
     await session.close();
+  });
+
+  it("lets Mercury and Brex sign in and answer their tools in the demo", async () => {
+    const emulator = new ThirdPartyConnectorEmulator(demoFinanceMcp("http://127.0.0.1:5374"));
+    for (const provider of ["mercury", "brex"] as const) {
+      const endpoint = FINANCE_MCP_ENDPOINTS[provider];
+      // Unsigned calls ask for a sign-in whose page is the app's own callback with a mock code.
+      const refused = await emulator.fetch(endpoint, { method: "POST", body: "{}" });
+      expect(refused.status).toBe(401);
+      const meta = await emulator.fetch(
+        `${new URL(endpoint).origin}/.well-known/oauth-authorization-server`,
+      );
+      expect(
+        ((await meta.json()) as { authorization_endpoint: string }).authorization_endpoint,
+      ).toBe(`http://127.0.0.1:5374/mcp/oauth/callback?code=mock-demo-${provider}-code`);
+    }
+    const response = await emulator.fetch(FINANCE_MCP_ENDPOINTS.mercury, {
+      method: "POST",
+      headers: { authorization: "Bearer mock-demo-token" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "getAccounts", arguments: {} },
+      }),
+    });
+    const body = (await response.json()) as { result: { content: { text: string }[] } };
+    expect(body.result.content[0]?.text).toContain("MOCK Checking");
   });
 
   it("includes one document that fails to read, so the failed state can be seen", () => {

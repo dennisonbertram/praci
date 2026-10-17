@@ -16,7 +16,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { CARTA_MCP_ENDPOINT } from "@rakazo/contracts";
 import { loadOrCreateCredentials } from "./demo/credentials.js";
-import { demoCarta, demoCrypto, demoFinance, demoMailboxes } from "./demo/data.js";
+import { demoCarta, demoCrypto, demoFinance, demoFinanceMcp, demoMailboxes } from "./demo/data.js";
 import {
   assertDemoContainer,
   assertStateSlot,
@@ -321,7 +321,10 @@ async function serve() {
   const { handles } = await createEmulatedApp(process.env.DATABASE_URL as string, {
     composio: createE2eComposio(demoMailboxes),
     financeCallToolFor: demoFinance().callToolFor,
-    mcpServers: { [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN) },
+    mcpServers: {
+      [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN),
+      ...demoFinanceMcp(WEB_ORIGIN),
+    },
     cryptoFetch: demoCrypto().fetch,
     // Nothing is delivered: password-reset and verification mail lands in the slot's outbox file.
     onEmail: (message) =>

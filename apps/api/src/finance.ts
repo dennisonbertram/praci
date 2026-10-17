@@ -362,8 +362,14 @@ export async function financeConnect(
     });
     return { ...begun, serverId: server.id };
   } catch (error) {
+    // The vendor's raw error (hosts, emulator details) is for the log, not the founder.
+    getLogger().warn("finance connect could not start sign-in", {
+      provider: input.provider,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    const name = input.provider === "mercury" ? "Mercury" : "Brex";
     throw new ORPCError("BAD_REQUEST", {
-      message: error instanceof Error ? error.message : "Could not start sign-in",
+      message: `Could not connect to ${name}. Try again, or upload a statement instead.`,
     });
   }
 }

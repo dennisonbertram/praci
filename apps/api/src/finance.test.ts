@@ -625,12 +625,14 @@ describe("finance connect", () => {
     expect(prisma.mcpServer.rows).toHaveLength(2);
   });
 
-  it("turns a refused redirect into BAD_REQUEST", async () => {
+  it("turns a failed sign-in start into BAD_REQUEST with plain copy, not the vendor's error", async () => {
     const { deps, beginMcpOAuth } = setup();
-    beginMcpOAuth.mockRejectedValueOnce(new Error("MCP OAuth redirect URI is not allowed"));
+    beginMcpOAuth.mockRejectedValueOnce(
+      new Error("Could not reach mcp.mercury.com: emulator received unexpected URL"),
+    );
     await expect(financeConnect(deps, a, input)).rejects.toMatchObject({
       code: "BAD_REQUEST",
-      message: "MCP OAuth redirect URI is not allowed",
+      message: "Could not connect to Mercury. Try again, or upload a statement instead.",
     });
   });
 
