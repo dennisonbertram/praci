@@ -3941,6 +3941,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
+            trigger: run.trigger,
           }) && (await calendarAccounts().catch(() => [])).length > 0;
         const mailEnabled =
           mailToolsAllowed({
@@ -3949,6 +3950,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
+            trigger: run.trigger,
           }) && (await mailAccounts().catch(() => [])).length > 0;
         // Connected Google Drive accounts of the bot owner, looked up once per run.
         let driveAccountsPromise: ReturnType<typeof listDriveAccounts> | undefined;
@@ -3966,6 +3968,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
+            trigger: run.trigger,
           }) && (await driveAccounts().catch(() => [])).length > 0;
         const financeEnabled =
           financeToolsAllowed({
