@@ -17,13 +17,39 @@ vi.mock("@lingui/react/macro", () => {
 });
 // The real message view loads the body in a sandboxed iframe; here only its inputs matter.
 vi.mock("./inbox/InboxMessageDialog", () => ({
-  InboxMessageDialog: ({ messageId, subject }: { messageId: string | null; subject?: string }) =>
+  InboxMessageDialog: ({
+    messageId,
+    subject,
+    onArchive,
+    onRead,
+  }: {
+    messageId: string | null;
+    subject?: string;
+    onArchive?: () => void;
+    onRead?: (read: boolean) => void;
+  }) =>
     messageId ? (
       <div role="dialog">
         {subject}
         <div data-testid="message-view">{messageId}</div>
+        <button type="button" onClick={onArchive}>
+          Archive
+        </button>
+        <button type="button" onClick={() => onRead?.(true)}>
+          Mark read
+        </button>
       </div>
     ) : null,
+}));
+const archive = vi.fn(async (_input: unknown) => ({ ok: true }));
+const markRead = vi.fn(async (_input: unknown) => ({ ok: true }));
+vi.mock("../lib/rpc", () => ({
+  rpc: {
+    inbox: {
+      archive: (input: unknown) => archive(input),
+      markRead: (input: unknown) => markRead(input),
+    },
+  },
 }));
 
 import { EmailCards } from "./EmailCards";
@@ -121,5 +147,24 @@ it("opens the clicked message by its cached row id", async () => {
   await act(async () => (second as HTMLElement).click());
   expect(document.querySelector('[data-testid="message-view"]')?.textContent).toBe("two");
   expect(document.body.textContent).toContain("Subject two");
+  await view.cleanup();
+});
+
+it("archives and marks read from the opened card like the Inbox does, and tells the Inbox", async () => {
+  const changed = vi.fn();
+  window.addEventListener("rakazo:inbox-changed", changed);
+  const view = await render({ kind: "emails", emails: [email("one", "today")] });
+  const card = view.container.querySelector('[data-testid="email-card"]') as HTMLElement;
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === name) as HTMLElement;
+  await act(async () => card.click());
+  await act(async () => button("Mark read").click());
+  expect(markRead).toHaveBeenCalledWith({ messageId: "one", read: true });
+  await act(async () => button("Archive").click());
+  expect(archive).toHaveBeenCalledWith({ messageId: "one" });
+  // Archive closes the message.
+  expect(document.querySelector('[data-testid="message-view"]')).toBeNull();
+  expect(changed).toHaveBeenCalledTimes(2);
+  window.removeEventListener("rakazo:inbox-changed", changed);
   await view.cleanup();
 });

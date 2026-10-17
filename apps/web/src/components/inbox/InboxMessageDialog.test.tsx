@@ -16,6 +16,8 @@ vi.mock("@lingui/react/macro", () => {
 vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, i) => text + part + String(values[i] ?? ""), ""),
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
 }));
 vi.mock("../../components/SandboxedHtmlViewer", () => ({ SandboxedHtmlViewer: () => null }));
 vi.mock("../../components/ComposeEmail", () => ({
@@ -214,4 +216,55 @@ it("shows no archive or read buttons and ignores e without them", async () => {
   const names = [...document.querySelectorAll("button")].map((b) => b.textContent);
   expect(names).not.toContain("Archive");
   expect(names).not.toContain("Mark read");
+});
+
+it("lists the conversation's earlier messages and shows one's text when clicked", async () => {
+  get.mockImplementation(async ({ messageId }) =>
+    messageId === "first"
+      ? { ...message("first"), text: "Our counsel returned redlines on sections 4 and 9." }
+      : {
+          ...message(messageId),
+          thread: [
+            {
+              id: "first",
+              from: "Morgan",
+              receivedAt: "2026-10-09T09:00:00.000Z",
+              snippet: "Our counsel returned",
+            },
+          ],
+        },
+  );
+  act(() => root.render(<InboxMessageDialog messageId="latest" onClose={() => {}} />));
+  await flush();
+  expect(document.body.textContent).toContain("2 messages");
+  const row = [...document.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes("Morgan"),
+  );
+  expect(row?.getAttribute("aria-expanded")).toBe("false");
+  await act(async () => row?.click());
+  await flush();
+  expect(get).toHaveBeenCalledWith({ messageId: "first" });
+  expect(row?.getAttribute("aria-expanded")).toBe("true");
+  expect(document.body.textContent).toContain("Our counsel returned redlines on sections 4 and 9.");
+});
+
+it("takes the read state from the message and hides Archive once it left the Inbox", async () => {
+  const onRead = vi.fn();
+  get.mockImplementation(async () => ({ ...message("card"), unread: true, inInbox: false }));
+  act(() =>
+    root.render(
+      <InboxMessageDialog
+        messageId="card"
+        onArchive={() => {}}
+        onRead={onRead}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await flush();
+  const names = [...document.querySelectorAll("button")].map((b) => b.textContent);
+  expect(names).not.toContain("Archive");
+  const read = [...document.querySelectorAll("button")].find((b) => b.textContent === "Mark read");
+  await act(async () => read?.click());
+  expect(onRead).toHaveBeenCalledWith(true);
 });

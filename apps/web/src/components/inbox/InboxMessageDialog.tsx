@@ -1,7 +1,7 @@
 import { i18n } from "@lingui/core";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { ComposeMode } from "@rakazo/contracts";
+import type { ComposeMode, InboxThreadMessage } from "@rakazo/contracts";
 import {
   Button,
   cn,
@@ -28,6 +28,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ComposeEmail } from "../../components/ComposeEmail";
 import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
+import { formatBytes } from "../../lib/format-bytes";
 import { allowStep } from "../../lib/inbox-keyboard";
 import type { InboxMessageOutput } from "../../lib/inbox-message-cache";
 import {
@@ -58,7 +59,10 @@ export function InboxMessageDialog({
   previousId?: string;
   nextId?: string;
   onNavigate?: (messageId: string) => void;
-  /** With `onArchive` and `onRead`, adds Archive and Mark read or unread. Chat email cards omit them. */
+  /**
+   * With `onArchive` and `onRead`, adds Archive and Mark read or unread. `unread` falls back to the
+   * loaded message's state, and Archive shows only while the message is in the Inbox.
+   */
   unread?: boolean;
   onArchive?: () => void;
   onRead?: (read: boolean) => void;
@@ -159,6 +163,8 @@ function InboxMessage({
     };
   }, [messageId, attempt]);
 
+  const shownUnread = unread ?? message?.unread;
+  const canArchive = onArchive && message?.inInbox !== false ? onArchive : undefined;
   useEffect(() => {
     if (!onNavigate || composing) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -171,12 +177,12 @@ function InboxMessage({
       const step = event.key === "j" ? nextId : event.key === "k" ? previousId : undefined;
       if (step) {
         if (allowStep(event)) onNavigate(step);
-      } else if (event.key === "e" && onArchive) onArchive();
+      } else if (event.key === "e" && canArchive) canArchive();
       else if (message && event.key in COMPOSE_KEYS) setComposing(COMPOSE_KEYS[event.key] ?? null);
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onNavigate, composing, setComposing, nextId, previousId, message, onArchive]);
+  }, [onNavigate, composing, setComposing, nextId, previousId, message, canArchive]);
 
   const title = message?.subject ?? subject ?? "";
   const sent = message ? new Date(message.date) : null;
@@ -265,22 +271,23 @@ function InboxMessage({
             <Forward aria-hidden="true" />
             <Trans>Forward</Trans>
           </Button>
-          {onArchive ? (
-            <Button variant="outline" size="sm" onClick={onArchive}>
+          {canArchive ? (
+            <Button variant="outline" size="sm" onClick={canArchive}>
               <Archive aria-hidden="true" />
               <Trans>Archive</Trans>
             </Button>
           ) : null}
-          {onRead && unread !== undefined ? (
-            <Button variant="outline" size="sm" onClick={() => onRead(unread)}>
-              {unread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
-              {unread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
+          {onRead && shownUnread !== undefined ? (
+            <Button variant="outline" size="sm" onClick={() => onRead(shownUnread)}>
+              {shownUnread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
+              {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
             </Button>
           ) : null}
         </div>
       ) : null}
       {seed ? <ComposeEmail seed={seed} accounts={[]} onClose={() => setComposing(null)} /> : null}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {message?.thread?.length ? <EarlierMessages messages={message.thread} /> : null}
         {error ? (
           <div className="flex flex-col items-start gap-2">
             <p role="alert" className="text-sm text-destructive">
@@ -333,21 +340,6 @@ function AttachmentIcon({ mimeType }: { mimeType: string }) {
   return <FileText />;
 }
 
-function formatAttachmentSize(bytes: number): string {
-  const [unit, divisor] =
-    bytes < 1_000
-      ? (["byte", 1] as const)
-      : bytes < 1_000_000
-        ? (["kilobyte", 1_000] as const)
-        : (["megabyte", 1_000_000] as const);
-  return new Intl.NumberFormat(i18n.locale || "en", {
-    style: "unit",
-    unit,
-    unitDisplay: "narrow",
-    maximumFractionDigits: 1,
-  }).format(bytes / divisor);
-}
-
 /** Fetches with the session and space header, then saves the bytes; the file is never opened in the page. */
 async function saveAttachment(messageId: string, attachment: MailAttachmentItem) {
   const response = await fetch(
@@ -370,7 +362,7 @@ function InboxAttachments({
   messageId: string;
   attachments: MailAttachmentItem[];
 }) {
-  const [failed, setFailed] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; filename: string } | null>(null);
   return (
     <div className="mt-3">
       <ul aria-label={t`Attachments`} className="flex flex-wrap gap-2">
@@ -380,26 +372,106 @@ function InboxAttachments({
               type="button"
               className="flex max-w-64 items-center gap-2 rounded-lg border border-border px-3 py-2 text-start text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
               onClick={() => {
-                setFailed(false);
-                saveAttachment(messageId, attachment).catch(() => setFailed(true));
+                setResult(null);
+                saveAttachment(messageId, attachment).then(
+                  () => setResult({ ok: true, filename: attachment.filename }),
+                  () => setResult({ ok: false, filename: attachment.filename }),
+                );
               }}
             >
               <AttachmentIcon mimeType={attachment.mimeType} />
               <span className="flex min-w-0 flex-col">
                 <span className="truncate">{attachment.filename}</span>
                 <span className="text-xs text-muted-foreground">
-                  {formatAttachmentSize(attachment.size)}
+                  {formatBytes(attachment.size)}
                 </span>
               </span>
             </button>
           </li>
         ))}
       </ul>
-      {failed ? (
-        <p role="alert" className="mt-2 text-sm text-destructive">
-          <Trans>Download failed</Trans>
-        </p>
-      ) : null}
+      <p
+        role={result && !result.ok ? "alert" : "status"}
+        className={cn(
+          "mt-2 text-sm empty:hidden",
+          result?.ok ? "text-muted-foreground" : "text-destructive",
+        )}
+      >
+        {result
+          ? result.ok
+            ? t`Downloaded ${result.filename}`
+            : t`Couldn't download ${result.filename}`
+          : null}
+      </p>
     </div>
+  );
+}
+
+/** The conversation's other messages, one line each; a click shows that message's text. */
+function EarlierMessages({ messages }: { messages: InboxThreadMessage[] }) {
+  return (
+    <section className="mb-3 flex flex-col">
+      <h3 className="mb-1 text-xs text-muted-foreground">
+        {plural(messages.length + 1, { one: "# message", other: "# messages" })}
+      </h3>
+      <ol className="flex flex-col rounded-lg border border-border">
+        {messages.map((item) => (
+          <EarlierMessage key={item.id} item={item} />
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function EarlierMessage({ item }: { item: InboxThreadMessage }) {
+  const [open, setOpen] = useState(false);
+  const [body, setBody] = useState<InboxMessageOutput | null>(null);
+  const [error, setError] = useState("");
+  const toggle = () => {
+    setOpen(!open);
+    if (open || body) return;
+    setError("");
+    loadInboxMessage(item.id).then(setBody, (cause) => setError(errorText(cause)));
+  };
+  const sent = new Date(item.receivedAt);
+  return (
+    <li className="border-b border-border last:border-b-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={toggle}
+        className="flex w-full min-w-0 items-baseline gap-2 px-3 py-2 text-start text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <span dir="auto" className="max-w-[40%] shrink-0 truncate font-medium">
+          {item.from}
+        </span>
+        <span dir="auto" className="min-w-0 flex-1 truncate text-muted-foreground">
+          {open ? null : item.snippet}
+        </span>
+        <time
+          dateTime={item.receivedAt}
+          className="shrink-0 text-xs text-muted-foreground tabular-nums"
+        >
+          {Number.isNaN(sent.getTime())
+            ? ""
+            : sent.toLocaleString(i18n.locale || "en", { dateStyle: "medium", timeStyle: "short" })}
+        </time>
+      </button>
+      {open ? (
+        <div className="px-3 pb-3">
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : body ? (
+            <p dir="auto" className="whitespace-pre-wrap wrap-anywhere text-sm">
+              {body.text || item.snippet}
+            </p>
+          ) : (
+            <Skeleton className="h-12 w-full" />
+          )}
+        </div>
+      ) : null}
+    </li>
   );
 }

@@ -4,13 +4,23 @@ import { groupEmailCards } from "@rakazo/core";
 import { Card } from "@rakazo/ui-web";
 import { Paperclip } from "lucide-react";
 import { useState } from "react";
+import { INBOX_CHANGED_EVENT } from "../lib/inbox-message-cache";
 import { formatRelativeTime } from "../lib/relative-time";
+import { rpc } from "../lib/rpc";
+import { errorText } from "../lib/user-error";
 import { InboxMessageDialog } from "./inbox/InboxMessageDialog";
 
 /** Mail the bot cited, grouped by urgency. Mail text is untrusted, so it only ever renders as text. */
 export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "emails" }> }) {
   const { t } = useLingui();
   const [open, setOpen] = useState<EmailCard | null>(null);
+  // Read changes made here, until the message reloads; the dialog shows the cached state otherwise.
+  const [unread, setUnread] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState("");
+  const changed = (call: Promise<unknown>) =>
+    call
+      .then(() => window.dispatchEvent(new Event(INBOX_CHANGED_EVENT)))
+      .catch((cause) => setError(errorText(cause)));
   const now = new Date();
   // The same order the cards are listed in, so the preview steps through them.
   const ordered = groupEmailCards(block.emails).flatMap((group) => group.emails);
@@ -100,8 +110,26 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
         previousId={at > 0 ? ordered[at - 1]?.id : undefined}
         nextId={at >= 0 ? ordered[at + 1]?.id : undefined}
         onNavigate={(id) => setOpen(ordered.find((email) => email.id === id) ?? null)}
+        unread={open ? unread[open.id] : undefined}
+        onArchive={() => {
+          if (!open) return;
+          setError("");
+          changed(rpc.inbox.archive({ messageId: open.id }));
+          setOpen(null);
+        }}
+        onRead={(read) => {
+          if (!open) return;
+          setError("");
+          setUnread((all) => ({ ...all, [open.id]: !read }));
+          changed(rpc.inbox.markRead({ messageId: open.id, read }));
+        }}
         onClose={() => setOpen(null)}
       />
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
