@@ -40,6 +40,7 @@ describe("contact tools", () => {
         .sort();
     expect(offered(false)).toEqual([]);
     expect(offered(true)).toEqual([
+      "cap_table_read",
       "cap_table_update",
       "contacts_add",
       "contacts_list",
@@ -69,6 +70,29 @@ describe("contact tools", () => {
     expect(create).toHaveBeenCalledWith({ data: expect.objectContaining({ ...scope, ...args }) });
     const again = await contactToolFromTool("contacts_add", { prisma, scope }, args);
     expect(again).toEqual({ error: expect.stringContaining("already has this email") });
+  });
+
+  it("cap_table_read returns the run owner's saved cap table, or null before the first save", async () => {
+    const saved = {
+      companyName: "Example Co",
+      asOf: "2026-01-31",
+      fullyDilutedShares: 1000,
+      shareClasses: [],
+      holders: [],
+    };
+    const findUnique = vi
+      .fn()
+      .mockResolvedValueOnce({ data: saved, updatedAt: new Date("2026-02-01T00:00:00Z") })
+      .mockResolvedValueOnce(null);
+    const prisma = { capTableSnapshot: { findUnique } } as never;
+    const read = await contactToolFromTool("cap_table_read", { prisma, scope }, {});
+    expect(read).toEqual({
+      capTable: expect.objectContaining({ companyName: "Example Co", fullyDilutedShares: 1000 }),
+    });
+    expect(findUnique).toHaveBeenCalledWith({ where: { spaceId_userId: scope } });
+    expect(await contactToolFromTool("cap_table_read", { prisma, scope }, {})).toEqual({
+      capTable: null,
+    });
   });
 
   it("cap_table_update validates, then saves for the run's owner", async () => {
