@@ -1089,6 +1089,17 @@ describe("finance pages with the real calculations", () => {
     // Jul, Aug and Sep are the full months since first seen; October is still partial.
     expect(vendor.monthlyAvgCents).toBe(481_200);
     expect(vendor.monthlyAvgMonths).toBe(3);
+    // The chart shows the six full months averaged, not the partial current one; charges list
+    // from the chart's first month.
+    expect(vendor.monthly.map((m) => m.month)).toEqual([
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09",
+    ]);
+    expect(vendor.charges.map((c) => c.postedAt.slice(0, 7))).toContain("2026-10");
   });
 
   it("windows a vendor by purchase date, the same date its monthly totals use", async () => {

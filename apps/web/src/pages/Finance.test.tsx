@@ -1075,7 +1075,7 @@ it("starts a vendor's monthly chart at its first charge and says why there is no
     changePct: null,
     firstSeenAt: "2026-07-09T00:00:00.000Z",
     paidWith: [],
-    monthly: ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"].map((month) => ({
+    monthly: ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"].map((month) => ({
       month,
       cents: month < "2026-07" ? 0 : 481_200,
     })),
@@ -1083,6 +1083,9 @@ it("starts a vendor's monthly chart at its first charge and says why there is no
   });
   await show("/app/finance/vendor/cloud");
   await flush();
+  // The titles say which months the chart covers and where the charge list starts.
+  expect(container.textContent).toContain("Monthly spend · Jul – Sep");
+  expect(container.textContent).toContain("Charges since Jul 1");
   const labels = [...container.querySelectorAll('svg[aria-label="Monthly spend"] text')].map(
     (n) => n.textContent,
   );

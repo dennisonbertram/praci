@@ -917,11 +917,12 @@ export async function financeVendor(
   const latest = newest(own, 1)[0];
   if (!latest) throw notFound();
   const recurring = detectRecurring(all, now, accounts);
-  // Six full months, then the current partial one. The average and the change use full months only.
+  // Six full months, then the current partial one. The average, the change and the chart use the
+  // full months only, so the chart shows exactly what is averaged; charges list from the same start.
   const seven = monthlySpend(own, { vendorKey: input.key }, now, 7);
   const full = seven.slice(0, 6);
   const lastFull = full[5]?.cents ?? 0;
-  const sixMonthsFrom = `${seven[1]?.month ?? monthOf(now, -5)}-01`;
+  const sixMonthsFrom = `${full[0]?.month ?? monthOf(now, -6)}-01`;
   const firstSeenAt = own.reduce(
     (min, t) => ((t.purchasedAt ?? t.postedAt) < min ? (t.purchasedAt ?? t.postedAt) : min),
     latest.purchasedAt ?? latest.postedAt,
@@ -945,7 +946,7 @@ export async function financeVendor(
     changeFromMonth: lastFull && base ? base.month : null,
     firstSeenAt,
     paidWith: recurring.find((r) => r.key === input.key)?.paidWith ?? paidWithFor(own, accounts),
-    monthly: seven.slice(1),
+    monthly: full,
     charges: newest(
       own.filter((t) => txnDay(t) >= sixMonthsFrom),
       LIST_LIMIT,

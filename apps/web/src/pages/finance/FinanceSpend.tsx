@@ -324,7 +324,13 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
             <Kpi title={t`First seen`} value={monthLabel(data.firstSeenAt.slice(0, 7))} />
             <Kpi title={t`Paid with`} value={paidWith || "—"} />
           </div>
-          <Section title={<Trans>Monthly spend</Trans>}>
+          <Section
+            title={
+              charged.length > 0
+                ? t`Monthly spend · ${monthShort(charged[0]?.month ?? "")} – ${monthShort(charged.at(-1)?.month ?? "")}`
+                : t`Monthly spend`
+            }
+          >
             <MonthBars
               items={charged.map((m, i) => ({
                 label: monthAxisLabels(charged.map((x) => x.month))[i] ?? "",
@@ -333,7 +339,9 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
               label={t`Monthly spend`}
             />
           </Section>
-          <Section title={<Trans>Charges</Trans>}>
+          <Section
+            title={charged[0] ? t`Charges since ${shortDay(`${charged[0].month}-01`)}` : t`Charges`}
+          >
             <table className="w-full border-collapse">
               <thead>
                 <tr>

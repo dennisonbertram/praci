@@ -748,9 +748,9 @@ export const FinanceVendorOutputSchema = z.object({
   changeFromMonth: MonthId.nullable().optional(),
   firstSeenAt: IsoDate,
   paidWith: z.array(PaidWithEntrySchema),
-  /** 6 months, oldest first. */
+  /** The 6 full months the average covers, oldest first (the current month is not among them). */
   monthly: z.array(MonthCentsSchema),
-  /** Charges in the last 6 months, newest first. */
+  /** Charges since the first of `monthly`'s months, including this month's, newest first. */
   charges: z.array(FinanceTransactionSchema),
 });
 
