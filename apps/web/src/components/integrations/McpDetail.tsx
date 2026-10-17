@@ -232,7 +232,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           >
             <Trans>Remove {server.name}</Trans>
           </Button>
-          <span className="text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             <Trans>Removes the connection and bot access.</Trans>
           </span>
         </div>
