@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/client";
 import type { DataRoomApiItem } from "@rakazo/contracts";
+import { DATA_ROOM_METADATA_ORDINAL } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isInProgress } from "../../lib/data-room";
 import { rpc } from "../../lib/rpc";
@@ -16,6 +17,12 @@ export type Filters = {
 };
 export type SortField = "date" | "name" | "type" | "createdAt";
 export type Sort = { field: SortField; direction: "asc" | "desc" };
+/** A newly chosen sort starts in the order people expect: names A to Z, dates newest first. */
+export const naturalSort = (field: SortField): Sort => ({
+  field,
+  direction: field === "name" || field === "type" ? "asc" : "desc",
+});
+
 /** `sort` null means relevance, which only a search has. */
 export type ListQuery = { query: string; filters: Filters; sort: Sort | null };
 /** One document, with the search snippets that matched in it. */
@@ -37,6 +44,19 @@ function sortValue(item: DataRoomApiItem, sort: Sort | null) {
     default:
       return item.createdAt;
   }
+}
+
+/**
+ * A metadata hit whose highlights all lie in the file name would only repeat the name shown above
+ * it. One that also matches the summary, parties or tags is worth showing.
+ */
+export function matchesOnlyName(snippet: string, name: string) {
+  const marked = snippet
+    .split("\u0001")
+    .slice(1)
+    .map((part) => part.split("\u0002")[0]?.toLowerCase() ?? "");
+  const words = name.toLowerCase().replace(/[._\-/]+/g, " ");
+  return marked.every((text) => name.toLowerCase().includes(text) || words.includes(text));
 }
 
 function mergeRows(rows: Row[], more: Row[]) {
@@ -70,7 +90,14 @@ async function fetchPage(q: ListQuery, cursor?: string) {
     return {
       rows: mergeRows(
         [],
-        page.results.map((hit) => ({ item: hit.item, snippets: [hit.snippet] })),
+        page.results.map((hit) => ({
+          item: hit.item,
+          snippets:
+            hit.ordinal === DATA_ROOM_METADATA_ORDINAL &&
+            matchesOnlyName(hit.snippet, hit.item.name)
+              ? []
+              : [hit.snippet],
+        })),
       ),
       nextCursor: page.nextCursor,
     };
