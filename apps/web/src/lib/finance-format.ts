@@ -1,4 +1,8 @@
 import type { PaidWithEntry } from "@rakazo/contracts";
+import { getHideAmounts } from "./hide-amounts-preference";
+
+/** Fixed mask: shows neither magnitude nor digit count. */
+export const MASK = "•••";
 
 const dollars = (locale?: string) =>
   new Intl.NumberFormat(locale, {
@@ -11,11 +15,11 @@ const exact = (locale?: string, currency = "USD") =>
 
 /** Whole dollars, no sign. Money is cents in a JS number. */
 export const money = (cents: number, locale?: string) =>
-  dollars(locale).format(Math.abs(cents) / 100);
+  getHideAmounts() ? `$${MASK}` : dollars(locale).format(Math.abs(cents) / 100);
 
 /** Dollars and cents, no sign. */
 export const moneyExact = (cents: number, locale?: string, currency?: string) =>
-  exact(locale, currency).format(Math.abs(cents) / 100);
+  getHideAmounts() ? `$${MASK}` : exact(locale, currency).format(Math.abs(cents) / 100);
 
 /** A transaction amount: money in gets a plus sign, money out has none (the page shows what left). */
 export const transactionAmount = (cents: number, locale?: string, currency?: string) =>
@@ -23,6 +27,7 @@ export const transactionAmount = (cents: number, locale?: string, currency?: str
 
 /** Axis labels: `$1.5k`, `$40k`, `$800`. */
 export function axisMoney(cents: number): string {
+  if (getHideAmounts()) return `$${MASK}`;
   const d = Math.round(Math.abs(cents) / 100);
   return d >= 1000 ? `$${+(d / 1000).toFixed(1)}k` : `$${d}`;
 }
@@ -119,7 +124,7 @@ export const monthFull = (month: string, locale?: string) =>
 /** `↓ 53%`, with the arrow showing the direction of the change; null when there is no comparison. */
 export function changeText(pct: number | null): string | null {
   if (pct === null || !Number.isFinite(pct)) return null;
-  const rounded = Math.round(Math.abs(pct));
+  const rounded = getHideAmounts() ? MASK : Math.round(Math.abs(pct));
   return `${pct < 0 ? "↓" : "↑"} ${rounded}%`;
 }
 
@@ -151,3 +156,31 @@ export const lastDayOf = (endExclusive: string): string =>
   new Date(Date.parse(`${endExclusive.slice(0, 10)}T00:00:00Z`) - 86_400_000)
     .toISOString()
     .slice(0, 10);
+
+/** A share or unit count, or `—`. Masked while amounts are hidden. */
+export const shareCount = (value: number | null, locale?: string) =>
+  value == null ? "—" : getHideAmounts() ? MASK : value.toLocaleString(locale);
+
+/** A whole or per-share USD figure (`digits` decimals), or `—`. Masked while amounts are hidden. */
+export const usdFigure = (value: number | null, digits = 0, locale?: string) =>
+  value == null
+    ? "—"
+    : getHideAmounts()
+      ? `$${MASK}`
+      : value.toLocaleString(locale, {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: digits,
+          maximumFractionDigits: digits,
+        });
+
+/** A percentage with `digits` decimals, or `—`. Masked while amounts are hidden. */
+export const percentFigure = (value: number | null, digits = 2) =>
+  value == null ? "—" : getHideAmounts() ? `${MASK}%` : `${value.toFixed(digits)}%`;
+
+/** Runway in months (`4.2`), undefined when unknown. Masked while amounts are hidden, since it follows from cash. */
+export const runwayText = (months: number | null | undefined, digits = 1): string | undefined =>
+  months == null ? undefined : getHideAmounts() ? MASK : months.toFixed(digits);
+
+/** Any text that follows from amounts (token quantities, run-out dates). Masked while amounts are hidden. */
+export const hiddenOr = (text: string): string => (getHideAmounts() ? MASK : text);

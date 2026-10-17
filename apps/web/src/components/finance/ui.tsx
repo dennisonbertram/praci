@@ -30,7 +30,9 @@ import {
   writeGroupedPref,
 } from "../../lib/finance-group";
 import { financePath } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
+import { HideAmountsButton } from "../HideAmountsToggle";
 import { shade } from "./charts";
 
 /** What the Shell tells every Finance page: how to open the agent panel (absent while it is open). */
@@ -125,6 +127,7 @@ export function DetailHead({ crumbs }: { crumbs: Crumb[] }) {
           ))}
         </ol>
       </nav>
+      <HideAmountsButton />
       <AskAgentButton />
     </div>
   );
@@ -265,6 +268,7 @@ export function BreakdownRows({
   to: (row: BreakdownRow) => string;
   swatches?: boolean;
 }) {
+  useHideAmounts();
   const top = rows[0]?.cents || 1;
   return (
     <div className="-mx-2">
@@ -349,6 +353,7 @@ export const rowClass =
   "group/row cursor-pointer border-t border-border hover:bg-background [&>td]:py-2";
 
 function TransactionRow({ row }: { row: FinanceTransaction }) {
+  useHideAmounts();
   const rowProps = useRowNavigate();
   return (
     <tr className={rowClass} {...rowProps(financePath.transaction(row.id))}>
@@ -382,6 +387,7 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
 
 /** One row per vendor; opening it lists that vendor's transactions in the flat list's row style. */
 function VendorGroupRows({ group }: { group: VendorGroup }) {
+  useHideAmounts();
   const [open, setOpen] = useState(false);
   const count = group.rows.length;
   const name = group.name || t`Unknown`;

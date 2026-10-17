@@ -8,6 +8,7 @@ import {
   monthAxisLabels,
   weekdayShort,
 } from "../../lib/finance-format";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 
 /** Gridline step and top value (in cents) so about three to four lines cover `max`. */
 export function niceScale(max: number): { step: number; top: number } {
@@ -82,6 +83,7 @@ function Grid({
   bottom: number;
   scale: { step: number; top: number };
 }) {
+  useHideAmounts();
   const lines: number[] = [];
   for (let v = 0; v <= scale.top; v += scale.step) lines.push(v);
   return (
@@ -278,6 +280,7 @@ export function BurnBars({
   onOpen: (point: CashPoint) => void;
   label: string;
 }) {
+  useHideAmounts();
   const hatch = useId();
   return (
     <Chart height={height} label={label}>
@@ -410,6 +413,7 @@ export function MonthBars({
   height?: number;
   label: string;
 }) {
+  useHideAmounts();
   return (
     <Chart height={height} label={label}>
       {(width) => {
