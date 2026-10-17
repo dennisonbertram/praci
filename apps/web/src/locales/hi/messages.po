@@ -6544,6 +6544,10 @@ msgstr "छोड़ें"
 msgid "Skip or deploy key"
 msgstr "छोड़ें या डिप्लॉय कुंजी दें"
 
+#: src/components/SkipToContent.tsx
+msgid "Skip to content"
+msgstr ""
+
 #. placeholder {0}: skipped.join(", ")
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"

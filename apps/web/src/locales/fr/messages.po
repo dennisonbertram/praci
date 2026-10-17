@@ -6544,6 +6544,10 @@ msgstr "Passer"
 msgid "Skip or deploy key"
 msgstr "Passer ou clé de déploiement"
 
+#: src/components/SkipToContent.tsx
+msgid "Skip to content"
+msgstr ""
+
 #. placeholder {0}: skipped.join(", ")
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"

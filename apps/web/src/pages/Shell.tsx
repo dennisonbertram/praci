@@ -177,6 +177,7 @@ import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
+import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
 import {
   LIVE_TOOL_STEP_WINDOW,
   StandaloneToolActivity,
@@ -3321,6 +3322,7 @@ export function ShellPage() {
         mobileSidebarSwipeRef.current = null;
       }}
     >
+      <SkipToContent />
       <ComputerUpdateProgress
         onCompleted={() => {
           if (active) void refreshThread(active.id);
@@ -4194,9 +4196,11 @@ export function ShellPage() {
 
       {/* Keep the composer's z-index inside the chat so phone overlays like the side panel cover it. */}
       <main
+        id={MAIN_CONTENT_ID}
+        tabIndex={-1}
         aria-hidden={mobileSidebarOpen || undefined}
         inert={mobileSidebarOpen}
-        className="isolate flex min-w-0 flex-1 flex-col bg-background"
+        className="isolate flex min-w-0 flex-1 flex-col bg-background outline-none"
       >
         {/* Inside main so the composer and its menus stay above it. */}
         {!mobileSidebarOpen ? (

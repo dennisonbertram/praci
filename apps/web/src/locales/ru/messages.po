@@ -6544,6 +6544,10 @@ msgstr "Пропустить"
 msgid "Skip or deploy key"
 msgstr "Пропустить или добавить ключ"
 
+#: src/components/SkipToContent.tsx
+msgid "Skip to content"
+msgstr ""
+
 #. placeholder {0}: skipped.join(", ")
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"

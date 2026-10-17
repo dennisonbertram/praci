@@ -6544,6 +6544,10 @@ msgstr "건너뛰기"
 msgid "Skip or deploy key"
 msgstr "건너뛰거나 배포 키"
 
+#: src/components/SkipToContent.tsx
+msgid "Skip to content"
+msgstr ""
+
 #. placeholder {0}: skipped.join(", ")
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"
