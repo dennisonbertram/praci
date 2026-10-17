@@ -35,7 +35,12 @@ vi.mock("@rakazo/ui-web", () => ({
   ),
 }));
 vi.mock("../lib/auth-capabilities", () => ({ fetchAuthCapabilities: vi.fn() }));
-vi.mock("../lib/auth", () => ({ authClient: { signIn: { social: vi.fn(async () => ({})) } } }));
+vi.mock("../lib/auth", () => ({
+  authClient: {
+    signIn: { social: vi.fn(async () => ({})) },
+    requestPasswordReset: vi.fn(async () => ({})),
+  },
+}));
 vi.mock("../lib/rpc", () => ({ clearSpaceSelection: vi.fn() }));
 const capabilities: AuthCapabilities = {
   passwordAuth: false,
@@ -152,4 +157,29 @@ it("keeps SSO available for retry while an authorization request is pending", as
   expect(button.disabled).toBe(false);
   await act(async () => button.click());
   expect(authClient.signIn.social).toHaveBeenCalledTimes(2);
+});
+
+it("names the address after a reset request and can send it again", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...capabilities,
+    sso: null,
+    passwordAuth: true,
+    passwordReset: true,
+    resetUrl: "https://web.test/reset-password",
+  });
+  await render("forgot");
+  const email = host.querySelector<HTMLInputElement>('input[name="email"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+      email,
+      "ada@example.test",
+    );
+    email.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => host.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
+  expect(host.textContent).toContain("If ada@example.test has an account");
+  expect(host.textContent).toContain("spam");
+  const again = [...host.querySelectorAll("button")].find((b) => b.textContent === "Send again")!;
+  await act(async () => again.click());
+  expect(authClient.requestPasswordReset).toHaveBeenCalledTimes(2);
 });

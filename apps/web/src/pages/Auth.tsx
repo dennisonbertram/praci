@@ -42,7 +42,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   ) : mode === "in" ? (
     <Trans>Sign in to Rakazo</Trans>
   ) : mode === "up" ? (
-    <Trans>Create your Rakazo</Trans>
+    <Trans>Create your account</Trans>
   ) : (
     <Trans>Reset your password</Trans>
   );
@@ -151,7 +151,25 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   return (
     <AuthFrame onSubmit={submit} title={title}>
       {sent ? (
-        <div className="w-full text-center">
+        <div className="flex w-full flex-col items-center gap-4 text-center">
+          {resetSent ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                <Trans>
+                  If {email.trim()} has an account, a reset link is on its way. It can take a
+                  minute; check your spam folder if it does not arrive.
+                </Trans>
+              </p>
+              {error ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
+              <Button type="submit" variant="outline" disabled={pending}>
+                <Trans>Send again</Trans>
+              </Button>
+            </>
+          ) : null}
           <Link to="/sign-in" className="font-medium text-foreground">
             <Trans>Back to sign in</Trans>
           </Link>
@@ -255,6 +273,11 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       {showPassword ? <EyeOff /> : <Eye />}
                     </Button>
                   </div>
+                  {mode === "up" ? (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      <Trans>At least 8 characters.</Trans>
+                    </p>
+                  ) : null}
                   {mode === "in" && reset?.passwordReset ? (
                     <div className="mt-2 text-right text-sm">
                       <Link to="/forgot-password" className="font-medium text-foreground">
