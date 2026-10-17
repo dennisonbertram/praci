@@ -273,7 +273,9 @@ export function FinanceRunwayPage() {
           <Section title={<Trans>Projected cash</Trans>}>
             <LineChart
               values={points.map((p) => p.balanceCents)}
-              labels={monthAxisLabels(points.map((p) => p.month))}
+              labels={monthAxisLabels(points.map((p) => p.month)).map((label, i) =>
+                i >= (data?.history.length ?? 0) ? hiddenOr(label) : label,
+              )}
               height={240}
               label={t`Projected cash`}
               solidUntil={Math.max(data.history.length - 1, 0)}
