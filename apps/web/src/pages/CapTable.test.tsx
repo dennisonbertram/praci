@@ -288,7 +288,7 @@ it("shows Ownership in the same font as the other figures", async () => {
 it("offers Add email for a holder without a contact and prefills the dialog", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
   await show();
-  const add = [...container.querySelectorAll("button")].filter(
+  const add = [...container.querySelectorAll("[data-testid=cap-table-email-cell] button")].filter(
     (b) => b.textContent === "Add email",
   );
   expect(add).toHaveLength(1);
@@ -513,7 +513,7 @@ it("lists only investors on the Investors tab and offers Add email only to inves
   expect(text).not.toContain("Granted options");
   await click(button("All"));
   expect(container.textContent).toContain("Founder Person");
-  const adds = [...container.querySelectorAll("button")].filter(
+  const adds = [...container.querySelectorAll("[data-testid=cap-table-email-cell] button")].filter(
     (b) => b.textContent === "Add email",
   );
   expect(adds).toHaveLength(1);
@@ -589,4 +589,6 @@ it("repeats each email under the name, for phones where the Email column is hidd
     (cell) => cell.textContent,
   );
   expect(under).toContain("ada@example.test");
+  // A holder with no contact gets Add email there too, so phones can still add one.
+  expect(under).toContain("Add email");
 });

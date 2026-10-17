@@ -813,6 +813,7 @@ export function CapTablePage({
                     ) : null}
                   </td>
                   <td
+                    data-testid="cap-table-email-cell"
                     className="hidden truncate py-2 pe-3 text-muted-foreground @md:table-cell"
                     title={contact?.email ?? undefined}
                   >
