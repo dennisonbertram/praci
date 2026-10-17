@@ -19,7 +19,9 @@ vi.mock("@lingui/core/macro", () => ({
   plural: (n: number, forms: { one: string; other: string }) =>
     (n === 1 ? forms.one : forms.other).replace("#", String(n)),
 }));
-vi.mock("../../components/SandboxedHtmlViewer", () => ({ SandboxedHtmlViewer: () => null }));
+vi.mock("../../components/SandboxedHtmlViewer", () => ({
+  SandboxedHtmlViewer: () => <div data-testid="html-frame" />,
+}));
 vi.mock("../../components/ComposeEmail", () => ({
   ComposeEmail: ({ seed }: { seed: { kind: string } }) => (
     <div data-testid="compose">{seed.kind}</div>
@@ -178,6 +180,28 @@ it("shows the text, not a blank frame, when the HTML has nothing visible", async
     text: "Plain copy",
   });
   expect(document.body.textContent).toContain("Plain copy");
+});
+
+it("shows a plainly written HTML message as text in the app's style, and a designed one in its frame", async () => {
+  await show("plain1", {
+    html: '<div dir="ltr"><p>Hi Morgan, <b>Section 9</b> works.</p><blockquote style="margin:0">Earlier</blockquote></div>',
+    text: "Hi Morgan, Section 9 works.",
+  });
+  expect(document.querySelector('[data-testid="html-frame"]')).toBeNull();
+  expect(document.querySelector("p.whitespace-pre-wrap")?.textContent).toBe(
+    "Hi Morgan, Section 9 works.",
+  );
+  await show("designed1", {
+    html: "<table><tr><td><img src='https://example.com/logo.png'> Sale</td></tr></table>",
+    text: "Sale",
+  });
+  expect(document.querySelector('[data-testid="html-frame"]')).not.toBeNull();
+});
+
+it("names the sender You on the user's own message", async () => {
+  await show("self1", { from: "me@example.com", fromSelf: true });
+  expect(document.querySelector(".font-semibold.text-foreground")?.textContent).toBe("You");
+  expect(document.body.textContent).toContain("<me@example.com>");
 });
 
 it("archives with the button or e, and marks read or unread, when the page allows it", async () => {

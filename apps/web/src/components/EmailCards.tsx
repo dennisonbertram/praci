@@ -5,7 +5,7 @@ import { Card } from "@rakazo/ui-web";
 import { Paperclip } from "lucide-react";
 import { useState } from "react";
 import { INBOX_CHANGED_EVENT } from "../lib/inbox-message-cache";
-import { formatRelativeTime } from "../lib/relative-time";
+import { formatMailTime } from "../lib/mail-time";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 import { InboxMessageDialog } from "./inbox/InboxMessageDialog";
@@ -64,7 +64,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
                   <span className="flex items-center gap-2">
                     {attachments(email)}
                     <span className="text-xs text-muted-foreground tabular-nums">
-                      {formatRelativeTime(email.receivedAt, now)}
+                      {formatMailTime(email.receivedAt, now)}
                     </span>
                   </span>
                   <span dir="auto" className="col-span-2 truncate text-muted-foreground">
@@ -89,7 +89,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
                   <span className="flex shrink-0 items-center gap-2">
                     {attachments(email)}
                     <span className="text-xs text-muted-foreground tabular-nums">
-                      {formatRelativeTime(email.receivedAt, now)}
+                      {formatMailTime(email.receivedAt, now)}
                     </span>
                   </span>
                 </span>

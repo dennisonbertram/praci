@@ -112,6 +112,7 @@ vi.mock("../components/inbox/InboxRow", () => ({
           data-row-id={row.id}
           data-selected={selectedId === row.id}
           data-feedback={row.feedback ?? ""}
+          data-category={row.category ?? ""}
           onClick={() => onOpen(row.id)}
         >
           {row.subject}
@@ -561,6 +562,19 @@ it("archiving the open message closes it and offers Undo on the list", async () 
   expect(rpcMock.unarchive).toHaveBeenCalled();
 });
 
+it("leaves keys pressed outside the Inbox page, such as by the agent panel, to that panel", async () => {
+  const c = await render();
+  await press("j");
+  expect(selected(c)).toBe("a");
+  const panel = document.body.appendChild(document.createElement("fieldset"));
+  panel.tabIndex = -1;
+  await press("Enter", panel);
+  await press("j", panel);
+  expect(location.search).toBe("");
+  expect(selected(c)).toBe("a");
+  panel.remove();
+});
+
 it("takes one list step from a burst of j presses and ignores a held key", async () => {
   const c = await render();
   await act(async () => {
@@ -612,6 +626,47 @@ it("stops spinning when sorting stalls and offers to try again", async () => {
   await click(byText(c, "Try sorting again"));
   expect(rpcMock.refresh.mock.calls.length).toBe(refreshes + 1);
   expect(c.textContent).toContain("Sorting your mail…");
+});
+
+it("shows nothing from the first sort until it and its to-dos have landed, then changes once", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")], { triagePending: true }));
+  const c = await render();
+  const sorting = () => c.textContent?.includes("Sorting your mail…");
+  const category = (id: string) =>
+    c.querySelector<HTMLElement>(`[data-row-id="${id}"]`)?.dataset.category;
+  // Part of the mail is sorted while sorting goes on: the rows show none of it yet.
+  rpcMock.list.mockResolvedValue(
+    list([row("a"), row("b", { needsReply: false, category: "newsletter" })], {
+      triagePending: true,
+    }),
+  );
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  expect(sorting()).toBe(true);
+  expect(category("b")).toBe("");
+  // Sorting finished, and its to-dos are still loading: the page waits for them.
+  let todosLoaded: (value: unknown) => void = () => {};
+  rpcMock.todos.mockReturnValue(new Promise((resolve) => (todosLoaded = resolve)));
+  rpcMock.list.mockResolvedValue(
+    list([row("a", { needsReply: true }), row("b", { needsReply: false, category: "newsletter" })]),
+  );
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  expect(sorting()).toBe(true);
+  expect(category("b")).toBe("");
+  const todo = {
+    id: "t1",
+    connectionId: "c1",
+    messageId: "a",
+    text: "Send the deck",
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: null,
+    doneAt: null,
+  };
+  await act(async () => todosLoaded({ todos: [todo] }));
+  expect(sorting()).toBe(false);
+  expect(category("b")).toBe("newsletter");
+  expect(c.textContent).toContain("Send the deck");
 });
 
 it("says it is sorting while the first triage runs, and names the sender a mark covers", async () => {

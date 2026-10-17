@@ -93,3 +93,9 @@ it("is a 56px row", async () => {
   await show();
   expect(document.querySelector("button[data-row-id]")?.className).toContain("h-14");
 });
+
+it("names the user's own sent mail You, not their address", async () => {
+  await show({ row: { ...row, from: "me@example.test", fromSelf: true } });
+  const sender = document.querySelector("button[data-row-id] > span:nth-child(2)");
+  expect(sender?.textContent).toBe("You (unread)");
+});

@@ -216,7 +216,8 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
     await close();
   });
 
-  const seedMailboxes = () => {
+  /** `withSent` adds the user's own sent message s-1 to box-a. */
+  const seedMailboxes = (withSent = false) => {
     const message = (messageId: string, labels: string[]) => ({
       id: messageId,
       date: daysAgo(1).toISOString(),
@@ -232,7 +233,13 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
     });
     gmail = new GmailApiEmulator({
       mailboxes: {
-        "box-a": { address: "box-a@example.test", messages: [message("a-1", ["INBOX", "UNREAD"])] },
+        "box-a": {
+          address: "box-a@example.test",
+          messages: [
+            message("a-1", ["INBOX", "UNREAD"]),
+            ...(withSent ? [message("s-1", ["SENT"])] : []),
+          ],
+        },
         "box-b": { address: "box-b@example.test", messages: [message("b-1", ["INBOX"])] },
         "box-c": { address: "box-c@example.test", messages: [message("c-1", ["INBOX"])] },
         "box-revoked": {
@@ -693,7 +700,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
 
     it("lists the conversation's earlier and later messages, oldest first, and the cached state", async () => {
       await wipe();
-      seedMailboxes();
+      seedMailboxes(true);
       const first = await cache(a, connA, "t-1", { threadId: "t", receivedAt: daysAgo(3) });
       const second = await cache(a, connA, "t-2", {
         threadId: "t",
@@ -730,6 +737,9 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       ]);
 
       expect(message).toMatchObject({ unread: true, inInbox: true });
+      expect(message.fromSelf).toBeUndefined();
+      // The user's own message says so, so the dialog can name its sender "You".
+      expect((await inboxGet(deps, a, { messageId: reply.id })).fromSelf).toBe(true);
       expect(message.thread).toEqual([
         {
           id: first.id,

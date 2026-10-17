@@ -74,6 +74,8 @@ export const MailRowSchema = z.object({
   category: InboxCategorySchema.nullable(),
   /** The user's mark on this sender; null when unmarked and while triage is not enabled. */
   feedback: InboxMarkSchema.nullable(),
+  /** Sent by the user, such as their reply in a search result; optional for older servers. */
+  fromSelf: z.boolean().optional(),
 });
 
 /** Which account a request covers; omitted means every connected mail account. */
@@ -176,6 +178,8 @@ export const InboxThreadMessageSchema = z.object({
 
 export const InboxMessageSchema = z.object({
   from: z.string(),
+  /** Sent by the user; optional for older servers. */
+  fromSelf: z.boolean().optional(),
   to: z.string(),
   /** Empty when the message has no Cc. */
   cc: z.string(),

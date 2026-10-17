@@ -6,7 +6,6 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
-vi.mock("../lib/relative-time", () => ({ formatRelativeTime: () => "2d ago" }));
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, i) => text + part + String(values[i] ?? ""), "");
@@ -115,7 +114,8 @@ it("shows Later as compact rows without the snippet, and urgent mail as cards wi
   const row = view.container.querySelector('[data-testid="email-row"]');
   expect(row?.textContent).toContain("Sender l");
   expect(row?.textContent).toContain("Subject l");
-  expect(row?.textContent).toContain("2d ago");
+  // The same date the Inbox list shows for this mail, not "2d ago".
+  expect(row?.textContent).toContain("Oct 10");
   expect(row?.textContent).toContain("2");
   expect(row?.textContent).not.toContain("Snippet l");
   await view.cleanup();

@@ -48,6 +48,22 @@ export const HtmlBody: Story = {
     }),
 };
 
+/** The user's own reply, found by search: named "You", and its plain HTML reads as text in the app's style. */
+export const OwnSentReply: Story = {
+  args: { messageId: "msg_own" },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.get": {
+        ...message,
+        from: "me@example.test",
+        fromSelf: true,
+        to: "Sample Sender <sender@example.test>",
+        html: "<div><p>Thanks, the <b>planning notes</b> look good to me.</p></div>",
+        text: "Thanks, the planning notes look good to me.",
+      },
+    }),
+};
+
 export const WithAttachments: Story = {
   name: "With attachments (image, archive, document)",
   args: { messageId: "msg_files" },

@@ -189,7 +189,11 @@ function InboxMessage({
 
   const title = message?.subject ?? subject ?? "";
   const sent = message ? new Date(message.date) : null;
-  const sender = splitSender(message?.from ?? "");
+  const parsed = splitSender(message?.from ?? "");
+  // The user's own message, such as their reply found by search, says "You" as the conversation does.
+  const sender = message?.fromSelf
+    ? { name: t`You`, address: parsed.address || parsed.name }
+    : parsed;
   return (
     <>
       <div className="flex items-start gap-2">
@@ -328,7 +332,9 @@ function InboxMessage({
           </div>
         ) : !message ? (
           <Skeleton className="h-24 w-full" />
-        ) : message.html && hasVisibleContent(message.html) ? (
+        ) : message.html &&
+          hasVisibleContent(message.html) &&
+          !(message.text && isPlainHtml(message.html)) ? (
           <div className="min-h-64 flex-1 overflow-hidden rounded-lg border border-border">
             <SandboxedHtmlViewer html={message.html} title={message.subject} email />
           </div>
@@ -355,6 +361,35 @@ function hasVisibleContent(html: string): boolean {
   const { body } = new DOMParser().parseFromString(html, "text/html");
   for (const node of body.querySelectorAll("style, script")) node.remove();
   return Boolean(body.textContent?.trim()) || body.querySelector("img, svg, video") !== null;
+}
+
+/** Tags of a plain written message, such as one from the composer, which reads best as text in the app's own style. */
+const PLAIN_TAGS = new Set([
+  "HTML",
+  "HEAD",
+  "BODY",
+  "META",
+  "TITLE",
+  "P",
+  "BR",
+  "DIV",
+  "SPAN",
+  "B",
+  "STRONG",
+  "I",
+  "EM",
+  "U",
+  "A",
+  "UL",
+  "OL",
+  "LI",
+  "BLOCKQUOTE",
+]);
+
+/** True when the HTML is only text formatting: no layout, pictures or styles of its own. */
+export function isPlainHtml(html: string): boolean {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return [...doc.querySelectorAll("*")].every((el) => PLAIN_TAGS.has(el.tagName));
 }
 
 /** `Name <a@b.test>` as the server writes it; a bare address is its own name. */

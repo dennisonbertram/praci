@@ -145,6 +145,12 @@ export function InboxPage({
   const [stalled, setStalled] = useState(false);
   const archiving = useRef(new Map<string, Promise<boolean>>());
   const [composing, setComposing] = useState(false);
+  // The first sort after Allow: rows keep their places until triage finishes, then regroup once.
+  const [sorting, setSorting] = useState(false);
+  const sortingRef = useRef(false);
+  sortingRef.current = sorting;
+  // Triage finished during the first sort, and the to-dos it made are still loading.
+  const sortEnding = useRef(false);
   // "Not now" on the sorting prompt hides it for this visit only.
   const [consentDismissed, setConsentDismissed] = useState(false);
 
@@ -199,11 +205,19 @@ export function InboxPage({
   useEffect(() => {
     if (paused) return;
     let live = true;
+    const done = (todos: InboxTodo[]) => {
+      if (!live) return;
+      setTodosByTab((all) => ({ ...all, [tabKey]: todos }));
+      if (sortEnding.current) {
+        sortEnding.current = false;
+        setSorting(false);
+      }
+    };
     rpc.inbox.todos
       .list(tab ? { connectionId: tab } : {})
-      .then((next) => live && setTodosByTab((all) => ({ ...all, [tabKey]: next.todos })))
+      .then((next) => done(next.todos))
       // The list reports its own failure; the card just stays hidden.
-      .catch(() => live && setTodosByTab((all) => ({ ...all, [tabKey]: [] })));
+      .catch(() => done([]));
     return () => {
       live = false;
     };
@@ -224,6 +238,7 @@ export function InboxPage({
         before.triageState !== triageState ||
         (before.pending && !pending))
     ) {
+      if (before.pending && !pending && sortingRef.current) sortEnding.current = true;
       setTodoRefresh((n) => n + 1);
     }
   }, [data, syncedAt, pending, triageState]);
@@ -281,8 +296,6 @@ export function InboxPage({
   }, [shown, moreRows, filtered]);
   // The view and category buttons show only when triage can fill them in.
   const triage = Boolean(shown?.enabled ?? data?.enabled);
-  // The first sort after Allow: rows keep their places until triage finishes, then regroup once.
-  const [sorting, setSorting] = useState(false);
   const firstSort =
     triage &&
     Boolean(shown?.triagePending) &&
@@ -290,7 +303,8 @@ export function InboxPage({
     shown?.rows.every((row) => row.needsReply === null);
   useEffect(() => {
     if (firstSort) setSorting(true);
-    else if (!shown?.triagePending) setSorting(false);
+    // The to-dos reload when triage finishes; sorting ends when they arrive, so the page changes once.
+    else if (!shown?.triagePending && !sortEnding.current) setSorting(false);
   }, [firstSort, shown?.triagePending]);
   const narrowed = triage && (view === "important" || Boolean(category));
   // A search or narrowed list is one date-ordered list under a result count, not Needs reply / Today / Earlier.
@@ -298,7 +312,18 @@ export function InboxPage({
   const groups = useMemo(
     () =>
       groupInbox(
-        resultsView || sorting ? rows.map((row) => ({ ...row, needsReply: null })) : rows,
+        sorting
+          ? // Rows sorted so far show nothing new until the whole sort lands.
+            rows.map((row) => ({
+              ...row,
+              needsReply: null,
+              priority: null,
+              reason: null,
+              category: null,
+            }))
+          : resultsView
+            ? rows.map((row) => ({ ...row, needsReply: null }))
+            : rows,
         new Date(),
       ),
     [rows, resultsView, sorting],
@@ -529,7 +554,10 @@ export function InboxPage({
   ) : null;
 
   return (
-    <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-6 xl:px-10">
+    <div
+      data-inbox-page
+      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-6 xl:px-10"
+    >
       <div className="mb-5 flex flex-wrap items-center gap-2 @md:flex-nowrap">
         <h1 className="me-auto shrink-0 text-xl font-semibold tracking-tight @md:me-1">
           <Trans>Inbox</Trans>
@@ -853,7 +881,6 @@ export function InboxPage({
                 onArchive={archive}
                 onRead={setRead}
                 selectedId={selectedId}
-                today
               />
               <InboxGroup
                 title={<Trans>Earlier</Trans>}
@@ -863,7 +890,6 @@ export function InboxPage({
                 onArchive={archive}
                 onRead={setRead}
                 selectedId={selectedId}
-                today={false}
               />
             </>
           )}

@@ -172,6 +172,7 @@ function toMailRow(m: CachedMessage, enabled: boolean, marks: Map<string, InboxM
     reason: enabled ? m.reason : null,
     category: enabled ? (InboxCategorySchema.options.find((c) => c === m.category) ?? null) : null,
     feedback: mark,
+    ...(m.fromSelf ? { fromSelf: true } : {}),
   };
 }
 
@@ -571,6 +572,7 @@ export async function inboxGet(
       thread: thread.filter((m) => !isLater(m)).map(threadItem),
       later: thread.filter(isLater).map(threadItem),
       from: formatAddress(message.from),
+      ...(row.fromSelf ? { fromSelf: true } : {}),
       to: message.to.map(formatAddress).join(", "),
       cc: message.cc.map(formatAddress).join(", "),
       date: message.date,

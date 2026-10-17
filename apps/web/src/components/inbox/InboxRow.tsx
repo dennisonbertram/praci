@@ -1,4 +1,3 @@
-import { i18n } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { InboxMark, MailRow } from "@rakazo/contracts";
 import { inboxLabel, isSuspiciousCategory } from "@rakazo/core";
@@ -15,20 +14,7 @@ import {
   TooltipTrigger,
 } from "@rakazo/ui-web";
 import { Archive, BellOff, Ellipsis, Mail, MailOpen, Star, TriangleAlert } from "lucide-react";
-
-/** Time of day for today's mail, month and day otherwise, with the year for another year. */
-function formatMailTime(iso: string, today: boolean): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const locale = i18n.locale || "en";
-  return today
-    ? date.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })
-    : date.toLocaleDateString(locale, {
-        month: "short",
-        day: "numeric",
-        ...(date.getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" }),
-      });
-}
+import { formatMailTime } from "../../lib/mail-time";
 
 /** Narrow panes drop the badge for a dot: warning for Spam/Junk, solid for Needs attention, hollow for Newsletter; Spam is a solid warning dot and Junk a warning ring. */
 const LABEL_DOT = {
@@ -45,7 +31,6 @@ export function InboxGroup({
   onMark,
   onArchive,
   onRead,
-  today,
   selectedId,
   hideAttention,
 }: {
@@ -57,8 +42,6 @@ export function InboxGroup({
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   onArchive?: (messageId: string) => void;
   onRead?: (messageId: string, read: boolean) => void;
-  /** Omitted for mixed-date lists: each row then decides from its own date. */
-  today?: boolean;
   selectedId?: string;
   /** Set when the group heading already says the rows need attention. */
   hideAttention?: boolean;
@@ -81,7 +64,6 @@ export function InboxGroup({
             onMark={onMark}
             onArchive={onArchive}
             onRead={onRead}
-            today={today}
             selected={row.id === selectedId}
             hideAttention={hideAttention}
           />
@@ -97,7 +79,6 @@ export function InboxRow({
   onMark,
   onArchive,
   onRead,
-  today,
   selected = false,
   hideAttention = false,
 }: {
@@ -106,13 +87,10 @@ export function InboxRow({
   onMark: ((messageId: string, mark: InboxMark | null) => void) | undefined;
   onArchive?: (messageId: string) => void;
   onRead?: (messageId: string, read: boolean) => void;
-  today?: boolean;
   selected?: boolean;
   hideAttention?: boolean;
 }) {
   const { t } = useLingui();
-  const received = new Date(row.receivedAt);
-  const isToday = today ?? received.toDateString() === new Date().toDateString();
   const labelNames = {
     attention: t`Needs attention`,
     newsletter: t`Newsletter`,
@@ -175,7 +153,7 @@ export function InboxRow({
                 className="me-1 inline size-3.5 align-text-bottom text-destructive"
               />
             ) : null}
-            {row.from}
+            {row.fromSelf ? t`You` : row.from}
             {row.unread ? (
               <span className="sr-only">
                 <Trans> (unread)</Trans>
@@ -210,7 +188,7 @@ export function InboxRow({
             dateTime={row.receivedAt}
             className={`col-start-3 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
           >
-            {formatMailTime(row.receivedAt, isToday)}
+            {formatMailTime(row.receivedAt)}
           </time>
         </button>
         {marks.length + actions.length ? (
