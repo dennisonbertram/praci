@@ -234,9 +234,9 @@ describe("dark input contrast", () => {
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   };
   it("keeps input borders and switch tracks visible on a card", () => {
-    const [hi, lo] = [luminance(darkTokens.input), luminance(darkTokens.card)].sort(
-      (a, b) => b - a,
-    );
-    expect((hi + 0.05) / (lo + 0.05)).toBeGreaterThanOrEqual(1.3);
+    const input = luminance(darkTokens.input);
+    const card = luminance(darkTokens.card);
+    const ratio = (Math.max(input, card) + 0.05) / (Math.min(input, card) + 0.05);
+    expect(ratio).toBeGreaterThanOrEqual(1.3);
   });
 });

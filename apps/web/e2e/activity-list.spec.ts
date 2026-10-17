@@ -38,7 +38,9 @@ async function captureActivitySidebar(
   await captureScreenshot(page, testInfo, name);
 }
 
-test("sidebar Working and Finished surface active and terminal runs", async ({ page }, testInfo) => {
+test("sidebar Working and Finished surface active and terminal runs", async ({
+  page,
+}, testInfo) => {
   const stamp = Date.now();
   await signup(page, `activity-${stamp}@rakazo.test`, "password12", "Activity");
   await completeOnboarding(page);
