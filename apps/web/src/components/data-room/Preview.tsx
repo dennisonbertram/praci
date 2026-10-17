@@ -8,7 +8,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { canPreviewImage, dataRoomImageUrl, saveDataRoomItem } from "../../lib/data-room";
 import { errorText } from "../../lib/user-error";
 import { sourceLabel } from "./FilterBar";
-import { dateText, statusLabel } from "./format";
+import { dateText, sizeText, statusLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
 
 function amountText(item: DataRoomApiItem) {
@@ -23,21 +23,6 @@ function amountText(item: DataRoomApiItem) {
   } catch {
     return String(amount);
   }
-}
-
-function sizeText(bytes: number) {
-  const [unit, divisor] =
-    bytes < 1_000
-      ? (["byte", 1] as const)
-      : bytes < 1_000_000
-        ? (["kilobyte", 1_000] as const)
-        : (["megabyte", 1_000_000] as const);
-  return new Intl.NumberFormat(i18n.locale || undefined, {
-    style: "unit",
-    unit,
-    unitDisplay: "narrow",
-    maximumFractionDigits: 1,
-  }).format(bytes / divisor);
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -102,7 +87,6 @@ export function Preview({
     setError("");
     saveDataRoomItem(item).catch((cause) => setError(errorText(cause)));
   };
-  const downloadError = error ? <p className="text-sm text-destructive">{error}</p> : null;
   return (
     <aside
       aria-label={t`Preview`}
@@ -135,22 +119,11 @@ export function Preview({
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
       {canPreviewImage(item) ? <ImagePreview key={item.id} item={item} /> : null}
       {item.status === "failed" ? (
-        <div className="flex flex-col items-start gap-1.5 text-sm">
+        <div className="flex flex-col gap-1 text-sm">
           <p className="font-medium text-destructive">
             <Trans>Couldn't read this file</Trans>
           </p>
           {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
-          <div className="flex gap-1.5 pt-0.5">
-            <Button variant="destructive" size="sm" onClick={() => onAction("delete", item)}>
-              <Trash2 aria-hidden="true" />
-              <Trans>Delete</Trans>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={download}>
-              <Download aria-hidden="true" />
-              <Trans>Download</Trans>
-            </Button>
-          </div>
-          {downloadError}
         </div>
       ) : item.status !== "ready" ? (
         <p className="text-sm text-muted-foreground">{statusLabel(item.status)}</p>
@@ -182,16 +155,20 @@ export function Preview({
         <Field label={t`Source`}>{sourceLabel(item.source)}</Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
       </dl>
-      {/* A file that can't be read offers Download beside Delete, not as the main action. */}
-      {item.status === "failed" ? null : (
-        <div className="flex flex-col gap-1.5">
-          <Button variant="outline" onClick={download}>
-            <Download aria-hidden="true" />
-            <Trans>Download</Trans>
+      {/* The same full-width actions for every item; a file that can't be read leads with Delete. */}
+      <div className="flex flex-col gap-1.5">
+        {item.status === "failed" ? (
+          <Button variant="destructive" onClick={() => onAction("delete", item)}>
+            <Trash2 aria-hidden="true" />
+            <Trans>Delete</Trans>
           </Button>
-          {downloadError}
-        </div>
-      )}
+        ) : null}
+        <Button variant="outline" onClick={download}>
+          <Download aria-hidden="true" />
+          <Trans>Download</Trans>
+        </Button>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      </div>
     </aside>
   );
 }

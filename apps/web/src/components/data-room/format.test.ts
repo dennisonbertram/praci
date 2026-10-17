@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core/macro", () => ({ t: (parts: TemplateStringsArray) => parts.join("") }));
 
-import { statusLabel } from "./format";
+import { sizeText, statusLabel } from "./format";
 
 it("calls every working step Reading, never Filing, since filing waits for consent", () => {
   expect(["pending", "extracting", "classifying", "indexing"].map(statusLabel)).toEqual([
@@ -13,4 +13,13 @@ it("calls every working step Reading, never Filing, since filing waits for conse
   ]);
   expect(statusLabel("failed")).toBe("Failed");
   expect(statusLabel("ready")).toBe("");
+});
+
+it("puts a space between a size and its unit, and spells out bytes", () => {
+  expect([722, 1, 12_345, 4_100_000].map(sizeText)).toEqual([
+    "722 bytes",
+    "1 byte",
+    "12.3 kB",
+    "4.1 MB",
+  ]);
 });
