@@ -5,9 +5,16 @@ import type {
   FinanceProvider,
   FinanceSource,
 } from "@rakazo/contracts";
-import { Button } from "@rakazo/ui-web";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@rakazo/ui-web";
+import { MoreHorizontal } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { connectFinanceProvider } from "../../lib/finance-connect";
 import { financePath } from "../../lib/finance-route";
 import { EXCHANGES, FINANCE_PROVIDERS } from "../../lib/integrations";
@@ -38,15 +45,19 @@ function useMounted() {
 function CryptoTile({
   hasKey,
   hasServer,
+  manageTo,
   reload,
   children,
 }: {
   hasKey: boolean | null;
   hasServer?: boolean;
+  /** The Blockscout MCP server's page, where its agents are chosen. */
+  manageTo?: string;
   reload: () => void;
   children?: ReactNode;
 }) {
   const { t } = useLingui();
+  const navigate = useNavigate();
   const [dialog, setDialog] = useState(false);
 
   return (
@@ -64,22 +75,33 @@ function CryptoTile({
         {hasKey || hasServer ? (
           <>
             <StatusBadge status="connected" />
-            {/* The key is optional: without one, balances still come from public RPC. */}
-            <Button
-              size="sm"
-              variant="ghost"
-              className="ms-auto"
-              aria-label={hasKey ? undefined : t`Add Blockscout API key`}
-              onClick={() => setDialog(true)}
-            >
-              {hasKey ? <Trans>Replace API key</Trans> : <Trans>Add API key</Trans>}
-            </Button>
+            {/* One main action like the other connected tiles; the optional key and agents sit in the menu. */}
             <Link
               to={financePath.crypto()}
-              className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+              className="ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
             >
-              <Trans>Open</Trans>
+              <Trans>Open Finance</Trans>
             </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="ghost" size="icon-xs" aria-label={t`More Blockscout actions`} />
+                }
+              >
+                <MoreHorizontal aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {/* The key is optional: without one, balances still come from public RPC. */}
+                <DropdownMenuItem onClick={() => setDialog(true)}>
+                  {hasKey ? <Trans>Replace API key</Trans> : <Trans>Add API key</Trans>}
+                </DropdownMenuItem>
+                {manageTo ? (
+                  <DropdownMenuItem onClick={() => navigate(manageTo)}>
+                    <Trans>Manage agents</Trans>
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         ) : (
           <>
@@ -330,12 +352,15 @@ export function FinanceSection({
   onChanged,
   mode = "all",
   extras,
+  cryptoManageTo,
 }: {
   sources: FinanceSource[];
   status: FinanceStatus;
   onChanged: () => void;
   mode?: "all" | "connected" | "available";
   extras?: Partial<Record<FinanceProvider | "crypto", ReactNode>>;
+  /** Where Blockscout's agents are chosen, once its MCP server exists. */
+  cryptoManageTo?: string;
 }) {
   const { t } = useLingui();
   const [busy, setBusy] = useState<FinanceProvider | null>(null);
@@ -449,7 +474,12 @@ export function FinanceSection({
         },
       )}
       {shown("crypto") ? (
-        <CryptoTile hasKey={status.blockscout} hasServer={status.blockscoutServer} reload={reload}>
+        <CryptoTile
+          hasKey={status.blockscout}
+          hasServer={status.blockscoutServer}
+          manageTo={cryptoManageTo}
+          reload={reload}
+        >
           {mode === "available" ? null : extras?.crypto}
         </CryptoTile>
       ) : null}

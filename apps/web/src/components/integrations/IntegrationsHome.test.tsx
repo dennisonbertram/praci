@@ -4,7 +4,7 @@ import type { ConnectionCatalogItem } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
@@ -65,6 +65,19 @@ const data = (canConfigure: boolean, managed: boolean): IntegrationsData => ({
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
+function Where() {
+  return <output data-testid="where">{useLocation().pathname}</output>;
+}
+const cryptoMenu = async () => {
+  await act(async () =>
+    (
+      container.querySelector(
+        '[data-testid="finance-tile-crypto"] button[aria-label="More Blockscout actions"]',
+      ) as HTMLElement
+    ).click(),
+  );
+  return [...document.body.querySelectorAll('[role="menuitem"]')] as HTMLElement[];
+};
 async function show(value: IntegrationsData) {
   container = document.createElement("div");
   document.body.append(container);
@@ -73,6 +86,7 @@ async function show(value: IntegrationsData) {
     root.render(
       <MemoryRouter>
         <IntegrationsHome data={value} />
+        <Where />
       </MemoryRouter>,
     ),
   );
@@ -278,13 +292,12 @@ it("shows one Blockscout tile when its key and MCP server both exist", async () 
   expect(count("finance-tile-crypto")).toBe(1);
   expect(inConnected("finance-tile-crypto")).toBe(true);
   expect(container.textContent).not.toContain("mcp.blockscout.com");
-  expect(
-    container
-      .querySelector('[data-testid="finance-tile-crypto"] a[aria-label="Manage Blockscout"]')
-      ?.getAttribute("href"),
-  ).toBe("/app/integrations/mcp/s2");
-  expect(container.querySelector('[data-testid="finance-tile-crypto"]')?.textContent).toContain(
-    "Replace API key",
+  // The key and the agents sit in the menu, so the tile has one button row like its neighbours.
+  const items = await cryptoMenu();
+  expect(items.map((item) => item.textContent)).toEqual(["Replace API key", "Manage agents"]);
+  await act(async () => items[1]?.click());
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    "/app/integrations/mcp/s2",
   );
 });
 
@@ -303,8 +316,10 @@ it("shows one Blockscout tile, asking for the key, when its MCP server has none"
   const tile = container.querySelector('[data-testid="finance-tile-crypto"]');
   // Keyless Blockscout still reads balances, so it shows as connected and offers the optional key.
   expect(tile?.textContent).toContain("Connected");
-  expect(tile?.querySelector('button[aria-label="Add Blockscout API key"]')).not.toBeNull();
-  expect(tile?.querySelector('a[aria-label="Manage Blockscout"]')).not.toBeNull();
+  expect((await cryptoMenu()).map((item) => item.textContent)).toEqual([
+    "Add API key",
+    "Manage agents",
+  ]);
 });
 
 it("lists every finance provider under Finance when nothing is connected", async () => {

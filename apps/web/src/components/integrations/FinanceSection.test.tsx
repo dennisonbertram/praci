@@ -124,6 +124,12 @@ it("shows a failed connect", async () => {
 });
 
 const crypto = () => container.querySelector('[data-testid="finance-tile-crypto"]') as Element;
+const openCryptoMenu = () =>
+  act(async () =>
+    (crypto().querySelector('button[aria-label="More Blockscout actions"]') as HTMLElement).click(),
+  );
+const menuItems = () =>
+  [...document.body.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent);
 const typeKey = async (value: string) => {
   const input = document.body.querySelector('[role="dialog"] input') as HTMLInputElement;
   await act(async () => {
@@ -143,7 +149,12 @@ it("shows a keyless Blockscout server as Connected and offers the optional key",
   await show([source("mercury", "ok"), source("brex", "ok")]);
   expect(crypto().querySelector('[data-status="connected"]')).not.toBeNull();
   expect(crypto().textContent).not.toContain("Not connected");
-  expect(crypto().querySelector('button[aria-label="Add Blockscout API key"]')).not.toBeNull();
+  // One main action like the other connected tiles; the optional key waits in the menu.
+  const links = [...crypto().querySelectorAll("a")].map((a) => a.textContent);
+  expect(links).toEqual(["Open Finance"]);
+  expect(crypto().querySelector('a[href="/app/finance/crypto"]')).not.toBeNull();
+  await openCryptoMenu();
+  expect(menuItems()).toEqual(["Add API key"]);
 });
 
 it("opens a modal from Connect, saves the key and then shows Connected", async () => {
@@ -163,7 +174,8 @@ it("opens a modal from Connect, saves the key and then shows Connected", async (
   expect(onChanged).toHaveBeenCalled(); // page data refreshes: the connect may create an MCP server
   expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   expect(crypto().textContent).toContain("Connected");
-  expect(crypto().textContent).toContain("Replace API key");
+  await openCryptoMenu();
+  expect(menuItems()).toEqual(["Replace API key"]);
 });
 
 it("shows the server's error inside the modal", async () => {

@@ -433,22 +433,12 @@ export function IntegrationsHome({
                     ),
                   ),
                   ...(cryptoServer
-                    ? {
-                        crypto: (
-                          <div className="flex items-center gap-2">
-                            <UsedBy bots={botsOn(cryptoServer.id)} />
-                            <Link
-                              to={`/app/integrations/mcp/${cryptoServer.id}`}
-                              aria-label={t`Manage ${cryptoServer.name}`}
-                              className="ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-                            >
-                              <Trans>Manage</Trans>
-                            </Link>
-                          </div>
-                        ),
-                      }
+                    ? { crypto: <UsedBy key="used" bots={botsOn(cryptoServer.id)} /> }
                     : {}),
                 }}
+                cryptoManageTo={
+                  cryptoServer ? `/app/integrations/mcp/${cryptoServer.id}` : undefined
+                }
               />
             </div>
           </>
