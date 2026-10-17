@@ -30,11 +30,11 @@ function space(
 }
 
 describe("sidebarGroupsForSpaces", () => {
-  it("labels the only space's untitled group with its name, next to its menu", () => {
+  it("keeps rename on the only space without showing its name", () => {
     const [group] = sidebarGroupsForSpaces([space("space-1", "Personal", { canRename: true })], "");
 
     expect(group).toMatchObject({
-      title: "Personal",
+      title: null,
       spaceName: "Personal",
       canRenameSpace: true,
       canDeleteSpace: false,

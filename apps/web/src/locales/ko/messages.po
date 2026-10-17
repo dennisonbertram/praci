@@ -1249,7 +1249,7 @@ msgstr "Bot"
 
 #: src/pages/Shell.tsx
 msgid "Bot computer"
-msgstr ""
+msgstr "Bot 컴퓨터"
 
 #: src/pages/Shell.tsx
 msgid "Bot screen"

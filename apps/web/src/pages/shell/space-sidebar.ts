@@ -66,12 +66,11 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       ...group,
       sectionId: group.key.startsWith("section:") ? group.key.slice("section:".length) : null,
       key: showSpaceNames ? `space:${space.id}:${group.key}` : group.key,
-      // One space: name it on the untitled first group, so its "..." menu has a label.
       title: showSpaceNames
         ? group.title
           ? `${space.name} · ${group.title}`
           : space.name
-        : (group.title ?? (index === 0 ? space.name : null)),
+        : group.title,
       showLock: showSpaceNames,
       emptySpaceId: undefined as string | undefined,
       spaceId: space.id,
@@ -85,7 +84,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     return [
       {
         key: showSpaceNames ? `space:${space.id}:empty` : `space:${space.id}:actions`,
-        title: space.name,
+        title: showSpaceNames ? space.name : null,
         bots: [],
         sectionId: null,
         showLock: showSpaceNames,
