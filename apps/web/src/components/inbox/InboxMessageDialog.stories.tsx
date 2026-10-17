@@ -190,3 +190,9 @@ export const NoLongerInMail: Story = {
         Promise.reject(Object.assign(new Error("Not found"), { code: "NOT_FOUND" })),
     }),
 };
+
+/** An archived email opened from search: Move to Inbox instead of Archive. */
+export const ArchivedMessage: Story = {
+  args: { messageId: "msg_archived", onArchive: () => undefined, onMoveToInbox: () => undefined },
+  beforeEach: () => mockRpc({ "inbox.get": { ...message, inInbox: false } }),
+};

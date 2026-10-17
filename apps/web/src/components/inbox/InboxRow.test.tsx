@@ -121,3 +121,9 @@ it("says in the More menu that a mark covers all mail from the sender", async ()
     "Mark noiseAll mail from Sam Rivera",
   ]);
 });
+
+it("labels an archived search result Archived", async () => {
+  await show({ row: { ...row, inInbox: false } });
+  const badges = [...document.querySelectorAll('[data-slot="badge"]')].map((b) => b.textContent);
+  expect(badges).toEqual(["Archived"]);
+});

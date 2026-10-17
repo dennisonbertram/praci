@@ -19,6 +19,7 @@ import {
   FileImage,
   FileText,
   Forward,
+  Inbox,
   Mail,
   MailOpen,
   Reply,
@@ -51,6 +52,7 @@ export function InboxMessageDialog({
   onNavigate,
   unread,
   onArchive,
+  onMoveToInbox,
   onRead,
   notice,
   onClose,
@@ -68,6 +70,8 @@ export function InboxMessageDialog({
    */
   unread?: boolean;
   onArchive?: () => void;
+  /** Offered while the message is archived, such as a search result. */
+  onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
   /** A brief message with its own action, shown here because the page behind the dialog is inert. */
   notice?: React.ReactNode;
@@ -104,6 +108,7 @@ export function InboxMessageDialog({
             onNavigate={onNavigate}
             unread={unread}
             onArchive={onArchive}
+            onMoveToInbox={onMoveToInbox}
             onRead={onRead}
             composing={composing}
             setComposing={setComposing}
@@ -125,6 +130,7 @@ function InboxMessage({
   onNavigate,
   unread,
   onArchive,
+  onMoveToInbox,
   onRead,
   composing,
   setComposing,
@@ -136,6 +142,7 @@ function InboxMessage({
   onNavigate?: (messageId: string) => void;
   unread?: boolean;
   onArchive?: () => void;
+  onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
   composing: ComposeMode | null;
   setComposing: (mode: ComposeMode | null) => void;
@@ -300,6 +307,12 @@ function InboxMessage({
               <span className="max-sm:sr-only">
                 <Trans>Archive</Trans>
               </span>
+            </Button>
+          ) : null}
+          {onMoveToInbox && message.inInbox === false ? (
+            <Button variant="outline" size="sm" onClick={onMoveToInbox}>
+              <Inbox aria-hidden="true" />
+              <Trans>Move to Inbox</Trans>
             </Button>
           ) : null}
           {onRead && shownUnread !== undefined ? (

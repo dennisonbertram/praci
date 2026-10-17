@@ -182,7 +182,7 @@ export function InboxRow({
               </span>
             ) : null}
           </span>
-          {label ? (
+          {label && row.inInbox ? (
             <Badge
               variant={label === "newsletter" ? "outline" : "secondary"}
               className={`col-start-4 row-start-1 hidden @md:inline-flex ${label === "spam" || label === "junk" ? "bg-warning/15 text-warning" : ""} ${marks.length + actions.length ? `group-focus-within/row:invisible group-hover/row:invisible ${selected ? "invisible" : ""}` : ""}`}
@@ -191,6 +191,15 @@ export function InboxRow({
             </Badge>
           ) : null}
           {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
+          {row.inInbox ? null : (
+            // Only search finds archived mail; say so, since it is not in the Inbox list.
+            <Badge
+              variant="outline"
+              className={`col-start-4 row-start-1 hidden @md:inline-flex ${marks.length + actions.length ? `group-focus-within/row:invisible group-hover/row:invisible ${selected ? "invisible" : ""}` : ""}`}
+            >
+              <Trans>Archived</Trans>
+            </Badge>
+          )}
           <time
             dateTime={row.receivedAt}
             className={`col-start-3 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}

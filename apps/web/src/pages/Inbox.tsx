@@ -988,6 +988,22 @@ export function InboxPage({
               }
             : undefined
         }
+        onMoveToInbox={
+          openRow && !openRow.inInbox
+            ? () => {
+                const { id } = openRow;
+                patchRows((list) =>
+                  list.map((row) => (row.id === id ? { ...row, inInbox: true } : row)),
+                );
+                setError("");
+                rpc.inbox
+                  .unarchive({ messageId: id })
+                  .then(onRefreshed)
+                  .catch((cause) => setError(errorText(cause)))
+                  .then(() => setReload((n) => n + 1));
+              }
+            : undefined
+        }
         onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
         notice={openId ? toast : null}
       />

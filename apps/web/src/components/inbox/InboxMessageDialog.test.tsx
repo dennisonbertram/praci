@@ -432,3 +432,27 @@ it("drops the quoted 'On … wrote:' header from a reply's preview", async () =>
   ).toBe("Thanks, signed.");
   expect(withoutQuoteHeader("Plain note")).toBe("Plain note");
 });
+
+it("offers Move to Inbox for an archived message", async () => {
+  get.mockResolvedValue({ ...message("m1"), inInbox: false });
+  const onMoveToInbox = vi.fn();
+  act(() =>
+    root.render(
+      <InboxMessageDialog
+        messageId="m1"
+        onArchive={vi.fn()}
+        onMoveToInbox={onMoveToInbox}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await flush();
+  const move = [...document.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes("Move to Inbox"),
+  );
+  await act(async () => move?.click());
+  expect(onMoveToInbox).toHaveBeenCalledTimes(1);
+  expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Archive")).toBe(
+    false,
+  );
+});
