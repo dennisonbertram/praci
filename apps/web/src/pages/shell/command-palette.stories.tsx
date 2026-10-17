@@ -12,6 +12,12 @@ const meta = {
     onOpenChange: () => undefined,
     bots: detailedBots,
     onSelectBot: () => undefined,
+    pages: [
+      { id: "inbox", label: "Inbox" },
+      { id: "finance", label: "Finance" },
+      { id: "data-room", label: "Data room" },
+    ],
+    groups: [{ id: "group_1", label: "Sample group" }],
   },
   decorators: [withPageBehind("Page behind the palette")],
 } satisfies Meta<typeof CommandPalette>;
@@ -40,3 +46,10 @@ export const NoSearchMatch: Story = {
 };
 
 export const Closed: Story = { args: { open: false } };
+
+export const SearchFindsPage: Story = {
+  name: "Search lists a matching page first",
+  play: async () => {
+    await userEvent.type(await screen.findByTestId("command-palette-search"), "fin");
+  },
+};

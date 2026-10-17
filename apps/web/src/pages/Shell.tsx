@@ -82,6 +82,7 @@ import {
   GroupAvatar,
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
   Popover,
   PopoverContent,
@@ -297,7 +298,7 @@ import {
   routineNeedsOneShotArm,
 } from "./RoutineEditor";
 import type { SettingsSection } from "./SettingsOverlay";
-import { SpaceSearchResults } from "./SpaceSearch";
+import { type SearchLink, SpaceSearchResults } from "./SpaceSearch";
 import { BotPagePanel, type PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { BotCreatePicker } from "./shell/bot-picker";
@@ -1738,15 +1739,50 @@ export function ShellPage() {
   const spaceQuery = query.trim();
   const showSpaceSearch = spaceQuery.length > 0;
 
+  // App pages that search and the command palette can open (route under /app/).
+  const appPages = useMemo(() => {
+    const icon = { size: 15, strokeWidth: 1.8, "aria-hidden": true } as const;
+    return [
+      { id: "inbox", label: t`Inbox`, icon: <Mail {...icon} /> },
+      { id: "finance", label: t`Finance`, icon: <ChartColumn {...icon} /> },
+      { id: "cap-table", label: t`Cap Table`, icon: <PieChart {...icon} /> },
+      { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
+      { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
+    ];
+  }, [t]);
+  // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
+  const searchPages = useMemo(() => {
+    const needle = spaceQuery.toLocaleLowerCase();
+    return needle ? appPages.filter((page) => page.label.toLocaleLowerCase().includes(needle)) : [];
+  }, [appPages, spaceQuery]);
+  const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
+
+  function openSearchResult(path: string) {
+    setQuery("");
+    setMobileSidebarOpen(false);
+    navigate(path);
+  }
+
   useEffect(() => {
     if (!showSpaceSearch) {
       setSearchHits([]);
+      setSearchDocuments([]);
       setSearchLoading(false);
       return;
     }
     const abort = new AbortController();
     const timer = window.setTimeout(() => {
       setSearchLoading(true);
+      // Data room files by name and content; a failure only hides this group.
+      void rpc.dataRoom
+        .search({ query: spaceQuery, limit: 5 })
+        .then((result) => {
+          if (abort.signal.aborted) return;
+          setSearchDocuments(result.results.map(({ item }) => ({ id: item.id, label: item.name })));
+        })
+        .catch(() => {
+          if (!abort.signal.aborted) setSearchDocuments([]);
+        });
       void rpc.search
         .query({ q: spaceQuery })
         .then((result) => {
@@ -3273,10 +3309,27 @@ export function ShellPage() {
           <InputGroupInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && query) {
+                e.preventDefault();
+                setQuery("");
+              }
+            }}
             placeholder={t`Search`}
             autoComplete="off"
             name="sidebar-search"
           />
+          {query ? (
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                size="icon-xs"
+                aria-label={t`Clear search`}
+                onClick={() => setQuery("")}
+              >
+                <X aria-hidden="true" />
+              </InputGroupButton>
+            </InputGroupAddon>
+          ) : null}
         </InputGroup>
         <SidebarPageLink
           testId="sidebar-inbox"
@@ -3332,9 +3385,19 @@ export function ShellPage() {
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {showSpaceSearch ? (
             <SpaceSearchResults
+              query={spaceQuery}
               hits={searchHits}
               loading={searchLoading}
+              pages={searchPages}
+              documents={searchDocuments}
               onSelect={(hit) => void jumpToSearchHit(hit)}
+              onSelectPage={(id) => openSearchResult(`/app/${id}`)}
+              onSelectDocument={(id) =>
+                openSearchResult(`/app/data-room?item=${encodeURIComponent(id)}`)
+              }
+              onSearchMail={() =>
+                openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)
+              }
             />
           ) : (
             <>
@@ -4907,6 +4970,20 @@ export function ShellPage() {
           onSelectBot={(id) => {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);
+          }}
+          pages={appPages}
+          groups={groups.map((group) => ({
+            id: group.id,
+            label: group.name,
+            icon: <GroupAvatar members={group.members} size={26} />,
+          }))}
+          onSelectPage={(id) => {
+            setMobileSidebarOpen(false);
+            navigate(`/app/${id}`);
+          }}
+          onSelectGroup={(id) => {
+            setMobileSidebarOpen(false);
+            navigate(`/app/g/${id}`);
           }}
         />
 

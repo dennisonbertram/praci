@@ -14,7 +14,7 @@ import {
   CommandShortcut,
   Kbd,
 } from "@rakazo/ui-web";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 function isApplePlatform() {
   if (typeof navigator === "undefined") return false;
@@ -38,16 +38,27 @@ function botTitleTag(bot: Bot) {
   return title;
 }
 
+/** An app page (Inbox, Finance, ...) or a group chat the palette can open. */
+export type PaletteEntry = { id: string; label: string; icon?: ReactNode };
+
 export function CommandPalette({
   open,
   onOpenChange,
   bots,
   onSelectBot,
+  pages = [],
+  groups = [],
+  onSelectPage = () => undefined,
+  onSelectGroup = () => undefined,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bots: Bot[];
   onSelectBot: (botId: string) => void;
+  pages?: PaletteEntry[];
+  groups?: PaletteEntry[];
+  onSelectPage?: (id: string) => void;
+  onSelectGroup?: (id: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [modKey, setModKey] = useState("⌘");
@@ -60,11 +71,14 @@ export function CommandPalette({
     if (!open) setSearch("");
   }, [open]);
 
+  const needle = search.trim().toLowerCase();
   const filteredBots = useMemo(() => {
-    const needle = search.trim().toLowerCase();
     if (!needle) return bots;
     return bots.filter((bot) => botSearchText(bot).includes(needle));
-  }, [bots, search]);
+  }, [bots, needle]);
+  const matches = (entry: PaletteEntry) => !needle || entry.label.toLowerCase().includes(needle);
+  const shownPages = pages.filter(matches);
+  const shownGroups = groups.filter(matches);
 
   useEffect(() => {
     if (!open) return;
@@ -73,7 +87,8 @@ export function CommandPalette({
         return;
       }
       if (!/^[1-9]$/.test(event.key)) return;
-      const bot = filteredBots[Number(event.key) - 1];
+      // Numbers follow the full bot list, so they do not change while typing.
+      const bot = bots[Number(event.key) - 1];
       if (!bot) return;
       event.preventDefault();
       onSelectBot(bot.id);
@@ -81,14 +96,33 @@ export function CommandPalette({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [filteredBots, onOpenChange, onSelectBot, open]);
+  }, [bots, onOpenChange, onSelectBot, open]);
+
+  const pagesGroup = shownPages.length ? (
+    <CommandGroup heading={t`Pages`}>
+      {shownPages.map((page) => (
+        <CommandItem
+          key={page.id}
+          value={`page:${page.id}`}
+          onSelect={() => {
+            onSelectPage(page.id);
+            onOpenChange(false);
+          }}
+          className="items-center gap-3 rounded-xl! px-2.5 py-2"
+        >
+          <span className="grid size-8 place-items-center text-muted-foreground">{page.icon}</span>
+          <span className="truncate font-medium text-foreground">{page.label}</span>
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  ) : null;
 
   return (
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={t`Switch bot`}
-      description={t`Search bots and switch conversations`}
+      title={t`Go to`}
+      description={t`Search pages, bots and groups`}
       className="sm:max-w-xl"
     >
       <Command
@@ -104,12 +138,14 @@ export function CommandPalette({
         />
         <CommandList className="max-h-80" data-testid="command-palette-list">
           <CommandEmpty>
-            <Trans>No bots</Trans>
+            <Trans>No results</Trans>
           </CommandEmpty>
-          <CommandGroup>
-            {filteredBots.map((bot, index) => {
+          {needle ? pagesGroup : null}
+          <CommandGroup heading={shownPages.length || shownGroups.length ? t`Bots` : undefined}>
+            {filteredBots.map((bot) => {
               const subtitle = botSubtitle(bot);
               const titleTag = botTitleTag(bot);
+              const index = bots.indexOf(bot);
               const shortcut = index < 9 ? `${modKey}${index + 1}` : null;
               return (
                 <CommandItem
@@ -152,6 +188,28 @@ export function CommandPalette({
               );
             })}
           </CommandGroup>
+          {shownGroups.length ? (
+            <CommandGroup heading={t`Groups`}>
+              {shownGroups.map((group) => (
+                <CommandItem
+                  key={group.id}
+                  value={`group:${group.id}`}
+                  onSelect={() => {
+                    onSelectGroup(group.id);
+                    onOpenChange(false);
+                  }}
+                  className="items-center gap-3 rounded-xl! px-2.5 py-2"
+                >
+                  <span className="grid size-8 place-items-center">{group.icon}</span>
+                  <span className="truncate font-medium text-foreground" dir="auto">
+                    {group.label}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
+          {/* Bots first while browsing (the usual switch); pages first once a search names one. */}
+          {needle ? null : pagesGroup}
         </CommandList>
       </Command>
     </CommandDialog>
