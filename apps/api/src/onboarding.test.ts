@@ -116,6 +116,13 @@ describe("company focus", () => {
   it("points to the Finance, Cap Table and Data room pages after the email cards", async () => {
     const { deps, actor } = fixture([
       { connectorId: "composio", slug: "gmail", name: "Gmail", connected: false, logo: null },
+      {
+        connectorId: "composio",
+        slug: "googlecalendar",
+        name: "Google Calendar",
+        connected: false,
+        logo: null,
+      },
     ]);
     await chooseFocus(deps, actor, "bot", "company");
     const texts = posted.flatMap((message) =>
@@ -123,6 +130,9 @@ describe("company focus", () => {
         (block as { kind: string }).kind === "text" ? [(block as { text: string }).text] : [],
       ),
     );
-    expect(texts.at(-1)).toMatch(/Finance and Cap Table.*Data room/);
+    expect(texts.at(-1)).toMatch(/Finance and Cap table.*Data room/);
+    expect(texts).toContain(
+      "Gmail and Google Calendar are a good place to start. Connect them here and I’ll use what you already have.",
+    );
   });
 });

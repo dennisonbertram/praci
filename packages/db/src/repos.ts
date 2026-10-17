@@ -369,10 +369,13 @@ export function createRepos(prisma: PrismaClient) {
                 includeDelegatedReplyText: false,
               },
             );
-            // A reaction is shown on its message, not as the conversation's latest words.
-            preview = previewFromBlocks(
-              visible.find((message) => !messageReaction(message))?.blocks,
-            );
+            // The latest words: a reaction is shown on its message, and a card (a choice, app
+            // connections) has no words, so the preview reads past both.
+            for (const message of visible) {
+              if (messageReaction(message)) continue;
+              preview = previewFromBlocks(message.blocks);
+              if (preview) break;
+            }
             if (preview || messages.length === 0 || !bot.thread || attempt === 4) break;
             const oldest = messages[messages.length - 1];
             if (!oldest) break;

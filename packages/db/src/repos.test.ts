@@ -125,7 +125,7 @@ describe("createRepos.listBots", () => {
     });
   });
 
-  it("previews the latest words, not an emoji reaction to them", async () => {
+  it("previews the latest words, not an emoji reaction or a card after them", async () => {
     const prisma = {
       bot: {
         findMany: vi.fn(async () => [
@@ -134,6 +134,7 @@ describe("createRepos.listBots", () => {
             thread: {
               ...baseBot.thread,
               messages: [
+                { id: "m3", seq: 3, role: "bot", blocks: [{ kind: "choice", question: "Pick" }] },
                 {
                   id: "m2",
                   seq: 2,

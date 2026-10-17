@@ -38,7 +38,7 @@ const FOCUS_OPTIONS: FocusOption[] = [
     label: "Run my company",
     summary: "cash, cap table, investors, and email",
     apps: ["gmail", "googlecalendar"],
-    note: "For cash and equity, open Finance and Cap Table in the sidebar to connect your bank, card, and Carta. Board decks and investor documents go in the Data room.",
+    note: "For cash and equity, open Finance and Cap table in the sidebar to connect your bank, card, and Carta. Board decks and investor documents go in the Data room.",
   },
   {
     id: "day",
@@ -323,7 +323,10 @@ export async function chooseFocus(
   const cardNames = cards
     .map((card) => (card.kind === "app_connect" ? card.name : ""))
     .filter(Boolean);
-  const named = `${cardNames.slice(0, -1).join(", ")}${cardNames.length > 1 ? ", and " : ""}${cardNames.at(-1)}`;
+  const named =
+    cardNames.length > 2
+      ? `${cardNames.slice(0, -1).join(", ")}, and ${cardNames.at(-1)}`
+      : cardNames.join(" and ");
   await post(deps, target, [
     {
       kind: "text",
