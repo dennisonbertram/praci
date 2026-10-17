@@ -1,4 +1,4 @@
-import { Trans, useLingui } from "@lingui/react/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { AccountSecurity, AvatarStyle } from "@rakazo/contracts";
 import { BotAvatar, Button, Field, FieldLabel, Input, Label, Switch, Toggle } from "@rakazo/ui-web";
 import { ChevronDown } from "lucide-react";
@@ -323,6 +323,7 @@ export function UsageSettingsPanel({
   } | null;
   panelRef?: RefObject<HTMLDivElement | null>;
 }) {
+  const tokens = usage?.totalTokens;
   return (
     <div
       ref={panelRef}
@@ -335,9 +336,12 @@ export function UsageSettingsPanel({
       </h3>
       {usage ? (
         <p className="mt-3 text-[14px] text-foreground/75">
-          <Trans>
-            {usage.runs} runs · {usage.totalTokens ?? "—"} tokens
-          </Trans>
+          <Plural value={usage.runs} one="# run" other="# runs" /> ·{" "}
+          {tokens == null ? (
+            <Trans>— tokens</Trans>
+          ) : (
+            <Plural value={tokens} one="# token" other="# tokens" />
+          )}
         </p>
       ) : null}
       <p className={`text-[12.5px] text-muted-foreground/80 ${usage ? "mt-2" : "mt-3"}`}>
