@@ -187,26 +187,58 @@ function Dashboard() {
     sync();
   }, [connected]);
 
+  // The add dialogs live here, above the empty and loaded states: the first import turns the empty
+  // state into the dashboard, and the dialog must stay open on its results until Done.
+  const [adding, setAdding] = useState<"type" | "bank" | null>(null);
+  const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
+  const dialogs = (
+    <>
+      {adding ? (
+        <AddAccountDialog
+          initialStep={adding}
+          onPickCrypto={setCrypto}
+          onImported={overview.reload}
+          onClose={() => setAdding(null)}
+        />
+      ) : null}
+      <WalletDialog
+        open={crypto === "wallet"}
+        onClose={() => setCrypto(null)}
+        onSaved={overview.reload}
+      />
+      {crypto && crypto !== "wallet" ? (
+        <ExchangeConnectDialog
+          provider={crypto}
+          onConnected={overview.reload}
+          onClose={() => setCrypto(null)}
+        />
+      ) : null}
+    </>
+  );
+
   const data = overview.data;
   if (overview.error) return <ErrorNotice message={overview.error} onRetry={overview.retry} />;
   if (!data) return <DashboardSkeleton />;
-  // Accounts fed by uploaded statements have no source to connect, but they are data.
-  if (!connected && !data.hasCashAccounts)
-    return <EmptyState hasCrypto={Boolean(data.crypto)} onChanged={overview.reload} />;
   return (
-    <Overview
-      data={data}
-      syncing={syncing}
-      error={syncError}
-      onRefresh={() => sync(REFRESH_HOLD_MS)}
-      onReload={overview.reload}
-    />
+    <>
+      {/* Accounts fed by uploaded statements have no source to connect, but they are data. */}
+      {!connected && !data.hasCashAccounts ? (
+        <EmptyState hasCrypto={Boolean(data.crypto)} onAdd={() => setAdding("type")} />
+      ) : (
+        <Overview
+          data={data}
+          syncing={syncing}
+          error={syncError}
+          onRefresh={() => sync(REFRESH_HOLD_MS)}
+          onAdd={setAdding}
+        />
+      )}
+      {dialogs}
+    </>
   );
 }
 
-function EmptyState({ hasCrypto, onChanged }: { hasCrypto: boolean; onChanged: () => void }) {
-  const [adding, setAdding] = useState(false);
-  const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
+function EmptyState({ hasCrypto, onAdd }: { hasCrypto: boolean; onAdd: () => void }) {
   return (
     <div>
       {/* The page title stays where every page has it, with the empty state under it. */}
@@ -223,32 +255,13 @@ function EmptyState({ hasCrypto, onChanged }: { hasCrypto: boolean; onChanged: (
         title={<Trans>No accounts yet</Trans>}
         description={<Trans>Add an account to see cash, burn, runway and spend.</Trans>}
       >
-        <Button onClick={() => setAdding(true)}>
+        <Button onClick={onAdd}>
           <Trans>Add account</Trans>
         </Button>
         {hasCrypto ? (
           <Button variant="outline" render={<Link to={financePath.accounts()} />}>
             <Trans>Accounts</Trans>
           </Button>
-        ) : null}
-        {adding ? (
-          <AddAccountDialog
-            onPickCrypto={setCrypto}
-            onImported={onChanged}
-            onClose={() => setAdding(false)}
-          />
-        ) : null}
-        <WalletDialog
-          open={crypto === "wallet"}
-          onClose={() => setCrypto(null)}
-          onSaved={onChanged}
-        />
-        {crypto && crypto !== "wallet" ? (
-          <ExchangeConnectDialog
-            provider={crypto}
-            onConnected={onChanged}
-            onClose={() => setCrypto(null)}
-          />
         ) : null}
       </PageEmptyState>
     </div>
@@ -303,13 +316,14 @@ function Overview({
   syncing,
   error,
   onRefresh,
-  onReload,
+  onAdd,
 }: {
   data: FinanceOverview;
   syncing: boolean;
   error: string;
   onRefresh: () => void;
-  onReload: () => void;
+  /** Opens Add account on its first step, or straight on the statement upload. */
+  onAdd: (step: "type" | "bank") => void;
 }) {
   useHideAmounts();
   const navigate = useNavigate();
@@ -318,7 +332,6 @@ function Overview({
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });
   }, [hash]);
-  const [uploading, setUploading] = useState(false);
   const [period, setPeriod] = useState<SpendPeriod>("month");
   // The Breakdown mode lives in the URL, so Back (in the app or the browser) reopens it as left.
   const [params, setParams] = useSearchParams();
@@ -426,13 +439,16 @@ function Overview({
               <SourceChip key={source.provider} source={source} />
             ))}
         </div>
-        {onlyOne ? (
-          <Link
-            to={CONNECT_PATH}
-            className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+        {missing.length > 0 ? (
+          // One way to connect: the same Add account dialog as the empty state.
+          <Button
+            variant="link"
+            size="xs"
+            className="text-muted-foreground"
+            onClick={() => onAdd("type")}
           >
-            {t`Add ${providerName(onlyOne.provider)}`}
-          </Link>
+            {onlyOne ? t`Add ${providerName(onlyOne.provider)}` : t`Add account`}
+          </Button>
         ) : null}
         <div className="ms-auto flex items-center gap-2">
           <Button variant="outline" render={<Link to={financePath.accounts()} />}>
@@ -443,15 +459,8 @@ function Overview({
       </div>
       <StatementReminderBanner
         reminders={data.statementReminders ?? []}
-        onUpload={() => setUploading(true)}
+        onUpload={() => onAdd("bank")}
       />
-      {uploading ? (
-        <AddAccountDialog
-          initialStep="bank"
-          onImported={onReload}
-          onClose={() => setUploading(false)}
-        />
-      ) : null}
       {error ? <ErrorNotice message={error} onRetry={onRefresh} /> : null}
       {showSkeleton ? (
         <DashboardSkeleton />

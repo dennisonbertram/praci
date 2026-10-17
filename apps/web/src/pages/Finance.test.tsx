@@ -41,6 +41,14 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 vi.mock("../lib/finance-connect", () => ({ connectFinanceProvider: rpcMock.connect }));
+// The upload itself is tested with StatementImport; here a button stands in for a finished import.
+vi.mock("../components/finance/StatementImport", () => ({
+  StatementImport: ({ onImported }: { onImported: () => void }) => (
+    <button type="button" onClick={onImported}>
+      Finish import
+    </button>
+  ),
+}));
 
 import { cryptoSubtitle, FinancePage, UpcomingRow } from "./Finance";
 
@@ -172,6 +180,9 @@ async function show(path: string, onAskAgent?: () => void) {
   });
 }
 const flush = () => act(async () => {});
+/** A button anywhere in the document, dialogs (rendered in a portal) included. */
+const anyButton = (name: string) =>
+  [...document.body.querySelectorAll("button")].find((b) => b.textContent === name);
 const button = (name: RegExp | string) =>
   [...container.querySelectorAll("button")].find((b) =>
     typeof name === "string"
@@ -230,7 +241,25 @@ it("shows the dashboard, not the connect prompt, for a user with only statement 
   await act(async () => button("Upload")?.click());
   const dialog = document.body.querySelector('[role="dialog"]');
   expect(dialog?.textContent).toContain("Upload statements");
-  expect(dialog?.querySelector('input[type="file"]')).not.toBeNull();
+  expect(anyButton("Finish import")).toBeDefined();
+});
+
+it("keeps the upload dialog open on its results when the first import fills the dashboard", async () => {
+  rpcMock.overview.mockResolvedValue(emptyOverview());
+  rpcMock.exchanges.mockResolvedValue([]);
+  await show("/app/finance");
+  await act(async () => button("Add account")?.click());
+  const upload = [...document.body.querySelectorAll("button")].find((b) =>
+    b.textContent?.startsWith("Upload statements"),
+  );
+  await act(async () => upload?.click());
+  // The first statement creates an account, so the next overview replaces the empty state.
+  rpcMock.overview.mockResolvedValue({ ...emptyOverview(), hasCashAccounts: true });
+  await act(async () => anyButton("Finish import")?.click());
+  await flush();
+  expect(container.textContent).not.toContain("Add an account to see");
+  expect(anyButton("Finish import")).toBeDefined();
+  expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Done");
 });
 
 it("notes non-USD transactions only when some are left out", async () => {
@@ -282,13 +311,16 @@ it("links each source chip to Accounts filtered to that source", async () => {
 
 it("links the header to Accounts and offers Add Brex when only Mercury is connected", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
+  rpcMock.exchanges.mockResolvedValue([]);
   await show("/app/finance", vi.fn());
   await flush();
   const links = [...container.querySelectorAll("a")];
   const accounts = links.find((a) => a.textContent === "Accounts");
   expect(accounts?.getAttribute("href")).toBe("/app/finance/accounts");
-  const add = links.find((a) => a.textContent === "Add Brex");
-  expect(add?.getAttribute("href")).toBe("/app/integrations?category=finance");
+  // Add Brex opens the same Add account dialog as the empty state, not a second connect route.
+  await act(async () => button("Add Brex")?.click());
+  await flush();
+  expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Add account");
   // Accounts comes before Ask in the header.
   const ask = button(/^Ask Finance agent$/) as HTMLElement;
   expect(accounts && ask && accounts.compareDocumentPosition(ask)).toBe(
