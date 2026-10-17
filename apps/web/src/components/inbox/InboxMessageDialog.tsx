@@ -146,6 +146,8 @@ function InboxMessage({
     () => peekInboxMessage(messageId) ?? null,
   );
   const [error, setError] = useState("");
+  // A stale link: the email was deleted or moved, so trying again cannot help.
+  const [gone, setGone] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const seed = useMemo(
     () => (composing ? ({ kind: composing, messageId } as const) : null),
@@ -155,12 +157,15 @@ function InboxMessage({
     if (attempt === 0 && peekInboxMessage(messageId)) return;
     let live = true;
     setError("");
+    setGone(false);
     loadInboxMessage(messageId)
       .then((next) => {
         if (live) setMessage(next);
       })
       .catch((cause) => {
-        if (live) setError(errorText(cause));
+        if (!live) return;
+        if ((cause as { code?: string } | null)?.code === "NOT_FOUND") setGone(true);
+        else setError(errorText(cause));
       });
     return () => {
       live = false;
@@ -210,7 +215,7 @@ function InboxMessage({
         <DialogTitle dir="auto" className="min-w-0 flex-1 text-xl leading-snug font-medium">
           {title}
         </DialogTitle>
-        {onNavigate ? (
+        {onNavigate && !gone ? (
           <>
             <Button
               variant="ghost"
@@ -331,7 +336,18 @@ function InboxMessage({
             messages={message.thread ?? []}
           />
         ) : null}
-        {error ? (
+        {gone ? (
+          <div className="flex flex-col items-start gap-3">
+            <p role="status" className="text-sm text-muted-foreground">
+              <Trans>
+                This email isn't in your mail any more. It may have been deleted or moved.
+              </Trans>
+            </p>
+            <DialogClose render={<Button variant="outline" size="sm" />}>
+              <Trans>Back to Inbox</Trans>
+            </DialogClose>
+          </div>
+        ) : error ? (
           <div className="flex flex-col items-start gap-2">
             <p role="alert" className="text-sm text-destructive">
               {error}

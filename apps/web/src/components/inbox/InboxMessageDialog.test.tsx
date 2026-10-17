@@ -410,3 +410,17 @@ it("shows a reply sent from the dialog without reopening it", async () => {
   await flush();
   expect(document.body.textContent).toContain("3 messages");
 });
+
+it("explains a stale link and offers a way back instead of Try again", async () => {
+  get.mockRejectedValue(Object.assign(new Error("Not found"), { code: "NOT_FOUND" }));
+  act(() =>
+    root.render(
+      <InboxMessageDialog messageId="gone" nextId="m3" onNavigate={vi.fn()} onClose={() => {}} />,
+    ),
+  );
+  await flush();
+  expect(document.body.textContent).toContain("This email isn't in your mail any more.");
+  expect(document.body.textContent).toContain("Back to Inbox");
+  expect(document.body.textContent).not.toContain("Try again");
+  expect(document.querySelector('[aria-label="Next message"]')).toBeNull();
+});

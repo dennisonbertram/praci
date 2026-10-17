@@ -180,3 +180,13 @@ export const LoadFailed: Story = {
       "inbox.get": () => Promise.reject(new Error("Could not load this message.")),
     }),
 };
+
+/** A stale ?mail= link: the email was deleted or moved. */
+export const NoLongerInMail: Story = {
+  args: { messageId: "msg_gone" },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.get": () =>
+        Promise.reject(Object.assign(new Error("Not found"), { code: "NOT_FOUND" })),
+    }),
+};
