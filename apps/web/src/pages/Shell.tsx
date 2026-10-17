@@ -94,7 +94,6 @@ import {
 import {
   ArrowDown,
   ArrowUp,
-  Bell,
   Box,
   ChartColumn,
   ChevronDown,
@@ -104,6 +103,7 @@ import {
   FileText,
   FolderOpen,
   Gauge,
+  History,
   LayoutGrid,
   ListTodo,
   Lock,
@@ -3402,12 +3402,8 @@ export function ShellPage() {
                   : "text-muted-foreground/70 hover:text-foreground/75"
               }`}
             >
-              <Bell
-                size={15}
-                strokeWidth={1.8}
-                fill={activityMode ? "currentColor" : "none"}
-                aria-hidden="true"
-              />
+              {/* A history clock, not a bell: this lists recent bot runs, not notifications. */}
+              <History size={15} strokeWidth={1.8} aria-hidden="true" />
             </button>
             <button
               type="button"
