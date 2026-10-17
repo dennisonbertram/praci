@@ -26,7 +26,7 @@ test("setup exposes all integration choices and saves only the selected provider
   });
   await signup(page, `integration-setup-${Date.now()}@rakazo.test`, "password12", "Setup Test");
   await expect(page.getByRole("heading", { name: "Server integrations" })).toBeVisible();
-  for (const name of ["Direct MCP", "Composio", "Pipedream", "Executor"]) {
+  for (const name of ["App servers", "Composio", "Pipedream", "Executor"]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
   }
   await expect(page.getByLabel("API key", { exact: true })).toBeHidden();
@@ -96,7 +96,7 @@ test("direct MCP connects a catalog result without asking for a URL and assigns 
   });
   await signup(page, `direct-mcp-setup-${Date.now()}@rakazo.test`, "password12", "Direct MCP");
   await page.getByRole("textbox", { name: "Search apps", exact: true }).fill("Notion");
-  await page.getByRole("button", { name: "Search integrations.sh", exact: true }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByText("Notion", { exact: true })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Server URL" })).toBeHidden();
   await page.getByRole("button", { name: "Connect", exact: true }).click();

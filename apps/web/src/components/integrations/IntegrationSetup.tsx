@@ -45,12 +45,25 @@ export function IntegrationSetup({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState<string[]>([]);
-  const choices: { id: Choice; label: string }[] = [
-    { id: "direct", label: t`Direct MCP` },
-    { id: "composio", label: "Composio" },
-    { id: "pipedream", label: "Pipedream" },
-    { id: "google", label: "Google" },
-    { id: "executor", label: "Executor" },
+  // Each provider is named, then described by what it does for the people on this server.
+  const choices: { id: Choice; label: string; detail: string }[] = [
+    { id: "direct", label: t`App servers`, detail: t`Connect apps that publish a server address` },
+    {
+      id: "composio",
+      label: "Composio",
+      detail: t`Sign in to popular apps through Composio, with your API key`,
+    },
+    {
+      id: "pipedream",
+      label: "Pipedream",
+      detail: t`Sign in to popular apps through Pipedream, with your project`,
+    },
+    {
+      id: "google",
+      label: "Google",
+      detail: t`Your own Google sign-in for Gmail, Calendar and Drive`,
+    },
+    { id: "executor", label: "Executor", detail: t`Tools from an Executor server you run` },
   ];
   const managed = choice === "composio" || choice === "pipedream" || choice === "google";
   const hasCredentials = Boolean(apiKey.trim());
@@ -143,9 +156,16 @@ export function IntegrationSetup({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-[32px] font-medium text-foreground">
-        {serverSetup ? t`Server integrations` : t`Add MCP server`}
-      </h1>
+      <div>
+        <h1 className="text-[32px] font-medium text-foreground">
+          {serverSetup ? t`Server integrations` : t`Add MCP server`}
+        </h1>
+        {serverSetup ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            <Trans>Choose how apps connect for everyone on this server.</Trans>
+          </p>
+        ) : null}
+      </div>
       {serverSetup ? (
         <fieldset
           aria-label={t`Integration options`}
@@ -153,11 +173,13 @@ export function IntegrationSetup({
         >
           {choices
             .filter(({ id }) => !managedOnly || id === "composio" || id === "pipedream")
-            .map(({ id, label }) => (
+            .map(({ id, label, detail }) => (
               <button
                 key={id}
                 type="button"
                 aria-pressed={choice === id}
+                aria-label={label}
+                aria-describedby={`${fieldId}-${id}-detail`}
                 disabled={busy}
                 onClick={() => {
                   setChoice(id);
@@ -167,8 +189,16 @@ export function IntegrationSetup({
                 }}
                 className={`flex min-h-11 w-full items-center justify-between border-b border-border px-3.5 py-2.5 text-left last:border-0 ${choice === id ? "bg-muted" : "hover:bg-accent"}`}
               >
-                <span>{label}</span>
-                {choice === id ? <Check className="size-4" aria-hidden /> : null}
+                <span className="min-w-0">
+                  <span className="block">{label}</span>
+                  <span
+                    id={`${fieldId}-${id}-detail`}
+                    className="block text-[13px] text-muted-foreground"
+                  >
+                    {detail}
+                  </span>
+                </span>
+                {choice === id ? <Check className="size-4 shrink-0" aria-hidden /> : null}
               </button>
             ))}
         </fieldset>
@@ -295,7 +325,7 @@ export function IntegrationSetup({
               onChange={(event) => setQuery(event.target.value)}
             />
             <Button type="submit" disabled={busy || !query.trim()}>
-              <Trans>Search integrations.sh</Trans>
+              <Trans>Search</Trans>
             </Button>
           </form>
           {remoteResults.map((result) => (

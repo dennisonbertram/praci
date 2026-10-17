@@ -63,7 +63,7 @@ test("local settings open and save integrations without an app session", async (
   });
   await page.goto("/desktop-settings");
   await page.getByRole("button", { name: "Server integrations", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Direct MCP", exact: true })).toBeHidden();
+  await expect(page.getByRole("button", { name: "App servers", exact: true })).toBeHidden();
   await page.getByLabel("API key", { exact: true }).fill("fake-integration-key");
   await page.getByRole("button", { name: "Connect", exact: true }).click();
   await expect(page.getByText("Connected", { exact: true })).toBeVisible();

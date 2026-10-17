@@ -221,9 +221,26 @@ export function GeneralSettingsPanels({
       </section>
 
       {isDeploymentOwner ? (
-        <Button variant="outline" render={<Link to="/integrations/setup" />}>
-          <Trans>Server integrations</Trans>
-        </Button>
+        <section className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-4">
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-medium text-foreground">
+              <Trans>Server integrations</Trans>
+            </h3>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
+              <Trans>Choose how apps connect for everyone on this server.</Trans>
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            render={
+              <Link
+                to={`/integrations/setup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+              />
+            }
+          >
+            <Trans>Open</Trans>
+          </Button>
+        </section>
       ) : null}
 
       <details data-testid="advanced-settings" className="group rounded-xl border border-border">
