@@ -93,3 +93,36 @@ describe("blank bot greeting", () => {
     ]);
   });
 });
+
+describe("first bot greeting", () => {
+  it("introduces what Chief does for the company without asking the focus card's question", async () => {
+    const { deps, actor } = fixture([]);
+    (deps.prisma as unknown as { user: unknown }).user = {
+      findUnique: vi.fn(async () => ({ name: "Ada Lovelace" })),
+    };
+    await seedBlankBotGreeting(
+      deps,
+      actor,
+      { id: "bot", name: "Chief", threadId: "thread" },
+      { first: true },
+    );
+    const text = (posted[0]?.blocks[0] as { text: string } | undefined)?.text;
+    expect(text).toMatch(/^Hi Ada, I'm Chief\. I can sort your email/);
+    expect(text).not.toContain("?");
+  });
+});
+
+describe("company focus", () => {
+  it("points to the Finance, Cap Table and Data room pages after the email cards", async () => {
+    const { deps, actor } = fixture([
+      { connectorId: "composio", slug: "gmail", name: "Gmail", connected: false, logo: null },
+    ]);
+    await chooseFocus(deps, actor, "bot", "company");
+    const texts = posted.flatMap((message) =>
+      message.blocks.flatMap((block) =>
+        (block as { kind: string }).kind === "text" ? [(block as { text: string }).text] : [],
+      ),
+    );
+    expect(texts.at(-1)).toMatch(/Finance and Cap Table.*Data room/);
+  });
+});

@@ -129,6 +129,8 @@ function OnboardingFocusOptionLabel({
 }) {
   if (question !== "What do you want me on first?") return label;
   switch (id) {
+    case "company":
+      return <Trans>Run my company</Trans>;
     case "day":
       return <Trans>Day-to-day work</Trans>;
     case "inbox":
