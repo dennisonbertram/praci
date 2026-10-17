@@ -26,6 +26,7 @@ import { money, shortDay, transactionAmount } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
+import { HideAmountsButton } from "../HideAmountsToggle";
 import { shade } from "./charts";
 
 /** What the Shell tells every Finance page: how to open the agent panel (absent while it is open). */
@@ -120,6 +121,7 @@ export function DetailHead({ crumbs }: { crumbs: Crumb[] }) {
           ))}
         </ol>
       </nav>
+      <HideAmountsButton />
       <AskAgentButton />
     </div>
   );
