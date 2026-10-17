@@ -317,7 +317,7 @@ async function serve() {
   const { handles } = await createEmulatedApp(process.env.DATABASE_URL as string, {
     composio: createE2eComposio(demoMailboxes),
     financeCallToolFor: demoFinance().callToolFor,
-    mcpServers: { [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta() },
+    mcpServers: { [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN) },
   });
   const server = listen({ fetch: handles.app.fetch, port: API_PORT, hostname: "127.0.0.1" });
   const stop = () => void handles.stop().finally(() => server.close(() => process.exit(0)));

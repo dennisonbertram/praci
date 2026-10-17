@@ -26,6 +26,12 @@ const PIPEDREAM_APPS = [
 export interface EmulatedMcpServer {
   tools: { name: string; description: string; inputSchema: Record<string, unknown> }[];
   call: (name: string, args: Record<string, unknown>) => unknown;
+  /**
+   * When set, the server asks for an OAuth sign-in the way a real hosted MCP server does, and its
+   * authorization page is this browser-reachable URL (for the demo, the app's own OAuth callback
+   * with a mock code). Without it the server accepts any bearer token and never asks to sign in.
+   */
+  authorizeUrl?: string;
 }
 
 /** Deterministic HTTP/MCP boundary emulator used by integration and browser journeys. */
@@ -50,7 +56,7 @@ export class ThirdPartyConnectorEmulator {
       url.hostname === "executor.example.test" ||
       Object.hasOwn(this.mcpServers, url.hostname)
     ) {
-      return this.mcp(url, init);
+      return this.mockSignIn(url, init) ?? this.mcp(url, init);
     }
     if (url.hostname === "api.example.test") return this.openapi(url, init);
     if (url.hostname === "graphql.example.test") return this.graphql(url, init);
@@ -144,6 +150,61 @@ export class ThirdPartyConnectorEmulator {
         status: 404,
       },
     );
+  }
+
+  /** OAuth discovery, client registration and token endpoints for an extra server with `authorizeUrl`;
+   * a 401 that starts the sign-in for its unauthenticated MCP calls; undefined for everything else. */
+  private mockSignIn(url: URL, init?: RequestInit): Response | undefined {
+    const authorizeUrl = this.mcpServers[url.hostname]?.authorizeUrl;
+    if (!authorizeUrl) return undefined;
+    const resourceMetadata = "/.well-known/oauth-protected-resource";
+    if (url.pathname.startsWith(resourceMetadata)) {
+      return Response.json({
+        resource: `${url.origin}${url.pathname.slice(resourceMetadata.length)}`,
+        authorization_servers: [url.origin],
+      });
+    }
+    if (url.pathname === "/.well-known/oauth-authorization-server") {
+      return Response.json({
+        issuer: url.origin,
+        authorization_endpoint: authorizeUrl,
+        token_endpoint: `${url.origin}/oauth/token`,
+        registration_endpoint: `${url.origin}/oauth/register`,
+        response_types_supported: ["code"],
+        grant_types_supported: ["authorization_code", "refresh_token"],
+        code_challenge_methods_supported: ["S256"],
+        token_endpoint_auth_methods_supported: ["none"],
+      });
+    }
+    if (url.pathname.startsWith("/.well-known/")) return new Response(null, { status: 404 });
+    if (url.pathname === "/oauth/register") {
+      this.records.push({ provider: "mcp", operation: "oauth/register", host: url.hostname });
+      return Response.json(
+        { ...parseBody(init?.body), client_id: "mock-demo-client" },
+        { status: 201 },
+      );
+    }
+    if (url.pathname === "/oauth/token") {
+      this.records.push({ provider: "mcp", operation: "oauth/token", host: url.hostname });
+      return Response.json({
+        access_token: "mock-demo-token",
+        token_type: "bearer",
+        expires_in: 3_600,
+        refresh_token: "mock-demo-refresh-token",
+      });
+    }
+    if (!new Headers(init?.headers).get("authorization")?.startsWith("Bearer ")) {
+      return Response.json(
+        { error: "invalid_token" },
+        {
+          status: 401,
+          headers: {
+            "www-authenticate": `Bearer resource_metadata="${url.origin}${resourceMetadata}${url.pathname}"`,
+          },
+        },
+      );
+    }
+    return undefined;
   }
 
   private async mcp(url: URL, init?: RequestInit): Promise<Response> {

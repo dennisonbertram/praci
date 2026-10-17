@@ -554,8 +554,12 @@ export const DEMO_CAP_TABLE = {
 /**
  * A mock Carta MCP server for the demo: the read tools the Carta agent uses, all answering from
  * DEMO_CAP_TABLE, so the agent can answer ownership questions offline.
+ *
+ * With `webOrigin`, it asks for a sign-in like the real Carta does. Its mock sign-in page is the
+ * app's own OAuth callback with a mock code, so Connect Carta stores a real (mock) login and starts
+ * the first read of the cap table, with no Carta account involved.
  */
-export function demoCarta(): EmulatedMcpServer {
+export function demoCarta(webOrigin?: string): EmulatedMcpServer {
   const noInput = { type: "object", properties: {} };
   const account = { id: "mock-demo-company", name: DEMO_COMPANY, note: MOCK_NOTE };
   const capTable = {
@@ -594,6 +598,9 @@ export function demoCarta(): EmulatedMcpServer {
     read_tool: "Read Carta data, such as the cap table.",
   };
   return {
+    ...(webOrigin
+      ? { authorizeUrl: `${webOrigin}/mcp/oauth/callback?code=mock-demo-carta-code` }
+      : {}),
     tools: (Object.keys(tools) as (keyof typeof tools)[]).map((name) => ({
       name,
       description: description[name],
