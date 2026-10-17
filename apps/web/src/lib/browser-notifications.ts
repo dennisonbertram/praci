@@ -1,5 +1,6 @@
 import type { ProductEvent } from "@rakazo/contracts";
 import { plainTextFromMarkdown } from "@rakazo/core";
+import { maskCurrencyWhenHidden } from "./hide-amounts-preference";
 import { i18n } from "./i18n";
 
 export type BrowserNotificationPermission = "default" | "denied" | "granted";
@@ -81,7 +82,10 @@ export function browserNotificationMessage(
       .filter(Boolean)
       .join("\n")
       .trim();
-    return { title: name, body: body || i18n._({ id: "Message", message: "Message" }) };
+    return {
+      title: name,
+      body: maskCurrencyWhenHidden(body) || i18n._({ id: "Message", message: "Message" }),
+    };
   }
   if (event.type === "run.failed") {
     return {

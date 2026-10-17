@@ -169,6 +169,7 @@ import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
+import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { SidebarPageLink } from "../components/SidebarPageLink";
@@ -217,6 +218,7 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
 import { findFinanceAgent } from "../lib/finance-agent";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
@@ -503,6 +505,7 @@ export function ShellPage() {
   );
   const streamResponsesRef = useRef(streamResponses);
   streamResponsesRef.current = streamResponses;
+  useHideAmounts();
   const showToolActivity = useSyncExternalStore(
     subscribeToolActivity,
     getToolActivityEnabled,
@@ -3514,9 +3517,9 @@ export function ShellPage() {
                           ? compactStatusLabel
                           : (workStatusLabel ??
                             (item.kind === "bot"
-                              ? item.chat.preview ||
+                              ? maskCurrencyWhenHidden(item.chat.preview) ||
                                 (item.chat.status !== "idle" ? item.chat.status : "")
-                              : item.chat.preview ||
+                              : maskCurrencyWhenHidden(item.chat.preview) ||
                                 item.chat.members.map((member) => member.name).join(", ")));
                         return (
                           <div
@@ -3900,6 +3903,7 @@ export function ShellPage() {
                 <Settings className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Settings</Trans>
               </Button>
+              <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
               <Button
                 variant="ghost"
                 className="w-full justify-start font-normal"
@@ -5943,6 +5947,7 @@ export const Composer = memo(function Composer({
   /** The user's sent messages in this conversation, oldest first. */
   sentHistory?: string[];
 }) {
+  useHideAmounts();
   const { t } = useLingui();
   const [draft, setDraft] = useState("");
   const historyIndex = useRef<number | null>(null);
@@ -6432,7 +6437,7 @@ export const Composer = memo(function Composer({
         <ComposerReplyPreview
           author={replyName}
           text={previewMessageText(replyTarget)}
-          quote={replyQuote}
+          quote={replyQuote ? maskCurrencyWhenHidden(replyQuote) : replyQuote}
           attachment={replyAttachment(replyTarget.blocks)}
           target={artifactTarget}
           onDismiss={() => {
@@ -6889,7 +6894,7 @@ function previewMessageText(message: ThreadMessage): string {
     .filter(Boolean)
     .join(" ")
     .trim();
-  if (text) return text;
+  if (text) return maskCurrencyWhenHidden(text);
   const attachment = replyAttachment(message.blocks);
   if (attachment) return attachment.kind === "image" ? t`Photo` : attachment.name || t`Attachment`;
   return t`Message`;
@@ -6947,7 +6952,7 @@ function MessageHoverActions({
   if (message.id.startsWith("progress:")) return null;
 
   function copyMessage() {
-    const text = copyableMessageText(message);
+    const text = maskCurrencyWhenHidden(copyableMessageText(message));
     if (!text || !navigator.clipboard) return;
     void navigator.clipboard.writeText(text).catch(() => undefined);
   }
@@ -7202,6 +7207,7 @@ const MessageView = memo(function MessageView({
   onReply: (message: ThreadMessage) => void;
   showToolActivity: boolean;
 }) {
+  useHideAmounts();
   const { t } = useLingui();
   const botToolControls = useContext(BotToolControlsContext);
   const isNarration =
@@ -7336,7 +7342,7 @@ const MessageView = memo(function MessageView({
               <span>
                 ↪ {to} ← {from}
               </span>
-              <span>{block.text}</span>
+              <span>{maskCurrencyWhenHidden(block.text)}</span>
             </div>
           );
         }
@@ -7364,7 +7370,7 @@ const MessageView = memo(function MessageView({
             >
               <span>
                 {messageProviderLabel(block.provider, block.transport)} · {block.fromLabel}:{" "}
-                {block.text}
+                {maskCurrencyWhenHidden(block.text)}
               </span>
             </div>
           );
@@ -7376,7 +7382,7 @@ const MessageView = memo(function MessageView({
               className="flex items-center justify-center gap-2 py-1 text-[13.5px] text-muted-foreground"
             >
               <span className="text-warning">◷</span>
-              <span>{block.text}</span>
+              <span>{maskCurrencyWhenHidden(block.text)}</span>
             </div>
           );
         }

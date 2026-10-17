@@ -120,7 +120,7 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
-#. placeholder {0}: Math.round(card.runwayMonths)
+#. placeholder {0}: runwayText(Math.round(card.runwayMonths), 0)
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
 msgstr ""
@@ -198,6 +198,10 @@ msgstr "{botName}의 컴퓨터"
 #: src/pages/shell/bot-credentials.tsx
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 msgstr "{commandVariable}은(는) 예약되어 있어 명령 변수로 사용할 수 없습니다. 다른 이름을 선택하세요."
+
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# transaction} other {# transactions}}"
+msgstr ""
 
 #: src/lib/billing.ts
 msgid "{count} days"
@@ -1214,6 +1218,10 @@ msgstr ""
 msgid "By month"
 msgstr ""
 
+#: src/components/finance/ui.tsx
+msgid "By vendor"
+msgstr ""
+
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Cadence"
 msgstr ""
@@ -1372,6 +1380,10 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Chart failed to render: {error}"
 msgstr "차트를 표시하지 못했습니다: {error}"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Chart hidden while amounts are hidden"
+msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -3452,6 +3464,10 @@ msgstr "샘플 듣기"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "안녕하세요. 답변을 소리 내어 읽을 때 이런 목소리로 들립니다."
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Hide amounts"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Hide bots"
 msgstr ""
@@ -3463,6 +3479,10 @@ msgstr "비밀번호 숨기기"
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
 msgstr "대화 기록 숨기기"
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
+msgstr ""
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -3744,6 +3764,7 @@ msgstr ""
 msgid "Link SSO"
 msgstr "SSO 연결"
 
+#: src/components/finance/ui.tsx
 #: src/pages/Shell.tsx
 msgid "List"
 msgstr ""
@@ -4097,6 +4118,10 @@ msgstr "분"
 #: src/pages/RoutineSchedule.tsx
 msgid "minutes"
 msgstr "분"
+
+#: src/components/finance/ui.tsx
+msgid "Mixed"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5121,6 +5146,10 @@ msgstr ""
 msgid "Receipt"
 msgstr ""
 
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Receipt hidden while amounts are hidden"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Receipts"
 msgstr ""
@@ -5923,6 +5952,10 @@ msgstr "셸"
 msgid "Show all {total}"
 msgstr ""
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Show amounts"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Show bots"
 msgstr ""
@@ -6713,6 +6746,7 @@ msgstr ""
 msgid "Undo"
 msgstr ""
 
+#: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
 msgstr ""

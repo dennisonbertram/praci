@@ -6,6 +6,12 @@ import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
 import { Download, FileText, X } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { saveDataRoomItem } from "../../lib/data-room";
+import { MASK } from "../../lib/finance-format";
+import {
+  getHideAmounts,
+  maskCurrencyWhenHidden,
+  useHideAmounts,
+} from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { sourceLabel } from "./FilterBar";
 import { dateText, statusLabel } from "./format";
@@ -14,6 +20,7 @@ import { type ItemAction, ItemMenu } from "./ItemMenu";
 function amountText(item: DataRoomApiItem) {
   const { amountCents, currency } = item.facets;
   if (amountCents === null) return "";
+  if (getHideAmounts()) return `$${MASK}`;
   const amount = amountCents / 100;
   try {
     return new Intl.NumberFormat(i18n.locale || undefined, {
@@ -72,6 +79,7 @@ export function Preview({
 }) {
   const [error, setError] = useState("");
   const { facets } = item;
+  useHideAmounts();
   const amount = amountText(item);
   return (
     <aside
@@ -107,7 +115,7 @@ export function Preview({
       ) : item.status !== "ready" ? (
         <p className="text-sm text-muted-foreground">{statusLabel(item.status)}</p>
       ) : facets.summary ? (
-        <p className="text-sm">{facets.summary}</p>
+        <p className="text-sm">{maskCurrencyWhenHidden(facets.summary)}</p>
       ) : null}
       {item.status === "ready" && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
