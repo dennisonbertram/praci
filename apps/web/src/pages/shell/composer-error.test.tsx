@@ -12,6 +12,7 @@ vi.mock("@lingui/react/macro", () => {
   return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
 });
 
+import { runErrorText } from "../../lib/user-error";
 import { ComposerError } from "./composer-error";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -45,6 +46,22 @@ it("offers OpenRouter's Models settings for the Legal model error", async () => 
   expect(container.textContent).toContain("needs your own OpenRouter key");
   await act(async () => settingsButton()?.click());
   expect(open).toHaveBeenCalledWith("openrouter");
+});
+
+it("offers Models settings when the provider did not accept the API key", async () => {
+  const open = vi.fn();
+  await act(async () =>
+    root.render(
+      <ComposerError
+        message={runErrorText('401: {"message":"User not found.","code":401}')}
+        onDismiss={() => {}}
+        onOpenModelSettings={open}
+      />,
+    ),
+  );
+  expect(container.textContent).toContain("did not accept your API key");
+  await act(async () => settingsButton()?.click());
+  expect(open).toHaveBeenCalledWith(undefined);
 });
 
 it("shows any other error with only Dismiss", async () => {

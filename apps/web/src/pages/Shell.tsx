@@ -268,6 +268,7 @@ import {
   computerPanelAutoUsesBoot,
   computerPanelNeedsMaintenance,
   computerTakeoverBlocked,
+  dismissedThreadRunError,
   isComputerStatusEvent,
   isThreadSnapshotEvent,
   prependThreadMessagePage,
@@ -2046,6 +2047,7 @@ export function ShellPage() {
   const runError = threadRunError(activeSnapshot, dismissedRunErrorIds);
   const displayedRunError = !sendError ? runError : null;
   const displayedRunErrorId = displayedRunError ? (activeSnapshot?.run?.id ?? null) : null;
+  const dismissedRunError = dismissedThreadRunError(activeSnapshot, dismissedRunErrorIds);
   const handleRunErrorPresented = useCallback((runId: string) => {
     rememberSeenRunErrorId(runId);
   }, []);
@@ -3171,6 +3173,7 @@ export function ShellPage() {
                 workingBots={workingBots}
                 workingActivity={soleWorkingActivity}
                 workingStartedAt={workingStartedAt}
+                failedNote={dismissedRunError}
                 onLoadOlder={loadOlder}
                 onOpenBot={openBot}
                 onAnswer={answerMessage}
@@ -5580,6 +5583,7 @@ export const Transcript = memo(function Transcript({
   workingBots,
   workingActivity: activity,
   workingStartedAt,
+  failedNote,
   onLoadOlder,
   onOpenBot,
   onAnswer,
@@ -5613,6 +5617,8 @@ export const Transcript = memo(function Transcript({
   workingBots: GroupAvatarMember[];
   workingActivity?: WorkingActivity;
   workingStartedAt?: number;
+  /** Why the last run failed, once its error above the composer was dismissed; "" when unknown. */
+  failedNote?: string | null;
   onLoadOlder: () => void | Promise<void>;
   onOpenBot: (botId: string) => void;
   onAnswer: (
@@ -6139,6 +6145,15 @@ export const Transcript = memo(function Transcript({
         ) ? (
           <ActiveBotGlyph bots={workingBots} label={workingLabel} startedAt={workingStartedAt} />
         ) : null}
+        {!running && failedNote != null ? (
+          <p data-testid="transcript-failed-note" className="py-2 text-xs text-destructive">
+            {failedNote ? (
+              <Trans>Last run failed: {failedNote}</Trans>
+            ) : (
+              <Trans>Last run failed.</Trans>
+            )}
+          </p>
+        ) : null}
       </div>
       {quoteDraft ? (
         <QuoteSelectionButton
@@ -6285,7 +6300,7 @@ export const Composer = memo(function Composer({
   onRunErrorPresented: (runId: string) => void;
   onDismissError: () => void;
   /** Opens the Models settings a model-setup run error points to. */
-  onOpenModelSettings?: (provider: string) => void;
+  onOpenModelSettings?: (provider?: string) => void;
   sending: boolean;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onAttachmentPick: (files: FileList | null) => boolean;

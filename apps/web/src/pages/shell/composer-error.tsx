@@ -3,10 +3,12 @@ import { LEGAL_AGENT_MODEL, LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contrac
 import { Button } from "@rakazo/ui-web";
 import { X } from "lucide-react";
 import type { Ref } from "react";
+import { runErrorText } from "../../lib/user-error";
 
-/** The provider whose settings fix a run error, when one does. */
-function settingsProviderFor(message: string): string | null {
-  return message === LEGAL_MODEL_REQUIRED_MESSAGE ? LEGAL_AGENT_MODEL.provider : null;
+/** The Models settings that fix a run error, when they do; `provider` opens that provider's key form. */
+function modelSettingsFor(message: string): { provider?: string } | null {
+  if (message === LEGAL_MODEL_REQUIRED_MESSAGE) return { provider: LEGAL_AGENT_MODEL.provider };
+  return message === runErrorText("401") ? {} : null;
 }
 
 /** A send or run error above the composer; a model-setup error also offers the settings that fix it. */
@@ -19,10 +21,10 @@ export function ComposerError({
   ref?: Ref<HTMLDivElement>;
   message: string;
   onDismiss: () => void;
-  onOpenModelSettings?: (provider: string) => void;
+  onOpenModelSettings?: (provider?: string) => void;
 }) {
   const { t } = useLingui();
-  const provider = settingsProviderFor(message);
+  const settings = modelSettingsFor(message);
   return (
     <div
       ref={ref}
@@ -32,8 +34,12 @@ export function ComposerError({
     >
       <span className="min-w-0 flex-1 basis-48">{message}</span>
       <div className="ms-auto flex shrink-0 items-center gap-2">
-        {provider && onOpenModelSettings ? (
-          <Button size="sm" variant="outline" onClick={() => onOpenModelSettings(provider)}>
+        {settings && onOpenModelSettings ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onOpenModelSettings(settings.provider)}
+          >
             <Trans>Open Models settings</Trans>
           </Button>
         ) : null}
