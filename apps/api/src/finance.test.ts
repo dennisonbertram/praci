@@ -864,7 +864,7 @@ describe("runway crypto scope", () => {
     );
   });
 
-  it("keeps 12 history months for a wallet-only user, bank counted as zero", async () => {
+  it("starts a wallet-only user's history at the month before the first snapshot, bank counted as zero", async () => {
     const wallet = {
       id: "w1",
       ...scope(a),
@@ -880,8 +880,8 @@ describe("runway crypto scope", () => {
     });
     const out = await financeRunway(deps, a);
     expect(out.cashCents).toBe(500);
-    expect(out.history).toHaveLength(12);
-    expect(out.history[0]).toEqual({ month: "2025-11", balanceCents: 0 });
+    expect(out.history).toHaveLength(3);
+    expect(out.history[0]).toEqual({ month: "2026-08", balanceCents: 0 });
     expect(out.history.at(-2)).toEqual({ month: "2026-09", balanceCents: 400 });
     expect(out.history.at(-1)).toEqual({ month: "2026-10", balanceCents: 500 });
   });
@@ -897,7 +897,7 @@ describe("runway crypto scope", () => {
     );
     const walletOnly = setup({ ...data("all"), financeAccount: [] });
     const lone = (await financeAccounts(walletOnly.deps, a)).history;
-    expect(lone).toHaveLength(12);
+    expect(lone[0]?.month).toBe("2026-07");
     expect(lone.at(-2)?.balanceCents).toBe(250);
     expect(lone.at(-1)?.balanceCents).toBe(370);
   });
@@ -956,12 +956,25 @@ describe("balance series", () => {
       "2026-10-13",
       "2026-10-14",
     ]);
-    expect(await series("bank", "month")).toHaveLength(30);
+    // The day before the first transaction (Sep 20) through today.
+    const month = await series("bank", "month");
+    expect([month[0]?.day, month.at(-1)?.day]).toEqual(["2026-09-19", "2026-10-14"]);
     expect((await series("bank", "quarter")).map((p) => p.day).slice(-2)).toEqual([
       "2026-10-07",
       "2026-10-14",
     ]);
-    expect((await series("bank", "year"))[0]?.day).toBe("2025-11-30");
+    // The year starts at the month end before the first transaction (Sep 20), not last November.
+    expect((await series("bank", "year"))[0]?.day).toBe("2026-08-31");
+  });
+
+  it("starts the runway and accounts charts at the month before the first data, not a year back", async () => {
+    const { deps } = setup(data("bank"));
+    expect((await financeAccounts(deps, a)).history.map((p) => p.month)).toEqual([
+      "2026-08",
+      "2026-09",
+      "2026-10",
+    ]);
+    expect((await financeRunway(deps, a)).history[0]?.month).toBe("2026-08");
   });
 
   it("rebuilds daily bank cash by undoing later transactions", async () => {
@@ -1037,6 +1050,20 @@ describe("finance pages with the real calculations", () => {
     // Jul, Aug and Sep are the full months since first seen; October is still partial.
     expect(vendor.monthlyAvgCents).toBe(481_200);
     expect(vendor.monthlyAvgMonths).toBe(3);
+  });
+
+  it("compares a new vendor's last full month with its first full month", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [
+        // Synced data starts in June, before the vendor's first charge in July.
+        monthlyCharge("06", { vendorKey: "other", counterparty: "Other", id: "o", externalId: "o" }),
+        ...["07", "08", "09", "10"].map((m) => monthlyCharge(m)),
+      ],
+    });
+    const vendor = await financeVendor(deps, a, { key: "cloudnine-hosting" });
+    expect(vendor.changePct).toBe(0);
+    expect(vendor.changeFromMonth).toBe("2026-07");
   });
 
   it("counts Brex spend in By account, so the shares add up to all spend", async () => {

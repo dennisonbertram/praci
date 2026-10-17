@@ -457,6 +457,10 @@ export const UpcomingItemSchema = z.object({
   dates: z.array(DayId).min(1),
   /** Per occurrence, positive. */
   amountCents: Cents,
+  /** A bill's Brex status (`APPROVED`, ...). Bills only; absent from older payloads. */
+  billStatus: z.string().optional(),
+  /** A bill's own due date, which may be before today when it is overdue. Bills only. */
+  dueAt: DayId.optional(),
 });
 
 export const UpcomingSchema = z.object({
@@ -731,8 +735,10 @@ export const FinanceVendorOutputSchema = z.object({
   monthlyAvgCents: Cents,
   /** How many full months the average covers (1 to 6). Absent from older payloads. */
   monthlyAvgMonths: z.number().int().optional(),
-  /** Last full month against 3 months before it; null when either is 0. */
+  /** Last full month against 3 months before it (or the vendor's first full month, when newer); null when either is 0. */
   changePct: z.number().nullable(),
+  /** The month `changePct` compares against. Absent from older payloads. */
+  changeFromMonth: MonthId.nullable().optional(),
   firstSeenAt: IsoDate,
   paidWith: z.array(PaidWithEntrySchema),
   /** 6 months, oldest first. */
