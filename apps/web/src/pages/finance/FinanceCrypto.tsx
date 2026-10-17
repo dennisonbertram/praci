@@ -24,6 +24,7 @@ import { BlockscoutConnectDialog } from "../../components/integrations/Blockscou
 import { chainName, tokenAmount } from "../../lib/crypto-format";
 import { dayMonth, moneyExact } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -80,6 +81,7 @@ function WalletRows({
   onEdit: (wallet: FinanceWallet) => void;
   onRemove: (wallet: FinanceWallet) => void;
 }) {
+  useHideAmounts();
   const { t } = useLingui();
   const typeNames = useTypeNames();
   const cents = new Map(data.summary.byWallet.map((row) => [row.walletId, row.cents]));
@@ -130,6 +132,7 @@ function WalletRows({
 }
 
 export function FinanceCryptoPage() {
+  useHideAmounts();
   const { t } = useLingui();
   const q = useFinanceQuery(() => rpc.finance.crypto(), []);
   const history = useFinanceQuery(() => rpc.finance.cryptoHistory({ days: 90 }), []);

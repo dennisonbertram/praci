@@ -15,6 +15,7 @@ vi.mock("@lingui/react/macro", () => {
   return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
 });
 
+import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { Composer } from "./Shell";
 
 let root: Root | null = null;
@@ -22,6 +23,7 @@ let container: HTMLDivElement | null = null;
 let composerProps: ComponentProps<typeof Composer>;
 
 afterEach(() => {
+  setHideAmounts(false);
   act(() => root?.unmount());
   container?.remove();
   root = null;
@@ -384,6 +386,17 @@ describe("Composer", () => {
     blocks: [{ kind: "text", text: "original reply" }],
     createdAt: "2026-01-01T00:00:00.000Z",
   };
+  it("masks currency amounts in the reply preview while amounts are hidden", () => {
+    const spent: ThreadMessage = {
+      ...reply,
+      blocks: [{ kind: "text", text: "You spent $73,781.83 last month" }],
+    };
+    setHideAmounts(true);
+    renderComposer(vi.fn(), { replyTarget: spent, replyQuote: "spent $73,781.83" });
+    expect(container?.textContent).not.toContain("73,781");
+    expect(container?.textContent).toContain("You spent $••• last month");
+  });
+
   const replyChanges = [
     { name: "cancelled reply", props: { replyTarget: null, replyQuote: null } },
     { name: "different reply", props: { replyTarget: { ...reply, id: "message-2" } } },

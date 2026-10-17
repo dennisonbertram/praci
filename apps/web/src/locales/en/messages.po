@@ -120,7 +120,7 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
-#. placeholder {0}: Math.round(card.runwayMonths)
+#. placeholder {0}: runwayText(Math.round(card.runwayMonths), 0)
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
 msgstr "{0} mo"
@@ -198,6 +198,10 @@ msgstr "{botName}’s computer"
 #: src/pages/shell/bot-credentials.tsx
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 msgstr "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
+
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# transaction} other {# transactions}}"
+msgstr "{count, plural, one {# transaction} other {# transactions}}"
 
 #: src/lib/billing.ts
 msgid "{count} days"
@@ -1218,6 +1222,10 @@ msgstr "By account"
 msgid "By month"
 msgstr "By month"
 
+#: src/components/finance/ui.tsx
+msgid "By vendor"
+msgstr "By vendor"
+
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Cadence"
 msgstr "Cadence"
@@ -1375,6 +1383,10 @@ msgstr "Charges"
 #: src/pages/shell/message-cards.tsx
 msgid "Chart failed to render: {error}"
 msgstr "Chart failed to render: {error}"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Chart hidden while amounts are hidden"
+msgstr "Chart hidden while amounts are hidden"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -3460,6 +3472,10 @@ msgstr "Hear a sample"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Hi, this is how I'll sound when I read replies out loud."
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Hide amounts"
+msgstr "Hide amounts"
+
 #: src/pages/Shell.tsx
 msgid "Hide bots"
 msgstr "Hide bots"
@@ -3471,6 +3487,10 @@ msgstr "Hide password"
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
 msgstr "Hide transcript"
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
+msgstr "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -3756,6 +3776,7 @@ msgstr "Link address"
 msgid "Link SSO"
 msgstr "Link SSO"
 
+#: src/components/finance/ui.tsx
 #: src/pages/Shell.tsx
 msgid "List"
 msgstr "List"
@@ -4109,6 +4130,10 @@ msgstr "minute"
 #: src/pages/RoutineSchedule.tsx
 msgid "minutes"
 msgstr "minutes"
+
+#: src/components/finance/ui.tsx
+msgid "Mixed"
+msgstr "Mixed"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5134,6 +5159,10 @@ msgstr "Recall only"
 msgid "Receipt"
 msgstr "Receipt"
 
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Receipt hidden while amounts are hidden"
+msgstr "Receipt hidden while amounts are hidden"
+
 #: src/pages/Inbox.tsx
 msgid "Receipts"
 msgstr "Receipts"
@@ -5940,6 +5969,10 @@ msgstr "Shell"
 msgid "Show all {total}"
 msgstr "Show all {total}"
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Show amounts"
+msgstr "Show amounts"
+
 #: src/pages/Shell.tsx
 msgid "Show bots"
 msgstr "Show bots"
@@ -6723,6 +6756,7 @@ msgstr "Underline"
 msgid "Undo"
 msgstr "Undo"
 
+#: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
 msgstr "Unknown"
