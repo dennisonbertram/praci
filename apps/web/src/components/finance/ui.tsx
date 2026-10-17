@@ -30,7 +30,11 @@ import {
   writeGroupedPref,
 } from "../../lib/finance-group";
 import { financePath } from "../../lib/finance-route";
-import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
+import {
+  getHideAmounts,
+  maskCurrencyWhenHidden,
+  useHideAmounts,
+} from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
 import { HideAmountsButton } from "../HideAmountsToggle";
@@ -823,7 +827,8 @@ export function cashSubtitle(
 /** Up/down tone: spending more or burning more is bad news. */
 /** Less spend reads as good news and more as bad; a change that rounds to 0% is neither. */
 export const toneClass = (change: number | null) =>
-  change === null || Math.round(change) === 0
+  // While amounts are hidden the colour would still say which way spend went.
+  change === null || Math.round(change) === 0 || getHideAmounts()
     ? ""
     : change < 0
       ? "text-success"

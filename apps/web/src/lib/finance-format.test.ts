@@ -15,6 +15,7 @@ import {
   shareText,
   shortDay,
   transactionAmount,
+  trendText,
   txnDay,
 } from "./finance-format";
 import { setHideAmounts } from "./hide-amounts-preference";
@@ -63,6 +64,12 @@ describe("finance formatting", () => {
     expect(changeText(null)).toBeNull();
     expect(changeText(0.2)).toBe("0%");
     expect(changeText(-0.4)).toBe("0%");
+  });
+
+  it("says a flat subscription is flat and a rising one by how much", () => {
+    expect(trendText([4_500, 4_500, 4_500])).toBe("±0%");
+    expect(trendText([10_000, 11_000, 12_000])).toBe("↑ 20%");
+    expect(trendText([5_000])).toBeNull();
   });
 
   it("shows a charge on its purchase day, the day its totals and filters use", () => {
@@ -146,6 +153,9 @@ describe("figures the Finance pages derive from amounts", () => {
     expect(shareText(50, 100)).not.toMatch(/\d/);
     expect(shareText(500, 19_847_500)).not.toMatch(/\d/);
     expect(changeText(53)).not.toMatch(/\d/);
+    // The arrow would still tell a viewer whether spend went up or down.
+    expect(changeText(53)).not.toMatch(/[↑↓]/);
+    expect(changeText(-53)).toBe(changeText(53));
     expect(changeText(0)).not.toMatch(/\d/);
     expect(axisMoney(-250_000)).not.toMatch(/\d/);
     expect(txnDay({ purchasedAt: null, postedAt: "2026-10-01T00:00:00Z" })).toBe("2026-10-01");

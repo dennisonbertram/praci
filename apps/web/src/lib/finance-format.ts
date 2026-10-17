@@ -122,13 +122,22 @@ export const monthLabel = (month: string, locale?: string) =>
 export const monthFull = (month: string, locale?: string) =>
   monthFormat(month, { month: "long", year: "numeric" }, locale);
 
-/** `↓ 53%`, with the arrow showing the direction of the change; `0%` has no arrow; null when there is no comparison. */
+/** `↓ 53%`, with the arrow showing the direction of the change; `0%` has no arrow; null when there is no comparison. While amounts are hidden the direction is hidden too. */
 export function changeText(pct: number | null): string | null {
   if (pct === null || !Number.isFinite(pct)) return null;
-  if (getHideAmounts()) return `${pct < 0 ? "↓" : "↑"} ${MASK}%`;
+  if (getHideAmounts()) return `${MASK}%`;
   const rounded = Math.round(Math.abs(pct));
   if (rounded === 0) return "0%";
   return `${pct < 0 ? "↓" : "↑"} ${rounded}%`;
+}
+
+/** The change from the first to the last of a few monthly amounts, as `±0%` or `↑ 12%`. */
+export function trendText(values: readonly number[]): string | null {
+  const first = values[0];
+  const last = values.at(-1);
+  if (values.length < 2 || first === undefined || last === undefined || first === 0) return null;
+  const text = changeText(((last - first) / Math.abs(first)) * 100);
+  return text === "0%" ? "±0%" : text;
 }
 
 /** A part's share of a whole, as a whole percent (masked while amounts are hidden, since it follows from them); a small but real part reads "<1%", not "0%". */

@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@lingui/react/macro", () => ({ Trans: () => null }));
+
 import { niceRange, niceScale } from "./charts";
 
 describe("niceScale", () => {

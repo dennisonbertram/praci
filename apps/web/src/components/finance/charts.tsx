@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import type { CashPoint } from "@rakazo/contracts";
 import { useEffect, useId, useRef, useState } from "react";
 import {
@@ -47,6 +48,8 @@ export function Chart({
   label: string;
   children: (width: number) => React.ReactNode;
 }) {
+  // A chart's shape alone shows trends and when cash runs out, so it is not drawn while hidden.
+  const hidden = useHideAmounts();
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -59,6 +62,16 @@ export function Chart({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  if (hidden)
+    return (
+      <div
+        data-testid="chart-hidden"
+        className="grid w-full place-items-center rounded-md bg-muted text-[13px] text-muted-foreground"
+        style={{ height }}
+      >
+        {height >= 40 ? <Trans>Chart hidden while amounts are hidden</Trans> : null}
+      </div>
+    );
   return (
     <div ref={ref} className="w-full" style={{ height }}>
       {width > 0 ? (
@@ -232,32 +245,6 @@ export function LineChart({
         );
       }}
     </Chart>
-  );
-}
-
-/** A 60x20 trend line for a table cell. Flat data draws a line across the middle. */
-export function Sparkline({ values, label }: { values: number[]; label: string }) {
-  if (values.length < 2) return null;
-  const lo = Math.min(...values);
-  const hi = Math.max(...values);
-  const points = values
-    .map((v, i) => {
-      const x = 2 + (i * 56) / (values.length - 1);
-      const y = hi === lo ? 10 : 16 - ((v - lo) / (hi - lo)) * 12;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return (
-    <svg role="img" aria-label={label} viewBox="0 0 60 20" className="ms-auto block h-5 w-[60px]">
-      <polyline
-        points={points}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }
 

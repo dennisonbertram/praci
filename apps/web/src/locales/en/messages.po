@@ -412,13 +412,13 @@ msgid "0x… or name.eth"
 msgstr "0x… or name.eth"
 
 #: src/pages/Finance.tsx
-msgid "3 mo"
-msgstr "3 mo"
-
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "3-mo avg, after revenue"
 msgstr "3-mo avg, after revenue"
+
+#: src/pages/Finance.tsx
+msgid "3-mo change"
+msgstr "3-mo change"
 
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
@@ -1519,6 +1519,7 @@ msgstr "Charges"
 msgid "Chart failed to render: {error}"
 msgstr "Chart failed to render: {error}"
 
+#: src/components/finance/charts.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Chart hidden while amounts are hidden"
 msgstr "Chart hidden while amounts are hidden"
@@ -3937,10 +3938,6 @@ msgstr "Label (optional)"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Language"
 msgstr "Language"
-
-#: src/pages/Finance.tsx
-msgid "Last 3 months"
-msgstr "Last 3 months"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx

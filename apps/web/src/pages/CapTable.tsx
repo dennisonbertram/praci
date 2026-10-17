@@ -136,7 +136,8 @@ function Summary({ snapshot }: { snapshot: Snapshot | null }) {
 }
 
 function OwnershipBar({ classes }: { classes: Snapshot["shareClasses"] }) {
-  useHideAmounts();
+  // While amounts are hidden, equal segments keep the bar from showing who owns how much.
+  const hidden = useHideAmounts();
   if (classes.length === 0) return null;
   return (
     <div className="mb-5">
@@ -145,7 +146,10 @@ function OwnershipBar({ classes }: { classes: Snapshot["shareClasses"] }) {
           <div
             key={c.name}
             className="bg-foreground"
-            style={{ width: `${c.percent}%`, opacity: Math.max(0.15, 1 - i * 0.22) }}
+            style={{
+              width: `${hidden ? 100 / classes.length : c.percent}%`,
+              opacity: Math.max(0.15, 1 - i * 0.22),
+            }}
           />
         ))}
       </div>

@@ -25,7 +25,7 @@ import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AddAccountDialog, type CryptoChoice } from "../components/finance/AddAccountDialog";
-import { type BarGranularity, BurnBars, Sparkline } from "../components/finance/charts";
+import { type BarGranularity, BurnBars } from "../components/finance/charts";
 import { StatementReminderBanner } from "../components/finance/StatementReminderBanner";
 import {
   AskAgentButton,
@@ -66,6 +66,7 @@ import {
   paidWithLabel,
   runwayText,
   shortDay,
+  trendText,
 } from "../lib/finance-format";
 import { financePath, parseFinanceRoute } from "../lib/finance-route";
 import { useHideAmounts } from "../lib/hide-amounts-preference";
@@ -814,7 +815,7 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
             <Trans>Monthly</Trans>
           </Th>
           <Th right className="hidden @md:table-cell">
-            <Trans>3 mo</Trans>
+            <Trans>3-mo change</Trans>
           </Th>
           <Th right className="hidden @md:table-cell">
             <Trans>Last charge</Trans>
@@ -851,8 +852,8 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
                 ) : null}
               </td>
               <td className="text-end tabular-nums">{money(sub.monthlyCents)}</td>
-              <td className="hidden w-[90px] @md:table-cell">
-                <Sparkline values={sub.trendCents} label={t`Last 3 months`} />
+              <td className="hidden w-[90px] whitespace-nowrap text-end tabular-nums text-muted-foreground @md:table-cell">
+                {trendText(sub.trendCents) ?? "—"}
               </td>
               <td className="hidden whitespace-nowrap text-end text-muted-foreground @md:table-cell">
                 {shortDay(sub.lastChargeAt)}
