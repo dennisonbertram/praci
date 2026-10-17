@@ -14,7 +14,7 @@ import net from "node:net";
 import { homedir } from "node:os";
 import path from "node:path";
 import { loadOrCreateCredentials } from "./demo/credentials.js";
-import { demoFinance, demoMailboxes } from "./demo/data.js";
+import { demoCrypto, demoFinance, demoMailboxes } from "./demo/data.js";
 import {
   assertDemoContainer,
   assertStateSlot,
@@ -316,6 +316,7 @@ async function serve() {
   const { handles } = await createEmulatedApp(process.env.DATABASE_URL as string, {
     composio: createE2eComposio(demoMailboxes),
     financeCallToolFor: demoFinance().callToolFor,
+    cryptoFetch: demoCrypto().fetch,
   });
   const server = listen({ fetch: handles.app.fetch, port: API_PORT, hostname: "127.0.0.1" });
   const stop = () => void handles.stop().finally(() => server.close(() => process.exit(0)));

@@ -9,6 +9,7 @@ import {
   mercuryAccountsResponse,
   mercuryRow,
 } from "../../../../adapters/src/finance-fake-tools.js";
+import { fakeRpc } from "../../../../adapters/src/rpc-crypto-fake-fetch.js";
 
 /**
  * Everything the mock demo stack shows. Each name, subject, address and note is invented and says
@@ -459,6 +460,32 @@ export function demoFinance(now = new Date()) {
     callToolFor: async (server: { provider: string }) =>
       server.provider === "mercury" ? mercury.callTool : brexCallTool,
   };
+}
+
+/** Invented treasury wallet: 0x…d3e0 is not a real holder; nothing here touches a real chain. */
+export const DEMO_WALLET = {
+  address: "0x000000000000000000000000000000000000d3e0",
+  label: "MOCK Treasury wallet",
+} as const;
+const USDC_ETHEREUM = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+
+/**
+ * An offline JSON-RPC and price fake holding the mock wallet's balances (2.5 ETH and 40,000 USDC on
+ * Ethereum). Pass `fetch` to `createApp` as `cryptoFetch` so the Crypto page never calls the network.
+ */
+export function demoCrypto() {
+  return fakeRpc({
+    chains: {
+      1: {
+        balances: { [DEMO_WALLET.address]: 2_500_000_000_000_000_000n },
+        tokens: { [USDC_ETHEREUM]: { [DEMO_WALLET.address]: 40_000_000_000n } },
+      },
+    },
+    prices: {
+      "coingecko:ethereum": { price: 2_500, confidence: 0.99 },
+      [`ethereum:${USDC_ETHEREUM}`]: { price: 1, confidence: 0.99 },
+    },
+  });
 }
 
 // ---- Cap table contacts, data room, bots ----

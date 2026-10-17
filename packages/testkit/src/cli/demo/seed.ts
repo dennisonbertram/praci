@@ -10,6 +10,7 @@ import {
   DEMO_EMPTY_SPACE,
   DEMO_GROUP,
   DEMO_USER_NAME,
+  DEMO_WALLET,
   demoFinance,
   demoStatementCsv,
   MOCK_NOTE,
@@ -153,6 +154,13 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     });
     await session.rpc("finance/statementConfirm", { id: reviewed.id });
     done.push("1 imported bank statement");
+    // A treasury wallet, read through the API's offline crypto fake (no real chain is called).
+    await session.rpc("finance/walletAdd", {
+      addressOrEns: DEMO_WALLET.address,
+      label: DEMO_WALLET.label,
+      type: "personal",
+    });
+    done.push("1 crypto wallet (offline fake balances)");
   } finally {
     await prisma.$disconnect();
     await pool.end();

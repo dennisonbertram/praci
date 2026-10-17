@@ -12,6 +12,7 @@ export async function createEmulatedApp(
   options: {
     composio?: ReturnType<typeof createE2eComposio>;
     financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+    cryptoFetch?: typeof fetch;
   } = {},
 ) {
   const thirdParties = new ThirdPartyConnectorEmulator();
@@ -34,6 +35,7 @@ export async function createEmulatedApp(
     pipedream,
     email,
     ...(options.financeCallToolFor ? { financeCallToolFor: options.financeCallToolFor } : {}),
+    ...(options.cryptoFetch ? { cryptoFetch: options.cryptoFetch } : {}),
     remoteConnectors: {
       fetch: thirdParties.fetch,
       resolveHostname: thirdParties.resolveHostname,

@@ -183,6 +183,8 @@ export async function createApp(
     contextStrategy?: AgentContextStrategy;
     /** Replaces the Mercury and Brex tool caller, so a stack with canned finance data can run offline. */
     financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+    /** Replaces the network for wallet balances, prices and ENS, so canned crypto data runs offline. */
+    cryptoFetch?: typeof fetch;
   } = {},
 ): Promise<AppHandles> {
   const {
@@ -199,6 +201,7 @@ export async function createApp(
     runtime: runtimeOverride,
     contextStrategy,
     financeCallToolFor: financeCallToolOverride,
+    cryptoFetch,
     ...envOverrides
   } = overrides;
   const env = { ...loadEnv(process.env), ...envOverrides };
@@ -629,8 +632,17 @@ export async function createApp(
       });
     },
     financeCrypto: {
-      sync: (scope, opts) => syncCryptoHoldings({ prisma, secrets }, scope, opts),
-      resolveEns: (_scope, name, signal) => resolveEnsName(createRpcClient({ signal }), name),
+      sync: (scope, opts) =>
+        syncCryptoHoldings(
+          { prisma, secrets, ...(cryptoFetch ? { fetch: cryptoFetch } : {}) },
+          scope,
+          opts,
+        ),
+      resolveEns: (_scope, name, signal) =>
+        resolveEnsName(
+          createRpcClient({ signal, ...(cryptoFetch ? { fetch: cryptoFetch } : {}) }),
+          name,
+        ),
     },
     resolveModel: executor.resolveModel,
     dataDir: env.dataDir,

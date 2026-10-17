@@ -1,9 +1,12 @@
+import { createRpcClient, fetchChainSnapshot, fetchPrices } from "@rakazo/adapters";
 import { describe, expect, it } from "vitest";
 import {
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_WALLET,
+  demoCrypto,
   demoFinance,
   demoMailboxes,
   demoStatementCsv,
@@ -64,5 +67,19 @@ describe("mock demo data", () => {
     const spanDays =
       (Date.parse(dates.at(-1) as string) - Date.parse(dates[0] as string)) / 86_400_000;
     expect(spanDays).toBeGreaterThan(60);
+  });
+
+  it("reads the mock wallet's ETH and USDC offline, priced, through the real RPC reader", async () => {
+    const rpc = createRpcClient({ fetch: demoCrypto().fetch, gapMs: 0 });
+    const { holdings } = await fetchChainSnapshot(rpc, 1, DEMO_WALLET.address);
+    expect(holdings.map((h) => [h.symbol, h.rawBalance])).toEqual([
+      ["ETH", "2500000000000000000"],
+      ["USDC", "40000000000"],
+    ]);
+    const prices = await fetchPrices(
+      rpc,
+      holdings.map((h) => h.llamaKey),
+    );
+    expect(prices.size).toBe(2);
   });
 });
