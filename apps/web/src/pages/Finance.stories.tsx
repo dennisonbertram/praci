@@ -194,9 +194,17 @@ const load =
 
 export const Default: Story = { args: { onAskAgent: () => {} }, beforeEach: load() };
 
-/** With more than one space, the header names the space whose finances these are. */
+/** With more than one space, the header names the company whose finances these are, as a menu to switch. */
 export const NamedSpace: Story = {
-  args: { onAskAgent: () => {}, spaceName: "Northwind Robotics" },
+  args: {
+    onAskAgent: () => {},
+    spaces: [
+      { id: "s1", name: "Northwind Robotics" },
+      { id: "s2", name: "Example Labs" },
+    ],
+    spaceId: "s1",
+    onSwitchSpace: () => {},
+  },
   beforeEach: load(),
 };
 

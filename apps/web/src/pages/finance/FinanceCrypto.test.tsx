@@ -137,7 +137,7 @@ it("renders totals, wallets, chains and holdings from the data", async () => {
   rpcMock.crypto.mockResolvedValue(data());
   await show();
   const page = container.textContent ?? "";
-  // Totals are whole dollars like the other balances; a token's own value keeps its cents.
+  // Totals and each token's value are whole dollars, like every other list in Finance.
   expect(page).toContain("$3,003");
   expect(page).not.toContain("$3,002.50");
   expect(page).toContain("1 unpriced");
@@ -147,8 +147,17 @@ it("renders totals, wallets, chains and holdings from the data", async () => {
   expect(page).toContain("Ethereum");
   expect(page).toContain("Base");
   expect(page).toContain("1.5");
-  expect(page).toContain("$3,000.00");
+  expect(page).toContain("$3,000");
+  expect(page).not.toContain("$3,000.00");
   expect(page).toContain("2.5");
+  // A labelled wallet still says which wallet it is, and with two wallets each holding names its wallet.
+  expect(page).toContain("0x1111…1111");
+  const holdings = [...container.querySelectorAll("tr")].filter((tr) =>
+    tr.textContent?.startsWith("ETH"),
+  );
+  expect(holdings.map((tr) => [...tr.querySelectorAll("td")][1]?.textContent)).toEqual([
+    "Treasury",
+  ]);
   expect(page).toContain("Updated");
   expect(container.querySelector('[role="alert"]')).toBeNull();
 });
@@ -268,6 +277,7 @@ it("shows each exchange as its own group and reloads everything after removing o
       balances: [
         { asset: "BTC", amount: "0.004", usdPrice: "50000", usdValueCents: 20_000 },
         { asset: "ZZZ", amount: "5", usdPrice: null, usdValueCents: null },
+        { asset: "USD", amount: "12000.00", usdPrice: "1", usdValueCents: 1_200_000 },
       ],
     },
   ]);
@@ -276,7 +286,10 @@ it("shows each exchange as its own group and reloads everything after removing o
   const page = container.textContent ?? "";
   expect(page).toContain("Kraken");
   expect(page).toContain("0.004");
-  expect(page).toContain("$200.00");
+  expect(page).toContain("$200");
+  // An exchange's decimal balance reads like a token balance: grouped, no trailing zeros.
+  expect(page).toContain("12,000");
+  expect(page).not.toContain("12000.00");
   expect(page).toContain("$250");
   expect(page).not.toContain("$250.00");
   expect(page).toContain("rate limit reached");

@@ -23,7 +23,7 @@ const TYPES: WalletType[] = ["personal", "safe", "exchange", "contract"];
 
 export function useTypeNames(): Record<WalletType, string> {
   const { t } = useLingui();
-  return { personal: t`Personal`, safe: t`Safe`, exchange: t`Exchange`, contract: t`Contract` };
+  return { personal: t`Self-custody`, safe: t`Safe`, exchange: t`Exchange`, contract: t`Contract` };
 }
 
 /** One line under the Type field saying what the chosen type means. */

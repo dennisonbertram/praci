@@ -20,8 +20,8 @@ import { LineChart } from "../../components/finance/charts";
 import { ExchangeGroup } from "../../components/finance/ExchangeGroup";
 import { DetailPage, Section, Th, useFinanceQuery } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
-import { chainName, tokenAmount } from "../../lib/crypto-format";
-import { dayMonth, money, moneyExact } from "../../lib/finance-format";
+import { chainName, shortAddress, tokenAmount } from "../../lib/crypto-format";
+import { dayMonth, money } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatRelativeTime } from "../../lib/relative-time";
@@ -95,12 +95,18 @@ function WalletRows({
               : null;
           return (
             <tr key={wallet.id} className={rowBorder}>
-              <td className="font-semibold">
-                {name}
-                <span className="ms-1.5 font-normal text-muted-foreground">
+              <td>
+                <span className="font-semibold">{name}</span>
+                <span className="ms-1.5 text-muted-foreground">
                   {typeNames[wallet.type]}
                   {threshold ? ` · ${threshold}` : null}
                 </span>
+                {/* Which wallet this is: its ENS name, else its address, unless the name already is it. */}
+                {wallet.label ? (
+                  <div className="text-[11px] text-muted-foreground">
+                    {wallet.ensName ?? shortAddress(wallet.address)}
+                  </div>
+                ) : null}
               </td>
               <td className="text-end tabular-nums">{money(cents.get(wallet.id) ?? 0)}</td>
               <td className="w-8 text-end">
@@ -150,6 +156,7 @@ export function FinanceCryptoPage() {
   const holdings = [...(data?.holdings ?? [])].sort(
     (a, b) => (b.usdValueCents ?? -1) - (a.usdValueCents ?? -1),
   );
+  const walletById = new Map((data?.wallets ?? []).map((w) => [w.id, walletName(w)]));
   // The Wallets section is wallet-only: the summary's totals also include exchanges.
   const walletCents = (data?.summary.byWallet ?? []).reduce((sum, w) => sum + w.cents, 0);
   const exchangeUnpriced = (exchanges.data ?? []).reduce(
@@ -238,6 +245,12 @@ export function FinanceCryptoPage() {
                     <Th>
                       <Trans>Token</Trans>
                     </Th>
+                    {/* With more than one wallet, the same token can appear once per wallet. */}
+                    {data.wallets.length > 1 ? (
+                      <Th>
+                        <Trans>Wallet</Trans>
+                      </Th>
+                    ) : null}
                     <Th>
                       <Trans>Chain</Trans>
                     </Th>
@@ -256,12 +269,17 @@ export function FinanceCryptoPage() {
                       className="border-t border-border [&>td]:py-2"
                     >
                       <td className="font-semibold">{h.symbol}</td>
+                      {data.wallets.length > 1 ? (
+                        <td className="text-muted-foreground">
+                          {walletById.get(h.walletId) ?? ""}
+                        </td>
+                      ) : null}
                       <td className="text-muted-foreground">{chainName(h.chainId)}</td>
                       <td className="text-end tabular-nums">
                         {tokenAmount(h.rawBalance, h.decimals)}
                       </td>
                       <td className="text-end tabular-nums">
-                        {h.usdValueCents === null ? "—" : moneyExact(h.usdValueCents)}
+                        {h.usdValueCents === null ? "—" : money(h.usdValueCents)}
                       </td>
                     </tr>
                   ))}

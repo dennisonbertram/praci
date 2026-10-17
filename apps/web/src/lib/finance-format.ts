@@ -4,18 +4,18 @@ import { getHideAmounts } from "./hide-amounts-preference";
 /** Fixed mask: shows neither magnitude nor digit count. */
 export const MASK = "•••";
 
-const dollars = (locale?: string) =>
+const dollars = (locale?: string, currency = "USD") =>
   new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   });
 const exact = (locale?: string, currency = "USD") =>
   new Intl.NumberFormat(locale, { style: "currency", currency });
 
 /** Whole dollars, no sign. Money is cents in a JS number. */
-export const money = (cents: number, locale?: string) =>
-  getHideAmounts() ? `$${MASK}` : dollars(locale).format(Math.abs(cents) / 100);
+export const money = (cents: number, locale?: string, currency?: string) =>
+  getHideAmounts() ? `$${MASK}` : dollars(locale, currency).format(Math.abs(cents) / 100);
 
 /** Dollars and cents, no sign. */
 export const moneyExact = (cents: number, locale?: string, currency?: string) =>
@@ -25,11 +25,16 @@ export const moneyExact = (cents: number, locale?: string, currency?: string) =>
 export const transactionAmount = (cents: number, locale?: string, currency?: string) =>
   cents > 0 ? `+${moneyExact(cents, locale, currency)}` : moneyExact(cents, locale, currency);
 
-/** Axis labels: `$1.5k`, `$40k`, `$800`. */
+/** A transaction amount in a list, in whole dollars like every other figure on a list page: `+$1,200`, `$88`. A single transaction's page shows the cents. */
+export const listAmount = (cents: number, locale?: string, currency?: string) =>
+  cents > 0 ? `+${money(cents, locale, currency)}` : money(cents, locale, currency);
+
+/** Axis labels: `$1.5M`, `$1.5k`, `$40k`, `$800`. */
 export function axisMoney(cents: number): string {
   if (getHideAmounts()) return `$${MASK}`;
   const d = Math.round(Math.abs(cents) / 100);
   const sign = cents < 0 && d > 0 ? "−" : "";
+  if (d >= 999_500) return `${sign}$${+(d / 1_000_000).toFixed(1)}M`;
   return d >= 1000 ? `${sign}$${+(d / 1000).toFixed(1)}k` : `${sign}$${d}`;
 }
 

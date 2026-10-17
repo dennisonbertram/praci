@@ -27,7 +27,6 @@ import {
   dayRange,
   lastDayOf,
   money,
-  moneyExact,
   monthAxisLabels,
   monthLabel,
   monthShort,
@@ -255,7 +254,7 @@ export function FinanceRecurringPage({ keyName }: { keyName: string }) {
             <Kv>
               <KvRow label={t`Cadence`}>{cadenceLabel(recurring.cadence)}</KvRow>
               <KvRow label={t`Next`}>{shortDay(recurring.nextExpectedAt)}</KvRow>
-              <KvRow label={t`Expected`}>{moneyExact(recurring.amountCents)}</KvRow>
+              <KvRow label={t`Expected`}>{money(recurring.amountCents)}</KvRow>
               {recurring.classification === "spend" ? (
                 <KvRow label={t`Vendor`}>
                   <ValueLink to={financePath.vendor(recurring.key)}>{recurring.name}</ValueLink>
@@ -371,7 +370,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
                         {charge.memo ?? charge.counterparty}
                       </HereLink>
                     </td>
-                    <td className="text-end tabular-nums">{moneyExact(charge.amountCents)}</td>
+                    <td className="text-end tabular-nums">{money(charge.amountCents)}</td>
                     <td className="text-end text-muted-foreground">
                       {charge.hasReceipt ? <ReceiptIcon /> : "—"}
                     </td>

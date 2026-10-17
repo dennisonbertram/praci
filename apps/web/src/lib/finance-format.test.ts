@@ -5,6 +5,7 @@ import {
   changeText,
   dayAxisLabels,
   fullDay,
+  listAmount,
   money,
   moneyExact,
   monthAxisLabels,
@@ -41,6 +42,16 @@ describe("finance formatting", () => {
     expect(axisMoney(80_000)).toBe("$800");
     expect(axisMoney(0)).toBe("$0");
     expect(axisMoney(-500_000)).toBe("−$5k");
+    // Millions read as $2M, not $2000k.
+    expect(axisMoney(200_000_000)).toBe("$2M");
+    expect(axisMoney(150_000_000)).toBe("$1.5M");
+    expect(axisMoney(99_995_000)).toBe("$1M");
+  });
+
+  it("shows list amounts in whole dollars, signed like transactions", () => {
+    expect(listAmount(150_050, en)).toBe("+$1,501");
+    expect(listAmount(-8_750, en)).toBe("$88");
+    expect(listAmount(-8_750, en, "EUR")).toBe("€88");
   });
 
   it("reads the date part of a day or ISO datetime, adding the year only when it differs", () => {

@@ -651,7 +651,7 @@ it("labels a vendor page, breadcrumb and back link", async () => {
   expect(container.textContent).toContain("Brex ••0001");
 });
 
-it("names the space on detail pages too, and puts Ask beside the page title", async () => {
+it("names the space on detail pages too, switches company from there, and puts Ask beside the page title", async () => {
   rpcMock.vendor.mockResolvedValue({
     key: "acme-hosting",
     name: "Acme Hosting",
@@ -663,15 +663,34 @@ it("names the space on detail pages too, and puts Ask beside the page title", as
     monthly: [],
     charges: [],
   });
+  const onSwitchSpace = vi.fn();
   await act(async () => {
     root.render(
       <MemoryRouter initialEntries={["/app/finance/vendor/acme-hosting"]}>
-        <FinancePage spaceName="Example Space Two" onAskAgent={vi.fn()} />
+        <FinancePage
+          spaces={[
+            { id: "s1", name: "Example Space One" },
+            { id: "s2", name: "Example Space Two" },
+          ]}
+          spaceId="s2"
+          onSwitchSpace={onSwitchSpace}
+          onAskAgent={vi.fn()}
+        />
       </MemoryRouter>,
     );
   });
   await flush();
-  expect(container.textContent).toContain("Example Space Two");
+  const switcher = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Company: Example Space Two. Switch company"]',
+  );
+  expect(switcher?.textContent).toBe("Example Space Two");
+  await act(async () => switcher?.click());
+  await flush();
+  const other = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(
+    (item) => item.textContent === "Example Space One",
+  );
+  await act(async () => other?.click());
+  expect(onSwitchSpace).toHaveBeenCalledWith("s1");
   const titleRow = container.querySelector("h1")?.parentElement;
   expect(titleRow?.querySelector('button[aria-label="Ask Finance agent"]')).not.toBeNull();
 });

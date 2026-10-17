@@ -4417,11 +4417,13 @@ export function ShellPage() {
         ) : financeMode ? (
           <FinancePage
             onAskAgent={financeAgentOpen ? undefined : askFinanceAgent}
-            spaceName={
-              spaces.length > 1
-                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
-                : undefined
-            }
+            spaces={spaces}
+            spaceId={bootstrapMe?.spaceId}
+            onSwitchSpace={(spaceId) => {
+              // Like opening another space's chat: the auth boundary changes, so reload. A detail
+              // page belongs to this space, so the other space opens on its dashboard.
+              if (selectSpace(spaceId)) window.location.assign("/app/finance");
+            }}
           />
         ) : legalMode ? (
           <LegalPage

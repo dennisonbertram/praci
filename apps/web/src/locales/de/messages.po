@@ -1875,6 +1875,11 @@ msgstr ""
 msgid "Company"
 msgstr ""
 
+#. placeholder {0}: current.name
+#: src/components/finance/ui.tsx
+msgid "Company: {0}. Switch company"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Complete"
 msgstr "Abschließen"
@@ -5561,7 +5566,6 @@ msgstr ""
 msgid "Person"
 msgstr ""
 
-#: src/components/finance/WalletDialog.tsx
 #: src/pages/Inbox.tsx
 msgid "Personal"
 msgstr ""
@@ -6517,6 +6521,10 @@ msgstr "Verbundenes Modell auswählen"
 msgid "Select an item to see its relations."
 msgstr ""
 
+#: src/components/finance/WalletDialog.tsx
+msgid "Self-custody"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -6666,6 +6674,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Show computer"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "Show finances for"
 msgstr ""
 
 #: src/components/inbox/TodoCard.tsx
@@ -7881,6 +7893,7 @@ msgid "Waiting…"
 msgstr "Warten…"
 
 #: src/components/finance/AddAccountDialog.tsx
+#: src/pages/finance/FinanceCrypto.tsx
 msgid "Wallet"
 msgstr ""
 

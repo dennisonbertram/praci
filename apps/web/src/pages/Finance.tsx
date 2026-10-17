@@ -35,6 +35,7 @@ import {
   Chevron,
   cashSubtitle,
   ErrorNotice,
+  type FinanceChrome,
   FinanceChromeProvider,
   HereLink,
   Kpi,
@@ -102,18 +103,11 @@ const BAR_GRANULARITY: Record<SpendPeriod, BarGranularity> = {
 };
 
 /** The Finance area: the dashboard at /app/finance and its detail pages. */
-export function FinancePage({
-  onAskAgent,
-  spaceName,
-}: {
-  onAskAgent?: () => void;
-  /** The space's name, given when the user has more than one space. */
-  spaceName?: string;
-}) {
+export function FinancePage(chrome: FinanceChrome) {
   const location = useLocation();
   const route = parseFinanceRoute(location.pathname, location.search);
   return (
-    <FinanceChromeProvider value={{ onAskAgent, spaceName }}>
+    <FinanceChromeProvider value={chrome}>
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
         {route.page === "dashboard" ? (
           <Dashboard />
