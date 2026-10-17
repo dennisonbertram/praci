@@ -215,6 +215,7 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
 import { findFinanceAgent } from "../lib/finance-agent";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
@@ -496,6 +497,7 @@ export function ShellPage() {
   );
   const streamResponsesRef = useRef(streamResponses);
   streamResponsesRef.current = streamResponses;
+  useHideAmounts();
   const showToolActivity = useSyncExternalStore(
     subscribeToolActivity,
     getToolActivityEnabled,
@@ -3500,9 +3502,9 @@ export function ShellPage() {
                           ? compactStatusLabel
                           : (workStatusLabel ??
                             (item.kind === "bot"
-                              ? item.chat.preview ||
+                              ? maskCurrencyWhenHidden(item.chat.preview) ||
                                 (item.chat.status !== "idle" ? item.chat.status : "")
-                              : item.chat.preview ||
+                              : maskCurrencyWhenHidden(item.chat.preview) ||
                                 item.chat.members.map((member) => member.name).join(", ")));
                         return (
                           <div
@@ -5912,6 +5914,7 @@ export const Composer = memo(function Composer({
   /** The user's sent messages in this conversation, oldest first. */
   sentHistory?: string[];
 }) {
+  useHideAmounts();
   const { t } = useLingui();
   const [draft, setDraft] = useState("");
   const historyIndex = useRef<number | null>(null);
@@ -6401,7 +6404,7 @@ export const Composer = memo(function Composer({
         <ComposerReplyPreview
           author={replyName}
           text={previewMessageText(replyTarget)}
-          quote={replyQuote}
+          quote={replyQuote ? maskCurrencyWhenHidden(replyQuote) : replyQuote}
           attachment={replyAttachment(replyTarget.blocks)}
           target={artifactTarget}
           onDismiss={() => {
@@ -6858,7 +6861,7 @@ function previewMessageText(message: ThreadMessage): string {
     .filter(Boolean)
     .join(" ")
     .trim();
-  if (text) return text;
+  if (text) return maskCurrencyWhenHidden(text);
   const attachment = replyAttachment(message.blocks);
   if (attachment) return attachment.kind === "image" ? t`Photo` : attachment.name || t`Attachment`;
   return t`Message`;
@@ -7171,6 +7174,7 @@ const MessageView = memo(function MessageView({
   onReply: (message: ThreadMessage) => void;
   showToolActivity: boolean;
 }) {
+  useHideAmounts();
   const { t } = useLingui();
   const botToolControls = useContext(BotToolControlsContext);
   const isNarration =

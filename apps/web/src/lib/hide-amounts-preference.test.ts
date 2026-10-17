@@ -63,3 +63,24 @@ describe("hide amounts", () => {
     expect(getHideAmounts()).toBe(true);
   });
 });
+
+import { maskCurrencyText } from "./hide-amounts-preference";
+
+describe("maskCurrencyText", () => {
+  it.each([
+    ["You spent $73,781.83 in Sep", "You spent $••• in Sep"],
+    ["raised $1.2M and $450k", "raised $••• and $•••"],
+    ["down -$300", "down -$•••"],
+    ["€2,000 and £5 and ¥900", "€••• and £••• and ¥•••"],
+    ["USD 1,200 due", "$••• due"],
+    ["1,200 USD due", "$••• due"],
+    ["$2 million", "$•••"],
+  ])("masks %s", (input, expected) => expect(maskCurrencyText(input)).toBe(expected));
+
+  it.each([
+    "12 transactions on Sep 5, 2026",
+    "4,000,000 shares",
+    "see https://example.com/a/1234567",
+    "call 555-0100",
+  ])("leaves %s alone", (input) => expect(maskCurrencyText(input)).toBe(input));
+});

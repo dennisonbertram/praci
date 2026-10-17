@@ -3439,7 +3439,7 @@ msgid "Hide transcript"
 msgstr "대화 기록 숨기기"
 
 #: src/components/HideAmountsToggle.tsx
-msgid "Hides amounts on finance screens. Chat replies may still mention amounts."
+msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
 msgstr ""
 
 #: src/lib/ticket-priority.ts

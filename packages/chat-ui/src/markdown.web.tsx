@@ -24,6 +24,7 @@ import {
   LinkFaviconsPausedContext,
   linkFaviconOrigin,
   linkLabel,
+  MarkdownTextTransformContext,
   markdownLinkDisplayParts,
   markdownLinkRequiresConfirmation,
   markRemoteImageLoaded,
@@ -50,6 +51,20 @@ function preserveSkippedTableText() {
         walk(child, insideCell);
         return child;
       });
+    };
+    walk(tree);
+  };
+}
+
+function transformTextNodes(transform: (text: string) => string) {
+  return () => (tree: HastNode) => {
+    const walk = (node: HastNode) => {
+      if (node.tagName === "code" || node.tagName === "pre") return;
+      for (const child of node.children ?? []) {
+        if (child.type === "text" && typeof child.value === "string")
+          child.value = transform(child.value);
+        else walk(child);
+      }
     };
     walk(tree);
   };
@@ -446,6 +461,10 @@ export const ChatMarkdown = memo(function ChatMarkdown({
 }: ChatMarkdownProps) {
   const { request, dialog } = useExternalLinkConfirm();
   const source = streaming ? closeUnterminatedFence(children) : children;
+  const transform = useContext(MarkdownTextTransformContext);
+  const rehypePlugins = transform
+    ? [preserveSkippedTableText, transformTextNodes(transform)]
+    : [preserveSkippedTableText];
 
   return (
     <ConfirmLinkContext.Provider value={request}>
@@ -457,7 +476,7 @@ export const ChatMarkdown = memo(function ChatMarkdown({
             <ReactMarkdown
               components={components}
               remarkPlugins={[remarkGfm]}
-              rehypePlugins={[preserveSkippedTableText]}
+              rehypePlugins={rehypePlugins}
               skipHtml
               // MarkdownImage decides what an image source may do, so it receives the source as written.
               urlTransform={(url, key) =>
@@ -476,6 +495,6 @@ export const ChatMarkdown = memo(function ChatMarkdown({
 });
 
 export type { ChatMarkdownProps, LinkFavicons } from "./markdown";
-export { LinkFaviconsContext, RemoteImagesContext } from "./markdown";
+export { LinkFaviconsContext, MarkdownTextTransformContext, RemoteImagesContext } from "./markdown";
 
 export { MarkdownLinkPromptProvider } from "./markdown-link-prompt";
