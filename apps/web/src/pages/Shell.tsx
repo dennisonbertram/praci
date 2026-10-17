@@ -148,6 +148,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { AgentPanelIntro } from "../components/AgentPanelIntro";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
@@ -482,7 +483,8 @@ export function ShellPage() {
   const [creatingFinanceAgent, setCreatingFinanceAgent] = useState(false);
   const [financeAgentError, setFinanceAgentError] = useState("");
   // The Carta agent panel opens on every wide-screen visit to Cap Table; on a phone it would cover the page.
-  const [cartaAgentOpen, setCartaAgentOpen] = useState(wideScreen);
+  // Closed until asked, like the Finance agent: the Ask button opens it.
+  const [cartaAgentOpen, setCartaAgentOpen] = useState(false);
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
   const [cartaAgentError, setCartaAgentError] = useState("");
   useEffect(() => {
@@ -881,10 +883,10 @@ export function ShellPage() {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
   useEffect(() => {
-    if (!capTableMode) setCartaAgentOpen(wideScreen());
+    if (!capTableMode) setCartaAgentOpen(false);
   }, [capTableMode]);
   const active =
-    inGroup || integrationsMode || dataRoomMode
+    inGroup || integrationsMode || dataRoomMode || artifactsMode
       ? undefined
       : inboxMode
         ? findInboxAgent(bots, userId)
@@ -2639,6 +2641,10 @@ export function ShellPage() {
         createLabel: t`Create Inbox agent`,
         creating: creatingInboxAgent,
         error: inboxAgentError,
+        suggestions: [
+          t`What needs a reply from me today?`,
+          t`Summarize this week's investor email`,
+        ],
       }
     : financeMode
       ? {
@@ -2651,6 +2657,7 @@ export function ShellPage() {
           createLabel: t`Create Finance agent`,
           creating: creatingFinanceAgent,
           error: financeAgentError,
+          suggestions: [t`What is our runway?`, t`Where did spend go up this month?`],
         }
       : capTableMode
         ? {
@@ -2664,6 +2671,7 @@ export function ShellPage() {
             createLabel: "",
             creating: creatingCartaAgent,
             error: cartaAgentError,
+            suggestions: [t`Who are our investors?`, t`Draft this month's investor update`],
           }
         : null;
 
@@ -4303,7 +4311,17 @@ export function ShellPage() {
                 </Button>
               </div>
               {active ? (
-                threadView
+                <>
+                  {transcriptMessages.length === 0 && !transcriptRunning ? (
+                    <AgentPanelIntro
+                      description={active.description}
+                      suggestions={agentPanel.suggestions}
+                      disabled={sending}
+                      onPick={(text) => void sendMessage(text, [], newClientId())}
+                    />
+                  ) : null}
+                  {threadView}
+                </>
               ) : (
                 <div className="grid flex-1 place-content-center justify-items-center gap-3 px-5">
                   {agentPanel.create ? (

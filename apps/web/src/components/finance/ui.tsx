@@ -19,12 +19,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { ChevronRight, MessageSquare } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { money, shortDay, transactionAmount } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
 import { errorText } from "../../lib/user-error";
+import { AskBotButton } from "../AskBotButton";
 import { shade } from "./charts";
 
 /** What the Shell tells every Finance page: how to open the agent panel (absent while it is open). */
@@ -35,14 +36,9 @@ export function AskAgentButton() {
   const { onAskAgent } = useContext(ChromeContext);
   if (!onAskAgent) return null;
   return (
-    <Button
-      size="lg"
-      className="ms-auto h-10 rounded-[10px] px-4.5 text-sm font-semibold"
-      onClick={onAskAgent}
-    >
-      <MessageSquare aria-hidden="true" className="size-4.5" />
-      <Trans>Ask agent</Trans>
-    </Button>
+    <div className="ms-auto">
+      <AskBotButton botName="Finance agent" onClick={onAskAgent} />
+    </div>
   );
 }
 

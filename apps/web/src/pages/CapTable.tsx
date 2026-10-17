@@ -20,8 +20,9 @@ import {
   TabsTrigger,
   Textarea,
 } from "@rakazo/ui-web";
-import { PanelRightOpen, PieChart, Plus, RefreshCw } from "lucide-react";
+import { PieChart, Plus, RefreshCw } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { AskBotButton } from "../components/AskBotButton";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { hasConnectedCarta } from "../lib/carta-agent";
 import { formatRelativeTime } from "../lib/relative-time";
@@ -412,17 +413,7 @@ export function CapTablePage({
             <Trans>Add contact</Trans>
           </Button>
         )}
-        {onShowAgent ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="pointer-coarse:size-10"
-            aria-label={t`Show Carta agent`}
-            onClick={onShowAgent}
-          >
-            <PanelRightOpen aria-hidden="true" />
-          </Button>
-        ) : null}
+        {onShowAgent ? <AskBotButton botName="Carta agent" onClick={onShowAgent} /> : null}
       </div>
 
       {showHoldings ? <Summary snapshot={snapshot} /> : null}
@@ -558,8 +549,9 @@ export function CapTablePage({
                       contact.email
                     ) : holder ? (
                       <Button
-                        variant="outline"
+                        variant="link"
                         size="xs"
+                        className="px-0"
                         onClick={() =>
                           setEditing({
                             name,

@@ -818,7 +818,7 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
     await page.emulateMedia({ colorScheme: layout.scheme });
     // The panel starts collapsed: open it for the "open" cases and shut it again for the others.
     const collapse = page.getByRole("button", { name: "Collapse Inbox agent" });
-    const show = main.getByRole("button", { name: "Show Inbox agent" });
+    const show = main.getByRole("button", { name: "Ask Inbox agent" });
     if (layout.agent === "open" && (await show.isVisible())) await show.click();
     // The panel animates open; measure once the pane has given up its width.
     if (layout.agent === "open") {

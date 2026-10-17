@@ -196,7 +196,7 @@ it("offers Add account when nothing is connected, opening the dialog with Upload
   await show("/app/finance");
   expect(container.textContent).toContain("Add an account to see cash, burn, runway and spend.");
   expect(container.querySelectorAll('[data-testid="app-logo"]').length).toBe(2);
-  expect(container.textContent).not.toContain("Ask agent");
+  expect(button(/^Ask Finance agent$/)).toBeUndefined();
   const add = button("Add account");
   await act(async () => add?.click());
   await flush();
@@ -287,8 +287,8 @@ it("links the header to Accounts and offers Add Brex when only Mercury is connec
   expect(accounts?.getAttribute("href")).toBe("/app/finance/accounts");
   const add = links.find((a) => a.textContent === "Add Brex");
   expect(add?.getAttribute("href")).toBe("/app/integrations?category=finance");
-  // Accounts comes before Ask agent in the header.
-  const ask = button("Ask agent") as HTMLElement;
+  // Accounts comes before Ask in the header.
+  const ask = button(/^Ask Finance agent$/) as HTMLElement;
   expect(accounts && ask && accounts.compareDocumentPosition(ask)).toBe(
     Node.DOCUMENT_POSITION_FOLLOWING,
   );
@@ -507,19 +507,19 @@ it("puts the paid-with text on the subscription row and links the row to its ven
   expect(link?.getAttribute("aria-label")).toBe("Acme Hosting, paid with Brex ••0001");
 });
 
-it("offers Ask agent only while the panel is closed", async () => {
+it("offers Ask only while the panel is closed", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   const ask = vi.fn();
   await show("/app/finance", ask);
   await flush();
-  await act(async () => button("Ask agent")?.click());
+  await act(async () => button(/^Ask Finance agent$/)?.click());
   expect(ask).toHaveBeenCalledTimes(1);
 
   act(() => root.unmount());
   root = createRoot(container);
   await show("/app/finance", undefined);
   await flush();
-  expect(button("Ask agent")).toBeUndefined();
+  expect(button(/^Ask Finance agent$/)).toBeUndefined();
 });
 
 it("refreshes on demand and shows a sync failure with a retry", async () => {

@@ -24,10 +24,11 @@ import {
   TabsTrigger,
   Toggle,
 } from "@rakazo/ui-web";
-import { ListFilter, PanelRightOpen, Search, SquarePen, X } from "lucide-react";
+import { ListFilter, Search, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
+import { AskBotButton } from "../components/AskBotButton";
 import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
 import { InboxGroup } from "../components/inbox/InboxRow";
@@ -637,17 +638,7 @@ export function InboxPage({
         >
           <SquarePen aria-hidden="true" />
         </Button>
-        {onShowAgent ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="pointer-coarse:size-10"
-            aria-label={t`Show Inbox agent`}
-            onClick={onShowAgent}
-          >
-            <PanelRightOpen aria-hidden="true" />
-          </Button>
-        ) : null}
+        {onShowAgent ? <AskBotButton botName="Inbox agent" onClick={onShowAgent} /> : null}
       </div>
       {accounts.length > 1 ? (
         <Tabs

@@ -13,7 +13,7 @@ test("the Inbox agent chats in a collapsible side panel on /app/inbox", async ({
   await expect(page.getByRole("heading", { name: "Inbox", level: 1 })).toBeVisible();
   expect(new URL(page.url()).pathname).toBe("/app/inbox");
   const panel = page.getByTestId("side-panel");
-  await page.getByRole("main").getByRole("button", { name: "Show Inbox agent" }).click();
+  await page.getByRole("main").getByRole("button", { name: "Ask Inbox agent" }).click();
   await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
   const composer = panel.getByPlaceholder(/Message/);
   await expect(composer).toBeVisible();
@@ -34,7 +34,7 @@ test("the Inbox agent chats in a collapsible side panel on /app/inbox", async ({
   // Collapse, reload, still collapsed, then reopen from the Inbox page.
   await panel.getByRole("button", { name: "Collapse Inbox agent", exact: true }).click();
   await expect.poll(async () => (await panel.boundingBox())?.width ?? 0).toBe(0);
-  const show = page.getByRole("main").getByRole("button", { name: "Show Inbox agent" });
+  const show = page.getByRole("main").getByRole("button", { name: "Ask Inbox agent" });
   await expect(show).toBeVisible();
   await captureScreenshot(page, testInfo, "inbox-agent-panel-collapsed");
   await page.reload();
@@ -71,7 +71,7 @@ test("a reload on /app/inbox shows the existing Inbox agent, not the first bot",
   await completeOnboarding(page);
   await page.goto("/app/inbox");
   const panel = page.getByTestId("side-panel");
-  await page.getByRole("main").getByRole("button", { name: "Show Inbox agent" }).click();
+  await page.getByRole("main").getByRole("button", { name: "Ask Inbox agent" }).click();
   await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
   await expect(panel.getByPlaceholder("Message Inbox agent")).toBeVisible();
 

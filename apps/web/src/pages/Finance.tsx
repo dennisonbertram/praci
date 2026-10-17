@@ -345,12 +345,7 @@ function Overview({
           </Link>
         ) : null}
         <div className="ms-auto flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-10 rounded-[10px] px-4 text-sm"
-            render={<Link to={financePath.accounts()} />}
-          >
+          <Button variant="outline" render={<Link to={financePath.accounts()} />}>
             <Trans>Accounts</Trans>
           </Button>
           <AskAgentButton />
