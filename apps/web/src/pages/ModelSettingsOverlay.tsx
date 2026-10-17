@@ -89,6 +89,16 @@ export function ModelSettingsOverlay({
   const [provider, setProvider] = useState(focusProvider ?? "");
   // The provider whose optional personal-key form is open.
   const [ownKeyProvider, setOwnKeyProvider] = useState<string | null>(focusProvider ?? null);
+  // Opened from a "add your key" link: bring the key field on screen once, even on a phone.
+  const apiKeyRef = useRef<HTMLInputElement>(null);
+  const keyShown = useRef(false);
+  useEffect(() => {
+    const field = apiKeyRef.current;
+    if (!focusProvider || keyShown.current || !field) return;
+    keyShown.current = true;
+    field.scrollIntoView?.({ block: "center" });
+    field.focus({ preventScroll: true });
+  });
   const [providerQuery, setProviderQuery] = useState("");
   const [modelId, setModelId] = useState("");
   const modelIdRef = useRef(modelId);
@@ -1018,6 +1028,7 @@ export function ModelSettingsOverlay({
                 <Trans>API key</Trans>
               )}
               <Input
+                ref={apiKeyRef}
                 id="model-api-key"
                 value={apiKey}
                 onChange={(event) => updateApiKey(event.target.value)}

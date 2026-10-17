@@ -30,11 +30,12 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { legal: rpcMock } }));
 
-import { LegalGraphView, MAX_GRAPH_NODES } from "../components/legal/LegalGraph";
+import { LegalGraphView, labelLines, MAX_GRAPH_NODES } from "../components/legal/LegalGraph";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { LegalPage } from "./Legal";
 import {
   consentFixture,
+  contracts,
   deadlines,
   emptyOverview,
   graph,
@@ -42,6 +43,7 @@ import {
   needsKeyOverview,
   overview,
 } from "./legal/fixtures";
+import { LegalContracts } from "./legal/LegalContracts";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -464,7 +466,14 @@ it("names the Legal agent on Ask and offers the Hide amounts switch", async () =
 });
 
 it("links the unchecked documents tile to the Data room and the deadline tiles to Deadlines", async () => {
-  rpcMock.overview.mockResolvedValue(overview);
+  // One deadline long past and one far ahead, so which one is overdue never depends on today.
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    deadlines: [
+      { ...deadlines[0]!, dueDate: "2000-01-01" },
+      { ...deadlines[1]!, dueDate: "2999-01-01" },
+    ],
+  });
   await render(<LegalPage />);
   expect(container.querySelector('a[href="/app/data-room"]')?.textContent).toContain(
     "Documents not yet checked",
@@ -473,14 +482,70 @@ it("links the unchecked documents tile to the Data room and the deadline tiles t
   const overdue = [...container.querySelectorAll("a")].find((a) =>
     a.textContent?.startsWith("Overdue"),
   );
-  expect(overdue?.getAttribute("href")).toBe("/app/legal?view=deadlines");
+  expect(overdue?.getAttribute("href")).toBe("/app/legal?view=deadlines&due=overdue");
   await click(overdue);
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("true");
+  // The tile said 1, so the list it opens shows that one, not every open deadline.
   expect(container.textContent).toContain("Return the security deposit paperwork");
+  expect(container.textContent).not.toContain("Send non-renewal notice");
+  expect(container.textContent).toContain("Showing 1 overdue deadline.");
+  await click(button("Show all 2 open deadlines"));
+  expect(container.textContent).toContain("Send non-renewal notice");
+});
+
+it("names the space beside the title when there is more than one", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  await render(<LegalPage spaceName="MOCK Empty space" />);
+  expect(container.querySelector("h1")?.parentElement?.textContent).toContain("MOCK Empty space");
 });
 
 it("says the Legal agent scans daily next to the last scan time", async () => {
   rpcMock.overview.mockResolvedValue(overview);
   await render(<LegalPage />);
   expect(container.textContent).toMatch(/Last scan .+\. Scans daily\./);
+});
+
+it("words a term with only a start date, and gives the next deadline its year", async () => {
+  await render(
+    <LegalContracts
+      contracts={[
+        {
+          ...contracts[0]!,
+          effectiveDate: "2026-05-20",
+          expirationDate: null,
+          nextDeadline: "2026-11-30",
+        },
+      ]}
+    />,
+  );
+  const page = container.textContent ?? "";
+  expect(page).toContain("Since May 20, 2026");
+  expect(page).not.toContain("– —");
+  expect(page).toContain("Nov 30, 2026");
+});
+
+it("puts contracts between their parties and their jurisdictions, with edges ending at box sides", async () => {
+  await render(<LegalGraphView graph={graph} />);
+  const heads = [...container.querySelectorAll("svg > text")].map((el) => el.textContent);
+  expect(heads.indexOf("Contract")).toBeGreaterThan(heads.indexOf("Company"));
+  expect(heads.indexOf("Jurisdiction")).toBeGreaterThan(heads.indexOf("Contract"));
+  // No edge starts at a box's centre, where it would run behind the box.
+  const centres = [...container.querySelectorAll('svg [role="button"] rect')].map((rect) => {
+    const x = Number(rect.getAttribute("x")) + Number(rect.getAttribute("width")) / 2;
+    const y = Number(rect.getAttribute("y")) + Number(rect.getAttribute("height")) / 2;
+    return `M${x} ${y}`;
+  });
+  for (const path of container.querySelectorAll("svg path")) {
+    const start = path.getAttribute("d")?.split(" C")[0];
+    expect(centres).not.toContain(start);
+  }
+});
+
+it("breaks a long label over two lines instead of cutting it short", () => {
+  expect(labelLines("Delaware")).toEqual(["Delaware"]);
+  expect(labelLines("MOCK Master Services Agreement - Halcyon Logistics")).toEqual([
+    "MOCK Master Services Agreement",
+    "- Halcyon Logistics",
+  ]);
+  expect(labelLines(`${"A ".repeat(40)}end`)[1]?.endsWith("…")).toBe(true);
 });

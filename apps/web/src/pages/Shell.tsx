@@ -4410,6 +4410,11 @@ export function ShellPage() {
             onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
             onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
             settingsOpen={settingsOpen}
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
           />
         ) : capTableMode ? (
           <CapTablePage

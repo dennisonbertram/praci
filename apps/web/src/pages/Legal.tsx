@@ -8,6 +8,7 @@ import {
   ErrorNotice,
   FinanceChromeProvider,
   Kpi,
+  SpaceName,
   useFinanceQuery,
 } from "../components/finance/ui";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
@@ -17,7 +18,7 @@ import { DATA_ROOM_PATH } from "../lib/data-room";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
-import { errorText } from "../lib/user-error";
+import { errorText, runErrorText } from "../lib/user-error";
 import { LegalContracts } from "./legal/LegalContracts";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
 
@@ -34,15 +35,18 @@ export function LegalPage({
   onAskAgent,
   onOpenSettings,
   settingsOpen = false,
+  spaceName,
 }: {
   onAskAgent?: () => void;
+  /** The space's name when the user has more than one, so they know whose contracts these are. */
+  spaceName?: string;
   /** Opens Settings on Models > OpenRouter with the own-key form open. */
   onOpenSettings?: () => void;
   /** Settings is open over the page; the page re-reads its state when it closes. */
   settingsOpen?: boolean;
 }) {
   return (
-    <FinanceChromeProvider value={{ onAskAgent, agentName: "Legal agent" }}>
+    <FinanceChromeProvider value={{ onAskAgent, agentName: "Legal agent", spaceName }}>
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
         <Legal
           onAskAgent={onAskAgent}
@@ -71,6 +75,8 @@ function Legal({
   const [params, setParams] = useSearchParams();
   const asked = params.get("view");
   const view: View = VIEWS.includes(asked as View) ? (asked as View) : "contracts";
+  // The Overdue tile opens Deadlines on just the overdue ones.
+  const onlyOverdue = view === "deadlines" && params.get("due") === "overdue";
   const setView = (next: View) =>
     setParams(next === "contracts" ? {} : { view: next }, { replace: true });
   const [scanError, setScanError] = useState("");
@@ -169,10 +175,11 @@ function Legal({
         <h1 className="text-lg font-medium">
           <Trans>Legal</Trans>
         </h1>
+        <SpaceName />
         <span className="text-[11px] text-muted-foreground">
           {lastRun?.status === "failed" && !running ? (
             lastRun.error ? (
-              <Trans>Last scan failed: {lastRun.error}</Trans>
+              <Trans>Last scan failed: {runErrorText(lastRun.error)}</Trans>
             ) : (
               <Trans>Last scan failed</Trans>
             )
@@ -229,7 +236,7 @@ function Legal({
           value={counts.openDeadlines}
           to={`${LEGAL_PATH}?view=deadlines`}
         />
-        <Kpi title={t`Overdue`} value={overdue} to={`${LEGAL_PATH}?view=deadlines`} />
+        <Kpi title={t`Overdue`} value={overdue} to={`${LEGAL_PATH}?view=deadlines&due=overdue`} />
         {/* Five tiles in two columns would leave this one alone; it takes the whole row instead. */}
         <div className="col-span-2 @3xl:col-span-1">
           <Kpi
@@ -283,7 +290,12 @@ function Legal({
           </Tabs>
           {view === "contracts" ? <LegalContracts contracts={data.contracts} /> : null}
           {view === "deadlines" ? (
-            <LegalDeadlines deadlines={data.deadlines} onChanged={overview.reload} />
+            <LegalDeadlines
+              deadlines={data.deadlines}
+              onChanged={overview.reload}
+              onlyOverdue={onlyOverdue}
+              onShowAll={() => setView("deadlines")}
+            />
           ) : null}
           {view === "graph" ? <GraphTab /> : null}
         </>

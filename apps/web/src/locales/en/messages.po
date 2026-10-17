@@ -67,6 +67,16 @@ msgstr "{0, plural, one {#+ result} other {#+ results}}"
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr "{0, plural, one {Last full month} other {Last # full months}}"
 
+#. placeholder {0}: allOpen.length
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{0, plural, one {Show all # open deadline} other {Show all # open deadlines}}"
+msgstr "{0, plural, one {Show all # open deadline} other {Show all # open deadlines}}"
+
+#. placeholder {0}: open.length
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
+msgstr "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
+
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -4103,6 +4113,14 @@ msgstr "Last 90 days"
 msgid "Last charge"
 msgstr "Last charge"
 
+#: src/pages/Shell.tsx
+msgid "Last run failed: {failedNote}"
+msgstr "Last run failed: {failedNote}"
+
+#: src/pages/Shell.tsx
+msgid "Last run failed."
+msgstr "Last run failed."
+
 #: src/pages/Legal.tsx
 msgid "Last scan {lastScan}. Scans daily."
 msgstr "Last scan {lastScan}. Scans daily."
@@ -4111,7 +4129,7 @@ msgstr "Last scan {lastScan}. Scans daily."
 msgid "Last scan failed"
 msgstr "Last scan failed"
 
-#. placeholder {0}: lastRun.error
+#. placeholder {0}: runErrorText(lastRun.error)
 #: src/pages/Legal.tsx
 msgid "Last scan failed: {0}"
 msgstr "Last scan failed: {0}"
@@ -5162,6 +5180,10 @@ msgstr "Not waiting for approval"
 #: src/pages/CapTable.tsx
 msgid "Notes"
 msgstr "Notes"
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Nothing is overdue."
+msgstr "Nothing is overdue."
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Nothing is still running"
@@ -6397,6 +6419,10 @@ msgstr "Scanning…"
 msgid "Scheduling"
 msgstr "Scheduling"
 
+#: src/components/legal/LegalGraph.tsx
+msgid "Scroll sideways to see the whole graph."
+msgstr "Scroll sideways to see the whole graph."
+
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -6794,6 +6820,10 @@ msgstr "Sign-in was denied or failed."
 #: src/components/FinanceCards.tsx
 msgid "since {0}"
 msgstr "since {0}"
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Since {from}"
+msgstr "Since {from}"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Site"
@@ -7219,6 +7249,10 @@ msgstr "The Inbox page stops showing new mail until you reconnect."
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 
+#: src/lib/user-error.ts
+msgid "The model provider did not accept your API key. Check it in Settings > Models."
+msgstr "The model provider did not accept your API key. Check it in Settings > Models."
+
 #: src/components/ComposeEmail.tsx
 msgid "The original message didn't load."
 msgstr "The original message didn't load."
@@ -7609,6 +7643,10 @@ msgstr "until {0}"
 #: src/pages/Finance.tsx
 msgid "Until {runOutMonth}"
 msgstr "Until {runOutMonth}"
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Until {to}"
+msgstr "Until {to}"
 
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx

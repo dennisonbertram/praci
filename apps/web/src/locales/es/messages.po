@@ -67,6 +67,16 @@ msgstr ""
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr ""
 
+#. placeholder {0}: allOpen.length
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{0, plural, one {Show all # open deadline} other {Show all # open deadlines}}"
+msgstr ""
+
+#. placeholder {0}: open.length
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
+msgstr ""
+
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -4103,6 +4113,14 @@ msgstr ""
 msgid "Last charge"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Last run failed: {failedNote}"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Last run failed."
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Last scan {lastScan}. Scans daily."
 msgstr ""
@@ -4111,7 +4129,7 @@ msgstr ""
 msgid "Last scan failed"
 msgstr ""
 
-#. placeholder {0}: lastRun.error
+#. placeholder {0}: runErrorText(lastRun.error)
 #: src/pages/Legal.tsx
 msgid "Last scan failed: {0}"
 msgstr ""
@@ -5161,6 +5179,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Notes"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Nothing is overdue."
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -6397,6 +6419,10 @@ msgstr ""
 msgid "Scheduling"
 msgstr ""
 
+#: src/components/legal/LegalGraph.tsx
+msgid "Scroll sideways to see the whole graph."
+msgstr ""
+
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -6793,6 +6819,10 @@ msgstr ""
 #. placeholder {0}: shortDay(card.from)
 #: src/components/FinanceCards.tsx
 msgid "since {0}"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Since {from}"
 msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
@@ -7219,6 +7249,10 @@ msgstr ""
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr ""
 
+#: src/lib/user-error.ts
+msgid "The model provider did not accept your API key. Check it in Settings > Models."
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "The original message didn't load."
 msgstr ""
@@ -7608,6 +7642,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Until {runOutMonth}"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Until {to}"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx

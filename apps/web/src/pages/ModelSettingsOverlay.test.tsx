@@ -308,6 +308,8 @@ it("opens the own-key form when a page asks for that provider's key", async () =
   const view = await renderSettings("deepseek");
   try {
     expect(ownKey(view.container)?.open).toBe(true);
+    // The field the link promised is on screen and ready for the key.
+    expect(document.activeElement).toBe(keyField(view.container));
   } finally {
     await view.unmount();
   }
