@@ -256,7 +256,7 @@ import {
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import { sharedInflight } from "../lib/shared-inflight";
-import { slashSkillOptions as pickSlashSkills } from "../lib/slash-skills";
+import { slashSkillOptions as pickSlashSkills, slashSkillLabel } from "../lib/slash-skills";
 import {
   activeThreadRuns,
   applyThreadSendReceipt,
@@ -6275,6 +6275,7 @@ export const Composer = memo(function Composer({
   const runErrorRef = useRef<HTMLDivElement>(null);
   const presentedRunErrorIdRef = useRef<string | null>(null);
   const mentionListboxId = useId();
+  const slashListboxId = useId();
   const dragDepth = useRef(0);
   const [draggingFiles, setDraggingFiles] = useState(false);
   const canSend =
@@ -6494,6 +6495,20 @@ export const Composer = memo(function Composer({
     slashQuery !== null &&
     mentionQuery === null &&
     (slashSkillOptions.length > 0 || slashActionOptions.length > 0);
+  const slashOptionCount = slashSkillOptions.length + slashActionOptions.length;
+  const [slashHighlight, setSlashHighlight] = useState(0);
+  // Each new query starts at the first option.
+  useEffect(() => {
+    setSlashHighlight(0);
+  }, [slashQuery]);
+  const activeSlashIndex = Math.min(slashHighlight, Math.max(0, slashOptionCount - 1));
+
+  function pickSlashOption(index: number) {
+    const skill = slashSkillOptions[index];
+    if (skill) return insertSkill(skill);
+    const action = slashActionOptions[index - slashSkillOptions.length];
+    if (action) runSlashAction(action.id);
+  }
 
   async function send() {
     // Same as Enter: while "No matches" shows, Escape first, then send as typed.
@@ -6845,37 +6860,62 @@ export const Composer = memo(function Composer({
       ) : null}
       {showSlashPicker ? (
         <div
+          id={slashListboxId}
+          role="listbox"
+          aria-label={t`Skills and actions`}
           data-testid="slash-picker"
           className="mb-2 overflow-hidden rounded-[14px] border border-border bg-muted"
         >
-          {slashSkillOptions.map((skill) => (
-            <button
-              key={skill.id}
-              type="button"
-              aria-label={t`Skill ${skill.name}`}
-              onClick={() => insertSkill(skill)}
-              className="flex w-full items-start gap-3 px-4 py-2.5 text-start hover:bg-accent"
-            >
-              <Box size={16} strokeWidth={1.7} className="mt-0.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0">
-                <span dir="auto" className="block text-[14px] text-foreground">
-                  {skill.name}
-                </span>
-                <span dir="auto" className="block truncate text-[12.5px] text-muted-foreground">
-                  {truncateSlashDescription(skill.description)}
-                </span>
-              </span>
-            </button>
-          ))}
-          {slashActionOptions.map((action) => {
-            const label = slashActionLabel(action.id);
+          {slashSkillOptions.map((skill, index) => {
+            const label = slashSkillLabel(skill);
             return (
               <button
+                id={`${slashListboxId}-option-${index}`}
+                key={skill.id}
+                type="button"
+                role="option"
+                aria-selected={index === activeSlashIndex}
+                aria-label={t`Skill ${label.title}`}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => insertSkill(skill)}
+                onMouseMove={() => setSlashHighlight(index)}
+                className={`flex w-full items-start gap-3 px-4 py-2.5 text-start hover:bg-accent ${
+                  index === activeSlashIndex ? "bg-accent" : ""
+                }`}
+              >
+                <Box
+                  size={16}
+                  strokeWidth={1.7}
+                  className="mt-0.5 shrink-0 text-muted-foreground"
+                />
+                <span className="min-w-0">
+                  <span dir="auto" className="block text-[14px] text-foreground">
+                    {label.title}
+                  </span>
+                  <span dir="auto" className="block truncate text-[12.5px] text-muted-foreground">
+                    {truncateSlashDescription(label.description)}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+          {slashActionOptions.map((action, actionIndex) => {
+            const label = slashActionLabel(action.id);
+            const index = slashSkillOptions.length + actionIndex;
+            return (
+              <button
+                id={`${slashListboxId}-option-${index}`}
                 key={action.id}
                 type="button"
+                role="option"
+                aria-selected={index === activeSlashIndex}
                 aria-label={label}
+                onMouseDown={(event) => event.preventDefault()}
                 onClick={() => runSlashAction(action.id)}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-start hover:bg-accent"
+                onMouseMove={() => setSlashHighlight(index)}
+                className={`flex w-full items-center gap-3 px-4 py-2.5 text-start hover:bg-accent ${
+                  index === activeSlashIndex ? "bg-accent" : ""
+                }`}
               >
                 <Settings size={16} strokeWidth={1.7} className="shrink-0 text-muted-foreground" />
                 <span className="text-[14px] text-foreground">{label}</span>
@@ -6926,11 +6966,11 @@ export const Composer = memo(function Composer({
             >
               <Box size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />
               <span dir="auto" className="truncate">
-                {selectedSkill.name}
+                {slashSkillLabel(selectedSkill).title}
               </span>
               <button
                 type="button"
-                aria-label={t`Remove skill ${selectedSkill.name}`}
+                aria-label={t`Remove skill ${slashSkillLabel(selectedSkill).title}`}
                 onClick={() => {
                   markEdited();
                   setSelectedSkill(null);
@@ -6994,6 +7034,30 @@ export const Composer = memo(function Composer({
                 return;
               }
               const composing = event.nativeEvent.isComposing || event.keyCode === 229;
+              if (showSlashPicker) {
+                const slashKey = resolveMentionPickerKey({
+                  key: event.key,
+                  shiftKey: event.shiftKey,
+                  isComposing: composing,
+                  optionCount: slashOptionCount,
+                  highlightedIndex: activeSlashIndex,
+                });
+                if (slashKey.type === "move") {
+                  event.preventDefault();
+                  setSlashHighlight(slashKey.index);
+                  return;
+                }
+                if (slashKey.type === "complete") {
+                  event.preventDefault();
+                  pickSlashOption(slashKey.index);
+                  return;
+                }
+                if (slashKey.type === "dismiss") {
+                  event.preventDefault();
+                  setSlashQuery(null);
+                  return;
+                }
+              }
               const action = resolveMentionPickerKey({
                 key: event.key,
                 shiftKey: event.shiftKey,
@@ -7072,8 +7136,17 @@ export const Composer = memo(function Composer({
             aria-autocomplete="list"
             aria-haspopup="listbox"
             aria-expanded={mentionPickerOpen || mentionNoMatches}
-            aria-controls={mentionPickerOpen || mentionNoMatches ? mentionListboxId : undefined}
-            aria-activedescendant={activeMentionOptionId}
+            aria-controls={
+              mentionPickerOpen || mentionNoMatches
+                ? mentionListboxId
+                : showSlashPicker
+                  ? slashListboxId
+                  : undefined
+            }
+            aria-activedescendant={
+              activeMentionOptionId ??
+              (showSlashPicker ? `${slashListboxId}-option-${activeSlashIndex}` : undefined)
+            }
             name="chat-message"
             autoComplete="off"
             dir="auto"

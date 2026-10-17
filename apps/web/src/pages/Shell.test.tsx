@@ -8,7 +8,10 @@ import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@lingui/core/macro", () => ({ msg: (parts: TemplateStringsArray) => parts[0] }));
+vi.mock("@lingui/core/macro", () => ({
+  msg: (parts: TemplateStringsArray) => parts[0],
+  t: (parts: TemplateStringsArray) => parts.join(""),
+}));
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, index) => `${text}${index > 0 ? values[index - 1] : ""}${part}`, "");
@@ -235,6 +238,25 @@ describe("Composer", () => {
       type(textarea, "@zz");
       expect(keydown(textarea, { key: "Enter", isComposing: true }).defaultPrevented).toBe(false);
     });
+  });
+
+  it("moves through the / menu with the arrow keys and picks with Enter", () => {
+    const onSend = vi.fn();
+    const onSlashAction = vi.fn();
+    const textarea = renderComposer(onSend, { onSlashAction });
+    type(textarea, "/");
+    const selected = () =>
+      container?.querySelector("[data-testid='slash-picker'] [aria-selected='true']")?.textContent;
+    expect(selected()).toContain("summarize");
+    act(() => {
+      textarea.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }),
+      );
+    });
+    expect(selected()).toBe("Chat Settings");
+    pressEnter(textarea);
+    expect(onSlashAction).toHaveBeenCalledWith("chat-settings");
+    expect(onSend).not.toHaveBeenCalled();
   });
 
   it("clears the draft once the message is sent", async () => {
