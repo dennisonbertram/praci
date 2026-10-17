@@ -20,6 +20,8 @@ export type UploadToast = {
 
 const DONE_TOAST_MS = 10_000;
 const FAILED_TOAST_MS = 15_000;
+/** Short: it only confirms, and it sits over the lower right of the page. */
+const DELETED_TOAST_MS = 5_000;
 const HELD_RECHECK_MS = 2_000;
 let nextId = 1;
 let toasts: UploadToast[] = [];
@@ -148,5 +150,5 @@ export function showDeletedToast(name: string) {
   const id = nextId++;
   toasts = [...toasts, { id, name, state: { kind: "deleted" } }];
   notify();
-  dismissLater(id, DONE_TOAST_MS);
+  dismissLater(id, DELETED_TOAST_MS);
 }

@@ -117,5 +117,6 @@ it("says which folder a duplicate is already in, and confirms a delete", () => {
   expect(text).toContain("lease.pdfAlready in LegalView");
   expect(text).toContain("Already in Legal as lease.pdf");
   expect(text).toContain("notes.txtAlready in your Data roomView");
-  expect(text).toContain("old.txtDeleted");
+  // The outcome first, then the name.
+  expect(text).toContain("Deletedold.txt");
 });

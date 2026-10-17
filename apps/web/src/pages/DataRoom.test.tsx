@@ -25,6 +25,7 @@ const rpcMock = vi.hoisted(() => ({
   search: vi.fn(),
   item: vi.fn(),
   consent: vi.fn(),
+  itemDelete: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -34,6 +35,7 @@ vi.mock("../lib/rpc", () => ({
       search: rpcMock.search,
       item: rpcMock.item,
       consent: rpcMock.consent,
+      itemDelete: rpcMock.itemDelete,
     },
   },
   withSpaceHeaders: () => new Headers(),
@@ -698,4 +700,36 @@ it("lists an open folder's sub-folders above its files, and opens one on click",
   await settle();
   expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f2" }));
   expect(container.textContent).toContain("This folder is empty. Drop files here to add them.");
+});
+
+it("shows the next item after deleting the previewed one, so the preview stays open", async () => {
+  rpcMock.list.mockResolvedValue({
+    items: [item("a.txt"), item("b.txt"), item("c.txt")],
+    nextCursor: null,
+  });
+  rpcMock.itemDelete.mockResolvedValue(undefined);
+  await renderPage();
+  const heading = () => container.querySelector('[data-testid="data-room-preview"] h3');
+  expect(heading()?.textContent).toBe("a.txt");
+  await act(async () => {
+    container
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="data-room-preview"] button[aria-label="More actions for a.txt"]',
+      )
+      ?.click();
+  });
+  await settle();
+  const menuDelete = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(
+    (el) => el.textContent?.includes("Delete"),
+  );
+  await act(async () => menuDelete?.click());
+  await settle();
+  rpcMock.list.mockResolvedValue({ items: [item("b.txt"), item("c.txt")], nextCursor: null });
+  const confirm = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button'),
+  ).find((b) => b.textContent === "Delete");
+  await act(async () => confirm?.click());
+  await settle();
+  expect(rpcMock.itemDelete).toHaveBeenCalledWith({ id: "id-a.txt" });
+  expect(heading()?.textContent).toBe("b.txt");
 });

@@ -445,7 +445,12 @@ export function DataRoomPage() {
           onClose={() => setAction(null)}
           onDone={(kind, updated) => {
             if (kind === "delete") {
-              if (pinned?.id === action.item.id) setPinned(null);
+              // Deleting the previewed item shows its neighbour, so the pane stays and the list
+              // does not jump. The last item closes it.
+              if (pinned?.id === action.item.id) {
+                const at = rows.findIndex((row) => row.item.id === action.item.id);
+                setPinned(narrow ? null : ((rows[at + 1] ?? rows[at - 1])?.item ?? null));
+              }
               showDeletedToast(action.item.name);
             } else if (updated && pinned?.id === updated.id) {
               setPinned(updated);

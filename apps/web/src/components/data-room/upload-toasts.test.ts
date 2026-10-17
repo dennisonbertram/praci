@@ -122,13 +122,13 @@ it("says uploaded, or where the identical file already is and its name when it d
   ]);
 });
 
-it("shows a Deleted toast that goes away by itself", async () => {
+it("shows a Deleted toast that goes away by itself after a few seconds", async () => {
   setUploadScope("u1");
   showDeletedToast("old.txt");
   expect(getUploadToasts().map((toast) => [toast.name, toast.state.kind])).toEqual([
     ["old.txt", "deleted"],
   ]);
-  await vi.advanceTimersByTimeAsync(11_000);
+  await vi.advanceTimersByTimeAsync(6_000);
   expect(names()).toEqual([]);
 });
 

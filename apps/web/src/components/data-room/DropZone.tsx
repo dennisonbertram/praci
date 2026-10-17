@@ -117,9 +117,16 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
           {toasts.map(({ id, name, state }) => (
             <div key={id} className="rounded-lg border border-border bg-card p-3 text-sm shadow-md">
               <div className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate" title={name}>
-                  {name}
-                </span>
+                {/* A delete leads with the outcome; the name follows. */}
+                {state.kind === "deleted" ? (
+                  <span className="font-medium">
+                    <Trans>Deleted</Trans>
+                  </span>
+                ) : (
+                  <span className="min-w-0 truncate" title={name}>
+                    {name}
+                  </span>
+                )}
                 {state.kind === "uploading" ? (
                   <span className="text-xs text-muted-foreground tabular-nums">
                     {Math.round(state.fraction * 100)}%
@@ -169,8 +176,8 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                   </Link>
                 </div>
               ) : state.kind === "deleted" ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  <Trans>Deleted</Trans>
+                <p className="mt-1 truncate text-xs text-muted-foreground" title={name}>
+                  {name}
                 </p>
               ) : (
                 <p className="mt-1 text-xs text-destructive">{failureText(state.reason)}</p>
