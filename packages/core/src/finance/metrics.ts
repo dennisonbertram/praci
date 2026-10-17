@@ -775,10 +775,11 @@ function isFixedCost(key: string, category: string | null): boolean {
 
 /**
  * Expected charges in the next `days` days (today up to but not including today + days): each
- * recurring `spend` charge's predicted dates, pending outgoing `spend` transactions (a prediction
- * within 3 days of a pending charge from the same vendor is dropped, not counted twice) and unpaid
- * Brex bills due in the window or overdue. Recurring Brex card payments are left out because the
- * card purchases behind them are predicted on their own.
+ * recurring `spend` charge's predicted dates and unpaid Brex bills due in the window or overdue.
+ * Pending charges are left out: spend already counts them, so listing them here too would count
+ * them twice. A prediction within 3 days of a pending charge from the same vendor is dropped for
+ * the same reason. Recurring Brex card payments are left out because the card purchases behind
+ * them are predicted on their own.
  */
 export function upcoming(
   recurring: RecurringCharge[],
@@ -816,16 +817,6 @@ export function upcoming(
       });
     }
   }
-  for (const t of pendingTxns) {
-    const day = txnDay(t);
-    items.push({
-      key: t.id,
-      kind: "pending",
-      name: t.counterparty,
-      dates: [day < today ? today : day],
-      amountCents: -t.amountCents,
-    });
-  }
   for (const bill of bills) {
     const due = dayOf(bill.dueAt);
     if (due >= end) continue;
@@ -835,6 +826,8 @@ export function upcoming(
       name: bill.vendorName,
       dates: [due < today ? today : due],
       amountCents: Math.abs(bill.amountCents),
+      billStatus: bill.status,
+      dueAt: due,
     });
   }
 

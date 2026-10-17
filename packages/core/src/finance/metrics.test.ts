@@ -822,24 +822,20 @@ describe("upcoming", () => {
     status: "APPROVED",
     ...over,
   });
-  it("predicts recurring charges, leaves out card payments, and adds pending charges and bills", () => {
-    const pending = [
-      txn("2026-10-13", -15, "Coffee Cart", { status: "pending" }),
-      txn("2026-10-13", -15, "Settled", { status: "posted" }),
-    ];
+  it("predicts recurring charges and bills, and leaves out card payments and pending charges", () => {
+    // A pending charge already counts as spend, so Upcoming leaves it out rather than count it twice.
+    const pending = [txn("2026-10-13", -15, "Coffee Cart", { status: "pending" })];
     const result = upcoming(recurring, pending, [bill({})], NOW);
     expect(result.items.map((i) => [i.kind, i.key, i.dates])).toEqual([
-      ["pending", pending[0]?.id, ["2026-10-14"]],
       ["recurring", "notion", ["2026-10-20"]],
       ["bill", "bill-1", ["2026-10-30"]],
     ]);
-    expect(result.totalCents).toBe(1500 + 1000 + 300000);
+    expect(result.totalCents).toBe(1000 + 300000);
   });
-  it("does not count a pending charge twice when it matches a prediction", () => {
+  it("drops a prediction that a pending charge (already spent) covers", () => {
     const pending = [txn("2026-10-19", -10, "Notion", { status: "pending" })];
     const result = upcoming(recurring, pending, [], NOW);
-    expect(result.items.filter((i) => i.name.startsWith("Notion"))).toHaveLength(1);
-    expect(result.items[0]?.kind).toBe("pending");
+    expect(result.items.filter((i) => i.name.startsWith("Notion"))).toHaveLength(0);
   });
   it("lists every occurrence inside the window and respects its end", () => {
     const weekly = detectRecurring(
