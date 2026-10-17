@@ -599,9 +599,16 @@ export function CapTablePage({
             <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
           </Button>
         ) : null}
-        <Button variant={cartaConnected ? "default" : "outline"} onClick={addContact}>
+        {/* On a phone the button is icon-only, so the page title is not cut to "Cap ta…". */}
+        <Button
+          variant={cartaConnected ? "default" : "outline"}
+          onClick={addContact}
+          aria-label={filter === "all" ? t`Add contact` : addKindLabel[filter]}
+        >
           <Plus aria-hidden="true" />
-          {filter === "all" ? <Trans>Add contact</Trans> : addKindLabel[filter]}
+          <span className="hidden @sm:inline">
+            {filter === "all" ? <Trans>Add contact</Trans> : addKindLabel[filter]}
+          </span>
         </Button>
         {onShowAgent ? <AskBotButton botName="Carta agent" onClick={onShowAgent} /> : null}
       </div>

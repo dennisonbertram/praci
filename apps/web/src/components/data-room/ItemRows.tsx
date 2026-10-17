@@ -93,14 +93,16 @@ export const hasFacets = (rows: Row[]) =>
 // One grid template for the header and every row. Name never goes below 200px and takes the rest;
 // as the list pane narrows, Parties goes first, then Type, then Date. The menu stays.
 const ROW_GRID =
-  "grid items-center gap-2.5 px-2 grid-cols-[minmax(200px,1fr)_28px] " +
+  "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(200px,1fr)_28px] " +
   "@min-[400px]/list:grid-cols-[minmax(200px,1fr)_90px_28px] " +
   "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_28px] " +
   "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_110px_28px]";
 /** Without facets the name takes every column but the menu. */
-const PLAIN_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_28px]";
+const PLAIN_GRID =
+  "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(0,1fr)_28px]";
 /** As PLAIN_GRID, with a fixed status column so "Failed" lines up whatever the name's length. */
-const STATUS_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_72px_28px]";
+const STATUS_GRID =
+  "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(0,1fr)_72px_28px]";
 const hasStatus = (rows: Row[]) => rows.some(({ item }) => statusLabel(item.status));
 const plainGrid = (status: boolean) => (status ? STATUS_GRID : PLAIN_GRID);
 const DATE_CELL = "hidden @min-[400px]/list:block";
