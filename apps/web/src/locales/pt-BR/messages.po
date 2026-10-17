@@ -19,8 +19,8 @@ msgid " (unread)"
 msgstr " (não lido)"
 
 #: src/pages/AccountSettingsOverlay.tsx
-msgid "— tokens"
-msgstr "— tokens"
+msgid "— tokens of AI text"
+msgstr ""
 
 #. placeholder {0}: statement.duplicateCount
 #: src/components/finance/StatementReviewCard.tsx
@@ -47,14 +47,14 @@ msgstr "{0, plural, one {# modelo} other {# modelos}}"
 msgid "{0, plural, one {# result} other {# results}}"
 msgstr ""
 
-#. placeholder {0}: usage.runs
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "{0, plural, one {# run} other {# runs}}"
-msgstr "{0, plural, one {# execução} other {# execuções}}"
-
 #. placeholder {0}: subs.items.length
 #: src/pages/Finance.tsx
 msgid "{0, plural, one {# subscription} other {# subscriptions}}"
+msgstr ""
+
+#. placeholder {0}: usage.runs
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
 msgstr ""
 
 #. placeholder {0}: rows.length
@@ -262,6 +262,10 @@ msgstr ""
 msgid "{days}d ago"
 msgstr "{days}d atrás"
 
+#: src/pages/shell/GroupIntro.tsx
+msgid "{first} answers by default. Type @ and a name to ask one bot, or ask everyone to hear from each of them."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "{from} handed off to {to}"
 msgstr ""
@@ -374,8 +378,8 @@ msgid "{title}, {label}"
 msgstr "{title}, {label}"
 
 #: src/pages/AccountSettingsOverlay.tsx
-msgid "{tokens, plural, one {# token} other {# tokens}}"
-msgstr "{tokens, plural, one {# token} other {# tokens}}"
+msgid "{tokens, plural, one {# token of AI text} other {# tokens of AI text}}"
+msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "{unpriced} unpriced"
@@ -835,6 +839,10 @@ msgstr ""
 msgid "Amount raised"
 msgstr ""
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Amounts are hidden on every page. Plain numbers in bot replies may still show."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Há uma chave de API armazenada para este provedor, não um login de assinatura."
@@ -842,6 +850,10 @@ msgstr "Há uma chave de API armazenada para este provedor, não um login de ass
 #: src/components/AskCard.tsx
 msgid "Answer"
 msgstr "Resposta"
+
+#: src/lib/slash-skills.ts
+msgid "Answer auditor requests"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Answered"
@@ -955,7 +967,12 @@ msgid "Arguments"
 msgstr "Argumentos:"
 
 #: src/pages/Artifacts.tsx
+msgid "Artifact"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
+#: src/pages/SpaceSearch.tsx
 msgid "Artifacts"
 msgstr ""
 
@@ -1133,6 +1150,10 @@ msgstr ""
 msgid "Back"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
+msgid "Back to artifacts"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Back to sign in"
 msgstr "Voltar para o login"
@@ -1214,10 +1235,6 @@ msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "Blocked"
-msgstr ""
-
-#: src/pages/Board.tsx
-msgid "Board"
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -1451,10 +1468,18 @@ msgstr ""
 msgid "Cash out and cash in over time"
 msgstr ""
 
+#: src/pages/shell/message-cards.tsx
+msgid "Cash, cap table, investors and email"
+msgstr ""
+
 #: src/components/FinanceCards.tsx
 #: src/pages/finance/FinanceBurn.tsx
 #: src/pages/Inbox.tsx
 msgid "Categories"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Categorize transactions"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -1543,6 +1568,10 @@ msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check failed"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Check for crypto scams"
 msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
@@ -1718,6 +1747,10 @@ msgstr "Fechar visualização da imagem"
 #: src/pages/SettingsOverlay.tsx
 msgid "Close memory settings"
 msgstr "Fechar configurações de memória"
+
+#: src/pages/Shell.tsx
+msgid "Close menu"
+msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Close messaging settings"
@@ -2713,6 +2746,10 @@ msgstr "Expressão cron"
 msgid "Crypto"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Crypto holdings"
+msgstr ""
+
 #: src/components/AccountAccess.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Current password"
@@ -2733,6 +2770,10 @@ msgstr ""
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Customize bot avatar"
 msgstr "Personalizar avatar do bot"
+
+#: src/lib/slash-skills.ts
+msgid "Cut costs"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Dark"
@@ -3080,6 +3121,10 @@ msgstr ""
 msgid "Draft discarded"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Draft investor update"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Draft not saved"
 msgstr ""
@@ -3170,6 +3215,10 @@ msgstr "E-mail"
 msgid "Email & calendar"
 msgstr ""
 
+#: src/pages/shell/message-cards.tsx
+msgid "Email and calendar"
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
 msgstr "Este e-mail não tem permissão para se cadastrar"
@@ -3177,6 +3226,10 @@ msgstr "Este e-mail não tem permissão para se cadastrar"
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "É necessário verificar o e-mail"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Email, Slack and docs"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Embedding model"
@@ -3389,6 +3442,10 @@ msgstr ""
 msgid "Files"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
+msgid "Files your bots make, like investor updates and board decks, appear here. Ask a bot to write one."
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 #: src/pages/Inbox.tsx
 msgid "Filter"
@@ -3438,6 +3495,10 @@ msgstr ""
 #: src/pages/Onboarding.tsx
 msgid "Find models"
 msgstr "Encontrar modelos"
+
+#: src/lib/slash-skills.ts
+msgid "Find recurring and overlapping spend to cut."
+msgstr ""
 
 #: src/components/inbox/InboxAgentIntro.tsx
 msgid "Find the latest invoice"
@@ -3590,6 +3651,10 @@ msgstr ""
 msgid "Go to"
 msgstr ""
 
+#: src/pages/NotFound.tsx
+msgid "Go to Rakazo"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Google apps"
 msgstr ""
@@ -3678,7 +3743,7 @@ msgid "Hide transcript"
 msgstr "Ocultar transcrição"
 
 #: src/components/HideAmountsToggle.tsx
-msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
+msgid "Hides money on every page and in chat, for screen sharing."
 msgstr ""
 
 #: src/lib/ticket-priority.ts
@@ -3704,6 +3769,10 @@ msgstr "hora"
 #: src/pages/RoutineSchedule.tsx
 msgid "hours"
 msgstr "horas"
+
+#: src/lib/slash-skills.ts
+msgid "How long cash lasts, with what-ifs."
+msgstr ""
 
 #: src/pages/RoutineSchedule.tsx
 msgid "How often"
@@ -4040,6 +4109,7 @@ msgstr "Carregar execuções anteriores"
 msgid "Load web images automatically"
 msgstr "Carregar imagens da web automaticamente"
 
+#: src/pages/Finance.tsx
 #: src/pages/Shell.tsx
 msgid "Loading"
 msgstr ""
@@ -4264,6 +4334,10 @@ msgstr "Médio"
 msgid "Medium"
 msgstr "Médio"
 
+#: src/pages/shell/GroupIntro.tsx
+msgid "Members"
+msgstr ""
+
 #: src/pages/GroupPanel.tsx
 msgid "Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
 msgstr "Membros ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
@@ -4444,6 +4518,10 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Monthly burn"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Monthly money review"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -4672,7 +4750,11 @@ msgid "No apps match."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
-msgid "No artifacts found."
+msgid "No artifacts match these filters."
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "No artifacts yet"
 msgstr ""
 
 #: src/pages/CapTable.tsx
@@ -4734,6 +4816,10 @@ msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
+msgstr ""
+
+#: src/pages/SpaceSearch.tsx
+msgid "No matches in chats, pages or documents."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -5012,6 +5098,10 @@ msgstr ""
 msgid "Open Cap table"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
+msgid "Open chat"
+msgstr ""
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr ""
@@ -5184,6 +5274,10 @@ msgstr ""
 
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page changed. Reload"
+msgstr ""
+
+#: src/pages/NotFound.tsx
+msgid "Page not found"
 msgstr ""
 
 #: src/components/SidebarPages.tsx
@@ -5421,6 +5515,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "Na fila"
+
+#: src/pages/shell/GroupIntro.tsx
+msgid "Quick status check from everyone, please"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Quote"
@@ -5722,7 +5820,7 @@ msgstr ""
 msgid "Remove schedule"
 msgstr ""
 
-#. placeholder {0}: selectedSkill.name
+#. placeholder {0}: slashSkillLabel(selectedSkill).title
 #: src/pages/Shell.tsx
 msgid "Remove skill {0}"
 msgstr "Remover habilidade {0}"
@@ -5996,6 +6094,10 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Runway"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Runway scenarios"
 msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
@@ -6485,10 +6587,14 @@ msgstr ""
 msgid "Size"
 msgstr ""
 
-#. placeholder {0}: skill.name
+#. placeholder {0}: label.title
 #: src/pages/Shell.tsx
 msgid "Skill {0}"
 msgstr "Habilidade {0}"
+
+#: src/pages/Shell.tsx
+msgid "Skills and actions"
+msgstr ""
 
 #: src/components/integrations/AgentStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -6511,6 +6617,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Slack not enabled"
+msgstr ""
+
+#: src/pages/shell/message-cards.tsx
+msgid "Slack, calendar and email"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -6598,6 +6708,10 @@ msgstr "Modelo de fala"
 msgid "Spend"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Spend, changes, and new or upcoming charges."
+msgstr ""
+
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Spending minus revenue, 3-mo avg"
 msgstr ""
@@ -6608,6 +6722,10 @@ msgstr ""
 
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Spot scam tokens and look-alike addresses in your wallets."
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -6745,6 +6863,10 @@ msgstr ""
 msgid "Subtracted from burn"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Suggests categories for uncategorized transactions."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Summarize this week's investor email"
 msgstr ""
@@ -6787,6 +6909,7 @@ msgstr ""
 msgid "Take control"
 msgstr "Assumir o controle"
 
+#: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 msgid "Task board"
 msgstr ""
@@ -6904,6 +7027,10 @@ msgstr "O provedor de memória selecionado não está disponível nesta compila�
 msgid "The transactions read add up to the closing balance"
 msgstr ""
 
+#: src/pages/shell/message-cards.tsx
+msgid "The web, notes and docs"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
 msgstr ""
@@ -6956,6 +7083,10 @@ msgstr ""
 
 #: src/pages/DataRoom.tsx
 msgid "This folder is empty. Drop files here to add them."
+msgstr ""
+
+#: src/pages/NotFound.tsx
+msgid "This link is wrong or the page is no longer available."
 msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
@@ -7018,6 +7149,10 @@ msgstr "Este login de assinatura ainda não está disponível no Rakazo. Use uma
 #: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
 msgid "This week"
+msgstr ""
+
+#: src/pages/Board.tsx
+msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
 msgstr ""
 
 #: src/pages/RoutineSchedule.tsx
@@ -7425,6 +7560,10 @@ msgstr ""
 msgid "Username"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Uses Carta figures and asks before sending."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Usa as credenciais de {hostCredentialSource} próprias deste servidor para acessar {selectedProviderName}."
@@ -7530,6 +7669,10 @@ msgstr "Aguardando…"
 
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Wallet"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Wallet balances and allocation."
 msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
@@ -7664,6 +7807,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Writing"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Written from Finance, Carta and past updates."
 msgstr ""
 
 #: src/components/computer/TerminalApp.tsx

@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 172 of 172
-- Web and shared components: 499
+- Web and shared component files with stories: 174 of 174
+- Web and shared components: 503
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -222,6 +222,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | MessagingSettingsOverlay | [apps/web/src/pages/MessagingSettingsOverlay.tsx](../../apps/web/src/pages/MessagingSettingsOverlay.tsx) | [MessagingSettingsOverlay.stories.tsx](../../apps/web/src/pages/MessagingSettingsOverlay.stories.tsx) | web |
 | ModelBackupsSettings | [apps/web/src/pages/ModelBackupsSettings.tsx](../../apps/web/src/pages/ModelBackupsSettings.tsx) | [ModelBackupsSettings.stories.tsx](../../apps/web/src/pages/ModelBackupsSettings.stories.tsx) | web |
 | ModelSettingsOverlay, EmbeddingModelField, ModelPicker, ModelOption | [apps/web/src/pages/ModelSettingsOverlay.tsx](../../apps/web/src/pages/ModelSettingsOverlay.tsx) | [ModelSettingsOverlay.stories.tsx](../../apps/web/src/pages/ModelSettingsOverlay.stories.tsx) | web |
+| NotFoundPage | [apps/web/src/pages/NotFound.tsx](../../apps/web/src/pages/NotFound.tsx) | [NotFound.stories.tsx](../../apps/web/src/pages/NotFound.stories.tsx) | web |
 | OnboardingPage | [apps/web/src/pages/Onboarding.tsx](../../apps/web/src/pages/Onboarding.tsx) | [Onboarding.stories.tsx](../../apps/web/src/pages/Onboarding.stories.tsx) | web |
 | PaywallPage | [apps/web/src/pages/Paywall.tsx](../../apps/web/src/pages/Paywall.tsx) | [Paywall.stories.tsx](../../apps/web/src/pages/Paywall.stories.tsx) | web |
 | PeerMessagesOverlay | [apps/web/src/pages/PeerMessagesOverlay.tsx](../../apps/web/src/pages/PeerMessagesOverlay.tsx) | [PeerMessagesOverlay.stories.tsx](../../apps/web/src/pages/PeerMessagesOverlay.stories.tsx) | web |
@@ -241,8 +242,9 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ReplyThumbnail, TimeSeparator, ComposerReplyPreview, ReplyLine | [apps/web/src/pages/shell/chat-context.tsx](../../apps/web/src/pages/shell/chat-context.tsx) | [chat-context.stories.tsx](../../apps/web/src/pages/shell/chat-context.stories.tsx) | web |
 | CommandPalette | [apps/web/src/pages/shell/command-palette.tsx](../../apps/web/src/pages/shell/command-palette.tsx) | [command-palette.stories.tsx](../../apps/web/src/pages/shell/command-palette.stories.tsx) | web |
 | NewSpaceDialog, RenameSpaceDialog, PickerInfoDialog, NewBotSectionDialog, RenameBotSectionDialog, ClearConversationDialog, DeleteBotDialog, DeleteItemDialog | [apps/web/src/pages/shell/dialogs.tsx](../../apps/web/src/pages/shell/dialogs.tsx) | [dialogs.stories.tsx](../../apps/web/src/pages/shell/dialogs.stories.tsx) | web |
+| GroupIntro | [apps/web/src/pages/shell/GroupIntro.tsx](../../apps/web/src/pages/shell/GroupIntro.tsx) | [GroupIntro.stories.tsx](../../apps/web/src/pages/shell/GroupIntro.stories.tsx) | web |
 | MentionIcon | [apps/web/src/pages/shell/mention-icon.tsx](../../apps/web/src/pages/shell/mention-icon.tsx) | [mention-icon.stories.tsx](../../apps/web/src/pages/shell/mention-icon.stories.tsx) | web |
-| ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, ChartCanvasPlot, McpApprovalCard, ChartBlockView, ArtifactImage | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
+| ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionHint, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, ChartCanvasPlot, McpApprovalCard, ChartBlockView, ArtifactImage | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
 | Section, LinkRow, SpaceSearchResults | [apps/web/src/pages/SpaceSearch.tsx](../../apps/web/src/pages/SpaceSearch.tsx) | [SpaceSearch.stories.tsx](../../apps/web/src/pages/SpaceSearch.stories.tsx) | web |
 | VoiceSettingsOverlay | [apps/web/src/pages/VoiceSettingsOverlay.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.tsx) | [VoiceSettingsOverlay.stories.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.stories.tsx) | web |
 | WelcomePage | [apps/web/src/pages/Welcome.tsx](../../apps/web/src/pages/Welcome.tsx) | [Welcome.stories.tsx](../../apps/web/src/pages/Welcome.stories.tsx) | web |
@@ -252,7 +254,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
-| App, SessionApp, SessionUnavailable, AppFailed, GateFallback, ShellSkeleton | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
+| App, SessionApp, SignInRedirect, SessionUnavailable, AppFailed, GateFallback, ShellSkeleton | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
 
 ## Mobile app (screens)
 
