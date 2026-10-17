@@ -95,9 +95,9 @@ it("tells the owner to connect a provider when only native Google is configured"
   expect(container.querySelector('[data-testid="catalog-not-set-up"]')?.textContent).toContain(
     "Connect a Composio or Pipedream account to add apps like Slack, Notion and GitHub.",
   );
-  expect(container.querySelector('a[href="/integrations/setup"]')?.textContent).toBe(
-    "Set up app catalog",
-  );
+  expect(
+    container.querySelector('a[href="/integrations/setup?next=/app/integrations"]')?.textContent,
+  ).toBe("Set up app catalog");
   expect(container.querySelector('input[type="search"]')).toBeNull();
   expect(container.querySelector('[aria-label="Category"]')).toBeNull();
   expect(container.textContent).toContain("Add a custom connection");
@@ -166,13 +166,16 @@ it("shows Carta but not Zernio under the Finance chip", async () => {
   expect(container.querySelector('[aria-label="Connect Zernio"]')).toBeNull();
 });
 
-it("offers Treg and prefills the custom dialog", async () => {
+it("opens the Treg token form from its tile", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Treg"]');
   expect(connect).not.toBeNull();
   await act(async () => connect?.click());
-  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
-  expect(input?.value).toBe("https://treg.to/mcp/");
+  // Treg connects with an API token, under a dialog named for it.
+  expect(document.querySelector('input[aria-label="Token"]')).not.toBeNull();
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("Connect Treg");
+  expect(dialog?.textContent).not.toContain("Add a custom connection");
 });
 
 it("hides the Treg tile once the token preset source is installed", async () => {
@@ -200,48 +203,71 @@ it("opens the X tile with its URL and the client ID fields", async () => {
   expect(document.querySelector('[aria-label="Client ID"]')).not.toBeNull();
 });
 
-const connectedTiles = () =>
-  [...container.querySelectorAll('[data-testid^="connected-finance-"]')].map(
-    (el) => el.textContent,
-  );
+const inConnected = (testId: string) => {
+  const heading = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Connected");
+  return Boolean(heading?.nextElementSibling?.querySelector(`[data-testid="${testId}"]`));
+};
+const count = (testId: string) => container.querySelectorAll(`[data-testid="${testId}"]`).length;
+const financeHeading = () =>
+  [...container.querySelectorAll("h2")].some((h) => h.textContent === "Finance");
 
-it("lists a connected finance source under Connected, even when it is the only connection", async () => {
+const cryptoOn = {
+  connected: true,
+  hasApiKey: true,
+  alchemy: { connected: false, lastError: null },
+};
+
+it("shows a connected Mercury once, under Connected, with its actions", async () => {
   const value = data(true, true);
   value.catalog = [];
   value.financeSources = [
     { provider: "mercury", serverId: "s1", status: "ok", lastSyncedAt: null },
   ];
   await show(value);
-  const tiles = connectedTiles();
-  expect(tiles).toHaveLength(1);
-  expect(tiles[0]).toContain("Mercury");
-  expect(tiles[0]).toContain("Open Finance");
-  expect(container.textContent).toContain("Connected");
-  expect(container.querySelector('[data-testid="finance-tile-mercury"]')).not.toBeNull();
+  expect(count("finance-tile-mercury")).toBe(1);
+  expect(inConnected("finance-tile-mercury")).toBe(true);
+  expect(container.querySelector('[data-testid="finance-tile-mercury"]')?.textContent).toContain(
+    "Open Finance",
+  );
+  expect(container.querySelector('[data-testid="finance-tile-brex"]')).not.toBeNull();
+  expect(inConnected("finance-tile-brex")).toBe(false);
 });
 
-it("lists connected crypto and exchange connections under Connected", async () => {
+it("shows connected crypto and exchanges once, under Connected", async () => {
   financeRpc.crypto.mockResolvedValue({
-    connected: true,
-    hasApiKey: true,
+    ...cryptoOn,
     alchemy: { connected: true, lastError: null },
   });
   financeRpc.exchanges.mockResolvedValue([{ provider: "kraken", connected: true }]);
   await show(data(true, true));
-  const tiles = connectedTiles();
-  expect(tiles).toHaveLength(3);
-  for (const [i, name] of ["Blockscout", "Alchemy", "Kraken"].entries()) {
-    expect(tiles[i]).toContain(name);
-    expect(tiles[i]).toContain("Open");
+  for (const id of ["crypto", "alchemy", "kraken"]) {
+    expect(count(`finance-tile-${id}`)).toBe(1);
+    expect(inConnected(`finance-tile-${id}`)).toBe(true);
   }
+  expect(inConnected("finance-tile-coinbase")).toBe(false);
+  expect(
+    container.querySelector('[data-testid="finance-tile-alchemy"] a')?.getAttribute("href"),
+  ).toBe("/app/finance/crypto");
 });
 
-it("does not repeat Blockscout under Connected when its MCP server is already listed", async () => {
+it("keeps Alchemy and exchanges that report an error under Finance", async () => {
   financeRpc.crypto.mockResolvedValue({
-    connected: true,
-    hasApiKey: true,
-    alchemy: { connected: false, lastError: null },
+    ...cryptoOn,
+    alchemy: { connected: true, lastError: "The key was refused" },
   });
+  financeRpc.exchanges.mockResolvedValue([
+    { provider: "kraken", connected: true, lastError: "Read failed" },
+  ]);
+  await show(data(true, true));
+  for (const id of ["alchemy", "kraken"]) {
+    expect(count(`finance-tile-${id}`)).toBe(1);
+    expect(inConnected(`finance-tile-${id}`)).toBe(false);
+  }
+  expect(container.textContent).toContain("The key was refused");
+});
+
+it("shows one Blockscout tile when its key and MCP server both exist", async () => {
+  financeRpc.crypto.mockResolvedValue(cryptoOn);
   const blockscoutServer = {
     ...zernioServer,
     id: "s2",
@@ -249,14 +275,74 @@ it("does not repeat Blockscout under Connected when its MCP server is already li
     endpoint: "https://mcp.blockscout.com/mcp",
   } as unknown as IntegrationsData["servers"][number];
   await show({ ...data(true, true), servers: [blockscoutServer] });
-  expect(connectedTiles().some((tile) => tile.includes("Blockscout"))).toBe(false);
+  expect(count("finance-tile-crypto")).toBe(1);
+  expect(inConnected("finance-tile-crypto")).toBe(true);
+  expect(container.textContent).not.toContain("mcp.blockscout.com");
+  expect(
+    container
+      .querySelector('[data-testid="finance-tile-crypto"] a[aria-label="Manage Blockscout"]')
+      ?.getAttribute("href"),
+  ).toBe("/app/integrations/mcp/s2");
+  expect(container.querySelector('[data-testid="finance-tile-crypto"]')?.textContent).toContain(
+    "Replace API key",
+  );
 });
 
-it("shows no finance tile under Connected when nothing is connected", async () => {
+it("keeps the Blockscout MCP server when no key is connected", async () => {
+  const blockscoutServer = {
+    ...zernioServer,
+    id: "s2",
+    name: "Blockscout",
+    endpoint: "https://mcp.blockscout.com/mcp",
+  } as unknown as IntegrationsData["servers"][number];
+  await show({ ...data(true, true), servers: [blockscoutServer] });
+  expect(container.textContent).toContain("mcp.blockscout.com");
+});
+
+it("lists every finance provider under Finance when nothing is connected", async () => {
   const value = data(true, true);
   value.financeSources = [
     { provider: "brex", serverId: null, status: "not_connected", lastSyncedAt: null },
   ];
   await show(value);
-  expect(connectedTiles()).toEqual([]);
+  expect(financeHeading()).toBe(true);
+  for (const id of ["mercury", "brex", "crypto", "alchemy", "coinbase", "kraken"])
+    expect(count(`finance-tile-${id}`)).toBe(1);
+  expect(container.querySelector('[data-testid="finance-section"]')?.children).toHaveLength(6);
+});
+
+it("hides the Finance heading when every provider is connected", async () => {
+  financeRpc.crypto.mockResolvedValue({
+    ...cryptoOn,
+    alchemy: { connected: true, lastError: null },
+  });
+  financeRpc.exchanges.mockResolvedValue([
+    { provider: "coinbase", connected: true },
+    { provider: "kraken", connected: true },
+  ]);
+  const value = data(true, true);
+  value.financeSources = [
+    { provider: "mercury", serverId: "s1", status: "ok", lastSyncedAt: null },
+    { provider: "brex", serverId: "s3", status: "ok", lastSyncedAt: null },
+  ];
+  await show(value);
+  expect(financeHeading()).toBe(false);
+  expect(container.querySelector('[data-testid="finance-section"]')).toBeNull();
+});
+
+it("names the dialog after the service for a first-party tile", async () => {
+  await show(data(true, false));
+  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Carta"]');
+  await act(async () => connect?.click());
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("Connect Carta");
+  expect(dialog?.textContent).not.toContain("Add a custom connection");
+});
+
+it("still lists native Google apps when the managed catalog is not set up", async () => {
+  const value = data(false, false);
+  value.catalog = value.catalog.map((item) => ({ ...item, connected: false }));
+  await show(value);
+  expect(container.querySelector('[data-testid="catalog-not-set-up"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Connect gmail"]')).not.toBeNull();
 });

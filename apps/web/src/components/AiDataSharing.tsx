@@ -2,27 +2,37 @@ import { i18n } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { AiConsentStatus, AiRecipient } from "@rakazo/contracts";
 import { AI_DATA_DISCLOSURES } from "@rakazo/contracts";
-import { Button, Card, Switch } from "@rakazo/ui-web";
+import { Button, Card, cn, Switch } from "@rakazo/ui-web";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { aiConsentStatus, allowRecipient, revokeRecipient } from "../lib/ai-consent";
 import { errorText } from "../lib/user-error";
 
-/** Asks once for the model that would sort the Inbox; the one button grants exactly that recipient. */
-export function InboxConsentPrompt({
-  recipient,
-  onAllowed,
+/** A card that asks once for consent: a heading, what is sent where, and one Allow button. */
+export function ConsentCard({
+  id,
+  heading,
+  children,
+  onAllow,
+  onDismiss,
+  className,
 }: {
-  recipient: { key: string; name: string };
-  onAllowed: () => void;
+  /** Prefix for the heading's id, unique on the page. */
+  id: string;
+  heading: ReactNode;
+  children: ReactNode;
+  /** Rejects with the reason to show. */
+  onAllow: () => Promise<unknown>;
+  /** Not now: when given, a second button hides the card for this visit. */
+  onDismiss?: () => void;
+  className?: string;
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
-  const { name } = recipient;
   const allow = () => {
     setPending(true);
     setError("");
-    allowRecipient(recipient.key)
-      .then(onAllowed)
+    onAllow()
       .catch((cause) => setError(errorText(cause)))
       .finally(() => setPending(false));
   };
@@ -30,26 +40,57 @@ export function InboxConsentPrompt({
     <Card
       size="sm"
       role="region"
-      className="mb-5 gap-1 px-3.5"
-      aria-labelledby="inbox-consent-heading"
+      className={cn("gap-1 px-3.5", className)}
+      aria-labelledby={`${id}-heading`}
     >
-      <h2 id="inbox-consent-heading" className="text-sm font-medium">
-        <Trans>Let Rakazo sort your mail</Trans>
+      <h2 id={`${id}-heading`} className="text-sm font-medium">
+        {heading}
       </h2>
-      <p className="text-xs text-muted-foreground">
-        <Trans>Senders, recipients, subjects and short previews are sent to {name}.</Trans>
-      </p>
+      <p className="text-xs text-muted-foreground">{children}</p>
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
-      <div>
+      <div className="flex gap-2">
         <Button size="sm" disabled={pending} onClick={allow}>
           <Trans>Allow</Trans>
         </Button>
+        {onDismiss ? (
+          <Button size="sm" variant="ghost" disabled={pending} onClick={onDismiss}>
+            <Trans>Not now</Trans>
+          </Button>
+        ) : null}
       </div>
     </Card>
+  );
+}
+
+/** Asks once for the model that would sort the Inbox; the one button grants exactly that recipient. */
+export function InboxConsentPrompt({
+  recipient,
+  onAllowed,
+  onDismiss,
+}: {
+  recipient: { key: string; name: string };
+  onAllowed: () => void;
+  /** Not now: hides the prompt for this visit; it shows again next time. */
+  onDismiss?: () => void;
+}) {
+  const { name } = recipient;
+  return (
+    <ConsentCard
+      id="inbox-consent"
+      className="mb-5"
+      heading={<Trans>Let Rakazo sort your mail</Trans>}
+      onAllow={() => allowRecipient(recipient.key).then(onAllowed)}
+      onDismiss={onDismiss}
+    >
+      <Trans>
+        Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and
+        newsletters. Senders, recipients, subjects and short previews are sent to {name}.
+      </Trans>
+    </ConsentCard>
   );
 }
 

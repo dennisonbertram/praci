@@ -2,6 +2,7 @@ import type {
   CashPoint,
   FinanceAccountOutput,
   FinanceCryptoOutput,
+  FinanceMonthOutput,
   FinanceOverview,
   FinanceRunwayOutput,
   FinanceTransaction,
@@ -376,3 +377,41 @@ export const balanceSeriesOf = (range: string) => ({
     { day: "2026-10-14", balanceCents: 7_500_000 },
   ],
 });
+
+/** October 2026: Acme twice (one spelled in lowercase), a refund-free Globex with a second category, and money in. */
+export const monthData: FinanceMonthOutput = {
+  month: "2026-10",
+  partial: false,
+  outCents: 87_000,
+  inCents: 100_000,
+  netCents: 13_000,
+  categories: [{ key: "servers-cloud", label: "Servers & cloud", cents: 62_000 }],
+  transactions: [
+    charges[0]!,
+    { ...charges[1]!, counterparty: "ACME HOSTING " },
+    {
+      ...charges[0]!,
+      id: "00000000-0000-4000-8000-0000000000a1",
+      counterparty: "Globex Compute",
+      vendorKey: "globex-compute",
+      category: "Payroll",
+      amountCents: -20_000,
+    },
+    {
+      ...charges[0]!,
+      id: "00000000-0000-4000-8000-0000000000a2",
+      counterparty: "Globex Compute",
+      vendorKey: "globex-compute",
+      category: "Servers & cloud",
+      amountCents: -5_000,
+    },
+    {
+      ...charges[0]!,
+      id: "00000000-0000-4000-8000-0000000000a3",
+      counterparty: "Example Customer Inc",
+      vendorKey: "example-customer-inc",
+      category: "Revenue",
+      amountCents: 100_000,
+    },
+  ],
+};

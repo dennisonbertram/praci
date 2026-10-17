@@ -23,6 +23,7 @@ export const Prompt: Story = {
       <InboxConsentPrompt
         recipient={{ key: "model_a", name: "Demo Model A" }}
         onAllowed={() => undefined}
+        onDismiss={() => undefined}
       />
     </div>
   ),

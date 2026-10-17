@@ -64,6 +64,19 @@ export const Reply: Story = {
   beforeEach: () => mockRpc({ "inbox.compose.prefill": prefill }),
 };
 
+/** A reply to mail that came to a second account names that account's address on the From line. */
+export const ReplyFromSecondAccount: Story = {
+  args: { seed: { kind: "reply", messageId: "msg_orig" }, accounts: [] },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.compose.prefill": {
+        ...prefill,
+        connectionId: "conn_2",
+        account: { connectionId: "conn_2", label: "Sales mail", address: "sales@example.test" },
+      },
+    }),
+};
+
 export const Forward: Story = {
   args: { seed: { kind: "forward", messageId: "msg_forward" } },
   beforeEach: () =>
@@ -89,6 +102,12 @@ export const PrefillFailed: Story = {
     mockRpc({
       "inbox.compose.prefill": () => Promise.reject(new Error("Could not load the message.")),
     }),
+};
+
+export const QuoteUnavailable: Story = {
+  args: { seed: { kind: "reply", messageId: "msg_busy" } },
+  beforeEach: () =>
+    mockRpc({ "inbox.compose.prefill": { ...prefill, body: "", quoteUnavailable: true } }),
 };
 
 export const ManyRecipientsFolded: Story = {

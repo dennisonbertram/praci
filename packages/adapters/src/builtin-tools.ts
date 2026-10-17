@@ -930,9 +930,9 @@ export const builtinAgentTools: ConnectorTool[] = [
     readOnly: true,
   },
   {
-    name: "contacts_save",
+    name: "contacts_add",
     description:
-      "Save a contact, or update the one with the same email. Fields you leave out are kept on update. Only save people the user asked you to track.",
+      "Add a new contact. Fails if the email already belongs to one of the user's contacts; use contacts_save to change an existing contact.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1077,6 +1077,71 @@ export const builtinAgentTools: ConnectorTool[] = [
       required: ["view"],
     },
     readOnly: true,
+  },
+  {
+    name: "contacts_save",
+    description:
+      "Change an existing contact, found by its email (this asks the user first). Fields you leave out are kept. Use contacts_add for a new contact.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        email: { type: "string" },
+        organization: { type: "string", description: "For example the investor's fund." },
+        kind: { type: "string", enum: ["investor", "auditor", "other"] },
+        notes: { type: "string" },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "cap_table_update",
+    description:
+      "Replace the cap table on the user's Cap Table page. Pass exact figures from Carta; never estimate, and use null for anything Carta does not give you. Dates are YYYY-MM-DD, percents are 0-100, amounts are US dollars.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        companyName: { type: "string" },
+        asOf: { type: "string", description: "The date Carta's figures are as of." },
+        fullyDilutedShares: { type: "number" },
+        amountRaisedUsd: { type: ["number", "null"] },
+        optionPoolAvailable: { type: ["number", "null"] },
+        latest409a: {
+          type: ["object", "null"],
+          properties: { pricePerShareUsd: { type: "number" }, date: { type: "string" } },
+          required: ["pricePerShareUsd", "date"],
+        },
+        shareClasses: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              shares: { type: "number" },
+              percent: { type: "number" },
+            },
+            required: ["name", "shares", "percent"],
+          },
+        },
+        holders: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              email: { type: ["string", "null"] },
+              organization: { type: ["string", "null"], description: "The fund, if any." },
+              security: { type: "string", description: 'As Carta names it, e.g. "SAFE".' },
+              shares: { type: ["number", "null"] },
+              amountUsd: { type: ["number", "null"] },
+              percent: { type: ["number", "null"] },
+            },
+            required: ["name", "security"],
+          },
+        },
+      },
+      required: ["companyName", "asOf", "fullyDilutedShares", "shareClasses", "holders"],
+    },
   },
   {
     name: "drive_search",

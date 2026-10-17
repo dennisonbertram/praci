@@ -19,7 +19,7 @@ import type {
   InboxTodo,
   MailRow,
 } from "@rakazo/contracts";
-import { InboxCategorySchema, inboxAgentSpawnKey } from "@rakazo/contracts";
+import { InboxCategorySchema, InboxPrioritySchema, inboxAgentSpawnKey } from "@rakazo/contracts";
 import { applySenderMark, senderMarkMap, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
@@ -107,8 +107,8 @@ async function enqueueTriage(deps: InboxDeps, actor: Actor): Promise<void> {
   });
 }
 
-const PRIORITIES = ["critical", "important", "normal", "low"] as const;
-const asPriority = (value: string | null) => PRIORITIES.find((p) => p === value) ?? null;
+const asPriority = (value: string | null) =>
+  InboxPrioritySchema.options.find((p) => p === value) ?? null;
 
 /** True when the triage job would run for this user: the one check the job itself makes. */
 async function triageEnabled(deps: InboxDeps, actor: Actor): Promise<boolean> {
@@ -172,6 +172,7 @@ function toMailRow(m: CachedMessage, enabled: boolean, marks: Map<string, InboxM
     reason: enabled ? m.reason : null,
     category: enabled ? (InboxCategorySchema.options.find((c) => c === m.category) ?? null) : null,
     feedback: mark,
+    ...(m.fromSelf ? { fromSelf: true } : {}),
   };
 }
 
@@ -309,7 +310,14 @@ export async function inboxList(
     },
     select: { id: true, name: true },
   });
-  const accounts = connections.map((c) => ({ connectionId: c.id, label: c.displayName }));
+  const accounts = connections.map((c) => {
+    const address = (c.metadata as { mailAddress?: unknown } | null)?.mailAddress;
+    return {
+      connectionId: c.id,
+      label: c.displayName,
+      ...(typeof address === "string" && address ? { address } : {}),
+    };
+  });
   const agentOut = agent ? { botId: agent.id, name: agent.name } : null;
   const { ready, blocked: triageBlocked } = await triageStatus(deps, actor);
   const enabled = ready !== null;
@@ -498,7 +506,7 @@ async function ownMessage(
   );
   const account: MailAccount | undefined = accounts.find((a) => a.id === row.connectionId);
   if (!account) throw notFound();
-  return { account, providerMessageId: row.providerMessageId };
+  return { account, providerMessageId: row.providerMessageId, row };
 }
 
 export function providerFailure(error: unknown, operation: string, connectionId: string): never {
@@ -511,9 +519,16 @@ export function providerFailure(error: unknown, operation: string, connectionId:
     if (error.kind === "auth") {
       throw new ORPCError("PRECONDITION_FAILED", { message: error.message });
     }
-    throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
+    throw mailUnavailable(error);
   }
   throw error;
+}
+
+/** Gmail answering "slow down" is its own message, so the user knows to wait, not to reconnect. */
+export function mailUnavailable(error: MailProviderError): ORPCError<string, unknown> {
+  return error.kind === "rate_limited"
+    ? new ORPCError("TOO_MANY_REQUESTS", { message: "Gmail is busy. Try again in a moment." })
+    : new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
 }
 
 export async function inboxGet(
@@ -523,11 +538,41 @@ export async function inboxGet(
   signal?: AbortSignal,
 ) {
   const context = mailContext(actor, "inbox.get", signal);
-  const { account, providerMessageId } = await ownMessage(deps, actor, input.messageId, context);
+  const { account, providerMessageId, row } = await ownMessage(
+    deps,
+    actor,
+    input.messageId,
+    context,
+  );
+  const thread = await deps.prisma.cachedMailMessage.findMany({
+    where: {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      connectionId: row.connectionId,
+      threadId: row.threadId,
+      id: { not: row.id },
+    },
+    orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+    take: 50,
+  });
+  // The user's reply sorts after the message it answers, not among the earlier ones.
+  const isLater = (m: (typeof thread)[number]) => m.receivedAt > row.receivedAt;
+  const threadItem = (m: (typeof thread)[number]) => ({
+    id: m.id,
+    from: m.fromName || m.fromAddress,
+    receivedAt: m.receivedAt.toISOString(),
+    snippet: m.snippet,
+    ...(m.fromSelf ? { fromSelf: true } : {}),
+  });
   try {
     const message = await deps.mail.getMessage(account, providerMessageId, context);
     return {
+      unread: row.unread,
+      inInbox: row.inInbox,
+      thread: thread.filter((m) => !isLater(m)).map(threadItem),
+      later: thread.filter(isLater).map(threadItem),
       from: formatAddress(message.from),
+      ...(row.fromSelf ? { fromSelf: true } : {}),
       to: message.to.map(formatAddress).join(", "),
       cc: message.cc.map(formatAddress).join(", "),
       date: message.date,

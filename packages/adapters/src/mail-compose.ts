@@ -326,7 +326,7 @@ function formatWhen(date: string, { timeZone, locale }: PrefillLocale): string {
  * address, left out of reply-all. Dates are written in the given time zone (default UTC).
  */
 export function replyPrefill(
-  message: MailMessage,
+  message: Pick<MailMessage, "from" | "to" | "cc" | "replyTo" | "subject" | "date" | "text">,
   mode: ComposeMode,
   self: string | string[] | null,
   where: PrefillLocale = {},

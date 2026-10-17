@@ -66,6 +66,20 @@ it("keeps the triage label in the accessibility tree when the badge is hidden in
   expect(spoken?.textContent).toBe("Newsletter");
 });
 
+it("shows a compact label dot in the narrow pane that names the label", async () => {
+  await show();
+  const dot = document.querySelector("[data-label-dot]");
+  expect(dot?.getAttribute("title")).toBe("Newsletter");
+  expect(dot?.className).toContain("@md:hidden");
+});
+
+it("gives the More trigger a larger touch target on coarse pointers", async () => {
+  await show();
+  expect(document.querySelector('button[aria-label="More"]')?.className).toContain(
+    "pointer-coarse:size-10",
+  );
+});
+
 it("shows the More menu trigger below md as well as on touch, since the inline actions hide there", async () => {
   await show();
   const inline = document.querySelector('button[aria-label="Archive"]')?.parentElement;
@@ -78,4 +92,10 @@ it("shows the More menu trigger below md as well as on touch, since the inline a
 it("is a 56px row", async () => {
   await show();
   expect(document.querySelector("button[data-row-id]")?.className).toContain("h-14");
+});
+
+it("names the user's own sent mail You, not their address", async () => {
+  await show({ row: { ...row, from: "me@example.test", fromSelf: true } });
+  const sender = document.querySelector("button[data-row-id] > span:nth-child(2)");
+  expect(sender?.textContent).toBe("You (unread)");
 });

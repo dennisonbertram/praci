@@ -73,8 +73,21 @@ describe("extractItemText", () => {
     expect(text).toContain("Quarterly invoice 4821 for Acme");
   });
 
+  it("reads every word of a long line of PDF text", async () => {
+    // Text past the page edge is not on the page, so the fake must wrap. The demo lease once lost
+    // everything after "Renewal date" and could not be found by "November".
+    const lease =
+      "Office lease for 100 Placeholder Street. Monthly rent 7500 dollars. Renewal date 31 January. Notice of renewal due 30 November.";
+    const text = await extract("lease.pdf", "application/pdf", makePdf(lease));
+    expect(text.replace(/\s+/g, " ")).toBe(lease);
+  });
+
   it("gives no text for a PDF without a text layer", async () => {
     expect(await extract("scan.pdf", "application/pdf", makePdf(""))).toBe("");
+  });
+
+  it("keeps a short PDF text layer", async () => {
+    expect(await extract("a.pdf", "application/pdf", makePdf("Invoice 12"))).toBe("Invoice 12");
   });
 
   it("decodes plain text, markdown, csv and json as UTF-8", async () => {

@@ -2,6 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { FinanceStatement } from "@rakazo/contracts";
 import { Badge, Button } from "@rakazo/ui-web";
 import { fullDay, moneyExact } from "../../lib/finance-format";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 
 /** The parser marks a model-read PDF with this opening; it is the one warning shown in bold. */
 const MODEL_READ = "Read by an AI model";
@@ -26,6 +27,7 @@ export function statementAccountKey(row: StatementRow): string {
  * closing balance minus what the transactions add up to.
  */
 function CheckLine({ statement }: { statement: FinanceStatement }) {
+  useHideAmounts();
   const { t } = useLingui();
   const { check } = statement;
   if (check?.balances === "match") {
@@ -46,6 +48,7 @@ function CheckLine({ statement }: { statement: FinanceStatement }) {
 }
 
 function Row({ row, onRemove }: { row: StatementRow; onRemove: () => void }) {
+  useHideAmounts();
   const { t } = useLingui();
   const { statement } = row;
   const money = (cents: number | null) => (cents === null ? "—" : moneyExact(cents));

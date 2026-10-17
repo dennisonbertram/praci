@@ -174,6 +174,38 @@ describe("thread composer isolation", () => {
     expect(container.querySelector('[data-testid="mention-picker"]')).toBeNull();
   });
 
+  it("ranks prefix, word-start and substring mention matches ahead of kind order", () => {
+    render({
+      composerMentionTargets: [
+        { kind: "bot", id: "b1", name: "Outmailer" },
+        { kind: "group", id: "g1", name: "Team Mail" },
+        { kind: "connector", id: "c1", name: "Mailchimp" },
+      ],
+    });
+    type("@mail");
+    const text = container.querySelector('[data-testid="mention-picker"]')!.textContent!;
+    expect(text.indexOf("Mailchimp")).toBeGreaterThanOrEqual(0);
+    expect(text.indexOf("Mailchimp")).toBeLessThan(text.indexOf("Team Mail"));
+    expect(text.indexOf("Team Mail")).toBeLessThan(text.indexOf("Outmailer"));
+  });
+
+  it("ranks before the ten-item cap so a later-kind prefix match is not cut", () => {
+    render({
+      composerMentionTargets: [
+        ...Array.from({ length: 10 }, (_, i) => ({
+          kind: "bot" as const,
+          id: `b${i}`,
+          name: `Xmailer ${i}`,
+        })),
+        { kind: "connector", id: "c1", name: "Mailchimp" },
+      ],
+    });
+    type("@mail");
+    expect(container.querySelector('[data-testid="mention-picker"]')!.textContent).toContain(
+      "Mailchimp",
+    );
+  });
+
   it("selects mention and skill popovers and removes chips with backspace", () => {
     type("Hello @He");
     press("@{name}");

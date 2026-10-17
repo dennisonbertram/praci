@@ -1,5 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button, Input } from "@rakazo/ui-web";
+import { isCartaAgentSpawnKey, isCartaEndpoint } from "@rakazo/contracts";
+import { Button, Input, Label, Switch } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -21,6 +22,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
   const reconnect = useMcpReconnect(serverId, () => void data.refresh());
   const [draft, setDraft] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [confirmingWrites, setConfirmingWrites] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -170,11 +172,39 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           </Button>
         </div>
 
+        {isCartaEndpoint(server.endpoint) ? (
+          <div className="mt-4 flex items-center gap-2">
+            <Switch
+              id="carta-writes"
+              checked={server.writesEnabled}
+              disabled={busy}
+              onCheckedChange={(on) =>
+                on
+                  ? setConfirmingWrites(true)
+                  : void run(
+                      () =>
+                        rpc.mcp.servers
+                          .setWrites({ id: server.id, enabled: false })
+                          .then(() => undefined),
+                      t`Could not update changes`,
+                    )
+              }
+            />
+            <Label htmlFor="carta-writes">
+              <Trans>Allow changes in Carta</Trans>
+            </Label>
+          </div>
+        ) : null}
+
         <Heading>
           <Trans>Used by</Trans>
         </Heading>
         <AgentToggleList
-          bots={data.bots}
+          bots={
+            isCartaEndpoint(server.endpoint)
+              ? data.bots.filter((bot) => isCartaAgentSpawnKey(bot.spawnKey))
+              : data.bots
+          }
           appName={server.name}
           disabled={busy}
           isOn={assigned}
@@ -213,6 +243,25 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
         </li>
         <li>
           <Trans>Your data in {server.name} is not deleted.</Trans>
+        </li>
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={confirmingWrites}
+        busy={busy}
+        title={t`Allow changes in Carta?`}
+        confirm={t`Allow changes`}
+        onCancel={() => setConfirmingWrites(false)}
+        onConfirm={() =>
+          void run(async () => {
+            await rpc.mcp.servers.setWrites({ id: server.id, enabled: true });
+            setConfirmingWrites(false);
+          }, t`Could not update changes`)
+        }
+      >
+        <li>
+          <Trans>
+            The Carta agent will be able to change your Carta data. It asks before each change.
+          </Trans>
         </li>
       </ConfirmDialog>
       {reconnect.needsClient ? (

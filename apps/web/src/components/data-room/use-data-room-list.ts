@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/client";
 import type { DataRoomApiItem } from "@rakazo/contracts";
+import { DATA_ROOM_METADATA_ORDINAL } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isInProgress } from "../../lib/data-room";
 import { rpc } from "../../lib/rpc";
@@ -16,6 +17,12 @@ export type Filters = {
 };
 export type SortField = "date" | "name" | "type" | "createdAt";
 export type Sort = { field: SortField; direction: "asc" | "desc" };
+/** A newly chosen sort starts in the order people expect: names A to Z, dates newest first. */
+export const naturalSort = (field: SortField): Sort => ({
+  field,
+  direction: field === "name" || field === "type" ? "asc" : "desc",
+});
+
 /** `sort` null means relevance, which only a search has. */
 export type ListQuery = { query: string; filters: Filters; sort: Sort | null };
 /** One document, with the search snippets that matched in it. */
@@ -24,6 +31,33 @@ export type Row = { item: DataRoomApiItem; snippets: string[] };
 const LIST_PAGE = 50;
 const SEARCH_PAGE = 20;
 const POLL_MS = 3_000;
+
+/** The value the server orders by, so a change to it means the row's place in the order changed. */
+function sortValue(item: DataRoomApiItem, sort: Sort | null) {
+  switch (sort?.field ?? "createdAt") {
+    case "date":
+      return item.facets.docDate;
+    case "type":
+      return item.facets.docType;
+    case "name":
+      return item.name;
+    default:
+      return item.createdAt;
+  }
+}
+
+/**
+ * A metadata hit whose highlights all lie in the file name would only repeat the name shown above
+ * it. One that also matches the summary, parties or tags is worth showing.
+ */
+export function matchesOnlyName(snippet: string, name: string) {
+  const marked = snippet
+    .split("\u0001")
+    .slice(1)
+    .map((part) => part.split("\u0002")[0]?.toLowerCase() ?? "");
+  const words = name.toLowerCase().replace(/[._\-/]+/g, " ");
+  return marked.every((text) => name.toLowerCase().includes(text) || words.includes(text));
+}
 
 function mergeRows(rows: Row[], more: Row[]) {
   const byId = new Map(rows.map((row) => [row.item.id, row]));
@@ -56,7 +90,14 @@ async function fetchPage(q: ListQuery, cursor?: string) {
     return {
       rows: mergeRows(
         [],
-        page.results.map((hit) => ({ item: hit.item, snippets: [hit.snippet] })),
+        page.results.map((hit) => ({
+          item: hit.item,
+          snippets:
+            hit.ordinal === DATA_ROOM_METADATA_ORDINAL &&
+            matchesOnlyName(hit.snippet, hit.item.name)
+              ? []
+              : [hit.snippet],
+        })),
       ),
       nextCursor: page.nextCursor,
     };
@@ -99,6 +140,8 @@ export function useDataRoomList(q: ListQuery) {
   const cursorRef = useRef<string | null>(null);
   /** Per item, the newest status read; an older answer is dropped. */
   const pollSeq = useRef(new Map<string, number>());
+  const rowsRef = useRef(state.rows);
+  rowsRef.current = state.rows;
   const loadedKey = useRef(key);
   const latest = useRef(q);
   latest.current = q;
@@ -172,6 +215,15 @@ export function useDataRoomList(q: ListQuery) {
           .then((item) => {
             // Not if the list was reloaded or re-queried since, or a newer poll was sent.
             if (id !== generation.current || pollSeq.current.get(itemId) !== mine) return;
+            // Patching a row in place would leave it out of order and the cursor could skip
+            // documents, so when the sort value moved, read the first page again. A relevance
+            // search (no sort) is not ordered by these fields.
+            const old = rowsRef.current.find((row) => row.item.id === itemId)?.item;
+            const { query, sort } = latest.current;
+            if (old && (sort || !query) && sortValue(old, sort) !== sortValue(item, sort)) {
+              setAttempt((n) => n + 1);
+              return;
+            }
             setState((s) => ({
               ...s,
               rows: s.rows.map((row) =>

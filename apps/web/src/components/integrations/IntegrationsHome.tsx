@@ -22,6 +22,7 @@ import { Search } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
+  appPath,
   CATEGORY_IDS,
   type CategoryFilter,
   type ConnectedApp,
@@ -38,7 +39,12 @@ import { errorText } from "../../lib/user-error";
 import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
-import { FinanceSection, useConnectedFinance } from "./FinanceSection";
+import {
+  connectedFinanceKeys,
+  FINANCE_TILE_COUNT,
+  FinanceSection,
+  useFinanceStatus,
+} from "./FinanceSection";
 import { AgentStack, IntegrationTile, StatusBadge } from "./parts";
 import { agentsFor, type IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
@@ -157,7 +163,7 @@ function AppCard({
         name={app.name}
         logo={app.logo}
         sub={accounts || app.rows[0]?.displayName}
-        to={`/app/integrations/app/${encodeURIComponent(app.connectorId)}/${encodeURIComponent(app.provider)}`}
+        to={appPath({ connectorId: app.connectorId, slug: app.provider })}
       />
       <div className="flex items-center gap-2">
         <StatusBadge status={app.status} />
@@ -266,8 +272,11 @@ export function IntegrationsHome({
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
   const [custom, setCustom] = useState<{
     url: string;
+    /** The first-party service this dialog connects; titles the dialog. */
+    service?: string;
     oauthClient?: boolean;
     scope?: string;
+    token?: boolean;
   } | null>(null);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -296,10 +305,13 @@ export function IntegrationsHome({
     x: t`Read posts, DMs and bookmarks`,
     treg: t`Live data, enrichment and generation tools`,
   };
+  const financeStatus = useFinanceStatus();
+  const connectedKeys = connectedFinanceKeys(data.financeSources, financeStatus);
   const financeNames = FINANCE_PROVIDERS.map((entry) => entry.name.toLowerCase());
   const showFinance =
     (category === "all" || category === "finance") &&
-    financeNames.some((name) => name.includes(query.trim().toLowerCase()));
+    financeNames.some((name) => name.includes(query.trim().toLowerCase())) &&
+    connectedKeys.size < FINANCE_TILE_COUNT;
   const firstPartyMcp = FIRST_PARTY_MCP.filter(
     (entry) =>
       (category === "all" || category === entry.category) &&
@@ -313,16 +325,15 @@ export function IntegrationsHome({
   const financeServerIds = data.financeSources.flatMap((source) =>
     source.serverId ? [source.serverId] : [],
   );
-  const servers = data.servers.filter((server) => !financeServerIds.includes(server.id));
-  const filtering = Boolean(query.trim()) || category !== "all";
-  // A Blockscout key is stored as its MCP server, which already shows in `servers`.
-  const connectedFinance = useConnectedFinance(data.financeSources).filter(
-    (item) =>
-      item.key !== "crypto" ||
-      !servers.some((server) => "endpoint" in server && isCryptoEndpoint(server.endpoint)),
+  // A Blockscout key is stored as its MCP server. Once the key is connected, the finance tile
+  // under Connected replaces that server's own tile.
+  const isCrypto = (server: McpServer) => "endpoint" in server && isCryptoEndpoint(server.endpoint);
+  const cryptoServer = connectedKeys.has("crypto") ? data.servers.find(isCrypto) : undefined;
+  const servers = data.servers.filter(
+    (server) => !financeServerIds.includes(server.id) && server !== cryptoServer,
   );
-  const hasConnected =
-    apps.length + servers.length + data.sources.length + connectedFinance.length > 0;
+  const filtering = Boolean(query.trim()) || category !== "all";
+  const hasConnected = apps.length + servers.length + data.sources.length + connectedKeys.size > 0;
   // Native Google items fill the catalog without a managed provider, so ask the setup state. Only
   // the deployment owner is told which providers are configured; a member (whose list is empty)
   // can tell from the catalog itself, and a failed call falls back to whether it has anything.
@@ -403,32 +414,32 @@ export function IntegrationsHome({
               {data.sources.map((source) => (
                 <SourceCard key={source.id} source={source} onRemove={setRemoving} />
               ))}
-              {connectedFinance.map((item) => (
-                <IntegrationTile key={item.key} data-testid={`connected-finance-${item.key}`}>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <AppLogo name={item.name} logo={item.logo} />
-                    <div className="min-w-0">
-                      <div className="truncate font-semibold">{item.name}</div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {item.description}
-                      </div>
+              <FinanceSection
+                mode="connected"
+                sources={data.financeSources}
+                status={financeStatus}
+                onChanged={() => void data.refresh()}
+                cryptoExtra={
+                  cryptoServer ? (
+                    <div className="flex items-center gap-2">
+                      <UsedBy
+                        bots={data.bots.filter((bot) =>
+                          data.mcpAssignments.some(
+                            (entry) => entry.serverId === cryptoServer.id && entry.botId === bot.id,
+                          ),
+                        )}
+                      />
+                      <Link
+                        to={`/app/integrations/mcp/${cryptoServer.id}`}
+                        aria-label={t`Manage ${cryptoServer.name}`}
+                        className="ms-auto text-[11px] text-muted-foreground underline hover:text-foreground"
+                      >
+                        <Trans>Manage</Trans>
+                      </Link>
                     </div>
-                  </div>
-                  <div className="mt-auto flex items-center gap-2">
-                    <StatusBadge status="connected" />
-                    <Link
-                      to={item.to}
-                      className="ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-                    >
-                      {item.action === "finance" ? (
-                        <Trans>Open Finance</Trans>
-                      ) : (
-                        <Trans>Open</Trans>
-                      )}
-                    </Link>
-                  </div>
-                </IntegrationTile>
-              ))}
+                  ) : null
+                }
+              />
             </div>
           </>
         ) : null}
@@ -448,7 +459,7 @@ export function IntegrationsHome({
                 </b>
                 <div className="mt-3">
                   <Link
-                    to="/integrations/setup"
+                    to="/integrations/setup?next=/app/integrations"
                     className="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
                   >
                     <Trans>Set up app catalog</Trans>
@@ -469,7 +480,25 @@ export function IntegrationsHome({
               </>
             )}
           </div>
-        ) : (
+        ) : null}
+        {notSetUp && results.length > 0 ? (
+          // Native Google apps need no managed provider, so they stay connectable here.
+          <div
+            data-testid="app-grid"
+            className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+          >
+            {results.map((item) => (
+              <AppTile
+                key={`${item.connectorId}:${item.slug}`}
+                name={item.name}
+                logo={item.logo}
+                description={item.description}
+                onConnect={() => setConnecting(item)}
+              />
+            ))}
+          </div>
+        ) : null}
+        {notSetUp ? null : (
           <>
             <SectionTitle>
               <Trans>Find an app</Trans>
@@ -560,7 +589,12 @@ export function IntegrationsHome({
             <SectionTitle>
               <Trans>Finance</Trans>
             </SectionTitle>
-            <FinanceSection sources={data.financeSources} onChanged={() => void data.refresh()} />
+            <FinanceSection
+              mode="available"
+              sources={data.financeSources}
+              status={financeStatus}
+              onChanged={() => void data.refresh()}
+            />
           </div>
         ) : null}
 
@@ -579,6 +613,9 @@ export function IntegrationsHome({
                     onConnect={() =>
                       setCustom({
                         url: entry.endpoint,
+                        service: entry.name,
+                        // Treg takes an API token, not a sign-in.
+                        ...(entry.id === "treg" ? { token: true } : {}),
                         ...("oauthClient" in entry
                           ? { oauthClient: true, scope: entry.scope }
                           : {}),
@@ -622,6 +659,8 @@ export function IntegrationsHome({
         <CustomConnectionDialog
           data={data}
           initialUrl={custom.url}
+          service={custom.service}
+          tokenSource={custom.token}
           oauthClient={custom.oauthClient}
           oauthScope={custom.scope}
           onClose={() => setCustom(null)}

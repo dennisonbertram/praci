@@ -244,6 +244,8 @@ export interface ConnectorRoute {
   resourceRevision?: string | number;
   /** Source label for lazy catalog name indexes. Never exposed as a model schema field. */
   catalogGroup?: string;
+  /** The MCP server's endpoint, so approval checks can tell which server a raw tool name belongs to. */
+  endpoint?: string;
 }
 
 export interface ConnectorCall {

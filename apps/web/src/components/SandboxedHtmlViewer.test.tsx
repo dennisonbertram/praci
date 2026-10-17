@@ -262,3 +262,18 @@ it("dims the frame in dark mode for email only", async () => {
   expect(plain.iframe?.classList.contains("dark:brightness-85")).toBe(false);
   await plain.cleanup();
 });
+
+it("masks amounts in email HTML while Hide amounts is on, and not otherwise", async () => {
+  const { setHideAmounts } = await import("../lib/hide-amounts-preference");
+  const html =
+    '<table><tr><td><b>Total $1,234.56</b> <img alt="Paid $1,234.56" src="data:,"></td></tr></table>';
+  setHideAmounts(true);
+  const hidden = await render(html, false, true);
+  expect(embeddedMessage(hidden.srcDoc).body.innerHTML).not.toContain("1,234");
+  expect(embeddedMessage(hidden.srcDoc).body.textContent).toContain("Total");
+  await hidden.cleanup();
+  setHideAmounts(false);
+  const shown = await render(html, false, true);
+  expect(embeddedMessage(shown.srcDoc).body.textContent).toContain("$1,234.56");
+  await shown.cleanup();
+});

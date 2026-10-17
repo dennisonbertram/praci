@@ -90,8 +90,12 @@ export const DataRoomApiSearchInputSchema = z.object({
   /** The `nextCursor` of the previous page (valid only with the same query, filters and sort). */
   cursor: Id.optional(),
 });
+/** The ordinal of the chunk that holds an item's name, folder and facets; text chunks start at 0. */
+export const DATA_ROOM_METADATA_ORDINAL = -1;
+
 export const DataRoomApiSearchResultSchema = z.object({
   item: DataRoomApiItemSchema,
+  /** `DATA_ROOM_METADATA_ORDINAL` when the match is in the name, folder or facets. */
   ordinal: z.number().int(),
   /** Plain text. U+0001 and U+0002 mark highlight start and end. Render as text, never HTML. */
   snippet: z.string(),

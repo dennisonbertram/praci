@@ -312,7 +312,7 @@ describe("Android mobile platform contract", () => {
   });
 
   it("shows agent notification silence in the menu, inbox avatar, and DM header only", () => {
-    const index = readFileSync(resolve(mobileRoot, "app/index.tsx"), "utf8");
+    const index = readFileSync(resolve(mobileRoot, "components/inbox-rows.tsx"), "utf8");
     const thread = readFileSync(resolve(mobileRoot, "app/thread.tsx"), "utf8");
     const avatar = readFileSync(resolve(mobileRoot, "components/bot-avatar.tsx"), "utf8");
     const menu = readFileSync(resolve(mobileRoot, "components/bot-organize-modal.tsx"), "utf8");

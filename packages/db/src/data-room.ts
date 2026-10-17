@@ -65,23 +65,37 @@ export interface DataRoomSearchResult {
 
 const DATE_SORTS = new Set<DataRoomSortField>(["date", "createdAt"]);
 
-function encodeCursor(value: Date | string | number | null, id: string, mode?: string) {
+type CursorSort = { field: DataRoomSortField | "relevance"; direction: "asc" | "desc" };
+const RELEVANCE_SORT: CursorSort = { field: "relevance", direction: "desc" };
+
+/** The cursor records its sort (and search mode), so a cursor from another sort is rejected. */
+function encodeCursor(
+  sort: CursorSort,
+  value: Date | string | number | null,
+  id: string,
+  mode?: string,
+) {
   const v = value instanceof Date ? value.toISOString() : value;
-  return Buffer.from(JSON.stringify(mode === undefined ? [v, id] : [v, id, mode])).toString(
+  const parts = [sort.field, sort.direction, v, id];
+  return Buffer.from(JSON.stringify(mode === undefined ? parts : [...parts, mode])).toString(
     "base64url",
   );
 }
 
 function decodeCursor(
   cursor: string,
-  field: DataRoomSortField | "relevance",
+  sort: CursorSort,
 ): { value: Date | string | number | null; id: string; mode?: string } {
+  const { field } = sort;
   try {
-    const [v, id, mode] = JSON.parse(Buffer.from(cursor, "base64url").toString()) as [
+    const [f, d, v, id, mode] = JSON.parse(Buffer.from(cursor, "base64url").toString()) as [
+      string,
+      string,
       string | number | null,
       string,
       string | undefined,
     ];
+    if (f !== field || d !== sort.direction) throw new Error();
     const kind = field === "relevance" ? "number" : "string";
     if (typeof id !== "string" || (v !== null && typeof v !== kind)) throw new Error();
     if (field === "relevance" && v === null) throw new Error();
@@ -110,7 +124,7 @@ function keysetSql(
   const direction = Prisma.raw(sort.direction === "asc" ? "ASC" : "DESC");
   let where: Prisma.Sql | undefined;
   if (cursor) {
-    const { value, id, mode } = decodeCursor(cursor, sort.field);
+    const { value, id, mode } = decodeCursor(cursor, sort);
     if (expectedMode !== undefined && mode !== expectedMode) throw searchChanged();
     where =
       value === null
@@ -427,7 +441,8 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       const last = pageRows.at(-1);
       return {
         items: pageRows.flatMap((row) => byId.get(row.id) ?? []),
-        nextCursor: rows.length > limit && last ? encodeCursor(last.sortValue, last.id) : null,
+        nextCursor:
+          rows.length > limit && last ? encodeCursor(sort, last.sortValue, last.id) : null,
       };
     },
 
@@ -580,7 +595,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         ));
       } else {
         if (input.cursor) {
-          const { value, id, mode: cursorMode } = decodeCursor(input.cursor, "relevance");
+          const { value, id, mode: cursorMode } = decodeCursor(input.cursor, RELEVANCE_SORT);
           if (cursorMode !== mode) throw searchChanged();
           where = Prisma.sql`(r.rank < ${value} OR (r.rank = ${value} AND r."itemId" > ${id}))`;
         }
@@ -666,7 +681,9 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         }),
         nextCursor:
           rows.length > limit && last
-            ? encodeCursor(input.sort ? last.sortValue : last.rank, last.itemId, mode)
+            ? input.sort
+              ? encodeCursor(input.sort, last.sortValue, last.itemId, mode)
+              : encodeCursor(RELEVANCE_SORT, last.rank, last.itemId, mode)
             : null,
       };
     },
@@ -873,7 +890,9 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         step === "ingest"
           ? await prisma.$queryRaw<{ id: string }[]>`
               SELECT i.id FROM data_room_items i
-              WHERE ${eligibleSql(actor, { status: "ready" })} AND i."mimeType" LIKE 'image/%'
+              WHERE ${eligibleSql(actor, { status: "ready" })} AND (i."mimeType" LIKE 'image/%'
+                  OR (lower(i."mimeType") IN ('', 'application/octet-stream')
+                    AND lower(i.name) ~ '\.(jpe?g|png|webp|gif)$'))
                 AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
                   AND t.text = '')`
           : step === "classify"
@@ -900,20 +919,25 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       return moved.map((r) => r.id);
     },
 
-    /** Ready items among `ids` go back to indexing (their name or folder changed). Returns the moved ids. */
+    /**
+     * Ready items among `ids`, and items whose index run is in flight (leased), go back to indexing
+     * because their name or folder changed. The revision bump makes the in-flight run's writes
+     * stale and the cleared lease lets a fresh run claim the item. Returns the moved ids.
+     */
     async reindexItems(actor: Actor, ids: string[]): Promise<string[]> {
       if (!ids.length) return [];
       const moved = await prisma.$queryRaw<{ id: string }[]>`
         UPDATE data_room_items SET status = 'indexing', failures = 0, revision = revision + 1,
-          "updatedAt" = now()
+          "leaseUntil" = NULL, "updatedAt" = now()
         WHERE id = ANY(${ids}::text[]) AND "spaceId" = ${actor.spaceId}
-          AND "userId" = ${actor.userId} AND status = 'ready'
+          AND "userId" = ${actor.userId}
+          AND (status = 'ready' OR (status = 'indexing' AND "leaseUntil" IS NOT NULL))
         RETURNING id`;
       return moved.map((r) => r.id);
     },
 
     /**
-     * Moves up to `limit` ready items in the folder and all its subfolders back to indexing and
+     * Moves up to `limit` ready or in-flight indexing items in the folder and all its subfolders back to indexing and
      * returns their ids. Call again until fewer than `limit` come back.
      */
     async reindexFolder(actor: Actor, folderId: string, limit: number): Promise<string[]> {
@@ -926,11 +950,12 @@ export function createDataRoomRepos(prisma: PrismaClient) {
           WHERE f."spaceId" = ${actor.spaceId} AND f."userId" = ${actor.userId}
         )
         UPDATE data_room_items SET status = 'indexing', failures = 0, revision = revision + 1,
-          "updatedAt" = now()
+          "leaseUntil" = NULL, "updatedAt" = now()
         WHERE id IN (
           SELECT i.id FROM data_room_items i
           WHERE i."spaceId" = ${actor.spaceId} AND i."userId" = ${actor.userId}
-            AND i.status = 'ready' AND i."folderId" IN (SELECT id FROM sub)
+            AND (i.status = 'ready' OR (i.status = 'indexing' AND i."leaseUntil" IS NOT NULL))
+            AND i."folderId" IN (SELECT id FROM sub)
           LIMIT ${limit})
         RETURNING id`;
       return moved.map((r) => r.id);

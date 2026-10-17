@@ -208,6 +208,9 @@ export function remoteMarkdownImage(url: string): { href: string; host: string }
   }
 }
 
+/** While true, currency amounts in rendered text, tables, code, alt and title text read as `$•••`. Display only. */
+export const HideAmountsContext = createContext(false);
+
 /** Whether remote markdown images load without a tap. Apps provide the reader's device setting. */
 export const RemoteImagesContext = createContext(false);
 

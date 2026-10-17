@@ -44,6 +44,7 @@ type Overview = {
     sync: string;
   }>;
   needsReply: string[];
+  needsReplyListed: string;
   todos: string[];
   recent: string[];
 };
@@ -239,9 +240,12 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(result.needsReply[0]).toContain("acct:a@example.test");
     expect(result.needsReply[1]).toContain("Budget question");
     expect(result.needsReply[2]).toContain("Snippet low-new");
+    expect(result.needsReplyListed).toBe("complete: all 3 messages that need a reply are listed");
     expect(result.todos).toHaveLength(1);
     expect(result.todos[0]).toContain("Send signed contract");
     expect(result.todos[0]).toContain("2026-10-16");
+    // Names the email's sender, so the agent can say whose email each to-do is about.
+    expect(result.todos[0]).toContain(`from:${critical.fromName || critical.fromAddress}`);
     // Everything else in the inbox, newest first; no sent-only mail, no repeats of needs-reply rows.
     const recent = result.recent.join("\n");
     expect(recent).toContain("Weekly digest");
@@ -252,6 +256,16 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(result.recent.findIndex((r) => r.includes("Weekly digest"))).toBeLessThan(
       result.recent.findIndex((r) => r.includes("Already answered")),
     );
+  });
+
+  it("lists every message that needs a reply, as many as the Inbox page shows", async () => {
+    const ids = Array.from({ length: 12 }, (_, i) => `ask-${i}`);
+    const t = await harness({ a: ids.map((id, i) => message(id, 0.1 + i * 0.1)) });
+    await t.overview();
+    for (const id of ids) await t.triage(id, { needsReply: true, priority: "normal" });
+    const result = await t.overview();
+    expect(result.needsReply).toHaveLength(12);
+    expect(result.needsReplyListed).toBe("complete: all 12 messages that need a reply are listed");
   });
 
   it("reads the cache without calling Gmail again inside the sync throttle", async () => {
@@ -350,6 +364,9 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(result.recent.length).toBeGreaterThan(0);
     expect(rows).toBeLessThanOrEqual(25);
     expect(result.accounts[0]).toMatchObject({ unread: 60, needsReply: 30 });
+    expect(result.needsReplyListed).toBe(
+      `${result.needsReply.length} of 30 listed, highest priority first`,
+    );
     expect(JSON.stringify(result).length).toBeLessThanOrEqual(MAIL_GREP_BUDGET);
   });
 

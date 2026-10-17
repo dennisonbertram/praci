@@ -12,10 +12,12 @@ import type {
   SandboxProvider,
   TransactionalEmailProvider,
 } from "@rakazo/adapter-kit";
+import { dataRoomBlobDeleteJob } from "@rakazo/adapter-kit";
 import type {
   ComposioProvider,
   ConnectorRegistry,
   DestinationEmulator,
+  FinanceSyncDeps,
   RemoteConnectorDependencies,
 } from "@rakazo/adapters";
 import {
@@ -179,6 +181,8 @@ export async function createApp(
     logger?: Logger;
     runtime?: AgentRuntime;
     contextStrategy?: AgentContextStrategy;
+    /** Replaces the Mercury and Brex tool caller, so a stack with canned finance data can run offline. */
+    financeCallToolFor?: FinanceSyncDeps["callToolFor"];
   } = {},
 ): Promise<AppHandles> {
   const {
@@ -194,6 +198,7 @@ export async function createApp(
     logger: loggerOverride,
     runtime: runtimeOverride,
     contextStrategy,
+    financeCallToolFor: financeCallToolOverride,
     ...envOverrides
   } = overrides;
   const env = { ...loadEnv(process.env), ...envOverrides };
@@ -450,6 +455,13 @@ export async function createApp(
         getLogger().error("push token removal failed", error),
       );
     },
+    afterDeleteUserData: async (blobs) => {
+      for (const { spaceId, storageKey } of blobs) {
+        await jobs
+          .enqueue(dataRoomBlobDeleteJob(spaceId, storageKey))
+          .catch((error) => getLogger().error("data room blob cleanup", error));
+      }
+    },
     // The session change already happened, so a token file failure must not fail sign-out.
     afterDeleteSession: async (session) => {
       await endSessionPushToken(env.dataDir, session.userId, session.id).catch((error) =>
@@ -536,7 +548,7 @@ export async function createApp(
     deploymentModelConfigured: env.deploymentModelConfigured,
     messaging,
     cloudAgent,
-    financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
+    financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     artifacts,
   });
   if (inMemoryJobs) {
@@ -576,7 +588,7 @@ export async function createApp(
     remoteConnectors,
     artifacts,
     mail,
-    financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
+    financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     mcp,
     parseStatement: async (file, scope) => {
       // Only a PDF from an unknown bank reaches the model, and only with the consent the Inbox

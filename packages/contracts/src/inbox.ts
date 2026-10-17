@@ -8,7 +8,12 @@ export const isInboxAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith(inboxAgentSpawnKey("")));
 
 /** Connection.displayName labels the account tab. */
-export const MailAccountSchema = z.object({ connectionId: Id, label: z.string() });
+export const MailAccountSchema = z.object({
+  connectionId: Id,
+  label: z.string(),
+  /** The mailbox address, once Gmail has reported it; optional for older servers. */
+  address: z.string().optional(),
+});
 
 export const InboxPrioritySchema = z.enum(["critical", "important", "normal", "low"]);
 export type InboxPriority = z.infer<typeof InboxPrioritySchema>;
@@ -69,6 +74,8 @@ export const MailRowSchema = z.object({
   category: InboxCategorySchema.nullable(),
   /** The user's mark on this sender; null when unmarked and while triage is not enabled. */
   feedback: InboxMarkSchema.nullable(),
+  /** Sent by the user, such as their reply in a search result; optional for older servers. */
+  fromSelf: z.boolean().optional(),
 });
 
 /** Which account a request covers; omitted means every connected mail account. */
@@ -159,8 +166,20 @@ export const InboxTodosOutputSchema = z.object({
   todos: z.array(InboxTodoSchema),
 });
 
+/** Another message of the same conversation, as the cache has it; its body loads with inbox.get. */
+export const InboxThreadMessageSchema = z.object({
+  id: Id,
+  from: z.string(),
+  receivedAt: z.string(),
+  snippet: z.string(),
+  /** Sent by the user; optional for older servers. */
+  fromSelf: z.boolean().optional(),
+});
+
 export const InboxMessageSchema = z.object({
   from: z.string(),
+  /** Sent by the user; optional for older servers. */
+  fromSelf: z.boolean().optional(),
   to: z.string(),
   /** Empty when the message has no Cc. */
   cc: z.string(),
@@ -177,6 +196,13 @@ export const InboxMessageSchema = z.object({
       size: z.number().int().nonnegative(),
     }),
   ),
+  /** The cached copy's state, so any view of the message offers the same actions; optional for older servers. */
+  unread: z.boolean().optional(),
+  inInbox: z.boolean().optional(),
+  /** The conversation's cached messages before this one, oldest first; empty for a single message. */
+  thread: z.array(InboxThreadMessageSchema).optional(),
+  /** The conversation's cached messages after this one, such as the user's reply, oldest first. */
+  later: z.array(InboxThreadMessageSchema).optional(),
 });
 
 /** Chosen by the browser when a composer opens; it names that message for idempotency. */
@@ -199,6 +225,8 @@ export const ComposePrefillInputSchema = z.object({
 /** Fields are text as typed; recipients are comma-separated. The account is the one the original came from. */
 export const ComposePrefillOutputSchema = z.object({
   connectionId: Id,
+  /** The account the reply or forward is sent from, for the composer's From line; optional for older servers. */
+  account: MailAccountSchema.optional(),
   to: z.string(),
   cc: z.string(),
   subject: z.string(),
@@ -218,6 +246,8 @@ export const ComposePrefillOutputSchema = z.object({
   ),
   /** The original had attachments, but together they are over the attachment limit. */
   attachmentsTooLarge: z.boolean().optional(),
+  /** Gmail could not be read, so To and Subject come from the cached copy and the quote is empty. */
+  quoteUnavailable: z.boolean().optional(),
 });
 
 export const MAX_COMPOSE_BODY = 150_000;
@@ -287,6 +317,7 @@ export type InboxMarkReadInput = z.infer<typeof InboxMarkReadInputSchema>;
 export type InboxFeedbackInput = z.infer<typeof InboxFeedbackInputSchema>;
 export type InboxListInput = z.infer<typeof InboxListInputSchema>;
 export type InboxMessage = z.infer<typeof InboxMessageSchema>;
+export type InboxThreadMessage = z.infer<typeof InboxThreadMessageSchema>;
 export type InboxTodo = z.infer<typeof InboxTodoSchema>;
 export type MailRow = z.infer<typeof MailRowSchema>;
 export type InboxListOutput = z.infer<typeof InboxListOutputSchema>;

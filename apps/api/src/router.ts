@@ -14,6 +14,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import {
   computerControlExpireJobKey,
+  dataRoomBlobDeleteJob,
   messagingDeliverJob,
   routineJobKey,
   routineWakeupJob,
@@ -159,6 +160,7 @@ import {
   appContract,
   BotSecretAuth,
   ComputerCommandSchema,
+  cartaAgentSpawnKey,
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
@@ -188,6 +190,7 @@ import {
 } from "@rakazo/core";
 import type { BoardEvents, Board as BoardRow, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
+  addSidebarPage,
   appendEventInTransaction,
   BotSectionNameConflictError,
   CannotDeleteDefaultSpaceError,
@@ -213,6 +216,7 @@ import {
   findSpaceMemoryConfig,
   findTicket,
   formatMessagingLinkCode,
+  getCapTableSnapshot,
   InvalidSpaceNameError,
   IsolationError,
   isRecordNotFound,
@@ -220,6 +224,7 @@ import {
   isUniqueViolation,
   listBoards,
   listContacts,
+  listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
   lockOwnedGroup,
@@ -229,10 +234,12 @@ import {
   parseComputerMode,
   pushSessionExpiresAt,
   releaseSpaceDeletionClaim,
+  removeSidebarPage,
   renameSpaceForMember,
   renewSpaceDeletionClaim,
   replaceSpaceBackupModels,
   restoreBotUnderComputerQuota,
+  SidebarPageError,
   SPACE_DELETION_CLAIM_TIMEOUT_MS,
   SpaceDeletionInProgressError,
   SpaceLimitError,
@@ -262,7 +269,14 @@ import {
 } from "./artifacts.js";
 import type { BillingService } from "./billing.js";
 import { botProfileLabelsChanged, commitBotUpdate } from "./bot-update.js";
-import { assignToExistingCartaAgent, ensureCartaAgent } from "./carta-agent.js";
+import type { CartaSyncDeps } from "./carta-agent.js";
+import {
+  assignToExistingCartaAgent,
+  ensureCartaAgent,
+  isCartaSyncing,
+  onMcpServerConnected,
+  startCartaSync,
+} from "./carta-agent.js";
 import {
   executionBlocksUserTakeover,
   resolveBusyBotName,
@@ -540,6 +554,8 @@ function computerContext(actor: Actor, botId: string, operationId: string): Adap
   };
 }
 
+const CARTA_ONLY_MESSAGE = "Carta is used only by the Carta agent.";
+
 function mcpServerDto(
   row: {
     id: string;
@@ -555,6 +571,7 @@ function mcpServerDto(
     headers: unknown;
     secretId: string | null;
     enabled: boolean;
+    writesEnabled: boolean;
     revision: number;
     createdAt: Date;
     updatedAt: Date;
@@ -587,6 +604,7 @@ function mcpServerDto(
     oauthStatus,
     oauthAttempted,
     enabled: row.enabled,
+    writesEnabled: row.writesEnabled,
     revision: row.revision,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -773,6 +791,15 @@ function mapSpaceLifecycleError(error: unknown): unknown {
   return error;
 }
 
+function sidebarPageError(error: unknown): never {
+  if (error instanceof SidebarPageError) {
+    throw new ORPCError(error.code === "owner_only" ? "FORBIDDEN" : "BAD_REQUEST", {
+      message: error.message,
+    });
+  }
+  throw error;
+}
+
 function contactNotFound(error: unknown): never {
   if (error instanceof IsolationError) throw new ORPCError("NOT_FOUND", { message: error.message });
   if (error instanceof ContactEmailTakenError) {
@@ -907,6 +934,12 @@ export function createRouter(deps: RouterDeps) {
   const repos = createRepos(deps.prisma);
   const onboardingDeps = { prisma: deps.prisma, events: deps.events, connectors: deps.connectors };
   const mcpOAuth = deps.mcpOAuth ?? new McpOAuthBroker(deps.prisma, deps.secrets);
+  const cartaSyncDeps: CartaSyncDeps = {
+    prisma: deps.prisma,
+    repos,
+    hasModel: async (actor) => !(await modelSetup(deps, actor)).needsModel,
+    enqueueRun: (runId) => deps.jobs.enqueue(runContinueJob(runId)),
+  };
   const beginMcpOAuth = (input: {
     serverId: string;
     spaceId: string;
@@ -1183,6 +1216,11 @@ export function createRouter(deps: RouterDeps) {
             claimRenewal = null;
           }
           const fallback = await deleteEmptySpaceForMember(deps.prisma, claimedInput);
+          for (const storageKey of fallback.dataRoomStorageKeys) {
+            await deps.jobs
+              .enqueue(dataRoomBlobDeleteJob(input.spaceId, storageKey))
+              .catch((jobError) => getLogger().error("data room blob cleanup", jobError));
+          }
           return { ok: true as const, activeSpaceId: fallback.id };
         } catch (error) {
           if (context.signal?.aborted) claimReleasable = false;
@@ -1538,7 +1576,7 @@ export function createRouter(deps: RouterDeps) {
         return result.status === "connected" ? { status: "ready" as const } : result;
       }),
       finishOAuth: authed.models.finishOAuth.handler(async ({ context, input }) => {
-        throwIfAborted(context.signal);
+        context.signal?.throwIfAborted();
         const result = await deps.oauthLogins.finish(
           input.loginId,
           context.actor,
@@ -4579,6 +4617,10 @@ export function createRouter(deps: RouterDeps) {
             if (row) {
               if (isCartaEndpoint(row.endpoint))
                 await assignToExistingCartaAgent(deps.prisma, context.actor);
+              else if (isCartaEndpoint(existing.endpoint))
+                await deps.prisma.botMcpServer.deleteMany({
+                  where: { serverId: row.id, ...actorScope(context.actor) },
+                });
               return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
             }
           }
@@ -4596,6 +4638,26 @@ export function createRouter(deps: RouterDeps) {
           });
           const row = count ? await deps.prisma.mcpServer.findFirst({ where }) : null;
           if (!row) throw new IsolationError();
+          return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
+        }),
+        setWrites: authed.mcp.servers.setWrites.handler(async ({ context, input }) => {
+          const where = {
+            id: input.id,
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+          };
+          const server = await deps.prisma.mcpServer.findFirst({ where });
+          if (!server) throw new IsolationError();
+          if (!isCartaEndpoint(server.endpoint))
+            throw new ORPCError("BAD_REQUEST", {
+              message: "Writes can only be turned on for a Carta server",
+            });
+          const row = await deps.prisma.mcpServer.update({
+            where: { id: server.id },
+            data: { writesEnabled: input.enabled },
+          });
+          // The Carta agent's tool list follows the switch; the call-time check already does.
+          await assignToExistingCartaAgent(deps.prisma, context.actor);
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         remove: authed.mcp.servers.remove.handler(async ({ context, input }) => {
@@ -4684,7 +4746,7 @@ export function createRouter(deps: RouterDeps) {
                     spaceId: context.actor.spaceId,
                     userId: context.actor.userId,
                   },
-                  select: { id: true },
+                  select: { id: true, spawnKey: true },
                 }),
                 tx.mcpServer.findFirst({
                   where: {
@@ -4693,10 +4755,15 @@ export function createRouter(deps: RouterDeps) {
                     userId: context.actor.userId,
                     enabled: true,
                   },
-                  select: { id: true },
+                  select: { id: true, endpoint: true },
                 }),
               ]);
               if (!bot || !server) throw new IsolationError();
+              if (
+                bot.spawnKey !== cartaAgentSpawnKey(context.actor.userId) &&
+                isCartaEndpoint(server.endpoint)
+              )
+                throw new ORPCError("BAD_REQUEST", { message: CARTA_ONLY_MESSAGE });
               return tx.botMcpServer.upsert({
                 where: { botId_serverId: { botId: bot.id, serverId: server.id } },
                 create: {
@@ -4734,7 +4801,7 @@ export function createRouter(deps: RouterDeps) {
                 spaceId: context.actor.spaceId,
                 userId: context.actor.userId,
               },
-              select: { id: true },
+              select: { id: true, spawnKey: true },
             });
             if (!bot) throw new IsolationError();
             const servers = await tx.mcpServer.findMany({
@@ -4743,9 +4810,14 @@ export function createRouter(deps: RouterDeps) {
                 spaceId: context.actor.spaceId,
                 userId: context.actor.userId,
               },
-              select: { id: true },
+              select: { id: true, endpoint: true },
             });
             if (servers.length !== input.assignments.length) throw new IsolationError();
+            if (
+              bot.spawnKey !== cartaAgentSpawnKey(context.actor.userId) &&
+              servers.some((server) => isCartaEndpoint(server.endpoint))
+            )
+              throw new ORPCError("BAD_REQUEST", { message: CARTA_ONLY_MESSAGE });
             const previous = await tx.botMcpServer.findMany({
               where: {
                 botId: bot.id,
@@ -4818,11 +4890,17 @@ export function createRouter(deps: RouterDeps) {
         }),
         complete: authed.mcp.oauth.complete.handler(async ({ context, input }) => {
           try {
+            // The session is consumed by complete(), so read which server it signs in first.
+            const session = await deps.prisma.mcpOAuthSession.findFirst({
+              where: { id: input.sessionId, ...actorScope(context.actor) },
+              select: { serverId: true },
+            });
             await mcpOAuth.complete({
               ...input,
               spaceId: context.actor.spaceId,
               userId: context.actor.userId,
             });
+            if (session) await onMcpServerConnected(cartaSyncDeps, context.actor, session.serverId);
             return { ok: true as const };
           } catch (error) {
             throw new ORPCError("BAD_REQUEST", {
@@ -6342,6 +6420,41 @@ export function createRouter(deps: RouterDeps) {
           throw mapSpaceLifecycleError(error);
         }),
       ),
+      capTable: authed.carta.capTable.handler(async ({ context }) => ({
+        snapshot: await getCapTableSnapshot(deps.prisma, actorScope(context.actor)),
+        syncing: await isCartaSyncing(deps.prisma, context.actor),
+      })),
+      refresh: authed.carta.refresh.handler(async ({ context }) => {
+        const cartaServers = (
+          await deps.prisma.mcpServer.findMany({ where: actorScope(context.actor) })
+        ).filter((server) => server.enabled && isCartaEndpoint(server.endpoint));
+        const statuses = await Promise.all(
+          cartaServers.map((server) => mcpOAuth.statusFor(server, context.actor)),
+        );
+        if (!statuses.includes("connected"))
+          throw new ORPCError("BAD_REQUEST", { message: "Connect Carta first" });
+        const result = await startCartaSync(cartaSyncDeps, context.actor).catch(
+          (error: unknown) => {
+            throw mapSpaceLifecycleError(error);
+          },
+        );
+        if (result === "no_model")
+          throw new ORPCError("BAD_REQUEST", { message: "Add a model before refreshing" });
+        return { ok: true as const };
+      }),
+    },
+    sidebarPages: {
+      list: authed.sidebarPages.list.handler(({ context }) =>
+        listSidebarPages(deps.prisma, actorScope(context.actor)),
+      ),
+      add: authed.sidebarPages.add.handler(({ context, input }) =>
+        addSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey).catch(
+          sidebarPageError,
+        ),
+      ),
+      remove: authed.sidebarPages.remove.handler(({ context, input }) =>
+        removeSidebarPage(deps.prisma, actorScope(context.actor), input.templateKey),
+      ),
     },
     contacts: {
       list: authed.contacts.list.handler(({ context, input }) =>
@@ -7427,7 +7540,7 @@ async function persistModelCredential(
   },
   codexCatalog: CodexLiveCatalog,
 ) {
-  throwIfAborted(input.signal);
+  input.signal?.throwIfAborted();
   const requestedModelId = usableModelId(input.modelId);
   const authError = requestedModelId
     ? validateModelAuthAvailability(input.provider, requestedModelId, input.plaintext)
@@ -7460,16 +7573,16 @@ async function persistModelCredential(
     userId: actor.userId,
     signal: input.signal ?? new AbortController().signal,
   });
-  throwIfAborted(input.signal);
+  input.signal?.throwIfAborted();
   const cred = await withSerializableRetry(() =>
     deps.prisma.$transaction(
       async (tx) => {
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         const existing = await tx.userModelCredential.findFirst({
           where: { userId: actor.userId, provider: input.provider },
           orderBy: newestModelCredentialOrder,
         });
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         const secret = await tx.secret.create({
           data: {
             id: stored.id,
@@ -7479,7 +7592,7 @@ async function persistModelCredential(
             ciphertext: stored.ciphertext,
           },
         });
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         const credential = !existing
           ? await tx.userModelCredential.create({
               data: {
@@ -7500,7 +7613,7 @@ async function persistModelCredential(
                   : {}),
               },
             });
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         let thinkingLevel = input.thinkingLevel;
         if (thinkingLevel === undefined) {
           // A stored effort only carries over while it still names this model.
@@ -7521,14 +7634,14 @@ async function persistModelCredential(
           ? clampCatalogThinkingLevel(thinkingLevel, allowedThinking)
           : null;
         await selectSpaceModelPreference(tx, actor, credential.id, defaultModel, thinkingLevel);
-        throwIfAborted(input.signal);
+        input.signal?.throwIfAborted();
         if (existing) {
           await deleteUnreferencedCredentialSecret(tx, {
             credentialKind: "model",
             credentialId: existing.id,
             secretId: existing.secretId,
           });
-          throwIfAborted(input.signal);
+          input.signal?.throwIfAborted();
         }
         return { ...credential, isDefault: true, defaultModel };
       },
@@ -7536,10 +7649,6 @@ async function persistModelCredential(
     ),
   );
   return modelCredentialDto(cred, input.plaintext);
-}
-
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) throw signal.reason ?? new Error("Request cancelled");
 }
 
 function nextRoutineDate(crons: string[], timezone: string): Date {

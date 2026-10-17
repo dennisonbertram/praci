@@ -9,17 +9,14 @@ export const dateText = (iso: string | null) =>
       }).format(new Date(iso))
     : "";
 
+/**
+ * The word for an item's status. Every working step is "Reading": whether the item is then tagged
+ * and filed depends on consent, so the list never promises filing it may not do.
+ */
 export const statusLabel = (status: string) =>
-  status === "failed"
-    ? t`Failed`
-    : status === "extracting"
-      ? t`Reading`
-      : status === "classifying" || status === "indexing"
-        ? t`Filing`
-        : status === "pending"
-          ? t`Pending`
-          : "";
+  status === "failed" ? t`Failed` : status === "ready" ? "" : t`Reading`;
 
+/** A file size with a space before the unit: "722 bytes", "12.3 kB", "4.1 MB". */
 export function sizeText(bytes: number) {
   const [unit, divisor] =
     bytes < 1_000
@@ -30,7 +27,8 @@ export function sizeText(bytes: number) {
   return new Intl.NumberFormat(i18n.locale || undefined, {
     style: "unit",
     unit,
-    unitDisplay: "narrow",
+    // "Narrow" runs number and unit together ("722B"); bytes read best spelled out.
+    unitDisplay: unit === "byte" ? "long" : "short",
     maximumFractionDigits: 1,
   }).format(bytes / divisor);
 }

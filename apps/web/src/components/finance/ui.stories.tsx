@@ -16,6 +16,7 @@ import {
   PeriodTabs,
   Section,
   Th,
+  TransactionsSection,
   TransactionTable,
   ValueLink,
 } from "./ui";
@@ -204,6 +205,22 @@ export const BreakdownEmpty: Story = {
 export const Transactions: Story = {
   name: "Transaction table",
   render: () => <TransactionTable rows={transactions} />,
+};
+
+const repeatVendor: FinanceTransaction[] = [
+  ...transactions,
+  { ...base, id: "txn_4", counterparty: " demo airline", category: "Travel", amountCents: -12000 },
+  { ...base, id: "txn_5", counterparty: base.counterparty, amountCents: -3500, memo: null },
+];
+
+export const TransactionsByVendor: Story = {
+  name: "Transaction table, grouped by vendor",
+  render: () => <TransactionTable rows={repeatVendor} grouped />,
+};
+
+export const TransactionsCard: Story = {
+  name: "Transactions card with the view switch",
+  render: () => <TransactionsSection title="Transactions" rows={repeatVendor} />,
 };
 
 export const TransactionsEmpty: Story = {

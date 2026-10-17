@@ -4,6 +4,7 @@ import type { AgentSkillCatalogEntry } from "@rakazo/contracts";
 import type { buildComposerMentionOptions, ComposerMention, SlashActionId } from "@rakazo/core";
 import {
   mentionChipKey,
+  rankMentionOptions,
   SLASH_ACTIONS,
   serializeComposerPrompt,
   truncateSlashDescription,
@@ -91,10 +92,7 @@ export function ThreadComposer({
   }));
   const mentionOptions = useMemo(() => {
     if (mentionQuery === null || composerMentionTargets.length === 0) return [];
-    const query = mentionQuery.trim().toLowerCase();
-    return composerMentionTargets
-      .filter((target) => !query || target.name.toLowerCase().startsWith(query))
-      .slice(0, 10);
+    return rankMentionOptions(composerMentionTargets, mentionQuery).slice(0, 10);
   }, [composerMentionTargets, mentionQuery]);
   const slashQueryNormalized = slashQuery?.trim().toLowerCase() ?? null;
   const slashSkillOptions =

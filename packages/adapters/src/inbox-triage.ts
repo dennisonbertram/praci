@@ -29,7 +29,8 @@ import { aiRecipient } from "./ai-consent.js";
 import { LlmInboxClassifier } from "./llm-inbox-classifier.js";
 
 const WINDOW_MS = 14 * 86_400_000;
-const MODEL_TIMEOUT_MS = 30_000;
+// A first sort of the demo mailbox took about 39 seconds, and 30 seconds per batch aborted runs.
+const MODEL_TIMEOUT_MS = 90_000;
 /** A batch is up to 20 requests to the optional classifier, a few at a time. */
 const CLASSIFIER_TIMEOUT_MS = 60_000;
 

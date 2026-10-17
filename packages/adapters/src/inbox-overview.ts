@@ -9,7 +9,8 @@ const SYNC_DEADLINE_MS = 8_000;
 const WINDOW_MS = 14 * 86_400_000;
 const MAX_CACHED = 200;
 const MAX_ROWS = 25;
-const MAX_NEEDS_REPLY = 10;
+// Enough for a busy Needs reply group, so the agent lists what the page lists; recent mail keeps a few rows.
+const MAX_NEEDS_REPLY = 20;
 const MAX_TODOS = 6;
 const RANK: Record<string, number> = { critical: 0, important: 1, normal: 2, low: 3 };
 
@@ -61,7 +62,9 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
       where: { ...own, connectionId: { in: ids }, doneAt: null },
       orderBy: [{ dueOn: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
       take: MAX_TODOS,
-      include: { message: { select: { providerMessageId: true } } },
+      include: {
+        message: { select: { providerMessageId: true, fromName: true, fromAddress: true } },
+      },
     }),
     prisma.inboxTodo.count({ where: { ...own, connectionId: { in: ids }, doneAt: null } }),
     prisma.mailSyncState.findMany({
@@ -86,8 +89,8 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
   const head = (m: (typeof threads)[number]) =>
     `${m.receivedAt.toISOString().slice(0, 16)}Z | ${where(m)} | ${from(m)} | ${clip(m.subject, 100)} | ${clip(m.snippet, 140)}`;
 
-  const needsReply = threads
-    .filter(wantsReply)
+  const waiting = threads.filter(wantsReply);
+  const needsReply = waiting
     .sort(
       (a, b) =>
         (RANK[a.priority ?? "normal"] ?? 2) - (RANK[b.priority ?? "normal"] ?? 2) ||
@@ -100,7 +103,9 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
   const todoRows = todos.map(
     (todo) =>
       `${clip(todo.text, 140)} | ${todo.dueOn ? `due ${day(todo.dueOn)}` : "no due date"} | acct:${label.get(todo.connectionId)}${
-        todo.message ? ` | id:${todo.message.providerMessageId}` : ""
+        todo.message
+          ? ` | id:${todo.message.providerMessageId} | from:${clip(todo.message.fromName || todo.message.fromAddress, 50)}`
+          : ""
       }${todo.detail ? ` | ${clip(todo.detail, 80)}` : ""}`,
   );
   const recent = threads
@@ -133,7 +138,14 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
   while (JSON.stringify(result).length > MAIL_GREP_BUDGET && (recent.length || needsReply.length)) {
     (recent.length ? recent : needsReply).pop();
   }
-  return result;
+  // Says outright whether the list is whole, so the model answers from it instead of doubting it.
+  return {
+    ...result,
+    needsReplyListed:
+      needsReply.length === waiting.length
+        ? `complete: all ${waiting.length} messages that need a reply are listed`
+        : `${needsReply.length} of ${waiting.length} listed, highest priority first`,
+  };
 }
 
 function accountLabel(account: MailAccount): string {

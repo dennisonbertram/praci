@@ -141,7 +141,13 @@ import {
   formatAgentEnvironmentInstruction,
   redactShellStreams,
 } from "./agent-environment.js";
-import { buildApprovalAskBlock, cartaMailSendIsComplete, isCartaMailSend } from "./approval-ask.js";
+import {
+  buildApprovalAskBlock,
+  cartaMailSendIsComplete,
+  describeApprovalAction,
+  isCartaMailSend,
+  isCartaWrite,
+} from "./approval-ask.js";
 import {
   approvalPausedToolResult,
   approvalReplayPathError,
@@ -4526,11 +4532,17 @@ export function createRunExecutor(deps: ExecutorDeps) {
           const requiresApprovalByDefault =
             requiresUnattendedApproval ||
             toolRequiresApproval(name, viaConnector, declaredReadOnly);
+          const callRoute = (resolvedTool ?? connectorTools.get(name))?.route;
+          const cartaWriteTool = isCartaWrite(bot.spawnKey, callRoute)
+            ? callRoute?.toolName
+            : undefined;
           const requiresMandatoryApproval =
             requiresUnattendedApproval ||
             toolRequiresExplicitApproval(name) ||
             // No saved rule or Auto Review may send mail for the Carta agent (investor email).
-            isCartaMailSend(bot.spawnKey, name);
+            isCartaMailSend(bot.spawnKey, name) ||
+            // Same for Carta's write tools, which exist only when the user turns writes on.
+            cartaWriteTool !== undefined;
           const connectorKind = connectorKindFromToolName(
             name,
             connectedPlugins.map((plugin) => plugin.provider),
@@ -4802,6 +4814,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 buildApprovalAskBlock(applied!.effect.id, name, args, runSecrets, {
                   reviewReason,
                   fullMail: isCartaMailSend(bot.spawnKey, name),
+                  cartaWriteTool,
                 }),
               ],
             });
@@ -4814,7 +4827,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             await notifyRun(deps, run, {
               kind: "help",
               title: `${bot.name} needs approval`,
-              body: `Review before ${name}`,
+              body: redactSecrets(
+                `Review before ${describeApprovalAction(name, args)}`,
+                runSecrets,
+              ),
               botId: bot.id,
               threadId: thread.id,
             });

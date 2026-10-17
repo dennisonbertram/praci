@@ -120,6 +120,11 @@ export const WidePane: StoryObj = {
   ),
 };
 
+/** The user's own sent message, as a search result shows it. */
+export const SentByYou: Story = {
+  args: { row: { ...base, from: "me@example.test", fromSelf: true, inInbox: false } },
+};
+
 export const Suspicious: Story = { args: { row: rows[2] as MailRow } };
 
 export const WithTriageMarks: Story = {
@@ -151,6 +156,27 @@ export const NarrowWithMenu: Story = {
       </div>
     ),
   ],
+};
+
+/** In a narrow pane each label shrinks to a dot before the subject: hollow Newsletter, solid Needs attention, solid warning Spam, warning ring Junk. */
+export const NarrowLabels: StoryObj = {
+  render: () => (
+    <div className="@container w-[320px]">
+      {(["attention", "newsletter", "spam", "bulk"] as const).map((kind) => (
+        <InboxRow
+          key={kind}
+          row={row(`label_${kind}`, {
+            category: kind === "attention" ? "action" : kind,
+            needsReply: kind === "attention" ? true : null,
+            from: "Sample Sender",
+            subject: `A ${kind} message`,
+          })}
+          onOpen={noop}
+          onMark={undefined}
+        />
+      ))}
+    </div>
+  ),
 };
 
 export const Group: StoryObj = {

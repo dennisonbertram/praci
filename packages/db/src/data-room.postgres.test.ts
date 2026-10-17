@@ -419,6 +419,24 @@ describePostgres("data room repository (PostgreSQL)", () => {
     expect(await prisma.dataRoomFolder.count({ where: { parentId: parent.id } })).toBe(1);
   });
 
+  it("rejects a page cursor from another sort direction or field", async () => {
+    for (const n of ["x", "y", "z"]) await upload(b, `cursor-${n}.txt`, `cursor-sha-${n}-${run}`);
+    const asc = { field: "name", direction: "asc" } as const;
+    const first = await dr.listItemsPage(b, {}, { sort: asc, limit: 1 });
+    expect(first.nextCursor).toBeTruthy();
+    // Same sort continues where the first page stopped.
+    const next = await dr.listItemsPage(b, {}, { sort: asc, limit: 1, cursor: first.nextCursor! });
+    expect(next.items[0]?.id).not.toBe(first.items[0]?.id);
+    for (const sort of [
+      { field: "name", direction: "desc" },
+      { field: "type", direction: "asc" },
+    ] as const) {
+      await expect(
+        dr.listItemsPage(b, {}, { sort, limit: 1, cursor: first.nextCursor! }),
+      ).rejects.toThrow(DataRoomConflictError);
+    }
+  });
+
   describe("hybrid search", () => {
     const MODEL = `hyb-model-${run}`;
     /** A 1024-number vector that is `weight` along axis `axis` and 0 elsewhere. */
@@ -541,6 +559,17 @@ describePostgres("data room repository (PostgreSQL)", () => {
         (await prisma.dataRoomItem.findUniqueOrThrow({ where: { id: skipped.id } })).status,
       ).toBe("classifying");
       expect(await dr.requeueReady(b, "classify")).not.toContain(skipped.id);
+    });
+
+    it("requeues images stored as octet-stream by their extension for vision", async () => {
+      const { item } = await upload(a, `shot-${run}.PNG`, `oct-${run}`, {
+        mimeType: "application/octet-stream",
+      });
+      await prisma.dataRoomItem.update({ where: { id: item.id }, data: { status: "ready" } });
+      await prisma.dataRoomItemText.create({
+        data: { itemId: item.id, spaceId: a.spaceId, userId: a.userId, text: "" },
+      });
+      expect(await dr.requeueReady(a, "ingest")).toContain(item.id);
     });
 
     it("refuses a cursor from the other search mode or another embedding model", async () => {

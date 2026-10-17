@@ -14,6 +14,7 @@ import {
   EmbedderMisconfiguredError,
 } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
+import { DATA_ROOM_METADATA_ORDINAL } from "@rakazo/contracts";
 import type { DataRoomItemRecord, PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, DataRoomStaleError, IsolationError, recordUsage } from "@rakazo/db";
 import type { DataRoomAi } from "./data-room-models.js";
@@ -27,8 +28,6 @@ const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const TEXT_MAX_BYTES = 5 * 1024 * 1024;
 const FOLDER_PATHS_MAX = 200;
 const STEP_TIMEOUT_MS = 120_000;
-/** A PDF with less text than this has no usable text layer. */
-const PDF_MIN_TEXT_CHARS = 20;
 
 export const CHUNK_TARGET_CHARS = 3_200;
 export const CHUNK_OVERLAP_CHARS = 400;
@@ -78,8 +77,12 @@ function context(p: Payload, step: string): AdapterContext {
   };
 }
 
+/** The file's own bytes cannot be read; another attempt would read the same bytes and fail again. */
+class DataRoomUnreadableError extends Error {}
+
 /** A short reason for the item. Never the cause chain, which may hold provider payloads. */
 function failureText(error: unknown): string {
+  if (error instanceof DataRoomUnreadableError) return error.message;
   const text = error instanceof Error ? `${error.name}: ${error.message}` : "Unknown error";
   return text.slice(0, 200);
 }
@@ -115,7 +118,8 @@ async function runStep(
     if (!(await work(claimed, revision))) return;
   } catch (error) {
     if (error instanceof IsolationError || error instanceof DataRoomStaleError) return;
-    const failures = claimed.failures + 1;
+    const unreadable = error instanceof DataRoomUnreadableError;
+    const failures = unreadable ? DATA_ROOM_JOB_ATTEMPTS : claimed.failures + 1;
     if (step === "classify" && failures >= DATA_ROOM_JOB_ATTEMPTS) {
       // Facets are a bonus: keep the item searchable by text and name, and show why they are missing.
       if (
@@ -134,6 +138,7 @@ async function runStep(
       failures,
       ...(failures >= DATA_ROOM_JOB_ATTEMPTS ? { status: "failed" } : {}),
     });
+    if (unreadable) return;
     throw error;
   }
   await queueNext();
@@ -266,13 +271,23 @@ export async function extractItemText(
 ): Promise<string> {
   const type = effectiveType(item.mimeType, item.name);
   let text = "";
-  if (type === "application/pdf") text = await extractPdfText(bytes);
-  else if (type === "text/html" || type === "application/xhtml+xml")
+  if (type === "application/pdf") {
+    text = await extractPdfText(bytes).catch((cause: unknown) => {
+      const name = cause instanceof Error ? cause.name : "";
+      throw new DataRoomUnreadableError(
+        name === "PasswordException"
+          ? "This PDF is password-protected."
+          : // A plain Error is one of the page or text limits; the parser's own errors are named.
+            name === "Error"
+            ? "This PDF is too long to read."
+            : "This file isn't a readable PDF.",
+      );
+    });
+  } else if (type === "text/html" || type === "application/xhtml+xml")
     text = stripHtml(decodeUtf8(bytes));
   else if (TEXT_TYPES.has(type)) text = decodeUtf8(bytes);
   else if (IMAGE_TYPES.has(type)) text = await readImageText(deps, ai, item, bytes, type, ctx);
   text = text.replaceAll("\u0000", "").trim();
-  if (type === "application/pdf" && text.length < PDF_MIN_TEXT_CHARS) return "";
   return text.slice(0, DATA_ROOM_TEXT_MAX_CHARS);
 }
 
@@ -289,6 +304,8 @@ export async function runDataRoomIngest(deps: DataRoomJobDeps, payload: Payload)
         ? await deps.resolveAi(payload)
         : ({ model: null, allowed: false } as DataRoomAi);
       text = await extractItemText(deps, ai, item, bytes, ctx);
+      // The vision call can take a while: if consent was revoked meanwhile, discard the output.
+      if (text && IMAGE_TYPES.has(type) && !(await deps.resolveAi(payload)).allowed) text = "";
     }
     return repo.finishExtraction(actorOf(payload), item.id, revision, text);
   });
@@ -398,7 +415,7 @@ function breakPoint(text: string, from: number, to: number): number {
 }
 
 /** Chunk ordinal of the item's name and facets; text chunks start at 0. */
-export const METADATA_ORDINAL = -1;
+export const METADATA_ORDINAL = DATA_ROOM_METADATA_ORDINAL;
 
 function folderPathOf(
   folderId: string | null,

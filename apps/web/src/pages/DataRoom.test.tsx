@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MemoryRouter, useNavigate } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -25,6 +25,8 @@ const rpcMock = vi.hoisted(() => ({
   search: vi.fn(),
   item: vi.fn(),
   connections: vi.fn(),
+  consent: vi.fn(),
+  itemDelete: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -34,6 +36,8 @@ vi.mock("../lib/rpc", () => ({
       items: { list: rpcMock.list },
       search: rpcMock.search,
       item: rpcMock.item,
+      consent: rpcMock.consent,
+      itemDelete: rpcMock.itemDelete,
     },
   },
   withSpaceHeaders: () => new Headers(),
@@ -77,6 +81,14 @@ beforeEach(() => {
   rpcMock.list.mockResolvedValue({ items: [item("b.txt"), item("a.txt")], nextCursor: null });
   rpcMock.search.mockResolvedValue({ results: [], nextCursor: null });
   rpcMock.item.mockResolvedValue(item("b.txt"));
+  rpcMock.consent.mockResolvedValue({
+    key: "k",
+    version: "v",
+    allowed: true,
+    disclosure: "",
+    recipients: [],
+  });
+  localStorage.clear();
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -120,6 +132,12 @@ function deferred<T>() {
 const settle = () =>
   act(async () => {
     await vi.advanceTimersByTimeAsync(10);
+  });
+
+/** Clicks the nth row, as a user choosing a file to preview. */
+const clickRow = (n: number) =>
+  act(async () => {
+    container.querySelectorAll<HTMLElement>("li[data-item-id]")[n]?.click();
   });
 
 const names = () =>
@@ -180,14 +198,11 @@ it("sends the chosen sort to the server and keeps the order it returns", async (
   expect(names()).toEqual(["b.txt", "a.txt"]);
 });
 
-it("keeps a pinned item only while it is in the results, else pins the first or closes", async () => {
+it("keeps a pinned item only while it is in the results, else closes without picking another", async () => {
   await renderPage();
   const preview = () =>
     container.querySelector('[data-testid="data-room-preview"] h3')?.textContent;
-  // b.txt is pinned first; pin a.txt by clicking it.
-  await act(async () => {
-    container.querySelectorAll<HTMLElement>("li[data-item-id]")[1]?.click();
-  });
+  await clickRow(1);
   expect(preview()).toBe("a.txt");
 
   const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
@@ -205,12 +220,11 @@ it("keeps a pinned item only while it is in the results, else pins the first or 
       await vi.advanceTimersByTimeAsync(500);
     });
   };
-  await search("one", [item("c.txt")]);
-  expect(preview()).toBe("c.txt");
   // Still in the results: stays pinned.
-  await search("two", [item("d.txt"), item("c.txt")]);
-  expect(preview()).toBe("c.txt");
-  await search("none", []);
+  await search("one", [item("c.txt"), item("a.txt")]);
+  expect(preview()).toBe("a.txt");
+  // Gone from the results: the preview closes; the first result is not chosen for the user.
+  await search("two", [item("d.txt")]);
   expect(container.querySelector('[data-testid="data-room-preview"]')).toBeNull();
 });
 
@@ -257,6 +271,7 @@ it("marks only failed items as failed; a ready item with an error gets a muted p
     nextCursor: null,
   });
   await renderPage();
+  await clickRow(0);
   const row = container.querySelector("li[data-item-id]");
   expect(row?.querySelector('[aria-label="Failed"]')).toBeNull();
   expect(row?.textContent).not.toContain("classifier timeout");
@@ -378,4 +393,461 @@ it("on a narrow page opens the preview in a dialog only on click, not on hover",
   expect(dialog?.textContent).toContain("a.txt");
   expect(dialog?.contains(document.activeElement)).toBe(true);
   delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+});
+
+it("shows the item menu on grid tiles", async () => {
+  await renderPage();
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('button[aria-label="Grid view"]')?.click();
+  });
+  expect(container.querySelector('[data-testid="data-room-head"]')).toBeNull();
+  expect(
+    container.querySelector('ul[aria-label="Items"] button[aria-label="More actions for b.txt"]'),
+  ).not.toBeNull();
+});
+
+it("closes the preview when a reload drops the pinned item and it can no longer be read", async () => {
+  await renderPage();
+  await clickRow(0);
+  const preview = () => container.querySelector('[data-testid="data-room-preview"]');
+  expect(preview()).not.toBeNull();
+  rpcMock.list.mockResolvedValueOnce({ items: [item("a.txt")], nextCursor: null });
+  rpcMock.item.mockRejectedValue(new Error("gone"));
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  await settle();
+  expect(names()).toEqual(["a.txt"]);
+  expect(preview()).toBeNull();
+});
+
+it("reads the first page again when a status poll changes the value the list is sorted by", async () => {
+  rpcMock.list.mockResolvedValueOnce({
+    items: [{ ...item("p.txt"), status: "pending" }],
+    nextCursor: null,
+  });
+  await renderPage();
+  rpcMock.item.mockResolvedValueOnce({
+    ...item("p.txt"),
+    createdAt: "2026-10-02T00:00:00.000Z",
+    status: "pending",
+  });
+  const calls = rpcMock.list.mock.calls.length;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(3_100);
+  });
+  expect(rpcMock.list.mock.calls.length).toBe(calls + 1);
+});
+
+const previewName = () =>
+  container.querySelector('[data-testid="data-room-preview"] h3')?.textContent;
+
+it("changes the preview only on a click, so the highlight stays on the chosen row", async () => {
+  await renderPage();
+  const rows = container.querySelectorAll<HTMLElement>("li[data-item-id]");
+  await clickRow(0);
+  expect(previewName()).toBe("b.txt");
+  await act(async () => {
+    rows[1]?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    rows[1]?.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+    rows[1]?.focus();
+    await vi.advanceTimersByTimeAsync(300);
+  });
+  expect(previewName()).toBe("b.txt");
+  expect(rows[0]?.getAttribute("aria-current")).toBe("true");
+  await act(async () => {
+    rows[1]?.click();
+  });
+  expect(previewName()).toBe("a.txt");
+  expect(rows[1]?.getAttribute("aria-current")).toBe("true");
+  // An arrow key selects the row it moves to.
+  await act(async () => {
+    rows[1]?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+  });
+  expect(previewName()).toBe("b.txt");
+});
+
+it("keeps the chosen item through a narrow and back to wide resize, opening no dialog", async () => {
+  let resize: () => void = () => undefined;
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: () => void) {
+        resize = callback;
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
+  const width = (value: number) =>
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, value });
+  width(1000);
+  await renderPage();
+  await clickRow(0);
+  expect(previewName()).toBe("b.txt");
+  width(400);
+  await act(async () => resize());
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(previewName()).toBeUndefined();
+  width(1000);
+  await act(async () => resize());
+  expect(previewName()).toBe("b.txt");
+  expect(container.querySelector('li[aria-current="true"]')?.getAttribute("data-item-id")).toBe(
+    "id-b.txt",
+  );
+  delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+  vi.unstubAllGlobals();
+});
+
+it("shows the list again as soon as the search is cleared, and hints by word count", async () => {
+  await renderPage();
+  const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  const type = async (value: string) => {
+    await act(async () => {
+      set?.call(input, value);
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+  await type("notice of renewal");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  expect(container.textContent).toContain("Try fewer words");
+  await type("notice");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  expect(container.textContent).toContain("No results");
+  expect(container.textContent).not.toContain("Try fewer words");
+
+  const lists = rpcMock.list.mock.calls.length;
+  const answer = deferred<{ items: DataRoomApiItem[]; nextCursor: null }>();
+  rpcMock.list.mockReturnValueOnce(answer.promise);
+  await type("");
+  // The old empty results must not flash the first-run screen (which would also remount the
+  // consent card and ask for its status again).
+  expect(container.textContent).not.toContain("Drop files here");
+  expect(rpcMock.consent).toHaveBeenCalledTimes(1);
+  answer.resolve({ items: [item("b.txt")], nextCursor: null });
+  await settle();
+  expect(rpcMock.list.mock.calls.length).toBe(lists + 1);
+  expect(container.textContent).not.toContain("No results");
+  expect(container.textContent).not.toContain("Relevance");
+});
+
+it("offers Date and Type sorts only once some item has a date or type", async () => {
+  rpcMock.list.mockResolvedValue({
+    items: [{ ...item("a.txt"), facets: { ...item("a.txt").facets, docType: null } }],
+    nextCursor: null,
+  });
+  await renderPage();
+  const sortTrigger = Array.from(container.querySelectorAll("button")).find((b) =>
+    b.textContent?.startsWith("Sort:"),
+  );
+  await act(async () => {
+    sortTrigger?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const options = Array.from(document.querySelectorAll('[role="menuitemradio"]')).map(
+    (el) => el.textContent,
+  );
+  expect(options).toEqual(["Name", "Recently added"]);
+});
+
+it("previews nothing until a file is chosen, also after opening a folder", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage();
+  await settle();
+  const preview = () => container.querySelector('[data-testid="data-room-preview"]');
+  expect(names()).toEqual(["b.txt", "a.txt"]);
+  expect(preview()).toBeNull();
+  expect(container.querySelector('li[aria-current="true"]')).toBeNull();
+  const legal = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+    (el) => el.textContent === "Legal",
+  );
+  await act(async () => legal?.click());
+  await settle();
+  expect(preview()).toBeNull();
+});
+
+it("keeps the open folder in the URL, and opens it again from there", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  let search = "";
+  function Location() {
+    search = useLocation().search;
+    return null;
+  }
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/?folder=f1"]}>
+        <DataRoomPage />
+        <Location />
+      </MemoryRouter>,
+    );
+  });
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f1" }));
+  const all = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+    (el) => el.textContent === "All items",
+  );
+  await act(async () => all?.click());
+  await settle();
+  expect(search).toBe("");
+  const legal = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+    (el) => el.textContent === "Legal",
+  );
+  await act(async () => legal?.click());
+  await settle();
+  expect(search).toBe("?folder=f1");
+});
+
+it("falls back to All items when the folder in the URL no longer exists", async () => {
+  await renderPage("/?folder=gone");
+  await settle();
+  expect(rpcMock.list.mock.lastCall?.[0]).not.toHaveProperty("folderId", "gone");
+});
+
+it("says a failed file could not be read, with its reason and a Delete button", async () => {
+  rpcMock.list.mockResolvedValue({
+    items: [{ ...item("junk.pdf"), status: "failed", error: "This file isn't a readable PDF." }],
+    nextCursor: null,
+  });
+  await renderPage();
+  await clickRow(0);
+  const preview = container.querySelector('[data-testid="data-room-preview"]');
+  expect(preview?.textContent).toContain("Couldn't read this file");
+  expect(preview?.textContent).toContain("This file isn't a readable PDF.");
+  const remove = Array.from(preview?.querySelectorAll("button") ?? []).find(
+    (b) => b.textContent === "Delete",
+  );
+  await act(async () => {
+    remove?.click();
+  });
+  expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain("junk.pdf");
+});
+
+it("hides the Type, Party and Date filters and columns while no item has them", async () => {
+  const bare = (name: string) => ({
+    ...item(name),
+    facets: { ...item(name).facets, docType: null },
+  });
+  rpcMock.list.mockResolvedValue({ items: [bare("a.txt"), bare("b.txt")], nextCursor: null });
+  await renderPage();
+  const labels = () =>
+    Array.from(container.querySelectorAll("button")).map((b) => b.getAttribute("aria-label"));
+  expect(labels()).not.toContain("Filter by Type");
+  expect(labels()).not.toContain("Filter by Party");
+  expect(labels()).not.toContain("Filter by Document date");
+  // Sources cannot be listed from the server, so the filter stays even when one page is all uploads.
+  expect(labels()).toContain("Filter by Source");
+  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toBe("Name");
+
+  rpcMock.list.mockResolvedValue({
+    items: [item("a.txt"), { ...bare("m.txt"), source: "gmail" }],
+    nextCursor: null,
+  });
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  await settle();
+  expect(labels()).toContain("Filter by Type");
+  expect(labels()).toContain("Filter by Source");
+  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toContain("Type");
+});
+
+it("offers to clear filters when they leave no results, keeping the folder", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage();
+  const typeChip = container.querySelector<HTMLElement>('button[aria-label="Filter by Type"]');
+  await act(async () => {
+    typeChip?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  rpcMock.list.mockResolvedValue({ items: [], nextCursor: null });
+  const memo = Array.from(document.querySelectorAll('[role="menuitemradio"]')).find(
+    (el) => el.textContent === "Memo",
+  );
+  await act(async () => {
+    (memo as HTMLElement).click();
+  });
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ docType: "Memo" }));
+  const clear = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Clear filters",
+  );
+  rpcMock.list.mockResolvedValue({ items: [item("a.txt")], nextCursor: null });
+  await act(async () => {
+    clear?.click();
+  });
+  await settle();
+  expect(rpcMock.list.mock.lastCall?.[0]).not.toHaveProperty("docType", "Memo");
+  expect(names()).toEqual(["a.txt"]);
+});
+
+it("opens a linked item in its own folder, so the list shows it", async () => {
+  rpcMock.item.mockResolvedValue({ ...item("x.txt"), id: "X", folderId: "f2" });
+  await renderPage("/?item=X");
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f2" }));
+  expect(previewName()).toBe("x.txt");
+});
+
+it("keeps a linked item selected when it is not on the first page of its folder", async () => {
+  const linked = deferred<DataRoomApiItem>();
+  rpcMock.item.mockReturnValue(linked.promise);
+  await renderPage("/?item=X");
+  await settle();
+  linked.resolve({ ...item("x.txt"), id: "X", folderId: "f2" });
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f2" }));
+  expect(previewName()).toBe("x.txt");
+});
+
+it("follows the folder in the URL when it changes, and Back returns to the previous folder", async () => {
+  rpcMock.folders.mockResolvedValue(
+    ["A", "B"].map((name) => ({
+      id: `f${name}`,
+      name,
+      parentId: null,
+      createdAt: "2026-10-01T00:00:00.000Z",
+    })),
+  );
+  let go: ReturnType<typeof useNavigate> = () => undefined;
+  function Nav() {
+    go = useNavigate();
+    return null;
+  }
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/?folder=fA"]}>
+        <DataRoomPage />
+        <Nav />
+      </MemoryRouter>,
+    );
+  });
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "fA" }));
+  await act(async () => go("/?folder=fB"));
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "fB" }));
+  // Choosing a folder adds a history entry.
+  const tree = (label: string) =>
+    Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+      (el) => el.textContent === label,
+    );
+  await act(async () => tree("A")?.click());
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "fA" }));
+  await act(async () => go(-1));
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "fB" }));
+});
+
+it("shows no snippet when only the name matched", async () => {
+  await renderPage();
+  rpcMock.search.mockResolvedValue({
+    results: [
+      { item: item("lease.pdf"), ordinal: -1, snippet: "\u0001lease\u0002.pdf Legal", score: 1 },
+      { item: item("memo.txt"), ordinal: 0, snippet: "the \u0001lease\u0002 ends", score: 1 },
+      {
+        item: item("deal.pdf"),
+        ordinal: -1,
+        snippet: "deal.pdf\nOffice \u0001lease\u0002 renewal",
+        score: 1,
+      },
+    ],
+    nextCursor: null,
+  });
+  const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    set?.call(input, "lease");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500);
+  });
+  const rows = container.querySelectorAll('ul[aria-label="Results"] > li');
+  expect(rows[0]?.querySelector("mark")).toBeNull();
+  expect(rows[1]?.querySelector("mark")?.textContent).toBe("lease");
+  // A metadata hit on the summary is not a name match, so its snippet stays.
+  expect(rows[2]?.querySelector("mark")?.textContent).toBe("lease");
+});
+
+it("remembers the view and sort across visits", async () => {
+  await renderPage();
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('button[aria-label="Grid view"]')?.click();
+    container.querySelector<HTMLButtonElement>('button[aria-label="Descending"]')?.click();
+  });
+  act(() => root.unmount());
+  root = createRoot(container);
+  await renderPage();
+  expect(
+    container.querySelector('button[aria-label="Grid view"]')?.getAttribute("aria-pressed"),
+  ).toBe("true");
+  expect(rpcMock.list).toHaveBeenLastCalledWith(
+    expect.objectContaining({ sort: { field: "createdAt", direction: "asc" } }),
+  );
+});
+
+it("lists an open folder's sub-folders above its files, and opens one on click", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Finance", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+    { id: "f2", name: "Invoices", parentId: "f1", createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage();
+  rpcMock.list.mockResolvedValue({ items: [], nextCursor: null });
+  const finance = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+    (el) => el.textContent === "Finance",
+  );
+  await act(async () => finance?.click());
+  await settle();
+  // A folder holding only a sub-folder is not "empty" and not "No results".
+  expect(container.textContent).not.toContain("No results");
+  expect(container.textContent).not.toContain("This folder is empty");
+  const sub = container.querySelector<HTMLElement>('[aria-label="Sub-folders"] button');
+  expect(sub?.textContent).toBe("Invoices");
+  await act(async () => sub?.click());
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f2" }));
+  expect(container.textContent).toContain("This folder is empty. Drop files here to add them.");
+});
+
+it("shows the next item after deleting the previewed one, so the preview stays open", async () => {
+  rpcMock.list.mockResolvedValue({
+    items: [item("a.txt"), item("b.txt"), item("c.txt")],
+    nextCursor: null,
+  });
+  rpcMock.itemDelete.mockResolvedValue(undefined);
+  await renderPage();
+  await clickRow(0);
+  const heading = () => container.querySelector('[data-testid="data-room-preview"] h3');
+  expect(heading()?.textContent).toBe("a.txt");
+  await act(async () => {
+    container
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="data-room-preview"] button[aria-label="More actions for a.txt"]',
+      )
+      ?.click();
+  });
+  await settle();
+  const menuDelete = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(
+    (el) => el.textContent?.includes("Delete"),
+  );
+  await act(async () => menuDelete?.click());
+  await settle();
+  rpcMock.list.mockResolvedValue({ items: [item("b.txt"), item("c.txt")], nextCursor: null });
+  const confirm = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button'),
+  ).find((b) => b.textContent === "Delete");
+  await act(async () => confirm?.click());
+  await settle();
+  expect(rpcMock.itemDelete).toHaveBeenCalledWith({ id: "id-a.txt" });
+  expect(heading()?.textContent).toBe("b.txt");
 });

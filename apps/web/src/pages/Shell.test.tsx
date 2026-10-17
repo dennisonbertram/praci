@@ -8,12 +8,14 @@ import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@lingui/core/macro", () => ({ msg: (parts: TemplateStringsArray) => parts[0] }));
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, index) => `${text}${index > 0 ? values[index - 1] : ""}${part}`, "");
   return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
 });
 
+import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { Composer } from "./Shell";
 
 let root: Root | null = null;
@@ -21,6 +23,7 @@ let container: HTMLDivElement | null = null;
 let composerProps: ComponentProps<typeof Composer>;
 
 afterEach(() => {
+  setHideAmounts(false);
   act(() => root?.unmount());
   container?.remove();
   root = null;
@@ -113,6 +116,28 @@ function pressEnter(textarea: HTMLTextAreaElement) {
 }
 
 describe("Composer", () => {
+  it("shows Voice and Stop while a run goes on with nothing typed, and Send and Stop once there is", () => {
+    const textarea = renderComposer(async () => true, { running: true, onVoice: () => {} });
+    const labels = () =>
+      [...(container?.querySelectorAll("button[aria-label]") ?? [])]
+        .map((b) => b.getAttribute("aria-label"))
+        .filter((label) => label === "Voice" || label === "Send" || label === "Stop");
+    expect(labels()).toEqual(["Voice", "Stop"]);
+    type(textarea, "one more thing");
+    expect(labels()).toEqual(["Send", "Stop"]);
+  });
+
+  it("lets the person dismiss the skipped-attachment notice", () => {
+    const onDismissAttachmentNotice = vi.fn();
+    renderComposer(async () => true, {
+      attachmentNotice: "Skipped big.mp4 (over 10 MB)",
+      onDismissAttachmentNotice,
+    });
+    const dismiss = container?.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
+    act(() => dismiss?.click());
+    expect(onDismissAttachmentNotice).toHaveBeenCalledTimes(1);
+  });
+
   describe("mention highlight when targets reload", () => {
     const researcher: ComposerMention = { kind: "bot", id: "bot-3", name: "Researcher" };
     const writer: ComposerMention = { kind: "bot", id: "bot-4", name: "Research Writer" };
@@ -170,6 +195,45 @@ describe("Composer", () => {
       expect(selected()).toContain("Researcher");
       pressKey(textarea, "Enter");
       expect(chips()).toEqual(["Researcher"]);
+    });
+  });
+
+  describe("mention picker with no matches", () => {
+    const keydown = (textarea: HTMLTextAreaElement, init: KeyboardEventInit) => {
+      const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+      act(() => {
+        textarea.dispatchEvent(event);
+      });
+      return event;
+    };
+
+    it("announces the empty state and blocks Enter until Escape", () => {
+      const textarea = renderComposer(vi.fn());
+      type(textarea, "@zz");
+      const empty = container?.querySelector("[data-testid='mention-picker-empty']");
+      expect(empty?.getAttribute("role")).toBe("status");
+      expect(textarea.getAttribute("aria-expanded")).toBe("true");
+      expect(keydown(textarea, { key: "Enter" }).defaultPrevented).toBe(true);
+    });
+
+    it("does not send from the Send button while No matches shows", () => {
+      const onSend = vi.fn().mockResolvedValue(true);
+      const textarea = renderComposer(onSend);
+      type(textarea, "@zz");
+      const send = container?.querySelector<HTMLButtonElement>('button[aria-label="Send"]');
+      expect(send).not.toBeNull();
+      act(() => send?.click());
+      expect(onSend).not.toHaveBeenCalled();
+      // Control: the same button sends once the query no longer matches nothing.
+      type(textarea, "hello");
+      act(() => send?.click());
+      expect(onSend).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves Enter alone while an IME is composing", () => {
+      const textarea = renderComposer(vi.fn());
+      type(textarea, "@zz");
+      expect(keydown(textarea, { key: "Enter", isComposing: true }).defaultPrevented).toBe(false);
     });
   });
 
@@ -344,6 +408,17 @@ describe("Composer", () => {
     blocks: [{ kind: "text", text: "original reply" }],
     createdAt: "2026-01-01T00:00:00.000Z",
   };
+  it("masks currency amounts in the reply preview while amounts are hidden", () => {
+    const spent: ThreadMessage = {
+      ...reply,
+      blocks: [{ kind: "text", text: "You spent $73,781.83 last month" }],
+    };
+    setHideAmounts(true);
+    renderComposer(vi.fn(), { replyTarget: spent, replyQuote: "spent $73,781.83" });
+    expect(container?.textContent).not.toContain("73,781");
+    expect(container?.textContent).toContain("You spent $••• last month");
+  });
+
   const replyChanges = [
     { name: "cancelled reply", props: { replyTarget: null, replyQuote: null } },
     { name: "different reply", props: { replyTarget: { ...reply, id: "message-2" } } },
