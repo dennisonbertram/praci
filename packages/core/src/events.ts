@@ -346,8 +346,19 @@ export function appendToolCallSegment(
   return [...segments, { kind: "steps", steps }];
 }
 
+/** Carta's own tool names, in words a founder reads after "Using". */
+const CARTA_TOOL_LABELS: Record<string, string> = {
+  cap_table_chart: "Carta cap table",
+  set_context: "Carta company",
+  list_contexts: "Carta company",
+  list_accounts: "Carta company",
+};
+
 export function humanizeToolName(name: string): string {
-  const spaced = name.replace(/_/g, " ").trim();
+  // MCP tools are named mcp__<server slug>__<tool>; the slug can be an opaque id, so show the tool only.
+  const mcp = /^mcp__.+?__(.+)$/.exec(name);
+  if (mcp?.[1]) return CARTA_TOOL_LABELS[mcp[1]] ?? humanizeToolName(mcp[1]);
+  const spaced = name.replace(/_+/g, " ").trim();
   if (!spaced) return name;
   const lower = spaced.toLowerCase();
   return lower.charAt(0).toUpperCase() + lower.slice(1);

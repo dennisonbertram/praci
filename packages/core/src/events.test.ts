@@ -577,6 +577,12 @@ describe("humanizeToolName", () => {
   it("turns a lowercase builtin tool name into a readable label", () => {
     expect(humanizeToolName("request_takeover")).toBe("Request takeover");
   });
+
+  it("drops the MCP prefix and server slug, which can be an internal id", () => {
+    expect(humanizeToolName("mcp__integration-26dcd2f6__set_context")).toBe("Carta company");
+    expect(humanizeToolName("mcp__carta__cap_table_chart")).toBe("Carta cap table");
+    expect(humanizeToolName("mcp__linear__list_issues")).toBe("List issues");
+  });
 });
 
 describe("appendToolStep", () => {
