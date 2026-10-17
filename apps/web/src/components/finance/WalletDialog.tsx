@@ -7,11 +7,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Field,
+  FieldDescription,
+  FieldLabel,
   Input,
   NativeSelect,
   NativeSelectOption,
 } from "@rakazo/ui-web";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { shortAddress } from "../../lib/crypto-format";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -21,6 +24,17 @@ const TYPES: WalletType[] = ["personal", "safe", "exchange", "contract"];
 export function useTypeNames(): Record<WalletType, string> {
   const { t } = useLingui();
   return { personal: t`Personal`, safe: t`Safe`, exchange: t`Exchange`, contract: t`Contract` };
+}
+
+/** One line under the Type field saying what the chosen type means. */
+function useTypeHints(): Record<WalletType, string> {
+  const { t } = useLingui();
+  return {
+    personal: t`A wallet you hold the keys to.`,
+    safe: t`A Safe multisig. Its owners and threshold are shown.`,
+    exchange: t`A deposit address at an exchange.`,
+    contract: t`A smart contract that holds funds.`,
+  };
 }
 
 export const walletName = (wallet: FinanceWallet) =>
@@ -40,6 +54,8 @@ export function WalletDialog({
 }) {
   const { t } = useLingui();
   const typeNames = useTypeNames();
+  const typeHints = useTypeHints();
+  const id = useId();
   const [address, setAddress] = useState("");
   const [label, setLabel] = useState(wallet?.label ?? "");
   const [type, setType] = useState<WalletType>(wallet?.type ?? "personal");
@@ -80,36 +96,52 @@ export function WalletDialog({
             </DialogTitle>
           </DialogHeader>
           {wallet ? null : (
-            <Input
-              autoFocus
-              required
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              aria-label={t`Address or ENS`}
-              placeholder={t`0x… or name.eth`}
-              spellCheck={false}
-              autoComplete="off"
-            />
+            <Field>
+              <FieldLabel htmlFor={`${id}-address`}>
+                <Trans>Address or ENS</Trans>
+              </FieldLabel>
+              <Input
+                id={`${id}-address`}
+                autoFocus
+                required
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder={t`0x… or name.eth`}
+                spellCheck={false}
+                autoComplete="off"
+              />
+            </Field>
           )}
-          <Input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            maxLength={100}
-            aria-label={t`Label`}
-            placeholder={t`Label (optional)`}
-          />
-          <NativeSelect
-            className="w-full"
-            aria-label={t`Type`}
-            value={type}
-            onChange={(e) => setType(e.target.value as WalletType)}
-          >
-            {TYPES.map((value) => (
-              <NativeSelectOption key={value} value={value}>
-                {typeNames[value]}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+          <Field>
+            <FieldLabel htmlFor={`${id}-label`}>
+              <Trans>Label (optional)</Trans>
+            </FieldLabel>
+            <Input
+              id={`${id}-label`}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              maxLength={100}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={`${id}-type`}>
+              <Trans>Type</Trans>
+            </FieldLabel>
+            <NativeSelect
+              id={`${id}-type`}
+              className="w-full"
+              aria-describedby={`${id}-type-hint`}
+              value={type}
+              onChange={(e) => setType(e.target.value as WalletType)}
+            >
+              {TYPES.map((value) => (
+                <NativeSelectOption key={value} value={value}>
+                  {typeNames[value]}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <FieldDescription id={`${id}-type-hint`}>{typeHints[type]}</FieldDescription>
+          </Field>
           {error ? (
             <p role="alert" className="text-sm text-destructive">
               {error}

@@ -5,9 +5,16 @@ import type {
   FinanceProvider,
   FinanceSource,
 } from "@rakazo/contracts";
-import { Button } from "@rakazo/ui-web";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@rakazo/ui-web";
+import { MoreHorizontal } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { connectFinanceProvider } from "../../lib/finance-connect";
 import { financePath } from "../../lib/finance-route";
 import { EXCHANGES, FINANCE_PROVIDERS } from "../../lib/integrations";
@@ -31,17 +38,26 @@ function useMounted() {
   return mounted;
 }
 
-/** Blockscout needs a PRO API key: a server without one does not count as connected. */
+/**
+ * Balances come from public RPC, so Blockscout works without a key (the first wallet creates its
+ * keyless server); a server without a key offers to add one instead of claiming it is not connected.
+ */
 function CryptoTile({
   hasKey,
+  hasServer,
+  manageTo,
   reload,
   children,
 }: {
   hasKey: boolean | null;
+  hasServer?: boolean;
+  /** The Blockscout MCP server's page, where its agents are chosen. */
+  manageTo?: string;
   reload: () => void;
   children?: ReactNode;
 }) {
   const { t } = useLingui();
+  const navigate = useNavigate();
   const [dialog, setDialog] = useState(false);
 
   return (
@@ -51,23 +67,41 @@ function CryptoTile({
         <div className="min-w-0">
           <div className="truncate font-semibold">Blockscout</div>
           <div className="truncate text-xs text-muted-foreground">
-            <Trans>Read wallet balances</Trans>
+            <Trans>Wallet balances and history</Trans>
           </div>
         </div>
       </div>
       <div className="mt-auto flex items-center gap-2">
-        {hasKey ? (
+        {hasKey || hasServer ? (
           <>
             <StatusBadge status="connected" />
-            <Button size="sm" variant="ghost" className="ms-auto" onClick={() => setDialog(true)}>
-              <Trans>Replace API key</Trans>
-            </Button>
+            {/* One main action like the other connected tiles; the optional key and agents sit in the menu. */}
             <Link
               to={financePath.crypto()}
-              className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+              className="ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
             >
-              <Trans>Open</Trans>
+              <Trans>Open Finance</Trans>
             </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="ghost" size="icon-xs" aria-label={t`More Blockscout actions`} />
+                }
+              >
+                <MoreHorizontal aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {/* The key is optional: without one, balances still come from public RPC. */}
+                <DropdownMenuItem onClick={() => setDialog(true)}>
+                  {hasKey ? <Trans>Replace API key</Trans> : <Trans>Add API key</Trans>}
+                </DropdownMenuItem>
+                {manageTo ? (
+                  <DropdownMenuItem onClick={() => navigate(manageTo)}>
+                    <Trans>Manage agents</Trans>
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         ) : (
           <>
@@ -107,7 +141,7 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
         <div className="min-w-0">
           <div className="truncate font-semibold">Alchemy</div>
           <div className="truncate text-xs text-muted-foreground">
-            <Trans>Read wallet balances</Trans>
+            <Trans>Optional faster balance reads</Trans>
           </div>
         </div>
       </div>
@@ -238,6 +272,8 @@ type AlchemyState = { connected: boolean; lastError: string | null };
 /** What the crypto and exchange endpoints say is connected. `null` means not loaded yet. */
 export type FinanceStatus = {
   blockscout: boolean | null;
+  /** A Blockscout server exists, with or without its key. */
+  blockscoutServer?: boolean;
   alchemy: AlchemyState | null;
   exchanges: FinanceExchange[] | null;
   reload: () => void;
@@ -247,6 +283,7 @@ export type FinanceStatus = {
 export function useFinanceStatus(): FinanceStatus {
   const [crypto, setCrypto] = useState<{
     blockscout: boolean;
+    blockscoutServer: boolean;
     alchemy: AlchemyState;
   } | null>(null);
   const [exchanges, setExchanges] = useState<FinanceExchange[] | null>(null);
@@ -259,13 +296,18 @@ export function useFinanceStatus(): FinanceStatus {
           mounted.current &&
           setCrypto({
             blockscout: c.connected && c.hasApiKey,
+            blockscoutServer: c.connected,
             alchemy: c.alchemy ?? { connected: false, lastError: null },
           }),
       )
       .catch(
         () =>
           mounted.current &&
-          setCrypto({ blockscout: false, alchemy: { connected: false, lastError: null } }),
+          setCrypto({
+            blockscout: false,
+            blockscoutServer: false,
+            alchemy: { connected: false, lastError: null },
+          }),
       );
     rpc.finance
       .exchanges()
@@ -275,19 +317,21 @@ export function useFinanceStatus(): FinanceStatus {
   useEffect(reload, [reload]);
   return {
     blockscout: crypto ? crypto.blockscout : null,
+    blockscoutServer: crypto?.blockscoutServer ?? false,
     alchemy: crypto ? crypto.alchemy : null,
     exchanges,
     reload,
   };
 }
 
-/** Keys of every working finance connection. Mercury/Brex are `ok`, Blockscout needs its PRO key,
- * exchanges need a good read. Anything else (including needs-reconnect) is still "available". */
+/** Keys of every finance connection placed under Connected. Mercury/Brex are `ok`; Blockscout once
+ * its MCP server exists (its one tile then says whether the PRO key is still needed); exchanges need a
+ * good read. Anything else (including needs-reconnect) is still "available". */
 export function connectedFinanceKeys(sources: FinanceSource[], status: FinanceStatus) {
   const keys = new Set<string>();
   for (const { provider } of FINANCE_PROVIDERS)
     if (sources.find((s) => s.provider === provider)?.status === "ok") keys.add(provider);
-  if (status.blockscout) keys.add("crypto");
+  if (status.blockscout || status.blockscoutServer) keys.add("crypto");
   if (status.alchemy?.connected && !status.alchemy.lastError) keys.add("alchemy");
   for (const { provider } of EXCHANGES)
     if (status.exchanges?.find((x) => x.provider === provider && x.connected && !x.lastError))
@@ -300,20 +344,23 @@ export const FINANCE_TILE_COUNT = FINANCE_PROVIDERS.length + 2 + EXCHANGES.lengt
 /** Finance tiles. Mercury and Brex connect through the Finance API so the server treats them as
  * finance sources and the Finance agent gets its read-only assignment. `mode` picks the tiles:
  * "connected" renders only working connections (as bare tiles, to sit in the Connected grid),
- * "available" the rest, "all" both. Renders nothing when no tile is left. `cryptoExtra` is shown
- * on the Blockscout tile (the agents that use its MCP server). */
+ * "available" the rest, "all" both. Renders nothing when no tile is left. `extras` adds a line to a
+ * connected tile (the agents that use its MCP server), keyed by provider or "crypto" for Blockscout. */
 export function FinanceSection({
   sources,
   status,
   onChanged,
   mode = "all",
-  cryptoExtra,
+  extras,
+  cryptoManageTo,
 }: {
   sources: FinanceSource[];
   status: FinanceStatus;
   onChanged: () => void;
   mode?: "all" | "connected" | "available";
-  cryptoExtra?: ReactNode;
+  extras?: Partial<Record<FinanceProvider | "crypto", ReactNode>>;
+  /** Where Blockscout's agents are chosen, once its MCP server exists. */
+  cryptoManageTo?: string;
 }) {
   const { t } = useLingui();
   const [busy, setBusy] = useState<FinanceProvider | null>(null);
@@ -421,13 +468,19 @@ export function FinanceSection({
                   {error}
                 </p>
               ) : null}
+              {connected ? extras?.[provider] : null}
             </IntegrationTile>
           );
         },
       )}
       {shown("crypto") ? (
-        <CryptoTile hasKey={status.blockscout} reload={reload}>
-          {mode === "available" ? null : cryptoExtra}
+        <CryptoTile
+          hasKey={status.blockscout}
+          hasServer={status.blockscoutServer}
+          manageTo={cryptoManageTo}
+          reload={reload}
+        >
+          {mode === "available" ? null : extras?.crypto}
         </CryptoTile>
       ) : null}
       {shown("alchemy") ? <AlchemyTile state={status.alchemy} reload={reload} /> : null}

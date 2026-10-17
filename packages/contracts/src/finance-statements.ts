@@ -117,3 +117,8 @@ export const STATEMENT_EXTENSIONS = ["pdf", "csv", "ofx", "qfx"] as const;
  * is deleted when no statements remain.
  */
 export const FinanceStatementDiscardInputSchema = z.object({ id: z.string() });
+/** Renames an account made from statements; its first name comes from the file and may be a file name. */
+export const FinanceStatementAccountRenameInputSchema = z.object({
+  id: z.string(),
+  name: z.string().trim().min(1).max(200),
+});

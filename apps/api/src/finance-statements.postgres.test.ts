@@ -202,6 +202,22 @@ describePostgres("bank statement import (PostgreSQL)", () => {
     expect(await hasFinanceSource(prisma, { spaceId, userId: userB })).toBe(false);
   });
 
+  it("renames a statement account for its owner only", async () => {
+    const account = await prisma.financeAccount.findFirstOrThrow({ where: { spaceId } });
+    await expect(
+      client(b).finance.statementAccountRename({ id: account.id, name: "Not mine" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(
+      client(a).finance.statementAccountRename({ id: account.id, name: "   " }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await client(a).finance.statementAccountRename({
+      id: account.id,
+      name: "  Operating account ",
+    });
+    const renamed = await prisma.financeAccount.findUniqueOrThrow({ where: { id: account.id } });
+    expect(renamed.name).toBe("Operating account");
+  });
+
   it("is never synced and its rows survive a sync", async () => {
     const result = await syncFinanceForUser(
       {

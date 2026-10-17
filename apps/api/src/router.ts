@@ -322,6 +322,7 @@ import {
 } from "./finance-exchange.js";
 import type { ParseStatement } from "./finance-statements.js";
 import {
+  financeStatementAccountRename,
   financeStatementConfirm,
   financeStatementDiscard,
   financeStatements,
@@ -6462,6 +6463,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       statementDiscard: authed.finance.statementDiscard.handler(({ context, input }) =>
         financeStatementDiscard(financeDeps, context.actor, input),
+      ),
+      statementAccountRename: authed.finance.statementAccountRename.handler(({ context, input }) =>
+        financeStatementAccountRename(financeDeps, context.actor, input),
       ),
       cryptoProviderRemove: authed.finance.cryptoProviderRemove.handler(({ context }) =>
         financeCryptoProviderRemove(financeDeps, context.actor),

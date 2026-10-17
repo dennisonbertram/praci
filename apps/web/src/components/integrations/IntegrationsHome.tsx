@@ -122,7 +122,7 @@ function McpCard({ server, data }: { server: McpServer; data: IntegrationsData }
         sub={hostOf(server.endpoint) || server.command || undefined}
         to={`/app/integrations/mcp/${server.id}`}
       />
-      <div className="flex items-center gap-2">
+      <div className="mt-auto flex min-h-7 items-center gap-2">
         <StatusBadge status={status} />
         {status === "reconnect" ? (
           <Button
@@ -170,7 +170,7 @@ function AppCard({
         sub={accounts || app.rows[0]?.displayName}
         to={appPath({ connectorId: app.connectorId, slug: app.provider })}
       />
-      <div className="flex items-center gap-2">
+      <div className="mt-auto flex min-h-7 items-center gap-2">
         <StatusBadge status={app.status} />
         {app.status === "failed" ? (
           <Button
@@ -335,10 +335,15 @@ export function IntegrationsHome({
   const financeServerIds = data.financeSources.flatMap((source) =>
     source.serverId ? [source.serverId] : [],
   );
-  // A Blockscout key is stored as its MCP server. Once the key is connected, the finance tile
-  // under Connected replaces that server's own tile.
+  // A Blockscout key is stored as its MCP server. Once that server exists, the finance tile under
+  // Connected replaces the server's own tile, so Blockscout has one status on the page.
   const isCrypto = (server: McpServer) => "endpoint" in server && isCryptoEndpoint(server.endpoint);
   const cryptoServer = connectedKeys.has("crypto") ? data.servers.find(isCrypto) : undefined;
+  /** The agents assigned to an MCP server. */
+  const botsOn = (serverId: string) =>
+    data.bots.filter((bot) =>
+      data.mcpAssignments.some((entry) => entry.serverId === serverId && entry.botId === bot.id),
+    );
   const servers = data.servers.filter(
     (server) => !financeServerIds.includes(server.id) && server !== cryptoServer,
   );
@@ -447,25 +452,20 @@ export function IntegrationsHome({
                 sources={data.financeSources}
                 status={financeStatus}
                 onChanged={() => void data.refresh()}
-                cryptoExtra={
-                  cryptoServer ? (
-                    <div className="flex items-center gap-2">
-                      <UsedBy
-                        bots={data.bots.filter((bot) =>
-                          data.mcpAssignments.some(
-                            (entry) => entry.serverId === cryptoServer.id && entry.botId === bot.id,
-                          ),
-                        )}
-                      />
-                      <Link
-                        to={`/app/integrations/mcp/${cryptoServer.id}`}
-                        aria-label={t`Manage ${cryptoServer.name}`}
-                        className="ms-auto text-[11px] text-muted-foreground underline hover:text-foreground"
-                      >
-                        <Trans>Manage</Trans>
-                      </Link>
-                    </div>
-                  ) : null
+                extras={{
+                  ...Object.fromEntries(
+                    data.financeSources.flatMap((source) =>
+                      source.serverId
+                        ? [[source.provider, <UsedBy key="used" bots={botsOn(source.serverId)} />]]
+                        : [],
+                    ),
+                  ),
+                  ...(cryptoServer
+                    ? { crypto: <UsedBy key="used" bots={botsOn(cryptoServer.id)} /> }
+                    : {}),
+                }}
+                cryptoManageTo={
+                  cryptoServer ? `/app/integrations/mcp/${cryptoServer.id}` : undefined
                 }
               />
             </div>

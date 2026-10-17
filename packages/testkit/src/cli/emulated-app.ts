@@ -14,6 +14,7 @@ export async function createEmulatedApp(
     financeCallToolFor?: FinanceSyncDeps["callToolFor"];
     /** Extra emulated MCP servers by hostname, such as the demo's mock Carta. */
     mcpServers?: Record<string, EmulatedMcpServer>;
+    cryptoFetch?: typeof fetch;
   } = {},
 ) {
   const thirdParties = new ThirdPartyConnectorEmulator(options.mcpServers);
@@ -36,6 +37,7 @@ export async function createEmulatedApp(
     pipedream,
     email,
     ...(options.financeCallToolFor ? { financeCallToolFor: options.financeCallToolFor } : {}),
+    ...(options.cryptoFetch ? { cryptoFetch: options.cryptoFetch } : {}),
     remoteConnectors: {
       fetch: thirdParties.fetch,
       resolveHostname: thirdParties.resolveHostname,

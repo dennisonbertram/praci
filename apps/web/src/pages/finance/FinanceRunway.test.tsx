@@ -69,7 +69,10 @@ it("breaks cash into bank, stablecoins and other crypto, with the saved scope se
   const page = container.textContent ?? "";
   expect(page).toContain("Bank$100,000");
   expect(page).toContain("Stablecoins$25,000");
-  expect(page).toContain("Other crypto$30,000");
+  // Under the stablecoins scope, other crypto is listed but left out of the runway figure.
+  expect(page).not.toContain("$25,000 · not in runway");
+  expect(page).toContain("Other crypto$30,000 · not in runway");
+  expect(page).toContain("In runway$125,000");
   expect(toggle()?.textContent).toBe("Counting stablecoins");
 });
 
@@ -98,4 +101,11 @@ it("hides the scope control when there is no crypto", async () => {
   await show();
   expect(toggle()).toBeUndefined();
   expect(container.textContent).not.toContain("Other crypto");
+});
+
+it("says revenue is subtracted from burn, as the burn figure is calculated", async () => {
+  rpcMock.runway.mockResolvedValue(runway());
+  await show();
+  expect(container.textContent).toContain("RevenueSubtracted from burn");
+  expect(container.textContent).not.toContain("RevenueExcluded");
 });

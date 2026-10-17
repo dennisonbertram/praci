@@ -53,6 +53,11 @@ msgstr "{0, plural, one {# subscription} other {# subscriptions}}"
 msgid "{0, plural, one {#+ result} other {#+ results}}"
 msgstr "{0, plural, one {#+ result} other {#+ results}}"
 
+#. placeholder {0}: data.monthlyAvgMonths ?? 6
+#: src/pages/finance/FinanceSpend.tsx
+msgid "{0, plural, one {Last full month} other {Last # full months}}"
+msgstr "{0, plural, one {Last full month} other {Last # full months}}"
+
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -80,6 +85,11 @@ msgstr "{0} (max {ATTACHMENT_MAX_COUNT} attachments)"
 #: src/pages/Shell.tsx
 msgid "{0} (over 10 MB)"
 msgstr "{0} (over 10 MB)"
+
+#. placeholder {0}: fullDay(due)
+#: src/pages/Finance.tsx
+msgid "{0} (overdue)"
+msgstr "{0} (overdue)"
 
 #. placeholder {0}: preset.n
 #: src/pages/RoutineSchedule.tsx
@@ -136,7 +146,7 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
-#. placeholder {0}: runwayText(Math.round(card.runwayMonths), 0)
+#. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
 msgstr "{0} mo"
@@ -168,17 +178,15 @@ msgstr "{0} rollup hours"
 msgid "{0} runs · {1} tokens"
 msgstr "{0} runs · {1} tokens"
 
-#. placeholder {0}: card.count
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
-#: src/components/FinanceCards.tsx
 msgid "{0} transactions"
 msgstr "{0} transactions"
 
-#. placeholder {0}: data.crypto.unpricedTokenCount
-#: src/pages/Finance.tsx
-msgid "{0} unpriced"
-msgstr "{0} unpriced"
+#. placeholder {0}: card.count
+#: src/components/FinanceCards.tsx
+msgid "{0} transactions · {period}"
+msgstr "{0} transactions · {period}"
 
 #. placeholder {0}: target.name
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -194,6 +202,14 @@ msgstr "{0} will still respond to direct mentions."
 #: src/pages/Shell.tsx
 msgid "{0}'s screen"
 msgstr "{0}'s screen"
+
+#: src/components/finance/ui.tsx
+msgid "{accounts} + crypto"
+msgstr "{accounts} + crypto"
+
+#: src/components/finance/ui.tsx
+msgid "{accounts} + stablecoins"
+msgstr "{accounts} + stablecoins"
 
 #: src/components/compose/RecipientField.tsx
 msgid "{address} isn't a valid email address"
@@ -214,6 +230,10 @@ msgstr "{botName}’s computer"
 #: src/pages/shell/bot-credentials.tsx
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 msgstr "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
+
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# bank account} other {# bank accounts}}"
+msgstr "{count, plural, one {# bank account} other {# bank accounts}}"
 
 #: src/components/finance/ui.tsx
 msgid "{count, plural, one {# transaction} other {# transactions}}"
@@ -310,6 +330,10 @@ msgstr "{runMonths} mo"
 msgid "{runwayMonths} mo"
 msgstr "{runwayMonths} mo"
 
+#: src/pages/Finance.tsx
+msgid "{scope} · {unpriced} unpriced"
+msgstr "{scope} · {unpriced} unpriced"
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "{seats, plural, one {# seat} other {# seats}}"
 msgstr "{seats, plural, one {# seat} other {# seats}}"
@@ -321,6 +345,14 @@ msgstr "{serverName} connected"
 #: src/lib/format-bytes.ts
 msgid "{size} B"
 msgstr "{size} B"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "{sourceName} cash"
+msgstr "{sourceName} cash"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "{sourceName} spend"
+msgstr "{sourceName} spend"
 
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
@@ -374,16 +406,20 @@ msgstr "3 mo"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
-msgid "3-mo avg"
-msgstr "3-mo avg"
-
-#: src/pages/finance/FinanceSpend.tsx
-msgid "6 mo"
-msgstr "6 mo"
+msgid "3-mo avg, after revenue"
+msgstr "3-mo avg, after revenue"
 
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr "A bit of everything"
+
+#: src/components/finance/WalletDialog.tsx
+msgid "A deposit address at an exchange."
+msgstr "A deposit address at an exchange."
+
+#: src/components/finance/WalletDialog.tsx
+msgid "A Safe multisig. Its owners and threshold are shown."
+msgstr "A Safe multisig. Its owners and threshold are shown."
 
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
 #: src/pages/ModelSettingsOverlay.tsx
@@ -391,10 +427,18 @@ msgstr "A bit of everything"
 msgid "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
 msgstr "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
 
+#: src/components/finance/WalletDialog.tsx
+msgid "A smart contract that holds funds."
+msgstr "A smart contract that holds funds."
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "A subscription credential is stored securely."
 msgstr "A subscription credential is stored securely."
+
+#: src/components/finance/WalletDialog.tsx
+msgid "A wallet you hold the keys to."
+msgstr "A wallet you hold the keys to."
 
 #: src/pages/shell/bot-picker.tsx
 msgid "About groups"
@@ -421,6 +465,7 @@ msgstr "Account default"
 msgid "Account ID"
 msgstr "Account ID"
 
+#: src/components/finance/RenameAccountDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 msgid "Account name"
 msgstr "Account name"
@@ -527,9 +572,17 @@ msgstr "Add an account to see cash, burn, runway and spend."
 msgid "Add another account"
 msgstr "Add another account"
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Add API key"
+msgstr "Add API key"
+
 #: src/pages/CapTable.tsx
 msgid "Add auditor"
 msgstr "Add auditor"
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Add Blockscout API key"
+msgstr "Add Blockscout API key"
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Add connected model"
@@ -660,6 +713,10 @@ msgstr "All bots"
 msgid "All crypto"
 msgstr "All crypto"
 
+#: src/components/FinanceCards.tsx
+msgid "all dates"
+msgstr "all dates"
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 msgid "All items"
@@ -770,6 +827,7 @@ msgstr "Always allowed"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
 msgstr "Amount"
@@ -1099,6 +1157,10 @@ msgstr "Balance owed"
 msgid "Bank"
 msgstr "Bank"
 
+#: src/components/finance/ui.tsx
+msgid "Bank accounts"
+msgstr "Bank accounts"
+
 #: src/pages/Finance.tsx
 msgid "Bank only: {bankRunwayMonths} mo"
 msgstr "Bank only: {bankRunwayMonths} mo"
@@ -1216,6 +1278,14 @@ msgstr "Breadcrumb"
 msgid "Breakdown"
 msgstr "Breakdown"
 
+#: src/pages/Finance.tsx
+msgid "Brex bill, not paid yet"
+msgstr "Brex bill, not paid yet"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Brex does not share it"
+msgstr "Brex does not share it"
+
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Browser"
 msgstr "Browser"
@@ -1233,10 +1303,6 @@ msgstr "Bulleted list"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Burn"
 msgstr "Burn"
-
-#: src/components/FinanceCards.tsx
-msgid "Burn / mo"
-msgstr "Burn / mo"
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Burn by category"
@@ -1272,6 +1338,7 @@ msgstr "Can't reach the server."
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
+#: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
@@ -1468,30 +1535,6 @@ msgstr "Check the server URL and network, then test again."
 msgid "Check your email"
 msgstr "Check your email"
 
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury"
-msgstr "Checking + Savings + Treasury"
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury + Crypto"
-msgstr "Checking + Savings + Treasury + Crypto"
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury + Stablecoins"
-msgstr "Checking + Savings + Treasury + Stablecoins"
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury"
-msgstr "Checking + Treasury"
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury + Crypto"
-msgstr "Checking + Treasury + Crypto"
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury + Stablecoins"
-msgstr "Checking + Treasury + Stablecoins"
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
 msgstr "Checking computer setup…"
@@ -1545,7 +1588,12 @@ msgstr "Clear"
 msgid "Clear {0}’s conversation?"
 msgstr "Clear {0}’s conversation?"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Clear {rangeLabel}"
+msgstr "Clear {rangeLabel}"
+
 #: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "Clear {sourceName} filter"
 msgstr "Clear {sourceName} filter"
 
@@ -1553,6 +1601,10 @@ msgstr "Clear {sourceName} filter"
 #: src/pages/shell/bot-panel.tsx
 msgid "Clear conversation"
 msgstr "Clear conversation"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Clear filter"
+msgstr "Clear filter"
 
 #: src/pages/ActivityList.tsx
 msgid "Clear filter {label}"
@@ -1784,7 +1836,6 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
-#: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -2318,6 +2369,10 @@ msgstr "Could not rename section"
 msgid "Could not rename space"
 msgstr "Could not rename space"
 
+#: src/components/finance/RenameAccountDialog.tsx
+msgid "Could not rename the account"
+msgstr "Could not rename the account"
+
 #: src/pages/shell/message-cards.tsx
 msgid "Could not render chart"
 msgstr "Could not render chart"
@@ -2508,6 +2563,10 @@ msgstr "Couldn't update messaging settings"
 msgid "Count crypto"
 msgstr "Count crypto"
 
+#: src/pages/Finance.tsx
+msgid "Counted in runway"
+msgstr "Counted in runway"
+
 #: src/components/finance/ui.tsx
 msgid "Counterparty"
 msgstr "Counterparty"
@@ -2648,12 +2707,9 @@ msgstr "Data room"
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
+#: src/pages/finance/FinanceTransaction.tsx
 msgid "Date"
 msgstr "Date"
-
-#: src/pages/finance/FinanceTransaction.tsx
-msgid "Date posted"
-msgstr "Date posted"
 
 #: src/lib/billing.ts
 #: src/pages/RoutineSchedule.tsx
@@ -2835,6 +2891,7 @@ msgid "Disabled tools"
 msgstr "Disabled tools"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/finance/StatementReviewCard.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Discard"
 msgstr "Discard"
@@ -3017,6 +3074,10 @@ msgstr "Drop statements here or choose files"
 #: src/components/data-room/DropZone.tsx
 msgid "Drop to add to Data room"
 msgstr "Drop to add to Data room"
+
+#: src/pages/Finance.tsx
+msgid "Due"
+msgstr "Due"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
@@ -3310,7 +3371,7 @@ msgstr "Filters"
 msgid "Finance"
 msgstr "Finance"
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Financing"
 msgstr "Financing"
@@ -3621,6 +3682,10 @@ msgstr "Image upload area"
 msgid "Import an OpenAPI description"
 msgstr "Import an OpenAPI description"
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Import anyway"
+msgstr "Import anyway"
+
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr "Important"
@@ -3640,6 +3705,10 @@ msgstr "In progress"
 #: src/lib/ticket-status.ts
 msgid "In review"
 msgstr "In review"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "In runway"
+msgstr "In runway"
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
@@ -3776,10 +3845,6 @@ msgid "Knowledge"
 msgstr "Knowledge"
 
 #: src/components/finance/WalletDialog.tsx
-msgid "Label"
-msgstr "Label"
-
-#: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
 msgstr "Label (optional)"
 
@@ -3808,6 +3873,16 @@ msgstr "Later"
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Later in this conversation"
 msgstr "Later in this conversation"
+
+#: src/components/finance/RenameAccountDialog.tsx
+msgid "Later statements for this account keep this name."
+msgstr "Later statements for this account keep this name."
+
+#. placeholder {0}: card.rows.length
+#. placeholder {1}: card.count
+#: src/components/FinanceCards.tsx
+msgid "Latest {0} of {1}"
+msgstr "Latest {0} of {1}"
 
 #: src/pages/CapTable.tsx
 msgid "Latest 409A"
@@ -3922,8 +3997,10 @@ msgid "Loading voice providers…"
 msgstr "Loading voice providers…"
 
 #: src/App.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
+#: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -4000,15 +4077,13 @@ msgstr "Mail from {0} is now marked important"
 msgid "Make sure nothing is still running on this computer."
 msgstr "Make sure nothing is still running on this computer."
 
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr "Manage"
 
-#. placeholder {0}: cryptoServer.name
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Manage {0}"
-msgstr "Manage {0}"
+#: src/components/integrations/FinanceSection.tsx
+msgid "Manage agents"
+msgstr "Manage agents"
 
 #: src/pages/Paywall.tsx
 msgid "Manage billing"
@@ -4291,6 +4366,7 @@ msgstr "Monthly"
 msgid "Monthly avg"
 msgstr "Monthly avg"
 
+#: src/components/FinanceCards.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Monthly burn"
@@ -4314,6 +4390,10 @@ msgstr "More"
 #: src/components/data-room/ItemMenu.tsx
 msgid "More actions for {0}"
 msgstr "More actions for {0}"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More Blockscout actions"
+msgstr "More Blockscout actions"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "More computer actions"
@@ -4416,6 +4496,11 @@ msgstr "Needs you"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Net"
 msgstr "Net"
+
+#. placeholder {0}: transactionAmount(card.totalCents)
+#: src/components/FinanceCards.tsx
+msgid "Net {0}"
+msgstr "Net {0}"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Never changes your account"
@@ -4631,6 +4716,10 @@ msgstr "No runs yet"
 msgid "No skills yet"
 msgstr "No skills yet"
 
+#: src/pages/Finance.tsx
+msgid "No spend in this period"
+msgstr "No spend in this period"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No team conversations yet."
 msgstr "No team conversations yet."
@@ -4643,9 +4732,21 @@ msgstr "No tickets yet"
 msgid "No tools available."
 msgstr "No tools available."
 
+#: src/components/finance/ui.tsx
+msgid "No transactions in this period"
+msgstr "No transactions in this period"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "No transactions on this account yet"
+msgstr "No transactions on this account yet"
+
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
 msgstr "No trigger"
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "No wallets yet. Add a wallet address to see its balances here."
+msgstr "No wallets yet. Add a wallet address to see its balances here."
 
 #: src/components/data-room/Preview.tsx
 msgid "None"
@@ -4688,9 +4789,22 @@ msgstr "Not counted"
 msgid "Not counted in cash"
 msgstr "Not counted in cash"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Not enough history"
+msgstr "Not enough history"
+
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"
 msgstr "Not found"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "not in runway"
+msgstr "not in runway"
+
+#: src/pages/Finance.tsx
+msgid "Not in runway"
+msgstr "Not in runway"
 
 #: src/components/AiDataSharing.tsx
 #: src/pages/shell/message-cards.tsx
@@ -4886,6 +5000,10 @@ msgstr "Option pool available"
 msgid "Optional"
 msgstr "Optional"
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Optional faster balance reads"
+msgstr "Optional faster balance reads"
+
 #: src/pages/CapTable.tsx
 msgid "Options"
 msgstr "Options"
@@ -4934,7 +5052,7 @@ msgstr "Other crypto"
 msgid "Other model…"
 msgstr "Other model…"
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
@@ -5229,10 +5347,6 @@ msgstr "Read posts, DMs and bookmarks"
 msgid "Read replies aloud"
 msgstr "Read replies aloud"
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "Read wallet balances"
-msgstr "Read wallet balances"
-
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Read-only API key"
 msgstr "Read-only API key"
@@ -5520,6 +5634,7 @@ msgstr "Removes the connection and agent access."
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "Rename"
 msgstr "Rename"
 
@@ -5527,6 +5642,10 @@ msgstr "Rename"
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Rename {0}"
 msgstr "Rename {0}"
+
+#: src/components/finance/RenameAccountDialog.tsx
+msgid "Rename account"
+msgstr "Rename account"
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Shell.tsx
@@ -5670,7 +5789,7 @@ msgstr "Return to Rakazo"
 msgid "rev {0}"
 msgstr "rev {0}"
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
 msgstr "Revenue"
@@ -5764,6 +5883,7 @@ msgstr "Sales & CRM"
 
 #: src/components/AskCard.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
@@ -6225,6 +6345,11 @@ msgstr "Sign-in was cancelled or did not finish. Try again."
 msgid "Sign-in was denied or failed."
 msgstr "Sign-in was denied or failed."
 
+#. placeholder {0}: shortDay(card.from)
+#: src/components/FinanceCards.tsx
+msgid "since {0}"
+msgstr "since {0}"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Site"
 msgstr "Site"
@@ -6338,14 +6463,17 @@ msgstr "Speech model"
 msgid "Spend"
 msgstr "Spend"
 
-#: src/components/FinanceCards.tsx
-#: src/pages/Finance.tsx
-msgid "Spend this month"
-msgstr "Spend this month"
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Spending minus revenue, 3-mo avg"
+msgstr "Spending minus revenue, 3-mo avg"
 
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
 msgstr "Spent {spentRange}"
+
+#: src/components/FinanceCards.tsx
+msgid "Spent this month"
+msgstr "Spent this month"
 
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
@@ -6355,6 +6483,10 @@ msgstr "SSO is temporarily unavailable. Try again."
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins"
 msgstr "Stablecoins"
+
+#: src/pages/Finance.tsx
+msgid "Stablecoins in runway"
+msgstr "Stablecoins in runway"
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Stablecoins only"
@@ -6392,6 +6524,7 @@ msgstr "Statement files"
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Status"
 msgstr "Status"
@@ -6472,6 +6605,10 @@ msgstr "Subscriptions"
 #: src/components/FinanceCards.tsx
 msgid "Subscriptions / mo"
 msgstr "Subscriptions / mo"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Subtracted from burn"
+msgstr "Subtracted from burn"
 
 #: src/components/inbox/InboxAgentIntro.tsx
 msgid "Summarize what's new this week"
@@ -6620,6 +6757,10 @@ msgstr "The provider is rate-limiting requests."
 msgid "The selected memory provider is not available in this build."
 msgstr "The selected memory provider is not available in this build."
 
+#: src/components/finance/StatementReviewCard.tsx
+msgid "The transactions read add up to the closing balance"
+msgstr "The transactions read add up to the closing balance"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
 msgstr "These saved settings can't be read. Remove it and add it again."
@@ -6679,8 +6820,13 @@ msgid "this Mac"
 msgstr "this Mac"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "This month"
 msgstr "This month"
+
+#: src/components/finance/ui.tsx
+msgid "This page doesn't exist or was removed."
+msgstr "This page doesn't exist or was removed."
 
 #: src/components/AccountAccess.tsx
 msgid "This permanently deletes your account and data."
@@ -6810,10 +6956,6 @@ msgstr "Total incl. crypto"
 msgid "Transactions"
 msgstr "Transactions"
 
-#: src/components/finance/StatementReviewCard.tsx
-msgid "Transactions add up to the closing balance"
-msgstr "Transactions add up to the closing balance"
-
 #. placeholder {0}: moneyExact(Math.abs(check.differenceCents))
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Transactions are {0} off the closing balance"
@@ -6934,6 +7076,10 @@ msgstr "Unknown"
 msgid "Unknown bot"
 msgstr "Unknown bot"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Unknown source: {unknownSource}"
+msgstr "Unknown source: {unknownSource}"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Unknown tool"
 msgstr "Unknown tool"
@@ -6963,6 +7109,11 @@ msgstr "Unsupported file name"
 msgid "Unsupported file type: {0}"
 msgstr "Unsupported file type: {0}"
 
+#. placeholder {0}: shortDay(card.to)
+#: src/components/FinanceCards.tsx
+msgid "until {0}"
+msgstr "until {0}"
+
 #: src/pages/Finance.tsx
 msgid "Until {runOutMonth}"
 msgstr "Until {runOutMonth}"
@@ -6972,6 +7123,7 @@ msgstr "Until {runOutMonth}"
 msgid "Up to date"
 msgstr "Up to date"
 
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Upcoming"
 msgstr "Upcoming"
@@ -7192,13 +7344,14 @@ msgstr "Voice"
 msgid "Voice chat"
 msgstr "Voice chat"
 
+#. placeholder {0}: monthShort(data.changeFromMonth)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "vs {0}"
+msgstr "vs {0}"
+
 #: src/pages/Finance.tsx
 msgid "vs {previousRange}"
 msgstr "vs {previousRange}"
-
-#: src/pages/Finance.tsx
-msgid "vs {previousSpend} for {monthPreviousRange}"
-msgstr "vs {previousSpend} for {monthPreviousRange}"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "vs 3 mo ago"
@@ -7232,6 +7385,14 @@ msgstr "Waiting…"
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Wallet"
 msgstr "Wallet"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Wallet balances and history"
+msgstr "Wallet balances and history"
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Wallet balances are read from public networks and need no key. The Finance agent uses a Blockscout API key, if you add one, for wallet lookups."
+msgstr "Wallet balances are read from public networks and need no key. The Finance agent uses a Blockscout API key, if you add one, for wallet lookups."
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Wallets"

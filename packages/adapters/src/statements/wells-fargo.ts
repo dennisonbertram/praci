@@ -1,5 +1,5 @@
 import type { ParsedStatement, ParsedStatementTxn } from "@rakazo/contracts";
-import { parseCents } from "./money.js";
+import { parseCents, unreadNote } from "./money.js";
 import type { StatementParser } from "./types.js";
 
 const MONTHS = [
@@ -126,7 +126,10 @@ export const wellsFargoParser: StatementParser = {
         current.description = `${current.description} ${line.trim()}`.slice(0, 500);
       } else unread++;
     }
-    if (unread) warnings.push(`${unread} line(s) in the transaction table could not be read.`);
+    if (unread)
+      warnings.push(
+        unreadNote(unread, "line in the transaction table", "lines in the transaction table"),
+      );
     if (!transactions.length) warnings.push("No transactions found.");
 
     return {

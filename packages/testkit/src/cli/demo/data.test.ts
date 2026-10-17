@@ -1,4 +1,10 @@
-import { McpSession, ThirdPartyConnectorEmulator } from "@rakazo/adapters";
+import {
+  createRpcClient,
+  fetchChainSnapshot,
+  fetchPrices,
+  McpSession,
+  ThirdPartyConnectorEmulator,
+} from "@rakazo/adapters";
 import {
   CARTA_MCP_ENDPOINT,
   CARTA_READ_TOOLS,
@@ -10,10 +16,14 @@ import {
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENTS,
+  DEMO_EMPTY_SPACE,
+  DEMO_WALLET,
   demoCarta,
+  demoCrypto,
   demoFinance,
   demoFolderPaths,
   demoMailboxes,
+  demoStatementCsv,
   MOCK_NOTE,
   MOCK_SUBJECT_PREFIX,
 } from "./data.js";
@@ -21,6 +31,7 @@ import {
 describe("mock demo data", () => {
   it("labels the company and every contact and document as mock", () => {
     expect(DEMO_COMPANY.startsWith("MOCK DEMO DATA —")).toBe(true);
+    expect(DEMO_EMPTY_SPACE.startsWith("MOCK DEMO DATA —")).toBe(true);
     for (const contact of DEMO_CONTACTS) expect(contact.notes).toContain(MOCK_NOTE);
     for (const document of DEMO_DOCUMENTS) {
       expect(document.name).toContain("MOCK");
@@ -122,6 +133,20 @@ describe("mock demo data", () => {
     expect(boxes["mock-demo-sales"].messages.length).toBeGreaterThan(0);
   });
 
+  it("builds last month's mock statement with balances that add up", () => {
+    const { fileName, body } = demoStatementCsv(new Date("2026-10-16T12:00:00Z"));
+    expect(fileName).toBe("mock-community-bank-2026-09.csv");
+    const [, ...lines] = body.trim().split("\n");
+    let balance = 10_000_00;
+    for (const line of lines) {
+      const [date, description, amount, after] = line.split(",");
+      expect(date?.startsWith("2026-09-")).toBe(true);
+      expect(description).toContain("(Mock)");
+      balance += Math.round(Number(amount) * 100);
+      expect(Math.round(Number(after) * 100)).toBe(balance);
+    }
+  });
+
   it("serves about three months of mock finance history", async () => {
     const { callToolFor } = demoFinance(new Date("2026-10-16T12:00:00Z"));
     const server = { id: "s", provider: "mercury", endpoint: "" } as never;
@@ -139,5 +164,35 @@ describe("mock demo data", () => {
     const spanDays =
       (Date.parse(dates.at(-1) as string) - Date.parse(dates[0] as string)) / 86_400_000;
     expect(spanDays).toBeGreaterThan(60);
+  });
+
+  it("reads the mock wallet's ETH and USDC offline, priced, through the real RPC reader", async () => {
+    const rpc = createRpcClient({ fetch: demoCrypto().fetch, gapMs: 0 });
+    const { holdings } = await fetchChainSnapshot(rpc, 1, DEMO_WALLET.address);
+    expect(holdings.map((h) => [h.symbol, h.rawBalance])).toEqual([
+      ["ETH", "2500000000000000000"],
+      ["USDC", "40000000000"],
+    ]);
+    const prices = await fetchPrices(
+      rpc,
+      holdings.map((h) => h.llamaKey),
+    );
+    expect(prices.size).toBe(2);
+  });
+
+  it("serves one pending Brex charge and one unpaid Brex bill", async () => {
+    const { callToolFor } = demoFinance(new Date("2026-10-16T12:00:00Z"));
+    const brex = await callToolFor({ id: "s", provider: "brex", endpoint: "" } as never);
+    const page = (await brex("list_expenses", { intent: "test", limit: 100 })) as {
+      items: Array<{ id: string; payment_status: string }>;
+    };
+    expect(page.items.filter((e) => e.payment_status === "PROCESSING").map((e) => e.id)).toEqual([
+      "mock-brex-pending",
+    ]);
+    const bills = (await brex("list_bills", { intent: "test" })) as {
+      items: Array<{ vendor: { name: string }; due_at: string }>;
+    };
+    expect(bills.items.map((b) => b.vendor.name)).toEqual(["Placeholder Legal LLP (Mock)"]);
+    expect(bills.items[0]?.due_at > "2026-10-16").toBe(true);
   });
 });

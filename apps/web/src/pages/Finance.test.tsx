@@ -36,12 +36,13 @@ const rpcMock = vi.hoisted(() => ({
   month: vi.fn(),
   transaction: vi.fn(),
   receiptUrl: vi.fn(),
+  statements: vi.fn(),
   connect: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 vi.mock("../lib/finance-connect", () => ({ connectFinanceProvider: rpcMock.connect }));
 
-import { FinancePage } from "./Finance";
+import { cryptoSubtitle, FinancePage, UpcomingRow } from "./Finance";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -183,6 +184,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   rpcMock.refresh.mockResolvedValue({ ok: true });
+  rpcMock.statements.mockResolvedValue({ statements: [], reminders: [] });
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -332,7 +334,7 @@ it("hides Cash and Runway when only Brex is connected, and still shows spend", a
   expect(container.querySelector('a[href="/app/finance/runway"]')).toBeNull();
   expect(container.textContent).not.toContain("Runway");
   expect(container.textContent).not.toContain("Cash");
-  expect(container.textContent).toContain("Spend this month");
+  expect(container.textContent).toContain("Spent Oct 1");
   expect(container.textContent).toContain("Monthly burn");
   expect(container.textContent).toContain("Add Mercury");
 });
@@ -404,7 +406,7 @@ it("caps Breakdown and Upcoming at the same row count and expands inline", async
   expect(rows().upcoming).toBe(7);
 });
 
-it("uses the Breakdown row count (minimum 5) as the cap and hides Show all when everything fits", async () => {
+it("previews the same number of Upcoming rows whatever Breakdown shows, and hides Show all when everything fits", async () => {
   const base = manyRows();
   rpcMock.overview.mockResolvedValue({
     ...base,
@@ -424,11 +426,11 @@ it("uses the Breakdown row count (minimum 5) as the cap and hides Show all when 
   });
   await show("/app/finance");
   await flush();
-  // Fewer than 5 breakdown rows: both cards cap at 5.
+  // A short Breakdown (or the other Breakdown mode) does not shorten the Upcoming preview.
   expect(button("Show all 24")).toBeDefined();
   expect(
     [...container.querySelectorAll("a")].filter((a) => a.textContent?.includes("Upcoming ")).length,
-  ).toBe(5);
+  ).toBe(7);
 });
 
 it("hides the comparison when the previous period is not fully synced", async () => {
@@ -500,8 +502,9 @@ it("puts the paid-with text on the subscription row and links the row to its ven
   await flush();
   const row = container.querySelector("tbody tr");
   expect(row?.querySelector('[role="tooltip"]')?.textContent).toBe("Brex ••0001");
-  // Stays in layout (only invisible) so hovering never shifts the table columns.
-  expect(row?.querySelector('[role="tooltip"]')?.classList.contains("hidden")).toBe(false);
+  // On a wide card it stays in layout (only invisible) so hovering never shifts the columns; a
+  // phone has no hover and no room, so it is left out there.
+  expect(row?.querySelector('[role="tooltip"]')?.classList.contains("@md:inline-block")).toBe(true);
   const link = row?.querySelector("a");
   expect(link?.getAttribute("href")).toBe("/app/finance/vendor/acme-hosting");
   expect(link?.getAttribute("aria-label")).toBe("Acme Hosting, paid with Brex ••0001");
@@ -533,6 +536,23 @@ it("refreshes on demand and shows a sync failure with a retry", async () => {
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not reach");
 });
 
+it("shows Syncing on a click even when the refresh answers at once", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  await show("/app/finance");
+  await flush();
+  // The label that is shown; the other one only holds its width so the chips do not move.
+  const status = () =>
+    [...container.querySelectorAll('[aria-hidden="false"]')].map((n) => n.textContent).join("");
+  const refresh = button(/^Refresh$/);
+  await act(async () => refresh?.click());
+  expect(status()).toBe("Syncing…");
+  // While syncing the button is unavailable but keeps focus (a disabled button would drop it).
+  expect(refresh?.getAttribute("aria-disabled")).toBe("true");
+  expect(refresh?.disabled).toBe(false);
+  await act(() => new Promise((resolve) => setTimeout(resolve, 900)));
+  expect(status()).toMatch(/^Updated /);
+});
+
 it("shows an error with Try again when the dashboard cannot load", async () => {
   rpcMock.overview.mockRejectedValueOnce(new Error("Could not reach the server"));
   rpcMock.overview.mockResolvedValue(connectedOverview());
@@ -561,7 +581,9 @@ it("labels a vendor page, breadcrumb and back link", async () => {
   expect(rpcMock.vendor).toHaveBeenCalledWith({ key: "acme-hosting" });
   expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
   expect(container.querySelector("nav")?.textContent).toContain("Subscriptions");
-  expect(container.querySelector('a[href="/app/finance"]')?.textContent).toContain("Subscriptions");
+  expect(container.querySelector('a[href="/app/finance#subscriptions"]')?.textContent).toContain(
+    "Subscriptions",
+  );
   expect(container.textContent).toContain("↑ 25%");
   expect(container.textContent).toContain("Brex ••0001");
 });
@@ -593,6 +615,26 @@ const spendTransaction = (hasReceipt: boolean): FinanceTransactionOutput => ({
   vendorIsSubscription: true,
 });
 
+it("keeps a deep trail on one line on a narrow screen: Finance, …, the page before and this one", async () => {
+  rpcMock.transaction.mockResolvedValue(spendTransaction(false));
+  await show("/app/finance/transaction/t1");
+  await flush();
+  const items = [...container.querySelectorAll("nav li")] as HTMLElement[];
+  expect(items.map((li) => li.textContent)).toEqual([
+    "Finance/…/",
+    "Subscriptions/",
+    "Acme Hosting/",
+    "Oct 2 · $42.00",
+  ]);
+  // Only Subscriptions folds into the ellipsis below the container's md width.
+  expect(items.map((li) => li.className.includes("hidden @md:flex"))).toEqual([
+    false,
+    true,
+    false,
+    false,
+  ]);
+});
+
 it("shows No receipt without an upload action when a charge has no receipt", async () => {
   rpcMock.transaction.mockResolvedValue(spendTransaction(false));
   await show("/app/finance/transaction/t1");
@@ -600,8 +642,12 @@ it("shows No receipt without an upload action when a charge has no receipt", asy
   expect(container.textContent).toContain("No receipt");
   expect(container.textContent).not.toContain("Upload");
   expect(rpcMock.receiptUrl).not.toHaveBeenCalled();
-  // Subscription charges sit under the vendor in the breadcrumb.
+  // Subscription charges sit under the vendor in the breadcrumb; the charge's own crumb is its day
+  // and amount, so the merchant is not named twice.
   expect(container.querySelector('nav a[href="/app/finance/vendor/acme-hosting"]')).not.toBeNull();
+  expect(container.querySelector("nav")?.textContent?.replace(/\s+/g, " ")).toBe(
+    "Finance/…/Subscriptions/Acme Hosting/Oct 2 · $42.00",
+  );
   const external = container.querySelector('a[href="https://dashboard.example.test/expenses/e1"]');
   expect(external?.getAttribute("rel")).toContain("noopener");
 });
@@ -748,9 +794,9 @@ it("shows the Crypto card only when the overview has crypto, apart from cash", a
   const card = container.querySelector('a[href="/app/finance/crypto"]');
   expect(card?.textContent).toContain("$123,456");
   expect(card?.textContent).toContain("2 unpriced");
-  // One row of five on desktop: crypto shares the grid with the other stat cards.
+  // One row of four on desktop: crypto shares the grid with the other stat cards.
   const grid = card?.parentElement;
-  expect(grid?.className).toContain("@3xl:grid-cols-5");
+  expect(grid?.className).toContain("@3xl:grid-cols-4");
   expect(grid?.querySelector('a[href="/app/finance/accounts"]')).not.toBeNull();
   expect(container.querySelector('a[href="/app/finance/accounts"]')?.textContent).toBe(cashBefore);
 });
@@ -813,7 +859,7 @@ it("counts stablecoins in Cash and Runway, and the hovers show the figures witho
   await flush();
   const cash = kpi("Cash");
   expect(cash?.textContent).toContain("$125,000");
-  expect(cash?.textContent).toContain("Checking + Treasury + Stablecoins");
+  expect(cash?.textContent).toContain("Bank accounts + stablecoins");
   const cashTip = await hoverOver("Cash");
   expect(cashTip).toContain("Bank$100,000");
   expect(cashTip).toContain("Stablecoins$25,000");
@@ -834,7 +880,7 @@ it("keeps the plain Cash subtitle and no runway hover without stablecoins", asyn
   await show("/app/finance");
   await flush();
   const cash = kpi("Cash");
-  expect(cash?.textContent).toContain("Checking + Treasury");
+  expect(cash?.textContent).toContain("Bank accounts");
   expect(cash?.textContent).not.toContain("Stablecoins");
   expect(await hoverOver("Runway")).toBe("");
 });
@@ -856,7 +902,7 @@ it("shows plain bank cash under the bank scope, with held crypto in the hover", 
   await show("/app/finance");
   await flush();
   expect(kpi("Cash")?.textContent).toContain("$100,000");
-  expect(kpi("Cash")?.textContent).toContain("Checking + Treasury");
+  expect(kpi("Cash")?.textContent).toContain("Bank accounts");
   expect(kpi("Cash")?.textContent).not.toContain("Stablecoins");
   const tip = await hoverOver("Cash");
   expect(tip).toContain("Stablecoins$25,000");
@@ -869,6 +915,288 @@ it("counts all crypto under the all scope", async () => {
   await show("/app/finance");
   await flush();
   expect(kpi("Cash")?.textContent).toContain("$155,000");
-  expect(kpi("Cash")?.textContent).toContain("Checking + Treasury + Crypto");
+  expect(kpi("Cash")?.textContent).toContain("Bank accounts + crypto");
   expect(await hoverOver("Cash")).toContain("Total incl. crypto$155,000");
+});
+
+it("names the accounts Cash adds up instead of a fixed list of account types", async () => {
+  const base = connectedOverview();
+  rpcMock.overview.mockResolvedValue({ ...base, cash: { ...base.cash, cashAccountCount: 3 } });
+  await show("/app/finance");
+  await flush();
+  const cash = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Cash");
+  expect(cash?.parentElement?.textContent).toContain("3 bank accounts");
+  expect(container.textContent).not.toContain("Treasury +");
+});
+
+it("shows the breakdown for the selected period, labelled with its days", async () => {
+  const empty = { category: [], vendor: [] };
+  rpcMock.overview.mockResolvedValue(
+    connectedOverview({
+      breakdownByPeriod: {
+        week: empty,
+        month: { category: [{ key: "software", label: "Software", cents: 120_000 }], vendor: [] },
+        quarter: { category: [{ key: "payroll", label: "Payroll", cents: 999_900 }], vendor: [] },
+        year: empty,
+      },
+    }),
+  );
+  await show("/app/finance");
+  await flush();
+  const breakdown = () =>
+    container.querySelector("#breakdown")?.textContent?.replace(/[\s ]+/g, " ");
+  expect(breakdown()).toContain("Software");
+  expect(breakdown()).toContain("Oct 1 – 14");
+  expect(breakdown()).not.toContain("Last 90 days");
+  const tab = (name: string) =>
+    [...container.querySelectorAll('[role="tab"]')].find((n) => n.textContent === name);
+  await act(async () => (tab("Quarter") as HTMLElement).click());
+  expect(breakdown()).toContain("Payroll");
+  expect(breakdown()).not.toContain("Software");
+  await act(async () => (tab("Week") as HTMLElement).click());
+  expect(breakdown()).toContain("No spend in this period");
+});
+
+it("starts a vendor's monthly chart at its first charge and says why there is no change", async () => {
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
+  rpcMock.vendor.mockResolvedValue({
+    key: "cloud",
+    name: "Cloud",
+    isSubscription: true,
+    monthlyAvgCents: 481_200,
+    monthlyAvgMonths: 3,
+    changePct: null,
+    firstSeenAt: "2026-07-09T00:00:00.000Z",
+    paidWith: [],
+    monthly: ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"].map((month) => ({
+      month,
+      cents: month < "2026-07" ? 0 : 481_200,
+    })),
+    charges: [],
+  });
+  await show("/app/finance/vendor/cloud");
+  await flush();
+  const labels = [...container.querySelectorAll('svg[aria-label="Monthly spend"] text')].map(
+    (n) => n.textContent,
+  );
+  expect(labels.some((l) => l?.startsWith("May") || l?.startsWith("Jun"))).toBe(false);
+  expect(labels.some((l) => l?.startsWith("Jul"))).toBe(true);
+  expect(container.textContent).toContain("Not enough history");
+  vi.restoreAllMocks();
+});
+
+it("sends Back from a vendor opened in Breakdown to the Breakdown card", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  rpcMock.vendor.mockResolvedValue({
+    key: "acme-hosting",
+    name: "Acme Hosting",
+    isSubscription: true,
+    monthlyAvgCents: 50_000,
+    monthlyAvgMonths: 3,
+    changePct: null,
+    firstSeenAt: "2026-07-02T00:00:00.000Z",
+    paidWith: [],
+    monthly: [],
+    charges: [],
+  });
+  await show("/app/finance");
+  await flush();
+  await act(async () => button("Vendor")?.click());
+  const row = container.querySelector('#breakdown a[href="/app/finance/vendor/acme-hosting"]');
+  await act(async () => (row as HTMLElement).click());
+  await flush();
+  expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
+  // Opened from Breakdown, although the vendor is also a subscription.
+  const back = container.querySelector('a[href="/app/finance?by=vendor#breakdown"]');
+  expect(back?.textContent).toContain("Breakdown");
+  expect(container.querySelector("nav")?.textContent).not.toContain("Subscriptions");
+  expect(container.textContent).toContain("Last 3 full months");
+  // Back reopens Breakdown in Vendor mode.
+  Element.prototype.scrollIntoView = vi.fn();
+  await act(async () => (back as HTMLElement).click());
+  await flush();
+  expect(button("Vendor")?.getAttribute("aria-pressed")).toBe("true");
+});
+
+it("keeps the vendor's Breakdown origin after opening one of its charges and coming back", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  rpcMock.transaction.mockResolvedValue(spendTransaction(false));
+  rpcMock.vendor.mockResolvedValue({
+    key: "acme-hosting",
+    name: "Acme Hosting",
+    isSubscription: true,
+    monthlyAvgCents: 50_000,
+    monthlyAvgMonths: 3,
+    changePct: null,
+    firstSeenAt: "2026-07-02T00:00:00.000Z",
+    paidWith: [],
+    monthly: [],
+    charges: [spendTransaction(false).transaction],
+  });
+  await show("/app/finance");
+  await flush();
+  await act(async () => button("Vendor")?.click());
+  const row = container.querySelector('#breakdown a[href="/app/finance/vendor/acme-hosting"]');
+  await act(async () => (row as HTMLElement).click());
+  await flush();
+  // A founder clicks the row (its date), not only the link in it.
+  const charge = container.querySelector('a[href="/app/finance/transaction/t1"]');
+  const cell = charge?.closest("tr")?.querySelector("td") as HTMLElement;
+  await act(async () => cell.click());
+  await flush();
+  // The charge's Back names the vendor it was opened from.
+  const toVendor = container.querySelector('a[href="/app/finance/vendor/acme-hosting"]');
+  expect(toVendor?.textContent).toContain("Acme Hosting");
+  await act(async () => (toVendor as HTMLElement).click());
+  await flush();
+  expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
+  // Back on the vendor still returns to Breakdown in Vendor mode, not to Subscriptions.
+  expect(
+    container.querySelector('a[href="/app/finance?by=vendor#breakdown"]')?.textContent,
+  ).toContain("Breakdown");
+  expect(container.querySelector("nav")?.textContent).not.toContain("Subscriptions");
+});
+
+it("leaves no empty crumb and no guessed origin on a missing vendor", async () => {
+  rpcMock.vendor.mockRejectedValue(Object.assign(new Error("Not found"), { code: "NOT_FOUND" }));
+  await act(async () => {
+    root.render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/app/finance/vendor/gone",
+            state: { back: { label: "Upcoming", to: "/app/finance#upcoming" } },
+          },
+        ]}
+      >
+        <FinancePage />
+      </MemoryRouter>,
+    );
+  });
+  await flush();
+  expect(container.textContent).toContain("Not found");
+  expect(container.querySelector("nav")?.textContent).toBe("Finance");
+  expect(container.textContent).not.toContain("Breakdown");
+  // Back still names the card the founder actually came from.
+  expect(container.querySelector('a[href="/app/finance#upcoming"]')?.textContent).toContain(
+    "Upcoming",
+  );
+});
+
+it("shows the clicked transaction at once while the rest loads", async () => {
+  rpcMock.transaction.mockReturnValue(new Promise(() => {}));
+  const row = spendTransaction(false).transaction;
+  await act(async () => {
+    root.render(
+      <MemoryRouter
+        initialEntries={[{ pathname: "/app/finance/transaction/t1", state: { preview: row } }]}
+      >
+        <FinancePage />
+      </MemoryRouter>,
+    );
+  });
+  expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
+  expect(container.textContent).toContain("$42.00");
+  // The purchase day, the day lists and totals use; the posting day follows.
+  expect(container.textContent).toContain("DateOct 2, 2026");
+  expect(container.textContent).toContain("PostedOct 3, 2026");
+  expect(container.textContent).toContain("Loading…");
+});
+
+it("says a missing transaction does not exist instead of offering Try again", async () => {
+  rpcMock.transaction.mockRejectedValue({ code: "NOT_FOUND", message: "Not found" });
+  await show("/app/finance/transaction/missing");
+  await flush();
+  expect(container.textContent).toContain("This page doesn't exist or was removed.");
+  expect(button("Try again")).toBeUndefined();
+});
+
+it("shows a day from the chart as a removable chip with no period tab selected", async () => {
+  const spend = {
+    period: "month",
+    range: { from: "2026-09-28", to: "2026-09-28" },
+    start: "2026-09-28",
+    end: "2026-09-29",
+    category: null,
+    totalCents: 0,
+    categories: [],
+    transactions: [],
+  };
+  rpcMock.spend.mockResolvedValue(spend);
+  await show("/app/finance/spend?period=month&from=2026-09-28&to=2026-09-28");
+  await flush();
+  const selected = [...container.querySelectorAll('[role="tab"]')].filter(
+    (n) => n.getAttribute("aria-selected") === "true",
+  );
+  expect(selected).toHaveLength(0);
+  const chip = container.querySelector('a[aria-label="Clear Sep 28"]');
+  expect(chip?.getAttribute("href")).toBe("/app/finance/spend?period=month");
+  expect(container.textContent).toContain("No transactions in this period");
+
+  rpcMock.spend.mockResolvedValue({
+    ...spend,
+    range: null,
+    start: "2026-10-01",
+    end: "2026-10-15",
+  });
+  act(() => root.unmount());
+  root = createRoot(container);
+  await show("/app/finance/spend?period=month");
+  await flush();
+  expect(container.textContent?.replace(/[\s ]+/g, " ")).toContain("Oct 1 – 14");
+});
+
+it("never shows a category that refunds outweigh as money spent", async () => {
+  rpcMock.overview.mockResolvedValue(
+    connectedOverview({
+      breakdown: {
+        category: [
+          { key: "software", label: "Software", cents: 120_000 },
+          // $250 + $450 of charges against a $1,200 deposit: net -$500.
+          { key: "uncategorized", label: "Uncategorized", cents: -50_000 },
+        ],
+        vendor: [],
+      },
+    }),
+  );
+  await show("/app/finance");
+  await flush();
+  const breakdown = container.querySelector("#breakdown")?.textContent ?? "";
+  expect(breakdown).toContain("Software");
+  expect(breakdown).not.toContain("Uncategorized");
+  expect(breakdown).not.toContain("$500");
+});
+
+it("opens a bill's details from its Upcoming row, which has no page of its own", async () => {
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <UpcomingRow
+          item={{
+            key: "bill-1",
+            kind: "bill",
+            name: "Placeholder Legal LLP",
+            dates: ["2026-10-27"],
+            amountCents: 200_000,
+            billStatus: "APPROVED",
+            dueAt: "2026-10-27",
+          }}
+        />
+      </MemoryRouter>,
+    ),
+  );
+  const row = container.querySelector("button") as HTMLButtonElement;
+  expect(row.querySelector("svg")).not.toBeNull();
+  await act(async () => row.click());
+  const details = document.body.textContent ?? "";
+  expect(details).toContain("Brex bill, not paid yet");
+  expect(details).toContain("$2,000.00");
+  expect(details).toContain("Oct 27, 2026");
+  expect(details).toContain("Approved");
+});
+
+it("says whether crypto counts toward runway", () => {
+  expect(cryptoSubtitle("bank", 0)).toBe("Not in runway");
+  expect(cryptoSubtitle("stablecoins", 0)).toBe("Stablecoins in runway");
+  expect(cryptoSubtitle("all", 2)).toBe("Counted in runway · 2 unpriced");
 });

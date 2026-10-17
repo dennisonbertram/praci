@@ -9,6 +9,7 @@ import {
   mercuryAccountsResponse,
   mercuryRow,
 } from "../../../../adapters/src/finance-fake-tools.js";
+import { fakeRpc } from "../../../../adapters/src/rpc-crypto-fake-fetch.js";
 
 /**
  * Everything the mock demo stack shows. Each name, subject, address and note is invented and says
@@ -17,6 +18,8 @@ import {
 
 export const MOCK_NOTE = "Mock demo data";
 export const DEMO_COMPANY = "MOCK DEMO DATA — Northwind Robotics";
+/** A space with nothing connected, for the first-run and empty states. */
+export const DEMO_EMPTY_SPACE = "MOCK DEMO DATA — Empty space";
 export const DEMO_USER_NAME = "Alex Founder (Mock)";
 export const DEMO_EMAIL = "mock-founder@demo.rakazo.test";
 /** Short, so the subject itself stays readable in a list row. */
@@ -436,6 +439,24 @@ function monthDay(now: Date, monthsAgo: number, day: number): Date {
 }
 
 /**
+ * Last month's statement for a bank with no integration, as a CSV export, so Accounts shows a
+ * statement account (named from the file, so it can be renamed) and the monthly reminder.
+ */
+export function demoStatementCsv(now = new Date()): { fileName: string; body: string } {
+  const day = (d: number) => monthDay(now, 1, d).toISOString().slice(0, 10);
+  const month = day(1).slice(0, 7);
+  const rows = [
+    [day(3), "MOCK Customer Beta (Mock) deposit", "1200.00", "11200.00"],
+    [day(9), "MOCK Office Supplies (Mock)", "-250.00", "10950.00"],
+    [day(18), "MOCK Courier Service (Mock)", "-450.00", "10500.00"],
+  ];
+  return {
+    fileName: `mock-community-bank-${month}.csv`,
+    body: `Date,Description,Amount,Balance\n${rows.map((r) => r.join(",")).join("\n")}\n`,
+  };
+}
+
+/**
  * Canned Mercury and Brex tool callers holding about three months of invented history, built on the
  * repo's finance fakes. Pass `callToolFor` to `createApp` and to `syncFinanceForUser`.
  */
@@ -525,13 +546,67 @@ export function demoFinance(now = new Date()) {
     accounts: mercuryAccounts,
     treasury: { accounts: [], page: {} },
   });
-  const brex = fakeBrex({ expenses });
+  // Not yet cleared: shows as Pending on the dashboard and on its transaction page.
+  const pendingAt = new Date(now.getTime() - DAY_MS);
+  const pendingMoney = { value: "612.40", currency: "USD", display: "$612.40 USD" };
+  expenses.unshift(
+    brexExpense("mock-brex-pending", {
+      purchased_at: pendingAt.toISOString(),
+      posted_at: null,
+      payment_status: "PROCESSING",
+      merchant: { id: "pmch_air", name: "Skyline Air (Mock)" },
+      vendor: { id: "pmch_air", name: "Skyline Air (Mock)", email: null },
+      merchant_category: { id: "pmca_air", name: "Travel" },
+      memo: MOCK_NOTE,
+      original_amount: pendingMoney,
+      purchased_amount: pendingMoney,
+      amount: pendingMoney,
+      card: { id: "ncard_1", last4: "0001", partner: null },
+    }),
+  );
+  // An approved bill not yet paid: an "Upcoming" bill row, not a transaction.
+  const bills = [
+    {
+      id: "mock-bill-legal",
+      status: "APPROVED",
+      due_at: new Date(now.getTime() + 10 * DAY_MS).toISOString(),
+      vendor: { name: "Placeholder Legal LLP (Mock)" },
+      amount: { value: "2000.00", currency: "USD" },
+    },
+  ];
+  const brex = fakeBrex({ expenses, bills });
   const brexCallTool: typeof brex.callTool = async (name, args) =>
     name === "list_business_accounts" ? brexAccounts : brex.callTool(name, args);
   return {
     callToolFor: async (server: { provider: string }) =>
       server.provider === "mercury" ? mercury.callTool : brexCallTool,
   };
+}
+
+/** Invented treasury wallet: 0x…d3e0 is not a real holder; nothing here touches a real chain. */
+export const DEMO_WALLET = {
+  address: "0x000000000000000000000000000000000000d3e0",
+  label: "MOCK Treasury wallet",
+} as const;
+const USDC_ETHEREUM = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+
+/**
+ * An offline JSON-RPC and price fake holding the mock wallet's balances (2.5 ETH and 40,000 USDC on
+ * Ethereum). Pass `fetch` to `createApp` as `cryptoFetch` so the Crypto page never calls the network.
+ */
+export function demoCrypto() {
+  return fakeRpc({
+    chains: {
+      1: {
+        balances: { [DEMO_WALLET.address]: 2_500_000_000_000_000_000n },
+        tokens: { [USDC_ETHEREUM]: { [DEMO_WALLET.address]: 40_000_000_000n } },
+      },
+    },
+    prices: {
+      "coingecko:ethereum": { price: 2_500, confidence: 0.99 },
+      [`ethereum:${USDC_ETHEREUM}`]: { price: 1, confidence: 0.99 },
+    },
+  });
 }
 
 // ---- Cap table contacts, data room, bots ----

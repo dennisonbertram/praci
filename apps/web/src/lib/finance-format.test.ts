@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
+  accountLabel,
   axisMoney,
   changeText,
   dayAxisLabels,
@@ -11,9 +12,12 @@ import {
   monthLabel,
   monthShort,
   paidWithLabel,
+  shareText,
   shortDay,
   transactionAmount,
+  txnDay,
 } from "./finance-format";
+import { setHideAmounts } from "./hide-amounts-preference";
 
 const en = "en-US";
 const now = new Date("2026-10-14T12:00:00Z");
@@ -35,6 +39,7 @@ describe("finance formatting", () => {
     expect(axisMoney(150_000)).toBe("$1.5k");
     expect(axisMoney(80_000)).toBe("$800");
     expect(axisMoney(0)).toBe("$0");
+    expect(axisMoney(-500_000)).toBe("−$5k");
   });
 
   it("reads the date part of a day or ISO datetime, adding the year only when it differs", () => {
@@ -56,6 +61,26 @@ describe("finance formatting", () => {
     expect(changeText(-53.2)).toBe("↓ 53%");
     expect(changeText(12.5)).toBe("↑ 13%");
     expect(changeText(null)).toBeNull();
+    expect(changeText(0.2)).toBe("0%");
+    expect(changeText(-0.4)).toBe("0%");
+  });
+
+  it("shows a charge on its purchase day, the day its totals and filters use", () => {
+    expect(
+      txnDay({ purchasedAt: "2026-10-16T00:00:00.000Z", postedAt: "2026-10-17T00:00:00.000Z" }),
+    ).toBe("2026-10-16");
+    expect(txnDay({ purchasedAt: null, postedAt: "2026-10-17T00:00:00.000Z" })).toBe("2026-10-17");
+  });
+
+  it("names an account with its last four digits once", () => {
+    expect(accountLabel("MOCK Checking ••1111", "1111")).toBe("MOCK Checking ••1111");
+    expect(accountLabel("Checking", "1111")).toBe("Checking ••1111");
+    expect(accountLabel("Checking", null)).toBe("Checking");
+    expect(
+      paidWithLabel([
+        { provider: "mercury", kind: "account", name: "MOCK Checking ••1111", lastFour: "1111" },
+      ]),
+    ).toBe("MOCK Checking ••1111");
   });
 
   it("describes what paid a vendor", () => {
@@ -101,5 +126,28 @@ describe("axis labels", () => {
       "Jan 1 '26",
       "Jan 2",
     ]);
+  });
+});
+
+describe("shareText", () => {
+  it("shows a small real share as <1% rather than 0%", () => {
+    expect(shareText(500, 19_847_500)).toBe("<1%");
+    expect(shareText(0, 100)).toBe("0%");
+    expect(shareText(50, 100)).toBe("50%");
+    expect(shareText(5, 0)).toBe("—");
+  });
+});
+
+describe("figures the Finance pages derive from amounts", () => {
+  afterEach(() => setHideAmounts(false));
+
+  it("masks shares, changes and axis labels while amounts are hidden", () => {
+    setHideAmounts(true);
+    expect(shareText(50, 100)).not.toMatch(/\d/);
+    expect(shareText(500, 19_847_500)).not.toMatch(/\d/);
+    expect(changeText(53)).not.toMatch(/\d/);
+    expect(changeText(0)).not.toMatch(/\d/);
+    expect(axisMoney(-250_000)).not.toMatch(/\d/);
+    expect(txnDay({ purchasedAt: null, postedAt: "2026-10-01T00:00:00Z" })).toBe("2026-10-01");
   });
 });

@@ -150,6 +150,7 @@ import {
   FinanceWalletUpdateInputSchema,
 } from "./finance.js";
 import {
+  FinanceStatementAccountRenameInputSchema,
   FinanceStatementConfirmInputSchema,
   FinanceStatementDiscardInputSchema,
   FinanceStatementSchema,
@@ -1212,6 +1213,9 @@ export const appContract = {
     statementConfirm: oc.input(FinanceStatementConfirmInputSchema).output(FinanceStatementSchema),
     statementDiscard: oc
       .input(FinanceStatementDiscardInputSchema)
+      .output(z.object({ ok: z.literal(true) })),
+    statementAccountRename: oc
+      .input(FinanceStatementAccountRenameInputSchema)
       .output(z.object({ ok: z.literal(true) })),
   },
   botSecrets: {

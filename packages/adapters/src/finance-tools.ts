@@ -573,6 +573,8 @@ async function financeTransactions(deps: FinanceToolDeps, args: Record<string, u
   const totalCents = Number(eligible._sum.amountCents ?? 0n);
   await show(deps, {
     card: "transactions",
+    ...(from ? { from } : {}),
+    ...(to ? { to } : {}),
     count: eligibleCount,
     totalCents,
     rows: shown.slice(0, 5).map((t) => ({

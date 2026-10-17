@@ -15,7 +15,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { CARTA_MCP_ENDPOINT } from "@rakazo/contracts";
 import { loadOrCreateCredentials } from "./demo/credentials.js";
-import { demoCarta, demoFinance, demoMailboxes } from "./demo/data.js";
+import { demoCarta, demoCrypto, demoFinance, demoMailboxes } from "./demo/data.js";
 import {
   assertDemoContainer,
   assertStateSlot,
@@ -318,6 +318,7 @@ async function serve() {
     composio: createE2eComposio(demoMailboxes),
     financeCallToolFor: demoFinance().callToolFor,
     mcpServers: { [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN) },
+    cryptoFetch: demoCrypto().fetch,
   });
   const server = listen({ fetch: handles.app.fetch, port: API_PORT, hostname: "127.0.0.1" });
   const stop = () => void handles.stop().finally(() => server.close(() => process.exit(0)));

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  accountBalanceHistory,
   balanceGrid,
   balanceHistory,
   breakdown,
@@ -160,6 +161,24 @@ describe("classify", () => {
       ),
     ).toBe("spend");
   });
+  it("counts a deposit on an uploaded statement as revenue, never as a refund against spend", () => {
+    const line = raw({ provider: "statement", kind: "statement", counterparty: "Customer Beta" });
+    expect(classify({ ...line, amountCents: 120000 }, ctx)).toBe("revenue");
+    expect(classify({ ...line, amountCents: -25000 }, ctx)).toBe("spend");
+    expect(classify({ ...line, amountCents: 5000, counterparty: "Mercury Savings" }, ctx)).toBe(
+      "internal_transfer",
+    );
+  });
+  it("nets a statement refund off spend and keeps a deposit as revenue", () => {
+    const line = raw({ provider: "statement", kind: "statement" });
+    const buy = classify({ ...line, amountCents: -10000, counterparty: "Acme Store" }, ctx);
+    const refund = classify(
+      { ...line, amountCents: 10000, counterparty: "Acme Store REFUND" },
+      ctx,
+    );
+    const deposit = classify({ ...line, amountCents: 10000, counterparty: "Customer Beta" }, ctx);
+    expect([buy, refund, deposit]).toEqual(["spend", "spend", "revenue"]);
+  });
   it("counts other outgoing money and every Brex expense as spend", () => {
     expect(classify(raw({ category: "Payroll" }), ctx)).toBe("spend");
     expect(classify(raw({ provider: "brex", amountCents: -2000, kind: "CARD" }), ctx)).toBe(
@@ -198,6 +217,7 @@ describe("cashSummary", () => {
       savingsCents: 20,
       treasuryCents: 1000,
       cardOwedCents: 400,
+      cashAccountCount: 4,
     });
   });
   it("reports no card balance when there is no card account", () => {
@@ -428,6 +448,22 @@ describe("monthlySpend", () => {
       2000, 0, 1000,
     ]);
     expect(monthlySpend(txns, { vendorKey: "nobody" }, NOW, 2).map((m) => m.cents)).toEqual([0, 0]);
+  });
+});
+
+describe("accountBalanceHistory", () => {
+  it("starts at the month end before the account's first transaction", () => {
+    const acct = account({ balanceCents: 10_500 });
+    const history = accountBalanceHistory(
+      acct,
+      [txn("2026-09-18", -450), txn("2026-09-03", 1200)],
+      NOW,
+    );
+    expect(history.map((p) => p.month)).toEqual(["2026-08", "2026-09", "2026-10"]);
+    expect(history[0]?.balanceCents).toBe(10_500 + 45_000 - 120_000);
+  });
+  it("keeps all 12 months for an account with no transactions", () => {
+    expect(accountBalanceHistory(account({ balanceCents: 1 }), [], NOW)).toHaveLength(12);
   });
 });
 
@@ -796,24 +832,20 @@ describe("upcoming", () => {
     status: "APPROVED",
     ...over,
   });
-  it("predicts recurring charges, leaves out card payments, and adds pending charges and bills", () => {
-    const pending = [
-      txn("2026-10-13", -15, "Coffee Cart", { status: "pending" }),
-      txn("2026-10-13", -15, "Settled", { status: "posted" }),
-    ];
+  it("predicts recurring charges and bills, and leaves out card payments and pending charges", () => {
+    // A pending charge already counts as spend, so Upcoming leaves it out rather than count it twice.
+    const pending = [txn("2026-10-13", -15, "Coffee Cart", { status: "pending" })];
     const result = upcoming(recurring, pending, [bill({})], NOW);
     expect(result.items.map((i) => [i.kind, i.key, i.dates])).toEqual([
-      ["pending", pending[0]?.id, ["2026-10-14"]],
       ["recurring", "notion", ["2026-10-20"]],
       ["bill", "bill-1", ["2026-10-30"]],
     ]);
-    expect(result.totalCents).toBe(1500 + 1000 + 300000);
+    expect(result.totalCents).toBe(1000 + 300000);
   });
-  it("does not count a pending charge twice when it matches a prediction", () => {
+  it("drops a prediction that a pending charge (already spent) covers", () => {
     const pending = [txn("2026-10-19", -10, "Notion", { status: "pending" })];
     const result = upcoming(recurring, pending, [], NOW);
-    expect(result.items.filter((i) => i.name.startsWith("Notion"))).toHaveLength(1);
-    expect(result.items[0]?.kind).toBe("pending");
+    expect(result.items.filter((i) => i.name.startsWith("Notion"))).toHaveLength(0);
   });
   it("lists every occurrence inside the window and respects its end", () => {
     const weekly = detectRecurring(
@@ -878,6 +910,23 @@ describe("subscriptions", () => {
       notion: null,
     });
     expect(subs.totalMonthlyCents).toBe(70000 + 68000 + 800 + 5000 + 1000);
+  });
+  it("leaves payroll and rent out: they recur but are fixed costs, not subscriptions", () => {
+    const fixed = detectRecurring(
+      [
+        ...monthly("Paylodex Payroll", "15", 5_840_000, 4, { category: "Payroll" }),
+        ...monthly("Landlord Placeholder LLC", "01", 750_000, 4),
+        ...monthly("Office Space Co", "02", 300_000, 4, { category: "Rent" }),
+        ...monthly("Notion", "20", 1000, 4, { category: "Software" }),
+      ],
+      NOW,
+    );
+    expect(fixed.filter((r) => r.fixedCost).map((r) => r.key)).toEqual([
+      "paylodex-payroll",
+      "landlord-placeholder",
+      "office-space",
+    ]);
+    expect(subscriptions(fixed).items.map((s) => s.key)).toEqual(["notion"]);
   });
   it("tags no overlap when only one vendor of a group is subscribed", () => {
     const only = subscriptions(detectRecurring(monthly("Anthropic", "06", 70000, 4), NOW));
@@ -952,6 +1001,24 @@ describe("cashSeries", () => {
     ]);
     expect(weeks.map((w) => w.outCents)).toEqual([70000, 150000, 60000]);
     expect(weeks[2]?.partial).toBe(true);
+  });
+  it("covers exactly the period to date when given its first day", () => {
+    // Quarter to date from Wed Oct 1: the first week bucket starts on Oct 1, not Monday Sep 29.
+    const quarter = cashSeries(txns, { granularity: "week", from: "2026-10-01", now: today });
+    expect(quarter.map((w) => [w.start, w.end])).toEqual([
+      ["2026-10-01", "2026-10-04"],
+      ["2026-10-05", "2026-10-11"],
+      ["2026-10-12", "2026-10-18"],
+    ]);
+    // Sep 30 is before the quarter, so it is not in the first bucket.
+    expect(quarter[0]?.outCents).toBe(0);
+    const month = cashSeries(txns, { granularity: "day", from: "2026-10-01", now: today });
+    expect(month).toHaveLength(14);
+    expect(month[0]?.start).toBe("2026-10-01");
+    const year = cashSeries(txns, { granularity: "month", from: "2026-01-01", now: today });
+    expect(year.map((m) => m.start.slice(0, 7))).toEqual(
+      Array.from({ length: 10 }, (_, i) => `2026-${String(i + 1).padStart(2, "0")}`),
+    );
   });
   it("is on the same Monday for a Sunday and the next Monday", () => {
     const sunday = cashSeries([], {
