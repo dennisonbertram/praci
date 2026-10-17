@@ -274,13 +274,18 @@ function InboxMessage({
           {canArchive ? (
             <Button variant="outline" size="sm" onClick={canArchive}>
               <Archive aria-hidden="true" />
-              <Trans>Archive</Trans>
+              {/* Icons only on phones, so the actions stay on one line. */}
+              <span className="max-sm:sr-only">
+                <Trans>Archive</Trans>
+              </span>
             </Button>
           ) : null}
           {onRead && shownUnread !== undefined ? (
             <Button variant="outline" size="sm" onClick={() => onRead(shownUnread)}>
               {shownUnread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
-              {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
+              <span className="max-sm:sr-only">
+                {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
+              </span>
             </Button>
           ) : null}
         </div>
@@ -454,7 +459,12 @@ function EarlierMessage({ item }: { item: InboxThreadMessage }) {
         >
           {Number.isNaN(sent.getTime())
             ? ""
-            : sent.toLocaleString(i18n.locale || "en", { dateStyle: "medium", timeStyle: "short" })}
+            : sent.toLocaleString(i18n.locale || "en", {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
         </time>
       </button>
       {open ? (
