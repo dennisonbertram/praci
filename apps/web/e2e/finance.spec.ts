@@ -117,7 +117,11 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect(page).toHaveURL(/\/app\/finance\/vendor\/acme-hosting$/);
   await expect(main.getByRole("heading", { name: "Acme Hosting", level: 1 })).toBeVisible();
   await expect(main.getByText("↑ 40%")).toBeVisible();
-  await expect(main.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Subscriptions");
+  // Opened from the dashboard's Breakdown card, so the trail says so (Acme Hosting is also a
+  // subscription, but the user did not come from there).
+  await expect(main.getByRole("navigation", { name: "Breadcrumb" })).toHaveText(
+    "Finance/Breakdown/Acme Hosting",
+  );
   await captureScreenshot(page, testInfo, "finance-vendor");
 
   // A charge without a receipt says so and offers no upload.
@@ -125,21 +129,26 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect(page).toHaveURL(new RegExp(`/app/finance/transaction/${withoutReceipt.id}$`));
   await expect(main.getByText("No receipt")).toBeVisible();
   await expect(main.getByRole("button", { name: /Upload/ })).toHaveCount(0);
-  await main
-    .getByRole("link", { name: /Subscriptions/ })
-    .first()
-    .click();
-  await expect(page).toHaveURL(/\/app\/finance$/);
+  // The charge was opened from the vendor, which was opened from Breakdown; the trail keeps both.
+  const trail = main.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(trail.getByRole("link", { name: "Acme Hosting" })).toBeVisible();
+  await trail.getByRole("link", { name: "Breakdown" }).click();
+  await expect(page).toHaveURL(/\/app\/finance\?by=vendor#breakdown$/);
 
   // A charge with a receipt opens it.
   await page.goto(`/app/finance/transaction/${withReceipt.id}`);
-  await expect(main.getByRole("heading", { level: 1 })).toContainText("Oct 1, 2026");
+  // The title names the merchant; the charge's own crumb carries its day and amount.
+  await expect(main.getByRole("heading", { level: 1 })).toHaveText("Acme Hosting");
+  await expect(main.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Oct 1 · $");
   await captureScreenshot(page, testInfo, "finance-transaction");
   await main.getByRole("link", { name: "Open receipt" }).click();
   await expect(page).toHaveURL(new RegExp(`/app/finance/receipt/${withReceipt.id}$`));
   await expect(main.getByRole("img", { name: "Receipt" })).toBeVisible();
   // The back button names the previous crumb (the charge); its arrow is decoration.
-  await main.getByRole("link", { name: "Oct 1, 2026" }).first().click();
+  await main
+    .getByRole("link", { name: /Oct 1 · \$/ })
+    .first()
+    .click();
   await expect(page).toHaveURL(new RegExp(`/app/finance/transaction/${withReceipt.id}$`));
 
   // Refresh runs another sync.
@@ -313,7 +322,7 @@ test("Finance Accounts lists wallets apart from cash and adds one from the menu"
   await captureScreenshot(page, testInfo, "finance-accounts-add-wallet");
 });
 
-test("Blockscout tile: a keyless server is not connected, Connect opens the key modal", async ({
+test("Blockscout tile: no server is not connected, Connect opens the key modal", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1500, height: 1000 });
@@ -323,7 +332,7 @@ test("Blockscout tile: a keyless server is not connected, Connect opens the key 
     route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
-        json: { ...cryptoData, connected: true, hasApiKey: keyed },
+        json: { ...cryptoData, connected: keyed, hasApiKey: keyed },
         meta: [],
       }),
     }),
@@ -368,7 +377,8 @@ test("Blockscout tile: a keyless server is not connected, Connect opens the key 
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(tile).toContainText("Connected");
-  await expect(tile.getByRole("link", { name: "Open" })).toBeVisible();
+  await expect(tile).not.toContainText("Not connected");
+  await expect(tile.getByRole("link", { name: "Open Finance" })).toBeVisible();
   await captureScreenshot(page, testInfo, "blockscout-tile-connected");
 });
 
@@ -402,16 +412,20 @@ test("Finance runway shows crypto and switches what counts", async ({ page }) =>
   await completeOnboarding(page);
   await page.goto("/app/finance/runway");
   const main = page.getByRole("main");
-  // Bank only: the Cash card and the Bank breakdown row both read $75,000.
-  await expect(main.getByText("$75,000", { exact: true })).toHaveCount(2);
-  await expect(main.getByText("$15,000", { exact: true })).toBeVisible();
-  await expect(main.getByText("$8,000", { exact: true })).toBeVisible();
+  // Bank only: the Cash card, the Bank breakdown row and the In runway row all read $75,000.
+  await expect(main.getByText("$75,000", { exact: true })).toHaveCount(3);
+  await expect(
+    main.getByText("In runway", { exact: true }).locator("xpath=following-sibling::*[1]"),
+  ).toHaveText("$75,000");
+  await expect(main.getByText("$15,000 · not in runway", { exact: true })).toBeVisible();
+  await expect(main.getByText("$8,000 · not in runway", { exact: true })).toBeVisible();
   await expect(main.getByRole("button", { name: "Count crypto" })).toHaveAttribute(
     "aria-pressed",
     "false",
   );
   await main.getByRole("button", { name: "Count crypto" }).click();
-  await expect(main.getByText("$98,000", { exact: true })).toBeVisible();
+  // The Cash card and the In runway row both read the full total.
+  await expect(main.getByText("$98,000", { exact: true })).toHaveCount(2);
   await expect(main.getByRole("button", { name: "Counting all crypto" })).toBeVisible();
 });
 
