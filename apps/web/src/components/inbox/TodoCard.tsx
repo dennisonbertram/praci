@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { InboxTodo } from "@rakazo/contracts";
 import { dueTone, localDaysUntil } from "@rakazo/core";
 import { Button, Card, Checkbox } from "@rakazo/ui-web";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
@@ -12,18 +12,31 @@ const COLLAPSED_OPEN = 2;
 export function TodoCard({
   todos,
   onChange,
+  onOpen,
 }: {
   todos: InboxTodo[];
   onChange: (todo: InboxTodo) => void;
+  /** Opens the email a to-do came from. */
+  onOpen?: (messageId: string) => void;
 }) {
   const { t, i18n: lingui } = useLingui();
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(false);
+  // Done to-dos sort last by their state when first shown, so ticking one leaves it in place.
+  const doneWhenShown = useRef(new Map<string, boolean>());
   if (todos.length === 0) return null;
+  for (const todo of todos)
+    if (!doneWhenShown.current.has(todo.id))
+      doneWhenShown.current.set(todo.id, todo.doneAt !== null);
   const now = new Date();
-  const ordered = [...todos].sort((a, b) => Number(a.doneAt !== null) - Number(b.doneAt !== null));
-  const openCount = ordered.filter((todo) => todo.doneAt === null).length;
-  const hiddenCount = Math.max(0, openCount - COLLAPSED_OPEN);
+  const ordered = [...todos].sort(
+    (a, b) => Number(doneWhenShown.current.get(a.id)) - Number(doneWhenShown.current.get(b.id)),
+  );
+  const isCollapsed = (todo: InboxTodo, index: number) =>
+    !expanded && todo.doneAt === null && index >= COLLAPSED_OPEN;
+  const hiddenCount = ordered.filter(
+    (todo, index) => todo.doneAt === null && index >= COLLAPSED_OPEN,
+  ).length;
   const dueLabel = (dueOn: string, days: number) => {
     if (days === 0) return t`Today`;
     const [year = 0, month = 1, day = 1] = dueOn.split("-").map(Number);
@@ -62,7 +75,7 @@ export function TodoCard({
           const tone = dueTone(days, todo.priority);
           const done = todo.doneAt !== null;
           // Narrow containers show only the first few open to-dos until expanded.
-          const collapsed = !expanded && !done && index >= COLLAPSED_OPEN;
+          const collapsed = isCollapsed(todo, index);
           return (
             <li
               key={todo.id}
@@ -72,13 +85,24 @@ export function TodoCard({
                 aria-label={todo.text}
                 checked={done}
                 onCheckedChange={(checked) => setDone(todo, checked)}
-                className="mt-0.5 pointer-coarse:size-5"
+                className="mt-0.5 border-muted-foreground pointer-coarse:size-5"
               />
               <div
                 dir="auto"
                 className={`min-w-0 flex-1 text-sm ${done ? "text-muted-foreground line-through" : ""}`}
               >
-                {todo.text}
+                {todo.messageId && onOpen ? (
+                  <button
+                    type="button"
+                    aria-haspopup="dialog"
+                    className="rounded-sm text-start outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+                    onClick={() => todo.messageId && onOpen(todo.messageId)}
+                  >
+                    {todo.text}
+                  </button>
+                ) : (
+                  todo.text
+                )}
                 {todo.from || todo.detail ? (
                   <small className="block truncate text-xs text-muted-foreground">
                     {[todo.from, todo.detail].filter(Boolean).join(" · ")}

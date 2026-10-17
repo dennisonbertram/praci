@@ -61,3 +61,37 @@ it("shows no toggle when two or fewer are open", () => {
   act(() => root.render(<TodoCard todos={[todo(1), todo(2)]} onChange={() => {}} />));
   expect(toggle()).toBeNull();
 });
+
+const texts = () => [...document.querySelectorAll("li")].map((li) => li.textContent);
+
+it("keeps a ticked to-do in its place, struck through, until the next visit", () => {
+  const todos = [1, 2, 3].map((n) => todo(n));
+  act(() => root.render(<TodoCard todos={todos} onChange={() => {}} />));
+  const ticked = todos.map((item) => (item.id === "t1" ? { ...item, doneAt: "2026-10-17" } : item));
+  act(() => root.render(<TodoCard todos={ticked} onChange={() => {}} />));
+  expect(texts()).toEqual(["Todo 1", "Todo 2", "Todo 3"]);
+  expect(document.querySelector("li div")?.className).toContain("line-through");
+  // Todo 3 is still the one collapsed, and the count says so.
+  expect(hiddenTexts()).toEqual(["Todo 3"]);
+  expect(toggle()?.textContent).toBe("1 more");
+});
+
+it("opens the email a to-do came from", () => {
+  const onOpen = vi.fn();
+  act(() =>
+    root.render(
+      <TodoCard
+        todos={[{ ...todo(1), messageId: "m1" }, todo(2)]}
+        onChange={() => {}}
+        onOpen={onOpen}
+      />,
+    ),
+  );
+  const title = [...document.querySelectorAll("button")].find((b) => b.textContent === "Todo 1");
+  act(() => title?.click());
+  expect(onOpen).toHaveBeenCalledWith("m1");
+  // A to-do whose email left the cache has nothing to open.
+  expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Todo 2")).toBe(
+    false,
+  );
+});

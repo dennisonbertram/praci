@@ -58,6 +58,14 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = { args: { todos } };
 
+/** Titles with a cached email open it. */
+export const OpensEmail: Story = {
+  args: {
+    todos: todos.map((item) => ({ ...item, messageId: `msg_${item.id}` })),
+    onOpen: () => undefined,
+  },
+};
+
 export const SingleTodo: Story = { args: { todos: todos.slice(1, 2) } };
 
 export const LongText: Story = {
