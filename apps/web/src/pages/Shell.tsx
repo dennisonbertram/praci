@@ -208,7 +208,12 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
-import { findCartaAgent, useAutoCreateCartaAgent } from "../lib/carta-agent";
+import {
+  cartaPanelState,
+  findCartaAgent,
+  useAutoCreateCartaAgent,
+  useOnPhoneWidth,
+} from "../lib/carta-agent";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -2575,6 +2580,20 @@ export function ShellPage() {
     bots,
   );
 
+  const cartaPanel = cartaPanelState({
+    connected: cartaConnected,
+    collapsed: cartaAgentCollapsed,
+    hasAgent: Boolean(active),
+    creating: creatingCartaAgent,
+    error: cartaAgentError,
+  });
+  // A window dragged down to phone width would leave a remembered-open panel covering the page.
+  // Only the view collapses; the saved preference stays for the desktop.
+  useOnPhoneWidth(() => {
+    setCartaAgentCollapsed(true);
+    setInboxAgentCollapsed(true);
+  });
+
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
   const agentPanel = inboxMode
     ? {
@@ -2606,14 +2625,12 @@ export function ShellPage() {
             testId: "carta-agent-panel",
             // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
             // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
-            open:
-              cartaConnected &&
-              !cartaAgentCollapsed &&
-              Boolean(active || creatingCartaAgent || cartaAgentError),
+            open: cartaPanel.open,
             collapse: () => setCartaAgentCollapsedPref(true),
             collapseLabel: t`Collapse Carta agent`,
-            create: undefined,
-            createLabel: "",
+            // A failed creation is retried from the panel; the agent otherwise appears by itself.
+            create: cartaAgentError ? createCartaAgent : undefined,
+            createLabel: t`Try again`,
             creating: creatingCartaAgent,
             error: cartaAgentError,
           }
@@ -4115,11 +4132,7 @@ export function ShellPage() {
           <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
         ) : capTableMode ? (
           <CapTablePage
-            onShowAgent={
-              active && cartaConnected && cartaAgentCollapsed
-                ? () => setCartaAgentCollapsedPref(false)
-                : undefined
-            }
+            onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
             onCartaStatus={setCartaConnected}
           />
         ) : inboxMode ? (
@@ -4207,7 +4220,10 @@ export function ShellPage() {
               ) : (
                 <div className="grid flex-1 place-content-center justify-items-center gap-3 px-5">
                   {agentPanel.create ? (
-                    <Button disabled={agentPanel.creating} onClick={() => void agentPanel.create()}>
+                    <Button
+                      disabled={agentPanel.creating}
+                      onClick={() => void agentPanel.create?.()}
+                    >
                       {agentPanel.createLabel}
                     </Button>
                   ) : agentPanel.creating ? (

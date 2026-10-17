@@ -245,6 +245,44 @@ it("lists the unallocated option pool as a row so the Ownership column adds up",
   expect(row?.textContent).toContain("5.00%");
 });
 
+it("puts the unallocated pool right after the granted options, before the SAFEs", async () => {
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: {
+      ...snapshot,
+      holders: [
+        {
+          name: "Granted options",
+          email: null,
+          organization: null,
+          security: "Options",
+          shares: 900_000,
+          amountUsd: null,
+          percent: 9,
+        },
+        { ...snapshot.holders[1] },
+      ],
+    },
+    syncing: false,
+  });
+  await show();
+  const names = [...container.querySelectorAll("tbody tr")].map(
+    (tr) => tr.querySelector("td")?.textContent ?? "",
+  );
+  const at = (name: string) => names.findIndex((n) => n.startsWith(name));
+  expect(at("Unallocated pool")).toBe(at("Granted options") + 1);
+  expect(at("Unallocated pool")).toBeLessThan(at("Dee Newcomer"));
+});
+
+it("shows Ownership in the same font as the other figures", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  await show();
+  const cells = [...container.querySelectorAll("tbody td")].filter((td) =>
+    td.textContent?.includes("10.00%"),
+  );
+  expect(cells).toHaveLength(1);
+  expect(cells[0]?.className).not.toContain("font-mono");
+});
+
 it("offers Add email for a holder without a contact and prefills the dialog", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
   await show();
@@ -376,6 +414,27 @@ it("deletes a contact with an Undo that restores it", async () => {
     notes: null,
   });
   expect(document.body.textContent).not.toContain("Deleted Bo");
+});
+
+it("keeps the contact restorable when Undo fails, and restores it on Try again", async () => {
+  rpcMock.remove.mockResolvedValue({ ok: true });
+  rpcMock.save.mockRejectedValueOnce(new Error("offline")).mockResolvedValue({});
+  await show();
+  await click(button("Bo"));
+  await click(button("Delete"));
+  await click(button("Undo"));
+  expect(document.body.textContent).toContain("offline");
+  expect(button("Undo")).toBeUndefined();
+  await click(button("Try again"));
+  expect(rpcMock.save).toHaveBeenCalledTimes(2);
+  expect(rpcMock.save).toHaveBeenLastCalledWith({
+    name: "Bo",
+    email: "bo@example.test",
+    organization: null,
+    kind: "auditor",
+    notes: null,
+  });
+  expect(document.body.textContent).not.toContain("offline");
 });
 
 it("confirms a save and closes the dialog with Cancel", async () => {

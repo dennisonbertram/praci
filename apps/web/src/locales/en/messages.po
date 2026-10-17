@@ -2279,8 +2279,8 @@ msgid "Could not reset password"
 msgstr "Could not reset password"
 
 #: src/pages/CapTable.tsx
-msgid "Could not restore the contact"
-msgstr "Could not restore the contact"
+msgid "Could not restore {name}"
+msgstr "Could not restore {name}"
 
 #: src/pages/Shell.tsx
 msgid "Could not run routine"
@@ -2696,10 +2696,9 @@ msgstr "Delete space"
 msgid "deleted"
 msgstr "deleted"
 
-#. placeholder {0}: gone.name
 #: src/pages/CapTable.tsx
-msgid "Deleted {0}"
-msgstr "Deleted {0}"
+msgid "Deleted {name}"
+msgstr "Deleted {name}"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2818,6 +2817,7 @@ msgstr "Disconnecting…"
 #: src/components/data-room/DropZone.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr "Dismiss"
@@ -6684,6 +6684,7 @@ msgstr "Try {name} again"
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/Shell.tsx
 msgid "Try again"
 msgstr "Try again"
 

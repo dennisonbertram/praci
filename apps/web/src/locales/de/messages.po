@@ -2279,7 +2279,7 @@ msgid "Could not reset password"
 msgstr "Passwort konnte nicht zurückgesetzt werden"
 
 #: src/pages/CapTable.tsx
-msgid "Could not restore the contact"
+msgid "Could not restore {name}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2696,9 +2696,8 @@ msgstr ""
 msgid "deleted"
 msgstr "gelöscht"
 
-#. placeholder {0}: gone.name
 #: src/pages/CapTable.tsx
-msgid "Deleted {0}"
+msgid "Deleted {name}"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -2818,6 +2817,7 @@ msgstr "Verbindung wird getrennt…"
 #: src/components/data-room/DropZone.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr ""
@@ -6684,6 +6684,7 @@ msgstr ""
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/Shell.tsx
 msgid "Try again"
 msgstr "Erneut versuchen"
 

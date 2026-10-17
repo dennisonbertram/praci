@@ -83,9 +83,11 @@ function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
   });
   // The unallocated pool is part of the fully diluted count but no one holds it, so without this
   // row the Ownership column stops short of 100%. The percent is display-only.
+  // It goes right after the granted options, not after the SAFEs.
   const pool = snapshot?.optionPoolAvailable;
   if (snapshot && pool) {
-    rows.push({
+    const lastOptions = rows.findLastIndex((row) => rowKind(row) === "options");
+    rows.splice(lastOptions < 0 ? rows.length : lastOptions + 1, 0, {
       key: "pool",
       contact: null,
       holder: {
@@ -425,9 +427,14 @@ export function CapTablePage({
       { replace: true },
     );
   const [editing, setEditing] = useState<Contact | Prefill | "new" | null>(null);
-  const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null);
+  const [toast, setToast] = useState<{
+    text: string;
+    undo?: () => void;
+    /** A failed restore stays until it works or is dismissed, so the contact is not lost. */
+    sticky?: boolean;
+  } | null>(null);
   useEffect(() => {
-    if (!toast) return;
+    if (!toast || toast.sticky) return;
     const timer = setTimeout(() => setToast(null), TOAST_MS);
     return () => clearTimeout(timer);
   }, [toast]);
@@ -545,17 +552,29 @@ export function CapTablePage({
     );
   const deleted = (gone: Contact) => {
     load();
-    setToast({
-      text: t`Deleted ${gone.name}`,
-      undo: () => {
-        setToast(null);
-        const { name, email, organization, kind, notes } = gone;
-        rpc.contacts
-          .save({ name, email, organization, kind, notes })
-          .then(load)
-          .catch((cause) => setError(errorText(cause, t`Could not restore the contact`)));
-      },
-    });
+    const { name, email, organization, kind, notes } = gone;
+    let restoring = false;
+    const restore = () => {
+      if (restoring) return;
+      restoring = true;
+      rpc.contacts
+        .save({ name, email, organization, kind, notes })
+        .then(() => {
+          setToast(null);
+          load();
+        })
+        .catch((cause) =>
+          setToast({
+            text: errorText(cause, t`Could not restore ${name}`),
+            undo: restore,
+            sticky: true,
+          }),
+        )
+        .finally(() => {
+          restoring = false;
+        });
+    };
+    setToast({ text: t`Deleted ${name}`, undo: restore });
   };
 
   return (
@@ -698,21 +717,21 @@ export function CapTablePage({
         <table className="w-full table-fixed text-sm">
           <thead className="text-start text-xs text-muted-foreground">
             <tr>
-              <th className="w-[48%] py-2 pe-3 text-start font-medium @lg:w-[26%]">
+              <th className="w-[48%] py-2 pe-3 text-start font-medium @lg:w-[25%]">
                 <Trans>Name</Trans>
               </th>
               <th className="py-2 pe-3 text-start font-medium">
                 <Trans>Email</Trans>
               </th>
-              <th className="hidden w-32 py-2 pe-3 text-start font-medium @lg:table-cell">
+              <th className="hidden w-28 py-2 pe-3 text-start font-medium @lg:table-cell">
                 <Trans>Kind</Trans>
               </th>
               {snapshot ? (
                 <>
-                  <th className="hidden w-24 py-2 pe-3 text-end font-medium @2xl:table-cell">
+                  <th className="hidden w-20 py-2 pe-3 text-end font-medium @2xl:table-cell">
                     <Trans>Shares</Trans>
                   </th>
-                  <th className="w-24 py-2 text-end font-medium">
+                  <th className="w-20 py-2 text-end font-medium">
                     <Trans>Ownership</Trans>
                   </th>
                 </>
@@ -797,10 +816,10 @@ export function CapTablePage({
                   </td>
                   {snapshot ? (
                     <>
-                      <td className="hidden py-2 pe-3 text-end font-mono tabular-nums @2xl:table-cell">
+                      <td className="hidden py-2 pe-3 text-end tabular-nums @2xl:table-cell">
                         {holder?.shares != null ? num(holder.shares) : empty}
                       </td>
-                      <td className="py-2 text-end font-mono tabular-nums">
+                      <td className="py-2 text-end tabular-nums">
                         {holder?.percent != null ? pct(holder.percent) : empty}
                       </td>
                     </>
@@ -848,11 +867,16 @@ export function CapTablePage({
             <span className="py-1">{toast.text}</span>
             {toast.undo ? (
               <Button variant="ghost" size="sm" onClick={toast.undo}>
-                <Trans>Undo</Trans>
+                {toast.sticky ? <Trans>Try again</Trans> : <Trans>Undo</Trans>}
               </Button>
             ) : (
               <span className="pe-2" />
             )}
+            {toast.sticky ? (
+              <Button variant="ghost" size="sm" onClick={() => setToast(null)}>
+                <Trans>Dismiss</Trans>
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </div>

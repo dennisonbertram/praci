@@ -7,7 +7,7 @@ import { afterEach, expect, it, vi } from "vitest";
 const servers = vi.hoisted(() => vi.fn());
 vi.mock("./rpc", () => ({ rpc: { mcp: { servers: { list: servers } } } }));
 
-import { useAutoCreateCartaAgent } from "./carta-agent";
+import { cartaPanelState, useAutoCreateCartaAgent, useOnPhoneWidth } from "./carta-agent";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -78,4 +78,40 @@ it("creates the agent after a sign-in that happened once the first check had fou
   servers.mockResolvedValue([carta]);
   await act(async () => void window.dispatchEvent(new Event("focus")));
   expect(create).toHaveBeenCalledTimes(1);
+});
+
+const base = { connected: true, collapsed: true, hasAgent: false, creating: false, error: "" };
+
+it("offers the collapsed panel's button when creating the agent failed, with no agent yet", () => {
+  expect(cartaPanelState({ ...base, error: "boom" }).canShow).toBe(true);
+  expect(cartaPanelState({ ...base, error: "boom", collapsed: false }).open).toBe(true);
+  expect(cartaPanelState({ ...base, hasAgent: true }).canShow).toBe(true);
+  expect(cartaPanelState(base).canShow).toBe(false);
+  expect(cartaPanelState({ ...base, error: "boom", connected: false }).canShow).toBe(false);
+  expect(cartaPanelState({ ...base, collapsed: false }).open).toBe(false);
+});
+
+it("calls back when the window shrinks below the desktop width, not when it grows", () => {
+  let listener: (() => void) | undefined;
+  const query = {
+    matches: true,
+    addEventListener: (_: string, fn: () => void) => {
+      listener = fn;
+    },
+    removeEventListener: () => {},
+  };
+  vi.stubGlobal("matchMedia", () => query);
+  const onPhone = vi.fn();
+  function Phone() {
+    useOnPhoneWidth(onPhone);
+    return null;
+  }
+  act(() => root.render(<Phone />));
+  query.matches = true;
+  listener?.();
+  expect(onPhone).not.toHaveBeenCalled();
+  query.matches = false;
+  listener?.();
+  expect(onPhone).toHaveBeenCalledTimes(1);
+  vi.unstubAllGlobals();
 });
