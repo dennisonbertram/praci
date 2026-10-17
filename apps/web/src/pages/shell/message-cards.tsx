@@ -5,6 +5,7 @@ import { Button, Dialog, DialogClose, DialogContent, DialogTitle } from "@rakazo
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BuiCard, SuccessPop } from "../../components/ai/primitives";
+import { AppLogo } from "../../components/integrations/AppLogo";
 import type { ArtifactTarget } from "../../lib/artifact-open";
 import { chartViewport } from "../../lib/chart-viewport";
 import { connectMcpOauth } from "../../lib/mcp-connect";
@@ -205,22 +206,15 @@ export function AppConnectCard({
     <BuiCard
       role="group"
       aria-label={t`${block.name} connection`}
-      className="w-[min(420px,80%)] px-4 py-3.5"
+      className="w-[min(420px,100%)] px-4 py-3.5"
     >
-      <div className="flex items-center gap-3.5">
-        {block.logo ? (
-          <img
-            src={block.logo}
-            alt=""
-            className="h-10 w-10 rounded-[10px] bg-white object-contain p-1"
-          />
-        ) : (
-          <span className="grid h-10 w-10 place-items-center rounded-[10px] bg-muted text-[15px] text-foreground">
-            {block.name.slice(0, 1).toUpperCase()}
+      {/* On a narrow card the button wraps under the name instead of covering it. */}
+      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
+        <AppLogo name={block.name} logo={block.logo} />
+        <span className="min-w-40 flex-1">
+          <span className="block truncate text-[15px] font-medium text-foreground">
+            {block.name}
           </span>
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-medium text-foreground">{block.name}</span>
           <span className="block truncate text-[13px] text-muted-foreground">
             {block.description}
           </span>
@@ -230,7 +224,7 @@ export function AppConnectCard({
         ) : (
           <Button
             variant="secondary"
-            className="rounded-full hover:border-border hover:bg-accent hover:text-foreground"
+            className="ms-auto rounded-full hover:border-border hover:bg-accent hover:text-foreground"
             disabled={busy}
             onClick={() => void authorize()}
           >

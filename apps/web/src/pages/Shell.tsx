@@ -481,9 +481,7 @@ export function ShellPage() {
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
   const [cartaAgentError, setCartaAgentError] = useState("");
   useEffect(() => {
-    setInboxAgentCollapsed(
-      readInboxAgentCollapsed(userId) || !wideScreen(),
-    );
+    setInboxAgentCollapsed(readInboxAgentCollapsed(userId) || !wideScreen());
   }, [userId]);
   const [query, setQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
@@ -5723,9 +5721,12 @@ const Transcript = memo(function Transcript({
                         dateTime={message.createdAt}
                         data-testid="message-hover-time"
                         className={cn(
-                          "pointer-events-none absolute end-0 z-10 whitespace-nowrap text-xs tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100 group-has-[[aria-expanded=true]]/message:opacity-100 [@media(hover:none)]:transition-none",
-                          // Bot speaker header renders its own time in the header row; here it sits just above the bubble.
-                          "bottom-full pb-0.5",
+                          "pointer-events-none absolute z-10 whitespace-nowrap text-xs tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100 group-has-[[aria-expanded=true]]/message:opacity-100 [@media(hover:none)]:transition-none",
+                          // Bot speaker header renders its own time in the header row; here it sits in the
+                          // gutter beside the bubble, above the hover actions, clear of neighbouring messages.
+                          message.role === "user"
+                            ? "end-full bottom-8 pe-3"
+                            : "start-full bottom-8 ps-3",
                           // Touch has no hover margin: drop the revealed time in-flow under the bubble.
                           "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
                           "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
