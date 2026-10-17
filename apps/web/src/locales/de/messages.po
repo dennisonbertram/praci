@@ -203,8 +203,8 @@ msgstr ""
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
-msgid "{0}'s screen"
-msgstr "{0}s Bildschirm"
+msgid "{0}'s computer screen"
+msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "{accounts} + crypto"
@@ -512,6 +512,10 @@ msgstr ""
 msgid "Action confirmations"
 msgstr "Aktionsbestätigungen"
 
+#: src/pages/Shell.tsx
+msgid "Actions"
+msgstr ""
+
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.spaceName
 #. placeholder {0}: item.chat.name
@@ -698,6 +702,10 @@ msgstr ""
 msgid "Advanced"
 msgstr "Erweitert"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Advanced: connect an outside memory service"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
 msgstr ""
@@ -728,6 +736,10 @@ msgstr ""
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "All bots can use {0}."
+msgstr ""
+
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "All bots share one memory"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -1302,10 +1314,6 @@ msgid "Bot"
 msgstr "Bot"
 
 #: src/pages/Shell.tsx
-msgid "Bot computer"
-msgstr ""
-
-#: src/pages/Shell.tsx
 msgid "Bot screen"
 msgstr "Bot-Bildschirm"
 
@@ -1591,8 +1599,8 @@ msgid "Chat apps, group channels, and agent connections."
 msgstr ""
 
 #: src/pages/Shell.tsx
-msgid "Chat Settings"
-msgstr "Chat-Einstellungen"
+msgid "Chat settings"
+msgstr ""
 
 #: src/pages/SpaceSearch.tsx
 msgid "Chats"
@@ -1904,6 +1912,14 @@ msgid "Computer"
 msgstr "Computer"
 
 #: src/pages/Shell.tsx
+msgid "Computer and routines"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Computer could not start"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Computer failed to boot"
 msgstr "Computer konnte nicht gestartet werden"
 
@@ -1913,6 +1929,18 @@ msgstr "Computer ist im Ruhezustand"
 
 #: src/pages/Shell.tsx
 msgid "Computer is asleep. Open it to wake."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Computer is off"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Computer is on"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Computer is starting"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2486,6 +2514,10 @@ msgstr "Server konnte nicht erreicht werden"
 msgid "Could not read this file"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Could not read this file. Delete it and upload it again."
+msgstr ""
+
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
 msgstr ""
@@ -2914,10 +2946,6 @@ msgstr "Standard ({0})"
 msgid "Default ({0})"
 msgstr "Standard ({0})"
 
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Default scope"
-msgstr "Standardbereich"
-
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/Preview.tsx
@@ -3237,6 +3265,7 @@ msgstr ""
 msgid "Draft skill"
 msgstr "Skill-Entwurf"
 
+#: src/components/PageAgentIntro.tsx
 #: src/pages/Shell.tsx
 msgid "Draft this month's investor update"
 msgstr ""
@@ -3283,6 +3312,14 @@ msgstr "Duplizieren"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "e.g. Recruiting, Sales, Legal"
+msgstr ""
+
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Each bot keeps its own"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Each switch covers one AI service. Data goes only to services that are on; models from your other services keep working."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3608,7 +3645,7 @@ msgstr "Modelle suchen"
 msgid "Find recurring and overlapping spend to cut."
 msgstr ""
 
-#: src/components/inbox/InboxAgentIntro.tsx
+#: src/components/PageAgentIntro.tsx
 msgid "Find the latest invoice"
 msgstr ""
 
@@ -3792,6 +3829,7 @@ msgstr ""
 msgid "Group"
 msgstr "Gruppe"
 
+#: src/pages/BotContextMenu.tsx
 #: src/pages/GroupPanel.tsx
 msgid "Group settings"
 msgstr "Gruppeneinstellungen"
@@ -3894,6 +3932,14 @@ msgstr "Stunden"
 msgid "How long cash lasts, with what-ifs."
 msgstr ""
 
+#: src/components/PageAgentIntro.tsx
+msgid "How much of the option pool is left?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "How much runway do we have?"
+msgstr ""
+
 #: src/pages/RoutineSchedule.tsx
 msgid "How often"
 msgstr "Wie oft"
@@ -3902,7 +3948,15 @@ msgstr "Wie oft"
 msgid "How to check"
 msgstr "So wird geprüft"
 
-#: src/components/inbox/InboxAgentIntro.tsx
+#: src/components/PageAgentIntro.tsx
+msgid "I keep your cap table and investor contacts, and draft investor updates for you to review."
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "I read your bank and card accounts and answer questions about cash, spending and runway."
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 msgstr ""
 
@@ -4049,7 +4103,6 @@ msgstr ""
 msgid "Investors"
 msgstr ""
 
-#: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
 msgstr "Isoliert"
@@ -4409,10 +4462,6 @@ msgstr ""
 msgid "Manage messaging settings"
 msgstr ""
 
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Manage the Space semantic memory provider."
-msgstr "Verwalte den Anbieter für semantische Erinnerungen des Arbeitsbereichs."
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Manual setup required"
 msgstr ""
@@ -4524,6 +4573,10 @@ msgstr "Mitglieder ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
 #: src/pages/GroupPanel.tsx
 msgid "Members (pick {GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
 msgstr "Mitglieder ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX} auswählen)"
+
+#: src/pages/Shell.tsx
+msgid "Members and settings"
+msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Memo"
@@ -5011,7 +5064,7 @@ msgid "No matches"
 msgstr ""
 
 #: src/pages/SpaceSearch.tsx
-msgid "No matches in chats, pages or documents."
+msgid "No matches in chats, pages, documents or artifacts."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -5368,6 +5421,10 @@ msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Open server integrations"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Open Settings"
 msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
@@ -5760,6 +5817,10 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
+msgstr ""
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Rakazo keeps itself up to date. If an update ever needs you, it shows here."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -6286,6 +6347,7 @@ msgstr ""
 msgid "Routine"
 msgstr "Routine"
 
+#: src/pages/BotContextMenu.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Routines"
 msgstr "Routinen"
@@ -6559,6 +6621,10 @@ msgstr "Suche…"
 msgid "Security"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "See usage"
+msgstr ""
+
 #: src/pages/CapTable.tsx
 msgid "See who owns your company"
 msgstr ""
@@ -6668,14 +6734,6 @@ msgstr ""
 msgid "Settings"
 msgstr "Einstellungen"
 
-#: src/pages/Shell.tsx
-msgid "Settings: General"
-msgstr "Einstellungen: Allgemein"
-
-#: src/pages/Shell.tsx
-msgid "Settings: Usage"
-msgstr "Einstellungen: Nutzung"
-
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Setup help"
@@ -6685,7 +6743,6 @@ msgstr "Einrichtungshilfe"
 msgid "Shape"
 msgstr "Form"
 
-#: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
 msgstr "Geteilt"
@@ -6860,6 +6917,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Skill {0}"
 msgstr "Skill {0}"
+
+#: src/pages/Shell.tsx
+msgid "Skills"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Skills and actions"
@@ -7141,7 +7202,7 @@ msgstr ""
 msgid "Summarize this week's investor email"
 msgstr ""
 
-#: src/components/inbox/InboxAgentIntro.tsx
+#: src/components/PageAgentIntro.tsx
 msgid "Summarize what's new this week"
 msgstr ""
 
@@ -7802,7 +7863,6 @@ msgstr ""
 msgid "URL"
 msgstr ""
 
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
 msgid "Usage"
@@ -8010,6 +8070,14 @@ msgstr ""
 msgid "What about its memories?"
 msgstr "Was soll mit seinen Erinnerungen geschehen?"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "What bots remember by default"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "What did we spend last month?"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "What do you want me on first?"
 msgstr ""
@@ -8022,7 +8090,7 @@ msgstr ""
 msgid "What needs a reply from me today?"
 msgstr ""
 
-#: src/components/inbox/InboxAgentIntro.tsx
+#: src/components/PageAgentIntro.tsx
 msgid "What needs my reply today?"
 msgstr ""
 
@@ -8037,6 +8105,10 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
 msgstr "Was zurückgegeben werden soll"
+
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "What your bots remember between chats, and where they keep it."
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "When a webhook fires"
@@ -8062,12 +8134,20 @@ msgstr ""
 msgid "Where should bots run?"
 msgstr "Wo sollen Bots ausgeführt werden?"
 
+#: src/components/PageAgentIntro.tsx
+msgid "Which bills are unpaid?"
+msgstr ""
+
 #: src/components/integrations/AgentStep.tsx
 msgid "Which bots can use {appName}?"
 msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Who are our investors?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "Who owns what in the company?"
 msgstr ""
 
 #: src/components/EmailCards.tsx
