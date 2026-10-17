@@ -715,6 +715,8 @@ export interface RouterDeps {
   /** Reads an uploaded bank statement; wired in app.ts. */
   parseStatement?: ParseStatement;
   financeCrypto?: FinanceCryptoDeps;
+  /** Replaces the network for Coinbase and Kraken reads (offline stacks). */
+  exchangeFetch?: typeof fetch;
   connectors: ConnectorRegistry;
   remoteConnectors?: RemoteConnectorDependencies;
   artifacts: ArtifactStore;
@@ -958,6 +960,7 @@ export function createRouter(deps: RouterDeps) {
     secrets: deps.secrets,
     crypto: deps.financeCrypto,
     parseStatement: deps.parseStatement,
+    ...(deps.exchangeFetch ? { exchangeFetch: deps.exchangeFetch } : {}),
   };
   const codexCatalog = deps.codexCatalog ?? new CodexCatalogCache();
   const favicons = deps.favicons ?? createFaviconResolver();

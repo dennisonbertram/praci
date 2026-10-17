@@ -1,8 +1,11 @@
+import { generateKeyPairSync } from "node:crypto";
 import {
   createRpcClient,
   fetchChainSnapshot,
+  fetchExchangeBalances,
   fetchPrices,
   McpSession,
+  parseStatement,
   ThirdPartyConnectorEmulator,
 } from "@rakazo/adapters";
 import {
@@ -195,18 +198,101 @@ describe("mock demo data", () => {
     expect(boxes["mock-demo-sales"].messages.length).toBeGreaterThan(0);
   });
 
-  it("builds last month's mock statement with balances that add up", () => {
+  it("builds last month's mock statement that names its bank and whose balances add up", async () => {
     const { fileName, body } = demoStatementCsv(new Date("2026-10-16T12:00:00Z"));
     expect(fileName).toBe("mock-community-bank-2026-09.csv");
-    const [, ...lines] = body.trim().split("\n");
-    let balance = 10_000_00;
-    for (const line of lines) {
-      const [date, description, amount, after] = line.split(",");
-      expect(date?.startsWith("2026-09-")).toBe(true);
-      expect(description).toContain("(Mock)");
-      balance += Math.round(Number(amount) * 100);
-      expect(Math.round(Number(after) * 100)).toBe(balance);
+    const { statement, check } = await parseStatement(
+      { fileName, bytes: new TextEncoder().encode(body) },
+      {},
+    );
+    expect(statement).toMatchObject({
+      institution: "MOCK Community Bank",
+      accountLast4: "5502",
+      openingBalanceCents: 1_000_000,
+      closingBalanceCents: 1_050_000,
+    });
+    expect(check).toEqual({ balances: "match", differenceCents: 0 });
+    for (const t of statement.transactions) {
+      expect(t.date.startsWith("2026-09-")).toBe(true);
+      expect(t.description).toContain("(Mock)");
     }
+  });
+
+  it("serves the finance history the Finance stories need, without a negative checking balance", async () => {
+    const now = new Date("2026-10-16T12:00:00Z");
+    const { callToolFor } = demoFinance(now);
+    const mercury = await callToolFor({ id: "s", provider: "mercury", endpoint: "" } as never);
+    const brex = await callToolFor({ id: "s", provider: "brex", endpoint: "" } as never);
+    const accounts = (await mercury("getAccounts", {})) as {
+      accounts: Array<{ id: string; availableBalance: number }>;
+    };
+    const checking = (await mercury("listTransactions", {
+      accountId: ["chk-1111"],
+      limit: 1000,
+      status: ["sent"],
+    })) as { transactions: Array<{ amount: number; date: string; category: string | null }> };
+    // Rebuilt backward from today, the balance never goes below zero.
+    let cents = Math.round(
+      (accounts.accounts.find((a) => a.id === "chk-1111")?.availableBalance ?? 0) * 100,
+    );
+    for (const t of [...checking.transactions].sort((a, b) => b.date.localeCompare(a.date))) {
+      cents -= Math.round(t.amount * 100);
+      expect(cents).toBeGreaterThanOrEqual(0);
+    }
+    const months = new Set(checking.transactions.map((t) => t.date.slice(0, 7)));
+    expect(months.size).toBeGreaterThanOrEqual(7);
+    expect(checking.transactions.some((t) => t.amount === -48_000)).toBe(true);
+
+    const expenses = (await brex("list_expenses", { intent: "test", limit: 100 })) as {
+      items: Array<{
+        purchased_at: string;
+        memo: string;
+        merchant_category: { name: string };
+        amount: { currency: string };
+      }>;
+    };
+    const all = [...expenses.items];
+    for (let cursor = "100"; ; ) {
+      const next = (await brex("list_expenses", { intent: "test", limit: 100, cursor })) as {
+        items: typeof all;
+        next_cursor: string | null;
+      };
+      all.push(...next.items);
+      if (!next.next_cursor) break;
+      cursor = next.next_cursor;
+    }
+    const thisMonth = new Set([
+      ...all
+        .filter((e) => e.purchased_at.startsWith("2026-10"))
+        .map((e) => e.merchant_category.name),
+      ...checking.transactions
+        .filter((t) => t.date.startsWith("2026-10") && t.amount < 0 && t.category)
+        .map((t) => t.category),
+    ]);
+    expect(thisMonth.size).toBeGreaterThanOrEqual(8);
+    expect(all.some((e) => e.amount.currency === "EUR")).toBe(true);
+    expect(all.some((e) => /\$\d/.test(e.memo))).toBe(true);
+    const treasury = (await mercury("getTreasury", {})) as {
+      accounts: Array<{ netReturns: unknown[] }>;
+    };
+    expect(treasury.accounts[0]?.netReturns).toHaveLength(6);
+  });
+
+  it("reads the Coinbase and Kraken fakes with any well-formed key", async () => {
+    const { fetch } = demoCrypto();
+    const kraken = await fetchExchangeBalances(
+      "kraken",
+      { key: "mock-key", secret: "bW9jay1zZWNyZXQ=" },
+      { fetch },
+    );
+    expect(kraken.map((b) => b.code).sort()).toEqual(["XETH", "ZUSD"]);
+    const { privateKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+    const coinbase = await fetchExchangeBalances(
+      "coinbase",
+      { key: "mock-key", secret: privateKey.export({ type: "sec1", format: "pem" }).toString() },
+      { fetch },
+    );
+    expect(new Set(coinbase.map((b) => b.code))).toEqual(new Set(["USD", "BTC", "USDC"]));
   });
 
   it("serves about three months of mock finance history", async () => {

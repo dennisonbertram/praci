@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from "node:crypto";
 import { createSecretStore, syncFinanceForUser } from "@rakazo/adapters";
 import { CARTA_MCP_ENDPOINT, FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
 import { createDb, saveCapTableSnapshot } from "@rakazo/db";
@@ -11,9 +12,12 @@ import {
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_ENS_WALLET,
   DEMO_GROUP,
+  DEMO_RECONNECT_SPACE,
   DEMO_USER_NAME,
   DEMO_WALLET,
+  demoCryptoHistory,
   demoFinance,
   demoFolderPaths,
   demoStatementCsv,
@@ -139,26 +143,30 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       });
       return stored.id;
     };
-    for (const provider of ["mercury", "brex"] as const) {
-      await prisma.mcpServer.create({
-        data: {
-          ...scope,
-          slug: `finance-${provider}`,
-          name: provider === "mercury" ? "Mercury" : "Brex",
-          transport: "streamable_http",
-          endpoint: FINANCE_MCP_ENDPOINTS[provider],
-          secretId: await fakeLogin(),
-        },
-      });
-    }
-    const result = await syncFinanceForUser(
-      { prisma, callToolFor: demoFinance().callToolFor },
-      scope,
-      { force: true },
-    );
-    if (Object.values(result).some((outcome) => outcome !== "synced"))
-      throw new Error(`Finance seed did not sync: ${JSON.stringify(result)}`);
-    await session.rpc("finance/agent");
+    // Mercury and Brex with a stored (fake) login, synced once from the canned tools.
+    const connectFinance = async (where: { spaceId: string; userId: string }) => {
+      for (const provider of ["mercury", "brex"] as const) {
+        await prisma.mcpServer.create({
+          data: {
+            ...where,
+            slug: `finance-${provider}`,
+            name: provider === "mercury" ? "Mercury" : "Brex",
+            transport: "streamable_http",
+            endpoint: FINANCE_MCP_ENDPOINTS[provider],
+            secretId: await fakeLogin(),
+          },
+        });
+      }
+      const result = await syncFinanceForUser(
+        { prisma, callToolFor: demoFinance().callToolFor },
+        where,
+        { force: true },
+      );
+      if (Object.values(result).some((outcome) => outcome !== "synced"))
+        throw new Error(`Finance seed did not sync: ${JSON.stringify(result)}`);
+    };
+    await connectFinance(scope);
+    const agent = await session.rpc<{ id: string }>("finance/agent");
     done.push("Mercury and Brex (canned tools), Finance agent");
 
     // Cap Table: a signed-in Carta server and the Carta agent's last read of the mock cap table.
@@ -183,13 +191,84 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     });
     await session.rpc("finance/statementConfirm", { id: reviewed.id });
     done.push("1 imported bank statement");
-    // A treasury wallet, read through the API's offline crypto fake (no real chain is called).
-    await session.rpc("finance/walletAdd", {
+    // A treasury Safe and an ENS ops wallet, read through the API's offline crypto fake (no real
+    // chain is called), with 90 days of history for the Safe, and a Coinbase connection whose
+    // invented key reaches only the fake.
+    const safe = await session.rpc<{ id: string }>("finance/walletAdd", {
       addressOrEns: DEMO_WALLET.address,
       label: DEMO_WALLET.label,
-      type: "personal",
+      type: DEMO_WALLET.type,
     });
-    done.push("1 crypto wallet (offline fake balances)");
+    await session.rpc("finance/walletAdd", {
+      addressOrEns: DEMO_ENS_WALLET.name,
+      label: DEMO_ENS_WALLET.label,
+      type: DEMO_ENS_WALLET.type,
+    });
+    await prisma.financeCryptoSnapshot.createMany({
+      data: demoCryptoHistory().map((point) => ({
+        ...scope,
+        walletId: safe.id,
+        day: point.day,
+        stablecoinCents: BigInt(point.stablecoinCents),
+        otherCryptoCents: BigInt(point.otherCryptoCents),
+      })),
+      skipDuplicates: true,
+    });
+    const { privateKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+    await session.rpc("finance/exchangeConnect", {
+      provider: "coinbase",
+      key: "organizations/mock-demo/apiKeys/mock-demo-key",
+      secret: privateKey.export({ type: "sec1", format: "pem" }).toString(),
+    });
+    done.push("2 crypto wallets (a 2-of-3 Safe and an ENS wallet) and Coinbase (offline fakes)");
+
+    // The Finance agent's pins: Cash and Runway as on the dashboard, and a month-end checklist.
+    const overview = await session.rpc<{
+      cash: { cashCents: number };
+      runway: { months: number | null };
+    }>("finance/overview");
+    const usd = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+    await prisma.botPins.create({
+      data: {
+        ...scope,
+        botId: agent.id,
+        updatedBy: "bot",
+        refreshedAt: new Date(),
+        stats: [
+          { id: "cash", label: "Cash", value: usd(overview.cash.cashCents), detail: MOCK_NOTE },
+          {
+            id: "runway",
+            label: "Runway",
+            value: overview.runway.months === null ? "—" : `${overview.runway.months} mo`,
+            detail: MOCK_NOTE,
+          },
+        ],
+        list: {
+          title: "Month-end close",
+          items: [
+            { id: "recon", text: "Reconcile Mercury and Brex", done: true },
+            { id: "receipts", text: "Chase missing receipts", done: false },
+            { id: "update", text: "Send the investor update", done: false },
+          ],
+        },
+      },
+    });
+    done.push("Finance agent pins (Cash, Runway) and a Month-end close checklist");
+
+    // A second company whose Mercury login has expired, for the Reconnect path.
+    const reconnect = await session.rpc<{ id: string }>("spaces/create", {
+      name: DEMO_RECONNECT_SPACE,
+    });
+    const reconnectScope = { spaceId: reconnect.id, userId: user.id };
+    await connectFinance(reconnectScope);
+    const mercury = await prisma.mcpServer.findFirstOrThrow({
+      where: { ...reconnectScope, slug: "finance-mercury" },
+    });
+    await prisma.financeSyncState.updateMany({
+      where: { ...reconnectScope, mcpServerId: mercury.id },
+      data: { needsReconnect: true },
+    });
+    done.push(`space "${DEMO_RECONNECT_SPACE}" (Mercury needs reconnecting)`);
   } finally {
     await prisma.$disconnect();
     await pool.end();
