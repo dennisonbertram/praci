@@ -222,6 +222,10 @@ msgstr ""
 msgid "{days}d ago"
 msgstr "{days} 天前"
 
+#: src/pages/Shell.tsx
+msgid "{from} handed off to {to}"
+msgstr ""
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr ""
@@ -1103,7 +1107,6 @@ msgid "Blocked"
 msgstr ""
 
 #: src/pages/Board.tsx
-#: src/pages/Shell.tsx
 msgid "Board"
 msgstr ""
 
@@ -2179,6 +2182,10 @@ msgstr "无法加载运行历史记录"
 #: src/pages/Auth.tsx
 msgid "Could not load sign-in options"
 msgstr "无法加载登录选项"
+
+#: src/components/AccountAccess.tsx
+msgid "Could not load sign-in options."
+msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not load skill"
@@ -5899,7 +5906,7 @@ msgid "Send saved draft"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews are sent to {name}."
+msgid "Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -6392,6 +6399,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Take control"
 msgstr "接管控制权"
+
+#: src/pages/Shell.tsx
+msgid "Task board"
+msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"

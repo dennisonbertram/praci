@@ -222,6 +222,10 @@ msgstr "{count} years"
 msgid "{days}d ago"
 msgstr "{days}d ago"
 
+#: src/pages/Shell.tsx
+msgid "{from} handed off to {to}"
+msgstr "{from} handed off to {to}"
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
@@ -1103,7 +1107,6 @@ msgid "Blocked"
 msgstr "Blocked"
 
 #: src/pages/Board.tsx
-#: src/pages/Shell.tsx
 msgid "Board"
 msgstr "Board"
 
@@ -2179,6 +2182,10 @@ msgstr "Could not load run history"
 #: src/pages/Auth.tsx
 msgid "Could not load sign-in options"
 msgstr "Could not load sign-in options"
+
+#: src/components/AccountAccess.tsx
+msgid "Could not load sign-in options."
+msgstr "Could not load sign-in options."
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not load skill"
@@ -5899,8 +5906,8 @@ msgid "Send saved draft"
 msgstr "Send saved draft"
 
 #: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews are sent to {name}."
-msgstr "Senders, recipients, subjects and short previews are sent to {name}."
+msgid "Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
+msgstr "Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
 
 #: src/components/MailApprovalCard.tsx
 msgid "Sending is off for {botName}. Turn it back on in its tools."
@@ -6392,6 +6399,10 @@ msgstr "Tags"
 #: src/pages/Shell.tsx
 msgid "Take control"
 msgstr "Take control"
+
+#: src/pages/Shell.tsx
+msgid "Task board"
+msgstr "Task board"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"
