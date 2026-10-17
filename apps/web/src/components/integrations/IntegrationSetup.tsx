@@ -47,23 +47,31 @@ export function IntegrationSetup({
   const [connected, setConnected] = useState<string[]>([]);
   // Each provider is named, then described by what it does for the people on this server.
   const choices: { id: Choice; label: string; detail: string }[] = [
-    { id: "direct", label: t`App servers`, detail: t`Connect apps that publish a server address` },
+    {
+      id: "direct",
+      label: t`Apps with their own server`,
+      detail: t`Paste the web address an app gives you`,
+    },
     {
       id: "composio",
-      label: "Composio",
-      detail: t`Sign in to popular apps through Composio, with your API key`,
+      label: t`Popular apps through Composio`,
+      detail: t`Slack, Notion, GitHub and more, with one Composio API key`,
     },
     {
       id: "pipedream",
-      label: "Pipedream",
-      detail: t`Sign in to popular apps through Pipedream, with your project`,
+      label: t`Popular apps through Pipedream`,
+      detail: t`Slack, Notion, GitHub and more, with one Pipedream project`,
     },
     {
       id: "google",
-      label: "Google",
+      label: t`Google apps`,
       detail: t`Your own Google sign-in for Gmail, Calendar and Drive`,
     },
-    { id: "executor", label: "Executor", detail: t`Tools from an Executor server you run` },
+    {
+      id: "executor",
+      label: t`Your own tool server`,
+      detail: t`Tools from an Executor server you run`,
+    },
   ];
   const managed = choice === "composio" || choice === "pipedream" || choice === "google";
   const hasCredentials = Boolean(apiKey.trim());
@@ -157,7 +165,7 @@ export function IntegrationSetup({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[32px] font-medium text-foreground">
+        <h1 className="text-lg font-semibold text-foreground">
           {serverSetup ? t`Server integrations` : t`Add MCP server`}
         </h1>
         {serverSetup ? (

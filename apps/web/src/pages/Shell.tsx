@@ -147,7 +147,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
-import { useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
@@ -631,6 +631,9 @@ export function ShellPage() {
   }, []);
   useEffect(refreshInboxUnread, [refreshInboxUnread]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const { pathname } = useLocation();
+  // A link inside Settings (for example Server integrations) opens a page; the dialog closes.
+  useEffect(() => setSettingsOpen(false), [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [messagingSettingsOpen, setMessagingSettingsOpen] = useState(false);
   const [messagingSurfaceEnabled, setMessagingSurfaceEnabled] = useState(false);

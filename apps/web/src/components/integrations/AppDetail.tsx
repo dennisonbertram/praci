@@ -258,7 +258,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
               </p>
               {data.setup?.canConfigure ? (
                 <Link
-                  to={`/integrations/setup?next=${encodeURIComponent(
+                  to={`/app/integrations/setup?next=${encodeURIComponent(
                     appReturnPath(`${location.pathname}${location.search}`) ?? location.pathname,
                   )}`}
                   className="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"

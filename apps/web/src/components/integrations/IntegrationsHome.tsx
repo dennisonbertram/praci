@@ -459,7 +459,7 @@ export function IntegrationsHome({
                 </b>
                 <div className="mt-3">
                   <Link
-                    to="/integrations/setup?next=/app/integrations"
+                    to="/app/integrations/setup?next=/app/integrations"
                     className="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
                   >
                     <Trans>Set up app catalog</Trans>

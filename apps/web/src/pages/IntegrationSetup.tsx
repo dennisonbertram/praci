@@ -49,9 +49,9 @@ export function IntegrationSetupPage() {
   const back = () =>
     navigate(bots.length ? (appReturnPath(params.get("next")) ?? "/app") : "/onboarding");
   return (
-    <div className="min-h-full bg-background px-6 py-12">
-      <div className="mx-auto max-w-[560px]">
-        <Button variant="ghost" size="sm" className="-ms-2 mb-6" onClick={back}>
+    <div className="rk-scroll h-full min-h-full overflow-y-auto bg-background px-4 pt-2 pb-8 md:px-7 md:pt-5">
+      <div className="max-w-[560px]">
+        <Button variant="ghost" size="sm" className="-ms-2 mb-4" onClick={back}>
           <ArrowLeft aria-hidden="true" />
           <Trans>Back</Trans>
         </Button>

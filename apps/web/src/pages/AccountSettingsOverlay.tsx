@@ -232,9 +232,10 @@ export function GeneralSettingsPanels({
           </div>
           <Button
             variant="outline"
+            aria-label={t`Open server integrations`}
             render={
               <Link
-                to={`/integrations/setup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                to={`/app/integrations/setup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
               />
             }
           >

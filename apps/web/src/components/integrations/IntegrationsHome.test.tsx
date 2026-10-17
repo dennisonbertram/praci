@@ -96,7 +96,8 @@ it("tells the owner to connect a provider when only native Google is configured"
     "Connect a Composio or Pipedream account to add apps like Slack, Notion and GitHub.",
   );
   expect(
-    container.querySelector('a[href="/integrations/setup?next=/app/integrations"]')?.textContent,
+    container.querySelector('a[href="/app/integrations/setup?next=/app/integrations"]')
+      ?.textContent,
   ).toBe("Set up app catalog");
   expect(container.querySelector('input[type="search"]')).toBeNull();
   expect(container.querySelector('[aria-label="Category"]')).toBeNull();
