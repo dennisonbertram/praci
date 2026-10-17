@@ -28,6 +28,8 @@ export interface DemoSeedOptions {
   encryptionKey: string;
   email: string;
   password: string;
+  /** No model set up (DEMO_NO_MODEL=1): Carta is connected but has never been read. */
+  noModel?: boolean;
 }
 
 /** A signed-in browser stand-in: the session cookie plus the API's RPC and upload routes. */
@@ -172,9 +174,12 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
         secretId: await fakeLogin(),
       },
     });
-    await saveCapTableSnapshot(prisma, scope, DEMO_CAP_TABLE);
+    // Without a model the Carta agent could never have read Carta, so there is no snapshot.
+    if (!options.noModel) await saveCapTableSnapshot(prisma, scope, DEMO_CAP_TABLE);
     await session.rpc("carta/agent");
-    done.push("Carta (mock login; its tools reach only the emulator), mock cap table, Carta agent");
+    done.push(
+      `Carta (mock login; its tools reach only the emulator), ${options.noModel ? "no cap table read yet" : "mock cap table"}, Carta agent`,
+    );
     // A bank with no integration: last month's statement, uploaded and imported as a user would.
     const statement = demoStatementCsv();
     const reviewed = await session.rpc<{ id: string }>("finance/statementUpload", {

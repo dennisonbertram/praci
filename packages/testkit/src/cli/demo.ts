@@ -302,6 +302,7 @@ async function up() {
       encryptionKey: env.ENCRYPTION_KEY as string,
       email,
       password,
+      noModel: process.env.DEMO_NO_MODEL === "1",
     });
     console.log(`Seeded: ${done.join("; ")}`);
     console.log(

@@ -654,6 +654,7 @@ it("says a model is needed and opens Models settings when none is set up", async
   await show("/app/cap-table", { onOpenModelSettings });
   await flush();
   expect(container.textContent).toContain("needs a model before it can read your cap table");
+  expect(button("Read cap table")).toBeUndefined();
   await click(button("Add a model"));
   expect(onOpenModelSettings).toHaveBeenCalled();
 });

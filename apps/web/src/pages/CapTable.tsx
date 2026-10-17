@@ -732,19 +732,16 @@ export function CapTablePage({
               )}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {needsModel && onOpenModelSettings ? (
-              <Button onClick={onOpenModelSettings}>
-                <Trans>Add a model</Trans>
-              </Button>
-            ) : null}
-            <Button
-              variant={needsModel && onOpenModelSettings ? "outline" : "default"}
-              onClick={() => void refresh()}
-            >
+          {/* A read cannot start without a model; Refresh in the header reads once one is added. */}
+          {needsModel && onOpenModelSettings ? (
+            <Button onClick={onOpenModelSettings}>
+              <Trans>Add a model</Trans>
+            </Button>
+          ) : (
+            <Button onClick={() => void refresh()}>
               <Trans>Read cap table</Trans>
             </Button>
-          </div>
+          )}
         </Card>
       ) : null}
 
