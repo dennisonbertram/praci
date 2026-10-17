@@ -21,7 +21,8 @@ const CURRENCY = new RegExp(
 export type CurrencyMatch = { start: number; end: number; replacement: string };
 
 // Runway figures the Finance page also hides: "9.2 months of runway", "runs out around July 23, 2027".
-const MONTHS = String.raw`\d+(?:[.,]\d+)?(?=\s?(?:months?|mos?)\b)`;
+// "the last 3 months" names the window burn is averaged over, not a runway figure, so it stays.
+const MONTHS = String.raw`(?<!\b(?:last|past|previous)\s)\d+(?:[.,]\d+)?(?=\s?(?:months?|mos?)\b)`;
 const MONTH_NAME = String.raw`(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?`;
 const DATE = new RegExp(
   String.raw`\b(?:${MONTH_NAME}\s\d{1,2}(?:st|nd|rd|th)?(?:,?\s\d{4})?|${MONTH_NAME}\s\d{4}|\d{4}-\d{2}-\d{2})\b`,

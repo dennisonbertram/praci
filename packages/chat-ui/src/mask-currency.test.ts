@@ -30,6 +30,11 @@ it.each([
   ["Runway: 9.2 months (cash runs out July 2027)", "Runway: ••• months (cash runs out •••)"],
   ["Runway is 14 mo.", "Runway is ••• mo."],
   ["Run-out date: 2027-07-23", "Run-out date: •••"],
+  // The averaging window is not a runway figure; the runway itself still is.
+  [
+    "You have 24.2 months of runway at the last 3 months' burn.",
+    "You have ••• months of runway at the last 3 months' burn.",
+  ],
 ])("masks the runway figures in %s", (input, expected) =>
   expect(maskCurrencyText(input)).toBe(expected),
 );
