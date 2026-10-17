@@ -3883,9 +3883,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ) {
           // Fixed rule, for quality: the Legal agent runs on Muse Spark 1.2 and nothing else. A run
           // that resolved to another model (no OpenRouter key, so the default took over) ends here.
-          await publishMessage(deps, run, "bot", [
-            { kind: "text", text: LEGAL_MODEL_REQUIRED_MESSAGE },
-          ]).catch((error) => getLogger().error("legal model notice", error));
+          // The run's error is the one notice: the chat shows it above the composer with a way to
+          // Models settings, so no bot message repeats it.
           await failRunBeforeModel(LEGAL_MODEL_REQUIRED_MESSAGE);
           return;
         }

@@ -6,7 +6,7 @@ import { toLegalContract, toLegalDeadline } from "@rakazo/adapters";
 import type { Actor, Bot, LegalGraph, LegalOverview } from "@rakazo/contracts";
 import { LEGAL_AGENT_MODEL } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
-import { createLegalRepos, IsolationError } from "@rakazo/db";
+import { createLegalRepos, IsolationError, LEGAL_NOT_LEGAL_TYPE } from "@rakazo/db";
 import { createDataRoomService } from "./data-room.js";
 import { ensureLegalAgent, ensureLegalRoutine, lockLegalBot } from "./legal-agent.js";
 
@@ -58,6 +58,12 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
       next.set(d.contractId, d.dueDate.toISOString().slice(0, 10));
     }
   }
+  const isPreferred =
+    resolved?.provider === LEGAL_AGENT_MODEL.provider && resolved.id === LEGAL_AGENT_MODEL.id;
+  // The agent is set to Muse Spark yet resolved to something else: the user has no OpenRouter key of
+  // their own, because a bot override only runs on the user's credential (never the space default's).
+  const setToMuse =
+    bot.modelProvider === LEGAL_AGENT_MODEL.provider && bot.modelId === LEGAL_AGENT_MODEL.id;
   return {
     contracts: contracts.map((c) => toLegalContract(c, next.get(c.id) ?? null)),
     deadlines: openDeadlines.map((d) =>
@@ -85,16 +91,26 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
           }
         : null,
     },
-    model: resolved
-      ? {
-          provider: resolved.provider,
-          id: resolved.id,
-          isPreferred:
-            resolved.provider === LEGAL_AGENT_MODEL.provider &&
-            resolved.id === LEGAL_AGENT_MODEL.id,
-        }
-      : null,
+    model: resolved ? { provider: resolved.provider, id: resolved.id, isPreferred } : null,
+    modelBlocker: isPreferred ? null : setToMuse ? "own_key" : "model_changed",
   };
+}
+
+/** What deleting this Data room item would also remove from Legal. Reads only; the agent is not created. */
+export async function legalItemLinks(
+  deps: Pick<LegalDeps, "prisma">,
+  actor: Actor,
+  itemId: string,
+) {
+  const contract = await deps.prisma.legalContract.findFirst({
+    where: { ...scope(actor), dataRoomItemId: itemId, contractType: { not: LEGAL_NOT_LEGAL_TYPE } },
+    select: { id: true, title: true },
+  });
+  if (!contract) return { contractTitle: null, deadlines: 0 };
+  const deadlines = await deps.prisma.legalDeadline.count({
+    where: { ...scope(actor), contractId: contract.id },
+  });
+  return { contractTitle: contract.title, deadlines };
 }
 
 export async function legalGraph(deps: LegalDeps, actor: Actor): Promise<LegalGraph> {

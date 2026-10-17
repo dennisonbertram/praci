@@ -19,7 +19,7 @@ export const LEGAL_AGENT_MODEL = {
 
 /** Shown when a Legal run resolves to any other model; the agent runs on Muse Spark 1.2 only. */
 export const LEGAL_MODEL_REQUIRED_MESSAGE =
-  "The Legal agent runs only on Muse Spark 1.2. Add an OpenRouter key in Settings.";
+  "The Legal agent runs only on Muse Spark 1.2, which needs your own OpenRouter key. Add it in Settings > Models > OpenRouter.";
 
 /** Name of the Legal agent's daily routine. */
 export const LEGAL_SCAN_ROUTINE_NAME = "Daily legal scan";
@@ -158,6 +158,12 @@ export const LegalOverviewSchema = z.object({
    * Null when the agent does not exist yet or no model resolves.
    */
   model: z.object({ provider: z.string(), id: z.string(), isPreferred: z.boolean() }).nullable(),
+  /**
+   * Why the Legal agent cannot run on Muse Spark 1.2, or null when it can. "own_key": the user has no
+   * OpenRouter key of their own (a space or server key is not used for the Legal agent).
+   * "model_changed": the Legal agent was set to another model.
+   */
+  modelBlocker: z.enum(["own_key", "model_changed"]).nullable(),
 });
 export type LegalOverview = z.infer<typeof LegalOverviewSchema>;
 
@@ -191,6 +197,13 @@ export const LegalUpdateDeadlineInputSchema = z.object({
   status: LegalDeadlineStatusSchema.optional(),
   notes: z.string().max(2000).nullable().optional(),
 });
+
+/** What deleting a Data room item also removes from Legal: its contract and that contract's deadlines. */
+export const LegalItemLinksSchema = z.object({
+  contractTitle: z.string().nullable(),
+  deadlines: z.number().int(),
+});
+export type LegalItemLinks = z.infer<typeof LegalItemLinksSchema>;
 
 export const LegalScanNowOutputSchema = z.object({
   /** The queued run, in the Legal agent's thread. */

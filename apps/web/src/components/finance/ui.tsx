@@ -40,7 +40,12 @@ import { shade } from "./charts";
  * What the Shell tells every Finance page: how to open the agent panel (absent while it is open),
  * and the space's name when the user has more than one, so they know whose finances these are.
  */
-const ChromeContext = createContext<{ onAskAgent?: () => void; spaceName?: string }>({});
+const ChromeContext = createContext<{
+  onAskAgent?: () => void;
+  spaceName?: string;
+  /** The agent Ask opens, for its accessible name; Finance's by default. */
+  agentName?: string;
+}>({});
 export const FinanceChromeProvider = ChromeContext.Provider;
 
 /** The space's name beside a Finance title; nothing with a single space. */
@@ -52,11 +57,11 @@ export function SpaceName() {
 }
 
 export function AskAgentButton() {
-  const { onAskAgent } = useContext(ChromeContext);
+  const { onAskAgent, agentName } = useContext(ChromeContext);
   if (!onAskAgent) return null;
   return (
     <div className="ms-auto">
-      <AskBotButton botName="Finance agent" onClick={onAskAgent} />
+      <AskBotButton botName={agentName ?? "Finance agent"} onClick={onAskAgent} />
     </div>
   );
 }

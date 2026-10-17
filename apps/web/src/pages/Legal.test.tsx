@@ -33,7 +33,15 @@ vi.mock("../lib/rpc", () => ({ rpc: { legal: rpcMock } }));
 import { LegalGraphView, MAX_GRAPH_NODES } from "../components/legal/LegalGraph";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { LegalPage } from "./Legal";
-import { consentFixture, deadlines, emptyOverview, graph, id, overview } from "./legal/fixtures";
+import {
+  consentFixture,
+  deadlines,
+  emptyOverview,
+  graph,
+  id,
+  needsKeyOverview,
+  overview,
+} from "./legal/fixtures";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -75,7 +83,7 @@ it("shows counts and contracts, with the value formatted from the decimal string
   expect(page).toContain("Auto-renews, 60 days notice");
   // A Term range shows the year on both ends, whatever year it is now.
   expect(page).toContain("Mar 1, 2023 – Feb 28, 2026");
-  expect(page).toContain("Unreviewed documents");
+  expect(page).toContain("Documents not yet checked");
   expect(container.querySelector(`a[href="/app/data-room?item=${id(101)}"]`)).not.toBeNull();
   expect(button("Allow")).toBeUndefined();
 });
@@ -83,7 +91,7 @@ it("shows counts and contracts, with the value formatted from the decimal string
 it("shows the empty state, loading skeleton and load error", async () => {
   rpcMock.overview.mockResolvedValue(emptyOverview);
   await render(<LegalPage />);
-  expect(container.textContent).toContain("scans your Data room");
+  expect(container.textContent).toContain("Press Scan now to read your Data room");
   expect(container.textContent).toContain("Not scanned yet");
 
   rpcMock.overview.mockReturnValue(new Promise(() => {}));
@@ -167,7 +175,8 @@ it("opens the graph tab and draws nodes and edges", async () => {
   await click(tab("Graph"));
   await flush();
   expect(container.querySelectorAll('svg [role="button"]')).toHaveLength(graph.nodes.length);
-  expect(container.querySelectorAll("svg path")).toHaveLength(graph.edges.length);
+  const drawing = container.querySelector('svg [role="button"]')?.closest("svg");
+  expect(drawing?.querySelectorAll("path")).toHaveLength(graph.edges.length);
 });
 
 it("lists a selected node's relations with their source quotes", async () => {
@@ -196,15 +205,31 @@ it("handles an empty graph and caps a very large one", async () => {
   );
 });
 
-it("warns when the Legal agent runs on a different model than Muse Spark 1.2", async () => {
+it("says the user's own OpenRouter key is missing, not that OpenRouter is, and links to it", async () => {
+  const openSettings = vi.fn();
+  rpcMock.overview.mockResolvedValue(needsKeyOverview);
+  await render(<LegalPage onOpenSettings={openSettings} />);
+  const page = container.textContent ?? "";
+  expect(page).toContain("needs your own OpenRouter key");
+  expect(page).toContain("shared OpenRouter access can't be used for Legal");
+  // The disabled Scan now says why, and the empty page points at the fix.
+  expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
+  expect(page).toContain("Needs your OpenRouter key.");
+  expect(page).toContain("Add your OpenRouter key above to start.");
+  await click(button("Add your OpenRouter key"));
+  expect(openSettings).toHaveBeenCalledTimes(1);
+});
+
+it("says when the Legal agent was set to another model", async () => {
   rpcMock.overview.mockResolvedValue({
     ...overview,
     model: { provider: "openrouter", id: "openai/gpt-6-luna", isPreferred: false },
+    modelBlocker: "model_changed",
   });
-  await render(<LegalPage />);
-  expect(container.textContent).toContain(
-    "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key.",
-  );
+  await render(<LegalPage onOpenSettings={() => {}} />);
+  expect(container.textContent).toContain("The Legal agent is set to openai/gpt-6-luna.");
+  expect(container.textContent).toContain("Needs Muse Spark 1.2.");
+  expect(button("Add your OpenRouter key")).toBeUndefined();
 });
 
 it("shows no model warning when the agent runs on Muse Spark 1.2", async () => {
@@ -214,10 +239,10 @@ it("shows no model warning when the agent runs on Muse Spark 1.2", async () => {
 });
 
 it("warns on first load when no model resolves, and shows no consent card without a recipient", async () => {
-  rpcMock.overview.mockResolvedValue({ ...overview, model: null });
+  rpcMock.overview.mockResolvedValue({ ...overview, model: null, modelBlocker: "own_key" });
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
   await render(<LegalPage />);
-  expect(container.textContent).toContain("which needs an OpenRouter key");
+  expect(container.textContent).toContain("needs your own OpenRouter key");
   expect(button("Allow")).toBeUndefined();
 });
 
@@ -262,16 +287,17 @@ it("counts the Overdue tile from the viewer's date, like the row pills", async (
   expect(tile?.textContent).toContain("1");
 });
 
-it("says why Scan now is disabled and opens Models settings from the warning", async () => {
+it("says why Scan now is disabled, and shows no consent card while the model is wrong", async () => {
   const openSettings = vi.fn();
   rpcMock.overview.mockResolvedValue({
     ...overview,
     model: { provider: "openrouter", id: "other/model", isPreferred: false },
+    modelBlocker: "own_key",
   });
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage onOpenSettings={openSettings} />);
   expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
-  await click(button("Open Models settings"));
-  expect(openSettings).toHaveBeenCalledTimes(1);
+  expect(container.textContent).toContain("Needs your OpenRouter key.");
   expect(button("Allow")).toBeUndefined();
 
   await act(async () => root.unmount());
@@ -410,4 +436,51 @@ it("hides amounts in deadline titles and graph labels while amounts are hidden",
   }
   await render(<LegalDeadlines deadlines={[priced]} onChanged={() => {}} today="2026-10-16" />);
   expect(container.textContent).toContain("Pay $12,500 deposit");
+});
+
+it("keeps the page when a re-read fails, says so, and recovers on Try again", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  await render(<LegalPage />);
+  rpcMock.overview.mockRejectedValue(new Error("Could not reach the server"));
+  await act(async () => void window.dispatchEvent(new Event("focus")));
+  await flush();
+  const page = container.textContent ?? "";
+  expect(page).toContain("Master Services Agreement");
+  expect(page).toContain("Scan now");
+  expect(page).toContain("Could not refresh: Could not reach the server");
+  rpcMock.overview.mockResolvedValue(overview);
+  await click(button("Try again"));
+  await flush();
+  expect(container.textContent).not.toContain("Could not refresh");
+  expect(container.textContent).toContain("Master Services Agreement");
+});
+
+it("names the Legal agent on Ask and offers the Hide amounts switch", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  await render(<LegalPage onAskAgent={() => {}} />);
+  expect(button("Ask Legal agent")).toBeDefined();
+  expect(button("Ask Finance agent")).toBeUndefined();
+  expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).not.toBeNull();
+});
+
+it("links the unchecked documents tile to the Data room and the deadline tiles to Deadlines", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  await render(<LegalPage />);
+  expect(container.querySelector('a[href="/app/data-room"]')?.textContent).toContain(
+    "Documents not yet checked",
+  );
+  expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("false");
+  const overdue = [...container.querySelectorAll("a")].find((a) =>
+    a.textContent?.startsWith("Overdue"),
+  );
+  expect(overdue?.getAttribute("href")).toBe("/app/legal?view=deadlines");
+  await click(overdue);
+  expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("true");
+  expect(container.textContent).toContain("Return the security deposit paperwork");
+});
+
+it("says the Legal agent scans daily next to the last scan time", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  await render(<LegalPage />);
+  expect(container.textContent).toMatch(/Last scan .+\. Scans daily\./);
 });

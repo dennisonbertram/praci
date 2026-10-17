@@ -73,19 +73,22 @@ export function ModelSettingsOverlay({
   onClose,
   embedded = false,
   localOwner = false,
+  focusProvider,
 }: {
   onClose: () => void;
   /** Render panel body only for the shared Settings shell. */
   embedded?: boolean;
   localOwner?: boolean;
+  /** Opens on this provider, with its optional own-key form already open. */
+  focusProvider?: string;
 }) {
   const { t } = useLingui();
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   const [credentials, setCredentials] = useState<ModelCredential[]>([]);
   const [me, setMe] = useState<Me | null>(null);
-  const [provider, setProvider] = useState("");
+  const [provider, setProvider] = useState(focusProvider ?? "");
   // The provider whose optional personal-key form is open.
-  const [ownKeyProvider, setOwnKeyProvider] = useState<string | null>(null);
+  const [ownKeyProvider, setOwnKeyProvider] = useState<string | null>(focusProvider ?? null);
   const [providerQuery, setProviderQuery] = useState("");
   const [modelId, setModelId] = useState("");
   const modelIdRef = useRef(modelId);
