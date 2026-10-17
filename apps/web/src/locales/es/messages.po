@@ -266,6 +266,10 @@ msgstr ""
 msgid "{days}d ago"
 msgstr "hace {days} d"
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "{deadlines, plural, one {# deadline} other {# deadlines}}"
+msgstr ""
+
 #: src/components/data-room/format.ts
 msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
 msgstr ""
@@ -679,6 +683,14 @@ msgstr ""
 msgid "Add your investors, auditors and counsel here. Contacts are your address book."
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Add your OpenRouter key"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 msgid "Address or ENS"
@@ -773,6 +785,10 @@ msgstr "Permitir {0} sin preguntar"
 
 #: src/components/AiDataSharing.tsx
 msgid "Allow {name}"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -2461,6 +2477,11 @@ msgstr ""
 msgid "Could not refresh from Carta"
 msgstr ""
 
+#. placeholder {0}: overview.error
+#: src/pages/Legal.tsx
+msgid "Could not refresh: {0}"
+msgstr ""
+
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
@@ -2819,6 +2840,10 @@ msgstr "Oscuro"
 msgid "Data room"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Data room files the Legal agent has not read yet."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Data room search model"
 msgstr ""
@@ -3070,7 +3095,7 @@ msgstr "Descartar"
 msgid "Dismiss {0}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Dismiss error"
 msgstr "Descartar error"
 
@@ -3113,6 +3138,10 @@ msgstr ""
 
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Documents not yet checked"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -4075,7 +4104,7 @@ msgid "Last charge"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}"
+msgid "Last scan {lastScan}. Scans daily."
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -4128,7 +4157,11 @@ msgid "Legal relationships"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key."
+msgid "Legal runs on Muse Spark 1.2 and needs your own OpenRouter key. The space's shared OpenRouter access can't be used for Legal."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
@@ -4724,6 +4757,10 @@ msgstr ""
 msgid "Needs input"
 msgstr "Necesita entrada"
 
+#: src/pages/Legal.tsx
+msgid "Needs Muse Spark 1.2."
+msgstr ""
+
 #: src/components/integrations/parts.tsx
 msgid "Needs reconnect"
 msgstr ""
@@ -4744,6 +4781,10 @@ msgstr "Necesita toma de control"
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Needs your OpenRouter key."
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -5264,7 +5305,7 @@ msgstr ""
 msgid "Open Inbox"
 msgstr ""
 
-#: src/pages/Legal.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
 msgstr ""
 
@@ -5578,6 +5619,10 @@ msgstr "POST a"
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Posted"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Press Scan now to read your Data room for contracts and deadlines. Legal also scans every day."
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -6554,6 +6599,10 @@ msgstr ""
 msgid "Server URL"
 msgstr "URL del servidor"
 
+#: src/pages/Legal.tsx
+msgid "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Set up app catalog"
@@ -7167,7 +7216,7 @@ msgid "The Inbox page stops showing new mail until you reconnect."
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "The Legal agent scans your Data room for contracts and deadlines."
+msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -7200,6 +7249,14 @@ msgstr "Pensando"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Thinking: {activeThinkingLabel}"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "This also removes the Legal contract {contractTitle} and its links in the Legal graph. This can't be undone."
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "This also removes the Legal contract {contractTitle}, its {deadlineCount} (including ones added by hand) and its links in the Legal graph. This can't be undone."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -7533,10 +7590,6 @@ msgstr "Desfijar"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Unreviewed documents"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
