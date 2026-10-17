@@ -901,9 +901,10 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
     "MOCK Product Roadmap.pdf",
     "Roadmap for the next two quarters. Q4: calibration tool. Q1: fleet dashboard.",
   ),
+  // Outside Legal, so the failed state does not hide a contract from the Legal page.
   doc(
-    "Legal",
-    "MOCK Signed NDA - Bolt Freight.pdf",
+    "Product",
+    "MOCK Damaged scan - Prototype photo.pdf",
     "A damaged scan that is not a readable PDF.",
     "broken",
   ),
@@ -940,12 +941,8 @@ ${MOCK_NOTE}: invented for UX testing. Not a real update.
 `,
 };
 
+/** The Legal agent (created by the Legal page) is the space's one legal bot, so none is seeded here. */
 export const DEMO_BOTS = [
-  {
-    name: "Legal Desk (mock)",
-    title: "Contracts",
-    description: `${MOCK_NOTE}: tracks the demo contracts and their renewal dates.`,
-  },
   {
     name: "Investor Relations (mock)",
     title: "Fundraising",
@@ -954,3 +951,80 @@ export const DEMO_BOTS = [
 ];
 
 export const DEMO_GROUP = { name: "Leadership sync (mock)" };
+
+/**
+ * What the Legal agent's last daily scan recorded. Dates are days from today, so the overdue and
+ * upcoming deadlines stay that way whenever the demo is seeded. Money is integer cents.
+ */
+export const DEMO_LEGAL = {
+  company: "Northwind Robotics (Mock)",
+  contracts: [
+    {
+      document: "MOCK Office Lease - 100 Placeholder Street.pdf",
+      title: "MOCK Office Lease - 100 Placeholder Street",
+      contractType: "Lease",
+      party: "Placeholder Street Landlord (Mock)",
+      jurisdiction: "California",
+      effectiveInDays: -400,
+      expiresInDays: 106,
+      autoRenews: true,
+      renewalNoticeDays: 62,
+      valueCents: 9_000_000n,
+      partyQuote: "Office lease for 100 Placeholder Street.",
+      renewalQuote: "Renewal date 31 January. Notice of renewal due 30 November.",
+      summary: `${MOCK_NOTE}: office lease, 7,500 dollars a month, renews automatically unless notice is given 62 days before it ends.`,
+    },
+    {
+      document: "MOCK Master Services Agreement - Halcyon Logistics.pdf",
+      title: "MOCK Master Services Agreement - Halcyon Logistics",
+      contractType: "MSA",
+      party: "Halcyon Logistics (Mock)",
+      jurisdiction: "Delaware",
+      effectiveInDays: -95,
+      expiresInDays: 635,
+      autoRenews: false,
+      renewalNoticeDays: null,
+      valueCents: 12_000_000n,
+      partyQuote:
+        "Master Services Agreement between Northwind Robotics Mock and Halcyon Logistics Mock.",
+      renewalQuote: null,
+      summary: `${MOCK_NOTE}: 24-month services agreement; either side may end it on 60 days notice.`,
+    },
+    {
+      document: "MOCK Mutual NDA - Acme Ventures.pdf",
+      title: "MOCK Mutual NDA - Acme Ventures",
+      contractType: "NDA",
+      party: "Acme Ventures (Mock)",
+      jurisdiction: "Delaware",
+      effectiveInDays: -60,
+      expiresInDays: 1035,
+      autoRenews: false,
+      renewalNoticeDays: null,
+      valueCents: null,
+      partyQuote:
+        "Mutual Non Disclosure Agreement between Northwind Robotics Mock and Acme Ventures Mock.",
+      renewalQuote: null,
+      summary: `${MOCK_NOTE}: mutual NDA for three years.`,
+    },
+    {
+      document: "MOCK SAFE - Quill Capital.pdf",
+      title: "MOCK SAFE - Quill Capital",
+      contractType: "SAFE",
+      party: "Quill Capital (Mock)",
+      jurisdiction: "Delaware",
+      effectiveInDays: -150,
+      expiresInDays: null,
+      autoRenews: null,
+      renewalNoticeDays: null,
+      valueCents: 25_000_000n,
+      partyQuote: "Simple Agreement for Future Equity. Investor Quill Capital Mock.",
+      renewalQuote: null,
+      summary: `${MOCK_NOTE}: SAFE for 250,000 dollars at an 8,000,000 dollar valuation cap.`,
+    },
+  ],
+  /** Deadlines added by hand, not tied to a contract: one overdue, one coming up. */
+  manualDeadlines: [
+    { title: "Q3 board consent signature", kind: "compliance", dueInDays: -5 },
+    { title: "Trademark office action response", kind: "filing", dueInDays: 28 },
+  ],
+} as const;

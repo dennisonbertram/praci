@@ -12,6 +12,7 @@ import {
 } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  DEMO_BOTS,
   DEMO_CAP_TABLE,
   DEMO_CHIEF_DRAFT,
   DEMO_COMPANY,
@@ -19,6 +20,7 @@ import {
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_LEGAL,
   DEMO_WALLET,
   demoCarta,
   demoCrypto,
@@ -104,6 +106,20 @@ describe("mock demo data", () => {
 
   it("includes one document that fails to read, so the failed state can be seen", () => {
     expect(DEMO_DOCUMENTS.filter((document) => document.kind === "broken")).toHaveLength(1);
+  });
+
+  it("ties every Legal contract to a readable PDF in the Legal folder, and keeps the failed scan out of it", () => {
+    const legalFolder = DEMO_DOCUMENTS.filter((d) => d.folder === "Legal");
+    expect(legalFolder.every((d) => d.kind === "pdf")).toBe(true);
+    expect(DEMO_LEGAL.contracts.map((c) => c.document).sort()).toEqual(
+      legalFolder.map((d) => d.name).sort(),
+    );
+    // One overdue and one upcoming hand-made deadline, so both states show.
+    expect(DEMO_LEGAL.manualDeadlines.map((d) => Math.sign(d.dueInDays)).sort()).toEqual([-1, 1]);
+  });
+
+  it("seeds no bot that competes with the Legal agent", () => {
+    expect(DEMO_BOTS.map((bot) => bot.name).filter((name) => /legal/i.test(name))).toEqual([]);
   });
 
   it("creates each parent folder before its sub-folders", () => {

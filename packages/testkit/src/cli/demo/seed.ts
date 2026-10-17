@@ -1,6 +1,13 @@
 import { createSecretStore, syncFinanceForUser } from "@rakazo/adapters";
-import { CARTA_MCP_ENDPOINT, FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
-import { createDb, saveCapTableSnapshot } from "@rakazo/db";
+import type { Actor } from "@rakazo/contracts";
+import {
+  CARTA_MCP_ENDPOINT,
+  FINANCE_MCP_ENDPOINTS,
+  LEGAL_SCAN_ROUTINE_NAME,
+  legalAgentSpawnKey,
+} from "@rakazo/contracts";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb, createLegalRepos, LEGAL_NOT_LEGAL_TYPE, saveCapTableSnapshot } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   DEMO_BOTS,
@@ -12,6 +19,7 @@ import {
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
   DEMO_GROUP,
+  DEMO_LEGAL,
   DEMO_USER_NAME,
   DEMO_WALLET,
   demoFinance,
@@ -239,6 +247,25 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   }
   done.push(`${DEMO_DOCUMENTS.length} data room documents`);
 
+  // Legal: what the Legal agent's last daily scan recorded from the Legal folder.
+  await session.rpc("legal/agent");
+  {
+    const db = createDb(options.databaseUrl);
+    try {
+      const user = await db.prisma.user.findUniqueOrThrow({ where: { email: options.email } });
+      const recorded = await seedLegal(db.prisma, {
+        spaceId,
+        userId: user.id,
+        email: options.email,
+        isDeploymentOwner: false,
+      });
+      done.push(recorded);
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  }
+
   // Artifacts: last month's investor update, filed under Chief.
   await session.rpc("artifacts/create", {
     botId: chief.id,
@@ -265,4 +292,141 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   await session.rpc("spaces/create", { name: DEMO_EMPTY_SPACE });
   done.push(`empty space "${DEMO_EMPTY_SPACE}"`);
   return done;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Midnight UTC `days` from today, as the Legal tables store dates. */
+const dayFromToday = (days: number) =>
+  new Date(Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`) + days * DAY_MS);
+
+/**
+ * Waits for the Data room to finish reading every upload (each read bumps an item's revision), then
+ * records what a completed Legal scan would: the four contracts, their deadlines and graph, the other
+ * documents checked and found not legal, two hand-made deadlines, and the finished scan run.
+ */
+async function seedLegal(prisma: PrismaClient, actor: Actor): Promise<string> {
+  const scope = { spaceId: actor.spaceId, userId: actor.userId };
+  const deadline = Date.now() + 90_000;
+  let items = await prisma.dataRoomItem.findMany({ where: scope });
+  while (items.some((item) => item.status !== "ready" && item.status !== "failed")) {
+    if (Date.now() > deadline) throw new Error("Data room documents were not read in time");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    items = await prisma.dataRoomItem.findMany({ where: scope });
+  }
+  const byName = new Map(items.map((item) => [item.name, item]));
+  const legal = createLegalRepos(prisma);
+  const company = await legal.upsertNode(actor, { kind: "company", label: DEMO_LEGAL.company });
+  const recorded = new Set<string>();
+  for (const spec of DEMO_LEGAL.contracts) {
+    const item = byName.get(spec.document);
+    if (!item) throw new Error(`Missing Data room document ${spec.document}`);
+    recorded.add(item.id);
+    const expiration = spec.expiresInDays === null ? null : dayFromToday(spec.expiresInDays);
+    const contract = await legal.upsertContract(actor, {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: spec.title,
+      contractType: spec.contractType,
+      counterparties: [spec.party],
+      status: "active",
+      effectiveDate: dayFromToday(spec.effectiveInDays),
+      expirationDate: expiration,
+      autoRenews: spec.autoRenews,
+      renewalNoticeDays: spec.renewalNoticeDays,
+      governingLaw: spec.jurisdiction,
+      valueCents: spec.valueCents,
+      currency: spec.valueCents === null ? null : "USD",
+      summary: spec.summary,
+    });
+    if (expiration && spec.autoRenews && spec.renewalNoticeDays) {
+      await legal.upsertDeadline(actor, {
+        contractId: contract.id,
+        dataRoomItemId: item.id,
+        title: "Send non-renewal notice",
+        dueDate: new Date(expiration.getTime() - spec.renewalNoticeDays * DAY_MS),
+        kind: "notice",
+        derived: true,
+        sourceQuote: spec.renewalQuote,
+        notes: `${MOCK_NOTE}: ${spec.renewalNoticeDays} days before it renews.`,
+      });
+      await legal.upsertDeadline(actor, {
+        contractId: contract.id,
+        dataRoomItemId: item.id,
+        title: "Renews automatically",
+        dueDate: expiration,
+        kind: "renewal",
+        derived: true,
+        sourceQuote: spec.renewalQuote,
+      });
+    }
+    const contractNode = await legal.upsertNode(actor, {
+      kind: "contract",
+      label: spec.title,
+      contractId: contract.id,
+    });
+    const party = await legal.upsertNode(actor, { kind: "company", label: spec.party });
+    const place = await legal.upsertNode(actor, { kind: "jurisdiction", label: spec.jurisdiction });
+    for (const side of [company, party]) {
+      await legal.link(actor, {
+        fromId: side.id,
+        toId: contractNode.id,
+        relation: "party_to",
+        dataRoomItemId: item.id,
+        sourceQuote: spec.partyQuote,
+      });
+    }
+    await legal.link(actor, {
+      fromId: contractNode.id,
+      toId: place.id,
+      relation: "governed_by",
+      dataRoomItemId: item.id,
+    });
+  }
+  // The scan read every other document too and found it is not a legal one.
+  for (const item of items) {
+    if (item.status !== "ready" || recorded.has(item.id)) continue;
+    await legal.upsertContract(actor, {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: item.name,
+      contractType: LEGAL_NOT_LEGAL_TYPE,
+      status: "unknown",
+    });
+  }
+  for (const manual of DEMO_LEGAL.manualDeadlines) {
+    await legal.upsertDeadline(actor, {
+      title: manual.title,
+      dueDate: dayFromToday(manual.dueInDays),
+      kind: manual.kind,
+      notes: `${MOCK_NOTE}: added by hand.`,
+    });
+  }
+  // The finished daily scan, so the page shows when Legal last looked.
+  const bot = await prisma.bot.findFirstOrThrow({
+    where: { ...scope, spawnKey: legalAgentSpawnKey(actor.userId) },
+    include: { thread: true },
+  });
+  const threadId = bot.thread?.id;
+  if (!threadId) throw new Error("The Legal agent has no thread");
+  const routine = await prisma.routine.findFirstOrThrow({
+    where: { ...scope, botId: bot.id, name: LEGAL_SCAN_ROUTINE_NAME },
+  });
+  const finished = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const task = await prisma.task.create({
+    data: { ...scope, botId: bot.id, threadId, prompt: routine.prompt, status: "completed" },
+  });
+  await prisma.run.create({
+    data: {
+      ...scope,
+      botId: bot.id,
+      threadId,
+      taskId: task.id,
+      status: "completed",
+      trigger: "routine",
+      routineId: routine.id,
+      startedAt: new Date(finished.getTime() - 2 * 60 * 1000),
+      completedAt: finished,
+    },
+  });
+  return `Legal: ${DEMO_LEGAL.contracts.length} contracts, ${DEMO_LEGAL.manualDeadlines.length} hand-made deadlines, graph, 1 finished scan`;
 }
