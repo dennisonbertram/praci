@@ -235,10 +235,13 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       for (const [name, facets] of Object.entries(DEMO_DOCUMENT_FACETS)) {
         await db.prisma.dataRoomItem.updateMany({
           where: { spaceId, name },
+          // Marked classified, so a later consent grant (Legal's, say) does not re-queue them for
+          // the classifier, which would replace these facets and mark every file unread by Legal.
           data: {
             docType: facets.docType,
             docDate: new Date(Date.now() - facets.daysAgo * 24 * 60 * 60 * 1000),
             parties: facets.parties,
+            classifiedAt: new Date(),
           },
         });
       }
