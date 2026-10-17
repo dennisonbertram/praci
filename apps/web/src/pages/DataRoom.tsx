@@ -23,6 +23,7 @@ import {
   type Sort,
   useDataRoomList,
 } from "../components/data-room/use-data-room-list";
+import { PageEmptyState } from "../components/PageEmptyState";
 import { DATA_ROOM_CHANGED } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
 
@@ -266,15 +267,18 @@ export function DataRoomPage() {
       </div>
       {empty ? (
         <div className="grid flex-1 place-items-center p-6">
-          <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-xl border-2 border-dashed border-border px-6 py-12 text-center">
-            <Upload aria-hidden="true" className="size-7 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              <Trans>Drop files here</Trans>
-            </p>
+          <PageEmptyState
+            className="w-full max-w-md flex-none rounded-xl border-2 border-dashed border-border"
+            icon={<Upload aria-hidden="true" className="size-8" strokeWidth={1.6} />}
+            title={<Trans>Drop files here</Trans>}
+            description={
+              <Trans>Keep contracts, board decks and investor documents in one place.</Trans>
+            }
+          >
             <FileInputButton>
               <Trans>Choose files</Trans>
             </FileInputButton>
-          </div>
+          </PageEmptyState>
         </div>
       ) : (
         <>

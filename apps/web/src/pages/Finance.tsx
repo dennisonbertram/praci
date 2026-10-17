@@ -31,6 +31,7 @@ import {
 import { WalletDialog } from "../components/finance/WalletDialog";
 import { AppLogo } from "../components/integrations/AppLogo";
 import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnectDialog";
+import { PageEmptyState } from "../components/PageEmptyState";
 import {
   changeText,
   dayRange,
@@ -164,18 +165,15 @@ function EmptyState({ hasCrypto, onChanged }: { hasCrypto: boolean; onChanged: (
   const [adding, setAdding] = useState(false);
   const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
   return (
-    <div className="flex h-full min-h-72 flex-col items-center justify-center gap-4 text-center">
-      <div className="flex gap-3">
-        {FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
-          <AppLogo key={provider} name={name} logo={logo} size="lg" />
-        ))}
-      </div>
-      <h1 className="text-lg font-medium">
-        <Trans>Finance</Trans>
-      </h1>
-      <p className="max-w-sm text-sm text-muted-foreground">
-        <Trans>Add an account to see cash, burn, runway and spend.</Trans>
-      </p>
+    <PageEmptyState
+      titleAs="h1"
+      className="h-full"
+      icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
+        <AppLogo key={provider} name={name} logo={logo} size="lg" />
+      ))}
+      title={<Trans>Finance</Trans>}
+      description={<Trans>Add an account to see cash, burn, runway and spend.</Trans>}
+    >
       <Button onClick={() => setAdding(true)}>
         <Trans>Add account</Trans>
       </Button>
@@ -203,7 +201,7 @@ function EmptyState({ hasCrypto, onChanged }: { hasCrypto: boolean; onChanged: (
           onClose={() => setCrypto(null)}
         />
       ) : null}
-    </div>
+    </PageEmptyState>
   );
 }
 
