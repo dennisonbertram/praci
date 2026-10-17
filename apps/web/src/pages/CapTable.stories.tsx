@@ -35,6 +35,24 @@ const snapshot = {
   ],
   holders: [
     {
+      name: "Founder Example",
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 6_000_000,
+      amountUsd: null,
+      percent: 60,
+    },
+    {
+      name: "Granted options",
+      email: null,
+      organization: null,
+      security: "Options",
+      shares: 1_000_000,
+      amountUsd: null,
+      percent: 10,
+    },
+    {
       name: "Ada Example",
       email: "ada.example@example.test",
       organization: "Example Ventures",
@@ -60,7 +78,7 @@ const meta = {
   title: "CapTable/CapTablePage",
   component: CapTablePage,
   parameters: { layout: "fullscreen" },
-  args: { onConnectCarta: () => {}, onShowAgent: () => {} },
+  args: { onShowAgent: () => {} },
   decorators: [
     (Story) => (
       <div className="flex h-[700px]">

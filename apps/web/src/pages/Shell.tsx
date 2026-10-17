@@ -146,6 +146,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { AgentStarter } from "../components/AgentStarter";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
@@ -482,6 +483,8 @@ export function ShellPage() {
     () => !window.matchMedia("(min-width: 768px)").matches,
   );
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
+  // Reported by the Cap Table page. Without Carta the agent has nothing to read, so its panel stays shut.
+  const [cartaConnected, setCartaConnected] = useState(false);
   const [cartaAgentError, setCartaAgentError] = useState("");
   useEffect(() => {
     const phone = !window.matchMedia("(min-width: 768px)").matches;
@@ -2563,7 +2566,7 @@ export function ShellPage() {
 
   // Carta needs no Create click: the agent appears once Carta is connected.
   useAutoCreateCartaAgent(
-    capTableMode && initialBotsLoaded && Boolean(userId),
+    capTableMode && cartaConnected && initialBotsLoaded && Boolean(userId),
     findCartaAgent(bots, userId) !== undefined,
     createCartaAgent,
     bots,
@@ -2599,7 +2602,11 @@ export function ShellPage() {
             name: "carta-agent",
             testId: "carta-agent-panel",
             // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-            open: !cartaAgentCollapsed && Boolean(active || creatingCartaAgent || cartaAgentError),
+            // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
+            open:
+              cartaConnected &&
+              !cartaAgentCollapsed &&
+              Boolean(active || creatingCartaAgent || cartaAgentError),
             collapse: () => setCartaAgentCollapsedPref(true),
             collapseLabel: t`Collapse Carta agent`,
             create: undefined,
@@ -4105,11 +4112,11 @@ export function ShellPage() {
         ) : capTableMode ? (
           <CapTablePage
             onShowAgent={
-              active && cartaAgentCollapsed ? () => setCartaAgentCollapsedPref(false) : undefined
+              active && cartaConnected && cartaAgentCollapsed
+                ? () => setCartaAgentCollapsedPref(false)
+                : undefined
             }
-            onConnectCarta={() =>
-              navigate("/app/integrations?q=carta&connect=carta&returnTo=/app/cap-table")
-            }
+            onCartaStatus={setCartaConnected}
           />
         ) : inboxMode ? (
           <InboxPage
@@ -4178,7 +4185,21 @@ export function ShellPage() {
                 </Button>
               </div>
               {active ? (
-                threadView
+                <>
+                  {capTableMode && activeSnapshot && transcriptMessages.length === 0 ? (
+                    <AgentStarter
+                      description={t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`}
+                      prompts={[
+                        t`Who owns what?`,
+                        t`How much of the option pool is left?`,
+                        t`Which SAFEs have not converted yet?`,
+                      ]}
+                      disabled={sending || transcriptRunning}
+                      onPick={(prompt) => void sendMessage(prompt, [], newClientId())}
+                    />
+                  ) : null}
+                  {threadView}
+                </>
               ) : (
                 <div className="grid flex-1 place-content-center justify-items-center gap-3 px-5">
                   {agentPanel.create ? (
@@ -5655,10 +5676,10 @@ const Transcript = memo(function Transcript({
                         ? undefined
                         : `relative w-fit min-w-0 ${
                             message.role === "user"
-                              ? "max-w-[min(84%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[84%]"
+                              ? "max-w-[max(min(84%,calc(100%_-_8rem)),min(84%,20rem))] [@media(hover:none)]:max-w-[84%]"
                               : message.blocks.some((block) => block.kind === "ask" && block.mail)
                                 ? "max-w-[calc(100%_-_5rem)] [@media(hover:none)]:max-w-full"
-                                : "max-w-[min(88%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[88%]"
+                                : "max-w-[max(min(88%,calc(100%_-_8rem)),min(88%,20rem))] [@media(hover:none)]:max-w-[88%]"
                           }`
                     }
                   >

@@ -34,7 +34,26 @@ vi.mock("../lib/rpc", () => ({
   },
 }));
 
-import { CapTablePage } from "./CapTable";
+vi.mock("../components/integrations/useIntegrations", () => ({
+  useIntegrations: () => ({
+    loaded: true,
+    error: null,
+    catalog: [],
+    connections: [],
+    servers: [],
+    bots: [],
+    mcpAssignments: [],
+    access: {},
+    sources: [],
+    financeSources: [],
+    setup: null,
+    catalogFailed: false,
+    feedEnabled: false,
+    refresh: async () => {},
+  }),
+}));
+
+import { CapTablePage, rowKind } from "./CapTable";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -63,7 +82,7 @@ async function show(url = "/app/cap-table") {
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={[url]}>
-        <CapTablePage onConnectCarta={() => {}} />
+        <CapTablePage />
       </MemoryRouter>,
     ),
   );
@@ -380,4 +399,95 @@ it("explains where ownership comes from when Carta is not connected", async () =
   rpcMock.servers.mockResolvedValue([{ ...cartaServer, oauthStatus: "reconnect" }]);
   await show();
   expect(container.textContent).toContain("Sign in to Carta again");
+});
+
+const holder = (name: string, security: string, shares: number | null, percent: number | null) => ({
+  name,
+  email: null,
+  organization: null,
+  security,
+  shares,
+  amountUsd: shares == null ? 50_000 : null,
+  percent,
+});
+
+it("files founders and option grants apart from investors", () => {
+  expect(rowKind({ contact: null, holder: holder("Founder", "Common", 4, 40) })).toBe(
+    "shareholder",
+  );
+  expect(rowKind({ contact: null, holder: holder("Granted", "Options", 9, 9) })).toBe("options");
+  expect(rowKind({ contact: null, holder: holder("Angel", "SAFE", null, null) })).toBe("investor");
+  expect(rowKind({ contact: contact("c9", "Bo", "auditor"), holder: null })).toBe("auditor");
+});
+
+it("lists only investors on the Investors tab and offers Add email only to investors", async () => {
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: {
+      ...snapshot,
+      holders: [
+        holder("Founder Person", "Common", 4_000_000, 40),
+        holder("Granted options", "Options", 900_000, 9),
+        holder("Angel Person", "SAFE", null, null),
+      ],
+    },
+    syncing: false,
+  });
+  await show("/app/cap-table?kind=investor");
+  const text = container.textContent ?? "";
+  expect(text).toContain("Angel Person");
+  expect(text).toContain("Ada");
+  expect(text).not.toContain("Founder Person");
+  expect(text).not.toContain("Granted options");
+  await click(button("All"));
+  expect(container.textContent).toContain("Founder Person");
+  const adds = [...container.querySelectorAll("button")].filter(
+    (b) => b.textContent === "Add email",
+  );
+  expect(adds).toHaveLength(1);
+  // A contact with no holding shows a dash, the same as a holder with no shares.
+  const rows = [...container.querySelectorAll("tbody tr")];
+  const bo = rows.find((row) => row.textContent?.includes("Bo"));
+  expect(bo?.querySelectorAll("td")[4]?.textContent).toBe("—");
+});
+
+it("keeps the Kind column with or without Carta", async () => {
+  await show();
+  const headers = () => [...container.querySelectorAll("th")].map((th) => th.textContent);
+  expect(headers()).toEqual(["Name", "Email", "Kind"]);
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  await show();
+  expect(headers()).toEqual(["Name", "Email", "Kind", "Shares", "Ownership"]);
+});
+
+it("adds a contact of the open tab's kind from the header", async () => {
+  await show("/app/cap-table?kind=other");
+  await click(button("Add contact"));
+  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("other");
+  await click(button("Cancel"));
+  await click(button("Auditors"));
+  await click(button("Add auditor"));
+  expect(document.body.textContent).toContain("Add auditor");
+  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("auditor");
+});
+
+it("opens the Carta sign-in on Cap Table and tells the shell whether Carta is connected", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  const status = vi.fn();
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/cap-table"]}>
+        <CapTablePage onCartaStatus={status} />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  expect(status).toHaveBeenLastCalledWith(false);
+  await click(button("Connect Carta"));
+  expect(button("Sign in with Carta")).toBeDefined();
+  rpcMock.servers.mockResolvedValue([cartaServer]);
+  await click(button("Cancel"));
+  await flush();
+  expect(status).toHaveBeenLastCalledWith(true);
 });

@@ -24,7 +24,10 @@ import {
 import { PanelRightOpen, PieChart, Plus, RefreshCw } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
+import { useIntegrations } from "../components/integrations/useIntegrations";
 import { hasConnectedCarta } from "../lib/carta-agent";
+import { FIRST_PARTY_MCP } from "../lib/integrations";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -65,6 +68,16 @@ const pct = (value: number | null) => (value == null ? DASH : `${value.toFixed(2
 
 /** One investors-table row: a Carta holder, the contact it matches, or a contact with no holding. */
 type Row = { key: string; contact: Contact | null; holder: Holder | null };
+/** A contact's kind; a holder with no contact is an investor, a shareholder or an option grant. */
+type RowKind = ContactKind | "shareholder" | "options";
+
+export function rowKind({ contact, holder }: Pick<Row, "contact" | "holder">): RowKind {
+  if (contact) return contact.kind;
+  const security = holder?.security.toLowerCase() ?? "";
+  if (security.includes("option")) return "options";
+  if (/safe|preferred|series|note|convertible|warrant/.test(security)) return "investor";
+  return "shareholder";
+}
 
 function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
   const byEmail = new Map(contacts.filter((c) => c.email).map((c) => [c.email?.toLowerCase(), c]));
@@ -140,6 +153,43 @@ const kindNames = (): Record<ContactKind, string> => ({
   auditor: t`Auditor`,
   other: t`Other`,
 });
+const rowKindNames = (): Record<RowKind, string> => ({
+  ...kindNames(),
+  shareholder: t`Shareholder`,
+  options: t`Options`,
+});
+const addKindLabels = (): Record<ContactKind, string> => ({
+  investor: t`Add investor`,
+  auditor: t`Add auditor`,
+  other: t`Add contact`,
+});
+
+/** The Carta sign-in, opened from Cap Table so the founder stays on this page. */
+function ConnectCartaDialog({
+  onClose,
+  onFailed,
+}: {
+  onClose: () => void;
+  onFailed: (message: string) => void;
+}) {
+  const data = useIntegrations();
+  const carta = FIRST_PARTY_MCP.find((entry) => entry.id === "carta");
+  const failedRef = useRef(onFailed);
+  failedRef.current = onFailed;
+  useEffect(() => {
+    if (data.loaded && data.error) failedRef.current(data.error);
+  }, [data.loaded, data.error]);
+  // Wait for the server list, so a Carta server that needs a new sign-in is reused, not duplicated.
+  if (!carta || !data.loaded || data.error) return null;
+  return (
+    <CustomConnectionDialog
+      data={data}
+      initialUrl={carta.endpoint}
+      service={carta.name}
+      onClose={onClose}
+    />
+  );
+}
 
 /** Name, email, organization and notes of one contact; `contact` null adds a new one. */
 export function ContactDialog({
@@ -212,7 +262,13 @@ export function ContactDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {contact ? <Trans>Edit contact</Trans> : <Trans>Add contact</Trans>}
+            {contact ? (
+              <Trans>Edit contact</Trans>
+            ) : prefill?.kind ? (
+              addKindLabels()[prefill.kind]
+            ) : (
+              <Trans>Add contact</Trans>
+            )}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-3">
@@ -329,10 +385,11 @@ export function ContactDialog({
 /** The Cap Table page: the Carta snapshot joined with the user's contacts. The Carta agent beside it does the Carta work. */
 export function CapTablePage({
   onShowAgent,
-  onConnectCarta,
+  onCartaStatus,
 }: {
   onShowAgent?: () => void;
-  onConnectCarta: () => void;
+  /** Told whether Carta is signed in, each time the page checks. */
+  onCartaStatus?: (connected: boolean) => void;
 }) {
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [error, setError] = useState("");
@@ -359,7 +416,10 @@ export function CapTablePage({
     const timer = setTimeout(() => setToast(null), TOAST_MS);
     return () => clearTimeout(timer);
   }, [toast]);
-  const names = kindNames();
+  const names = rowKindNames();
+  const [connecting, setConnecting] = useState(false);
+  const statusRef = useRef(onCartaStatus);
+  statusRef.current = onCartaStatus;
 
   const latestLoad = useRef(0);
   const load = useCallback(() => {
@@ -390,12 +450,15 @@ export function CapTablePage({
         if (request === latestCap.current) setCapFailed(true);
       });
   }, []);
+  const [serversSeq, setServersSeq] = useState(0);
   useEffect(() => {
+    void serversSeq;
     rpc.mcp.servers
       .list()
       .then((servers) => {
         const connected = hasConnectedCarta(servers);
         setCartaConnected(connected);
+        statusRef.current?.(connected);
         setCartaExpired(
           !connected &&
             servers.some(
@@ -406,7 +469,7 @@ export function CapTablePage({
         if (connected) void loadCap();
       })
       .catch(() => undefined);
-  }, [loadCap]);
+  }, [loadCap, serversSeq]);
 
   const syncing = cap?.syncing ?? false;
   // Contacts are filled in by the same run, so reload them when it ends.
@@ -446,8 +509,7 @@ export function CapTablePage({
   const snapshot = cartaConnected ? (cap?.snapshot ?? null) : null;
   const reading = cartaConnected && syncing && !snapshot && !capFailed;
   const rows = joinRows(snapshot, contacts ?? []);
-  const kindOf = (row: Row) => row.contact?.kind ?? "investor";
-  const shown = rows.filter((row) => filter === "all" || kindOf(row) === filter);
+  const shown = rows.filter((row) => filter === "all" || rowKind(row) === filter);
   const showHoldings = snapshot !== null || reading;
   const filterNames: Record<Filter, string> = {
     all: t`All`,
@@ -461,11 +523,11 @@ export function CapTablePage({
     auditor: t`No auditors yet`,
     other: t`No other contacts yet`,
   };
-  const addKindLabel: Record<ContactKind, string> = {
-    investor: t`Add investor`,
-    auditor: t`Add auditor`,
-    other: t`Add contact`,
-  };
+  const addKindLabel = addKindLabels();
+  const addContact = () =>
+    setEditing(
+      filter === "all" ? "new" : { name: "", email: null, organization: null, kind: filter },
+    );
   const deleted = (gone: Contact) => {
     load();
     setToast({
@@ -507,9 +569,9 @@ export function CapTablePage({
             <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
           </Button>
         ) : null}
-        <Button variant={cartaConnected ? "default" : "outline"} onClick={() => setEditing("new")}>
+        <Button variant={cartaConnected ? "default" : "outline"} onClick={addContact}>
           <Plus aria-hidden="true" />
-          <Trans>Add contact</Trans>
+          {filter === "all" ? <Trans>Add contact</Trans> : addKindLabel[filter]}
         </Button>
         {onShowAgent ? (
           <Button
@@ -538,11 +600,11 @@ export function CapTablePage({
             <p className="text-sm text-muted-foreground">
               <Trans>
                 Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs
-                here, and to ask the Carta agent about them.
+                here. The Carta agent can answer questions about them only while Carta is connected.
               </Trans>
             </p>
           </div>
-          <Button onClick={onConnectCarta}>
+          <Button onClick={() => setConnecting(true)}>
             {cartaExpired ? <Trans>Reconnect Carta</Trans> : <Trans>Connect Carta</Trans>}
           </Button>
         </Card>
@@ -603,58 +665,51 @@ export function CapTablePage({
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <p className="max-w-sm text-sm text-muted-foreground">{emptyText[filter]}</p>
           {filter === "all" ? null : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setEditing({ name: "", email: null, organization: null, kind: filter })
-              }
-            >
+            <Button variant="outline" size="sm" onClick={addContact}>
               <Plus aria-hidden="true" />
               {addKindLabel[filter]}
             </Button>
           )}
         </div>
       ) : (
+        // Fixed widths: the same columns, in the same places, with or without Carta and the panel.
         <table className="w-full table-fixed text-sm">
           <thead className="text-start text-xs text-muted-foreground">
             <tr>
-              <th
-                className={`${snapshot ? "w-[48%] @md:w-[30%]" : "w-[40%]"} py-2 pe-3 text-start font-medium`}
-              >
+              <th className="w-[48%] py-2 pe-3 text-start font-medium @lg:w-[30%]">
                 <Trans>Name</Trans>
               </th>
               <th className="py-2 pe-3 text-start font-medium">
                 <Trans>Email</Trans>
               </th>
+              <th className="hidden w-40 py-2 pe-3 text-start font-medium @lg:table-cell">
+                <Trans>Kind</Trans>
+              </th>
               {snapshot ? (
                 <>
-                  <th className="hidden w-40 py-2 pe-3 text-start font-medium @3xl:table-cell">
-                    <Trans>Holding</Trans>
-                  </th>
-                  <th className="hidden w-28 py-2 pe-3 text-end font-medium @md:table-cell">
+                  <th className="hidden w-28 py-2 pe-3 text-end font-medium @2xl:table-cell">
                     <Trans>Shares</Trans>
                   </th>
                   <th className="w-24 py-2 text-end font-medium">
                     <Trans>Ownership</Trans>
                   </th>
                 </>
-              ) : (
-                <th className="w-24 py-2 text-start font-medium">
-                  <Trans>Kind</Trans>
-                </th>
-              )}
+              ) : null}
             </tr>
           </thead>
           <tbody>
             {shown.map(({ key, contact, holder }) => {
               const name = contact?.name ?? holder?.name ?? "";
               const organization = contact?.organization ?? holder?.organization ?? null;
-              const holding = holder
+              const kind = rowKind({ contact, holder });
+              const security = holder
                 ? holder.shares == null && holder.amountUsd != null
                   ? `${holder.security}, ${usd(holder.amountUsd)}`
                   : holder.security
                 : null;
+              // "Options" under the kind "Options" says nothing new.
+              const holding = security === names[kind] ? null : security;
+              const empty = <span className="text-muted-foreground">{DASH}</span>;
               return (
                 <tr key={key} className="h-14 border-t border-border hover:bg-muted/50">
                   <td className="py-2 pe-3">
@@ -672,15 +727,19 @@ export function CapTablePage({
                         {name}
                       </span>
                     )}
+                    {/* Without room for the Kind column, the kind and holding show here. */}
+                    <div
+                      className="truncate text-xs text-muted-foreground @lg:hidden"
+                      title={organization ?? undefined}
+                    >
+                      {[names[kind], holding, organization].filter(Boolean).join(" · ")}
+                    </div>
                     {organization ? (
-                      <div className="truncate text-xs text-muted-foreground" title={organization}>
+                      <div
+                        className="hidden truncate text-xs text-muted-foreground @lg:block"
+                        title={organization}
+                      >
                         {organization}
-                      </div>
-                    ) : null}
-                    {/* Without room for the Holding column, a SAFE or other holding shows here. */}
-                    {snapshot && holding && holder?.shares == null ? (
-                      <div className="truncate text-xs text-muted-foreground @3xl:hidden">
-                        {holding}
                       </div>
                     ) : null}
                   </td>
@@ -688,41 +747,45 @@ export function CapTablePage({
                     className="truncate py-2 pe-3 text-muted-foreground"
                     title={contact?.email ?? undefined}
                   >
-                    {contact ? (
+                    {contact?.email ? (
                       contact.email
-                    ) : holder ? (
+                    ) : !contact && kind === "investor" ? (
                       <Button
                         variant="outline"
                         size="xs"
                         onClick={() =>
                           setEditing({
                             name,
-                            email: holder.email,
-                            organization: holder.organization,
+                            email: holder?.email ?? null,
+                            organization,
+                            kind: "investor",
                           })
                         }
                       >
                         <Trans>Add email</Trans>
                       </Button>
+                    ) : (
+                      empty
+                    )}
+                  </td>
+                  <td className="hidden py-2 pe-3 @lg:table-cell">
+                    <div className="truncate">{names[kind]}</div>
+                    {holding ? (
+                      <div className="truncate text-xs text-muted-foreground" title={holding}>
+                        {holding}
+                      </div>
                     ) : null}
                   </td>
                   {snapshot ? (
                     <>
-                      <td className="hidden truncate py-2 pe-3 text-muted-foreground @3xl:table-cell">
-                        {holding}
-                      </td>
-                      <td className="hidden py-2 pe-3 text-end font-mono tabular-nums @md:table-cell">
-                        {holder ? num(holder.shares) : null}
+                      <td className="hidden py-2 pe-3 text-end font-mono tabular-nums @2xl:table-cell">
+                        {holder?.shares != null ? num(holder.shares) : empty}
                       </td>
                       <td className="py-2 text-end font-mono tabular-nums">
-                        {holder ? pct(holder.percent) : null}
+                        {holder?.percent != null ? pct(holder.percent) : empty}
                       </td>
                     </>
-                  ) : (
-                    <td className="py-2 text-muted-foreground">
-                      {names[kindOf({ key, contact, holder })]}
-                    </td>
-                  )}
+                  ) : null}
                 </tr>
               );
             })}
@@ -730,6 +793,18 @@ export function CapTablePage({
         </table>
       )}
 
+      {connecting ? (
+        <ConnectCartaDialog
+          onClose={() => {
+            setConnecting(false);
+            setServersSeq((n) => n + 1);
+          }}
+          onFailed={(message) => {
+            setConnecting(false);
+            setToast({ text: message });
+          }}
+        />
+      ) : null}
       {editing ? (
         <ContactDialog
           key={editing === "new" ? "new" : "id" in editing ? editing.id : "prefill"}

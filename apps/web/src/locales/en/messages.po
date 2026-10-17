@@ -3475,10 +3475,6 @@ msgstr "High"
 msgid "High"
 msgstr "High"
 
-#: src/pages/CapTable.tsx
-msgid "Holding"
-msgstr "Holding"
-
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
 msgstr "Holdings"
@@ -3491,6 +3487,10 @@ msgstr "hour"
 #: src/pages/RoutineSchedule.tsx
 msgid "hours"
 msgstr "hours"
+
+#: src/pages/Shell.tsx
+msgid "How much of the option pool is left?"
+msgstr "How much of the option pool is left?"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "How often"
@@ -4743,6 +4743,10 @@ msgstr "Option pool available"
 msgid "Optional"
 msgstr "Optional"
 
+#: src/pages/CapTable.tsx
+msgid "Options"
+msgstr "Options"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "Or connect an API key"
@@ -4809,8 +4813,8 @@ msgid "Ownership"
 msgstr "Ownership"
 
 #: src/pages/CapTable.tsx
-msgid "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here, and to ask the Carta agent about them."
-msgstr "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here, and to ask the Carta agent about them."
+msgid "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here. The Carta agent can answer questions about them only while Carta is connected."
+msgstr "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here. The Carta agent can answer questions about them only while Carta is connected."
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
@@ -5904,6 +5908,10 @@ msgid "Shared skills"
 msgstr "Shared skills"
 
 #: src/pages/CapTable.tsx
+msgid "Shareholder"
+msgstr "Shareholder"
+
+#: src/pages/CapTable.tsx
 msgid "Shares"
 msgstr "Shares"
 
@@ -6381,6 +6389,10 @@ msgstr "The API did not come back. Refresh this page."
 #: src/pages/shell/bot-pins.tsx
 msgid "The bot changed this list. Your last edit wasn't saved."
 msgstr "The bot changed this list. Your last edit wasn't saved."
+
+#: src/pages/Shell.tsx
+msgid "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
+msgstr "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
 
 #: src/components/integrations/McpDetail.tsx
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
@@ -7072,6 +7084,14 @@ msgstr "Where should bots run?"
 #: src/components/integrations/AgentStep.tsx
 msgid "Which agents can use {appName}?"
 msgstr "Which agents can use {appName}?"
+
+#: src/pages/Shell.tsx
+msgid "Which SAFEs have not converted yet?"
+msgstr "Which SAFEs have not converted yet?"
+
+#: src/pages/Shell.tsx
+msgid "Who owns what?"
+msgstr "Who owns what?"
 
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"

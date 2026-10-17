@@ -3475,10 +3475,6 @@ msgstr "Alto"
 msgid "High"
 msgstr ""
 
-#: src/pages/CapTable.tsx
-msgid "Holding"
-msgstr ""
-
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
 msgstr ""
@@ -3491,6 +3487,10 @@ msgstr "hora"
 #: src/pages/RoutineSchedule.tsx
 msgid "hours"
 msgstr "horas"
+
+#: src/pages/Shell.tsx
+msgid "How much of the option pool is left?"
+msgstr ""
 
 #: src/pages/RoutineSchedule.tsx
 msgid "How often"
@@ -4743,6 +4743,10 @@ msgstr ""
 msgid "Optional"
 msgstr "Opcional"
 
+#: src/pages/CapTable.tsx
+msgid "Options"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "O conecta una clave de API"
@@ -4809,7 +4813,7 @@ msgid "Ownership"
 msgstr ""
 
 #: src/pages/CapTable.tsx
-msgid "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here, and to ask the Carta agent about them."
+msgid "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here. The Carta agent can answer questions about them only while Carta is connected."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -5904,6 +5908,10 @@ msgid "Shared skills"
 msgstr "Habilidades compartidas"
 
 #: src/pages/CapTable.tsx
+msgid "Shareholder"
+msgstr ""
+
+#: src/pages/CapTable.tsx
 msgid "Shares"
 msgstr ""
 
@@ -6380,6 +6388,10 @@ msgstr "La API no volvió. Actualiza esta página."
 
 #: src/pages/shell/bot-pins.tsx
 msgid "The bot changed this list. Your last edit wasn't saved."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -7071,6 +7083,14 @@ msgstr "¿Dónde deben ejecutarse los bots?"
 
 #: src/components/integrations/AgentStep.tsx
 msgid "Which agents can use {appName}?"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Which SAFEs have not converted yet?"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Who owns what?"
 msgstr ""
 
 #: src/components/EmailCards.tsx
