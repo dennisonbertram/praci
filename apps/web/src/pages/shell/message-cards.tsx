@@ -211,7 +211,7 @@ export function AppConnectCard({
       {/* On a narrow card the button wraps under the name instead of covering it. */}
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
         <AppLogo name={block.name} logo={block.logo} />
-        <span className="min-w-40 flex-1">
+        <span className="min-w-28 flex-1">
           <span className="block truncate text-[15px] font-medium text-foreground">
             {block.name}
           </span>
