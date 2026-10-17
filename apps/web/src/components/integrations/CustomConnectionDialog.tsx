@@ -434,7 +434,7 @@ export function CustomConnectionDialog({
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
       <DialogContent
-        className="max-h-[calc(100%-2rem)] max-w-[440px] overflow-y-auto sm:max-w-[440px]"
+        className="max-h-[calc(100%-2rem)] max-w-[min(440px,calc(100%-2rem))] overflow-y-auto sm:max-w-[min(440px,calc(100%-2rem))]"
         aria-label={service ? t`Connect ${service}` : t`Add a custom connection`}
       >
         {view.kind === "form" ? (
