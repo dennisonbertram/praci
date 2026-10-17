@@ -27,6 +27,11 @@ msgstr "— 토큰"
 msgid ", {0} already imported"
 msgstr ""
 
+#. placeholder {0}: counts.unreviewedDocuments
+#: src/pages/Legal.tsx
+msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
+msgstr ""
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -2850,10 +2855,6 @@ msgstr "다크"
 msgid "Data room"
 msgstr ""
 
-#: src/pages/Legal.tsx
-msgid "Data room files the Legal agent has not read yet."
-msgstr ""
-
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Data room search model"
 msgstr ""
@@ -3148,10 +3149,6 @@ msgstr ""
 
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Documents not yet checked"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -4119,6 +4116,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Last run failed."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Last scan {lastScan}. Daily scans wait until you allow access."
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -6196,7 +6197,6 @@ msgstr ""
 #: src/components/AccountAccess.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
-#: src/pages/Legal.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Retry"
 msgstr "다시 시도"
@@ -6352,12 +6352,12 @@ msgstr ""
 msgid "Save draft"
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Save limits"
-msgstr ""
-
 #: src/pages/shell/bot-credentials.tsx
 msgid "Save new value"
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Save output limit"
 msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
@@ -6413,6 +6413,14 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Scanning…"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Scheduled run failed: {failedNote}"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Scheduled run failed."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -7247,6 +7255,10 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
+msgstr ""
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 msgstr ""
 
 #: src/lib/user-error.ts

@@ -27,6 +27,11 @@ msgstr "— tokens"
 msgid ", {0} already imported"
 msgstr ", {0} already imported"
 
+#. placeholder {0}: counts.unreviewedDocuments
+#: src/pages/Legal.tsx
+msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
+msgstr "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -2850,10 +2855,6 @@ msgstr "Dark"
 msgid "Data room"
 msgstr "Data room"
 
-#: src/pages/Legal.tsx
-msgid "Data room files the Legal agent has not read yet."
-msgstr "Data room files the Legal agent has not read yet."
-
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Data room search model"
 msgstr "Data room search model"
@@ -3149,10 +3150,6 @@ msgstr "Document date"
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr "Documents"
-
-#: src/pages/Legal.tsx
-msgid "Documents not yet checked"
-msgstr "Documents not yet checked"
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
@@ -4120,6 +4117,10 @@ msgstr "Last run failed: {failedNote}"
 #: src/pages/Shell.tsx
 msgid "Last run failed."
 msgstr "Last run failed."
+
+#: src/pages/Legal.tsx
+msgid "Last scan {lastScan}. Daily scans wait until you allow access."
+msgstr "Last scan {lastScan}. Daily scans wait until you allow access."
 
 #: src/pages/Legal.tsx
 msgid "Last scan {lastScan}. Scans daily."
@@ -6196,7 +6197,6 @@ msgstr "Results"
 #: src/components/AccountAccess.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
-#: src/pages/Legal.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Retry"
 msgstr "Retry"
@@ -6352,13 +6352,13 @@ msgstr "Save credential"
 msgid "Save draft"
 msgstr "Save draft"
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Save limits"
-msgstr "Save limits"
-
 #: src/pages/shell/bot-credentials.tsx
 msgid "Save new value"
 msgstr "Save new value"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Save output limit"
+msgstr "Save output limit"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
@@ -6414,6 +6414,14 @@ msgstr "Scan now"
 #: src/pages/Legal.tsx
 msgid "Scanning…"
 msgstr "Scanning…"
+
+#: src/pages/Shell.tsx
+msgid "Scheduled run failed: {failedNote}"
+msgstr "Scheduled run failed: {failedNote}"
+
+#: src/pages/Shell.tsx
+msgid "Scheduled run failed."
+msgstr "Scheduled run failed."
 
 #: src/pages/Inbox.tsx
 msgid "Scheduling"
@@ -7248,6 +7256,10 @@ msgstr "The Inbox page stops showing new mail until you reconnect."
 #: src/pages/Legal.tsx
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
+msgstr "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."

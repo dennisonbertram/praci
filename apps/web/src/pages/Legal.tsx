@@ -1,8 +1,8 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   AskAgentButton,
   ErrorNotice,
@@ -48,22 +48,16 @@ export function LegalPage({
   return (
     <FinanceChromeProvider value={{ onAskAgent, agentName: "Legal agent", spaceName }}>
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
-        <Legal
-          onAskAgent={onAskAgent}
-          onOpenSettings={onOpenSettings}
-          settingsOpen={settingsOpen}
-        />
+        <Legal onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} />
       </div>
     </FinanceChromeProvider>
   );
 }
 
 function Legal({
-  onAskAgent,
   onOpenSettings,
   settingsOpen,
 }: {
-  onAskAgent?: () => void;
   onOpenSettings?: () => void;
   settingsOpen: boolean;
 }) {
@@ -136,8 +130,8 @@ function Legal({
     setScanError("");
     try {
       const { runId } = await rpc.legal.scanNow();
+      // The page shows the scan's progress and result; the agent panel stays as the founder left it.
       setWaitingFor(runId);
-      onAskAgent?.();
       overview.reload();
     } catch (cause) {
       setScanError(errorText(cause));
@@ -183,17 +177,14 @@ function Legal({
             ) : (
               <Trans>Last scan failed</Trans>
             )
+          ) : lastScan && needsConsent ? (
+            <Trans>Last scan {lastScan}. Daily scans wait until you allow access.</Trans>
           ) : lastScan ? (
             <Trans>Last scan {lastScan}. Scans daily.</Trans>
           ) : (
             <Trans>Not scanned yet</Trans>
           )}
         </span>
-        {lastRun?.status === "failed" && !running ? (
-          <Button size="sm" variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
-            <Trans>Retry</Trans>
-          </Button>
-        ) : null}
         <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
           {/* Narrow, the reason takes its own line under the buttons, so they stay on one row. */}
           {scanReason ? (
@@ -228,7 +219,7 @@ function Legal({
       {!blocker && status && !status.allowed && status.recipients.length > 0 ? (
         <LegalConsentPrompt consent={status} onChange={setGranted} />
       ) : null}
-      <div className="mb-4 grid grid-cols-2 gap-3 @3xl:grid-cols-5">
+      <div className="mb-4 grid grid-cols-2 gap-3 @3xl:grid-cols-4">
         <Kpi title={t`Contracts`} value={counts.contracts} />
         <Kpi title={t`Active`} value={counts.activeContracts} />
         <Kpi
@@ -237,16 +228,18 @@ function Legal({
           to={`${LEGAL_PATH}?view=deadlines`}
         />
         <Kpi title={t`Overdue`} value={overdue} to={`${LEGAL_PATH}?view=deadlines&due=overdue`} />
-        {/* Five tiles in two columns would leave this one alone; it takes the whole row instead. */}
-        <div className="col-span-2 @3xl:col-span-1">
-          <Kpi
-            title={t`Documents not yet checked`}
-            value={counts.unreviewedDocuments}
-            to={DATA_ROOM_PATH}
-            hover={t`Data room files the Legal agent has not read yet.`}
-          />
-        </div>
       </div>
+      {/* A line, not a fifth tile: four tiles fill two rows of two, or one row, with none alone. */}
+      {counts.unreviewedDocuments > 0 ? (
+        <p className="-mt-2 mb-4 text-xs text-muted-foreground">
+          <Link to={DATA_ROOM_PATH} className="underline underline-offset-2 hover:text-foreground">
+            {plural(counts.unreviewedDocuments, {
+              one: "# Data room document not yet checked by Legal",
+              other: "# Data room documents not yet checked by Legal",
+            })}
+          </Link>
+        </p>
+      ) : null}
       {data.contracts.length === 0 && data.deadlines.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <p className="max-w-sm text-sm text-muted-foreground">
@@ -357,8 +350,8 @@ function LegalSkeleton() {
   return (
     <div aria-busy="true" className="flex flex-col gap-3">
       <Skeleton className="h-7 w-32" />
-      <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-5">
-        {[0, 1, 2, 3, 4].map((n) => (
+      <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
+        {[0, 1, 2, 3].map((n) => (
           <Skeleton key={n} className="h-20" />
         ))}
       </div>

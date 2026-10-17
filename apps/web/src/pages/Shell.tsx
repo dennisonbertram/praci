@@ -3174,6 +3174,7 @@ export function ShellPage() {
                 workingActivity={soleWorkingActivity}
                 workingStartedAt={workingStartedAt}
                 failedNote={dismissedRunError}
+                failedScheduled={activeSnapshot?.run?.trigger === "routine"}
                 onLoadOlder={loadOlder}
                 onOpenBot={openBot}
                 onAnswer={answerMessage}
@@ -3271,7 +3272,10 @@ export function ShellPage() {
               runErrorId={displayedRunErrorId}
               onRunErrorPresented={handleRunErrorPresented}
               onDismissError={dismissComposerError}
-              onOpenModelSettings={(provider) => openSettings("models", provider)}
+              onOpenModelSettings={(provider) =>
+                // "" is a rejected key: open the provider the failed run used.
+                openSettings("models", provider || (activeSnapshot?.run?.modelProvider ?? ""))
+              }
               sending={sending}
               fileInputRef={fileInputRef}
               onAttachmentPick={onAttachmentPick}
@@ -5589,6 +5593,7 @@ export const Transcript = memo(function Transcript({
   workingActivity: activity,
   workingStartedAt,
   failedNote,
+  failedScheduled = false,
   onLoadOlder,
   onOpenBot,
   onAnswer,
@@ -5624,6 +5629,8 @@ export const Transcript = memo(function Transcript({
   workingStartedAt?: number;
   /** Why the last run failed, once its error above the composer was dismissed; "" when unknown. */
   failedNote?: string | null;
+  /** The failed run was a routine (a scheduled or Scan now run), not a reply to a message. */
+  failedScheduled?: boolean;
   onLoadOlder: () => void | Promise<void>;
   onOpenBot: (botId: string) => void;
   onAnswer: (
@@ -6152,7 +6159,13 @@ export const Transcript = memo(function Transcript({
         ) : null}
         {!running && failedNote != null ? (
           <p data-testid="transcript-failed-note" className="py-2 text-xs text-destructive">
-            {failedNote ? (
+            {failedScheduled ? (
+              failedNote ? (
+                <Trans>Scheduled run failed: {failedNote}</Trans>
+              ) : (
+                <Trans>Scheduled run failed.</Trans>
+              )
+            ) : failedNote ? (
               <Trans>Last run failed: {failedNote}</Trans>
             ) : (
               <Trans>Last run failed.</Trans>

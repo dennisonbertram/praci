@@ -22,7 +22,8 @@ const COLUMN_ORDER: LegalNodeKind[] = [
   "asset",
   "other",
 ];
-const COLUMN_W = 290;
+/** From one column's centre to the next: a box plus room for the edges between. */
+const COLUMN_W = 260;
 const ROW = 46;
 const PAD = 24;
 const NODE_W = 200;
@@ -105,17 +106,19 @@ function layout(graph: Graph) {
   for (let c = 1; c < columns.length; c++) reorder(columns[c]!, columns[c - 1]!);
   for (let c = columns.length - 2; c >= 0; c--) reorder(columns[c]!, columns[c + 1]!);
   for (let c = 1; c < columns.length; c++) reorder(columns[c]!, columns[c - 1]!);
-  const width = columns.length * COLUMN_W;
+  // Only PAD outside the outer boxes, so the drawing starts at the frame's edge, not a column away.
+  const width = PAD * 2 + NODE_W + (columns.length - 1) * COLUMN_W;
+  const centreX = (c: number) => PAD + NODE_W / 2 + c * COLUMN_W;
   const rows = Math.max(1, ...columns.map((column) => column.length));
   const height = PAD * 2 + 20 + rows * ROW;
   const placed = new Map<string, Placed>();
   columns.forEach((column, c) => {
     const top = PAD + 20 + ((rows - column.length) * ROW) / 2;
     column.forEach((node, r) => {
-      placed.set(node.id, { node, x: COLUMN_W * (c + 0.5), y: top + r * ROW + ROW / 2 });
+      placed.set(node.id, { node, x: centreX(c), y: top + r * ROW + ROW / 2 });
     });
   });
-  const heads = columns.map((column, c) => ({ kind: column[0]?.kind, x: COLUMN_W * (c + 0.5) }));
+  const heads = columns.map((column, c) => ({ kind: column[0]?.kind, x: centreX(c) }));
   const edges = graph.edges.filter((edge) => placed.has(edge.fromId) && placed.has(edge.toId));
   return { placed, edges, heads, width, height, hidden };
 }
