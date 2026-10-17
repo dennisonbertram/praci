@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import { CheckIcon, CopyIcon } from "./icons";
+import { HideAmountsContext } from "./markdown";
 import type { ExtractedTable, HastNode, TableAlign, TableSortDirection } from "./table-utils";
 import {
   columnSortLabel,
@@ -43,6 +44,7 @@ export const MarkdownTable = memo(function MarkdownTable({
   children?: ReactNode;
 }) {
   const source = useContext(MarkdownTableSourceContext);
+  const hideAmounts = useContext(HideAmountsContext);
   const start = node?.position?.start?.offset;
   const end = node?.position?.end?.offset;
   const sourceKey =
@@ -51,7 +53,7 @@ export const MarkdownTable = memo(function MarkdownTable({
       : null;
   // sourceKey pins the extraction to the source text; node identity is only
   // the fallback when the parser supplies no position.
-  const extracted = useMemo(() => extractTable(node), [sourceKey ?? node]);
+  const extracted = useMemo(() => extractTable(node), [sourceKey ?? node, hideAmounts]);
   const rendered = useMemo(() => extractRenderedCells(children), [children]);
   if (!extracted) return <table {...tableProps}>{children}</table>;
   return (

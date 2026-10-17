@@ -33,6 +33,7 @@ vi.mock("../lib/rpc", () => ({
   },
 }));
 
+import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { CapTablePage } from "./CapTable";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -75,6 +76,7 @@ beforeEach(() => {
   rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: false });
 });
 afterEach(() => {
+  setHideAmounts(false);
   vi.useRealTimers();
   act(() => root.unmount());
   container.remove();
@@ -310,4 +312,29 @@ it("explains an empty cap table and offers Connect Carta and Add contact once", 
   expect(labels.filter((label) => label === "Connect Carta")).toHaveLength(1);
   expect(labels.filter((label) => label?.includes("Add contact"))).toHaveLength(1);
   expect(button("Investors")).toBeUndefined();
+});
+
+it("hides shares, ownership, 409A and amounts while amounts are hidden, and flips back live", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  setHideAmounts(true);
+  await show();
+  const text = container.textContent ?? "";
+  for (const real of [
+    "10,000,000",
+    "500,000",
+    "1.25",
+    "70.00",
+    "30.00",
+    "1,000,000",
+    "10.00",
+    "250,000",
+  ])
+    expect(text).not.toContain(real);
+  expect(text).toContain("Example Co");
+  expect(text).toContain("Example Ventures");
+  await click(
+    button("Show amounts") ??
+      (document.querySelector("[data-testid=hide-amounts-toggle]") as HTMLElement),
+  );
+  expect(container.textContent).toContain("10,000,000");
 });

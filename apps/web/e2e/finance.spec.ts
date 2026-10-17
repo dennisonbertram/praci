@@ -5,6 +5,7 @@ import {
   cryptoData,
   cryptoHistoryData,
   emptyOverview,
+  monthData,
   receiptPng,
   runwayData,
   transactionOf,
@@ -31,6 +32,7 @@ async function mockFinance(page: Page, overview = connectedOverview) {
       preferences: { runwayCrypto: "bank" },
       balanceSeries: balanceSeriesOf(String(input?.range)),
       vendor,
+      month: monthData,
       transaction: transactionOf(String(input?.id)),
       receiptUrl: { url: "https://files.example.test/receipt.png", mimeType: "image/png" },
       connect: { status: "already_connected", serverId: "11111111-1111-4111-8111-111111111111" },
@@ -414,4 +416,59 @@ test("Finance runway shows crypto and switches what counts", async ({ page }) =>
   await main.getByRole("button", { name: "Count crypto" }).click();
   await expect(main.getByText("$98,000", { exact: true })).toBeVisible();
   await expect(main.getByRole("button", { name: "Counting all crypto" })).toBeVisible();
+});
+
+test("Finance month groups transactions by vendor and expands a vendor", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  await mockFinance(page);
+  await signup(page, `finance-group-${Date.now()}@rakazo.test`, "password12", "Finance Group");
+  await completeOnboarding(page);
+  await page.goto("/app/finance/month/2026-10");
+  const main = page.getByRole("main");
+  const rows = main.locator("tbody tr");
+
+  // The flat list is the default: five transactions.
+  await expect(rows).toHaveCount(5);
+  await captureScreenshot(page, testInfo, "finance-month-flat");
+
+  // Grouped: one row per vendor, largest total first, spelled variants merged.
+  await main.getByRole("button", { name: "By vendor", exact: true }).click();
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toContainText("Example Customer Inc");
+  await expect(rows.nth(0)).toContainText("+$1,000.00");
+  await expect(rows.nth(1)).toContainText("Acme Hosting");
+  await expect(rows.nth(1)).toContainText("2 transactions");
+  await expect(rows.nth(1)).toContainText("$620.00");
+  await expect(rows.nth(2)).toContainText("Globex Compute");
+  await expect(rows.nth(2)).toContainText("Mixed");
+  await expect(rows.nth(2)).toContainText("$250.00");
+  await captureScreenshot(page, testInfo, "finance-month-grouped");
+
+  // Expanding a vendor lists its transactions in the flat row style.
+  await main.getByRole("button", { name: "Acme Hosting" }).click();
+  await expect(rows).toHaveCount(5);
+  await expect(rows.nth(2)).toContainText("Usage");
+  await captureScreenshot(page, testInfo, "finance-month-grouped-expanded");
+
+  // The same three states in the dark scheme. The grouped choice survives the reload.
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.reload();
+  await expect(rows).toHaveCount(3);
+  await captureScreenshot(page, testInfo, "finance-month-grouped-dark");
+  await main.getByRole("button", { name: "Acme Hosting" }).click();
+  await expect(rows).toHaveCount(5);
+  await captureScreenshot(page, testInfo, "finance-month-grouped-expanded-dark");
+  await main.getByRole("button", { name: "List", exact: true }).click();
+  await expect(rows).toHaveCount(5);
+  await captureScreenshot(page, testInfo, "finance-month-flat-dark");
+  await page.emulateMedia({ colorScheme: "light" });
+  await main.getByRole("button", { name: "By vendor", exact: true }).click();
+
+  // The choice is remembered on this device.
+  await page.reload();
+  await expect(rows).toHaveCount(3);
+  await main.getByRole("button", { name: "List", exact: true }).click();
+  await expect(rows).toHaveCount(5);
 });

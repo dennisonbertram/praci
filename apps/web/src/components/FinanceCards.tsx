@@ -4,8 +4,9 @@ import { Card } from "@rakazo/ui-web";
 import { ChevronRight, MessageSquareQuote } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { money, shortDay, transactionAmount } from "../lib/finance-format";
+import { money, runwayText, shortDay, transactionAmount } from "../lib/finance-format";
 import { financePath } from "../lib/finance-route";
+import { useHideAmounts } from "../lib/hide-amounts-preference";
 
 type FinanceBlock = Extract<MessageBlock, { kind: "finance" }>;
 
@@ -114,12 +115,16 @@ function Header({ to, title, value }: { to: string; title: string; value?: strin
 }
 
 function Preview({ card }: { card: FinanceCard }) {
+  useHideAmounts();
   const { t } = useLingui();
   if (card.card === "overview") {
     const kpis = [
       [t`Cash`, money(card.cashCents)],
       [t`Burn / mo`, money(card.burnCents)],
-      [t`Runway`, card.runwayMonths === null ? "–" : t`${Math.round(card.runwayMonths)} mo`],
+      [
+        t`Runway`,
+        card.runwayMonths === null ? "–" : t`${runwayText(Math.round(card.runwayMonths), 0)} mo`,
+      ],
       [t`Spend this month`, money(card.monthSpendCents)],
     ] as const;
     return (

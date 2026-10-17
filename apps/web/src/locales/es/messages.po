@@ -129,7 +129,7 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
-#. placeholder {0}: Math.round(card.runwayMonths)
+#. placeholder {0}: runwayText(Math.round(card.runwayMonths), 0)
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
 msgstr ""
@@ -201,6 +201,10 @@ msgstr "Computadora de {botName}"
 #: src/pages/shell/bot-credentials.tsx
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 msgstr "{commandVariable} está reservada y no puede usarse como variable de comando. Elige otro nombre."
+
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# transaction} other {# transactions}}"
+msgstr ""
 
 #: src/lib/billing.ts
 msgid "{count} days"
@@ -1232,6 +1236,10 @@ msgstr ""
 msgid "By month"
 msgstr ""
 
+#: src/components/finance/ui.tsx
+msgid "By vendor"
+msgstr ""
+
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Cadence"
 msgstr ""
@@ -1389,6 +1397,10 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Chart failed to render: {error}"
 msgstr "No se pudo renderizar el gráfico: {error}"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Chart hidden while amounts are hidden"
+msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2640,7 +2652,7 @@ msgstr "Predeterminado"
 #. placeholder {0}: thinkingLevelLabel("medium")
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Default ({0})"
-msgstr ""
+msgstr "Predeterminado ({0})"
 
 #. placeholder {0}: thinkingLevelLabel("medium")
 #. placeholder {0}: thinkingLevelLabel(defaultThinkingLevel)
@@ -3170,7 +3182,7 @@ msgstr "Extra alto"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Extra high"
-msgstr ""
+msgstr "Extra alto"
 
 #: src/components/CloudAgentCard.tsx
 msgid "failed"
@@ -3496,6 +3508,10 @@ msgstr "Escuchar una muestra"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Hola, así sonaré cuando lea las respuestas en voz alta."
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Hide amounts"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Hide password"
 msgstr "Ocultar contraseña"
@@ -3508,6 +3524,10 @@ msgstr ""
 msgid "Hide transcript"
 msgstr "Ocultar la transcripción"
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
+msgstr ""
+
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -3517,7 +3537,7 @@ msgstr "Alto"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "High"
-msgstr ""
+msgstr "Alto"
 
 #: src/pages/CapTable.tsx
 msgid "Holding"
@@ -3801,6 +3821,7 @@ msgstr ""
 msgid "Link SSO"
 msgstr "Vincular SSO"
 
+#: src/components/finance/ui.tsx
 #: src/pages/Shell.tsx
 msgid "List"
 msgstr ""
@@ -3919,7 +3940,7 @@ msgstr "Bajo"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Low"
-msgstr ""
+msgstr "Bajo"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
@@ -4018,7 +4039,7 @@ msgstr "Máx."
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Max"
-msgstr ""
+msgstr "Máx."
 
 #: src/pages/Artifacts.tsx
 msgid "Maximize"
@@ -4050,7 +4071,7 @@ msgstr "Medio"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Medium"
-msgstr ""
+msgstr "Medio"
 
 #: src/pages/GroupPanel.tsx
 msgid "Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
@@ -4139,7 +4160,7 @@ msgstr "Mínimo"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Minimal"
-msgstr ""
+msgstr "Mínimo"
 
 #: src/pages/WindowChrome.tsx
 msgid "Minimize"
@@ -4152,6 +4173,10 @@ msgstr "minuto"
 #: src/pages/RoutineSchedule.tsx
 msgid "minutes"
 msgstr "minutos"
+
+#: src/components/finance/ui.tsx
+msgid "Mixed"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5205,6 +5230,10 @@ msgstr ""
 msgid "Receipt"
 msgstr ""
 
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Receipt hidden while amounts are hidden"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Receipts"
 msgstr ""
@@ -6014,6 +6043,10 @@ msgstr "Shell"
 msgid "Show all {total}"
 msgstr ""
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Show amounts"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Show computer"
 msgstr ""
@@ -6795,6 +6828,7 @@ msgstr ""
 msgid "Undo"
 msgstr ""
 
+#: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
 msgstr ""

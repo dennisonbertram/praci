@@ -23,8 +23,11 @@ import {
 import { PieChart, Plus, RefreshCw } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { AskBotButton } from "../components/AskBotButton";
+import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { hasConnectedCarta } from "../lib/carta-agent";
+import { percentFigure, shareCount, usdFigure } from "../lib/finance-format";
+import { useHideAmounts } from "../lib/hide-amounts-preference";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -40,18 +43,9 @@ const POLL_MS = 3000;
 const IDLE_POLL_MS = 30_000;
 const DASH = "—";
 
-const num = (value: number | null) =>
-  value == null ? DASH : value.toLocaleString(i18n.locale || "en");
-const usd = (value: number | null, digits = 0) =>
-  value == null
-    ? DASH
-    : value.toLocaleString(i18n.locale || "en", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: digits,
-        maximumFractionDigits: digits,
-      });
-const pct = (value: number | null) => (value == null ? DASH : `${value.toFixed(2)}%`);
+const num = (value: number | null) => shareCount(value, i18n.locale || "en");
+const usd = (value: number | null, digits = 0) => usdFigure(value, digits, i18n.locale || "en");
+const pct = (value: number | null) => percentFigure(value);
 
 /** One investors-table row: a Carta holder, the contact it matches, or a contact with no holding. */
 type Row = { key: string; contact: Contact | null; holder: Holder | null };
@@ -79,6 +73,7 @@ function Figure({ title, value }: { title: string; value: string }) {
 }
 
 function Summary({ snapshot }: { snapshot: Snapshot | null }) {
+  useHideAmounts();
   const a = snapshot?.latest409a;
   return (
     <div className="mb-4 grid grid-cols-2 gap-3 @2xl:grid-cols-4">
@@ -97,6 +92,7 @@ function Summary({ snapshot }: { snapshot: Snapshot | null }) {
 }
 
 function OwnershipBar({ classes }: { classes: Snapshot["shareClasses"] }) {
+  useHideAmounts();
   if (classes.length === 0) return null;
   return (
     <div className="mb-5">
@@ -279,6 +275,7 @@ export function CapTablePage({
   onShowAgent?: () => void;
   onConnectCarta: () => void;
 }) {
+  useHideAmounts();
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [error, setError] = useState("");
   const [cartaConnected, setCartaConnected] = useState(true);
@@ -391,6 +388,7 @@ export function CapTablePage({
             </p>
           ) : null}
         </div>
+        <HideAmountsButton />
         {emptyPage ? null : cartaConnected ? (
           <Button
             variant="ghost"
