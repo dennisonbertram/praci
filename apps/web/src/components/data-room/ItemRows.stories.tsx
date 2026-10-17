@@ -65,6 +65,19 @@ export const ListNarrow: Story = {
     />
   ),
 };
+const subfolders = [
+  { id: "fld_inv", name: "Invoices", parentId: "fld_fin", createdAt: "2026-10-01T00:00:00.000Z" },
+  { id: "fld_rec", name: "Receipts", parentId: "fld_fin", createdAt: "2026-10-01T00:00:00.000Z" },
+];
+/** The grid of an open folder with sub-folders: they are tiles too, above the files. */
+export const GridWithSubfolders: Story = {
+  render: () => (
+    <>
+      <SubfolderList tiles folders={subfolders} onOpen={() => undefined} />
+      <GridView rows={rows} o={o} />
+    </>
+  ),
+};
 /** An open folder with sub-folders: they come first, under the column header. */
 export const ListWithSubfolders: Story = {
   render: () => (

@@ -212,15 +212,50 @@ function ItemRow({
   );
 }
 
-/** The open folder's sub-folders, above its files, so a folder that holds only folders never looks empty. */
+/** Shared by the file tiles and the sub-folder tiles, so a grid reads as one set of tiles. */
+const TILE_GRID = "grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 p-3";
+const TILE =
+  "relative flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring";
+
+/**
+ * The open folder's sub-folders, above its files, so a folder that holds only folders never looks
+ * empty. As rows in the list, as tiles (`tiles`) in the grid.
+ */
 export function SubfolderList({
   folders,
   onOpen,
+  tiles = false,
 }: {
   folders: DataRoomApiFolder[];
   onOpen: (id: string) => void;
+  tiles?: boolean;
 }) {
   if (!folders.length) return null;
+  if (tiles) {
+    return (
+      <ul aria-label={t`Sub-folders`} className={cn(TILE_GRID, "pb-0")}>
+        {folders.map((folder) => (
+          <li key={folder.id} className="flex">
+            <Button
+              variant="ghost"
+              onClick={() => onOpen(folder.id)}
+              className={cn(TILE, "h-auto w-full items-stretch font-medium whitespace-normal")}
+            >
+              <span className="grid h-20 place-items-center rounded-md bg-muted [&>svg]:size-6">
+                <Folder aria-hidden="true" className="size-6 text-muted-foreground" />
+              </span>
+              <span className="line-clamp-2 text-start break-words" title={folder.name}>
+                {folder.name}
+              </span>
+              <span className="text-start text-xs font-normal text-muted-foreground">
+                <Trans>Folder</Trans>
+              </span>
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
+  }
   return (
     <ul aria-label={t`Sub-folders`} className="flex flex-col">
       {folders.map((folder) => (
@@ -259,18 +294,14 @@ export function ListView({ rows, o, lead }: { rows: Row[]; o: RowInteraction; le
 
 export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
   return (
-    <ul
-      aria-label={t`Items`}
-      data-rows
-      className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 p-3"
-    >
+    <ul aria-label={t`Items`} data-rows className={TILE_GRID}>
       {rows.map(({ item }) => (
         <li
           key={item.id}
           {...rowProps(item, o)}
           aria-current={o.shownId === item.id}
           className={cn(
-            "relative flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+            TILE,
             o.shownId === item.id && "border-primary bg-sidebar-accent ring-1 ring-primary",
           )}
         >

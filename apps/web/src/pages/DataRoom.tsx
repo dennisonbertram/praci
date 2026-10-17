@@ -262,6 +262,7 @@ export function DataRoomPage() {
   const uniq = (values: string[]) => [...new Set(values)].sort();
   const subfolderList = (
     <SubfolderList
+      tiles={view === "grid"}
       folders={subfolders}
       onOpen={(folderId) => setFilters({ ...filters, folderId })}
     />
