@@ -125,6 +125,36 @@ describe("createRepos.listBots", () => {
     });
   });
 
+  it("previews the latest words, not an emoji reaction to them", async () => {
+    const prisma = {
+      bot: {
+        findMany: vi.fn(async () => [
+          {
+            ...baseBot,
+            thread: {
+              ...baseBot.thread,
+              messages: [
+                {
+                  id: "m2",
+                  seq: 2,
+                  role: "user",
+                  replyToMessageId: "m1",
+                  blocks: [{ kind: "text", text: "👍" }],
+                },
+                { id: "m1", seq: 1, role: "bot", blocks: [{ kind: "text", text: "Done." }] },
+              ],
+            },
+          },
+        ]),
+      },
+      run: { findMany: vi.fn(async () => []) },
+    };
+
+    const bots = await createRepos(prisma as unknown as PrismaClient).listBots(actor);
+
+    expect(bots[0]?.preview).toBe("Done.");
+  });
+
   it("classifies unseen runs in older pages and retains negative results between pages", async () => {
     const prisma = {
       bot: {
