@@ -53,3 +53,9 @@ it("offers Delete only once the routine has been saved", async () => {
   expect(await buttons(null)).not.toContain("Delete");
   expect(await buttons({ id: "routine-1" } as Routine)).toContain("Delete");
 });
+
+it("asks when a new routine runs in plain words, without webhook or GitHub jargon", async () => {
+  const names = await buttons(null);
+  expect(names).toContain("Choose when it runs");
+  expect(names).not.toContain("Add trigger");
+});

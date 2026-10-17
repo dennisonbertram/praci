@@ -146,8 +146,13 @@ export function RoutineListHeader({ onCreate }: { onCreate: () => void }) {
   const { t } = useLingui();
   return (
     <div className="mt-[30px] mb-3 flex items-center justify-between gap-3">
-      <div className="text-sm text-muted-foreground">
-        <Trans>Routines</Trans>
+      <div className="min-w-0">
+        <div className="text-sm text-muted-foreground">
+          <Trans>Routines</Trans>
+        </div>
+        <p className="mt-0.5 text-xs text-muted-foreground/70">
+          <Trans>Work this bot repeats for you, like a cash check every Monday.</Trans>
+        </p>
       </div>
       <Button
         variant="secondary"
@@ -553,7 +558,7 @@ export function RoutineEditor({
             render={<Button variant="outline" className="mt-2 h-auto w-full rounded-xl py-3" />}
           >
             <Plus />
-            <Trans>Add trigger</Trans>
+            <Trans>Choose when it runs</Trans>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top">
             <DropdownMenuSub>
@@ -603,21 +608,29 @@ export function RoutineEditor({
               </span>
             ))}
 
-            <DropdownMenuItem disabled={draft.githubEnabled} onClick={() => void addGithub()}>
-              <GitBranch />
-              <Trans>Git event</Trans>
-            </DropdownMenuItem>
-
-            <DropdownMenuItem disabled={draft.webhookEnabled} onClick={() => void addWebhook()}>
-              <Globe />
-              <Trans>Webhook</Trans>
-            </DropdownMenuItem>
+            {/* Developer triggers stay available, one level down, so founders see plain choices first. */}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Globe />
+                <Trans>From another app (advanced)</Trans>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="min-w-[170px]">
+                <DropdownMenuItem disabled={draft.githubEnabled} onClick={() => void addGithub()}>
+                  <GitBranch />
+                  <Trans>Git event</Trans>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={draft.webhookEnabled} onClick={() => void addWebhook()}>
+                  <Globe />
+                  <Trans>Webhook</Trans>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           </DropdownMenuContent>
         </DropdownMenu>
 
         {!hasTriggers ? (
           <p className="mt-2 text-xs text-muted-foreground/70">
-            <Trans>Add a schedule, webhook, GitHub, or message trigger to run this routine.</Trans>
+            <Trans>Pick when this runs, for example every Monday morning.</Trans>
           </p>
         ) : null}
       </div>
