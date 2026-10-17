@@ -61,6 +61,19 @@ export function KnowledgeSection({
 }
 
 /** All of the user's memory documents (shared and per bot), mounted in Settings → Memory. */
+/** The first line of a memory document that says something: headings are skipped, list marks dropped. */
+export function memoryDocPreview(content: string): string | null {
+  for (const raw of content.split("\n")) {
+    if (/^\s*#/.test(raw)) continue;
+    const line = raw
+      .replace(/^\s*([-*+]|\d+\.)\s+/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (line) return line;
+  }
+  return null;
+}
+
 export function SpaceMemorySection() {
   const { t } = useLingui();
   const [filter, setFilter] = useState("");
@@ -104,7 +117,7 @@ export function SpaceMemorySection() {
         onHasDocs={setHasDocs}
         groupLabel={(doc) =>
           doc.scope === "user"
-            ? t`Shared documents`
+            ? t`Shared by all bots`
             : (botNames.get(doc.botId ?? "") ?? t`Unknown bot`)
         }
       />
@@ -264,13 +277,17 @@ function MemoryDocumentList({
                 onClick={() => (openId === doc.id ? setOpenId(null) : openDoc(doc))}
                 className={rowClass(openId === doc.id)}
               >
-                <span className="flex w-full items-baseline justify-between gap-3">
-                  <span className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
-                    {doc.path}
-                  </span>
-                  <span className="shrink-0 text-[12px] text-muted-foreground">
-                    <Trans>rev {doc.revision}</Trans>
-                  </span>
+                {/* What the bot remembers, not its file name and revision number. */}
+                <span
+                  className="min-w-0 truncate text-[14px] text-foreground"
+                  dir="auto"
+                  title={doc.path}
+                >
+                  {memoryDocPreview(doc.content) ?? (
+                    <span className="font-normal text-muted-foreground">
+                      <Trans>Nothing remembered yet</Trans>
+                    </span>
+                  )}
                 </span>
               </Button>
               {openId === doc.id ? (

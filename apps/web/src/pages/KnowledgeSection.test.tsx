@@ -146,3 +146,12 @@ it("labels the skills tab as shared and badges built-in and plugin skills", asyn
     vi.unstubAllGlobals();
   }
 });
+
+it("previews what a memory document says instead of its file name", async () => {
+  const { memoryDocPreview } = await import("./KnowledgeSection");
+  expect(
+    memoryDocPreview("# Memory\n\n- Board meeting is on the 28th\n- Prefers short replies"),
+  ).toBe("Board meeting is on the 28th");
+  expect(memoryDocPreview("1. Runway is 8.9 months")).toBe("Runway is 8.9 months");
+  expect(memoryDocPreview("  \n#\n")).toBeNull();
+});

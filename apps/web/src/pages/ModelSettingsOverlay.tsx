@@ -1136,7 +1136,10 @@ export function ModelSettingsOverlay({
   ) : localOwner ? (
     <Trans>Models for the server owner’s default space.</Trans>
   ) : (
-    <Trans>Choose which connected model Rakazo uses.</Trans>
+    <Trans>
+      The AI your bots think with. They already have one, so change this only to use another AI
+      company or your own key.
+    </Trans>
   );
 
   const body = (

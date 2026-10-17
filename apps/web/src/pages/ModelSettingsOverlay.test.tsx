@@ -287,6 +287,8 @@ it("treats the provider this space already uses as connected, with a key optiona
     expect(text).toContain("This space already uses DeepSeek.");
     expect(text).not.toContain("Connect this provider");
     expect(text).toContain("Use your own key");
+    // A founder should learn they need to do nothing here before reading a list of providers.
+    expect(text).toContain("They already have one, so change this only");
   } finally {
     await view.unmount();
   }
