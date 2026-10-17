@@ -288,9 +288,9 @@ it("shows Ownership in the same font as the other figures", async () => {
 it("offers Add email for a holder without a contact and prefills the dialog", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
   await show();
-  const add = [...container.querySelectorAll("[data-testid=cap-table-email-cell] button")].filter(
-    (b) => b.textContent === "Add email",
-  );
+  const add = [
+    ...container.querySelectorAll<HTMLButtonElement>("[data-testid=cap-table-email-cell] button"),
+  ].filter((b) => b.textContent === "Add email");
   expect(add).toHaveLength(1);
   await click(add[0]);
   expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Dee Newcomer");
@@ -513,9 +513,9 @@ it("lists only investors on the Investors tab and offers Add email only to inves
   expect(text).not.toContain("Granted options");
   await click(button("All"));
   expect(container.textContent).toContain("Founder Person");
-  const adds = [...container.querySelectorAll("[data-testid=cap-table-email-cell] button")].filter(
-    (b) => b.textContent === "Add email",
-  );
+  const adds = [
+    ...container.querySelectorAll<HTMLButtonElement>("[data-testid=cap-table-email-cell] button"),
+  ].filter((b) => b.textContent === "Add email");
   expect(adds).toHaveLength(1);
   // A contact with no holding shows a dash, the same as a holder with no shares.
   const rows = [...container.querySelectorAll("tbody tr")];
