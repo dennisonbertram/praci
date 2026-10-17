@@ -3804,7 +3804,7 @@ export function ShellPage() {
                                       </span>
                                     ) : null}
                                   </div>
-                                  <div className="flex shrink-0 items-center gap-1.5">
+                                  <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
                                     {!compact ? (
                                       <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
                                         {formatRosterTime(item.chat.updatedAt)}
@@ -3860,6 +3860,29 @@ export function ShellPage() {
                                 )}
                               </div>
                             </button>
+                            {/* The right-click menu, also reachable on hover or by keyboard. */}
+                            {item.chat.spaceId === bootstrapMe?.spaceId ? (
+                              <button
+                                type="button"
+                                data-testid="roster-row-actions"
+                                aria-label={t`Actions for ${item.chat.name}`}
+                                aria-haspopup="menu"
+                                onClick={(event) => {
+                                  const rect = event.currentTarget.getBoundingClientRect();
+                                  botMenuAnchor.current = event.currentTarget;
+                                  setBotMenu({
+                                    kind: item.kind,
+                                    id: item.chat.id,
+                                    position: { x: rect.left, y: rect.bottom },
+                                  });
+                                }}
+                                className={`absolute end-2 top-1.5 grid size-7 place-items-center rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:hidden ${
+                                  botMenu?.id === item.chat.id ? "opacity-100" : ""
+                                }`}
+                              >
+                                <MoreHorizontal size={15} strokeWidth={1.7} aria-hidden="true" />
+                              </button>
+                            ) : null}
                           </div>
                         );
                       })}

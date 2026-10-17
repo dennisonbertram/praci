@@ -385,17 +385,17 @@ test("bot context menu pins, duplicates, edits, and confirms deletion", async ({
   const chief = page.getByRole("button", { name: /Chief/ }).first();
   await chief.click({ button: "right" });
   await expect(page.getByRole("menu", { name: "Actions for Chief" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "Edit Profile" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Edit profile" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Duplicate" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
   await captureScreenshot(page, testInfo, "16-bot-context-menu");
-  await page.getByRole("menuitem", { name: "Mark as Unread" }).click();
+  await page.getByRole("menuitem", { name: "Mark as unread" }).click();
 
   // Chief is the open bot, so the auto-read on window focus must not undo the manual mark.
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await chief.click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: "Mark as Read" })).toBeVisible();
-  await page.getByRole("menuitem", { name: "Mark as Read" }).click();
+  await expect(page.getByRole("menuitem", { name: "Mark as read" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Mark as read" }).click();
 
   await chief.click({ button: "right" });
   await page.getByRole("menuitem", { name: "Pin", exact: true }).click();
@@ -414,7 +414,7 @@ test("bot context menu pins, duplicates, edits, and confirms deletion", async ({
   await page.getByRole("button", { name: "Cancel" }).click();
 
   await chief.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Edit Profile" }).click();
+  await page.getByRole("menuitem", { name: "Edit profile" }).click();
   await expect(page.locator("label:has-text('Name') input")).toHaveValue("Chief");
   await captureScreenshot(page, testInfo, "19-edit-profile");
 });

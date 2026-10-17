@@ -137,7 +137,7 @@ test("reload restores the selected routine and scopes preferences to the chat", 
     .getByRole("button", { name: originalName, exact: false })
     .first()
     .click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Edit Profile", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Edit profile", exact: true }).click();
   await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "settings");
   await waitForStoredPanel(page, "settings");
   await page.reload();
