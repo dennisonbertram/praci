@@ -1,11 +1,15 @@
 import { createSecretStore, syncFinanceForUser } from "@rakazo/adapters";
 import { CARTA_MCP_ENDPOINT, FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
-import { createDb, saveCapTableSnapshot } from "@rakazo/db";
+import { createDb, createThreadMessageInTransaction, saveCapTableSnapshot } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
+  DEMO_ARCHIVED_BOT,
+  DEMO_ARTIFACTS,
   DEMO_BOTS,
   DEMO_CAP_TABLE,
   DEMO_CHIEF_DRAFT,
+  DEMO_CHIEF_DRAFT_V1,
+  DEMO_CHIEF_HISTORY,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENT_FACETS,
@@ -239,14 +243,39 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   }
   done.push(`${DEMO_DOCUMENTS.length} data room documents`);
 
-  // Artifacts: last month's investor update, filed under Chief.
-  await session.rpc("artifacts/create", {
-    botId: chief.id,
-    name: DEMO_CHIEF_DRAFT.name,
-    mimeType: DEMO_CHIEF_DRAFT.mimeType,
-    contentBase64: Buffer.from(DEMO_CHIEF_DRAFT.text).toString("base64"),
-  });
-  done.push("Chief's investor update draft");
+  // Artifacts: last month's investor update in two versions, and the other files Chief made.
+  for (const artifact of [DEMO_CHIEF_DRAFT_V1, DEMO_CHIEF_DRAFT, ...DEMO_ARTIFACTS]) {
+    await session.rpc("artifacts/create", {
+      botId: chief.id,
+      name: artifact.name,
+      mimeType: artifact.mimeType,
+      ...("description" in artifact ? { description: artifact.description } : {}),
+      contentBase64: Buffer.from(artifact.text).toString("base64"),
+    });
+  }
+  done.push(`${DEMO_ARTIFACTS.length + 1} artifacts (the investor update has 2 versions)`);
+
+  // Chief's earlier conversation, written straight to the thread (no model call).
+  {
+    const db = createDb(options.databaseUrl);
+    try {
+      const thread = await db.prisma.thread.findFirstOrThrow({ where: { botId: chief.id } });
+      for (const entry of DEMO_CHIEF_HISTORY) {
+        await db.prisma.$transaction((tx) =>
+          createThreadMessageInTransaction(tx, {
+            threadId: thread.id,
+            role: entry.role,
+            blocks: [{ kind: "text", text: entry.text }],
+            markUnread: false,
+          }),
+        );
+      }
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  }
+  done.push(`${DEMO_CHIEF_HISTORY.length} earlier messages with Chief`);
 
   // Team: extra bots and a group chat.
   const botIds = [chief.id];
@@ -259,7 +288,13 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     botIds.push(created.id);
   }
   await session.rpc("groups/create", { name: DEMO_GROUP.name, botIds });
-  done.push(`${DEMO_BOTS.length} extra bots, 1 group chat (${MOCK_NOTE})`);
+  const archived = await session.rpc<{ id: string }>("bots/create", {
+    ...DEMO_ARCHIVED_BOT,
+    instructions: DEMO_ARCHIVED_BOT.description,
+    notifyOnFinish: true,
+  });
+  await session.rpc("bots/archive", { botId: archived.id });
+  done.push(`${DEMO_BOTS.length} extra bots, 1 archived bot, 1 group chat (${MOCK_NOTE})`);
 
   // A second, empty space: what a founder sees before connecting anything (switch to it to test).
   await session.rpc("spaces/create", { name: DEMO_EMPTY_SPACE });

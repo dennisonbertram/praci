@@ -12,8 +12,11 @@ import {
 } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  DEMO_ARCHIVED_BOT,
+  DEMO_ARTIFACTS,
   DEMO_CAP_TABLE,
   DEMO_CHIEF_DRAFT,
+  DEMO_CHIEF_DRAFT_V1,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENT_FACETS,
@@ -37,6 +40,12 @@ describe("mock demo data", () => {
     for (const contact of DEMO_CONTACTS) expect(contact.notes).toContain(MOCK_NOTE);
     expect(DEMO_CHIEF_DRAFT.name).toContain("MOCK");
     expect(DEMO_CHIEF_DRAFT.text).toContain(MOCK_NOTE);
+    expect(DEMO_CHIEF_DRAFT_V1.name).toBe(DEMO_CHIEF_DRAFT.name);
+    for (const artifact of [DEMO_CHIEF_DRAFT_V1, ...DEMO_ARTIFACTS]) {
+      expect(artifact.name).toContain("MOCK");
+      expect(artifact.text).toContain(MOCK_NOTE);
+    }
+    expect(DEMO_ARCHIVED_BOT.description).toContain(MOCK_NOTE);
     for (const document of DEMO_DOCUMENTS) {
       expect(document.name).toContain("MOCK");
       expect(document.text).toContain(MOCK_NOTE);

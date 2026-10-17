@@ -940,6 +940,110 @@ ${MOCK_NOTE}: invented for UX testing. Not a real update.
 `,
 };
 
+/** The draft's earlier version, so the artifact shows a version history. */
+export const DEMO_CHIEF_DRAFT_V1 = {
+  ...DEMO_CHIEF_DRAFT,
+  text: `# MOCK DEMO DATA: Investor update, September (first draft)
+
+Hi all,
+
+- Halcyon Logistics (Mock) pilot is going well.
+- Cash and burn: to fill in.
+
+${MOCK_NOTE}: invented for UX testing. Not a real update.
+`,
+};
+
+/** Other files bots "made", one of each kind the Artifacts page shows. */
+export const DEMO_ARTIFACTS = [
+  {
+    name: "MOCK Q3 Board Deck.md",
+    mimeType: "text/markdown",
+    description: "Board meeting deck: results, plan and asks",
+    text: `# MOCK DEMO DATA: Q3 board deck
+
+1. Results: 3 pilots, 1 annual contract
+2. Cash: $412,000, 8.9 months of runway
+3. Plan for Q4: 2 hires, 5 new pilots
+4. Asks for the board
+
+${MOCK_NOTE}: invented for UX testing.
+`,
+  },
+  {
+    name: "MOCK Cash Dashboard.html",
+    mimeType: "text/html",
+    description: "Cash, burn and runway at a glance",
+    text: `<!doctype html><html><body style="font-family:sans-serif;padding:24px">
+<h1>MOCK DEMO DATA: Cash dashboard</h1>
+<p>Cash: $412,000 · Monthly burn: $46,000 · Runway: 8.9 months</p>
+<p>${MOCK_NOTE}: invented for UX testing.</p>
+</body></html>
+`,
+  },
+  {
+    name: "MOCK Runway Scenarios.csv",
+    mimeType: "text/csv",
+    description: "Runway if burn changes",
+    text: `scenario,monthly_burn_usd,runway_months
+current,46000,8.9
+hire two engineers,64000,6.4
+cut tools 10%,44000,9.4
+${MOCK_NOTE},,
+`,
+  },
+  {
+    name: "MOCK Hiring Plan - Q4.md",
+    mimeType: "text/markdown",
+    description: "Two roles for Q4 and what they cost",
+    text: `# MOCK DEMO DATA: Hiring plan, Q4
+
+- Senior robotics engineer, from November
+- Field deployment lead, from December
+
+${MOCK_NOTE}: invented for UX testing.
+`,
+  },
+];
+
+/** An earlier conversation with Chief, so history, search and recall have something to find. */
+export const DEMO_CHIEF_HISTORY: Array<{ role: "user" | "bot"; text: string }> = [
+  { role: "user", text: "When is the next board meeting? (mock)" },
+  {
+    role: "bot",
+    text: "The Q3 board meeting is on the 28th. I drafted the deck; it is in Artifacts as MOCK Q3 Board Deck.",
+  },
+  { role: "user", text: "What did we agree with Halcyon Logistics (Mock)?" },
+  {
+    role: "bot",
+    text: "The pilot converted to an annual contract for 20 picking robots, starting in Q1.",
+  },
+  { role: "user", text: "Remind me what our runway was last month." },
+  { role: "bot", text: "About 8.9 months, from $412,000 cash and $46,000 monthly net burn." },
+  { role: "user", text: "Who still owes us a signed NDA?" },
+  {
+    role: "bot",
+    text: "Bolt Freight (Mock). Their NDA upload failed, so it is worth asking them to send it again.",
+  },
+  { role: "user", text: "Draft a short thank-you to Priya Placeholder for the intro." },
+  {
+    role: "bot",
+    text: 'Here is a draft: "Thanks for the intro to Acme Ventures (Mock), Priya. We are meeting next week."',
+  },
+  { role: "user", text: "What should I hire for first?" },
+  {
+    role: "bot",
+    text: "The hiring plan puts a senior robotics engineer first, in November. It is in Artifacts as MOCK Hiring Plan - Q4.",
+  },
+];
+
+/** A bot that was archived, so the archive has something to show and restore. */
+export const DEMO_ARCHIVED_BOT = {
+  name: "Hiring helper (mock)",
+  title: "Hiring",
+  description: `${MOCK_NOTE}: screened the demo candidates last quarter.`,
+};
+
 export const DEMO_BOTS = [
   {
     name: "Legal Desk (mock)",
