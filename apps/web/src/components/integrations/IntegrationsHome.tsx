@@ -20,7 +20,7 @@ import {
 } from "@rakazo/ui-web";
 import { Search } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   appPath,
   CATEGORY_IDS,
@@ -48,6 +48,11 @@ import {
 import { AgentStack, IntegrationTile, StatusBadge } from "./parts";
 import { agentsFor, type IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
+
+/** An in-app path to return to, or null for anything that could leave the app. */
+export function safeAppPath(value: string | null) {
+  return value?.startsWith("/app/") && !value.includes("//") ? value : null;
+}
 
 function hostOf(value: string | null) {
   if (!value) return "";
@@ -270,6 +275,9 @@ export function IntegrationsHome({
   const jumpToFinance = useRef(params.get("category") === "finance");
   // /app/integrations?connect=carta opens that first-party tile's sign-in once the page has loaded.
   const connectOnLoad = useRef(params.get("connect"));
+  // ...&returnTo=/app/cap-table sends the founder back there when that dialog closes.
+  const returnTo = useRef(safeAppPath(params.get("returnTo")));
+  const navigate = useNavigate();
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
   const [custom, setCustom] = useState<{
@@ -371,6 +379,7 @@ export function IntegrationsHome({
     const entry = firstPartyMcp.find((candidate) => candidate.id === connectOnLoad.current);
     connectOnLoad.current = null;
     if (entry) connectFirstParty(entry);
+    else returnTo.current = null;
   }, [data.loaded, firstPartyMcp]);
 
   function retry(app: ConnectedApp) {
@@ -672,7 +681,12 @@ export function IntegrationsHome({
           tokenSource={custom.token}
           oauthClient={custom.oauthClient}
           oauthScope={custom.scope}
-          onClose={() => setCustom(null)}
+          onClose={() => {
+            setCustom(null);
+            const back = returnTo.current;
+            returnTo.current = null;
+            if (back) navigate(back);
+          }}
         />
       ) : null}
       <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>

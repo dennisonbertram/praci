@@ -4,7 +4,7 @@ import type { ConnectionCatalogItem } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
@@ -21,7 +21,7 @@ const financeRpc = vi.hoisted(() => ({
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: financeRpc } }));
 
-import { IntegrationsHome } from "./IntegrationsHome";
+import { IntegrationsHome, safeAppPath } from "./IntegrationsHome";
 import type { IntegrationsData } from "./useIntegrations";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -336,6 +336,36 @@ it("names the dialog after the service for a first-party tile", async () => {
 it("opens a first-party sign-in from ?connect= once the page has loaded", async () => {
   await show(data(true, false), "/app/integrations?q=carta&connect=carta");
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Connect Carta");
+});
+
+it("returns to the page that asked for the sign-in when its dialog closes", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter
+        initialEntries={["/app/integrations?q=carta&connect=carta&returnTo=/app/cap-table"]}
+      >
+        <Routes>
+          <Route path="/app/integrations" element={<IntegrationsHome data={data(true, false)} />} />
+          <Route path="/app/cap-table" element={<p>cap table page</p>} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  const cancel = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(
+    (el) => el.textContent === "Cancel",
+  );
+  await act(async () => cancel?.click());
+  expect(container.textContent).toContain("cap table page");
+});
+
+it("only returns to in-app paths", () => {
+  expect(safeAppPath("/app/cap-table")).toBe("/app/cap-table");
+  expect(safeAppPath("https://evil.example.test/app/")).toBeNull();
+  expect(safeAppPath("/app//evil.example.test")).toBeNull();
+  expect(safeAppPath(null)).toBeNull();
 });
 
 it("still lists native Google apps when the managed catalog is not set up", async () => {
