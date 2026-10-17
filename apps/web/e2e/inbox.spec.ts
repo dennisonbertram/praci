@@ -534,7 +534,7 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await rowButtons.getByRole("button", { name: "Mark noise" }).click();
   await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: "noise" });
   const status = main.getByRole("status");
-  await expect(status).toContainText("Marked noise");
+  await expect(status).toContainText("is now marked as noise");
   await expect(main.getByRole("heading", { name: "Needs reply" })).toHaveCount(0);
   await expect(row(/Offsite dates/)).toBeVisible();
   await expect(row(/Offsite dates/)).toHaveClass(/text-muted-foreground/);

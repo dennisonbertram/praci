@@ -45,6 +45,7 @@ vi.mock("../lib/rpc", () => ({
   },
 }));
 vi.mock("../lib/inbox-message-cache", () => ({
+  INBOX_CHANGED_EVENT: "rakazo:inbox-changed",
   prefetchInboxMessage: () => {},
   peekInboxMessage: () => undefined,
   loadInboxMessage: () => new Promise(() => {}),
@@ -285,7 +286,7 @@ it("marks the row at once and offers Undo", async () => {
   const c = await render();
   await click(byText(c, "noise a"));
   expect(c.querySelector('[data-row-id="a"]')?.getAttribute("data-feedback")).toBe("noise");
-  expect(c.querySelector('[role="status"]')?.textContent).toContain("Marked noise");
+  expect(c.querySelector('[role="status"]')?.textContent).toContain("is now marked as noise");
   resolve({});
 });
 
@@ -549,13 +550,14 @@ it("marks an unread deep-linked message read once, and j and k never mark read",
   expect(rpcMock.markRead).not.toHaveBeenCalled();
 });
 
-it("shows the Archived toast inside the open message, not behind it", async () => {
+it("archiving the open message closes it and offers Undo on the list", async () => {
   const c = await render(["/app/inbox?mail=a"]);
   await click(byText(c, "dialog archive"));
-  const notice = c.querySelector('[data-testid="notice"]') as HTMLElement;
-  expect(notice.textContent).toContain("Archived");
-  expect(c.querySelector('[role="status"]')?.textContent).toBe("");
-  await click(byText(notice, "Undo"));
+  // Back to the list, as Archive from the list does, not on to another message.
+  expect(c.querySelector('[data-testid="notice"]')).toBeNull();
+  const status = c.querySelector('[role="status"]') as HTMLElement;
+  expect(status.textContent).toContain("Archived");
+  await click(byText(status, "Undo"));
   expect(rpcMock.unarchive).toHaveBeenCalled();
 });
 
@@ -587,4 +589,22 @@ it("a burst of 140 j presses in the open message moves one row and marks only it
   expect(location.search).toBe("?mail=b");
   expect(rpcMock.markRead).toHaveBeenCalledTimes(1);
   expect(rpcMock.markRead).toHaveBeenCalledWith({ messageId: "b", read: true });
+});
+
+it("says it is sorting while the first triage runs, and names the sender a mark covers", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")], { triagePending: true }));
+  const c = await render();
+  const sorting = () =>
+    [...c.querySelectorAll('[role="status"]')].some((el) =>
+      el.textContent?.includes("Sorting your mail…"),
+    );
+  expect(sorting()).toBe(true);
+  // Triage finished: one update regroups the list and the status goes.
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  expect(sorting()).toBe(false);
+  await click(byText(c, "noise b"));
+  expect(c.querySelector('[role="status"]')?.textContent).toContain(
+    "Mail from Dana is now marked as noise",
+  );
 });

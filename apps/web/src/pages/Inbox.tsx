@@ -19,10 +19,14 @@ import {
   InputGroupButton,
   InputGroupInput,
   Skeleton,
+  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
   Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@rakazo/ui-web";
 import { ListFilter, PanelRightOpen, Search, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -40,7 +44,7 @@ import {
   readInboxListState,
   setInboxListParam,
 } from "../lib/inbox-list-input";
-import { prefetchInboxMessage } from "../lib/inbox-message-cache";
+import { INBOX_CHANGED_EVENT, prefetchInboxMessage } from "../lib/inbox-message-cache";
 import { syncErrorText } from "../lib/inbox-sync-error";
 import { MAIL_SENT_EVENT } from "../lib/outbox";
 import { rpc } from "../lib/rpc";
@@ -49,14 +53,14 @@ import { errorText } from "../lib/user-error";
 const ALL = "all";
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
-const TRIAGE_MAX_POLLS = 6;
+const TRIAGE_MAX_POLLS = 12;
 const STATUS_MS = 6_000;
 const PREFETCH_DELAY_MS = 250;
 /** Marks the `?mail=` history entry the list pushed, so closing the message can go Back. */
 const LIST_OPEN = { inboxList: true };
 
 type Status =
-  | { kind: "marked"; messageId: string; mark: InboxMark }
+  | { kind: "marked"; messageId: string; mark: InboxMark; sender: string }
   | { kind: "archived"; messageId: string };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
@@ -138,6 +142,8 @@ export function InboxPage({
   const polls = useRef(0);
   const archiving = useRef(new Map<string, Promise<boolean>>());
   const [composing, setComposing] = useState(false);
+  // "Not now" on the sorting prompt hides it for this visit only.
+  const [consentDismissed, setConsentDismissed] = useState(false);
 
   // A message sent from any composer: reload, since the send synced the account.
   useEffect(() => {
@@ -146,7 +152,12 @@ export function InboxPage({
       onRefreshed();
     };
     window.addEventListener(MAIL_SENT_EVENT, onSent);
-    return () => window.removeEventListener(MAIL_SENT_EVENT, onSent);
+    // An agent card archived or marked a message: the list shows it at once.
+    window.addEventListener(INBOX_CHANGED_EVENT, onSent);
+    return () => {
+      window.removeEventListener(MAIL_SENT_EVENT, onSent);
+      window.removeEventListener(INBOX_CHANGED_EVENT, onSent);
+    };
   }, [onRefreshed]);
 
   useEffect(() => {
@@ -262,16 +273,27 @@ export function InboxPage({
   }, [shown, moreRows, filtered]);
   // The view and category buttons show only when triage can fill them in.
   const triage = Boolean(shown?.enabled ?? data?.enabled);
+  // The first sort after Allow: rows keep their places until triage finishes, then regroup once.
+  const [sorting, setSorting] = useState(false);
+  const firstSort =
+    triage &&
+    Boolean(shown?.triagePending) &&
+    (shown?.rows.length ?? 0) > 0 &&
+    shown?.rows.every((row) => row.needsReply === null);
+  useEffect(() => {
+    if (firstSort) setSorting(true);
+    else if (!shown?.triagePending) setSorting(false);
+  }, [firstSort, shown?.triagePending]);
   const narrowed = triage && (view === "important" || Boolean(category));
   // A search or narrowed list is one date-ordered list under a result count, not Needs reply / Today / Earlier.
   const resultsView = filtered || narrowed;
   const groups = useMemo(
     () =>
       groupInbox(
-        resultsView ? rows.map((row) => ({ ...row, needsReply: null })) : rows,
+        resultsView || sorting ? rows.map((row) => ({ ...row, needsReply: null })) : rows,
         new Date(),
       ),
-    [rows, resultsView],
+    [rows, resultsView, sorting],
   );
   const ids = useMemo(
     () => [...groups.needsReply, ...groups.today, ...groups.earlier].map((row) => row.id),
@@ -288,11 +310,15 @@ export function InboxPage({
   const setParam = (name: Parameters<typeof setInboxListParam>[1], value: string) =>
     setParams(setInboxListParam(params, name, value));
   const showTodos =
-    triage && !filtered && !narrowed && shown?.triageBlocked?.reason !== "needs_consent";
+    triage &&
+    !sorting &&
+    !filtered &&
+    !narrowed &&
+    shown?.triageBlocked?.reason !== "needs_consent";
   const loading =
     !shown ||
     (!filtered && shown.rows.length === 0 && !synced) ||
-    (showTodos && todos === undefined);
+    (showTodos && todos === undefined && !sorting);
   // Applies a change to every copy of the rows: the list, the pages after it and the cached lists.
   const patchRows = (change: (rows: MailRow[]) => MailRow[]) => {
     const patch = (list: InboxListOutput) => ({ ...list, rows: change(list.rows) });
@@ -355,10 +381,11 @@ export function InboxPage({
   };
   // The row changes at once; a failed save puts it back.
   const mark = (messageId: string, value: InboxMark | null) => {
-    const before = rows.find((row) => row.id === messageId)?.feedback ?? null;
+    const row = rows.find((item) => item.id === messageId);
+    const before = row?.feedback ?? null;
     setError("");
     patchFeedback(messageId, value);
-    setStatus(value ? { kind: "marked", messageId, mark: value } : null);
+    setStatus(value ? { kind: "marked", messageId, mark: value, sender: row?.from ?? "" } : null);
     rpc.inbox
       .feedback({ messageId, mark: value })
       .then(() => setReload((n) => n + 1))
@@ -477,9 +504,9 @@ export function InboxPage({
       {status.kind === "archived" ? (
         <Trans>Archived</Trans>
       ) : status.mark === "noise" ? (
-        <Trans>Marked noise</Trans>
+        <Trans>Mail from {status.sender} is now marked as noise</Trans>
       ) : (
-        <Trans>Marked important</Trans>
+        <Trans>Mail from {status.sender} is now marked important</Trans>
       )}
       <Button
         variant="ghost"
@@ -521,7 +548,7 @@ export function InboxPage({
                 setDraft("");
                 if (query) setParam("q", "");
               }}
-              placeholder={t`Search mail`}
+              placeholder={t`Search mail, e.g. from:sam has:attachment`}
               aria-label={t`Search mail`}
               maxLength={MAX_QUERY}
               className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
@@ -627,26 +654,40 @@ export function InboxPage({
             ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          className="pointer-coarse:size-10"
-          aria-label={t`Compose`}
-          disabled={accounts.length === 0}
-          onClick={() => setComposing(true)}
-        >
-          <SquarePen aria-hidden="true" />
-        </Button>
-        {onShowAgent ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="pointer-coarse:size-10"
-            aria-label={t`Show Inbox agent`}
-            onClick={onShowAgent}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="pointer-coarse:size-10"
+                aria-label={t`Compose`}
+                disabled={accounts.length === 0}
+                onClick={() => setComposing(true)}
+              />
+            }
           >
-            <PanelRightOpen aria-hidden="true" />
-          </Button>
+            <SquarePen aria-hidden="true" />
+          </TooltipTrigger>
+          <TooltipContent>{t`Compose`}</TooltipContent>
+        </Tooltip>
+        {onShowAgent ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="pointer-coarse:size-10"
+                  aria-label={t`Show Inbox agent`}
+                  onClick={onShowAgent}
+                />
+              }
+            >
+              <PanelRightOpen aria-hidden="true" />
+            </TooltipTrigger>
+            <TooltipContent>{t`Show Inbox agent`}</TooltipContent>
+          </Tooltip>
         ) : null}
       </div>
       {accounts.length > 1 ? (
@@ -725,16 +766,25 @@ export function InboxPage({
         <>
           {filtered || narrowed ? null : shown.triageBlocked?.reason === "needs_consent" ? (
             // Allowing syncs again, which is what queues triage now that it may run.
-            <InboxConsentPrompt
-              recipient={shown.triageBlocked.recipient}
-              onAllowed={() => {
-                setAttempt((n) => n + 1);
-                setReload((n) => n + 1);
-              }}
-            />
+            consentDismissed ? null : (
+              <InboxConsentPrompt
+                recipient={shown.triageBlocked.recipient}
+                onAllowed={() => {
+                  setAttempt((n) => n + 1);
+                  setReload((n) => n + 1);
+                }}
+                onDismiss={() => setConsentDismissed(true)}
+              />
+            )
+          ) : sorting ? (
+            <p role="status" className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <Spinner aria-hidden="true" />
+              <Trans>Sorting your mail…</Trans>
+            </p>
           ) : showTodos && todos ? (
             <TodoCard
               todos={todos}
+              onOpen={openMessage}
               onChange={(next) =>
                 setTodosByTab((all) => ({
                   ...all,
@@ -764,11 +814,11 @@ export function InboxPage({
             onArchive={archive}
             onRead={setRead}
             selectedId={selectedId}
-            today={false}
           />
           {resultsView ? (
             <InboxGroup
               rows={[...groups.today, ...groups.earlier]}
+              hideAttention={view === "important"}
               onOpen={openMessage}
               onMark={triage ? mark : undefined}
               onArchive={archive}
@@ -805,7 +855,7 @@ export function InboxPage({
                 {more.busy ? <Trans>Loading…</Trans> : <Trans>Load more</Trans>}
               </Button>
             </div>
-          ) : filtered && fresh && rows.length > 0 ? (
+          ) : resultsView && fresh && rows.length > 0 ? (
             <p className="pb-2 text-center text-xs text-muted-foreground">
               <Trans>No more results</Trans>
             </p>
@@ -834,9 +884,9 @@ export function InboxPage({
         onArchive={
           openRow?.inInbox
             ? () => {
-                const next = archive(openRow.id);
-                if (next) goToMessage(next);
-                else closeMessage();
+                // Back to the list, as Archive from the list does; the toast there offers Undo.
+                archive(openRow.id);
+                closeMessage();
               }
             : undefined
         }
