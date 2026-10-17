@@ -11,9 +11,14 @@ import { DATA_ROOM_EMBEDDING_DIMENSIONS } from "@rakazo/adapter-kit";
 import type { DataRoomClassification } from "@rakazo/contracts";
 import type { DataRoomAi } from "./data-room-models.js";
 
-/** A one-page PDF whose text layer holds `text` (ASCII, no parentheses or backslashes). */
+/**
+ * A one-page PDF whose text layer holds `text` (ASCII, no parentheses or backslashes), wrapped at
+ * about 80 characters: a PDF reader drops text that runs past the page edge.
+ */
 export function makePdf(text: string): Uint8Array {
-  const stream = `BT /F1 12 Tf 72 720 Td (${text}) Tj ET`;
+  const lines = text.match(/\S.{0,79}(?=\s|$)|\S{80}/g) ?? [];
+  const shown = lines.map((line) => `(${line.trim()}) Tj T*`).join(" ");
+  const stream = `BT /F1 12 Tf 14 TL 72 720 Td ${shown} ET`;
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",

@@ -8,6 +8,39 @@ export const DATA_ROOM_CHANGED = "rakazo:data-room-changed";
 
 export const dataRoomItemPath = (id: string) => `${DATA_ROOM_PATH}?item=${encodeURIComponent(id)}`;
 
+type DataRoomView = {
+  view: "list" | "grid";
+  sort: { field: "date" | "name" | "type" | "createdAt"; direction: "asc" | "desc" };
+};
+const VIEW_KEY = "rakazo.dataRoomView";
+const DEFAULT_VIEW: DataRoomView = {
+  view: "list",
+  sort: { field: "createdAt", direction: "desc" },
+};
+
+/** The list or grid view and list sort this browser chose last; the defaults when none or unreadable. */
+export function readDataRoomView(): DataRoomView {
+  try {
+    const saved = JSON.parse(localStorage.getItem(VIEW_KEY) ?? "null");
+    const view = saved?.view === "grid" ? "grid" : "list";
+    const field = ["date", "name", "type", "createdAt"].includes(saved?.sort?.field)
+      ? saved.sort.field
+      : DEFAULT_VIEW.sort.field;
+    const direction = saved?.sort?.direction === "asc" ? "asc" : "desc";
+    return saved ? { view, sort: { field, direction } } : DEFAULT_VIEW;
+  } catch {
+    return DEFAULT_VIEW;
+  }
+}
+
+export function saveDataRoomView(value: DataRoomView) {
+  try {
+    localStorage.setItem(VIEW_KEY, JSON.stringify(value));
+  } catch {
+    // Storage blocked: the choice lasts until the page closes.
+  }
+}
+
 export type SnippetPart = { text: string; mark: boolean };
 
 /** Splits a search snippet on its U+0001 / U+0002 highlight markers. The parts are rendered as text. */
@@ -38,14 +71,19 @@ export const isInProgress = (item: DataRoomApiItem) =>
 
 export class DataRoomUploadError extends Error {}
 
-/** Uploads one file to the Data room root; XMLHttpRequest is used because fetch reports no upload progress. */
+/**
+ * Uploads one file into a folder (the Data room root when `folderId` is omitted). XMLHttpRequest is
+ * used because fetch reports no upload progress.
+ */
 export function uploadToDataRoom(
   file: File,
+  folderId: string | undefined,
   onProgress: (fraction: number) => void,
 ): Promise<{ item: DataRoomApiItem; duplicate: boolean }> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("POST", `/api/data-room/upload?name=${encodeURIComponent(file.name)}`);
+    const query = new URLSearchParams({ name: file.name, ...(folderId ? { folderId } : {}) });
+    request.open("POST", `/api/data-room/upload?${query}`);
     request.withCredentials = true;
     withSpaceHeaders().forEach((value, key) => {
       request.setRequestHeader(key, value);
@@ -71,17 +109,34 @@ export function uploadToDataRoom(
   });
 }
 
-/** Fetches with the session and space header, then saves the bytes; the file is never opened in the page. */
-export async function saveDataRoomItem(item: Pick<DataRoomApiItem, "id" | "name">) {
+/** The stored bytes, fetched with the session and space header. */
+async function fetchDataRoomBlob(item: Pick<DataRoomApiItem, "id">) {
   const response = await fetch(`/api/data-room/items/${encodeURIComponent(item.id)}/content`, {
     headers: withSpaceHeaders(),
     credentials: "include",
   });
   if (!response.ok) throw new Error(`Download failed (${response.status})`);
-  const url = URL.createObjectURL(await response.blob());
+  return response.blob();
+}
+
+/** Saves the bytes; the file is never opened in the page. */
+export async function saveDataRoomItem(item: Pick<DataRoomApiItem, "id" | "name">) {
+  const url = URL.createObjectURL(await fetchDataRoomBlob(item));
   const link = document.createElement("a");
   link.href = url;
   link.download = item.name;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/** Raster images an <img> can show. SVG is left out: it is a document, not a picture. */
+const PREVIEW_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+const PREVIEW_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+export const canPreviewImage = (item: Pick<DataRoomApiItem, "mimeType" | "size">) =>
+  PREVIEW_IMAGE_TYPES.has(item.mimeType) && item.size <= PREVIEW_IMAGE_MAX_BYTES;
+
+/** An object URL of the item as an image (typed by us, never by the server), for an <img>. */
+export async function dataRoomImageUrl(item: Pick<DataRoomApiItem, "id" | "mimeType">) {
+  const blob = await fetchDataRoomBlob(item);
+  return URL.createObjectURL(new Blob([blob], { type: item.mimeType }));
 }
