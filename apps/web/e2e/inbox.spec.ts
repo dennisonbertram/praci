@@ -637,7 +637,9 @@ test("Inbox asks before a model sorts the mail, and Allow starts triage", async 
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
   const prompt = main.getByRole("region", { name: "Let Rakazo sort your mail" });
   await expect(prompt).toBeVisible();
-  await expect(prompt).toContainText("are sent to the AI service that runs your bots (OpenRouter).");
+  await expect(prompt).toContainText(
+    "are sent to the AI service that runs your bots (OpenRouter).",
+  );
   await expect(main.getByRole("region", { name: "To do" })).toHaveCount(0);
   expect(allowBody).toBeUndefined();
   await captureScreenshot(page, testInfo, "inbox-consent-prompt");
