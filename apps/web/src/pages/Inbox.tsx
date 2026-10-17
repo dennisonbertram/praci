@@ -528,6 +528,22 @@ export function InboxPage({
     },
     help: () => setHelp(true),
   });
+  // "?" also works with a message open, where the list's keys are off.
+  useEffect(() => {
+    if (paused || !openId || composing || help) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "?" || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (
+        target?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])")
+      )
+        return;
+      event.preventDefault();
+      setHelp(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [paused, openId, composing, help]);
   // Warm the cache so the first messages and the selected one open instantly.
   useEffect(() => {
     for (const id of ids.slice(0, 3)) prefetchInboxMessage(id);

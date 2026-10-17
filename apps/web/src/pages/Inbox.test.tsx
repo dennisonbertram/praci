@@ -738,3 +738,9 @@ it("turns off search and Filter until mail is connected", async () => {
   expect(c.textContent).toContain("No mail connected");
   expect(c.querySelector<HTMLInputElement>('input[aria-label="Search mail"]')?.disabled).toBe(true);
 });
+
+it("opens the shortcut list with ? while a message is open", async () => {
+  await render(["/app/inbox?mail=b"]);
+  await press("?");
+  expect(document.body.textContent).toContain("Keyboard shortcuts");
+});
