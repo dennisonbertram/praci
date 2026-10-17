@@ -90,6 +90,18 @@ it("opens the email a to-do came from", () => {
   const title = [...document.querySelectorAll("button")].find((b) => b.textContent === "Todo 1");
   act(() => title?.click());
   expect(onOpen).toHaveBeenCalledWith("m1");
+  expect(title?.className).not.toContain("line-through");
+  act(() =>
+    root.render(
+      <TodoCard
+        todos={[{ ...todo(1, "2026-10-17"), messageId: "m1" }, todo(2)]}
+        onChange={() => {}}
+        onOpen={onOpen}
+      />,
+    ),
+  );
+  // The title is a button, which does not inherit the row's strike-through.
+  expect(title?.className).toContain("line-through");
   // A to-do whose email left the cache has nothing to open.
   expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Todo 2")).toBe(
     false,
