@@ -140,54 +140,59 @@ export function CommandPalette({
           <CommandEmpty>
             <Trans>No results</Trans>
           </CommandEmpty>
-          {needle ? pagesGroup : null}
-          <CommandGroup heading={shownPages.length || shownGroups.length ? t`Bots` : undefined}>
-            {filteredBots.map((bot) => {
-              const subtitle = botSubtitle(bot);
-              const titleTag = botTitleTag(bot);
-              const index = bots.indexOf(bot);
-              const shortcut = index < 9 ? `${modKey}${index + 1}` : null;
-              return (
-                <CommandItem
-                  key={bot.id}
-                  value={bot.id}
-                  data-testid={`command-palette-bot-${bot.id}`}
-                  onSelect={() => {
-                    onSelectBot(bot.id);
-                    onOpenChange(false);
-                  }}
-                  className="items-center gap-3 rounded-xl! px-2.5 py-2.5"
-                >
-                  <BotAvatar color={bot.color} identity={bot.id} size={32} status={bot.status} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate font-medium text-foreground" dir="auto">
-                        {bot.name}
-                      </span>
-                      {titleTag ? (
-                        <Badge
-                          variant="secondary"
-                          className="max-w-[40%] truncate rounded-full px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
+          {/* One order while browsing and searching: bots, groups, then pages. */}
+          {filteredBots.length ? (
+            <CommandGroup heading={shownPages.length || shownGroups.length ? t`Bots` : undefined}>
+              {filteredBots.map((bot) => {
+                const subtitle = botSubtitle(bot);
+                const titleTag = botTitleTag(bot);
+                const index = bots.indexOf(bot);
+                const shortcut = index < 9 ? `${modKey}${index + 1}` : null;
+                return (
+                  <CommandItem
+                    key={bot.id}
+                    value={bot.id}
+                    data-testid={`command-palette-bot-${bot.id}`}
+                    onSelect={() => {
+                      onSelectBot(bot.id);
+                      onOpenChange(false);
+                    }}
+                    className="items-center gap-3 rounded-xl! px-2.5 py-2.5"
+                  >
+                    <BotAvatar color={bot.color} identity={bot.id} size={32} status={bot.status} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-medium text-foreground" dir="auto">
+                          {bot.name}
+                        </span>
+                        {titleTag ? (
+                          <Badge
+                            variant="secondary"
+                            className="max-w-[40%] truncate rounded-full px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
+                          >
+                            {titleTag}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      {subtitle ? (
+                        <div
+                          className="mt-0.5 truncate text-[13px] text-muted-foreground"
+                          dir="auto"
                         >
-                          {titleTag}
-                        </Badge>
+                          {subtitle}
+                        </div>
                       ) : null}
                     </div>
-                    {subtitle ? (
-                      <div className="mt-0.5 truncate text-[13px] text-muted-foreground" dir="auto">
-                        {subtitle}
-                      </div>
+                    {shortcut ? (
+                      <CommandShortcut className="tracking-normal">
+                        <Kbd>{shortcut}</Kbd>
+                      </CommandShortcut>
                     ) : null}
-                  </div>
-                  {shortcut ? (
-                    <CommandShortcut className="tracking-normal">
-                      <Kbd>{shortcut}</Kbd>
-                    </CommandShortcut>
-                  ) : null}
-                </CommandItem>
-              );
-            })}
-          </CommandGroup>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          ) : null}
           {shownGroups.length ? (
             <CommandGroup heading={t`Groups`}>
               {shownGroups.map((group) => (
@@ -208,8 +213,7 @@ export function CommandPalette({
               ))}
             </CommandGroup>
           ) : null}
-          {/* Bots first while browsing (the usual switch); pages first once a search names one. */}
-          {needle ? null : pagesGroup}
+          {pagesGroup}
         </CommandList>
       </Command>
     </CommandDialog>

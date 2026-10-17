@@ -78,3 +78,15 @@ it("lists pages and groups, and keeps a bot's shortcut while filtering", async (
   expect(financeAgent()).toContain("3");
   expect(document.querySelector("[data-testid=command-palette-bot-b1]")).toBeNull();
 });
+
+const headings = () =>
+  [...document.querySelectorAll("[cmdk-group-heading]")].map((node) => node.textContent);
+
+it("keeps one group order while searching and drops a group with no matches", async () => {
+  await mount();
+  expect(headings()).toEqual(["Bots", "Groups", "Pages"]);
+  await search("finance");
+  expect(headings()).toEqual(["Bots", "Pages"]);
+  await search("lead");
+  expect(headings()).toEqual(["Groups"]);
+});
