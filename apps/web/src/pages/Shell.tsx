@@ -1351,8 +1351,12 @@ export function ShellPage() {
         }
         if (groupId) {
           if (!groupList.some((group) => group.id === groupId)) {
-            navigate(firstThreadRoute(bootstrap.bots, groupList), { replace: true });
+            navigate("/not-found", { replace: true });
           }
+          return;
+        }
+        if (botId && !pageMode && !knownBotId(botId, bootstrap.bots, bootstrap.archivedBots)) {
+          navigate("/not-found", { replace: true });
           return;
         }
         const selectedBotId = bootstrap.thread?.botId ?? bootstrap.bots[0]?.id;
@@ -7341,6 +7345,15 @@ function MessageHoverActions({
       </div>
     </MessageHoverMetadata>
   );
+}
+
+/** Whether an `/app/:botId` link still names a chat, live or archived. */
+export function knownBotId(
+  botId: string,
+  bots: readonly Pick<Bot, "id">[],
+  archivedBots: readonly Pick<Bot, "id">[],
+): boolean {
+  return bots.some((bot) => bot.id === botId) || archivedBots.some((bot) => bot.id === botId);
 }
 
 function firstThreadRoute(

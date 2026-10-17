@@ -8,6 +8,7 @@ import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
 import { clearSpaceSelection } from "../lib/rpc";
+import { signInNext } from "../lib/sign-in-next";
 import { runSsoFlow } from "../lib/sso-flow";
 import { authErrorText, credentialIssueText } from "../lib/user-error";
 
@@ -112,13 +113,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
         return;
       }
       clearSpaceSelection();
-      navigate(
-        mode === "up"
-          ? "/onboarding"
-          : searchParams.get("next") === "/integrations/setup"
-            ? "/integrations/setup"
-            : "/app",
-      );
+      navigate(mode === "up" ? "/onboarding" : signInNext(searchParams.get("next")));
     } catch {
       setError(t`Could not reach the server`);
     } finally {
@@ -135,12 +130,16 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             disableRedirect,
             provider: "oidc",
             newUserCallbackURL: callbackURL("/onboarding"),
-            callbackURL: callbackURL(
-              searchParams.get("next") === "/integrations/setup" ? "/integrations/setup" : "/app",
-            ),
+            callbackURL: callbackURL(signInNext(searchParams.get("next"))),
             errorCallbackURL: callbackURL("/sign-in"),
           }),
-        ["/app", "/onboarding", "/integrations/setup", "/sign-in"],
+        [
+          "/app",
+          "/onboarding",
+          "/integrations/setup",
+          "/sign-in",
+          signInNext(searchParams.get("next")),
+        ],
       );
       if (result.error) setError(authErrorText(result.error, t`Could not continue`));
     } catch {
