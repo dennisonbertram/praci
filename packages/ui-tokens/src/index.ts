@@ -69,7 +69,8 @@ export const darkTokens = {
   destructive: "#F46262",
   destructiveForeground: "#1C1C1A",
   border: "#2E2D2A",
-  input: "#282826",
+  // Input borders and switch tracks sit on cards (#252523); this must stay visibly lighter.
+  input: "#3D3C38",
   ring: "#3B82F6",
   sidebar: "#222220",
   sidebarForeground: "#ECEBE6",

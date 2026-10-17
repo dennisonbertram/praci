@@ -76,9 +76,16 @@ export function AccountAccess({
           <Trans>Link SSO</Trans>
         </Button>
       ) : null}
-      <Button variant="ghost" onClick={() => setOpen((value) => !value)}>
-        <Trans>Delete account</Trans>
-      </Button>
+      {/* Destructive and set apart from the account details above it. */}
+      <div className="mt-4 border-t border-border pt-4">
+        <Button
+          variant="destructive"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <Trans>Delete account</Trans>
+        </Button>
+      </div>
       {open ? (
         <div className="space-y-3">
           <p className="text-sm">

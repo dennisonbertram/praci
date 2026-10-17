@@ -224,3 +224,19 @@ describe("text contrast", () => {
     expect(lum("accent")).toBeLessThan(lum("chatUser"));
   });
 });
+
+describe("dark input contrast", () => {
+  const luminance = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => {
+      const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    }) as [number, number, number];
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  it("keeps input borders and switch tracks visible on a card", () => {
+    const [hi, lo] = [luminance(darkTokens.input), luminance(darkTokens.card)].sort(
+      (a, b) => b - a,
+    );
+    expect((hi + 0.05) / (lo + 0.05)).toBeGreaterThanOrEqual(1.3);
+  });
+});
