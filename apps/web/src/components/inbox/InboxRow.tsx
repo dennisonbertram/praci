@@ -149,7 +149,7 @@ export function InboxRow({
           aria-current={selected ? "true" : undefined}
           data-row-id={row.id}
           onClick={onOpen}
-          className={`grid h-14 w-full min-w-0 grid-cols-[8px_72px_minmax(0,1fr)_auto] items-center gap-x-2 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal hover:bg-muted @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
+          className={`grid min-h-14 w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 border-s-2 py-2 @md:h-14 @md:py-0 ps-2.5 pe-3 text-start text-[15px] font-normal hover:bg-muted @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
         >
           <span
             aria-hidden="true"
@@ -176,7 +176,7 @@ export function InboxRow({
           </span>
           <span
             dir="auto"
-            className={`col-start-3 row-start-1 truncate ${muted ? "text-muted-foreground" : "text-foreground/70"}`}
+            className={`col-span-2 col-start-2 row-start-2 truncate text-[14px] @md:col-span-1 @md:col-start-3 @md:row-start-1 @md:text-[15px] ${muted ? "text-muted-foreground" : "text-foreground/70"}`}
           >
             {label ? (
               <span
@@ -200,7 +200,7 @@ export function InboxRow({
           {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
           <time
             dateTime={row.receivedAt}
-            className={`col-start-4 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
+            className={`col-start-3 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
           >
             {formatMailTime(row.receivedAt, isToday)}
           </time>

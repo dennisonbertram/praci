@@ -37,7 +37,10 @@ export function InboxConsentPrompt({
         <Trans>Let Rakazo sort your mail</Trans>
       </h2>
       <p className="text-xs text-muted-foreground">
-        <Trans>Senders, recipients, subjects and short previews are sent to {name}.</Trans>
+        <Trans>
+          Senders, recipients, subjects and short previews are sent to the AI service that runs your
+          bots ({name}).
+        </Trans>
       </p>
       {error ? (
         <p role="alert" className="text-sm text-destructive">
