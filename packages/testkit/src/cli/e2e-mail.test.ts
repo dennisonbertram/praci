@@ -48,6 +48,13 @@ describe("demo Composio", () => {
     expect(await inbox(t, t.second)).toHaveLength(1);
   });
 
+  it("delivers mail the user sends to their own address", async () => {
+    const t = await setup({ deliverBetweenOwnAccounts: true });
+    await t.send(t.first, "first@example.test");
+    // The Sent copy and the one that arrived.
+    expect(await inbox(t, t.first)).toHaveLength(2);
+  });
+
   it("keeps mail to the other account out of its Inbox when delivery is off", async () => {
     const t = await setup({});
     await t.send(t.first, "second@example.test");

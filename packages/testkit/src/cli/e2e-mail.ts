@@ -137,7 +137,7 @@ export type E2eGmailSnapshot = ReturnType<GmailApiEmulator["snapshot"]>;
 export function createE2eComposio(
   mailboxes: () => Record<string, { address: string; messages: EmulatedMessage[] }> = e2eMailboxes,
   options: {
-    /** A send to the user's other connected address lands in that Inbox, as with real Gmail. */
+    /** A send to one of the user's own connected addresses lands in that Inbox, as with real Gmail. */
     deliverBetweenOwnAccounts?: boolean;
     /** A send to an address on this domain fails, as Gmail rejects an invalid recipient. */
     bounceDomain?: string;
@@ -190,8 +190,8 @@ export function createE2eComposio(
         const from = gmail.addressOf(request.accountRef) ?? "";
         for (const ref of own ?? []) {
           const address = gmail.addressOf(ref);
-          if (ref === request.accountRef || !address || !recipients.includes(address.toLowerCase()))
-            continue;
+          // Mail to the sender's own address arrives too, as Gmail puts it in the Inbox.
+          if (!address || !recipients.includes(address.toLowerCase())) continue;
           gmail.addMessage(ref, {
             id: `in-${ref}-${Date.now()}`,
             date: new Date().toISOString(),
