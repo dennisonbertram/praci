@@ -241,8 +241,9 @@ it("offers to add the Blockscout key, opening the modal, only when there is no A
   root = createRoot(container);
   rpcMock.crypto.mockResolvedValue(data({ connected: true, hasApiKey: false }));
   await show();
-  // Says why a connected Blockscout still asks for a key.
-  expect(container.textContent).toContain("reading wallet balances needs its API key");
+  // Balances never need the key, so the page does not claim they do.
+  expect(container.textContent).toContain("need no key");
+  expect(container.textContent).not.toContain("needs its API key");
   const connect = [...container.querySelectorAll("button")].find(
     (b) => b.textContent === "Add Blockscout API key",
   );
@@ -250,6 +251,15 @@ it("offers to add the Blockscout key, opening the modal, only when there is no A
   expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain(
     "Connect Blockscout",
   );
+});
+
+it("asks a founder with no wallet to add one, not to connect Blockscout first", async () => {
+  rpcMock.crypto.mockResolvedValue(data({ connected: false, hasApiKey: false, wallets: [] }));
+  await show();
+  expect(
+    [...container.querySelectorAll("button")].some((b) => /Blockscout/.test(b.textContent ?? "")),
+  ).toBe(false);
+  expect(container.textContent).toContain("Add a wallet address");
 });
 
 it("says there are no wallets yet instead of an empty Wallets card", async () => {

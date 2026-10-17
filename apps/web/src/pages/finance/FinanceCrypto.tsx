@@ -168,26 +168,21 @@ export function FinanceCryptoPage() {
     >
       {data ? (
         <>
-          {data.connected && data.hasApiKey ? null : (
+          {/* Balances come from public RPC and need no key; the first wallet creates the keyless
+              Blockscout server the agent uses, so a key is only an optional extra. */}
+          {data.connected && !data.hasApiKey ? (
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm text-muted-foreground">
-                {data.connected ? (
-                  <Trans>
-                    Blockscout is connected, but reading wallet balances needs its API key.
-                  </Trans>
-                ) : (
-                  <Trans>Connect Blockscout to read wallet balances and history.</Trans>
-                )}
+                <Trans>
+                  Wallet balances are read from public networks and need no key. The Finance agent
+                  uses a Blockscout API key, if you add one, for wallet lookups.
+                </Trans>
               </span>
-              <Button size="sm" onClick={() => setConnecting(true)}>
-                {data.connected ? (
-                  <Trans>Add Blockscout API key</Trans>
-                ) : (
-                  <Trans>Connect Blockscout</Trans>
-                )}
+              <Button size="sm" variant="outline" onClick={() => setConnecting(true)}>
+                <Trans>Add Blockscout API key</Trans>
               </Button>
             </div>
-          )}
+          ) : null}
           {connecting ? (
             <BlockscoutConnectDialog onConnected={reloadAll} onClose={() => setConnecting(false)} />
           ) : null}

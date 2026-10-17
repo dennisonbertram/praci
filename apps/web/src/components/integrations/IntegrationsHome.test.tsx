@@ -301,7 +301,7 @@ it("shows one Blockscout tile, asking for the key, when its MCP server has none"
   expect(inConnected("finance-tile-crypto")).toBe(true);
   expect(container.textContent).not.toContain("mcp.blockscout.com");
   const tile = container.querySelector('[data-testid="finance-tile-crypto"]');
-  expect(tile?.textContent).toContain("API key needed");
+  expect(tile?.textContent).toContain("No API key (optional)");
   expect(tile?.querySelector('a[aria-label="Manage Blockscout"]')).not.toBeNull();
 });
 

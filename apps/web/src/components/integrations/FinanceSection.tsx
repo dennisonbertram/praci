@@ -32,8 +32,8 @@ function useMounted() {
 }
 
 /**
- * Blockscout needs a PRO API key for balances: a server without one (added as a plain MCP server,
- * which the Connected list shows) asks for the key instead of claiming it is not connected.
+ * Balances come from public RPC, so Blockscout works without a key (the first wallet creates its
+ * keyless server); a server without a key offers to add one instead of claiming it is not connected.
  */
 function CryptoTile({
   hasKey,
@@ -77,7 +77,7 @@ function CryptoTile({
         ) : (
           <>
             <span className="text-xs text-muted-foreground">
-              {hasServer ? <Trans>API key needed</Trans> : <Trans>Not connected</Trans>}
+              {hasServer ? <Trans>No API key (optional)</Trans> : <Trans>Not connected</Trans>}
             </span>
             <Button
               size="sm"

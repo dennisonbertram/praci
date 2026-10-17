@@ -141,7 +141,7 @@ const press2 = (root: ParentNode, label: string) =>
 it("asks a keyless Blockscout server for its key instead of calling it Not connected", async () => {
   cryptoRpc.crypto.mockResolvedValue({ connected: true, hasApiKey: false });
   await show([source("mercury", "ok"), source("brex", "ok")]);
-  expect(crypto().textContent).toContain("API key needed");
+  expect(crypto().textContent).toContain("No API key (optional)");
   expect(crypto().textContent).not.toContain("Not connected");
   expect(crypto().querySelector('button[aria-label="Add Blockscout API key"]')).not.toBeNull();
 });
