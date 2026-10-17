@@ -67,6 +67,11 @@ msgstr ""
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr ""
 
+#. placeholder {0}: filteredRecent.length
+#: src/pages/ActivityList.tsx
+msgid "{0, plural, one {Show # finished run} other {Show # finished runs}}"
+msgstr ""
+
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -591,10 +596,6 @@ msgstr "为此一次性任务添加运行时间。"
 msgid "Add a schedule, webhook, GitHub, or message trigger"
 msgstr ""
 
-#: src/pages/RoutineEditor.tsx
-msgid "Add a schedule, webhook, GitHub, or message trigger to run this routine."
-msgstr ""
-
 #: src/components/finance/AddAccountDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -673,10 +674,6 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "加入例行任务"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Add trigger"
-msgstr "添加触发器"
 
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -876,10 +873,6 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Amount raised"
-msgstr ""
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Amounts are hidden on every page. Plain numbers in bot replies may still show."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -1688,9 +1681,9 @@ msgstr ""
 msgid "Choose the account to connect, then come back here."
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Choose which connected model Rakazo uses."
-msgstr "选择 Rakazo 使用的已连接模型。"
+#: src/pages/RoutineEditor.tsx
+msgid "Choose when it runs"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1886,6 +1879,10 @@ msgstr "命令变量"
 
 #: src/pages/Board.tsx
 msgid "Comment"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Common share price"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -3318,10 +3315,6 @@ msgstr ""
 msgid "Each bot keeps its own"
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
-msgid "Each switch covers one AI service. Data goes only to services that are on; models from your other services keep working."
-msgstr ""
-
 #: src/pages/Inbox.tsx
 msgid "Earlier"
 msgstr ""
@@ -3737,12 +3730,20 @@ msgstr ""
 msgid "From {0}"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
+msgid "From another app (advanced)"
+msgstr ""
+
 #: src/components/data-room/Preview.tsx
 msgid "From email"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
 msgid "From Google Drive"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "From the latest 409A valuation"
 msgstr ""
 
 #: src/pages/WindowChrome.tsx
@@ -3901,7 +3902,7 @@ msgid "Hide transcript"
 msgstr "隐藏文字记录"
 
 #: src/components/HideAmountsToggle.tsx
-msgid "Hides money on every page and in chat, for screen sharing."
+msgid "Hides money on every page and in chat, for screen sharing. Runway and share counts stay visible."
 msgstr ""
 
 #: src/lib/ticket-priority.ts
@@ -4046,6 +4047,10 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
 msgstr "收件箱和邮件"
+
+#: src/components/AiDataSharing.tsx
+msgid "Inbox sorting and Data room files"
+msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Inherit default"
@@ -4226,10 +4231,6 @@ msgstr ""
 #. placeholder {1}: card.count
 #: src/components/FinanceCards.tsx
 msgid "Latest {0} of {1}"
-msgstr ""
-
-#: src/pages/CapTable.tsx
-msgid "Latest 409A"
 msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
@@ -4721,6 +4722,10 @@ msgstr "来自服务器的模型"
 #: src/lib/model-connection-preflight.ts
 msgid "Models list OK. {modelCount, plural, one {# model} other {# models}} available. Chat was not tested."
 msgstr "模型列表正常。{modelCount, plural, one {# 个模型} other {# 个模型}}可用。未测试聊天。"
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Money is hidden on every page. Runway, share counts and plain numbers in bot replies still show."
+msgstr ""
 
 #: src/lib/billing.ts
 msgid "month"
@@ -5694,6 +5699,10 @@ msgstr "请从目录中选择模型。"
 msgid "Pick a model from the list or enter a model id served by this endpoint."
 msgstr "请从列表中选择模型，或输入此端点提供的模型 ID。"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Pick when this runs, for example every Monday morning."
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
 msgstr "置顶"
@@ -6307,11 +6316,6 @@ msgstr ""
 msgid "Return to Rakazo"
 msgstr "返回 Rakazo"
 
-#. placeholder {0}: doc.revision
-#: src/pages/KnowledgeSection.tsx
-msgid "rev {0}"
-msgstr "版本 {0}"
-
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
@@ -6747,13 +6751,13 @@ msgstr "形状"
 msgid "Shared"
 msgstr "共享"
 
+#: src/pages/KnowledgeSection.tsx
+msgid "Shared by all bots"
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared documents"
-msgstr "共享文档"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared skills"
@@ -7309,6 +7313,10 @@ msgstr "测试登录"
 msgid "Testing…"
 msgstr "正在测试…"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "The AI your bots think with. They already have one, so change this only to use another AI company or your own key."
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "The API did not come back. Refresh this page."
 msgstr "API 未恢复。请刷新此页面。"
@@ -7530,7 +7538,7 @@ msgid "To do"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "To tag new files and sort them into folders for you, their text (and images) is sent to {names}. Until then you can search by name and text and move files into folders yourself."
+msgid "To tag new files and sort them into folders for you, their text (and images) is sent to the AI service that runs your bots ({names}). Until then you can search by name and text and move files into folders yourself."
 msgstr ""
 
 #: src/pages/shell/bot-picker.tsx
@@ -8158,6 +8166,10 @@ msgstr ""
 msgid "Won't do"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
+msgid "Work this bot repeats for you, like a cash check every Monday."
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Working"
 msgstr ""
@@ -8238,6 +8250,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "You have control"
 msgstr "你已接管"
+
+#: src/components/AiDataSharing.tsx
+msgid "Your bots always answer through the AI service chosen in Models. A switch below also lets that service read your mail and documents, so Rakazo can sort your Inbox and read Data room files."
+msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"

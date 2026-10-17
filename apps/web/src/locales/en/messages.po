@@ -67,6 +67,11 @@ msgstr "{0, plural, one {#+ result} other {#+ results}}"
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr "{0, plural, one {Last full month} other {Last # full months}}"
 
+#. placeholder {0}: filteredRecent.length
+#: src/pages/ActivityList.tsx
+msgid "{0, plural, one {Show # finished run} other {Show # finished runs}}"
+msgstr "{0, plural, one {Show # finished run} other {Show # finished runs}}"
+
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -591,10 +596,6 @@ msgstr "Add a run time for this one-shot."
 msgid "Add a schedule, webhook, GitHub, or message trigger"
 msgstr "Add a schedule, webhook, GitHub, or message trigger"
 
-#: src/pages/RoutineEditor.tsx
-msgid "Add a schedule, webhook, GitHub, or message trigger to run this routine."
-msgstr "Add a schedule, webhook, GitHub, or message trigger to run this routine."
-
 #: src/components/finance/AddAccountDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -673,10 +674,6 @@ msgstr "Add server URL"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "Add to routine"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Add trigger"
-msgstr "Add trigger"
 
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -877,10 +874,6 @@ msgstr "Amount"
 #: src/pages/CapTable.tsx
 msgid "Amount raised"
 msgstr "Amount raised"
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Amounts are hidden on every page. Plain numbers in bot replies may still show."
-msgstr "Amounts are hidden on every page. Plain numbers in bot replies may still show."
 
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
@@ -1688,9 +1681,9 @@ msgstr "Choose how apps connect for everyone on this server."
 msgid "Choose the account to connect, then come back here."
 msgstr "Choose the account to connect, then come back here."
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Choose which connected model Rakazo uses."
-msgstr "Choose which connected model Rakazo uses."
+#: src/pages/RoutineEditor.tsx
+msgid "Choose when it runs"
+msgstr "Choose when it runs"
 
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
@@ -1887,6 +1880,10 @@ msgstr "Command variable"
 #: src/pages/Board.tsx
 msgid "Comment"
 msgstr "Comment"
+
+#: src/pages/CapTable.tsx
+msgid "Common share price"
+msgstr "Common share price"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Compact"
@@ -3318,10 +3315,6 @@ msgstr "e.g. Recruiting, Sales, Legal"
 msgid "Each bot keeps its own"
 msgstr "Each bot keeps its own"
 
-#: src/components/AiDataSharing.tsx
-msgid "Each switch covers one AI service. Data goes only to services that are on; models from your other services keep working."
-msgstr "Each switch covers one AI service. Data goes only to services that are on; models from your other services keep working."
-
 #: src/pages/Inbox.tsx
 msgid "Earlier"
 msgstr "Earlier"
@@ -3737,6 +3730,10 @@ msgstr "From"
 msgid "From {0}"
 msgstr "From {0}"
 
+#: src/pages/RoutineEditor.tsx
+msgid "From another app (advanced)"
+msgstr "From another app (advanced)"
+
 #: src/components/data-room/Preview.tsx
 msgid "From email"
 msgstr "From email"
@@ -3744,6 +3741,10 @@ msgstr "From email"
 #: src/components/data-room/Preview.tsx
 msgid "From Google Drive"
 msgstr "From Google Drive"
+
+#: src/pages/CapTable.tsx
+msgid "From the latest 409A valuation"
+msgstr "From the latest 409A valuation"
 
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
@@ -3901,8 +3902,8 @@ msgid "Hide transcript"
 msgstr "Hide transcript"
 
 #: src/components/HideAmountsToggle.tsx
-msgid "Hides money on every page and in chat, for screen sharing."
-msgstr "Hides money on every page and in chat, for screen sharing."
+msgid "Hides money on every page and in chat, for screen sharing. Runway and share counts stay visible."
+msgstr "Hides money on every page and in chat, for screen sharing. Runway and share counts stay visible."
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4046,6 +4047,10 @@ msgstr "Inbox"
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
 msgstr "Inbox & email"
+
+#: src/components/AiDataSharing.tsx
+msgid "Inbox sorting and Data room files"
+msgstr "Inbox sorting and Data room files"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Inherit default"
@@ -4227,10 +4232,6 @@ msgstr "Later statements for this account keep this name."
 #: src/components/FinanceCards.tsx
 msgid "Latest {0} of {1}"
 msgstr "Latest {0} of {1}"
-
-#: src/pages/CapTable.tsx
-msgid "Latest 409A"
-msgstr "Latest 409A"
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
@@ -4721,6 +4722,10 @@ msgstr "Models from server"
 #: src/lib/model-connection-preflight.ts
 msgid "Models list OK. {modelCount, plural, one {# model} other {# models}} available. Chat was not tested."
 msgstr "Models list OK. {modelCount, plural, one {# model} other {# models}} available. Chat was not tested."
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Money is hidden on every page. Runway, share counts and plain numbers in bot replies still show."
+msgstr "Money is hidden on every page. Runway, share counts and plain numbers in bot replies still show."
 
 #: src/lib/billing.ts
 msgid "month"
@@ -5694,6 +5699,10 @@ msgstr "Pick a model from the catalog."
 msgid "Pick a model from the list or enter a model id served by this endpoint."
 msgstr "Pick a model from the list or enter a model id served by this endpoint."
 
+#: src/pages/RoutineEditor.tsx
+msgid "Pick when this runs, for example every Monday morning."
+msgstr "Pick when this runs, for example every Monday morning."
+
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
 msgstr "Pin"
@@ -6307,11 +6316,6 @@ msgstr "Retry screen"
 msgid "Return to Rakazo"
 msgstr "Return to Rakazo"
 
-#. placeholder {0}: doc.revision
-#: src/pages/KnowledgeSection.tsx
-msgid "rev {0}"
-msgstr "rev {0}"
-
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
@@ -6747,13 +6751,13 @@ msgstr "Shape"
 msgid "Shared"
 msgstr "Shared"
 
+#: src/pages/KnowledgeSection.tsx
+msgid "Shared by all bots"
+msgstr "Shared by all bots"
+
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Shared chat with 2-6 bots. They all reply in the same thread."
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared documents"
-msgstr "Shared documents"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared skills"
@@ -7309,6 +7313,10 @@ msgstr "Test sign-in"
 msgid "Testing…"
 msgstr "Testing…"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "The AI your bots think with. They already have one, so change this only to use another AI company or your own key."
+msgstr "The AI your bots think with. They already have one, so change this only to use another AI company or your own key."
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "The API did not come back. Refresh this page."
 msgstr "The API did not come back. Refresh this page."
@@ -7530,8 +7538,8 @@ msgid "To do"
 msgstr "To do"
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "To tag new files and sort them into folders for you, their text (and images) is sent to {names}. Until then you can search by name and text and move files into folders yourself."
-msgstr "To tag new files and sort them into folders for you, their text (and images) is sent to {names}. Until then you can search by name and text and move files into folders yourself."
+msgid "To tag new files and sort them into folders for you, their text (and images) is sent to the AI service that runs your bots ({names}). Until then you can search by name and text and move files into folders yourself."
+msgstr "To tag new files and sort them into folders for you, their text (and images) is sent to the AI service that runs your bots ({names}). Until then you can search by name and text and move files into folders yourself."
 
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
@@ -8158,6 +8166,10 @@ msgstr "Within 3 days"
 msgid "Won't do"
 msgstr "Won't do"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Work this bot repeats for you, like a cash check every Monday."
+msgstr "Work this bot repeats for you, like a cash check every Monday."
+
 #: src/pages/ActivityList.tsx
 msgid "Working"
 msgstr "Working"
@@ -8238,6 +8250,10 @@ msgstr "You have an unsent reply to this email."
 #: src/pages/Shell.tsx
 msgid "You have control"
 msgstr "You have control"
+
+#: src/components/AiDataSharing.tsx
+msgid "Your bots always answer through the AI service chosen in Models. A switch below also lets that service read your mail and documents, so Rakazo can sort your Inbox and read Data room files."
+msgstr "Your bots always answer through the AI service chosen in Models. A switch below also lets that service read your mail and documents, so Rakazo can sort your Inbox and read Data room files."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"
