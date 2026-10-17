@@ -513,6 +513,11 @@ export function ShellPage() {
   const sendingRef = useRef(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
+  // A message that @mentioned a group went to that group; the person stays where they wrote it.
+  const [forwarded, setForwarded] = useState<{ groupId: string; threadKey: string } | null>(null);
+  function showForwarded(groupId: string, threadKey: string | undefined) {
+    if (threadKey) setForwarded({ groupId, threadKey });
+  }
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [panel, setPanelState] = useState<Panel>(null);
   // The bot whose page exists (the Page control shows only then), and its latest page.updated event.
@@ -886,6 +891,9 @@ export function ShellPage() {
   computerOpenRef.current = computerOpen;
   computerBotIdRef.current = computerBotId ?? active?.id;
   const activeGroup = groups.find((group) => group.id === groupId);
+  const forwardedName = forwarded
+    ? (groups.find((group) => group.id === forwarded.groupId)?.name ?? t`the group`)
+    : "";
   const activePendingAttachments = useMemo(
     () => attachmentsForThread(pendingAttachments, inGroup ? groupId : active?.id),
     [active?.id, groupId, inGroup, pendingAttachments],
@@ -2319,7 +2327,7 @@ export function ShellPage() {
           );
           setAttachmentNotice(null);
           if (reroutedToGroup && groupTarget) {
-            navigate(`/app/g/${groupTarget}`);
+            showForwarded(groupTarget, originThreadKey);
             return true;
           }
           if (groupTarget && activeGroupId.current === groupTarget) {
@@ -2384,10 +2392,9 @@ export function ShellPage() {
         setPendingAttachments((current) =>
           current.filter((attachment) => attachment.threadKey !== originThreadKey),
         );
-        // Refresh sidebar status even when a bot→group reroute navigates away below.
         void refreshBots().catch(() => undefined);
         if (reroutedToGroup && groupTarget) {
-          navigate(`/app/g/${groupTarget}`);
+          showForwarded(groupTarget, originThreadKey);
           return true;
         }
         if (groupTarget && activeGroupId.current === groupTarget) setAttachmentNotice(null);
@@ -3072,6 +3079,27 @@ export function ShellPage() {
               }}
               onClose={() => setComposerDraft(null)}
             />
+          ) : null}
+          {forwarded && forwarded.threadKey === (inGroup ? groupId : active?.id) ? (
+            <div
+              role="status"
+              className="flex items-center justify-center gap-2 px-6 pb-2 text-[13px] text-muted-foreground"
+            >
+              <span>
+                <Trans>Sent to {forwardedName}</Trans>
+              </span>
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0"
+                onClick={() => {
+                  setForwarded(null);
+                  navigate(`/app/g/${forwarded.groupId}`);
+                }}
+              >
+                <Trans>Open</Trans>
+              </Button>
+            </div>
           ) : null}
           {recordingSkill ? (
             <div className="px-6 pb-2 text-center text-[13px] text-destructive">
