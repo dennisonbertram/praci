@@ -4305,12 +4305,14 @@ export function ShellPage() {
         inert={mobileSidebarOpen}
         className="isolate flex min-w-0 flex-1 flex-col bg-background"
       >
-        {/* Inside main so the composer and its menus stay above it. */}
+        {/* Inside main so the composer and its menus stay above it. As wide as the
+            12px phone gutter only, so it never covers a tappable control; the swipe
+            itself is detected on the shell root from a wider edge zone. */}
         {!mobileSidebarOpen ? (
           <div
             data-testid="mobile-sidebar-swipe-edge"
             aria-hidden="true"
-            className="absolute bottom-20 start-0 top-16 z-20 w-8 touch-none md:hidden"
+            className="absolute bottom-20 start-0 top-16 z-20 w-3 touch-none md:hidden"
           />
         ) : null}
         {/* Page modes keep only the navigation controls, so phones can still open the sidebar. */}
@@ -4405,7 +4407,7 @@ export function ShellPage() {
             {!inGroup && !pageMode && active ? (
               <button
                 type="button"
-                title={t`Bot computer`}
+                title={t`Computer and routines`}
                 onClick={() => {
                   const next = panel === "computer" ? null : "computer";
                   setPanel(next);
@@ -4573,7 +4575,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    (computer?.state ?? active.status)
+                    computerStateLabel(computer?.state)
                   ) : (
                     <Trans>Group</Trans>
                   )}
@@ -4686,7 +4688,7 @@ export function ShellPage() {
                   ) : null}
                 </div>
                 <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
-                  {t`${active.name}'s screen`}
+                  {t`${active.name}'s computer screen`}
                 </p>
                 <RoutineListHeader
                   onCreate={() => {
@@ -5020,6 +5022,24 @@ export function ShellPage() {
               if (section && spaceId) setRenameSectionTarget({ section, spaceId });
               setBotMenu(null);
             }}
+            isGroup={!contextBot}
+            onRoutines={
+              contextBot
+                ? () => {
+                    const destKey =
+                      userId && bootstrapMe?.spaceId
+                        ? rightPanelStorageKey(userId, bootstrapMe.spaceId, "bot", contextBot.id)
+                        : null;
+                    explicitPanelTarget.current = destKey;
+                    pendingPanelRestore.current = null;
+                    navigate(`/app/${contextBot.id}`);
+                    // Routines live in the computer panel, under the bot's screen.
+                    setPanelState("computer");
+                    setRestoredPanelKey(destKey);
+                    setBotMenu(null);
+                  }
+                : undefined
+            }
             onEdit={() => {
               const destKey =
                 userId && bootstrapMe?.spaceId
@@ -8230,6 +8250,15 @@ function computerPlaceholder(
   if (state === "suspended") return t`Computer is asleep. Open it to wake.`;
   if (state === "error") return t`Computer failed to boot`;
   return t`Computer is stopped`;
+}
+
+/** Panel heading for the bot computer, in words rather than the raw state slug. */
+function computerStateLabel(state: ComputerStatus["state"] | undefined) {
+  if (state === "running") return t`Computer is on`;
+  if (state === "booting") return t`Computer is starting`;
+  if (state === "suspended") return t`Computer is asleep`;
+  if (state === "error") return t`Computer could not start`;
+  return t`Computer is off`;
 }
 
 function computerLabel(mode: ComputerStatus["mode"] | undefined, botName: string) {
