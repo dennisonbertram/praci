@@ -59,6 +59,18 @@ export function financeToolsAllowed(
   );
 }
 
+/**
+ * The system line for a Finance or Carta agent run. When another bot asked (trigger bot_message)
+ * the finance tools are off, so the agent says plainly where to ask instead of naming tools.
+ */
+export function financeAgentRunLine(financeEnabled: boolean, trigger: string): string | undefined {
+  if (financeEnabled)
+    return "Start with finance_overview, finance_breakdown, finance_transactions and finance_recurring: they read the synced finance data in one call and match the Finance page. Use the Mercury and Brex tools only for details the sync does not have.";
+  if (trigger === "bot_message")
+    return "Another bot sent this message, and your finance and cap table data is only open when the user asks you directly. Reply in one plain sentence that the user can ask you in your own chat (or with Ask on the Finance or Cap table page). Do not name tools and do not guess figures.";
+  return undefined;
+}
+
 /** Drop the finance tools when the run may not use them. */
 export function selectFinanceTools<T extends { name: string }>(
   tools: T[],
