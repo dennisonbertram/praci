@@ -302,10 +302,13 @@ import {
   uniquifyInstalledToolName,
 } from "./lazy-tool-catalog.js";
 import {
+  LEGAL_CONSENT_REFUSAL,
   LEGAL_GATED_TOOL_NAMES,
   LEGAL_TOOL_NAMES,
+  legalAccountToolsAllowed,
   legalDataRoomGate,
   legalToolFromTool,
+  legalToolNeedsConsent,
   legalToolsAllowed,
   lockLegalBot,
 } from "./legal-tools.js";
@@ -4017,22 +4020,27 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }).then((accounts) => accounts.filter((a) => !deniedIds.has(a.id)));
           return calendarAccountsPromise;
         };
+        const legalAccountsOk = legalAccountToolsAllowed(legalOnly, run.trigger);
         const calendarEnabled =
+          legalAccountsOk &&
           mailToolsAllowed({
             hasProvider: Boolean(deps.connectors),
             groupId: thread.groupId,
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
-          }) && (await calendarAccounts().catch(() => [])).length > 0;
+          }) &&
+          (await calendarAccounts().catch(() => [])).length > 0;
         const mailEnabled =
+          legalAccountsOk &&
           mailToolsAllowed({
             hasProvider: Boolean(deps.mail),
             groupId: thread.groupId,
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
-          }) && (await mailAccounts().catch(() => [])).length > 0;
+          }) &&
+          (await mailAccounts().catch(() => [])).length > 0;
         // Connected Google Drive accounts of the bot owner, looked up once per run.
         let driveAccountsPromise: ReturnType<typeof listDriveAccounts> | undefined;
         const driveAccounts = () => {
@@ -4043,13 +4051,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
           return driveAccountsPromise;
         };
         const driveEnabled =
+          legalAccountsOk &&
           driveToolsAllowed({
             hasProvider: Boolean(deps.connectors),
             groupId: thread.groupId,
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
-          }) && (await driveAccounts().catch(() => [])).length > 0;
+          }) &&
+          (await driveAccounts().catch(() => [])).length > 0;
         // Owner-only, like mail and Drive. Consent is checked by the add tool itself, so a
         // person who has not accepted the Data room still gets the tools and a clear "off" answer.
         const dataRoomEnabled =
@@ -5517,6 +5527,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (name === "web_fetch") {
             return finish(await webFetchFromTool(web, context, args));
+          }
+          // Mail, Drive and calendar text goes to the Legal agent's model, so consent is read on every call.
+          if (legalOnly && legalToolNeedsConsent(name) && !(await legalRunAi()).allowed) {
+            return finish({ error: LEGAL_CONSENT_REFUSAL, consentRequired: true });
           }
           if (CALENDAR_TOOL_NAMES.has(name) && deps.connectors && calendarEnabled) {
             return finish(

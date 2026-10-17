@@ -7,10 +7,18 @@ import {
   LegalNodeKindSchema,
 } from "@rakazo/contracts";
 import type { LegalContractRecord, LegalDeadlineRecord, PrismaClient } from "@rakazo/db";
-import { createLegalRepos, IsolationError, LEGAL_NOT_LEGAL_TYPE, parseLegalDay } from "@rakazo/db";
+import {
+  createLegalRepos,
+  IsolationError,
+  LEGAL_NOT_LEGAL_TYPE,
+  LegalRevisionError,
+  parseLegalDay,
+} from "@rakazo/db";
 import * as z from "zod";
+import { CALENDAR_TOOL_NAMES } from "./calendar-tools.js";
+import { DRIVE_TOOL_NAMES } from "./drive-tools.js";
 import { OWNER_INITIATED_TRIGGERS } from "./finance-tools.js";
-import { mailToolsAllowed } from "./mail-tools.js";
+import { MAIL_TOOL_NAMES, mailToolsAllowed } from "./mail-tools.js";
 
 export const LEGAL_TOOL_NAMES = new Set([
   "legal_unreviewed_documents",
@@ -52,6 +60,20 @@ const LEGAL_WRITE_TOOLS = new Set([
 export async function lockLegalBot(tx: Pick<PrismaClient, "$executeRaw">, botId: string) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`legal-bot:${botId}`}, 0))`;
 }
+
+/**
+ * Mail, Drive and calendar tools bring document text into a Legal run, so each call needs the
+ * Data room consent for the run's model, like the Data room tools: revoking it stops them at once.
+ */
+export const legalToolNeedsConsent = (name: string) =>
+  MAIL_TOOL_NAMES.has(name) || DRIVE_TOOL_NAMES.has(name) || CALENDAR_TOOL_NAMES.has(name);
+
+/**
+ * Mail, Drive and calendar for a Legal run only on a run its owner started: a bot_message run
+ * (another agent asked) uses the owner's id without the owner being behind it.
+ */
+export const legalAccountToolsAllowed = (legalOnly: boolean, trigger: string) =>
+  !legalOnly || OWNER_INITIATED_TRIGGERS.has(trigger);
 
 export interface LegalToolDeps {
   prisma: PrismaClient;
@@ -205,7 +227,7 @@ const QueryArgs = z.discriminatedUnion("view", [
 
 const UnreviewedArgs = z.object({ limit: z.number().int().min(1).max(100).optional() });
 
-const REFUSAL =
+export const LEGAL_CONSENT_REFUSAL =
   "The user has not agreed to send Data Room documents to this agent's model provider, so the Data Room cannot be read. Ask the user to allow it for this agent, then try again.";
 const DAY_MS = 86_400_000;
 const NOTICE_NOTE = "Derived from the expiration date and the notice period.";
@@ -247,7 +269,7 @@ export async function legalToolFromTool(
       const parsed = UnreviewedArgs.safeParse(args);
       if (!parsed.success) return { error: issues(parsed.error) };
       // Names, facets and summaries are document content, so they follow the same consent as reading.
-      if (!(await deps.allowed())) return { error: REFUSAL, consentRequired: true };
+      if (!(await deps.allowed())) return { error: LEGAL_CONSENT_REFUSAL, consentRequired: true };
       const [items, remaining] = await Promise.all([
         repo.unreviewedItems(actor, parsed.data.limit, deps.deniedConnectionIds),
         repo.countUnreviewed(actor, deps.deniedConnectionIds),
@@ -270,7 +292,7 @@ export async function legalToolFromTool(
     // Recording what a document says carries document content into the legal data, so it needs the
     // same per-call consent as reading; revoking consent stops writes at once too.
     if (LEGAL_WRITE_TOOLS.has(name) && !(await deps.allowed())) {
-      return { error: REFUSAL, consentRequired: true };
+      return { error: LEGAL_CONSENT_REFUSAL, consentRequired: true };
     }
     if (name === "legal_upsert_contract") return await upsertContract(deps, args);
     if (name === "legal_upsert_deadline") {
@@ -297,11 +319,16 @@ export async function legalToolFromTool(
     }
     if (name === "legal_query") {
       // Summaries, quotes and graph evidence are document content, so this follows the same consent.
-      if (!(await deps.allowed())) return { error: REFUSAL, consentRequired: true };
+      if (!(await deps.allowed())) return { error: LEGAL_CONSENT_REFUSAL, consentRequired: true };
       return await query(deps, args);
     }
     return { error: `Unknown legal tool ${name}` };
   } catch (error) {
+    if (error instanceof LegalRevisionError) {
+      return {
+        error: `revision is newer than the document's current revision (${error.current}); use the revision returned with the document`,
+      };
+    }
     if (error instanceof IsolationError) {
       return { error: "No record with that id; use an id returned by a legal or Data Room tool" };
     }
@@ -313,43 +340,54 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
   const parsed = ContractArgs.safeParse(args);
   if (!parsed.success) return { error: issues(parsed.error) };
   const input = parsed.data;
-  const repo = createLegalRepos(deps.prisma);
   const actor = actorOf(deps.scope);
+  // The analysis and the deadlines derived from it commit together, so a failure never leaves a
+  // contract marked reviewed with its deadlines missing.
+  const inTransaction = <T>(work: (tx: LegalToolDeps) => Promise<T>) =>
+    deps.prisma.$transaction((tx) => work({ ...deps, prisma: tx as unknown as PrismaClient }));
   if (input.notLegal) {
-    const row = await repo.upsertContract(actor, {
-      dataRoomItemId: input.dataRoomItemId,
-      revision: input.revision,
-      title: input.title ?? "Not a legal document",
-      contractType: LEGAL_NOT_LEGAL_TYPE,
-      status: "unknown",
+    return inTransaction(async (tx) => {
+      const row = await createLegalRepos(tx.prisma).upsertContract(actor, {
+        dataRoomItemId: input.dataRoomItemId,
+        revision: input.revision,
+        title: input.title ?? "Not a legal document",
+        contractType: LEGAL_NOT_LEGAL_TYPE,
+        status: "unknown",
+      });
+      // No dates, so every open derived deadline of a contract reclassified as not legal is dismissed.
+      await deriveDeadlines(tx, row);
+      return { reviewed: true, contractId: row.id };
     });
-    return { reviewed: true, contractId: row.id };
   }
   if (!input.title || !input.contractType || !input.status) {
     return { error: "title, contractType and status are required (or set notLegal: true)" };
   }
-  const row = await repo.upsertContract(actor, {
-    dataRoomItemId: input.dataRoomItemId,
-    revision: input.revision,
-    title: input.title,
-    contractType: input.contractType,
-    counterparties: input.counterparties,
-    status: input.status,
-    effectiveDate: input.effectiveDate ? parseLegalDay(input.effectiveDate) : null,
-    expirationDate: input.expirationDate ? parseLegalDay(input.expirationDate) : null,
-    autoRenews: input.autoRenews,
-    renewalNoticeDays: input.renewalNoticeDays,
-    governingLaw: input.governingLaw,
-    valueCents:
-      input.valueCents === null || input.valueCents === undefined ? null : BigInt(input.valueCents),
-    currency: input.currency?.toUpperCase(),
-    summary: input.summary,
+  return inTransaction(async (tx) => {
+    const row = await createLegalRepos(tx.prisma).upsertContract(actor, {
+      dataRoomItemId: input.dataRoomItemId,
+      revision: input.revision,
+      title: input.title as string,
+      contractType: input.contractType as string,
+      counterparties: input.counterparties,
+      status: input.status as z.infer<typeof LegalContractStatusSchema>,
+      effectiveDate: input.effectiveDate ? parseLegalDay(input.effectiveDate) : null,
+      expirationDate: input.expirationDate ? parseLegalDay(input.expirationDate) : null,
+      autoRenews: input.autoRenews,
+      renewalNoticeDays: input.renewalNoticeDays,
+      governingLaw: input.governingLaw,
+      valueCents:
+        input.valueCents === null || input.valueCents === undefined
+          ? null
+          : BigInt(input.valueCents),
+      currency: input.currency?.toUpperCase(),
+      summary: input.summary,
+    });
+    const derived = await deriveDeadlines(tx, row, input.renewalQuote ?? undefined);
+    return {
+      contract: toLegalContract(row),
+      derivedDeadlines: derived.map((d) => toLegalDeadline(d)),
+    };
   });
-  const derived = await deriveDeadlines(deps, row, input.renewalQuote ?? undefined);
-  return {
-    contract: toLegalContract(row),
-    derivedDeadlines: derived.map((d) => toLegalDeadline(d)),
-  };
 }
 
 /**
@@ -418,7 +456,10 @@ async function query(deps: LegalToolDeps, args: Record<string, unknown>) {
   const actor = actorOf(deps.scope);
   const q = parsed.data;
   if (q.view === "contracts") {
-    const rows = await repo.listContracts(actor, { limit: q.limit });
+    const rows = await repo.listContracts(actor, {
+      limit: q.limit,
+      excludeConnectionIds: deps.deniedConnectionIds,
+    });
     return {
       contracts: rows
         .filter((row) => !q.status || row.status === q.status)
@@ -433,13 +474,18 @@ async function query(deps: LegalToolDeps, args: Record<string, unknown>) {
       from: q.dueInLastDays === undefined ? undefined : addDays(today, -q.dueInLastDays),
       to: q.withinDays === undefined ? undefined : addDays(today, q.withinDays),
       limit: q.limit,
+      excludeConnectionIds: deps.deniedConnectionIds,
     });
     return {
       today: day(today),
       deadlines: rows.map((row) => toLegalDeadline(row)),
     };
   }
-  const hood = await repo.neighborhood(actor, { id: q.nodeId, kind: q.kind, label: q.label });
+  const hood = await repo.neighborhood(
+    actor,
+    { id: q.nodeId, kind: q.kind, label: q.label },
+    deps.deniedConnectionIds,
+  );
   if (!hood) return { error: "No node matched" };
   const view = (n: { id: string; kind: string; label: string; attrs: unknown }) => ({
     id: n.id,
@@ -469,7 +515,7 @@ export async function legalDataRoomGate(
   name: string,
   call: () => Promise<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
-  if (!(await deps.allowed())) return { error: REFUSAL, consentRequired: true };
+  if (!(await deps.allowed())) return { error: LEGAL_CONSENT_REFUSAL, consentRequired: true };
   const result = await call();
   if (name !== "read_data_room_item" || typeof result.id !== "string") return result;
   const item = await deps.prisma.dataRoomItem.findFirst({

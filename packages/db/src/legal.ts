@@ -11,6 +11,13 @@ export type LegalEdgeRecord = Prisma.LegalEdgeGetPayload<object>;
 /** A document the agent looked at and found is not legal: kept so it is not offered again, never listed. */
 export const LEGAL_NOT_LEGAL_TYPE = "not_legal";
 
+/** The analysis names a revision the item has not reached yet. */
+export class LegalRevisionError extends Error {
+  constructor(readonly current: number) {
+    super("revision is newer than the document's current revision");
+  }
+}
+
 const MAX_LIST = 500;
 const MAX_GRAPH_NODES = 2000;
 
@@ -86,6 +93,16 @@ export function createLegalRepos(prisma: PrismaClient) {
     return row;
   }
 
+  /** Ids of the items imported through connections the user denied the agent. */
+  async function deniedItemIds(actor: Actor, connectionIds?: readonly string[]) {
+    if (!connectionIds?.length) return [];
+    const rows = await prisma.dataRoomItem.findMany({
+      where: { ...scope(actor), sourceConnectionId: { in: [...connectionIds] } },
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
   /** Ready Data Room items with no analysis yet, or analyzed at an older revision. */
   const unreviewedCondition = (
     actor: Actor,
@@ -136,9 +153,11 @@ export function createLegalRepos(prisma: PrismaClient) {
     async upsertContract(actor: Actor, input: LegalContractInput): Promise<LegalContractRecord> {
       const item = await prisma.dataRoomItem.findFirst({
         where: { id: input.dataRoomItemId, ...scope(actor) },
-        select: { id: true },
+        select: { id: true, revision: true },
       });
       if (!item) throw new IsolationError();
+      // A revision ahead of the item would hide every later change from review.
+      if (input.revision > item.revision) throw new LegalRevisionError(item.revision);
       const data = {
         title: input.title,
         contractType: input.contractType,
@@ -164,12 +183,22 @@ export function createLegalRepos(prisma: PrismaClient) {
       });
     },
 
-    listContracts: (actor: Actor, options: { limit?: number } = {}) =>
-      prisma.legalContract.findMany({
-        where: { ...scope(actor), contractType: { not: LEGAL_NOT_LEGAL_TYPE } },
+    /** `excludeConnectionIds`: contracts whose document came through those connections are left out. */
+    async listContracts(
+      actor: Actor,
+      options: { limit?: number; excludeConnectionIds?: readonly string[] } = {},
+    ) {
+      const denied = await deniedItemIds(actor, options.excludeConnectionIds);
+      return prisma.legalContract.findMany({
+        where: {
+          ...scope(actor),
+          contractType: { not: LEGAL_NOT_LEGAL_TYPE },
+          ...(denied.length ? { dataRoomItemId: { notIn: denied } } : {}),
+        },
         orderBy: [{ expirationDate: { sort: "asc", nulls: "last" } }, { id: "asc" }],
         take: clamp(options.limit, 200, MAX_LIST),
-      }),
+      });
+    },
 
     getContract: (actor: Actor, id: string) => requireContract(actor, id),
 
@@ -239,7 +268,8 @@ export function createLegalRepos(prisma: PrismaClient) {
       return prisma.legalDeadline.findFirstOrThrow({ where: { id, ...scope(actor) } });
     },
 
-    listDeadlines: (
+    /** `excludeConnectionIds`: deadlines of a contract, or sourced from a document, that came through those connections are left out. */
+    async listDeadlines(
       actor: Actor,
       options: {
         status?: string;
@@ -247,9 +277,11 @@ export function createLegalRepos(prisma: PrismaClient) {
         from?: Date;
         to?: Date;
         limit?: number;
+        excludeConnectionIds?: readonly string[];
       } = {},
-    ) =>
-      prisma.legalDeadline.findMany({
+    ) {
+      const denied = await deniedItemIds(actor, options.excludeConnectionIds);
+      return prisma.legalDeadline.findMany({
         where: {
           ...scope(actor),
           ...(options.status ? { status: options.status } : {}),
@@ -257,10 +289,21 @@ export function createLegalRepos(prisma: PrismaClient) {
           ...(options.from || options.to
             ? { dueDate: { gte: options.from, lte: options.to } }
             : {}),
+          ...(denied.length
+            ? {
+                AND: [
+                  { OR: [{ dataRoomItemId: null }, { dataRoomItemId: { notIn: denied } }] },
+                  {
+                    OR: [{ contractId: null }, { contract: { dataRoomItemId: { notIn: denied } } }],
+                  },
+                ],
+              }
+            : {}),
         },
         orderBy: [{ dueDate: "asc" }, { id: "asc" }],
         take: clamp(options.limit, 200, MAX_LIST),
-      }),
+      });
+    },
 
     /** Creates the node, or returns the existing one with the same kind and normalized label. */
     async upsertNode(
@@ -272,7 +315,11 @@ export function createLegalRepos(prisma: PrismaClient) {
         contractId?: string | null;
       },
     ): Promise<LegalNodeRecord> {
-      const key = legalNodeKey(input.label);
+      // A contract node belongs to one contract, so two contracts with the same title stay apart.
+      const key =
+        input.kind === "contract" && input.contractId
+          ? `contract:${input.contractId}`
+          : legalNodeKey(input.label);
       if (!key) throw new Error("A node needs a label");
       if (input.contractId) await requireContract(actor, input.contractId);
       const update = {
@@ -342,7 +389,23 @@ export function createLegalRepos(prisma: PrismaClient) {
     },
 
     /** A node (by id, or by kind and label) with the edges touching it and the nodes at their other ends. */
-    async neighborhood(actor: Actor, ref: { id?: string; kind?: string; label?: string }) {
+    async neighborhood(
+      actor: Actor,
+      ref: { id?: string; kind?: string; label?: string },
+      excludeConnectionIds?: readonly string[],
+    ) {
+      const denied = await deniedItemIds(actor, excludeConnectionIds);
+      // A contract node, and an edge, are hidden with the document they come from.
+      const hiddenContracts = denied.length
+        ? (
+            await prisma.legalContract.findMany({
+              where: { ...scope(actor), dataRoomItemId: { in: denied } },
+              select: { id: true },
+            })
+          ).map((row) => row.id)
+        : [];
+      const visibleNode = (n: { contractId: string | null }) =>
+        !n.contractId || !hiddenContracts.includes(n.contractId);
       const node = ref.id
         ? await prisma.legalNode.findFirst({ where: { id: ref.id, ...scope(actor) } })
         : ref.label
@@ -355,9 +418,15 @@ export function createLegalRepos(prisma: PrismaClient) {
               orderBy: { id: "asc" },
             })
           : null;
-      if (!node) return null;
+      if (!node || !visibleNode(node)) return null;
       const edges = await prisma.legalEdge.findMany({
-        where: { ...scope(actor), OR: [{ fromId: node.id }, { toId: node.id }] },
+        where: {
+          ...scope(actor),
+          OR: [{ fromId: node.id }, { toId: node.id }],
+          ...(denied.length
+            ? { AND: [{ OR: [{ dataRoomItemId: null }, { dataRoomItemId: { notIn: denied } }] }] }
+            : {}),
+        },
         orderBy: { id: "asc" },
         take: MAX_LIST,
       });
@@ -366,7 +435,13 @@ export function createLegalRepos(prisma: PrismaClient) {
       const others = await prisma.legalNode.findMany({
         where: { id: { in: [...ids] }, ...scope(actor) },
       });
-      return { node, edges, nodes: others };
+      const nodes = others.filter(visibleNode);
+      const shown = new Set([node.id, ...nodes.map((n) => n.id)]);
+      return {
+        node,
+        edges: edges.filter((edge) => shown.has(edge.fromId) && shown.has(edge.toId)),
+        nodes,
+      };
     },
 
     async deadlineCounts(actor: Actor, today: Date) {

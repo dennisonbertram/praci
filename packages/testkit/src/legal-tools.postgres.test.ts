@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   createRunExecutor,
+  legalAccountToolsAllowed,
   legalDataRoomGate,
   legalToolFromTool,
+  legalToolNeedsConsent,
   legalToolsAllowed,
   selectBuiltinToolsForRun,
 } from "@rakazo/adapters";
@@ -713,6 +715,189 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     await prisma.run.update({ where: { id: runId }, data: { status: "completed" } });
     await executor.wakeRoutine(routine.id, await due());
     expect(await runs()).toBe(before + 1);
+  });
+
+  it("keeps mail, Drive and calendar off a Legal run another agent started, and rechecks consent for them", () => {
+    expect(legalAccountToolsAllowed(true, "bot_message")).toBe(false);
+    for (const trigger of ["user", "follow_up", "routine"]) {
+      expect(legalAccountToolsAllowed(true, trigger)).toBe(true);
+    }
+    // Other agents keep the gate they had.
+    expect(legalAccountToolsAllowed(false, "bot_message")).toBe(true);
+    for (const name of [
+      "mail_get",
+      "mail_search",
+      "drive_read",
+      "drive_search",
+      "calendar_list_events",
+    ]) {
+      expect(legalToolNeedsConsent(name)).toBe(true);
+    }
+    expect(legalToolNeedsConsent("legal_query")).toBe(false);
+    expect(legalToolNeedsConsent("web_search")).toBe(false);
+  });
+
+  it("hides contracts, deadlines and graph records from denied connections in legal_query", async () => {
+    const connection = await prisma.connection.create({
+      data: {
+        spaceId: a.spaceId,
+        userId: a.userId,
+        connectorId: "google",
+        provider: "gmail",
+        displayName: "Denied for query",
+        status: "connected",
+      },
+    });
+    const item = await addItem(a, "denied-query.txt", "Denied contract.");
+    await prisma.dataRoomItem.update({
+      where: { id: item.id },
+      data: { sourceConnectionId: connection.id },
+    });
+    const made = await legal(a, "legal_upsert_contract", {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: "Denied Source Contract",
+      contractType: "msa",
+      status: "active",
+      expirationDate: "2031-03-03",
+    });
+    const node = await legal(a, "legal_upsert_node", {
+      kind: "contract",
+      label: "Denied Source Contract",
+      contractId: made.contract.id,
+    });
+    const party = await legal(a, "legal_upsert_node", { kind: "company", label: "Denied Peer" });
+    await legal(a, "legal_link", {
+      fromId: party.node.id,
+      toId: node.node.id,
+      relation: "party_to",
+      dataRoomItemId: item.id,
+    });
+    const asDenied = (args: Record<string, unknown>) =>
+      legalToolFromTool(
+        "legal_query",
+        { ...deps(a), deniedConnectionIds: [connection.id] },
+        args,
+      ) as Promise<any>;
+
+    expect(
+      (await legal(a, "legal_query", { view: "contracts" })).contracts.map((c: any) => c.title),
+    ).toContain("Denied Source Contract");
+    expect(
+      (await asDenied({ view: "contracts" })).contracts.map((c: any) => c.title),
+    ).not.toContain("Denied Source Contract");
+    const open = (r: any) => r.deadlines.filter((d: any) => d.contractId === made.contract.id);
+    expect(open(await legal(a, "legal_query", { view: "deadlines" })).length).toBeGreaterThan(0);
+    expect(open(await asDenied({ view: "deadlines" }))).toHaveLength(0);
+    expect(await asDenied({ view: "node", nodeId: node.node.id })).toMatchObject({
+      error: "No node matched",
+    });
+    const peer = await asDenied({ view: "node", nodeId: party.node.id });
+    expect(peer.edges).toHaveLength(0);
+    expect(peer.neighbors).toHaveLength(0);
+  });
+
+  it("commits the contract and its derived deadlines together", async () => {
+    const item = await addItem(a, "atomic.txt", "Atomic contract.");
+    const failing = new Proxy(prisma, {
+      get(target, key, receiver) {
+        if (key !== "$transaction") return Reflect.get(target, key, receiver);
+        return (work: (tx: unknown) => Promise<unknown>) =>
+          target.$transaction((tx) =>
+            work(
+              new Proxy(tx, {
+                get(inner, name, r) {
+                  if (name !== "legalDeadline") return Reflect.get(inner, name, r);
+                  return new Proxy(inner.legalDeadline, {
+                    get(model, method, mr) {
+                      if (method === "create") throw new Error("deadline write failed");
+                      return Reflect.get(model, method, mr);
+                    },
+                  });
+                },
+              }),
+            ),
+          );
+      },
+    });
+    const result = await legalToolFromTool(
+      "legal_upsert_contract",
+      { ...deps(a), prisma: failing },
+      {
+        dataRoomItemId: item.id,
+        revision: item.revision,
+        title: "Atomic",
+        contractType: "msa",
+        status: "active",
+        expirationDate: "2032-01-01",
+      },
+    );
+    expect(result).toMatchObject({ error: "Legal tool failed" });
+    expect(await prisma.legalContract.count({ where: { dataRoomItemId: item.id } })).toBe(0);
+  });
+
+  it("dismisses the open derived deadlines when a contract is reclassified as not legal", async () => {
+    const item = await addItem(a, "reclass.txt", "First read as a contract.");
+    const made = await legal(a, "legal_upsert_contract", {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: "Reclassified",
+      contractType: "msa",
+      status: "active",
+      expirationDate: "2033-02-02",
+      renewalNoticeDays: 30,
+    });
+    expect(made.derivedDeadlines).toHaveLength(2);
+    await legal(a, "legal_upsert_contract", {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      notLegal: true,
+    });
+    const rows = await prisma.legalDeadline.findMany({ where: { contractId: made.contract.id } });
+    expect(rows.map((r) => r.status)).toEqual(["dismissed", "dismissed"]);
+    expect(rows[0]?.notes).toBe("Dismissed: the contract no longer has this date.");
+  });
+
+  it("keeps a node per contract when two contracts share a title", async () => {
+    const make = async (name: string) => {
+      const item = await addItem(a, name, name);
+      const made = await legal(a, "legal_upsert_contract", {
+        dataRoomItemId: item.id,
+        revision: item.revision,
+        title: "Same Title NDA",
+        contractType: "nda",
+        status: "active",
+      });
+      const node = await legal(a, "legal_upsert_node", {
+        kind: "contract",
+        label: "Same Title NDA",
+        contractId: made.contract.id,
+      });
+      return { item, node: node.node.id as string };
+    };
+    const one = await make("nda-one.txt");
+    const two = await make("nda-two.txt");
+    expect(one.node).not.toBe(two.node);
+    const party = await legal(a, "legal_upsert_node", { kind: "company", label: "NDA Party" });
+    await legal(a, "legal_link", { fromId: party.node.id, toId: two.node, relation: "party_to" });
+    await createDataRoomRepos(prisma).deleteItem(a, one.item.id);
+    expect(await prisma.legalNode.count({ where: { id: two.node } })).toBe(1);
+    expect(await prisma.legalEdge.count({ where: { toId: two.node } })).toBe(1);
+  });
+
+  it("rejects a revision ahead of the document and keeps accepting a lower one", async () => {
+    const item = await addItem(a, "revision.txt", "Revision check.");
+    const base = {
+      dataRoomItemId: item.id,
+      title: "Revision",
+      contractType: "msa",
+      status: "active",
+    };
+    const ahead = await legal(a, "legal_upsert_contract", { ...base, revision: item.revision + 1 });
+    expect(ahead.error).toContain("newer than the document's current revision");
+    expect(await prisma.legalContract.count({ where: { dataRoomItemId: item.id } })).toBe(0);
+    const behind = await legal(a, "legal_upsert_contract", { ...base, revision: 0 });
+    expect(behind.contract.analyzedRevision).toBe(0);
   });
 
   it("refuses to link evidence from another user's document", async () => {
