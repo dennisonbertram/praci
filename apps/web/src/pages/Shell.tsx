@@ -3276,7 +3276,7 @@ export function ShellPage() {
     <div
       data-testid="shell-root"
       data-ready={shellReady}
-      className="relative flex h-full min-w-0 overflow-hidden bg-background text-foreground/90"
+      className="relative flex h-full min-w-0 overflow-clip bg-background text-foreground/90"
       onTouchStartCapture={(event) => {
         if (
           mobileSidebarOpen ||
