@@ -115,7 +115,6 @@ export function GeneralSettingsPanels({
         </h3>
         <p className="mt-3 text-[14px] text-foreground/75">{name}</p>
         {email ? <p className="mt-1 text-[13px] text-muted-foreground/70">{email}</p> : null}
-        <AccountAccess onSecurity={setAccountSecurity} />
       </section>
 
       {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
@@ -308,6 +307,11 @@ export function GeneralSettingsPanels({
           <ApprovalRulesSettings />
         </div>
       </details>
+
+      {/* Last, so a destructive action is never the first thing on the page. */}
+      <section data-testid="account-access" className="rounded-xl border border-border px-4 pb-4">
+        <AccountAccess onSecurity={setAccountSecurity} />
+      </section>
     </div>
   );
 }
@@ -337,11 +341,16 @@ export function UsageSettingsPanel({
       </h3>
       {usage ? (
         <p className="mt-3 text-[14px] text-foreground/75">
-          <Plural value={usage.runs} one="# run" other="# runs" /> ·{" "}
+          <Plural
+            value={usage.runs}
+            one="# task done by your bots"
+            other="# tasks done by your bots"
+          />{" "}
+          ·{" "}
           {tokens == null ? (
-            <Trans>— tokens</Trans>
+            <Trans>— tokens of AI text</Trans>
           ) : (
-            <Plural value={tokens} one="# token" other="# tokens" />
+            <Plural value={tokens} one="# token of AI text" other="# tokens of AI text" />
           )}
         </p>
       ) : null}

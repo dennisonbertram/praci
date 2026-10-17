@@ -15,6 +15,7 @@ import {
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { computersAreUnavailable } from "../components/ComputersUnavailableHint";
+import { useHasDesktopUpdates } from "../components/DesktopUpdates";
 import {
   ComputerSettingsPanel,
   GeneralSettingsPanels,
@@ -120,6 +121,10 @@ export function SettingsOverlay({
   useEffect(() => {
     if (!billingEnabled && section === "billing") setSection("general");
   }, [billingEnabled, section]);
+  const hasDesktopUpdates = useHasDesktopUpdates();
+  useEffect(() => {
+    if (!isDeploymentOwner && !hasDesktopUpdates && section === "updates") setSection("general");
+  }, [isDeploymentOwner, hasDesktopUpdates, section]);
 
   useEffect(() => {
     if (section !== "computer") releaseComputerRecovery();
@@ -141,7 +146,10 @@ export function SettingsOverlay({
     { id: "usage", label: t`Usage`, icon: Gauge },
     ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
     ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
-    { id: "updates", label: t`Updates`, icon: CloudDownload },
+    // Only deployment owners and the desktop app have anything to update.
+    ...(isDeploymentOwner || hasDesktopUpdates
+      ? [{ id: "updates" as const, label: t`Updates`, icon: CloudDownload }]
+      : []),
   ];
 
   const sectionTitle =

@@ -78,8 +78,7 @@ export function AccountAccess({
           <Trans>Link SSO</Trans>
         </Button>
       ) : null}
-      {/* Destructive and set apart from the account details above it. */}
-      <div className="mt-4 border-t border-border pt-4">
+      <div className="pt-1">
         <Button
           variant="destructive"
           aria-expanded={open}

@@ -78,7 +78,7 @@ vi.mock("../components/AccountAccess", () => ({
         }),
       [onSecurity],
     );
-    return null;
+    return <button type="button">Delete account</button>;
   },
 }));
 
@@ -211,6 +211,32 @@ it.each([undefined, true, false])("respects the password-change policy (%s)", as
   } finally {
     await act(async () => root.unmount());
     accountPolicy.passwordChangeEnabled = undefined;
+    vi.unstubAllGlobals();
+  }
+});
+
+it("puts Delete account after every other setting", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        <GeneralSettingsPanels
+          name="Jamie"
+          avatarStyle="robot"
+          onAvatarStyleChange={async () => undefined}
+        />,
+      );
+    });
+    const panels = container.firstElementChild?.children ?? [];
+    const last = panels[panels.length - 1];
+    expect(last?.textContent).toBe("Delete account");
+    expect(panels[0]?.textContent).not.toContain("Delete account");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
     vi.unstubAllGlobals();
   }
 });
