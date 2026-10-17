@@ -1,3 +1,4 @@
+import { MAIL_GREP_BUDGET } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
 import { serializeToolResult } from "./pi-runtime.js";
 
@@ -18,6 +19,13 @@ describe("serializeToolResult", () => {
       expect(JSON.parse(text)).toEqual(skill);
     },
   );
+
+  it("passes a mail result that fits the mail budget through whole", () => {
+    // The Inbox overview fills the mail budget; a shortened copy lost its senders and subjects.
+    const overview = { needsReply: ["x".repeat(MAIL_GREP_BUDGET - 100)] };
+    const text = serializeToolResult(overview, "current", "inbox_overview", {});
+    expect(JSON.parse(text)).toEqual(overview);
+  });
 
   it("still bounds other large tool results", () => {
     const text = serializeToolResult({ output: "x".repeat(20_000) }, "current", "shell", {});

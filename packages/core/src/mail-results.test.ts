@@ -3,6 +3,7 @@ import * as core from "./index.js";
 import type { MailQueryOutcome, MailResultRow, MailResultSource } from "./mail-results.js";
 import {
   budgetJson,
+  MAIL_GREP_BUDGET,
   clampInt,
   coverage,
   createGrepScan,
@@ -316,7 +317,7 @@ describe("grepRows", () => {
       row(i + 1, { snippet: "s".repeat(500), subject: "t".repeat(500) }),
     );
     const result = grepRows(rows, { ...opts, maxResults: 200 });
-    expect(JSON.stringify(result).length).toBeLessThanOrEqual(16_000);
+    expect(JSON.stringify(result).length).toBeLessThanOrEqual(MAIL_GREP_BUDGET);
     expect(result.totalMatches).toBe(300);
     expect(result.shown).toBe(result.matches.length);
     expect(result.shown).toBeGreaterThan(10);
