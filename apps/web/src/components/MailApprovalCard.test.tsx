@@ -248,7 +248,7 @@ it("disables the actions while an answer is in flight", async () => {
 
 it("folds a finished card to its header and opens it with the chevron", async () => {
   await render({ status: "answered", answer: "allow", mail: { ...mail, subject: "Monday" } });
-  expect(header()).toBe("Mail Approved to send · jana@example.testMonday");
+  expect(header()).toBe("Mail Sending… · jana@example.testMonday");
   expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
   expect(host.querySelector("h3")).toBeNull();
   await click(toggle() ?? undefined);
@@ -274,13 +274,13 @@ it("shows what became of the person's own edited send", async () => {
   await render({ status: "answered", answer: "deny", mail: edited });
   expect(status()).toBe("Sending…");
   await render({ status: "answered", answer: "deny", mail: { ...edited, outcome: "sent" } });
-  expect(status()).toBe("Sent by you");
+  expect(status()).toBe("Sent");
   await render({
     status: "answered",
     answer: "deny",
     mail: { ...edited, tool: "mail_draft", outcome: "saved" },
   });
-  expect(status()).toBe("Draft saved by you");
+  expect(status()).toBe("Draft saved");
   await render({ status: "answered", answer: "deny", mail: { ...edited, outcome: "unknown" } });
   expect(status()).toBe("Unknown");
   expect(host.textContent).toContain("Check Sent in your mail before trying again");
@@ -300,6 +300,21 @@ it("keeps a failed send open and offers the composer", async () => {
   expect(header()).toContain("Not sent");
   await click(button("Open in composer"));
   expect(onOpenComposer).toHaveBeenCalledWith(failed);
+});
+
+it("says Sent, or Not sent with the reason, once an approved send ends", async () => {
+  const status = () => header().replace("Mail ", "").split(" · ")[0];
+  await render({ status: "answered", answer: "allow", mail: { ...mail, outcome: "sent" } });
+  expect(status()).toBe("Sent");
+  await render({
+    status: "answered",
+    answer: "allow",
+    mail: { ...mail, outcome: "failed", error: "No connected mail account" },
+  });
+  expect(status()).toBe("Not sent");
+  expect(host.textContent).toContain("No connected mail account");
+  // The agent's own send has no composer account to reopen it in.
+  expect(button("Open in composer")).toBeUndefined();
 });
 
 it("shows Cc and Bcc rows only when the message has them", async () => {

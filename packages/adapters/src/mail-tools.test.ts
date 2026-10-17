@@ -236,11 +236,35 @@ describe("mail_get", () => {
     expect(await body(1_000_000)).toHaveLength(200);
   });
 
-  it("requires an account when two are connected and finds the message in the named one", async () => {
-    const { deps } = setup({
-      a: messages,
-      b: [{ ...base, id: "m3", date: "2026-02-01T00:00:00Z", subject: "Other", text: "Hello b" }],
+  it("uses the account whose synced mail holds the message when none is named", async () => {
+    const findMany = vi.fn(async ({ where }: { where: { providerMessageId: string } }) =>
+      where.providerMessageId === "m3" ? [{ connectionId: "conn-b" }] : [],
+    );
+    const { deps } = setup(
+      {
+        a: messages,
+        b: [{ ...base, id: "m3", date: "2026-02-01T00:00:00Z", subject: "Other", text: "Hello b" }],
+      },
+      { prisma: { cachedMailMessage: { findMany } } },
+    );
+    const result = (await mailToolFromTool("mail_get", deps, context(), { id: "m3" })) as {
+      text: string;
+    };
+    expect(result.text).toContain("Hello b");
+    expect(findMany.mock.calls[0]?.[0]).toMatchObject({
+      where: { spaceId: scope.spaceId, userId: scope.userId, providerMessageId: "m3" },
     });
+  });
+
+  it("requires an account when two are connected and finds the message in the named one", async () => {
+    const { deps } = setup(
+      {
+        a: messages,
+        b: [{ ...base, id: "m3", date: "2026-02-01T00:00:00Z", subject: "Other", text: "Hello b" }],
+      },
+      // Not in the synced mail, so the account cannot be told from the message.
+      { prisma: { cachedMailMessage: { findMany: async () => [] } } },
+    );
     expect(await mailToolFromTool("mail_get", deps, context(), { id: "m3" })).toEqual({
       error:
         "Pass account (the address from the row's acct: field) when more than one mail account is connected",

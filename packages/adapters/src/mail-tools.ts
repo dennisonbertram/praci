@@ -162,7 +162,7 @@ function addressText(address: MailAddress | null | undefined): string {
   return address.name ? `${address.name} <${address.address}>` : address.address;
 }
 
-function accountName(account: MailAccount): string {
+export function accountName(account: MailAccount): string {
   return account.address ?? account.label;
 }
 
@@ -516,7 +516,35 @@ async function mailGrep(deps: MailToolDeps, args: Record<string, unknown>) {
 
 // --- mail_get ---
 
-/** The account named by `args.account`, or the only connected one. */
+/**
+ * With several accounts and none named: the one account whose synced mail holds the message the
+ * call replies to (`replyToId`) or changes (`id`). A reply goes out from the address it came to.
+ */
+export async function inferMailAccount(
+  prisma: PrismaClient,
+  owner: { spaceId: string; userId: string },
+  accounts: MailAccount[],
+  args: Record<string, unknown>,
+): Promise<MailAccount | undefined> {
+  if (typeof args.account === "string" && args.account.trim()) return undefined;
+  if (accounts.length === 1) return accounts[0];
+  const ref = [args.replyToId, args.id].find(
+    (value): value is string => typeof value === "string" && value.trim() !== "",
+  );
+  if (!ref || accounts.length === 0) return undefined;
+  const rows = await prisma.cachedMailMessage.findMany({
+    where: {
+      ...owner,
+      providerMessageId: ref.trim(),
+      connectionId: { in: accounts.map((account) => account.id) },
+    },
+    select: { connectionId: true },
+  });
+  const ids = new Set(rows.map((row) => row.connectionId));
+  return ids.size === 1 ? accounts.find((account) => ids.has(account.id)) : undefined;
+}
+
+/** The account named by `args.account`, the only connected one, or the one the message is in. */
 async function resolveAccount(
   deps: MailToolDeps,
   args: Record<string, unknown>,
@@ -526,6 +554,9 @@ async function resolveAccount(
     const account = findAccount(accounts, args.account);
     return account ? { account } : noAccount(args.account);
   }
+  const owner = { spaceId: deps.scope.spaceId, userId: deps.scope.userId };
+  const inferred = await inferMailAccount(deps.prisma, owner, accounts, args);
+  if (inferred) return { account: inferred };
   if (accounts.length > 1) {
     return {
       error:

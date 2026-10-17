@@ -290,12 +290,16 @@ import {
   selectCompactedHistory,
   shouldEnqueueCompaction,
 } from "./history-compaction.js";
+import { triageStatus } from "./inbox-triage.js";
 import {
   assertConnectorToolArgs,
   CATALOG_EXECUTE,
   uniquifyInstalledToolName,
 } from "./lazy-tool-catalog.js";
+import { approvedMailOutcome } from "./mail-approval-recovery.js";
 import {
+  accountName,
+  inferMailAccount,
   MAIL_TOOL_NAMES,
   mailToolFromTool,
   mailToolsAllowed,
@@ -3086,81 +3090,83 @@ export function createRunExecutor(deps: ExecutorDeps) {
         : undefined,
     };
   };
+  // A run checks the same consent as triage, so this is shared by the object and the runs.
+  const resolveModel = async (scope: {
+    userId: string;
+    spaceId: string;
+    botId?: string;
+  }): Promise<AgentRunRequest["model"]> => {
+    const override = scope.botId
+      ? await deps.prisma.bot.findFirst({
+          where: {
+            id: scope.botId,
+            userId: scope.userId,
+            spaceId: scope.spaceId,
+          },
+          select: { modelProvider: true, modelId: true, thinkingLevel: true },
+        })
+      : null;
+    const hasOverride = Boolean(override?.modelProvider && override.modelId);
+    const [overrideCredential, defaultCredential, settings] = await Promise.all([
+      hasOverride
+        ? findModelCredential(deps.prisma, scope, override!.modelProvider!, override!.modelId)
+        : Promise.resolve(null),
+      findDefaultModelCredential(deps.prisma, scope),
+      deps.prisma.deploymentSettings.findUnique({
+        where: { id: "default" },
+      }),
+    ]);
+    const selected = selectConfiguredModel({
+      override,
+      overrideCredential,
+      defaultCredential,
+      settings,
+      deployment: deps.deploymentModelConfigured ? resolveDeploymentModel() : null,
+    });
+    const { credential, thinkingLevel } = selected;
+    let { provider, id } = selected;
+    if (!provider || !id) {
+      const runtimeFallback = runtimeFallbackModel(deps.runtime);
+      provider ??= runtimeFallback?.provider;
+      id ??= runtimeFallback?.id ?? null;
+    }
+    if (!provider || !id) throw new Error(MISSING_MODEL_MESSAGE);
+    // The key is resolved for the provider that won above, not before it is known.
+    const resolved = await resolveModelKey(
+      deps,
+      scope.userId,
+      scope.spaceId,
+      credential,
+      provider,
+      id,
+    );
+    return {
+      provider,
+      id,
+      apiKey: resolved.oauth ? undefined : resolved.apiKey,
+      ...cloudflareRunFields(resolved),
+      baseUrl: resolved.baseUrl,
+      cacheCapabilities: resolved.cacheCapabilities,
+      contextWindow: resolved.contextWindow,
+
+      reasoning: resolved.reasoning,
+      maxTokens: resolved.maxTokens,
+      acceptsImages: resolved.acceptsImages,
+      maxImagesPerPrompt: resolved.maxImagesPerPrompt,
+      thinkingLevel: thinkingLevel ?? resolved.thinkingLevel ?? null,
+      oauth: resolved.oauth
+        ? {
+            credential: resolved.oauth,
+            persist: resolved.persistOAuth,
+            retire: resolved.retireOAuth,
+          }
+        : undefined,
+    };
+  };
   return {
     resolveConnectedModel,
     contextStrategy,
-    async resolveModel(scope: {
-      userId: string;
-      spaceId: string;
-      botId?: string;
-    }): Promise<AgentRunRequest["model"]> {
-      const override = scope.botId
-        ? await deps.prisma.bot.findFirst({
-            where: {
-              id: scope.botId,
-              userId: scope.userId,
-              spaceId: scope.spaceId,
-            },
-            select: { modelProvider: true, modelId: true, thinkingLevel: true },
-          })
-        : null;
-      const hasOverride = Boolean(override?.modelProvider && override.modelId);
-      const [overrideCredential, defaultCredential, settings] = await Promise.all([
-        hasOverride
-          ? findModelCredential(deps.prisma, scope, override!.modelProvider!, override!.modelId)
-          : Promise.resolve(null),
-        findDefaultModelCredential(deps.prisma, scope),
-        deps.prisma.deploymentSettings.findUnique({
-          where: { id: "default" },
-        }),
-      ]);
-      const selected = selectConfiguredModel({
-        override,
-        overrideCredential,
-        defaultCredential,
-        settings,
-        deployment: deps.deploymentModelConfigured ? resolveDeploymentModel() : null,
-      });
-      const { credential, thinkingLevel } = selected;
-      let { provider, id } = selected;
-      if (!provider || !id) {
-        const runtimeFallback = runtimeFallbackModel(deps.runtime);
-        provider ??= runtimeFallback?.provider;
-        id ??= runtimeFallback?.id ?? null;
-      }
-      if (!provider || !id) throw new Error(MISSING_MODEL_MESSAGE);
-      // The key is resolved for the provider that won above, not before it is known.
-      const resolved = await resolveModelKey(
-        deps,
-        scope.userId,
-        scope.spaceId,
-        credential,
-        provider,
-        id,
-      );
-      return {
-        provider,
-        id,
-        apiKey: resolved.oauth ? undefined : resolved.apiKey,
-        ...cloudflareRunFields(resolved),
-        baseUrl: resolved.baseUrl,
-        cacheCapabilities: resolved.cacheCapabilities,
-        contextWindow: resolved.contextWindow,
-
-        reasoning: resolved.reasoning,
-        maxTokens: resolved.maxTokens,
-        acceptsImages: resolved.acceptsImages,
-        maxImagesPerPrompt: resolved.maxImagesPerPrompt,
-        thinkingLevel: thinkingLevel ?? resolved.thinkingLevel ?? null,
-        oauth: resolved.oauth
-          ? {
-              credential: resolved.oauth,
-              persist: resolved.persistOAuth,
-              retire: resolved.retireOAuth,
-            }
-          : undefined,
-      };
-    },
+    resolveModel,
 
     async wakeRoutine(routineId: string, scheduledFor: string) {
       const scheduledAt = new Date(scheduledFor);
@@ -3952,6 +3958,21 @@ export function createRunExecutor(deps: ExecutorDeps) {
             messagingChannelRun,
             trigger: run.trigger,
           }) && (await mailAccounts().catch(() => [])).length > 0;
+        // The Inbox agent reads mail only with the AI data sharing consent the Inbox sorting needs,
+        // so turning that off stops both. Looked up once, on its first mail tool call.
+        let mailConsentPromise: Promise<boolean> | undefined;
+        const inboxMailConsentMissing = () => {
+          if (!isInboxAgentSpawnKey(bot.spawnKey)) return Promise.resolve(false);
+          mailConsentPromise ??= triageStatus(
+            { prisma: deps.prisma, resolveModel },
+            { userId: bot.userId, spaceId: run.spaceId },
+          ).then(
+            (status) => status.blocked?.reason === "needs_consent",
+            // Unknown is treated as not allowed: mail content never leaves on a failed check.
+            () => true,
+          );
+          return mailConsentPromise;
+        };
         // Connected Google Drive accounts of the bot owner, looked up once per run.
         let driveAccountsPromise: ReturnType<typeof listDriveAccounts> | undefined;
         const driveAccounts = () => {
@@ -4716,6 +4737,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           const needsApproval = gateDecision === "ask";
           const bypassApproval = gateDecision === "allow" && requiresApprovalByDefault;
           let claimedEffect = false;
+          /** The call runs because the person approved its card. */
+          let approvedByCard = false;
 
           const claimOrReturn = async (
             from: "approved" | "intended",
@@ -4723,6 +4746,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             const claim = from === "approved" ? claimApprovedEffect : claimIntendedEffect;
             if (await claim(deps.prisma, applied!.effect.id)) {
               claimedEffect = true;
+              approvedByCard = from === "approved";
               return undefined;
             }
             const current = await deps.prisma.externalEffect.findUnique({
@@ -4736,6 +4760,22 @@ export function createRunExecutor(deps: ExecutorDeps) {
               }
             }
             throw uncertainEffectError(name);
+          };
+
+          // The card names the From account the send will use, even when the agent named none.
+          const approvalMailAccount = async () => {
+            if (name !== "mail_send" && name !== "mail_draft") return undefined;
+            if (!deps.mail || !mailEnabled) return undefined;
+            const accounts = await mailAccounts();
+            // With one account the From line would say nothing new.
+            if (accounts.length < 2) return undefined;
+            const inferred = await inferMailAccount(
+              deps.prisma,
+              { spaceId: run.spaceId, userId: bot.userId },
+              accounts,
+              args,
+            ).catch(() => undefined);
+            return inferred ? accountName(inferred) : undefined;
           };
 
           const requestApproval = async () => {
@@ -4757,6 +4797,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   reviewReason,
                   fullMail: isCartaMailSend(bot.spawnKey, name),
                   cartaWriteTool,
+                  mailAccount: await approvalMailAccount(),
                 }),
               ],
             });
@@ -5451,23 +5492,26 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (MAIL_TOOL_NAMES.has(name) && deps.mail && mailEnabled) {
-            return finish(
-              await mailToolFromTool(
-                name,
-                {
-                  mail: deps.mail,
-                  prisma: deps.prisma,
-                  jobs: deps.jobs,
-                  accounts: mailAccounts,
-                  publish: (blocks) => publishMessage(deps, run, "bot", blocks),
-                  writesDisabled: deps.mailWritesDisabled,
-                  idempotencyKey: effectKey,
-                  scope: { spaceId: run.spaceId, userId: bot.userId, botId: bot.id },
-                },
-                context,
-                args,
-              ),
+            if (await inboxMailConsentMissing()) return { error: MAIL_CONSENT_OFF };
+            const result = await mailToolFromTool(
+              name,
+              {
+                mail: deps.mail,
+                prisma: deps.prisma,
+                jobs: deps.jobs,
+                accounts: mailAccounts,
+                publish: (blocks) => publishMessage(deps, run, "bot", blocks),
+                writesDisabled: deps.mailWritesDisabled,
+                idempotencyKey: effectKey,
+                scope: { spaceId: run.spaceId, userId: bot.userId, botId: bot.id },
+              },
+              context,
+              args,
             );
+            if (approvedByCard && applied && (name === "mail_send" || name === "mail_draft")) {
+              await recordApprovedMailOutcome(deps, run, applied.effect.id, name, result);
+            }
+            return finish(result);
           }
           if (FINANCE_TOOL_NAMES.has(name) && financeEnabled) {
             return finish(
@@ -8560,6 +8604,52 @@ function redactBlocks(blocks: MessageBlock[], secrets: string[]): MessageBlock[]
     }
     return block;
   });
+}
+
+/** What the Inbox agent is told when AI data sharing for mail is off. */
+export const MAIL_CONSENT_OFF =
+  "AI data sharing is off for mail, so mail cannot be read or changed. Tell the user they can allow it again on the Inbox page.";
+
+/**
+ * Puts how an approved mail_send or mail_draft ended on its card, so "Send" never reads as sent
+ * when the send failed. The card stays as it was if it is gone (a cleared thread).
+ */
+async function recordApprovedMailOutcome(
+  deps: ExecutorDeps,
+  run: { id: string; spaceId: string },
+  effectId: string,
+  name: "mail_send" | "mail_draft",
+  result: Record<string, unknown>,
+) {
+  const { outcome, error } = approvedMailOutcome(name, result);
+  try {
+    const messages = await deps.prisma.message.findMany({
+      where: { runId: run.id, role: "bot" },
+      select: { id: true, threadId: true, blocks: true },
+    });
+    const card = messages.find(
+      (message) =>
+        Array.isArray(message.blocks) &&
+        message.blocks.some(
+          (block) =>
+            block !== null &&
+            typeof block === "object" &&
+            (block as { approvalEffectId?: unknown }).approvalEffectId === effectId,
+        ),
+    );
+    if (!card) return;
+    await deps.events.setMailApprovalOutcome({
+      spaceId: run.spaceId,
+      threadId: card.threadId,
+      messageId: card.id,
+      effectId,
+      outcome,
+      ...(error ? { error } : {}),
+    });
+  } catch (cause) {
+    // The card is a view of the result; the agent still gets the real one.
+    getLogger().error("mail approval outcome", cause);
+  }
 }
 
 async function publishMessage(

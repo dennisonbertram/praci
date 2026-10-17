@@ -25,6 +25,18 @@ export function mailApprovalAgentNote(send: boolean, outcome?: Outcome): string 
   return `The user edited this ${what} on the approval card and the outcome of their ${send ? "send" : "save"} is ${outcome === "unknown" ? "unknown" : "not known yet"}. Do not ${send ? "send" : "save"} it again; they should check ${send ? "Sent" : "Drafts"}.`;
 }
 
+/** How an approved mail_send or mail_draft call ended, from its tool result, for its card. */
+export function approvedMailOutcome(
+  name: "mail_send" | "mail_draft",
+  result: Record<string, unknown>,
+): { outcome: Outcome; error?: string } {
+  const error = typeof result.error === "string" ? result.error : undefined;
+  if (!error) return { outcome: name === "mail_send" ? "sent" : "saved" };
+  // mail_send says so when the provider may have sent it; the card must not say "Not sent".
+  if (error.includes("may or may not")) return { outcome: "unknown" };
+  return { outcome: "failed", error };
+}
+
 /**
  * Settles edited mail approvals whose process died after the claim, so the card does not stay on
  * "Sending..." forever. An unsettled one is a denied mail effect still carrying the claim's cautious

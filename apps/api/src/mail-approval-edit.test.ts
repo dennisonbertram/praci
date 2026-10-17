@@ -100,6 +100,27 @@ describe("answerEditedMailApproval", () => {
     expect(t.outcomes).toEqual(["sent"]);
   });
 
+  it("sends a reply from the account the email came to when the agent named none", async () => {
+    const { account: _named, ...unnamed } = stored;
+    const t = setup({ request: { ...unnamed, replyToId: "gm-1" } });
+    Object.assign(t.deps, {
+      mail: {
+        listAccounts: async () => [
+          { id: "conn-1", address: "me@example.test" },
+          { id: "conn-2", address: "sales@example.test" },
+        ],
+      },
+      prisma: {
+        cachedMailMessage: {
+          findMany: async () => [{ connectionId: "conn-2" }],
+          findFirst: async () => ({ id: "cached-1" }),
+        },
+      },
+    });
+    await t.edit({ subject: "Monday" });
+    expect(t.sent[0]).toMatchObject({ connectionId: "conn-2", replyToMessageId: "cached-1" });
+  });
+
   it("publishes only what the person typed, never the stored call's unredacted fields", async () => {
     const t = setup({ request: { ...stored, body: "Key is sk-live-123. Old text." } });
     await t.edit({ subject: "Monday" });

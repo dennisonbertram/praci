@@ -1,5 +1,10 @@
 import { ORPCError } from "@orpc/server";
-import { mailApprovalAgentNote, mailRequestIsValid, normalizeMailEdits } from "@rakazo/adapters";
+import {
+  inferMailAccount,
+  mailApprovalAgentNote,
+  mailRequestIsValid,
+  normalizeMailEdits,
+} from "@rakazo/adapters";
 import type { Actor, ComposeFields, ComposeResult, MailEdits } from "@rakazo/contracts";
 import type { ThreadEvents } from "@rakazo/db";
 import { mailApprovalComposeClientId } from "@rakazo/db";
@@ -74,9 +79,12 @@ export async function answerEditedMailApproval(
   const wanted = typeof merged.account === "string" ? merged.account.trim().toLowerCase() : "";
   const account = wanted
     ? accounts.find((item) => item.address?.toLowerCase() === wanted)
-    : accounts.length === 1
-      ? accounts[0]
-      : undefined;
+    : await inferMailAccount(
+        deps.prisma,
+        { spaceId: actor.spaceId, userId: actor.userId },
+        accounts,
+        merged,
+      );
   if (!account) throw new ORPCError("BAD_REQUEST", { message: "No connected mail account" });
 
   const send = pending.kind === "mail_send";
