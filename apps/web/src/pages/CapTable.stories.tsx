@@ -1,7 +1,6 @@
 import type { Contact } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
-import { mockMe } from "../stories/fixtures";
 import { CapTablePage } from "./CapTable";
 
 const contact = (id: string, name: string, kind: Contact["kind"], organization: string | null) => ({
@@ -164,7 +163,6 @@ export const ConnectionCheckFailed: Story = {
 export const ConnectedNeverRead: Story = {
   beforeEach: () =>
     mockRpc({
-      me: mockMe,
       "contacts.list": contacts,
       "mcp.servers.list": [cartaServer],
       "carta.capTable": { snapshot: null, syncing: false },
@@ -173,10 +171,9 @@ export const ConnectedNeverRead: Story = {
 
 /** Connected, but no model is set up, so the card offers Add a model before the read. */
 export const ConnectedNoModel: Story = {
-  args: { onOpenModelSettings: () => {} },
+  args: { onOpenModelSettings: () => {}, needsModel: true },
   beforeEach: () =>
     mockRpc({
-      me: { ...mockMe, needsModel: true },
       "contacts.list": contacts,
       "mcp.servers.list": [cartaServer],
       "carta.capTable": { snapshot: null, syncing: false },

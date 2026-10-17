@@ -25,14 +25,12 @@ const rpcMock = vi.hoisted(() => ({
   servers: vi.fn(),
   capTable: vi.fn(),
   refresh: vi.fn(),
-  me: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
     contacts: { list: rpcMock.list, save: rpcMock.save, delete: rpcMock.remove },
     mcp: { servers: { list: rpcMock.servers } },
     carta: { capTable: rpcMock.capTable, refresh: rpcMock.refresh },
-    me: rpcMock.me,
   },
 }));
 
@@ -109,7 +107,6 @@ beforeEach(() => {
   ]);
   rpcMock.servers.mockResolvedValue([cartaServer]);
   rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: false });
-  rpcMock.me.mockResolvedValue({ needsModel: false });
 });
 afterEach(() => {
   setHideAmounts(false);
@@ -420,6 +417,19 @@ it("deletes a contact with an Undo that restores it", async () => {
   expect(document.body.textContent).not.toContain("Deleted Bo");
 });
 
+it("keeps the Deleted notice with Undo until it is dismissed", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  rpcMock.remove.mockResolvedValue({ ok: true });
+  await show();
+  await click(button("Bo"));
+  await click(button("Delete"));
+  await act(async () => vi.advanceTimersByTimeAsync(60_000));
+  expect(document.body.textContent).toContain("Deleted Bo");
+  expect(button("Undo")).toBeDefined();
+  await click(button("Dismiss"));
+  expect(document.body.textContent).not.toContain("Deleted Bo");
+});
+
 it("keeps the contact restorable when Undo fails, and restores it on Try again", async () => {
   rpcMock.remove.mockResolvedValue({ ok: true });
   rpcMock.save.mockRejectedValueOnce(new Error("offline")).mockResolvedValue({});
@@ -446,7 +456,7 @@ it("keeps the contact restorable when Undo fails, and restores it on Try again",
 });
 
 it("confirms a save and closes the dialog with Cancel", async () => {
-  rpcMock.save.mockResolvedValue({});
+  rpcMock.save.mockResolvedValue(contact("c3", "Cy", "investor"));
   await show();
   await click(button("Add contact"));
   await click(button("Cancel"));
@@ -455,13 +465,34 @@ it("confirms a save and closes the dialog with Cancel", async () => {
   await click(button("Add contact"));
   await typeInto("contact-name", "Cy");
   await click(button("Save"));
-  expect(document.body.textContent).toContain("Contact saved");
-  // The notice sits above the table in the page flow, so it never covers a row.
+  // The notice names the contact and sits after the table, so showing it never moves the rows.
   const status = container.querySelector("[role=status]") as HTMLElement;
-  expect(status.textContent).toContain("Contact saved");
+  expect(status.textContent).toContain("Saved Cy");
   expect(status.closest(".fixed")).toBeNull();
   const table = container.querySelector("table") as HTMLElement;
-  expect(status.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(table.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("scrolls the saved contact into view and marks its row", async () => {
+  const saved = contact("c3", "Cy", "investor");
+  rpcMock.save.mockResolvedValue(saved);
+  const scrolled: Element[] = [];
+  Element.prototype.scrollIntoView = function (this: Element) {
+    scrolled.push(this);
+  };
+  await show();
+  rpcMock.list.mockResolvedValue([
+    contact("c1", "Ada", "investor"),
+    contact("c2", "Bo", "auditor"),
+    saved,
+  ]);
+  await click(button("Add contact"));
+  await typeInto("contact-name", "Cy");
+  await click(button("Save"));
+  await flush();
+  const row = container.querySelector('[data-contact-id="c3"]') as HTMLElement;
+  expect(scrolled).toContain(row);
+  expect(row.className).toContain("bg-muted");
 });
 
 it("reads the kind filter from the URL and names the kind when it is empty", async () => {
@@ -649,12 +680,26 @@ it("offers to read the cap table when Carta is connected but nothing was read", 
 });
 
 it("says a model is needed and opens Models settings when none is set up", async () => {
-  rpcMock.me.mockResolvedValue({ needsModel: true });
   const onOpenModelSettings = vi.fn();
-  await show("/app/cap-table", { onOpenModelSettings });
+  await show("/app/cap-table", { onOpenModelSettings, needsModel: true });
   await flush();
   expect(container.textContent).toContain("needs a model before it can read your cap table");
   expect(button("Read cap table")).toBeUndefined();
+  // Refresh cannot start without a model, so the header does not offer it.
+  expect(container.querySelector('[aria-label="Refresh from Carta"]')).toBeNull();
+  await click(button("Add a model"));
+  expect(onOpenModelSettings).toHaveBeenCalled();
+});
+
+it("offers Add a model, not Try again, when a refresh fails for want of a model", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  rpcMock.refresh.mockRejectedValue(new Error("Add a model before refreshing"));
+  const onOpenModelSettings = vi.fn();
+  await show("/app/cap-table", { onOpenModelSettings, needsModel: true });
+  await click(container.querySelector('[aria-label="Refresh from Carta"]') as HTMLElement);
+  await flush();
+  expect(container.textContent).toContain("Add a model before refreshing");
+  expect(button("Try again")).toBeUndefined();
   await click(button("Add a model"));
   expect(onOpenModelSettings).toHaveBeenCalled();
 });

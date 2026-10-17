@@ -249,7 +249,7 @@ export function ContactDialog({
   /** The user's other contacts, to offer the one that already has the email typed. */
   contacts?: readonly Contact[];
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (saved: Contact) => void;
   onDeleted?: (contact: Contact) => void;
   onOpenContact?: (contact: Contact) => void;
 }) {
@@ -271,12 +271,11 @@ export function ContactDialog({
       )
     : undefined;
 
-  async function run(action: () => Promise<unknown>, done: () => void) {
+  async function run<T>(action: () => Promise<T>, done: (result: T) => void) {
     setBusy(true);
     setError("");
     try {
-      await action();
-      done();
+      done(await action());
       onClose();
     } catch (cause) {
       setError(errorText(cause));
@@ -431,11 +430,14 @@ export function CapTablePage({
   onShowAgent,
   onCartaStatus,
   onOpenModelSettings,
+  needsModel = false,
   agentBusy = false,
 }: {
   onShowAgent?: () => void;
   /** Opens Settings, Models: the Carta agent cannot read Carta until a model is set up. */
   onOpenModelSettings?: () => void;
+  /** No model is set up, so the Carta agent cannot read Carta; the page offers Add a model instead. */
+  needsModel?: boolean;
   /** Told whether Carta is signed in, each time the page checks. */
   onCartaStatus?: (connected: boolean) => void;
   /** Whether the Carta agent is answering in the panel; its contacts and cap table changes load when it ends. */
@@ -466,11 +468,13 @@ export function CapTablePage({
   const [toast, setToast] = useState<{
     text: string;
     undo?: () => void;
-    /** A failed restore stays until it works or is dismissed, so the contact is not lost. */
-    sticky?: boolean;
+    /** A failed restore offers Try again instead of Undo. */
+    failed?: boolean;
   } | null>(null);
+  // A notice with Undo stays until it is used or dismissed: there is no delete confirmation, so a
+  // founder who looks away must not lose the only way to get the contact back.
   useEffect(() => {
-    if (!toast || toast.sticky) return;
+    if (!toast || toast.undo) return;
     const timer = setTimeout(() => setToast(null), TOAST_MS);
     return () => clearTimeout(timer);
   }, [toast]);
@@ -575,10 +579,7 @@ export function CapTablePage({
     setRefreshError("");
     return rpc.carta
       .refresh()
-      .then(() => {
-        setNeedsModel(false);
-        return loadCap();
-      })
+      .then(() => loadCap())
       .catch((cause) => setRefreshError(errorText(cause, t`Could not refresh from Carta`)));
   };
 
@@ -586,15 +587,17 @@ export function CapTablePage({
   const reading = cartaConnected && syncing && !snapshot && !capFailed;
   // Connected, but nothing has been read and no read is running, e.g. no model was set up yet.
   const neverRead = cartaConnected && cap !== null && !snapshot && !syncing && !capFailed;
-  const [needsModel, setNeedsModel] = useState(false);
+  // The contact just saved: its row scrolls into view and stands out, since a new one lands last.
+  const container = useRef<HTMLDivElement>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
   useEffect(() => {
-    if (!neverRead) return;
-    // Unknown on failure: the card then offers a plain read, whose error names the cause.
-    rpc
-      .me()
-      .then((me) => setNeedsModel(me.needsModel))
-      .catch(() => {});
-  }, [neverRead]);
+    if (!savedId) return;
+    container.current
+      ?.querySelector(`[data-contact-id="${CSS.escape(savedId)}"]`)
+      ?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    const timer = setTimeout(() => setSavedId(null), TOAST_MS);
+    return () => clearTimeout(timer);
+  }, [savedId, contacts]);
   const rows = joinRows(snapshot, contacts ?? []);
   const filters = FILTERS.filter((value) => snapshot || !CARTA_FILTERS.includes(value));
   const shown = rows.filter((row) => filter === "all" || rowKind(row) === filter);
@@ -638,7 +641,7 @@ export function CapTablePage({
           setToast({
             text: t`Could not restore ${name}: ${reason}. If you dismiss this, ${name} stays deleted.`,
             undo: restore,
-            sticky: true,
+            failed: true,
           });
         })
         .finally(() => {
@@ -649,7 +652,10 @@ export function CapTablePage({
   };
 
   return (
-    <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+    <div
+      ref={container}
+      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5"
+    >
       {/* Title and subtitle stay together and never truncate; on a narrow screen the buttons wrap
           onto their own row below them. */}
       <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-2">
@@ -677,7 +683,8 @@ export function CapTablePage({
         <div className="flex items-center gap-2">
           {/* Only figures from Carta can be hidden. */}
           {snapshot ? <HideAmountsButton /> : null}
-          {cartaConnected ? (
+          {/* Without a model a refresh cannot start; the card below offers Add a model instead. */}
+          {cartaConnected && !(needsModel && neverRead) ? (
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -800,12 +807,13 @@ export function CapTablePage({
       ) : null}
 
       <Tabs value={filter} onValueChange={(next) => setFilter(next as Filter)} className="mb-4">
+        {/* Wraps onto a second row on a phone instead of hiding tabs past the edge. */}
         <TabsList
-          className="max-w-full justify-start overflow-x-auto rounded-full"
+          className="max-w-full flex-wrap justify-start rounded-2xl group-data-horizontal/tabs:h-auto"
           aria-label={t`Kind`}
         >
           {filters.map((value) => (
-            <TabsTrigger key={value} value={value} className="flex-none rounded-full px-3">
+            <TabsTrigger key={value} value={value} className="h-7 flex-none rounded-full px-3">
               {filterNames[value]}
             </TabsTrigger>
           ))}
@@ -815,30 +823,18 @@ export function CapTablePage({
       {refreshError ? (
         <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 text-sm">
           <span className="text-destructive">{refreshError}</span>
-          <Button variant="outline" size="sm" onClick={() => void refresh()}>
-            <Trans>Try again</Trans>
-          </Button>
+          {/* Trying again cannot work until a model is set up. */}
+          {needsModel && onOpenModelSettings ? (
+            <Button variant="outline" size="sm" onClick={onOpenModelSettings}>
+              <Trans>Add a model</Trans>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => void refresh()}>
+              <Trans>Try again</Trans>
+            </Button>
+          )}
         </div>
       ) : null}
-
-      {/* In the page flow above the table, so it never covers a row and stays inside the column. */}
-      <div role="status" className="mb-3 empty:hidden">
-        {toast ? (
-          <div className="flex flex-wrap items-center gap-x-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground">
-            <span className="min-w-0 flex-1 py-1">{toast.text}</span>
-            {toast.undo ? (
-              <Button variant="ghost" size="sm" onClick={toast.undo}>
-                {toast.sticky ? <Trans>Try again</Trans> : <Trans>Undo</Trans>}
-              </Button>
-            ) : null}
-            {toast.sticky ? (
-              <Button variant="ghost" size="sm" onClick={() => setToast(null)}>
-                <Trans>Dismiss</Trans>
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
 
       {error ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
@@ -933,7 +929,11 @@ export function CapTablePage({
                 holder.email
               ) : null;
               return (
-                <tr key={key} className="h-14 border-t border-border hover:bg-muted/50">
+                <tr
+                  key={key}
+                  data-contact-id={contact?.id}
+                  className={`h-14 border-t border-border transition-colors hover:bg-muted/50 ${contact && contact.id === savedId ? "bg-muted" : ""}`}
+                >
                   <td className="py-2 pe-3">
                     {contact ? (
                       <button
@@ -999,6 +999,26 @@ export function CapTablePage({
         </table>
       )}
 
+      {/* Pinned to the bottom of the page column and after the table in the page flow: showing or
+          hiding it never moves the rows, and scrolled to the end it sits below the last row. */}
+      <div role="status" className="sticky bottom-0 pt-3 empty:hidden">
+        {toast ? (
+          <div className="flex flex-wrap items-center gap-x-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
+            <span className="min-w-0 flex-1 py-1">{toast.text}</span>
+            {toast.undo ? (
+              <Button variant="ghost" size="sm" onClick={toast.undo}>
+                {toast.failed ? <Trans>Try again</Trans> : <Trans>Undo</Trans>}
+              </Button>
+            ) : null}
+            {toast.undo ? (
+              <Button variant="ghost" size="sm" onClick={() => setToast(null)}>
+                <Trans>Dismiss</Trans>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
       {connecting ? (
         <ConnectCartaDialog
           onClose={() => {
@@ -1018,9 +1038,10 @@ export function CapTablePage({
           prefill={editing !== "new" && !("id" in editing) ? editing : undefined}
           contacts={contacts ?? []}
           onClose={() => setEditing(null)}
-          onSaved={() => {
+          onSaved={(saved) => {
             load();
-            setToast({ text: t`Contact saved` });
+            setSavedId(saved.id);
+            setToast({ text: t`Saved ${saved.name}` });
           }}
           onDeleted={deleted}
           onOpenContact={setEditing}
