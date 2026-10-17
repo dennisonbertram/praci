@@ -1167,6 +1167,7 @@ msgstr "백업 모델을 저장했습니다."
 msgid "Balance"
 msgstr ""
 
+#: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Balance over time"
 msgstr ""
@@ -4548,6 +4549,10 @@ msgstr "그룹 이름"
 msgid "Name this routine"
 msgstr "이 루틴의 이름을 정하세요"
 
+#: src/pages/Finance.tsx
+msgid "Needs a monthly burn"
+msgstr ""
+
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
 msgstr ""
@@ -4787,6 +4792,10 @@ msgstr "나열된 모델이 없습니다."
 msgid "No more results"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "No net spend in the last 3 full months"
+msgstr ""
+
 #: src/pages/CapTable.tsx
 msgid "No other contacts yet"
 msgstr ""
@@ -4866,6 +4875,10 @@ msgstr ""
 msgid "None yet"
 msgstr "아직 없음"
 
+#: src/pages/Finance.tsx
+msgid "None yet. A vendor shows here after three similar monthly charges."
+msgstr ""
+
 #: src/lib/ticket-priority.ts
 msgid "Normal"
 msgstr ""
@@ -4935,6 +4948,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Notes"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Nothing due in the next 30 days"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
@@ -7394,6 +7411,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Upload statement"
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx

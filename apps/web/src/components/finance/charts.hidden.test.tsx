@@ -76,3 +76,31 @@ it("scales the Burn bars to spend, and cuts a much larger raise at the top with 
   act(() => root.unmount());
   if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
 });
+
+it("draws one $0 gridline, not '$0, $0, $0', when there is nothing to plot", async () => {
+  const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+  Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+    configurable: true,
+    get: () => 600,
+  });
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+  const empty = {
+    start: "2026-10-01",
+    end: "2026-10-01",
+    outCents: 0,
+    revenueCents: 0,
+    financingCents: 0,
+    partial: true,
+  };
+  await act(async () =>
+    root.render(<BurnBars label="Burn" granularity="day" series={[empty]} onOpen={() => {}} />),
+  );
+  const labels = [...el.querySelectorAll("text")]
+    .map((t) => t.textContent)
+    .filter((t) => t?.startsWith("$"));
+  expect(labels).toEqual(["$0"]);
+  act(() => root.unmount());
+  if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
+});

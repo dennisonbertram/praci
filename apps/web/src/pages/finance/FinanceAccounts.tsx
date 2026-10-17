@@ -12,7 +12,6 @@ import { Badge, Button } from "@rakazo/ui-web";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AddAccountDialog } from "../../components/finance/AddAccountDialog";
-import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
 import { LineChart } from "../../components/finance/charts";
 import { exchangeName } from "../../components/finance/ExchangeGroup";
 import { RenameAccountDialog } from "../../components/finance/RenameAccountDialog";
@@ -299,17 +298,6 @@ export function FinanceAccountsPage({
               />
             ) : null}
           </div>
-          {!sourceName && prefs.data && crypto && crypto.summary.totalCents > 0 ? (
-            <div>
-              <CountCryptoButton
-                scope={scope}
-                onSaved={() => {
-                  q.reload();
-                  prefs.reload();
-                }}
-              />
-            </div>
-          ) : null}
           {/* The chart is every account's total, so a source filter hides it rather than contradict the figure above. */}
           {sourceName ? null : (
             <Section
@@ -359,6 +347,7 @@ export function FinanceAccountPage({ id }: { id: string }) {
   const isCard = account?.kind === "card";
   const pct = account ? yieldText(account.annualYieldPct) : null;
   const [renaming, setRenaming] = useState(false);
+  const [uploading, setUploading] = useState(false);
   return (
     <DetailPage
       crumbs={[
@@ -378,10 +367,16 @@ export function FinanceAccountPage({ id }: { id: string }) {
       }
       action={
         // A statement account is named from its file; a synced account keeps the bank's name.
+        // Next month's statement goes in from here, not through Accounts > Add account.
         account?.provider === "statement" ? (
-          <Button variant="outline" size="sm" onClick={() => setRenaming(true)}>
-            <Trans>Rename</Trans>
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => setUploading(true)}>
+              <Trans>Upload statement</Trans>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setRenaming(true)}>
+              <Trans>Rename</Trans>
+            </Button>
+          </>
         ) : null
       }
       loading={!data}
@@ -389,6 +384,13 @@ export function FinanceAccountPage({ id }: { id: string }) {
       notFound={q.notFound}
       onRetry={q.retry}
     >
+      {uploading ? (
+        <AddAccountDialog
+          initialStep="bank"
+          onImported={q.reload}
+          onClose={() => setUploading(false)}
+        />
+      ) : null}
       {renaming && account ? (
         <RenameAccountDialog
           account={account}
@@ -401,11 +403,11 @@ export function FinanceAccountPage({ id }: { id: string }) {
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
             <Kpi
               title={isCard ? t`Balance owed` : t`Balance`}
-              value={moneyExact(account.balanceCents)}
+              value={money(account.balanceCents)}
             />
             {pct ? <Kpi title={t`Yield`} value={pct} /> : null}
           </div>
-          <Section title={<Trans>Balance</Trans>}>
+          <Section title={<Trans>Balance over time</Trans>}>
             <LineChart
               values={data.history.map((p) => p.balanceCents)}
               labels={monthAxisLabels(data.history.map((p) => p.month))}

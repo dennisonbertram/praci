@@ -1167,6 +1167,7 @@ msgstr "Backup models saved."
 msgid "Balance"
 msgstr "Balance"
 
+#: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Balance over time"
 msgstr "Balance over time"
@@ -4548,6 +4549,10 @@ msgstr "Name this group"
 msgid "Name this routine"
 msgstr "Name this routine"
 
+#: src/pages/Finance.tsx
+msgid "Needs a monthly burn"
+msgstr "Needs a monthly burn"
+
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
 msgstr "Needs an answer"
@@ -4787,6 +4792,10 @@ msgstr "No models listed."
 msgid "No more results"
 msgstr "No more results"
 
+#: src/pages/Finance.tsx
+msgid "No net spend in the last 3 full months"
+msgstr "No net spend in the last 3 full months"
+
 #: src/pages/CapTable.tsx
 msgid "No other contacts yet"
 msgstr "No other contacts yet"
@@ -4866,6 +4875,10 @@ msgstr "None"
 msgid "None yet"
 msgstr "None yet"
 
+#: src/pages/Finance.tsx
+msgid "None yet. A vendor shows here after three similar monthly charges."
+msgstr "None yet. A vendor shows here after three similar monthly charges."
+
 #: src/lib/ticket-priority.ts
 msgid "Normal"
 msgstr "Normal"
@@ -4936,6 +4949,10 @@ msgstr "Not waiting for approval"
 #: src/pages/CapTable.tsx
 msgid "Notes"
 msgstr "Notes"
+
+#: src/pages/Finance.tsx
+msgid "Nothing due in the next 30 days"
+msgstr "Nothing due in the next 30 days"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Nothing is still running"
@@ -7395,6 +7412,10 @@ msgstr "Upload a PDF, CSV, OFX or QFX file"
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed"
 msgstr "Upload failed"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Upload statement"
+msgstr "Upload statement"
 
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Upload statements"

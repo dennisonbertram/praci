@@ -396,7 +396,7 @@ function Overview({
         <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
           <HideAmountsButton />
           {/* Both labels share one cell, so the chips beside them do not move when it changes. */}
-          <span className="grid">
+          <span className={cn("grid", !syncing && !updated && "hidden")}>
             <span
               aria-hidden={!syncing}
               className={cn("col-start-1 row-start-1", syncing ? "" : "invisible")}
@@ -505,14 +505,20 @@ function Overview({
             <Kpi
               title={t`Monthly burn`}
               value={burning ? money(data.burn.monthlyCents) : "—"}
-              sub={t`3-mo avg, after revenue`}
+              sub={burning ? t`3-mo avg, after revenue` : t`No net spend in the last 3 full months`}
               to={financePath.burn()}
             />
             {hasCash ? (
               <Kpi
                 title={t`Runway`}
                 value={runwayMonths === undefined ? "—" : t`${runwayMonths} mo`}
-                sub={runOutMonth ? t`Until ${runOutMonth}` : undefined}
+                sub={
+                  runOutMonth
+                    ? t`Until ${runOutMonth}`
+                    : runwayMonths === undefined
+                      ? t`Needs a monthly burn`
+                      : undefined
+                }
                 to={financePath.runway()}
                 hover={
                   stablecoins + otherCounted > 0 && bankRunwayMonths !== undefined ? (
@@ -652,6 +658,11 @@ function Overview({
                     <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
                   ))}
                 </div>
+                {upcomingRows.length === 0 ? (
+                  <div className="py-2 text-muted-foreground">
+                    <Trans>Nothing due in the next 30 days</Trans>
+                  </div>
+                ) : null}
                 <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
                   <ShowAll
                     total={upcomingRows.length}
@@ -668,11 +679,22 @@ function Overview({
             value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
           >
             <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
-              <SubscriptionsTable subs={subs} />
-              <div className="border-t border-border pt-2 text-xs text-muted-foreground">
-                {plural(subs.items.length, { one: "# subscription", other: "# subscriptions" })} ·{" "}
-                {t`${monthlyTotal}/mo`}
-              </div>
+              {subs.items.length === 0 ? (
+                <div className="py-2 text-muted-foreground">
+                  <Trans>None yet. A vendor shows here after three similar monthly charges.</Trans>
+                </div>
+              ) : (
+                <>
+                  <SubscriptionsTable subs={subs} />
+                  <div className="border-t border-border pt-2 text-xs text-muted-foreground">
+                    {plural(subs.items.length, {
+                      one: "# subscription",
+                      other: "# subscriptions",
+                    })}{" "}
+                    · {t`${monthlyTotal}/mo`}
+                  </div>
+                </>
+              )}
             </Section>
           </BackHere>
 

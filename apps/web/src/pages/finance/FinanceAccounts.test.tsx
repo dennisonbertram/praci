@@ -31,6 +31,7 @@ const rpcMock = vi.hoisted(() => ({
   overview: vi.fn(),
   setPreferences: vi.fn(),
   statementAccountRename: vi.fn(),
+  statements: vi.fn(),
   spend: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
@@ -188,8 +189,8 @@ const subtitle = () =>
   [...container.querySelectorAll("h2")].find((h) => h.textContent === "Total cash")
     ?.nextElementSibling?.nextElementSibling?.textContent;
 
-it("offers Count crypto, off under the bank scope, and keeps the plain subtitle", () => {
-  expect(toggle()?.textContent).toBe("Count crypto");
+it("leaves Count crypto to the Runway page and keeps the plain subtitle under the bank scope", () => {
+  expect(toggle()).toBeUndefined();
   expect(subtitle()).toBe("1 bank account");
 });
 
@@ -197,7 +198,6 @@ it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
   await act(async () => root.unmount());
   root = createRoot(container);
   await show("stablecoins");
-  expect(toggle()?.textContent).toBe("Counting stablecoins");
   expect(subtitle()).toBe("1 bank account + stablecoins");
   await act(async () => root.unmount());
   root = createRoot(container);
@@ -256,22 +256,6 @@ it("shows an account's last four digits once when its name already ends with the
   );
   await flush();
   expect(container.textContent?.match(/••0002/g)).toHaveLength(1);
-});
-
-it("saves the scope and reloads accounts and the scope", async () => {
-  rpcMock.setPreferences.mockResolvedValue({ runwayCrypto: "all" });
-  await act(async () => toggle()?.click());
-  await flush();
-  expect(rpcMock.setPreferences).toHaveBeenCalledWith({ runwayCrypto: "all" });
-  expect(rpcMock.accounts).toHaveBeenCalledTimes(2);
-  expect(rpcMock.preferences).toHaveBeenCalledTimes(2);
-});
-
-it("hides the button when no crypto is held", async () => {
-  await act(async () => root.unmount());
-  root = createRoot(container);
-  await show("bank", { ...crypto, wallets: [], summary: { ...crypto.summary, totalCents: 0 } });
-  expect(toggle()).toBeUndefined();
 });
 
 it("reloads accounts after a wallet is added, since crypto can count in total cash", async () => {
@@ -382,14 +366,6 @@ it("charts the year first and refetches when another range is chosen", async () 
   expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "week" });
 });
 
-it("reloads the chart after the crypto scope is saved", async () => {
-  rpcMock.setPreferences.mockResolvedValue({ runwayCrypto: "all" });
-  await act(async () => toggle()?.click());
-  await flush();
-  expect(rpcMock.balanceSeries).toHaveBeenCalledTimes(2);
-  expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "year" });
-});
-
 it("says an account has no transactions yet, without mentioning a period it does not have", async () => {
   rpcMock.account.mockResolvedValue({
     account: {
@@ -437,6 +413,7 @@ it("renames a statement account and shows the new name, and offers no rename on 
   rpcMock.account.mockResolvedValueOnce(statementAccount("mock firstbank"));
   rpcMock.account.mockResolvedValueOnce(statementAccount("Operating account"));
   rpcMock.statementAccountRename.mockResolvedValue({ ok: true });
+  rpcMock.statements.mockResolvedValue({ statements: [], reminders: [] });
   await act(async () => root.unmount());
   root = createRoot(container);
   await act(async () =>
@@ -447,6 +424,19 @@ it("renames a statement account and shows the new name, and offers no rename on 
     ),
   );
   await flush();
+  // Next month's statement can be uploaded straight from the account.
+  const upload = [...container.querySelectorAll("button")].find(
+    (b) => b.textContent === "Upload statement",
+  );
+  await act(async () => upload?.click());
+  expect(document.body.querySelector('[role="dialog"] input[type="file"]')).not.toBeNull();
+  await act(async () =>
+    (
+      [...document.body.querySelectorAll('[role="dialog"] button')].find(
+        (b) => b.textContent === "Done",
+      ) as HTMLElement
+    ).click(),
+  );
   const rename = [...container.querySelectorAll("button")].find((b) => b.textContent === "Rename");
   await act(async () => rename?.click());
   const input = document.body.querySelector<HTMLInputElement>('input[maxlength="200"]');

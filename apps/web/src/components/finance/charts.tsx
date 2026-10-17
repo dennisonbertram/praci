@@ -110,7 +110,9 @@ function Grid({
   useHideAmounts();
   const floor = scale.floor ?? 0;
   const lines: number[] = [];
-  for (let v = floor; v <= scale.top; v += scale.step) lines.push(v);
+  // With nothing to plot every step rounds to "$0"; one $0 line is drawn instead of a stack of them.
+  for (let v = floor; v <= scale.top; v += scale.step)
+    if (lines.length === 0 || axisMoney(v) !== axisMoney(lines.at(-1) as number)) lines.push(v);
   return (
     <>
       {lines.map((v) => {

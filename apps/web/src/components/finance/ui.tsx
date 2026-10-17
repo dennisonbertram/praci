@@ -193,48 +193,52 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
         <span aria-hidden="true">←</span>
         <span className="ms-1">{previous?.label ?? t`Finance`}</span>
       </Link>
-      {/* Narrow, the trail takes its own line, so Back and Ask agent share the first on every page. */}
-      <nav
-        aria-label={t`Breadcrumb`}
-        className="order-last w-full min-w-0 @md:order-none @md:w-auto"
-      >
-        <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-          {crumbs.map((crumb, i) => (
-            <li
-              key={i}
-              // Narrow, a deep trail keeps Finance, the page before and this page; Back names the one before.
-              className={cn("flex items-center gap-1", collapsed(i) && "hidden @md:flex")}
-            >
-              {crumb.to && i < crumbs.length - 1 ? (
-                <Link
-                  to={crumb.to}
-                  state={crumbState(crumb)}
-                  className="hover:text-foreground hover:underline"
-                >
-                  {crumb.label}
-                </Link>
-              ) : (
-                <span
-                  aria-current={i === crumbs.length - 1 ? "page" : undefined}
-                  className="text-foreground"
-                >
-                  {crumb.label}
-                </span>
-              )}
-              {/* The slash ends a crumb, so a wrapped trail never starts a line with one. */}
-              {i < crumbs.length - 1 ? <span aria-hidden="true">/</span> : null}
-              {i === 0 && crumbs.length > 3 ? (
-                <span aria-hidden="true" className="flex items-center gap-1 @md:hidden">
-                  <span>…</span>
-                  <span>/</span>
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      </nav>
+      {/* Narrow, the trail takes its own line. A trail of only the page before and this page would
+      repeat Back and the title, so it shows from three levels down. */}
+      {crumbs.length > 2 ? (
+        <nav
+          aria-label={t`Breadcrumb`}
+          className="order-last w-full min-w-0 @md:order-none @md:w-auto"
+        >
+          <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+            {crumbs.map((crumb, i) => (
+              <li
+                key={i}
+                // Narrow, a deep trail keeps Finance, the page before and this page; Back names the one before.
+                className={cn("flex items-center gap-1", collapsed(i) && "hidden @md:flex")}
+              >
+                {crumb.to && i < crumbs.length - 1 ? (
+                  <Link
+                    to={crumb.to}
+                    state={crumbState(crumb)}
+                    className="hover:text-foreground hover:underline"
+                  >
+                    {crumb.label}
+                  </Link>
+                ) : (
+                  <span
+                    aria-current={i === crumbs.length - 1 ? "page" : undefined}
+                    className="text-foreground"
+                  >
+                    {crumb.label}
+                  </span>
+                )}
+                {/* The slash ends a crumb, so a wrapped trail never starts a line with one. */}
+                {i < crumbs.length - 1 ? <span aria-hidden="true">/</span> : null}
+                {i === 0 && crumbs.length > 3 ? (
+                  <span aria-hidden="true" className="flex items-center gap-1 @md:hidden">
+                    <span>…</span>
+                    <span>/</span>
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      ) : null}
+      {/* Which company this is, on every Finance page, since Finance follows the last chat opened. */}
+      <SpaceName />
       <HideAmountsButton />
-      <AskAgentButton />
     </div>
   );
 }
@@ -317,9 +321,13 @@ export function DetailPage({
           </div>
         ) : (
           <>
-            <div className="mt-1.5 flex items-center gap-3">
-              <h1 className="text-xl font-semibold">{title}</h1>
-              {action ? <div className="ms-auto">{action}</div> : null}
+            {/* The page's actions and Ask share the title's row. */}
+            <div className="mt-1.5 flex flex-wrap items-center gap-3">
+              <h1 className="min-w-0 text-xl font-semibold">{title}</h1>
+              <div className="ms-auto flex items-center gap-2">
+                {action}
+                <AskAgentButton />
+              </div>
             </div>
             {subtitle ? <div className="mb-3 text-xs text-muted-foreground">{subtitle}</div> : null}
             <div className={cn("flex flex-col gap-3", subtitle ? "" : "mt-3")}>{children}</div>

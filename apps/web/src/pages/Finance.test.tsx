@@ -262,6 +262,26 @@ it("keeps the upload dialog open on its results when the first import fills the 
   expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Done");
 });
 
+it("says why a new dashboard's burn, runway, upcoming and subscriptions are empty", async () => {
+  const base = emptyOverview();
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    hasCashAccounts: true,
+    burn: { monthlyCents: 0, months: base.burn.months },
+    runway: { months: null, runOutDate: null },
+    upcoming: { items: [], totalCents: 0 },
+    subscriptions: { items: [], totalMonthlyCents: 0 },
+  });
+  await show("/app/finance");
+  await flush();
+  const text = container.textContent ?? "";
+  expect(text).toContain("No net spend in the last 3 full months");
+  expect(text).toContain("Needs a monthly burn");
+  expect(text).toContain("Nothing due in the next 30 days");
+  expect(text).toContain("None yet. A vendor shows here after three similar monthly charges.");
+  expect(text).not.toContain("0 subscriptions");
+});
+
 it("notes non-USD transactions only when some are left out", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance");
@@ -629,6 +649,31 @@ it("labels a vendor page, breadcrumb and back link", async () => {
   );
   expect(container.textContent).toContain("↑ 25%");
   expect(container.textContent).toContain("Brex ••0001");
+});
+
+it("names the space on detail pages too, and puts Ask beside the page title", async () => {
+  rpcMock.vendor.mockResolvedValue({
+    key: "acme-hosting",
+    name: "Acme Hosting",
+    isSubscription: false,
+    monthlyAvgCents: 50_000,
+    changePct: null,
+    firstSeenAt: "2025-03-02T00:00:00.000Z",
+    paidWith: [],
+    monthly: [],
+    charges: [],
+  });
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/app/finance/vendor/acme-hosting"]}>
+        <FinancePage spaceName="Example Space Two" onAskAgent={vi.fn()} />
+      </MemoryRouter>,
+    );
+  });
+  await flush();
+  expect(container.textContent).toContain("Example Space Two");
+  const titleRow = container.querySelector("h1")?.parentElement;
+  expect(titleRow?.querySelector('button[aria-label="Ask Finance agent"]')).not.toBeNull();
 });
 
 const spendTransaction = (hasReceipt: boolean): FinanceTransactionOutput => ({
@@ -1118,7 +1163,8 @@ it("leaves no empty crumb and no guessed origin on a missing vendor", async () =
   });
   await flush();
   expect(container.textContent).toContain("Not found");
-  expect(container.querySelector("nav")?.textContent).toBe("Finance");
+  // Back already names where to go, so a missing page shows no trail at all.
+  expect(container.querySelector("nav")).toBeNull();
   expect(container.textContent).not.toContain("Breakdown");
   // Back still names the card the founder actually came from.
   expect(container.querySelector('a[href="/app/finance#upcoming"]')?.textContent).toContain(
