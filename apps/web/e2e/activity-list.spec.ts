@@ -92,7 +92,7 @@ test("sidebar Now and Recent surface active and terminal runs", async ({ page },
 
   const sidebarSearch = page
     .getByTestId("sidebar-search")
-    .getByPlaceholder("Search", { exact: true });
+    .getByPlaceholder("Search chats", { exact: true });
   await sidebarSearch.fill("Chief");
   await expect(aside.getByText("Recent", { exact: true })).toHaveCount(0);
   await expect(activityRow(page, "Chief")).toHaveCount(0);

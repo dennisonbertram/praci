@@ -2135,6 +2135,7 @@ export function ShellPage() {
     const botId = activeBotId.current;
     if (botId) void jumpToMessageRef.current({ botId, messageId }).catch(() => undefined);
   }, []);
+  const sentHere = useRef(false);
   const agentSendWatch = useRef(createAgentSendWatch());
   useEffect(() => agentSendWatch.current.running(transcriptRunning), [transcriptRunning]);
   const answerMessage = useCallback(
@@ -2318,6 +2319,8 @@ export function ShellPage() {
           );
           artifactIds.push(artifact.id);
         }
+        // The transcript follows the message this composer sends, not one that arrives from elsewhere.
+        sentHere.current = true;
         if (groupTarget) {
           await rpc.threads.send({
             groupId: groupTarget,
@@ -2371,6 +2374,7 @@ export function ShellPage() {
         else if (botTarget) void refreshThreadRef.current(botTarget).catch(() => undefined);
         return true;
       } catch (error) {
+        sentHere.current = false;
         if (reroutedToGroup && groupTarget) {
           setSendError(errorText(error, t`Failed to send message`));
         } else if (groupTarget && activeGroupId.current === groupTarget) {
@@ -2977,6 +2981,7 @@ export function ShellPage() {
               <Transcript
                 key={activeSnapshot?.threadId}
                 scrollRef={messageScroll}
+                sentHere={sentHere}
                 scrollRequest={scrollRequest}
                 onScrollRequestHandled={clearScrollRequest}
                 artifactTarget={transcriptArtifactTarget}
@@ -5246,6 +5251,7 @@ export function ShellPage() {
 
 const Transcript = memo(function Transcript({
   scrollRef,
+  sentHere,
   scrollRequest,
   onScrollRequestHandled,
   artifactTarget,
@@ -5277,6 +5283,8 @@ const Transcript = memo(function Transcript({
   onOpenComputer,
 }: {
   scrollRef: RefObject<HTMLDivElement | null>;
+  /** Set by the composer while its own message is on the way in. */
+  sentHere: RefObject<boolean>;
   scrollRequest: { messageId: string; nonce: number } | null;
   onScrollRequestHandled: () => void;
   artifactTarget: ArtifactTarget;
@@ -5501,15 +5509,21 @@ const Transcript = memo(function Transcript({
     onScrollRequestHandled();
   }, [messages, scrollRequest, scrollRef, endJumpScroll, onScrollRequestHandled]);
 
-  // A message the user just sent brings the transcript to the end even after they scrolled up
-  // (or clicked a card, which stops following), so the reply that follows is in view.
+  // A message sent from this composer brings the transcript to the end even after the reader
+  // scrolled up (or clicked a card, which stops following), so the reply that follows is in view.
+  // A user message that arrives from elsewhere (another tab, a steer) leaves the reader in place.
   const lastMessageId = useRef<string | null>(null);
   useLayoutEffect(() => {
     const last = messages.at(-1);
-    if (transcriptUserJustSent(lastMessageId.current, last)) following.current = true;
+    if (last?.id !== lastMessageId.current) {
+      if (sentHere.current && transcriptUserJustSent(lastMessageId.current, last)) {
+        following.current = true;
+      }
+      sentHere.current = false;
+    }
     lastMessageId.current = last?.id ?? null;
     if (following.current) snapToEnd();
-  }, [messages, running, snapToEnd]);
+  }, [messages, running, snapToEnd, sentHere]);
 
   useLayoutEffect(() => {
     const button = jumpButtonRef.current;

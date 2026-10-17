@@ -166,7 +166,9 @@ test("a new message sends from the chosen account with Ctrl or Cmd+Enter, and an
 
   await page.getByRole("button", { name: "Compose", exact: true }).click();
   composer = page.getByRole("dialog", { name: "New message" });
-  await composer.getByLabel("From").selectOption({ label: "Work" });
+  // Each account reads as its name, then its address once Gmail has reported it.
+  const workAccount = composer.getByLabel("From").locator("option", { hasText: /^Work\b/ });
+  await composer.getByLabel("From").selectOption((await workAccount.getAttribute("value")) ?? "");
   await composer.getByLabel("To").fill("Priya Shah <priya@example.test>,");
   // Bcc stays out of sight until asked for.
   await expect(composer.getByLabel("Bcc")).toHaveCount(0);
