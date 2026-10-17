@@ -181,13 +181,12 @@ export function InboxPage({
   // New mail shows up, and the sidebar count follows, while the page stays open.
   useEffect(() => {
     if (paused) return;
+    // The same sync as opening the page: it fetches new mail, then the list and the count reload.
     const timer = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      setReload((n) => n + 1);
-      onRefreshed();
+      if (document.visibilityState === "visible") setAttempt((n) => n + 1);
     }, NEW_MAIL_POLL_MS);
     return () => clearInterval(timer);
-  }, [paused, onRefreshed]);
+  }, [paused]);
 
   useEffect(() => {
     if (!status) return;

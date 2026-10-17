@@ -707,11 +707,13 @@ it("looks for new mail once a minute while it is open", async () => {
   vi.useFakeTimers();
   try {
     await render();
-    const before = rpcMock.list.mock.calls.length;
+    const syncs = rpcMock.refresh.mock.calls.length;
+    const lists = rpcMock.list.mock.calls.length;
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000);
     });
-    expect(rpcMock.list.mock.calls.length).toBe(before + 1);
+    expect(rpcMock.refresh.mock.calls.length).toBe(syncs + 1);
+    expect(rpcMock.list.mock.calls.length).toBe(lists + 1);
   } finally {
     vi.useRealTimers();
   }
