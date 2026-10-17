@@ -17,6 +17,8 @@ import {
 
 export const MOCK_NOTE = "Mock demo data";
 export const DEMO_COMPANY = "MOCK DEMO DATA — Northwind Robotics";
+/** A space with nothing connected, for the first-run and empty states. */
+export const DEMO_EMPTY_SPACE = "MOCK DEMO DATA — Empty space";
 export const DEMO_USER_NAME = "Alex Founder (Mock)";
 export const DEMO_EMAIL = "mock-founder@demo.rakazo.test";
 export const MOCK_SUBJECT_PREFIX = "[MOCK DEMO]";
@@ -340,6 +342,24 @@ const BREX_MONTHLY: Array<Recurring & { day: number }> = [
 function monthDay(now: Date, monthsAgo: number, day: number): Date {
   const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsAgo, day, 15));
   return date;
+}
+
+/**
+ * Last month's statement for a bank with no integration, as a CSV export, so Accounts shows a
+ * statement account (named from the file, so it can be renamed) and the monthly reminder.
+ */
+export function demoStatementCsv(now = new Date()): { fileName: string; body: string } {
+  const day = (d: number) => monthDay(now, 1, d).toISOString().slice(0, 10);
+  const month = day(1).slice(0, 7);
+  const rows = [
+    [day(3), "MOCK Customer Beta (Mock) deposit", "1200.00", "11200.00"],
+    [day(9), "MOCK Office Supplies (Mock)", "-250.00", "10950.00"],
+    [day(18), "MOCK Courier Service (Mock)", "-450.00", "10500.00"],
+  ];
+  return {
+    fileName: `mock-community-bank-${month}.csv`,
+    body: `Date,Description,Amount,Balance\n${rows.map((r) => r.join(",")).join("\n")}\n`,
+  };
 }
 
 /**

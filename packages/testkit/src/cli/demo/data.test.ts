@@ -3,8 +3,10 @@ import {
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENTS,
+  DEMO_EMPTY_SPACE,
   demoFinance,
   demoMailboxes,
+  demoStatementCsv,
   MOCK_NOTE,
   MOCK_SUBJECT_PREFIX,
 } from "./data.js";
@@ -12,6 +14,7 @@ import {
 describe("mock demo data", () => {
   it("labels the company and every contact and document as mock", () => {
     expect(DEMO_COMPANY.startsWith("MOCK DEMO DATA —")).toBe(true);
+    expect(DEMO_EMPTY_SPACE.startsWith("MOCK DEMO DATA —")).toBe(true);
     for (const contact of DEMO_CONTACTS) expect(contact.notes).toContain(MOCK_NOTE);
     for (const document of DEMO_DOCUMENTS) {
       expect(document.name).toContain("MOCK");
@@ -28,6 +31,20 @@ describe("mock demo data", () => {
     expect(new Set(messages.map((m) => m.threadId)).size).toBe(25);
     expect(messages.some((m) => m.labels.includes("UNREAD"))).toBe(true);
     expect(messages.filter((m) => m.attachments?.length)).toHaveLength(1);
+  });
+
+  it("builds last month's mock statement with balances that add up", () => {
+    const { fileName, body } = demoStatementCsv(new Date("2026-10-16T12:00:00Z"));
+    expect(fileName).toBe("mock-community-bank-2026-09.csv");
+    const [, ...lines] = body.trim().split("\n");
+    let balance = 10_000_00;
+    for (const line of lines) {
+      const [date, description, amount, after] = line.split(",");
+      expect(date?.startsWith("2026-09-")).toBe(true);
+      expect(description).toContain("(Mock)");
+      balance += Math.round(Number(amount) * 100);
+      expect(Math.round(Number(after) * 100)).toBe(balance);
+    }
   });
 
   it("serves about three months of mock finance history", async () => {
