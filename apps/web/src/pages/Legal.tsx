@@ -18,7 +18,7 @@ import { DATA_ROOM_PATH } from "../lib/data-room";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
-import { errorText, runErrorText } from "../lib/user-error";
+import { errorText, KEY_REJECTED_PATTERN, runErrorText } from "../lib/user-error";
 import { LegalContracts } from "./legal/LegalContracts";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
 
@@ -162,6 +162,11 @@ function Legal({
   // Counted here so the tile and the row pills use the viewer's date, not the server's.
   const today = todayIso();
   const overdue = data.deadlines.filter((d) => daysBetween(today, d.dueDate) < 0).length;
+  // Legal runs only on the user's OpenRouter key, so a rejected key is always that one.
+  const keyRejected =
+    lastRun?.status === "failed" &&
+    !running &&
+    Boolean(lastRun.error && KEY_REJECTED_PATTERN.test(lastRun.error));
   const lastScan = data.agent.lastScanAt ? formatRelativeTime(data.agent.lastScanAt) : "";
   return (
     <div>
@@ -172,7 +177,9 @@ function Legal({
         <SpaceName />
         <span className="text-[11px] text-muted-foreground">
           {lastRun?.status === "failed" && !running ? (
-            lastRun.error ? (
+            keyRejected ? (
+              <Trans>Last scan failed: OpenRouter did not accept your key.</Trans>
+            ) : lastRun.error ? (
               <Trans>Last scan failed: {runErrorText(lastRun.error)}</Trans>
             ) : (
               <Trans>Last scan failed</Trans>
@@ -185,6 +192,12 @@ function Legal({
             <Trans>Not scanned yet</Trans>
           )}
         </span>
+        {/* A rejected key is fixed in one place; go straight to its field. */}
+        {keyRejected && onOpenSettings ? (
+          <Button size="sm" variant="outline" onClick={onOpenSettings}>
+            <Trans>Replace OpenRouter key</Trans>
+          </Button>
+        ) : null}
         <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
           {/* Narrow, the reason takes its own line under the buttons, so they stay on one row. */}
           {scanReason ? (

@@ -377,6 +377,21 @@ it("shows why the last scan failed and scans again from the one Scan now button"
   expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
 });
 
+it("offers the OpenRouter key field when the last scan's key was rejected", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    agent: {
+      ...overview.agent,
+      lastScanRun: { id: id(8), status: "failed", error: '401: {"code":401}' },
+    },
+  });
+  const openSettings = vi.fn();
+  await render(<LegalPage onOpenSettings={openSettings} />);
+  expect(container.textContent).toContain("Last scan failed: OpenRouter did not accept your key.");
+  await click(button("Replace OpenRouter key"));
+  expect(openSettings).toHaveBeenCalledTimes(1);
+});
+
 it("has one Scan now button on an empty page", async () => {
   rpcMock.overview.mockResolvedValue(emptyOverview);
   await render(<LegalPage />);

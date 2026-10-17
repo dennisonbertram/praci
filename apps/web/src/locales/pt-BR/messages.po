@@ -4135,6 +4135,10 @@ msgstr ""
 msgid "Last scan failed: {0}"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Last scan failed: OpenRouter did not accept your key."
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 #: src/components/EmailCards.tsx
 msgid "Later"
@@ -6106,6 +6110,10 @@ msgstr "Substituir chave de API"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "Substituir chave"
+
+#: src/pages/Legal.tsx
+msgid "Replace OpenRouter key"
+msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Replace value"
