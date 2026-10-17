@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 166 of 166
-- Web and shared components: 478
+- Web and shared components: 480
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -139,7 +139,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | StatementImport | [apps/web/src/components/finance/StatementImport.tsx](../../apps/web/src/components/finance/StatementImport.tsx) | [StatementImport.stories.tsx](../../apps/web/src/components/finance/StatementImport.stories.tsx) | web |
 | StatementReminderBanner | [apps/web/src/components/finance/StatementReminderBanner.tsx](../../apps/web/src/components/finance/StatementReminderBanner.tsx) | [StatementReminderBanner.stories.tsx](../../apps/web/src/components/finance/StatementReminderBanner.stories.tsx) | web |
 | CheckLine, Row, StatementGroup | [apps/web/src/components/finance/StatementReviewCard.tsx](../../apps/web/src/components/finance/StatementReviewCard.tsx) | [StatementReviewCard.stories.tsx](../../apps/web/src/components/finance/StatementReviewCard.stories.tsx) | web |
-| AskAgentButton, HereLink, DetailHead, NotFoundNotice, ErrorNotice, DetailPage, Section, Kpi, BreakdownRows, Th, Chevron, TransactionTable, Chip, PeriodTabs, Legend, BurnLegend, Kv, KvRow, ValueLink | [apps/web/src/components/finance/ui.tsx](../../apps/web/src/components/finance/ui.tsx) | [ui.stories.tsx](../../apps/web/src/components/finance/ui.stories.tsx) | web |
+| SpaceName, AskAgentButton, HereLink, DetailHead, NotFoundNotice, ErrorNotice, DetailPage, Section, Kpi, BreakdownRows, Th, Chevron, TransactionTable, Chip, PeriodTabs, Legend, BurnLegend, Kv, KvRow, ValueLink | [apps/web/src/components/finance/ui.tsx](../../apps/web/src/components/finance/ui.tsx) | [ui.stories.tsx](../../apps/web/src/components/finance/ui.stories.tsx) | web |
 | WalletDialog | [apps/web/src/components/finance/WalletDialog.tsx](../../apps/web/src/components/finance/WalletDialog.tsx) | [WalletDialog.stories.tsx](../../apps/web/src/components/finance/WalletDialog.stories.tsx) | web |
 
 ## Web components/inbox
@@ -196,7 +196,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ExternalConversationSettings | [apps/web/src/pages/ExternalConversationSettings.tsx](../../apps/web/src/pages/ExternalConversationSettings.tsx) | [ExternalConversationSettings.stories.tsx](../../apps/web/src/pages/ExternalConversationSettings.stories.tsx) | web |
 | FinancePage, Dashboard, EmptyState, DashboardSkeleton, SourceChip, Overview, ShowAll, HoverRow, UpcomingRow, SubscriptionsTable | [apps/web/src/pages/Finance.tsx](../../apps/web/src/pages/Finance.tsx) | [Finance.stories.tsx](../../apps/web/src/pages/Finance.stories.tsx) | web |
 | AccountTable, CryptoGroup, FinanceAccountsPage, FinanceAccountPage | [apps/web/src/pages/finance/FinanceAccounts.tsx](../../apps/web/src/pages/finance/FinanceAccounts.tsx) | [FinanceAccounts.stories.tsx](../../apps/web/src/pages/finance/FinanceAccounts.stories.tsx) | web |
-| FinanceBurnPage, FinanceMonthPage, FinanceRunwayPage | [apps/web/src/pages/finance/FinanceBurn.tsx](../../apps/web/src/pages/finance/FinanceBurn.tsx) | [FinanceBurn.stories.tsx](../../apps/web/src/pages/finance/FinanceBurn.stories.tsx) | web |
+| FinanceBurnPage, FinanceMonthPage, Counted, FinanceRunwayPage | [apps/web/src/pages/finance/FinanceBurn.tsx](../../apps/web/src/pages/finance/FinanceBurn.tsx) | [FinanceBurn.stories.tsx](../../apps/web/src/pages/finance/FinanceBurn.stories.tsx) | web |
 | RemoveDialog, WalletRows, FinanceCryptoPage | [apps/web/src/pages/finance/FinanceCrypto.tsx](../../apps/web/src/pages/finance/FinanceCrypto.tsx) | [FinanceCrypto.stories.tsx](../../apps/web/src/pages/finance/FinanceCrypto.stories.tsx) | web |
 | FinanceNotFound | [apps/web/src/pages/finance/FinanceNotFound.tsx](../../apps/web/src/pages/finance/FinanceNotFound.tsx) | [FinanceNotFound.stories.tsx](../../apps/web/src/pages/finance/FinanceNotFound.stories.tsx) | web |
 | FinanceSpendPage, FinanceCategoryPage, FinanceRecurringPage, FinanceVendorPage | [apps/web/src/pages/finance/FinanceSpend.tsx](../../apps/web/src/pages/finance/FinanceSpend.tsx) | [FinanceSpend.stories.tsx](../../apps/web/src/pages/finance/FinanceSpend.stories.tsx) | web |

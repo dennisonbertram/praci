@@ -75,6 +75,11 @@ msgstr "{0} (max {ATTACHMENT_MAX_COUNT} pièces jointes)"
 msgid "{0} (over 10 MiB)"
 msgstr "{0} (plus de 10 MiB)"
 
+#. placeholder {0}: fullDay(due)
+#: src/pages/Finance.tsx
+msgid "{0} (overdue)"
+msgstr ""
+
 #. placeholder {0}: preset.n
 #: src/pages/RoutineSchedule.tsx
 msgid "{0} {unitLabel}"
@@ -165,11 +170,6 @@ msgstr ""
 #. placeholder {0}: card.count
 #: src/components/FinanceCards.tsx
 msgid "{0} transactions · {period}"
-msgstr ""
-
-#. placeholder {0}: data.crypto.unpricedTokenCount
-#: src/pages/Finance.tsx
-msgid "{0} unpriced"
 msgstr ""
 
 #. placeholder {0}: target.name
@@ -308,6 +308,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "{runwayMonths} mo"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "{scope} · {unpriced} unpriced"
 msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
@@ -772,6 +776,7 @@ msgstr "Toujours autorisé"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
 msgstr ""
@@ -1220,6 +1225,10 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Breakdown"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Brex bill, not paid yet"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -2456,6 +2465,10 @@ msgstr "Impossible de mettre à jour les paramètres de messagerie"
 msgid "Count crypto"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Counted in runway"
+msgstr ""
+
 #: src/components/finance/ui.tsx
 msgid "Counterparty"
 msgstr ""
@@ -2945,6 +2958,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Drop to add to Data room"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Due"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -3556,6 +3573,10 @@ msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "In review"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "In runway"
 msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
@@ -4391,10 +4412,6 @@ msgstr "Aucune connexion d'agent pour le moment."
 msgid "No agent uses {0} yet. Choose agents on its page."
 msgstr ""
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "No API key (optional)"
-msgstr ""
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "No apps match."
 msgstr ""
@@ -4597,6 +4614,14 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "not in runway"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Not in runway"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -6196,6 +6221,10 @@ msgstr "SSO est temporairement indisponible. Réessayez."
 msgid "Stablecoins"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Stablecoins in runway"
+msgstr ""
+
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Stablecoins only"
 msgstr ""
@@ -6231,6 +6260,7 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Status"
 msgstr ""
@@ -7004,6 +7034,11 @@ msgstr "Voix"
 #: src/components/call/VoiceChatCard.tsx
 msgid "Voice chat"
 msgstr "Chat vocal"
+
+#. placeholder {0}: monthShort(data.changeFromMonth)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "vs {0}"
+msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "vs {previousRange}"

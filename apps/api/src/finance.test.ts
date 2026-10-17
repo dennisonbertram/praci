@@ -1057,7 +1057,12 @@ describe("finance pages with the real calculations", () => {
       financeAccount: [account(a)],
       financeTransaction: [
         // Synced data starts in June, before the vendor's first charge in July.
-        monthlyCharge("06", { vendorKey: "other", counterparty: "Other", id: "o", externalId: "o" }),
+        monthlyCharge("06", {
+          vendorKey: "other",
+          counterparty: "Other",
+          id: "o",
+          externalId: "o",
+        }),
         ...["07", "08", "09", "10"].map((m) => monthlyCharge(m)),
       ],
     });

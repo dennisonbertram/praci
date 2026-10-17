@@ -7,7 +7,19 @@ import type {
   SpendPeriod,
   UpcomingItem,
 } from "@rakazo/contracts";
-import { Button, Skeleton, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web";
+import {
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+  Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@rakazo/ui-web";
 import { cn } from "@rakazo/ui-web/lib/utils";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -26,9 +38,12 @@ import {
   FinanceChromeProvider,
   HereLink,
   Kpi,
+  Kv,
+  KvRow,
   PeriodTabs,
   rowClass,
   Section,
+  SpaceName,
   Th,
   useFinanceQuery,
   useRowNavigate,
@@ -39,8 +54,10 @@ import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnec
 import {
   changeText,
   dayRange,
+  fullDay,
   lastDayOf,
   money,
+  moneyExact,
   monthFull,
   paidWithLabel,
   shortDay,
@@ -79,11 +96,18 @@ const BAR_GRANULARITY: Record<SpendPeriod, BarGranularity> = {
 };
 
 /** The Finance area: the dashboard at /app/finance and its detail pages. */
-export function FinancePage({ onAskAgent }: { onAskAgent?: () => void }) {
+export function FinancePage({
+  onAskAgent,
+  spaceName,
+}: {
+  onAskAgent?: () => void;
+  /** The space's name, given when the user has more than one space. */
+  spaceName?: string;
+}) {
   const location = useLocation();
   const route = parseFinanceRoute(location.pathname, location.search);
   return (
-    <FinanceChromeProvider value={{ onAskAgent }}>
+    <FinanceChromeProvider value={{ onAskAgent, spaceName }}>
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
         {route.page === "dashboard" ? (
           <Dashboard />
@@ -180,9 +204,12 @@ function EmptyState({ hasCrypto, onChanged }: { hasCrypto: boolean; onChanged: (
           <AppLogo key={provider} name={name} logo={logo} size="lg" />
         ))}
       </div>
-      <h1 className="text-lg font-medium">
-        <Trans>Finance</Trans>
-      </h1>
+      <div className="flex flex-col items-center gap-0.5">
+        <h1 className="text-lg font-medium">
+          <Trans>Finance</Trans>
+        </h1>
+        <SpaceName />
+      </div>
       <p className="max-w-sm text-sm text-muted-foreground">
         <Trans>Add an account to see cash, burn, runway and spend.</Trans>
       </p>
@@ -332,6 +359,7 @@ function Overview({
         <h1 className="text-lg font-medium">
           <Trans>Finance</Trans>
         </h1>
+        <SpaceName />
         <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
           {/* Both labels share one cell, so the chips beside them do not move when it changes. */}
           <span className="grid">
@@ -472,11 +500,10 @@ function Overview({
               <Kpi
                 title={t`Crypto`}
                 value={money(data.crypto.totalCents)}
-                sub={
-                  data.crypto.unpricedTokenCount > 0
-                    ? t`${data.crypto.unpricedTokenCount} unpriced`
-                    : undefined
-                }
+                sub={cryptoSubtitle(
+                  otherCounted > 0 ? "all" : stablecoins > 0 ? "stablecoins" : "bank",
+                  data.crypto.unpricedTokenCount,
+                )}
                 to={financePath.crypto()}
               />
             ) : null}
@@ -532,7 +559,8 @@ function Overview({
             ) : null}
           </Section>
 
-          <div className="grid gap-3 @3xl:grid-cols-2">
+          {/* Each card keeps its own height: expanding one does not stretch the other. */}
+          <div className="grid items-start gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,
@@ -642,6 +670,17 @@ function Overview({
   );
 }
 
+/** What the Crypto figure means for runway, as the Cash card says what it adds up. */
+export function cryptoSubtitle(counted: "bank" | "stablecoins" | "all", unpriced: number): string {
+  const scope =
+    counted === "all"
+      ? t`Counted in runway`
+      : counted === "stablecoins"
+        ? t`Stablecoins in runway`
+        : t`Not in runway`;
+  return unpriced > 0 ? t`${scope} · ${unpriced} unpriced` : scope;
+}
+
 function ShowAll({
   total,
   cap,
@@ -673,47 +712,71 @@ function HoverRow({ label, value }: { label: string; value: string }) {
 const upcomingTag = (kind: UpcomingItem["kind"]) =>
   kind === "recurring" ? t`recurring` : kind === "pending" ? t`pending` : t`bill`;
 
-function UpcomingRow({ item }: { item: UpcomingItem }) {
+/** `APPROVED` reads `Approved`. */
+const billStatusText = (status: string) =>
+  status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replaceAll("_", " ");
+
+const upcomingRowClass =
+  "grid w-full grid-cols-[minmax(0,1fr)_auto_0.875rem] items-center gap-2.5 border-t border-border px-2 py-2 text-start first:border-t-0 @md:grid-cols-[minmax(5rem,auto)_1fr_auto_0.875rem]";
+const upcomingLinkClass = `${upcomingRowClass} outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground`;
+
+export function UpcomingRow({ item }: { item: UpcomingItem }) {
   const to =
     item.kind === "recurring"
       ? financePath.recurring(item.key)
       : item.kind === "pending"
         ? financePath.transaction(item.key)
         : null;
+  const dates = item.dates.map((d) => shortDay(d)).join(" · ");
   const body = (
     <>
-      <span className="text-muted-foreground">
-        {item.dates.map((d) => shortDay(d)).join(" · ")}
-      </span>
-      {/* The tag never hides behind a long name: it sits under the name when the card is narrow. */}
+      <span className="hidden text-muted-foreground @md:inline">{dates}</span>
+      {/* Narrow, the name gets the whole first line; the dates and tag sit under it. */}
       <span className="flex min-w-0 flex-col items-start gap-0.5 @md:flex-row @md:items-center @md:gap-1.5">
         <span className="min-w-0 max-w-full truncate">{item.name}</span>
-        <span className="shrink-0 rounded-full border border-border px-1.5 text-[10px] text-muted-foreground">
-          {upcomingTag(item.kind)}
+        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span className="@md:hidden">{dates}</span>
+          <span className="shrink-0 rounded-full border border-border px-1.5 text-[10px]">
+            {upcomingTag(item.kind)}
+          </span>
         </span>
       </span>
       <span className="text-end tabular-nums">
         {money(item.amountCents)}
         {item.dates.length > 1 ? ` ×${item.dates.length}` : ""}
       </span>
-      {to ? (
-        <ChevronRight aria-hidden="true" className="size-3.5 text-muted-foreground" />
-      ) : (
-        <span />
-      )}
+      <ChevronRight aria-hidden="true" className="size-3.5 text-muted-foreground" />
     </>
   );
-  const cls =
-    "grid grid-cols-[minmax(5rem,auto)_1fr_auto_0.875rem] items-center gap-2.5 border-t border-border px-2 py-2 first:border-t-0";
-  return to ? (
-    <HereLink
-      to={to}
-      className={`${cls} outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground`}
-    >
-      {body}
-    </HereLink>
-  ) : (
-    <div className={cls}>{body}</div>
+  if (to) {
+    return (
+      <HereLink to={to} className={upcomingLinkClass}>
+        {body}
+      </HereLink>
+    );
+  }
+  // A bill has no page of its own: its details open in place.
+  const due = item.dueAt ?? item.dates[0] ?? "";
+  const overdue = item.dates[0] !== undefined && due < item.dates[0];
+  return (
+    <Popover>
+      <PopoverTrigger className={upcomingLinkClass}>{body}</PopoverTrigger>
+      <PopoverContent align="end">
+        <PopoverHeader>
+          <PopoverTitle>{item.name}</PopoverTitle>
+          <PopoverDescription>
+            <Trans>Brex bill, not paid yet</Trans>
+          </PopoverDescription>
+        </PopoverHeader>
+        <Kv>
+          <KvRow label={t`Amount`}>{moneyExact(item.amountCents)}</KvRow>
+          <KvRow label={t`Due`}>{overdue ? t`${fullDay(due)} (overdue)` : fullDay(due)}</KvRow>
+          {item.billStatus ? (
+            <KvRow label={t`Status`}>{billStatusText(item.billStatus)}</KvRow>
+          ) : null}
+        </Kv>
+      </PopoverContent>
+    </Popover>
   );
 }
 

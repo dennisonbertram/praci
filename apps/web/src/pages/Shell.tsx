@@ -4093,7 +4093,14 @@ export function ShellPage() {
         ) : dataRoomMode ? (
           <DataRoomPage />
         ) : financeMode ? (
-          <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
+          <FinancePage
+            onAskAgent={financeAgentOpen ? undefined : askFinanceAgent}
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
+          />
         ) : capTableMode ? (
           <CapTablePage
             onShowAgent={cartaAgentOpen ? undefined : () => setCartaAgentOpen(true)}

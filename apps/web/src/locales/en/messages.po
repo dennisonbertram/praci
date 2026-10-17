@@ -75,6 +75,11 @@ msgstr "{0} (max {ATTACHMENT_MAX_COUNT} attachments)"
 msgid "{0} (over 10 MiB)"
 msgstr "{0} (over 10 MiB)"
 
+#. placeholder {0}: fullDay(due)
+#: src/pages/Finance.tsx
+msgid "{0} (overdue)"
+msgstr "{0} (overdue)"
+
 #. placeholder {0}: preset.n
 #: src/pages/RoutineSchedule.tsx
 msgid "{0} {unitLabel}"
@@ -166,11 +171,6 @@ msgstr "{0} transactions"
 #: src/components/FinanceCards.tsx
 msgid "{0} transactions · {period}"
 msgstr "{0} transactions · {period}"
-
-#. placeholder {0}: data.crypto.unpricedTokenCount
-#: src/pages/Finance.tsx
-msgid "{0} unpriced"
-msgstr "{0} unpriced"
 
 #. placeholder {0}: target.name
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -309,6 +309,10 @@ msgstr "{runMonths} mo"
 #: src/pages/Finance.tsx
 msgid "{runwayMonths} mo"
 msgstr "{runwayMonths} mo"
+
+#: src/pages/Finance.tsx
+msgid "{scope} · {unpriced} unpriced"
+msgstr "{scope} · {unpriced} unpriced"
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "{seats, plural, one {# seat} other {# seats}}"
@@ -772,6 +776,7 @@ msgstr "Always allowed"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
 msgstr "Amount"
@@ -1221,6 +1226,10 @@ msgstr "Breadcrumb"
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Breakdown"
 msgstr "Breakdown"
+
+#: src/pages/Finance.tsx
+msgid "Brex bill, not paid yet"
+msgstr "Brex bill, not paid yet"
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Brex does not share it"
@@ -2456,6 +2465,10 @@ msgstr "Couldn't update messaging settings"
 msgid "Count crypto"
 msgstr "Count crypto"
 
+#: src/pages/Finance.tsx
+msgid "Counted in runway"
+msgstr "Counted in runway"
+
 #: src/components/finance/ui.tsx
 msgid "Counterparty"
 msgstr "Counterparty"
@@ -2946,6 +2959,10 @@ msgstr "Drop statements here or choose files"
 #: src/components/data-room/DropZone.tsx
 msgid "Drop to add to Data room"
 msgstr "Drop to add to Data room"
+
+#: src/pages/Finance.tsx
+msgid "Due"
+msgstr "Due"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
@@ -3557,6 +3574,10 @@ msgstr "In progress"
 #: src/lib/ticket-status.ts
 msgid "In review"
 msgstr "In review"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "In runway"
+msgstr "In runway"
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
@@ -4391,10 +4412,6 @@ msgstr "No agent connections yet."
 msgid "No agent uses {0} yet. Choose agents on its page."
 msgstr "No agent uses {0} yet. Choose agents on its page."
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "No API key (optional)"
-msgstr "No API key (optional)"
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "No apps match."
 msgstr "No apps match."
@@ -4598,6 +4615,14 @@ msgstr "Not enough history"
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"
 msgstr "Not found"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "not in runway"
+msgstr "not in runway"
+
+#: src/pages/Finance.tsx
+msgid "Not in runway"
+msgstr "Not in runway"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
@@ -6196,6 +6221,10 @@ msgstr "SSO is temporarily unavailable. Try again."
 msgid "Stablecoins"
 msgstr "Stablecoins"
 
+#: src/pages/Finance.tsx
+msgid "Stablecoins in runway"
+msgstr "Stablecoins in runway"
+
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Stablecoins only"
 msgstr "Stablecoins only"
@@ -6231,6 +6260,7 @@ msgstr "Statement files"
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Status"
 msgstr "Status"
@@ -7004,6 +7034,11 @@ msgstr "Voice"
 #: src/components/call/VoiceChatCard.tsx
 msgid "Voice chat"
 msgstr "Voice chat"
+
+#. placeholder {0}: monthShort(data.changeFromMonth)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "vs {0}"
+msgstr "vs {0}"
 
 #: src/pages/Finance.tsx
 msgid "vs {previousRange}"

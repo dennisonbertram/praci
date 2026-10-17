@@ -42,7 +42,7 @@ const rpcMock = vi.hoisted(() => ({
 vi.mock("../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 vi.mock("../lib/finance-connect", () => ({ connectFinanceProvider: rpcMock.connect }));
 
-import { FinancePage } from "./Finance";
+import { cryptoSubtitle, FinancePage, UpcomingRow } from "./Finance";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -1021,7 +1021,8 @@ it("keeps the vendor's Breakdown origin after opening one of its charges and com
   await flush();
   // A founder clicks the row (its date), not only the link in it.
   const charge = container.querySelector('a[href="/app/finance/transaction/t1"]');
-  await act(async () => (charge?.closest("tr")?.querySelector("td") as HTMLElement).click());
+  const cell = charge?.closest("tr")?.querySelector("td") as HTMLElement;
+  await act(async () => cell.click());
   await flush();
   // The charge's Back names the vendor it was opened from.
   const toVendor = container.querySelector('a[href="/app/finance/vendor/acme-hosting"]');
@@ -1144,4 +1145,38 @@ it("never shows a category that refunds outweigh as money spent", async () => {
   expect(breakdown).toContain("Software");
   expect(breakdown).not.toContain("Uncategorized");
   expect(breakdown).not.toContain("$500");
+});
+
+it("opens a bill's details from its Upcoming row, which has no page of its own", async () => {
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <UpcomingRow
+          item={{
+            key: "bill-1",
+            kind: "bill",
+            name: "Placeholder Legal LLP",
+            dates: ["2026-10-27"],
+            amountCents: 200_000,
+            billStatus: "APPROVED",
+            dueAt: "2026-10-27",
+          }}
+        />
+      </MemoryRouter>,
+    ),
+  );
+  const row = container.querySelector("button") as HTMLButtonElement;
+  expect(row.querySelector("svg")).not.toBeNull();
+  await act(async () => row.click());
+  const details = document.body.textContent ?? "";
+  expect(details).toContain("Brex bill, not paid yet");
+  expect(details).toContain("$2,000.00");
+  expect(details).toContain("Oct 27, 2026");
+  expect(details).toContain("Approved");
+});
+
+it("says whether crypto counts toward runway", () => {
+  expect(cryptoSubtitle("bank", 0)).toBe("Not in runway");
+  expect(cryptoSubtitle("stablecoins", 0)).toBe("Stablecoins in runway");
+  expect(cryptoSubtitle("all", 2)).toBe("Counted in runway · 2 unpriced");
 });
