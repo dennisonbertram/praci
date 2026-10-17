@@ -71,9 +71,9 @@ export function SignInStep({
       </div>
     );
   }
+  // A stopped sign-in is not a step in progress, so it drops the step counter.
   return (
     <div>
-      {header}
       <DialogTitle>
         {state.kind === "blocked" ? (
           <Trans>Your browser blocked the sign-in window</Trans>

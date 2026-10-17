@@ -9,12 +9,13 @@ import type { IntegrationsData } from "./useIntegrations";
 
 const api = vi.hoisted(() => ({
   create: vi.fn(),
+  remove: vi.fn(),
   begin: vi.fn(),
   open: vi.fn(),
   wait: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({
-  rpc: { mcp: { servers: { create: api.create }, assignments: {} } },
+  rpc: { mcp: { servers: { create: api.create, delete: api.remove }, assignments: {} } },
 }));
 vi.mock("../../lib/mcp-connect", () => ({
   beginMcpOauth: api.begin,
@@ -76,6 +77,7 @@ const click = (label: string) =>
 
 beforeEach(() => {
   api.create.mockResolvedValue(server);
+  api.remove.mockResolvedValue({ ok: true });
 });
 afterEach(() => {
   document.body.innerHTML = "";
@@ -157,4 +159,16 @@ it("locks the connection fields after the error and retries on the same server",
   await click("Connect");
   expect(api.create).toHaveBeenCalledTimes(1);
   expect(api.begin).toHaveBeenLastCalledWith("srv-1", { oauthClient: { clientId: "abc" } });
+});
+
+it("removes a connection it just added when the server cannot be reached", async () => {
+  api.begin.mockRejectedValueOnce(new Error("fetch failed: getaddrinfo ENOTFOUND example.com"));
+  await mount();
+  await click("Connect");
+  expect(api.remove).toHaveBeenCalledWith({ id: "srv-1" });
+  expect(document.body.textContent).toContain(
+    "Could not reach example.com. Check the address and try again.",
+  );
+  expect(document.body.textContent).not.toContain("ENOTFOUND");
+  expect(document.body.textContent).not.toContain("Needs reconnect");
 });
