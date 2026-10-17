@@ -355,9 +355,7 @@ import { WindowChrome } from "./WindowChrome";
 const ArtifactsPage = lazy(() =>
   import("./Artifacts").then((module) => ({ default: module.ArtifactsPage })),
 );
-const BoardPage = lazy(() =>
-  import("./Board").then((module) => ({ default: module.BoardPage })),
-);
+const BoardPage = lazy(() => import("./Board").then((module) => ({ default: module.BoardPage })));
 const BotContextMenu = lazyOverlay(() =>
   import("./BotContextMenu").then((module) => module.BotContextMenu),
 );
@@ -5873,6 +5871,23 @@ export const Transcript = memo(function Transcript({
     setAtEnd(true);
     element.scrollTo({ top: element.scrollHeight, behavior: "auto" });
   }, [scrollRef]);
+
+  // Keep the newest message in view while following when the layout changes under it: a phone
+  // rotating or a window resizing rewraps every bubble, and cards (asks, connect steps) grow
+  // after they mount. Message changes are handled by the layout effect below.
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (!following.current || jumpScrolling.current) return;
+      if (element.scrollHeight - element.scrollTop - element.clientHeight > 1) {
+        element.scrollTop = element.scrollHeight;
+      }
+    });
+    observer.observe(element);
+    for (const child of element.children) observer.observe(child);
+    return () => observer.disconnect();
+  }, [scrollRef, messages]);
 
   const jumpToLatest = useCallback(() => {
     const element = scrollRef.current;

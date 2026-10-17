@@ -634,4 +634,71 @@ describe("Transcript jump to a search result", () => {
     expect(container?.textContent).toContain("handed off to");
     expect(container?.textContent).not.toContain("INTERNAL: summarize");
   });
+  it("keeps the newest message in view when the layout grows while following", () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    window.matchMedia ??= () =>
+      ({
+        matches: true,
+        addEventListener() {},
+        removeEventListener() {},
+      }) as unknown as MediaQueryList;
+    Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.scrollTo = vi.fn() as never;
+    let resized: (() => void) | undefined;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: () => void) {
+          resized = callback;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    const scrollRef = createRef<HTMLDivElement>();
+    const noop = () => {};
+    const props = {
+      scrollRef,
+      sentHere: { current: false },
+      onScrollRequestHandled: noop,
+      artifactTarget: { botId: "bot-1" },
+      showToolActivity: false,
+      olderCursor: null,
+      loadingOlder: false,
+      answerableAskMessageId: null,
+      running: false,
+      workingBots: [],
+      onLoadOlder: noop,
+      onOpenBot: noop,
+      onAnswer: async () => {},
+      onReply: noop,
+      onQuote: noop,
+      onReact: async () => {},
+      onJumpToMessage: noop,
+      onOpenPeerMessages: noop,
+      peerBot: () => undefined,
+      onRefresh: async () => {},
+      onBotChanged: async () => {},
+      onAddRoutine: noop,
+      voiceReady: false,
+      speakingMessageId: null,
+      onSpeak: noop,
+      onOpenComputer: noop,
+    } as unknown as ComponentProps<typeof Transcript>;
+    act(() =>
+      root?.render(<Transcript {...props} messages={[msg("m1", 1)]} scrollRequest={null} />),
+    );
+    const element = scrollRef.current;
+    if (!element) throw new Error("no transcript");
+    // A phone rotation rewraps the bubbles: the content is now taller than the view.
+    Object.defineProperty(element, "scrollHeight", { configurable: true, value: 800 });
+    Object.defineProperty(element, "clientHeight", { configurable: true, value: 600 });
+    element.scrollTop = 0;
+    act(() => resized?.());
+    expect(element.scrollTop).toBe(800);
+    vi.unstubAllGlobals();
+  });
 });
