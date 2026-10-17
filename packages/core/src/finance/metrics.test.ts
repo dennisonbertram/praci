@@ -169,6 +169,16 @@ describe("classify", () => {
       "internal_transfer",
     );
   });
+  it("nets a statement refund off spend and keeps a deposit as revenue", () => {
+    const line = raw({ provider: "statement", kind: "statement" });
+    const buy = classify({ ...line, amountCents: -10000, counterparty: "Acme Store" }, ctx);
+    const refund = classify(
+      { ...line, amountCents: 10000, counterparty: "Acme Store REFUND" },
+      ctx,
+    );
+    const deposit = classify({ ...line, amountCents: 10000, counterparty: "Customer Beta" }, ctx);
+    expect([buy, refund, deposit]).toEqual(["spend", "spend", "revenue"]);
+  });
   it("counts other outgoing money and every Brex expense as spend", () => {
     expect(classify(raw({ category: "Payroll" }), ctx)).toBe("spend");
     expect(classify(raw({ provider: "brex", amountCents: -2000, kind: "CARD" }), ctx)).toBe(

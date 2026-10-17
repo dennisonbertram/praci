@@ -133,6 +133,7 @@ const hasToken = (key: string, entry: string): boolean => `-${key}-`.includes(`-
 
 // ---- Classification ----
 
+const STATEMENT_REFUND = /\b(refund|reversal|chargeback|returned?)\b/i;
 const FINANCING_CATEGORY = /financing|investment|equity|funding|loan-proceeds/;
 
 /**
@@ -169,8 +170,10 @@ export function classify(raw: FinanceRawTxn, ctx: ClassifyContext): FinanceClass
   if (slug === "revenue" || hasToken(vendor, "stripe") || kind.startsWith("incoming")) {
     return "revenue";
   }
-  // A bank statement line carries no category or kind, so a deposit there is money in, not a refund.
-  if (raw.provider === "statement") return "revenue";
+  // A bank statement line carries no category or kind, so a deposit there is money in, unless its
+  // description says it is a refund (that nets off spend instead of counting as revenue).
+  if (raw.provider === "statement")
+    return STATEMENT_REFUND.test(raw.counterparty) ? "spend" : "revenue";
   // Any other credit (a vendor refund, a card credit) is a refund.
   return "spend";
 }

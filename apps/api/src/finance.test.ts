@@ -1067,6 +1067,32 @@ describe("finance pages with the real calculations", () => {
     expect(vendor.monthlyAvgMonths).toBe(3);
   });
 
+  it("windows a vendor by purchase date, the same date its monthly totals use", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [
+        monthlyCharge("09", {
+          id: "p1",
+          externalId: "p1",
+          purchasedAt: new Date("2026-08-31T00:00:00Z"),
+          postedAt: new Date("2026-09-02T00:00:00Z"),
+          amountCents: -10_000n,
+        }),
+        monthlyCharge("10", {
+          id: "p2",
+          externalId: "p2",
+          purchasedAt: new Date("2026-09-30T00:00:00Z"),
+          postedAt: new Date("2026-10-02T00:00:00Z"),
+          amountCents: -10_000n,
+        }),
+      ],
+    });
+    const vendor = await financeVendor(deps, a, { key: "cloudnine-hosting" });
+    expect(vendor.firstSeenAt.slice(0, 10)).toBe("2026-08-31");
+    expect(vendor.monthlyAvgMonths).toBe(2);
+    expect(vendor.monthlyAvgCents).toBe(10_000);
+  });
+
   it("compares a new vendor's last full month with its first full month", async () => {
     const { deps } = setup({
       financeAccount: [account(a)],

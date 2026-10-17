@@ -907,8 +907,8 @@ export async function financeVendor(
   const lastFull = full[5]?.cents ?? 0;
   const sixMonthsFrom = `${seven[1]?.month ?? monthOf(now, -5)}-01`;
   const firstSeenAt = own.reduce(
-    (min, t) => (t.postedAt < min ? t.postedAt : min),
-    latest.postedAt,
+    (min, t) => ((t.purchasedAt ?? t.postedAt) < min ? (t.purchasedAt ?? t.postedAt) : min),
+    latest.purchasedAt ?? latest.postedAt,
   );
   // Months before the vendor first charged are not months of zero spend.
   const firstMonth = firstSeenAt.slice(0, 7);
