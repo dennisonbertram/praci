@@ -78,3 +78,38 @@ it("replaces the picture with a note, and never fetches it, while amounts are hi
   await act(async () => setHideAmounts(false));
   expect(container.querySelector("img")?.getAttribute("src")).toBe("blob:receipt");
 });
+
+it("leads a failed file with Try again, and keeps Delete as a quieter button", async () => {
+  const onAction = vi.fn();
+  const failed = { ...receipt, mimeType: "application/pdf", status: "failed", error: "Not a PDF" };
+  await act(async () => {
+    root.render(
+      <Preview item={failed} folderPath="" onAction={onAction} onClose={() => undefined} />,
+    );
+  });
+  const buttons = Array.from(container.querySelectorAll("aside > div:last-child > button"));
+  expect(buttons.map((button) => button.textContent)).toEqual(["Try again", "Download", "Delete"]);
+  act(() => (buttons[0] as HTMLButtonElement).click());
+  expect(onAction).toHaveBeenCalledWith("retry", failed);
+});
+
+it("keeps showing the summary while a renamed file is re-indexed", async () => {
+  const indexing = {
+    ...receipt,
+    mimeType: "application/pdf",
+    status: "indexing",
+    facets: { ...receipt.facets, docType: "Roadmap", summary: "Two quarters of plans." },
+  };
+  await act(async () => {
+    root.render(
+      <Preview
+        item={indexing}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).toContain("Two quarters of plans.");
+  expect(container.textContent).not.toContain("Reading");
+});

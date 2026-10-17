@@ -66,7 +66,13 @@ export const ListNarrow: Story = {
   ),
 };
 const subfolders = [
-  { id: "fld_inv", name: "Invoices", parentId: "fld_fin", createdAt: "2026-10-01T00:00:00.000Z" },
+  {
+    id: "fld_inv",
+    name: "Invoices",
+    parentId: "fld_fin",
+    createdAt: "2026-10-01T00:00:00.000Z",
+    itemCount: 2,
+  },
   { id: "fld_rec", name: "Receipts", parentId: "fld_fin", createdAt: "2026-10-01T00:00:00.000Z" },
 ];
 /** The grid of an open folder with sub-folders: they are tiles too, above the files. */
@@ -74,6 +80,7 @@ export const GridWithSubfolders: Story = {
   render: () => (
     <>
       <SubfolderList
+        contents={(folder) => (folder.itemCount ? `${folder.itemCount} items` : "Empty")}
         tiles
         folders={subfolders}
         onOpen={() => undefined}
@@ -91,12 +98,14 @@ export const ListWithSubfolders: Story = {
       o={o}
       lead={
         <SubfolderList
+          contents={(folder) => (folder.itemCount ? `${folder.itemCount} items` : "Empty")}
           folders={[
             {
               id: "fld_inv",
               name: "Invoices",
               parentId: "fld_fin",
               createdAt: "2026-10-01T00:00:00.000Z",
+              itemCount: 2,
             },
             {
               id: "fld_rec",

@@ -80,9 +80,33 @@ it("gives every sub-folder a More actions menu", () => {
   for (const tiles of [false, true]) {
     act(() =>
       root.render(
-        <SubfolderList folders={[invoices]} onOpen={vi.fn()} onAction={onAction} tiles={tiles} />,
+        <SubfolderList
+          folders={[invoices]}
+          contents={() => "2 items"}
+          onOpen={vi.fn()}
+          onAction={onAction}
+          tiles={tiles}
+        />,
       ),
     );
     expect(container.querySelector('li button[aria-label^="More actions for"]')).not.toBeNull();
   }
+});
+
+it("keeps a renamed file's type while search re-indexes it, and names a failure under the name", () => {
+  const typed = (id: string, status: string) =>
+    ({
+      ...item(id, null),
+      status,
+      facets: { docType: "Roadmap", docDate: null, parties: [] },
+    }) as unknown as DataRoomApiItem;
+  const rows = [typed("roadmap", "indexing"), typed("scan", "failed")].map((i) => ({
+    item: i,
+    snippets: [],
+  }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.textContent).toContain("Roadmap");
+  expect(container.textContent).not.toContain("Reading");
+  // The phone-only line under the name, for where the Type column is hidden.
+  expect(names()[1]).toBe("scan.pdfFailed");
 });

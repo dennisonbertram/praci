@@ -1,5 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
+import type { DataRoomApiItem } from "@rakazo/contracts";
 import {
   Button,
   DropdownMenu,
@@ -19,6 +20,7 @@ import {
 import { ArrowDown, ArrowUp, ChevronDown, Folder, Search, X } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import type { FolderNode } from "./folders";
+import { typeLabel } from "./format";
 import type { Filters, Sort, SortField } from "./use-data-room-list";
 import { naturalSort } from "./use-data-room-list";
 
@@ -176,7 +178,11 @@ function PickFilter({
           {value ? `${label}: ${shown}` : label}
           {value ? null : <ChevronDown aria-hidden="true" />}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="max-h-72 min-w-40">
+        {/* As wide as its longest value (within the screen), so names do not wrap. */}
+        <DropdownMenuContent
+          align="start"
+          className="max-h-72 w-max min-w-40 max-w-[min(24rem,calc(100vw-2rem))]"
+        >
           <DropdownMenuRadioGroup
             value={value ?? ""}
             onValueChange={(next) => onChange(String(next))}
@@ -202,6 +208,30 @@ function PickFilter({
       ) : null}
     </span>
   );
+}
+
+export type FacetOptions = {
+  types: string[];
+  parties: string[];
+  sources: string[];
+  hasDates: boolean;
+};
+
+/**
+ * The values the filters offer: those the listed items have. Sources come only from the items
+ * (the server has no list of them), so a source with no files is never offered; they are in label
+ * order.
+ */
+export function facetOptions(items: DataRoomApiItem[]): FacetOptions {
+  const uniq = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
+  return {
+    types: uniq(items.flatMap((item) => item.facets.docType ?? [])),
+    parties: uniq(items.flatMap((item) => item.facets.parties)),
+    sources: [...new Set(items.map((item) => item.source))].sort((a, b) =>
+      sourceLabel(a).localeCompare(sourceLabel(b)),
+    ),
+    hasDates: items.some((item) => item.facets.docDate),
+  };
 }
 
 const withValue = (values: string[], value: string | undefined) =>
@@ -260,7 +290,9 @@ export function FilterBar({
   const direction = sort?.direction ?? "desc";
   const openFolder = folders.find(({ folder }) => folder.id === folderId);
   return (
-    <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2.5 md:px-5">
+    // Every control sits in a 32px-tall slot and the rows align to the top, so when the filters
+    // wrap, the search box and Sort stay on the first line instead of centring between two.
+    <div className="flex flex-wrap items-start gap-1.5 px-3 pb-2.5 md:px-5">
       <InputGroup className="me-1.5 w-full min-w-40 @min-[560px]/bd:max-w-80 @min-[560px]/bd:flex-1">
         <InputGroupAddon>
           <Search aria-hidden="true" />
@@ -294,81 +326,86 @@ export function FilterBar({
           </InputGroupAddon>
         ) : null}
       </InputGroup>
-      {/* On a phone: search on its own line, then one scrolling row of filters and Sort. */}
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 *:shrink-0 @max-[640px]/bd:basis-full @max-[640px]/bd:flex-nowrap @max-[640px]/bd:overflow-x-auto">
-        <div className="@min-[800px]/bd:hidden">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              data-testid="data-room-folder-picker"
-              render={<Button variant="outline" size="sm" className="max-w-36 rounded-full" />}
-              title={openFolder?.path}
-            >
-              <Folder aria-hidden="true" />
-              {/* The folder's own name, so the toolbar stays one row; the menu shows the full path. */}
-              <span className="truncate">{openFolder?.folder.name ?? t`All items`}</span>
-              <ChevronDown aria-hidden="true" />
-            </DropdownMenuTrigger>
-            {/* As wide as its longest path (not the button), so no path wraps. */}
-            <DropdownMenuContent
-              align="start"
-              className="w-max min-w-40 max-w-[calc(100vw-2rem)] whitespace-nowrap"
-            >
-              <DropdownMenuRadioGroup
-                value={folderId ?? ""}
-                onValueChange={(next) => onFolder(String(next) || undefined)}
+      {/* On a phone: search on its own line, then one scrolling row of filters with Sort pinned
+          at its end, so Sort never scrolls out of sight. */}
+      {/* Too little room beside the search box (36rem) moves filters and Sort to their own row,
+          rather than stacking the filters one per line. */}
+      <div className="flex min-w-0 flex-1 items-start gap-1.5 @max-[640px]/bd:basis-full @min-[640px]/bd:min-w-xl">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 *:h-8 *:shrink-0 @max-[640px]/bd:flex-nowrap @max-[640px]/bd:overflow-x-auto @max-[640px]/bd:mask-r-from-85%">
+          <div className="flex items-center @min-[800px]/bd:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                data-testid="data-room-folder-picker"
+                render={<Button variant="outline" size="sm" className="max-w-36 rounded-full" />}
+                title={openFolder?.path}
               >
-                <DropdownMenuRadioItem value="" closeOnClick>
-                  <Trans>All items</Trans>
-                </DropdownMenuRadioItem>
-                {folders.map(({ folder, path }) => (
-                  <DropdownMenuRadioItem key={folder.id} value={folder.id} closeOnClick>
-                    {path}
+                <Folder aria-hidden="true" />
+                {/* The folder's own name, so the toolbar stays one row; the menu shows the full path. */}
+                <span className="truncate">{openFolder?.folder.name ?? t`All items`}</span>
+                <ChevronDown aria-hidden="true" />
+              </DropdownMenuTrigger>
+              {/* As wide as its longest path (not the button), so no path wraps. */}
+              <DropdownMenuContent
+                align="start"
+                className="w-max min-w-40 max-w-[calc(100vw-2rem)] whitespace-nowrap"
+              >
+                <DropdownMenuRadioGroup
+                  value={folderId ?? ""}
+                  onValueChange={(next) => onFolder(String(next) || undefined)}
+                >
+                  <DropdownMenuRadioItem value="" closeOnClick>
+                    <Trans>All items</Trans>
                   </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  {folders.map(({ folder, path }) => (
+                    <DropdownMenuRadioItem key={folder.id} value={folder.id} closeOnClick>
+                      {path}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          {types.length || filters.docType ? (
+            <PickFilter
+              label={t`Type`}
+              value={filters.docType}
+              options={withValue(types, filters.docType).map((type) => [type, typeLabel(type)])}
+              onChange={(docType) => onFilters({ ...filters, docType })}
+            />
+          ) : null}
+          {parties.length || filters.party ? (
+            <PickFilter
+              label={t`Party`}
+              value={filters.party}
+              options={withValue(parties, filters.party).map((party) => [party, party])}
+              onChange={(party) => onFilters({ ...filters, party })}
+            />
+          ) : null}
+          {hasDates || filters.docDateFrom || filters.docDateTo ? (
+            <DateFilter
+              filters={filters}
+              onChange={(from, to) =>
+                onFilters({
+                  ...filters,
+                  docDateFrom: from && `${from}T00:00:00.000Z`,
+                  docDateTo: to && `${to}T23:59:59.999Z`,
+                })
+              }
+            />
+          ) : null}
+          {sources.length > 1 || filters.source ? (
+            <PickFilter
+              label={t`Source`}
+              value={filters.source}
+              options={withValue(sources, filters.source).map((source) => [
+                source,
+                sourceLabel(source),
+              ])}
+              onChange={(source) => onFilters({ ...filters, source })}
+            />
+          ) : null}
         </div>
-        {types.length || filters.docType ? (
-          <PickFilter
-            label={t`Type`}
-            value={filters.docType}
-            options={withValue(types, filters.docType).map((type) => [type, type])}
-            onChange={(docType) => onFilters({ ...filters, docType })}
-          />
-        ) : null}
-        {parties.length || filters.party ? (
-          <PickFilter
-            label={t`Party`}
-            value={filters.party}
-            options={withValue(parties, filters.party).map((party) => [party, party])}
-            onChange={(party) => onFilters({ ...filters, party })}
-          />
-        ) : null}
-        {hasDates || filters.docDateFrom || filters.docDateTo ? (
-          <DateFilter
-            filters={filters}
-            onChange={(from, to) =>
-              onFilters({
-                ...filters,
-                docDateFrom: from && `${from}T00:00:00.000Z`,
-                docDateTo: to && `${to}T23:59:59.999Z`,
-              })
-            }
-          />
-        ) : null}
-        {sources.length > 1 || filters.source ? (
-          <PickFilter
-            label={t`Source`}
-            value={filters.source}
-            options={withValue(sources, filters.source).map((source) => [
-              source,
-              sourceLabel(source),
-            ])}
-            onChange={(source) => onFilters({ ...filters, source })}
-          />
-        ) : null}
-        <div className="ms-auto flex items-center gap-0.5">
+        <div className="flex h-8 shrink-0 items-center gap-0.5">
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="outline" size="sm" className="rounded-full" />}

@@ -74,7 +74,7 @@ it("moves an item into a folder it creates on the spot", async () => {
   if (!name) throw new Error("no folder name field");
   await act(async () => setValue(name, "Legal"));
   await act(async () => name.form?.requestSubmit());
-  expect(rpc.folderCreate).toHaveBeenCalledExactlyOnceWith({ name: "Legal" });
+  expect(rpc.folderCreate).toHaveBeenCalledExactlyOnceWith({ name: "Legal", parentId: null });
   expect(rpc.itemMove).toHaveBeenCalledExactlyOnceWith({ id: "i1", folderId: "f-new" });
   expect(onDone).toHaveBeenCalledWith("move", { ...item, folderId: "f-new" });
 });
@@ -169,4 +169,47 @@ it("says to empty a folder first when the server refuses to delete it", async ()
   expect(rpc.folderDelete).toHaveBeenCalledExactlyOnceWith({ id: "f1" });
   expect(document.body.textContent).toContain("Move or delete what is in this folder first.");
   expect(onClose).not.toHaveBeenCalled();
+});
+
+it("creates the new folder inside the item's current folder unless another is chosen", async () => {
+  const folders = folderNodes([
+    { id: "f-product", name: "Product", parentId: null, createdAt: "" },
+    { id: "f-legal", name: "Legal", parentId: null, createdAt: "" },
+  ]);
+  rpc.folderCreate.mockResolvedValue({ id: "f-new", name: "Roadmaps", parentId: "f-product" });
+  rpc.itemMove.mockResolvedValue({ ...item, folderId: "f-new" });
+  await act(async () =>
+    root.render(
+      <ItemDialog
+        action="move"
+        item={{ ...item, folderId: "f-product" }}
+        folders={folders}
+        onClose={vi.fn()}
+        onDone={vi.fn()}
+      />,
+    ),
+  );
+  const select = document.querySelector<HTMLSelectElement>('select[name="folder"]');
+  if (!select) throw new Error("no folder select");
+  await act(async () => setValue(select, "__new__"));
+  const parent = document.querySelector<HTMLSelectElement>('select[name="parent"]');
+  expect(parent?.value).toBe("f-product");
+  const name = document.querySelector<HTMLInputElement>('input[name="folderName"]');
+  if (!name) throw new Error("no folder name field");
+  await act(async () => setValue(name, "Roadmaps"));
+  await act(async () => name.form?.requestSubmit());
+  expect(rpc.folderCreate).toHaveBeenCalledExactlyOnceWith({
+    name: "Roadmaps",
+    parentId: "f-product",
+  });
+});
+
+it("selects the name without its extension when renaming", async () => {
+  await act(async () =>
+    root.render(
+      <ItemDialog action="rename" item={item} folders={[]} onClose={vi.fn()} onDone={vi.fn()} />,
+    ),
+  );
+  const name = document.querySelector<HTMLInputElement>('input[name="name"]');
+  expect([name?.selectionStart, name?.selectionEnd]).toEqual([0, "Lease".length]);
 });

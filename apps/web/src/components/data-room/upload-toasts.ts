@@ -3,7 +3,7 @@ import { DATA_ROOM_CHANGED, DataRoomUploadError, uploadToDataRoom } from "../../
 import { rpc, selectedSpaceId } from "../../lib/rpc";
 import { folderNodes } from "./folders";
 
-export type UploadFailure = "too-large" | "invalid" | "failed";
+export type UploadFailure = "too-large" | "invalid" | "folder-gone" | "failed";
 export type UploadToast = {
   id: number;
   name: string;
@@ -14,8 +14,12 @@ export type UploadToast = {
      * name when it differs from the upload's, and the folder path it is in, if any.
      */
     | { kind: "uploaded"; itemId: string; existing?: { name?: string; folder?: string } }
-    | { kind: "error"; reason: UploadFailure }
-    | { kind: "deleted" };
+    /** `toTop` uploads the same file to the top level instead (the folder was deleted). */
+    | { kind: "error"; reason: UploadFailure; toTop?: () => void }
+    | { kind: "deleted" }
+    | { kind: "renamed" }
+    /** A one-line message; the toast's `name` is the text. */
+    | { kind: "notice" };
 };
 
 const DONE_TOAST_MS = 10_000;
@@ -88,7 +92,14 @@ async function uploadOne(file: File, folderId: string | undefined) {
   toasts = [...toasts, { id, name: file.name, state: { kind: "uploading", fraction: 0 } }];
   notify();
   const fail = (reason: UploadFailure) => {
-    update(id, { kind: "error", reason });
+    const toTop =
+      reason === "folder-gone"
+        ? () => {
+            dismissUploadToast(id);
+            void uploadOne(file, undefined);
+          }
+        : undefined;
+    update(id, { kind: "error", reason, ...(toTop ? { toTop } : {}) });
     dismissLater(id, FAILED_TOAST_MS);
   };
   // The server enforces the limit; this only avoids sending a file that will be refused.
@@ -122,12 +133,14 @@ async function uploadOne(file: File, folderId: string | undefined) {
     dismissLater(id, DONE_TOAST_MS);
   } catch (error) {
     if (!current()) return;
-    fail(
+    const reason =
       error instanceof DataRoomUploadError &&
-        (error.message === "too-large" || error.message === "invalid")
-        ? error.message
-        : "failed",
-    );
+      ["too-large", "invalid", "folder-gone"].includes(error.message)
+        ? (error.message as UploadFailure)
+        : "failed";
+    fail(reason);
+    // The open page still shows the deleted folder: reload, so it falls back to All items.
+    if (reason === "folder-gone") window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
   }
 }
 
@@ -144,11 +157,17 @@ export function uploadFilesToDataRoom(files: Iterable<File>) {
   for (const file of files) void uploadOne(file, folderId);
 }
 
-/** A toast saying the item was deleted; deleting has no other visible trace. */
-export function showDeletedToast(name: string) {
+function showShortToast(name: string, state: UploadToast["state"]) {
   sync();
   const id = nextId++;
-  toasts = [...toasts, { id, name, state: { kind: "deleted" } }];
+  toasts = [...toasts, { id, name, state }];
   notify();
   dismissLater(id, DELETED_TOAST_MS);
 }
+
+/** A toast saying the item was deleted; deleting has no other visible trace. */
+export const showDeletedToast = (name: string) => showShortToast(name, { kind: "deleted" });
+/** A toast confirming a rename, under the new name. */
+export const showRenamedToast = (name: string) => showShortToast(name, { kind: "renamed" });
+/** A short message, such as a link to a folder that no longer exists. */
+export const showNoticeToast = (text: string) => showShortToast(text, { kind: "notice" });

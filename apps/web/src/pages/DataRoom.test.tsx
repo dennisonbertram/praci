@@ -14,7 +14,11 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
@@ -26,6 +30,7 @@ const rpcMock = vi.hoisted(() => ({
   item: vi.fn(),
   consent: vi.fn(),
   itemDelete: vi.fn(),
+  itemRetry: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -36,6 +41,7 @@ vi.mock("../lib/rpc", () => ({
       item: rpcMock.item,
       consent: rpcMock.consent,
       itemDelete: rpcMock.itemDelete,
+      itemRetry: rpcMock.itemRetry,
     },
   },
   withSpaceHeaders: () => new Headers(),
@@ -43,6 +49,7 @@ vi.mock("../lib/rpc", () => ({
 }));
 
 import { Snippet } from "../components/data-room/ItemRows";
+import { getUploadToasts } from "../components/data-room/upload-toasts";
 import { DataRoomPage } from "./DataRoom";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -638,8 +645,8 @@ it("hides the Type, Party and Date filters and columns while no item has them", 
   expect(labels()).not.toContain("Filter by Type");
   expect(labels()).not.toContain("Filter by Party");
   expect(labels()).not.toContain("Filter by Document date");
-  // Sources cannot be listed from the server, so the filter stays even when one page is all uploads.
-  expect(labels()).toContain("Filter by Source");
+  // One source filters nothing, and a source with no files would only lead to "No results".
+  expect(labels()).not.toContain("Filter by Source");
   expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toBe("Name");
 
   rpcMock.list.mockResolvedValue({
@@ -795,7 +802,13 @@ it("remembers the view and sort across visits", async () => {
 it("lists an open folder's sub-folders above its files, and opens one on click", async () => {
   rpcMock.folders.mockResolvedValue([
     { id: "f1", name: "Finance", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
-    { id: "f2", name: "Invoices", parentId: "f1", createdAt: "2026-10-01T00:00:00.000Z" },
+    {
+      id: "f2",
+      name: "Invoices",
+      parentId: "f1",
+      createdAt: "2026-10-01T00:00:00.000Z",
+      itemCount: 2,
+    },
   ]);
   await renderPage();
   rpcMock.list.mockResolvedValue({ items: [], nextCursor: null });
@@ -808,7 +821,8 @@ it("lists an open folder's sub-folders above its files, and opens one on click",
   expect(container.textContent).not.toContain("No results");
   expect(container.textContent).not.toContain("This folder is empty");
   const sub = container.querySelector<HTMLElement>('[aria-label="Sub-folders"] button');
-  expect(sub?.textContent).toBe("Invoices");
+  // The row says what is inside, so Finance never looks emptier than it is.
+  expect(sub?.textContent).toBe("Invoices2 items");
   await act(async () => sub?.click());
   await settle();
   expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f2" }));
@@ -846,4 +860,71 @@ it("shows the next item after deleting the previewed one, so the preview stays o
   await settle();
   expect(rpcMock.itemDelete).toHaveBeenCalledWith({ id: "id-a.txt" });
   expect(heading()?.textContent).toBe("b.txt");
+});
+
+const typeSearch = async (value: string) => {
+  const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
+  if (!input) throw new Error("no search box");
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(400);
+  });
+};
+
+it("says a search covers only the open folder, and Search all items looks everywhere", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Fundraising", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage("/?folder=f1");
+  await settle();
+  await typeSearch("lease");
+  expect(rpcMock.search.mock.lastCall?.[0]).toMatchObject({ filters: { folderId: "f1" } });
+  expect(container.textContent).toContain("Searching in Fundraising");
+  const all = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Search all items",
+  );
+  await act(async () => all?.click());
+  await settle();
+  expect(rpcMock.search.mock.lastCall?.[0]).toMatchObject({ query: "lease", filters: {} });
+  expect(container.textContent).not.toContain("Searching in");
+});
+
+it("says a linked document could not be found and drops it from the URL", async () => {
+  rpcMock.item.mockRejectedValue(new ORPCError("NOT_FOUND"));
+  let search = "";
+  function Location() {
+    search = useLocation().search;
+    return null;
+  }
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/?item=nonexistent"]}>
+        <DataRoomPage />
+        <Location />
+      </MemoryRouter>,
+    );
+  });
+  await settle();
+  expect(search).toBe("");
+  expect(getUploadToasts().map((toast) => toast.name)).toContain(
+    "That document could not be found",
+  );
+});
+
+it("reads a failed file again from its preview", async () => {
+  const junk = { ...item("junk.pdf"), status: "failed", error: "Not a PDF" };
+  rpcMock.list.mockResolvedValue({ items: [junk], nextCursor: null });
+  rpcMock.itemRetry.mockResolvedValue({ ...junk, status: "pending", error: null });
+  await renderPage();
+  await clickRow(0);
+  const again = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Try again",
+  );
+  await act(async () => again?.click());
+  await settle();
+  expect(rpcMock.itemRetry).toHaveBeenCalledWith({ id: junk.id });
+  expect(rpcMock.list.mock.calls.length).toBeGreaterThan(1);
 });

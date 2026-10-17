@@ -59,10 +59,8 @@ it("names where documents go and grants exactly the shown key and version on All
   const onAllowed = vi.fn();
   await render(onAllowed);
   expect(container.textContent).toContain("Example Model");
-  // Text search and moving files work before consent: only automatic tagging and filing wait.
-  expect(container.textContent).toContain(
-    "you can search by name and text and move files into folders yourself",
-  );
+  // Never suggests the library is untagged: tags already there stay.
+  expect(container.textContent).toContain("Files that already have tags keep them.");
   await act(async () => container.querySelector("button")?.click());
   expect(rpc.consentGrant).toHaveBeenCalledExactlyOnceWith({
     key: "data-room:abc",
@@ -97,4 +95,15 @@ it("shows nothing once allowed", async () => {
   rpc.consent.mockResolvedValue(status({ allowed: true }));
   await render();
   expect(container.textContent).toBe("");
+});
+
+it("hides for this visit on Not now, without allowing", async () => {
+  rpc.consent.mockResolvedValue(status());
+  const onAllowed = vi.fn();
+  await render(onAllowed);
+  const notNow = [...container.querySelectorAll("button")].find((b) => b.textContent === "Not now");
+  await act(async () => notNow?.click());
+  expect(container.textContent).toBe("");
+  expect(rpc.consentGrant).not.toHaveBeenCalled();
+  expect(onAllowed).not.toHaveBeenCalled();
 });

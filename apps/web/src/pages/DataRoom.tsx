@@ -1,15 +1,29 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
-import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  Skeleton,
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@rakazo/ui-web";
 import { LayoutGrid, List, Plus, Upload } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
-import { FilterBar, sourceLabels } from "../components/data-room/FilterBar";
+import { FilterBar, facetOptions } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
-import { folderNodes } from "../components/data-room/folders";
-import { type DataRoomEntry, ItemDialog, isFolder } from "../components/data-room/ItemDialogs";
+import { folderContents, folderNodes } from "../components/data-room/folders";
+import {
+  type DataRoomEntry,
+  ItemDialog,
+  isFolder,
+  NewFolderDialog,
+} from "../components/data-room/ItemDialogs";
 import type { ItemAction } from "../components/data-room/ItemMenu";
 import {
   GridView,
@@ -22,6 +36,8 @@ import { Preview } from "../components/data-room/Preview";
 import {
   setOpenDataRoomFolder,
   showDeletedToast,
+  showNoticeToast,
+  showRenamedToast,
   uploadFilesToDataRoom,
 } from "../components/data-room/upload-toasts";
 import {
@@ -32,6 +48,7 @@ import {
 import { PageEmptyState } from "../components/PageEmptyState";
 import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
+import { errorText } from "../lib/user-error";
 
 const SEARCH_DEBOUNCE_MS = 300;
 /** Below this width of the page body the preview covers the list instead of sitting beside it. */
@@ -46,7 +63,21 @@ function useDebounced<T>(value: T, ms: number) {
   return debounced;
 }
 
-function FileInputButton({ children, ...props }: React.ComponentProps<typeof Button>) {
+/** A hover and focus label for an icon-only control. */
+function Tip({ label, children }: { label: string; children: ReactElement }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={children} />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function FileInputButton({
+  children,
+  tip,
+  ...props
+}: React.ComponentProps<typeof Button> & { tip?: string }) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -61,15 +92,26 @@ function FileInputButton({ children, ...props }: React.ComponentProps<typeof But
           event.target.value = "";
         }}
       />
-      <Button {...props} onClick={() => input.current?.click()}>
-        {children}
-      </Button>
+      {tip ? (
+        <Tip label={tip}>
+          <Button {...props} onClick={() => input.current?.click()}>
+            {children}
+          </Button>
+        </Tip>
+      ) : (
+        <Button {...props} onClick={() => input.current?.click()}>
+          {children}
+        </Button>
+      )}
     </>
   );
 }
 
-/** The Data room: folders, a list or grid of filed items, and a preview of one of them. */
-export function DataRoomPage() {
+/**
+ * The Data room: folders, a list or grid of filed items, and a preview of one of them. `spaceName`
+ * names the company when there is more than one, so its documents are never mistaken for another's.
+ */
+export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
   const [params, setParams] = useSearchParams();
   const linkedItem = params.get("item");
   const urlFolder = params.get("folder") ?? undefined;
@@ -119,14 +161,19 @@ export function DataRoomPage() {
   const list = useDataRoomList({ query, filters, sort });
 
   const [folders, setFolders] = useState<DataRoomApiFolder[]>([]);
+  const foldersLoaded = useRef(false);
   const reloadFolders = useCallback(() => {
     rpc.dataRoom
       .folders()
       .then((next) => {
         setFolders(next);
+        const first = !foldersLoaded.current;
+        foldersLoaded.current = true;
         // A folder that no longer exists (deleted, or a stale link) falls back to All items.
         const open = urlFolderRef.current;
         if (open && !next.some((folder) => folder.id === open)) {
+          // Only a link says so: a folder deleted while the page was open has its own message.
+          if (first) showNoticeToast(t`That folder no longer exists`);
           setParamsRef.current(
             (prev) => {
               const params = new URLSearchParams(prev);
@@ -140,6 +187,15 @@ export function DataRoomPage() {
       .catch(() => undefined);
   }, []);
   useEffect(reloadFolders, [reloadFolders]);
+  // Another tab may have added, renamed or deleted folders: catch up when this one is used again.
+  useEffect(() => {
+    window.addEventListener("focus", reloadFolders);
+    window.addEventListener(DATA_ROOM_CHANGED, reloadFolders);
+    return () => {
+      window.removeEventListener("focus", reloadFolders);
+      window.removeEventListener(DATA_ROOM_CHANGED, reloadFolders);
+    };
+  }, [reloadFolders]);
   // Files added while a folder is open go into it, wherever they are dropped.
   useEffect(() => {
     setOpenDataRoomFolder(filters.folderId);
@@ -206,7 +262,18 @@ export function DataRoomPage() {
         setPreviewOpen(true);
         setDialogOpen(true);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!current) return;
+        showNoticeToast(t`That document could not be found`);
+        setParamsRef.current(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("item");
+            return next;
+          },
+          { replace: true },
+        );
+      });
     return () => {
       current = false;
     };
@@ -267,12 +334,22 @@ export function DataRoomPage() {
         setDialogOpen(narrow);
       }
     },
-    onAction: (kind, item) => setAction({ kind, item }),
+    onAction: (kind, item) => (kind === "retry" ? retry(item) : setAction({ kind, item })),
     folderPath,
     openFolderId: filters.folderId,
   };
 
   const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomEntry } | null>(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+
+  /** Reads a failed file again; the list shows it as Reading until it settles. */
+  function retry(item: DataRoomApiItem) {
+    rpc.dataRoom
+      .itemRetry({ id: item.id })
+      .then((updated) => setPinned((current) => (current?.id === updated.id ? updated : current)))
+      .catch((cause) => showNoticeToast(errorText(cause)))
+      .finally(list.reload);
+  }
 
   function closePreview() {
     const id = shown?.id;
@@ -298,10 +375,15 @@ export function DataRoomPage() {
     !searching &&
     !hasFilters;
   const rows = list.rows;
-  const uniq = (values: string[]) => [...new Set(values)].sort();
+  // An empty result keeps the filters it came from on screen, so changing one is not a dead end.
+  const shownOptions = useMemo(() => facetOptions(rows.map(({ item }) => item)), [rows]);
+  const lastOptions = useRef(shownOptions);
+  if (rows.length) lastOptions.current = shownOptions;
+  const options = rows.length ? shownOptions : lastOptions.current;
   const subfolderList = (
     <SubfolderList
       tiles={view === "grid"}
+      contents={(folder) => folderContents(folder, folders)}
       folders={subfolders}
       onOpen={(folderId) => setFilters({ ...filters, folderId })}
       onAction={(kind, folder) => setAction({ kind, item: folder })}
@@ -310,35 +392,50 @@ export function DataRoomPage() {
   /** A filter other than the folder is set. */
   const filtered = Object.entries(filters).some(([key, value]) => key !== "folderId" && value);
   const clearFilters = () => setFilters(filters.folderId ? { folderId: filters.folderId } : {});
+  const openFolderPath = filters.folderId ? folderPath(filters.folderId) : "";
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center gap-2 px-4 pt-2 pb-3 md:px-7 md:pt-5">
-        <h1 className="me-auto text-lg font-semibold">
-          <Trans>Data room</Trans>
-        </h1>
+        <div className="me-auto flex min-w-0 items-baseline gap-2">
+          <h1 className="shrink-0 text-lg font-semibold">
+            <Trans>Data room</Trans>
+          </h1>
+          {spaceName ? (
+            <span className="min-w-0 truncate text-xs text-muted-foreground">{spaceName}</span>
+          ) : null}
+        </div>
         {empty ? null : (
           <>
             <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
               <legend className="sr-only">{t`View`}</legend>
-              <Toggle
-                size="sm"
-                pressed={view === "list"}
-                onPressedChange={() => setView("list")}
-                aria-label={t`List view`}
-              >
-                <List aria-hidden="true" />
-              </Toggle>
-              <Toggle
-                size="sm"
-                pressed={view === "grid"}
-                onPressedChange={() => setView("grid")}
-                aria-label={t`Grid view`}
-              >
-                <LayoutGrid aria-hidden="true" />
-              </Toggle>
+              <Tip label={t`List view`}>
+                <Toggle
+                  size="sm"
+                  pressed={view === "list"}
+                  onPressedChange={() => setView("list")}
+                  aria-label={t`List view`}
+                >
+                  <List aria-hidden="true" />
+                </Toggle>
+              </Tip>
+              <Tip label={t`Grid view`}>
+                <Toggle
+                  size="sm"
+                  pressed={view === "grid"}
+                  onPressedChange={() => setView("grid")}
+                  aria-label={t`Grid view`}
+                >
+                  <LayoutGrid aria-hidden="true" />
+                </Toggle>
+              </Tip>
             </fieldset>
-            <FileInputButton variant="outline" size="icon" aria-label={t`Add files`}>
+            <FileInputButton
+              variant="outline"
+              size="icon"
+              aria-label={t`Add files`}
+              tip={t`Add files`}
+            >
               <Plus aria-hidden="true" />
             </FileInputButton>
           </>
@@ -372,11 +469,10 @@ export function DataRoomPage() {
             onFilters={(next) => setFilters(next)}
             sort={sort}
             onSort={(next) => (searching ? setSearchSort(next) : next && setListSort(next))}
-            types={uniq(rows.flatMap(({ item }) => item.facets.docType ?? []))}
-            parties={uniq(rows.flatMap(({ item }) => item.facets.parties))}
-            // The server has no list of sources, so offer every known one beside those on screen.
-            sources={uniq([...Object.keys(sourceLabels()), ...rows.map(({ item }) => item.source)])}
-            hasDates={rows.some(({ item }) => item.facets.docDate)}
+            types={options.types}
+            parties={options.parties}
+            sources={options.sources}
+            hasDates={options.hasDates}
             folders={nodes}
             folderId={filters.folderId}
             onFolder={(folderId) => setFilters({ ...filters, folderId })}
@@ -387,12 +483,30 @@ export function DataRoomPage() {
                 nodes={nodes}
                 selected={filters.folderId}
                 onSelect={(folderId) => setFilters({ ...filters, folderId })}
+                onAction={(kind, folder) => setAction({ kind, item: folder })}
+                onNewFolder={() => setCreatingFolder(true)}
               />
             </div>
             <div
               data-testid="data-room-list"
               className="@container/list rk-scroll min-w-0 flex-1 overflow-y-auto"
             >
+              {searching && openFolderPath ? (
+                // A search inside a folder says so, with a way to look everywhere.
+                <div className="flex flex-wrap items-center gap-x-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+                  <span className="min-w-0 truncate">
+                    <Trans>Searching in {openFolderPath}</Trans>
+                  </span>
+                  <Button
+                    variant="link"
+                    size="xs"
+                    className="h-auto p-0"
+                    onClick={() => setFilters({ ...filters, folderId: undefined })}
+                  >
+                    <Trans>Search all items</Trans>
+                  </Button>
+                </div>
+              ) : null}
               {list.error ? (
                 <div className="flex items-center gap-3 p-4 text-sm text-destructive">
                   {list.error}
@@ -481,6 +595,14 @@ export function DataRoomPage() {
           </DialogContent>
         </Dialog>
       ) : null}
+      {creatingFolder ? (
+        <NewFolderDialog
+          folders={nodes}
+          parentId={filters.folderId}
+          onClose={() => setCreatingFolder(false)}
+          onDone={reloadFolders}
+        />
+      ) : null}
       {action ? (
         <ItemDialog
           action={action.kind}
@@ -496,9 +618,14 @@ export function DataRoomPage() {
                 setPinned(narrow ? null : ((rows[at + 1] ?? rows[at - 1])?.item ?? null));
               }
               showDeletedToast(action.item.name);
+              // The open folder is gone: show the one it was in.
+              if (isFolder(action.item) && action.item.id === filters.folderId) {
+                setFilters({ ...filters, folderId: action.item.parentId ?? undefined }, true);
+              }
             } else if (updated && !isFolder(updated) && pinned?.id === updated.id) {
               setPinned(updated);
             }
+            if (kind === "rename" && updated) showRenamedToast(updated.name);
             list.reload();
             reloadFolders();
           }}

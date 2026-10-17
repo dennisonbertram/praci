@@ -3,7 +3,7 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
-import { Download, FileText, Trash2, X } from "lucide-react";
+import { Download, FileText, RotateCw, Trash2, X } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { canPreviewImage, dataRoomImageUrl, saveDataRoomItem } from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
@@ -14,7 +14,7 @@ import {
 } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { sourceLabel } from "./FilterBar";
-import { dateText, sizeText, statusLabel } from "./format";
+import { dateText, isSettled, sizeText, statusLabel, typeLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
 
 function amountText(item: DataRoomApiItem) {
@@ -117,7 +117,7 @@ export function Preview({
             <Trans>Preview</Trans>
           </h2>
         )}
-        <ItemMenu item={item} onAction={onAction} />
+        <ItemMenu item={item} onAction={onAction} canRetry={item.status === "failed"} />
         {inDialog ? null : (
           <Button variant="ghost" size="icon-sm" aria-label={t`Close preview`} onClick={onClose}>
             <X aria-hidden="true" />
@@ -139,16 +139,16 @@ export function Preview({
           </p>
           {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
         </div>
-      ) : item.status !== "ready" ? (
+      ) : !isSettled(item.status) ? (
         <p className="text-sm text-muted-foreground">{statusLabel(item.status)}</p>
       ) : facets.summary ? (
         <p className="text-sm">{maskCurrencyWhenHidden(facets.summary)}</p>
       ) : null}
-      {item.status === "ready" && item.error ? (
+      {isSettled(item.status) && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
       ) : null}
       <dl className="grid grid-cols-[72px_1fr] gap-x-2 gap-y-1.5 text-sm">
-        {facets.docType ? <Field label={t`Type`}>{facets.docType}</Field> : null}
+        {facets.docType ? <Field label={t`Type`}>{typeLabel(facets.docType)}</Field> : null}
         {facets.docDate ? <Field label={t`Date`}>{dateText(facets.docDate)}</Field> : null}
         {facets.parties.length > 0 ? (
           <Field label={t`Parties`}>
@@ -169,18 +169,28 @@ export function Preview({
         <Field label={t`Source`}>{sourceLabel(item.source)}</Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
       </dl>
-      {/* The same full-width actions for every item; a file that can't be read leads with Delete. */}
+      {/* The same full-width actions for every item; a file that can't be read leads with Try again. */}
       <div className="flex flex-col gap-1.5">
         {item.status === "failed" ? (
-          <Button variant="destructive" onClick={() => onAction("delete", item)}>
-            <Trash2 aria-hidden="true" />
-            <Trans>Delete</Trans>
+          <Button onClick={() => onAction("retry", item)}>
+            <RotateCw aria-hidden="true" />
+            <Trans>Try again</Trans>
           </Button>
         ) : null}
         <Button variant="outline" onClick={download}>
           <Download aria-hidden="true" />
           <Trans>Download</Trans>
         </Button>
+        {item.status === "failed" ? (
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => onAction("delete", item)}
+          >
+            <Trash2 aria-hidden="true" />
+            <Trans>Delete</Trans>
+          </Button>
+        ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </div>
     </aside>

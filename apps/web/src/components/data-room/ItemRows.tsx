@@ -7,7 +7,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { splitSnippet } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { sourceLabel } from "./FilterBar";
-import { dateText, statusLabel } from "./format";
+import { dateText, isSettled, statusLabel, typeLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
 import type { Row } from "./use-data-room-list";
 
@@ -65,7 +65,7 @@ function Marker({ item }: { item: DataRoomApiItem }) {
       <Icon role="img" aria-label={t`Failed`} className="size-3.5 shrink-0 text-destructive" />
     );
   }
-  if (item.status !== "ready") {
+  if (!isSettled(item.status)) {
     return (
       <Spinner
         role="presentation"
@@ -96,7 +96,9 @@ const ROW_GRID =
   "grid items-center gap-2.5 px-2 grid-cols-[minmax(200px,1fr)_28px] " +
   "@min-[400px]/list:grid-cols-[minmax(200px,1fr)_90px_28px] " +
   "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_28px] " +
-  "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_110px_28px]";
+  "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_110px_28px] " +
+  // With room to spare, Type and Parties widen first, so "Acme Servo Supply (Mock)" fits.
+  "@min-[820px]/list:grid-cols-[minmax(240px,1fr)_120px_100px_200px_28px]";
 /** Without facets the name takes every column but the menu. */
 const PLAIN_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_28px]";
 /** As PLAIN_GRID, with a fixed status column so "Failed" lines up whatever the name's length. */
@@ -174,7 +176,7 @@ function ItemRow({
           <span
             className={cn(
               "line-clamp-2 break-words",
-              item.status !== "ready" && item.status !== "failed" && "text-muted-foreground",
+              !isSettled(item.status) && item.status !== "failed" && "text-muted-foreground",
             )}
             title={item.name}
           >
@@ -182,6 +184,12 @@ function ItemRow({
           </span>
           {folder ? (
             <span className="truncate text-xs font-normal text-muted-foreground">{folder}</span>
+          ) : null}
+          {/* Where the Type column is hidden (a phone), "Failed" goes under the name instead. */}
+          {facets && item.status === "failed" ? (
+            <span className="text-xs font-normal text-destructive @min-[500px]/list:hidden">
+              {label}
+            </span>
           ) : null}
         </span>
       </span>
@@ -200,7 +208,7 @@ function ItemRow({
             className={cn(TYPE_CELL, CELL, item.status === "failed" && "text-destructive")}
             title={item.status === "failed" ? (item.error ?? undefined) : undefined}
           >
-            {item.status === "ready" ? item.facets.docType : label}
+            {label || typeLabel(item.facets.docType)}
           </span>
           <span className={cn(DATE_CELL, CELL)}>{dateText(item.facets.docDate)}</span>
           <span className={cn(PARTIES_CELL, CELL)} title={item.facets.parties.join(", ")}>
@@ -209,7 +217,7 @@ function ItemRow({
         </>
       ) : null}
       <span>
-        <ItemMenu item={item} onAction={o.onAction} />
+        <ItemMenu item={item} onAction={o.onAction} canRetry={item.status === "failed"} />
       </span>
     </li>
   );
@@ -230,11 +238,14 @@ export function SubfolderList({
   folders,
   onOpen,
   onAction,
+  contents,
   tiles = false,
 }: {
   folders: DataRoomApiFolder[];
   onOpen: (id: string) => void;
   onAction: (action: ItemAction, folder: DataRoomApiFolder) => void;
+  /** What a folder holds ("3 items"), so a parent never looks emptier than it is. */
+  contents: (folder: DataRoomApiFolder) => string;
   tiles?: boolean;
 }) {
   if (!folders.length) return null;
@@ -251,11 +262,11 @@ export function SubfolderList({
               <span className={ICON_AREA}>
                 <Folder aria-hidden="true" className="size-6 text-muted-foreground" />
               </span>
-              <span className="line-clamp-2 min-h-10 text-start break-words" title={folder.name}>
+              <span className="line-clamp-3 min-h-15 text-start break-words" title={folder.name}>
                 {folder.name}
               </span>
               <span className="min-h-4 text-start text-xs font-normal text-muted-foreground">
-                <Trans>Folder</Trans>
+                {contents(folder)}
               </span>
             </Button>
             <ItemMenu item={folder} onAction={onAction} className="absolute top-3 right-3" />
@@ -279,6 +290,9 @@ export function SubfolderList({
             <Folder aria-hidden="true" className="size-3.5 text-muted-foreground" />
             <span className="min-w-0 truncate" title={folder.name}>
               {folder.name}
+            </span>
+            <span className="ms-auto shrink-0 text-xs text-muted-foreground">
+              {contents(folder)}
             </span>
           </Button>
           <ItemMenu item={folder} onAction={onAction} />
@@ -321,9 +335,14 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
           <span className={ICON_AREA}>
             <Marker item={item} />
           </span>
-          <ItemMenu item={item} onAction={o.onAction} className="absolute top-3 right-3" />
-          {/* Two lines kept for every name, so one-line and two-line tiles are the same height. */}
-          <span className="line-clamp-2 min-h-10 font-medium break-words" title={item.name}>
+          <ItemMenu
+            item={item}
+            onAction={o.onAction}
+            canRetry={item.status === "failed"}
+            className="absolute top-3 right-3"
+          />
+          {/* Three lines kept for every name, so tiles are one height and long names still differ. */}
+          <span className="line-clamp-3 min-h-15 font-medium break-words" title={item.name}>
             {item.name}
           </span>
           {/* Always one line tall, so a "Failed" line never makes one tile taller than the rest. */}
@@ -333,9 +352,10 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
               item.status === "failed" && "text-destructive",
             )}
           >
-            {item.status === "ready"
-              ? [item.facets.docType, dateText(item.facets.docDate)].filter(Boolean).join(" · ")
-              : statusLabel(item.status)}
+            {statusLabel(item.status) ||
+              [typeLabel(item.facets.docType), dateText(item.facets.docDate)]
+                .filter(Boolean)
+                .join(" · ")}
           </span>
         </li>
       ))}
@@ -387,7 +407,7 @@ export function ResultsView({ rows, o }: { rows: Row[]; o: RowInteraction }): Re
             <span className="truncate text-xs text-muted-foreground">
               {[o.folderPath(item.folderId), sourceLabel(item.source)].filter(Boolean).join(" · ")}
             </span>
-            <ItemMenu item={item} onAction={o.onAction} />
+            <ItemMenu item={item} onAction={o.onAction} canRetry={item.status === "failed"} />
           </div>
           {snippets.map((snippet) => (
             <Snippet key={snippet} text={snippet} />

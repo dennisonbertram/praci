@@ -96,6 +96,8 @@ export function uploadToDataRoom(
     request.onload = () => {
       if (request.status === 413) return reject(new DataRoomUploadError("too-large"));
       if (request.status === 400) return reject(new DataRoomUploadError("invalid"));
+      // The only 404 is the folder: deleted since the page loaded it.
+      if (request.status === 404) return reject(new DataRoomUploadError("folder-gone"));
       if (request.status < 200 || request.status >= 300) {
         return reject(new DataRoomUploadError("failed"));
       }

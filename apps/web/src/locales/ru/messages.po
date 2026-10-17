@@ -262,6 +262,10 @@ msgstr ""
 msgid "{days}d ago"
 msgstr "{days} дн. назад"
 
+#: src/components/data-room/folders.ts
+msgid "{folders, plural, one {# folder} other {# folders}}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "{from} handed off to {to}"
 msgstr ""
@@ -280,6 +284,10 @@ msgstr "{hours} ч назад"
 
 #: src/pages/Shell.tsx
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
+msgstr ""
+
+#: src/components/data-room/folders.ts
+msgid "{items, plural, one {# item} other {# items}}"
 msgstr ""
 
 #: src/lib/relative-time.ts
@@ -2633,6 +2641,7 @@ msgstr ""
 msgid "Counting stablecoins"
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -3182,6 +3191,10 @@ msgstr "Требуется подтверждение электронной п�
 msgid "Embedding model"
 msgstr ""
 
+#: src/components/data-room/folders.ts
+msgid "Empty"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Ends {day}"
 msgstr ""
@@ -3488,7 +3501,6 @@ msgid "Flag unexpected actions"
 msgstr "Пометить неожиданные действия"
 
 #: src/components/data-room/ItemDialogs.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 msgid "Folder"
 msgstr ""
@@ -3805,6 +3817,10 @@ msgstr "Входы"
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Insert link"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Inside"
 msgstr ""
 
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
@@ -4592,6 +4608,11 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "New Bot"
+msgstr ""
+
+#: src/components/data-room/FolderTree.tsx
+#: src/components/data-room/ItemDialogs.tsx
+msgid "New folder"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -5426,6 +5447,10 @@ msgstr "В очереди"
 msgid "Quote"
 msgstr ""
 
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Rakazo can tag files you add and sort them into folders. To do that, their text (and images) is sent to {names}. Files that already have tags keep them."
+msgstr ""
+
 #: src/components/AiDataSharing.tsx
 msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
 msgstr ""
@@ -5778,6 +5803,10 @@ msgstr "Переименовать раздел"
 msgid "Rename space"
 msgstr "Переименовать пространство"
 
+#: src/components/data-room/DropZone.tsx
+msgid "Renamed"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Renews {day}"
 msgstr ""
@@ -6100,6 +6129,7 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
 msgid "Search"
@@ -6107,6 +6137,10 @@ msgstr "Поиск"
 
 #: src/pages/ActivityList.tsx
 msgid "Search activity"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Search all items"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -6122,10 +6156,6 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search by domain"
 msgstr "Поиск по домену"
-
-#: src/pages/Shell.tsx
-msgid "Search chats"
-msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search directory"
@@ -6186,6 +6216,10 @@ msgstr ""
 #. placeholder {0}: filters.query.trim()
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Searching in {openFolderPath}"
 msgstr ""
 
 #: src/pages/SpaceSearch.tsx
@@ -6847,6 +6881,14 @@ msgstr "Проверить вход"
 msgid "Testing…"
 msgstr "Проверка…"
 
+#: src/pages/DataRoom.tsx
+msgid "That document could not be found"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "That folder no longer exists"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "The API did not come back. Refresh this page."
 msgstr "API не вернулся. Обновите эту страницу."
@@ -6958,6 +7000,10 @@ msgstr ""
 msgid "This folder is empty. Drop files here to add them."
 msgstr ""
 
+#: src/components/data-room/DropZone.tsx
+msgid "This folder no longer exists"
+msgstr ""
+
 #: src/pages/HostComputerPrompt.tsx
 msgid "this Mac"
 msgstr "этот Mac"
@@ -7051,10 +7097,6 @@ msgstr ""
 msgid "To do"
 msgstr ""
 
-#: src/components/data-room/ConsentPrompt.tsx
-msgid "To tag new files and sort them into folders for you, their text (and images) is sent to {names}. Until then you can search by name and text and move files into folders yourself."
-msgstr ""
-
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
 msgstr "К:"
@@ -7142,6 +7184,8 @@ msgid "Try {name} again"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -7365,6 +7409,10 @@ msgstr ""
 #. placeholder {0}: first.accountName
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "Upload the {month} statement for {0}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Upload to All items"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
@@ -7711,7 +7759,7 @@ msgid "You can close this window."
 msgstr "Вы можете закрыть это окно."
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "You can search documents by name and text and move them into folders yourself. Set up a model in Settings to have new files tagged and sorted into folders for you."
+msgid "You can search documents by name and text and move them into folders yourself. Set up a model in Settings to have files you add tagged and sorted into folders for you."
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx

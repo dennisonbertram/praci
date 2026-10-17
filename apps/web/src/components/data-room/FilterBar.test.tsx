@@ -10,7 +10,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { FilterBar } from "./FilterBar";
+import { FilterBar, facetOptions } from "./FilterBar";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -98,4 +98,14 @@ it("names the open folder by its own name on the picker, with the full path as i
   const picker = container.querySelector('[data-testid="data-room-folder-picker"]');
   expect(picker?.textContent).toBe("Invoices");
   expect(picker?.getAttribute("title")).toBe("Finance / Invoices");
+});
+
+it("offers only the sources that have files, in label order", () => {
+  const item = (source: string) =>
+    ({ source, facets: { docType: null, docDate: null, parties: [] } }) as never;
+  expect(facetOptions([item("upload"), item("gmail"), item("upload")]).sources).toEqual([
+    "gmail",
+    "upload",
+  ]);
+  expect(facetOptions([item("upload")]).sources).toEqual(["upload"]);
 });
