@@ -236,8 +236,11 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
           </ol>
         </nav>
       ) : null}
-      {/* Which company this is, on every Finance page, since Finance follows the last chat opened. */}
-      <SpaceName />
+      {/* Which company this is, on every Finance page, since Finance follows the last chat opened.
+      It takes the rest of the row and truncates, so the eye stays on this row on a phone. */}
+      <span className="flex min-w-0 flex-1 basis-0">
+        <SpaceName />
+      </span>
       <HideAmountsButton />
     </div>
   );

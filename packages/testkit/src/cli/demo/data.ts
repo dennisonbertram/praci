@@ -812,16 +812,24 @@ export function demoCrypto() {
 }
 
 /**
- * 90 days of daily crypto totals for the Safe, so "Balance over time" has a line on the first visit
- * (the sync itself only writes today's point). Stablecoins hold steady; ETH drifts.
+ * 90 days of daily crypto totals for one wallet or exchange, so "Balance over time" has a line on
+ * the first visit (the sync itself only writes today's point). Stablecoins hold steady; the rest drifts.
  */
-export function demoCryptoHistory(now = new Date()) {
+export function demoCryptoHistory(
+  now = new Date(),
+  /** Today's stablecoin and other-crypto cents; earlier days hold the stablecoins and drift the rest. */
+  today = { stablecoinCents: 4_000_000, otherCryptoCents: 625_000 },
+) {
   return Array.from({ length: 90 }, (_, i) => {
     const back = 89 - i;
     const day = new Date(now.getTime() - back * DAY_MS).toISOString().slice(0, 10);
-    // Whole cents, no float money: ETH value moves between about $5,900 and $6,600.
-    const ethCents = 625_000 + ((back * 7_919) % 70_000) - 35_000;
-    return { day, stablecoinCents: 4_000_000, otherCryptoCents: ethCents };
+    // Whole cents, no float money: the non-stable part moves within about ±6%.
+    const drift = Math.round((today.otherCryptoCents * (((back * 7_919) % 120) - 60)) / 1_000);
+    return {
+      day,
+      stablecoinCents: today.stablecoinCents,
+      otherCryptoCents: today.otherCryptoCents + drift,
+    };
   }).slice(0, -1);
 }
 

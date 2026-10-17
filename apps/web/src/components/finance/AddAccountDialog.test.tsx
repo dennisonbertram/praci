@@ -11,7 +11,11 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
@@ -313,4 +317,28 @@ it("names a renamed account by its current name and says when there is no balanc
   expect(text).not.toContain("Example Bank");
   expect(text).toContain("No closing balance found to check against");
   expect(text).not.toContain("add up");
+});
+
+it("says a file the browser cannot read could not be read, not the browser's own error", async () => {
+  const real = globalThis.FileReader;
+  class Failing {
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    error = new DOMException(
+      "The requested file could not be read, typically due to permission problems",
+    );
+    readAsDataURL() {
+      setTimeout(() => this.onerror?.(), 0);
+    }
+  }
+  globalThis.FileReader = Failing as unknown as typeof FileReader;
+  try {
+    await open("bank");
+    await choose(new File(["x"], "march.csv"));
+    expect(dialog().textContent).toContain("Could not read this file");
+    expect(dialog().textContent).not.toContain("permission");
+    expect(rpcMock.statementUpload).not.toHaveBeenCalled();
+  } finally {
+    globalThis.FileReader = real;
+  }
 });

@@ -1,3 +1,4 @@
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { FinanceStatement } from "@rakazo/contracts";
 import { STATEMENT_EXTENSIONS, STATEMENT_MAX_BYTES } from "@rakazo/contracts";
@@ -95,9 +96,13 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
         patch(key, { state: "failed", error: t`The file is too large` });
       } else {
         try {
+          // The browser's own read error is developer text; the row says it plainly instead.
+          const contentBase64 = await toBase64(file).catch(() => {
+            throw new Error(t`Could not read this file`);
+          });
           const statement = await rpc.finance.statementUpload({
             fileName: file.name,
-            contentBase64: await toBase64(file),
+            contentBase64,
           });
           if (statement.status !== "review") {
             patch(key, {
@@ -241,7 +246,10 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
                 : t`Remove ${confirming?.statement.fileName ?? ""}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t`Its ${confirming?.statement.transactionCount ?? 0} transactions will be removed from Finance.`}
+              {plural(confirming?.statement.transactionCount ?? 0, {
+                one: "Its # transaction will be removed from Finance.",
+                other: "Its # transactions will be removed from Finance.",
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

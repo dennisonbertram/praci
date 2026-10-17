@@ -125,21 +125,27 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     const scope = { spaceId, userId: user.id };
     const secrets = createSecretStore(options.encryptionKey, {});
     // A fake stored login, so a server counts as signed in. Calls to it reach only the emulators.
-    const fakeLogin = async () => {
+    // `expired` keeps the OAuth record but drops its tokens, which is how a lapsed sign-in looks.
+    const fakeLogin = async (
+      where: { spaceId: string; userId: string } = scope,
+      expired = false,
+    ) => {
       const stored = await secrets.put(
         JSON.stringify({
-          oauth: { tokens: { access_token: "mock-demo-token", token_type: "bearer" } },
+          oauth: expired
+            ? { clientInformation: { client_id: "mock-demo-client" } }
+            : { tokens: { access_token: "mock-demo-token", token_type: "bearer" } },
         }),
         {
           operationId: "demo.seed",
           traceId: "demo.seed",
-          ...scope,
+          ...where,
           botId: "mcp",
           signal: new AbortController().signal,
         },
       );
       await prisma.secret.create({
-        data: { id: stored.id, ...scope, kind: "mcp", ciphertext: stored.ciphertext },
+        data: { id: stored.id, ...where, kind: "mcp", ciphertext: stored.ciphertext },
       });
       return stored.id;
     };
@@ -153,7 +159,8 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
             name: provider === "mercury" ? "Mercury" : "Brex",
             transport: "streamable_http",
             endpoint: FINANCE_MCP_ENDPOINTS[provider],
-            secretId: await fakeLogin(),
+            // The login belongs to the space it is stored for, as a real sign-in would.
+            secretId: await fakeLogin(where),
           },
         });
       }
@@ -199,26 +206,44 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       label: DEMO_WALLET.label,
       type: DEMO_WALLET.type,
     });
-    await session.rpc("finance/walletAdd", {
+    const ops = await session.rpc<{ id: string }>("finance/walletAdd", {
       addressOrEns: DEMO_ENS_WALLET.name,
       label: DEMO_ENS_WALLET.label,
       type: DEMO_ENS_WALLET.type,
     });
-    await prisma.financeCryptoSnapshot.createMany({
-      data: demoCryptoHistory().map((point) => ({
-        ...scope,
-        walletId: safe.id,
-        day: point.day,
-        stablecoinCents: BigInt(point.stablecoinCents),
-        otherCryptoCents: BigInt(point.otherCryptoCents),
-      })),
-      skipDuplicates: true,
-    });
     const { privateKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
-    await session.rpc("finance/exchangeConnect", {
+    const coinbase = await session.rpc<{ id: string }>("finance/exchangeConnect", {
       provider: "coinbase",
       key: "organizations/mock-demo/apiKeys/mock-demo-key",
       secret: privateKey.export({ type: "sec1", format: "pem" }).toString(),
+    });
+    // History for each holder at about today's size, so the chart does not jump on the last day.
+    const history = (today: { stablecoinCents: number; otherCryptoCents: number }) =>
+      demoCryptoHistory(new Date(), today).map((point) => ({
+        ...scope,
+        day: point.day,
+        stablecoinCents: BigInt(point.stablecoinCents),
+        otherCryptoCents: BigInt(point.otherCryptoCents),
+      }));
+    await prisma.financeCryptoSnapshot.createMany({
+      data: [
+        ...history({ stablecoinCents: 4_000_000, otherCryptoCents: 625_000 }).map((row) => ({
+          ...row,
+          walletId: safe.id,
+        })),
+        ...history({ stablecoinCents: 0, otherCryptoCents: 100_000 }).map((row) => ({
+          ...row,
+          walletId: ops.id,
+        })),
+      ],
+      skipDuplicates: true,
+    });
+    await prisma.financeExchangeSnapshot.createMany({
+      data: history({ stablecoinCents: 3_700_000, otherCryptoCents: 2_100_000 }).map((row) => ({
+        ...row,
+        connectionId: coinbase.id,
+      })),
+      skipDuplicates: true,
     });
     done.push("2 crypto wallets (a 2-of-3 Safe and an ENS wallet) and Coinbase (offline fakes)");
 
@@ -264,9 +289,10 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     const mercury = await prisma.mcpServer.findFirstOrThrow({
       where: { ...reconnectScope, slug: "finance-mercury" },
     });
-    await prisma.financeSyncState.updateMany({
-      where: { ...reconnectScope, mcpServerId: mercury.id },
-      data: { needsReconnect: true },
+    // Synced once while signed in; now the sign-in has lapsed, so Finance asks to reconnect.
+    await prisma.mcpServer.update({
+      where: { id: mercury.id },
+      data: { secretId: await fakeLogin(reconnectScope, true) },
     });
     done.push(`space "${DEMO_RECONNECT_SPACE}" (Mercury needs reconnecting)`);
   } finally {
