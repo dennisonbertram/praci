@@ -625,6 +625,37 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     }
   });
 
+  it("removes a contract, its node and the edges it sourced when its Data room item is deleted", async () => {
+    const item = await addItem(a, "to-delete.txt", "Soon deleted.");
+    const made = await legal(a, "legal_upsert_contract", {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: "Doomed MSA",
+      contractType: "msa",
+      status: "active",
+    });
+    const contractNode = await legal(a, "legal_upsert_node", {
+      kind: "contract",
+      label: "Doomed MSA",
+      contractId: made.contract.id,
+    });
+    const party = await legal(a, "legal_upsert_node", { kind: "company", label: "Survivor Co" });
+    await legal(a, "legal_link", {
+      fromId: party.node.id,
+      toId: contractNode.node.id,
+      relation: "party_to",
+      dataRoomItemId: item.id,
+      sourceQuote: "between Survivor Co and us",
+    });
+
+    await createDataRoomRepos(prisma).deleteItem(a, item.id);
+
+    expect(await prisma.legalContract.count({ where: { id: made.contract.id } })).toBe(0);
+    expect(await prisma.legalNode.count({ where: { id: contractNode.node.id } })).toBe(0);
+    expect(await prisma.legalEdge.count({ where: { toId: contractNode.node.id } })).toBe(0);
+    expect(await prisma.legalNode.count({ where: { id: party.node.id } })).toBe(1);
+  });
+
   it("refuses to link evidence from another user's document", async () => {
     const mine = await legal(a, "legal_upsert_node", { kind: "company", label: "Evidence Co" });
     const other = await legal(a, "legal_upsert_node", { kind: "company", label: "Evidence Two" });

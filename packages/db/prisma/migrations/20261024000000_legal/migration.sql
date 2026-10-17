@@ -104,6 +104,9 @@ CREATE INDEX "legal_edges_spaceId_userId_idx" ON "legal_edges"("spaceId", "userI
 CREATE INDEX "legal_edges_toId_idx" ON "legal_edges"("toId");
 
 -- CreateIndex
+CREATE INDEX "legal_edges_dataRoomItemId_idx" ON "legal_edges"("dataRoomItemId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "legal_edges_fromId_toId_relation_key" ON "legal_edges"("fromId", "toId", "relation");
 
 -- AddForeignKey
@@ -113,7 +116,7 @@ ALTER TABLE "legal_contracts" ADD CONSTRAINT "legal_contracts_dataRoomItemId_fke
 ALTER TABLE "legal_deadlines" ADD CONSTRAINT "legal_deadlines_contractId_fkey" FOREIGN KEY ("contractId") REFERENCES "legal_contracts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "legal_nodes" ADD CONSTRAINT "legal_nodes_contractId_fkey" FOREIGN KEY ("contractId") REFERENCES "legal_contracts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "legal_nodes" ADD CONSTRAINT "legal_nodes_contractId_fkey" FOREIGN KEY ("contractId") REFERENCES "legal_contracts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "legal_edges" ADD CONSTRAINT "legal_edges_fromId_fkey" FOREIGN KEY ("fromId") REFERENCES "legal_nodes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -121,3 +124,5 @@ ALTER TABLE "legal_edges" ADD CONSTRAINT "legal_edges_fromId_fkey" FOREIGN KEY (
 -- AddForeignKey
 ALTER TABLE "legal_edges" ADD CONSTRAINT "legal_edges_toId_fkey" FOREIGN KEY ("toId") REFERENCES "legal_nodes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- AddForeignKey
+ALTER TABLE "legal_edges" ADD CONSTRAINT "legal_edges_dataRoomItemId_fkey" FOREIGN KEY ("dataRoomItemId") REFERENCES "data_room_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;

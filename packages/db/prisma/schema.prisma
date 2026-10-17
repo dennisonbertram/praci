@@ -2210,6 +2210,7 @@ model DataRoomItem {
   chunks             DataRoomChunk[]
   text               DataRoomItemText?
   legalContracts     LegalContract[]
+  legalEdges         LegalEdge[]
 
   @@index([spaceId, folderId])
   @@index([spaceId, status])
@@ -2350,7 +2351,7 @@ model LegalNode {
   key        String
   attrs      Json?
   contractId String?
-  contract   LegalContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  contract   LegalContract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   edgesOut   LegalEdge[]    @relation("LegalEdgeFrom")
@@ -2372,7 +2373,9 @@ model LegalEdge {
   to             LegalNode @relation("LegalEdgeTo", fields: [toId], references: [id], onDelete: Cascade)
   /// A short verb: party_to, owes, grants, governed_by, owns, signed_by.
   relation       String
+  /// The evidence item; deleting it removes the edge.
   dataRoomItemId String?
+  dataRoomItem   DataRoomItem? @relation(fields: [dataRoomItemId], references: [id], onDelete: Cascade)
   sourceQuote    String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -2380,5 +2383,6 @@ model LegalEdge {
   @@unique([fromId, toId, relation])
   @@index([spaceId, userId])
   @@index([toId])
+  @@index([dataRoomItemId])
   @@map("legal_edges")
 }
