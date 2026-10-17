@@ -157,6 +157,8 @@ it("lists only model recipients, each off until the user turns it on, with the s
     ["Allow TypeSafe", "false"],
   ]);
   expect(container.textContent).toContain(AI_DATA_DISCLOSURES.model);
+  // Says what a switch covers, so Off while bots still answer does not look broken.
+  expect(container.textContent).toContain("Each switch covers one AI service.");
   expect(container.textContent).not.toContain("ElevenLabs");
 });
 

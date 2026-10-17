@@ -128,6 +128,13 @@ export function AiDataSharingSection() {
         <Trans>AI data sharing</Trans>
       </h3>
       <p className="mt-1 text-[13px] text-muted-foreground">{i18n._(AI_DATA_DISCLOSURES.model)}</p>
+      {/* Without this, an Off switch while bots still answer reads as a switch that does nothing. */}
+      <p className="mt-1 text-[13px] text-muted-foreground">
+        <Trans>
+          Each switch covers one AI service. Data goes only to services that are on; models from
+          your other services keep working.
+        </Trans>
+      </p>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
