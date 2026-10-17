@@ -19,7 +19,8 @@ export const MOCK_NOTE = "Mock demo data";
 export const DEMO_COMPANY = "MOCK DEMO DATA — Northwind Robotics";
 export const DEMO_USER_NAME = "Alex Founder (Mock)";
 export const DEMO_EMAIL = "mock-founder@demo.rakazo.test";
-export const MOCK_SUBJECT_PREFIX = "[MOCK DEMO]";
+/** Short, so the subject itself stays readable in a list row. */
+export const MOCK_SUBJECT_PREFIX = "[MOCK]";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
@@ -27,18 +28,35 @@ const FOOTER = `\n\n-- \n${MOCK_NOTE}: invented for UX testing. Not a real messa
 
 // ---- Inbox ----
 
+const ME = "Alex Founder (Mock) <mock-founder@northwind.example.test>";
+const MORGAN = "Morgan Pretend <morgan@halcyon-logistics.example.test>";
+const DANA = "Dana Counselor <dana@halcyon-logistics.example.test>";
+
 type Mail = {
   /** Unique within the mailbox; a reply shares its thread's id. */
   thread: string;
   agoMs: number;
   from: string;
+  /** Defaults to the founder. */
+  to?: string;
+  cc?: string;
   subject: string;
   text: string;
   labels?: string[];
   unread?: boolean;
   starred?: boolean;
+  /** Sent by the founder: in Sent, not in the Inbox. */
+  sent?: boolean;
   attachments?: EmulatedMessage["attachments"];
 };
+
+/** A file of `bytes` mock bytes, for attachment-size limits. */
+const mockFile = (filename: string, mimeType: string, bytes: number) => ({
+  filename,
+  mimeType,
+  size: 0,
+  data: Buffer.alloc(bytes, 77).toString("base64"),
+});
 
 const MAIL: Mail[] = [
   {
@@ -50,20 +68,40 @@ const MAIL: Mail[] = [
     unread: true,
     starred: true,
   },
+  // A four-message conversation with Cc, for the thread view and Reply all.
   {
     thread: "msa-redlines",
-    agoMs: 6 * HOUR_MS,
-    from: "Morgan Pretend <morgan@halcyon-logistics.example.test>",
+    agoMs: 30 * HOUR_MS,
+    from: MORGAN,
+    cc: DANA,
     subject: "Redlines on the Master Services Agreement",
     text: "Alex,\n\nOur counsel returned redlines on sections 4 (liability cap) and 9 (termination). We can sign this week if you accept them.\n\nMorgan\nHalcyon Logistics (Mock)",
-    unread: true,
+  },
+  {
+    thread: "msa-redlines",
+    agoMs: 26 * HOUR_MS,
+    from: ME,
+    to: MORGAN,
+    cc: DANA,
+    sent: true,
+    subject: "Redlines on the Master Services Agreement",
+    text: "Thanks Morgan. Our counsel is reviewing both sections and I will reply by Thursday.\n\nAlex",
+  },
+  {
+    thread: "msa-redlines",
+    agoMs: 8 * HOUR_MS,
+    from: DANA,
+    cc: MORGAN,
+    subject: "Redlines on the Master Services Agreement",
+    text: "Alex, to clarify section 9: we are asking for 60 days' notice of termination instead of 30. Section 4 is as marked.\n\nDana\nHalcyon Logistics (Mock)",
   },
   {
     thread: "msa-redlines",
     agoMs: 3 * HOUR_MS,
-    from: "Fictional Law Group <counsel@fictional-law.example.test>",
+    from: MORGAN,
+    cc: DANA,
     subject: "Redlines on the Master Services Agreement",
-    text: "Alex, we reviewed the redlines. Section 4 is acceptable. We recommend pushing back on section 9. Draft reply attached below on request.\n\nFictional Law Group (Mock)",
+    text: "Alex, if section 9 works for you, can we sign on Thursday?\n\nMorgan",
     unread: true,
   },
   {
@@ -154,6 +192,16 @@ const MAIL: Mail[] = [
     from: "Halcyon Security <security@halcyon-logistics.example.test>",
     subject: "Vendor security questionnaire",
     text: "Before signing, our security team needs the attached questionnaire completed. Typical turnaround is 5 business days.\n\nHalcyon Logistics (Mock)",
+    attachments: [
+      {
+        filename: "MOCK-security-questionnaire.csv",
+        mimeType: "text/csv",
+        size: 0,
+        data: Buffer.from(
+          "question,answer\nDo you encrypt data at rest? (MOCK DEMO DATA),\nDo you run annual penetration tests? (MOCK DEMO DATA),\n",
+        ).toString("base64"),
+      },
+    ],
   },
   {
     thread: "insurance",
@@ -176,6 +224,15 @@ const MAIL: Mail[] = [
     from: "Casey Coworker <casey@northwind.example.test>",
     subject: "Team offsite: dates and venue",
     text: "Hi Alex, I shortlisted two venues for the team offsite on Nov 21 or Nov 28. Which date works for you?\n\nCasey",
+  },
+  // Over the 10 MB attachment limit, so forwarding it shows the limit.
+  {
+    thread: "demo-video",
+    agoMs: 4.5 * DAY_MS,
+    from: "Casey Coworker <casey@northwind.example.test>",
+    subject: "Product demo video for the reseller call",
+    text: "Alex, here is the demo video for the reseller call. It is large, so download it before you travel.\n\nCasey",
+    attachments: [mockFile("MOCK-northwind-demo.mp4", "video/mp4", 12 * 1024 * 1024)],
   },
   {
     thread: "newsletter-weekly",
@@ -247,31 +304,67 @@ const MAIL: Mail[] = [
   },
 ];
 
-/** The demo mailbox, shaped like `e2eMailboxes` so the e2e Composio emulator can serve it. */
-export function demoMailboxes(now = new Date()) {
+/** The second connected account, so the account tabs and the From picker have something to show. */
+const SALES_MAIL: Mail[] = [
+  {
+    thread: "sales-lead",
+    agoMs: 5 * HOUR_MS,
+    from: "Robin Prospect <robin@beacon-retail.example.test>",
+    to: "Northwind Sales (Mock) <sales@northwind.example.test>",
+    subject: "Pricing for 20 units",
+    text: "Hello, could you send pricing for 20 picking robots, delivered in Q1?\n\nRobin\nBeacon Retail (Mock)",
+    unread: true,
+  },
+  {
+    thread: "sales-trade-show",
+    agoMs: 2 * DAY_MS,
+    from: "Expo Organizers <booths@mock-expo.example.test>",
+    to: "Northwind Sales (Mock) <sales@northwind.example.test>",
+    subject: "Booth confirmation for the logistics expo",
+    text: "Your booth B14 is confirmed for Nov 20-22.\n\nMock Expo",
+  },
+];
+
+function toMessages(prefix: string, mail: Mail[], now: Date): EmulatedMessage[] {
   const seen = new Map<string, number>();
-  const messages = MAIL.map((mail, index): EmulatedMessage => {
-    const count = (seen.get(mail.thread) ?? 0) + 1;
-    seen.set(mail.thread, count);
+  return mail.map((item, index): EmulatedMessage => {
+    const count = (seen.get(item.thread) ?? 0) + 1;
+    seen.set(item.thread, count);
     return {
-      id: `mock-demo-${index + 1}`,
-      threadId: `mock-demo-thread-${mail.thread}`,
-      date: new Date(now.getTime() - mail.agoMs).toISOString(),
+      id: `${prefix}-${index + 1}`,
+      threadId: `${prefix}-thread-${item.thread}`,
+      date: new Date(now.getTime() - item.agoMs).toISOString(),
       labels: [
-        "INBOX",
-        ...(mail.labels ?? []),
-        ...(mail.unread ? ["UNREAD"] : []),
-        ...(mail.starred ? ["STARRED"] : []),
+        item.sent ? "SENT" : "INBOX",
+        ...(item.labels ?? []),
+        ...(item.unread ? ["UNREAD"] : []),
+        ...(item.starred ? ["STARRED"] : []),
       ],
-      from: mail.from,
-      to: "Alex Founder (Mock) <mock-founder@northwind.example.test>",
-      subject: `${MOCK_SUBJECT_PREFIX} ${count > 1 ? "Re: " : ""}${mail.subject}`,
-      text: `${mail.text}${FOOTER}`,
-      ...(mail.attachments ? { attachments: mail.attachments } : {}),
+      from: item.from,
+      to: item.to ?? ME,
+      ...(item.cc ? { cc: item.cc } : {}),
+      // "Re:" first, as mail clients write it, so a reply does not read "Re: [MOCK] Re: …".
+      subject: `${count > 1 ? "Re: " : ""}${MOCK_SUBJECT_PREFIX} ${item.subject}`,
+      text: `${item.text}${FOOTER}`,
+      ...(item.attachments ? { attachments: item.attachments } : {}),
     };
   });
+}
+
+/**
+ * The demo mailboxes, shaped like `e2eMailboxes` so the e2e Composio emulator can serve them. The
+ * emulator hands them out in this order, one per Gmail connection.
+ */
+export function demoMailboxes(now = new Date()) {
   return {
-    "mock-demo-mailbox": { address: "mock-founder@northwind.example.test", messages },
+    "mock-demo-mailbox": {
+      address: "mock-founder@northwind.example.test",
+      messages: toMessages("mock-demo", MAIL, now),
+    },
+    "mock-demo-sales": {
+      address: "sales@northwind.example.test",
+      messages: toMessages("mock-sales", SALES_MAIL, now),
+    },
   };
 }
 
