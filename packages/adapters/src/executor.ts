@@ -299,7 +299,6 @@ import {
   MAIL_TOOL_NAMES,
   mailToolFromTool,
   mailToolsAllowed,
-  OWNER_INITIATED_TRIGGERS,
   selectMailTools,
 } from "./mail-tools.js";
 import type { McpConnector } from "./mcp-connector.js";
