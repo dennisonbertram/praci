@@ -34,6 +34,14 @@ describe("mock demo data", () => {
     for (const holder of investors) expect(contactEmails.has(holder.email ?? "")).toBe(true);
   });
 
+  it("has a mock cap table whose holdings, option pool and fully diluted total add up", () => {
+    const snapshot = CapTableSnapshotInputSchema.parse(demoCapTable());
+    const held = snapshot.holders.reduce((sum, h) => sum + (h.shares ?? 0), 0);
+    const pool = snapshot.shareClasses.find((c) => /option pool/i.test(c.name))?.shares ?? 0;
+    expect(snapshot.optionPoolAvailable).toBe(pool);
+    expect(held + (snapshot.optionPoolAvailable ?? 0)).toBe(snapshot.fullyDilutedShares);
+  });
+
   it("builds a mailbox of 25 mock threads with unread mail and one attachment", () => {
     const { messages } = demoMailboxes()["mock-demo-mailbox"];
     for (const message of messages) {

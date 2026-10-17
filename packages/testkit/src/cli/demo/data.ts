@@ -490,7 +490,8 @@ export function demoCapTable(now = new Date()) {
     asOf: day(1),
     fullyDilutedShares: 10_000_000,
     amountRaisedUsd: 275_000,
-    optionPoolAvailable: 600_000,
+    // The whole pool is still ungranted, so the holdings, the bar and this figure add up.
+    optionPoolAvailable: 1_500_000,
     latest409a: { pricePerShareUsd: 0.42, date: day(120) },
     shareClasses: [
       { name: "Common (Mock)", shares: 8_500_000, percent: 85 },
@@ -601,7 +602,7 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Fundraising",
     "MOCK Cap Table Summary.csv",
-    "holder,class,shares,percent\nAlex Founder Mock,common,4000000,40\nRiver Cofounder Mock,common,3000000,30\nOption pool Mock,pool,1500000,15\nQuill Capital SAFE Mock,safe,0,pending",
+    "holder,class,shares,percent\nAlex Founder Mock,common,4000000,40\nRiver Cofounder Mock,common,3000000,30\nEarly employees Mock,common,1500000,15\nOption pool Mock,pool,1500000,15\nQuill Capital SAFE Mock,safe,0,pending",
     "csv",
   ),
   doc(
