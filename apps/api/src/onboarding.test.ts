@@ -78,7 +78,7 @@ it("marks only the authorized connector when provider slugs collide", async () =
 });
 
 describe("blank bot greeting", () => {
-  it("posts a fixed greeting that names the user and the bot", async () => {
+  it("posts a fixed greeting that names the user but not the soon-renamed bot", async () => {
     const { deps, actor } = fixture([]);
     (deps.prisma as unknown as { user: unknown }).user = {
       findUnique: vi.fn(async () => ({ name: "Ada Lovelace" })),
@@ -88,7 +88,7 @@ describe("blank bot greeting", () => {
     expect(posted[0]?.blocks).toEqual([
       {
         kind: "text",
-        text: expect.stringMatching(/^Hi Ada, I'm New Bot, and I'm a blank slate/),
+        text: expect.stringMatching(/^Hi Ada\. I'm a blank slate/),
       },
     ]);
   });

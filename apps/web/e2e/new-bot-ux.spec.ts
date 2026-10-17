@@ -29,11 +29,11 @@ test("create opens a greeted chat; picker lists bots; sidebar collapses", async 
   await page.waitForURL(/\/app\/[^/]+$/);
   await expect(page.getByPlaceholder("Message New Bot")).toBeVisible();
   await expect(page.getByTestId("create-bot-form")).toHaveCount(0);
-  await expect(
-    page.getByTestId("message-bot-bubble").getByText(/I'm New Bot, and I'm a blank slate/),
-  ).toBeVisible();
+  await expect(page.getByTestId("message-bot-bubble").getByText(/I'm a blank slate/)).toBeVisible();
+  // Settings open with the name selected, so the new bot is named first.
+  await expect(page.getByRole("textbox", { name: "Name", exact: true })).toBeFocused();
   await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
-  await captureScreenshot(page, testInfo, "create-chat-sidepanel-closed");
+  await captureScreenshot(page, testInfo, "create-chat-name-focused");
 
   await page.getByTestId("minimize-bots-sidebar").click();
   await expect(page.getByTestId("bots-sidebar")).toHaveAttribute("data-collapsed", "true");
@@ -129,9 +129,7 @@ test("second bot from plus is created immediately with a greeting", async ({ pag
   await page.waitForURL(/\/app\/[^/]+$/);
   await expect(page.getByPlaceholder("Message New Bot")).toBeVisible();
   await expect(
-    page
-      .getByTestId("message-bot-bubble")
-      .getByText(/Hi Second, I'm New Bot, and I'm a blank slate/),
+    page.getByTestId("message-bot-bubble").getByText(/Hi Second\. I'm a blank slate/),
   ).toBeVisible();
   await captureScreenshot(page, testInfo, "second-bot-created");
 });

@@ -647,6 +647,8 @@ export function ShellPage() {
   const [newSpaceOpen, setNewSpaceOpen] = useState(false);
   const [pickerInfoTopic, setPickerInfoTopic] = useState<"group" | "space" | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  // The bot just made with "New bot", whose settings open with its name selected.
+  const [namingBotId, setNamingBotId] = useState<string | null>(null);
 
   useEffect(() => {
     const desktop = window.matchMedia("(min-width: 768px)");
@@ -2661,7 +2663,17 @@ export function ShellPage() {
       setBots((current) =>
         current.some((item) => item.id === bot.id) ? current : [bot, ...current],
       );
+      // Open its settings with the name selected, so the new bot gets a name before anything else.
+      const destKey =
+        userId && bootstrapMe?.spaceId
+          ? rightPanelStorageKey(userId, bootstrapMe.spaceId, "bot", bot.id)
+          : null;
+      explicitPanelTarget.current = destKey;
+      pendingPanelRestore.current = null;
+      setNamingBotId(bot.id);
       navigate(`/app/${bot.id}`);
+      setPanelState("settings");
+      setRestoredPanelKey(destKey);
       await refreshBots().catch(() => undefined);
     } catch (error) {
       setSendError(errorText(error, t`Failed to create bot`));
@@ -4447,6 +4459,7 @@ export function ShellPage() {
               <BotSettings
                 key={active.id}
                 bot={active}
+                focusName={namingBotId === active.id}
                 memoryProviderConfigured={memoryProviderConfig != null}
                 onSkillsChange={setAgentSkills}
                 onSave={async ({ computerMode, ...patch }) => {
