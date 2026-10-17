@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MemoryRouter, useNavigate } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -130,6 +130,12 @@ const settle = () =>
     await vi.advanceTimersByTimeAsync(10);
   });
 
+/** Clicks the nth row, as a user choosing a file to preview. */
+const clickRow = (n: number) =>
+  act(async () => {
+    container.querySelectorAll<HTMLElement>("li[data-item-id]")[n]?.click();
+  });
+
 const names = () =>
   Array.from(container.querySelectorAll("li[data-item-id] span[title]"))
     .map((el) => el.getAttribute("title"))
@@ -188,14 +194,11 @@ it("sends the chosen sort to the server and keeps the order it returns", async (
   expect(names()).toEqual(["b.txt", "a.txt"]);
 });
 
-it("keeps a pinned item only while it is in the results, else pins the first or closes", async () => {
+it("keeps a pinned item only while it is in the results, else closes without picking another", async () => {
   await renderPage();
   const preview = () =>
     container.querySelector('[data-testid="data-room-preview"] h3')?.textContent;
-  // b.txt is pinned first; pin a.txt by clicking it.
-  await act(async () => {
-    container.querySelectorAll<HTMLElement>("li[data-item-id]")[1]?.click();
-  });
+  await clickRow(1);
   expect(preview()).toBe("a.txt");
 
   const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
@@ -213,12 +216,11 @@ it("keeps a pinned item only while it is in the results, else pins the first or 
       await vi.advanceTimersByTimeAsync(500);
     });
   };
-  await search("one", [item("c.txt")]);
-  expect(preview()).toBe("c.txt");
   // Still in the results: stays pinned.
-  await search("two", [item("d.txt"), item("c.txt")]);
-  expect(preview()).toBe("c.txt");
-  await search("none", []);
+  await search("one", [item("c.txt"), item("a.txt")]);
+  expect(preview()).toBe("a.txt");
+  // Gone from the results: the preview closes; the first result is not chosen for the user.
+  await search("two", [item("d.txt")]);
   expect(container.querySelector('[data-testid="data-room-preview"]')).toBeNull();
 });
 
@@ -265,6 +267,7 @@ it("marks only failed items as failed; a ready item with an error gets a muted p
     nextCursor: null,
   });
   await renderPage();
+  await clickRow(0);
   const row = container.querySelector("li[data-item-id]");
   expect(row?.querySelector('[aria-label="Failed"]')).toBeNull();
   expect(row?.textContent).not.toContain("classifier timeout");
@@ -401,6 +404,7 @@ it("shows the item menu on grid tiles", async () => {
 
 it("closes the preview when a reload drops the pinned item and it can no longer be read", async () => {
   await renderPage();
+  await clickRow(0);
   const preview = () => container.querySelector('[data-testid="data-room-preview"]');
   expect(preview()).not.toBeNull();
   rpcMock.list.mockResolvedValueOnce({ items: [item("a.txt")], nextCursor: null });
@@ -436,8 +440,9 @@ const previewName = () =>
 
 it("changes the preview only on a click, so the highlight stays on the chosen row", async () => {
   await renderPage();
-  expect(previewName()).toBe("b.txt");
   const rows = container.querySelectorAll<HTMLElement>("li[data-item-id]");
+  await clickRow(0);
+  expect(previewName()).toBe("b.txt");
   await act(async () => {
     rows[1]?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
     rows[1]?.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
@@ -474,6 +479,7 @@ it("keeps the chosen item through a narrow and back to wide resize, opening no d
     Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, value });
   width(1000);
   await renderPage();
+  await clickRow(0);
   expect(previewName()).toBe("b.txt");
   width(400);
   await act(async () => resize());
@@ -544,15 +550,61 @@ it("offers Date and Type sorts only once some item has a date or type", async ()
   expect(options).toEqual(["Name", "Recently added"]);
 });
 
-it("opens the preview on the first readable item, not on a failed one", async () => {
-  rpcMock.list.mockResolvedValue({
-    items: [{ ...item("junk.pdf"), status: "failed", error: "Bad" }, item("b.txt")],
-    nextCursor: null,
-  });
+it("previews nothing until a file is chosen, also after opening a folder", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
   await renderPage();
-  expect(container.querySelector('[data-testid="data-room-preview"] h3')?.textContent).toBe(
-    "b.txt",
+  await settle();
+  const preview = () => container.querySelector('[data-testid="data-room-preview"]');
+  expect(names()).toEqual(["b.txt", "a.txt"]);
+  expect(preview()).toBeNull();
+  expect(container.querySelector('li[aria-current="true"]')).toBeNull();
+  const legal = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+    (el) => el.textContent === "Legal",
   );
+  await act(async () => legal?.click());
+  await settle();
+  expect(preview()).toBeNull();
+});
+
+it("keeps the open folder in the URL, and opens it again from there", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  let search = "";
+  function Location() {
+    search = useLocation().search;
+    return null;
+  }
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/?folder=f1"]}>
+        <DataRoomPage />
+        <Location />
+      </MemoryRouter>,
+    );
+  });
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f1" }));
+  const all = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+    (el) => el.textContent === "All items",
+  );
+  await act(async () => all?.click());
+  await settle();
+  expect(search).toBe("");
+  const legal = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+    (el) => el.textContent === "Legal",
+  );
+  await act(async () => legal?.click());
+  await settle();
+  expect(search).toBe("?folder=f1");
+});
+
+it("falls back to All items when the folder in the URL no longer exists", async () => {
+  await renderPage("/?folder=gone");
+  await settle();
+  expect(rpcMock.list.mock.lastCall?.[0]).not.toHaveProperty("folderId", "gone");
 });
 
 it("says a failed file could not be read, with its reason and a Delete button", async () => {
@@ -561,6 +613,7 @@ it("says a failed file could not be read, with its reason and a Delete button", 
     nextCursor: null,
   });
   await renderPage();
+  await clickRow(0);
   const preview = container.querySelector('[data-testid="data-room-preview"]');
   expect(preview?.textContent).toContain("Couldn't read this file");
   expect(preview?.textContent).toContain("This file isn't a readable PDF.");
@@ -709,6 +762,7 @@ it("shows the next item after deleting the previewed one, so the preview stays o
   });
   rpcMock.itemDelete.mockResolvedValue(undefined);
   await renderPage();
+  await clickRow(0);
   const heading = () => container.querySelector('[data-testid="data-room-preview"] h3');
   expect(heading()?.textContent).toBe("a.txt");
   await act(async () => {

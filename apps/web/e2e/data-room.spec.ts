@@ -137,8 +137,10 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
   const rows = list.locator("li[data-item-id]");
   await expect(rows).toHaveCount(3);
 
-  // The first item is pinned and shown in the preview.
+  // Nothing is previewed until a file is chosen; a click on the first item shows it.
   const preview = page.getByTestId("data-room-preview");
+  await expect(preview).toHaveCount(0);
+  await rows.first().click();
   await expect(preview.getByRole("heading", { level: 3 })).toContainText("Example HQ lease");
   await expect(preview).toContainText("Synthetic five-year renewal");
 

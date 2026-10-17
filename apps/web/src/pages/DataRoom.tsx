@@ -9,7 +9,7 @@ import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
 import { FilterBar } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderNodes } from "../components/data-room/folders";
-import { ItemDialog } from "../components/data-room/ItemDialogs";
+import { type DataRoomEntry, ItemDialog, isFolder } from "../components/data-room/ItemDialogs";
 import type { ItemAction } from "../components/data-room/ItemMenu";
 import {
   GridView,
@@ -45,11 +45,6 @@ function useDebounced<T>(value: T, ms: number) {
   return debounced;
 }
 
-/** The item to preview unasked: the first readable one, so the page opens on a failure only when
- * every item failed. */
-const firstToShow = (rows: { item: DataRoomApiItem }[]) =>
-  (rows.find(({ item }) => item.status !== "failed") ?? rows[0])?.item ?? null;
-
 function FileInputButton({ children, ...props }: React.ComponentProps<typeof Button>) {
   const input = useRef<HTMLInputElement>(null);
   return (
@@ -74,8 +69,9 @@ function FileInputButton({ children, ...props }: React.ComponentProps<typeof But
 
 /** The Data room: folders, a list or grid of filed items, and a preview of one of them. */
 export function DataRoomPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const linkedItem = params.get("item");
+  const urlFolder = params.get("folder") ?? undefined;
   // View and sort are remembered for this browser.
   const [saved] = useState(readDataRoomView);
   const [view, setView] = useState<"list" | "grid">(saved.view);
@@ -83,7 +79,20 @@ export function DataRoomPage() {
   const debouncedQuery = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
   // Clearing the box shows the list again at once; only typing waits for a pause.
   const query = queryInput.trim() === "" ? "" : debouncedQuery;
-  const [filters, setFilters] = useState<Filters>({});
+  // The open folder lives in the URL, so a reload, a bookmark or a shared link opens it again.
+  const [filters, setFilters] = useState<Filters>(() => (urlFolder ? { folderId: urlFolder } : {}));
+  useEffect(() => {
+    if (filters.folderId === urlFolder) return;
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (filters.folderId) next.set("folder", filters.folderId);
+        else next.delete("folder");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [filters.folderId, urlFolder, setParams]);
   // "Recently added" first, so a file just filed is on top even before it has a document date.
   const [listSort, setListSort] = useState<Sort>(saved.sort);
   useEffect(() => saveDataRoomView({ view, sort: listSort }), [view, listSort]);
@@ -97,7 +106,15 @@ export function DataRoomPage() {
   const reloadFolders = useCallback(() => {
     rpc.dataRoom
       .folders()
-      .then(setFolders)
+      .then((next) => {
+        setFolders(next);
+        // A folder that no longer exists (deleted, or a stale link) falls back to All items.
+        setFilters((current) =>
+          current.folderId && !next.some((folder) => folder.id === current.folderId)
+            ? { ...current, folderId: undefined }
+            : current,
+        );
+      })
       .catch(() => undefined);
   }, []);
   useEffect(reloadFolders, [reloadFolders]);
@@ -126,7 +143,8 @@ export function DataRoomPage() {
   }, [reload]);
 
   // Preview: a click (or Enter) on a row shows it; clicking the shown row again closes the pane.
-  // The pointer alone never changes it, so the highlight stays on the row the user chose.
+  // The pointer alone never changes it, so the highlight stays on the row the user chose. Nothing
+  // is previewed until the user picks a file.
   const [pinned, setPinned] = useState<DataRoomApiItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(true);
   // Narrow: the preview has no room beside the list, so a tap opens it in a dialog.
@@ -143,7 +161,6 @@ export function DataRoomPage() {
     observer.observe(bodyEl);
     return () => observer.disconnect();
   }, [bodyEl]);
-  const autoPinned = useRef(false);
   // The dialog belongs to one width: resizing never opens it, and closes it when the page widens.
   useEffect(() => {
     setDialogOpen(false);
@@ -157,7 +174,6 @@ export function DataRoomPage() {
       .item({ id: linkedItem })
       .then((item) => {
         if (!current || item.id !== linkedItem) return;
-        autoPinned.current = true;
         // Show the folder the item is in, so the list and the preview agree.
         setQueryInput("");
         setFilters(item.folderId ? { folderId: item.folderId } : {});
@@ -171,16 +187,8 @@ export function DataRoomPage() {
     };
   }, [linkedItem]);
 
-  // The first item is pinned once, when there is room for the preview beside the list.
-  const firstItem = firstToShow(list.rows);
-  useEffect(() => {
-    if (autoPinned.current || !firstItem || linkedItem) return;
-    autoPinned.current = true;
-    if (!narrow) setPinned(firstItem);
-  }, [firstItem, linkedItem, narrow]);
-
   // When a new search, filter, folder or sort answers, keep the pinned item only if it is in the
-  // results; otherwise pin the first result, or close the preview when there are none.
+  // results; otherwise close the preview. Another item is never picked for the user.
   const queryKey = JSON.stringify({ query, filters, sort });
   const appliedKey = useRef<string | null>(null);
   const resultIds = list.rows.map((row) => row.item.id).join(",");
@@ -188,9 +196,9 @@ export function DataRoomPage() {
     if (list.loading || list.key !== queryKey || appliedKey.current === queryKey) return;
     const first = appliedKey.current === null;
     appliedKey.current = queryKey;
-    if (first || (pinned && resultIds.split(",").includes(pinned.id))) return;
-    setPinned(previewOpen && !narrow ? firstToShow(list.rows) : null);
-  }, [list.loading, list.key, list.rows, queryKey, resultIds, pinned, previewOpen, narrow]);
+    if (first || !pinned || resultIds.split(",").includes(pinned.id)) return;
+    setPinned(null);
+  }, [list.loading, list.key, queryKey, resultIds, pinned]);
 
   // A reload of the same query can drop the pinned item (moved or deleted elsewhere). If it can no
   // longer be read, close its preview.
@@ -233,7 +241,7 @@ export function DataRoomPage() {
     openFolderId: filters.folderId,
   };
 
-  const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomApiItem } | null>(null);
+  const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomEntry } | null>(null);
 
   function closePreview() {
     const id = shown?.id;
@@ -265,6 +273,7 @@ export function DataRoomPage() {
       tiles={view === "grid"}
       folders={subfolders}
       onOpen={(folderId) => setFilters({ ...filters, folderId })}
+      onAction={(kind, folder) => setAction({ kind, item: folder })}
     />
   );
   /** A filter other than the folder is set. */
@@ -452,7 +461,7 @@ export function DataRoomPage() {
                 setPinned(narrow ? null : ((rows[at + 1] ?? rows[at - 1])?.item ?? null));
               }
               showDeletedToast(action.item.name);
-            } else if (updated && pinned?.id === updated.id) {
+            } else if (updated && !isFolder(updated) && pinned?.id === updated.id) {
               setPinned(updated);
             }
             list.reload();
