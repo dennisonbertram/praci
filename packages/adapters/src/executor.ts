@@ -8151,7 +8151,10 @@ export function directoryDescription(peer: {
   if (!isFinanceAgentSpawnKey(peer.spawnKey) && !isCartaAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
-  return `${peer.description} It reads finance and cap table data only when the user asks it in its own chat, so for those questions tell the user to ask it there instead of messaging it.`.trim();
+  const page = isFinanceAgentSpawnKey(peer.spawnKey)
+    ? "[Open Finance](/app/finance)"
+    : "[Open Cap table](/app/cap-table)";
+  return `${peer.description} It reads finance and cap table data only when the user asks it in its own chat, so for those questions tell the user to ask it there instead of messaging it, and end your reply with the link ${page}, where its page and chat live.`.trim();
 }
 
 export function userTurnInstructions(parts: {
