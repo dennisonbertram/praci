@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 
 const PREVIEW_CSP =
   "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; form-action 'none'; base-uri 'none'";
@@ -54,7 +55,22 @@ function openLinksInNewTab(html: string): string {
       link.setAttribute("rel", "noopener noreferrer");
     } else link.removeAttribute("href");
   }
+  maskAmounts(doc);
   return doc.documentElement.outerHTML;
+}
+
+/** While amounts are hidden, masks currency in the visible text and in title/alt attributes. */
+function maskAmounts(doc: Document): void {
+  const walker = doc.createTreeWalker(doc.documentElement, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.parentElement?.closest("style, script")) continue;
+    node.textContent = maskCurrencyWhenHidden(node.textContent ?? "");
+  }
+  for (const el of doc.querySelectorAll("[title], [alt]"))
+    for (const name of ["title", "alt"]) {
+      const value = el.getAttribute(name);
+      if (value) el.setAttribute(name, maskCurrencyWhenHidden(value));
+    }
 }
 
 // Email is laid out for a narrow frame: cap media and tables at the frame width, wrap long words, and scroll
@@ -90,6 +106,7 @@ export function SandboxedHtmlViewer({
   email?: boolean;
 }) {
   const runScripts = scripts && !email;
+  useHideAmounts(); // re-render, and so re-mask, when the switch flips
   const frame = useRef<HTMLIFrameElement>(null);
   // Key presses inside the sandboxed frame never reach this page, so Escape and j/k stop working
   // after a click in it (such as on a link, which opens in a new tab). When the person comes back,
