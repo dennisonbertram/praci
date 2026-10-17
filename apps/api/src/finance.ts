@@ -47,8 +47,8 @@ import {
   RunwayCryptoScopeSchema,
 } from "@rakazo/contracts";
 import {
+  accountBalanceHistory,
   balanceGrid,
-  balanceHistory,
   breakdown,
   cashAtDays,
   cashHistory,
@@ -597,7 +597,7 @@ export async function financeAccountDetail(
   const treasuryYield = yieldRows.map(toYield);
   return {
     account: { ...account, annualYieldPct: annualYieldPct(account, treasuryYield, now) },
-    history: balanceHistory(account, txns, now),
+    history: accountBalanceHistory(account, txns, now),
     treasuryYield,
     transactions: newest(txns, 20),
   };

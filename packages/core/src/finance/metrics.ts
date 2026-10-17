@@ -476,6 +476,26 @@ export function balanceHistory(
 }
 
 /**
+ * One account's chart: `balanceHistory`, starting at the month end before its first transaction.
+ * Earlier points would only repeat that opening balance for months nothing was synced or uploaded
+ * (a statement account made from September's file would otherwise look flat back to last year).
+ */
+export function accountBalanceHistory(
+  account: FinanceAccount,
+  txns: FinanceTransaction[],
+  now: Date,
+): BalancePoint[] {
+  const history = balanceHistory(account, txns, now);
+  const first = txns
+    .filter((t) => t.provider === account.provider && t.accountExternalId === account.externalId)
+    .reduce<string | null>((min, t) => (min === null || t.postedAt < min ? t.postedAt : min), null);
+  if (!first) return history;
+  const firstMonth = monthOf(dayOf(first));
+  const start = Math.max(history.findIndex((p) => p.month >= firstMonth) - 1, 0);
+  return history.slice(start);
+}
+
+/**
  * Total cash at each month end: the non-card accounts' histories added up. Transfers between the
  * user's own accounts net to zero in the total, and the Treasury side is not fetched, so they are
  * ignored here; otherwise a move to Treasury would be undone on checking only.

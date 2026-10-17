@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  accountBalanceHistory,
   balanceGrid,
   balanceHistory,
   breakdown,
@@ -437,6 +438,22 @@ describe("monthlySpend", () => {
       2000, 0, 1000,
     ]);
     expect(monthlySpend(txns, { vendorKey: "nobody" }, NOW, 2).map((m) => m.cents)).toEqual([0, 0]);
+  });
+});
+
+describe("accountBalanceHistory", () => {
+  it("starts at the month end before the account's first transaction", () => {
+    const acct = account({ balanceCents: 10_500 });
+    const history = accountBalanceHistory(
+      acct,
+      [txn("2026-09-18", -450), txn("2026-09-03", 1200)],
+      NOW,
+    );
+    expect(history.map((p) => p.month)).toEqual(["2026-08", "2026-09", "2026-10"]);
+    expect(history[0]?.balanceCents).toBe(10_500 + 45_000 - 120_000);
+  });
+  it("keeps all 12 months for an account with no transactions", () => {
+    expect(accountBalanceHistory(account({ balanceCents: 1 }), [], NOW)).toHaveLength(12);
   });
 });
 
