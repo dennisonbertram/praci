@@ -6242,6 +6242,10 @@ msgstr "Diffuser les réponses"
 msgid "Streamable HTTP"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Sub-folders"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "subagent"
 msgstr "sous-agent"
@@ -6458,6 +6462,10 @@ msgstr "Cela supprime toutes les {0} versions de cet artefact. Cette action est 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."
 msgstr "Ce fichier n'est pas un texte UTF-8 valide."
+
+#: src/pages/DataRoom.tsx
+msgid "This folder is empty. Drop files here to add them."
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "this Mac"

@@ -6242,6 +6242,10 @@ msgstr "Yanıtları akışla göster"
 msgid "Streamable HTTP"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Sub-folders"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "subagent"
 msgstr "alt ajan"
@@ -6457,6 +6461,10 @@ msgstr ""
 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "This folder is empty. Drop files here to add them."
 msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx

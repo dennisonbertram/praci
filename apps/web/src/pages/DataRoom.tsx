@@ -16,6 +16,7 @@ import {
   ListView,
   ResultsView,
   type RowInteraction,
+  SubfolderList,
 } from "../components/data-room/ItemRows";
 import { Preview } from "../components/data-room/Preview";
 import {
@@ -106,6 +107,13 @@ export function DataRoomPage() {
     return () => setOpenDataRoomFolder(undefined);
   }, [filters.folderId]);
   const nodes = useMemo(() => folderNodes(folders), [folders]);
+  const subfolders = useMemo(
+    () =>
+      searching || filters.folderId === undefined
+        ? []
+        : nodes.map(({ folder }) => folder).filter((f) => f.parentId === filters.folderId),
+    [nodes, searching, filters.folderId],
+  );
   const folderPath = useCallback(
     (id: string | null) => nodes.find(({ folder }) => folder.id === id)?.path ?? "",
     [nodes],
@@ -252,6 +260,14 @@ export function DataRoomPage() {
     !hasFilters;
   const rows = list.rows;
   const uniq = (values: string[]) => [...new Set(values)].sort();
+  const subfolderList = (
+    <SubfolderList
+      folders={subfolders}
+      onOpen={(folderId) => setFilters({ ...filters, folderId })}
+    />
+  );
+  /** A filter other than the folder is set. */
+  const filtered = Object.entries(filters).some(([key, value]) => key !== "folderId" && value);
   const clearFilters = () => setFilters(filters.folderId ? { folderId: filters.folderId } : {});
 
   return (
@@ -346,11 +362,18 @@ export function DataRoomPage() {
                     <Skeleton key={n} className="h-8 w-full" />
                   ))}
                 </div>
-              ) : rows.length === 0 && !list.error ? (
+              ) : rows.length === 0 && !list.error && !subfolders.length ? (
                 <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
-                  <p>
-                    <Trans>No results</Trans>
-                  </p>
+                  {/* An open folder with nothing in it is empty, not a search that found nothing. */}
+                  {!searching && !filtered ? (
+                    <p>
+                      <Trans>This folder is empty. Drop files here to add them.</Trans>
+                    </p>
+                  ) : (
+                    <p>
+                      <Trans>No results</Trans>
+                    </p>
+                  )}
                   {searching ? (
                     <p className="text-xs">
                       {query.includes(" ") ? (
@@ -360,7 +383,7 @@ export function DataRoomPage() {
                       )}
                     </p>
                   ) : null}
-                  {Object.entries(filters).some(([key, value]) => key !== "folderId" && value) ? (
+                  {filtered ? (
                     <Button variant="outline" size="sm" onClick={clearFilters}>
                       <Trans>Clear filters</Trans>
                     </Button>
@@ -369,9 +392,12 @@ export function DataRoomPage() {
               ) : searching ? (
                 <ResultsView rows={rows} o={interaction} />
               ) : view === "grid" ? (
-                <GridView rows={rows} o={interaction} />
+                <>
+                  {subfolderList}
+                  <GridView rows={rows} o={interaction} />
+                </>
               ) : (
-                <ListView rows={rows} o={interaction} />
+                <ListView rows={rows} o={interaction} lead={subfolderList} />
               )}
               {list.nextCursor ? (
                 <div className="grid place-items-center p-3">

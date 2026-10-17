@@ -6242,6 +6242,10 @@ msgstr "Stream replies"
 msgid "Streamable HTTP"
 msgstr "Streamable HTTP"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Sub-folders"
+msgstr "Sub-folders"
+
 #: src/pages/Shell.tsx
 msgid "subagent"
 msgstr "subagent"
@@ -6458,6 +6462,10 @@ msgstr "This deletes all {0} versions of this artifact. This can't be undone."
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."
 msgstr "This file is not valid UTF-8 text."
+
+#: src/pages/DataRoom.tsx
+msgid "This folder is empty. Drop files here to add them."
+msgstr "This folder is empty. Drop files here to add them."
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "this Mac"

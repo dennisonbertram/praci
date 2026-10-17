@@ -260,7 +260,7 @@ export function FilterBar({
   const direction = sort?.direction ?? "desc";
   return (
     <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2.5 md:px-5">
-      <InputGroup className="me-1.5 w-full min-w-40 @min-[560px]/bd:max-w-65 @min-[560px]/bd:flex-1">
+      <InputGroup className="me-1.5 w-full min-w-40 @min-[560px]/bd:max-w-80 @min-[560px]/bd:flex-1">
         <InputGroupAddon>
           <Search aria-hidden="true" />
         </InputGroupAddon>

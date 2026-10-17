@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { items } from "../../stories/fixtures/data-room";
-import { GridView, ListView, ResultsView, type RowInteraction } from "./ItemRows";
+import { GridView, ListView, ResultsView, type RowInteraction, SubfolderList } from "./ItemRows";
 
 const o: RowInteraction = {
   shownId: "itm_ready",
@@ -62,6 +62,34 @@ export const ListNarrow: Story = {
         snippets: [],
       }))}
       o={o}
+    />
+  ),
+};
+/** An open folder with sub-folders: they come first, under the column header. */
+export const ListWithSubfolders: Story = {
+  render: () => (
+    <ListView
+      rows={rows}
+      o={o}
+      lead={
+        <SubfolderList
+          folders={[
+            {
+              id: "fld_inv",
+              name: "Invoices",
+              parentId: "fld_fin",
+              createdAt: "2026-10-01T00:00:00.000Z",
+            },
+            {
+              id: "fld_rec",
+              name: "Receipts",
+              parentId: "fld_fin",
+              createdAt: "2026-10-01T00:00:00.000Z",
+            },
+          ]}
+          onOpen={() => undefined}
+        />
+      }
     />
   ),
 };

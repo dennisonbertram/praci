@@ -676,3 +676,26 @@ it("remembers the view and sort across visits", async () => {
     expect.objectContaining({ sort: { field: "createdAt", direction: "asc" } }),
   );
 });
+
+it("lists an open folder's sub-folders above its files, and opens one on click", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Finance", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+    { id: "f2", name: "Invoices", parentId: "f1", createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage();
+  rpcMock.list.mockResolvedValue({ items: [], nextCursor: null });
+  const finance = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
+    (el) => el.textContent === "Finance",
+  );
+  await act(async () => finance?.click());
+  await settle();
+  // A folder holding only a sub-folder is not "empty" and not "No results".
+  expect(container.textContent).not.toContain("No results");
+  expect(container.textContent).not.toContain("This folder is empty");
+  const sub = container.querySelector<HTMLElement>('[aria-label="Sub-folders"] button');
+  expect(sub?.textContent).toBe("Invoices");
+  await act(async () => sub?.click());
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f2" }));
+  expect(container.textContent).toContain("This folder is empty. Drop files here to add them.");
+});

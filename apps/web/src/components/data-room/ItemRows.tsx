@@ -1,8 +1,8 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { DataRoomApiItem } from "@rakazo/contracts";
-import { cn, Spinner } from "@rakazo/ui-web";
-import { FileImage, FileSpreadsheet, FileText } from "lucide-react";
+import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
+import { Button, cn, Spinner } from "@rakazo/ui-web";
+import { FileImage, FileSpreadsheet, FileText, Folder } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { splitSnippet } from "../../lib/data-room";
 import { sourceLabel } from "./FilterBar";
@@ -212,11 +212,42 @@ function ItemRow({
   );
 }
 
-export function ListView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
+/** The open folder's sub-folders, above its files, so a folder that holds only folders never looks empty. */
+export function SubfolderList({
+  folders,
+  onOpen,
+}: {
+  folders: DataRoomApiFolder[];
+  onOpen: (id: string) => void;
+}) {
+  if (!folders.length) return null;
+  return (
+    <ul aria-label={t`Sub-folders`} className="flex flex-col">
+      {folders.map((folder) => (
+        <li key={folder.id} className="border-b border-border">
+          <Button
+            variant="ghost"
+            onClick={() => onOpen(folder.id)}
+            className="h-auto w-full justify-start rounded-none px-2 py-2 font-normal"
+          >
+            <Folder aria-hidden="true" className="size-3.5 text-muted-foreground" />
+            <span className="min-w-0 truncate" title={folder.name}>
+              {folder.name}
+            </span>
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** `lead` (the open folder's sub-folders) goes under the column header, above the files. */
+export function ListView({ rows, o, lead }: { rows: Row[]; o: RowInteraction; lead?: ReactNode }) {
   const facets = hasFacets(rows);
   return (
     <div>
       <TableHead facets={facets} />
+      {lead}
       <ul aria-label={t`Items`} data-rows>
         {rows.map(({ item }) => (
           <ItemRow key={item.id} item={item} o={o} facets={facets} />
