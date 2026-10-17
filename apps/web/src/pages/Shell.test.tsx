@@ -254,6 +254,25 @@ describe("Composer", () => {
     sessionStorage.clear();
   });
 
+  it("keeps a chosen skill chip when the user leaves the chat and comes back", () => {
+    const skillChip = () => container?.querySelector("[data-testid='skill-chip']")?.textContent;
+    const textarea = renderComposer(vi.fn(), { draftKey: "bot:chief" });
+    type(textarea, "/sum");
+    act(() =>
+      container?.querySelector<HTMLButtonElement>("button[aria-label='Skill summarize']")?.click(),
+    );
+    expect(skillChip()).toBe("summarize");
+    act(() => root?.unmount());
+    container?.remove();
+    renderComposer(vi.fn(), { draftKey: "bot:carta" });
+    expect(skillChip()).toBeUndefined();
+    act(() => root?.unmount());
+    container?.remove();
+    renderComposer(vi.fn(), { draftKey: "bot:chief" });
+    expect(skillChip()).toBe("summarize");
+    sessionStorage.clear();
+  });
+
   it("moves through the / menu with the arrow keys and picks with Enter", () => {
     const onSend = vi.fn();
     const onSlashAction = vi.fn();
@@ -262,12 +281,16 @@ describe("Composer", () => {
     const selected = () =>
       container?.querySelector("[data-testid='slash-picker'] [aria-selected='true']")?.textContent;
     expect(selected()).toContain("summarize");
+    const sections = [
+      ...(container?.querySelectorAll("[data-testid='slash-picker'] [role='presentation']") ?? []),
+    ].map((node) => node.textContent);
+    expect(sections).toEqual(["Skills", "Actions"]);
     act(() => {
       textarea.dispatchEvent(
         new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }),
       );
     });
-    expect(selected()).toBe("Chat Settings");
+    expect(selected()).toBe("Chat settings");
     pressEnter(textarea);
     expect(onSlashAction).toHaveBeenCalledWith("chat-settings");
     expect(onSend).not.toHaveBeenCalled();

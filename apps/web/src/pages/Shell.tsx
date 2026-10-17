@@ -219,7 +219,12 @@ import {
   useAutoCreateCartaAgent,
   useOnPhoneWidth,
 } from "../lib/carta-agent";
-import { readChatDraft, writeChatDraft } from "../lib/chat-draft";
+import {
+  readChatDraft,
+  readChatDraftSkill,
+  writeChatDraft,
+  writeChatDraftSkill,
+} from "../lib/chat-draft";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -3573,78 +3578,83 @@ export function ShellPage() {
             </InputGroupAddon>
           ) : null}
         </InputGroup>
-        <SidebarPageLink
-          testId="sidebar-inbox"
-          current={inboxMode}
-          icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Inbox</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/inbox");
-          }}
-        >
-          {inboxUnread > 0 ? (
-            <span
-              role="img"
-              aria-label={plural(inboxUnread, { one: "# unread", other: "# unread" })}
-              className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
+        {/* While searching, matching pages are listed with the results instead. */}
+        {showSpaceSearch ? null : (
+          <>
+            <SidebarPageLink
+              testId="sidebar-inbox"
+              current={inboxMode}
+              icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
+              label={<Trans>Inbox</Trans>}
+              onOpen={() => {
+                setMobileSidebarOpen(false);
+                navigate("/app/inbox");
+              }}
             >
-              {inboxUnread}
-            </span>
-          ) : null}
-        </SidebarPageLink>
-        <SidebarPageLink
-          testId="sidebar-finance"
-          current={financeMode}
-          icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Finance</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/finance");
-          }}
-        />
-        <SidebarPageLink
-          testId="sidebar-legal"
-          current={legalMode}
-          icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Legal</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/legal");
-          }}
-        />
-        <SidebarPageLink
-          testId="sidebar-cap-table"
-          current={capTableMode}
-          icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Cap table</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/cap-table");
-          }}
-        />
-        <SidebarPageLink
-          testId="sidebar-data-room"
-          current={dataRoomMode}
-          icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Data room</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/data-room");
-          }}
-        />
-        <SidebarPageLink
-          testId="sidebar-artifacts"
-          current={artifactsMode}
-          // Not the Data room's folder icon: these are files bots made.
-          icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Artifacts</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/artifacts");
-          }}
-        />
-        <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
+              {inboxUnread > 0 ? (
+                <span
+                  role="img"
+                  aria-label={plural(inboxUnread, { one: "# unread", other: "# unread" })}
+                  className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
+                >
+                  {inboxUnread}
+                </span>
+              ) : null}
+            </SidebarPageLink>
+            <SidebarPageLink
+              testId="sidebar-finance"
+              current={financeMode}
+              icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
+              label={<Trans>Finance</Trans>}
+              onOpen={() => {
+                setMobileSidebarOpen(false);
+                navigate("/app/finance");
+              }}
+            />
+            <SidebarPageLink
+              testId="sidebar-legal"
+              current={legalMode}
+              icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
+              label={<Trans>Legal</Trans>}
+              onOpen={() => {
+                setMobileSidebarOpen(false);
+                navigate("/app/legal");
+              }}
+            />
+            <SidebarPageLink
+              testId="sidebar-cap-table"
+              current={capTableMode}
+              icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+              label={<Trans>Cap table</Trans>}
+              onOpen={() => {
+                setMobileSidebarOpen(false);
+                navigate("/app/cap-table");
+              }}
+            />
+            <SidebarPageLink
+              testId="sidebar-data-room"
+              current={dataRoomMode}
+              icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
+              label={<Trans>Data room</Trans>}
+              onOpen={() => {
+                setMobileSidebarOpen(false);
+                navigate("/app/data-room");
+              }}
+            />
+            <SidebarPageLink
+              testId="sidebar-artifacts"
+              current={artifactsMode}
+              // Not the Data room's folder icon: these are files bots made.
+              icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+              label={<Trans>Artifacts</Trans>}
+              onOpen={() => {
+                setMobileSidebarOpen(false);
+                navigate("/app/artifacts");
+              }}
+            />
+            <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
+          </>
+        )}
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {showSpaceSearch ? (
             <SpaceSearchResults
@@ -6394,7 +6404,12 @@ export const Composer = memo(function Composer({
   // Highlight is tracked by option identity so late-loading targets cannot shift it to another item.
   const [mentionHighlightKey, setMentionHighlightKey] = useState<string | null>(null);
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
-  const [selectedSkill, setSelectedSkill] = useState<AgentSkillCatalogEntry | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState(() =>
+    readChatDraftSkill<AgentSkillCatalogEntry>(draftKey),
+  );
+  useEffect(() => {
+    writeChatDraftSkill(draftKey, selectedSkill);
+  }, [draftKey, selectedSkill]);
   const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>([]);
   const editRevision = useRef(0);
   const retryNonce = useRef<string | null>(null);
@@ -7016,6 +7031,11 @@ export const Composer = memo(function Composer({
           data-testid="slash-picker"
           className="mb-2 overflow-hidden rounded-[14px] border border-border bg-muted"
         >
+          {slashSkillOptions.length ? (
+            <div role="presentation" className={SLASH_SECTION_CLASS}>
+              <Trans>Skills</Trans>
+            </div>
+          ) : null}
           {slashSkillOptions.map((skill, index) => {
             const label = slashSkillLabel(skill);
             return (
@@ -7030,7 +7050,7 @@ export const Composer = memo(function Composer({
                 onClick={() => insertSkill(skill)}
                 onMouseMove={() => setSlashHighlight(index)}
                 className={`flex w-full items-start gap-3 px-4 py-2.5 text-start hover:bg-accent ${
-                  index === activeSlashIndex ? "bg-accent" : ""
+                  index === activeSlashIndex ? SLASH_SELECTED_CLASS : ""
                 }`}
               >
                 <Box
@@ -7049,6 +7069,11 @@ export const Composer = memo(function Composer({
               </button>
             );
           })}
+          {slashActionOptions.length ? (
+            <div role="presentation" className={SLASH_SECTION_CLASS}>
+              <Trans>Actions</Trans>
+            </div>
+          ) : null}
           {slashActionOptions.map((action, actionIndex) => {
             const label = slashActionLabel(action.id);
             const index = slashSkillOptions.length + actionIndex;
@@ -7064,7 +7089,7 @@ export const Composer = memo(function Composer({
                 onClick={() => runSlashAction(action.id)}
                 onMouseMove={() => setSlashHighlight(index)}
                 className={`flex w-full items-center gap-3 px-4 py-2.5 text-start hover:bg-accent ${
-                  index === activeSlashIndex ? "bg-accent" : ""
+                  index === activeSlashIndex ? SLASH_SELECTED_CLASS : ""
                 }`}
               >
                 <Settings size={16} strokeWidth={1.7} className="shrink-0 text-muted-foreground" />
@@ -7397,14 +7422,19 @@ function measureTextareaHeight(textarea: HTMLTextAreaElement, width?: number) {
   return height;
 }
 
+/** The picker sits on bg-muted, where bg-accent barely shows; the page background stands out. */
+const SLASH_SELECTED_CLASS = "bg-background shadow-[inset_3px_0_0_var(--ring)]";
+const SLASH_SECTION_CLASS =
+  "px-4 pt-2.5 pb-1 text-[11.5px] font-medium uppercase tracking-wide text-muted-foreground/80";
+
 function slashActionLabel(id: SlashActionId) {
   switch (id) {
     case "chat-settings":
-      return t`Chat Settings`;
+      return t`Chat settings`;
     case "settings-general":
-      return t`Settings: General`;
+      return t`Open Settings`;
     case "settings-usage":
-      return t`Settings: Usage`;
+      return t`See usage`;
   }
 }
 

@@ -137,7 +137,7 @@ export function SpaceSearchResults({
       ) : null}
       {nothingMatched && !loading && onSearchMail ? (
         <div className="px-3 pt-3 pb-1 text-[14px] text-muted-foreground">
-          <Trans>No matches in chats, pages or documents.</Trans>
+          <Trans>No matches in chats, pages, documents or artifacts.</Trans>
         </div>
       ) : null}
       {onSearchMail ? (

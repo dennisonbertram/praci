@@ -80,7 +80,7 @@ it("says nothing matched when only the mail search is left", () => {
       onSearchMail={() => undefined}
     />,
   );
-  expect(html).toContain("No matches in chats, pages or documents.");
+  expect(html).toContain("No matches in chats, pages, documents or artifacts.");
   expect(html).toContain("Search mail for “qwxzv”");
 });
 
