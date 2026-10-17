@@ -177,6 +177,8 @@ const QueryArgs = z.discriminatedUnion("view", [
     contractId: Id.optional(),
     /** Only deadlines due within this many days from today (overdue ones included). */
     withinDays: z.number().int().min(0).max(3650).optional(),
+    /** Only deadlines that fell due within the last this many days (use with status "done" to see recent ones). */
+    dueInLastDays: z.number().int().min(0).max(3650).optional(),
     limit: z.number().int().min(1).max(200).optional(),
   }),
   z.object({
@@ -412,6 +414,7 @@ async function query(deps: LegalToolDeps, args: Record<string, unknown>) {
     const rows = await repo.listDeadlines(actor, {
       status: q.status ?? "open",
       contractId: q.contractId,
+      from: q.dueInLastDays === undefined ? undefined : addDays(today, -q.dueInLastDays),
       to: q.withinDays === undefined ? undefined : addDays(today, q.withinDays),
       limit: q.limit,
     });

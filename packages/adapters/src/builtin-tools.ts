@@ -1061,7 +1061,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "legal_query",
     description:
-      "Read back what is recorded. view 'contracts' lists contracts with key dates; view 'deadlines' lists open deadlines by due date (withinDays limits how far ahead); view 'node' returns one graph node with its neighbors and edges.",
+      "Read back what is recorded. view 'contracts' lists contracts with key dates; view 'deadlines' lists open deadlines by due date (status 'done' lists closed ones; withinDays limits how far ahead; dueInLastDays only looks back that many days); view 'node' returns one graph node with its neighbors and edges.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1069,6 +1069,7 @@ export const builtinAgentTools: ConnectorTool[] = [
         status: { type: "string", description: "Filter by status." },
         contractId: { type: "string" },
         withinDays: { type: "number" },
+        dueInLastDays: { type: "number" },
         nodeId: { type: "string" },
         kind: { type: "string" },
         label: { type: "string" },

@@ -547,6 +547,35 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     ]);
   });
 
+  it("lists recently done deadlines so a recurring one can get its next occurrence", async () => {
+    const day = (offset: number) =>
+      new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+    for (const [title, offset] of [
+      ["Recent audit", -10],
+      ["Old audit", -400],
+    ] as const) {
+      await legal(a, "legal_upsert_deadline", {
+        title,
+        dueDate: day(offset),
+        kind: "filing",
+        status: "done",
+      });
+    }
+    const recent = await legal(a, "legal_query", {
+      view: "deadlines",
+      status: "done",
+      dueInLastDays: 60,
+    });
+    const titles = recent.deadlines.map((d: any) => d.title);
+    expect(titles).toContain("Recent audit");
+    expect(titles).not.toContain("Old audit");
+    expect(recent.deadlines.every((d: any) => d.status === "done")).toBe(true);
+    const all = await legal(a, "legal_query", { view: "deadlines", status: "done" });
+    expect(all.deadlines.map((d: any) => d.title)).toEqual(
+      expect.arrayContaining(["Recent audit", "Old audit"]),
+    );
+  });
+
   it("refuses to link evidence from another user's document", async () => {
     const mine = await legal(a, "legal_upsert_node", { kind: "company", label: "Evidence Co" });
     const other = await legal(a, "legal_upsert_node", { kind: "company", label: "Evidence Two" });
