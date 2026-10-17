@@ -147,6 +147,18 @@ it("hides the Zernio tile once its server is connected", async () => {
   expect(container.querySelector('[aria-label="Connect Zernio"]')).toBeNull();
 });
 
+it("shows a connected Carta by what it does, with a way to its page", async () => {
+  const carta = {
+    id: "s2",
+    name: "Carta",
+    endpoint: "https://mcp.app.carta.com/mcp",
+  } as unknown as IntegrationsData["servers"][number];
+  await show({ ...data(true, true), servers: [carta] });
+  expect(container.textContent).toContain("Cap table, equity and investors");
+  expect(container.textContent).not.toContain("mcp.app.carta.com");
+  expect(container.querySelector('a[href="/app/cap-table"]')?.textContent).toBe("Open Cap table");
+});
+
 it("offers Carta and prefills the custom dialog", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Carta"]');

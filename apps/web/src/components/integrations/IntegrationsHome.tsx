@@ -94,6 +94,18 @@ function CardHead({
   );
 }
 
+/** Opens the app page an integration feeds (Inbox, Cap table), like Mercury's "Open Finance". */
+function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="relative z-10 ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+    >
+      {children}
+    </Link>
+  );
+}
+
 function UsedBy({ bots }: { bots: ReturnType<typeof agentsFor> }) {
   if (bots.length === 0) return null;
   return (
@@ -104,21 +116,47 @@ function UsedBy({ bots }: { bots: ReturnType<typeof agentsFor> }) {
   );
 }
 
-function McpCard({ server, data }: { server: McpServer; data: IntegrationsData }) {
+function McpCard({
+  server,
+  data,
+  descriptions,
+}: {
+  server: McpServer;
+  data: IntegrationsData;
+  /** What each first-party server does, shown instead of its raw address. */
+  descriptions: Partial<Record<string, string>>;
+}) {
+  const { t } = useLingui();
   const reconnect = useMcpReconnect(server.id, () => void data.refresh());
   const status = reconnect.busy ? "connecting" : mcpStatus(server);
   const assigned = data.mcpAssignments
     .filter((entry) => entry.serverId === server.id)
     .map((entry) => entry.botId);
+  const known =
+    "endpoint" in server
+      ? FIRST_PARTY_MCP.find((entry) => isSameMcpEndpoint(server.endpoint, entry.endpoint))
+      : undefined;
+  // The app page a known server feeds, opened from its card like Mercury's "Open Finance".
+  const page =
+    known?.id === "carta" ? { to: "/app/cap-table", label: t`Open Cap table` } : undefined;
   return (
     <Card>
       <CardHead
         name={server.name}
-        sub={hostOf(server.endpoint) || server.command || undefined}
+        logo={known?.logo}
+        sub={
+          (known && descriptions[known.id]) ||
+          hostOf(server.endpoint) ||
+          server.command ||
+          undefined
+        }
         to={`/app/integrations/mcp/${server.id}`}
       />
       <div className="flex items-center gap-2">
         <StatusBadge status={status} />
+        {page && status === "connected" ? (
+          <OpenPageLink to={page.to}>{page.label}</OpenPageLink>
+        ) : null}
         {status === "reconnect" ? (
           <Button
             size="sm"
@@ -167,6 +205,11 @@ function AppCard({
       />
       <div className="flex items-center gap-2">
         <StatusBadge status={app.status} />
+        {app.status === "connected" && app.provider.toUpperCase() === "GMAIL" ? (
+          <OpenPageLink to="/app/inbox">
+            <Trans>Open Inbox</Trans>
+          </OpenPageLink>
+        ) : null}
         {app.status === "failed" ? (
           <Button
             size="sm"
@@ -409,7 +452,12 @@ export function IntegrationsHome({
                 <AppCard key={app.key} app={app} data={data} onRetry={retry} />
               ))}
               {servers.map((server) => (
-                <McpCard key={server.id} server={server} data={data} />
+                <McpCard
+                  key={server.id}
+                  server={server}
+                  data={data}
+                  descriptions={firstPartyDescription}
+                />
               ))}
               {data.sources.map((source) => (
                 <SourceCard key={source.id} source={source} onRemove={setRemoving} />
