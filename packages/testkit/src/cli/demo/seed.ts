@@ -17,10 +17,12 @@ import {
   DEMO_EMPTY_SPACE,
   DEMO_GROUP,
   DEMO_USER_NAME,
+  DEMO_WAITING_RUN,
   DEMO_WALLET,
   demoFinance,
   demoFolderPaths,
   demoStatementCsv,
+  linkDemoArtifacts,
   MOCK_NOTE,
 } from "./data.js";
 
@@ -244,14 +246,16 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   done.push(`${DEMO_DOCUMENTS.length} data room documents`);
 
   // Artifacts: last month's investor update in two versions, and the other files Chief made.
+  const artifactIds = new Map<string, string>();
   for (const artifact of [DEMO_CHIEF_DRAFT_V1, DEMO_CHIEF_DRAFT, ...DEMO_ARTIFACTS]) {
-    await session.rpc("artifacts/create", {
+    const created = await session.rpc<{ id: string }>("artifacts/create", {
       botId: chief.id,
       name: artifact.name,
       mimeType: artifact.mimeType,
       ...("description" in artifact ? { description: artifact.description } : {}),
       contentBase64: Buffer.from(artifact.text).toString("base64"),
     });
+    artifactIds.set(artifact.name, created.id);
   }
   done.push(`${DEMO_ARTIFACTS.length + 1} artifacts (the investor update has 2 versions)`);
 
@@ -265,7 +269,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
           createThreadMessageInTransaction(tx, {
             threadId: thread.id,
             role: entry.role,
-            blocks: [{ kind: "text", text: entry.text }],
+            blocks: [{ kind: "text", text: linkDemoArtifacts(entry.text, artifactIds) }],
             markUnread: false,
           }),
         );
@@ -288,13 +292,76 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     botIds.push(created.id);
   }
   await session.rpc("groups/create", { name: DEMO_GROUP.name, botIds });
+
+  // A run waiting on the founder's answer, written straight to the database (no model call).
+  {
+    const db = createDb(options.databaseUrl);
+    try {
+      const { spaceId, userId } = await db.prisma.bot.findUniqueOrThrow({
+        where: { id: chief.id },
+      });
+      const bot = await db.prisma.bot.findFirstOrThrow({
+        where: { spaceId, name: DEMO_WAITING_RUN.botName },
+      });
+      const thread = await db.prisma.thread.findUniqueOrThrow({ where: { botId: bot.id } });
+      const owner = { spaceId, userId, botId: bot.id, threadId: thread.id };
+      // Let the bot's own introduction finish first, so the question is the newest message.
+      for (let waited = 0; waited < 90_000; waited += 1_000) {
+        const busy = await db.prisma.run.count({
+          where: { botId: bot.id, status: { notIn: ["completed", "failed", "cancelled"] } },
+        });
+        if (!busy) break;
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      }
+      const task = await db.prisma.task.create({
+        data: { ...owner, prompt: DEMO_WAITING_RUN.prompt, status: "waiting_input" },
+      });
+      const run = await db.prisma.run.create({
+        data: {
+          ...owner,
+          taskId: task.id,
+          status: "waiting_input",
+          trigger: "user",
+          startedAt: new Date(),
+        },
+      });
+      await db.prisma.$transaction(async (tx) => {
+        await createThreadMessageInTransaction(tx, {
+          threadId: thread.id,
+          role: "user",
+          blocks: [{ kind: "text", text: DEMO_WAITING_RUN.prompt }],
+          markUnread: false,
+        });
+        await createThreadMessageInTransaction(tx, {
+          threadId: thread.id,
+          role: "bot",
+          botId: bot.id,
+          runId: run.id,
+          blocks: [
+            { kind: "text", text: DEMO_WAITING_RUN.intro },
+            {
+              kind: "ask",
+              text: DEMO_WAITING_RUN.question,
+              status: "pending",
+              actions: DEMO_WAITING_RUN.choices,
+            },
+          ],
+        });
+      });
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  }
   const archived = await session.rpc<{ id: string }>("bots/create", {
     ...DEMO_ARCHIVED_BOT,
     instructions: DEMO_ARCHIVED_BOT.description,
     notifyOnFinish: true,
   });
   await session.rpc("bots/archive", { botId: archived.id });
-  done.push(`${DEMO_BOTS.length} extra bots, 1 archived bot, 1 group chat (${MOCK_NOTE})`);
+  done.push(
+    `${DEMO_BOTS.length} extra bots, 1 archived bot, 1 group chat, 1 run waiting on an answer (${MOCK_NOTE})`,
+  );
 
   // A second, empty space: what a founder sees before connecting anything (switch to it to test).
   await session.rpc("spaces/create", { name: DEMO_EMPTY_SPACE });

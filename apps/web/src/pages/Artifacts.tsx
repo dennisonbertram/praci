@@ -692,7 +692,8 @@ function ArtifactCard({
             </div>
           ) : null}
         </div>
-        <div className="mt-auto flex items-center gap-2 text-[12px] text-muted-foreground">
+        {/* pe-8 keeps the time clear of the Delete button that appears on hover. */}
+        <div className="mt-auto flex items-center gap-2 pe-8 text-[12px] text-muted-foreground">
           {bot ? (
             <>
               <BotAvatar color={bot.color} identity={bot.id} size={20} status={bot.status} />

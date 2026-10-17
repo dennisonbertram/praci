@@ -474,7 +474,9 @@ describe("web external link confirmation", () => {
     const [inApp, site] = view.container.querySelectorAll("a");
     expect(inApp?.getAttribute("href")).toBe("/app/finance");
     expect(inApp?.hasAttribute("target")).toBe(false);
+    expect(inApp?.classList.contains("rk-chat-app-link")).toBe(true);
     expect(site?.getAttribute("target")).toBe("_blank");
+    expect(site?.classList.contains("rk-chat-app-link")).toBe(false);
     await view.cleanup();
   });
 

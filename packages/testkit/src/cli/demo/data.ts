@@ -923,6 +923,7 @@ export function demoFolderPaths(documents: DemoDocument[]): string[] {
 export const DEMO_CHIEF_DRAFT = {
   name: "MOCK Investor Update - September.md",
   mimeType: "text/markdown",
+  description: "Last month's update to investors, to start October from",
   text: `# MOCK DEMO DATA: Investor update, September
 
 Hi Priya, Dana and Lee,
@@ -1007,11 +1008,23 @@ ${MOCK_NOTE}: invented for UX testing.
 ];
 
 /** An earlier conversation with Chief, so history, search and recall have something to find. */
+/**
+ * Turns each `{artifact:<file name>}` in a seeded message into a link that opens that artifact,
+ * named without its extension. A name with no id is left as plain text.
+ */
+export function linkDemoArtifacts(text: string, ids: ReadonlyMap<string, string>): string {
+  return text.replace(/\{artifact:([^}]+)\}/g, (_match, name: string) => {
+    const label = name.replace(/\.[a-z0-9]+$/i, "");
+    const id = ids.get(name);
+    return id ? `[${label}](/app/artifacts/${id})` : label;
+  });
+}
+
 export const DEMO_CHIEF_HISTORY: Array<{ role: "user" | "bot"; text: string }> = [
   { role: "user", text: "When is the next board meeting? (mock)" },
   {
     role: "bot",
-    text: "The Q3 board meeting is on the 28th. I drafted the deck; it is in Artifacts as MOCK Q3 Board Deck.",
+    text: "The Q3 board meeting is on the 28th. I drafted the deck; it is in Artifacts as {artifact:MOCK Q3 Board Deck.md}.",
   },
   { role: "user", text: "What did we agree with Halcyon Logistics (Mock)?" },
   {
@@ -1033,7 +1046,7 @@ export const DEMO_CHIEF_HISTORY: Array<{ role: "user" | "bot"; text: string }> =
   { role: "user", text: "What should I hire for first?" },
   {
     role: "bot",
-    text: "The hiring plan puts a senior robotics engineer first, in November. It is in Artifacts as MOCK Hiring Plan - Q4.",
+    text: "The hiring plan puts a senior robotics engineer first, in November. It is in Artifacts as {artifact:MOCK Hiring Plan - Q4.md}.",
   },
 ];
 
@@ -1058,3 +1071,20 @@ export const DEMO_BOTS = [
 ];
 
 export const DEMO_GROUP = { name: "Leadership sync (mock)" };
+
+/**
+ * One run parked on a question, so Activity has something under "Needs you" and the bot's chat
+ * shows an answerable question. No model runs until the founder answers. The stuck-work sweep
+ * cancels it after a day, so reseed (demo:down/up) for a fresh one.
+ */
+export const DEMO_WAITING_RUN = {
+  botName: "Investor Relations (mock)",
+  prompt: "Draft the October investor update from the September one.",
+  intro: `${MOCK_NOTE}: I have the September update open and can start the October draft.`,
+  question:
+    "Should the October update name the Bolt Freight pilot, or keep it as 'a logistics customer'?",
+  choices: [
+    { id: "name", label: "Name Bolt Freight" },
+    { id: "anonymous", label: "Say 'a logistics customer'" },
+  ],
+};

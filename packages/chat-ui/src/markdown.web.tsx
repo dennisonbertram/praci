@@ -237,6 +237,10 @@ function ConfirmableAnchor({ href, ...props }: React.ComponentPropsWithoutRef<"a
   return (
     <a
       {...props}
+      // In-app links read as part of the app (text colour, medium weight), not as web links.
+      className={
+        inApp ? [props.className, "rk-chat-app-link"].filter(Boolean).join(" ") : props.className
+      }
       href={href}
       target={inApp ? undefined : "_blank"}
       rel={inApp ? undefined : "noreferrer noopener"}

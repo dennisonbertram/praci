@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEMO_ARCHIVED_BOT,
   DEMO_ARTIFACTS,
+  DEMO_BOTS,
   DEMO_CAP_TABLE,
   DEMO_CHIEF_DRAFT,
   DEMO_CHIEF_DRAFT_V1,
@@ -22,6 +23,7 @@ import {
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_WAITING_RUN,
   DEMO_WALLET,
   demoCarta,
   demoCrypto,
@@ -29,11 +31,26 @@ import {
   demoFolderPaths,
   demoMailboxes,
   demoStatementCsv,
+  linkDemoArtifacts,
   MOCK_NOTE,
   MOCK_SUBJECT_PREFIX,
 } from "./data.js";
 
 describe("mock demo data", () => {
+  it("links Chief's mentions of an artifact to that artifact", () => {
+    const ids = new Map([["MOCK Q3 Board Deck.md", "art1"]]);
+    expect(linkDemoArtifacts("See {artifact:MOCK Q3 Board Deck.md}.", ids)).toBe(
+      "See [MOCK Q3 Board Deck](/app/artifacts/art1).",
+    );
+    expect(linkDemoArtifacts("See {artifact:Missing.md}.", ids)).toBe("See Missing.");
+  });
+
+  it("parks one mock run on a question for a bot the seed creates", () => {
+    expect(DEMO_BOTS.map((bot) => bot.name)).toContain(DEMO_WAITING_RUN.botName);
+    expect(DEMO_WAITING_RUN.intro.startsWith(MOCK_NOTE)).toBe(true);
+    expect(DEMO_WAITING_RUN.question.endsWith("?")).toBe(true);
+  });
+
   it("labels the company and every contact and document as mock", () => {
     expect(DEMO_COMPANY.startsWith("MOCK DEMO DATA —")).toBe(true);
     expect(DEMO_EMPTY_SPACE.startsWith("MOCK DEMO DATA —")).toBe(true);
