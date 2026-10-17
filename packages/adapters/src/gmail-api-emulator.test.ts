@@ -174,6 +174,12 @@ describe("GmailApiEmulator", () => {
     expect(q("after:2026/09/02 before:2026/09/04")).toEqual(["m3", "m2"]);
     expect(q("(from:ann OR from:cy) in:inbox")).toEqual(["m4", "m1"]);
     expect(q("(lunch OR travel) after:2026/09/04")).toEqual(["m4"]);
+    // Operators agents reach for when looking up past mail, such as sent investor updates.
+    expect(q('in:sent subject:"quarterly budget"')).toEqual(["m3"]);
+    expect(q("label:sent to:ann")).toEqual(["m3"]);
+    expect(q("in:anywhere travel")).toEqual(["m4"]);
+    expect(q("newer_than:100y")).toEqual(["m4", "m3", "m2", "m1"]);
+    expect(q("older_than:1d")).toEqual(["m4", "m3", "m2", "m1"]);
   });
 
   it("filters by is:starred, is:important, has:attachment and category:", () => {

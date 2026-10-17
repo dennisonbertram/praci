@@ -594,12 +594,13 @@ function get(mailbox: Mailbox, id: string, params: URLSearchParams): ConnectorPr
   };
 }
 
-// Query subset: after:, before:, from:, in:inbox, in:sent, is:unread|starred|important,
+// Query subset: after:, before:, newer_than:, older_than:, from:, to:, subject:,
+// in:inbox|sent|anywhere, label:inbox|sent, is:unread|starred|important,
 // has:attachment, category:primary|social|promotions|updates, bare words, OR, parentheses.
 // Anything else is a 400, so a test cannot pass because a filter was silently ignored.
 
 function parseQuery(query: string): Matcher {
-  const tokens = query.match(/\(|\)|"[^"]*"|[^\s()]+/g) ?? [];
+  const tokens = query.match(/\(|\)|[a-z_]+:"[^"]*"|"[^"]*"|[^\s()]+/gi) ?? [];
   let position = 0;
   const parseOr = (): Matcher => {
     const branches = [parseAnd()];
@@ -628,7 +629,7 @@ function parseQuery(query: string): Matcher {
 }
 
 function parseTerm(token: string): Matcher {
-  const operator = token.startsWith('"') ? null : /^([a-z]+):(.*)$/i.exec(token);
+  const operator = token.startsWith('"') ? null : /^([a-z_]+):(.*)$/i.exec(token);
   if (!operator) {
     const word = token.replace(/^"|"$/g, "").toLowerCase();
     return (m) =>
@@ -637,8 +638,22 @@ function parseTerm(token: string): Matcher {
       );
   }
   const name = (operator[1] as string).toLowerCase();
-  const value = operator[2] as string;
+  const value = (operator[2] as string).replace(/^"|"$/g, "");
+  const contains = (field: string) => (m: Stored) =>
+    header(m, field).toLowerCase().includes(value.toLowerCase());
   switch (name) {
+    case "subject":
+    case "to":
+      return contains(name);
+    case "newer_than":
+    case "older_than": {
+      const span = /^(\d+)([dmy])$/i.exec(value);
+      if (!span) throw new QueryError(`Invalid value for ${name}:`);
+      const days =
+        Number(span[1]) * { d: 1, m: 30, y: 365 }[(span[2] as string).toLowerCase() as "d"];
+      const at = Date.now() - days * 86_400_000;
+      return name === "newer_than" ? (m) => m.internalDate >= at : (m) => m.internalDate < at;
+    }
     case "after":
     case "before": {
       const date = /^(\d{4})\/(\d{2})\/(\d{2})$/.exec(value);
@@ -649,8 +664,10 @@ function parseTerm(token: string): Matcher {
       return name === "after" ? (m) => m.internalDate >= at : (m) => m.internalDate < at;
     }
     case "from":
-      return (m) => header(m, "from").toLowerCase().includes(value.toLowerCase());
-    case "in": {
+      return contains("from");
+    case "in":
+    case "label": {
+      if (name === "in" && value.toLowerCase() === "anywhere") return () => true;
       const label = { inbox: "INBOX", sent: "SENT" }[value.toLowerCase()];
       if (!label) throw new QueryError(`Unsupported in: value ${value}`);
       return (m) => m.labelIds.includes(label);
