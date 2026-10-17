@@ -174,9 +174,9 @@ import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
-import { InboxAgentIntro } from "../components/inbox/InboxAgentIntro";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
+import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
 import {
@@ -3172,7 +3172,22 @@ export function ShellPage() {
             activeSnapshot.olderCursor == null &&
             !transcriptRunning &&
             !sending ? (
-              <InboxAgentIntro onAsk={(text) => void sendMessage(text, [], newClientId())} />
+              <PageAgentIntro
+                kind="inbox"
+                onAsk={(text) => void sendMessage(text, [], newClientId())}
+              />
+            ) : !inGroup &&
+              !pageMode &&
+              activeSnapshot &&
+              pageAgentKind(active?.spawnKey) &&
+              transcriptMessages.length === 0 &&
+              activeSnapshot.olderCursor == null &&
+              !transcriptRunning &&
+              !sending ? (
+              <PageAgentIntro
+                kind={pageAgentKind(active?.spawnKey) ?? "inbox"}
+                onAsk={(text) => void sendMessage(text, [], newClientId())}
+              />
             ) : inGroup &&
               activeGroup &&
               activeSnapshot &&
