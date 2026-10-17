@@ -140,7 +140,17 @@ export const LegalOverviewSchema = z.object({
     unreviewedDocuments: z.number().int(),
   }),
   /** Whether the Legal agent exists, and when it last finished a scan run (ISO) if known. */
-  agent: z.object({ botId: Id.nullable(), lastScanAt: z.string().datetime().nullable() }),
+  agent: z.object({
+    botId: Id.nullable(),
+    lastScanAt: z.string().datetime().nullable(),
+    /** The newest scan run (daily or Scan now), whatever its outcome; `error` is set when it failed. */
+    lastScanRun: z
+      .object({
+        status: z.enum(["running", "completed", "failed", "cancelled"]),
+        error: z.string().nullable(),
+      })
+      .nullable(),
+  }),
   /**
    * The model the Legal agent will actually run on. Without the user's own credential for the
    * preferred provider, Rakazo falls back to the space default, so this can differ from LEGAL_AGENT_MODEL.

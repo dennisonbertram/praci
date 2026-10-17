@@ -352,6 +352,16 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
 
     const overview = await legalOverview(api, a);
     expect(overview.agent.botId).toBe(bot.id);
+    expect(overview.agent.lastScanRun).toEqual({ status: "running", error: null });
+    await prisma.run.update({
+      where: { id: first.runId },
+      data: { status: "failed", error: "Data Room consent is required." },
+    });
+    expect((await legalOverview(api, a)).agent.lastScanRun).toEqual({
+      status: "failed",
+      error: "Data Room consent is required.",
+    });
+    await prisma.run.update({ where: { id: first.runId }, data: { status: "queued" } });
     expect(overview.contracts[0]).toMatchObject({ title: "Acme MSA", valueCents: "1250000" });
     expect(overview.counts.openDeadlines).toBeGreaterThan(0);
     const deadline = overview.deadlines[0]!;

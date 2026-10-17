@@ -43,6 +43,11 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
     orderBy: { completedAt: "desc" },
     select: { completedAt: true },
   });
+  const latestRun = await deps.prisma.run.findFirst({
+    where: { botId: bot.id, trigger: "routine" },
+    orderBy: { createdAt: "desc" },
+    select: { status: true, error: true },
+  });
   // The same resolution path a run uses: the bot's own model if the user has its credential, else the default.
   const resolved = (await deps.resolveAi(actor, bot.id).catch(() => null))?.model;
   const titles = new Map(contracts.map((c) => [c.id, c.title]));
@@ -64,7 +69,21 @@ export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<Lega
       ...counts,
       unreviewedDocuments: unreviewed,
     },
-    agent: { botId: bot.id, lastScanAt: lastScan?.completedAt?.toISOString() ?? null },
+    agent: {
+      botId: bot.id,
+      lastScanAt: lastScan?.completedAt?.toISOString() ?? null,
+      lastScanRun: latestRun
+        ? {
+            status:
+              latestRun.status === "completed" ||
+              latestRun.status === "failed" ||
+              latestRun.status === "cancelled"
+                ? latestRun.status
+                : "running",
+            error: latestRun.status === "failed" ? latestRun.error : null,
+          }
+        : null,
+    },
     model: resolved
       ? {
           provider: resolved.provider,
