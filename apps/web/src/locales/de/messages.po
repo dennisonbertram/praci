@@ -7643,7 +7643,7 @@ msgstr "Was soll mit seinen Erinnerungen geschehen?"
 msgid "What do you want me on first?"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr ""
 
@@ -7679,7 +7679,7 @@ msgstr "Ausführungszeit"
 msgid "When to use"
 msgstr "Einsatzzeitpunkt"
 
-#: src/pages/Shell.tsx
+#: src/lib/finance-agent.ts
 msgid "Where did spend go up this month?"
 msgstr ""
 

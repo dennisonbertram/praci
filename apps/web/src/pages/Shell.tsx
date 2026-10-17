@@ -226,7 +226,11 @@ import {
 } from "../lib/computer-screen";
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
-import { findFinanceAgent } from "../lib/finance-agent";
+import {
+  chatStarterQuestions,
+  financeAgentSuggestions,
+  findFinanceAgent,
+} from "../lib/finance-agent";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { localTimezone } from "../lib/local-timezone";
@@ -2713,7 +2717,7 @@ export function ShellPage() {
           createLabel: t`Create Finance agent`,
           creating: creatingFinanceAgent,
           error: financeAgentError,
-          suggestions: [t`What is our runway?`, t`Where did spend go up this month?`],
+          suggestions: financeAgentSuggestions(),
         }
       : capTableMode
         ? {
@@ -3089,6 +3093,15 @@ export function ShellPage() {
     .toUpperCase();
 
   const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
+  const chatStarters = chatStarterQuestions(
+    active,
+    userId,
+    Boolean(activeSnapshot) &&
+      transcriptMessages.length === 0 &&
+      activeSnapshot?.olderCursor == null &&
+      !transcriptRunning &&
+      !sending,
+  );
   const threadView = (
     <>
       {!inGroup && !pageMode && botPins ? <PinsStrip pins={botPins} onPins={setBotPins} /> : null}
@@ -3102,6 +3115,14 @@ export function ShellPage() {
             !transcriptRunning &&
             !sending ? (
               <InboxAgentIntro onAsk={(text) => void sendMessage(text, [], newClientId())} />
+            ) : !pageMode && chatStarters ? (
+              // The Finance agent's own chat starts like its Finance panel: what it does, and two questions.
+              <AgentPanelIntro
+                description={active?.description ?? ""}
+                suggestions={chatStarters}
+                disabled={sending}
+                onPick={(text) => void sendMessage(text, [], newClientId())}
+              />
             ) : (
               <Transcript
                 key={activeSnapshot?.threadId}

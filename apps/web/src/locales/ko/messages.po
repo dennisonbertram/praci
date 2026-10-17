@@ -7643,7 +7643,7 @@ msgstr "이 Bot의 기억은 어떻게 할까요?"
 msgid "What do you want me on first?"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr ""
 
@@ -7679,7 +7679,7 @@ msgstr "실행 시간"
 msgid "When to use"
 msgstr "언제 사용할지"
 
-#: src/pages/Shell.tsx
+#: src/lib/finance-agent.ts
 msgid "Where did spend go up this month?"
 msgstr ""
 
