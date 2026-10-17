@@ -1,4 +1,4 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { RunActivityRow, RunStatus } from "@rakazo/contracts";
 import { isAgedStuckWork } from "@rakazo/core";
@@ -95,6 +95,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   const filtersOn = activityFiltersActive(filters);
   const [showFilters, setShowFilters] = useState(false);
+  const [showFinished, setShowFinished] = useState(false);
   // What needs the person comes first; the rest of the active work follows as "Working".
   const needsYou = filteredActive.filter((run) => NEEDS_YOU.has(run.status));
   const working = filteredActive.filter((run) => !NEEDS_YOU.has(run.status));
@@ -171,11 +172,34 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
         ))}
       </ActivitySection>
-      <ActivitySection id="activity-recent-heading" title={<Trans>Finished</Trans>}>
-        {filteredRecent.map((run) => (
-          <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
-        ))}
-      </ActivitySection>
+      {needsYou.length === 0 && working.length === 0 && !filtersOn ? (
+        <p className="px-2.5 py-1 text-[13px] text-muted-foreground/80" role="status">
+          <Trans>Nothing needs you right now.</Trans>
+        </p>
+      ) : null}
+      {/* Finished runs need nothing from the person, so they stay folded unless filtering. */}
+      {filteredRecent.length > 0 && !showFinished && !filtersOn ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 w-full justify-start rounded-xl px-2.5 text-[12.5px] font-medium text-muted-foreground/80"
+          data-testid="activity-show-finished"
+          aria-expanded={false}
+          onClick={() => setShowFinished(true)}
+        >
+          {plural(filteredRecent.length, {
+            one: "Show # finished run",
+            other: "Show # finished runs",
+          })}
+        </Button>
+      ) : (
+        <ActivitySection id="activity-recent-heading" title={<Trans>Finished</Trans>}>
+          {filteredRecent.map((run) => (
+            <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
+          ))}
+        </ActivitySection>
+      )}
     </div>
   );
 }
