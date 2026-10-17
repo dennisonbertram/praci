@@ -21,6 +21,8 @@ export const DataRoomApiFolderSchema = z.object({
   name: z.string(),
   parentId: NullableId,
   createdAt: z.string().datetime(),
+  /** Items directly in the folder; only the folder list carries it. */
+  itemCount: z.number().int().nonnegative().optional(),
 });
 export type DataRoomApiFolder = z.infer<typeof DataRoomApiFolderSchema>;
 

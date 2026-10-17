@@ -116,6 +116,19 @@ const toFilters = (input: {
   };
 };
 
+/**
+ * The query's words joined by "or", for a second try when every word had to match. Null for a
+ * single word. Quotes and leading minus signs are dropped, so the words are plain terms.
+ */
+export function anyWordQuery(query: string): string | null {
+  const words = query
+    .replace(/["]/g, " ")
+    .split(/\s+/)
+    .map((word) => word.replace(/^-+/, ""))
+    .filter((word) => word && word.toLowerCase() !== "or");
+  return words.length > 1 ? words.join(" or ") : null;
+}
+
 const QUERY_EMBED_TIMEOUT_MS = 10_000;
 const REINDEX_BATCH = 200;
 
@@ -184,7 +197,16 @@ export function createDataRoomService(deps: DataRoomDeps) {
   }
 
   return {
-    folders: async (actor: Actor) => (await repo.listFolders(actor)).map(folderDto),
+    folders: async (actor: Actor) => {
+      const [folders, counts] = await Promise.all([
+        repo.listFolders(actor),
+        repo.folderItemCounts(actor),
+      ]);
+      return folders.map((folder) => ({
+        ...folderDto(folder),
+        itemCount: counts.get(folder.id) ?? 0,
+      }));
+    },
     createFolder: (actor: Actor, input: { name: string; parentId?: string | null }) =>
       dataRoomCall(async () => folderDto(await repo.createFolder(actor, input))),
     renameFolder: (actor: Actor, input: { id: string; name: string }) =>
@@ -240,6 +262,16 @@ export function createDataRoomService(deps: DataRoomDeps) {
         }
         await repo.deleteItem(actor, id);
         return { ok: true as const };
+      }),
+    /** A failed item starts over from reading its text; any other status is a conflict. */
+    retryItem: (actor: Actor, id: string) =>
+      dataRoomCall(async () => {
+        const item = await repo.getItem(actor, id);
+        if (item.status !== "failed" || !(await repo.restartItem(actor, id))) {
+          throw new ORPCError("CONFLICT", { message: "This file is already being read." });
+        }
+        await deps.jobs.enqueue(dataRoomStepJob("dataroom.ingest", actor, id));
+        return itemDto(await repo.getItem(actor, id));
       }),
     consent: async (actor: Actor): Promise<DataRoomConsentStatus> => {
       const { ai: _ai, ...status } = await consentStatus(actor);
@@ -317,11 +349,17 @@ export function createDataRoomService(deps: DataRoomDeps) {
       },
     ) =>
       dataRoomCall(async () => {
-        const page = await repo.searchPage(actor, {
-          ...input,
-          ...(await queryVector(actor, input.query)),
-          filters: input.filters && toFilters(input.filters),
-        });
+        const vector = await queryVector(actor, input.query);
+        const filters = input.filters && toFilters(input.filters);
+        let page = await repo.searchPage(actor, { ...input, ...vector, filters });
+        // A question ("when does our lease end") rarely has every word in one file: on a first page
+        // with nothing found, match any of its words instead.
+        const anyWords = anyWordQuery(input.query);
+        if (!input.cursor && page.results.length === 0 && anyWords) {
+          page = await repo.searchPage(actor, { ...input, ...vector, filters, query: anyWords });
+          // ponytail: the fallback shows its first page only; carry the mode in the cursor if needed.
+          page = { ...page, nextCursor: null };
+        }
         return {
           results: page.results.map((hit) => ({ ...hit, item: itemDto(hit.item) })),
           nextCursor: page.nextCursor,

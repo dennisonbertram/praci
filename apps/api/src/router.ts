@@ -6408,6 +6408,9 @@ export function createRouter(deps: RouterDeps) {
       itemDelete: authed.dataRoom.itemDelete.handler(({ context, input }) =>
         dataRoom.deleteItem(context.actor, input.id),
       ),
+      itemRetry: authed.dataRoom.itemRetry.handler(({ context, input }) =>
+        dataRoom.retryItem(context.actor, input.id),
+      ),
       search: authed.dataRoom.search.handler(({ context, input }) =>
         dataRoom.search(context.actor, input),
       ),

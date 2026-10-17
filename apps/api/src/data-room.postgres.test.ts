@@ -281,7 +281,8 @@ describePostgres("Data room API (PostgreSQL)", () => {
     expect(
       (await c.dataRoom.items.list({ limit: 50, folderId: folder.id })).items.map((i) => i.id),
     ).toEqual([item.id]);
-    expect((await c.dataRoom.folders()).map((f) => f.id)).toContain(folder.id);
+    // The folder list says how many items each folder holds, so a parent never looks empty.
+    expect((await c.dataRoom.folders()).find((f) => f.id === folder.id)?.itemCount).toBe(1);
     await expect(c.dataRoom.folderDelete({ id: folder.id })).rejects.toMatchObject({
       code: "CONFLICT",
     });
@@ -554,6 +555,47 @@ describePostgres("Data room API (PostgreSQL)", () => {
       }),
     ).resolves.toBeInstanceOf(Uint8Array);
     await client(actors.a).dataRoom.itemDelete({ id: target.id });
+    enqueued.length = 0;
+  });
+
+  it("reads a failed item again on Try again, and refuses one that is not failed", async () => {
+    const response = await upload("a", "name=retry.txt", `retry me ${run}`);
+    const { item: failed } = (await response.json()) as { item: DataRoomApiItem };
+    await prisma.dataRoomItem.update({
+      where: { id: failed.id },
+      data: { status: "failed", failures: 3, error: "boom" },
+    });
+    enqueued.length = 0;
+    const c = client(actors.a);
+    expect(await c.dataRoom.itemRetry({ id: failed.id })).toMatchObject({
+      status: "pending",
+      error: null,
+    });
+    expect(enqueued.map((job) => job.name)).toEqual(["dataroom.ingest"]);
+    await expect(c.dataRoom.itemRetry({ id: failed.id })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    await expect(client(actors.b).dataRoom.itemRetry({ id: failed.id })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await c.dataRoom.itemDelete({ id: failed.id });
+    enqueued.length = 0;
+  });
+
+  it("answers a plain question by matching any of its words when all of them find nothing", async () => {
+    const response = await upload("a", "name=lease.txt", `lease text ${run}`);
+    const { item: lease } = (await response.json()) as { item: DataRoomApiItem };
+    await createDataRoomRepos(prisma).replaceChunks(actors.a, lease.id, [
+      { ordinal: 0, text: `Office${run} renewal is January 31`, contentHash: `lease-${run}` },
+    ]);
+    const c = client(actors.a);
+    const page = await c.dataRoom.search({
+      query: `when does our office${run} lease end`,
+      limit: 10,
+    });
+    expect(page.results.map((r) => r.item.id)).toEqual([lease.id]);
+    expect(page.nextCursor).toBeNull();
+    await c.dataRoom.itemDelete({ id: lease.id });
     enqueued.length = 0;
   });
 });
