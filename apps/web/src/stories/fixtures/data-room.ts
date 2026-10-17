@@ -35,6 +35,7 @@ const item = (id: string, name: string, over: Partial<DataRoomApiItem> = {}): Da
   size: 2400,
   folderId: "fld_sample",
   source: "upload",
+  sourceUrl: null,
   status: "ready",
   error: null,
   facets,

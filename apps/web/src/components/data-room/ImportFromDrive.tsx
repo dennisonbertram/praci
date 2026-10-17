@@ -1,0 +1,258 @@
+import { t } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { DataRoomApiDriveFile } from "@rakazo/contracts";
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from "@rakazo/ui-web";
+import { ArrowLeft, Folder, HardDrive } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { rpc } from "../../lib/rpc";
+import { errorText } from "../../lib/user-error";
+import { failedText, importedText, sizeText } from "./format";
+
+const SEARCH_DEBOUNCE_MS = 300;
+/** The most files the server takes in one import. */
+const MAX_PICKS = 20;
+const GOOGLE_APPS = "application/vnd.google-apps.";
+// Drive exports these to PDF; other Google files (forms, shortcuts, ...) have nothing to download.
+const EXPORTABLE = ["document", "spreadsheet", "presentation", "drawing"].map(
+  (kind) => GOOGLE_APPS + kind,
+);
+const importable = (file: DataRoomApiDriveFile) =>
+  !file.mimeType.startsWith(GOOGLE_APPS) || EXPORTABLE.includes(file.mimeType);
+
+function DrivePicker({
+  folderId,
+  onClose,
+  onDone,
+}: {
+  folderId: string | null;
+  onClose: () => void;
+  onDone: (message: string, changed: boolean) => void;
+}) {
+  const [input, setInput] = useState("");
+  const [query, setQuery] = useState("");
+  // The Drive folders opened so far; empty is My Drive.
+  const [path, setPath] = useState<{ id: string; name: string }[]>([]);
+  const [files, setFiles] = useState<DataRoomApiDriveFile[]>([]);
+  const [next, setNext] = useState<string | undefined>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [picks, setPicks] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const here = path.at(-1)?.id;
+  // Which listing is on screen; an answer for an earlier folder or search is dropped.
+  const listing = useRef(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(input.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [input]);
+
+  // Only the answer for the folder or search still on screen is kept.
+  useEffect(() => {
+    let current = true;
+    const id = ++listing.current;
+    setLoading(true);
+    setError("");
+    rpc.dataRoom
+      .driveList(query ? { query } : here ? { folderId: here } : {})
+      .then((page) => {
+        if (!current) return;
+        setFiles(page.files);
+        setNext(page.nextPageToken);
+      })
+      .catch((cause) => current && setError(errorText(cause)))
+      .finally(() => current && setLoading(false));
+    return () => {
+      current = false;
+    };
+  }, [query, here]);
+
+  async function loadMore() {
+    const id = listing.current;
+    setLoading(true);
+    try {
+      const page = await rpc.dataRoom.driveList({
+        ...(query ? { query } : here ? { folderId: here } : {}),
+        pageToken: next,
+      });
+      if (id !== listing.current) return;
+      setFiles((prev) => [...prev, ...page.files]);
+      setNext(page.nextPageToken);
+    } catch (cause) {
+      if (id === listing.current) setError(errorText(cause));
+    } finally {
+      if (id === listing.current) setLoading(false);
+    }
+  }
+
+  function open(folder: DataRoomApiDriveFile) {
+    setInput("");
+    setQuery("");
+    setPath((prev) => [...prev, { id: folder.id, name: folder.name }]);
+  }
+
+  function toggle(id: string) {
+    setPicks((prev) => {
+      const copy = new Set(prev);
+      if (!copy.delete(id)) copy.add(id);
+      return copy;
+    });
+  }
+
+  async function submit() {
+    setBusy(true);
+    setError("");
+    try {
+      const { imported, duplicates, failed } = await rpc.dataRoom.importDrive({
+        fileIds: [...picks],
+        folderId,
+      });
+      onDone(
+        imported > 0 || (duplicates > 0 && failed === 0) ? importedText(imported, duplicates) : "",
+        imported > 0 || duplicates > 0,
+      );
+      if (failed === 0) onClose();
+      else setError(failedText(failed));
+    } catch (cause) {
+      setError(errorText(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            <Trans>Import from Google Drive</Trans>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-2">
+          {path.length > 0 && !query ? (
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={t`Back`}
+              onClick={() => setPath((prev) => prev.slice(0, -1))}
+            >
+              <ArrowLeft aria-hidden="true" />
+            </Button>
+          ) : null}
+          <Input
+            type="search"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder={t`Search Drive`}
+            aria-label={t`Search Drive`}
+          />
+        </div>
+        <div className="rk-scroll max-h-80 overflow-y-auto rounded-md border border-border">
+          {error ? <p className="p-3 text-sm text-destructive">{error}</p> : null}
+          {!loading && !error && files.length === 0 ? (
+            <p className="p-6 text-center text-sm text-muted-foreground">
+              <Trans>No files found</Trans>
+            </p>
+          ) : (
+            <ul>
+              {files.map((file) => (
+                <li key={file.id} className="border-b border-border">
+                  {file.isFolder ? (
+                    <button
+                      type="button"
+                      onClick={() => open(file)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-start text-sm hover:bg-muted"
+                    >
+                      <Folder className="size-4" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-2 text-sm">
+                      <Checkbox
+                        aria-label={file.name}
+                        disabled={
+                          !importable(file) || (!picks.has(file.id) && picks.size >= MAX_PICKS)
+                        }
+                        checked={picks.has(file.id)}
+                        onCheckedChange={() => toggle(file.id)}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                      {file.size === undefined ? null : (
+                        <span className="text-xs text-muted-foreground">{sizeText(file.size)}</span>
+                      )}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {next ? (
+            <div className="grid place-items-center p-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loading}
+                onClick={() => void loadMore()}
+              >
+                <Trans>Load more</Trans>
+              </Button>
+            </div>
+          ) : null}
+        </div>
+        <DialogFooter>
+          <Button disabled={busy || picks.size === 0} onClick={() => void submit()}>
+            <Trans>Import</Trans>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * The Drive import button. With no Drive account connected it leads to the connection page instead.
+ * The server uses the first connected Drive account.
+ */
+export function DriveImportButton({
+  connected,
+  compact,
+  folderId,
+  onDone,
+}: {
+  connected: boolean;
+  compact: boolean;
+  folderId: string | null;
+  onDone: (message: string, changed: boolean) => void;
+}) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const label = connected ? t`Import from Google Drive` : t`Connect Google Drive`;
+  return (
+    <>
+      <Button
+        variant="outline"
+        size={compact ? "icon" : "default"}
+        aria-label={compact ? label : undefined}
+        onClick={() =>
+          connected ? setOpen(true) : navigate("/app/integrations/app/google/googledrive")
+        }
+      >
+        <HardDrive aria-hidden="true" />
+        {compact ? null : label}
+      </Button>
+      {open ? (
+        <DrivePicker folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
+      ) : null}
+    </>
+  );
+}

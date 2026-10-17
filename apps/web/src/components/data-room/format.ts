@@ -1,5 +1,5 @@
 import { i18n } from "@lingui/core";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 
 export const dateText = (iso: string | null) =>
   iso
@@ -46,3 +46,12 @@ export function sizeText(bytes: number) {
     maximumFractionDigits: 1,
   }).format(bytes / divisor);
 }
+
+/** The notice after an import finishes. */
+export const importedText = (imported: number, duplicates: number) =>
+  imported === 0 && duplicates > 0
+    ? t`Already in the Data room`
+    : plural(imported, { one: "Imported # file", other: "Imported # files" });
+
+export const failedText = (failed: number) =>
+  plural(failed, { one: "Couldn't import # file", other: "Couldn't import # files" });

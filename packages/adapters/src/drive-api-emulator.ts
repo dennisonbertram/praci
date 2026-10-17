@@ -3,6 +3,7 @@ import type { ConnectorProxyResponse } from "@rakazo/adapter-kit";
 const DOC = "application/vnd.google-apps.document";
 const SHEET = "application/vnd.google-apps.spreadsheet";
 const SLIDES = "application/vnd.google-apps.presentation";
+const DRAWING = "application/vnd.google-apps.drawing";
 
 export interface EmulatedDriveFile {
   id: string;
@@ -13,6 +14,12 @@ export interface EmulatedDriveFile {
   modifiedTime?: string;
   owners?: string[];
   size?: string;
+  /** Raw bytes returned by a media download. */
+  bytes?: Uint8Array;
+  /** What a PDF export of a Google-native file returns. */
+  pdf?: Uint8Array;
+  /** Folder ids; a file without any is in the root. */
+  parents?: string[];
   trashed?: boolean;
 }
 
@@ -97,7 +104,9 @@ export class DriveApiEmulator {
       modifiedTime: file.modifiedTime ?? "2026-10-01T12:00:00.000Z",
       owners: (file.owners ?? ["ann@example.test"]).map((emailAddress) => ({ emailAddress })),
       webViewLink: `https://drive.example.test/file/${file.id}`,
-      ...(file.size ? { size: file.size } : {}),
+      ...(file.size || file.bytes
+        ? { size: file.size ?? String(file.bytes?.byteLength ?? 0) }
+        : {}),
     };
   }
 
@@ -113,15 +122,22 @@ export class DriveApiEmulator {
       ...q.matchAll(new RegExp(String.raw`(name|fullText) contains ${quoted}`, "g")),
     ];
     const mime = new RegExp(String.raw`mimeType = ${quoted}`).exec(q);
+    const parent = new RegExp(String.raw`${quoted} in parents`).exec(q);
     const rest = q
+      .replace(new RegExp(String.raw`${quoted} in parents`, "g"), "")
       .replace(new RegExp(String.raw`(name|fullText) contains ${quoted}`, "g"), "")
       .replace(new RegExp(String.raw`mimeType = ${quoted}`, "g"), "")
       .replace(/trashed = false/g, "")
       .replace(/\b(and|or)\b|[()\s]/g, "");
     if (rest) return fail(400);
     const size = Number(url.searchParams.get("pageSize") ?? 100);
-    const files = [...account.files.values()]
+    const start = Number(url.searchParams.get("pageToken") ?? 0);
+    const matching = [...account.files.values()]
       .filter((f) => !f.trashed)
+      .filter(
+        (f) =>
+          !parent || (f.parents?.length ? f.parents : ["root"]).includes(unquote(parent[1] ?? "")),
+      )
       .filter((f) => !mime || f.mimeType === unquote(mime[1] ?? ""))
       .filter(
         (f) =>
@@ -131,9 +147,15 @@ export class DriveApiEmulator {
             const hay = m[1] === "name" ? f.name : `${f.name}\n${f.text ?? ""}`;
             return hay.toLowerCase().includes(needle);
           }),
-      )
-      .slice(0, size);
-    return { status: 200, data: { files: files.map((f) => this.meta(f)) } };
+      );
+    const files = matching.slice(start, start + size);
+    return {
+      status: 200,
+      data: {
+        files: files.map((f) => this.meta(f)),
+        ...(start + size < matching.length ? { nextPageToken: String(start + size) } : {}),
+      },
+    };
   }
 
   private get(
@@ -146,7 +168,7 @@ export class DriveApiEmulator {
     if (url.searchParams.get("alt") !== "media") return { status: 200, data: this.meta(file) };
     // Google-native files have no bytes to download; they must be exported.
     if (file.mimeType.startsWith("application/vnd.google-apps.")) return fail(403);
-    return { status: 200, data: file.text ?? "" };
+    return { status: 200, data: file.bytes ?? file.text ?? "" };
   }
 
   private export(
@@ -160,6 +182,8 @@ export class DriveApiEmulator {
     const ok =
       (file.mimeType === SHEET && want === "text/csv") ||
       ((file.mimeType === DOC || file.mimeType === SLIDES) && want === "text/plain");
+    if (want === "application/pdf" && [DOC, SHEET, SLIDES, DRAWING].includes(file.mimeType))
+      return file.pdf ? { status: 200, data: file.pdf } : fail(403);
     return ok ? { status: 200, data: file.text ?? "" } : fail(403);
   }
 
