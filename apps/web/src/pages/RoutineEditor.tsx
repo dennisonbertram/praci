@@ -39,6 +39,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
+import { timezoneLabel } from "../lib/local-timezone";
 import {
   connectedModelOptions,
   modelOptionKey,
@@ -358,9 +359,12 @@ export function RoutineEditor({
           <Trans>Active</Trans>
         </label>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" disabled={saving || running} onClick={onDelete}>
-            <Trans>Delete</Trans>
-          </Button>
+          {/* Nothing to delete until the routine is saved. */}
+          {editing ? (
+            <Button variant="secondary" disabled={saving || running} onClick={onDelete}>
+              <Trans>Delete</Trans>
+            </Button>
+          ) : null}
           <Button variant="secondary" disabled={!canTest} onClick={onTestRun}>
             {running ? t`Running…` : t`Test run`}
           </Button>
@@ -393,7 +397,9 @@ export function RoutineEditor({
       <div className="mt-5 text-sm text-muted-foreground">
         <div className="flex items-baseline gap-2">
           <Trans>When to run</Trans>
-          <span className="text-xs text-muted-foreground/70">{timezone}</span>
+          <span className="text-xs text-muted-foreground/70" title={timezone}>
+            {timezoneLabel(timezone)}
+          </span>
           <Popover>
             <PopoverTrigger
               render={
