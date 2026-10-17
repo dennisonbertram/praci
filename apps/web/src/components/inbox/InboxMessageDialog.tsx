@@ -327,13 +327,14 @@ function InboxMessage({
       ) : null}
       {seed ? <ComposeEmail seed={seed} accounts={[]} onClose={() => setComposing(null)} /> : null}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {message && (message.thread?.length || message.later?.length) ? (
+        {message?.thread?.length ? (
+          // The open message is below with its own sender line, so this counts only the rows here.
           <ThreadMessages
-            heading={plural((message.thread?.length ?? 0) + (message.later?.length ?? 0) + 1, {
-              one: "# message",
-              other: "# messages",
+            heading={plural(message.thread.length, {
+              one: "# earlier message",
+              other: "# earlier messages",
             })}
-            messages={message.thread ?? []}
+            messages={message.thread}
           />
         ) : null}
         {gone ? (
@@ -502,6 +503,11 @@ function InboxAttachments({
 }
 
 /** Other messages of the conversation, one line each; a click shows that message's text. */
+/** A reply's preview without the "On <date>, <name> wrote:" line that starts its quote. */
+export function withoutQuoteHeader(snippet: string): string {
+  return snippet.replace(/\s*On [^\n]{4,160}? wrote:[\s\S]*$/, "").trim() || snippet;
+}
+
 function ThreadMessages({
   heading,
   messages,
@@ -547,7 +553,7 @@ function ThreadMessage({ item }: { item: InboxThreadMessage }) {
           {item.fromSelf ? <Trans>You</Trans> : item.from}
         </span>
         <span dir="auto" className="min-w-0 flex-1 truncate text-muted-foreground">
-          {open ? null : maskCurrencyWhenHidden(item.snippet)}
+          {open ? null : maskCurrencyWhenHidden(withoutQuoteHeader(item.snippet))}
         </span>
         <time
           dateTime={item.receivedAt}
