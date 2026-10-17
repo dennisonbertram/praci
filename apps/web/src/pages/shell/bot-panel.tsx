@@ -413,7 +413,7 @@ export function BotSettings({
             <Trans>Notifications</Trans>
           </div>
           <div id={`${ids}-notify-finish-desc`} className="text-[12px] text-muted-foreground/70">
-            <Trans>Get notified when this Bot finishes or needs input</Trans>
+            <Trans>Get notified when this bot finishes or needs input</Trans>
           </div>
         </div>
         <Switch

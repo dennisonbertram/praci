@@ -376,7 +376,7 @@ export function CustomConnectionDialog({
       }
       void refresh();
       setView({ kind: "done", hint: null });
-    }, t`Could not save agent access`);
+    }, t`Could not save bot access`);
   }
 
   const fields = (kind: SourceKind) => (

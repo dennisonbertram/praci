@@ -192,7 +192,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       if (rows[0]) await rpc.connections.setAccess({ connectionId: rows[0].id, ...next });
       await data.refresh();
     } catch (err) {
-      setError(errorText(err, t`Could not update agent access`));
+      setError(errorText(err, t`Could not update bot access`));
     } finally {
       setOverride(null);
     }
@@ -401,9 +401,9 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
             </Button>
             <span className="text-muted-foreground">
               {accountCount > 1 ? (
-                <Trans>Removes all {accountCount} accounts and agent access.</Trans>
+                <Trans>Removes all {accountCount} accounts and bot access.</Trans>
               ) : (
-                <Trans>Removes the account and agent access.</Trans>
+                <Trans>Removes the account and bot access.</Trans>
               )}
             </span>
           </div>
@@ -438,7 +438,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
           onConfirm={() => void revoke(rows, true)}
         >
           <li>
-            <Trans>Every agent loses access to {name}.</Trans>
+            <Trans>Every bot loses access to {name}.</Trans>
           </li>
           {isGmail ? (
             <>

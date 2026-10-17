@@ -412,7 +412,7 @@ export function McpApprovalCard({
         <>
           <p className="mt-2 text-[13px] leading-[1.5] text-foreground/75">
             {needsOAuth
-              ? t`Authorize this server so agents can use its tools. A popup opens.`
+              ? t`Authorize this server so bots can use its tools. A popup opens.`
               : t`Approve this server to let your agent use its tools.`}
           </p>
           {error ? <p className="mt-2 text-xs text-destructive">{error}</p> : null}

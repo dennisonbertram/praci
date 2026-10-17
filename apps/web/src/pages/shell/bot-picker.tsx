@@ -71,7 +71,7 @@ export function BotCreatePicker({
                 className="gap-2"
               >
                 <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
-                <Trans>Create new Bot</Trans>
+                <Trans>New bot</Trans>
               </CommandItem>
             ) : null}
             {matched.map((bot) => (

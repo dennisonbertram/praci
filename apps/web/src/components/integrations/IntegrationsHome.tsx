@@ -389,8 +389,8 @@ export function IntegrationsHome({
         </h1>
         <p className="mb-5 max-w-[640px] text-muted-foreground">
           <Trans>
-            Connect the apps you use so your agents can read and act in them. You choose which
-            agents get access to each one.
+            Connect the apps you use so your bots can read and act in them. You choose which
+            bots get access to each one.
           </Trans>
         </p>
         {data.error || data.catalogFailed ? (

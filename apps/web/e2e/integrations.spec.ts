@@ -39,7 +39,7 @@ test("Integrations page: filter apps, connect Gmail, manage it on its detail pag
   // Connect dialog: sign-in, which agents, done.
   await page.getByRole("button", { name: "Connect Gmail", exact: true }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("Which agents can use Gmail?")).toBeVisible();
+  await expect(dialog.getByText("Which bots can use Gmail?")).toBeVisible();
   await captureScreenshot(page, testInfo, "integrations-connect-agents");
   await finishConnectDialog(page, "Gmail");
   await expect(page.getByText("Connected", { exact: true }).first()).toBeVisible();
@@ -140,7 +140,7 @@ test("App page: ?connect=1 opens the connect dialog and ?next= returns the perso
   await expect(dialog.getByText("Connect Gmail", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "integrations-auto-connect-confirm");
   await dialog.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(dialog.getByText("Which agents can use Gmail?")).toBeVisible();
+  await expect(dialog.getByText("Which bots can use Gmail?")).toBeVisible();
   await finishConnectDialog(page, "Gmail");
   await expect(page).toHaveURL(/\/app\/integrations\?back=1$/);
 

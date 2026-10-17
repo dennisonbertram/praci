@@ -99,7 +99,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
             ]
           : others,
       });
-    }, t`Could not update agent access`);
+    }, t`Could not update bot access`);
 
   const host = server.endpoint ? new URL(server.endpoint).host : (server.command ?? "");
   return (
@@ -220,7 +220,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
             <Trans>Remove {server.name}</Trans>
           </Button>
           <span className="text-muted-foreground">
-            <Trans>Removes the connection and agent access.</Trans>
+            <Trans>Removes the connection and bot access.</Trans>
           </span>
         </div>
       </div>
@@ -239,7 +239,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
         }
       >
         <li>
-          <Trans>Every agent loses access to its tools.</Trans>
+          <Trans>Every bot loses access to its tools.</Trans>
         </li>
         <li>
           <Trans>Your data in {server.name} is not deleted.</Trans>

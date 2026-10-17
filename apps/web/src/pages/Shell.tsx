@@ -3240,8 +3240,8 @@ export function ShellPage() {
             <button
               type="button"
               className="app-no-drag hidden h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:inline-flex"
-              aria-label={t`Minimize bots`}
-              title={t`Minimize bots`}
+              aria-label={t`Hide sidebar`}
+              title={t`Hide sidebar`}
               data-testid="minimize-bots-sidebar"
               onClick={() => setBotsSidebarCollapsedPref(true)}
             >
@@ -3984,7 +3984,7 @@ export function ShellPage() {
         <button
           type="button"
           data-testid="bots-sidebar-edge"
-          aria-label={botsSidebarCollapsed ? t`Show bots` : t`Hide bots`}
+          aria-label={botsSidebarCollapsed ? t`Show sidebar` : t`Hide sidebar`}
           aria-pressed={!botsSidebarCollapsed}
           className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 md:block ${
             botsSidebarCollapsed ? "start-0" : "start-[308px]"
@@ -4062,8 +4062,8 @@ export function ShellPage() {
               <button
                 type="button"
                 data-testid="restore-bots-sidebar"
-                aria-label={t`Show bots`}
-                title={t`Show bots`}
+                aria-label={t`Show sidebar`}
+                title={t`Show sidebar`}
                 onClick={() => setBotsSidebarCollapsedPref(false)}
                 className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:grid"
               >
@@ -4185,7 +4185,7 @@ export function ShellPage() {
           <div className="grid flex-1 place-items-center">
             <Button onClick={() => void createBot()}>
               <Plus size={16} aria-hidden="true" />
-              <Trans>Create new Bot</Trans>
+              <Trans>New bot</Trans>
             </Button>
           </div>
         ) : (

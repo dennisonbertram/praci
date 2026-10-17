@@ -277,7 +277,7 @@ test("adds an MCP server by URL under a readable name without Continue or Skip",
   await dialog.getByRole("textbox", { name: "Server URL" }).fill("https://api.brex.test/mcp");
   await dialog.getByRole("button", { name: "Connect", exact: true }).click();
   // The server needs no browser sign-in, so the dialog moves straight to choosing agents.
-  await expect(dialog.getByText("Which agents can use Brex?")).toBeVisible();
+  await expect(dialog.getByText("Which bots can use Brex?")).toBeVisible();
   await dialog.getByRole("button", { name: "Skip", exact: true }).click();
   await expect(dialog.getByText("Brex connected", { exact: true })).toBeVisible();
   expect(created).toEqual(["Brex"]);

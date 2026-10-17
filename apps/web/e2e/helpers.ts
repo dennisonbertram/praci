@@ -77,7 +77,7 @@ export async function captureScreenshot(page: Page, testInfo: TestInfo, name: st
   await testInfo.attach(name, { contentType: "image/png", path: screenshotPath });
 }
 
-/** Click "Create new Bot" in the + picker; the app creates the bot and opens its chat. */
+/** Click "New bot" in the + picker; the app creates the bot and opens its chat. */
 export async function openNewBot(page: Page) {
   await page.getByTestId("create-menu-trigger").click();
   await page.getByTestId("create-new-bot").click();
