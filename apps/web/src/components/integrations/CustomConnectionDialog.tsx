@@ -197,7 +197,7 @@ export function CustomConnectionDialog({
       // dialog just added would only sit in the list looking connected, so remove it and say why.
       if (createdHere.current === target.id) {
         createdHere.current = null;
-        await rpc.mcp.servers.delete({ id: target.id }).catch(() => undefined);
+        await rpc.mcp.servers.remove({ id: target.id }).catch(() => undefined);
         setServer(null);
         void refresh();
         setError(

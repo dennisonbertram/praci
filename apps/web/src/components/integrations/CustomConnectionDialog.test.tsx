@@ -15,7 +15,7 @@ const api = vi.hoisted(() => ({
   wait: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({
-  rpc: { mcp: { servers: { create: api.create, delete: api.remove }, assignments: {} } },
+  rpc: { mcp: { servers: { create: api.create, remove: api.remove }, assignments: {} } },
 }));
 vi.mock("../../lib/mcp-connect", () => ({
   beginMcpOauth: api.begin,
