@@ -120,10 +120,17 @@ const overview: FinanceOverview = {
         dates: [day(3), day(18)],
         amountCents: 120_000,
       },
-      { key: "txn_1", kind: "pending", name: "Globex Tools", dates: [day(1)], amountCents: 45_000 },
-      { key: "bill_1", kind: "bill", name: "Initech", dates: [day(9)], amountCents: 300_000 },
+      {
+        key: "bill_1",
+        kind: "bill",
+        name: "Initech",
+        dates: [day(9)],
+        amountCents: 300_000,
+        billStatus: "APPROVED",
+        dueAt: day(9),
+      },
     ],
-    totalCents: 585_000,
+    totalCents: 540_000,
   },
   subscriptions: {
     items: [
@@ -186,6 +193,12 @@ const load =
     mockRpc({ "finance.overview": { ...overview, ...data }, "finance.refresh": null });
 
 export const Default: Story = { args: { onAskAgent: () => {} }, beforeEach: load() };
+
+/** With more than one space, the header names the space whose finances these are. */
+export const NamedSpace: Story = {
+  args: { onAskAgent: () => {}, spaceName: "Northwind Robotics" },
+  beforeEach: load(),
+};
 
 export const Loading: Story = {
   beforeEach: () => mockRpc({ "finance.overview": () => new Promise(() => {}) }),

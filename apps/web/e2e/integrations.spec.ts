@@ -39,7 +39,7 @@ test("Integrations page: filter apps, connect Gmail, manage it on its detail pag
   // Connect dialog: sign-in, which agents, done.
   await page.getByRole("button", { name: "Connect Gmail", exact: true }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("Which agents can use Gmail?")).toBeVisible();
+  await expect(dialog.getByText("Which bots can use Gmail?")).toBeVisible();
   await captureScreenshot(page, testInfo, "integrations-connect-agents");
   await finishConnectDialog(page, "Gmail");
   await expect(page.getByText("Connected", { exact: true }).first()).toBeVisible();
@@ -97,9 +97,11 @@ test("Integrations page: first-party MCP tiles prefill the custom connection", a
   await page.getByRole("button", { name: "Connect Carta", exact: true }).scrollIntoViewIfNeeded();
   await captureScreenshot(page, testInfo, "integrations-first-party");
 
-  // X has no dynamic client registration, so its dialog asks for a client ID up front.
+  // The URL is known for a first-party tile, so no Server URL field shows. X has no dynamic
+  // client registration, so its dialog asks for a client ID up front.
   await page.getByRole("button", { name: "Connect X", exact: true }).click();
-  await expect(page.getByLabel("Server URL")).toHaveValue("https://api.x.com/mcp");
+  await expect(page.getByRole("dialog", { name: "Connect X" })).toBeVisible();
+  await expect(page.getByLabel("Server URL")).toHaveCount(0);
   await expect(page.getByLabel("Client ID")).toBeVisible();
   await captureScreenshot(page, testInfo, "integrations-x-client-id");
 });
@@ -140,7 +142,7 @@ test("App page: ?connect=1 opens the connect dialog and ?next= returns the perso
   await expect(dialog.getByText("Connect Gmail", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "integrations-auto-connect-confirm");
   await dialog.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(dialog.getByText("Which agents can use Gmail?")).toBeVisible();
+  await expect(dialog.getByText("Which bots can use Gmail?")).toBeVisible();
   await finishConnectDialog(page, "Gmail");
   await expect(page).toHaveURL(/\/app\/integrations\?back=1$/);
 

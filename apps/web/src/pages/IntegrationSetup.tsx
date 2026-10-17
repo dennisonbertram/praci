@@ -1,6 +1,7 @@
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, IntegrationSetupState } from "@rakazo/contracts";
-import { NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
+import { Button, Label, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { IntegrationSetup } from "../components/integrations/IntegrationSetup";
@@ -44,36 +45,46 @@ export function IntegrationSetupPage() {
       cancelled = true;
     };
   }, [serverSetup, navigate]);
+  // Back, Continue and Skip all return to where the person came from (Settings passes `next`).
+  const back = () =>
+    navigate(bots.length ? (appReturnPath(params.get("next")) ?? "/app") : "/onboarding");
   return (
-    <div className="min-h-full bg-background px-6 py-12">
-      <div className="mx-auto max-w-[560px]">
-        {bots.length > 1 ? (
-          <NativeSelect
-            aria-label={t`Bot`}
-            value={botId}
-            onChange={(event) => setBotId(event.target.value)}
-            className="mb-6 w-full"
-          >
-            {bots.map((bot) => (
-              <NativeSelectOption key={bot.id} value={bot.id}>
-                {bot.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        ) : null}
+    <div className="rk-scroll h-full min-h-full overflow-y-auto bg-background px-4 pt-2 pb-8 md:px-7 md:pt-5">
+      <div className="max-w-[560px]">
+        <Button variant="ghost" size="sm" className="-ms-2 mb-4" onClick={back}>
+          <ArrowLeft aria-hidden="true" />
+          <Trans>Back</Trans>
+        </Button>
         {ready ? (
           <IntegrationSetup
             key={serverSetup ? "server" : "mcp"}
             serverSetup={serverSetup}
             initialState={setupState}
             botId={botId || undefined}
-            onDone={() =>
-              navigate(bots.length ? (appReturnPath(params.get("next")) ?? "/app") : "/onboarding")
-            }
+            onDone={back}
           />
         ) : (
           <p>{error ? t`Could not load bots. Reload to try again.` : t`Loading…`}</p>
         )}
+        {ready && bots.length > 1 ? (
+          <div className="mt-8 flex flex-col gap-1.5">
+            <Label htmlFor="integration-setup-bot">
+              <Trans>Bot that gets the apps you connect here</Trans>
+            </Label>
+            <NativeSelect
+              id="integration-setup-bot"
+              value={botId}
+              onChange={(event) => setBotId(event.target.value)}
+              className="w-full"
+            >
+              {bots.map((bot) => (
+                <NativeSelectOption key={bot.id} value={bot.id}>
+                  {bot.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </div>
+        ) : null}
       </div>
     </div>
   );

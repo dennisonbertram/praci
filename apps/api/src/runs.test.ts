@@ -31,6 +31,15 @@ describe("run activity copy", () => {
   });
 });
 
+it("never shows a new bot's internal introduction prompt", () => {
+  expect(
+    activityPromptSnippet({
+      trigger: "created",
+      prompt: "You were just created. In one reply, say what you understood your role to be",
+    }),
+  ).toBe("Introduced itself");
+});
+
 describe("run activity notification preference", () => {
   it("silences only direct messages", () => {
     expect(activityNotificationsEnabled(null, false)).toBe(false);

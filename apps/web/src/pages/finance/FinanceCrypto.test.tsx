@@ -115,8 +115,11 @@ async function show() {
   );
   await flush();
 }
-const byLabel = (label: string) =>
-  document.body.querySelector(`[aria-label="${label}"]`) as HTMLInputElement;
+/** The field a visible label names, as a user finds it. */
+const byLabel = (label: string) => {
+  const found = [...document.body.querySelectorAll("label")].find((l) => l.textContent === label);
+  return document.getElementById(found?.htmlFor ?? "") as HTMLInputElement;
+};
 beforeEach(() => {
   container = document.createElement("div");
   document.body.append(container);
@@ -134,7 +137,9 @@ it("renders totals, wallets, chains and holdings from the data", async () => {
   rpcMock.crypto.mockResolvedValue(data());
   await show();
   const page = container.textContent ?? "";
-  expect(page).toContain("$3,002.50");
+  // Totals are whole dollars like the other balances; a token's own value keeps its cents.
+  expect(page).toContain("$3,003");
+  expect(page).not.toContain("$3,002.50");
   expect(page).toContain("1 unpriced");
   expect(page).toContain("Treasury");
   expect(page).toContain("Safe · 2 of 3");
@@ -228,23 +233,41 @@ it("shows the server's error inline when adding a wallet fails", async () => {
   expect(document.body.querySelector('[role="alert"]')?.textContent).toContain("already added");
 });
 
-it("offers Connect, opening the modal, only when there is no API key", async () => {
+it("offers to add the Blockscout key, opening the modal, only when there is no API key", async () => {
   rpcMock.crypto.mockResolvedValue(data({ hasApiKey: true }));
   await show();
-  expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Connect")).toBe(
-    false,
-  );
+  expect(
+    [...container.querySelectorAll("button")].some((b) => /Blockscout/.test(b.textContent ?? "")),
+  ).toBe(false);
   await act(async () => root.unmount());
   root = createRoot(container);
   rpcMock.crypto.mockResolvedValue(data({ connected: true, hasApiKey: false }));
   await show();
+  // Balances never need the key, so the page does not claim they do.
+  expect(container.textContent).toContain("need no key");
+  expect(container.textContent).not.toContain("needs its API key");
   const connect = [...container.querySelectorAll("button")].find(
-    (b) => b.textContent === "Connect",
+    (b) => b.textContent === "Add Blockscout API key",
   );
   await act(async () => (connect as HTMLElement).click());
   expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain(
     "Connect Blockscout",
   );
+});
+
+it("asks a founder with no wallet to add one, not to connect Blockscout first", async () => {
+  rpcMock.crypto.mockResolvedValue(data({ connected: false, hasApiKey: false, wallets: [] }));
+  await show();
+  expect(
+    [...container.querySelectorAll("button")].some((b) => /Blockscout/.test(b.textContent ?? "")),
+  ).toBe(false);
+  expect(container.textContent).toContain("Add a wallet address");
+});
+
+it("says there are no wallets yet instead of an empty Wallets card", async () => {
+  rpcMock.crypto.mockResolvedValue(data({ wallets: [] }));
+  await show();
+  expect(container.textContent).toContain("No wallets yet.");
 });
 
 it("shows each exchange as its own group and reloads everything after removing one", async () => {
@@ -269,7 +292,8 @@ it("shows each exchange as its own group and reloads everything after removing o
   expect(page).toContain("Kraken");
   expect(page).toContain("0.004");
   expect(page).toContain("$200.00");
-  expect(page).toContain("$250.00");
+  expect(page).toContain("$250");
+  expect(page).not.toContain("$250.00");
   expect(page).toContain("rate limit reached");
   expect(rpcMock.exchanges).toHaveBeenCalledTimes(1);
   await act(async () => {
@@ -326,8 +350,8 @@ it("shows wallet-only totals in the Wallets section when exchanges add to the su
   await show();
   const heading = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Wallets");
   const wallets = heading?.parentElement?.parentElement;
-  expect(wallets?.textContent).toContain("$3,002.50");
-  expect(wallets?.textContent).not.toContain("$3,252.50");
+  expect(wallets?.textContent).toContain("$3,003");
+  expect(wallets?.textContent).not.toContain("$3,253");
   expect(wallets?.textContent).toContain("1 unpriced");
   expect(wallets?.textContent).not.toContain("4 unpriced");
 });

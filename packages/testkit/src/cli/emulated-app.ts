@@ -1,4 +1,5 @@
-import type { FinanceSyncDeps } from "@rakazo/adapters";
+import type { TransactionalEmail } from "@rakazo/adapter-kit";
+import type { EmulatedMcpServer, FinanceSyncDeps } from "@rakazo/adapters";
 import { EmailEmulator, PipedreamConnector, ThirdPartyConnectorEmulator } from "@rakazo/adapters";
 import { createApp } from "../../../../apps/api/src/app.ts";
 import { createE2eComposio } from "./e2e-mail.js";
@@ -12,9 +13,14 @@ export async function createEmulatedApp(
   options: {
     composio?: ReturnType<typeof createE2eComposio>;
     financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+    /** Extra emulated MCP servers by hostname, such as the demo's mock Carta. */
+    mcpServers?: Record<string, EmulatedMcpServer>;
+    cryptoFetch?: typeof fetch;
+    /** Called with each transactional email (reset links, verification) the app sends. */
+    onEmail?: (message: TransactionalEmail) => void;
   } = {},
 ) {
-  const thirdParties = new ThirdPartyConnectorEmulator();
+  const thirdParties = new ThirdPartyConnectorEmulator(options.mcpServers);
   const pipedream = new PipedreamConnector(
     {
       clientId: "fake-client-id",
@@ -25,7 +31,7 @@ export async function createEmulatedApp(
     },
     { fetch: thirdParties.fetch, resolveHostname: thirdParties.resolveHostname },
   );
-  const email = new EmailEmulator();
+  const email = new EmailEmulator(options.onEmail);
   const composio = options.composio ?? createE2eComposio();
   const handles = await createApp({
     databaseUrl,
@@ -34,6 +40,7 @@ export async function createEmulatedApp(
     pipedream,
     email,
     ...(options.financeCallToolFor ? { financeCallToolFor: options.financeCallToolFor } : {}),
+    ...(options.cryptoFetch ? { cryptoFetch: options.cryptoFetch } : {}),
     remoteConnectors: {
       fetch: thirdParties.fetch,
       resolveHostname: thirdParties.resolveHostname,

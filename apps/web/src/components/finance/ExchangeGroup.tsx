@@ -16,7 +16,7 @@ import {
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
-import { hiddenOr, moneyExact } from "../../lib/finance-format";
+import { hiddenOr, money, moneyExact } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { EXCHANGES } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
@@ -54,7 +54,7 @@ export function ExchangeGroup({
       action={
         <>
           <span className="text-[13px] font-semibold tabular-nums">
-            {moneyExact(exchange.totalCents)}
+            {money(exchange.totalCents)}
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger

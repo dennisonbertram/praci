@@ -61,6 +61,7 @@ describe("ensureCartaAgent", () => {
     expect(input.name).toBe("Carta agent");
     for (const word of [
       "contacts_add",
+      "cap_table_read",
       "cap_table_update",
       "Other bots",
       "carta-investor-update",

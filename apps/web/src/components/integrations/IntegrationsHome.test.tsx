@@ -4,7 +4,7 @@ import type { ConnectionCatalogItem } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
@@ -21,7 +21,7 @@ const financeRpc = vi.hoisted(() => ({
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: financeRpc } }));
 
-import { IntegrationsHome } from "./IntegrationsHome";
+import { IntegrationsHome, safeAppPath } from "./IntegrationsHome";
 import type { IntegrationsData } from "./useIntegrations";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -65,14 +65,28 @@ const data = (canConfigure: boolean, managed: boolean): IntegrationsData => ({
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
-async function show(value: IntegrationsData) {
+function Where() {
+  return <output data-testid="where">{useLocation().pathname}</output>;
+}
+const cryptoMenu = async () => {
+  await act(async () =>
+    (
+      container.querySelector(
+        '[data-testid="finance-tile-crypto"] button[aria-label="More Blockscout actions"]',
+      ) as HTMLElement
+    ).click(),
+  );
+  return [...document.body.querySelectorAll('[role="menuitem"]')] as HTMLElement[];
+};
+async function show(value: IntegrationsData, url = "/app/integrations") {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
   await act(async () =>
     root.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[url]}>
         <IntegrationsHome data={value} />
+        <Where />
       </MemoryRouter>,
     ),
   );
@@ -96,7 +110,8 @@ it("tells the owner to connect a provider when only native Google is configured"
     "Connect a Composio or Pipedream account to add apps like Slack, Notion and GitHub.",
   );
   expect(
-    container.querySelector('a[href="/integrations/setup?next=/app/integrations"]')?.textContent,
+    container.querySelector('a[href="/app/integrations/setup?next=/app/integrations"]')
+      ?.textContent,
   ).toBe("Set up app catalog");
   expect(container.querySelector('input[type="search"]')).toBeNull();
   expect(container.querySelector('[aria-label="Category"]')).toBeNull();
@@ -132,13 +147,13 @@ const zernioServer = {
   endpoint: "https://mcp.zernio.com/mcp",
 } as unknown as IntegrationsData["servers"][number];
 
-it("offers Zernio even without an app catalog and prefills the custom dialog", async () => {
+it("offers Zernio even without an app catalog and opens its sign-in", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Zernio"]');
   expect(connect).not.toBeNull();
   await act(async () => connect?.click());
-  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
-  expect(input?.value).toBe("https://mcp.zernio.com/mcp");
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Sign in with Zernio");
+  expect(document.querySelector('input[aria-label="Server URL"]')).toBeNull();
 });
 
 it("hides the Zernio tile once its server is connected", async () => {
@@ -146,13 +161,24 @@ it("hides the Zernio tile once its server is connected", async () => {
   expect(container.querySelector('[aria-label="Connect Zernio"]')).toBeNull();
 });
 
-it("offers Carta and prefills the custom dialog", async () => {
+it("shows a connected Carta by what it does, with a way to its page", async () => {
+  const carta = {
+    id: "s2",
+    name: "Carta",
+    endpoint: "https://mcp.app.carta.com/mcp",
+  } as unknown as IntegrationsData["servers"][number];
+  await show({ ...data(true, true), servers: [carta] });
+  expect(container.textContent).toContain("Cap table, equity and investors");
+  expect(container.textContent).not.toContain("mcp.app.carta.com");
+  expect(container.querySelector('a[href="/app/cap-table"]')?.textContent).toBe("Open Cap table");
+});
+
+it("offers Carta and opens its sign-in dialog", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Carta"]');
   expect(connect).not.toBeNull();
   await act(async () => connect?.click());
-  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
-  expect(input?.value).toBe("https://mcp.app.carta.com/mcp");
+  expect(document.body.textContent).toContain("Sign in with Carta");
 });
 
 it("shows Carta but not Zernio under the Finance chip", async () => {
@@ -194,12 +220,11 @@ it("hides the Treg tile once the token preset source is installed", async () => 
   expect(container.querySelector('[aria-label="Connect Treg"]')).toBeNull();
 });
 
-it("opens the X tile with its URL and the client ID fields", async () => {
+it("opens the X tile with the client ID fields and no server URL", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect X"]');
   await act(async () => connect?.click());
-  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
-  expect(input?.value).toBe("https://api.x.com/mcp");
+  expect(document.querySelector('input[aria-label="Server URL"]')).toBeNull();
   expect(document.querySelector('[aria-label="Client ID"]')).not.toBeNull();
 });
 
@@ -278,17 +303,17 @@ it("shows one Blockscout tile when its key and MCP server both exist", async () 
   expect(count("finance-tile-crypto")).toBe(1);
   expect(inConnected("finance-tile-crypto")).toBe(true);
   expect(container.textContent).not.toContain("mcp.blockscout.com");
-  expect(
-    container
-      .querySelector('[data-testid="finance-tile-crypto"] a[aria-label="Manage Blockscout"]')
-      ?.getAttribute("href"),
-  ).toBe("/app/integrations/mcp/s2");
-  expect(container.querySelector('[data-testid="finance-tile-crypto"]')?.textContent).toContain(
-    "Replace API key",
+  // The key and the agents sit in the menu, so the tile has one button row like its neighbours.
+  const items = await cryptoMenu();
+  expect(items.map((item) => item.textContent)).toEqual(["Replace API key", "Manage agents"]);
+  await act(async () => items[1]?.click());
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    "/app/integrations/mcp/s2",
   );
 });
 
-it("keeps the Blockscout MCP server when no key is connected", async () => {
+it("shows one Blockscout tile, asking for the key, when its MCP server has none", async () => {
+  financeRpc.crypto.mockResolvedValue({ ...cryptoOn, hasApiKey: false });
   const blockscoutServer = {
     ...zernioServer,
     id: "s2",
@@ -296,7 +321,16 @@ it("keeps the Blockscout MCP server when no key is connected", async () => {
     endpoint: "https://mcp.blockscout.com/mcp",
   } as unknown as IntegrationsData["servers"][number];
   await show({ ...data(true, true), servers: [blockscoutServer] });
-  expect(container.textContent).toContain("mcp.blockscout.com");
+  expect(count("finance-tile-crypto")).toBe(1);
+  expect(inConnected("finance-tile-crypto")).toBe(true);
+  expect(container.textContent).not.toContain("mcp.blockscout.com");
+  const tile = container.querySelector('[data-testid="finance-tile-crypto"]');
+  // Keyless Blockscout still reads balances, so it shows as connected and offers the optional key.
+  expect(tile?.textContent).toContain("Connected");
+  expect((await cryptoMenu()).map((item) => item.textContent)).toEqual([
+    "Add API key",
+    "Manage agents",
+  ]);
 });
 
 it("lists every finance provider under Finance when nothing is connected", async () => {
@@ -337,6 +371,45 @@ it("names the dialog after the service for a first-party tile", async () => {
   const dialog = document.querySelector('[role="dialog"]');
   expect(dialog?.textContent).toContain("Connect Carta");
   expect(dialog?.textContent).not.toContain("Add a custom connection");
+  // Carta's URL is known: no server URL or connection settings, just the sign-in.
+  expect(dialog?.querySelector('[aria-label="Server URL"]')).toBeNull();
+  expect(dialog?.textContent).not.toContain("Advanced");
+  expect(dialog?.textContent).toContain("Sign in with Carta");
+});
+
+it("opens a first-party sign-in from ?connect= once the page has loaded", async () => {
+  await show(data(true, false), "/app/integrations?q=carta&connect=carta");
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Connect Carta");
+});
+
+it("returns to the page that asked for the sign-in when its dialog closes", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter
+        initialEntries={["/app/integrations?q=carta&connect=carta&returnTo=/app/cap-table"]}
+      >
+        <Routes>
+          <Route path="/app/integrations" element={<IntegrationsHome data={data(true, false)} />} />
+          <Route path="/app/cap-table" element={<p>cap table page</p>} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  const cancel = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(
+    (el) => el.textContent === "Cancel",
+  );
+  await act(async () => cancel?.click());
+  expect(container.textContent).toContain("cap table page");
+});
+
+it("only returns to in-app paths", () => {
+  expect(safeAppPath("/app/cap-table")).toBe("/app/cap-table");
+  expect(safeAppPath("https://evil.example.test/app/")).toBeNull();
+  expect(safeAppPath("/app//evil.example.test")).toBeNull();
+  expect(safeAppPath(null)).toBeNull();
 });
 
 it("still lists native Google apps when the managed catalog is not set up", async () => {

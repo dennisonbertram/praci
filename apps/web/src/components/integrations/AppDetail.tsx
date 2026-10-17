@@ -16,13 +16,7 @@ import {
 import { ArrowLeft } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import {
-  appStatus,
-  groupTools,
-  providerLabel,
-  toggleAccess,
-  toolLabel,
-} from "../../lib/integrations";
+import { appStatus, groupTools, toggleAccess, toolLabel } from "../../lib/integrations";
 import { appReturnPath } from "../../lib/return-to";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -112,7 +106,7 @@ function AccountRow({
         aria-label={t`Remove ${row.displayName}`}
         onClick={() => onRemove(row)}
       >
-        <Trans>Remove</Trans>
+        <Trans>Remove account</Trans>
       </Button>
     </div>
   );
@@ -192,7 +186,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       if (rows[0]) await rpc.connections.setAccess({ connectionId: rows[0].id, ...next });
       await data.refresh();
     } catch (err) {
-      setError(errorText(err, t`Could not update agent access`));
+      setError(errorText(err, t`Could not update bot access`));
     } finally {
       setOverride(null);
     }
@@ -264,7 +258,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
               </p>
               {data.setup?.canConfigure ? (
                 <Link
-                  to={`/integrations/setup?next=${encodeURIComponent(
+                  to={`/app/integrations/setup?next=${encodeURIComponent(
                     appReturnPath(`${location.pathname}${location.search}`) ?? location.pathname,
                   )}`}
                   className="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
@@ -297,9 +291,6 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
               <h1 className="text-xl font-semibold">{name}</h1>
               <div className="flex flex-wrap items-center gap-2.5 text-muted-foreground">
                 {status ? <StatusBadge status={status} /> : null}
-                <span>
-                  <Trans>via {providerLabel(connectorId)}</Trans>
-                </span>
               </div>
             </div>
           </div>
@@ -369,14 +360,12 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                         {list.map((tool) => (
                           <div
                             key={tool.name}
-                            className="flex flex-wrap items-baseline gap-x-3 border-t border-border px-3.5 py-2"
+                            className="grid gap-x-4 gap-y-0.5 border-t border-border px-3.5 py-2 text-sm sm:grid-cols-[13rem_1fr]"
                           >
-                            <span className="min-w-36 text-xs font-medium" title={tool.name}>
+                            <span className="font-medium" title={tool.name}>
                               {toolLabel(tool.name, slug)}
                             </span>
-                            <span className="min-w-48 flex-1 text-muted-foreground">
-                              {tool.description}
-                            </span>
+                            <span className="text-muted-foreground">{tool.description}</span>
                           </div>
                         ))}
                       </div>
@@ -401,9 +390,9 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
             </Button>
             <span className="text-muted-foreground">
               {accountCount > 1 ? (
-                <Trans>Removes all {accountCount} accounts and agent access.</Trans>
+                <Trans>Removes all {accountCount} accounts and bot access.</Trans>
               ) : (
-                <Trans>Removes the account and agent access.</Trans>
+                <Trans>Removes the account and bot access.</Trans>
               )}
             </span>
           </div>
@@ -418,7 +407,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
           onConfirm={() => removingRow && void revoke([removingRow], rows.length === 1)}
         >
           <li>
-            <Trans>Agents lose access to this account.</Trans>
+            <Trans>Bots lose access to this account.</Trans>
           </li>
           {isGmail ? (
             <li>
@@ -438,7 +427,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
           onConfirm={() => void revoke(rows, true)}
         >
           <li>
-            <Trans>Every agent loses access to {name}.</Trans>
+            <Trans>Every bot loses access to {name}.</Trans>
           </li>
           {isGmail ? (
             <>

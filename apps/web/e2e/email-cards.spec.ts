@@ -16,7 +16,7 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
 
   const panel = page.getByTestId("side-panel");
-  await main.getByRole("button", { name: "Show Inbox agent" }).click();
+  await main.getByRole("button", { name: "Ask Inbox agent" }).click();
   await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
   const composer = panel.getByPlaceholder(/Message/);
   await composer.fill(

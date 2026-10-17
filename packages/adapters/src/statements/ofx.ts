@@ -1,5 +1,5 @@
 import type { ParsedStatement, ParsedStatementTxn } from "@rakazo/contracts";
-import { decodeText, fileStem, parseCents } from "./money.js";
+import { decodeText, fileStem, parseCents, unreadNote } from "./money.js";
 import type { StatementParser } from "./types.js";
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
@@ -63,7 +63,7 @@ export const ofxParser: StatementParser = {
         `This statement is in ${foreign.toUpperCase().slice(0, 3)}. Only USD statements can be imported.`,
       );
     }
-    if (skipped) warnings.push(`${skipped} transaction(s) could not be read.`);
+    if (skipped) warnings.push(unreadNote(skipped, "transaction", "transactions"));
     const dates = transactions.map((t) => t.date).sort();
     const periodStart = day(tag(text, "DTSTART")) ?? dates[0];
     const periodEnd = day(tag(text, "DTEND")) ?? dates.at(-1);

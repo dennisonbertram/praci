@@ -1,4 +1,4 @@
-import type { EmulatedMessage } from "@rakazo/adapters";
+import type { EmulatedMcpServer, EmulatedMessage } from "@rakazo/adapters";
 import {
   brexAccountsResponse,
   brexExpense,
@@ -9,6 +9,7 @@ import {
   mercuryAccountsResponse,
   mercuryRow,
 } from "../../../../adapters/src/finance-fake-tools.js";
+import { fakeRpc } from "../../../../adapters/src/rpc-crypto-fake-fetch.js";
 
 /**
  * Everything the mock demo stack shows. Each name, subject, address and note is invented and says
@@ -17,6 +18,8 @@ import {
 
 export const MOCK_NOTE = "Mock demo data";
 export const DEMO_COMPANY = "MOCK DEMO DATA — Northwind Robotics";
+/** A space with nothing connected, for the first-run and empty states. */
+export const DEMO_EMPTY_SPACE = "MOCK DEMO DATA — Empty space";
 export const DEMO_USER_NAME = "Alex Founder (Mock)";
 export const DEMO_EMAIL = "mock-founder@demo.rakazo.test";
 /** Short, so the subject itself stays readable in a list row. */
@@ -436,6 +439,24 @@ function monthDay(now: Date, monthsAgo: number, day: number): Date {
 }
 
 /**
+ * Last month's statement for a bank with no integration, as a CSV export, so Accounts shows a
+ * statement account (named from the file, so it can be renamed) and the monthly reminder.
+ */
+export function demoStatementCsv(now = new Date()): { fileName: string; body: string } {
+  const day = (d: number) => monthDay(now, 1, d).toISOString().slice(0, 10);
+  const month = day(1).slice(0, 7);
+  const rows = [
+    [day(3), "MOCK Customer Beta (Mock) deposit", "1200.00", "11200.00"],
+    [day(9), "MOCK Office Supplies (Mock)", "-250.00", "10950.00"],
+    [day(18), "MOCK Courier Service (Mock)", "-450.00", "10500.00"],
+  ];
+  return {
+    fileName: `mock-community-bank-${month}.csv`,
+    body: `Date,Description,Amount,Balance\n${rows.map((r) => r.join(",")).join("\n")}\n`,
+  };
+}
+
+/**
  * Canned Mercury and Brex tool callers holding about three months of invented history, built on the
  * repo's finance fakes. Pass `callToolFor` to `createApp` and to `syncFinanceForUser`.
  */
@@ -525,13 +546,67 @@ export function demoFinance(now = new Date()) {
     accounts: mercuryAccounts,
     treasury: { accounts: [], page: {} },
   });
-  const brex = fakeBrex({ expenses });
+  // Not yet cleared: shows as Pending on the dashboard and on its transaction page.
+  const pendingAt = new Date(now.getTime() - DAY_MS);
+  const pendingMoney = { value: "612.40", currency: "USD", display: "$612.40 USD" };
+  expenses.unshift(
+    brexExpense("mock-brex-pending", {
+      purchased_at: pendingAt.toISOString(),
+      posted_at: null,
+      payment_status: "PROCESSING",
+      merchant: { id: "pmch_air", name: "Skyline Air (Mock)" },
+      vendor: { id: "pmch_air", name: "Skyline Air (Mock)", email: null },
+      merchant_category: { id: "pmca_air", name: "Travel" },
+      memo: MOCK_NOTE,
+      original_amount: pendingMoney,
+      purchased_amount: pendingMoney,
+      amount: pendingMoney,
+      card: { id: "ncard_1", last4: "0001", partner: null },
+    }),
+  );
+  // An approved bill not yet paid: an "Upcoming" bill row, not a transaction.
+  const bills = [
+    {
+      id: "mock-bill-legal",
+      status: "APPROVED",
+      due_at: new Date(now.getTime() + 10 * DAY_MS).toISOString(),
+      vendor: { name: "Placeholder Legal LLP (Mock)" },
+      amount: { value: "2000.00", currency: "USD" },
+    },
+  ];
+  const brex = fakeBrex({ expenses, bills });
   const brexCallTool: typeof brex.callTool = async (name, args) =>
     name === "list_business_accounts" ? brexAccounts : brex.callTool(name, args);
   return {
     callToolFor: async (server: { provider: string }) =>
       server.provider === "mercury" ? mercury.callTool : brexCallTool,
   };
+}
+
+/** Invented treasury wallet: 0x…d3e0 is not a real holder; nothing here touches a real chain. */
+export const DEMO_WALLET = {
+  address: "0x000000000000000000000000000000000000d3e0",
+  label: "MOCK Treasury wallet",
+} as const;
+const USDC_ETHEREUM = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+
+/**
+ * An offline JSON-RPC and price fake holding the mock wallet's balances (2.5 ETH and 40,000 USDC on
+ * Ethereum). Pass `fetch` to `createApp` as `cryptoFetch` so the Crypto page never calls the network.
+ */
+export function demoCrypto() {
+  return fakeRpc({
+    chains: {
+      1: {
+        balances: { [DEMO_WALLET.address]: 2_500_000_000_000_000_000n },
+        tokens: { [USDC_ETHEREUM]: { [DEMO_WALLET.address]: 40_000_000_000n } },
+      },
+    },
+    prices: {
+      "coingecko:ethereum": { price: 2_500, confidence: 0.99 },
+      [`ethereum:${USDC_ETHEREUM}`]: { price: 1, confidence: 0.99 },
+    },
+  });
 }
 
 // ---- Cap table contacts, data room, bots ----
@@ -574,6 +649,138 @@ export const DEMO_CONTACTS = [
   },
 ];
 
+/** The Carta agent's last read of the mock cap table; matches the MOCK Cap Table Summary in the data room. */
+export const DEMO_CAP_TABLE = {
+  companyName: DEMO_COMPANY,
+  asOf: "2026-10-01",
+  fullyDilutedShares: 10_000_000,
+  amountRaisedUsd: 300_000,
+  optionPoolAvailable: 600_000,
+  latest409a: { pricePerShareUsd: 0.42, date: "2026-07-01" },
+  shareClasses: [
+    { name: "Common (Mock)", shares: 8_500_000, percent: 85 },
+    { name: "Option pool (Mock)", shares: 1_500_000, percent: 15 },
+  ],
+  holders: [
+    {
+      name: DEMO_USER_NAME,
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 4_000_000,
+      amountUsd: null,
+      percent: 40,
+    },
+    {
+      name: "River Cofounder (Mock)",
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 3_000_000,
+      amountUsd: null,
+      percent: 30,
+    },
+    {
+      name: "Early employees (Mock)",
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 1_500_000,
+      amountUsd: null,
+      percent: 15,
+    },
+    {
+      name: "Granted options (Mock)",
+      email: null,
+      organization: null,
+      security: "Options",
+      shares: 900_000,
+      amountUsd: null,
+      percent: 9,
+    },
+    {
+      name: "Priya Placeholder",
+      email: "priya@quill-capital.example.test",
+      organization: "Quill Capital (Mock)",
+      security: "SAFE",
+      shares: null,
+      amountUsd: 250_000,
+      percent: null,
+    },
+    {
+      name: "Lee Notarealperson",
+      email: "lee@angel.example.test",
+      organization: "Independent angel (Mock)",
+      security: "SAFE",
+      shares: null,
+      amountUsd: 50_000,
+      percent: null,
+    },
+  ],
+};
+
+/**
+ * A mock Carta MCP server for the demo: the read tools the Carta agent uses, all answering from
+ * DEMO_CAP_TABLE, so the agent can answer ownership questions offline.
+ *
+ * With `webOrigin`, it asks for a sign-in like the real Carta does. Its mock sign-in page is the
+ * app's own OAuth callback with a mock code, so Connect Carta stores a real (mock) login and starts
+ * the first read of the cap table, with no Carta account involved.
+ */
+export function demoCarta(webOrigin?: string): EmulatedMcpServer {
+  const noInput = { type: "object", properties: {} };
+  const account = { id: "mock-demo-company", name: DEMO_COMPANY, note: MOCK_NOTE };
+  const capTable = {
+    note: `${MOCK_NOTE}: an invented cap table, not a real company.`,
+    ...DEMO_CAP_TABLE,
+    safes: DEMO_CAP_TABLE.holders
+      .filter((holder) => holder.security === "SAFE")
+      .map((holder) => ({
+        investor: holder.organization ?? holder.name,
+        contact: holder.name,
+        amountUsd: holder.amountUsd,
+        status: "unconverted",
+      })),
+  };
+  const tools = {
+    welcome: () => ({
+      note: MOCK_NOTE,
+      text: "Mock Carta. Call cap_table_chart for the cap table of the current company.",
+    }),
+    list_accounts: () => ({ accounts: [account] }),
+    get_current_user: () => ({ name: DEMO_USER_NAME, note: MOCK_NOTE }),
+    set_context: () => ({ ok: true, account }),
+    cap_table_chart: () => capTable,
+    // The generic Carta read path returns the same cap table.
+    fetch: () => capTable,
+    read_tool: () => capTable,
+  } satisfies Record<string, () => unknown>;
+  const description: Record<keyof typeof tools, string> = {
+    welcome: "How to use this Carta server.",
+    list_accounts: "List the companies you can read.",
+    get_current_user: "The signed-in Carta user.",
+    set_context: "Pick the company to read.",
+    cap_table_chart:
+      "The company's cap table: fully diluted shares, share classes, option pool, holders and SAFEs.",
+    fetch: "Read Carta data, such as the cap table.",
+    read_tool: "Read Carta data, such as the cap table.",
+  };
+  return {
+    ...(webOrigin
+      ? { authorizeUrl: `${webOrigin}/mcp/oauth/callback?code=mock-demo-carta-code` }
+      : {}),
+    tools: (Object.keys(tools) as (keyof typeof tools)[]).map((name) => ({
+      name,
+      description: description[name],
+      inputSchema: noInput,
+    })),
+    call: (name) =>
+      Object.hasOwn(tools, name)
+        ? tools[name as keyof typeof tools]()
+        : { error: `Unknown tool ${name}` },
+  };
+}
+
 export interface DemoDocument {
   /** Folder path; "Finance/Invoices" is the sub-folder Invoices inside Finance. */
   folder: string;
@@ -583,6 +790,51 @@ export interface DemoDocument {
   /** ASCII only, no parentheses or backslashes (it becomes a PDF text layer). */
   text: string;
 }
+
+/**
+ * What the Data room classifier would file for each document. The demo has AI sharing off, so the
+ * classifier skips and the seed writes these instead, keeping the Type and Date columns filled.
+ */
+export const DEMO_DOCUMENT_FACETS: Record<
+  string,
+  { docType: string; daysAgo: number; parties: string[] }
+> = {
+  "MOCK Master Services Agreement - Halcyon Logistics.pdf": {
+    docType: "Contract",
+    daysAgo: 95,
+    parties: ["Halcyon Logistics (Mock)"],
+  },
+  "MOCK Mutual NDA - Acme Ventures.pdf": {
+    docType: "NDA",
+    daysAgo: 60,
+    parties: ["Acme Ventures (Mock)"],
+  },
+  "MOCK Office Lease - 100 Placeholder Street.pdf": {
+    docType: "Lease",
+    daysAgo: 400,
+    parties: ["Placeholder Street Landlord (Mock)"],
+  },
+  "MOCK SAFE - Quill Capital.pdf": {
+    docType: "SAFE",
+    daysAgo: 150,
+    parties: ["Quill Capital (Mock)"],
+  },
+  "MOCK Q3 Board Deck.pdf": { docType: "Board deck", daysAgo: 3, parties: [] },
+  "MOCK Budget FY27.csv": { docType: "Budget", daysAgo: 20, parties: [] },
+  "MOCK Investor Update Draft.pdf": { docType: "Investor update", daysAgo: 1, parties: [] },
+  "MOCK Cap Table Summary.csv": { docType: "Cap table", daysAgo: 1, parties: [] },
+  "MOCK Product Roadmap.pdf": { docType: "Roadmap", daysAgo: 30, parties: [] },
+  "MOCK Invoice NW-1044 - Acme Servo Supply.pdf": {
+    docType: "Invoice",
+    daysAgo: 12,
+    parties: ["Acme Servo Supply (Mock)"],
+  },
+  "MOCK Invoice 2209 - Cobalt Cloud Hosting.pdf": {
+    docType: "Invoice",
+    daysAgo: 8,
+    parties: ["Cobalt Cloud Hosting (Mock)"],
+  },
+};
 
 const doc = (folder: string, name: string, text: string, kind: DemoDocument["kind"] = "pdf") => ({
   folder,
@@ -641,7 +893,7 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Fundraising",
     "MOCK Cap Table Summary.csv",
-    "holder,class,shares,percent\nAlex Founder Mock,common,4000000,40\nRiver Cofounder Mock,common,3000000,30\nOption pool Mock,pool,1500000,15\nQuill Capital SAFE Mock,safe,0,pending",
+    "holder,class,shares,percent\nAlex Founder Mock,common,4000000,40\nRiver Cofounder Mock,common,3000000,30\nEarly employees Mock,common,1500000,15\nOption pool Mock,pool,1500000,15\nQuill Capital SAFE Mock,safe,0,pending",
     "csv",
   ),
   doc(
@@ -666,6 +918,27 @@ export function demoFolderPaths(documents: DemoDocument[]): string[] {
   }
   return [...paths].sort((a, b) => a.split("/").length - b.split("/").length);
 }
+
+/** A draft Chief "made" last week, so the monthly investor update can start from it. */
+export const DEMO_CHIEF_DRAFT = {
+  name: "MOCK Investor Update - September.md",
+  mimeType: "text/markdown",
+  text: `# MOCK DEMO DATA: Investor update, September
+
+Hi Priya, Dana and Lee,
+
+Highlights
+- The Halcyon Logistics (Mock) pilot converted to an annual contract.
+- Cash is $412,000 with $46,000 monthly net burn: about 8.9 months of runway.
+
+Asks
+- Intros to robotics buyers in warehousing.
+
+Alex
+
+${MOCK_NOTE}: invented for UX testing. Not a real update.
+`,
+};
 
 export const DEMO_BOTS = [
   {

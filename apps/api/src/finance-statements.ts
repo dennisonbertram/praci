@@ -411,6 +411,20 @@ export async function financeStatementConfirm(
  * the account also has. The balance becomes the newest remaining statement's closing balance,
  * and the account goes when no imported statement remains.
  */
+/** Renames the caller's own statement account; accounts synced from a bank keep the bank's name. */
+export async function financeStatementAccountRename(
+  deps: FinanceDeps,
+  actor: Actor,
+  input: { id: string; name: string },
+): Promise<{ ok: true }> {
+  const renamed = await deps.prisma.financeAccount.updateMany({
+    where: { id: input.id, ...actorScope(actor), provider: PROVIDER },
+    data: { name: input.name.slice(0, 200) },
+  });
+  if (renamed.count === 0) throw notFound();
+  return { ok: true };
+}
+
 export async function financeStatementDiscard(
   deps: FinanceDeps,
   actor: Actor,

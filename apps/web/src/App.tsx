@@ -49,9 +49,6 @@ const OnboardingPage = lazy(() =>
 const WelcomePage = lazy(() =>
   import("./pages/Welcome").then((module) => ({ default: module.WelcomePage })),
 );
-const ArtifactsPage = lazy(() =>
-  import("./pages/Artifacts").then((module) => ({ default: module.ArtifactsPage })),
-);
 const BoardPage = lazy(() =>
   import("./pages/Board").then((module) => ({ default: module.BoardPage })),
 );
@@ -188,8 +185,8 @@ function SessionApp() {
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/app" element={<ShellPage />} />
             <Route path="/app/g/:groupId" element={<ShellPage />} />
-            <Route path="/app/artifacts" element={<ArtifactsPage />} />
-            <Route path="/app/artifacts/:artifactId" element={<ArtifactsPage />} />
+            <Route path="/app/artifacts" element={<ShellPage />} />
+            <Route path="/app/artifacts/:artifactId" element={<ShellPage />} />
             {ticketBoardEnabled ? <Route path="/app/board" element={<BoardPage />} /> : null}
             <Route path="/app/inbox" element={<ShellPage />} />
             <Route path="/app/integrations/*" element={<ShellPage />} />

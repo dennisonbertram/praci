@@ -28,15 +28,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { ListFilter, PanelRightOpen, Search, SquarePen, X } from "lucide-react";
+import { ListFilter, Mail, Search, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
+import { AskBotButton } from "../components/AskBotButton";
 import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
 import { InboxGroup } from "../components/inbox/InboxRow";
 import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
 import { TodoCard } from "../components/inbox/TodoCard";
+import { PageEmptyState } from "../components/PageEmptyState";
 import { useInboxKeyboard } from "../lib/inbox-keyboard";
 import {
   inboxListInput,
@@ -559,7 +561,7 @@ export function InboxPage({
       className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-6 xl:px-10"
     >
       <div className="mb-5 flex flex-wrap items-center gap-2 @md:flex-nowrap">
-        <h1 className="me-auto shrink-0 text-xl font-semibold tracking-tight @md:me-1">
+        <h1 className="me-auto shrink-0 text-lg font-semibold @md:me-1">
           <Trans>Inbox</Trans>
         </h1>
         <form
@@ -707,24 +709,7 @@ export function InboxPage({
           </TooltipTrigger>
           <TooltipContent>{t`Compose`}</TooltipContent>
         </Tooltip>
-        {onShowAgent ? (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="pointer-coarse:size-10"
-                  aria-label={t`Show Inbox agent`}
-                  onClick={onShowAgent}
-                />
-              }
-            >
-              <PanelRightOpen aria-hidden="true" />
-            </TooltipTrigger>
-            <TooltipContent>{t`Show Inbox agent`}</TooltipContent>
-          </Tooltip>
-        ) : null}
+        {onShowAgent ? <AskBotButton botName="Inbox agent" onClick={onShowAgent} /> : null}
       </div>
       {accounts.length > 1 ? (
         <Tabs
@@ -759,11 +744,15 @@ export function InboxPage({
       ) : null}
 
       {data && accounts.length === 0 ? (
-        <div className="grid place-items-center py-16">
+        <PageEmptyState
+          icon={<Mail className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+          title={<Trans>No mail connected</Trans>}
+          description={<Trans>Connect Gmail to read, sort and answer your mail here.</Trans>}
+        >
           <Button onClick={onConnectMail}>
             <Trans>Connect mail</Trans>
           </Button>
-        </div>
+        </PageEmptyState>
       ) : loading ? (
         <div className="flex flex-col gap-2" aria-busy="true">
           {[0, 1, 2, 3, 4].map((n) => (

@@ -26,14 +26,16 @@ test("a failed page chunk shows Refresh instead of a blank app", async ({ page }
   await signup(page, `page-load-${stamp}@rakazo.test`, "password12", "Page Load");
   await completeOnboarding(page);
 
-  const artifactsChunk = /\/pages\/Artifacts\.tsx/;
-  await page.route(artifactsChunk, (route) => route.fulfill({ status: 404 }));
-  await page.goto("/app/artifacts");
+  // Artifacts opens inside the shell and keeps it on failure (see the Integrations test),
+  // so use a page that renders outside the shell to reach the app-level Refresh fallback.
+  const pageChunk = /\/pages\/Onboarding\.tsx/;
+  await page.route(pageChunk, (route) => route.fulfill({ status: 404 }));
+  await page.goto("/onboarding");
 
   await expect(page.getByText("Something went wrong. Try again.", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "page-load-failed");
 
-  await page.unroute(artifactsChunk);
+  await page.unroute(pageChunk);
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(page.locator('[data-rakazo-app-state="ready"]')).toBeVisible();
   await expect(page.getByText("Something went wrong. Try again.", { exact: true })).toHaveCount(0);

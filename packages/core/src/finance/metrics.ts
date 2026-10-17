@@ -133,6 +133,7 @@ const hasToken = (key: string, entry: string): boolean => `-${key}-`.includes(`-
 
 // ---- Classification ----
 
+const STATEMENT_REFUND = /\b(refund|reversal|chargeback|returned?)\b/i;
 const FINANCING_CATEGORY = /financing|investment|equity|funding|loan-proceeds/;
 
 /**
@@ -169,6 +170,10 @@ export function classify(raw: FinanceRawTxn, ctx: ClassifyContext): FinanceClass
   if (slug === "revenue" || hasToken(vendor, "stripe") || kind.startsWith("incoming")) {
     return "revenue";
   }
+  // A bank statement line carries no category or kind, so a deposit there is money in, unless its
+  // description says it is a refund (that nets off spend instead of counting as revenue).
+  if (raw.provider === "statement")
+    return STATEMENT_REFUND.test(raw.counterparty) ? "spend" : "revenue";
   // Any other credit (a vendor refund, a card credit) is a refund.
   return "spend";
 }
@@ -198,6 +203,7 @@ export function cashSummary(accounts: FinanceAccount[], stablecoinCents = 0): Ca
     savingsCents,
     treasuryCents,
     cardOwedCents: accounts.some((a) => a.kind === "card") ? sum("card") : null,
+    cashAccountCount: accounts.filter((a) => a.kind !== "card").length,
   };
 }
 
@@ -285,15 +291,27 @@ const lastDayOfMonth = (month: Month): Day => addDays(`${addMonths(month, 1)}-01
  * Out, revenue and financing per bucket for the last `buckets` days, Monday-start weeks or calendar
  * months ending with the one that holds `now`, oldest first, zero-filled. The last bucket is `partial`.
  * A bucket's `start` and `end` are inclusive UTC days. Classification and day rules match spendTotals.
+ * With `from` instead of `buckets`, the buckets run from the one holding `from` and the first one
+ * starts on `from`, so the chart covers the same days as `spendTotals` for that period.
  */
 export function cashSeries(
   txns: FinanceTransaction[],
-  opts: { granularity: CashGranularity; buckets: number; now: Date },
+  opts: { granularity: CashGranularity; now: Date } & ({ buckets: number } | { from: Day }),
 ): CashPoint[] {
-  const { granularity, buckets, now } = opts;
+  const { granularity, now } = opts;
   const today = dayOf(now.toISOString());
   const startOf = (day: Day): Day =>
     granularity === "day" ? day : granularity === "week" ? weekStart(day) : `${monthOf(day)}-01`;
+  const from = "from" in opts ? opts.from : undefined;
+  const monthIndex = (day: Day) => Number(day.slice(0, 4)) * 12 + Number(day.slice(5, 7));
+  const buckets =
+    from === undefined
+      ? (opts as { buckets: number }).buckets
+      : granularity === "day"
+        ? dayNum(today) - dayNum(from) + 1
+        : granularity === "week"
+          ? (dayNum(weekStart(today)) - dayNum(weekStart(from))) / 7 + 1
+          : monthIndex(today) - monthIndex(from) + 1;
   const points = new Map<Day, CashPoint>();
   for (let i = buckets - 1; i >= 0; i--) {
     const start =
@@ -317,9 +335,12 @@ export function cashSeries(
       partial: i === 0,
     });
   }
+  const first = points.values().next().value;
+  if (first && from !== undefined && from > first.start) first.start = from;
   for (const t of txns) {
-    const point = points.get(startOf(txnDay(t)));
-    if (!point || !counts(t)) continue;
+    const day = txnDay(t);
+    const point = points.get(startOf(day));
+    if (!point || !counts(t) || (from !== undefined && day < from)) continue;
     if (t.classification === "spend") point.outCents -= t.amountCents;
     else if (t.classification === "revenue") point.revenueCents += t.amountCents;
     else if (t.classification === "financing") point.financingCents += t.amountCents;
@@ -455,6 +476,26 @@ export function balanceHistory(
         month === currentMonth ? account.balanceCents : account.balanceCents - sign * after,
     };
   });
+}
+
+/**
+ * One account's chart: `balanceHistory`, starting at the month end before its first transaction.
+ * Earlier points would only repeat that opening balance for months nothing was synced or uploaded
+ * (a statement account made from September's file would otherwise look flat back to last year).
+ */
+export function accountBalanceHistory(
+  account: FinanceAccount,
+  txns: FinanceTransaction[],
+  now: Date,
+): BalancePoint[] {
+  const history = balanceHistory(account, txns, now);
+  const first = txns
+    .filter((t) => t.provider === account.provider && t.accountExternalId === account.externalId)
+    .reduce<string | null>((min, t) => (min === null || t.postedAt < min ? t.postedAt : min), null);
+  if (!first) return history;
+  const firstMonth = monthOf(dayOf(first));
+  const start = Math.max(history.findIndex((p) => p.month >= firstMonth) - 1, 0);
+  return history.slice(start);
 }
 
 /**
@@ -716,6 +757,7 @@ export function detectRecurring(
         chain.flatMap((o) => o.txns),
         accounts,
       ),
+      fixedCost: isFixedCost(key, lastTxn.category),
     });
   }
   return found.sort((a, b) => b.monthlyCents - a.monthlyCents || a.key.localeCompare(b.key));
@@ -723,12 +765,24 @@ export function detectRecurring(
 
 // ---- Upcoming and subscriptions ----
 
+const FIXED_COST_CATEGORY = /(^|-)(payroll|rent|salar(y|ies)|wages)(-|$)/;
+const FIXED_COST_VENDOR = ["payroll", "landlord"];
+
+/** Payroll and rent recur, but they are fixed costs, not subscriptions a founder can cancel. */
+function isFixedCost(key: string, category: string | null): boolean {
+  return (
+    FIXED_COST_CATEGORY.test(categorySlug(category)) ||
+    FIXED_COST_VENDOR.some((token) => hasToken(key, token))
+  );
+}
+
 /**
  * Expected charges in the next `days` days (today up to but not including today + days): each
- * recurring `spend` charge's predicted dates, pending outgoing `spend` transactions (a prediction
- * within 3 days of a pending charge from the same vendor is dropped, not counted twice) and unpaid
- * Brex bills due in the window or overdue. Recurring Brex card payments are left out because the
- * card purchases behind them are predicted on their own.
+ * recurring `spend` charge's predicted dates and unpaid Brex bills due in the window or overdue.
+ * Pending charges are left out: spend already counts them, so listing them here too would count
+ * them twice. A prediction within 3 days of a pending charge from the same vendor is dropped for
+ * the same reason. Recurring Brex card payments are left out because the card purchases behind
+ * them are predicted on their own.
  */
 export function upcoming(
   recurring: RecurringCharge[],
@@ -766,16 +820,6 @@ export function upcoming(
       });
     }
   }
-  for (const t of pendingTxns) {
-    const day = txnDay(t);
-    items.push({
-      key: t.id,
-      kind: "pending",
-      name: t.counterparty,
-      dates: [day < today ? today : day],
-      amountCents: -t.amountCents,
-    });
-  }
   for (const bill of bills) {
     const due = dayOf(bill.dueAt);
     if (due >= end) continue;
@@ -785,6 +829,8 @@ export function upcoming(
       name: bill.vendorName,
       dates: [due < today ? today : due],
       amountCents: Math.abs(bill.amountCents),
+      billStatus: bill.status,
+      dueAt: due,
     });
   }
 
@@ -800,9 +846,9 @@ export function upcoming(
   };
 }
 
-/** Recurring `spend` vendors with their monthly cost, largest first; `card_payment` is left out. Sets `overlapGroup` from OVERLAP_GROUPS. */
+/** Recurring `spend` vendors with their monthly cost, largest first; `card_payment` and fixed costs (payroll, rent) are left out. Sets `overlapGroup` from OVERLAP_GROUPS. */
 export function subscriptions(recurring: RecurringCharge[]): Subscriptions {
-  const spend = recurring.filter((r) => r.classification === "spend");
+  const spend = recurring.filter((r) => r.classification === "spend" && !r.fixedCost);
   const groupOf = (key: string) =>
     Object.entries(OVERLAP_GROUPS).find(([, vendors]) =>
       vendors.some((v) => hasToken(key, v)),

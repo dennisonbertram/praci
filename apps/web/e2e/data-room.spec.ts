@@ -325,6 +325,16 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
   await page.keyboard.press("Escape");
   await expect(sheet).toHaveCount(0);
   await expect(rows.nth(1)).toBeFocused();
+
+  // A phone: search on its own line, then the filters and Sort in one row, with no page scroll.
+  await page.setViewportSize({ width: 390, height: 844 });
+  const type = page.getByRole("button", { name: "Filter by Type" });
+  const sortButton = page.getByRole("button", { name: /^Sort:/ });
+  await expect(type).toBeVisible();
+  const typeBox = await type.boundingBox();
+  const sortBox = await sortButton.boundingBox();
+  expect(Math.abs((sortBox?.y ?? 0) - (typeBox?.y ?? 100))).toBeLessThan(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
 test("Data room imports a mail attachment through the picker", async ({ page }, testInfo) => {

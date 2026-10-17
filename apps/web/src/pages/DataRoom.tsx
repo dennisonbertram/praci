@@ -30,6 +30,7 @@ import {
   type Sort,
   useDataRoomList,
 } from "../components/data-room/use-data-room-list";
+import { PageEmptyState } from "../components/PageEmptyState";
 import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
 
@@ -325,7 +326,7 @@ export function DataRoomPage() {
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 px-3 pt-2 pb-3 md:px-5 md:pt-4">
+      <div className="flex items-center gap-2 px-4 pt-2 pb-3 md:px-7 md:pt-5">
         <h1 className="me-auto text-lg font-semibold">
           <Trans>Data room</Trans>
         </h1>
@@ -358,19 +359,22 @@ export function DataRoomPage() {
         )}
       </div>
       {empty ? (
-        <div className="grid flex-1 place-items-center p-6">
-          <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-xl border-2 border-dashed border-border px-6 py-12 text-center">
-            <Upload aria-hidden="true" className="size-7 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              <Trans>Drop files here</Trans>
-            </p>
+        <div className="flex justify-center px-6 pt-4">
+          <PageEmptyState
+            className="w-full max-w-md rounded-xl border-2 border-dashed border-border"
+            icon={<Upload aria-hidden="true" className="size-8" strokeWidth={1.6} />}
+            title={<Trans>Drop files here</Trans>}
+            description={
+              <Trans>Keep contracts, board decks and investor documents in one place.</Trans>
+            }
+          >
             <div className="flex flex-wrap justify-center gap-2">
               <FileInputButton>
                 <Trans>Choose files</Trans>
               </FileInputButton>
               <ImportSources folderId={null} onDone={showNotice} />
             </div>
-          </div>
+          </PageEmptyState>
         </div>
       ) : (
         <>

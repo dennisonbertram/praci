@@ -1,6 +1,6 @@
 import type { ParsedStatement, ParsedStatementTxn } from "@rakazo/contracts";
 import { dsvFormat } from "d3-dsv";
-import { decodeText, fileStem, parseCents } from "./money.js";
+import { decodeText, fileStem, parseCents, unreadNote } from "./money.js";
 import type { StatementParser } from "./types.js";
 
 const DELIMITERS = [",", ";", "\t", "|"];
@@ -107,7 +107,7 @@ export const csvParser: StatementParser = {
         externalId: null,
       });
     }
-    if (skipped) warnings.push(`${skipped} row(s) could not be read.`);
+    if (skipped) warnings.push(unreadNote(skipped, "row", "rows"));
     if (!txns.length) throw new Error("CSV has no readable transactions");
     // Newest-first exports are common; put them oldest-first so balances follow.
     if (txns[0]!.date > txns.at(-1)!.date) txns = txns.reverse();

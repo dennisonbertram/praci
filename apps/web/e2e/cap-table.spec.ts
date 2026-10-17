@@ -10,8 +10,10 @@ test("Cap Table lists contacts added through the dialog", async ({ page }, testI
   await expect(page).toHaveURL(/\/app\/cap-table$/);
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { name: "Cap Table", level: 1 })).toBeVisible();
+  await expect(main.getByText("Ownership comes from Carta.", { exact: false })).toBeVisible();
   await expect(main.getByRole("button", { name: "Connect Carta" })).toBeVisible();
-  await expect(page.getByTestId("carta-agent-panel")).toBeVisible();
+  // Without Carta there is no agent, so no empty panel opens beside the page.
+  await expect(page.getByTestId("carta-agent-panel")).toBeHidden();
 
   await main.getByRole("button", { name: "Add contact" }).click();
   const dialog = page.getByRole("dialog");

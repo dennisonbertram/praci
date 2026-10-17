@@ -86,6 +86,21 @@ describe("buildComposerMentionOptions", () => {
     expect(options.map((option) => option.id)).toEqual(["g2"]);
   });
 
+  it("skips the bot whose chat this is", () => {
+    const options = buildComposerMentionOptions({
+      query: "",
+      currentBotId: "chief",
+      bots: [
+        { id: "chief", name: "Chief" },
+        { id: "legal", name: "Legal Desk" },
+      ],
+      groups: [],
+      routines: [],
+      connectors: [],
+    });
+    expect(options.map((option) => option.id)).toEqual(["legal"]);
+  });
+
   it("filters by query before applying limit so later kinds stay reachable", () => {
     const bots = Array.from({ length: 40 }, (_, index) => ({
       id: `b${index}`,

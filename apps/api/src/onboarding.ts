@@ -27,36 +27,46 @@ type FocusOption = {
   label: string;
   summary: string;
   apps: string[];
+  /** Posted after the app cards, for work that lives on an app page rather than in a connection. */
+  note?: string;
 };
 
 const FOCUS_OPTIONS: FocusOption[] = [
   {
-    id: "day",
+    id: "company",
     letter: "A",
+    label: "Run my company",
+    summary: "cash, cap table, investors, and email",
+    apps: ["gmail", "googlecalendar"],
+    note: "For cash and equity, open Finance and Cap table in the sidebar to connect your bank, card, and Carta. Board decks and investor documents go in the Data room.",
+  },
+  {
+    id: "day",
+    letter: "B",
     label: "Day-to-day work",
     summary: "Slack, calendar, and email",
     apps: ["slack", "gmail", "googlecalendar"],
   },
   {
     id: "inbox",
-    letter: "B",
+    letter: "C",
     label: "Inbox & email",
     summary: "email and calendar",
     apps: ["gmail", "googlecalendar", "slack"],
   },
   {
     id: "research",
-    letter: "C",
+    letter: "D",
     label: "Research & writing",
     summary: "the web, notes, and docs",
     apps: ["hackernews", "notion", "googledocs"],
   },
   {
     id: "everything",
-    letter: "D",
+    letter: "E",
     label: "A bit of everything",
-    summary: "Slack, calendar, and email",
-    apps: ["slack", "gmail", "googlecalendar"],
+    summary: "email, Slack, and docs",
+    apps: ["gmail", "slack", "googledocs"],
   },
 ];
 
@@ -93,11 +103,15 @@ async function post(
   return committed.message.id;
 }
 
-/** Fixed first message for a bot created with no profile: no model call, works offline. */
+/**
+ * Fixed first message for a bot created with no profile: no model call, works offline. The
+ * onboarding bot introduces what it does for the company; the focus card that follows asks the question.
+ */
 export async function seedBlankBotGreeting(
   deps: OnboardingDeps,
   actor: Actor,
   bot: { id: string; name: string; threadId: string | null },
+  options: { first?: boolean } = {},
 ): Promise<void> {
   if (!bot.threadId) return;
   const user = await deps.prisma.user.findUnique({
@@ -105,7 +119,11 @@ export async function seedBlankBotGreeting(
     select: { name: true },
   });
   const firstName = user?.name.trim().split(/\s+/)[0];
-  const text = `${firstName ? `Hi ${firstName}, I'm` : "Hi, I'm"} ${bot.name}, and I'm a blank slate right now, so you get to decide what I become. What's the main thing you'd want me handling for you?`;
+  const hi = firstName ? `Hi ${firstName}` : "Hi";
+  // A blank bot is usually renamed right after it is created, so its greeting does not name it.
+  const text = options.first
+    ? `${hi}, I'm ${bot.name}. I can sort your email, keep an eye on cash and the cap table, find investor documents in the Data room, and draft updates and research for you.`
+    : `${hi}. I'm a blank slate right now, so you get to decide what I become. What's the main thing you'd want me handling for you?`;
   await post(deps, { spaceId: actor.spaceId, botId: bot.id, threadId: bot.threadId }, [
     { kind: "text", text },
   ]);
@@ -298,13 +316,18 @@ export async function chooseFocus(
     ];
   });
   if (!cards.length) {
-    await post(deps, target, [{ kind: "text", text: "What would you like to work on first?" }]);
+    await post(deps, target, [
+      { kind: "text", text: option.note ?? "What would you like to work on first?" },
+    ]);
     return;
   }
   const cardNames = cards
     .map((card) => (card.kind === "app_connect" ? card.name : ""))
     .filter(Boolean);
-  const named = `${cardNames.slice(0, -1).join(", ")}${cardNames.length > 1 ? ", and " : ""}${cardNames.at(-1)}`;
+  const named =
+    cardNames.length > 2
+      ? `${cardNames.slice(0, -1).join(", ")}, and ${cardNames.at(-1)}`
+      : cardNames.join(" and ");
   await post(deps, target, [
     {
       kind: "text",
@@ -318,6 +341,7 @@ export async function chooseFocus(
       text: `Hit those ${cards.length === 1 ? "one" : cards.length === 2 ? "two" : "three"} and I’ll start pulling the picture.`,
     },
   ]);
+  if (option.note) await post(deps, target, [{ kind: "text", text: option.note }]);
 }
 
 export async function markAppConnected(

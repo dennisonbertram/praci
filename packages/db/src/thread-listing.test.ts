@@ -21,6 +21,15 @@ describe("previewFromBlocks", () => {
     ).toBe("Created Projects-CoS as a Project");
   });
 
+  it("leaves a Markdown table out of the preview", () => {
+    const table =
+      "| Vendor | Amount |\n| --- | ---: |\n| Northstar Paper Co. | $420 |\n| Juniper | $1,250 |";
+    expect(previewFromBlocks([{ kind: "text", text: table }])).toBe("Table, 2 rows");
+    expect(previewFromBlocks([{ kind: "text", text: `Here are the vendors:\n\n${table}` }])).toBe(
+      "Here are the vendors:",
+    );
+  });
+
   it("returns empty when there is no text block", () => {
     expect(previewFromBlocks([{ kind: "steps", steps: [] }])).toBe("");
     expect(previewFromBlocks(undefined)).toBe("");

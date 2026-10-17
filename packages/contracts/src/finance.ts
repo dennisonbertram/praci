@@ -357,6 +357,8 @@ export const CashSummarySchema = z.object({
   treasuryCents: Cents,
   /** Brex balance owed; null when no card account is known. Not part of cash. */
   cardOwedCents: Cents.nullable(),
+  /** How many non-card accounts `bankCashCents` adds up. Absent from older payloads. */
+  cashAccountCount: z.number().int().nonnegative().optional(),
 });
 
 /** The current calendar period to date against the same elapsed days at the start of the previous one. */
@@ -442,6 +444,8 @@ export const RecurringChargeSchema = z.object({
   /** `spend` for subscriptions and vendors; `card_payment` for the Brex card payment. */
   classification: z.enum(["spend", "card_payment"]),
   paidWith: z.array(PaidWithEntrySchema),
+  /** True for payroll and rent: recurring, but fixed costs rather than subscriptions. Absent from older payloads. */
+  fixedCost: z.boolean().optional(),
 });
 
 export const UpcomingItemSchema = z.object({
@@ -453,6 +457,10 @@ export const UpcomingItemSchema = z.object({
   dates: z.array(DayId).min(1),
   /** Per occurrence, positive. */
   amountCents: Cents,
+  /** A bill's Brex status (`APPROVED`, ...). Bills only; absent from older payloads. */
+  billStatus: z.string().optional(),
+  /** A bill's own due date, which may be before today when it is overdue. Bills only. */
+  dueAt: DayId.optional(),
 });
 
 export const UpcomingSchema = z.object({
@@ -510,8 +518,9 @@ export const FinanceOverviewSchema = z.object({
     year: SpendTotalsSchema,
   }),
   /**
-   * Burn chart buckets per period, oldest first, the last one partial: week = 7 days, month = 30
-   * days, quarter = 13 weeks, year = 12 months.
+   * Burn chart buckets per period, oldest first, the last one partial, covering the same days as
+   * `spendTotals`: week and month by day, quarter by week, year by month. The first bucket starts on
+   * the period's first day.
    */
   cashSeries: z.object({
     week: z.array(CashPointSchema),
@@ -524,6 +533,13 @@ export const FinanceOverviewSchema = z.object({
     category: z.array(BreakdownRowSchema),
     vendor: z.array(BreakdownRowSchema),
   }),
+  /** The same breakdown over each period's `spendTotals` days. Absent from older payloads. */
+  breakdownByPeriod: z
+    .record(
+      SpendPeriodSchema,
+      z.object({ category: z.array(BreakdownRowSchema), vendor: z.array(BreakdownRowSchema) }),
+    )
+    .optional(),
   upcoming: UpcomingSchema,
   subscriptions: SubscriptionsSchema,
   /** The previous calendar month's net Treasury yield; null without a Treasury account. */
@@ -605,6 +621,8 @@ export const FinanceBurnOutputSchema = z.object({
   windowMonths: z.array(MonthId),
   whereItWent: z.array(BreakdownRowSchema),
   byAccount: z.array(z.object({ account: FinanceAccountSchema, cents: Cents })),
+  /** Brex card, bill and reimbursement spend in the window, which has no account row. Absent from older payloads. */
+  brexCents: Cents.optional(),
 });
 
 export const FinanceMonthOutputSchema = z.object({
@@ -673,12 +691,17 @@ export const FinanceSpendInputSchema = z.object({
   /** Inclusive days; with both, they replace the period's range (a chart bar's days). */
   from: DayId.optional(),
   to: DayId.optional(),
+  /** Only this provider's transactions (Brex spend has no account row to open instead). */
+  source: FinanceProviderSchema.optional(),
 });
 
 export const FinanceSpendOutputSchema = z.object({
   period: SpendPeriodSchema,
   /** The inclusive days counted when the input had a from/to range; otherwise null. */
   range: z.object({ from: DayId, to: DayId }).nullable(),
+  /** The days counted, half-open (the period to date, or the range). Absent from older payloads. */
+  start: DayId.optional(),
+  end: DayId.optional(),
   category: z.string().nullable(),
   totalCents: Cents,
   /** Category chips: the categories that have spend in the period, largest first. */
@@ -710,10 +733,14 @@ export const FinanceVendorOutputSchema = z.object({
   name: z.string(),
   /** True when the vendor is in the subscriptions list. */
   isSubscription: z.boolean(),
-  /** Average over the last 6 months, counting months with no charge as zero. */
+  /** Average over the last 6 full months since the vendor was first seen, counting months with no charge as zero. */
   monthlyAvgCents: Cents,
-  /** Last full month against 3 months before it; null when either is 0. */
+  /** How many full months the average covers (1 to 6). Absent from older payloads. */
+  monthlyAvgMonths: z.number().int().optional(),
+  /** Last full month against 3 months before it (or the vendor's first full month, when newer); null when either is 0. */
   changePct: z.number().nullable(),
+  /** The month `changePct` compares against. Absent from older payloads. */
+  changeFromMonth: MonthId.nullable().optional(),
   firstSeenAt: IsoDate,
   paidWith: z.array(PaidWithEntrySchema),
   /** 6 months, oldest first. */

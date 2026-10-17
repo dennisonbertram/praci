@@ -1,4 +1,4 @@
-import { Trans, useLingui } from "@lingui/react/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { AccountSecurity, AvatarStyle } from "@rakazo/contracts";
 import { BotAvatar, Button, Field, FieldLabel, Input, Label, Switch, Toggle } from "@rakazo/ui-web";
 import { ChevronDown } from "lucide-react";
@@ -221,9 +221,27 @@ export function GeneralSettingsPanels({
       </section>
 
       {isDeploymentOwner ? (
-        <Button variant="outline" render={<Link to="/integrations/setup" />}>
-          <Trans>Server integrations</Trans>
-        </Button>
+        <section className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-4">
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-medium text-foreground">
+              <Trans>Server integrations</Trans>
+            </h3>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
+              <Trans>Choose how apps connect for everyone on this server.</Trans>
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            aria-label={t`Open server integrations`}
+            render={
+              <Link
+                to={`/app/integrations/setup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+              />
+            }
+          >
+            <Trans>Open</Trans>
+          </Button>
+        </section>
       ) : null}
 
       <details data-testid="advanced-settings" className="group rounded-xl border border-border">
@@ -306,6 +324,7 @@ export function UsageSettingsPanel({
   } | null;
   panelRef?: RefObject<HTMLDivElement | null>;
 }) {
+  const tokens = usage?.totalTokens;
   return (
     <div
       ref={panelRef}
@@ -318,9 +337,12 @@ export function UsageSettingsPanel({
       </h3>
       {usage ? (
         <p className="mt-3 text-[14px] text-foreground/75">
-          <Trans>
-            {usage.runs} runs · {usage.totalTokens ?? "—"} tokens
-          </Trans>
+          <Plural value={usage.runs} one="# run" other="# runs" /> ·{" "}
+          {tokens == null ? (
+            <Trans>— tokens</Trans>
+          ) : (
+            <Plural value={tokens} one="# token" other="# tokens" />
+          )}
         </p>
       ) : null}
       <p className={`text-[12.5px] text-muted-foreground/80 ${usage ? "mt-2" : "mt-3"}`}>

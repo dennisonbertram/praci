@@ -9,6 +9,7 @@ import {
 import type { LegalContractRecord, LegalDeadlineRecord, PrismaClient } from "@rakazo/db";
 import { createLegalRepos, IsolationError, LEGAL_NOT_LEGAL_TYPE, parseLegalDay } from "@rakazo/db";
 import * as z from "zod";
+import { OWNER_INITIATED_TRIGGERS } from "./finance-tools.js";
 import { mailToolsAllowed } from "./mail-tools.js";
 
 export const LEGAL_TOOL_NAMES = new Set([
@@ -27,7 +28,6 @@ export const LEGAL_TOOL_NAMES = new Set([
 export const LEGAL_GATED_TOOL_NAMES = LEGAL_TOOL_NAMES;
 
 /** Only the Legal agent, on a run its owner started (a direct message, a follow-up or its own routine). */
-const OWNER_INITIATED_TRIGGERS = new Set(["user", "follow_up", "routine"]);
 export function legalToolsAllowed(
   options: Parameters<typeof mailToolsAllowed>[0] & {
     botSpawnKey: string | null | undefined;

@@ -1096,6 +1096,13 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "cap_table_read",
+    description:
+      "The cap table on the user's Cap Table page, as last saved: fully diluted shares, option pool, latest 409A, amount raised, share classes and each holder's security, shares and ownership. Null before the first save. Read this before answering cap table or investor questions.",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+  },
+  {
     name: "cap_table_update",
     description:
       "Replace the cap table on the user's Cap Table page. Pass exact figures from Carta; never estimate, and use null for anything Carta does not give you. Dates are YYYY-MM-DD, percents are 0-100, amounts are US dollars.",

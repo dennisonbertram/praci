@@ -29,10 +29,17 @@ describe("Data room tool gate", () => {
     runUserId: "user-1",
     botUserId: "user-1",
     messagingChannelRun: false,
+    trigger: "user",
   };
 
-  it("allows the bot owner in a direct thread", () => {
-    expect(dataRoomToolsAllowed(owner)).toBe(true);
+  it("allows the bot owner in a direct thread, on a run the owner started", () => {
+    for (const trigger of ["user", "follow_up", "routine"]) {
+      expect(dataRoomToolsAllowed({ ...owner, trigger })).toBe(true);
+    }
+  });
+
+  it("refuses a bot_message run: another agent asked, under the owner's id", () => {
+    expect(dataRoomToolsAllowed({ ...owner, trigger: "bot_message" })).toBe(false);
   });
 
   it.each([
@@ -40,7 +47,7 @@ describe("Data room tool gate", () => {
     ["someone other than the bot owner started the run", { runUserId: "user-2" }],
     ["the run answers a messaging channel", { messagingChannelRun: true }],
   ])("refuses when %s", (_label, change) => {
-    expect(dataRoomToolsAllowed({ ...owner, ...change })).toBe(false);
+    expect(dataRoomToolsAllowed({ ...owner, ...change } as typeof owner)).toBe(false);
   });
 });
 

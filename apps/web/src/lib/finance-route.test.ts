@@ -15,7 +15,7 @@ describe("parseFinanceRoute", () => {
     expect(parseFinanceRoute("/app/finance/crypto/x")).toEqual({ page: "not-found" });
   });
 
-  it("builds and reads the accounts source filter, ignoring unknown sources", () => {
+  it("builds and reads the accounts source filter, flagging unknown sources", () => {
     expect(financePath.accounts()).toBe("/app/finance/accounts");
     expect(financePath.accounts("brex")).toBe("/app/finance/accounts?source=brex");
     expect(parseFinanceRoute("/app/finance/accounts", "?source=mercury")).toEqual({
@@ -25,6 +25,7 @@ describe("parseFinanceRoute", () => {
     expect(parseFinanceRoute("/app/finance/accounts", "?source=plaid")).toEqual({
       page: "accounts",
       source: null,
+      unknownSource: "plaid",
     });
   });
 
@@ -56,12 +57,14 @@ describe("parseFinanceRoute", () => {
       period: "quarter",
       category: "travel",
       range: null,
+      source: null,
     });
     expect(parseFinanceRoute("/app/finance/spend", "?period=decade")).toEqual({
       page: "spend",
       period: "month",
       category: null,
       range: null,
+      source: null,
     });
     const built = new URL(financePath.spend("week", "a b"), "http://localhost");
     expect(parseFinanceRoute(built.pathname, built.search)).toEqual({
@@ -69,7 +72,20 @@ describe("parseFinanceRoute", () => {
       period: "week",
       category: "a b",
       range: null,
+      source: null,
     });
+  });
+
+  it("round-trips a source filter and drops an unknown one", () => {
+    const built = new URL(
+      financePath.spend("month", null, { from: "2026-07-01", to: "2026-09-30" }, "brex"),
+      "http://localhost",
+    );
+    expect(parseFinanceRoute(built.pathname, built.search)).toMatchObject({
+      source: "brex",
+      range: { from: "2026-07-01", to: "2026-09-30" },
+    });
+    expect(parseFinanceRoute("/app/finance/spend", "?source=visa")).toMatchObject({ source: null });
   });
 
   it("round-trips a from/to range and ignores a malformed or reversed one", () => {

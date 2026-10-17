@@ -8,6 +8,7 @@ import type { PrismaClient } from "@rakazo/db";
 import {
   addContact,
   ContactEmailTakenError,
+  getCapTableSnapshot,
   listContacts,
   saveCapTableSnapshot,
   saveContact,
@@ -19,6 +20,7 @@ export const CONTACT_TOOL_NAMES = new Set([
   "contacts_list",
   "contacts_add",
   "contacts_save",
+  "cap_table_read",
   "cap_table_update",
 ]);
 
@@ -71,6 +73,10 @@ export async function contactToolFromTool(
       const input = ContactSaveInputSchema.safeParse(rest);
       if (!input.success) return { error: input.error.issues.map((i) => i.message).join("; ") };
       return { contact: await addContact(deps.prisma, deps.scope, input.data) };
+    }
+    if (name === "cap_table_read") {
+      // What the Cap Table page shows, so the agent can answer from it without Carta.
+      return { capTable: await getCapTableSnapshot(deps.prisma, deps.scope) };
     }
     if (name === "cap_table_update") {
       const input = CapTableSnapshotInputSchema.safeParse(args);
