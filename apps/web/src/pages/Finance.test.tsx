@@ -872,3 +872,15 @@ it("counts all crypto under the all scope", async () => {
   expect(kpi("Cash")?.textContent).toContain("Checking + Treasury + Crypto");
   expect(await hoverOver("Cash")).toContain("Total incl. crypto$155,000");
 });
+
+it("leaves out a comparison whose two figures are the same", async () => {
+  const base = connectedOverview();
+  const same = { ...base.spendTotals.month, previousCents: base.spendTotals.month.currentCents };
+  rpcMock.overview.mockResolvedValue(
+    connectedOverview({ spendTotals: { ...base.spendTotals, month: { ...same, changePct: 0 } } }),
+  );
+  await show("/app/finance");
+  await flush();
+  expect(container.textContent).not.toMatch(/vs \$[\d,]+ for/);
+  expect(container.textContent).not.toMatch(/Spent [^·]+· .*vs /);
+});

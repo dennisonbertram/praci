@@ -295,7 +295,10 @@ function Overview({
   const heldTotal = data.crypto?.totalCents ?? 0;
   const bankRunwayMonths = data.bankRunway?.months?.toFixed(1);
   const runOutMonth = data.runway.runOutDate ? monthFull(data.runway.runOutDate.slice(0, 7)) : "";
-  const previousSpend = month.previousCents === null ? null : money(month.previousCents);
+  // The same figure on both sides says nothing, so the comparison is left out.
+  const sameAsBefore = (p: { currentCents: number; previousCents: number | null }) =>
+    p.previousCents === null || p.previousCents === p.currentCents;
+  const previousSpend = sameAsBefore(month) ? null : money(month.previousCents ?? 0);
   const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
   const spentRange = range(totals);
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
@@ -468,7 +471,7 @@ function Overview({
               </Link>
               <span className="text-[11px] text-muted-foreground">
                 {t`Spent ${spentRange}`}
-                {totals.previousCents === null ? null : (
+                {sameAsBefore(totals) ? null : (
                   <>
                     {" · "}
                     {change ? <span className={tone(totals.changePct)}>{change} </span> : null}
