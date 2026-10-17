@@ -57,3 +57,45 @@ it("offers a named Clear search button only while there is a query, and it empti
   act(() => clear()?.click());
   expect(onQuery).toHaveBeenCalledWith("");
 });
+
+const renderSorted = (sort: { field: "createdAt"; direction: "desc" } | null) =>
+  act(() =>
+    root.render(
+      <FilterBar
+        query="lease"
+        onQuery={() => undefined}
+        searching
+        filters={{}}
+        onFilters={() => undefined}
+        sort={sort}
+        onSort={() => undefined}
+        types={[]}
+        parties={[]}
+        sources={[]}
+        hasDates={false}
+        folders={[
+          {
+            folder: { id: "f2", name: "Invoices", parentId: "f1", createdAt: "" },
+            path: "Finance / Invoices",
+            depth: 1,
+          },
+        ]}
+        folderId="f2"
+        onFolder={() => undefined}
+      />,
+    ),
+  );
+
+it("shows the sort direction only for a field sort, never for Relevance", () => {
+  renderSorted(null);
+  expect(container.querySelector('button[aria-label="Descending"]')).toBeNull();
+  renderSorted({ field: "createdAt", direction: "desc" });
+  expect(container.querySelector('button[aria-label="Descending"]')).not.toBeNull();
+});
+
+it("names the open folder by its own name on the picker, with the full path as its title", () => {
+  renderSorted(null);
+  const picker = container.querySelector('[data-testid="data-room-folder-picker"]');
+  expect(picker?.textContent).toBe("Invoices");
+  expect(picker?.getAttribute("title")).toBe("Finance / Invoices");
+});

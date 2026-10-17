@@ -258,6 +258,7 @@ export function FilterBar({
       name === field || (name === "date" ? hasDates : name === "type" ? types.length > 0 : true),
   );
   const direction = sort?.direction ?? "desc";
+  const openFolder = folders.find(({ folder }) => folder.id === folderId);
   return (
     <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2.5 md:px-5">
       <InputGroup className="me-1.5 w-full min-w-40 @min-[560px]/bd:max-w-80 @min-[560px]/bd:flex-1">
@@ -297,15 +298,19 @@ export function FilterBar({
         <DropdownMenu>
           <DropdownMenuTrigger
             data-testid="data-room-folder-picker"
-            render={<Button variant="outline" size="sm" className="max-w-44 rounded-full" />}
+            render={<Button variant="outline" size="sm" className="max-w-36 rounded-full" />}
+            title={openFolder?.path}
           >
             <Folder aria-hidden="true" />
-            <span className="truncate">
-              {folders.find(({ folder }) => folder.id === folderId)?.path ?? t`All items`}
-            </span>
+            {/* The folder's own name, so the toolbar stays one row; the menu shows the full path. */}
+            <span className="truncate">{openFolder?.folder.name ?? t`All items`}</span>
             <ChevronDown aria-hidden="true" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-40">
+          {/* As wide as its longest path (not the button), so no path wraps. */}
+          <DropdownMenuContent
+            align="start"
+            className="w-max min-w-40 max-w-[calc(100vw-2rem)] whitespace-nowrap"
+          >
             <DropdownMenuRadioGroup
               value={folderId ?? ""}
               onValueChange={(next) => onFolder(String(next) || undefined)}
@@ -384,17 +389,21 @@ export function FilterBar({
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          disabled={!sort}
-          aria-label={direction === "asc" ? t`Ascending` : t`Descending`}
-          onClick={() =>
-            sort && onSort({ ...sort, direction: direction === "asc" ? "desc" : "asc" })
-          }
-        >
-          {direction === "asc" ? <ArrowUp aria-hidden="true" /> : <ArrowDown aria-hidden="true" />}
-        </Button>
+        {/* Relevance has no direction, so the arrow only shows for a field sort. */}
+        {sort ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={direction === "asc" ? t`Ascending` : t`Descending`}
+            onClick={() => onSort({ ...sort, direction: direction === "asc" ? "desc" : "asc" })}
+          >
+            {direction === "asc" ? (
+              <ArrowUp aria-hidden="true" />
+            ) : (
+              <ArrowDown aria-hidden="true" />
+            )}
+          </Button>
+        ) : null}
       </div>
     </div>
   );
