@@ -258,9 +258,17 @@ msgstr ""
 msgid "{count} years"
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{days, plural, one {Due in # day} other {Due in # days}}"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "{days}d ago"
 msgstr "{days} दिन पहले"
+
+#: src/components/data-room/format.ts
+msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
+msgstr ""
 
 #: src/pages/shell/GroupIntro.tsx
 msgid "{first} answers by default. Type @ and a name to ask one bot, or ask everyone to hear from each of them."
@@ -282,8 +290,16 @@ msgstr ""
 msgid "{hours}h ago"
 msgstr "{hours} घंटे पहले"
 
+#: src/components/data-room/format.ts
+msgid "{imported, plural, one {Imported # file} other {Imported # files}}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 msgstr ""
 
 #: src/lib/relative-time.ts
@@ -514,6 +530,8 @@ msgid "Actions for space"
 msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
+#: src/pages/Legal.tsx
+#: src/pages/legal/LegalContracts.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Active"
 msgstr ""
@@ -738,6 +756,7 @@ msgid "All time"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
+#: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr ""
 
@@ -758,6 +777,10 @@ msgstr "{0} को बिना पूछे अनुमति दें"
 
 #: src/components/AiDataSharing.tsx
 msgid "Allow {name}"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Allow access below first."
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -806,6 +829,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Already in {folder} as {name}"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Already in the Data room"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
@@ -1033,6 +1060,7 @@ msgid "Ask the server owner to set up the app catalog."
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
+#: src/components/legal/LegalGraph.tsx
 msgid "Asset"
 msgstr ""
 
@@ -1117,6 +1145,14 @@ msgstr "ऑथराइज़ करें"
 msgid "Authorize this server so bots can use its tools. A popup opens."
 msgstr ""
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "Auto-renews"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Auto-renews, {notice} days notice"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Automated senders"
 msgstr ""
@@ -1142,6 +1178,7 @@ msgid "Avatars"
 msgstr ""
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
@@ -1810,6 +1847,10 @@ msgstr ""
 msgid "Collapse Inbox agent"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Collapse Legal agent"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Color"
 msgstr "रंग"
@@ -1841,6 +1882,10 @@ msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Compact"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Company"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
@@ -1941,6 +1986,10 @@ msgstr ""
 msgid "Connect a model"
 msgstr "एक मॉडल कनेक्ट करें"
 
+#: src/pages/Legal.tsx
+msgid "Connect a model in Settings first."
+msgstr ""
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Connect a provider to add backups."
 msgstr "बैकअप जोड़ने के लिए किसी प्रदाता को कनेक्ट करें।"
@@ -1971,8 +2020,16 @@ msgstr ""
 msgid "Connect Executor"
 msgstr "Executor कनेक्ट करें"
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Connect Gmail"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Connect Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -2085,7 +2142,14 @@ msgid "Continue with email"
 msgstr "ईमेल से जारी रखें"
 
 #: src/components/finance/WalletDialog.tsx
+#: src/components/legal/LegalGraph.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Contract"
+msgstr ""
+
+#: src/pages/Legal.tsx
+#: src/pages/legal/LegalContracts.tsx
+msgid "Contracts"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -2210,6 +2274,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Inbox agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Legal agent"
 msgstr ""
 
 #: src/pages/Onboarding.tsx
@@ -2614,6 +2682,10 @@ msgstr ""
 msgid "Couldn't download {0}"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Couldn't load mail"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
 msgstr ""
@@ -2699,6 +2771,10 @@ msgstr "समूह बनाएं"
 
 #: src/pages/Shell.tsx
 msgid "Create Inbox agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Create Legal agent"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -2809,6 +2885,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "days"
 msgstr "दिन"
+
+#: src/pages/Legal.tsx
+msgid "Deadlines"
+msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Decline"
@@ -3020,13 +3100,24 @@ msgstr "डिस्कनेक्ट हो रहा है…"
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr ""
 
+#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Dismiss {0}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Dismiss error"
+msgstr ""
+
+#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Dismissed {0}."
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -3079,6 +3170,7 @@ msgstr "खाता नहीं है?"
 #: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Done"
 msgstr "पूर्ण"
@@ -3115,6 +3207,10 @@ msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Draft"
 msgstr ""
 
 #: src/components/MailOutbox.tsx
@@ -3171,6 +3267,14 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Due"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Due today"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Due tomorrow"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -3369,6 +3473,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Expired"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -3592,6 +3700,14 @@ msgstr ""
 msgid "From {0}"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "From email"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "From Google Drive"
+msgstr ""
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "फ़ुलस्क्रीन"
@@ -3661,6 +3777,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Google Drive"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Graph"
 msgstr ""
 
 #: src/pages/DataRoom.tsx
@@ -3815,12 +3935,25 @@ msgstr ""
 msgid "Image upload area"
 msgstr "छवि अपलोड क्षेत्र"
 
+#: src/components/data-room/ImportFromDrive.tsx
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Import"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Import an OpenAPI description"
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Import anyway"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Import from email"
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Import from Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3953,6 +4086,10 @@ msgstr "उत्तर दिए गए संदेश पर जाएँ: {e
 msgid "Junk"
 msgstr ""
 
+#: src/components/legal/LegalGraph.tsx
+msgid "Jurisdiction"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "just now"
 msgstr "अभी-अभी"
@@ -4006,6 +4143,19 @@ msgstr ""
 msgid "Last charge"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Last scan {lastScan}"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Last scan failed"
+msgstr ""
+
+#. placeholder {0}: lastRun.error
+#: src/pages/Legal.tsx
+msgid "Last scan failed: {0}"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 #: src/components/EmailCards.tsx
 msgid "Later"
@@ -4037,12 +4187,29 @@ msgstr ""
 msgid "Leave"
 msgstr ""
 
+#: src/pages/Legal.tsx
+#: src/pages/Shell.tsx
+msgid "Legal"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Legal relationships"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key."
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Rakazo read your documents"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "Let Rakazo sort your mail"
+msgstr ""
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Let the Legal agent read your documents"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -4095,6 +4262,8 @@ msgstr ""
 msgid "Load earlier messages"
 msgstr "पुराने संदेश लोड करें"
 
+#: src/components/data-room/ImportFromDrive.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Inbox.tsx
@@ -4248,6 +4417,11 @@ msgstr "वर्कस्पेस के सिमेंटिक मेमो
 msgid "Manual setup required"
 msgstr ""
 
+#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Mark {0} done"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Mark as read"
 msgstr ""
@@ -4282,6 +4456,11 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark unread"
+msgstr ""
+
+#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Marked {0} done."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -4732,6 +4911,10 @@ msgstr ""
 msgid "Next 30 days"
 msgstr ""
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "Next deadline"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
@@ -4765,6 +4948,10 @@ msgstr ""
 msgid "No authentication"
 msgstr "कोई प्रमाणीकरण नहीं"
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "No auto-renewal"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "No bot activity yet."
 msgstr "अभी तक कोई बॉट गतिविधि नहीं।"
@@ -4784,6 +4971,11 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "No files found"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -4850,6 +5042,10 @@ msgstr "कोई मॉडल सूचीबद्ध नहीं।"
 msgid "No more results"
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "No open deadlines."
+msgstr ""
+
 #: src/pages/CapTable.tsx
 msgid "No other contacts yet"
 msgstr ""
@@ -4860,6 +5056,14 @@ msgstr "कोई प्रोवाइडर नहीं मिला।"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "No receipt"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "No relations."
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "No relationships yet."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -4984,6 +5188,10 @@ msgstr ""
 msgid "Not now"
 msgstr "अभी नहीं"
 
+#: src/pages/Legal.tsx
+msgid "Not scanned yet"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not sent"
 msgstr ""
@@ -5035,6 +5243,10 @@ msgstr "OAuth ऑथराइज़ेशन रद्द कर दिया �
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "OAuth कनेक्शन विफल"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Obligation"
+msgstr ""
 
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
@@ -5106,6 +5318,14 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Open deadlines"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Open document"
+msgstr ""
+
 #: src/components/markdown-link-prompt.tsx
 msgid "Open external link?"
 msgstr "बाहरी लिंक खोलें?"
@@ -5132,6 +5352,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Open Models settings"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -5223,6 +5447,7 @@ msgid "Original message unavailable"
 msgstr "मूल संदेश उपलब्ध नहीं है"
 
 #: src/components/finance/ui.tsx
+#: src/components/legal/LegalGraph.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
@@ -5249,6 +5474,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Over the 50 MB limit"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Overdue"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -5303,6 +5532,7 @@ msgstr "पार्क करें"
 
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Parties"
 msgstr ""
 
@@ -5383,6 +5613,10 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Period"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Person"
 msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
@@ -5612,6 +5846,7 @@ msgstr "हाल के"
 msgid "Recently added"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -5719,6 +5954,10 @@ msgstr ""
 #: src/lib/user-error.ts
 msgid "Registration is closed"
 msgstr "पंजीकरण बंद है"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Relations of {selectedLabel}"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Release computer"
@@ -5876,6 +6115,10 @@ msgstr "अनुभाग का नाम बदलें"
 msgid "Rename space"
 msgstr "स्पेस का नाम बदलें"
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "Renewal"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Renews {day}"
 msgstr ""
@@ -5984,6 +6227,7 @@ msgstr ""
 #: src/components/AccountAccess.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Legal.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Retry"
 msgstr "फिर कोशिश करें"
@@ -6018,6 +6262,10 @@ msgstr "प्रोवाइडर सेटिंग्स की समीक
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Revoke"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Right"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -6194,6 +6442,14 @@ msgstr "सहेजा जा रहा है…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "हां या ना कहें, या एक वाक्य में उत्तर दें।"
 
+#: src/pages/Legal.tsx
+msgid "Scan now"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scanning…"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Scheduling"
 msgstr ""
@@ -6237,6 +6493,11 @@ msgstr ""
 msgid "Search documents"
 msgstr ""
 
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Search Drive"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
 msgid "Search mail"
 msgstr ""
@@ -6309,6 +6570,10 @@ msgstr "एक बॉट चुनें"
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Select a connected model"
 msgstr "जुड़ा मॉडल चुनें"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Select an item to see its relations."
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
@@ -6499,6 +6764,10 @@ msgstr ""
 #: src/components/call/VoiceChatCard.tsx
 msgid "Show transcript"
 msgstr "ट्रांसक्रिप्ट दिखाएँ"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Showing the {shown} most connected of {total} items."
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Sidebar density"
@@ -6779,6 +7048,7 @@ msgstr ""
 #: src/pages/Board.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Status"
 msgstr ""
 
@@ -6946,8 +7216,16 @@ msgstr ""
 msgid "Teams not enabled"
 msgstr ""
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "Term"
+msgstr ""
+
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Terminal"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Terminated"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -7009,6 +7287,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "The Legal agent scans your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -7350,11 +7632,13 @@ msgstr ""
 #: src/components/MailOutbox.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"
 msgstr ""
 
 #: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Unknown"
 msgstr ""
 
@@ -7384,6 +7668,10 @@ msgstr "पिन हटाएं"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Unreviewed documents"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
@@ -7575,6 +7863,7 @@ msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
+#: src/pages/legal/LegalContracts.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
 msgstr ""
@@ -7611,6 +7900,7 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Legal.tsx
 msgid "View"
 msgstr ""
 

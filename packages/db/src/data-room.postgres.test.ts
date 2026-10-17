@@ -357,11 +357,42 @@ describePostgres("data room repository (PostgreSQL)", () => {
         size: 1,
         externalId: `ext-${run}`,
       });
-    await external(a, "e1");
-    await expect(external(a, "e2")).rejects.toThrow();
+    const first = await external(a, "e1");
+    await expect(external(a, "e2")).resolves.toMatchObject({
+      created: false,
+      item: { id: first.item.id },
+    });
     // The same external id for another member or space is a different item.
     await expect(external(a2, "e3")).resolves.toMatchObject({ created: true });
     await expect(external(b, "e4")).resolves.toMatchObject({ created: true });
+  });
+
+  it("returns the existing item for a repeated import of the same source id", async () => {
+    const connection = await prisma.connection.create({
+      data: {
+        spaceId: a.spaceId,
+        userId: a.userId,
+        connectorId: "google",
+        provider: "gmail",
+        displayName: "Test mail",
+        status: "connected",
+      },
+    });
+    const imported = (sha: string) =>
+      dr.createItem(a, {
+        source: "gmail",
+        sha256: sha,
+        name: "invoice.pdf",
+        mimeType: "application/pdf",
+        size: 1,
+        sourceConnectionId: connection.id,
+        externalId: `gmail:m1-${run}:att1`,
+      });
+    const first = await imported("i1");
+    expect(first.created).toBe(true);
+    const again = await imported("i2");
+    expect(again).toMatchObject({ created: false });
+    expect(again.item.id).toBe(first.item.id);
   });
 
   it("writes only to the caller's own rows", async () => {

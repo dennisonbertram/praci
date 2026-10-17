@@ -28,6 +28,7 @@ const receipt = {
   size: 100,
   folderId: null,
   source: "upload",
+  sourceUrl: null,
   status: "ready",
   error: null,
   facets: {
