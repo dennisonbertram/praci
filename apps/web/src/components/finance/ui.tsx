@@ -27,9 +27,20 @@ import { financePath } from "../../lib/finance-route";
 import { errorText } from "../../lib/user-error";
 import { shade } from "./charts";
 
-/** What the Shell tells every Finance page: how to open the agent panel (absent while it is open). */
-const ChromeContext = createContext<{ onAskAgent?: () => void }>({});
+/**
+ * What the Shell tells every Finance page: how to open the agent panel (absent while it is open),
+ * and the space's name when the user has more than one, so they know whose finances these are.
+ */
+const ChromeContext = createContext<{ onAskAgent?: () => void; spaceName?: string }>({});
 export const FinanceChromeProvider = ChromeContext.Provider;
+
+/** The space's name beside a Finance title; nothing with a single space. */
+export function SpaceName() {
+  const { spaceName } = useContext(ChromeContext);
+  return spaceName ? (
+    <span className="min-w-0 truncate text-xs text-muted-foreground">{spaceName}</span>
+  ) : null;
+}
 
 export function AskAgentButton() {
   const { onAskAgent } = useContext(ChromeContext);
@@ -151,7 +162,10 @@ export function trailFor(own: Crumb[], cameFrom: Crumb | null): Crumb[] {
   const [root, ...rest] = crumbs;
   const here = rest.at(-1);
   if (!cameFrom || !root || !here) return crumbs;
-  return cameFrom.to === root.to ? [root, here] : [root, cameFrom, here];
+  // The origin's own origins come too, so the trail is as deep as when the page is opened directly.
+  const chain: Crumb[] = [];
+  for (let c: Crumb | undefined = cameFrom; c && c.to !== root.to; c = c.back) chain.unshift(c);
+  return [root, ...chain, here];
 }
 
 /** Back button, breadcrumb and Ask agent for every detail page; the last crumb is the page itself. */
@@ -170,7 +184,11 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
         <span aria-hidden="true">←</span>
         <span className="ms-1">{previous?.label ?? t`Finance`}</span>
       </Link>
-      <nav aria-label={t`Breadcrumb`} className="min-w-0">
+      {/* Narrow, the trail takes its own line, so Back and Ask agent share the first on every page. */}
+      <nav
+        aria-label={t`Breadcrumb`}
+        className="order-last w-full min-w-0 @md:order-none @md:w-auto"
+      >
         <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
           {crumbs.map((crumb, i) => (
             <li key={i} className="flex items-center gap-1">
@@ -386,7 +404,8 @@ export function BreakdownRows({
         <HereLink
           key={row.key}
           to={to(row)}
-          className="group grid grid-cols-[minmax(0,10rem)_1fr_4.5rem_0.75rem] items-center gap-2.5 rounded-lg px-2 py-1.5 outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground @md:grid-cols-[minmax(0,13rem)_1fr_4.5rem_0.75rem] @xl:grid-cols-[minmax(0,17rem)_1fr_4.5rem_0.75rem]"
+          // Narrow, the bar moves under the name so the name is not cut off.
+          className="group grid grid-cols-[minmax(0,1fr)_4.5rem_0.75rem] items-center gap-x-2.5 gap-y-1 rounded-lg px-2 py-1.5 outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground @md:grid-cols-[minmax(0,13rem)_1fr_4.5rem_0.75rem] @xl:grid-cols-[minmax(0,17rem)_1fr_4.5rem_0.75rem]"
         >
           <span className="truncate" title={row.label}>
             {swatches ? (
@@ -398,7 +417,7 @@ export function BreakdownRows({
             ) : null}
             {row.label}
           </span>
-          <span className="block h-2 overflow-hidden rounded-sm bg-muted group-hover:bg-border">
+          <span className="col-span-full row-start-2 block h-2 overflow-hidden rounded-sm bg-muted group-hover:bg-border @md:col-span-1 @md:row-start-auto">
             <i
               className={cn(
                 "block h-full rounded-sm",

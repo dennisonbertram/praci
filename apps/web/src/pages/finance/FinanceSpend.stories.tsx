@@ -163,6 +163,22 @@ export const Vendor: Story = {
   beforeEach: () => mockRpc({ "finance.vendor": vendor }),
 };
 
+/** A vendor newer than three months compares with its first full month. */
+export const VendorComparedWithFirstMonth: Story = {
+  render: () => <FinanceVendorPage keyName="acme-hosting" />,
+  beforeEach: () =>
+    mockRpc({
+      "finance.vendor": {
+        ...vendor,
+        firstSeenAt: "2025-12-08T12:00:00.000Z",
+        monthly: vendor.monthly.map((m) => ({ ...m, cents: m.month >= "2025-12" ? 4900 : 0 })),
+        monthlyAvgMonths: 3,
+        changePct: 0,
+        changeFromMonth: "2025-12",
+      },
+    }),
+};
+
 export const VendorWithoutChange: Story = {
   render: () => <FinanceVendorPage keyName="acme-hosting" />,
   beforeEach: () =>

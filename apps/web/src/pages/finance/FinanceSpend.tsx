@@ -30,6 +30,7 @@ import {
   moneyExact,
   monthAxisLabels,
   monthLabel,
+  monthShort,
   paidWithLabel,
   shortDay,
   txnDay,
@@ -283,7 +284,13 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
             <Kpi
               title={t`Change`}
               value={change ? <span className={toneClass(data.changePct)}>{change}</span> : "—"}
-              sub={data.changePct === null ? t`Not enough history` : t`vs 3 mo ago`}
+              sub={
+                data.changePct === null
+                  ? t`Not enough history`
+                  : data.changeFromMonth
+                    ? t`vs ${monthShort(data.changeFromMonth)}`
+                    : t`vs 3 mo ago`
+              }
             />
             <Kpi title={t`First seen`} value={monthLabel(data.firstSeenAt.slice(0, 7))} />
             <Kpi title={t`Paid with`} value={paidWith || "—"} />

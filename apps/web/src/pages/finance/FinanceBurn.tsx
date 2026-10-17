@@ -139,13 +139,20 @@ export function FinanceBurnPage() {
                     </tr>
                   ))}
                   {brexCents > 0 ? (
-                    <tr className="border-t border-border [&>td]:py-2">
-                      <td className="font-semibold">Brex</td>
+                    <tr className={rowClass} {...rowProps(financePath.accounts("brex"))}>
+                      <td className="font-semibold">
+                        <HereLink
+                          to={financePath.accounts("brex")}
+                          className="outline-none hover:underline focus-visible:underline"
+                        >
+                          Brex
+                        </HereLink>
+                      </td>
                       <td className="text-end tabular-nums">{money(brexCents)}</td>
                       <td className="text-end text-muted-foreground tabular-nums">
                         {shareText(brexCents, accountTotal)}
                       </td>
-                      <td />
+                      <Chevron />
                     </tr>
                   ) : null}
                 </tbody>
@@ -252,6 +259,20 @@ export function FinanceMonthPage({ month }: { month: string }) {
   );
 }
 
+/** A Cash line on the Runway page, saying when the saved scope leaves it out of runway. */
+function Counted({ on, children }: { on: boolean; children: string }) {
+  return on ? (
+    <>{children}</>
+  ) : (
+    <>
+      {children}{" "}
+      <span className="text-muted-foreground">
+        · <Trans>not in runway</Trans>
+      </span>
+    </>
+  );
+}
+
 export function FinanceRunwayPage() {
   const q = useFinanceQuery(() => rpc.finance.runway(), []);
   const data = q.data;
@@ -305,8 +326,19 @@ export function FinanceRunwayPage() {
             <Section title={<Trans>Cash</Trans>}>
               <Kv>
                 <KvRow label={t`Bank`}>{money(parts.bankCents)}</KvRow>
-                <KvRow label={t`Stablecoins`}>{money(parts.stablecoinCents)}</KvRow>
-                <KvRow label={t`Other crypto`}>{money(parts.otherCryptoCents)}</KvRow>
+                <KvRow label={t`Stablecoins`}>
+                  <Counted on={data.runwayCrypto !== "bank"}>
+                    {money(parts.stablecoinCents)}
+                  </Counted>
+                </KvRow>
+                <KvRow label={t`Other crypto`}>
+                  <Counted on={data.runwayCrypto === "all"}>
+                    {money(parts.otherCryptoCents)}
+                  </Counted>
+                </KvRow>
+                <KvRow label={t`In runway`}>
+                  <span className="font-semibold">{money(data.cashCents)}</span>
+                </KvRow>
               </Kv>
             </Section>
           ) : null}
