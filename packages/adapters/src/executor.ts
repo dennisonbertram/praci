@@ -312,7 +312,7 @@ import {
   legalToolsAllowed,
   lockLegalBot,
 } from "./legal-tools.js";
-import { approvedMailOutcome } from "./mail-approval-recovery.js";
+import { approvedMailOutcome, mailSendRefusal } from "./mail-approval-recovery.js";
 import {
   accountName,
   inferMailAccount,
@@ -4913,6 +4913,25 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return pauseForApproval();
           };
 
+          if (applied && !applied.duplicate && name === "mail_send") {
+            const prior = await deps.prisma.externalEffect.findMany({
+              where: {
+                spaceId: run.spaceId,
+                kind: "mail_send",
+                id: { not: applied.effect.id },
+                run: { threadId: run.threadId },
+              },
+              orderBy: { createdAt: "desc" },
+              take: 50,
+              select: { runId: true, status: true, request: true, result: true },
+            });
+            const refusal = mailSendRefusal(args, prior, runId);
+            if (refusal) {
+              const result = { error: refusal };
+              await completeEffect(deps, applied.effect.id, "intended", result);
+              return result;
+            }
+          }
           if (applied?.duplicate) {
             const gate = resolveDuplicateEffectGate(applied.effect, name);
             if (gate.action === "return") {

@@ -875,6 +875,7 @@ async function mailSend(
       account: accountName(account),
       to: draft.to.map(addressText),
       subject: draft.subject,
+      note: "The email was sent. Tell the user it was sent; do not offer it again.",
     };
   } catch (error) {
     if (sending && !(error instanceof MailProviderError && error.kind !== "unknown")) {

@@ -163,3 +163,65 @@ export async function reconcileMailApprovals(deps: {
     }
   }
 }
+
+const addresses = (value: unknown): string =>
+  (Array.isArray(value) ? value : [])
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => (item.match(/<([^>]+)>/)?.[1] ?? item).trim().toLowerCase())
+    .sort()
+    .join(",");
+const baseSubject = (value: unknown): string =>
+  (typeof value === "string" ? value : "")
+    .replace(/^\s*((re|fwd?)\s*:\s*)+/i, "")
+    .trim()
+    .toLowerCase();
+const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
+
+/** Two mail_send calls are the same email when they answer the same message, or go to the same people about the same thing. */
+function sameEmail(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const replyA = text(a.replyToId);
+  const replyB = text(b.replyToId);
+  if (replyA || replyB) return replyA === replyB;
+  return addresses(a.to) === addresses(b.to) && baseSubject(a.subject) === baseSubject(b.subject);
+}
+
+/** A bracketed stand-in the model left for the user to fill, such as "[Your Name]". */
+const PLACEHOLDER = /\[(?:your|my|sender|insert|recipient)[^\]\n]{0,40}\]/i;
+
+export type PriorMailEffect = { runId: string; status: string; request: unknown; result: unknown };
+
+/**
+ * Why a mail_send call must not reach an approval card, or undefined when it may. Checked before
+ * the card is made, so the user never sees a placeholder signature or a second card for an email
+ * that already went out (the agent does not always follow the note on the earlier result).
+ */
+export function mailSendRefusal(
+  args: Record<string, unknown>,
+  prior: PriorMailEffect[],
+  runId: string,
+): string | undefined {
+  const placeholder = `${text(args.subject)}\n${text(args.body)}`.match(PLACEHOLDER)?.[0];
+  if (placeholder) {
+    return `The email still contains the placeholder ${placeholder}. Replace it with real text (sign with the user's name if you know it, or leave the signature off), then call mail_send again.`;
+  }
+  for (const effect of prior) {
+    const request = effect.request as Record<string, unknown> | null;
+    if (!request || typeof request !== "object" || !sameEmail(args, request)) continue;
+    const result = (effect.result ?? {}) as { error?: unknown; outcome?: unknown; note?: unknown };
+    const sentOrMaybe =
+      (effect.status === "completed" && !result.error) ||
+      effect.status === "executing" ||
+      effect.status === "uncertain" ||
+      (effect.status === "denied" &&
+        (result.outcome === "sent" ||
+          result.outcome === "unknown" ||
+          result.note === mailApprovalAgentNote(true)));
+    if (sentOrMaybe) {
+      return "This email was already sent in this conversation. Do not send it again or offer another approval for it; tell the user it was sent.";
+    }
+    if (effect.status === "denied" && effect.runId === runId && result.outcome !== "failed") {
+      return "The user discarded this email. Do not offer it again; ask the user what they want to change.";
+    }
+  }
+  return undefined;
+}
