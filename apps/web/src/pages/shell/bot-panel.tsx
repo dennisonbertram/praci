@@ -400,7 +400,7 @@ export function BotSettings({
           maxLength={BOT_TITLE_MAX_LENGTH}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => void enqueueSave()}
-          placeholder={t`e.g. Hivenet Agent, Presales, Timesheets bot`}
+          placeholder={t`e.g. Recruiting, Sales, Legal`}
           className="mt-1.5"
         />
       </label>
