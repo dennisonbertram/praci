@@ -36,8 +36,25 @@ export function previewFromBlocks(blocks: unknown): string {
       "text" in block &&
       typeof (block as { text?: unknown }).text === "string"
     ) {
-      return plainTextFromMarkdown((block as { text: string }).text);
+      return previewText((block as { text: string }).text);
     }
   }
   return "";
+}
+
+const TABLE_ROW = /^\s*\|.*\|\s*$/;
+const TABLE_SEPARATOR = /^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/;
+
+/**
+ * A Markdown table flattened into a preview reads as "Vendor, Amount Northstar Paper Co., $4…",
+ * so tables are left out; a reply that is only a table reads "Table, 3 rows".
+ */
+function previewText(markdown: string): string {
+  const lines = markdown.split("\n");
+  const tableLines = lines.filter((line) => TABLE_ROW.test(line));
+  if (tableLines.length < 2) return plainTextFromMarkdown(markdown);
+  const words = plainTextFromMarkdown(lines.filter((line) => !TABLE_ROW.test(line)).join("\n"));
+  if (words) return words;
+  const rows = tableLines.filter((line) => !TABLE_SEPARATOR.test(line)).length - 1;
+  return `Table, ${rows} ${rows === 1 ? "row" : "rows"}`;
 }
