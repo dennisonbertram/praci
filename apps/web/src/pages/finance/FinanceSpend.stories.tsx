@@ -130,6 +130,19 @@ export const SpendFilteredToRange: Story = {
   beforeEach: () => mockRpc({ "finance.spend": { ...spend, category: "software" } }),
 };
 
+export const SpendFilteredToBrex: Story = {
+  name: "Spend, Brex only (opened from Burn)",
+  render: () => (
+    <FinanceSpendPage
+      period="month"
+      category={null}
+      range={{ from: "2026-07-01", to: "2026-09-30" }}
+      source="brex"
+    />
+  ),
+  beforeEach: () => mockRpc({ "finance.spend": spend }),
+};
+
 export const SpendEmpty: Story = {
   render: () => <FinanceSpendPage period="week" category={null} range={null} />,
   beforeEach: () =>

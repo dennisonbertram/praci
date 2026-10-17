@@ -12,7 +12,13 @@ export type FinanceRoute =
   | { page: "month"; month: string }
   | { page: "runway" }
   | { page: "crypto" }
-  | { page: "spend"; period: SpendPeriod; category: string | null; range: SpendRange | null }
+  | {
+      page: "spend";
+      period: SpendPeriod;
+      category: string | null;
+      range: SpendRange | null;
+      source?: FinanceProvider | null;
+    }
   | { page: "category"; slug: string }
   | { page: "recurring"; key: string }
   | { page: "vendor"; key: string }
@@ -33,10 +39,15 @@ export const financePath = {
   month: (month: string) => `${BASE}/month/${enc(month)}`,
   runway: () => `${BASE}/runway`,
   crypto: () => `${BASE}/crypto`,
-  spend: (period: SpendPeriod = "month", category?: string | null, range?: SpendRange | null) =>
+  spend: (
+    period: SpendPeriod = "month",
+    category?: string | null,
+    range?: SpendRange | null,
+    source?: FinanceProvider | null,
+  ) =>
     `${BASE}/spend?period=${period}${category ? `&cat=${enc(category)}` : ""}${
       range ? `&from=${range.from}&to=${range.to}` : ""
-    }`,
+    }${source ? `&source=${source}` : ""}`,
   category: (slug: string) => `${BASE}/category/${enc(slug)}`,
   recurring: (key: string) => `${BASE}/recurring/${enc(key)}`,
   vendor: (key: string) => `${BASE}/vendor/${enc(key)}`,
@@ -76,8 +87,10 @@ export function parseFinanceRoute(pathname: string, search = ""): FinanceRoute {
       const period = SpendPeriodSchema.safeParse(params.get("period"));
       const from = params.get("from") ?? "";
       const to = params.get("to") ?? "";
+      const source = FinanceProviderSchema.safeParse(params.get("source"));
       return {
         page: "spend",
+        source: source.success ? source.data : null,
         period: period.success ? period.data : "month",
         category: params.get("cat") || null,
         range: DAY.test(from) && DAY.test(to) && from <= to ? { from, to } : null,

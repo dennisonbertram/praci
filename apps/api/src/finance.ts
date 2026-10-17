@@ -803,7 +803,8 @@ export async function financeSpend(
   actor: Actor,
   input: FinanceSpendInput,
 ): Promise<FinanceSpendOutput> {
-  const txns = await loadTransactions(deps, actor);
+  const all = await loadTransactions(deps, actor);
+  const txns = input.source ? all.filter((t) => t.provider === input.source) : all;
   const totals = spendTotals(txns, input.period, nowOf(deps), earliestDay(txns));
   const customRange =
     input.from !== undefined && input.to !== undefined && input.from <= input.to

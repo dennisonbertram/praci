@@ -119,7 +119,7 @@ function CryptoGroup({
                   {typeNames[wallet.type]}
                 </span>
               </td>
-              <td className="text-end tabular-nums">{moneyExact(cents.get(wallet.id) ?? 0)}</td>
+              <td className="text-end tabular-nums">{money(cents.get(wallet.id) ?? 0)}</td>
               <Chevron />
             </tr>
           ))}
@@ -136,7 +136,7 @@ function CryptoGroup({
                   <Trans>Exchange</Trans>
                 </span>
               </td>
-              <td className="text-end tabular-nums">{moneyExact(exchange.totalCents)}</td>
+              <td className="text-end tabular-nums">{money(exchange.totalCents)}</td>
               <Chevron />
             </tr>
           ))}
@@ -176,6 +176,11 @@ export function FinanceAccountsPage({
   const balance = useFinanceQuery(
     () => rpc.finance.balanceSeries({ range }),
     [range, balanceStamp],
+  ).data;
+  // A source's own spend this month: Brex card spend sits on no account row, so this is where it shows.
+  const sourceSpend = useFinanceQuery(
+    () => (source ? rpc.finance.spend({ period: "month", source }) : Promise.resolve(null)),
+    [source],
   ).data;
   const scope = prefs.data?.runwayCrypto ?? "bank";
   const sourceName = FINANCE_PROVIDERS.find((p) => p.provider === source)?.name;
@@ -280,8 +285,16 @@ export function FinanceAccountsPage({
             ) : brexOwedUnknown ? (
               <Kpi title={t`Card balance owed`} value="—" sub={t`Brex does not share it`} />
             ) : null}
+            {source && sourceName && sourceSpend ? (
+              <Kpi
+                title={t`${sourceName} spend`}
+                value={money(sourceSpend.totalCents)}
+                sub={t`This month`}
+                to={financePath.spend("month", null, null, source)}
+              />
+            ) : null}
           </div>
-          {prefs.data && crypto && crypto.summary.totalCents > 0 ? (
+          {!sourceName && prefs.data && crypto && crypto.summary.totalCents > 0 ? (
             <div>
               <CountCryptoButton
                 scope={scope}
@@ -322,7 +335,8 @@ export function FinanceAccountsPage({
               <AccountTable rows={fromSource(data.cards)} owed />
             </Section>
           ) : null}
-          {crypto && (crypto.wallets.length > 0 || exchanges.length > 0) ? (
+          {/* Wallets and exchanges come from no bank or card provider, so a source filter leaves them out. */}
+          {!sourceName && crypto && (crypto.wallets.length > 0 || exchanges.length > 0) ? (
             <CryptoGroup crypto={crypto} exchanges={exchanges} />
           ) : null}
         </>

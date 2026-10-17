@@ -36,6 +36,12 @@ const burnCrumbs = () => [
   { label: t`Burn`, to: financePath.burn() },
 ];
 
+/** The last day of a `YYYY-MM` month. */
+const monthEnd = (month: string) =>
+  new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0))
+    .toISOString()
+    .slice(0, 10);
+
 const netText = (cents: number) => `${cents < 0 ? "−" : "+"}${money(cents)}`;
 
 /** The months from the first one with any money in or out; earlier months had no data, not zero spend. */
@@ -58,6 +64,11 @@ export function FinanceBurnPage() {
   const spentAccounts = data?.byAccount.filter((a) => a.cents > 0) ?? [];
   const accountTotal = spentAccounts.reduce((sum, a) => sum + a.cents, 0) + brexCents || 1;
   const series = data ? fromFirstData(data.series) : [];
+  // Brex spend has no account page, so its row lists the Brex charges behind the same figure.
+  const brexSpend =
+    first && last
+      ? financePath.spend("month", null, { from: `${first}-01`, to: monthEnd(last) }, "brex")
+      : financePath.spend("month", null, null, "brex");
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Burn` }]}
@@ -139,10 +150,10 @@ export function FinanceBurnPage() {
                     </tr>
                   ))}
                   {brexCents > 0 ? (
-                    <tr className={rowClass} {...rowProps(financePath.accounts("brex"))}>
+                    <tr className={rowClass} {...rowProps(brexSpend)}>
                       <td className="font-semibold">
                         <HereLink
-                          to={financePath.accounts("brex")}
+                          to={brexSpend}
                           className="outline-none hover:underline focus-visible:underline"
                         >
                           Brex

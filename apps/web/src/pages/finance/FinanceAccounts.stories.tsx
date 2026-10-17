@@ -103,6 +103,8 @@ const loaded = {
   "finance.exchanges": [exchange],
   "finance.preferences": { runwayCrypto: "bank" },
   "finance.balanceSeries": { range: "year", points },
+  // MOCK DEMO DATA: a source's spend this month, shown when the list is filtered to it.
+  "finance.spend": { totalCents: 2_287_100 },
 };
 
 const meta = {

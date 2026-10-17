@@ -691,6 +691,8 @@ export const FinanceSpendInputSchema = z.object({
   /** Inclusive days; with both, they replace the period's range (a chart bar's days). */
   from: DayId.optional(),
   to: DayId.optional(),
+  /** Only this provider's transactions (Brex spend has no account row to open instead). */
+  source: FinanceProviderSchema.optional(),
 });
 
 export const FinanceSpendOutputSchema = z.object({

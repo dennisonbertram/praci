@@ -537,6 +537,21 @@ describe("finance detail lookups", () => {
     const out = await financeSpend(deps, a, { period: "month", category: "software" });
     expect(out.transactions.map((r) => r.id)).toEqual(["t-1"]);
   });
+
+  it("counts and lists only the chosen source's spend", async () => {
+    const { deps } = setup({
+      financeTransaction: [
+        txn(a, { id: "t-1" }),
+        txn(a, { id: "t-2", provider: "brex", accountExternalId: "brex-card" }),
+      ],
+    });
+    metrics.breakdown.mockClear();
+    const out = await financeSpend(deps, a, { period: "month", source: "brex" });
+    expect(out.transactions.map((r) => r.id)).toEqual(["t-2"]);
+    // The total and the category chips are worked out from the same Brex-only list.
+    const given = (metrics.breakdown.mock.calls[0] as unknown as [{ id: string }[]])[0];
+    expect(given.map((r) => r.id)).toEqual(["t-2"]);
+  });
 });
 
 describe("finance connect", () => {

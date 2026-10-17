@@ -31,6 +31,7 @@ const rpcMock = vi.hoisted(() => ({
   overview: vi.fn(),
   setPreferences: vi.fn(),
   statementAccountRename: vi.fn(),
+  spend: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
@@ -115,6 +116,7 @@ async function show(scope: "bank" | "stablecoins" | "all" = "bank", cryptoData =
   await flush();
 }
 beforeEach(async () => {
+  rpcMock.spend.mockResolvedValue({ totalCents: 0 });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -130,7 +132,9 @@ it("lists wallets in their own Crypto group and keeps them out of total cash", (
   const page = container.textContent ?? "";
   expect(page).toContain("Crypto");
   expect(page).toContain("alice.eth");
-  expect(page).toContain("$987,654.00");
+  // Rounded to whole dollars like every other balance on the page.
+  expect(page).toContain("$987,654");
+  expect(page).not.toContain("$987,654.00");
   expect(container.querySelector('a[href="/app/finance/crypto"]')?.textContent).toBe("alice.eth");
   const total = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Total cash");
   expect(total?.nextElementSibling?.textContent).toBe("$75,000");
@@ -139,7 +143,8 @@ it("lists wallets in their own Crypto group and keeps them out of total cash", (
 
 it("lists connected exchanges in the Crypto group, outside total cash", () => {
   const row = [...container.querySelectorAll("tr")].find((r) => r.textContent?.includes("Kraken"));
-  expect(row?.textContent).toContain("$250.00");
+  expect(row?.textContent).toContain("$250");
+  expect(row?.textContent).not.toContain("$250.00");
   expect(container.textContent).not.toContain("$75,250");
 });
 
@@ -331,9 +336,19 @@ const rows = () =>
   [...container.querySelectorAll("tbody td.font-semibold")].map((td) => td.textContent);
 
 it("shows only the source's accounts, for cash and for cards", async () => {
+  rpcMock.spend.mockResolvedValue({ totalCents: 2_287_100 });
   await showSource("brex");
   expect(rows().join(" ")).toContain("Brex Card");
   expect(rows().join(" ")).not.toContain("Checking");
+  // A wallet is not a Brex account, and Brex's own spend is one click away.
+  expect(container.textContent).not.toContain("alice.eth");
+  expect(container.textContent).not.toContain("Count crypto");
+  expect(rpcMock.spend).toHaveBeenCalledWith({ period: "month", source: "brex" });
+  const spend = [...container.querySelectorAll("a")].find((a) =>
+    a.textContent?.startsWith("Brex spend"),
+  );
+  expect(spend?.textContent).toContain("$22,871");
+  expect(spend?.getAttribute("href")).toBe("/app/finance/spend?period=month&source=brex");
   await showSource("mercury");
   expect(rows().join(" ")).toContain("Checking");
   expect(rows().join(" ")).not.toContain("Brex Card");

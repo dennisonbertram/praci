@@ -91,9 +91,11 @@ it("adds Brex to By account so the shares cover all spend, and hides months befo
   const page = container.textContent ?? "";
   expect(page).toContain("Checking$2,00067%");
   expect(page).toContain("Brex$1,00033%");
-  // Brex opens like the other accounts: its accounts list.
+  // Brex has no account page, so it opens the Brex charges over the same months as its figure.
   const brex = [...container.querySelectorAll("a")].find((a) => a.textContent === "Brex");
-  expect(brex?.getAttribute("href")).toBe("/app/finance/accounts?source=brex");
+  expect(brex?.getAttribute("href")).toBe(
+    "/app/finance/spend?period=month&from=2026-07-01&to=2026-07-31&source=brex",
+  );
   expect(page).toContain("Jul 2026");
   expect(page).not.toContain("May 2026");
 });

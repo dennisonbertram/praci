@@ -1,6 +1,6 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { FinanceRecurringOutput, SpendPeriod } from "@rakazo/contracts";
+import type { FinanceProvider, FinanceRecurringOutput, SpendPeriod } from "@rakazo/contracts";
 import { Badge } from "@rakazo/ui-web";
 import { Link, useNavigate } from "react-router-dom";
 import { LineChart, MonthBars } from "../../components/finance/charts";
@@ -36,6 +36,7 @@ import {
   txnDay,
 } from "../../lib/finance-format";
 import { financePath, type SpendRange } from "../../lib/finance-route";
+import { FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { ReceiptIcon } from "./FinanceTransaction";
 
@@ -43,10 +44,13 @@ export function FinanceSpendPage({
   period,
   category,
   range,
+  source = null,
 }: {
   period: SpendPeriod;
   category: string | null;
   range: SpendRange | null;
+  /** Only this provider's spend, as opened from Brex on the Burn page. */
+  source?: FinanceProvider | null;
 }) {
   const navigate = useNavigate();
   const q = useFinanceQuery(
@@ -55,15 +59,34 @@ export function FinanceSpendPage({
         period,
         ...(category ? { category } : {}),
         ...(range ? { from: range.from, to: range.to } : {}),
+        ...(source ? { source } : {}),
       }),
-    [period, category, range?.from, range?.to],
+    [period, category, range?.from, range?.to, source],
   );
   const data = q.data;
   const rangeLabel = range ? dayRange(range.from, range.to) : "";
+  const sourceName = FINANCE_PROVIDERS.find((p) => p.provider === source)?.name;
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Spend` }]}
-      title={<Trans>Spend</Trans>}
+      title={
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Trans>Spend</Trans>
+          {sourceName ? (
+            <Badge
+              variant="outline"
+              render={
+                <Link
+                  to={financePath.spend(period, category, range)}
+                  aria-label={t`Clear ${sourceName} filter`}
+                />
+              }
+            >
+              {sourceName} ×
+            </Badge>
+          ) : null}
+        </span>
+      }
       loading={!data}
       error={q.error}
       notFound={q.notFound}
@@ -76,7 +99,7 @@ export function FinanceSpendPage({
               {/* A day or week from the chart is its own range: no period tab is selected while it is shown. */}
               <PeriodTabs
                 value={range ? null : period}
-                onChange={(next) => navigate(financePath.spend(next, category))}
+                onChange={(next) => navigate(financePath.spend(next, category, null, source))}
               />
               <span className="text-lg font-semibold tabular-nums">{money(data.totalCents)}</span>
               {range ? (
@@ -84,7 +107,7 @@ export function FinanceSpendPage({
                   variant="outline"
                   render={
                     <Link
-                      to={financePath.spend(period, category)}
+                      to={financePath.spend(period, category, null, source)}
                       aria-label={t`Clear ${rangeLabel}`}
                     />
                   }
@@ -99,13 +122,13 @@ export function FinanceSpendPage({
             </div>
           </Section>
           <div className="flex flex-wrap gap-1">
-            <Chip to={financePath.spend(period, null, range)} on={!category}>
+            <Chip to={financePath.spend(period, null, range, source)} on={!category}>
               <Trans>All</Trans>
             </Chip>
             {data.categories.map((row) => (
               <Chip
                 key={row.key}
-                to={financePath.spend(period, row.key, range)}
+                to={financePath.spend(period, row.key, range, source)}
                 on={row.key === category}
               >
                 {row.label}
