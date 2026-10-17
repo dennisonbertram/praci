@@ -456,7 +456,7 @@ test("Data room imports a Google Drive file through the picker", async ({ page }
     ),
   );
   await page.route("**/rpc/dataRoom/importDrive", (route) =>
-    route.fulfill(json({ imported: 1, duplicates: 0 })),
+    route.fulfill(json({ imported: 1, duplicates: 0, failed: 0 })),
   );
 
   await signup(page, `data-room-drive-${Date.now()}@rakazo.test`, "password12", "Data Room User");

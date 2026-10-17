@@ -2654,8 +2654,8 @@ export function ShellPage() {
               open: cartaAgentOpen,
               collapse: () => setCartaAgentOpen(false),
               collapseLabel: t`Collapse Carta agent`,
-              create: createCartaAgent,
-              createLabel: t`Create Carta agent`,
+              create: undefined,
+              createLabel: "",
               creating: creatingCartaAgent,
               error: cartaAgentError,
             }
@@ -3387,16 +3387,6 @@ export function ShellPage() {
           onOpen={() => {
             setMobileSidebarOpen(false);
             navigate("/app/legal");
-          }}
-        />
-        <SidebarPageLink
-          testId="sidebar-data-room"
-          current={dataRoomMode}
-          icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Data room</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/data-room");
           }}
         />
         <SidebarPageLink
@@ -5803,29 +5793,6 @@ const Transcript = memo(function Transcript({
                       onReply={onReply}
                       showToolActivity={showToolActivity}
                     />
-                    {peerReceipt || message.id.startsWith("progress:") ? null : (
-                      <time
-                        dateTime={message.createdAt}
-                        data-testid="message-hover-time"
-                        className={cn(
-                          "pointer-events-none absolute end-0 z-10 whitespace-nowrap text-xs tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100 group-has-[[aria-expanded=true]]/message:opacity-100 [@media(hover:none)]:transition-none",
-                          // Bot speaker header shares the line; otherwise the time sits just above the bubble.
-                          message.role === "bot" && memberName?.(message.botId)
-                            ? "top-0 flex h-[22px] items-center"
-                            : "bottom-full pb-0.5",
-                          // Touch has no hover margin: drop the revealed time in-flow under the bubble.
-                          "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
-                          "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
-                          "[@media(hover:none)]:group-hover/message:mt-1 [@media(hover:none)]:group-focus-within/message:mt-1 [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:mt-1",
-                          "[@media(hover:none)]:group-hover/message:h-auto [@media(hover:none)]:group-focus-within/message:h-auto [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:h-auto",
-                          message.role === "user"
-                            ? "[@media(hover:none)]:group-hover/message:text-end [@media(hover:none)]:group-focus-within/message:text-end [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:text-end"
-                            : "[@media(hover:none)]:group-hover/message:text-start [@media(hover:none)]:group-focus-within/message:text-start [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:text-start",
-                        )}
-                      >
-                        {formatMessageTime(message.createdAt, i18n.locale || "en")}
-                      </time>
-                    )}
                     {peerReceipt ? null : (
                       <MessageHoverActions
                         message={message}

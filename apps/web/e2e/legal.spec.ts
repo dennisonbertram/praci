@@ -19,7 +19,8 @@ async function mockLegal(page: Page, options: { empty?: boolean; consented?: boo
     calls.push({ name, input });
     if (name === "consentGrant") consented = true;
     const answers: Record<string, unknown> = {
-      overview: options.empty ? emptyOverview : overview,
+      // An empty page still has its agent on the preferred model, so consent is what gates a scan.
+      overview: options.empty ? { ...emptyOverview, model: overview.model } : overview,
       graph,
       consent: { ...consentFixture, allowed: consented },
       consentGrant: { ...consentFixture, allowed: true },
