@@ -305,7 +305,6 @@ import {
   LEGAL_CONSENT_REFUSAL,
   LEGAL_GATED_TOOL_NAMES,
   LEGAL_TOOL_NAMES,
-  legalAccountToolsAllowed,
   legalDataRoomGate,
   legalToolFromTool,
   legalToolNeedsConsent,
@@ -4020,27 +4019,24 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }).then((accounts) => accounts.filter((a) => !deniedIds.has(a.id)));
           return calendarAccountsPromise;
         };
-        const legalAccountsOk = legalAccountToolsAllowed(legalOnly, run.trigger);
         const calendarEnabled =
-          legalAccountsOk &&
           mailToolsAllowed({
             hasProvider: Boolean(deps.connectors),
             groupId: thread.groupId,
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
-          }) &&
-          (await calendarAccounts().catch(() => [])).length > 0;
+            trigger: run.trigger,
+          }) && (await calendarAccounts().catch(() => [])).length > 0;
         const mailEnabled =
-          legalAccountsOk &&
           mailToolsAllowed({
             hasProvider: Boolean(deps.mail),
             groupId: thread.groupId,
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
-          }) &&
-          (await mailAccounts().catch(() => [])).length > 0;
+            trigger: run.trigger,
+          }) && (await mailAccounts().catch(() => [])).length > 0;
         // Connected Google Drive accounts of the bot owner, looked up once per run.
         let driveAccountsPromise: ReturnType<typeof listDriveAccounts> | undefined;
         const driveAccounts = () => {
@@ -4051,15 +4047,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
           return driveAccountsPromise;
         };
         const driveEnabled =
-          legalAccountsOk &&
           driveToolsAllowed({
             hasProvider: Boolean(deps.connectors),
             groupId: thread.groupId,
             runUserId: run.userId,
             botUserId: bot.userId,
             messagingChannelRun,
-          }) &&
-          (await driveAccounts().catch(() => [])).length > 0;
+            trigger: run.trigger,
+          }) && (await driveAccounts().catch(() => [])).length > 0;
         // Owner-only, like mail and Drive. Consent is checked by the add tool itself, so a
         // person who has not accepted the Data room still gets the tools and a clear "off" answer.
         const dataRoomEnabled =
@@ -4132,9 +4127,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ? agentConnectionTools.filter((tool) => !disabledBuiltinTools.has(tool.name))
             : []),
         ].filter((tool) => !legalOnly || legalToolSet.has(tool.name));
-        const exposedConnectorTools = discovered.filter(
-          (tool) => !builtinAgentTools.some((builtin) => builtin.name === tool.name),
-        );
+        // Generic connector tools (Composio, Pipedream, MCP) reach the owner's accounts, so a run
+        // another agent started (bot_message, possibly from another account) gets none of them.
+        // Webhook and messaging runs keep them: they have their own approval rules.
+        const exposedConnectorTools =
+          run.trigger !== "bot_message"
+            ? discovered.filter(
+                (tool) => !builtinAgentTools.some((builtin) => builtin.name === tool.name),
+              )
+            : [];
         const connectorTools = new Map(
           exposedConnectorTools.map((tool) => [tool.name, tool] as const),
         );
@@ -6745,6 +6746,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return archived;
           }
           if (deps.connector) {
+            // A model can call a name it was never offered; refuse connector calls on a peer-started run.
+            if (run.trigger === "bot_message" && !BUILTIN_AGENT_TOOL_NAMES.has(name)) {
+              return { error: `unknown tool ${name}` };
+            }
             let result: unknown = { error: `unknown tool ${name}` };
             for await (const event of deps.connector.execute(
               { ...connectorCall, tool: name, args, executionId: effectKey },

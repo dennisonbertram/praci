@@ -1,11 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   createRunExecutor,
-  legalAccountToolsAllowed,
+  dataRoomToolsAllowed,
+  driveToolsAllowed,
   legalDataRoomGate,
   legalToolFromTool,
   legalToolNeedsConsent,
   legalToolsAllowed,
+  mailToolsAllowed,
   selectBuiltinToolsForRun,
 } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
@@ -308,6 +310,12 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(
       legalToolsAllowed({ ...base, botSpawnKey: legalAgentSpawnKey("u"), trigger: "webhook" }),
     ).toBe(false);
+    // A run another agent started gets no Legal tools, and none of the mail, Drive or Data room ones.
+    const botMessage = { ...base, trigger: "bot_message" };
+    expect(legalToolsAllowed({ ...botMessage, botSpawnKey: legalAgentSpawnKey("u") })).toBe(false);
+    expect(mailToolsAllowed(botMessage)).toBe(false);
+    expect(driveToolsAllowed(botMessage)).toBe(false);
+    expect(dataRoomToolsAllowed(botMessage)).toBe(false);
     const offered = (legalEnabled: boolean, dataRoomEnabled: boolean) =>
       selectBuiltinToolsForRun({
         graphicalToolsAllowed: false,
@@ -717,13 +725,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(await runs()).toBe(before + 1);
   });
 
-  it("keeps mail, Drive and calendar off a Legal run another agent started, and rechecks consent for them", () => {
-    expect(legalAccountToolsAllowed(true, "bot_message")).toBe(false);
-    for (const trigger of ["user", "follow_up", "routine"]) {
-      expect(legalAccountToolsAllowed(true, trigger)).toBe(true);
-    }
-    // Other agents keep the gate they had.
-    expect(legalAccountToolsAllowed(false, "bot_message")).toBe(true);
+  it("rechecks consent for Legal mail, Drive and calendar calls", () => {
     for (const name of [
       "mail_get",
       "mail_search",

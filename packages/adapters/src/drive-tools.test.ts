@@ -5,6 +5,7 @@ import {
   type DriveAccount,
   type DriveToolDeps,
   driveToolFromTool,
+  driveToolsAllowed,
   listDriveAccounts,
 } from "./drive-tools.js";
 import { GoogleApiClient } from "./google-api-request.js";
@@ -393,5 +394,24 @@ describe("accounts and errors", () => {
     expect(await driveToolFromTool("drive_read", s.deps, context, { fileId: "x" })).toEqual({
       error: "Drive request failed",
     });
+  });
+});
+
+describe("driveToolsAllowed", () => {
+  const owner = {
+    hasProvider: true,
+    groupId: null,
+    runUserId: "user-1",
+    botUserId: "user-1",
+    messagingChannelRun: false,
+    trigger: "user",
+  };
+
+  it.each(["user", "follow_up", "routine"])("allows an owner-started %s run", (trigger) => {
+    expect(driveToolsAllowed({ ...owner, trigger })).toBe(true);
+  });
+
+  it("refuses a bot_message run, which another agent (even from another account) started", () => {
+    expect(driveToolsAllowed({ ...owner, trigger: "bot_message" })).toBe(false);
   });
 });

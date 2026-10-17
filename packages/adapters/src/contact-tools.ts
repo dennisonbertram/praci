@@ -13,7 +13,7 @@ import {
   saveCapTableSnapshot,
   saveContact,
 } from "@rakazo/db";
-import { mailToolsAllowed } from "./mail-tools.js";
+import { mailToolsAllowed, OWNER_INITIATED_TRIGGERS } from "./mail-tools.js";
 
 /** The Carta agent's own-data tools: the user's contacts and their Cap Table page. */
 export const CONTACT_TOOL_NAMES = new Set([
@@ -25,7 +25,6 @@ export const CONTACT_TOOL_NAMES = new Set([
 ]);
 
 /** Only the Carta agent, on a run its owner started (a direct message or their own routine). */
-const OWNER_INITIATED_TRIGGERS = new Set(["user", "follow_up", "routine"]);
 export function contactToolsAllowed(
   options: Parameters<typeof mailToolsAllowed>[0] & {
     botSpawnKey: string | null | undefined;

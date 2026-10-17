@@ -21,7 +21,6 @@ import {
 import type { DataRoomAi } from "./data-room-models.js";
 import { DriveFileError, type DriveFilesDeps, downloadDriveFile } from "./drive-files.js";
 import type { DriveAccount } from "./drive-tools.js";
-import { OWNER_INITIATED_TRIGGERS } from "./finance-tools.js";
 import { mailToolsAllowed } from "./mail-tools.js";
 
 export const DATA_ROOM_TOOL_NAMES = new Set([
@@ -30,15 +29,8 @@ export const DATA_ROOM_TOOL_NAMES = new Set([
   "add_to_data_room",
 ]);
 
-/**
- * The mail and Drive owner-only rule, on a run the owner started. A bot_message run (another agent
- * asked) runs under the owner's id without the owner being behind it, so it gets no Data room.
- */
-export function dataRoomToolsAllowed(
-  options: Parameters<typeof mailToolsAllowed>[0] & { trigger: string },
-): boolean {
-  return OWNER_INITIATED_TRIGGERS.has(options.trigger) && mailToolsAllowed(options);
-}
+/** Owner-only, on a run the owner started: the same gate as the mail and Drive tools. */
+export const dataRoomToolsAllowed = mailToolsAllowed;
 
 export function describeDataRoomActivity(name: string): string | null {
   if (name === "search_data_room") return "Looking in the Data room";

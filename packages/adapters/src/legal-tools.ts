@@ -17,8 +17,7 @@ import {
 import * as z from "zod";
 import { CALENDAR_TOOL_NAMES } from "./calendar-tools.js";
 import { DRIVE_TOOL_NAMES } from "./drive-tools.js";
-import { OWNER_INITIATED_TRIGGERS } from "./finance-tools.js";
-import { MAIL_TOOL_NAMES, mailToolsAllowed } from "./mail-tools.js";
+import { MAIL_TOOL_NAMES, mailToolsAllowed, OWNER_INITIATED_TRIGGERS } from "./mail-tools.js";
 
 export const LEGAL_TOOL_NAMES = new Set([
   "legal_unreviewed_documents",
@@ -67,13 +66,6 @@ export async function lockLegalBot(tx: Pick<PrismaClient, "$executeRaw">, botId:
  */
 export const legalToolNeedsConsent = (name: string) =>
   MAIL_TOOL_NAMES.has(name) || DRIVE_TOOL_NAMES.has(name) || CALENDAR_TOOL_NAMES.has(name);
-
-/**
- * Mail, Drive and calendar for a Legal run only on a run its owner started: a bot_message run
- * (another agent asked) uses the owner's id without the owner being behind it.
- */
-export const legalAccountToolsAllowed = (legalOnly: boolean, trigger: string) =>
-  !legalOnly || OWNER_INITIATED_TRIGGERS.has(trigger);
 
 export interface LegalToolDeps {
   prisma: PrismaClient;

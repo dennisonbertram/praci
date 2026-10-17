@@ -231,7 +231,9 @@ function fixture({
   let calls: { args: Record<string, unknown>; executionId: string }[] = [
     { args: { id: "item-1" }, executionId: "call-1" },
   ];
+  const offeredTools: string[] = [];
   const runtimeRun = vi.fn(async function* (request: AgentRunRequest) {
+    offeredTools.push(...(request.tools ?? []).map((t) => t.name));
     for (const call of calls) {
       const result = await request.executeTool!(
         catalog ? "demo_execute_tool" : name,
@@ -298,6 +300,7 @@ function fixture({
     mail,
   } as unknown as Parameters<typeof createRunExecutor>[0]);
   return {
+    offeredTools,
     effects,
     results,
     execute,
@@ -805,5 +808,32 @@ describe("Carta write tools", () => {
     await f.run();
     expect(f.pauseRunForInput).not.toHaveBeenCalled();
     expect(f.execute).toHaveBeenCalledOnce();
+  });
+});
+
+describe("tools offered to a peer-started run", () => {
+  const mailRun = (trigger: string) => {
+    const mail = {
+      listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+    };
+    return fixture({ trigger, mail });
+  };
+
+  it("gives a user run mail, schedules and connector tools", async () => {
+    const f = mailRun("user");
+    await f.run();
+    expect(f.offeredTools).toEqual(
+      expect.arrayContaining(["mail_search", "schedule_create", "demo_get_item"]),
+    );
+  });
+
+  it("gives a bot_message run no mail, schedule creation or connector tools", async () => {
+    const f = mailRun("bot_message");
+    await f.run();
+    expect(f.offeredTools).not.toContain("mail_search");
+    expect(f.offeredTools).not.toContain("schedule_create");
+    expect(f.offeredTools).not.toContain("demo_get_item");
+    expect(f.execute).not.toHaveBeenCalled();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("unknown tool") });
   });
 });

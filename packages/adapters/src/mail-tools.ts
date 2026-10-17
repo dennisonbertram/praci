@@ -82,6 +82,19 @@ type ResumeEntry = {
   pageToken?: string;
 };
 
+/**
+ * Runs the owner is behind: a direct message, a follow-up, their own routine, or one of their own taught skills or call wrap-ups. A bot_message run
+ * (another agent asked, possibly from another account through an agent connection) is created under
+ * the recipient owner's id but not started by them.
+ */
+export const OWNER_INITIATED_TRIGGERS = new Set([
+  "user",
+  "follow_up",
+  "routine",
+  "skill",
+  "call_end",
+]);
+
 /** Owner only: the bot's owner started the run, in a direct thread, outside a messaging channel. */
 export function mailToolsAllowed(options: {
   hasProvider: boolean;
@@ -89,8 +102,11 @@ export function mailToolsAllowed(options: {
   runUserId: string;
   botUserId: string;
   messagingChannelRun: boolean;
+  /** The run trigger; bot_message runs are not owner-initiated. */
+  trigger: string;
 }): boolean {
   return (
+    OWNER_INITIATED_TRIGGERS.has(options.trigger) &&
     options.hasProvider &&
     !options.groupId &&
     options.runUserId === options.botUserId &&

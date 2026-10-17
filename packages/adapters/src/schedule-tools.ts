@@ -8,6 +8,7 @@ import {
   ONCE_ROUTINE_CRON,
 } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
+import { OWNER_INITIATED_TRIGGERS } from "./mail-tools.js";
 
 export { isOneShotRoutineCron, ONCE_ROUTINE_CRON };
 
@@ -17,7 +18,11 @@ export function filterBuiltinToolsForRun<T extends { name: string }>(
   tools: T[],
   runTrigger: string,
 ): T[] {
-  return runTrigger === "routine" ? tools.filter((tool) => tool.name !== "schedule_create") : tools;
+  // A saved prompt later fires as an owner routine run with the owner's mail, calendar and Drive,
+  // so only a run the owner started may create one (routine runs never chain a new schedule).
+  return OWNER_INITIATED_TRIGGERS.has(runTrigger) && runTrigger !== "routine"
+    ? tools
+    : tools.filter((tool) => tool.name !== "schedule_create");
 }
 
 /** Keep cross-bot messaging thread-specific while exposing schedules in DMs and groups. */
