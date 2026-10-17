@@ -223,9 +223,13 @@ async function attach(file: File) {
 it("names the file it left out and the limit the server applies", async () => {
   await open({ kind: "new" });
   await attach(new File([new Uint8Array(11 * 1024 * 1024)], "big.bin"));
-  expect(document.querySelector("[role=alert]")?.textContent).toBe(
+  const alert = document.querySelector("[role=alert]");
+  expect(alert?.textContent).toBe(
     "big.bin (11.0 MB) was not added. Attachments can be up to 10 MB in total.",
   );
+  // Beside the attachments, not squeezed into the footer next to Send.
+  const sendButton = [...document.querySelectorAll("button")].find((b) => b.textContent === "Send");
+  expect(alert?.parentElement).not.toBe(sendButton?.parentElement);
 });
 
 it("holds a send for the undo window, and Undo reopens the message untouched", async () => {
@@ -564,6 +568,56 @@ it("opens the same reply again as it was closed, so the same draft is updated", 
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("carries a Reply all draft into Reply with only the sender as recipient", async () => {
+  vi.useFakeTimers();
+  draftSave.mockResolvedValue({ status: "saved" });
+  try {
+    const first = await open(reply("replyAll"));
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+    await act(async () => requestClose.current());
+    await act(async () => first.root.unmount());
+    document.body.innerHTML = "";
+    prefill.mockResolvedValueOnce({
+      connectionId: "c1",
+      replyToMessageId: "m1",
+      to: "Sam Lee <sam@example.test>",
+      cc: "",
+      subject: "Re: Offsite",
+      body,
+      attachments: [],
+    });
+    await open(reply("reply"));
+    expect(prefill).toHaveBeenLastCalledWith(expect.objectContaining({ mode: "reply" }));
+    expect(chips()).toEqual(["Remove sam@example.test"]);
+    expect(field("Cc")).toBeNull();
+    expect((field("Subject") as HTMLInputElement).value).toBe("Re: Offsite!");
+    await type(field("Subject") as HTMLInputElement, "Re: Offsite!!");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    // Still the same Gmail draft.
+    expect(new Set(draftSave.mock.calls.map(([call]) => call.clientId)).size).toBe(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("shows the address a reply is sent from", async () => {
+  prefill.mockResolvedValueOnce({
+    connectionId: "c2",
+    account: { connectionId: "c2", label: "Sales mail", address: "sales@example.test" },
+    replyToMessageId: "m1",
+    to: "Sam Lee <sam@example.test>",
+    cc: "",
+    subject: "Re: Offsite",
+    body,
+    attachments: [],
+  });
+  await open(reply("reply"));
+  const from = [...document.querySelectorAll("span")].find((el) => el.textContent === "From");
+  expect(from?.nextElementSibling?.textContent).toBe("Sales mail <sales@example.test>");
 });
 
 it("shows the one account a new message is sent from", async () => {

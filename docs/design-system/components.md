@@ -146,7 +146,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | InboxAgentIntro | [apps/web/src/components/inbox/InboxAgentIntro.tsx](../../apps/web/src/components/inbox/InboxAgentIntro.tsx) | [InboxAgentIntro.stories.tsx](../../apps/web/src/components/inbox/InboxAgentIntro.stories.tsx) | web |
-| InboxMessageDialog, InboxMessage, AttachmentIcon, InboxAttachments, EarlierMessages, EarlierMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
+| InboxMessageDialog, InboxMessage, AttachmentIcon, InboxAttachments, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
 | InboxGroup, InboxRow | [apps/web/src/components/inbox/InboxRow.tsx](../../apps/web/src/components/inbox/InboxRow.tsx) | [InboxRow.stories.tsx](../../apps/web/src/components/inbox/InboxRow.stories.tsx) | web |
 | InboxShortcuts | [apps/web/src/components/inbox/InboxShortcuts.tsx](../../apps/web/src/components/inbox/InboxShortcuts.tsx) | [InboxShortcuts.stories.tsx](../../apps/web/src/components/inbox/InboxShortcuts.stories.tsx) | web |
 | TodoCard | [apps/web/src/components/inbox/TodoCard.tsx](../../apps/web/src/components/inbox/TodoCard.tsx) | [TodoCard.stories.tsx](../../apps/web/src/components/inbox/TodoCard.stories.tsx) | web |

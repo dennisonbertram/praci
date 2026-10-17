@@ -115,6 +115,37 @@ export const Conversation: Story = {
     }),
 };
 
+/** The user's own reply came after the open message: it is listed below the body, as You. */
+export const ConversationWithLaterReply: Story = {
+  name: "Conversation with a later reply",
+  args: { messageId: "msg_later", subject: "Re: Quarterly planning notes" },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.get": {
+        ...message,
+        subject: "Re: Quarterly planning notes",
+        text: "Can we meet Thursday?",
+        thread: [
+          {
+            id: "msg_later_1",
+            from: "Sample Sender",
+            receivedAt: "2026-03-02T09:00:00.000Z",
+            snippet: "Here are the planning notes for next quarter.",
+          },
+        ],
+        later: [
+          {
+            id: "msg_later_2",
+            from: "me@example.test",
+            receivedAt: "2026-03-04T10:27:00.000Z",
+            snippet: "Thursday works. See you then.",
+            fromSelf: true,
+          },
+        ],
+      },
+    }),
+};
+
 /** Opened from an agent card: the read state and Archive come from the loaded message. */
 export const FromAgentCard: Story = {
   args: { messageId: "msg_card", onArchive: () => undefined, onRead: () => undefined },

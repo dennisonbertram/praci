@@ -99,6 +99,12 @@ async function ownMessage(
   return row;
 }
 
+const accountOut = (account: MailAccount) => ({
+  connectionId: account.id,
+  label: account.label,
+  ...(account.address ? { address: account.address } : {}),
+});
+
 export async function inboxComposePrefill(
   deps: ComposeDeps,
   actor: Actor,
@@ -123,6 +129,7 @@ export async function inboxComposePrefill(
     const tooLarge = files.reduce((sum, file) => sum + file.size, 0) > MAX_COMPOSE_ATTACHMENT_BYTES;
     return {
       connectionId: account.id,
+      account: accountOut(account),
       ...prefill,
       ...(htmlToText(quotedHtml) && quotedHtml.length <= MAX_COMPOSE_HTML / 2
         ? { quotedHtml }
@@ -169,6 +176,7 @@ export async function inboxComposePrefill(
       );
       return {
         connectionId: account.id,
+        account: accountOut(account),
         ...prefill,
         ...(original.fromSelf ? {} : { to: "", cc: "" }),
         body: "",

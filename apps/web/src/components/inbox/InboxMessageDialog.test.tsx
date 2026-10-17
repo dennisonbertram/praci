@@ -31,6 +31,8 @@ vi.mock("../../lib/rpc", () => ({
   withSpaceHeaders: () => new Headers(),
 }));
 
+import type { ComposeRestore } from "../ComposeEmail";
+import { forgetClosed, rememberClosed } from "../compose/draft-memory";
 import { InboxMessageDialog } from "./InboxMessageDialog";
 
 const message = (id: string) => ({
@@ -246,6 +248,52 @@ it("lists the conversation's earlier messages and shows one's text when clicked"
   expect(get).toHaveBeenCalledWith({ messageId: "first" });
   expect(row?.getAttribute("aria-expanded")).toBe("true");
   expect(document.body.textContent).toContain("Our counsel returned redlines on sections 4 and 9.");
+});
+
+it("lists the user's later reply after the open message, as You", async () => {
+  get.mockImplementation(async () => ({
+    ...message("open"),
+    text: "The open message.",
+    later: [
+      {
+        id: "mine",
+        from: "me@example.test",
+        receivedAt: "2026-10-10T10:27:00.000Z",
+        snippet: "Thanks, signed.",
+        fromSelf: true,
+      },
+    ],
+  }));
+  act(() => root.render(<InboxMessageDialog messageId="open" onClose={() => {}} />));
+  await flush();
+  const text = document.body.textContent ?? "";
+  expect(text).toContain("2 messages");
+  expect(text.indexOf("The open message.")).toBeLessThan(
+    text.indexOf("Later in this conversation"),
+  );
+  const row = [...document.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes("Thanks, signed."),
+  );
+  expect(row?.textContent).toContain("You");
+  expect(row?.textContent).not.toContain("me@example.test");
+});
+
+it("says the email has an unsent reply and continues it in the mode it was written in", async () => {
+  get.mockImplementation(async () => message("drafted"));
+  const seed = { kind: "replyAll", messageId: "drafted" } as const;
+  rememberClosed(seed, { seed } as ComposeRestore);
+  try {
+    act(() => root.render(<InboxMessageDialog messageId="drafted" onClose={() => {}} />));
+    await flush();
+    expect(document.body.textContent).toContain("You have an unsent reply to this email.");
+    const button = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent === "Continue draft",
+    );
+    await act(async () => button?.click());
+    expect(document.querySelector("[data-testid=compose]")?.textContent).toBe("replyAll");
+  } finally {
+    forgetClosed(seed);
+  }
 });
 
 it("takes the read state from the message and hides Archive once it left the Inbox", async () => {

@@ -8,7 +8,12 @@ export const isInboxAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith(inboxAgentSpawnKey("")));
 
 /** Connection.displayName labels the account tab. */
-export const MailAccountSchema = z.object({ connectionId: Id, label: z.string() });
+export const MailAccountSchema = z.object({
+  connectionId: Id,
+  label: z.string(),
+  /** The mailbox address, once Gmail has reported it; optional for older servers. */
+  address: z.string().optional(),
+});
 
 export const InboxPrioritySchema = z.enum(["critical", "important", "normal", "low"]);
 export type InboxPriority = z.infer<typeof InboxPrioritySchema>;
@@ -165,6 +170,8 @@ export const InboxThreadMessageSchema = z.object({
   from: z.string(),
   receivedAt: z.string(),
   snippet: z.string(),
+  /** Sent by the user; optional for older servers. */
+  fromSelf: z.boolean().optional(),
 });
 
 export const InboxMessageSchema = z.object({
@@ -188,8 +195,10 @@ export const InboxMessageSchema = z.object({
   /** The cached copy's state, so any view of the message offers the same actions; optional for older servers. */
   unread: z.boolean().optional(),
   inInbox: z.boolean().optional(),
-  /** The conversation's other cached messages, oldest first; empty for a single message. */
+  /** The conversation's cached messages before this one, oldest first; empty for a single message. */
   thread: z.array(InboxThreadMessageSchema).optional(),
+  /** The conversation's cached messages after this one, such as the user's reply, oldest first. */
+  later: z.array(InboxThreadMessageSchema).optional(),
 });
 
 /** Chosen by the browser when a composer opens; it names that message for idempotency. */
@@ -212,6 +221,8 @@ export const ComposePrefillInputSchema = z.object({
 /** Fields are text as typed; recipients are comma-separated. The account is the one the original came from. */
 export const ComposePrefillOutputSchema = z.object({
   connectionId: Id,
+  /** The account the reply or forward is sent from, for the composer's From line; optional for older servers. */
+  account: MailAccountSchema.optional(),
   to: z.string(),
   cc: z.string(),
   subject: z.string(),

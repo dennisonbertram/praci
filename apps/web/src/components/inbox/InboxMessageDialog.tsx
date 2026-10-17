@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ComposeEmail } from "../../components/ComposeEmail";
+import { recallClosed } from "../../components/compose/draft-memory";
 import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
 import { formatBytes } from "../../lib/format-bytes";
 import { allowStep } from "../../lib/inbox-keyboard";
@@ -163,6 +164,8 @@ function InboxMessage({
     };
   }, [messageId, attempt]);
 
+  // Read on every render: closing the composer re-renders, so a kept draft shows at once.
+  const draft = recallClosed({ kind: "reply", messageId });
   const shownUnread = unread ?? message?.unread;
   const canArchive = onArchive && message?.inInbox !== false ? onArchive : undefined;
   useEffect(() => {
@@ -290,9 +293,30 @@ function InboxMessage({
           ) : null}
         </div>
       ) : null}
+      {message && !composing && draft ? (
+        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Trans>You have an unsent reply to this email.</Trans>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0"
+            onClick={() => setComposing(draft.seed.kind === "new" ? "reply" : draft.seed.kind)}
+          >
+            <Trans>Continue draft</Trans>
+          </Button>
+        </p>
+      ) : null}
       {seed ? <ComposeEmail seed={seed} accounts={[]} onClose={() => setComposing(null)} /> : null}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {message?.thread?.length ? <EarlierMessages messages={message.thread} /> : null}
+        {message && (message.thread?.length || message.later?.length) ? (
+          <ThreadMessages
+            heading={plural((message.thread?.length ?? 0) + (message.later?.length ?? 0) + 1, {
+              one: "# message",
+              other: "# messages",
+            })}
+            messages={message.thread ?? []}
+          />
+        ) : null}
         {error ? (
           <div className="flex flex-col items-start gap-2">
             <p role="alert" className="text-sm text-destructive">
@@ -315,6 +339,11 @@ function InboxMessage({
         )}
         {message?.attachments.length ? (
           <InboxAttachments messageId={messageId} attachments={message.attachments} />
+        ) : null}
+        {message?.later?.length ? (
+          <div className="mt-4">
+            <ThreadMessages heading={t`Later in this conversation`} messages={message.later} />
+          </div>
         ) : null}
       </div>
     </>
@@ -412,23 +441,29 @@ function InboxAttachments({
   );
 }
 
-/** The conversation's other messages, one line each; a click shows that message's text. */
-function EarlierMessages({ messages }: { messages: InboxThreadMessage[] }) {
+/** Other messages of the conversation, one line each; a click shows that message's text. */
+function ThreadMessages({
+  heading,
+  messages,
+}: {
+  heading: string;
+  messages: InboxThreadMessage[];
+}) {
   return (
     <section className="mb-3 flex flex-col">
-      <h3 className="mb-1 text-xs text-muted-foreground">
-        {plural(messages.length + 1, { one: "# message", other: "# messages" })}
-      </h3>
-      <ol className="flex flex-col rounded-lg border border-border">
-        {messages.map((item) => (
-          <EarlierMessage key={item.id} item={item} />
-        ))}
-      </ol>
+      <h3 className="mb-1 text-xs text-muted-foreground">{heading}</h3>
+      {messages.length ? (
+        <ol className="flex flex-col rounded-lg border border-border">
+          {messages.map((item) => (
+            <ThreadMessage key={item.id} item={item} />
+          ))}
+        </ol>
+      ) : null}
     </section>
   );
 }
 
-function EarlierMessage({ item }: { item: InboxThreadMessage }) {
+function ThreadMessage({ item }: { item: InboxThreadMessage }) {
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState<InboxMessageOutput | null>(null);
   const [error, setError] = useState("");
@@ -448,7 +483,7 @@ function EarlierMessage({ item }: { item: InboxThreadMessage }) {
         className="flex w-full min-w-0 items-baseline gap-2 px-3 py-2 text-start text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <span dir="auto" className="max-w-[40%] shrink-0 truncate font-medium">
-          {item.from}
+          {item.fromSelf ? <Trans>You</Trans> : item.from}
         </span>
         <span dir="auto" className="min-w-0 flex-1 truncate text-muted-foreground">
           {open ? null : item.snippet}

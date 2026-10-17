@@ -242,6 +242,9 @@ describePostgres("inbox compose (PostgreSQL)", () => {
         subject: "Re: Subject a-1",
         replyToMessageId: row.id,
       });
+      // The composer's From line names the account the reply goes from.
+      expect(reply.account?.connectionId).toBe(connA);
+      expect(reply.account?.address).toMatch(/@/);
       expect(reply.body).toContain("> Body of a-1\n> second line");
 
       const all = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "replyAll" });

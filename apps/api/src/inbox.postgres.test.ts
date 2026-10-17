@@ -268,7 +268,9 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         needsReply: null,
       });
       expect(out.rows[1]?.from).toBe("ann@example.test");
-      expect(out.accounts).toEqual([{ connectionId: connA, label: "Mailbox box-a" }]);
+      expect(out.accounts).toEqual([
+        { connectionId: connA, label: "Mailbox box-a", address: "box-a@example.test" },
+      ]);
       expect(out.syncedAt).toBeNull();
       expect(out.failedAccounts).toEqual([]);
     });
@@ -362,7 +364,9 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(unread.rows.every((r) => r.unread)).toBe(true);
       expect(unread.nextPageToken).toBeUndefined();
       expect(unread.failedAccounts).toEqual([]);
-      expect(unread.accounts).toEqual([{ connectionId: connA, label: "Mailbox box-a" }]);
+      expect(unread.accounts).toEqual([
+        { connectionId: connA, label: "Mailbox box-a", address: "box-a@example.test" },
+      ]);
       expect(requestedBoxes()).toEqual(["box-a"]);
 
       const starred = await inboxList(deps, a, { filter: "starred" });
@@ -687,7 +691,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
 
-    it("lists the conversation's other messages, oldest first, and the cached state", async () => {
+    it("lists the conversation's earlier and later messages, oldest first, and the cached state", async () => {
       await wipe();
       seedMailboxes();
       const first = await cache(a, connA, "t-1", { threadId: "t", receivedAt: daysAgo(3) });
@@ -702,10 +706,28 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         receivedAt: daysAgo(1),
         unread: true,
       });
+      // The user's own reply, after the message that is open.
+      const reply = await cache(a, connA, "s-1", {
+        threadId: "t",
+        receivedAt: new Date(),
+        inInbox: false,
+        fromSelf: true,
+        fromName: null,
+        fromAddress: "me@example.test",
+      });
       // Same thread id on another user's mailbox stays out.
       await cache(b, connB, "b-1", { threadId: "t" });
 
       const message = await inboxGet(deps, a, { messageId: latest.id });
+      expect(message.later).toEqual([
+        {
+          id: reply.id,
+          from: "me@example.test",
+          receivedAt: reply.receivedAt.toISOString(),
+          snippet: "Snippet s-1",
+          fromSelf: true,
+        },
+      ]);
 
       expect(message).toMatchObject({ unread: true, inInbox: true });
       expect(message.thread).toEqual([

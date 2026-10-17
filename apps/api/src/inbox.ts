@@ -309,7 +309,14 @@ export async function inboxList(
     },
     select: { id: true, name: true },
   });
-  const accounts = connections.map((c) => ({ connectionId: c.id, label: c.displayName }));
+  const accounts = connections.map((c) => {
+    const address = (c.metadata as { mailAddress?: unknown } | null)?.mailAddress;
+    return {
+      connectionId: c.id,
+      label: c.displayName,
+      ...(typeof address === "string" && address ? { address } : {}),
+    };
+  });
   const agentOut = agent ? { botId: agent.id, name: agent.name } : null;
   const { ready, blocked: triageBlocked } = await triageStatus(deps, actor);
   const enabled = ready !== null;
@@ -547,17 +554,22 @@ export async function inboxGet(
     orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
     take: 50,
   });
+  // The user's reply sorts after the message it answers, not among the earlier ones.
+  const isLater = (m: (typeof thread)[number]) => m.receivedAt > row.receivedAt;
+  const threadItem = (m: (typeof thread)[number]) => ({
+    id: m.id,
+    from: m.fromName || m.fromAddress,
+    receivedAt: m.receivedAt.toISOString(),
+    snippet: m.snippet,
+    ...(m.fromSelf ? { fromSelf: true } : {}),
+  });
   try {
     const message = await deps.mail.getMessage(account, providerMessageId, context);
     return {
       unread: row.unread,
       inInbox: row.inInbox,
-      thread: thread.map((m) => ({
-        id: m.id,
-        from: m.fromName || m.fromAddress,
-        receivedAt: m.receivedAt.toISOString(),
-        snippet: m.snippet,
-      })),
+      thread: thread.filter((m) => !isLater(m)).map(threadItem),
+      later: thread.filter(isLater).map(threadItem),
       from: formatAddress(message.from),
       to: message.to.map(formatAddress).join(", "),
       cc: message.cc.map(formatAddress).join(", "),
