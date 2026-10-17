@@ -313,6 +313,7 @@ import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { HostComputerPrompt } from "./HostComputerPrompt";
 import { InboxPage } from "./Inbox";
 import { LegalPage } from "./Legal";
+import { NotFoundPage } from "./NotFound";
 import { ResizableSidePanel } from "./ResizableSidePanel";
 import type { RoutineDraftState } from "./RoutineEditor";
 import {
@@ -678,6 +679,12 @@ export function ShellPage() {
   useEffect(refreshInboxUnread, [refreshInboxUnread]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { pathname } = useLocation();
+  const [missingPath, setMissingPath] = useState<string | null>(null);
+  const missingPathRef = useRef<string | null>(null);
+  const markMissing = useCallback((path: string) => {
+    missingPathRef.current = path;
+    setMissingPath(path);
+  }, []);
   // A link inside Settings (for example Server integrations) opens a page; the dialog closes.
   useEffect(() => setSettingsOpen(false), [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
@@ -1150,6 +1157,8 @@ export function ShellPage() {
           navigate("/onboarding", { replace: true });
           return;
         }
+        // An unknown address keeps showing Page not found instead of jumping to a chat.
+        if (missingPathRef.current === window.location.pathname) return;
         const currentGroupId = routeGroupId.current;
         if (currentGroupId) {
           if (!groupList.some((group) => group.id === currentGroupId)) {
@@ -1383,12 +1392,13 @@ export function ShellPage() {
         }
         if (groupId) {
           if (!groupList.some((group) => group.id === groupId)) {
-            navigate("/not-found", { replace: true });
+            markMissing(window.location.pathname);
           }
           return;
         }
         if (botId && !pageMode && !knownBotId(botId, bootstrap.bots, bootstrap.archivedBots)) {
-          navigate("/not-found", { replace: true });
+          // Keep the address the person typed; only the page says it is not found.
+          markMissing(window.location.pathname);
           return;
         }
         const selectedBotId = bootstrap.thread?.botId ?? bootstrap.bots[0]?.id;
@@ -5673,7 +5683,7 @@ export function ShellPage() {
 
   return (
     <AvatarStyleProvider value={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}>
-      {shell}
+      {missingPath === pathname ? <NotFoundPage /> : shell}
     </AvatarStyleProvider>
   );
 }
