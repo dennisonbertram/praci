@@ -9,6 +9,7 @@ import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
 import { FilterBar, sourceLabels } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderNodes } from "../components/data-room/folders";
+import { ImportSources } from "../components/data-room/ImportFromEmail";
 import { type DataRoomEntry, ItemDialog, isFolder } from "../components/data-room/ItemDialogs";
 import type { ItemAction } from "../components/data-room/ItemMenu";
 import {
@@ -34,6 +35,7 @@ import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/da
 import { rpc } from "../lib/rpc";
 
 const SEARCH_DEBOUNCE_MS = 300;
+const NOTICE_MS = 6_000;
 /** Below this width of the page body the preview covers the list instead of sitting beside it. */
 const PREVIEW_BESIDE_PX = 560;
 
@@ -287,6 +289,17 @@ export function DataRoomPage() {
     }
   }
 
+  const [notice, setNotice] = useState("");
+  const showNotice = useCallback((message: string, changed: boolean) => {
+    setNotice(message);
+    if (changed) window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
+  }, []);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
   const hasFilters = Object.values(filters).some(Boolean);
   // Only rows that answer the query now asked count: for one render after a search is cleared, the
   // old empty results are still in hand, and must not flash the first-run screen.
@@ -338,6 +351,7 @@ export function DataRoomPage() {
                 <LayoutGrid aria-hidden="true" />
               </Toggle>
             </fieldset>
+            <ImportSources compact folderId={filters.folderId ?? null} onDone={showNotice} />
             <FileInputButton variant="outline" size="icon" aria-label={t`Add files`}>
               <Plus aria-hidden="true" />
             </FileInputButton>
@@ -354,9 +368,12 @@ export function DataRoomPage() {
               <Trans>Keep contracts, board decks and investor documents in one place.</Trans>
             }
           >
-            <FileInputButton>
-              <Trans>Choose files</Trans>
-            </FileInputButton>
+            <div className="flex flex-wrap justify-center gap-2">
+              <FileInputButton>
+                <Trans>Choose files</Trans>
+              </FileInputButton>
+              <ImportSources folderId={null} onDone={showNotice} />
+            </div>
           </PageEmptyState>
         </div>
       ) : (
@@ -503,6 +520,14 @@ export function DataRoomPage() {
             reloadFolders();
           }}
         />
+      ) : null}
+      {notice ? (
+        <p
+          role="status"
+          className="fixed end-4 bottom-20 z-100 rounded-lg border border-border bg-card p-3 text-sm shadow-md"
+        >
+          {notice}
+        </p>
       ) : null}
     </div>
   );

@@ -48,3 +48,20 @@ describe("mobile AI recipient disclosure", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+describe("Legal agent model recipient", () => {
+  it("maps OpenRouter's Muse Spark 1.2 to a named recipient bound to the model id", () => {
+    const recipient = aiRecipient({
+      provider: "openrouter",
+      modelId: "meta/muse-spark-1.2",
+      use: "model",
+    });
+    expect(recipient).toMatchObject({
+      name: "OpenRouter",
+      detail: "meta/muse-spark-1.2, forwarded to its provider",
+    });
+    expect(recipient?.key).not.toBe(
+      aiRecipient({ provider: "openrouter", modelId: "other/model", use: "model" })?.key,
+    );
+  });
+});

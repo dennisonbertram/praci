@@ -1,13 +1,21 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
-import type { ArtifactStore, JobPublisher } from "@rakazo/adapter-kit";
-import {
-  DATA_ROOM_EMBEDDING_DIMENSIONS,
-  dataRoomBlobDeleteJob,
-  dataRoomStepJob,
-} from "@rakazo/adapter-kit";
+import type { ArtifactStore, JobPublisher, MailProvider } from "@rakazo/adapter-kit";
+import { dataRoomBlobDeleteJob, dataRoomStepJob } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
-import { modelAcceptsImageInput } from "@rakazo/adapters";
+import {
+  createFileDataRoomItem as createFileItem,
+  DATA_ROOM_MIME,
+  DriveFileError,
+  type DriveFilesDeps,
+  dataRoomBlobContext,
+  dataRoomFileFields,
+  dataRoomQueryVector,
+  downloadDriveFile,
+  listDriveAccounts,
+  listDriveFiles,
+  modelAcceptsImageInput,
+} from "@rakazo/adapters";
 import type {
   Actor,
   DataRoomApiFolder,
@@ -32,6 +40,7 @@ import { createDataRoomRepos, DataRoomConflictError, IsolationError } from "@rak
 import { getLogger } from "@rakazo/logging";
 import type { Hono } from "hono";
 import { cancelBody } from "./http-body.js";
+import { inboxAttachment } from "./inbox.js";
 import { contentDisposition, downloadType } from "./inbox-attachment.js";
 
 export interface DataRoomDeps {
@@ -43,6 +52,10 @@ export interface DataRoomDeps {
    * search is keyword-only.
    */
   resolveAi?: (scope: { userId: string; spaceId: string }) => Promise<DataRoomAi>;
+  /** Needed only to import mail attachments. */
+  mail?: MailProvider;
+  /** Needed only to import from Google Drive. */
+  connectors?: DriveFilesDeps["connectors"];
   /** Injectable so tests can use a small cap. */
   maxUploadBytes?: number;
   /** How long the blob cleanup waits, so a failed row delete can be seen first. Tests shorten it. */
@@ -64,6 +77,7 @@ export const itemDto = (item: DataRoomItemRecord): DataRoomApiItem => ({
   size: item.size,
   folderId: item.folderId,
   source: item.source,
+  sourceUrl: item.sourceUrl,
   status: item.status,
   error: item.error,
   facets: {
@@ -91,17 +105,6 @@ export async function dataRoomCall<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-function blobContext(actor: Actor, operation: string) {
-  const operationId = `${operation}:${randomUUID()}`;
-  return {
-    operationId,
-    traceId: operationId,
-    spaceId: actor.spaceId,
-    userId: actor.userId,
-    signal: new AbortController().signal,
-  };
-}
-
 const toFilters = (input: {
   folderId?: string | null;
   docDateFrom?: string;
@@ -116,43 +119,57 @@ const toFilters = (input: {
   };
 };
 
-const QUERY_EMBED_TIMEOUT_MS = 10_000;
+const DRIVE_ERRORS = {
+  not_connected: "PRECONDITION_FAILED",
+  reconnect: "PRECONDITION_FAILED",
+  not_found: "NOT_FOUND",
+  unsupported: "BAD_REQUEST",
+  too_large: "PAYLOAD_TOO_LARGE",
+  rate_limited: "TOO_MANY_REQUESTS",
+  failed: "INTERNAL_SERVER_ERROR",
+} as const;
+
+/** Runs a Drive call as the caller's first connected Drive account, with failures as API errors. */
+async function withDrive<T>(
+  deps: DataRoomDeps,
+  actor: Actor,
+  run: (drive: DriveFilesDeps, connectionId: string) => Promise<T>,
+): Promise<T> {
+  const connectors = deps.connectors;
+  if (!connectors) throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Drive is unavailable" });
+  try {
+    const [account] = await listDriveAccounts(deps.prisma, actor);
+    if (!account) throw new DriveFileError("not_connected", "No connected Google Drive account");
+    return await run({ prisma: deps.prisma, connectors }, account.id);
+  } catch (error) {
+    if (error instanceof DriveFileError)
+      throw new ORPCError(DRIVE_ERRORS[error.code], { message: error.message });
+    throw error;
+  }
+}
+
+/**
+ * The shared filing helper from the adapters, with repository errors mapped to API errors.
+ * Agents file through the same helper, so an import is stored and queued one way everywhere.
+ */
+export function createFileDataRoomItem(
+  deps: DataRoomDeps,
+  repo: ReturnType<typeof createDataRoomRepos>,
+) {
+  const files = createFileItem(deps, repo);
+  return {
+    ...files,
+    fileItem: (...args: Parameters<typeof files.fileItem>) =>
+      dataRoomCall(() => files.fileItem(...args)),
+  };
+}
+
 const REINDEX_BATCH = 200;
 
 /** Procedure bodies for `dataRoom.*`; the router adds the Actor. */
 export function createDataRoomService(deps: DataRoomDeps) {
   const repo = createDataRoomRepos(deps.prisma);
-
-  /**
-   * The query's vector, only when an embedder exists and the user consented. Any failure means
-   * keyword-only search, never an error.
-   */
-  async function queryVector(actor: Actor, query: string) {
-    try {
-      const ai = await deps.resolveAi?.(actor);
-      if (!ai?.embedder || !ai.allowed) return {};
-      const operationId = `data-room.search:${randomUUID()}`;
-      const { model, vectors } = await ai.embedder.embed([query], {
-        operationId,
-        traceId: operationId,
-        spaceId: actor.spaceId,
-        userId: actor.userId,
-        signal: AbortSignal.timeout(QUERY_EMBED_TIMEOUT_MS),
-      });
-      const vector = vectors[0];
-      if (
-        !vector ||
-        vector.length !== DATA_ROOM_EMBEDDING_DIMENSIONS ||
-        !vector.every(Number.isFinite)
-      ) {
-        return {};
-      }
-      return { vector, embeddingModel: model };
-    } catch (error) {
-      getLogger().error("data room query embedding failed; using keyword search", error);
-      return {};
-    }
-  }
+  const { fileItem, known } = createFileDataRoomItem(deps, repo);
 
   /** The name and folder path live in the item's metadata chunk, so a change re-indexes it. */
   const enqueueIndex = async (actor: Actor, ids: string[]) => {
@@ -306,6 +323,150 @@ export function createDataRoomService(deps: DataRoomDeps) {
       return { modelId };
     },
 
+    /**
+     * Copies attachments of the caller's own mail into the Data room through the upload pipeline.
+     * The attachment id is stable for a message, so `gmail:<message>:<attachment>` names a repeat.
+     */
+    importEmail: async (
+      actor: Actor,
+      input: { picks: { messageId: string; attachmentId: string }[]; folderId?: string | null },
+      signal?: AbortSignal,
+    ) => {
+      const mail = deps.mail;
+      if (!mail) throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Mail is unavailable" });
+      const folderId = input.folderId ?? null;
+      if (folderId) {
+        const folder = await deps.prisma.dataRoomFolder.findFirst({
+          where: { id: folderId, spaceId: actor.spaceId, userId: actor.userId },
+          select: { id: true },
+        });
+        if (!folder) throw new ORPCError("NOT_FOUND");
+      }
+      let imported = 0;
+      let duplicates = 0;
+      let failed = 0;
+      // Every message is checked before anything is filed, so a pick that is not the caller's
+      // refuses the whole request instead of leaving a partial import.
+      const messages = new Map<string, { connectionId: string; providerMessageId: string }>();
+      for (const { messageId } of input.picks) {
+        if (messages.has(messageId)) continue;
+        const message = await deps.prisma.cachedMailMessage.findFirst({
+          where: { id: messageId, spaceId: actor.spaceId, userId: actor.userId },
+          select: { connectionId: true, providerMessageId: true },
+        });
+        if (!message) throw new ORPCError("NOT_FOUND");
+        messages.set(messageId, message);
+      }
+      for (const pick of input.picks) {
+        const message = messages.get(pick.messageId);
+        if (!message) continue;
+        const sourceConnectionId = message.connectionId;
+        const externalId = `gmail:${message.providerMessageId}:${pick.attachmentId}`;
+        if (await known(actor, externalId, sourceConnectionId)) {
+          duplicates += 1;
+          continue;
+        }
+        try {
+          const file = await inboxAttachment(
+            { prisma: deps.prisma, mail, jobs: deps.jobs },
+            actor,
+            pick,
+            signal,
+          );
+          const { created } = await fileItem(actor, {
+            source: "gmail",
+            ...dataRoomFileFields(
+              { name: file.filename, mimeType: file.mimeType, bytes: file.bytes },
+              "attachment",
+            ),
+            folderId,
+            sourceConnectionId,
+            externalId,
+            sourceUrl: `/app/inbox?mail=${pick.messageId}`,
+          });
+          if (created) imported += 1;
+          else duplicates += 1;
+        } catch (error) {
+          // The message was already shown to be the caller's; a provider or storage failure only
+          // skips this file so the others are still filed.
+          getLogger().warn("data room mail import failed", {
+            reason: error instanceof Error ? error.message : "unknown",
+          });
+          failed += 1;
+        }
+      }
+      return { imported, duplicates, failed };
+    },
+
+    driveList: (
+      actor: Actor,
+      input: { query?: string; folderId?: string; pageToken?: string },
+      signal?: AbortSignal,
+    ) =>
+      withDrive(deps, actor, (drive, connectionId) =>
+        listDriveFiles(drive, dataRoomBlobContext(actor, "data-room.drive", signal), {
+          ...input,
+          connectionId,
+        }),
+      ),
+
+    /** Copies files of the caller's own Drive into the Data room; a Drive file id names a repeat. */
+    importDrive: async (
+      actor: Actor,
+      input: { fileIds: string[]; folderId?: string | null },
+      signal?: AbortSignal,
+    ) => {
+      const folderId = input.folderId ?? null;
+      if (folderId) {
+        const folder = await deps.prisma.dataRoomFolder.findFirst({
+          where: { id: folderId, spaceId: actor.spaceId, userId: actor.userId },
+          select: { id: true },
+        });
+        if (!folder) throw new ORPCError("NOT_FOUND");
+      }
+      return withDrive(deps, actor, async (drive, sourceConnectionId) => {
+        const context = dataRoomBlobContext(actor, "data-room.drive", signal);
+        let imported = 0;
+        let duplicates = 0;
+        let failed = 0;
+        for (const externalId of new Set(input.fileIds)) {
+          if (await known(actor, externalId, sourceConnectionId)) {
+            duplicates += 1;
+            continue;
+          }
+          // One bad file does not stop the rest; an account or rate problem would fail them all.
+          const file = await downloadDriveFile(drive, context, externalId, {
+            connectionId: sourceConnectionId,
+            maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
+          }).catch((error: unknown) => {
+            if (
+              error instanceof DriveFileError &&
+              ["not_found", "unsupported", "too_large", "failed"].includes(error.code)
+            )
+              return null;
+            throw error;
+          });
+          if (!file) {
+            failed += 1;
+            continue;
+          }
+          const modified = new Date(file.modifiedTime);
+          const { created } = await fileItem(actor, {
+            source: "drive",
+            ...dataRoomFileFields(file, "file"),
+            folderId,
+            sourceConnectionId,
+            externalId,
+            ...(file.webViewLink ? { sourceUrl: file.webViewLink } : {}),
+            ...(Number.isNaN(modified.getTime()) ? {} : { sourceUpdatedAt: modified }),
+          });
+          if (created) imported += 1;
+          else duplicates += 1;
+        }
+        return { imported, duplicates, failed };
+      });
+    },
+
     search: (
       actor: Actor,
       input: {
@@ -319,7 +480,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
       dataRoomCall(async () => {
         const page = await repo.searchPage(actor, {
           ...input,
-          ...(await queryVector(actor, input.query)),
+          ...(await dataRoomQueryVector(deps.resolveAi, actor, input.query)),
           filters: input.filters && toFilters(input.filters),
         });
         return {
@@ -329,8 +490,6 @@ export function createDataRoomService(deps: DataRoomDeps) {
       }),
   };
 }
-
-const MIME = /^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/i;
 
 /**
  * Reads the body into one buffer, hashing as it goes, and gives up (cancelling the body) the moment
@@ -375,13 +534,7 @@ export function mountDataRoomRoutes(
   const repo = createDataRoomRepos(deps.prisma);
   const max = deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES;
 
-  /** A duplicate of an item stuck in `pending` or `failed` runs ingest again. */
-  const requeueStuck = async (actor: Actor, item: DataRoomItemRecord) => {
-    if (!(await repo.restartItem(actor, item.id))) return;
-    await deps.jobs
-      .enqueue(dataRoomStepJob("dataroom.ingest", actor, item.id))
-      .catch((error: unknown) => getLogger().error("data room ingest enqueue failed", error));
-  };
+  const { fileItem, requeueStuck } = createFileDataRoomItem(deps, repo);
 
   app.post("/api/data-room/upload", async (c) => {
     const actor = await authenticate(c.req.raw);
@@ -404,7 +557,7 @@ export function mountDataRoomRoutes(
       return reject("Folder not found", 404);
     }
     const mimeType = (c.req.header("content-type") ?? "").split(";")[0]?.trim().toLowerCase();
-    const type = mimeType && MIME.test(mimeType) ? mimeType : "application/octet-stream";
+    const type = mimeType && DATA_ROOM_MIME.test(mimeType) ? mimeType : "application/octet-stream";
 
     const body = await readCapped(c.req.raw, max);
     if (!body) return c.json({ error: "File is too large." }, 413);
@@ -428,34 +581,14 @@ export function mountDataRoomRoutes(
       return respond(existing, true);
     }
 
-    const stored = await deps.artifacts.put(
-      { name: name.data, mimeType: type, bytes: body.bytes },
-      blobContext(actor, "data-room.upload"),
-    );
-    const { item, created } = await dataRoomCall(() =>
-      repo.createItem(actor, {
-        source: "upload",
-        sha256: body.sha256,
-        name: name.data,
-        mimeType: type,
-        size: body.bytes.byteLength,
-        storageKey: stored.id,
-        folderId,
-      }),
-    ).catch(async (error: unknown) => {
-      await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
-      throw error;
+    const { item, created } = await fileItem(actor, {
+      source: "upload",
+      sha256: body.sha256,
+      name: name.data,
+      mimeType: type,
+      bytes: body.bytes,
+      folderId,
     });
-    // Lost a race with a concurrent identical upload: drop the blob this request stored.
-    if (!created) {
-      await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
-      await requeueStuck(actor, item);
-    } else {
-      // The upload itself succeeded; a queue outage must not turn it into a failed upload.
-      await deps.jobs
-        .enqueue(dataRoomStepJob("dataroom.ingest", actor, item.id))
-        .catch((error: unknown) => getLogger().error("data room ingest enqueue failed", error));
-    }
     return respond(item, !created);
   });
 
@@ -469,7 +602,7 @@ export function mountDataRoomRoutes(
     if (!item?.storageKey) return c.json({ error: "Not found" }, 404);
     const bytes = await deps.artifacts.get(
       item.storageKey,
-      blobContext(actor, "data-room.download"),
+      dataRoomBlobContext(actor, "data-room.download"),
     );
     // Documents are untrusted: always a download, never active content on the API origin.
     return new Response(new Uint8Array(bytes), {

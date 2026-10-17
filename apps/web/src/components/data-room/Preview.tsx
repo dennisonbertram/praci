@@ -5,6 +5,7 @@ import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
 import { Download, FileText, Trash2, X } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { canPreviewImage, dataRoomImageUrl, saveDataRoomItem } from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
 import {
@@ -166,7 +167,28 @@ export function Preview({
           </Field>
         ) : null}
         <Field label={t`Folder`}>{folderPath || t`None`}</Field>
-        <Field label={t`Source`}>{sourceLabel(item.source)}</Field>
+        <Field label={t`Source`}>
+          {item.source === "gmail" ? (
+            item.sourceUrl?.startsWith("/app/") ? (
+              <Link to={item.sourceUrl} className="underline-offset-2 hover:underline">
+                {t`From email`}
+              </Link>
+            ) : (
+              t`From email`
+            )
+          ) : item.source === "drive" && item.sourceUrl?.startsWith("https://") ? (
+            <a
+              href={item.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline-offset-2 hover:underline"
+            >
+              {t`From Google Drive`}
+            </a>
+          ) : (
+            sourceLabel(item.source)
+          )}
+        </Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
       </dl>
       {/* The same full-width actions for every item; a file that can't be read leads with Delete. */}

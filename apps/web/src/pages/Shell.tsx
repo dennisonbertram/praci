@@ -121,6 +121,7 @@ import {
   PieChart,
   Plus,
   Reply,
+  Scale,
   Search,
   Settings,
   Smile,
@@ -233,6 +234,7 @@ import {
 } from "../lib/finance-agent";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
+import { findLegalAgent } from "../lib/legal-agent";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
 import { messageProviderLabel } from "../lib/messaging";
@@ -306,6 +308,7 @@ import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { HostComputerPrompt } from "./HostComputerPrompt";
 import { InboxPage } from "./Inbox";
+import { LegalPage } from "./Legal";
 import { ResizableSidePanel } from "./ResizableSidePanel";
 import type { RoutineDraftState } from "./RoutineEditor";
 import {
@@ -501,6 +504,9 @@ export function ShellPage() {
   const [financeAgentOpen, setFinanceAgentOpen] = useState(false);
   const [creatingFinanceAgent, setCreatingFinanceAgent] = useState(false);
   const [financeAgentError, setFinanceAgentError] = useState("");
+  const [legalAgentOpen, setLegalAgentOpen] = useState(false);
+  const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
+  const [legalAgentError, setLegalAgentError] = useState("");
   // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
   // would cover the page.
   const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(
@@ -905,15 +911,25 @@ export function ShellPage() {
   const integrationsMode = useMatch("/app/integrations/*") != null;
   const financeMode = useMatch("/app/finance/*") != null;
   const dataRoomMode = useMatch("/app/data-room") != null;
+  const legalMode = useMatch("/app/legal") != null;
   const artifactsMode = useMatch("/app/artifacts/*") != null;
-  // Inbox, Finance, Cap Table, Data room and Integrations are pages of their own: no bot route.
-  // Inbox and Finance keep their agent in a side panel.
   const capTableMode = useMatch("/app/cap-table/*") != null;
+  // Inbox, Finance, Legal, Data room, Cap Table and Integrations are pages of their own: no bot
+  // route. Inbox, Finance, Legal and Cap Table keep their agent in a side panel.
   const pageMode =
-    inboxMode || financeMode || capTableMode || integrationsMode || dataRoomMode || artifactsMode;
+    inboxMode ||
+    financeMode ||
+    legalMode ||
+    capTableMode ||
+    integrationsMode ||
+    dataRoomMode ||
+    artifactsMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
+  useEffect(() => {
+    if (!legalMode) setLegalAgentOpen(false);
+  }, [legalMode]);
   const active =
     inGroup || integrationsMode || dataRoomMode || artifactsMode
       ? undefined
@@ -921,9 +937,11 @@ export function ShellPage() {
         ? findInboxAgent(bots, userId)
         : financeMode
           ? findFinanceAgent(bots, userId)
-          : capTableMode
-            ? findCartaAgent(bots, userId)
-            : (bots.find((b) => b.id === botId) ?? bots[0]);
+          : legalMode
+            ? findLegalAgent(bots, userId)
+            : capTableMode
+              ? findCartaAgent(bots, userId)
+              : (bots.find((b) => b.id === botId) ?? bots[0]);
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
   const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =
@@ -2635,6 +2653,24 @@ export function ShellPage() {
     }
   }
 
+  async function createLegalAgent() {
+    setCreatingLegalAgent(true);
+    setLegalAgentError("");
+    try {
+      await rpc.legal.agent();
+      await refreshBots();
+    } catch (error) {
+      setLegalAgentError(errorText(error, t`Could not create the Legal agent`));
+    } finally {
+      setCreatingLegalAgent(false);
+    }
+  }
+
+  function askLegalAgent() {
+    setLegalAgentOpen(true);
+    if (!active && !creatingLegalAgent) void createLegalAgent();
+  }
+
   async function createCartaAgent() {
     setCreatingCartaAgent(true);
     setCartaAgentError("");
@@ -2719,23 +2755,35 @@ export function ShellPage() {
           error: financeAgentError,
           suggestions: financeAgentSuggestions(),
         }
-      : capTableMode
+      : legalMode
         ? {
-            name: "carta-agent",
-            testId: "carta-agent-panel",
-            // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-            // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
-            open: cartaPanel.open,
-            collapse: () => setCartaAgentCollapsedPref(true),
-            collapseLabel: t`Collapse Carta agent`,
-            // A failed creation is retried from the panel; the agent otherwise appears by itself.
-            create: cartaAgentError ? createCartaAgent : undefined,
-            createLabel: t`Try again`,
-            creating: creatingCartaAgent,
-            error: cartaAgentError,
-            suggestions: [t`Who are our investors?`, t`Draft this month's investor update`],
+            name: "legal-agent",
+            testId: "legal-agent-panel",
+            open: legalAgentOpen,
+            collapse: () => setLegalAgentOpen(false),
+            collapseLabel: t`Collapse Legal agent`,
+            create: createLegalAgent,
+            createLabel: t`Create Legal agent`,
+            creating: creatingLegalAgent,
+            error: legalAgentError,
           }
-        : null;
+        : capTableMode
+          ? {
+              name: "carta-agent",
+              testId: "carta-agent-panel",
+              // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
+              // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
+              open: cartaPanel.open,
+              collapse: () => setCartaAgentCollapsedPref(true),
+              collapseLabel: t`Collapse Carta agent`,
+              // A failed creation is retried from the panel; the agent otherwise appears by itself.
+              create: cartaAgentError ? createCartaAgent : undefined,
+              createLabel: t`Try again`,
+              creating: creatingCartaAgent,
+              error: cartaAgentError,
+              suggestions: [t`Who are our investors?`, t`Draft this month's investor update`],
+            }
+          : null;
 
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
@@ -3521,6 +3569,16 @@ export function ShellPage() {
           onOpen={() => {
             setMobileSidebarOpen(false);
             navigate("/app/finance");
+          }}
+        />
+        <SidebarPageLink
+          testId="sidebar-legal"
+          current={legalMode}
+          icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
+          label={<Trans>Legal</Trans>}
+          onOpen={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/legal");
           }}
         />
         <SidebarPageLink
@@ -4365,6 +4423,12 @@ export function ShellPage() {
                 : undefined
             }
           />
+        ) : legalMode ? (
+          <LegalPage
+            onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
+            onOpenSettings={() => openSettings("models")}
+            settingsOpen={settingsOpen}
+          />
         ) : capTableMode ? (
           <CapTablePage
             onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
@@ -4447,7 +4511,7 @@ export function ShellPage() {
                           ? t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`
                           : active.description
                       }
-                      suggestions={agentPanel.suggestions}
+                      suggestions={agentPanel.suggestions ?? []}
                       disabled={sending}
                       onPick={(text) => void sendMessage(text, [], newClientId())}
                     />

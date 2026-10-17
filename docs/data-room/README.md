@@ -115,6 +115,13 @@ providers sit behind interfaces instead of one hard-coded vendor.
    sent (full document text, page images for vision) and to which providers, and
    the backend checks it before every vision, classification and embedding call,
    including background re-embedding.
+9. **Agents add documents on their own; a separate agent files them.** Any agent
+   may call `add_to_data_room`, but items arrive unfiled with no folder, name or
+   tags. Organizing is the Data room agent's job, and it has no delete tool. The
+   20 KB image cutoff keeps logos and signatures out. A repeat import of the same
+   external id returns the existing item, with or without a connection, so
+   concurrent adds of one artifact file it once. Search and read hide items
+   imported through a connection the user denied that agent.
 
 ## Data model
 
@@ -189,14 +196,35 @@ Design: [mockup.html](mockup.html) (sample data only).
   keyboard focus over a row updates the preview pane, and a click pins it. The
   preview has its own Ask agent, which opens the agent panel with that document
   attached. Move, rename and delete. Built from the existing shadcn components.
-- **Data room agent.** One agent per owner in a space (the per-user spawn-key
-  pattern of the Inbox agent), reading only that owner's items, that
-  reviews newly filed items, fixes misfiled ones, flags duplicates and answers
-  questions in a side panel on the Data room page.
-- **Agent tools.** `search_data_room` and `read_data_room_item`, both read-only,
-  added to `BUILTIN_TOOL_NAMES` and `READ_ONLY_AGENT_TOOLS` and offered to every
-  agent in the space. Scope comes from the executor, never from tool arguments.
-  Moving or deleting items through the agent needs approval.
+- **Data room agent.** One agent per owner in a space, created by a "Create Data
+  room agent" button like the Inbox agent (spawn key `data-room-agent:<userId>`).
+  It reads only that owner's items. It reviews newly filed items, fixes misfiled
+  ones, flags duplicates and answers questions in a side panel on the Data room
+  page.
+- **Agent tools (every agent, owner-only runs).**
+  - `search_data_room` (read-only): same filters as the `dataRoom.search` API,
+    `limit` up to 20. Returns item ids, names, document types, dates and short
+    snippets.
+  - `read_data_room_item` (read-only): name, folder path, summary, facets and the
+    extracted text, cut at 100,000 characters like `drive_read`.
+  - `add_to_data_room`: exactly one of `message_id` with `attachment_id`,
+    `drive_file_id`, or `artifact_id`. It files through the same helper as the
+    Inbox and Drive imports (`createFileDataRoomItem`, in `packages/adapters`),
+    so a repeat is a no-op. The item lands at the root, unfiled. It takes no
+    folder, name or tags. If the Data room consent was not accepted it adds
+    nothing and answers that the Data room is off. It skips inline mail parts,
+    images under 20 KB, `.ics` and `.vcf` files ("Not a document.").
+  - Gate: offered only when no group, the run user is the bot owner, and the run
+    is not a messaging-channel run (the mail and Drive rule). Scope comes from the
+    executor, never from tool arguments; mail and Drive sources respect the
+    connections the user denied that agent. The Inbox and Finance agents get the
+    tools too.
+  - No approval, and webhook and routine runs may call all three. The names are in
+    `BUILTIN_TOOL_NAMES` (per-bot disable) and `UNATTENDED_SAFE_BUILTIN_TOOLS`;
+    search and read are also in `READ_ONLY_AGENT_TOOLS`.
+  - Every agent's shared guidance tells it to add documents it finds, receives or
+    creates without being asked, and to leave filing to the Data room agent. The
+    guidance is included only in runs that are offered `add_to_data_room`.
 
 ## Phases
 
@@ -204,7 +232,14 @@ Design: [mockup.html](mockup.html) (sample data only).
    drop-anywhere, Data room page with folders and keyword search.
 2. Extraction, classification and auto-filing; `Embedder`; hybrid search; agent
    tools.
-3. Data room agent.
+3. Data room agent, with the three agent tools above first. The agent's organizer
+   tools are `data_room_list_new`, `data_room_move`, `data_room_rename`,
+   `data_room_tag`, `data_room_create_folder` and `data_room_flag_duplicate`. No
+   agent has a delete tool. Changes are recorded in a `data_room_changes` log;
+   `reviewedAt` null marks an item as new (there is no Inbox folder); duplicates
+   point to the original with `duplicateOfId`. A debounced per-owner
+   `dataroom.organize` job runs about 2 minutes after ingest. Undo from the change
+   log is an optional follow-up.
 4. Google Drive sync.
 5. Gmail bodies for important mail (decision 6).
 6. Chat history and finance records. Both already live in Postgres; decide then
