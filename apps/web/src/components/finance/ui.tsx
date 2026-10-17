@@ -370,7 +370,7 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
         {row.category ?? t`Uncategorized`}
       </td>
       <td className="whitespace-nowrap ps-4 text-end tabular-nums">
-        {transactionAmount(row.amountCents)}
+        {transactionAmount(row.amountCents, undefined, row.currency)}
       </td>
       <td className="hidden ps-4 text-muted-foreground @2xl:table-cell">
         {statusLabel(row.status)}
@@ -384,9 +384,14 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
 function VendorGroupRows({ group }: { group: VendorGroup }) {
   const [open, setOpen] = useState(false);
   const count = group.rows.length;
+  const name = group.name || t`Unknown`;
   return (
     <>
-      <tr className="group/row border-t border-border hover:bg-background [&>td]:py-2">
+      {/* The whole row toggles; the vendor button carries the accessible name and keyboard focus (its click bubbles here). */}
+      <tr
+        className="group/row cursor-pointer border-t border-border hover:bg-background [&>td]:py-2"
+        onClick={() => setOpen((v) => !v)}
+      >
         <td className="w-[4.5rem] pe-2">
           <ChevronRight
             aria-hidden="true"
@@ -397,10 +402,9 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
           <button
             type="button"
             aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
             className="text-start outline-none hover:underline focus-visible:underline"
           >
-            {group.name}
+            {name}
           </button>
           <div className="text-[11px] text-muted-foreground">
             {plural(count, { one: "# transaction", other: "# transactions" })}
@@ -410,7 +414,7 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
           {group.mixed ? t`Mixed` : (group.category ?? t`Uncategorized`)}
         </td>
         <td className="whitespace-nowrap ps-4 text-end tabular-nums">
-          {transactionAmount(group.totalCents)}
+          {transactionAmount(Number(group.totalCents), undefined, group.currency)}
         </td>
         <td className="hidden @2xl:table-cell" />
         <td />

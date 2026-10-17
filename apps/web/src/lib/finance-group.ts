@@ -5,38 +5,42 @@ export type VendorGroup = {
   /** The first counterparty spelling seen for this key. */
   name: string;
   rows: FinanceTransaction[];
-  /** Signed sum in cents (negative is money out), like each row's `amountCents`. */
-  totalCents: number;
+  currency: string;
+  /** Signed sum in cents (negative is money out), exact beyond Number.MAX_SAFE_INTEGER. */
+  totalCents: bigint;
   /** The first row's category; only meaningful when `mixed` is false. */
   category: string | null;
   /** True when the rows do not share one category. */
   mixed: boolean;
 };
 
-/** One group per counterparty (trimmed, case-insensitive), largest total first by magnitude. Keeps row order inside a group. */
+/** One group per counterparty (trimmed, case-insensitive) and currency, so a vendor paid in two currencies gets two rows. Largest total first by magnitude. Keeps row order inside a group. */
 export function groupByVendor(rows: readonly FinanceTransaction[]): VendorGroup[] {
   const groups = new Map<string, VendorGroup>();
   for (const row of rows) {
-    const key = row.counterparty.trim().toLowerCase();
+    const key = `${row.currency}|${row.counterparty.trim().toLowerCase()}`;
     const group = groups.get(key);
     if (!group) {
       groups.set(key, {
         key,
         name: row.counterparty.trim(),
         rows: [row],
-        totalCents: row.amountCents,
+        currency: row.currency,
+        totalCents: BigInt(row.amountCents),
         category: row.category,
         mixed: false,
       });
       continue;
     }
     group.rows.push(row);
-    group.totalCents += row.amountCents;
+    group.totalCents += BigInt(row.amountCents);
     if (group.category !== row.category) group.mixed = true;
   }
-  return [...groups.values()].sort(
-    (a, b) => Math.abs(b.totalCents) - Math.abs(a.totalCents) || a.name.localeCompare(b.name),
-  );
+  const abs = (n: bigint) => (n < 0n ? -n : n);
+  return [...groups.values()].sort((a, b) => {
+    const diff = abs(b.totalCents) - abs(a.totalCents);
+    return diff > 0n ? 1 : diff < 0n ? -1 : a.name.localeCompare(b.name);
+  });
 }
 
 const STORAGE_KEY = "rakazo:finance-transactions-grouped";

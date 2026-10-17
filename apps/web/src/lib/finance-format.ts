@@ -6,20 +6,20 @@ const dollars = (locale?: string) =>
     currency: "USD",
     maximumFractionDigits: 0,
   });
-const exact = (locale?: string) =>
-  new Intl.NumberFormat(locale, { style: "currency", currency: "USD" });
+const exact = (locale?: string, currency = "USD") =>
+  new Intl.NumberFormat(locale, { style: "currency", currency });
 
 /** Whole dollars, no sign. Money is cents in a JS number. */
 export const money = (cents: number, locale?: string) =>
   dollars(locale).format(Math.abs(cents) / 100);
 
 /** Dollars and cents, no sign. */
-export const moneyExact = (cents: number, locale?: string) =>
-  exact(locale).format(Math.abs(cents) / 100);
+export const moneyExact = (cents: number, locale?: string, currency?: string) =>
+  exact(locale, currency).format(Math.abs(cents) / 100);
 
 /** A transaction amount: money in gets a plus sign, money out has none (the page shows what left). */
-export const transactionAmount = (cents: number, locale?: string) =>
-  cents > 0 ? `+${moneyExact(cents, locale)}` : moneyExact(cents, locale);
+export const transactionAmount = (cents: number, locale?: string, currency?: string) =>
+  cents > 0 ? `+${moneyExact(cents, locale, currency)}` : moneyExact(cents, locale, currency);
 
 /** Axis labels: `$1.5k`, `$40k`, `$800`. */
 export function axisMoney(cents: number): string {
