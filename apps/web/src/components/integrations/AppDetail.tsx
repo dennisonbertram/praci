@@ -407,7 +407,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
           onConfirm={() => removingRow && void revoke([removingRow], rows.length === 1)}
         >
           <li>
-            <Trans>Agents lose access to this account.</Trans>
+            <Trans>Bots lose access to this account.</Trans>
           </li>
           {isGmail ? (
             <li>

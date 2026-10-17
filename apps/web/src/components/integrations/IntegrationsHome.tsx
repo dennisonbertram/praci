@@ -721,7 +721,7 @@ export function IntegrationsHome({
               <Trans>Remove {removing?.name}?</Trans>
             </AlertDialogTitle>
             <AlertDialogDescription>
-              <Trans>Agents lose access to its tools.</Trans>
+              <Trans>Bots lose access to its tools.</Trans>
             </AlertDialogDescription>
           </AlertDialogHeader>
           {removeError ? (

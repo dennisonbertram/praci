@@ -56,7 +56,7 @@ test("unavailable computers explain setup and open computer settings", async ({
   );
   await page.reload();
 
-  await page.getByTitle("Agent computer").click();
+  await page.getByTitle("Bot computer").click();
   const preview = page.getByTestId("computer-preview");
   const hint = preview.getByTestId("computers-unavailable-hint");
   await expect(hint).toBeVisible();

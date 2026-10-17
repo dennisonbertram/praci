@@ -4233,7 +4233,7 @@ export function ShellPage() {
             {!inGroup && !pageMode && active ? (
               <button
                 type="button"
-                title={t`Agent computer`}
+                title={t`Bot computer`}
                 onClick={() => {
                   const next = panel === "computer" ? null : "computer";
                   setPanel(next);
