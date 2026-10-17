@@ -137,28 +137,31 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
   const rows = list.locator("li[data-item-id]");
   await expect(rows).toHaveCount(3);
 
-  // The first item is pinned and shown in the preview.
+  // Nothing is previewed until a file is chosen; a click on the first item shows it.
   const preview = page.getByTestId("data-room-preview");
+  await expect(preview).toHaveCount(0);
+  await rows.first().click();
   await expect(preview.getByRole("heading", { level: 3 })).toContainText("Example HQ lease");
   await expect(preview).toContainText("Synthetic five-year renewal");
 
-  // Hovering another row shows it; a click pins it. A failed item shows its error.
+  // Hovering another row leaves the preview alone; a click shows it. A failed item shows its error.
   await rows.nth(1).hover();
-  await expect(preview.getByRole("heading", { level: 3 })).toHaveText("Series A term sheet v3.pdf");
+  await page.waitForTimeout(300);
+  await expect(preview.getByRole("heading", { level: 3 })).toContainText("Example HQ lease");
   await rows.nth(2).click();
   await page.mouse.move(0, 0);
   await expect(preview.getByRole("heading", { level: 3 })).toHaveText("Board minutes Q2.pdf");
   await expect(preview).toContainText("Could not read this file");
   // Arrow keys move the preview with the focus.
-  await rows.nth(1).focus();
+  await page.keyboard.press("ArrowUp");
   await expect(preview.getByRole("heading", { level: 3 })).toHaveText("Series A term sheet v3.pdf");
   await page.keyboard.press("ArrowUp");
   await expect(preview.getByRole("heading", { level: 3 })).toContainText("Example HQ lease");
-  await rows.first().click();
+  // Clicking the row that is shown closes the pane; clicking it again opens it.
   await rows.first().click();
   await expect(preview).toHaveCount(0);
   await rows.first().click();
-  await expect(preview).toBeVisible();
+  await expect(preview.getByRole("heading", { level: 3 })).toContainText("Example HQ lease");
 
   // Sort goes to the server and the order it returns is kept.
   await page.getByRole("button", { name: /^Sort/ }).click();
@@ -169,7 +172,7 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
       calls.some(
         (c) =>
           c.name === "items/list" &&
-          JSON.stringify(c.input.sort) === JSON.stringify({ field: "name", direction: "desc" }),
+          JSON.stringify(c.input.sort) === JSON.stringify({ field: "name", direction: "asc" }),
       ),
     )
     .toBe(true);
@@ -200,7 +203,7 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
   await page.evaluate(() => window.dispatchEvent(new Event("rakazo:data-room-changed")));
   const toast = page.getByTestId("data-room-toasts");
   await expect(toast).toContainText("lease.txt");
-  await expect(toast).toContainText("Filed");
+  await expect(toast).toContainText("Uploaded");
   await expect(toast.getByRole("link", { name: "View" })).toHaveAttribute(
     "href",
     `/app/data-room?item=${item.id}`,
@@ -247,7 +250,8 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
     await captureScreenshot(page, testInfo, `data-room-${layout.name}-${layout.scheme}`);
   }
 
-  // A pinned item that is not in the search results gives way to the first result; the Source menu
+  // A pinned item that is not in the search results closes the preview and no result is chosen for
+  // the user; the Source menu
   // closes when a file is dragged in, and the overlay covers the page; the toast's link is visible.
   const searchbox = main.getByRole("searchbox", { name: "Search documents" });
   for (const width of [1440, 960]) {
@@ -258,6 +262,8 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
     );
     await searchbox.fill("notice");
     await expect(list.locator("mark")).toHaveText("90 days");
+    await expect(preview).toHaveCount(0);
+    await rows.first().click();
     await expect(preview.getByRole("heading", { level: 3 })).toContainText("Example HQ lease");
     await captureScreenshot(page, testInfo, `v2-search-${width}`);
     await searchbox.fill("");
@@ -301,7 +307,9 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
   await expect(page.getByRole("menuitemradio", { name: "Legal / Contracts" })).toBeVisible();
   await captureScreenshot(page, testInfo, "v3-folder-picker-480");
   await page.getByRole("menuitemradio", { name: "Legal / Contracts" }).click();
-  await expect(picker).toContainText("Legal / Contracts");
+  // The trigger shows the folder's own name; its title carries the full path.
+  await expect(picker).toContainText("Contracts");
+  await expect(picker).toHaveAttribute("title", "Legal / Contracts");
   await expect
     .poll(() => calls.some((c) => c.input.folderId === "c0000000000000000000000f2"))
     .toBe(true);
