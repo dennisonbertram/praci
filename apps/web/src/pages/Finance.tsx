@@ -685,9 +685,9 @@ function UpcomingRow({ item }: { item: UpcomingItem }) {
       <span className="text-muted-foreground">
         {item.dates.map((d) => shortDay(d)).join(" · ")}
       </span>
-      {/* The name gives way to the tag, so a long name never pushes the tag out of view. */}
-      <span className="flex min-w-0 items-center gap-1.5">
-        <span className="min-w-0 truncate">{item.name}</span>
+      {/* The tag never hides behind a long name: it sits under the name when the card is narrow. */}
+      <span className="flex min-w-0 flex-col items-start gap-0.5 @md:flex-row @md:items-center @md:gap-1.5">
+        <span className="min-w-0 max-w-full truncate">{item.name}</span>
         <span className="shrink-0 rounded-full border border-border px-1.5 text-[10px] text-muted-foreground">
           {upcomingTag(item.kind)}
         </span>
@@ -760,7 +760,7 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
                 {paidWith ? (
                   <span
                     role="tooltip"
-                    className="pointer-events-none invisible ms-2.5 inline-block whitespace-nowrap rounded-full bg-primary px-2.5 py-0.5 align-middle text-[11px] font-normal leading-4 text-primary-foreground group-focus-within/row:visible group-hover/row:visible"
+                    className="pointer-events-none invisible ms-2.5 hidden whitespace-nowrap rounded-full bg-primary px-2.5 py-0.5 align-middle text-[11px] font-normal leading-4 text-primary-foreground group-focus-within/row:visible group-hover/row:visible @md:inline-block"
                   >
                     {paidWith}
                   </span>

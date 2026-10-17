@@ -117,7 +117,7 @@ function McpCard({ server, data }: { server: McpServer; data: IntegrationsData }
         sub={hostOf(server.endpoint) || server.command || undefined}
         to={`/app/integrations/mcp/${server.id}`}
       />
-      <div className="mt-auto flex items-center gap-2">
+      <div className="mt-auto flex min-h-7 items-center gap-2">
         <StatusBadge status={status} />
         {status === "reconnect" ? (
           <Button
@@ -165,7 +165,7 @@ function AppCard({
         sub={accounts || app.rows[0]?.displayName}
         to={appPath({ connectorId: app.connectorId, slug: app.provider })}
       />
-      <div className="mt-auto flex items-center gap-2">
+      <div className="mt-auto flex min-h-7 items-center gap-2">
         <StatusBadge status={app.status} />
         {app.status === "failed" ? (
           <Button

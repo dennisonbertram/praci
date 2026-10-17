@@ -502,8 +502,9 @@ it("puts the paid-with text on the subscription row and links the row to its ven
   await flush();
   const row = container.querySelector("tbody tr");
   expect(row?.querySelector('[role="tooltip"]')?.textContent).toBe("Brex ••0001");
-  // Stays in layout (only invisible) so hovering never shifts the table columns.
-  expect(row?.querySelector('[role="tooltip"]')?.classList.contains("hidden")).toBe(false);
+  // On a wide card it stays in layout (only invisible) so hovering never shifts the columns; a
+  // phone has no hover and no room, so it is left out there.
+  expect(row?.querySelector('[role="tooltip"]')?.classList.contains("@md:inline-block")).toBe(true);
   const link = row?.querySelector("a");
   expect(link?.getAttribute("href")).toBe("/app/finance/vendor/acme-hosting");
   expect(link?.getAttribute("aria-label")).toBe("Acme Hosting, paid with Brex ••0001");
