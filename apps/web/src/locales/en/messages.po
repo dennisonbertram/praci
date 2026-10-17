@@ -27,15 +27,15 @@ msgstr "— tokens"
 msgid ", {0} already imported"
 msgstr ", {0} already imported"
 
+#. placeholder {0}: message.thread.length
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "{0, plural, one {# earlier message} other {# earlier messages}}"
+msgstr "{0, plural, one {# earlier message} other {# earlier messages}}"
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
 msgstr "{0, plural, one {# finance lookup} other {# finance lookups}}"
-
-#. placeholder {0}: (message.thread?.length ?? 0) + (message.later?.length ?? 0) + 1
-#: src/components/inbox/InboxMessageDialog.tsx
-msgid "{0, plural, one {# message} other {# messages}}"
-msgstr "{0, plural, one {# message} other {# messages}}"
 
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
@@ -721,6 +721,11 @@ msgstr "all dates"
 msgid "All items"
 msgstr "All items"
 
+#. placeholder {0}: row.from
+#: src/components/inbox/InboxRow.tsx
+msgid "All mail from {0}"
+msgstr "All mail from {0}"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "All providers"
 msgstr "All providers"
@@ -914,14 +919,6 @@ msgstr "Approve"
 msgid "Approve this server to let your bot use its tools."
 msgstr "Approve this server to let your bot use its tools."
 
-#: src/components/MailApprovalCard.tsx
-msgid "Approved to save"
-msgstr "Approved to save"
-
-#: src/components/MailApprovalCard.tsx
-msgid "Approved to send"
-msgstr "Approved to send"
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Apps"
 msgstr "Apps"
@@ -941,10 +938,19 @@ msgstr "Archive"
 msgid "archived"
 msgstr "archived"
 
+#: src/components/EmailCards.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Archived"
 msgstr "Archived"
+
+#. placeholder {0}: maskCurrencyWhenHidden(lastArchived.subject)
+#. placeholder {0}: maskCurrencyWhenHidden(status.subject)
+#: src/components/EmailCards.tsx
+#: src/pages/Inbox.tsx
+msgid "Archived \"{0}\""
+msgstr "Archived \"{0}\""
 
 #: src/pages/Shell.tsx
 msgid "Archived. Chat, memory, and files kept."
@@ -1132,6 +1138,10 @@ msgstr "Avatars"
 #: src/pages/RoutineEditor.tsx
 msgid "Back"
 msgstr "Back"
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Back to Inbox"
+msgstr "Back to Inbox"
 
 #: src/pages/Auth.tsx
 msgid "Back to sign in"
@@ -3085,12 +3095,9 @@ msgid "Draft not saved"
 msgstr "Draft not saved"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/MailApprovalCard.tsx
 msgid "Draft saved"
 msgstr "Draft saved"
-
-#: src/components/MailApprovalCard.tsx
-msgid "Draft saved by you"
-msgstr "Draft saved by you"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
@@ -3678,8 +3685,8 @@ msgid "Hide transcript"
 msgstr "Hide transcript"
 
 #: src/components/HideAmountsToggle.tsx
-msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
-msgstr "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
+msgid "Hides amounts on finance screens and masks currency amounts in chat and email. Plain numbers in agent replies may still show. A reply you write keeps the original amounts."
+msgstr "Hides amounts on finance screens and masks currency amounts in chat and email. Plain numbers in agent replies may still show. A reply you write keeps the original amounts."
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4502,6 +4509,10 @@ msgstr "Move them to your shared memory."
 msgid "Move to"
 msgstr "Move to"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Move to Inbox"
+msgstr "Move to Inbox"
+
 #: src/components/call/CallCard.tsx
 msgid "Mute"
 msgstr "Mute"
@@ -4851,6 +4862,10 @@ msgstr "Normal"
 msgid "Not a valid email address"
 msgstr "Not a valid email address"
 
+#: src/components/ComposeEmail.tsx
+msgid "Not attached, over the {MAX_COMPOSE_ATTACHMENT_MB} MB limit: {leftOutNames}. Download it from the original to share it another way."
+msgstr "Not attached, over the {MAX_COMPOSE_ATTACHMENT_MB} MB limit: {leftOutNames}. Download it from the original to share it another way."
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not confirmed as saved. Check Drafts in your mail before trying again."
 msgstr "Not confirmed as saved. Check Drafts in your mail before trying again."
@@ -5146,6 +5161,10 @@ msgstr "Other connection types"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Other crypto"
 msgstr "Other crypto"
+
+#: src/pages/Inbox.tsx
+msgid "Other mail today"
+msgstr "Other mail today"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5529,6 +5548,10 @@ msgstr "Reconnect {name}"
 msgid "Reconnect Carta"
 msgstr "Reconnect Carta"
 
+#: src/pages/Inbox.tsx
+msgid "Reconnect Gmail"
+msgstr "Reconnect Gmail"
+
 #: src/App.tsx
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Reconnecting"
@@ -5816,6 +5839,18 @@ msgstr "Reply all"
 #: src/pages/Shell.tsx
 msgid "Reply cancelled"
 msgstr "Reply cancelled"
+
+#: src/components/EmailCards.tsx
+msgid "Reply this week"
+msgstr "Reply this week"
+
+#: src/components/EmailCards.tsx
+msgid "Reply today"
+msgstr "Reply today"
+
+#: src/components/EmailCards.tsx
+msgid "Reply within 3 days"
+msgstr "Reply within 3 days"
 
 #. placeholder {0}: replyNameRef.current
 #: src/pages/Shell.tsx
@@ -6209,6 +6244,7 @@ msgid "Select a connected model"
 msgstr "Select a connected model"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
@@ -6256,13 +6292,10 @@ msgstr "Sending is turned off."
 msgid "Sending…"
 msgstr "Sending…"
 
+#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
 msgstr "Sent"
-
-#: src/components/MailApprovalCard.tsx
-msgid "Sent by you"
-msgstr "Sent by you"
 
 #: src/pages/Shell.tsx
 msgid "Sent to {forwardedName}"
@@ -6745,10 +6778,6 @@ msgstr "Subscriptions / mo"
 msgid "Subtracted from burn"
 msgstr "Subtracted from burn"
 
-#: src/pages/Shell.tsx
-msgid "Summarize this week's investor email"
-msgstr "Summarize this week's investor email"
-
 #: src/components/inbox/InboxAgentIntro.tsx
 msgid "Summarize what's new this week"
 msgstr "Summarize what's new this week"
@@ -6888,6 +6917,10 @@ msgstr "the group"
 msgid "The Inbox page stops showing new mail until you reconnect."
 msgstr "The Inbox page stops showing new mail until you reconnect."
 
+#: src/components/AiDataSharing.tsx
+msgid "The Inbox sorts and reads your mail only while its model is allowed here."
+msgstr "The Inbox sorts and reads your mail only while its model is allowed here."
+
 #: src/components/ComposeEmail.tsx
 msgid "The original message didn't load."
 msgstr "The original message didn't load."
@@ -6949,6 +6982,10 @@ msgstr "This connection no longer exists."
 #: src/pages/Artifacts.tsx
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
 msgstr "This deletes all {0} versions of this artifact. This can't be undone."
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "This email isn't in your mail any more. It may have been deleted or moved."
+msgstr "This email isn't in your mail any more. It may have been deleted or moved."
 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."
@@ -7015,7 +7052,6 @@ msgstr "This space already uses {selectedProviderName}."
 msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 msgstr "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
 
-#: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr "This week"
@@ -7059,7 +7095,6 @@ msgstr "To tag new files and sort them into folders for you, their text (and ima
 msgid "To:"
 msgstr "To:"
 
-#: src/components/EmailCards.tsx
 #: src/components/inbox/TodoCard.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Inbox.tsx
@@ -7212,6 +7247,7 @@ msgstr "Uncategorized"
 msgid "Underline"
 msgstr "Underline"
 
+#: src/components/EmailCards.tsx
 #: src/components/MailOutbox.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
@@ -7585,10 +7621,6 @@ msgstr "What do you want me on first?"
 msgid "What is our runway?"
 msgstr "What is our runway?"
 
-#: src/pages/Shell.tsx
-msgid "What needs a reply from me today?"
-msgstr "What needs a reply from me today?"
-
 #: src/components/inbox/InboxAgentIntro.tsx
 msgid "What needs my reply today?"
 msgstr "What needs my reply today?"
@@ -7636,10 +7668,6 @@ msgstr "Which bots can use {appName}?"
 #: src/pages/Shell.tsx
 msgid "Who are our investors?"
 msgstr "Who are our investors?"
-
-#: src/components/EmailCards.tsx
-msgid "Within 3 days"
-msgstr "Within 3 days"
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

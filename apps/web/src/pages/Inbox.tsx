@@ -613,7 +613,7 @@ export function InboxPage({
             <Trans>Inbox</Trans>
           </h1>
           {spaceName ? (
-            <span className="max-w-48 truncate text-xs text-muted-foreground">{spaceName}</span>
+            <span className="max-w-40 truncate text-xs text-muted-foreground">{spaceName}</span>
           ) : null}
         </div>
         <form
