@@ -667,7 +667,8 @@ function ArtifactCard({
     <div className="group relative">
       <Link
         to={`/app/artifacts/${artifact.id}`}
-        className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 text-foreground hover:bg-accent/40"
+        // h-full: cards in one grid row share a height, so the hover Delete stays inside each.
+        className="flex h-full flex-col gap-4 rounded-2xl border border-border bg-card p-4 text-foreground hover:bg-accent/40"
       >
         <div className="flex items-start justify-between">
           <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-accent text-accent-foreground">
