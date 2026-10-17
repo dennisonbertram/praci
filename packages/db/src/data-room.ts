@@ -253,6 +253,16 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         orderBy: [{ name: "asc" }, { id: "asc" }],
       }),
 
+    /** How many items sit directly in each folder (not in its sub-folders), by folder id. */
+    async folderItemCounts(actor: Actor): Promise<Map<string, number>> {
+      const groups = await prisma.dataRoomItem.groupBy({
+        by: ["folderId"],
+        where: { ...eligibleWhere(actor), folderId: { not: null } },
+        _count: { _all: true },
+      });
+      return new Map(groups.map((group) => [group.folderId as string, group._count._all]));
+    },
+
     async createFolder(
       actor: Actor,
       input: { name: string; parentId?: string | null; createdBy?: "user" | "agent" },
@@ -847,7 +857,8 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     /**
      * Sends ready items back to a pipeline step and returns their ids. "ingest": image items with
      * no text (vision was skipped). "classify": items whose
-     * classification was skipped. "index": items with a chunk that has no embedding, or (when
+     * classification was skipped and that have no type, date or parties (facets already there are
+     * never replaced). "index": items with a chunk that has no embedding, or (when
      * `embeddingModel` is given) one embedded by another model.
      */
     async requeueReady(
@@ -868,6 +879,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
             ? await prisma.$queryRaw<{ id: string }[]>`
               SELECT i.id FROM data_room_items i
               WHERE ${eligibleSql(actor, { status: "ready" })} AND i."classifiedAt" IS NULL
+                AND i."docType" IS NULL AND i."docDate" IS NULL AND COALESCE(cardinality(i.parties), 0) = 0
                 AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
                   AND t.text <> '')`
             : await prisma.$queryRaw<{ id: string }[]>`

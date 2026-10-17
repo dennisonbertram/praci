@@ -229,6 +229,8 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
             docType: facets.docType,
             docDate: new Date(Date.now() - facets.daysAgo * 24 * 60 * 60 * 1000),
             parties: facets.parties,
+            // As if the classifier filed it: allowing AI sharing later leaves these facets alone.
+            classifiedAt: new Date(),
           },
         });
       }
