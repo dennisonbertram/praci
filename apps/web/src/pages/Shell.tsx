@@ -99,6 +99,7 @@ import {
   ChevronDown,
   CircleAlert,
   Copy,
+  Files,
   FileText,
   FolderOpen,
   Gauge,
@@ -3975,7 +3976,8 @@ export function ShellPage() {
                   navigate("/app/artifacts");
                 }}
               >
-                <FolderOpen className="text-muted-foreground" strokeWidth={1.75} />
+                {/* Not the Data room's folder icon: these are files bots made. */}
+                <Files className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Artifacts</Trans>
               </Button>
               <Button

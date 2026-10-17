@@ -99,7 +99,7 @@ it("opens the Artifacts screen and lists what listSpace returns", async () => {
   try {
     expect(page.container.textContent).toContain("Artifacts");
     expect(page.container.textContent).toContain("Q3 Content Calendar");
-    expect(page.container.querySelector("a[href='/app']")?.textContent).toContain("Bots");
+    expect(page.container.querySelector("a[href='/app']")?.textContent).toContain("Back");
     expect(page.container.querySelector("[data-testid='app-rail']")).toBeNull();
   } finally {
     await page.cleanup();

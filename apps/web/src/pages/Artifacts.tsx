@@ -220,7 +220,7 @@ export function ArtifactsPage() {
               className="app-no-drag flex shrink-0 items-center gap-0.5 rounded-lg py-1 pe-1.5 text-[13px] font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
               <ChevronLeft size={16} strokeWidth={1.9} aria-hidden="true" />
-              <Trans>Bots</Trans>
+              <Trans>Back</Trans>
             </Link>
             <h1 className="text-xl font-semibold">
               <Trans>Artifacts</Trans>
