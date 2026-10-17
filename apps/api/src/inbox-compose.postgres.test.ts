@@ -359,10 +359,14 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(reply.attachments).toEqual([]);
     });
 
-    it("lists nothing and flags a forward whose files are over the limit", async () => {
+    it("keeps the files that fit and names the ones over the limit", async () => {
       const row = await cache(a, connA, "a-big");
       const forward = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "forward" });
-      expect(forward).toMatchObject({ attachments: [], attachmentsTooLarge: true });
+      expect(forward.attachments.map((f) => f.filename)).toEqual(["big.bin"]);
+      expect(forward).toMatchObject({
+        attachmentsTooLarge: true,
+        attachmentsLeftOut: [{ filename: "big2.bin", size: expect.any(Number) }],
+      });
     });
 
     it("does not reveal another user's, another space's or a revoked account's message", async () => {

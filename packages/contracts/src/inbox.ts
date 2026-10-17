@@ -246,6 +246,10 @@ export const ComposePrefillOutputSchema = z.object({
   ),
   /** The original had attachments, but together they are over the attachment limit. */
   attachmentsTooLarge: z.boolean().optional(),
+  /** With attachmentsTooLarge: the files that did not fit, so the composer can name them. */
+  attachmentsLeftOut: z
+    .array(z.object({ filename: z.string(), size: z.number().int().nonnegative() }))
+    .optional(),
   /** Gmail could not be read, so To and Subject come from the cached copy and the quote is empty. */
   quoteUnavailable: z.boolean().optional(),
 });

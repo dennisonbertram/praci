@@ -81,6 +81,8 @@ export interface ComposeRestore {
   fields: Fields;
   replyToId?: string;
   forwarded: Forwarded[];
+  /** The original's files that were too large to forward. */
+  leftOut?: { filename: string; size: number }[];
   files: File[];
   /** A Gmail draft may exist, so Discard has one to remove. */
   saved: boolean;
@@ -204,6 +206,9 @@ export function ComposeEmail({
   const [linkOpen, setLinkOpen] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [forwarded, setForwarded] = useState<Forwarded[]>(restore?.forwarded ?? []);
+  // Named for as long as the composer is open, so autosave's "Draft saved" never hides it.
+  const [leftOut, setLeftOut] = useState(restore?.leftOut ?? []);
+  const leftOutNames = leftOut.map((file) => file.filename).join(", ");
   const [files, setFiles] = useState<File[]>(recalled?.files ?? []);
   const [dragging, setDragging] = useState(false);
   const [sending, setSending] = useState(false);
@@ -318,8 +323,10 @@ export function ComposeEmail({
         // An older server sends no attachment list.
         setForwarded(next.attachments ?? []);
         // The server filled To and Subject from its cached copy. The form is usable, so no retry that would overwrite edits.
+        setLeftOut(next.attachmentsLeftOut ?? []);
         if (next.quoteUnavailable) setQuoteMissing(true);
-        else if (next.attachmentsTooLarge)
+        // An older server says only that something was too large.
+        else if (next.attachmentsTooLarge && !next.attachmentsLeftOut)
           setNotice({
             kind: "error",
             text: t`Attachments can't be over ${MAX_COMPOSE_ATTACHMENT_MB} MB.`,
@@ -383,6 +390,7 @@ export function ComposeEmail({
     fields: fieldsRef.current,
     ...(replyToRef.current ? { replyToId: replyToRef.current } : {}),
     forwarded,
+    leftOut,
     files: kept,
     saved: hasDraft,
     // A reply has no picker, so it keeps the one account it is sent from.
@@ -725,6 +733,15 @@ export function ComposeEmail({
           ) : null}
         </div>
 
+        {leftOut.length ? (
+          <p
+            role="status"
+            data-testid="compose-left-out"
+            className="shrink-0 border-t border-border px-4 py-2 text-xs text-destructive"
+          >
+            {t`Not attached, over the ${MAX_COMPOSE_ATTACHMENT_MB} MB limit: ${leftOutNames}. Download it from the original to share it another way.`}
+          </p>
+        ) : null}
         {files.length + forwarded.length ? (
           <ul
             aria-label={t`Attachments`}
