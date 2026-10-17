@@ -130,6 +130,7 @@ import {
   SquareKanban,
   TextQuote,
   Trash2,
+  Users,
   X,
 } from "lucide-react";
 import type { ClipboardEvent, DragEvent, MutableRefObject, ReactNode, RefObject } from "react";
@@ -4405,6 +4406,19 @@ export function ShellPage() {
             )}
           </div>
           <div className="flex items-center gap-1">
+            {inGroup && !pageMode && activeGroup ? (
+              <button
+                type="button"
+                data-testid="group-settings-button"
+                title={t`Members and settings`}
+                aria-label={t`Members and settings`}
+                onClick={() => setPanel(panel === "group-settings" ? null : "group-settings")}
+                data-active={panel === "group-settings" ? "" : undefined}
+                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+              >
+                <Users size={18} strokeWidth={1.6} className="text-foreground/75" />
+              </button>
+            ) : null}
             {!inGroup && !pageMode && active && pageBotId === active.id ? (
               <button
                 type="button"
