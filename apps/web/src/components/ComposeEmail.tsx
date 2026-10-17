@@ -221,8 +221,9 @@ export function ComposeEmail({
   const [notice, setNotice] = useState<Notice | null>(
     restore?.notice ? { kind: "error", text: restore.notice } : null,
   );
-  // Set once the person edits; an untouched reply is not worth keeping.
-  const touched = useRef(Boolean(recalled));
+  // Set once the person edits; an untouched reply is not worth keeping. A draft opened under the
+  // other reply button counts once it is edited, so a glance leaves it as it was written.
+  const touched = useRef(Boolean(recalled) && !carried);
   // A Gmail draft may exist once a save has succeeded.
   const saved = useRef(recalled?.saved ?? false);
   const done = useRef(false);
@@ -412,7 +413,12 @@ export function ComposeEmail({
   };
 
   const closeNow = () => {
-    if (!touched.current || (isBlank(fieldsRef.current) && files.length === 0)) discardNow();
+    if (carried && !touched.current) {
+      // Opened under the other button and left alone: the draft stays in the mode it was written in.
+      done.current = true;
+      saver.cancel();
+      onClose();
+    } else if (!touched.current || (isBlank(fieldsRef.current) && files.length === 0)) discardNow();
     else {
       // Closing saves a draft; attachments are not part of it, so they are not kept.
       rememberClosed(seed, snapshot([], true));

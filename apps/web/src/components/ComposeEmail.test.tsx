@@ -73,7 +73,7 @@ vi.mock("@rakazo/ui-web", () => {
 
 import { closeRestored, getOutbox, UNDO_SEND_MS, undoSend } from "../lib/outbox";
 import { ComposeEmail, type ComposeSeed } from "./ComposeEmail";
-import { forgetClosed } from "./compose/draft-memory";
+import { forgetClosed, recallClosed } from "./compose/draft-memory";
 
 const body = "\n\nOn Mon, Sam wrote:\n> quoted line\n> second line";
 const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
@@ -602,6 +602,22 @@ it("carries a Reply all draft into Reply with only the sender as recipient", asy
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("leaves a Reply all draft as written when Reply opens it and closes without an edit", async () => {
+  draftSave.mockResolvedValue({ status: "saved" });
+  const first = await open(reply("replyAll"));
+  await type(field("Subject") as HTMLInputElement, "Re: Offsite!");
+  await act(async () => requestClose.current());
+  await act(async () => first.root.unmount());
+  document.body.innerHTML = "";
+  const second = await open(reply("reply"));
+  await act(async () => requestClose.current());
+  await act(async () => second.root.unmount());
+  const kept = recallClosed(reply("reply"));
+  expect(kept?.seed.kind).toBe("replyAll");
+  expect(kept?.fields.cc).toEqual(["kim@example.test", "lee@example.test"]);
+  expect(discardDraft).not.toHaveBeenCalled();
 });
 
 it("shows the address a reply is sent from", async () => {
