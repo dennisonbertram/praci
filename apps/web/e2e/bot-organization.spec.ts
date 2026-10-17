@@ -275,8 +275,8 @@ test("group chats share every context-menu action", async ({ page }, testInfo) =
   for (const action of [
     "Pin",
     "Move to",
-    "Mark as Unread",
-    "Edit Profile",
+    "Mark as unread",
+    "Edit profile",
     "Duplicate",
     "Clear conversation",
     "Archive",
@@ -285,10 +285,17 @@ test("group chats share every context-menu action", async ({ page }, testInfo) =
     await expect(page.getByRole("menuitem", { name: action, exact: true })).toBeVisible();
   }
   await captureScreenshot(page, testInfo, "group-context-menu-desktop");
-
-  await page.getByRole("menuitem", { name: "Mark as Unread", exact: true }).click();
+  await page.keyboard.press("Escape");
+  // The same menu opens from the row's hover "More" button, not only on right-click.
+  await group.hover();
+  await sidebar.getByRole("button", { name: "Actions for Group menu", exact: true }).click();
+  await expect(page.getByRole("menuitem", { name: "Archive", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
   await group.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Mark as Read", exact: true }).click();
+
+  await page.getByRole("menuitem", { name: "Mark as unread", exact: true }).click();
+  await group.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Mark as read", exact: true }).click();
 
   await group.click({ button: "right" });
   await page.getByRole("menuitem", { name: "Pin", exact: true }).click();
@@ -341,6 +348,6 @@ test("group chats share every context-menu action", async ({ page }, testInfo) =
   await page.setViewportSize({ width: 1280, height: 800 });
 
   await group.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Edit Profile", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Edit profile", exact: true }).click();
   await expect(page.getByTestId("side-panel")).toHaveAttribute("data-panel", "group-settings");
 });

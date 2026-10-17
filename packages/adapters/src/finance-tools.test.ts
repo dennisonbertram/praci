@@ -6,6 +6,7 @@ import {
   describeFinanceActivity,
   FINANCE_TOOL_NAMES,
   type FinanceToolDeps,
+  financeAgentRunLine,
   financeToolFromTool,
   financeToolsAllowed,
   hasFinanceSource,
@@ -727,5 +728,21 @@ describe("activity labels", () => {
     expect(describeFinanceActivity("finance_recurring", {})).toBe("Looking at subscriptions");
     expect(describeFinanceActivity("finance_crypto", {})).toBe("Looking at crypto holdings");
     expect(describeFinanceActivity("shell", {})).toBeNull();
+  });
+});
+
+describe("financeAgentRunLine", () => {
+  it("points the finance tools out when they are on", () => {
+    expect(financeAgentRunLine(true, "user")).toContain("finance_overview");
+  });
+
+  it("tells a bot-to-bot run to send the user to the agent's own chat", () => {
+    const line = financeAgentRunLine(false, "bot_message") ?? "";
+    expect(line).toContain("ask you in your own chat");
+    expect(line).not.toContain("finance_overview");
+  });
+
+  it("adds nothing when the tools are off for another reason", () => {
+    expect(financeAgentRunLine(false, "user")).toBeUndefined();
   });
 });

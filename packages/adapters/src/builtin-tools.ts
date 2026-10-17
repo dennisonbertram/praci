@@ -962,6 +962,13 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "cap_table_read",
+    description:
+      "The cap table on the user's Cap Table page, as last saved: fully diluted shares, option pool, latest 409A, amount raised, share classes and each holder's security, shares and ownership. Null before the first save. Read this before answering cap table or investor questions.",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+  },
+  {
     name: "cap_table_update",
     description:
       "Replace the cap table on the user's Cap Table page. Pass exact figures from Carta; never estimate, and use null for anything Carta does not give you. Dates are YYYY-MM-DD, percents are 0-100, amounts are US dollars.",
@@ -1009,6 +1016,19 @@ export const builtinAgentTools: ConnectorTool[] = [
       },
       required: ["companyName", "asOf", "fullyDilutedShares", "shareClasses", "holders"],
     },
+  },
+  {
+    name: "data_room_search",
+    description:
+      "Find documents in the user's Data room: board decks, SAFEs, contracts, budgets, cap table exports and investor updates. Search by words in the name or text; leave query empty to list every document. Look here first when the user mentions a company document.",
+    inputSchema: { type: "object", properties: { query: { type: "string" } } },
+    readOnly: true,
+  },
+  {
+    name: "data_room_read",
+    description: "The text of one Data room document, by the id data_room_search returned.",
+    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+    readOnly: true,
   },
   {
     name: "drive_search",

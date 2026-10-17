@@ -207,7 +207,7 @@ export function ConnectAppDialog({
       void refresh();
       setPhase({ kind: "done", agents: all ? "all" : botIds.length > 0 ? "some" : "none" });
     } catch (err) {
-      setAccessError(errorText(err, t`Could not save agent access`));
+      setAccessError(errorText(err, t`Could not save bot access`));
     } finally {
       setSaving(false);
     }
@@ -281,11 +281,11 @@ export function ConnectAppDialog({
                 <li>
                   <span className="font-bold text-success">✓ </span>
                   {phase.agents === "all" ? (
-                    <Trans>All agents can use {item.name}.</Trans>
+                    <Trans>All bots can use {item.name}.</Trans>
                   ) : phase.agents === "some" ? (
-                    <Trans>The agents you chose can use {item.name}.</Trans>
+                    <Trans>The bots you chose can use {item.name}.</Trans>
                   ) : (
-                    <Trans>No agent uses {item.name} yet. Choose agents on its page.</Trans>
+                    <Trans>No bot uses {item.name} yet. Choose bots on its page.</Trans>
                   )}
                 </li>
               )}

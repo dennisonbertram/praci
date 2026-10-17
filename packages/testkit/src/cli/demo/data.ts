@@ -791,6 +791,41 @@ export interface DemoDocument {
   text: string;
 }
 
+/**
+ * What the Data room classifier would file for each document. The demo has AI sharing off, so the
+ * classifier skips and the seed writes these instead, keeping the Type and Date columns filled.
+ */
+export const DEMO_DOCUMENT_FACETS: Record<
+  string,
+  { docType: string; daysAgo: number; parties: string[] }
+> = {
+  "MOCK Master Services Agreement - Halcyon Logistics.pdf": {
+    docType: "Contract",
+    daysAgo: 95,
+    parties: ["Halcyon Logistics (Mock)"],
+  },
+  "MOCK Mutual NDA - Acme Ventures.pdf": {
+    docType: "NDA",
+    daysAgo: 60,
+    parties: ["Acme Ventures (Mock)"],
+  },
+  "MOCK Office Lease - 100 Placeholder Street.pdf": {
+    docType: "Lease",
+    daysAgo: 400,
+    parties: ["Placeholder Street Landlord (Mock)"],
+  },
+  "MOCK SAFE - Quill Capital.pdf": {
+    docType: "SAFE",
+    daysAgo: 150,
+    parties: ["Quill Capital (Mock)"],
+  },
+  "MOCK Q3 Board Deck.pdf": { docType: "Board deck", daysAgo: 3, parties: [] },
+  "MOCK Budget FY27.csv": { docType: "Budget", daysAgo: 20, parties: [] },
+  "MOCK Investor Update Draft.pdf": { docType: "Investor update", daysAgo: 1, parties: [] },
+  "MOCK Cap Table Summary.csv": { docType: "Cap table", daysAgo: 1, parties: [] },
+  "MOCK Product Roadmap.pdf": { docType: "Roadmap", daysAgo: 30, parties: [] },
+};
+
 const doc = (folder: string, name: string, text: string, kind: DemoDocument["kind"] = "pdf") => ({
   folder,
   name,
@@ -848,7 +883,7 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Fundraising",
     "MOCK Cap Table Summary.csv",
-    "holder,class,shares,percent\nAlex Founder Mock,common,4000000,40\nRiver Cofounder Mock,common,3000000,30\nOption pool Mock,pool,1500000,15\nQuill Capital SAFE Mock,safe,0,pending",
+    "holder,class,shares,percent\nAlex Founder Mock,common,4000000,40\nRiver Cofounder Mock,common,3000000,30\nEarly employees Mock,common,1500000,15\nOption pool Mock,pool,1500000,15\nQuill Capital SAFE Mock,safe,0,pending",
     "csv",
   ),
   doc(
@@ -873,6 +908,27 @@ export function demoFolderPaths(documents: DemoDocument[]): string[] {
   }
   return [...paths].sort((a, b) => a.split("/").length - b.split("/").length);
 }
+
+/** A draft Chief "made" last week, so the monthly investor update can start from it. */
+export const DEMO_CHIEF_DRAFT = {
+  name: "MOCK Investor Update - September.md",
+  mimeType: "text/markdown",
+  text: `# MOCK DEMO DATA: Investor update, September
+
+Hi Priya, Dana and Lee,
+
+Highlights
+- The Halcyon Logistics (Mock) pilot converted to an annual contract.
+- Cash is $412,000 with $46,000 monthly net burn: about 8.9 months of runway.
+
+Asks
+- Intros to robotics buyers in warehousing.
+
+Alex
+
+${MOCK_NOTE}: invented for UX testing. Not a real update.
+`,
+};
 
 export const DEMO_BOTS = [
   {

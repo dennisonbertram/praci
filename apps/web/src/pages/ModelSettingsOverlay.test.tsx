@@ -280,6 +280,18 @@ it("leaves the key field empty until a key is saved", async () => {
   }
 });
 
+it("treats the provider this space already uses as connected, with a key optional", async () => {
+  const view = await renderSettings();
+  try {
+    const text = view.container.textContent ?? "";
+    expect(text).toContain("This space already uses DeepSeek.");
+    expect(text).not.toContain("Connect this provider");
+    expect(text).toContain("Use your own key");
+  } finally {
+    await view.unmount();
+  }
+});
+
 it("shows Cloudflare account and gateway fields for a new and a saved connection", async () => {
   const entry = {
     provider: "cloudflare-ai-gateway",
@@ -375,5 +387,25 @@ it("shows a stored OpenAI-compatible key and stays empty when none is saved", as
     expect(input.placeholder).toBe("Optional");
   } finally {
     await empty.unmount();
+  }
+});
+
+it("lists the server's own provider under Connected, ahead of the A-Z list", async () => {
+  vi.mocked(rpc.me).mockResolvedValue({
+    ...account("openrouter", "or-model"),
+    hostCredentialProvider: "openrouter",
+    hostCredentialSource: "environment",
+  } as never);
+  models.list.mockResolvedValue([
+    { ...deepseekEntry, provider: "amazon", providerName: "Amazon Bedrock", id: "a" },
+    { ...deepseekEntry, provider: "openrouter", providerName: "OpenRouter", id: "or-model" },
+  ]);
+  const view = await renderSettings();
+  try {
+    const text = view.container.textContent ?? "";
+    expect(text).toContain("Connected");
+    expect(text.indexOf("OpenRouter")).toBeLessThan(text.indexOf("Amazon Bedrock"));
+  } finally {
+    await view.unmount();
   }
 });

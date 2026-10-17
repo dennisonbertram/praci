@@ -21,9 +21,10 @@ import {
   TabsTrigger,
   Textarea,
 } from "@rakazo/ui-web";
-import { PanelRightOpen, PieChart, Plus, RefreshCw } from "lucide-react";
+import { PieChart, Plus, RefreshCw } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { AskBotButton } from "../components/AskBotButton";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
@@ -581,8 +582,8 @@ export function CapTablePage({
     <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
       <div className={`flex items-center gap-2 ${snapshot ? "mb-0.5" : "mb-4"}`}>
         <div className="me-auto min-w-0">
-          <h1 className="truncate text-lg font-medium">
-            <Trans>Cap Table</Trans>
+          <h1 className="truncate text-lg font-semibold">
+            <Trans>Cap table</Trans>
           </h1>
         </div>
         <HideAmountsButton />
@@ -602,17 +603,7 @@ export function CapTablePage({
           <Plus aria-hidden="true" />
           {filter === "all" ? <Trans>Add contact</Trans> : addKindLabel[filter]}
         </Button>
-        {onShowAgent ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="pointer-coarse:size-10"
-            aria-label={t`Show Carta agent`}
-            onClick={onShowAgent}
-          >
-            <PanelRightOpen aria-hidden="true" />
-          </Button>
-        ) : null}
+        {onShowAgent ? <AskBotButton botName="Carta agent" onClick={onShowAgent} /> : null}
       </div>
       {snapshot ? (
         // Under the header row, not beside its buttons, so a phone shows the company and the time.
@@ -789,8 +780,9 @@ export function CapTablePage({
                       contact.email
                     ) : !contact && kind === "investor" ? (
                       <Button
-                        variant="outline"
+                        variant="link"
                         size="xs"
+                        className="px-0"
                         onClick={() =>
                           setEditing({
                             name,

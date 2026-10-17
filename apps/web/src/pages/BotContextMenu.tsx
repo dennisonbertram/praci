@@ -123,12 +123,12 @@ export function BotContextMenu({
         </DropdownMenuSub>
         <DropdownMenuItem onClick={onToggleUnread}>
           {bot.unread ? <BellDot /> : <Bell />}
-          {bot.unread ? t`Mark as Read` : t`Mark as Unread`}
+          {bot.unread ? t`Mark as read` : t`Mark as unread`}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onEdit}>
           <Pencil />
-          {t`Edit Profile`}
+          {t`Edit profile`}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onDuplicate}>
           <Copy />

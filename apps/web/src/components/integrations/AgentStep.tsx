@@ -26,7 +26,7 @@ export function AgentStep({
         <Trans>Step 2 of 3</Trans>
       </div>
       <DialogTitle>
-        <Trans>Which agents can use {appName}?</Trans>
+        <Trans>Which bots can use {appName}?</Trans>
       </DialogTitle>
       <DialogDescription className="mb-3">
         <Trans>You can change this later.</Trans>

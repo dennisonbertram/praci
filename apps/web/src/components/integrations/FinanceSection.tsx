@@ -417,7 +417,8 @@ export function FinanceSection({
                   </div>
                 </div>
               </div>
-              <div className="mt-auto flex items-center gap-2">
+              {/* Connected: the status row sits under the name, level with Gmail and Carta's. */}
+              <div className={`${connected ? "" : "mt-auto "}flex items-center gap-2`}>
                 {busy === provider ? (
                   <StatusBadge status="connecting" />
                 ) : connected ? (

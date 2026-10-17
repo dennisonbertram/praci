@@ -174,3 +174,13 @@ it("requires a nonempty code and allows it after the proof expires", async () =>
   expect(fetchAccountSecurity).toHaveBeenCalledTimes(2);
   expect(authClient.deleteUser).toHaveBeenCalledWith({ token: "123456" });
 });
+it("shows a failed sign-in options load only in the opened delete panel, with Retry", async () => {
+  vi.mocked(fetchAccountSecurity).mockRejectedValueOnce(new Error("offline"));
+  await render();
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  await click("Delete account");
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe("Could not load sign-in options.");
+  await click("Retry");
+  expect(fetchAccountSecurity).toHaveBeenCalledTimes(2);
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+});

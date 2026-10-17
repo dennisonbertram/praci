@@ -5,8 +5,10 @@ import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   DEMO_BOTS,
   DEMO_CAP_TABLE,
+  DEMO_CHIEF_DRAFT,
   DEMO_COMPANY,
   DEMO_CONTACTS,
+  DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
   DEMO_GROUP,
@@ -217,7 +219,34 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       bytes,
     );
   }
+  {
+    const db = createDb(options.databaseUrl);
+    try {
+      for (const [name, facets] of Object.entries(DEMO_DOCUMENT_FACETS)) {
+        await db.prisma.dataRoomItem.updateMany({
+          where: { spaceId, name },
+          data: {
+            docType: facets.docType,
+            docDate: new Date(Date.now() - facets.daysAgo * 24 * 60 * 60 * 1000),
+            parties: facets.parties,
+          },
+        });
+      }
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  }
   done.push(`${DEMO_DOCUMENTS.length} data room documents`);
+
+  // Artifacts: last month's investor update, filed under Chief.
+  await session.rpc("artifacts/create", {
+    botId: chief.id,
+    name: DEMO_CHIEF_DRAFT.name,
+    mimeType: DEMO_CHIEF_DRAFT.mimeType,
+    contentBase64: Buffer.from(DEMO_CHIEF_DRAFT.text).toString("base64"),
+  });
+  done.push("Chief's investor update draft");
 
   // Team: extra bots and a group chat.
   const botIds = [chief.id];

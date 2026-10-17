@@ -1,0 +1,28 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
+import { AgentPanelIntro } from "./AgentPanelIntro";
+
+const meta = {
+  title: "Pages/Agent panel intro",
+  component: AgentPanelIntro,
+  args: {
+    description: "Answers questions about your Mercury and Brex accounts.",
+    suggestions: ["What is our runway?", "Where did spend go up this month?"],
+    onPick: fn(),
+  },
+  decorators: [
+    (Story) => (
+      <div className="w-80">
+        <Story />
+      </div>
+    ),
+  ],
+} satisfies Meta<typeof AgentPanelIntro>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {};
+
+export const Sending: Story = { args: { disabled: true } };
+
+export const NoDescription: Story = { args: { description: "" } };

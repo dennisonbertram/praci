@@ -53,6 +53,7 @@ import { WalletDialog } from "../components/finance/WalletDialog";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { AppLogo } from "../components/integrations/AppLogo";
 import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnectDialog";
+import { PageEmptyState } from "../components/PageEmptyState";
 import {
   changeText,
   dayRange,
@@ -207,48 +208,49 @@ function EmptyState({ hasCrypto, onChanged }: { hasCrypto: boolean; onChanged: (
   const [adding, setAdding] = useState(false);
   const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
   return (
-    <div className="flex h-full min-h-72 flex-col items-center justify-center gap-4 text-center">
-      <div className="flex gap-3">
-        {FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
-          <AppLogo key={provider} name={name} logo={logo} size="lg" />
-        ))}
-      </div>
-      <div className="flex flex-col items-center gap-0.5">
-        <h1 className="text-lg font-medium">
+    <div>
+      {/* The page title stays where every page has it, with the empty state under it. */}
+      <div className="flex flex-col gap-0.5">
+        <h1 className="text-lg font-semibold">
           <Trans>Finance</Trans>
         </h1>
         <SpaceName />
       </div>
-      <p className="max-w-sm text-sm text-muted-foreground">
-        <Trans>Add an account to see cash, burn, runway and spend.</Trans>
-      </p>
-      <Button onClick={() => setAdding(true)}>
-        <Trans>Add account</Trans>
-      </Button>
-      {hasCrypto ? (
-        <Button variant="outline" render={<Link to={financePath.accounts()} />}>
-          <Trans>Accounts</Trans>
+      <PageEmptyState
+        icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
+          <AppLogo key={provider} name={name} logo={logo} size="lg" />
+        ))}
+        title={<Trans>No accounts yet</Trans>}
+        description={<Trans>Add an account to see cash, burn, runway and spend.</Trans>}
+      >
+        <Button onClick={() => setAdding(true)}>
+          <Trans>Add account</Trans>
         </Button>
-      ) : null}
-      {adding ? (
-        <AddAccountDialog
-          onPickCrypto={setCrypto}
-          onImported={onChanged}
-          onClose={() => setAdding(false)}
-        />
-      ) : null}
-      <WalletDialog
-        open={crypto === "wallet"}
-        onClose={() => setCrypto(null)}
-        onSaved={onChanged}
-      />
-      {crypto && crypto !== "wallet" ? (
-        <ExchangeConnectDialog
-          provider={crypto}
-          onConnected={onChanged}
+        {hasCrypto ? (
+          <Button variant="outline" render={<Link to={financePath.accounts()} />}>
+            <Trans>Accounts</Trans>
+          </Button>
+        ) : null}
+        {adding ? (
+          <AddAccountDialog
+            onPickCrypto={setCrypto}
+            onImported={onChanged}
+            onClose={() => setAdding(false)}
+          />
+        ) : null}
+        <WalletDialog
+          open={crypto === "wallet"}
           onClose={() => setCrypto(null)}
+          onSaved={onChanged}
         />
-      ) : null}
+        {crypto && crypto !== "wallet" ? (
+          <ExchangeConnectDialog
+            provider={crypto}
+            onConnected={onChanged}
+            onClose={() => setCrypto(null)}
+          />
+        ) : null}
+      </PageEmptyState>
     </div>
   );
 }
@@ -349,6 +351,9 @@ function Overview({
   const runOutMonth = data.runway.runOutDate
     ? hiddenOr(monthFull(data.runway.runOutDate.slice(0, 7)))
     : "";
+  // The same figure on both sides says nothing, so the comparison is left out.
+  const sameAsBefore = (p: { currentCents: number; previousCents: number | null }) =>
+    p.previousCents === null || p.previousCents === p.currentCents;
   const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
   const spentRange = range(totals);
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
@@ -365,7 +370,7 @@ function Overview({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-medium">
+        <h1 className="text-lg font-semibold">
           <Trans>Finance</Trans>
         </h1>
         <SpaceName />
@@ -430,12 +435,7 @@ function Overview({
           </Link>
         ) : null}
         <div className="ms-auto flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-10 rounded-[10px] px-4 text-sm"
-            render={<Link to={financePath.accounts()} />}
-          >
+          <Button variant="outline" render={<Link to={financePath.accounts()} />}>
             <Trans>Accounts</Trans>
           </Button>
           <AskAgentButton />
@@ -530,7 +530,7 @@ function Overview({
               </Link>
               <span className="text-[11px] text-muted-foreground">
                 {t`Spent ${spentRange}`}
-                {totals.previousCents === null ? null : (
+                {sameAsBefore(totals) ? null : (
                   <>
                     {" · "}
                     {change ? <span className={toneClass(totals.changePct)}>{change} </span> : null}

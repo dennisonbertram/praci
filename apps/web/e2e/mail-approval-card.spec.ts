@@ -25,7 +25,7 @@ test("a mail send waits in the chat as an editable card and approving it runs th
   });
   await page.getByTestId("sidebar-inbox").click();
   const panel = page.getByTestId("side-panel");
-  await page.getByRole("main").getByRole("button", { name: "Show Inbox agent" }).click();
+  await page.getByRole("main").getByRole("button", { name: "Ask Inbox agent" }).click();
   await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
 
   await panel.getByPlaceholder(/Message/).fill("send email card");

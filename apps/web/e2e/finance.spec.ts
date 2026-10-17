@@ -65,7 +65,7 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect.poll(() => calls.filter((c) => c === "refresh").length).toBe(1);
 
   // The agent panel starts closed; the header button opens it and hides while it is open.
-  const ask = main.getByRole("button", { name: "Ask agent", exact: true });
+  const ask = main.getByRole("button", { name: "Ask Finance agent", exact: true });
   await expect(page.getByTestId("finance-agent-panel")).toHaveCount(0);
   await captureScreenshot(page, testInfo, "finance-dashboard");
 
@@ -164,7 +164,10 @@ test("Finance with nothing connected offers Add account", async ({ page }, testI
   await page.getByTestId("sidebar-finance").click();
   const main = page.getByRole("main");
   await expect(main.getByText("Add an account to see cash, burn, runway and spend.")).toBeVisible();
-  await expect(main.getByRole("button", { name: "Ask agent" })).toHaveCount(0);
+  // The page title sits above the empty state, as on every other page.
+  await expect(main.getByRole("heading", { name: "Finance", level: 1 })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "No accounts yet", level: 2 })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Ask Finance agent" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "finance-empty");
   await main.getByRole("button", { name: "Add account" }).click();
   await expect(page.getByRole("dialog")).toContainText("Upload statements");

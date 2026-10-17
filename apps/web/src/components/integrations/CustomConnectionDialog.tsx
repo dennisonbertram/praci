@@ -41,6 +41,14 @@ type View =
   | { kind: "agents" }
   | { kind: "done"; hint: string | null };
 
+function hostOf(value: string) {
+  try {
+    return new URL(value).host || value;
+  } catch {
+    return value;
+  }
+}
+
 function isHttpUrl(value: string) {
   try {
     return ["http:", "https:"].includes(new URL(value).protocol);
@@ -97,6 +105,8 @@ export function CustomConnectionDialog({
   const [directoryQuery, setDirectoryQuery] = useState("");
   const [directoryResults, setDirectoryResults] = useState<IntegrationCatalogResult[] | null>(null);
   const attempt = useRef<AbortController | null>(null);
+  /** The server this dialog added, removed again when sign-in cannot start. */
+  const createdHere = useRef<string | null>(null);
   const authUrl = useRef<string | null>(null);
   const stopWatching = useRef<() => void>(() => undefined);
   const popup = useRef<Window | null>(null);
@@ -184,6 +194,19 @@ export function CustomConnectionDialog({
         setView({ kind: "form" });
         return;
       }
+      // Sign-in could not even start, usually because the server is unreachable. A connection this
+      // dialog just added would only sit in the list looking connected, so remove it and say why.
+      if (createdHere.current === target.id) {
+        createdHere.current = null;
+        await rpc.mcp.servers.remove({ id: target.id }).catch(() => undefined);
+        setServer(null);
+        void refresh();
+        setError(
+          t`Could not reach ${hostOf(target.endpoint ?? url)}. Check the address and try again.`,
+        );
+        setView({ kind: "form" });
+        return;
+      }
       setView({
         kind: "signin",
         state: {
@@ -225,7 +248,7 @@ export function CustomConnectionDialog({
     const existing = data.servers.find((entry) => entry.endpoint === endpoint);
     if (existing) return existing;
     const customHeader = authHeader.trim();
-    return await rpc.mcp.servers.create({
+    const created = await rpc.mcp.servers.create({
       slug: `integration-${newClientId().slice(0, 8)}`,
       name: serverName,
       transport,
@@ -234,6 +257,8 @@ export function CustomConnectionDialog({
       ...(token.trim() ? { secret: token.trim() } : {}),
       enabled: true,
     });
+    createdHere.current = created.id;
+    return created;
   }
 
   async function connectUrl() {
@@ -358,7 +383,7 @@ export function CustomConnectionDialog({
       }
       void refresh();
       setView({ kind: "done", hint: null });
-    }, t`Could not save agent access`);
+    }, t`Could not save bot access`);
   }
 
   const fields = (kind: SourceKind) => (

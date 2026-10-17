@@ -19,7 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { ChevronRight, MessageSquare } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Link, type LinkProps, useLocation, useNavigate } from "react-router-dom";
 import { money, shortDay, transactionAmount, txnDay } from "../../lib/finance-format";
@@ -32,6 +32,7 @@ import {
 import { financePath } from "../../lib/finance-route";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
+import { AskBotButton } from "../AskBotButton";
 import { HideAmountsButton } from "../HideAmountsToggle";
 import { shade } from "./charts";
 
@@ -54,14 +55,9 @@ export function AskAgentButton() {
   const { onAskAgent } = useContext(ChromeContext);
   if (!onAskAgent) return null;
   return (
-    <Button
-      size="lg"
-      className="ms-auto h-10 rounded-[10px] px-4.5 text-sm font-semibold"
-      onClick={onAskAgent}
-    >
-      <MessageSquare aria-hidden="true" className="size-4.5" />
-      <Trans>Ask agent</Trans>
-    </Button>
+    <div className="ms-auto">
+      <AskBotButton botName="Finance agent" onClick={onAskAgent} />
+    </div>
   );
 }
 

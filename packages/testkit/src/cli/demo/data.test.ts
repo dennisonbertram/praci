@@ -13,8 +13,10 @@ import {
 import { describe, expect, it } from "vitest";
 import {
   DEMO_CAP_TABLE,
+  DEMO_CHIEF_DRAFT,
   DEMO_COMPANY,
   DEMO_CONTACTS,
+  DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
   DEMO_WALLET,
@@ -33,6 +35,8 @@ describe("mock demo data", () => {
     expect(DEMO_COMPANY.startsWith("MOCK DEMO DATA —")).toBe(true);
     expect(DEMO_EMPTY_SPACE.startsWith("MOCK DEMO DATA —")).toBe(true);
     for (const contact of DEMO_CONTACTS) expect(contact.notes).toContain(MOCK_NOTE);
+    expect(DEMO_CHIEF_DRAFT.name).toContain("MOCK");
+    expect(DEMO_CHIEF_DRAFT.text).toContain(MOCK_NOTE);
     for (const document of DEMO_DOCUMENTS) {
       expect(document.name).toContain("MOCK");
       expect(document.text).toContain(MOCK_NOTE);
@@ -110,6 +114,30 @@ describe("mock demo data", () => {
       "A/B/C",
     ]);
     expect(demoFolderPaths(DEMO_DOCUMENTS)).toContain("Finance/Invoices");
+  });
+
+  it("builds a valid mock cap table whose investors match the demo contacts", () => {
+    const snapshot = CapTableSnapshotInputSchema.parse(DEMO_CAP_TABLE);
+    expect(snapshot.companyName).toBe(DEMO_COMPANY);
+    expect(snapshot.shareClasses.reduce((sum, c) => sum + c.percent, 0)).toBe(100);
+    const contactEmails = new Set(DEMO_CONTACTS.map((c) => c.email));
+    const investors = snapshot.holders.filter((h) => h.security === "SAFE");
+    expect(investors.length).toBeGreaterThan(0);
+    for (const holder of investors) expect(contactEmails.has(holder.email ?? "")).toBe(true);
+  });
+
+  it("gives every mock Data room document a type and date for the list columns", () => {
+    expect(Object.keys(DEMO_DOCUMENT_FACETS).sort()).toEqual(
+      DEMO_DOCUMENTS.map((d) => d.name).sort(),
+    );
+  });
+
+  it("has a mock cap table whose holdings, option pool and fully diluted total add up", () => {
+    const snapshot = CapTableSnapshotInputSchema.parse(DEMO_CAP_TABLE);
+    const held = snapshot.holders.reduce((sum, h) => sum + (h.shares ?? 0), 0);
+    const pool = snapshot.shareClasses.find((c) => /option pool/i.test(c.name))?.shares ?? 0;
+    expect(snapshot.optionPoolAvailable).toBe(pool);
+    expect(held + (snapshot.optionPoolAvailable ?? 0)).toBe(snapshot.fullyDilutedShares);
   });
 
   it("builds two mock mailboxes with a Cc thread, sent mail and attachments of every size", () => {

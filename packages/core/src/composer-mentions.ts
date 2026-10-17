@@ -178,6 +178,8 @@ export function buildComposerMentionOptions(input: {
   routines: readonly MentionPickerRoutine[];
   connectors: readonly MentionPickerConnector[];
   currentGroupId?: string | null;
+  /** The bot whose chat this is: mentioning it there would only repeat the message to it. */
+  currentBotId?: string | null;
   includeEveryone?: boolean;
   /** When omitted, return every match (catalog build). When set, apply after query filter. */
   limit?: number;
@@ -195,6 +197,7 @@ export function buildComposerMentionOptions(input: {
   }
 
   for (const bot of input.bots) {
+    if (input.currentBotId && bot.id === input.currentBotId) continue;
     options.push({
       kind: "bot",
       id: bot.id,

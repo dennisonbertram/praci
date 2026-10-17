@@ -71,7 +71,7 @@ export function BotCreatePicker({
                 className="gap-2"
               >
                 <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
-                <Trans>Create new Bot</Trans>
+                <Trans>New bot</Trans>
               </CommandItem>
             ) : null}
             {matched.map((bot) => (
@@ -97,7 +97,7 @@ export function BotCreatePicker({
             >
               <Users size={16} strokeWidth={1.8} aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate">
-                <Trans>Create new Group</Trans>
+                <Trans>New group</Trans>
               </span>
               <button
                 type="button"
@@ -125,7 +125,7 @@ export function BotCreatePicker({
             >
               <Lock size={14} strokeWidth={1.8} aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate">
-                <Trans>Create new Space</Trans>
+                <Trans>New space</Trans>
               </span>
               <button
                 type="button"

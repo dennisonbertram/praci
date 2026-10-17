@@ -88,7 +88,8 @@ export function InboxConsentPrompt({
     >
       <Trans>
         Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and
-        newsletters. Senders, recipients, subjects and short previews are sent to {name}.
+        newsletters. Senders, recipients, subjects and short previews are sent to the AI service
+        that runs your bots ({name}).
       </Trans>
     </ConsentCard>
   );
