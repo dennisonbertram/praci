@@ -507,6 +507,10 @@ msgstr "Add an account to see cash, burn, runway and spend."
 msgid "Add another account"
 msgstr "Add another account"
 
+#: src/pages/CapTable.tsx
+msgid "Add auditor"
+msgstr "Add auditor"
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Add connected model"
 msgstr "Add connected model"
@@ -534,6 +538,10 @@ msgstr "Add email"
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr "Add files"
+
+#: src/pages/CapTable.tsx
+msgid "Add investor"
+msgstr "Add investor"
 
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/shell/bot-pins.tsx
@@ -564,6 +572,10 @@ msgstr "Add trigger"
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Add wallet"
 msgstr "Add wallet"
+
+#: src/pages/CapTable.tsx
+msgid "Add your investors, auditors and counsel here. Contacts are your address book; ownership comes from Carta."
+msgstr "Add your investors, auditors and counsel here. Contacts are your address book; ownership comes from Carta."
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
@@ -1231,6 +1243,7 @@ msgstr "Can't reach the server."
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1850,6 +1863,14 @@ msgstr "Connecting…"
 msgid "Connection test failed."
 msgstr "Connection test failed."
 
+#: src/pages/CapTable.tsx
+msgid "Contact saved"
+msgstr "Contact saved"
+
+#: src/pages/CapTable.tsx
+msgid "Contacts are your address book. They do not change Carta."
+msgstr "Contacts are your address book. They do not change Carta."
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Context limit"
@@ -2244,6 +2265,10 @@ msgstr "Could not render chart"
 #: src/pages/Auth.tsx
 msgid "Could not reset password"
 msgstr "Could not reset password"
+
+#: src/pages/CapTable.tsx
+msgid "Could not restore the contact"
+msgstr "Could not restore the contact"
 
 #: src/pages/Shell.tsx
 msgid "Could not run routine"
@@ -2658,6 +2683,11 @@ msgstr "Delete space"
 #: src/pages/Shell.tsx
 msgid "deleted"
 msgstr "deleted"
+
+#. placeholder {0}: gone.name
+#: src/pages/CapTable.tsx
+msgid "Deleted {0}"
+msgstr "Deleted {0}"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/dialogs.tsx
@@ -4341,6 +4371,10 @@ msgstr "No apps match."
 msgid "No artifacts found."
 msgstr "No artifacts found."
 
+#: src/pages/CapTable.tsx
+msgid "No auditors yet"
+msgstr "No auditors yet"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "No authentication"
 msgstr "No authentication"
@@ -4361,10 +4395,6 @@ msgstr "No bots match"
 msgid "No chat apps linked yet."
 msgstr "No chat apps linked yet."
 
-#: src/pages/CapTable.tsx
-msgid "No contacts yet"
-msgstr "No contacts yet"
-
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
@@ -4376,6 +4406,10 @@ msgstr "No folder"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
 msgstr "No group chats yet."
+
+#: src/pages/CapTable.tsx
+msgid "No investors yet"
+msgstr "No investors yet"
 
 #: src/components/AskCard.tsx
 msgid "No longer active"
@@ -4420,6 +4454,10 @@ msgstr "No models listed."
 #: src/pages/Inbox.tsx
 msgid "No more results"
 msgstr "No more results"
+
+#: src/pages/CapTable.tsx
+msgid "No other contacts yet"
+msgstr "No other contacts yet"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
@@ -4603,6 +4641,8 @@ msgid "Open"
 msgstr "Open"
 
 #. placeholder {0}: group.title
+#. placeholder {0}: sameEmail.name
+#: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0}"
 msgstr "Open {0}"
@@ -4767,6 +4807,10 @@ msgstr "Owner"
 #: src/pages/CapTable.tsx
 msgid "Ownership"
 msgstr "Ownership"
+
+#: src/pages/CapTable.tsx
+msgid "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here, and to ask the Carta agent about them."
+msgstr "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here, and to ask the Carta agent about them."
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
@@ -5096,6 +5140,10 @@ msgstr "Reconnect"
 #: src/pages/Finance.tsx
 msgid "Reconnect {name}"
 msgstr "Reconnect {name}"
+
+#: src/pages/CapTable.tsx
+msgid "Reconnect Carta"
+msgstr "Reconnect Carta"
 
 #: src/App.tsx
 #: src/components/ComputerUpdateProgress.tsx
@@ -5720,6 +5768,10 @@ msgstr "Searching…"
 msgid "Security"
 msgstr "Security"
 
+#: src/pages/CapTable.tsx
+msgid "See who owns your company"
+msgstr "See who owns your company"
+
 #: src/pages/Shell.tsx
 msgid "Select a bot"
 msgstr "Select a bot"
@@ -5936,6 +5988,10 @@ msgstr "Sign in again"
 msgid "Sign in to {appName} in the new window"
 msgstr "Sign in to {appName} in the new window"
 
+#: src/pages/CapTable.tsx
+msgid "Sign in to Carta again to see who owns your company"
+msgstr "Sign in to Carta again to see who owns your company"
+
 #: src/pages/Auth.tsx
 msgid "Sign in to Rakazo"
 msgstr "Sign in to Rakazo"
@@ -5943,6 +5999,14 @@ msgstr "Sign in to Rakazo"
 #: src/lib/user-error.ts
 msgid "Sign in to your existing account to link SSO"
 msgstr "Sign in to your existing account to link SSO"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Sign in with {service}"
+msgstr "Sign in with {service}"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Sign in with {service} in the window that opens."
+msgstr "Sign in with {service} in the window that opens."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
@@ -6624,6 +6688,7 @@ msgid "Underline"
 msgstr "Underline"
 
 #: src/components/MailOutbox.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 msgid "Undo"
 msgstr "Undo"

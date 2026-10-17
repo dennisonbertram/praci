@@ -4,6 +4,7 @@ import type { Contact } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -58,9 +59,22 @@ const button = (label: string) =>
     | undefined;
 const click = (el: HTMLElement | undefined) => act(async () => el?.click());
 
-async function show() {
-  await act(async () => root.render(<CapTablePage onConnectCarta={() => {}} />));
+async function show(url = "/app/cap-table") {
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={[url]}>
+        <CapTablePage onConnectCarta={() => {}} />
+      </MemoryRouter>,
+    ),
+  );
   await flush();
+}
+async function typeInto(id: string, value: string) {
+  const input = document.getElementById(id) as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 }
 
 beforeEach(() => {
@@ -119,10 +133,10 @@ it("shows Connect Carta only without a Carta server", async () => {
   expect(button("Connect Carta")).toBeDefined();
 });
 
-it("shows Connect Carta when the Carta sign-in needs attention", async () => {
+it("shows Reconnect Carta when the Carta sign-in needs attention", async () => {
   rpcMock.servers.mockResolvedValue([{ ...cartaServer, oauthStatus: "reconnect" }]);
   await show();
-  expect(button("Connect Carta")).toBeDefined();
+  expect(container.textContent).toContain("Sign in to Carta again");
 });
 
 it("ignores a contacts response that arrives after a newer reload", async () => {
@@ -299,4 +313,71 @@ it("retries the refresh, not the contacts load, after a failed refresh", async (
   expect(rpcMock.refresh).toHaveBeenCalledTimes(2);
   expect(rpcMock.list.mock.calls.length).toBe(lists);
   expect(container.textContent).not.toContain("boom");
+});
+
+it("offers to open the contact that already has the email when adding a duplicate", async () => {
+  rpcMock.save.mockRejectedValueOnce(new Error("Another contact already has this email."));
+  await show();
+  await click(button("Add contact"));
+  await typeInto("contact-name", "Ada R.");
+  await typeInto("contact-email", "ADA@example.test");
+  await click(button("Save"));
+  expect(document.body.textContent).toContain("Another contact already has this email.");
+  await click(button("Open Ada"));
+  expect(document.body.textContent).toContain("Edit contact");
+  expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Ada");
+});
+
+it("deletes a contact with an Undo that restores it", async () => {
+  rpcMock.remove.mockResolvedValue({ ok: true });
+  rpcMock.save.mockResolvedValue({});
+  await show();
+  await click(button("Bo"));
+  await click(button("Delete"));
+  expect(rpcMock.remove).toHaveBeenCalledWith({ id: "c2" });
+  expect(document.body.textContent).toContain("Deleted Bo");
+  await click(button("Undo"));
+  expect(rpcMock.save).toHaveBeenCalledWith({
+    name: "Bo",
+    email: "bo@example.test",
+    organization: null,
+    kind: "auditor",
+    notes: null,
+  });
+  expect(document.body.textContent).not.toContain("Deleted Bo");
+});
+
+it("confirms a save and closes the dialog with Cancel", async () => {
+  rpcMock.save.mockResolvedValue({});
+  await show();
+  await click(button("Add contact"));
+  await click(button("Cancel"));
+  expect(document.getElementById("contact-name")).toBeNull();
+  expect(rpcMock.save).not.toHaveBeenCalled();
+  await click(button("Add contact"));
+  await typeInto("contact-name", "Cy");
+  await click(button("Save"));
+  expect(document.body.textContent).toContain("Contact saved");
+});
+
+it("reads the kind filter from the URL and names the kind when it is empty", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
+  await show("/app/cap-table?kind=auditor");
+  expect(button("Auditors")?.getAttribute("aria-selected")).toBe("true");
+  expect(container.textContent).not.toContain("Ada");
+  expect(container.textContent).toContain("No auditors yet");
+  await click(button("Add auditor"));
+  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("auditor");
+});
+
+it("explains where ownership comes from when Carta is not connected", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  await show();
+  expect(container.textContent).toContain("See who owns your company");
+  expect(container.textContent).toContain("Ownership comes from Carta.");
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.servers.mockResolvedValue([{ ...cartaServer, oauthStatus: "reconnect" }]);
+  await show();
+  expect(container.textContent).toContain("Sign in to Carta again");
 });

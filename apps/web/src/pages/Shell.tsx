@@ -194,8 +194,10 @@ import {
 import {
   BOTS_SIDEBAR_EDGE_DRAG_PX,
   readBotsSidebarCollapsed,
+  readCartaAgentCollapsed,
   readInboxAgentCollapsed,
   writeBotsSidebarCollapsed,
+  writeCartaAgentCollapsed,
   writeInboxAgentCollapsed,
 } from "../lib/bots-sidebar-pref";
 import {
@@ -474,14 +476,17 @@ export function ShellPage() {
   const [financeAgentOpen, setFinanceAgentOpen] = useState(false);
   const [creatingFinanceAgent, setCreatingFinanceAgent] = useState(false);
   const [financeAgentError, setFinanceAgentError] = useState("");
-  // The Carta agent panel is open on every visit to Cap Table and can be collapsed.
-  const [cartaAgentOpen, setCartaAgentOpen] = useState(true);
+  // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
+  // would cover the page.
+  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(
+    () => !window.matchMedia("(min-width: 768px)").matches,
+  );
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
   const [cartaAgentError, setCartaAgentError] = useState("");
   useEffect(() => {
-    setInboxAgentCollapsed(
-      readInboxAgentCollapsed(userId) || !window.matchMedia("(min-width: 768px)").matches,
-    );
+    const phone = !window.matchMedia("(min-width: 768px)").matches;
+    setInboxAgentCollapsed(readInboxAgentCollapsed(userId) || phone);
+    setCartaAgentCollapsed(readCartaAgentCollapsed(userId) || phone);
   }, [userId]);
   const [query, setQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
@@ -863,9 +868,6 @@ export function ShellPage() {
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
-  useEffect(() => {
-    if (!capTableMode) setCartaAgentOpen(true);
-  }, [capTableMode]);
   const active =
     inGroup || integrationsMode || dataRoomMode
       ? undefined
@@ -2509,6 +2511,11 @@ export function ShellPage() {
     writeInboxAgentCollapsed(userId, collapsed);
   }
 
+  function setCartaAgentCollapsedPref(collapsed: boolean) {
+    setCartaAgentCollapsed(collapsed);
+    writeCartaAgentCollapsed(userId, collapsed);
+  }
+
   async function createFinanceAgent() {
     setCreatingFinanceAgent(true);
     setFinanceAgentError("");
@@ -2591,8 +2598,9 @@ export function ShellPage() {
         ? {
             name: "carta-agent",
             testId: "carta-agent-panel",
-            open: cartaAgentOpen,
-            collapse: () => setCartaAgentOpen(false),
+            // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
+            open: !cartaAgentCollapsed && Boolean(active || creatingCartaAgent || cartaAgentError),
+            collapse: () => setCartaAgentCollapsedPref(true),
             collapseLabel: t`Collapse Carta agent`,
             create: undefined,
             createLabel: "",
@@ -4096,8 +4104,12 @@ export function ShellPage() {
           <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
         ) : capTableMode ? (
           <CapTablePage
-            onShowAgent={cartaAgentOpen ? undefined : () => setCartaAgentOpen(true)}
-            onConnectCarta={() => navigate("/app/integrations?q=carta")}
+            onShowAgent={
+              active && cartaAgentCollapsed ? () => setCartaAgentCollapsedPref(false) : undefined
+            }
+            onConnectCarta={() =>
+              navigate("/app/integrations?q=carta&connect=carta&returnTo=/app/cap-table")
+            }
           />
         ) : inboxMode ? (
           <InboxPage

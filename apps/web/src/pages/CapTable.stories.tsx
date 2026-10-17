@@ -114,3 +114,18 @@ export const ReadingCarta: Story = {
       "carta.capTable": { snapshot: null, syncing: true },
     }),
 };
+
+export const CartaNeedsSignIn: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [{ ...cartaServer, oauthStatus: "reconnect" }],
+    }),
+};
+
+/** A kind tab with no contacts of that kind names the kind and offers to add one. */
+export const NoAuditors: Story = {
+  parameters: { initialEntries: ["/app/cap-table?kind=auditor"] },
+  beforeEach: () =>
+    mockRpc({ "contacts.list": [contacts[0], contacts[2]], "mcp.servers.list": [cartaServer] }),
+};
