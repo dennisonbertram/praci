@@ -1,21 +1,12 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  Skeleton,
-  Toggle,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@rakazo/ui-web";
+import type { DataRoomApiFacetValues, DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
+import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web";
 import { LayoutGrid, List, Plus, Upload } from "lucide-react";
-import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
-import { FilterBar, facetOptions } from "../components/data-room/FilterBar";
+import { FilterBar, facetOptions, Tip } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderContents, folderNodes } from "../components/data-room/folders";
 import { ImportSources } from "../components/data-room/ImportFromEmail";
@@ -29,7 +20,6 @@ import type { ItemAction } from "../components/data-room/ItemMenu";
 import {
   GridView,
   ListView,
-  ResultsView,
   type RowInteraction,
   SubfolderList,
 } from "../components/data-room/ItemRows";
@@ -65,16 +55,6 @@ function useDebounced<T>(value: T, ms: number) {
   return debounced;
 }
 
-/** A hover and focus label for an icon-only control. */
-function Tip({ label, children }: { label: string; children: ReactElement }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger render={children} />
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
-}
-
 function FileInputButton({
   children,
   tip,
@@ -95,7 +75,8 @@ function FileInputButton({
         }}
       />
       {tip ? (
-        <Tip label={tip}>
+        // To the side, so the label never covers the toolbar below.
+        <Tip label={tip} side="left">
           <Button {...props} onClick={() => input.current?.click()}>
             {children}
           </Button>
@@ -163,19 +144,16 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
   const list = useDataRoomList({ query, filters, sort });
 
   const [folders, setFolders] = useState<DataRoomApiFolder[]>([]);
-  const foldersLoaded = useRef(false);
   const reloadFolders = useCallback(() => {
     rpc.dataRoom
       .folders()
       .then((next) => {
         setFolders(next);
-        const first = !foldersLoaded.current;
-        foldersLoaded.current = true;
-        // A folder that no longer exists (deleted, or a stale link) falls back to All items.
+        // A folder that no longer exists (a stale link, or deleted in another tab) falls back to
+        // All items, and says why. Deleting it here moves to its parent first, so no message.
         const open = urlFolderRef.current;
         if (open && !next.some((folder) => folder.id === open)) {
-          // Only a link says so: a folder deleted while the page was open has its own message.
-          if (first) showNoticeToast(t`That folder no longer exists`);
+          showNoticeToast(t`That folder no longer exists`);
           setParamsRef.current(
             (prev) => {
               const params = new URLSearchParams(prev);
@@ -216,7 +194,26 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
     [nodes],
   );
 
-  const reload = list.reload;
+  // What the filters offer: every value in the open folder, not only the loaded page.
+  const [facetValues, setFacetValues] = useState<DataRoomApiFacetValues | null>(null);
+  const [facetsVersion, setFacetsVersion] = useState(0);
+  const facetFolder = filters.folderId;
+  // facetsVersion changes to ask for a fresh read.
+  useEffect(() => {
+    let live = true;
+    rpc.dataRoom
+      .facetValues({ folderId: facetFolder })
+      .then((next) => live && setFacetValues(next))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [facetFolder, facetsVersion]);
+  const listReload = list.reload;
+  const reload = useCallback(() => {
+    listReload();
+    setFacetsVersion((n) => n + 1);
+  }, [listReload]);
   useEffect(() => {
     window.addEventListener(DATA_ROOM_CHANGED, reload);
     return () => window.removeEventListener(DATA_ROOM_CHANGED, reload);
@@ -348,9 +345,12 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
   function retry(item: DataRoomApiItem) {
     rpc.dataRoom
       .itemRetry({ id: item.id })
-      .then((updated) => setPinned((current) => (current?.id === updated.id ? updated : current)))
+      .then((updated) => {
+        showNoticeToast(t`Reading ${updated.name} again`);
+        setPinned((current) => (current?.id === updated.id ? updated : current));
+      })
       .catch((cause) => showNoticeToast(errorText(cause)))
-      .finally(list.reload);
+      .finally(reload);
   }
 
   function closePreview() {
@@ -388,14 +388,24 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
     !searching &&
     !hasFilters;
   const rows = list.rows;
-  // An empty result keeps the filters it came from on screen, so changing one is not a dead end.
-  const shownOptions = useMemo(() => facetOptions(rows.map(({ item }) => item)), [rows]);
-  const lastOptions = useRef(shownOptions);
-  if (rows.length) lastOptions.current = shownOptions;
-  const options = rows.length ? shownOptions : lastOptions.current;
-  const subfolderList = (
+  // The folder's values, plus any on rows newer than that answer. They stay when a search or
+  // filter finds nothing, so changing one is never a dead end.
+  const options = useMemo(() => {
+    const shown = facetOptions(rows.map(({ item }) => item));
+    if (!facetValues) return shown;
+    const merge = (a: string[], b: string[]) =>
+      [...new Set([...a, ...b])].sort((x, y) => x.localeCompare(y));
+    return {
+      types: merge(facetValues.types, shown.types),
+      parties: merge(facetValues.parties, shown.parties),
+      sources: [...new Set([...facetValues.sources, ...shown.sources])],
+      hasDates: facetValues.hasDates || shown.hasDates,
+    };
+  }, [rows, facetValues]);
+  const subfolderList = (rowClass?: string) => (
     <SubfolderList
       tiles={view === "grid"}
+      rowClass={rowClass}
       contents={(folder) => folderContents(folder, folders)}
       folders={subfolders}
       onOpen={(folderId) => setFilters({ ...filters, folderId })}
@@ -410,12 +420,15 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center gap-2 px-4 pt-2 pb-3 md:px-7 md:pt-5">
-        <div className="me-auto flex min-w-0 items-baseline gap-2">
+        {/* The company's name goes under the title where a line is too short for both. */}
+        <div className="me-auto flex min-w-0 flex-col @min-[640px]/bd:flex-row @min-[640px]/bd:items-baseline @min-[640px]/bd:gap-2">
           <h1 className="shrink-0 text-lg font-semibold">
             <Trans>Data room</Trans>
           </h1>
           {spaceName ? (
-            <span className="min-w-0 truncate text-xs text-muted-foreground">{spaceName}</span>
+            <span className="min-w-0 text-xs break-words text-muted-foreground @min-[640px]/bd:truncate">
+              {spaceName}
+            </span>
           ) : null}
         </div>
         {empty ? null : (
@@ -476,7 +489,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
       ) : (
         <>
           <div className="px-3 pb-2.5 empty:hidden md:px-5">
-            <DataRoomConsentPrompt onAllowed={list.reload} />
+            <DataRoomConsentPrompt onAllowed={reload} />
           </div>
           <FilterBar
             query={queryInput}
@@ -552,11 +565,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
                   )}
                   {searching ? (
                     <p className="text-xs">
-                      {query.includes(" ") ? (
-                        <Trans>Search matches words in names and text. Try fewer words.</Trans>
-                      ) : (
-                        <Trans>Search matches words in names and text.</Trans>
-                      )}
+                      <Trans>Search looks for these words in names and text.</Trans>
                     </p>
                   ) : null}
                   {filtered ? (
@@ -565,11 +574,9 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
                     </Button>
                   ) : null}
                 </div>
-              ) : searching ? (
-                <ResultsView rows={rows} o={interaction} />
-              ) : view === "grid" ? (
+              ) : view === "grid" && !searching ? (
                 <>
-                  {subfolderList}
+                  {subfolderList()}
                   <GridView rows={rows} o={interaction} />
                 </>
               ) : (
@@ -617,7 +624,11 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
           folders={nodes}
           parentId={filters.folderId}
           onClose={() => setCreatingFolder(false)}
-          onDone={reloadFolders}
+          onDone={(folder) => {
+            showNoticeToast(t`Created ${folder.name}`);
+            reloadFolders();
+            setFilters({ ...filters, folderId: folder.id });
+          }}
         />
       ) : null}
       {action ? (
@@ -643,7 +654,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
               setPinned(updated);
             }
             if (kind === "rename" && updated) showRenamedToast(updated.name);
-            list.reload();
+            reload();
             reloadFolders();
           }}
         />

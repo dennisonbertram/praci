@@ -11,7 +11,11 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
@@ -136,7 +140,7 @@ it("moves a folder anywhere but into itself or a folder under it", async () => {
   const select = document.querySelector<HTMLSelectElement>('select[name="folder"]');
   if (!select) throw new Error("no folder select");
   expect(Array.from(select.options).map((option) => option.textContent)).toEqual([
-    "Top level",
+    "All items",
     "Legal",
     "New folder…",
   ]);
@@ -212,4 +216,45 @@ it("selects the name without its extension when renaming", async () => {
   );
   const name = document.querySelector<HTMLInputElement>('input[name="name"]');
   expect([name?.selectionStart, name?.selectionEnd]).toEqual([0, "Lease".length]);
+});
+
+it("says up front that a folder with files cannot be deleted, and offers no Delete", async () => {
+  const hr = { id: "f-hr", name: "HR", parentId: null, createdAt: "", itemCount: 3 };
+  await act(async () =>
+    root.render(
+      <ItemDialog
+        action="delete"
+        item={hr}
+        folders={folderNodes([hr])}
+        onClose={vi.fn()}
+        onDone={vi.fn()}
+      />,
+    ),
+  );
+  const dialog = document.querySelector('[role="alertdialog"]');
+  expect(dialog?.textContent).toContain("It holds 3 items");
+  const buttons = Array.from(dialog?.querySelectorAll("button") ?? []).map((b) => b.textContent);
+  expect(buttons).toEqual(["OK"]);
+  expect(rpc.folderDelete).not.toHaveBeenCalled();
+});
+
+it("still deletes an empty folder after a confirmation", async () => {
+  const old = { id: "f-old", name: "Old", parentId: null, createdAt: "", itemCount: 0 };
+  rpc.folderDelete.mockResolvedValue({ ok: true });
+  await act(async () =>
+    root.render(
+      <ItemDialog
+        action="delete"
+        item={old}
+        folders={folderNodes([old])}
+        onClose={vi.fn()}
+        onDone={vi.fn()}
+      />,
+    ),
+  );
+  const remove = Array.from(document.querySelectorAll('[role="alertdialog"] button')).find(
+    (b) => b.textContent === "Delete",
+  ) as HTMLButtonElement;
+  await act(async () => remove.click());
+  expect(rpc.folderDelete).toHaveBeenCalledWith({ id: "f-old" });
 });

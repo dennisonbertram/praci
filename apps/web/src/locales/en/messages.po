@@ -744,6 +744,7 @@ msgstr "all dates"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
+#: src/components/data-room/ItemDialogs.tsx
 msgid "All items"
 msgstr "All items"
 
@@ -2770,6 +2771,11 @@ msgstr "Create your account"
 msgid "Created"
 msgstr "Created"
 
+#. placeholder {0}: folder.name
+#: src/pages/DataRoom.tsx
+msgid "Created {0}"
+msgstr "Created {0}"
+
 #: src/pages/GroupPanel.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Creating…"
@@ -3845,6 +3851,10 @@ msgstr "How often"
 msgid "How to check"
 msgstr "How to check"
 
+#: src/components/data-room/format.ts
+msgid "HR document"
+msgstr "HR document"
+
 #: src/components/inbox/InboxAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 msgstr "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
@@ -3992,6 +4002,10 @@ msgstr "Interval unit"
 msgid "Investor"
 msgstr "Investor"
 
+#: src/components/data-room/format.ts
+msgid "Investor document"
+msgstr "Investor document"
+
 #: src/pages/CapTable.tsx
 msgid "Investors"
 msgstr "Investors"
@@ -4004,6 +4018,10 @@ msgstr "Isolated"
 #: src/pages/Artifacts.tsx
 msgid "Isolated preview — no access to your account"
 msgstr "Isolated preview — no access to your account"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "It holds {holds}. Move or delete what is in it first; only an empty folder can be deleted."
+msgstr "It holds {holds}. Move or delete what is in it first; only an empty folder can be deleted."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "It now appears under Connected."
@@ -4139,6 +4157,10 @@ msgstr "Leave"
 msgid "Legal"
 msgstr "Legal"
 
+#: src/components/data-room/format.ts
+msgid "Legal document"
+msgstr "Legal document"
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Legal relationships"
 msgstr "Legal relationships"
@@ -4158,6 +4180,10 @@ msgstr "Let Rakazo sort your mail"
 #: src/components/legal/ConsentPrompt.tsx
 msgid "Let the Legal agent read your documents"
 msgstr "Let the Legal agent read your documents"
+
+#: src/components/data-room/format.ts
+msgid "Letter or email"
+msgstr "Letter or email"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
@@ -5135,6 +5161,14 @@ msgstr "Not sent"
 msgid "Not sent. {text}"
 msgstr "Not sent. {text}"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not tagged"
+msgstr "Not tagged"
+
+#: src/components/data-room/Preview.tsx
+msgid "Not tagged yet. Files are tagged once you let Rakazo read documents; you can still search it by name and text."
+msgstr "Not tagged yet. Files are tagged once you let Rakazo read documents; you can still search it by name and text."
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not waiting for approval"
 msgstr "Not waiting for approval"
@@ -5183,6 +5217,10 @@ msgstr "OAuth connection failed"
 msgid "Obligation"
 msgstr "Obligation"
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "OK"
+msgstr "OK"
+
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -5197,10 +5235,6 @@ msgstr "On a schedule"
 msgid "on the 1st at {0}"
 msgstr "on the 1st at {0}"
 
-#: src/components/data-room/ItemDialogs.tsx
-msgid "Only an empty folder can be deleted. This can't be undone."
-msgstr "Only an empty folder can be deleted. This can't be undone."
-
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -5209,6 +5243,7 @@ msgstr "Only empty spaces can be deleted. Delete its bots and groups first."
 msgid "Only if the server does not use sign-in"
 msgstr "Only if the server does not use sign-in"
 
+#: src/components/data-room/Preview.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
@@ -5682,8 +5717,8 @@ msgid "Quote"
 msgstr "Quote"
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "Rakazo can tag files you add and sort them into folders. To do that, their text (and images) is sent to {names}. Files that already have tags keep them."
-msgstr "Rakazo can tag files you add and sort them into folders. To do that, their text (and images) is sent to {names}. Files that already have tags keep them."
+msgid "Rakazo can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
+msgstr "Rakazo can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
 
 #: src/components/AiDataSharing.tsx
 msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
@@ -5730,6 +5765,11 @@ msgstr "Read-only API key"
 #: src/components/data-room/format.ts
 msgid "Reading"
 msgstr "Reading"
+
+#. placeholder {0}: updated.name
+#: src/pages/DataRoom.tsx
+msgid "Reading {0} again"
+msgstr "Reading {0} again"
 
 #: src/pages/CapTable.tsx
 msgid "Reading Carta…"
@@ -6151,10 +6191,6 @@ msgstr "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgid "Restoring your workspace"
 msgstr "Restoring your workspace"
 
-#: src/components/data-room/ItemRows.tsx
-msgid "Results"
-msgstr "Results"
-
 #: src/components/AccountAccess.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
@@ -6425,6 +6461,10 @@ msgstr "Search documents"
 msgid "Search Drive"
 msgstr "Search Drive"
 
+#: src/pages/DataRoom.tsx
+msgid "Search looks for these words in names and text."
+msgstr "Search looks for these words in names and text."
+
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
 msgid "Search mail"
@@ -6437,14 +6477,6 @@ msgstr "Search mail for “{query}”"
 #: src/pages/Inbox.tsx
 msgid "Search mail, e.g. from:sam has:attachment"
 msgstr "Search mail, e.g. from:sam has:attachment"
-
-#: src/pages/DataRoom.tsx
-msgid "Search matches words in names and text."
-msgstr "Search matches words in names and text."
-
-#: src/pages/DataRoom.tsx
-msgid "Search matches words in names and text. Try fewer words."
-msgstr "Search matches words in names and text. Try fewer words."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
@@ -7095,6 +7127,10 @@ msgstr "Take control"
 msgid "Task board"
 msgstr "Task board"
 
+#: src/components/data-room/format.ts
+msgid "Tax document"
+msgstr "Tax document"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"
 msgstr "Teach a task"
@@ -7199,6 +7235,11 @@ msgstr "The connection timed out."
 #: src/components/finance/StatementImport.tsx
 msgid "The file is too large"
 msgstr "The file is too large"
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "The folder {0} isn't empty"
+msgstr "The folder {0} isn't empty"
 
 #: src/pages/Shell.tsx
 msgid "the group"
@@ -7409,10 +7450,6 @@ msgstr "Tools · {0}"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Tools from an Executor server you run"
 msgstr "Tools from an Executor server you run"
-
-#: src/components/data-room/ItemDialogs.tsx
-msgid "Top level"
-msgstr "Top level"
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Total balance"

@@ -5,14 +5,32 @@ import { useEffect, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { ConsentCard } from "../AiDataSharing";
 
+const DISMISSED_KEY = "rakazo.dataRoomConsentDismissed";
+
+/** The consent version this browser said "Not now" to; asked again only when it changes. */
+function readDismissed(): string | null {
+  try {
+    return localStorage.getItem(DISMISSED_KEY);
+  } catch {
+    return null;
+  }
+}
+function saveDismissed(value: string) {
+  try {
+    localStorage.setItem(DISMISSED_KEY, value);
+  } catch {
+    // Storage blocked: "Not now" lasts until the page closes.
+  }
+}
+
 /**
  * Asks for permission to send documents to the space's model, which reads, tags and files them.
- * Without a model it says why nothing is read. Hidden once allowed, after "Not now" (for this
- * visit, as on the Inbox), or when the status cannot load.
+ * Without a model it says why nothing is read. Hidden once allowed, after "Not now" (remembered in
+ * this browser until the request changes), or when the status cannot load.
  */
 export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) {
   const [status, setStatus] = useState<DataRoomConsentStatus | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(readDismissed);
   useEffect(() => {
     let live = true;
     rpc.dataRoom
@@ -24,7 +42,8 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
     };
   }, []);
 
-  if (!status || status.allowed || dismissed) return null;
+  const version = status ? `${status.key}:${status.version}` : "";
+  if (!status || status.allowed || dismissed === version) return null;
   if (status.recipients.length === 0) {
     return (
       <Card size="sm" className="px-3.5 text-xs text-muted-foreground">
@@ -44,11 +63,15 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
         setStatus(await rpc.dataRoom.consentGrant({ key: status.key, version: status.version }));
         onAllowed();
       }}
-      onDismiss={() => setDismissed(true)}
+      onDismiss={() => {
+        saveDismissed(version);
+        setDismissed(version);
+      }}
     >
       <Trans>
         Rakazo can tag files you add and sort them into folders. To do that, their text (and images)
-        is sent to {names}. Files that already have tags keep them.
+        is sent to the AI service that runs your bots ({names}). Files that already have tags keep
+        them.
       </Trans>
     </ConsentCard>
   );

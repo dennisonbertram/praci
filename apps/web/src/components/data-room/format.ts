@@ -9,12 +9,21 @@ export const dateText = (iso: string | null) =>
       }).format(new Date(iso))
     : "";
 
+/** Words for the types the classifier gives (DataRoomDocTypeSchema), where one word is unclear. */
+const typeNames = (): Record<string, string> => ({
+  tax: t`Tax document`,
+  legal: t`Legal document`,
+  hr: t`HR document`,
+  investor: t`Investor document`,
+  correspondence: t`Letter or email`,
+});
+
 /**
- * A document type as shown: first letter capitalised, so "investor" from a model and "Board deck"
- * from another read as one list. The stored value (and the filter) stays as it is.
+ * A document type as shown: a clear name for the classifier's short types, otherwise the value
+ * with its first letter capitalised. The stored value (and the filter) stays as it is.
  */
 export const typeLabel = (docType: string | null) =>
-  docType ? docType.charAt(0).toLocaleUpperCase() + docType.slice(1) : "";
+  docType ? (typeNames()[docType] ?? docType.charAt(0).toLocaleUpperCase() + docType.slice(1)) : "";
 
 /**
  * True once the item's text, type and folder are in place. "indexing" only brings search up to

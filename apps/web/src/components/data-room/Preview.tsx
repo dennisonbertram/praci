@@ -3,10 +3,16 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
-import { Download, FileText, RotateCw, Trash2, X } from "lucide-react";
+import { Download, ExternalLink, FileText, RotateCw, Trash2, X } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { canPreviewImage, dataRoomImageUrl, saveDataRoomItem } from "../../lib/data-room";
+import {
+  canOpenInBrowser,
+  canPreviewImage,
+  dataRoomImageUrl,
+  openDataRoomItem,
+  saveDataRoomItem,
+} from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
 import {
   getHideAmounts,
@@ -96,6 +102,10 @@ export function Preview({
     setError("");
     saveDataRoomItem(item).catch((cause) => setError(errorText(cause)));
   };
+  const open = () => {
+    setError("");
+    openDataRoomItem(item).catch((cause) => setError(errorText(cause)));
+  };
   return (
     <aside
       aria-label={t`Preview`}
@@ -103,7 +113,7 @@ export function Preview({
       className={
         inDialog
           ? "flex flex-col gap-3 p-4"
-          : "flex w-80 shrink-0 flex-col gap-3 overflow-y-auto border-s border-border bg-background p-3"
+          : "flex w-72 shrink-0 flex-col gap-3 overflow-y-auto border-s border-border bg-background p-3"
       }
     >
       {/* In a dialog, leave room for its close button. */}
@@ -147,6 +157,13 @@ export function Preview({
       ) : null}
       {isSettled(item.status) && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
+      ) : isSettled(item.status) && !facets.docType ? (
+        <p className="text-xs text-muted-foreground">
+          <Trans>
+            Not tagged yet. Files are tagged once you let Rakazo read documents; you can still
+            search it by name and text.
+          </Trans>
+        </p>
       ) : null}
       <dl className="grid grid-cols-[72px_1fr] gap-x-2 gap-y-1.5 text-sm">
         {facets.docType ? <Field label={t`Type`}>{typeLabel(facets.docType)}</Field> : null}
@@ -197,6 +214,12 @@ export function Preview({
           <Button onClick={() => onAction("retry", item)}>
             <RotateCw aria-hidden="true" />
             <Trans>Try again</Trans>
+          </Button>
+        ) : null}
+        {item.status !== "failed" && canOpenInBrowser(item) ? (
+          <Button onClick={open}>
+            <ExternalLink aria-hidden="true" />
+            <Trans>Open</Trans>
           </Button>
         ) : null}
         <Button variant="outline" onClick={download}>

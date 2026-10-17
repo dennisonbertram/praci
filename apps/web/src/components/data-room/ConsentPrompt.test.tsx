@@ -47,6 +47,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();
+  localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -97,7 +98,7 @@ it("shows nothing once allowed", async () => {
   expect(container.textContent).toBe("");
 });
 
-it("hides for this visit on Not now, without allowing", async () => {
+it("hides on Not now, without allowing, and stays hidden next visit until the request changes", async () => {
   rpc.consent.mockResolvedValue(status());
   const onAllowed = vi.fn();
   await render(onAllowed);
@@ -106,4 +107,21 @@ it("hides for this visit on Not now, without allowing", async () => {
   expect(container.textContent).toBe("");
   expect(rpc.consentGrant).not.toHaveBeenCalled();
   expect(onAllowed).not.toHaveBeenCalled();
+});
+
+it("remembers Not now across visits, and asks again for a new version", async () => {
+  rpc.consent.mockResolvedValue(status());
+  await render();
+  const notNow = [...container.querySelectorAll("button")].find((b) => b.textContent === "Not now");
+  await act(async () => notNow?.click());
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await render();
+  expect(container.textContent).toBe("");
+
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpc.consent.mockResolvedValue(status({ version: "2027-01-01" }));
+  await render();
+  expect(container.textContent).toContain("Let Rakazo read your documents");
 });

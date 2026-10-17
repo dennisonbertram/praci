@@ -25,7 +25,7 @@ import {
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
-import type { FolderNode } from "./folders";
+import { type FolderNode, folderContents } from "./folders";
 import type { ItemAction } from "./ItemMenu";
 
 /** The Move select's value for "put it in a new folder", which no folder id can equal. */
@@ -53,7 +53,7 @@ function NameInput({ name, invalid }: { name: string; invalid: boolean }) {
   );
 }
 
-/** "Top level" and every folder by path, for choosing where something goes. */
+/** The top level (named as the tree names it) and every folder by path, for choosing a place. */
 function FolderOptions({
   folders,
   blocked = new Set<string>(),
@@ -91,6 +91,7 @@ export function NewFolderDialog({
 }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const parentField = useId();
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -123,14 +124,19 @@ export function NewFolderDialog({
             aria-invalid={error ? true : undefined}
             autoFocus
           />
-          <NativeSelect
-            name="parent"
-            aria-label={t`Inside`}
-            defaultValue={parentId ?? ""}
-            className="w-full"
-          >
-            <FolderOptions folders={folders} topLabel={t`Top level`} />
-          </NativeSelect>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={parentField}>
+              <Trans>Inside</Trans>
+            </Label>
+            <NativeSelect
+              id={parentField}
+              name="parent"
+              defaultValue={parentId ?? ""}
+              className="w-full"
+            >
+              <FolderOptions folders={folders} topLabel={t`All items`} />
+            </NativeSelect>
+          </div>
           {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
@@ -196,16 +202,33 @@ export function ItemDialog({
   }
 
   if (action === "delete") {
+    // A folder with something in it cannot be deleted: say so before, not after, the click.
+    const full =
+      folder &&
+      ((item.itemCount ?? 0) > 0 || folders.some((node) => node.folder.parentId === item.id));
+    const holds = full
+      ? folderContents(
+          item,
+          folders.map((node) => node.folder),
+        )
+      : "";
     return (
       <AlertDialog open onOpenChange={(open) => !open && onClose()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {folder ? t`Delete the folder ${item.name}?` : t`Delete ${item.name}?`}
+              {full
+                ? t`The folder ${item.name} isn't empty`
+                : folder
+                  ? t`Delete the folder ${item.name}?`
+                  : t`Delete ${item.name}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {folder ? (
-                <Trans>Only an empty folder can be deleted. This can't be undone.</Trans>
+              {full ? (
+                <Trans>
+                  It holds {holds}. Move or delete what is in it first; only an empty folder can be
+                  deleted.
+                </Trans>
               ) : (
                 <Trans>This can't be undone.</Trans>
               )}
@@ -214,24 +237,26 @@ export function ItemDialog({
           {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
           <AlertDialogFooter>
             <AlertDialogCancel>
-              <Trans>Cancel</Trans>
+              {full ? <Trans>OK</Trans> : <Trans>Cancel</Trans>}
             </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={busy}
-              onClick={(event) => {
-                // Stay open to show an error.
-                event.preventDefault();
-                void run(async () => {
-                  await (folder
-                    ? rpc.dataRoom.folderDelete({ id: item.id })
-                    : rpc.dataRoom.itemDelete({ id: item.id }));
-                  return null;
-                });
-              }}
-            >
-              <Trans>Delete</Trans>
-            </AlertDialogAction>
+            {full ? null : (
+              <AlertDialogAction
+                variant="destructive"
+                disabled={busy}
+                onClick={(event) => {
+                  // Stay open to show an error.
+                  event.preventDefault();
+                  void run(async () => {
+                    await (folder
+                      ? rpc.dataRoom.folderDelete({ id: item.id })
+                      : rpc.dataRoom.itemDelete({ id: item.id }));
+                    return null;
+                  });
+                }}
+              >
+                <Trans>Delete</Trans>
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -291,7 +316,7 @@ export function ItemDialog({
                 <FolderOptions
                   folders={folders}
                   blocked={blocked}
-                  topLabel={folder ? t`Top level` : t`No folder`}
+                  topLabel={folder ? t`All items` : t`No folder`}
                 />
                 <NativeSelectOption value={NEW_FOLDER}>{t`New folder…`}</NativeSelectOption>
               </NativeSelect>
@@ -315,7 +340,7 @@ export function ItemDialog({
                       defaultValue={blocked.has(current) ? "" : current}
                       className="w-full"
                     >
-                      <FolderOptions folders={folders} blocked={blocked} topLabel={t`Top level`} />
+                      <FolderOptions folders={folders} blocked={blocked} topLabel={t`All items`} />
                     </NativeSelect>
                   </div>
                 </>

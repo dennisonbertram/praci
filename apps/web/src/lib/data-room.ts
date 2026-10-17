@@ -142,3 +142,26 @@ export async function dataRoomImageUrl(item: Pick<DataRoomApiItem, "id" | "mimeT
   const blob = await fetchDataRoomBlob(item);
   return URL.createObjectURL(new Blob([blob], { type: item.mimeType }));
 }
+
+/** PDFs and raster images, which the browser shows by itself; anything else only downloads. */
+export const canOpenInBrowser = (item: Pick<DataRoomApiItem, "mimeType">) =>
+  item.mimeType === "application/pdf" || PREVIEW_IMAGE_TYPES.has(item.mimeType);
+
+/**
+ * Shows the file in a new tab, typed by us (never by the server), for reading without saving it.
+ * The tab opens at once, before the bytes arrive, so the browser does not block it as a pop-up.
+ */
+export async function openDataRoomItem(item: Pick<DataRoomApiItem, "id" | "mimeType">) {
+  const tab = window.open("", "_blank");
+  if (tab) tab.opener = null;
+  try {
+    const blob = await fetchDataRoomBlob(item);
+    const url = URL.createObjectURL(new Blob([blob], { type: item.mimeType }));
+    if (tab) tab.location.href = url;
+    else window.open(url, "_blank", "noopener");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (error) {
+    tab?.close();
+    throw error;
+  }
+}

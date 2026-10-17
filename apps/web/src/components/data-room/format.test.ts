@@ -27,10 +27,10 @@ it("puts a space between a size and its unit, and spells out bytes", () => {
   ]);
 });
 
-it("capitalises a document type for display only", () => {
-  expect([typeLabel("investor"), typeLabel("Board deck"), typeLabel(null)]).toEqual([
-    "Investor",
-    "Board deck",
-    "",
-  ]);
+it("names the classifier's short types clearly and capitalises the rest, for display only", () => {
+  expect(
+    [typeLabel("investor"), typeLabel("hr"), typeLabel("contract"), typeLabel("Board deck")].concat(
+      typeLabel(null),
+    ),
+  ).toEqual(["Investor document", "HR document", "Contract", "Board deck", ""]);
 });
