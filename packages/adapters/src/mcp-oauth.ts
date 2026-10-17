@@ -888,7 +888,11 @@ export class McpOAuthBroker {
     });
     if (!row) return;
     const material = await this.read(row.ciphertext, row.id);
-    delete material.oauth;
+    if (!material.oauth) return;
+    // Keep the registered client, so the server reads "needs sign-in" (not "connected") and a
+    // Reconnect reuses it; only the tokens and the half-finished sign-in go.
+    const { tokens: _tokens, obtainedAt: _at, codeVerifier: _verifier, ...client } = material.oauth;
+    material.oauth = client;
     await this.replaceMaterial(server.id, material, input, true);
   }
 

@@ -102,6 +102,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
     }, t`Could not update bot access`);
 
   const host = server.endpoint ? new URL(server.endpoint).host : (server.command ?? "");
+  const carta = isCartaEndpoint(server.endpoint);
   return (
     <div className="rk-scroll h-full overflow-y-auto px-4 py-6 md:px-9 md:py-7">
       <div className="mx-auto max-w-[1040px]">
@@ -132,9 +133,12 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
             )}
             <div className="flex flex-wrap items-center gap-2.5 text-muted-foreground">
               <StatusBadge status={status} />
-              <span>
-                <Trans>via MCP · {host}</Trans>
-              </span>
+              {/* Carta is a known service; its MCP host means nothing to a founder. */}
+              {carta ? null : (
+                <span>
+                  <Trans>via MCP · {host}</Trans>
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -144,6 +148,11 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           </p>
         ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
+          {carta ? (
+            <Button variant="outline" render={<Link to="/app/cap-table" />}>
+              <Trans>Open Cap table</Trans>
+            </Button>
+          ) : null}
           {server.transport !== "stdio" ? (
             <Button
               variant={status === "reconnect" ? "default" : "outline"}
@@ -153,7 +162,8 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
               <Trans>Reconnect</Trans>
             </Button>
           ) : null}
-          {server.oauthStatus !== "none" ? (
+          {/* Only a live sign-in can be disconnected; afterwards the badge reads "needs sign-in". */}
+          {server.oauthStatus === "connected" ? (
             <Button
               variant="outline"
               disabled={busy}
@@ -172,10 +182,11 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           </Button>
         </div>
 
-        {isCartaEndpoint(server.endpoint) ? (
-          <div className="mt-4 flex items-center gap-2">
+        {carta ? (
+          <div className="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
             <Switch
               id="carta-writes"
+              aria-describedby="carta-writes-hint"
               checked={server.writesEnabled}
               disabled={busy}
               onCheckedChange={(on) =>
@@ -193,6 +204,12 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
             <Label htmlFor="carta-writes">
               <Trans>Allow changes in Carta</Trans>
             </Label>
+            <p id="carta-writes-hint" className="col-start-2 text-sm text-muted-foreground">
+              <Trans>
+                Off: the Carta agent only reads Carta. On: it can also make changes, such as option
+                grants, and asks you before each one.
+              </Trans>
+            </p>
           </div>
         ) : null}
 
@@ -200,11 +217,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           <Trans>Used by</Trans>
         </Heading>
         <AgentToggleList
-          bots={
-            isCartaEndpoint(server.endpoint)
-              ? data.bots.filter((bot) => isCartaAgentSpawnKey(bot.spawnKey))
-              : data.bots
-          }
+          bots={carta ? data.bots.filter((bot) => isCartaAgentSpawnKey(bot.spawnKey)) : data.bots}
           appName={server.name}
           disabled={busy}
           isOn={assigned}
@@ -239,7 +252,11 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
         }
       >
         <li>
-          <Trans>Every bot loses access to its tools.</Trans>
+          {carta ? (
+            <Trans>The Carta agent loses access to Carta.</Trans>
+          ) : (
+            <Trans>Bots lose access to the tools of {server.name}.</Trans>
+          )}
         </li>
         <li>
           <Trans>Your data in {server.name} is not deleted.</Trans>

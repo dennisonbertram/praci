@@ -89,3 +89,35 @@ it("has no switch on other servers", async () => {
   await show(false, "https://mcp.example.com/sse");
   expect(writesSwitch()).toBeNull();
 });
+
+it("Carta links back to Cap table, hides the MCP host and names who loses access", async () => {
+  await show(false);
+  const link = container.querySelector<HTMLAnchorElement>('a[href="/app/cap-table"]');
+  expect(link?.textContent).toBe("Open Cap table");
+  expect(container.textContent).not.toContain("via MCP");
+  expect(container.textContent).toContain("asks you before each one");
+  await press("Remove Carta");
+  expect(document.body.textContent).toContain("The Carta agent loses access to Carta.");
+});
+
+it("offers Disconnect sign-in only while signed in", async () => {
+  const render = async (oauthStatus: "connected" | "reconnect") => {
+    const data = {
+      ...mockIntegrations({ servers: [mockServer("s1", "Files", { oauthStatus })] }),
+      refresh,
+    };
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={["/app/integrations/mcp/s1"]}>
+          <Routes>
+            <Route path="/app/integrations/mcp/:serverId" element={<McpDetail data={data} />} />
+          </Routes>
+        </MemoryRouter>,
+      ),
+    );
+  };
+  await render("connected");
+  expect(container.textContent).toContain("Disconnect sign-in");
+  await render("reconnect");
+  expect(container.textContent).not.toContain("Disconnect sign-in");
+});
