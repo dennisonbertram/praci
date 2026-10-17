@@ -1,8 +1,19 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { FinanceStatement } from "@rakazo/contracts";
 import { STATEMENT_EXTENSIONS, STATEMENT_MAX_BYTES } from "@rakazo/contracts";
-import { Button } from "@rakazo/ui-web";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+} from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
+import { fullDay } from "../../lib/finance-format";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { StatementGroup, type StatementRow, statementAccountKey } from "./StatementReviewCard";
@@ -36,6 +47,8 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
   const { t } = useLingui();
   const [items, setItems] = useState<Item[]>([]);
   const [dragging, setDragging] = useState(false);
+  // An imported statement's removal deletes its transactions, so it is confirmed first.
+  const [confirming, setConfirming] = useState<StatementRow | null>(null);
   const counter = useRef(0);
   const patch = (key: number, next: Partial<Item>) =>
     setItems((all) => all.map((i) => (i.key === key ? { ...i, ...next } : i)));
@@ -188,7 +201,7 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
             <StatementGroup
               key={key}
               rows={rows}
-              onRemove={(row) => void remove(row)}
+              onRemove={(row) => (row.review ? void remove(row) : setConfirming(row))}
               onImport={(row) => void importAnyway(row)}
             />
           ))}
@@ -219,6 +232,34 @@ export function StatementImport({ onImported }: { onImported: () => void }) {
           ))}
         </ul>
       ) : null}
+      <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirming?.statement.periodStart && confirming.statement.periodEnd
+                ? t`Remove the ${fullDay(confirming.statement.periodStart)} – ${fullDay(confirming.statement.periodEnd)} statement?`
+                : t`Remove ${confirming?.statement.fileName ?? ""}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t`Its ${confirming?.statement.transactionCount ?? 0} transactions will be removed from Finance.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              <Trans>Cancel</Trans>
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (confirming) void remove(confirming);
+                setConfirming(null);
+              }}
+            >
+              <Trans>Remove</Trans>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

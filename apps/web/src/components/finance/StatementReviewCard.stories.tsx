@@ -76,6 +76,11 @@ export const NoBalanceCheck: Story = {
   },
 };
 
+/** The account was renamed after its first import; the header uses the new name. */
+export const RenamedAccount: Story = {
+  args: { rows: [row(1, { accountId: "acc-1", accountName: "Backup bank" })] },
+};
+
 export const WarningsAndError: Story = {
   args: {
     rows: [

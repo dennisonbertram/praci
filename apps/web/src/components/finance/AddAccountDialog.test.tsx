@@ -70,6 +70,16 @@ const click = (label: string) =>
       [...dialog().querySelectorAll("button")].find((b) => b.textContent === label) as HTMLElement
     ).click(),
   );
+/** Answers the removal confirmation, which deleting an imported statement asks first. */
+const confirmRemove = async () => {
+  const alert = document.body.querySelector('[role="alertdialog"]') as HTMLElement;
+  expect(alert.textContent).toContain("Its 4 transactions will be removed from Finance.");
+  await act(async () =>
+    (
+      [...alert.querySelectorAll("button")].find((b) => b.textContent === "Remove") as HTMLElement
+    ).click(),
+  );
+};
 const open = async (initialStep?: "bank") => {
   await act(async () =>
     root.render(
@@ -243,6 +253,9 @@ it("lists statements uploaded before, so they can be found and removed later", a
   expect(text).not.toContain("New account");
   expect(text).not.toContain("broken.pdf");
   await click("Remove");
+  // Nothing is deleted until the removal is confirmed.
+  expect(rpcMock.statementDiscard).not.toHaveBeenCalled();
+  await confirmRemove();
   expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "old" });
   expect(onImported).toHaveBeenCalledTimes(1);
 });
@@ -254,6 +267,7 @@ it("removes an imported statement and reloads", async () => {
   await choose(new File(["x"], "march.pdf"));
   onImported.mockClear();
   await click("Remove");
+  await confirmRemove();
   expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "s1" });
   expect(onImported).toHaveBeenCalledTimes(1);
   expect(dialog().textContent).not.toContain("Example Bank");
@@ -278,4 +292,25 @@ it("shows a rejected import (for example a duplicate) on its row and discards th
   await choose(new File(["x"], "march.pdf"));
   expect(dialog().textContent).toContain("This statement is already imported");
   expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "s1" });
+});
+
+it("names a renamed account by its current name and says when there is no balance to check", async () => {
+  rpcMock.statements.mockResolvedValue({
+    statements: [
+      statement({
+        id: "old",
+        status: "imported",
+        accountId: "acc-1",
+        accountName: "Backup bank",
+        check: { balances: "unavailable", differenceCents: null },
+      }),
+    ],
+    reminders: [],
+  });
+  await open("bank");
+  const text = dialog().textContent ?? "";
+  expect(text).toContain("Backup bank ••1234");
+  expect(text).not.toContain("Example Bank");
+  expect(text).toContain("No closing balance found to check against");
+  expect(text).not.toContain("add up");
 });

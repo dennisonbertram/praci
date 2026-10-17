@@ -1373,6 +1373,7 @@ msgstr "सर्वर तक नहीं पहुंचा जा सका�
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/RenameAccountDialog.tsx
+#: src/components/finance/StatementImport.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
@@ -3872,6 +3873,11 @@ msgstr ""
 msgid "Items"
 msgstr ""
 
+#. placeholder {0}: confirming?.statement.transactionCount ?? 0
+#: src/components/finance/StatementImport.tsx
+msgid "Its {0} transactions will be removed from Finance."
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "इसकी बातचीत, फ़ाइलें और रूटीन स्थायी रूप से डिलीट कर दिए जाएंगे। इसके बनाए बॉट आपकी सूची में बने रहेंगे।"
@@ -4702,6 +4708,10 @@ msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
+msgstr ""
+
+#: src/components/finance/StatementReviewCard.tsx
+msgid "No closing balance found to check against"
 msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
@@ -5644,6 +5654,7 @@ msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx
+#: src/components/finance/StatementImport.tsx
 #: src/components/finance/StatementReviewCard.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -5667,9 +5678,10 @@ msgstr "हटाएं"
 msgid "Remove {0}"
 msgstr "{0} हटाएं"
 
+#. placeholder {0}: confirming?.statement.fileName ?? ""
 #. placeholder {0}: removing?.name
 #. placeholder {0}: removingRow?.displayName ?? ""
-#. placeholder {0}: server.name
+#: src/components/finance/StatementImport.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -5730,6 +5742,12 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Remove skill {0}"
 msgstr "स्किल {0} हटाएं"
+
+#. placeholder {0}: fullDay(confirming.statement.periodStart)
+#. placeholder {1}: fullDay(confirming.statement.periodEnd)
+#: src/components/finance/StatementImport.tsx
+msgid "Remove the {0} – {1} statement?"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"

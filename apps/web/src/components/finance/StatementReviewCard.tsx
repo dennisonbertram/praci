@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { FinanceStatement } from "@rakazo/contracts";
 import { Badge, Button } from "@rakazo/ui-web";
 import { fullDay, moneyExact } from "../../lib/finance-format";
-import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 
 /** The parser marks a model-read PDF with this opening; it is the one warning shown in bold. */
 const MODEL_READ = "Read by an AI model";
@@ -36,6 +36,13 @@ function CheckLine({ statement }: { statement: FinanceStatement }) {
     return (
       <div className="text-success">
         <Trans>The transactions read add up to the closing balance</Trans>
+      </div>
+    );
+  }
+  if (check?.balances === "unavailable") {
+    return (
+      <div className="text-muted-foreground">
+        <Trans>No closing balance found to check against</Trans>
       </div>
     );
   }
@@ -110,7 +117,7 @@ function Row({
             warning.startsWith(MODEL_READ) ? "font-medium text-warning" : "text-muted-foreground"
           }
         >
-          {warning}
+          {maskCurrencyWhenHidden(warning)}
         </div>
       ))}
       {row.error ? (
@@ -135,9 +142,14 @@ export function StatementGroup({
 }) {
   const first = rows[0]?.statement;
   if (!first) return null;
-  const name = [first.institution, first.accountLast4 ? `••${first.accountLast4}` : null]
-    .filter(Boolean)
-    .join(" ");
+  // The account's current name, so a rename shows here too; a new account uses the file's.
+  const last4 = first.accountLast4 ? `••${first.accountLast4}` : null;
+  const own = rows.find((r) => r.statement.accountName)?.statement.accountName;
+  const name = own
+    ? last4 && !own.includes(last4)
+      ? `${own} ${last4}`
+      : own
+    : [first.institution, last4].filter(Boolean).join(" ");
   return (
     <li className="rounded-lg border border-border px-3 py-2 text-sm">
       <div className="flex flex-wrap items-center gap-2">
