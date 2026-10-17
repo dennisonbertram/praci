@@ -231,7 +231,9 @@ class DriveCall {
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
-const quote = (value: string) => `'${value.replaceAll("\\", "\\\\").replaceAll("'", "\\'")}'`;
+/** A string literal for a Drive `q` expression. */
+export const driveQuote = (value: string) =>
+  `'${value.replaceAll("\\", "\\\\").replaceAll("'", "\\'")}'`;
 
 function summary(file: unknown) {
   const f = asRecord(file) ?? {};
@@ -258,8 +260,8 @@ async function driveSearch(call: DriveCall, args: Record<string, unknown>) {
   if (!query) return { error: "query is required" };
   const clauses = [
     "trashed = false",
-    `(name contains ${quote(query)} or fullText contains ${quote(query)})`,
-    ...(mimeType ? [`mimeType = ${quote(mimeType)}`] : []),
+    `(name contains ${driveQuote(query)} or fullText contains ${driveQuote(query)})`,
+    ...(mimeType ? [`mimeType = ${driveQuote(mimeType)}`] : []),
   ];
   const params = new URLSearchParams({
     q: clauses.join(" and "),

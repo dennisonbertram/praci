@@ -946,6 +946,140 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "legal_unreviewed_documents",
+    description:
+      "Data Room documents you have not analyzed yet, or that changed since you did, newest first, with their type, date, parties and summary so you can triage. Work through these, then call legal_upsert_contract for each (notLegal: true if it is not a legal document).",
+    inputSchema: {
+      type: "object",
+      properties: { limit: { type: "number", description: "Default 25, max 100." } },
+    },
+    readOnly: true,
+  },
+  {
+    name: "legal_upsert_contract",
+    description:
+      "Record what you concluded about one Data Room document. Creates or replaces its contract record, and opens the expiration and notice-deadline entries for you from expirationDate and renewalNoticeDays. Leave a field out (or null) when the document does not state it; never guess. Set notLegal: true when the document is not a legal document, so it is not offered again. Money is integer cents.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        dataRoomItemId: { type: "string" },
+        revision: {
+          type: "number",
+          description: "The revision returned with the document when you read it.",
+        },
+        notLegal: {
+          type: "boolean",
+          description: "Only dataRoomItemId and revision are needed with this.",
+        },
+        title: { type: "string" },
+        contractType: { type: "string", description: "For example NDA, lease, MSA, employment." },
+        counterparties: { type: "array", items: { type: "string" } },
+        status: { type: "string", enum: ["active", "expired", "terminated", "draft", "unknown"] },
+        effectiveDate: { type: "string", description: "YYYY-MM-DD." },
+        expirationDate: { type: "string", description: "YYYY-MM-DD." },
+        autoRenews: { type: "boolean" },
+        renewalNoticeDays: { type: "number", description: "Days of notice before expiration." },
+        governingLaw: { type: "string" },
+        valueCents: { type: "number", description: "Total value in integer cents." },
+        currency: { type: "string", description: "ISO 4217 code, for example USD." },
+        summary: { type: "string", description: "Two or three plain sentences." },
+        renewalQuote: {
+          type: "string",
+          description:
+            "Short verbatim text of the renewal or notice clause. Kept as the evidence of the expiration and notice deadlines this call opens.",
+        },
+      },
+      required: ["dataRoomItemId", "revision"],
+    },
+  },
+  {
+    name: "legal_upsert_deadline",
+    description:
+      "Record a dated obligation or deadline (payment, filing, compliance, notice, renewal, termination). Pass id to update one; otherwise the same contract, kind, date and title is updated rather than duplicated. Include a short verbatim sourceQuote.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "An existing deadline id to update." },
+        contractId: { type: "string", description: "From legal_upsert_contract." },
+        dataRoomItemId: { type: "string" },
+        title: { type: "string" },
+        dueDate: { type: "string", description: "YYYY-MM-DD." },
+        kind: {
+          type: "string",
+          enum: ["renewal", "notice", "termination", "payment", "filing", "compliance", "other"],
+        },
+        status: { type: "string", enum: ["open", "done", "dismissed"] },
+        sourceQuote: { type: "string", description: "Short verbatim text from the document." },
+        notes: { type: "string" },
+      },
+      required: ["title", "dueDate", "kind"],
+    },
+  },
+  {
+    name: "legal_upsert_node",
+    description:
+      "Add a party, contract, obligation, right, asset or jurisdiction to the legal graph. The same kind and label returns the existing node, so call it freely. Use the returned id with legal_link.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        kind: {
+          type: "string",
+          enum: [
+            "company",
+            "person",
+            "contract",
+            "obligation",
+            "right",
+            "asset",
+            "jurisdiction",
+            "other",
+          ],
+        },
+        label: { type: "string" },
+        attrs: { type: "object", description: "A few short facts, for example {role: 'vendor'}." },
+        contractId: { type: "string", description: "The contract this node came from." },
+      },
+      required: ["kind", "label"],
+    },
+  },
+  {
+    name: "legal_link",
+    description:
+      "Connect two graph nodes with a short verb relation such as party_to, owes, grants, governed_by, owns, signed_by. The same from, to and relation is updated, not duplicated. Include a short verbatim sourceQuote.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        fromId: { type: "string" },
+        toId: { type: "string" },
+        relation: { type: "string" },
+        dataRoomItemId: { type: "string" },
+        sourceQuote: { type: "string" },
+      },
+      required: ["fromId", "toId", "relation"],
+    },
+  },
+  {
+    name: "legal_query",
+    description:
+      "Read back what is recorded. view 'contracts' lists contracts with key dates; view 'deadlines' lists open deadlines by due date (status 'done' lists closed ones; withinDays limits how far ahead; dueInLastDays only looks back that many days); view 'node' returns one graph node with its neighbors and edges.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        view: { type: "string", enum: ["contracts", "deadlines", "node"] },
+        status: { type: "string", description: "Filter by status." },
+        contractId: { type: "string" },
+        withinDays: { type: "number" },
+        dueInLastDays: { type: "number" },
+        nodeId: { type: "string" },
+        kind: { type: "string" },
+        label: { type: "string" },
+        limit: { type: "number" },
+      },
+      required: ["view"],
+    },
+    readOnly: true,
+  },
+  {
     name: "contacts_save",
     description:
       "Change an existing contact, found by its email (this asks the user first). Fields you leave out are kept. Use contacts_add for a new contact.",
@@ -1018,19 +1152,6 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
-    name: "data_room_search",
-    description:
-      "Find documents in the user's Data room: board decks, SAFEs, contracts, budgets, cap table exports and investor updates. Search by words in the name or text; leave query empty to list every document. Look here first when the user mentions a company document.",
-    inputSchema: { type: "object", properties: { query: { type: "string" } } },
-    readOnly: true,
-  },
-  {
-    name: "data_room_read",
-    description: "The text of one Data room document, by the id data_room_search returned.",
-    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
-    readOnly: true,
-  },
-  {
     name: "drive_search",
     description:
       "Find files in the user's connected Google Drive by name or content. Returns id, name, mimeType, modifiedTime, owners, webViewLink and size for each match. Use drive_read for the content.",
@@ -1093,6 +1214,65 @@ export const builtinAgentTools: ConnectorTool[] = [
         account: { type: "string", description: "The connection name of the Drive account." },
       },
       required: ["fileId"],
+    },
+  },
+  {
+    name: "search_data_room",
+    description:
+      "Search the user's Data room, their private store of documents. Returns id, name, doc type, date and a short snippet for each match. Use read_data_room_item for the full text.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Words to find in names and content." },
+        filters: {
+          type: "object",
+          description: "Optional narrowing.",
+          properties: {
+            folderId: {
+              type: ["string", "null"],
+              description: "null for items outside any folder.",
+            },
+            docType: { type: "string" },
+            party: { type: "string" },
+            tag: { type: "string" },
+            docDateFrom: { type: "string", description: "ISO 8601 date-time." },
+            docDateTo: { type: "string", description: "ISO 8601 date-time." },
+            status: { type: "string" },
+            source: { type: "string", description: "upload, gmail, drive, chat or finance." },
+          },
+        },
+        limit: { type: "number", description: "Default 10, max 20." },
+      },
+      required: ["query"],
+    },
+    readOnly: true,
+  },
+  {
+    name: "read_data_room_item",
+    description:
+      "Read one Data room item: name, folder, summary, type, date, parties, tags and the extracted text. Long text is truncated (truncated: true).",
+    inputSchema: {
+      type: "object",
+      properties: { item_id: { type: "string", description: "The id from search_data_room." } },
+      required: ["item_id"],
+    },
+    readOnly: true,
+  },
+  {
+    name: "add_to_data_room",
+    description:
+      "Add a document to the user's Data room without being asked: an email attachment (message_id and attachment_id, as listed by mail_get), a Drive file (drive_file_id), or an artifact (artifact_id). Files only, not message text. Don't choose a folder, name or tags; the Data room agent files it. Adding the same document again does nothing. Small inline images, calendar invites and contact cards return \"Not a document.\"",
+    inputSchema: {
+      type: "object",
+      properties: {
+        message_id: {
+          type: "string",
+          description: "The Message ID from mail_get. Needs attachment_id.",
+        },
+        attachment_id: { type: "string", description: "An attachment id from mail_get." },
+        drive_file_id: { type: "string", description: "The id from drive_search." },
+        artifact_id: { type: "string", description: "The id of a file or report you created." },
+      },
     },
   },
   {

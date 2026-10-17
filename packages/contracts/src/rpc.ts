@@ -25,7 +25,13 @@ import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot
 import { CapTableStateSchema } from "./carta.js";
 import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from "./contacts.js";
 import {
+  DataRoomApiDriveListInputSchema,
+  DataRoomApiDriveListOutputSchema,
   DataRoomApiFolderSchema,
+  DataRoomApiImportDriveInputSchema,
+  DataRoomApiImportDriveOutputSchema,
+  DataRoomApiImportEmailInputSchema,
+  DataRoomApiImportEmailOutputSchema,
   DataRoomApiItemListInputSchema,
   DataRoomApiItemListOutputSchema,
   DataRoomApiItemSchema,
@@ -178,6 +184,13 @@ import {
   IntegrationProviderConfigSchema,
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
+import {
+  LegalDeadlineSchema,
+  LegalGraphSchema,
+  LegalOverviewSchema,
+  LegalScanNowOutputSchema,
+  LegalUpdateDeadlineInputSchema,
+} from "./legal.js";
 import { McpOauthClientSchema } from "./mcp.js";
 import {
   BotPageGetInputSchema,
@@ -1117,23 +1130,6 @@ export const appContract = {
       setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoSchema),
     },
   },
-  carta: {
-    agent: oc.output(BotSchema),
-    /** The Cap Table page's snapshot and whether the Carta agent is refreshing it. */
-    capTable: oc.output(CapTableStateSchema),
-    /** Starts a Carta agent run that refreshes the snapshot and the investor contacts. */
-    refresh: oc.output(z.object({ ok: z.literal(true) })),
-  },
-  contacts: {
-    list: oc.input(ContactListInputSchema).output(z.array(ContactSchema)),
-    save: oc.input(ContactSaveInputSchema).output(ContactSchema),
-    delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
-  },
-  sidebarPages: {
-    list: oc.output(SidebarPagesStateSchema),
-    add: oc.input(SidebarPageInputSchema).output(SidebarPagesStateSchema),
-    remove: oc.input(SidebarPageInputSchema).output(SidebarPagesStateSchema),
-  },
   dataRoom: {
     folders: oc.output(z.array(DataRoomApiFolderSchema)),
     folderCreate: oc
@@ -1153,9 +1149,45 @@ export const appContract = {
     itemRename: oc.input(z.object({ id: Id, name: DataRoomApiName })).output(DataRoomApiItemSchema),
     itemMove: oc.input(z.object({ id: Id, folderId: Id.nullable() })).output(DataRoomApiItemSchema),
     itemDelete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    importEmail: oc
+      .input(DataRoomApiImportEmailInputSchema)
+      .output(DataRoomApiImportEmailOutputSchema),
+    driveList: oc.input(DataRoomApiDriveListInputSchema).output(DataRoomApiDriveListOutputSchema),
+    importDrive: oc
+      .input(DataRoomApiImportDriveInputSchema)
+      .output(DataRoomApiImportDriveOutputSchema),
     search: oc.input(DataRoomApiSearchInputSchema).output(DataRoomApiSearchOutputSchema),
     consent: oc.output(DataRoomConsentStatusSchema),
     consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),
+  },
+  legal: {
+    /** Idempotent: creates the Legal agent and its daily scan routine; returns the bot to open in the side panel. */
+    agent: oc.output(BotSchema),
+    overview: oc.output(LegalOverviewSchema),
+    graph: oc.output(LegalGraphSchema),
+    updateDeadline: oc.input(LegalUpdateDeadlineInputSchema).output(LegalDeadlineSchema),
+    /** Queues one scan run in the Legal agent's thread (returns the active run if one is already going). */
+    scanNow: oc.output(LegalScanNowOutputSchema),
+    /** Data Room consent for the Legal agent's own model; same shapes as dataRoom.consent. */
+    consent: oc.output(DataRoomConsentStatusSchema),
+    consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),
+  },
+  carta: {
+    agent: oc.output(BotSchema),
+    /** The Cap Table page's snapshot and whether the Carta agent is refreshing it. */
+    capTable: oc.output(CapTableStateSchema),
+    /** Starts a Carta agent run that refreshes the snapshot and the investor contacts. */
+    refresh: oc.output(z.object({ ok: z.literal(true) })),
+  },
+  contacts: {
+    list: oc.input(ContactListInputSchema).output(z.array(ContactSchema)),
+    save: oc.input(ContactSaveInputSchema).output(ContactSchema),
+    delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+  },
+  sidebarPages: {
+    list: oc.output(SidebarPagesStateSchema),
+    add: oc.input(SidebarPageInputSchema).output(SidebarPagesStateSchema),
+    remove: oc.input(SidebarPageInputSchema).output(SidebarPagesStateSchema),
   },
   finance: {
     agent: oc.output(BotSchema),
