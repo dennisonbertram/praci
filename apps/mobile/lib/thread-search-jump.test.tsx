@@ -1,29 +1,16 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from "node:fs";
 import type { ThreadScrollState } from "@rakazo/core";
-import { openThreadWindow, withLiveStreamingProgress } from "@rakazo/core";
+import { openThreadWindow } from "@rakazo/core";
 import { act, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import type { MobileSnapshot } from "./api";
+import type { PinnedAround } from "./thread-actions";
+import { applyMessageJump, commitSnap } from "./thread-actions";
 import { ThreadJumpAnchor } from "./thread-jump";
 import { ThreadScrollBehavior } from "./thread-scroll";
 import { reconcileVisibleThreadSnapshot } from "./thread-snapshot";
-
-// Exercise the screen's handlers without importing its native dependencies.
-const testFileUrl = import.meta.url;
-const source = readFileSync(new URL("../app/thread.tsx", testFileUrl), "utf8");
-const commitStart = source.indexOf("  function commitSnap(");
-const commitHandler = source.slice(commitStart, source.indexOf("  useEffect(() => {", commitStart));
-const jumpHandler = source.slice(
-  source.indexOf("  async function applyMessageJump("),
-  source.indexOf("  async function loadNewerMessages("),
-);
-const handlers = ts.transpileModule(`${commitHandler}\n${jumpHandler}\nreturn applyMessageJump;`, {
-  compilerOptions: { target: ts.ScriptTarget.ES2022 },
-}).outputText;
 
 describe("mobile search jump", () => {
   it.each(["botId", "groupId"] as const)(
@@ -64,11 +51,13 @@ describe("mobile search jump", () => {
           detached: false,
           unread: false,
         });
-        const pinnedAroundRef = useRef<{ messageId: string } | null>(null);
+        const pinnedAroundRef = useRef<PinnedAround | null>(null);
         const jumpScrollTarget = useRef<string | null>(null);
-        const scope = {
-          rpc,
-          liveSavedChatsScope: async () => ({}),
+        const snapRef = useRef<MobileSnapshot | null>(latest);
+        const streamResponsesRef = useRef(false);
+        const deps = {
+          rpc: rpc as never,
+          liveSavedChatsScope: async () => ({}) as never,
           isIntegrationsScopeCurrent: () => true,
           snapshotOrigin: useRef(null),
           setShowingSaved: vi.fn(),
@@ -83,16 +72,12 @@ describe("mobile search jump", () => {
           newerLoadFailed: useRef(false),
           joinPinnedAfterLayout: useRef<number | null>(null),
           pinnedScrollMetrics: useRef({ offset: 0, viewport: 0, content: 0 }),
-          snapRef: useRef<MobileSnapshot | null>(latest),
-          streamResponsesRef: useRef(false),
-          setSnap,
           setThreadScrollState,
           scrollBehavior: useRef(new ThreadScrollBehavior()),
-          openThreadWindow,
-          withLiveStreamingProgress,
-          reconcileVisibleThreadSnapshot,
+          commitSnap: (next: MobileSnapshot | null) =>
+            commitSnap({ snapRef, streamResponsesRef, setSnap }, next),
         };
-        jump = new Function(...Object.keys(scope), handlers)(...Object.values(scope));
+        jump = (target) => applyMessageJump(deps, target);
         renderedSnapshot = snap;
         return (
           <div

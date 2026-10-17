@@ -16,7 +16,7 @@ import {
   screenLeaseIdForRun,
 } from "@rakazo/adapters";
 import type { Actor, Bot, ProductEvent } from "@rakazo/contracts";
-import { REPLY_QUOTE_MAX_LENGTH } from "@rakazo/contracts";
+import { CARTA_MCP_ENDPOINT, REPLY_QUOTE_MAX_LENGTH } from "@rakazo/contracts";
 import { openScreenCapability } from "@rakazo/core/node/screen-capability";
 import type { PrismaClient } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
@@ -664,6 +664,7 @@ describe("MCP prepared credential updates", () => {
       transport: "streamable_http",
       endpoint: "https://mcp.example.test/mcp",
       secretId: "old",
+      writesEnabled: false,
       revision: 1,
       args: [],
       env: {},
@@ -786,6 +787,7 @@ describe("MCP loopback endpoints", () => {
       ...data,
       id: "server-1",
       secretId: null,
+      writesEnabled: false,
       revision: 1,
       createdAt: new Date(0),
       updatedAt: new Date(0),
@@ -4195,6 +4197,7 @@ describe("MCP server rename", () => {
       headers: { Authorization: true },
       secretId: "secret-1",
       enabled: true,
+      writesEnabled: false,
       revision: 3,
       createdAt: new Date(0),
       updatedAt: new Date(0),
@@ -4247,6 +4250,88 @@ describe("MCP server rename", () => {
   });
 });
 
+describe("MCP server writes switch", () => {
+  function writesDeps(found: { endpoint: string } | null) {
+    const row = {
+      id: "server-1",
+      spaceId: "workspace-1",
+      userId: "user-1",
+      slug: "carta",
+      name: "Carta",
+      description: "",
+      transport: "streamable_http",
+      endpoint: found?.endpoint ?? null,
+      command: null,
+      args: [],
+      env: {},
+      headers: {},
+      secretId: null,
+      enabled: true,
+      writesEnabled: false,
+      revision: 1,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    };
+    const findFirst = vi.fn().mockResolvedValue(found ? row : null);
+    const update = vi.fn(async ({ data }: { data: object }) => ({ ...row, ...data }));
+    const prisma = {
+      mcpServer: { findFirst, update, findMany: vi.fn().mockResolvedValue([]) },
+      bot: { findFirst: vi.fn().mockResolvedValue(null) },
+      botMcpServer: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      secret: { findFirst: vi.fn().mockResolvedValue(null) },
+    } as unknown as PrismaClient;
+    const deps = {
+      prisma,
+      secrets: { load: vi.fn(), put: vi.fn() },
+      env: {
+        defaultProvider: "fake",
+        defaultModel: "fake-model",
+        webOrigin: "http://127.0.0.1:5173",
+        screenProxySecret: "fake-test-secret",
+        sandboxProvider: "fake",
+      },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "workspace-1",
+      userId: "user-1",
+      email: "user@rakazo.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+    return {
+      findFirst,
+      update,
+      client: createRouterClient(createRouter(deps), { context: { actor } as never }),
+    };
+  }
+
+  it("turns writes on for the caller's Carta server", async () => {
+    const { client, findFirst, update } = writesDeps({ endpoint: CARTA_MCP_ENDPOINT });
+    const server = await client.mcp.servers.setWrites({ id: "server-1", enabled: true });
+    expect(server.writesEnabled).toBe(true);
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: "server-1", spaceId: "workspace-1", userId: "user-1" },
+    });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "server-1" },
+      data: { writesEnabled: true },
+    });
+  });
+
+  it("refuses a server that is not Carta's, and one the caller does not own", async () => {
+    const other = writesDeps({ endpoint: "https://mcp.example.test/mcp" });
+    await expect(
+      other.client.mcp.servers.setWrites({ id: "server-1", enabled: true }),
+    ).rejects.toThrow("Carta");
+    expect(other.update).not.toHaveBeenCalled();
+    const missing = writesDeps(null);
+    await expect(
+      missing.client.mcp.servers.setWrites({ id: "server-9", enabled: true }),
+    ).rejects.toThrow();
+    expect(missing.update).not.toHaveBeenCalled();
+  });
+});
+
 describe("MCP OAuth reauthorization", () => {
   it("passes the reauthorize request to the broker with the caller's space and user", async () => {
     const begin = vi.fn().mockResolvedValue({ status: "authorization_not_requested" });
@@ -4283,5 +4368,76 @@ describe("MCP OAuth reauthorization", () => {
       spaceId: "workspace-1",
       userId: "user-1",
     });
+  });
+});
+
+describe("Carta server guards", () => {
+  const actor = {
+    spaceId: "workspace-1",
+    userId: "user-1",
+    email: "user@rakazo.test",
+    isDeploymentOwner: false,
+  } satisfies Actor;
+  const cartaRow = {
+    id: "server-1",
+    spaceId: "workspace-1",
+    userId: "user-1",
+    slug: "carta",
+    name: "Carta",
+    description: "",
+    transport: "streamable_http",
+    endpoint: CARTA_MCP_ENDPOINT,
+    command: null,
+    args: [],
+    env: {},
+    headers: {},
+    secretId: null,
+    enabled: true,
+    writesEnabled: false,
+    revision: 1,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+  };
+  function clientFor(prisma: object, status: "none" | "connected" | "reconnect" = "none") {
+    const deps = {
+      prisma,
+      secrets: { load: vi.fn(), put: vi.fn() },
+      mcpOAuth: { statusFor: vi.fn().mockResolvedValue(status) },
+      env: {
+        defaultProvider: "fake",
+        defaultModel: "fake-model",
+        webOrigin: "http://127.0.0.1:5173",
+        screenProxySecret: "fake-test-secret",
+        sandboxProvider: "fake",
+      },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    return createRouterClient(createRouter(deps), { context: { actor } as never });
+  }
+
+  it("refuses a refresh until a Carta server is signed in", async () => {
+    for (const status of ["none", "reconnect"] as const) {
+      const client = clientFor(
+        { mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) } },
+        status,
+      );
+      await expect(client.carta.refresh()).rejects.toThrow("Connect Carta first");
+    }
+    const none = clientFor({ mcpServer: { findMany: vi.fn().mockResolvedValue([]) } });
+    await expect(none.carta.refresh()).rejects.toThrow("Connect Carta first");
+  });
+
+  it("refuses to give a Carta server to a bot other than the Carta agent", async () => {
+    const tx = {
+      bot: { findFirst: vi.fn().mockResolvedValue({ id: "bot-2", spawnKey: null }) },
+      mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) },
+    };
+    const client = clientFor({ $transaction: (fn: (t: unknown) => unknown) => fn(tx) });
+    await expect(
+      client.mcp.assignments.replace({
+        botId: "bot-2",
+        assignments: [{ serverId: "server-1", allowAllTools: true, allowedTools: [] }],
+      }),
+    ).rejects.toThrow("Carta is used only by the Carta agent.");
   });
 });

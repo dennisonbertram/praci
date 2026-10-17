@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   AskAgentButton,
   BreakdownRows,
+  BurnLegend,
   Chevron,
   Chip,
   DetailHead,
@@ -13,9 +14,11 @@ import {
   Kpi,
   Kv,
   KvRow,
+  NotFoundNotice,
   PeriodTabs,
   Section,
   Th,
+  TransactionsSection,
   TransactionTable,
   ValueLink,
 } from "./ui";
@@ -206,8 +209,28 @@ export const Transactions: Story = {
   render: () => <TransactionTable rows={transactions} />,
 };
 
+const repeatVendor: FinanceTransaction[] = [
+  ...transactions,
+  { ...base, id: "txn_4", counterparty: " demo airline", category: "Travel", amountCents: -12000 },
+  { ...base, id: "txn_5", counterparty: base.counterparty, amountCents: -3500, memo: null },
+];
+
+export const TransactionsByVendor: Story = {
+  name: "Transaction table, grouped by vendor",
+  render: () => <TransactionTable rows={repeatVendor} grouped />,
+};
+
+export const TransactionsCard: Story = {
+  name: "Transactions card with the view switch",
+  render: () => <TransactionsSection title="Transactions" rows={repeatVendor} />,
+};
+
 export const TransactionsEmpty: Story = {
   render: () => <TransactionTable rows={[]} />,
+};
+
+export const TransactionsEmptyCustomText: Story = {
+  render: () => <TransactionTable rows={[]} empty="No transactions on this account yet" />,
 };
 
 export const TableParts: Story = {
@@ -265,4 +288,30 @@ export const KeyValues: Story = {
       </KvRow>
     </Kv>
   ),
+};
+
+export const NotFound: Story = {
+  name: "Not found notice",
+  render: () => <NotFoundNotice />,
+};
+
+export const DetailPageNotFound: Story = {
+  render: () => (
+    <DetailPage
+      crumbs={crumbs}
+      loading={false}
+      error="Not found"
+      notFound
+      onRetry={() => undefined}
+    />
+  ),
+};
+
+export const BurnChartLegend: Story = {
+  render: () => <BurnLegend />,
+};
+
+export const PeriodsNoneSelected: Story = {
+  name: "Periods with none selected (a custom range is shown)",
+  render: () => <PeriodTabs value={null} onChange={() => undefined} />,
 };

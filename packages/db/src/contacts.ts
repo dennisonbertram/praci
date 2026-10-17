@@ -49,26 +49,16 @@ export async function listContacts(
 }
 
 /**
- * Creates a contact, or updates one: by `id`, else the user's contact with the same email.
- * Omitted fields are kept on update. Throws IsolationError for an `id` that is not the user's.
+ * Updates the contact with `id`, keeping omitted fields; without `id`, creates one.
+ * Throws IsolationError for an `id` that is not the user's.
  */
 async function writeContact(prisma: Db, actor: Scope, input: ContactSaveInput): Promise<Contact> {
   const scope = ownerOf(actor);
   const { id, ...fields } = input;
-  if (id) {
-    const { count } = await prisma.contact.updateMany({ where: { id, ...scope }, data: fields });
-    if (count === 0) throw new IsolationError("Contact not found");
-    return toContact(await prisma.contact.findUniqueOrThrow({ where: { id } }));
-  }
-  if (!input.email)
-    return toContact(await prisma.contact.create({ data: { ...scope, ...fields } }));
-  return toContact(
-    await prisma.contact.upsert({
-      where: { spaceId_userId_email: { ...scope, email: input.email } },
-      create: { ...scope, ...fields },
-      update: fields,
-    }),
-  );
+  if (!id) return toContact(await prisma.contact.create({ data: { ...scope, ...fields } }));
+  const { count } = await prisma.contact.updateMany({ where: { id, ...scope }, data: fields });
+  if (count === 0) throw new IsolationError("Contact not found");
+  return toContact(await prisma.contact.findUniqueOrThrow({ where: { id } }));
 }
 
 export async function deleteContact(prisma: Db, actor: Scope, id: string): Promise<void> {
@@ -77,6 +67,16 @@ export async function deleteContact(prisma: Db, actor: Scope, id: string): Promi
   if (count === 0) throw new IsolationError("Contact not found");
 }
 
+/** Creates a new contact. Throws ContactEmailTakenError when the email already belongs to one. */
+export const addContact = (prisma: Db, actor: Scope, input: Omit<ContactSaveInput, "id">) =>
+  prisma.contact
+    .create({ data: { ...ownerOf(actor), ...input } })
+    .then(toContact)
+    .catch((error: unknown) => {
+      throw isUniqueViolation(error) ? new ContactEmailTakenError() : error;
+    });
+
+/** Creates or updates a contact. Throws ContactEmailTakenError when another contact has the email. */
 export const saveContact = (prisma: Db, actor: Scope, input: ContactSaveInput) =>
   writeContact(prisma, actor, input).catch((error: unknown) => {
     throw isUniqueViolation(error) ? new ContactEmailTakenError() : error;

@@ -1,8 +1,9 @@
-import type { MessageBlock } from "@rakazo/contracts";
+import type { FinanceCard, MessageBlock } from "@rakazo/contracts";
 import { REPLY_QUOTE_MAX_LENGTH } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
   deriveMessageQuote,
+  financeCardSummary,
   messageReplyExcerpt,
   messageReplyPreview,
   visibleTextFromMarkdown,
@@ -360,4 +361,28 @@ it("previews a finance block with its card title, total and rows", () => {
   expect(messageReplyExcerpt(blocks, "bot")).toBe(
     "Vendors · Last 90 days: $108,640 — Justworks $49,876; Coo ley $21,884",
   );
+});
+
+describe("financeCardSummary", () => {
+  it("quotes runway with one decimal and the dashboard's spend label", () => {
+    expect(
+      financeCardSummary({
+        card: "overview",
+        cashCents: 41272100,
+        burnCents: 4628200,
+        runwayMonths: 9.18,
+        monthSpendCents: 1523200,
+      }),
+    ).toBe(
+      "Finance overview: Cash $412,721; Monthly burn $46,282; Runway 9.2 mo; Spent this month $15,232",
+    );
+  });
+
+  it("names the days a transactions quote covers", () => {
+    const card: FinanceCard = { card: "transactions", count: 2, totalCents: -500, rows: [] };
+    expect(financeCardSummary(card)).toBe("2 transactions (all dates): $5.00");
+    expect(financeCardSummary({ ...card, from: "2026-09-01", to: "2026-09-30" })).toBe(
+      "2 transactions (2026-09-01 to 2026-09-30): $5.00",
+    );
+  });
 });

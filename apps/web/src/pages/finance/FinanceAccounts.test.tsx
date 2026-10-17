@@ -11,13 +11,18 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 const rpcMock = vi.hoisted(() => ({
   accounts: vi.fn(),
+  account: vi.fn(),
   crypto: vi.fn(),
   exchanges: vi.fn(),
   walletAdd: vi.fn(),
@@ -25,10 +30,12 @@ const rpcMock = vi.hoisted(() => ({
   balanceSeries: vi.fn(),
   overview: vi.fn(),
   setPreferences: vi.fn(),
+  statementAccountRename: vi.fn(),
+  spend: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
-import { FinanceAccountsPage } from "./FinanceAccounts";
+import { FinanceAccountPage, FinanceAccountsPage } from "./FinanceAccounts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -109,6 +116,7 @@ async function show(scope: "bank" | "stablecoins" | "all" = "bank", cryptoData =
   await flush();
 }
 beforeEach(async () => {
+  rpcMock.spend.mockResolvedValue({ totalCents: 0 });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -124,7 +132,9 @@ it("lists wallets in their own Crypto group and keeps them out of total cash", (
   const page = container.textContent ?? "";
   expect(page).toContain("Crypto");
   expect(page).toContain("alice.eth");
-  expect(page).toContain("$987,654.00");
+  // Rounded to whole dollars like every other balance on the page.
+  expect(page).toContain("$987,654");
+  expect(page).not.toContain("$987,654.00");
   expect(container.querySelector('a[href="/app/finance/crypto"]')?.textContent).toBe("alice.eth");
   const total = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Total cash");
   expect(total?.nextElementSibling?.textContent).toBe("$75,000");
@@ -133,7 +143,8 @@ it("lists wallets in their own Crypto group and keeps them out of total cash", (
 
 it("lists connected exchanges in the Crypto group, outside total cash", () => {
   const row = [...container.querySelectorAll("tr")].find((r) => r.textContent?.includes("Kraken"));
-  expect(row?.textContent).toContain("$250.00");
+  expect(row?.textContent).toContain("$250");
+  expect(row?.textContent).not.toContain("$250.00");
   expect(container.textContent).not.toContain("$75,250");
 });
 
@@ -179,7 +190,7 @@ const subtitle = () =>
 
 it("offers Count crypto, off under the bank scope, and keeps the plain subtitle", () => {
   expect(toggle()?.textContent).toBe("Count crypto");
-  expect(subtitle()).toBe("Checking + Savings + Treasury");
+  expect(subtitle()).toBe("1 bank account");
 });
 
 it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
@@ -187,11 +198,64 @@ it("adds Stablecoins or Crypto to the subtitle when they count", async () => {
   root = createRoot(container);
   await show("stablecoins");
   expect(toggle()?.textContent).toBe("Counting stablecoins");
-  expect(subtitle()).toBe("Checking + Savings + Treasury + Stablecoins");
+  expect(subtitle()).toBe("1 bank account + stablecoins");
   await act(async () => root.unmount());
   root = createRoot(container);
   await show("all");
-  expect(subtitle()).toBe("Checking + Savings + Treasury + Crypto");
+  expect(subtitle()).toBe("1 bank account + crypto");
+});
+
+it("narrows the cash total to the chosen source and says Brex does not share the card balance", async () => {
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.accounts.mockResolvedValue({
+    ...accounts,
+    totalCashCents: 7_530_000,
+    cash: [
+      ...accounts.cash.map((a) => ({ ...a, provider: "mercury" })),
+      {
+        id: "a2",
+        provider: "brex",
+        name: "Acme business account",
+        lastFour: null,
+        balanceCents: 30_000,
+        annualYieldPct: null,
+      },
+    ],
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountsPage source="brex" />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  const kpi = (title: string) =>
+    [...container.querySelectorAll("h2")].find((h) => h.textContent === title)?.parentElement
+      ?.textContent;
+  expect(kpi("Brex cash")).toContain("$300");
+  expect(kpi("Brex cash")).toContain("1 bank account");
+  expect(container.textContent).not.toContain("$75,300");
+  expect(kpi("Card balance owed")).toContain("Brex does not share it");
+});
+
+it("shows an account's last four digits once when its name already ends with them", async () => {
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.accounts.mockResolvedValue({
+    ...accounts,
+    cash: [{ ...accounts.cash[0], name: "MOCK Checking ••0002" }],
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountsPage />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  expect(container.textContent?.match(/••0002/g)).toHaveLength(1);
 });
 
 it("saves the scope and reloads accounts and the scope", async () => {
@@ -220,7 +284,10 @@ it("reloads accounts after a wallet is added, since crypto can count in total ca
       ) as HTMLElement
     ).click(),
   );
-  const input = document.body.querySelector('[aria-label="Address or ENS"]') as HTMLInputElement;
+  const label = [...document.body.querySelectorAll("label")].find(
+    (l) => l.textContent === "Address or ENS",
+  );
+  const input = document.getElementById(label?.htmlFor ?? "") as HTMLInputElement;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
       input,
@@ -269,9 +336,19 @@ const rows = () =>
   [...container.querySelectorAll("tbody td.font-semibold")].map((td) => td.textContent);
 
 it("shows only the source's accounts, for cash and for cards", async () => {
+  rpcMock.spend.mockResolvedValue({ totalCents: 2_287_100 });
   await showSource("brex");
   expect(rows().join(" ")).toContain("Brex Card");
   expect(rows().join(" ")).not.toContain("Checking");
+  // A wallet is not a Brex account, and Brex's own spend is one click away.
+  expect(container.textContent).not.toContain("alice.eth");
+  expect(container.textContent).not.toContain("Count crypto");
+  expect(rpcMock.spend).toHaveBeenCalledWith({ period: "month", source: "brex" });
+  const spend = [...container.querySelectorAll("a")].find((a) =>
+    a.textContent?.startsWith("Brex spend"),
+  );
+  expect(spend?.textContent).toContain("$22,871");
+  expect(spend?.getAttribute("href")).toBe("/app/finance/spend?period=month&source=brex");
   await showSource("mercury");
   expect(rows().join(" ")).toContain("Checking");
   expect(rows().join(" ")).not.toContain("Brex Card");
@@ -282,7 +359,10 @@ it("clears the filter from the chip near the title, and shows everything with no
   const clear = container.querySelector('a[aria-label="Clear Mercury filter"]');
   expect(clear?.textContent).toBe("Mercury ×");
   expect(clear?.getAttribute("href")).toBe("/app/finance/accounts");
+  // The all-accounts chart would contradict the filtered figure, so it waits for the filter to clear.
+  expect(container.textContent).not.toContain("Total balance");
   await showSource(null);
+  expect(container.textContent).toContain("Total balance");
   expect(container.querySelector('a[aria-label^="Clear"]')).toBeNull();
   expect(rows().join(" ")).toContain("Checking");
   expect(rows().join(" ")).toContain("Brex Card");
@@ -308,4 +388,96 @@ it("reloads the chart after the crypto scope is saved", async () => {
   await flush();
   expect(rpcMock.balanceSeries).toHaveBeenCalledTimes(2);
   expect(rpcMock.balanceSeries).toHaveBeenLastCalledWith({ range: "year" });
+});
+
+it("says an account has no transactions yet, without mentioning a period it does not have", async () => {
+  rpcMock.account.mockResolvedValue({
+    account: {
+      id: "a9",
+      provider: "mercury",
+      kind: "savings",
+      name: "Savings",
+      lastFour: "2222",
+      balanceCents: 100_000,
+      annualYieldPct: null,
+    },
+    history: [],
+    treasuryYield: [],
+    transactions: [],
+  });
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountPage id="a9" />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  expect(container.textContent).toContain("No transactions on this account yet");
+  expect(container.textContent).not.toContain("in this period");
+});
+
+it("renames a statement account and shows the new name, and offers no rename on a synced bank", async () => {
+  const statementAccount = (name: string) => ({
+    account: {
+      id: "s1",
+      provider: "statement",
+      kind: "checking",
+      name,
+      lastFour: null,
+      balanceCents: 1_050_000,
+      annualYieldPct: null,
+    },
+    history: [],
+    treasuryYield: [],
+    transactions: [],
+  });
+  rpcMock.account.mockResolvedValueOnce(statementAccount("mock firstbank"));
+  rpcMock.account.mockResolvedValueOnce(statementAccount("Operating account"));
+  rpcMock.statementAccountRename.mockResolvedValue({ ok: true });
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountPage id="s1" />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  const rename = [...container.querySelectorAll("button")].find((b) => b.textContent === "Rename");
+  await act(async () => rename?.click());
+  const input = document.body.querySelector<HTMLInputElement>('input[maxlength="200"]');
+  expect(input?.value).toBe("mock firstbank");
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setter?.call(input, "  Operating account ");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => input?.form?.requestSubmit());
+  await flush();
+  expect(rpcMock.statementAccountRename).toHaveBeenCalledWith({
+    id: "s1",
+    name: "Operating account",
+  });
+  expect(container.querySelector("h1")?.textContent).toBe("Operating account");
+
+  // A Mercury account keeps the bank's name.
+  rpcMock.account.mockResolvedValue({
+    ...statementAccount("Checking"),
+    account: { ...statementAccount("Checking").account, id: "m1", provider: "mercury" },
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountPage id="m1" />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  expect([...container.querySelectorAll("button")].some((b) => b.textContent === "Rename")).toBe(
+    false,
+  );
 });

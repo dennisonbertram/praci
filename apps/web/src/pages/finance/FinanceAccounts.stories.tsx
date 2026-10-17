@@ -103,6 +103,8 @@ const loaded = {
   "finance.exchanges": [exchange],
   "finance.preferences": { runwayCrypto: "bank" },
   "finance.balanceSeries": { range: "year", points },
+  // MOCK DEMO DATA: a source's spend this month, shown when the list is filtered to it.
+  "finance.spend": { totalCents: 2_287_100 },
 };
 
 const meta = {
@@ -227,6 +229,27 @@ export const CardDetail: StoryObj<typeof FinanceAccountPage> = {
     }),
 };
 
+/** An account made from an uploaded statement: named from the file, with Rename in the title row. */
+export const StatementAccountDetail: StoryObj<typeof FinanceAccountPage> = {
+  render: () => <FinanceAccountPage id="acct_statement" />,
+  beforeEach: () =>
+    mockRpc({
+      "finance.account": {
+        ...account,
+        account: {
+          ...treasury,
+          id: "acct_statement",
+          provider: "statement",
+          kind: "checking",
+          name: "mock firstbank",
+          lastFour: null,
+          annualYieldPct: null,
+        },
+        treasuryYield: [],
+      },
+    }),
+};
+
 export const AccountLoadFailed: StoryObj<typeof FinanceAccountPage> = {
   render: () => <FinanceAccountPage id="acct_missing" />,
   beforeEach: () =>
@@ -235,4 +258,34 @@ export const AccountLoadFailed: StoryObj<typeof FinanceAccountPage> = {
         throw new Error("Account not found.");
       },
     }),
+};
+
+export const BrexCashWithUnknownCardBalance: Story = {
+  name: "Brex filter, card balance not shared",
+  args: { source: "brex" },
+  beforeEach: () =>
+    mockRpc({
+      ...loaded,
+      "finance.accounts": {
+        ...accounts,
+        cardOwedCents: null,
+        cards: [],
+        cash: [
+          ...accounts.cash,
+          {
+            ...accounts.cash[0],
+            id: "acct_brex",
+            provider: "brex",
+            name: "Business account",
+            lastFour: null,
+            balanceCents: 30_000,
+          },
+        ],
+      },
+    }),
+};
+
+export const UnknownSourceFilter: Story = {
+  args: { unknownSource: "chase" },
+  beforeEach: () => mockRpc(loaded),
 };

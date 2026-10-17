@@ -110,3 +110,12 @@ export const AlchemyLastError: Story = {
       "finance.exchanges": [],
     }),
 };
+
+/** Blockscout's MCP server exists without its PRO key: one tile, saying the key is still needed. */
+export const BlockscoutKeyNeeded: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "finance.crypto": { ...crypto(false), connected: true },
+      "finance.exchanges": [],
+    }),
+};

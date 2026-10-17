@@ -216,7 +216,8 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
     await close();
   });
 
-  const seedMailboxes = () => {
+  /** `withSent` adds the user's own sent message s-1 to box-a. */
+  const seedMailboxes = (withSent = false) => {
     const message = (messageId: string, labels: string[]) => ({
       id: messageId,
       date: daysAgo(1).toISOString(),
@@ -232,7 +233,13 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
     });
     gmail = new GmailApiEmulator({
       mailboxes: {
-        "box-a": { address: "box-a@example.test", messages: [message("a-1", ["INBOX", "UNREAD"])] },
+        "box-a": {
+          address: "box-a@example.test",
+          messages: [
+            message("a-1", ["INBOX", "UNREAD"]),
+            ...(withSent ? [message("s-1", ["SENT"])] : []),
+          ],
+        },
         "box-b": { address: "box-b@example.test", messages: [message("b-1", ["INBOX"])] },
         "box-c": { address: "box-c@example.test", messages: [message("c-1", ["INBOX"])] },
         "box-revoked": {
@@ -268,7 +275,9 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         needsReply: null,
       });
       expect(out.rows[1]?.from).toBe("ann@example.test");
-      expect(out.accounts).toEqual([{ connectionId: connA, label: "Mailbox box-a" }]);
+      expect(out.accounts).toEqual([
+        { connectionId: connA, label: "Mailbox box-a", address: "box-a@example.test" },
+      ]);
       expect(out.syncedAt).toBeNull();
       expect(out.failedAccounts).toEqual([]);
     });
@@ -362,7 +371,9 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(unread.rows.every((r) => r.unread)).toBe(true);
       expect(unread.nextPageToken).toBeUndefined();
       expect(unread.failedAccounts).toEqual([]);
-      expect(unread.accounts).toEqual([{ connectionId: connA, label: "Mailbox box-a" }]);
+      expect(unread.accounts).toEqual([
+        { connectionId: connA, label: "Mailbox box-a", address: "box-a@example.test" },
+      ]);
       expect(requestedBoxes()).toEqual(["box-a"]);
 
       const starred = await inboxList(deps, a, { filter: "starred" });
@@ -685,6 +696,64 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await expect(
         inboxAttachment(deps, a, { messageId: mine.id, attachmentId: "99" }),
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("lists the conversation's earlier and later messages, oldest first, and the cached state", async () => {
+      await wipe();
+      seedMailboxes(true);
+      const first = await cache(a, connA, "t-1", { threadId: "t", receivedAt: daysAgo(3) });
+      const second = await cache(a, connA, "t-2", {
+        threadId: "t",
+        receivedAt: daysAgo(2),
+        fromName: null,
+        fromAddress: "bob@example.test",
+      });
+      const latest = await cache(a, connA, "a-1", {
+        threadId: "t",
+        receivedAt: daysAgo(1),
+        unread: true,
+      });
+      // The user's own reply, after the message that is open.
+      const reply = await cache(a, connA, "s-1", {
+        threadId: "t",
+        receivedAt: new Date(),
+        inInbox: false,
+        fromSelf: true,
+        fromName: null,
+        fromAddress: "me@example.test",
+      });
+      // Same thread id on another user's mailbox stays out.
+      await cache(b, connB, "b-1", { threadId: "t" });
+
+      const message = await inboxGet(deps, a, { messageId: latest.id });
+      expect(message.later).toEqual([
+        {
+          id: reply.id,
+          from: "me@example.test",
+          receivedAt: reply.receivedAt.toISOString(),
+          snippet: "Snippet s-1",
+          fromSelf: true,
+        },
+      ]);
+
+      expect(message).toMatchObject({ unread: true, inInbox: true });
+      expect(message.fromSelf).toBeUndefined();
+      // The user's own message says so, so the dialog can name its sender "You".
+      expect((await inboxGet(deps, a, { messageId: reply.id })).fromSelf).toBe(true);
+      expect(message.thread).toEqual([
+        {
+          id: first.id,
+          from: "Ann Sender",
+          receivedAt: first.receivedAt.toISOString(),
+          snippet: "Snippet t-1",
+        },
+        {
+          id: second.id,
+          from: "bob@example.test",
+          receivedAt: second.receivedAt.toISOString(),
+          snippet: "Snippet t-2",
+        },
+      ]);
     });
 
     it("answers NOT_FOUND for another user's, another space's, a revoked and an unknown id", async () => {

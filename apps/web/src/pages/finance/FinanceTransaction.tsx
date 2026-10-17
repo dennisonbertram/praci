@@ -5,18 +5,27 @@ import { categorySlug } from "@rakazo/core";
 import { Button } from "@rakazo/ui-web";
 import { ExternalLink, FileText } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   type Crumb,
   DetailPage,
   Kv,
   KvRow,
+  previewFrom,
   Section,
   useFinanceQuery,
   ValueLink,
 } from "../../components/finance/ui";
-import { fullDay, monthLabel, transactionAmount } from "../../lib/finance-format";
+import {
+  accountLabel,
+  fullDay,
+  monthLabel,
+  shortDay,
+  transactionAmount,
+  txnDay,
+} from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 
 export const ReceiptIcon = () => (
@@ -33,15 +42,19 @@ function httpsUrl(value: string | null): string | null {
   }
 }
 
-const isSpend = (data: FinanceTransactionOutput) =>
-  data.transaction.classification === "spend" && data.transaction.amountCents < 0;
+const isSpend = (txn: FinanceTransactionOutput["transaction"]) =>
+  txn.classification === "spend" && txn.amountCents < 0;
+
+/** The crumb for one charge: its day and amount, since the title and the crumb before already name the merchant. */
+const transactionCrumb = (txn: FinanceTransactionOutput["transaction"]) =>
+  `${shortDay(txnDay(txn))} · ${transactionAmount(txn.amountCents)}`;
 
 /** Where the transaction sits in the app, so Back returns to the page the user is most likely to have come from. */
 export function transactionCrumbs(data: FinanceTransactionOutput): Crumb[] {
   const { transaction: txn, account, vendorName, vendorIsSubscription } = data;
   const root = { label: t`Finance`, to: financePath.dashboard() };
-  const here = { label: txn.counterparty, to: financePath.transaction(txn.id) };
-  if (!isSpend(data)) {
+  const here = { label: transactionCrumb(txn), to: financePath.transaction(txn.id) };
+  if (!isSpend(txn)) {
     return [
       root,
       { label: t`Accounts`, to: financePath.accounts() },
@@ -52,12 +65,12 @@ export function transactionCrumbs(data: FinanceTransactionOutput): Crumb[] {
   if (vendorIsSubscription) {
     return [
       root,
-      { label: t`Subscriptions`, to: financePath.dashboard() },
+      { label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` },
       { label: vendorName, to: financePath.vendor(txn.vendorKey) },
-      { label: fullDay(txn.postedAt), to: financePath.transaction(txn.id) },
+      here,
     ];
   }
-  const month = txn.postedAt.slice(0, 7);
+  const month = txnDay(txn).slice(0, 7);
   return [
     root,
     { label: t`Burn`, to: financePath.burn() },
@@ -69,6 +82,7 @@ export function transactionCrumbs(data: FinanceTransactionOutput): Crumb[] {
 function ReceiptThumb({ id }: { id: string }) {
   const q = useFinanceQuery(() => rpc.finance.receiptUrl({ transactionId: id }), [id]);
   const url = q.data ? httpsUrl(q.data.url) : null;
+  const hidden = useHideAmounts();
   const image = Boolean(url && q.data?.mimeType?.startsWith("image/"));
   return (
     <Link
@@ -76,7 +90,7 @@ function ReceiptThumb({ id }: { id: string }) {
       aria-label={t`Open receipt`}
       className="inline-flex size-28 items-center justify-center overflow-hidden rounded-md border border-border hover:border-foreground"
     >
-      {image && url ? (
+      {image && url && !hidden ? (
         <img src={url} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
       ) : (
         <FileText aria-hidden="true" className="size-6" />
@@ -117,34 +131,46 @@ function CheckReceipt({ id }: { id: string }) {
 }
 
 export function FinanceTransactionPage({ id }: { id: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.transaction({ id }), [id]);
   const data = q.data;
-  const txn = data?.transaction;
-  const spend = data ? isSpend(data) : false;
+  // The row clicked in a list is shown at once; the rest (account, receipt) follows when loaded.
+  const preview = previewFrom(useLocation().state, id);
+  const txn = data?.transaction ?? preview;
+  const spend = txn ? isSpend(txn) : false;
   const external = txn ? httpsUrl(txn.dashboardUrl) : null;
   const providerName = txn?.provider === "brex" ? "Brex" : "Mercury";
   const source = data?.account
-    ? `${data.account.name}${data.account.lastFour ? ` ••${data.account.lastFour}` : ""}`
+    ? accountLabel(data.account.name, data.account.lastFour)
     : txn?.cardLastFour
       ? `${providerName} ••${txn.cardLastFour}`
       : providerName;
   const status =
     txn?.status === "pending" ? t`Pending` : txn?.status === "posted" ? t`Posted` : t`Other`;
+  const day = txn ? txnDay(txn) : "";
+  const posted = txn?.postedAt.slice(0, 10) ?? "";
   return (
     <DetailPage
-      crumbs={data ? transactionCrumbs(data) : [{ label: t`Finance`, to: financePath.dashboard() }]}
-      title={txn ? fullDay(txn.postedAt) : null}
-      loading={!data}
+      crumbs={
+        data
+          ? transactionCrumbs(data)
+          : [
+              { label: t`Finance`, to: financePath.dashboard() },
+              ...(txn ? [{ label: transactionCrumb(txn) }] : []),
+            ]
+      }
+      title={txn?.counterparty}
+      loading={!txn}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
-      {data && txn ? (
+      {txn ? (
         <div className="grid gap-3 @3xl:grid-cols-2">
           <Section>
-            <div className="text-[26px] font-semibold tabular-nums">
+            <div className="mb-2 text-[26px] font-semibold tabular-nums">
               {transactionAmount(txn.amountCents)}
             </div>
-            <div className="mb-2 text-xs text-muted-foreground">{txn.counterparty}</div>
             <Kv>
               <KvRow label={t`Merchant`}>
                 {spend ? (
@@ -153,7 +179,8 @@ export function FinanceTransactionPage({ id }: { id: string }) {
                   txn.counterparty
                 )}
               </KvRow>
-              <KvRow label={t`Date posted`}>{fullDay(txn.postedAt)}</KvRow>
+              <KvRow label={t`Date`}>{fullDay(day)}</KvRow>
+              {posted !== day ? <KvRow label={t`Posted`}>{fullDay(posted)}</KvRow> : null}
               <KvRow label={t`Status`}>{status}</KvRow>
               <KvRow label={t`Source`}>{source}</KvRow>
               {txn.cardholder ? (
@@ -190,7 +217,11 @@ export function FinanceTransactionPage({ id }: { id: string }) {
           </Section>
           {spend ? (
             <Section title={<Trans>Receipt</Trans>}>
-              {txn.hasReceipt ? (
+              {!data ? (
+                <span className="text-muted-foreground">
+                  <Trans>Loading…</Trans>
+                </span>
+              ) : txn.hasReceipt ? (
                 <div>
                   <ReceiptThumb id={txn.id} />
                 </div>
@@ -210,6 +241,7 @@ export function FinanceTransactionPage({ id }: { id: string }) {
 }
 
 export function FinanceReceiptPage({ id }: { id: string }) {
+  const hidden = useHideAmounts();
   const txn = useFinanceQuery(() => rpc.finance.transaction({ id }), [id]);
   const receipt = useFinanceQuery(() => rpc.finance.receiptUrl({ transactionId: id }), [id]);
   const url = receipt.data ? httpsUrl(receipt.data.url) : null;
@@ -221,14 +253,19 @@ export function FinanceReceiptPage({ id }: { id: string }) {
     <DetailPage
       crumbs={[...crumbs, { label: t`Receipt` }]}
       title={<Trans>Receipt</Trans>}
-      loading={!txn.data || !receipt.data}
-      error={txn.error || receipt.error}
+      loading={!txn.data || (!receipt.data && !receipt.notFound)}
+      error={txn.error || (receipt.notFound ? "" : receipt.error)}
+      notFound={txn.notFound}
       onRetry={() => {
         txn.retry();
         receipt.retry();
       }}
     >
-      {url ? (
+      {url && hidden ? (
+        <Section>
+          <p className="text-sm text-muted-foreground">{t`Receipt hidden while amounts are hidden`}</p>
+        </Section>
+      ) : url ? (
         <Section>
           <div className="flex flex-col items-center gap-3">
             {mime.startsWith("image/") ? (

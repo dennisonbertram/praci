@@ -3,17 +3,24 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
-import { Download, FileText, X } from "lucide-react";
-import { type ReactNode, useState } from "react";
-import { saveDataRoomItem } from "../../lib/data-room";
+import { Download, FileText, Trash2, X } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { canPreviewImage, dataRoomImageUrl, saveDataRoomItem } from "../../lib/data-room";
+import { MASK } from "../../lib/finance-format";
+import {
+  getHideAmounts,
+  maskCurrencyWhenHidden,
+  useHideAmounts,
+} from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { sourceLabel } from "./FilterBar";
-import { dateText, statusLabel } from "./format";
+import { dateText, sizeText, statusLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
 
 function amountText(item: DataRoomApiItem) {
   const { amountCents, currency } = item.facets;
   if (amountCents === null) return "";
+  if (getHideAmounts()) return `$${MASK}`;
   const amount = amountCents / 100;
   try {
     return new Intl.NumberFormat(i18n.locale || undefined, {
@@ -23,21 +30,6 @@ function amountText(item: DataRoomApiItem) {
   } catch {
     return String(amount);
   }
-}
-
-function sizeText(bytes: number) {
-  const [unit, divisor] =
-    bytes < 1_000
-      ? (["byte", 1] as const)
-      : bytes < 1_000_000
-        ? (["kilobyte", 1_000] as const)
-        : (["megabyte", 1_000_000] as const);
-  return new Intl.NumberFormat(i18n.locale || undefined, {
-    style: "unit",
-    unit,
-    unitDisplay: "narrow",
-    maximumFractionDigits: 1,
-  }).format(bytes / divisor);
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -54,6 +46,31 @@ const Tag = ({ children }: { children: ReactNode }) => (
     {children}
   </Badge>
 );
+
+/** The picture itself, for an image item; nothing while it loads or when it cannot be read. */
+function ImagePreview({ item }: { item: DataRoomApiItem }) {
+  const [url, setUrl] = useState("");
+  const { id, mimeType } = item;
+  useEffect(() => {
+    let live = true;
+    let made = "";
+    setUrl("");
+    dataRoomImageUrl({ id, mimeType })
+      .then((next) => {
+        made = next;
+        if (live) setUrl(next);
+        else URL.revokeObjectURL(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+      if (made) URL.revokeObjectURL(made);
+    };
+  }, [id, mimeType]);
+  return url ? (
+    <img src={url} alt={item.name} className="max-h-64 w-full rounded-md bg-muted object-contain" />
+  ) : null;
+}
 
 /** The summary, facets and source of one item, with Download and the item menu. */
 export function Preview({
@@ -72,18 +89,24 @@ export function Preview({
 }) {
   const [error, setError] = useState("");
   const { facets } = item;
+  const hidden = useHideAmounts();
   const amount = amountText(item);
+  const download = () => {
+    setError("");
+    saveDataRoomItem(item).catch((cause) => setError(errorText(cause)));
+  };
   return (
     <aside
       aria-label={t`Preview`}
       data-testid="data-room-preview"
       className={
         inDialog
-          ? "flex flex-col gap-3 p-4 pe-12"
+          ? "flex flex-col gap-3 p-4"
           : "flex w-80 shrink-0 flex-col gap-3 overflow-y-auto border-s border-border bg-background p-3"
       }
     >
-      <div className="flex items-center gap-1">
+      {/* In a dialog, leave room for its close button. */}
+      <div className={inDialog ? "flex items-center gap-1 pe-8" : "flex items-center gap-1"}>
         <FileText aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         {inDialog ? (
           <DialogTitle className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -102,12 +125,24 @@ export function Preview({
         )}
       </div>
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
+      {canPreviewImage(item) ? (
+        hidden ? (
+          <p className="text-sm text-muted-foreground">{t`Image hidden while amounts are hidden`}</p>
+        ) : (
+          <ImagePreview key={item.id} item={item} />
+        )
+      ) : null}
       {item.status === "failed" ? (
-        <p className="text-sm text-destructive">{item.error ?? t`Failed`}</p>
+        <div className="flex flex-col gap-1 text-sm">
+          <p className="font-medium text-destructive">
+            <Trans>Couldn't read this file</Trans>
+          </p>
+          {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
+        </div>
       ) : item.status !== "ready" ? (
         <p className="text-sm text-muted-foreground">{statusLabel(item.status)}</p>
       ) : facets.summary ? (
-        <p className="text-sm">{facets.summary}</p>
+        <p className="text-sm">{maskCurrencyWhenHidden(facets.summary)}</p>
       ) : null}
       {item.status === "ready" && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
@@ -134,14 +169,15 @@ export function Preview({
         <Field label={t`Source`}>{sourceLabel(item.source)}</Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
       </dl>
+      {/* The same full-width actions for every item; a file that can't be read leads with Delete. */}
       <div className="flex flex-col gap-1.5">
-        <Button
-          variant="outline"
-          onClick={() => {
-            setError("");
-            saveDataRoomItem(item).catch((cause) => setError(errorText(cause)));
-          }}
-        >
+        {item.status === "failed" ? (
+          <Button variant="destructive" onClick={() => onAction("delete", item)}>
+            <Trash2 aria-hidden="true" />
+            <Trans>Delete</Trans>
+          </Button>
+        ) : null}
+        <Button variant="outline" onClick={download}>
           <Download aria-hidden="true" />
           <Trans>Download</Trans>
         </Button>

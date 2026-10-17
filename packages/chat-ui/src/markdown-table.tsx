@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import { CheckIcon, CopyIcon } from "./icons";
+import { HideAmountsContext } from "./markdown";
 import type { ExtractedTable, HastNode, TableAlign, TableSortDirection } from "./table-utils";
 import {
   columnSortLabel,
@@ -43,6 +44,7 @@ export const MarkdownTable = memo(function MarkdownTable({
   children?: ReactNode;
 }) {
   const source = useContext(MarkdownTableSourceContext);
+  const hideAmounts = useContext(HideAmountsContext);
   const start = node?.position?.start?.offset;
   const end = node?.position?.end?.offset;
   const sourceKey =
@@ -51,7 +53,7 @@ export const MarkdownTable = memo(function MarkdownTable({
       : null;
   // sourceKey pins the extraction to the source text; node identity is only
   // the fallback when the parser supplies no position.
-  const extracted = useMemo(() => extractTable(node), [sourceKey ?? node]);
+  const extracted = useMemo(() => extractTable(node), [sourceKey ?? node, hideAmounts]);
   const rendered = useMemo(() => extractRenderedCells(children), [children]);
   if (!extracted) return <table {...tableProps}>{children}</table>;
   return (
@@ -179,44 +181,49 @@ export const TableCard = memo(function TableCard({
     />
   );
 
-  const pager = showPagination ? (
-    <div className="rk-table-footer">
-      <span className="rk-table-range">
-        {safePage * TABLE_PAGE_SIZE + 1}–
-        {Math.min((safePage + 1) * TABLE_PAGE_SIZE, sortedRows.length)} of {sortedRows.length} rows
-      </span>
-      <button
-        type="button"
-        className="rk-table-tool"
-        aria-label="Previous page"
-        disabled={safePage === 0}
-        onClick={() => {
-          setPage(safePage - 1);
-          announce(`Page ${safePage} of ${pageCount}`);
-        }}
-      >
-        <ChevronLeftIcon />
-      </button>
-      <button
-        type="button"
-        className="rk-table-tool"
-        aria-label="Next page"
-        disabled={safePage >= pageCount - 1}
-        onClick={() => {
-          setPage(safePage + 1);
-          announce(`Page ${safePage + 2} of ${pageCount}`);
-        }}
-      >
-        <ChevronRightIcon />
-      </button>
-    </div>
-  ) : (
-    <div className="rk-table-footer">
-      <span className="rk-table-range">
-        {sortedRows.length} {sortedRows.length === 1 ? "row" : "rows"}
-      </span>
-    </div>
-  );
+  // The card puts its tools in the footer; the dialog keeps them in its header.
+  const footer = (extra: ReactNode) =>
+    showPagination ? (
+      <div className="rk-table-footer">
+        <span className="rk-table-range">
+          {safePage * TABLE_PAGE_SIZE + 1}–
+          {Math.min((safePage + 1) * TABLE_PAGE_SIZE, sortedRows.length)} of {sortedRows.length}{" "}
+          rows
+        </span>
+        <button
+          type="button"
+          className="rk-table-tool"
+          aria-label="Previous page"
+          disabled={safePage === 0}
+          onClick={() => {
+            setPage(safePage - 1);
+            announce(`Page ${safePage} of ${pageCount}`);
+          }}
+        >
+          <ChevronLeftIcon />
+        </button>
+        <button
+          type="button"
+          className="rk-table-tool"
+          aria-label="Next page"
+          disabled={safePage >= pageCount - 1}
+          onClick={() => {
+            setPage(safePage + 1);
+            announce(`Page ${safePage + 2} of ${pageCount}`);
+          }}
+        >
+          <ChevronRightIcon />
+        </button>
+        {extra}
+      </div>
+    ) : (
+      <div className="rk-table-footer">
+        <span className="rk-table-range">
+          {sortedRows.length} {sortedRows.length === 1 ? "row" : "rows"}
+        </span>
+        {extra}
+      </div>
+    );
 
   const tools = (mode: "card" | "dialog") => (
     <div className="rk-table-head">
@@ -269,13 +276,12 @@ export const TableCard = memo(function TableCard({
       <div className="rk-table-card rk-table-box" data-testid="table-card">
         {/* Keep the live region in the active view — dialog content is outside the card. */}
         {expanded ? null : status}
-        {tools("card")}
         {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must
             be keyboard-focusable (WCAG 2.1.1 / axe scrollable-region-focusable). */}
         <section className="rk-table-scroll" aria-label="Table" tabIndex={0}>
           {tableView("card")}
         </section>
-        {pager}
+        {footer(tools("card"))}
       </div>
       <DialogContent
         showCloseButton={false}
@@ -291,7 +297,7 @@ export const TableCard = memo(function TableCard({
         <section className="rk-table-scroll rk-table-dialog-scroll" aria-label="Table" tabIndex={0}>
           {tableView("dialog")}
         </section>
-        {pager}
+        {footer(null)}
       </DialogContent>
     </Dialog>
   );

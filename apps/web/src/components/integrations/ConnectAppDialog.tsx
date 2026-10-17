@@ -14,6 +14,7 @@ import { type SignInState, SignInStep } from "./SignInStep";
 import type { IntegrationsData } from "./useIntegrations";
 
 type Phase =
+  | { kind: "confirm" }
   | { kind: "signin"; state: SignInState }
   | { kind: "agents" }
   | { kind: "done"; agents: "all" | "some" | "none" | "skipped" };
@@ -30,14 +31,22 @@ export function ConnectAppDialog({
   data,
   activeBotId,
   onClose,
+  onConnected,
+  confirmFirst = false,
 }: {
   item: ConnectionCatalogItem;
   data: IntegrationsData;
   activeBotId?: string;
   onClose: () => void;
+  /** Runs after the dialog closes on a successful connect, e.g. to return the person to where they came from. */
+  onConnected?: () => void;
+  /** Wait for an explicit Connect before creating anything, for dialogs opened by a link. */
+  confirmFirst?: boolean;
 }) {
   const { t } = useLingui();
-  const [phase, setPhase] = useState<Phase>({ kind: "signin", state: { kind: "waiting" } });
+  const [phase, setPhase] = useState<Phase>(
+    confirmFirst ? { kind: "confirm" } : { kind: "signin", state: { kind: "waiting" } },
+  );
   const [row, setRow] = useState<Connection | null>(null);
   const [saving, setSaving] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
@@ -162,7 +171,7 @@ export function ConnectAppDialog({
   }
 
   useEffect(() => {
-    if (started.current) return;
+    if (started.current || confirmFirst) return;
     started.current = true;
     void start();
   }, []);
@@ -181,6 +190,7 @@ export function ConnectAppDialog({
       void refresh();
     }
     onClose();
+    if (finished.current) onConnected?.();
   }
 
   async function saveAccess(botIds: string[]) {
@@ -197,7 +207,7 @@ export function ConnectAppDialog({
       void refresh();
       setPhase({ kind: "done", agents: all ? "all" : botIds.length > 0 ? "some" : "none" });
     } catch (err) {
-      setAccessError(errorText(err, t`Could not save agent access`));
+      setAccessError(errorText(err, t`Could not save bot access`));
     } finally {
       setSaving(false);
     }
@@ -210,7 +220,27 @@ export function ConnectAppDialog({
         className="max-w-[440px] sm:max-w-[440px]"
         aria-label={t`Connect ${item.name}`}
       >
-        {phase.kind === "signin" ? (
+        {phase.kind === "confirm" ? (
+          <div>
+            <div className="mb-3 flex justify-center">
+              <AppLogo name={item.name} logo={item.logo} size="xl" />
+            </div>
+            <DialogTitle className="text-center">{t`Connect ${item.name}`}</DialogTitle>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={close}>
+                <Trans>Cancel</Trans>
+              </Button>
+              <Button
+                onClick={() => {
+                  started.current = true;
+                  void start();
+                }}
+              >
+                <Trans>Connect</Trans>
+              </Button>
+            </div>
+          </div>
+        ) : phase.kind === "signin" ? (
           <SignInStep
             appName={item.name}
             logo={item.logo}
@@ -251,11 +281,11 @@ export function ConnectAppDialog({
                 <li>
                   <span className="font-bold text-success">✓ </span>
                   {phase.agents === "all" ? (
-                    <Trans>All agents can use {item.name}.</Trans>
+                    <Trans>All bots can use {item.name}.</Trans>
                   ) : phase.agents === "some" ? (
-                    <Trans>The agents you chose can use {item.name}.</Trans>
+                    <Trans>The bots you chose can use {item.name}.</Trans>
                   ) : (
-                    <Trans>No agent uses {item.name} yet. Choose agents on its page.</Trans>
+                    <Trans>No bot uses {item.name} yet. Choose bots on its page.</Trans>
                   )}
                 </li>
               )}

@@ -237,6 +237,8 @@ export function ModelBackupsSettings({
     return { full: `${providerName} · ${label}`, available: Boolean(option) };
   };
 
+  const nothingToAdd = currentState?.draft.length === 0 && addableOptions.length === 0 && !dirty;
+
   return (
     <section
       data-testid="model-backups"
@@ -330,57 +332,68 @@ export function ModelBackupsSettings({
               <Trans>Maximum of 10 backup models.</Trans>
             </p>
           ) : null}
-          <div className="mt-3 flex flex-wrap items-end gap-2">
-            <div className="min-w-0 flex-1 text-[13px] text-muted-foreground">
-              <label htmlFor="model-backup-picker">
-                <Trans>Add connected model</Trans>
-              </label>
-              <NativeSelect
-                id="model-backup-picker"
-                aria-label={t`Add connected model`}
-                className="mt-1.5 w-full text-foreground"
-                value={addableKey}
+          {/* Nothing to pick and nothing to save: the line above says what to do instead. */}
+          {nothingToAdd ? null : (
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <div className="min-w-0 flex-1 text-[13px] text-muted-foreground">
+                <label htmlFor="model-backup-picker">
+                  <Trans>Add connected model</Trans>
+                </label>
+                <NativeSelect
+                  id="model-backup-picker"
+                  aria-label={t`Add connected model`}
+                  className="mt-1.5 w-full text-foreground"
+                  value={addableKey}
+                  disabled={
+                    !editable ||
+                    currentState.draft.length >= MAX_MODEL_BACKUPS ||
+                    addableOptions.length === 0
+                  }
+                  onChange={(event) => {
+                    if (!editable) return;
+                    setState((previous) =>
+                      previous.scopeKey === activeScopeKey
+                        ? {
+                            ...previous,
+                            selectedKey: event.target.value,
+                            error: null,
+                            notice: null,
+                          }
+                        : previous,
+                    );
+                  }}
+                >
+                  <NativeSelectOption value="">
+                    <Trans>Select a connected model</Trans>
+                  </NativeSelectOption>
+                  {addableOptions.map((option) => (
+                    <NativeSelectOption
+                      key={backupChoiceKey(option)}
+                      value={backupChoiceKey(option)}
+                    >
+                      {option.providerName} · {option.label}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
                 disabled={
                   !editable ||
                   currentState.draft.length >= MAX_MODEL_BACKUPS ||
-                  addableOptions.length === 0
+                  !addableKey ||
+                  !addableOptions.some((option) => backupChoiceKey(option) === addableKey)
                 }
-                onChange={(event) => {
-                  if (!editable) return;
-                  setState((previous) =>
-                    previous.scopeKey === activeScopeKey
-                      ? { ...previous, selectedKey: event.target.value, error: null, notice: null }
-                      : previous,
-                  );
-                }}
+                onClick={addSelected}
               >
-                <NativeSelectOption value="">
-                  <Trans>Select a connected model</Trans>
-                </NativeSelectOption>
-                {addableOptions.map((option) => (
-                  <NativeSelectOption key={backupChoiceKey(option)} value={backupChoiceKey(option)}>
-                    {option.providerName} · {option.label}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+                <Trans>Add</Trans>
+              </Button>
+              <Button type="button" disabled={!editable || !dirty} onClick={() => void save()}>
+                {currentState.saving ? <Trans>Saving…</Trans> : <Trans>Save backups</Trans>}
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={
-                !editable ||
-                currentState.draft.length >= MAX_MODEL_BACKUPS ||
-                !addableKey ||
-                !addableOptions.some((option) => backupChoiceKey(option) === addableKey)
-              }
-              onClick={addSelected}
-            >
-              <Trans>Add</Trans>
-            </Button>
-            <Button type="button" disabled={!editable || !dirty} onClick={() => void save()}>
-              {currentState.saving ? <Trans>Saving…</Trans> : <Trans>Save backups</Trans>}
-            </Button>
-          </div>
+          )}
           {currentState.error ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <p className="text-sm text-destructive" role="alert">

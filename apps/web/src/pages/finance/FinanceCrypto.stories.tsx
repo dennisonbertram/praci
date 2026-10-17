@@ -138,6 +138,11 @@ export const NotConnected: Story = {
   beforeEach: () => load({ ...base, connected: false, hasApiKey: false }),
 };
 
+/** Balances work without a key; the page offers the optional Blockscout key without claiming it is needed. */
+export const NoBlockscoutKey: Story = {
+  beforeEach: () => load({ ...base, connected: true, hasApiKey: false }),
+};
+
 export const NoWallets: Story = {
   beforeEach: () =>
     load({

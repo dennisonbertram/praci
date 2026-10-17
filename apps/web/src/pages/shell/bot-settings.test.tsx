@@ -152,6 +152,26 @@ async function renderSettings(onSave: (patch: SavePatch) => Promise<void>, curre
   await flush();
 }
 
+describe("BotSettings save confirmation", () => {
+  it("says Saved after the Save button succeeds, and not after a failed save", async () => {
+    const onSave = vi
+      .fn<(patch: SavePatch) => Promise<void>>()
+      .mockRejectedValueOnce(new Error("nope"))
+      .mockResolvedValue(undefined);
+    await renderSettings(onSave);
+    const save = () =>
+      act(async () => {
+        [...container.querySelectorAll("button")].find((b) => b.textContent === "Save")?.click();
+      });
+    await save();
+    await flush();
+    expect(container.textContent).not.toContain("Saved");
+    await save();
+    await flush();
+    expect(container.textContent).toContain("Saved");
+  });
+});
+
 describe("BotSettings disabled tools", () => {
   it("omits the disabled-tool list from an unrelated save", async () => {
     const onSave = vi.fn<(patch: SavePatch) => Promise<void>>(async () => undefined);

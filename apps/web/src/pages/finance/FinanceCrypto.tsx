@@ -22,8 +22,9 @@ import { DetailPage, Section, Th, useFinanceQuery } from "../../components/finan
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { BlockscoutConnectDialog } from "../../components/integrations/BlockscoutConnectDialog";
 import { chainName, tokenAmount } from "../../lib/crypto-format";
-import { dayMonth, moneyExact } from "../../lib/finance-format";
+import { dayMonth, money, moneyExact } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -80,6 +81,7 @@ function WalletRows({
   onEdit: (wallet: FinanceWallet) => void;
   onRemove: (wallet: FinanceWallet) => void;
 }) {
+  useHideAmounts();
   const { t } = useLingui();
   const typeNames = useTypeNames();
   const cents = new Map(data.summary.byWallet.map((row) => [row.walletId, row.cents]));
@@ -101,7 +103,7 @@ function WalletRows({
                   {threshold ? ` · ${threshold}` : null}
                 </span>
               </td>
-              <td className="text-end tabular-nums">{moneyExact(cents.get(wallet.id) ?? 0)}</td>
+              <td className="text-end tabular-nums">{money(cents.get(wallet.id) ?? 0)}</td>
               <td className="w-8 text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger
@@ -130,6 +132,7 @@ function WalletRows({
 }
 
 export function FinanceCryptoPage() {
+  useHideAmounts();
   const { t } = useLingui();
   const q = useFinanceQuery(() => rpc.finance.crypto(), []);
   const history = useFinanceQuery(() => rpc.finance.cryptoHistory({ days: 90 }), []);
@@ -163,17 +166,26 @@ export function FinanceCryptoPage() {
       subtitle={updated ? <Trans>Updated {updated}</Trans> : undefined}
       loading={!data}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
       {data ? (
         <>
-          {data.connected && data.hasApiKey ? null : (
-            <div>
-              <Button size="sm" onClick={() => setConnecting(true)}>
-                <Trans>Connect</Trans>
+          {/* Balances come from public RPC and need no key; the first wallet creates the keyless
+              Blockscout server the agent uses, so a key is only an optional extra. */}
+          {data.connected && !data.hasApiKey ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                <Trans>
+                  Wallet balances are read from public networks and need no key. The Finance agent
+                  uses a Blockscout API key, if you add one, for wallet lookups.
+                </Trans>
+              </span>
+              <Button size="sm" variant="outline" onClick={() => setConnecting(true)}>
+                <Trans>Add Blockscout API key</Trans>
               </Button>
             </div>
-          )}
+          ) : null}
           {connecting ? (
             <BlockscoutConnectDialog onConnected={reloadAll} onClose={() => setConnecting(false)} />
           ) : null}
@@ -194,7 +206,7 @@ export function FinanceCryptoPage() {
               <>
                 <div>
                   <div className="text-[22px] font-semibold leading-tight tabular-nums">
-                    {moneyExact(walletCents)}
+                    {money(walletCents)}
                   </div>
                   {unpriced > 0 ? (
                     <div className="text-[11px] text-muted-foreground">
@@ -204,7 +216,11 @@ export function FinanceCryptoPage() {
                 </div>
                 <WalletRows data={data} onEdit={setEditing} onRemove={setRemoving} />
               </>
-            ) : null}
+            ) : (
+              <p className="py-2 text-sm text-muted-foreground">
+                <Trans>No wallets yet. Add a wallet address to see its balances here.</Trans>
+              </p>
+            )}
           </Section>
           {(exchanges.data ?? []).map((exchange) => (
             <ExchangeGroup key={exchange.id} exchange={exchange} onChanged={reloadAll} />
@@ -226,7 +242,7 @@ export function FinanceCryptoPage() {
                   {data.summary.byChain.map((row) => (
                     <tr key={row.chainId} className={rowBorder}>
                       <td>{chainName(row.chainId)}</td>
-                      <td className="text-end tabular-nums">{moneyExact(row.cents)}</td>
+                      <td className="text-end tabular-nums">{money(row.cents)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -4,6 +4,7 @@ import { act } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { setHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 import { ComposerReplyPreview, ReplyLine, TimeSeparator } from "./chat-context";
 
@@ -265,4 +266,26 @@ it("defers transcript thumbnails until near the viewport while the composer load
   );
   expect(rpc.artifacts.get).toHaveBeenCalledOnce();
   expect(observer).not.toHaveBeenCalled();
+});
+
+it("masks a saved reply quote, preview and jump label while amounts are hidden", () => {
+  setHideAmounts(true);
+  try {
+    act(() =>
+      root.render(
+        <ReplyLine
+          message={{
+            ...message,
+            replyQuote: "spent $73,781.83",
+            replyPreview: { role: "bot", botId: "bot", text: "You spent $73,781.83" },
+          }}
+          author="Helper"
+          onJump={vi.fn()}
+        />,
+      ),
+    );
+    expect(container.innerHTML).not.toContain("73,781");
+  } finally {
+    setHideAmounts(false);
+  }
 });

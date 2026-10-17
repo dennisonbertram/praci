@@ -2,6 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { FinanceStatement } from "@rakazo/contracts";
 import { Badge, Button } from "@rakazo/ui-web";
 import { fullDay, moneyExact } from "../../lib/finance-format";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 
 /** The parser marks a model-read PDF with this opening; it is the one warning shown in bold. */
 const MODEL_READ = "Read by an AI model";
@@ -11,6 +12,8 @@ export type StatementRow = {
   statement: FinanceStatement;
   busy: boolean;
   error?: string;
+  /** Not imported yet: its balances do not add up, so it waits for Import anyway or Discard. */
+  review?: boolean;
 };
 
 /** The account a statement belongs to; statements without a name or number stand alone. */
@@ -26,12 +29,13 @@ export function statementAccountKey(row: StatementRow): string {
  * closing balance minus what the transactions add up to.
  */
 function CheckLine({ statement }: { statement: FinanceStatement }) {
+  useHideAmounts();
   const { t } = useLingui();
   const { check } = statement;
   if (check?.balances === "match") {
     return (
       <div className="text-success">
-        <Trans>Transactions add up to the closing balance</Trans>
+        <Trans>The transactions read add up to the closing balance</Trans>
       </div>
     );
   }
@@ -45,7 +49,16 @@ function CheckLine({ statement }: { statement: FinanceStatement }) {
   return null;
 }
 
-function Row({ row, onRemove }: { row: StatementRow; onRemove: () => void }) {
+function Row({
+  row,
+  onRemove,
+  onImport,
+}: {
+  row: StatementRow;
+  onRemove: () => void;
+  onImport?: () => void;
+}) {
+  useHideAmounts();
   const { t } = useLingui();
   const { statement } = row;
   const money = (cents: number | null) => (cents === null ? "—" : moneyExact(cents));
@@ -57,14 +70,31 @@ function Row({ row, onRemove }: { row: StatementRow; onRemove: () => void }) {
             ? `${fullDay(statement.periodStart)} – ${fullDay(statement.periodEnd)}`
             : statement.fileName}
         </span>
-        <span className="flex items-center gap-2">
-          <span className="text-success">
-            <Trans>Imported</Trans>
+        {row.review ? (
+          <span className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              disabled={row.busy}
+              onClick={onImport}
+            >
+              <Trans>Import anyway</Trans>
+            </Button>
+            <Button type="button" variant="ghost" size="xs" disabled={row.busy} onClick={onRemove}>
+              <Trans>Discard</Trans>
+            </Button>
           </span>
-          <Button type="button" variant="ghost" size="xs" disabled={row.busy} onClick={onRemove}>
-            <Trans>Remove</Trans>
-          </Button>
-        </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            <span className="text-success">
+              <Trans>Imported</Trans>
+            </span>
+            <Button type="button" variant="ghost" size="xs" disabled={row.busy} onClick={onRemove}>
+              <Trans>Remove</Trans>
+            </Button>
+          </span>
+        )}
       </div>
       <div className="tabular-nums text-muted-foreground">
         {money(statement.openingBalanceCents)} → {money(statement.closingBalanceCents)}
@@ -92,13 +122,16 @@ function Row({ row, onRemove }: { row: StatementRow; onRemove: () => void }) {
   );
 }
 
-/** Imported statements of one account: one header, then a compact row per statement period. */
+/** Statements of one account: one header, then a compact row per statement period. */
 export function StatementGroup({
   rows,
   onRemove,
+  onImport,
 }: {
   rows: StatementRow[];
   onRemove: (row: StatementRow) => void;
+  /** Imports a statement held for review. */
+  onImport?: (row: StatementRow) => void;
 }) {
   const first = rows[0]?.statement;
   if (!first) return null;
@@ -117,7 +150,12 @@ export function StatementGroup({
       </div>
       <ul>
         {rows.map((row) => (
-          <Row key={row.key} row={row} onRemove={() => onRemove(row)} />
+          <Row
+            key={row.key}
+            row={row}
+            onRemove={() => onRemove(row)}
+            onImport={onImport && (() => onImport(row))}
+          />
         ))}
       </ul>
     </li>

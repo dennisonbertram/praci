@@ -25,7 +25,7 @@ test("a mail send waits in the chat as an editable card and approving it runs th
   });
   await page.getByTestId("sidebar-inbox").click();
   const panel = page.getByTestId("side-panel");
-  await page.getByRole("main").getByRole("button", { name: "Show Inbox agent" }).click();
+  await page.getByRole("main").getByRole("button", { name: "Ask Inbox agent" }).click();
   await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
 
   await panel.getByPlaceholder(/Message/).fill("send email card");
@@ -47,7 +47,7 @@ test("a mail send waits in the chat as an editable card and approving it runs th
   await captureScreenshot(page, testInfo, "mail-approval-card-editing");
 
   await card.getByRole("button", { name: "Send", exact: true }).click();
-  await expect(card.getByText("Sent", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(card.getByText("Sent by you", { exact: true })).toBeVisible({ timeout: 30_000 });
   // A finished card folds to its header; the chevron opens it again.
   const toggle = card.getByRole("button", { expanded: false });
   await expect(toggle).toBeVisible();

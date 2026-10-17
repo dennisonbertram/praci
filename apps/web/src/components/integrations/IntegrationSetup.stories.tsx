@@ -99,20 +99,20 @@ export const ServerSetupConnected: Story = {
 
 export const ServerSetupPipedream: Story = {
   args: { serverSetup: true },
-  play: pick("Pipedream"),
+  play: pick("Popular apps through Pipedream"),
 };
 
 export const ServerSetupGoogle: Story = {
   args: { serverSetup: true },
-  play: pick("Google"),
+  play: pick("Google apps"),
 };
 
 export const ServerSetupExecutor: Story = {
   args: { serverSetup: true },
-  play: pick("Executor"),
+  play: pick("Your own tool server"),
 };
 
 export const ServerSetupComposioForm: Story = {
   args: { serverSetup: true },
-  play: pick("Composio"),
+  play: pick("Popular apps through Composio"),
 };

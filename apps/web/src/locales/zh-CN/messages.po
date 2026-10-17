@@ -18,6 +18,10 @@ msgstr ""
 msgid " (unread)"
 msgstr "（未读）"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "— tokens"
+msgstr "— token"
+
 #. placeholder {0}: statement.duplicateCount
 #: src/components/finance/StatementReviewCard.tsx
 msgid ", {0} already imported"
@@ -26,6 +30,11 @@ msgstr ""
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
+msgstr ""
+
+#. placeholder {0}: (message.thread?.length ?? 0) + (message.later?.length ?? 0) + 1
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "{0, plural, one {# message} other {# messages}}"
 msgstr ""
 
 #. placeholder {0}: group.entries.length
@@ -38,6 +47,11 @@ msgstr "{0, plural, one {# 个模型} other {# 个模型}}"
 msgid "{0, plural, one {# result} other {# results}}"
 msgstr ""
 
+#. placeholder {0}: usage.runs
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "{0, plural, one {# run} other {# runs}}"
+msgstr "{0, plural, other {# 次运行}}"
+
 #. placeholder {0}: subs.items.length
 #: src/pages/Finance.tsx
 msgid "{0, plural, one {# subscription} other {# subscriptions}}"
@@ -46,6 +60,11 @@ msgstr ""
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
 msgid "{0, plural, one {#+ result} other {#+ results}}"
+msgstr ""
+
+#. placeholder {0}: data.monthlyAvgMonths ?? 6
+#: src/pages/finance/FinanceSpend.tsx
+msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr ""
 
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
@@ -60,6 +79,12 @@ msgstr ""
 msgid "{0, plural, one {Waiting for sign-in — the link expires in about # minute.} other {Waiting for sign-in — the link expires in about # minutes.}}"
 msgstr ""
 
+#. placeholder {0}: first.name
+#. placeholder {1}: formatBytes(first.size)
+#: src/components/ComposeEmail.tsx
+msgid "{0} ({1}) was not added. Attachments can be up to {MAX_COMPOSE_ATTACHMENT_MB} MB in total."
+msgstr ""
+
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx
 msgid "{0} (max {ATTACHMENT_MAX_COUNT} attachments)"
@@ -67,8 +92,13 @@ msgstr "{0}（最多 {ATTACHMENT_MAX_COUNT} 个附件）"
 
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx
-msgid "{0} (over 10 MiB)"
-msgstr "{0}（超过 10 MiB）"
+msgid "{0} (over 10 MB)"
+msgstr ""
+
+#. placeholder {0}: fullDay(due)
+#: src/pages/Finance.tsx
+msgid "{0} (overdue)"
+msgstr ""
 
 #. placeholder {0}: preset.n
 #: src/pages/RoutineSchedule.tsx
@@ -100,6 +130,11 @@ msgstr ""
 msgid "{0} did not accept the sign-in."
 msgstr ""
 
+#. placeholder {0}: rejected.length
+#: src/components/ComposeEmail.tsx
+msgid "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHMENT_MB} MB in total."
+msgstr ""
+
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} handling"
@@ -120,7 +155,7 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
-#. placeholder {0}: Math.round(card.runwayMonths)
+#. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
 msgstr ""
@@ -146,22 +181,14 @@ msgstr ""
 msgid "{0} rollup hours"
 msgstr ""
 
-#. placeholder {0}: usage.runs
-#. placeholder {1}: usage.totalTokens ?? "—"
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "{0} runs · {1} tokens"
-msgstr "{0} 次运行 · {1} tokens"
-
-#. placeholder {0}: card.count
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
-#: src/components/FinanceCards.tsx
 msgid "{0} transactions"
 msgstr ""
 
-#. placeholder {0}: data.crypto.unpricedTokenCount
-#: src/pages/Finance.tsx
-msgid "{0} unpriced"
+#. placeholder {0}: card.count
+#: src/components/FinanceCards.tsx
+msgid "{0} transactions · {period}"
 msgstr ""
 
 #. placeholder {0}: target.name
@@ -177,6 +204,14 @@ msgstr ""
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
 msgid "{0}'s screen"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "{accounts} + crypto"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "{accounts} + stablecoins"
 msgstr ""
 
 #: src/components/compose/RecipientField.tsx
@@ -199,6 +234,14 @@ msgstr "{botName} 的电脑"
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 msgstr "{commandVariable} 是保留名称，不能用作命令变量。请选择其他名称。"
 
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# bank account} other {# bank accounts}}"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# transaction} other {# transactions}}"
+msgstr ""
+
 #: src/lib/billing.ts
 msgid "{count} days"
 msgstr ""
@@ -218,6 +261,10 @@ msgstr ""
 #: src/lib/relative-time.ts
 msgid "{days}d ago"
 msgstr "{days} 天前"
+
+#: src/pages/Shell.tsx
+msgid "{from} handed off to {to}"
+msgstr ""
 
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
@@ -261,6 +308,10 @@ msgstr "{name} 已完成"
 msgid "{name} is not connected."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} isn't available on this server."
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} stopped"
@@ -286,6 +337,10 @@ msgstr ""
 msgid "{runwayMonths} mo"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "{scope} · {unpriced} unpriced"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "{seats, plural, one {# seat} other {# seats}}"
 msgstr ""
@@ -298,6 +353,14 @@ msgstr ""
 msgid "{size} B"
 msgstr "{size} B"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "{sourceName} cash"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "{sourceName} spend"
+msgstr ""
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
 msgstr ""
@@ -309,6 +372,10 @@ msgstr ""
 #: src/pages/ActivityList.tsx
 msgid "{title}, {label}"
 msgstr "{title}，{label}"
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "{tokens, plural, one {# token} other {# tokens}}"
+msgstr "{tokens, plural, other {# 个 token}}"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "{unpriced} unpriced"
@@ -350,16 +417,20 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
-msgid "3-mo avg"
-msgstr ""
-
-#: src/pages/finance/FinanceSpend.tsx
-msgid "6 mo"
+msgid "3-mo avg, after revenue"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr "什么都做一点"
+
+#: src/components/finance/WalletDialog.tsx
+msgid "A deposit address at an exchange."
+msgstr ""
+
+#: src/components/finance/WalletDialog.tsx
+msgid "A Safe multisig. Its owners and threshold are shown."
+msgstr ""
 
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
 #: src/pages/ModelSettingsOverlay.tsx
@@ -367,10 +438,18 @@ msgstr "什么都做一点"
 msgid "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
 msgstr ""
 
+#: src/components/finance/WalletDialog.tsx
+msgid "A smart contract that holds funds."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "A subscription credential is stored securely."
 msgstr "订阅凭据已安全存储。"
+
+#: src/components/finance/WalletDialog.tsx
+msgid "A wallet you hold the keys to."
+msgstr ""
 
 #: src/pages/shell/bot-picker.tsx
 msgid "About groups"
@@ -397,6 +476,7 @@ msgstr "账户默认"
 msgid "Account ID"
 msgstr "账户 ID"
 
+#: src/components/finance/RenameAccountDialog.tsx
 #: src/components/integrations/AppDetail.tsx
 msgid "Account name"
 msgstr ""
@@ -414,7 +494,7 @@ msgstr "操作确认"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.spaceName
-#. placeholder {0}: sectionMenu.section.name
+#. placeholder {0}: item.chat.name
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
@@ -503,6 +583,18 @@ msgstr ""
 msgid "Add another account"
 msgstr ""
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Add API key"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Add auditor"
+msgstr ""
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Add Blockscout API key"
+msgstr ""
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Add connected model"
 msgstr "添加已连接模型"
@@ -523,8 +615,16 @@ msgstr ""
 msgid "Add custom connection"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Add email"
+msgstr ""
+
 #: src/pages/DataRoom.tsx
 msgid "Add files"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Add investor"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
@@ -535,6 +635,10 @@ msgstr "添加项目"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add MCP server"
 msgstr "添加 MCP 服务器"
+
+#: src/components/AddSidebarPage.tsx
+msgid "Add page"
+msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
@@ -551,6 +655,10 @@ msgstr "添加触发器"
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Add wallet"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Add your investors, auditors and counsel here. Contacts are your address book."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -576,21 +684,9 @@ msgstr "高级..."
 msgid "after fees"
 msgstr ""
 
-#: src/pages/Shell.tsx
-msgid "Agent computer"
-msgstr "Agent 电脑"
-
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Agent connections"
 msgstr "Agent 连接"
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Agents lose access to its tools."
-msgstr ""
-
-#: src/components/integrations/AppDetail.tsx
-msgid "Agents lose access to this account."
-msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "AI data sharing"
@@ -603,17 +699,21 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "All agents can use {0}."
-msgstr ""
-
 #: src/pages/Artifacts.tsx
 msgid "All bots"
 msgstr ""
 
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "All bots can use {0}."
+msgstr ""
+
 #: src/components/finance/CountCryptoButton.tsx
 msgid "All crypto"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "all dates"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -656,6 +756,18 @@ msgstr "允许 {0}，无需询问"
 msgid "Allow {name}"
 msgstr ""
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Allow changes"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Allow changes in Carta"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Allow changes in Carta?"
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow email actions without asking"
 msgstr "允许邮件操作，无需询问"
@@ -684,6 +796,22 @@ msgstr "已允许一次"
 msgid "Already have an account?"
 msgstr "已有账户？"
 
+#: src/components/data-room/DropZone.tsx
+msgid "Already in {folder}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in {folder} as {name}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in your Data room"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in your Data room as {name}"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr ""
@@ -698,8 +826,13 @@ msgstr "始终允许"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Amount raised"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -778,15 +911,23 @@ msgid "Approve"
 msgstr "批准"
 
 #: src/pages/shell/message-cards.tsx
-msgid "Approve this server to let your agent use its tools."
-msgstr "批准此服务器后，Agent 才能使用它的工具。"
+msgid "Approve this server to let your bot use its tools."
+msgstr ""
 
 #: src/components/MailApprovalCard.tsx
-msgid "Approved"
+msgid "Approved to save"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Approved to send"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Apps"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Apps with their own server"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -822,12 +963,16 @@ msgstr ""
 msgid "Ascending"
 msgstr ""
 
-#: src/components/FinanceCards.tsx
-msgid "Ask about this"
+#: src/components/AskBotButton.tsx
+msgid "Ask"
 msgstr ""
 
-#: src/components/finance/ui.tsx
-msgid "Ask agent"
+#: src/components/AskBotButton.tsx
+msgid "Ask {botName}"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "Ask about this"
 msgstr ""
 
 #. placeholder {0}: rule.matchValue
@@ -865,6 +1010,7 @@ msgstr "发送外部邮件前询问"
 msgid "Ask the server owner to configure this provider."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
 msgstr ""
@@ -881,6 +1027,10 @@ msgstr "{0}"
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "{timeSelect}"
+
+#: src/pages/Auth.tsx
+msgid "At least 8 characters."
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Attach file"
@@ -947,8 +1097,8 @@ msgid "Authorize"
 msgstr "授权"
 
 #: src/pages/shell/message-cards.tsx
-msgid "Authorize this server so agents can use its tools. A popup opens."
-msgstr "授权此服务器后，Agent 才能使用其工具。将打开弹窗。"
+msgid "Authorize this server so bots can use its tools. A popup opens."
+msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Automated senders"
@@ -978,6 +1128,7 @@ msgstr "头像"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
+#: src/pages/IntegrationSetup.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Back"
 msgstr "返回"
@@ -1016,6 +1167,10 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Bank"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "Bank accounts"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1062,7 +1217,6 @@ msgid "Blocked"
 msgstr ""
 
 #: src/pages/Board.tsx
-#: src/pages/Shell.tsx
 msgid "Board"
 msgstr ""
 
@@ -1083,7 +1237,6 @@ msgstr "正在启动 {0} 的电脑"
 msgid "bot"
 msgstr "Bot"
 
-#: src/pages/IntegrationSetup.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bot"
@@ -1095,12 +1248,20 @@ msgid "Bot"
 msgstr "Bot"
 
 #: src/pages/Shell.tsx
+msgid "Bot computer"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Bot screen"
 msgstr "Bot 屏幕"
 
 #: src/pages/Shell.tsx
 msgid "Bot screen preview"
 msgstr "Bot 屏幕预览"
+
+#: src/pages/IntegrationSetup.tsx
+msgid "Bot that gets the apps you connect here"
+msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Bot to link"
@@ -1110,13 +1271,25 @@ msgstr "要关联的 Bot"
 msgid "Bot's model"
 msgstr "Bot 的模型"
 
-#: src/pages/Artifacts.tsx
+#: src/pages/shell/command-palette.tsx
 msgid "Bots"
 msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Bots are working"
 msgstr "Bot 正在工作"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Bots lose access to its tools."
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Bots lose access to this account."
+msgstr ""
+
+#: src/pages/Welcome.tsx
+msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
+msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
@@ -1133,6 +1306,14 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Breakdown"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Brex bill, not paid yet"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Brex does not share it"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
@@ -1153,10 +1334,6 @@ msgstr ""
 msgid "Burn"
 msgstr ""
 
-#: src/components/FinanceCards.tsx
-msgid "Burn / mo"
-msgstr ""
-
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Burn by category"
 msgstr ""
@@ -1167,6 +1344,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "By month"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "By vendor"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -1187,15 +1368,19 @@ msgstr "无法连接服务器。"
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
+#: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectionDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1228,7 +1413,7 @@ msgstr "已取消"
 
 #: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
-msgid "Cap Table"
+msgid "Cap table"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1325,8 +1510,13 @@ msgstr ""
 msgid "Chart failed to render: {error}"
 msgstr "图表渲染失败：{error}"
 
+#: src/pages/shell/message-cards.tsx
+msgid "Chart hidden while amounts are hidden"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/SpaceSearch.tsx
 msgid "Chat"
 msgstr ""
 
@@ -1341,6 +1531,10 @@ msgstr "聊天应用、群组频道和 Agent 连接。"
 #: src/pages/Shell.tsx
 msgid "Chat Settings"
 msgstr "聊天设置"
+
+#: src/pages/SpaceSearch.tsx
+msgid "Chats"
+msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/pages/HostComputerPrompt.tsx
@@ -1375,30 +1569,6 @@ msgstr "请检查服务器 URL 和网络，然后重新测试。"
 #: src/pages/Auth.tsx
 msgid "Check your email"
 msgstr "请查看邮箱"
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury"
-msgstr ""
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury + Crypto"
-msgstr ""
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Checking + Savings + Treasury + Stablecoins"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury + Crypto"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Checking + Treasury + Stablecoins"
-msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Checking computer setup…"
@@ -1435,6 +1605,11 @@ msgstr "选择文件"
 msgid "Choose files"
 msgstr ""
 
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Choose how apps connect for everyone on this server."
+msgstr ""
+
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
 msgstr ""
@@ -1453,7 +1628,12 @@ msgstr "清空"
 msgid "Clear {0}’s conversation?"
 msgstr "清空与 {0} 的对话？"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Clear {rangeLabel}"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "Clear {sourceName} filter"
 msgstr ""
 
@@ -1462,12 +1642,25 @@ msgstr ""
 msgid "Clear conversation"
 msgstr "清空对话"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Clear filter"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Clear filters"
+msgstr ""
+
 #: src/components/compose/RichTextEditor.tsx
 msgid "Clear formatting"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+#: src/pages/Shell.tsx
+msgid "Clear search"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -1503,6 +1696,10 @@ msgstr "关闭"
 
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Close {title}"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Close and remove"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -1674,12 +1871,12 @@ msgid "Confirm the URL is reachable from this browser session, then test again."
 msgstr "请确认此浏览器会话可以访问该 URL，然后重新测试。"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
-#: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -1697,6 +1894,10 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect {name}"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect {service}"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1738,6 +1939,10 @@ msgid "Connect Executor"
 msgstr "连接 Executor"
 
 #: src/pages/Inbox.tsx
+msgid "Connect Gmail to read, sort and answer your mail here."
+msgstr ""
+
+#: src/pages/Inbox.tsx
 msgid "Connect mail"
 msgstr ""
 
@@ -1746,7 +1951,7 @@ msgid "Connect MCP server “{name}”"
 msgstr "连接 MCP 服务器“{name}”"
 
 #: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect the apps you use so your agents can read and act in them. You choose which agents get access to each one."
+msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1810,6 +2015,14 @@ msgstr "正在连接…"
 msgid "Connection test failed."
 msgstr "连接测试失败。"
 
+#: src/pages/CapTable.tsx
+msgid "Contact saved"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Contacts are your address book. They do not change Carta."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Context limit"
@@ -1820,6 +2033,10 @@ msgstr "上下文限制"
 #: src/pages/Onboarding.tsx
 msgid "Continue"
 msgstr "继续"
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Continue draft"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Continue in Background"
@@ -2091,12 +2308,20 @@ msgstr "无法加载运行历史记录"
 msgid "Could not load sign-in options"
 msgstr "无法加载登录选项"
 
+#: src/components/AccountAccess.tsx
+msgid "Could not load sign-in options."
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Could not load skill"
 msgstr "无法加载技能"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Could not load the app list. Reload to try again."
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Could not load the cap table"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -2140,6 +2365,11 @@ msgstr "无法打开终端"
 msgid "Could not play a test clip"
 msgstr "无法播放测试片段"
 
+#. placeholder {0}: hostOf(target.endpoint ?? url)
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Could not reach {0}. Check the address and try again."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Could not reach the model server."
 msgstr "无法连接到模型服务器。"
@@ -2157,6 +2387,10 @@ msgstr ""
 
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Could not refresh from Carta"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -2189,6 +2423,10 @@ msgstr "无法重命名分组"
 msgid "Could not rename space"
 msgstr "无法重命名工作区"
 
+#: src/components/finance/RenameAccountDialog.tsx
+msgid "Could not rename the account"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Could not render chart"
 msgstr "无法渲染图表"
@@ -2196,6 +2434,10 @@ msgstr "无法渲染图表"
 #: src/pages/Auth.tsx
 msgid "Could not reset password"
 msgstr "无法重置密码"
+
+#: src/pages/CapTable.tsx
+msgid "Could not restore {name}"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Could not run routine"
@@ -2207,11 +2449,6 @@ msgstr "无法运行例行任务"
 msgid "Could not save"
 msgstr "无法保存"
 
-#: src/components/integrations/ConnectAppDialog.tsx
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Could not save agent access"
-msgstr ""
-
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Could not save Auto Review"
 msgstr "无法保存自动审核"
@@ -2219,6 +2456,11 @@ msgstr "无法保存自动审核"
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Could not save backup models"
 msgstr "无法保存备用模型。"
+
+#: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Could not save bot access"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 msgid "Could not save group"
@@ -2303,8 +2545,12 @@ msgstr "无法更新"
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
-msgid "Could not update agent access"
-msgstr "无法更新 Agent 权限"
+msgid "Could not update bot access"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Could not update changes"
+msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Could not update computer"
@@ -2330,12 +2576,21 @@ msgstr ""
 msgid "Couldn't classify"
 msgstr ""
 
+#. placeholder {0}: result.filename
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Couldn't download {0}"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
 msgstr "无法加载消息设置"
 
 #: src/lib/inbox-sync-error.ts
 msgid "Couldn't reach Gmail."
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Couldn't read this file"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -2360,6 +2615,10 @@ msgstr "无法更新消息设置"
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Count crypto"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Counted in runway"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -2398,10 +2657,6 @@ msgid "Create account"
 msgstr "创建账户"
 
 #: src/pages/Shell.tsx
-msgid "Create Carta agent"
-msgstr ""
-
-#: src/pages/Shell.tsx
 msgid "Create Finance agent"
 msgstr ""
 
@@ -2413,19 +2668,6 @@ msgstr "创建群组"
 msgid "Create Inbox agent"
 msgstr ""
 
-#: src/pages/Shell.tsx
-#: src/pages/shell/bot-picker.tsx
-msgid "Create new Bot"
-msgstr "新建 Bot"
-
-#: src/pages/shell/bot-picker.tsx
-msgid "Create new Group"
-msgstr "新建群组"
-
-#: src/pages/shell/bot-picker.tsx
-msgid "Create new Space"
-msgstr "新建工作区"
-
 #: src/pages/RoutineEditor.tsx
 msgid "Create Routine"
 msgstr ""
@@ -2436,8 +2678,8 @@ msgid "Create space"
 msgstr "创建工作区"
 
 #: src/pages/Auth.tsx
-msgid "Create your Rakazo"
-msgstr "创建你的 Rakazo"
+msgid "Create your account"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -2501,16 +2743,17 @@ msgstr "深色"
 msgid "Data room"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Data room search model"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
-msgid "Date"
-msgstr ""
-
 #: src/pages/finance/FinanceTransaction.tsx
-msgid "Date posted"
+msgid "Date"
 msgstr ""
 
 #: src/lib/billing.ts
@@ -2540,7 +2783,7 @@ msgstr "默认"
 #. placeholder {0}: thinkingLevelLabel("medium")
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Default ({0})"
-msgstr ""
+msgstr "默认（{0}）"
 
 #. placeholder {0}: thinkingLevelLabel("medium")
 #. placeholder {0}: thinkingLevelLabel(defaultThinkingLevel)
@@ -2556,6 +2799,7 @@ msgstr "默认范围"
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
@@ -2607,9 +2851,22 @@ msgstr "同时删除记忆"
 msgid "Delete space"
 msgstr ""
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Delete the folder {0}?"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "deleted"
 msgstr "已删除"
+
+#: src/components/data-room/DropZone.tsx
+msgid "Deleted"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Deleted {name}"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2662,10 +2919,6 @@ msgstr ""
 msgid "Didn't open?"
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "Direct MCP"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Disable drafts for {botName}"
 msgstr ""
@@ -2679,12 +2932,9 @@ msgid "Disabled tools"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/finance/StatementReviewCard.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Discard"
-msgstr ""
-
-#: src/components/ComposeEmail.tsx
-msgid "Discard attachments?"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -2728,6 +2978,8 @@ msgstr "正在断开…"
 #: src/components/data-room/DropZone.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
+#: src/pages/CapTable.tsx
+#: src/pages/Shell.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr ""
@@ -2762,6 +3014,14 @@ msgstr "Docker 限制对你电脑的访问，以提高安全性。使用{hostLab
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Document date"
+msgstr ""
+
+#: src/pages/SpaceSearch.tsx
+msgid "Documents"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -2807,8 +3067,9 @@ msgstr "下载为 Markdown"
 msgid "Download Executor"
 msgstr ""
 
+#. placeholder {0}: result.filename
 #: src/components/inbox/InboxMessageDialog.tsx
-msgid "Download failed"
+msgid "Downloaded {0}"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
@@ -2819,14 +3080,29 @@ msgstr ""
 msgid "Draft discarded"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
+msgid "Draft not saved"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Draft saved"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Draft saved by you"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
 msgstr "技能草稿"
+
+#: src/pages/Shell.tsx
+msgid "Draft this month's investor update"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Drafts are off for {botName}. Turn them back on in its tools."
+msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Drag, drop, or paste an image"
@@ -2848,13 +3124,17 @@ msgstr ""
 msgid "Drop to add to Data room"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Due"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Duplicate"
 msgstr "复制"
 
 #: src/pages/shell/bot-panel.tsx
-msgid "e.g. Hivenet Agent, Presales, Timesheets bot"
-msgstr "例如 Hivenet Agent、Presales、工时表机器人"
+msgid "e.g. Recruiting, Sales, Legal"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Earlier"
@@ -2874,8 +3154,8 @@ msgid "Edit first"
 msgstr "先编辑"
 
 #: src/pages/BotContextMenu.tsx
-msgid "Edit Profile"
-msgstr "编辑资料"
+msgid "Edit profile"
+msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Edit wallet"
@@ -2908,6 +3188,10 @@ msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a folder name without slashes"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -2976,11 +3260,11 @@ msgid "every {intervalAmountSelect} {intervalUnitSelect}"
 msgstr "每 {intervalAmountSelect} {intervalUnitSelect}"
 
 #: src/components/integrations/AppDetail.tsx
-msgid "Every agent loses access to {name}."
+msgid "Every bot loses access to {name}."
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
-msgid "Every agent loses access to its tools."
+msgid "Every bot loses access to its tools."
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -3055,7 +3339,7 @@ msgstr "极高"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Extra high"
-msgstr ""
+msgstr "极高"
 
 #: src/components/CloudAgentCard.tsx
 msgid "failed"
@@ -3063,7 +3347,6 @@ msgstr "失败"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
-#: src/components/data-room/Preview.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
@@ -3094,22 +3377,19 @@ msgstr "失败处理"
 msgid "Fee"
 msgstr ""
 
-#: src/components/computer/FilesApp.tsx
-msgid "File is too large to upload."
+#: src/pages/SpaceSearch.tsx
+msgid "File"
 msgstr ""
 
-#: src/components/data-room/DropZone.tsx
-msgid "Filed"
+#: src/components/computer/FilesApp.tsx
+msgid "File is too large to upload."
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Files"
 msgstr ""
 
-#: src/components/data-room/format.ts
-msgid "Filing"
-msgstr ""
-
+#: src/pages/ActivityList.tsx
 #: src/pages/Inbox.tsx
 msgid "Filter"
 msgstr ""
@@ -3145,7 +3425,7 @@ msgstr ""
 msgid "Finance"
 msgstr ""
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Financing"
 msgstr ""
@@ -3158,6 +3438,10 @@ msgstr ""
 #: src/pages/Onboarding.tsx
 msgid "Find models"
 msgstr "查找模型"
+
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "Find the latest invoice"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -3177,6 +3461,10 @@ msgstr "请完成订阅登录，然后重新测试。"
 #: src/components/CloudAgentCard.tsx
 msgid "finished"
 msgstr "已完成"
+
+#: src/pages/ActivityList.tsx
+msgid "Finished"
+msgstr ""
 
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
@@ -3200,6 +3488,7 @@ msgid "Flag unexpected actions"
 msgstr "标记异常操作"
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 msgid "Folder"
 msgstr ""
@@ -3246,6 +3535,10 @@ msgstr ""
 msgid "Fullscreen"
 msgstr "全屏"
 
+#: src/pages/CapTable.tsx
+msgid "Fully diluted shares"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Gateway ID"
@@ -3265,8 +3558,8 @@ msgid "Get credentials"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
-msgid "Get notified when this Bot finishes or needs input"
-msgstr "在此机器人完成或需要输入时收到通知"
+msgid "Get notified when this bot finishes or needs input"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Getting ready"
@@ -3293,6 +3586,14 @@ msgstr ""
 msgid "Gmail tabs"
 msgstr ""
 
+#: src/pages/shell/command-palette.tsx
+msgid "Go to"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Google apps"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 msgid "Google Drive"
 msgstr ""
@@ -3314,6 +3615,7 @@ msgstr "群组设置"
 msgid "Group updates"
 msgstr ""
 
+#: src/pages/shell/command-palette.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Groups"
 msgstr ""
@@ -3359,17 +3661,25 @@ msgstr "试听"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "你好，这是我朗读回复时的声音。"
 
-#: src/pages/Shell.tsx
-msgid "Hide bots"
+#: src/components/HideAmountsToggle.tsx
+msgid "Hide amounts"
 msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Hide password"
 msgstr "隐藏密码"
 
+#: src/pages/Shell.tsx
+msgid "Hide sidebar"
+msgstr ""
+
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
 msgstr "隐藏文字记录"
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
+msgstr ""
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -3380,7 +3690,7 @@ msgstr "高"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "High"
-msgstr ""
+msgstr "高"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
@@ -3403,9 +3713,18 @@ msgstr "频率"
 msgid "How to check"
 msgstr "如何检查"
 
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "I’m done"
 msgstr "我做完了"
+
+#. placeholder {0}: email.trim()
+#: src/pages/Auth.tsx
+msgid "If {0} has an account, a reset link is on its way. It can take a minute; check your spam folder if it does not arrive."
+msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "If you closed the sign-in window, try again."
@@ -3419,12 +3738,20 @@ msgstr "如果听到了，说明语音已就绪。"
 msgid "Ignore"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Image hidden while amounts are hidden"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Image upload area"
 msgstr "图片上传区域"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Import an OpenAPI description"
+msgstr ""
+
+#: src/components/finance/StatementReviewCard.tsx
+msgid "Import anyway"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3445,6 +3772,10 @@ msgstr ""
 
 #: src/lib/ticket-status.ts
 msgid "In review"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "In runway"
 msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
@@ -3557,6 +3888,10 @@ msgstr ""
 msgid "just now"
 msgstr "刚刚"
 
+#: src/pages/DataRoom.tsx
+msgid "Keep contracts, board decks and investor documents in one place."
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Keep editing"
 msgstr ""
@@ -3580,10 +3915,6 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Knowledge"
 msgstr "知识"
-
-#: src/components/finance/WalletDialog.tsx
-msgid "Label"
-msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
@@ -3611,6 +3942,24 @@ msgstr ""
 msgid "Later"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Later in this conversation"
+msgstr ""
+
+#: src/components/finance/RenameAccountDialog.tsx
+msgid "Later statements for this account keep this name."
+msgstr ""
+
+#. placeholder {0}: card.rows.length
+#. placeholder {1}: card.count
+#: src/components/FinanceCards.tsx
+msgid "Latest {0} of {1}"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Latest 409A"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
 msgstr ""
@@ -3618,6 +3967,10 @@ msgstr ""
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Leave"
 msgstr "退出"
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Let Rakazo read your documents"
+msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "Let Rakazo sort your mail"
@@ -3631,6 +3984,10 @@ msgstr "浅色"
 msgid "Linear issue"
 msgstr "Linear 工单"
 
+#: src/pages/SpaceSearch.tsx
+msgid "Link"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
 msgstr "关联聊天应用"
@@ -3643,6 +4000,7 @@ msgstr ""
 msgid "Link SSO"
 msgstr "关联 SSO"
 
+#: src/components/finance/ui.tsx
 #: src/pages/Shell.tsx
 msgid "List"
 msgstr ""
@@ -3682,6 +4040,10 @@ msgstr "加载更早的运行记录"
 msgid "Load web images automatically"
 msgstr "自动加载网络图片"
 
+#: src/pages/Shell.tsx
+msgid "Loading"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
 msgstr "正在加载动态…"
@@ -3711,8 +4073,10 @@ msgid "Loading voice providers…"
 msgstr "正在加载语音提供方…"
 
 #: src/App.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
+#: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -3757,13 +4121,14 @@ msgstr "低"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Low"
-msgstr ""
+msgstr "低"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
+#: src/pages/SpaceSearch.tsx
 msgid "Mail"
 msgstr ""
 
@@ -3775,18 +4140,26 @@ msgstr ""
 msgid "Mail data Rakazo cached from these accounts is removed."
 msgstr ""
 
+#. placeholder {0}: status.sender
+#: src/pages/Inbox.tsx
+msgid "Mail from {0} is now marked as noise"
+msgstr ""
+
+#. placeholder {0}: status.sender
+#: src/pages/Inbox.tsx
+msgid "Mail from {0} is now marked important"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Make sure nothing is still running on this computer."
 msgstr "请确认这台电脑上没有仍在运行的任务。"
 
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr ""
 
-#. placeholder {0}: cryptoServer.name
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Manage {0}"
+#: src/components/integrations/FinanceSection.tsx
+msgid "Manage agents"
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -3806,19 +4179,29 @@ msgid "Manual setup required"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
-msgid "Mark as Read"
-msgstr "标为已读"
+msgid "Mark as read"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
-msgid "Mark as Unread"
-msgstr "标为未读"
+msgid "Mark as unread"
+msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark important"
 msgstr ""
 
+#. placeholder {0}: row.from
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark important: all mail from {0}"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark noise"
+msgstr ""
+
+#. placeholder {0}: row.from
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark noise: all mail from {0}"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -3832,11 +4215,11 @@ msgid "Mark unread"
 msgstr ""
 
 #: src/pages/Inbox.tsx
-msgid "Marked important"
+msgid "Marked read"
 msgstr ""
 
 #: src/pages/Inbox.tsx
-msgid "Marked noise"
+msgid "Marked unread"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -3847,7 +4230,7 @@ msgstr "最大"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Max"
-msgstr ""
+msgstr "最大"
 
 #: src/pages/Artifacts.tsx
 msgid "Maximize"
@@ -3879,7 +4262,7 @@ msgstr "中"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Medium"
-msgstr ""
+msgstr "中"
 
 #: src/pages/GroupPanel.tsx
 msgid "Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
@@ -3918,6 +4301,7 @@ msgstr ""
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
+#: src/pages/SpaceSearch.tsx
 msgid "Message"
 msgstr "消息"
 
@@ -3967,15 +4351,11 @@ msgstr "最低"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Minimal"
-msgstr ""
+msgstr "最低"
 
 #: src/pages/WindowChrome.tsx
 msgid "Minimize"
 msgstr "最小化"
-
-#: src/pages/Shell.tsx
-msgid "Minimize bots"
-msgstr ""
 
 #: src/pages/RoutineSchedule.tsx
 msgid "minute"
@@ -3984,6 +4364,10 @@ msgstr "分钟"
 #: src/pages/RoutineSchedule.tsx
 msgid "minutes"
 msgstr "分钟"
+
+#: src/components/finance/ui.tsx
+msgid "Mixed"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -4056,6 +4440,7 @@ msgstr "每月"
 msgid "Monthly avg"
 msgstr ""
 
+#: src/components/FinanceCards.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Monthly burn"
@@ -4080,13 +4465,21 @@ msgstr ""
 msgid "More actions for {0}"
 msgstr ""
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "More Blockscout actions"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "More computer actions"
 msgstr ""
 
-#: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Move {0} to"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -4096,6 +4489,10 @@ msgstr "将 {full} 下移"
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Move {full} up"
 msgstr "将 {full} 上移"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Move or delete what is in this folder first."
+msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Move them to your shared memory."
@@ -4156,11 +4553,16 @@ msgstr ""
 msgid "Needs reply"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Needs sign-in"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "需要接管"
 
 #: src/lib/roster-status.ts
+#: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr ""
@@ -4168,6 +4570,11 @@ msgstr ""
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Net"
+msgstr ""
+
+#. placeholder {0}: transactionAmount(card.totalCents)
+#: src/components/FinanceCards.tsx
+msgid "Net {0}"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -4179,10 +4586,24 @@ msgid "New account"
 msgstr ""
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/bot-picker.tsx
+msgid "New bot"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "New Bot"
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "New folder name"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "New folder…"
+msgstr ""
+
 #: src/pages/GroupPanel.tsx
+#: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "新建群组"
 
@@ -4208,6 +4629,7 @@ msgstr "新建分组"
 msgid "New skill"
 msgstr "新建技能"
 
+#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "New space"
 msgstr "新建工作区"
@@ -4237,14 +4659,13 @@ msgstr ""
 msgid "Next message"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "No accounts yet"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No agent connections yet."
 msgstr "还没有 Agent 连接。"
-
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "No agent uses {0} yet. Choose agents on its page."
-msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "No apps match."
@@ -4252,6 +4673,10 @@ msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "No artifacts found."
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "No auditors yet"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -4262,8 +4687,9 @@ msgstr "无认证"
 msgid "No bot activity yet."
 msgstr "还没有机器人活动。"
 
-#: src/pages/shell/command-palette.tsx
-msgid "No bots"
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "No bot uses {0} yet. Choose bots on its page."
 msgstr ""
 
 #: src/pages/shell/bot-picker.tsx
@@ -4273,10 +4699,6 @@ msgstr ""
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
 msgstr "还没有关联聊天应用。"
-
-#: src/pages/CapTable.tsx
-msgid "No contacts yet"
-msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
@@ -4290,8 +4712,11 @@ msgstr ""
 msgid "No group chats yet."
 msgstr "还没有群聊。"
 
+#: src/pages/CapTable.tsx
+msgid "No investors yet"
+msgstr ""
+
 #: src/components/AskCard.tsx
-#: src/components/MailApprovalCard.tsx
 msgid "No longer active"
 msgstr "已停用"
 
@@ -4300,11 +4725,19 @@ msgid "No mail"
 msgstr ""
 
 #: src/pages/Inbox.tsx
+msgid "No mail connected"
+msgstr ""
+
+#: src/pages/Inbox.tsx
 msgid "No mail matches this filter"
 msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -4331,6 +4764,10 @@ msgstr "未列出模型。"
 msgid "No more results"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "No other contacts yet"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "未找到提供方。"
@@ -4345,6 +4782,7 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "No results"
 msgstr "无结果"
@@ -4365,6 +4803,10 @@ msgstr "还没有运行记录"
 msgid "No skills yet"
 msgstr "暂无技能"
 
+#: src/pages/Finance.tsx
+msgid "No spend in this period"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No team conversations yet."
 msgstr ""
@@ -4377,9 +4819,21 @@ msgstr ""
 msgid "No tools available."
 msgstr ""
 
+#: src/components/finance/ui.tsx
+msgid "No transactions in this period"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "No transactions on this account yet"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
 msgstr "无触发器"
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "No wallets yet. Add a wallet address to see its balances here."
+msgstr ""
 
 #: src/components/data-room/Preview.tsx
 msgid "None"
@@ -4397,9 +4851,16 @@ msgstr ""
 msgid "Not a valid email address"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
+msgid "Not confirmed as saved. Check Drafts in your mail before trying again."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Not confirmed as sent. Check Sent before trying again."
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Not confirmed as sent. Check Sent in your mail before trying again."
 msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
@@ -4415,10 +4876,24 @@ msgstr ""
 msgid "Not counted in cash"
 msgstr ""
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Not enough history"
+msgstr ""
+
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceNotFound.tsx
 msgid "Not found"
 msgstr ""
 
+#: src/pages/finance/FinanceBurn.tsx
+msgid "not in runway"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Not in runway"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "暂不"
@@ -4431,6 +4906,10 @@ msgstr ""
 msgid "Not sent. {text}"
 msgstr ""
 
+#: src/components/MailApprovalCard.tsx
+msgid "Not waiting for approval"
+msgstr ""
+
 #: src/pages/CapTable.tsx
 msgid "Notes"
 msgstr ""
@@ -4438,6 +4917,10 @@ msgstr ""
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Nothing is still running"
 msgstr "没有仍在运行的任务"
+
+#: src/pages/ActivityList.tsx
+msgid "Nothing needs you right now."
+msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Nothing remembered yet"
@@ -4447,10 +4930,6 @@ msgstr "暂无记忆"
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "通知"
-
-#: src/pages/ActivityList.tsx
-msgid "Now"
-msgstr "现在"
 
 #. placeholder {0}: selected.label
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4485,6 +4964,10 @@ msgstr "按计划"
 msgid "on the 1st at {0}"
 msgstr "每月 1 日 {0}"
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Only an empty folder can be deleted. This can't be undone."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
@@ -4496,12 +4979,15 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
 msgid "Open"
 msgstr "打开"
 
 #. placeholder {0}: group.title
+#. placeholder {0}: sameEmail.name
+#: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0}"
 msgstr "打开 {0}"
@@ -4520,6 +5006,10 @@ msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Open again"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Open Cap table"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -4550,12 +5040,20 @@ msgstr "在完整窗口中打开"
 msgid "Open in Mercury"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Open Inbox"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Open navigation"
 msgstr "打开导航"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open receipt"
+msgstr ""
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Open server integrations"
 msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
@@ -4591,12 +5089,24 @@ msgstr "正在打开聊天…"
 msgid "Opening your Space…"
 msgstr "正在打开工作区…"
 
+#: src/pages/CapTable.tsx
+msgid "Option pool available"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Optional"
 msgstr "可选"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Optional faster balance reads"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Options"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
@@ -4642,7 +5152,7 @@ msgstr ""
 msgid "Other model…"
 msgstr "其他模型…"
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr ""
@@ -4659,6 +5169,14 @@ msgstr ""
 msgid "Owner"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Ownership"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here. The Carta agent can answer questions about them only while Carta is connected."
+msgstr ""
+
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page"
@@ -4668,9 +5186,18 @@ msgstr ""
 msgid "Page changed. Reload"
 msgstr ""
 
+#: src/components/SidebarPages.tsx
+msgid "Page options"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "PagerDuty incident"
 msgstr "PagerDuty 事件"
+
+#: src/pages/shell/command-palette.tsx
+#: src/pages/SpaceSearch.tsx
+msgid "Pages"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Paid with"
@@ -4731,6 +5258,10 @@ msgstr ""
 msgid "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed."
 msgstr "粘贴服务器的 OpenAI 兼容地址。需要时 Rakazo 会补上 /v1。"
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Paste the web address an app gives you"
+msgstr ""
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste your API key"
 msgstr "粘贴你的 API 密钥"
@@ -4751,7 +5282,6 @@ msgstr ""
 msgid "pending"
 msgstr ""
 
-#: src/components/data-room/format.ts
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
@@ -4793,6 +5323,14 @@ msgstr "插件"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Popular"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Popular apps through Composio"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Popular apps through Pipedream"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -4888,6 +5426,10 @@ msgstr "排队中"
 msgid "Quote"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "React"
 msgstr "回应"
@@ -4922,16 +5464,16 @@ msgstr ""
 msgid "Read replies aloud"
 msgstr "朗读回复"
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "Read wallet balances"
-msgstr ""
-
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Read-only API key"
 msgstr ""
 
 #: src/components/data-room/format.ts
 msgid "Reading"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Reading Carta…"
 msgstr ""
 
 #: src/components/finance/StatementImport.tsx
@@ -4956,11 +5498,14 @@ msgstr ""
 msgid "Receipt"
 msgstr ""
 
+#: src/pages/finance/FinanceTransaction.tsx
+msgid "Receipt hidden while amounts are hidden"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Receipts"
 msgstr ""
 
-#: src/pages/ActivityList.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Recent"
 msgstr "最近"
@@ -4978,6 +5523,10 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/Finance.tsx
 msgid "Reconnect {name}"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Reconnect Carta"
 msgstr ""
 
 #: src/App.tsx
@@ -5057,6 +5606,10 @@ msgstr ""
 msgid "Refresh"
 msgstr "刷新"
 
+#: src/pages/CapTable.tsx
+msgid "Refresh from Carta"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Refresh view"
 msgstr ""
@@ -5132,8 +5685,20 @@ msgstr ""
 msgid "Remove {secretName}? This bot will no longer be able to use it."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+msgid "Remove account"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Remove attachments?"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 msgid "Remove filter {label}"
+msgstr ""
+
+#: src/components/SidebarPages.tsx
+msgid "Remove from sidebar"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5175,22 +5740,31 @@ msgid "Removed, but list refresh failed"
 msgstr "已移除，但列表刷新失败"
 
 #: src/components/integrations/AppDetail.tsx
-msgid "Removes all {accountCount} accounts and agent access."
+msgid "Removes all {accountCount} accounts and bot access."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
-msgid "Removes the account and agent access."
+msgid "Removes the account and bot access."
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
-msgid "Removes the connection and agent access."
+msgid "Removes the connection and bot access."
 msgstr ""
 
-#: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "Rename"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Rename {0}"
+msgstr ""
+
+#: src/components/finance/RenameAccountDialog.tsx
+msgid "Rename account"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -5335,7 +5909,7 @@ msgstr "返回 Rakazo"
 msgid "rev {0}"
 msgstr "版本 {0}"
 
-#: src/pages/Finance.tsx
+#: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
 msgstr ""
@@ -5362,6 +5936,7 @@ msgstr "轮换密钥"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
+#: src/pages/SpaceSearch.tsx
 msgid "Routine"
 msgstr "例行任务"
 
@@ -5380,6 +5955,10 @@ msgstr "运行时间"
 #: src/pages/RoutineRunHistory.tsx
 msgid "Run history"
 msgstr "运行记录"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Run my company"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Run time must be in the future."
@@ -5405,6 +5984,10 @@ msgstr "运行中 · 停止"
 msgid "Running…"
 msgstr "正在运行…"
 
+#: src/pages/Shell.tsx
+msgid "Runs on send"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Runs when this bot receives a verified message from this provider."
 msgstr ""
@@ -5425,6 +6008,7 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
@@ -5468,6 +6052,7 @@ msgstr "保存工作区并安装最新软件。"
 #: src/components/AskCard.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
+#: src/pages/shell/bot-panel.tsx
 msgid "Saved"
 msgstr "已保存"
 
@@ -5513,8 +6098,8 @@ msgstr ""
 
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
 msgid "Search"
@@ -5534,12 +6119,12 @@ msgstr "搜索应用"
 msgid "Search artifacts…"
 msgstr ""
 
-#: src/pages/shell/command-palette.tsx
-msgid "Search bots and switch conversations"
-msgstr ""
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search by domain"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Search chats"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -5550,20 +6135,40 @@ msgstr ""
 msgid "Search documents"
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "Search integrations.sh"
+#: src/pages/Inbox.tsx
+msgid "Search mail"
+msgstr ""
+
+#: src/pages/SpaceSearch.tsx
+msgid "Search mail for “{query}”"
 msgstr ""
 
 #: src/pages/Inbox.tsx
-msgid "Search mail"
+msgid "Search mail, e.g. from:sam has:attachment"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Search matches words in names and text."
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Search matches words in names and text. Try fewer words."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
 msgstr "搜索模型"
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Search names and text"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Search older mail"
+msgstr ""
+
+#: src/pages/shell/command-palette.tsx
+msgid "Search pages, bots and groups"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -5591,6 +6196,10 @@ msgstr "正在搜索…"
 msgid "Security"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "See who owns your company"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Select a bot"
 msgstr "选择 Bot"
@@ -5609,6 +6218,10 @@ msgstr "发送"
 msgid "Send <0>{linkCode}</0> to the line from your chat app within 10 minutes. You'll get a confirmation reply once linked."
 msgstr "请在 10 分钟内从聊天应用向该线路发送 <0>{linkCode}</0>。关联成功后你会收到确认回复。"
 
+#: src/pages/Auth.tsx
+msgid "Send again"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Send answer"
 msgstr "发送回答"
@@ -5625,8 +6238,12 @@ msgstr "发送"
 msgid "Send reset link"
 msgstr "发送重置链接"
 
-#: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews are sent to {name}."
+#: src/components/MailApprovalCard.tsx
+msgid "Send saved draft"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -5639,9 +6256,16 @@ msgstr ""
 msgid "Sending…"
 msgstr "正在发送…"
 
-#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Sent by you"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Sent to {forwardedName}"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5665,6 +6289,7 @@ msgstr ""
 msgid "Server URL"
 msgstr "服务器 URL"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Set up app catalog"
 msgstr ""
@@ -5710,6 +6335,14 @@ msgstr "共享文档"
 msgid "Shared skills"
 msgstr "共享技能"
 
+#: src/pages/CapTable.tsx
+msgid "Shareholder"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Shares"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Shell"
 msgstr "Shell"
@@ -5718,20 +6351,12 @@ msgstr "Shell"
 msgid "Show all {total}"
 msgstr ""
 
-#: src/pages/Shell.tsx
-msgid "Show bots"
-msgstr ""
-
-#: src/pages/CapTable.tsx
-msgid "Show Carta agent"
+#: src/components/HideAmountsToggle.tsx
+msgid "Show amounts"
 msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Show computer"
-msgstr ""
-
-#: src/pages/Inbox.tsx
-msgid "Show Inbox agent"
 msgstr ""
 
 #: src/components/inbox/TodoCard.tsx
@@ -5749,17 +6374,21 @@ msgstr ""
 msgid "Show more"
 msgstr "显示更多"
 
+#: src/components/ComposeEmail.tsx
+msgid "Show original message"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Show password"
 msgstr "显示密码"
 
-#: src/components/ComposeEmail.tsx
-msgid "Show quoted text"
-msgstr ""
-
 #: src/pages/Shell.tsx
 msgid "Show settings"
 msgstr "显示设置"
+
+#: src/pages/Shell.tsx
+msgid "Show sidebar"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Show tool activity"
@@ -5791,6 +6420,10 @@ msgstr ""
 msgid "Sign in to {appName} in the new window"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Sign in to Carta again to see who owns your company"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Sign in to Rakazo"
 msgstr "登录 Rakazo"
@@ -5798,6 +6431,14 @@ msgstr "登录 Rakazo"
 #: src/lib/user-error.ts
 msgid "Sign in to your existing account to link SSO"
 msgstr "请登录现有账户以关联 SSO"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Sign in with {service}"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Sign in with {service} in the window that opens."
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
@@ -5829,6 +6470,11 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Sign-in was denied or failed."
+msgstr ""
+
+#. placeholder {0}: shortDay(card.from)
+#: src/components/FinanceCards.tsx
+msgid "since {0}"
 msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
@@ -5867,6 +6513,14 @@ msgstr "Slack 消息"
 msgid "Slack not enabled"
 msgstr ""
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Slack, Notion, GitHub and more, with one Composio API key"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Slack, Notion, GitHub and more, with one Pipedream project"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/Inbox.tsx
 msgid "Social"
@@ -5884,6 +6538,14 @@ msgstr "出了点问题。请重试。"
 #. placeholder {0}: labels[field]
 #: src/components/data-room/FilterBar.tsx
 msgid "Sort: {0}"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Sorting is taking longer than usual. Your mail is below."
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Sorting your mail…"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -5936,13 +6598,16 @@ msgstr "语音模型"
 msgid "Spend"
 msgstr ""
 
-#: src/components/FinanceCards.tsx
-#: src/pages/Finance.tsx
-msgid "Spend this month"
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Spending minus revenue, 3-mo avg"
 msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "Spent this month"
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -5952,6 +6617,10 @@ msgstr "SSO 暂时不可用，请重试。"
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Stablecoins in runway"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -5986,15 +6655,17 @@ msgstr "正在开始…"
 msgid "Statement files"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Status"
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
-msgid "Step 1 of 3"
+msgid "Step 1 of {totalSteps}"
 msgstr ""
 
 #: src/components/integrations/AgentStep.tsx
@@ -6034,6 +6705,10 @@ msgstr "流式回复"
 msgid "Streamable HTTP"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Sub-folders"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "subagent"
 msgstr "子 Agent"
@@ -6066,6 +6741,18 @@ msgstr ""
 msgid "Subscriptions / mo"
 msgstr ""
 
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Subtracted from burn"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Summarize this week's investor email"
+msgstr ""
+
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "Summarize what's new this week"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Supports images"
@@ -6078,10 +6765,6 @@ msgstr "支持思考"
 
 #: src/components/inbox/InboxRow.tsx
 msgid "Suspicious"
-msgstr ""
-
-#: src/pages/shell/command-palette.tsx
-msgid "Switch bot"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6104,6 +6787,10 @@ msgstr ""
 msgid "Take control"
 msgstr "接管控制权"
 
+#: src/pages/Shell.tsx
+msgid "Task board"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"
 msgstr "示范任务"
@@ -6122,6 +6809,10 @@ msgstr "团队电脑"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Team conversations"
+msgstr ""
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Team health"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -6156,17 +6847,29 @@ msgstr "测试登录"
 msgid "Testing…"
 msgstr "正在测试…"
 
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "The agents you chose can use {0}."
-msgstr ""
-
 #: src/components/SoftwareUpdateSection.tsx
 msgid "The API did not come back. Refresh this page."
 msgstr "API 未恢复。请刷新此页面。"
 
 #: src/pages/shell/bot-pins.tsx
 msgid "The bot changed this list. Your last edit wasn't saved."
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "The bots you chose can use {0}."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "The Carta agent can now read your cap table."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -6177,8 +6880,16 @@ msgstr "连接超时。"
 msgid "The file is too large"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "the group"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "The original message didn't load."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -6188,6 +6899,10 @@ msgstr "提供方正在限制请求频率。"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "The selected memory provider is not available in this build."
 msgstr "所选记忆提供方在此构建中不可用。"
+
+#: src/components/finance/StatementReviewCard.tsx
+msgid "The transactions read add up to the closing balance"
+msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
@@ -6209,6 +6924,7 @@ msgstr ""
 msgid "This bot runs on this computer, not a Linux desktop. Shell and files use your home folder."
 msgstr "此 Bot 运行在这台电脑上，而不是 Linux 桌面。Shell 和文件使用你的主目录。"
 
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Artifacts.tsx
 msgid "This can't be undone."
 msgstr ""
@@ -6238,12 +6954,21 @@ msgstr ""
 msgid "This file is not valid UTF-8 text."
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "This folder is empty. Drop files here to add them."
+msgstr ""
+
 #: src/pages/HostComputerPrompt.tsx
 msgid "this Mac"
 msgstr "这台 Mac"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/finance/FinanceAccounts.tsx
 msgid "This month"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "This page doesn't exist or was removed."
 msgstr ""
 
 #: src/components/AccountAccess.tsx
@@ -6280,6 +7005,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "This server needs an OAuth client ID."
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "This space already uses {selectedProviderName}."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6322,6 +7051,10 @@ msgstr ""
 msgid "To do"
 msgstr ""
 
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "To tag new files and sort them into folders for you, their text (and images) is sent to {names}. Until then you can search by name and text and move files into folders yourself."
+msgstr ""
+
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
 msgstr "至:"
@@ -6349,6 +7082,14 @@ msgstr ""
 msgid "Tools · {0}"
 msgstr ""
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Tools from an Executor server you run"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Top level"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Total balance"
 msgstr ""
@@ -6364,10 +7105,6 @@ msgstr ""
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Transactions"
-msgstr ""
-
-#: src/components/finance/StatementReviewCard.tsx
-msgid "Transactions add up to the closing balance"
 msgstr ""
 
 #. placeholder {0}: moneyExact(Math.abs(check.differenceCents))
@@ -6400,21 +7137,43 @@ msgstr ""
 msgid "Trial ends {day}"
 msgstr ""
 
+#: src/components/integrations/FinanceSection.tsx
+msgid "Try {name} again"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/Shell.tsx
 msgid "Try again"
 msgstr "重试"
+
+#: src/pages/Inbox.tsx
+msgid "Try sorting again"
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
 msgstr "请重试测试。"
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off drafts for {botName}?"
+msgstr ""
+
+#: src/components/MailApprovalCard.tsx
+msgid "Turn off sending for {botName}?"
+msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -6431,6 +7190,10 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "Type your answer"
 msgstr "输入你的回答"
+
+#: src/pages/CapTable.tsx
+msgid "Unallocated pool"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 msgid "Unassigned"
@@ -6450,16 +7213,22 @@ msgid "Underline"
 msgstr ""
 
 #: src/components/MailOutbox.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 msgid "Undo"
 msgstr ""
 
+#: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
 msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Unknown bot"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "Unknown source: {unknownSource}"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -6491,6 +7260,11 @@ msgstr ""
 msgid "Unsupported file type: {0}"
 msgstr "不支持的文件类型：{0}"
 
+#. placeholder {0}: shortDay(card.to)
+#: src/components/FinanceCards.tsx
+msgid "until {0}"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Until {runOutMonth}"
 msgstr ""
@@ -6500,6 +7274,7 @@ msgstr ""
 msgid "Up to date"
 msgstr "已是最新"
 
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Upcoming"
 msgstr ""
@@ -6536,6 +7311,11 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Updated"
 msgstr "已更新"
+
+#. placeholder {0}: formatRelativeTime(snapshot.updatedAt)
+#: src/pages/CapTable.tsx
+msgid "Updated {0}"
+msgstr ""
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -6585,6 +7365,10 @@ msgstr ""
 #. placeholder {0}: first.accountName
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "Upload the {month} statement for {0}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded"
 msgstr ""
 
 #: src/lib/ticket-priority.ts
@@ -6682,11 +7466,6 @@ msgstr "正在校验…"
 msgid "Version"
 msgstr ""
 
-#. placeholder {0}: providerLabel(connectorId)
-#: src/components/integrations/AppDetail.tsx
-msgid "via {0}"
-msgstr ""
-
 #: src/components/integrations/McpDetail.tsx
 msgid "via MCP · {host}"
 msgstr ""
@@ -6711,12 +7490,13 @@ msgstr "语音"
 msgid "Voice chat"
 msgstr "语音聊天"
 
-#: src/pages/Finance.tsx
-msgid "vs {previousRange}"
+#. placeholder {0}: monthShort(data.changeFromMonth)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "vs {0}"
 msgstr ""
 
 #: src/pages/Finance.tsx
-msgid "vs {previousSpend} for {monthPreviousRange}"
+msgid "vs {previousRange}"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -6750,6 +7530,14 @@ msgstr "等待中…"
 
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Wallet"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "Wallet balances and history"
+msgstr ""
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Wallet balances are read from public networks and need no key. The Finance agent uses a Blockscout API key, if you add one, for wallet lookups."
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
@@ -6793,6 +7581,18 @@ msgstr "它的记忆怎么处理？"
 msgid "What do you want me on first?"
 msgstr "你想让我先做什么？"
 
+#: src/pages/Shell.tsx
+msgid "What is our runway?"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "What needs a reply from me today?"
+msgstr ""
+
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "What needs my reply today?"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "What result will you demonstrate?"
 msgstr "你要示范什么结果？"
@@ -6817,6 +7617,10 @@ msgstr "何时运行"
 msgid "When to use"
 msgstr "何时使用"
 
+#: src/pages/Shell.tsx
+msgid "Where did spend go up this month?"
+msgstr ""
+
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Where it went"
 msgstr ""
@@ -6826,7 +7630,11 @@ msgid "Where should bots run?"
 msgstr "Bot 应在哪里运行？"
 
 #: src/components/integrations/AgentStep.tsx
-msgid "Which agents can use {appName}?"
+msgid "Which bots can use {appName}?"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Who are our investors?"
 msgstr ""
 
 #: src/components/EmailCards.tsx
@@ -6837,10 +7645,18 @@ msgstr ""
 msgid "Won't do"
 msgstr ""
 
+#: src/pages/ActivityList.tsx
+msgid "Working"
+msgstr ""
+
 #: src/lib/roster-status.ts
 #: src/pages/Auth.tsx
 msgid "Working…"
 msgstr "处理中…"
+
+#: src/lib/sidebar-page-copy.ts
+msgid "Workload and key people, from your connected tools"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"
@@ -6875,6 +7691,8 @@ msgstr "昨天"
 msgid "Yield"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid "You"
 msgstr "你"
@@ -6891,6 +7709,14 @@ msgstr "如果没有自动跳转，可以关闭此标签页。"
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this window."
 msgstr "可以关闭此窗口。"
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "You can search documents by name and text and move them into folders yourself. Set up a model in Settings to have new files tagged and sorted into folders for you."
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "You have an unsent reply to this email."
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "You have control"
@@ -6917,6 +7743,14 @@ msgstr "你的邮箱"
 msgid "Your name"
 msgstr "你的名字"
 
-#: src/pages/Welcome.tsx
-msgid "Your team of always-on agents<0/>that you can give real work to."
-msgstr "你的一支随时在线的 Agent 团队<0/>可以交给它们真正的工作。"
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Your own Google sign-in for Gmail, Calendar and Drive"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Your own tool server"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Your text is saved as a draft. Attachments are not kept."
+msgstr ""

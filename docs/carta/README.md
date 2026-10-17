@@ -36,8 +36,10 @@ Observed on 2026-10-15 without signing in:
   `read_mcp_firms`, `readwrite_mcp_firms`, `read_mcp_crm`, `readwrite_mcp_crm`.
 - Tools listed in Claude's connector directory: `welcome`, `discover`, `fetch`,
   `list_contexts`, `set_context`, `list_accounts`, `get_current_user`,
-  `cap_table_chart`, `cap_table_healthcheck`. Public sources describe read and
+  `cap_table_chart`. Public sources describe read and
   analysis use only; Carta has said write tools are coming.
+- On 2026-10-16 the signed-in server no longer offered `cap_table_healthcheck`,
+  so the Carta agent's allowlist drops it.
 
 TBD before build: the real `tools/list` and input schemas after sign-in, whether
 `fetch` can return holdings **as of a past date** (the core of an audit
@@ -122,6 +124,22 @@ reachable through it. PR 1 records this in this file.
    with `contacts_list` and saves to it with `contacts_save`, which asks first. The
    investor update takes its recipients from it. Open audit requests still live in
    Gmail threads; an audit tracker is a v2 decision.
+
+10. **Automatic Cap Table.** When a Carta server finishes OAuth, and on
+    `carta.refresh`, the API ensures the Carta agent and starts one populate run
+    (trigger `routine`, no routine row; skipped while one is queued or running). That
+    trigger is the one that offers the mail, contacts and Cap Table tools without a typed
+    user message. The run saves the snapshot with `cap_table_update` (one row per space
+    and user in `cap_table_snapshots`; `carta.capTable` returns it plus `syncing`), adds
+    investors with `contacts_add` (no approval; `contacts_save` still asks), and
+    summarizes investor threads.
+11. **Carta belongs to the Carta agent.** `assignmentAllowsTool` refuses every tool on
+    a Carta endpoint for any other bot, and creating, updating or signing in to a Carta
+    server deletes other bots' assignments. Other bots ask the Carta agent through
+    `message_bot`.
+12. **Writes are off by default.** `McpServer.writesEnabled` (`mcp.servers.setWrites`,
+    Carta only) adds `mutate` and `call_tool` to the Carta agent's tools, checked on
+    every call; each call asks, whatever the saved rules or Auto Review say.
 
 ## Not in v1
 

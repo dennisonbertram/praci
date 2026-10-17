@@ -22,6 +22,7 @@ vi.mock("@rakazo/ui-web", () => ({
     </button>
   ),
   Card: ({ children }: { children?: ReactNode }) => <section>{children}</section>,
+  cn: (...names: unknown[]) => names.filter(Boolean).join(" "),
   Switch: ({
     checked,
     onCheckedChange,
@@ -96,7 +97,7 @@ it("names the recipient and allows exactly its key when the user presses Allow",
   expect(container.querySelector("h2")?.textContent).toBe("Let Rakazo sort your mail");
   // The recipient stays named, so consent stays accurate.
   expect(container.textContent).toContain(
-    "Senders, recipients, subjects and short previews are sent to OpenRouter.",
+    "Senders, recipients, subjects and short previews are sent to the AI service that runs your bots (OpenRouter).",
   );
   expect(onAllowed).not.toHaveBeenCalled();
   expect(consent.allowRecipient).not.toHaveBeenCalled();
@@ -105,6 +106,24 @@ it("names the recipient and allows exactly its key when the user presses Allow",
 
   expect(consent.allowRecipient).toHaveBeenCalledExactlyOnceWith("model-key");
   expect(onAllowed).toHaveBeenCalledTimes(1);
+});
+
+it("says what sorting gives, and Not now dismisses without allowing", async () => {
+  const onAllowed = vi.fn();
+  const onDismiss = vi.fn();
+  await render(
+    <InboxConsentPrompt
+      recipient={{ key: "model-key", name: "OpenRouter" }}
+      onAllowed={onAllowed}
+      onDismiss={onDismiss}
+    />,
+  );
+  expect(container.textContent).toContain("finds what needs a reply");
+  const notNow = [...container.querySelectorAll("button")].find((b) => b.textContent === "Not now");
+  await click(notNow ?? null);
+  expect(onDismiss).toHaveBeenCalledTimes(1);
+  expect(consent.allowRecipient).not.toHaveBeenCalled();
+  expect(onAllowed).not.toHaveBeenCalled();
 });
 
 it("shows the error and does not report consent when allowing fails", async () => {

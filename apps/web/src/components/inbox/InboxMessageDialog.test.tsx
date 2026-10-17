@@ -16,8 +16,12 @@ vi.mock("@lingui/react/macro", () => {
 vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, i) => text + part + String(values[i] ?? ""), ""),
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
 }));
-vi.mock("../../components/SandboxedHtmlViewer", () => ({ SandboxedHtmlViewer: () => null }));
+vi.mock("../../components/SandboxedHtmlViewer", () => ({
+  SandboxedHtmlViewer: () => <div data-testid="html-frame" />,
+}));
 vi.mock("../../components/ComposeEmail", () => ({
   ComposeEmail: ({ seed }: { seed: { kind: string } }) => (
     <div data-testid="compose">{seed.kind}</div>
@@ -29,6 +33,11 @@ vi.mock("../../lib/rpc", () => ({
   withSpaceHeaders: () => new Headers(),
 }));
 
+import { setHideAmounts } from "../../lib/hide-amounts-preference";
+import { clearInboxMessages } from "../../lib/inbox-message-cache";
+import { MAIL_SENT_EVENT } from "../../lib/outbox";
+import type { ComposeRestore } from "../ComposeEmail";
+import { forgetClosed, rememberClosed } from "../compose/draft-memory";
 import { InboxMessageDialog } from "./InboxMessageDialog";
 
 const message = (id: string) => ({
@@ -50,10 +59,12 @@ beforeEach(() => {
   clock += 60_000; // each test starts past the j/k throttle the previous one left
   vi.setSystemTime(clock);
   get.mockReset();
+  clearInboxMessages();
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   root = createRoot(document.body.appendChild(document.createElement("div")));
 });
 afterEach(() => {
+  setHideAmounts(false);
   vi.useRealTimers();
   act(() => root.unmount());
   document.body.innerHTML = "";
@@ -176,6 +187,28 @@ it("shows the text, not a blank frame, when the HTML has nothing visible", async
   expect(document.body.textContent).toContain("Plain copy");
 });
 
+it("shows a plainly written HTML message as text in the app's style, and a designed one in its frame", async () => {
+  await show("plain1", {
+    html: '<div dir="ltr"><p>Hi Morgan, <b>Section 9</b> works.</p><blockquote style="margin:0">Earlier</blockquote></div>',
+    text: "Hi Morgan, Section 9 works.",
+  });
+  expect(document.querySelector('[data-testid="html-frame"]')).toBeNull();
+  expect(document.querySelector("p.whitespace-pre-wrap")?.textContent).toBe(
+    "Hi Morgan, Section 9 works.",
+  );
+  await show("designed1", {
+    html: "<table><tr><td><img src='https://example.com/logo.png'> Sale</td></tr></table>",
+    text: "Sale",
+  });
+  expect(document.querySelector('[data-testid="html-frame"]')).not.toBeNull();
+});
+
+it("names the sender You on the user's own message", async () => {
+  await show("self1", { from: "me@example.com", fromSelf: true });
+  expect(document.querySelector(".font-semibold.text-foreground")?.textContent).toBe("You");
+  expect(document.body.textContent).toContain("<me@example.com>");
+});
+
 it("archives with the button or e, and marks read or unread, when the page allows it", async () => {
   get.mockImplementation(async ({ messageId }) => message(messageId));
   const onArchive = vi.fn();
@@ -214,4 +247,166 @@ it("shows no archive or read buttons and ignores e without them", async () => {
   const names = [...document.querySelectorAll("button")].map((b) => b.textContent);
   expect(names).not.toContain("Archive");
   expect(names).not.toContain("Mark read");
+});
+
+it("lists the conversation's earlier messages and shows one's text when clicked", async () => {
+  get.mockImplementation(async ({ messageId }) =>
+    messageId === "first"
+      ? { ...message("first"), text: "Our counsel returned redlines on sections 4 and 9." }
+      : {
+          ...message(messageId),
+          thread: [
+            {
+              id: "first",
+              from: "Morgan",
+              receivedAt: "2026-10-09T09:00:00.000Z",
+              snippet: "Our counsel returned",
+            },
+          ],
+        },
+  );
+  act(() => root.render(<InboxMessageDialog messageId="latest" onClose={() => {}} />));
+  await flush();
+  expect(document.body.textContent).toContain("2 messages");
+  const row = [...document.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes("Morgan"),
+  );
+  expect(row?.getAttribute("aria-expanded")).toBe("false");
+  await act(async () => row?.click());
+  await flush();
+  expect(get).toHaveBeenCalledWith({ messageId: "first" });
+  expect(row?.getAttribute("aria-expanded")).toBe("true");
+  expect(document.body.textContent).toContain("Our counsel returned redlines on sections 4 and 9.");
+});
+
+it("lists the user's later reply after the open message, as You", async () => {
+  get.mockImplementation(async () => ({
+    ...message("open"),
+    text: "The open message.",
+    later: [
+      {
+        id: "mine",
+        from: "me@example.test",
+        receivedAt: "2026-10-10T10:27:00.000Z",
+        snippet: "Thanks, signed.",
+        fromSelf: true,
+      },
+    ],
+  }));
+  act(() => root.render(<InboxMessageDialog messageId="open" onClose={() => {}} />));
+  await flush();
+  const text = document.body.textContent ?? "";
+  expect(text).toContain("2 messages");
+  expect(text.indexOf("The open message.")).toBeLessThan(
+    text.indexOf("Later in this conversation"),
+  );
+  const row = [...document.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes("Thanks, signed."),
+  );
+  expect(row?.textContent).toContain("You");
+  expect(row?.textContent).not.toContain("me@example.test");
+});
+
+it("says the email has an unsent reply and continues it in the mode it was written in", async () => {
+  get.mockImplementation(async () => message("drafted"));
+  const seed = { kind: "replyAll", messageId: "drafted" } as const;
+  rememberClosed(seed, { seed } as ComposeRestore);
+  try {
+    act(() => root.render(<InboxMessageDialog messageId="drafted" onClose={() => {}} />));
+    await flush();
+    expect(document.body.textContent).toContain("You have an unsent reply to this email.");
+    const button = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent === "Continue draft",
+    );
+    await act(async () => button?.click());
+    expect(document.querySelector("[data-testid=compose]")?.textContent).toBe("replyAll");
+  } finally {
+    forgetClosed(seed);
+  }
+});
+
+it("takes the read state from the message and hides Archive once it left the Inbox", async () => {
+  const onRead = vi.fn();
+  get.mockImplementation(async () => ({ ...message("card"), unread: true, inInbox: false }));
+  act(() =>
+    root.render(
+      <InboxMessageDialog
+        messageId="card"
+        onArchive={() => {}}
+        onRead={onRead}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await flush();
+  const names = [...document.querySelectorAll("button")].map((b) => b.textContent);
+  expect(names).not.toContain("Archive");
+  const read = [...document.querySelectorAll("button")].find((b) => b.textContent === "Mark read");
+  await act(async () => read?.click());
+  expect(onRead).toHaveBeenCalledWith(true);
+});
+
+it("masks amounts in the body and thread while Hide amounts is on", async () => {
+  setHideAmounts(true);
+  get.mockImplementation(async ({ messageId }) =>
+    messageId === "t1"
+      ? { ...message("t1"), text: "Paid $1,234.56 total" }
+      : {
+          ...message(messageId),
+          text: "Invoice due: $9,876.54",
+          thread: [
+            {
+              id: "t1",
+              from: "x@example.com",
+              fromSelf: false,
+              receivedAt: "2026-10-09T09:00:00.000Z",
+              snippet: "Paid $1,234.56 total",
+            },
+          ],
+        },
+  );
+  act(() => root.render(<InboxMessageDialog messageId="m1" onClose={() => {}} />));
+  await flush();
+  const text = () => document.body.textContent ?? "";
+  expect(text()).not.toContain("9,876.54");
+  expect(text()).not.toContain("1,234.56");
+  const row = [...document.querySelectorAll("button[aria-expanded]")][0] as HTMLElement;
+  await act(async () => row.click());
+  await flush();
+  expect(text()).not.toContain("1,234.56");
+  setHideAmounts(false);
+  await flush();
+  expect(text()).toContain("9,876.54");
+});
+
+it("keeps link destinations by showing HTML with links in the sandboxed viewer", async () => {
+  get.mockResolvedValue({
+    ...message("m1"),
+    text: "Pay here",
+    html: '<p><a href="https://pay.example.com/x">Pay here</a></p>',
+  });
+  act(() => root.render(<InboxMessageDialog messageId="m1" onClose={() => {}} />));
+  await flush();
+  expect(document.querySelector('[data-testid="html-frame"]')).not.toBeNull();
+});
+
+it("shows a reply sent from the dialog without reopening it", async () => {
+  const thread = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `r${i}`,
+      from: "x@example.com",
+      fromSelf: false,
+      receivedAt: "2026-10-09T09:00:00.000Z",
+      snippet: `Earlier ${i}`,
+    }));
+  get.mockResolvedValueOnce({ ...message("m1"), thread: thread(1) });
+  act(() => root.render(<InboxMessageDialog messageId="m1" onClose={() => {}} />));
+  await flush();
+  expect(document.body.textContent).toContain("2 messages");
+  get.mockResolvedValue({ ...message("m1"), thread: thread(2) });
+  await act(async () => {
+    window.dispatchEvent(new Event(MAIL_SENT_EVENT));
+  });
+  await flush();
+  expect(document.body.textContent).toContain("3 messages");
 });

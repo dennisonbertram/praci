@@ -8,19 +8,22 @@ import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@lingui/core/macro", () => ({ msg: (parts: TemplateStringsArray) => parts[0] }));
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, index) => `${text}${index > 0 ? values[index - 1] : ""}${part}`, "");
   return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
 });
 
-import { Composer } from "./Shell";
+import { setHideAmounts } from "../lib/hide-amounts-preference";
+import { Composer, Transcript } from "./Shell";
 
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 let composerProps: ComponentProps<typeof Composer>;
 
 afterEach(() => {
+  setHideAmounts(false);
   act(() => root?.unmount());
   container?.remove();
   root = null;
@@ -113,6 +116,28 @@ function pressEnter(textarea: HTMLTextAreaElement) {
 }
 
 describe("Composer", () => {
+  it("shows Voice and Stop while a run goes on with nothing typed, and Send and Stop once there is", () => {
+    const textarea = renderComposer(async () => true, { running: true, onVoice: () => {} });
+    const labels = () =>
+      [...(container?.querySelectorAll("button[aria-label]") ?? [])]
+        .map((b) => b.getAttribute("aria-label"))
+        .filter((label) => label === "Voice" || label === "Send" || label === "Stop");
+    expect(labels()).toEqual(["Voice", "Stop"]);
+    type(textarea, "one more thing");
+    expect(labels()).toEqual(["Send", "Stop"]);
+  });
+
+  it("lets the person dismiss the skipped-attachment notice", () => {
+    const onDismissAttachmentNotice = vi.fn();
+    renderComposer(async () => true, {
+      attachmentNotice: "Skipped big.mp4 (over 10 MB)",
+      onDismissAttachmentNotice,
+    });
+    const dismiss = container?.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
+    act(() => dismiss?.click());
+    expect(onDismissAttachmentNotice).toHaveBeenCalledTimes(1);
+  });
+
   describe("mention highlight when targets reload", () => {
     const researcher: ComposerMention = { kind: "bot", id: "bot-3", name: "Researcher" };
     const writer: ComposerMention = { kind: "bot", id: "bot-4", name: "Research Writer" };
@@ -170,6 +195,45 @@ describe("Composer", () => {
       expect(selected()).toContain("Researcher");
       pressKey(textarea, "Enter");
       expect(chips()).toEqual(["Researcher"]);
+    });
+  });
+
+  describe("mention picker with no matches", () => {
+    const keydown = (textarea: HTMLTextAreaElement, init: KeyboardEventInit) => {
+      const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+      act(() => {
+        textarea.dispatchEvent(event);
+      });
+      return event;
+    };
+
+    it("announces the empty state and blocks Enter until Escape", () => {
+      const textarea = renderComposer(vi.fn());
+      type(textarea, "@zz");
+      const empty = container?.querySelector("[data-testid='mention-picker-empty']");
+      expect(empty?.getAttribute("role")).toBe("status");
+      expect(textarea.getAttribute("aria-expanded")).toBe("true");
+      expect(keydown(textarea, { key: "Enter" }).defaultPrevented).toBe(true);
+    });
+
+    it("does not send from the Send button while No matches shows", () => {
+      const onSend = vi.fn().mockResolvedValue(true);
+      const textarea = renderComposer(onSend);
+      type(textarea, "@zz");
+      const send = container?.querySelector<HTMLButtonElement>('button[aria-label="Send"]');
+      expect(send).not.toBeNull();
+      act(() => send?.click());
+      expect(onSend).not.toHaveBeenCalled();
+      // Control: the same button sends once the query no longer matches nothing.
+      type(textarea, "hello");
+      act(() => send?.click());
+      expect(onSend).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves Enter alone while an IME is composing", () => {
+      const textarea = renderComposer(vi.fn());
+      type(textarea, "@zz");
+      expect(keydown(textarea, { key: "Enter", isComposing: true }).defaultPrevented).toBe(false);
     });
   });
 
@@ -344,6 +408,17 @@ describe("Composer", () => {
     blocks: [{ kind: "text", text: "original reply" }],
     createdAt: "2026-01-01T00:00:00.000Z",
   };
+  it("masks currency amounts in the reply preview while amounts are hidden", () => {
+    const spent: ThreadMessage = {
+      ...reply,
+      blocks: [{ kind: "text", text: "You spent $73,781.83 last month" }],
+    };
+    setHideAmounts(true);
+    renderComposer(vi.fn(), { replyTarget: spent, replyQuote: "spent $73,781.83" });
+    expect(container?.textContent).not.toContain("73,781");
+    expect(container?.textContent).toContain("You spent $••• last month");
+  });
+
   const replyChanges = [
     { name: "cancelled reply", props: { replyTarget: null, replyQuote: null } },
     { name: "different reply", props: { replyTarget: { ...reply, id: "message-2" } } },
@@ -403,5 +478,81 @@ describe("Composer", () => {
     await act(async () => {});
     expect(onSend.mock.calls[1]?.[2]).toBe(onSend.mock.calls[0]?.[2]);
     expect(onSend.mock.calls[2]?.[2]).not.toBe(onSend.mock.calls[0]?.[2]);
+  });
+});
+
+describe("Transcript jump to a search result", () => {
+  const msg = (id: string, seq: number): ThreadMessage => ({
+    id,
+    threadId: "t1",
+    seq,
+    role: "bot",
+    blocks: [{ kind: "text", text: `message ${id}` }],
+    createdAt: "2026-10-01T00:00:00.000Z",
+  });
+
+  it("does not snap to the end when older messages mount for the jump", () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    window.matchMedia ??= () =>
+      ({
+        matches: true,
+        addEventListener() {},
+        removeEventListener() {},
+      }) as unknown as MediaQueryList;
+    Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.animate = vi.fn() as never;
+    const scrollTo = vi.fn();
+    Element.prototype.scrollTo = scrollTo as never;
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    const scrollRef = createRef<HTMLDivElement>();
+    const noop = () => {};
+    const props = {
+      scrollRef,
+      sentHere: { current: false },
+      onScrollRequestHandled: noop,
+      artifactTarget: { botId: "bot-1" },
+      showToolActivity: false,
+      olderCursor: null,
+      loadingOlder: false,
+      answerableAskMessageId: null,
+      running: false,
+      workingBots: [],
+      onLoadOlder: noop,
+      onOpenBot: noop,
+      onAnswer: async () => {},
+      onReply: noop,
+      onQuote: noop,
+      onReact: async () => {},
+      onJumpToMessage: noop,
+      onOpenPeerMessages: noop,
+      peerBot: () => undefined,
+      onRefresh: async () => {},
+      onBotChanged: async () => {},
+      onAddRoutine: noop,
+      voiceReady: false,
+      speakingMessageId: null,
+      onSpeak: noop,
+      onOpenComputer: noop,
+    } as unknown as ComponentProps<typeof Transcript>;
+    const render = (
+      messages: ThreadMessage[],
+      scrollRequest: { messageId: string; nonce: number } | null,
+    ) =>
+      act(() =>
+        root?.render(<Transcript {...props} messages={messages} scrollRequest={scrollRequest} />),
+      );
+
+    // The reader sits at the end of the newest page.
+    render([msg("m10", 10), msg("m11", 11)], null);
+    scrollTo.mockClear();
+    // A search hit loads an older window around m3 and asks to scroll to it.
+    render([msg("m3", 3), msg("m4", 4), msg("m10", 10), msg("m11", 11)], {
+      messageId: "m3",
+      nonce: 1,
+    });
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });

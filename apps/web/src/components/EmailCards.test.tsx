@@ -6,7 +6,6 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
-vi.mock("../lib/relative-time", () => ({ formatRelativeTime: () => "2d ago" }));
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, i) => text + part + String(values[i] ?? ""), "");
@@ -17,13 +16,41 @@ vi.mock("@lingui/react/macro", () => {
 });
 // The real message view loads the body in a sandboxed iframe; here only its inputs matter.
 vi.mock("./inbox/InboxMessageDialog", () => ({
-  InboxMessageDialog: ({ messageId, subject }: { messageId: string | null; subject?: string }) =>
+  InboxMessageDialog: ({
+    messageId,
+    subject,
+    onArchive,
+    onRead,
+    unread,
+  }: {
+    messageId: string | null;
+    subject?: string;
+    onArchive?: () => void;
+    onRead?: (read: boolean) => void;
+    unread?: boolean;
+  }) =>
     messageId ? (
-      <div role="dialog">
+      <div role="dialog" data-unread={unread === undefined ? "" : String(unread)}>
         {subject}
         <div data-testid="message-view">{messageId}</div>
+        <button type="button" onClick={onArchive}>
+          Archive
+        </button>
+        <button type="button" onClick={() => onRead?.(true)}>
+          Mark read
+        </button>
       </div>
     ) : null,
+}));
+const archive = vi.fn(async (_input: unknown) => ({ ok: true }));
+const markRead = vi.fn(async (_input: unknown) => ({ ok: true }));
+vi.mock("../lib/rpc", () => ({
+  rpc: {
+    inbox: {
+      archive: (input: unknown) => archive(input),
+      markRead: (input: unknown) => markRead(input),
+    },
+  },
 }));
 
 import { EmailCards } from "./EmailCards";
@@ -89,7 +116,8 @@ it("shows Later as compact rows without the snippet, and urgent mail as cards wi
   const row = view.container.querySelector('[data-testid="email-row"]');
   expect(row?.textContent).toContain("Sender l");
   expect(row?.textContent).toContain("Subject l");
-  expect(row?.textContent).toContain("2d ago");
+  // The same date the Inbox list shows for this mail, not "2d ago".
+  expect(row?.textContent).toContain("Oct 10");
   expect(row?.textContent).toContain("2");
   expect(row?.textContent).not.toContain("Snippet l");
   await view.cleanup();
@@ -121,5 +149,39 @@ it("opens the clicked message by its cached row id", async () => {
   await act(async () => (second as HTMLElement).click());
   expect(document.querySelector('[data-testid="message-view"]')?.textContent).toBe("two");
   expect(document.body.textContent).toContain("Subject two");
+  await view.cleanup();
+});
+
+it("archives and marks read from the opened card like the Inbox does, and tells the Inbox", async () => {
+  const changed = vi.fn();
+  window.addEventListener("rakazo:inbox-changed", changed);
+  const view = await render({ kind: "emails", emails: [email("one", "today")] });
+  const card = view.container.querySelector('[data-testid="email-card"]') as HTMLElement;
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === name) as HTMLElement;
+  await act(async () => card.click());
+  await act(async () => button("Mark read").click());
+  expect(markRead).toHaveBeenCalledWith({ messageId: "one", read: true });
+  await act(async () => button("Archive").click());
+  expect(archive).toHaveBeenCalledWith({ messageId: "one" });
+  // Archive closes the message.
+  expect(document.querySelector('[data-testid="message-view"]')).toBeNull();
+  expect(changed).toHaveBeenCalledTimes(2);
+  window.removeEventListener("rakazo:inbox-changed", changed);
+  await view.cleanup();
+});
+
+it("puts the unread state back when marking read fails", async () => {
+  markRead.mockRejectedValueOnce(new Error("offline"));
+  const view = await render({ kind: "emails", emails: [email("one", "today")] });
+  await act(async () =>
+    (view.container.querySelector('[data-testid="email-card"]') as HTMLElement).click(),
+  );
+  const button = [...document.querySelectorAll("button")].find(
+    (b) => b.textContent === "Mark read",
+  );
+  await act(async () => (button as HTMLElement).click());
+  expect(document.querySelector('[role="dialog"]')?.getAttribute("data-unread")).toBe("");
+  expect(view.container.querySelector('[role="alert"]')).not.toBeNull();
   await view.cleanup();
 });

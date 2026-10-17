@@ -16,6 +16,8 @@ export function activityPromptSnippet(
   input: { trigger: string; prompt: string; sourceBlocks?: unknown },
   max = 120,
 ): string {
+  // A new bot's introduction runs on an internal prompt; say what happened instead.
+  if (input.trigger === "created") return "Introduced itself";
   if (input.trigger !== "bot_message") return promptSnippet(input.prompt, max);
   const parsed = MessageBlock.array().safeParse(input.sourceBlocks);
   const message = parsed.success ? botMessageContext(parsed.data) : undefined;

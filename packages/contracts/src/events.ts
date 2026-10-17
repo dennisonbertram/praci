@@ -139,6 +139,9 @@ export const FinanceCardSchema = z.discriminatedUnion("card", [
   }),
   z.object({
     card: z.literal("transactions"),
+    /** The inclusive days the lookup asked for; absent when it was not limited. */
+    from: z.string().optional(),
+    to: z.string().optional(),
     count: z.number().int().nonnegative(),
     totalCents: FinanceCents,
     rows: z

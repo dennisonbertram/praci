@@ -53,6 +53,7 @@ import {
   newClientId,
   plainTextFromMarkdown,
   projectMessageReactions,
+  rankMentionOptions,
   reorderBotTo,
   replyAttachment,
   resolveComposerSendPlan,
@@ -81,11 +82,13 @@ import {
   GroupAvatar,
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
   Popover,
   PopoverContent,
   PopoverTrigger,
   resolvePersonaColorDef,
+  Spinner,
 } from "@rakazo/ui-web";
 import {
   ArrowDown,
@@ -96,6 +99,7 @@ import {
   ChevronDown,
   CircleAlert,
   Copy,
+  Files,
   FileText,
   FolderOpen,
   Gauge,
@@ -143,7 +147,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
-import { useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { AgentPanelIntro } from "../components/AgentPanelIntro";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
@@ -166,8 +171,12 @@ import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
+import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
+import { InboxAgentIntro } from "../components/inbox/InboxAgentIntro";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
+import { SidebarPageLink } from "../components/SidebarPageLink";
+import { SidebarPages } from "../components/SidebarPages";
 import {
   LIVE_TOOL_STEP_WINDOW,
   StandaloneToolActivity,
@@ -190,8 +199,10 @@ import {
 import {
   BOTS_SIDEBAR_EDGE_DRAG_PX,
   readBotsSidebarCollapsed,
+  readCartaAgentCollapsed,
   readInboxAgentCollapsed,
   writeBotsSidebarCollapsed,
+  writeCartaAgentCollapsed,
   writeInboxAgentCollapsed,
 } from "../lib/bots-sidebar-pref";
 import {
@@ -200,7 +211,12 @@ import {
   shouldNotifyBrowser,
 } from "../lib/browser-notifications";
 import { startCall, useCallSession } from "../lib/call-session";
-import { findCartaAgent } from "../lib/carta-agent";
+import {
+  cartaPanelState,
+  findCartaAgent,
+  useAutoCreateCartaAgent,
+  useOnPhoneWidth,
+} from "../lib/carta-agent";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -210,11 +226,13 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
 import { findFinanceAgent } from "../lib/finance-agent";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
 import { messageProviderLabel } from "../lib/messaging";
 import { parseModelOptionKey } from "../lib/model-catalog";
+import { createAgentSendWatch } from "../lib/outbox";
 import {
   isFileDrag,
   isFilePaste,
@@ -268,6 +286,8 @@ import {
   transcriptCanSnapAfterFrame,
   transcriptIsNearEnd,
   transcriptMovedDown,
+  transcriptShouldSnap,
+  transcriptUserJustSent,
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
 import { errorText } from "../lib/user-error";
@@ -292,7 +312,7 @@ import {
   routineNeedsOneShotArm,
 } from "./RoutineEditor";
 import type { SettingsSection } from "./SettingsOverlay";
-import { SpaceSearchResults } from "./SpaceSearch";
+import { type SearchLink, SpaceSearchResults } from "./SpaceSearch";
 import { BotPagePanel, type PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { BotCreatePicker } from "./shell/bot-picker";
@@ -320,6 +340,9 @@ import {
 import { commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
 import { WindowChrome } from "./WindowChrome";
 
+const ArtifactsPage = lazy(() =>
+  import("./Artifacts").then((module) => ({ default: module.ArtifactsPage })),
+);
 const BotContextMenu = lazyOverlay(() =>
   import("./BotContextMenu").then((module) => module.BotContextMenu),
 );
@@ -362,6 +385,11 @@ const COMPOSER_SINGLE_LINE_MAX_PX = 36;
 const COMPOSER_ONE_LINE_GAP_PX = 14;
 /** Narrower than the expand check so a draft at the edge cannot flip. */
 const COMPOSER_COLLAPSE_SLACK_PX = 16;
+
+/** Phones get page agents collapsed by default: there the side panel covers the page. */
+const wideScreen = () => window.matchMedia("(min-width: 768px)").matches;
+/** How long "Sent to <group> · Open" stays under the composer after an @group message. */
+const FORWARDED_NOTICE_MS = 8000;
 
 function threadSnapshotSignal(parent: AbortSignal): AbortSignal {
   return AbortSignal.any([parent, AbortSignal.timeout(THREAD_SNAPSHOT_TIMEOUT_MS)]);
@@ -424,41 +452,6 @@ function readCollapsedRosterParents(userId: string | null | undefined): Set<stri
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
 }
 
-/** A page-level row at the top of the sidebar (Inbox, Finance). */
-function SidebarPageLink({
-  testId,
-  current,
-  icon,
-  label,
-  onOpen,
-  children,
-}: {
-  testId: string;
-  current: boolean;
-  icon: ReactNode;
-  label: ReactNode;
-  onOpen: () => void;
-  children?: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      data-testid={testId}
-      aria-current={current ? "page" : undefined}
-      onClick={onOpen}
-      className={`mx-2.5 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-start hover:bg-sidebar-accent ${
-        current ? "bg-sidebar-accent" : ""
-      }`}
-    >
-      <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
-        {icon}
-      </span>
-      <span className="text-[14px] font-medium text-foreground/90">{label}</span>
-      {children}
-    </button>
-  );
-}
-
 export function ShellPage() {
   const { t } = useLingui();
   const { botId, groupId } = useParams();
@@ -493,10 +486,8 @@ export function ShellPage() {
   useEffect(() => {
     setBotsSidebarCollapsed(readBotsSidebarCollapsed(userId));
   }, [userId]);
-  // On a phone the panel covers the Inbox list, so it starts collapsed there.
-  const [inboxAgentCollapsed, setInboxAgentCollapsed] = useState(
-    () => !window.matchMedia("(min-width: 768px)").matches,
-  );
+  // Closed until Ask opens it, like the other pages' agents; an explicit open is remembered on wide screens.
+  const [inboxAgentCollapsed, setInboxAgentCollapsed] = useState(true);
   // With no Inbox agent the panel only holds a Create button, so it stays closed until asked for.
   const [showEmptyInboxAgent, setShowEmptyInboxAgent] = useState(false);
   const [creatingInboxAgent, setCreatingInboxAgent] = useState(false);
@@ -505,14 +496,19 @@ export function ShellPage() {
   const [financeAgentOpen, setFinanceAgentOpen] = useState(false);
   const [creatingFinanceAgent, setCreatingFinanceAgent] = useState(false);
   const [financeAgentError, setFinanceAgentError] = useState("");
-  // The Carta agent panel is open on every visit to Cap Table and can be collapsed.
-  const [cartaAgentOpen, setCartaAgentOpen] = useState(true);
+  // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
+  // would cover the page.
+  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(
+    () => !window.matchMedia("(min-width: 768px)").matches,
+  );
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
+  // Reported by the Cap Table page. Without Carta the agent has nothing to read, so its panel stays shut.
+  const [cartaConnected, setCartaConnected] = useState(false);
   const [cartaAgentError, setCartaAgentError] = useState("");
   useEffect(() => {
-    setInboxAgentCollapsed(
-      readInboxAgentCollapsed(userId) || !window.matchMedia("(min-width: 768px)").matches,
-    );
+    const phone = !wideScreen();
+    setInboxAgentCollapsed(readInboxAgentCollapsed(userId) || phone);
+    setCartaAgentCollapsed(readCartaAgentCollapsed(userId) || phone);
   }, [userId]);
   const [query, setQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
@@ -526,6 +522,7 @@ export function ShellPage() {
   );
   const streamResponsesRef = useRef(streamResponses);
   streamResponsesRef.current = streamResponses;
+  useHideAmounts();
   const showToolActivity = useSyncExternalStore(
     subscribeToolActivity,
     getToolActivityEnabled,
@@ -543,6 +540,17 @@ export function ShellPage() {
   const sendingRef = useRef(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
+  // A message that @mentioned a group went to that group; the person stays where they wrote it.
+  const [forwarded, setForwarded] = useState<{ groupId: string; threadKey: string } | null>(null);
+  function showForwarded(groupId: string, threadKey: string | undefined) {
+    if (threadKey) setForwarded({ groupId, threadKey });
+  }
+  // The notice is a confirmation, not a status: it goes away on its own.
+  useEffect(() => {
+    if (!forwarded) return;
+    const timer = window.setTimeout(() => setForwarded(null), FORWARDED_NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [forwarded]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [panel, setPanelState] = useState<Panel>(null);
   // The bot whose page exists (the Page control shows only then), and its latest page.updated event.
@@ -652,6 +660,9 @@ export function ShellPage() {
   }, []);
   useEffect(refreshInboxUnread, [refreshInboxUnread]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const { pathname } = useLocation();
+  // A link inside Settings (for example Server integrations) opens a page; the dialog closes.
+  useEffect(() => setSettingsOpen(false), [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [messagingSettingsOpen, setMessagingSettingsOpen] = useState(false);
   const [messagingSurfaceEnabled, setMessagingSurfaceEnabled] = useState(false);
@@ -677,6 +688,8 @@ export function ShellPage() {
   const [newSpaceOpen, setNewSpaceOpen] = useState(false);
   const [pickerInfoTopic, setPickerInfoTopic] = useState<"group" | "space" | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  // The bot just made with "New bot", whose settings open with its name selected.
+  const [namingBotId, setNamingBotId] = useState<string | null>(null);
 
   useEffect(() => {
     const desktop = window.matchMedia("(min-width: 768px)");
@@ -887,18 +900,17 @@ export function ShellPage() {
   const integrationsMode = useMatch("/app/integrations/*") != null;
   const financeMode = useMatch("/app/finance/*") != null;
   const dataRoomMode = useMatch("/app/data-room") != null;
+  const artifactsMode = useMatch("/app/artifacts/*") != null;
   // Inbox, Finance, Cap Table, Data room and Integrations are pages of their own: no bot route.
   // Inbox and Finance keep their agent in a side panel.
   const capTableMode = useMatch("/app/cap-table/*") != null;
-  const pageMode = inboxMode || financeMode || capTableMode || integrationsMode || dataRoomMode;
+  const pageMode =
+    inboxMode || financeMode || capTableMode || integrationsMode || dataRoomMode || artifactsMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
-  useEffect(() => {
-    if (!capTableMode) setCartaAgentOpen(true);
-  }, [capTableMode]);
   const active =
-    inGroup || integrationsMode || dataRoomMode
+    inGroup || integrationsMode || dataRoomMode || artifactsMode
       ? undefined
       : inboxMode
         ? findInboxAgent(bots, userId)
@@ -914,6 +926,9 @@ export function ShellPage() {
   computerOpenRef.current = computerOpen;
   computerBotIdRef.current = computerBotId ?? active?.id;
   const activeGroup = groups.find((group) => group.id === groupId);
+  const forwardedName = forwarded
+    ? (groups.find((group) => group.id === forwarded.groupId)?.name ?? t`the group`)
+    : "";
   const activePendingAttachments = useMemo(
     () => attachmentsForThread(pendingAttachments, inGroup ? groupId : active?.id),
     [active?.id, groupId, inGroup, pendingAttachments],
@@ -1769,15 +1784,60 @@ export function ShellPage() {
   const spaceQuery = query.trim();
   const showSpaceSearch = spaceQuery.length > 0;
 
+  // App pages that search and the command palette can open (route under /app/).
+  const appPages = useMemo(() => {
+    const icon = { size: 15, strokeWidth: 1.8, "aria-hidden": true } as const;
+    return [
+      { id: "inbox", label: t`Inbox`, icon: <Mail {...icon} /> },
+      { id: "finance", label: t`Finance`, icon: <ChartColumn {...icon} /> },
+      { id: "cap-table", label: t`Cap table`, icon: <PieChart {...icon} /> },
+      { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
+      { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
+      { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
+      { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
+    ];
+  }, [t]);
+  // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
+  const searchPages = useMemo(() => {
+    const needle = spaceQuery.toLocaleLowerCase();
+    return needle ? appPages.filter((page) => page.label.toLocaleLowerCase().includes(needle)) : [];
+  }, [appPages, spaceQuery]);
+  const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
+
+  function openSearchResult(path: string) {
+    setQuery("");
+    setMobileSidebarOpen(false);
+    navigate(path);
+  }
+
+  /** Opens an entry of appPages; Settings is a dialog, not a route. */
+  function openAppPage(id: string) {
+    setQuery("");
+    setMobileSidebarOpen(false);
+    if (id === "settings") openSettings("general");
+    else navigate(`/app/${id}`);
+  }
+
   useEffect(() => {
     if (!showSpaceSearch) {
       setSearchHits([]);
+      setSearchDocuments([]);
       setSearchLoading(false);
       return;
     }
     const abort = new AbortController();
     const timer = window.setTimeout(() => {
       setSearchLoading(true);
+      // Data room files by name and content; a failure only hides this group.
+      void rpc.dataRoom
+        .search({ query: spaceQuery, limit: 5 })
+        .then((result) => {
+          if (abort.signal.aborted) return;
+          setSearchDocuments(result.results.map(({ item }) => ({ id: item.id, label: item.name })));
+        })
+        .catch(() => {
+          if (!abort.signal.aborted) setSearchDocuments([]);
+        });
       void rpc.search
         .query({ q: spaceQuery })
         .then((result) => {
@@ -2009,6 +2069,7 @@ export function ShellPage() {
         query: "",
         includeEveryone: inGroup,
         currentGroupId: groupId,
+        currentBotId: inGroup ? null : active?.id,
         bots: bots.map((bot) => ({ id: bot.id, name: bot.name, color: bot.color })),
         groups: groups.map((group) => ({ id: group.id, name: group.name })),
         routines: mentionRoutines.map((routine) => ({
@@ -2020,7 +2081,7 @@ export function ShellPage() {
         })),
         connectors: mentionConnectors,
       }),
-    [bots, groupId, groups, inGroup, mentionConnectors, mentionRoutines],
+    [active?.id, bots, groupId, groups, inGroup, mentionConnectors, mentionRoutines],
   );
   const shellReady =
     initialBotsLoaded &&
@@ -2160,11 +2221,19 @@ export function ShellPage() {
     const botId = activeBotId.current;
     if (botId) void jumpToMessageRef.current({ botId, messageId }).catch(() => undefined);
   }, []);
+  const sentHere = useRef(false);
+  const agentSendWatch = useRef(createAgentSendWatch());
+  useEffect(() => agentSendWatch.current.running(transcriptRunning), [transcriptRunning]);
   const answerMessage = useCallback(
     async (message: ThreadMessage, text: string, username?: string, mail?: MailEdits) => {
       const botId = activeBotId.current;
       const groupId = activeGroupId.current;
       if (!botId && !groupId) return;
+      if (
+        text === "allow" &&
+        message.blocks.some((block) => block.kind === "ask" && block.mail?.tool === "mail_send")
+      )
+        agentSendWatch.current.sendApproved();
       await rpc.threads.answer({
         ...(groupId ? { groupId } : { botId: botId! }),
         runId: message.runId ?? "",
@@ -2233,7 +2302,7 @@ export function ShellPage() {
           continue;
         }
         if (file.size > ATTACHMENT_MAX_BYTES) {
-          skipped.push(t`${file.name} (over 10 MiB)`);
+          skipped.push(t`${file.name} (over 10 MB)`);
           continue;
         }
         const mimeType = inferAttachmentMimeType(file.name, file.type);
@@ -2288,6 +2357,7 @@ export function ShellPage() {
       sendingRef.current = true;
       setSending(true);
       setSendError(null);
+      setForwarded(null);
       // Keep the draft cleared once any part of the submission is confirmed accepted.
       let accepted = false;
       try {
@@ -2312,7 +2382,7 @@ export function ShellPage() {
           );
           setAttachmentNotice(null);
           if (reroutedToGroup && groupTarget) {
-            navigate(`/app/g/${groupTarget}`);
+            showForwarded(groupTarget, originThreadKey);
             return true;
           }
           if (groupTarget && activeGroupId.current === groupTarget) {
@@ -2336,6 +2406,8 @@ export function ShellPage() {
           );
           artifactIds.push(artifact.id);
         }
+        // The transcript follows the message this composer sends, not one that arrives from elsewhere.
+        sentHere.current = true;
         if (groupTarget) {
           await rpc.threads.send({
             groupId: groupTarget,
@@ -2377,10 +2449,9 @@ export function ShellPage() {
         setPendingAttachments((current) =>
           current.filter((attachment) => attachment.threadKey !== originThreadKey),
         );
-        // Refresh sidebar status even when a bot→group reroute navigates away below.
         void refreshBots().catch(() => undefined);
         if (reroutedToGroup && groupTarget) {
-          navigate(`/app/g/${groupTarget}`);
+          showForwarded(groupTarget, originThreadKey);
           return true;
         }
         if (groupTarget && activeGroupId.current === groupTarget) setAttachmentNotice(null);
@@ -2389,6 +2460,7 @@ export function ShellPage() {
         else if (botTarget) void refreshThreadRef.current(botTarget).catch(() => undefined);
         return true;
       } catch (error) {
+        sentHere.current = false;
         if (reroutedToGroup && groupTarget) {
           setSendError(errorText(error, t`Failed to send message`));
         } else if (groupTarget && activeGroupId.current === groupTarget) {
@@ -2540,6 +2612,11 @@ export function ShellPage() {
     writeInboxAgentCollapsed(userId, collapsed);
   }
 
+  function setCartaAgentCollapsedPref(collapsed: boolean) {
+    setCartaAgentCollapsed(collapsed);
+    writeCartaAgentCollapsed(userId, collapsed);
+  }
+
   async function createFinanceAgent() {
     setCreatingFinanceAgent(true);
     setFinanceAgentError("");
@@ -2561,6 +2638,7 @@ export function ShellPage() {
       await refreshBots();
     } catch (error) {
       setCartaAgentError(errorText(error, t`Could not create the Carta agent`));
+      return false;
     } finally {
       setCreatingCartaAgent(false);
     }
@@ -2584,6 +2662,28 @@ export function ShellPage() {
     }
   }
 
+  // Carta needs no Create click: the agent appears once Carta is connected.
+  useAutoCreateCartaAgent(
+    capTableMode && cartaConnected && initialBotsLoaded && Boolean(userId),
+    findCartaAgent(bots, userId) !== undefined,
+    createCartaAgent,
+    bots,
+  );
+
+  const cartaPanel = cartaPanelState({
+    connected: cartaConnected,
+    collapsed: cartaAgentCollapsed,
+    hasAgent: Boolean(active),
+    creating: creatingCartaAgent,
+    error: cartaAgentError,
+  });
+  // A window dragged down to phone width would leave a remembered-open panel covering the page.
+  // Only the view collapses; the saved preference stays for the desktop.
+  useOnPhoneWidth(() => {
+    setCartaAgentCollapsed(true);
+    setInboxAgentCollapsed(true);
+  });
+
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
   const agentPanel = inboxMode
     ? {
@@ -2596,6 +2696,10 @@ export function ShellPage() {
         createLabel: t`Create Inbox agent`,
         creating: creatingInboxAgent,
         error: inboxAgentError,
+        suggestions: [
+          t`What needs a reply from me today?`,
+          t`Summarize this week's investor email`,
+        ],
       }
     : financeMode
       ? {
@@ -2608,18 +2712,23 @@ export function ShellPage() {
           createLabel: t`Create Finance agent`,
           creating: creatingFinanceAgent,
           error: financeAgentError,
+          suggestions: [t`What is our runway?`, t`Where did spend go up this month?`],
         }
       : capTableMode
         ? {
             name: "carta-agent",
             testId: "carta-agent-panel",
-            open: cartaAgentOpen,
-            collapse: () => setCartaAgentOpen(false),
+            // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
+            // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
+            open: cartaPanel.open,
+            collapse: () => setCartaAgentCollapsedPref(true),
             collapseLabel: t`Collapse Carta agent`,
-            create: createCartaAgent,
-            createLabel: t`Create Carta agent`,
+            // A failed creation is retried from the panel; the agent otherwise appears by itself.
+            create: cartaAgentError ? createCartaAgent : undefined,
+            createLabel: t`Try again`,
             creating: creatingCartaAgent,
             error: cartaAgentError,
+            suggestions: [t`Who are our investors?`, t`Draft this month's investor update`],
           }
         : null;
 
@@ -2646,7 +2755,17 @@ export function ShellPage() {
       setBots((current) =>
         current.some((item) => item.id === bot.id) ? current : [bot, ...current],
       );
+      // Open its settings with the name selected, so the new bot gets a name before anything else.
+      const destKey =
+        userId && bootstrapMe?.spaceId
+          ? rightPanelStorageKey(userId, bootstrapMe.spaceId, "bot", bot.id)
+          : null;
+      explicitPanelTarget.current = destKey;
+      pendingPanelRestore.current = null;
+      setNamingBotId(bot.id);
       navigate(`/app/${bot.id}`);
+      setPanelState("settings");
+      setRestoredPanelKey(destKey);
       await refreshBots().catch(() => undefined);
     } catch (error) {
       setSendError(errorText(error, t`Failed to create bot`));
@@ -2975,47 +3094,57 @@ export function ShellPage() {
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <BotToolControlsContext.Provider value={botToolControls}>
-            <Transcript
-              key={activeSnapshot?.threadId}
-              scrollRef={messageScroll}
-              scrollRequest={scrollRequest}
-              onScrollRequestHandled={clearScrollRequest}
-              artifactTarget={transcriptArtifactTarget}
-              messages={transcriptMessages}
-              showToolActivity={showToolActivity}
-              olderCursor={activeSnapshot?.olderCursor ?? null}
-              loadingOlder={loadingOlder}
-              answerableAskMessageId={answerableAskMessageId}
-              running={transcriptRunning}
-              workingBots={workingBots}
-              workingActivity={soleWorkingActivity}
-              workingStartedAt={workingStartedAt}
-              onLoadOlder={loadOlder}
-              onOpenBot={openBot}
-              onAnswer={answerMessage}
-              onReply={(message) => {
-                setReplyTarget(message);
-                setReplyQuote(null);
-              }}
-              onQuote={(message, quote) => {
-                setReplyTarget(message);
-                setReplyQuote(quote);
-              }}
-              onReact={reactToMessage}
-              onJumpToMessage={jumpToReplyMessage}
-              onOpenPeerMessages={(peer) => {
-                setPeerConversation(peer);
-              }}
-              memberName={resolveTranscriptMemberName}
-              peerBot={resolveTranscriptBot}
-              onRefresh={refreshActiveThread}
-              onBotChanged={refreshBots}
-              onAddRoutine={addSkillRoutine}
-              voiceReady={Boolean(voiceStatus?.ready)}
-              speakingMessageId={speakingMessageId}
-              onSpeak={speakMessage}
-              onOpenComputer={onOpenComputer}
-            />
+            {inboxMode &&
+            activeSnapshot &&
+            transcriptMessages.length === 0 &&
+            activeSnapshot.olderCursor == null &&
+            !transcriptRunning &&
+            !sending ? (
+              <InboxAgentIntro onAsk={(text) => void sendMessage(text, [], newClientId())} />
+            ) : (
+              <Transcript
+                key={activeSnapshot?.threadId}
+                scrollRef={messageScroll}
+                sentHere={sentHere}
+                scrollRequest={scrollRequest}
+                onScrollRequestHandled={clearScrollRequest}
+                artifactTarget={transcriptArtifactTarget}
+                messages={transcriptMessages}
+                showToolActivity={showToolActivity}
+                olderCursor={activeSnapshot?.olderCursor ?? null}
+                loadingOlder={loadingOlder}
+                answerableAskMessageId={answerableAskMessageId}
+                running={transcriptRunning}
+                workingBots={workingBots}
+                workingActivity={soleWorkingActivity}
+                workingStartedAt={workingStartedAt}
+                onLoadOlder={loadOlder}
+                onOpenBot={openBot}
+                onAnswer={answerMessage}
+                onReply={(message) => {
+                  setReplyTarget(message);
+                  setReplyQuote(null);
+                }}
+                onQuote={(message, quote) => {
+                  setReplyTarget(message);
+                  setReplyQuote(quote);
+                }}
+                onReact={reactToMessage}
+                onJumpToMessage={jumpToReplyMessage}
+                onOpenPeerMessages={(peer) => {
+                  setPeerConversation(peer);
+                }}
+                memberName={resolveTranscriptMemberName}
+                peerBot={resolveTranscriptBot}
+                onRefresh={refreshActiveThread}
+                onBotChanged={refreshBots}
+                onAddRoutine={addSkillRoutine}
+                voiceReady={Boolean(voiceStatus?.ready)}
+                speakingMessageId={speakingMessageId}
+                onSpeak={speakMessage}
+                onOpenComputer={onOpenComputer}
+              />
+            )}
           </BotToolControlsContext.Provider>
           {composerDraft ? (
             <ComposeEmail
@@ -3046,6 +3175,27 @@ export function ShellPage() {
               onClose={() => setComposerDraft(null)}
             />
           ) : null}
+          {forwarded && forwarded.threadKey === (inGroup ? groupId : active?.id) ? (
+            <div
+              role="status"
+              className="flex items-center justify-center gap-2 px-6 pb-2 text-[13px] text-muted-foreground"
+            >
+              <span>
+                <Trans>Sent to {forwardedName}</Trans>
+              </span>
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0"
+                onClick={() => {
+                  setForwarded(null);
+                  navigate(`/app/g/${forwarded.groupId}`);
+                }}
+              >
+                <Trans>Open</Trans>
+              </Button>
+            </div>
+          ) : null}
           {recordingSkill ? (
             <div className="px-6 pb-2 text-center text-[13px] text-destructive">
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
@@ -3059,6 +3209,7 @@ export function ShellPage() {
               disabled={Boolean(recordingSkill)}
               pendingAttachments={activePendingAttachments}
               attachmentNotice={attachmentNotice}
+              onDismissAttachmentNotice={() => setAttachmentNotice(null)}
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}
@@ -3225,8 +3376,8 @@ export function ShellPage() {
             <button
               type="button"
               className="app-no-drag hidden h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:inline-flex"
-              aria-label={t`Minimize bots`}
-              title={t`Minimize bots`}
+              aria-label={t`Hide sidebar`}
+              title={t`Hide sidebar`}
               data-testid="minimize-bots-sidebar"
               onClick={() => setBotsSidebarCollapsedPref(true)}
             >
@@ -3294,10 +3445,28 @@ export function ShellPage() {
           <InputGroupInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t`Search`}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && query) {
+                e.preventDefault();
+                setQuery("");
+              }
+            }}
+            // Chats, files and links; the Inbox has its own mail search.
+            placeholder={t`Search chats`}
             autoComplete="off"
             name="sidebar-search"
           />
+          {query ? (
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                size="icon-xs"
+                aria-label={t`Clear search`}
+                onClick={() => setQuery("")}
+              >
+                <X aria-hidden="true" />
+              </InputGroupButton>
+            </InputGroupAddon>
+          ) : null}
         </InputGroup>
         <SidebarPageLink
           testId="sidebar-inbox"
@@ -3333,7 +3502,7 @@ export function ShellPage() {
           testId="sidebar-cap-table"
           current={capTableMode}
           icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Cap Table</Trans>}
+          label={<Trans>Cap table</Trans>}
           onOpen={() => {
             setMobileSidebarOpen(false);
             navigate("/app/cap-table");
@@ -3349,12 +3518,34 @@ export function ShellPage() {
             navigate("/app/data-room");
           }}
         />
+        <SidebarPageLink
+          testId="sidebar-artifacts"
+          current={artifactsMode}
+          // Not the Data room's folder icon: these are files bots made.
+          icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+          label={<Trans>Artifacts</Trans>}
+          onOpen={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/artifacts");
+          }}
+        />
+        <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
         <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {showSpaceSearch ? (
             <SpaceSearchResults
+              query={spaceQuery}
               hits={searchHits}
               loading={searchLoading}
+              pages={searchPages}
+              documents={searchDocuments}
               onSelect={(hit) => void jumpToSearchHit(hit)}
+              onSelectPage={openAppPage}
+              onSelectDocument={(id) =>
+                openSearchResult(`/app/data-room?item=${encodeURIComponent(id)}`)
+              }
+              onSearchMail={() =>
+                openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)
+              }
             />
           ) : (
             <>
@@ -3446,11 +3637,14 @@ export function ShellPage() {
                                   : t`Collapse ${group.title}`
                             }
                           >
-                            <span className="flex min-w-0 items-center gap-1.5 truncate">
+                            <span className="flex min-w-0 items-center gap-1.5">
                               {group.showLock ? (
                                 <Lock size={11} strokeWidth={2} aria-hidden="true" />
                               ) : null}
-                              <span className="truncate">{group.title}</span>
+                              {/* Long space names wrap to a second line instead of being cut off. */}
+                              <span className="line-clamp-2 text-start break-words">
+                                {group.title}
+                              </span>
                             </span>
                             {group.emptySpaceId ? null : (
                               <ChevronDown
@@ -3520,9 +3714,9 @@ export function ShellPage() {
                           ? compactStatusLabel
                           : (workStatusLabel ??
                             (item.kind === "bot"
-                              ? item.chat.preview ||
+                              ? maskCurrencyWhenHidden(item.chat.preview) ||
                                 (item.chat.status !== "idle" ? item.chat.status : "")
-                              : item.chat.preview ||
+                              : maskCurrencyWhenHidden(item.chat.preview) ||
                                 item.chat.members.map((member) => member.name).join(", ")));
                         return (
                           <div
@@ -3667,12 +3861,13 @@ export function ShellPage() {
                                 />
                               )}
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between gap-1.5">
+                                <div className="flex items-start justify-between gap-1.5">
                                   <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
                                     <span
                                       dir="auto"
                                       data-roster-bot-name={item.kind === "bot" ? "" : undefined}
-                                      className={`min-w-0 truncate text-[14.5px] leading-[18px] font-normal text-foreground ${
+                                      title={item.chat.name}
+                                      className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
                                         item.chat.unread ? "font-medium" : ""
                                       }`}
                                     >
@@ -3684,7 +3879,7 @@ export function ShellPage() {
                                       </span>
                                     ) : null}
                                   </div>
-                                  <div className="flex shrink-0 items-center gap-1.5">
+                                  <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
                                     {!compact ? (
                                       <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
                                         {formatRosterTime(item.chat.updatedAt)}
@@ -3740,6 +3935,31 @@ export function ShellPage() {
                                 )}
                               </div>
                             </button>
+                            {/* The right-click menu, also reachable on hover or by keyboard. */}
+                            {item.chat.spaceId === bootstrapMe?.spaceId ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                data-testid="roster-row-actions"
+                                aria-label={t`Actions for ${item.chat.name}`}
+                                aria-haspopup="menu"
+                                onClick={(event) => {
+                                  const rect = event.currentTarget.getBoundingClientRect();
+                                  botMenuAnchor.current = event.currentTarget;
+                                  setBotMenu({
+                                    kind: item.kind,
+                                    id: item.chat.id,
+                                    position: { x: rect.left, y: rect.bottom },
+                                  });
+                                }}
+                                className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:hidden ${
+                                  botMenu?.id === item.chat.id ? "opacity-100" : ""
+                                }`}
+                              >
+                                <MoreHorizontal size={15} strokeWidth={1.7} aria-hidden="true" />
+                              </Button>
+                            ) : null}
                           </div>
                         );
                       })}
@@ -3855,7 +4075,7 @@ export function ShellPage() {
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger
             data-testid="user-menu-trigger"
-            className="flex items-center gap-[11px] px-[18px] py-3.5"
+            className="flex items-center gap-[11px] rounded-lg px-[18px] py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             <span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-[12px] text-foreground/75">
               {initials}
@@ -3866,6 +4086,7 @@ export function ShellPage() {
             <PopoverContent
               side="top"
               align="start"
+              alignOffset={11}
               className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
             >
               {bootstrapMe?.ticketBoardEnabled ? (
@@ -3879,21 +4100,9 @@ export function ShellPage() {
                   }}
                 >
                   <SquareKanban className="text-muted-foreground" strokeWidth={1.75} />
-                  <Trans>Board</Trans>
+                  <Trans>Task board</Trans>
                 </Button>
               ) : null}
-              <Button
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setMobileSidebarOpen(false);
-                  navigate("/app/artifacts");
-                }}
-              >
-                <FolderOpen className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Artifacts</Trans>
-              </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-start font-normal"
@@ -3906,6 +4115,7 @@ export function ShellPage() {
                 <Settings className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Settings</Trans>
               </Button>
+              <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
               <Button
                 variant="ghost"
                 className="w-full justify-start font-normal"
@@ -3941,7 +4151,7 @@ export function ShellPage() {
         <button
           type="button"
           data-testid="bots-sidebar-edge"
-          aria-label={botsSidebarCollapsed ? t`Show bots` : t`Hide bots`}
+          aria-label={botsSidebarCollapsed ? t`Show sidebar` : t`Hide sidebar`}
           aria-pressed={!botsSidebarCollapsed}
           className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 md:block ${
             botsSidebarCollapsed ? "start-0" : "start-[308px]"
@@ -4019,8 +4229,8 @@ export function ShellPage() {
               <button
                 type="button"
                 data-testid="restore-bots-sidebar"
-                aria-label={t`Show bots`}
-                title={t`Show bots`}
+                aria-label={t`Show sidebar`}
+                title={t`Show sidebar`}
                 onClick={() => setBotsSidebarCollapsedPref(false)}
                 className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:grid"
               >
@@ -4088,7 +4298,7 @@ export function ShellPage() {
             {!inGroup && !pageMode && active ? (
               <button
                 type="button"
-                title={t`Agent computer`}
+                title={t`Bot computer`}
                 onClick={() => {
                   const next = panel === "computer" ? null : "computer";
                   setPanel(next);
@@ -4113,12 +4323,25 @@ export function ShellPage() {
           </ErrorBoundary>
         ) : dataRoomMode ? (
           <DataRoomPage />
+        ) : artifactsMode ? (
+          <ErrorBoundary fallback={<SectionLoadFailed />}>
+            <Suspense fallback={null}>
+              <ArtifactsPage />
+            </Suspense>
+          </ErrorBoundary>
         ) : financeMode ? (
-          <FinancePage onAskAgent={financeAgentOpen ? undefined : askFinanceAgent} />
+          <FinancePage
+            onAskAgent={financeAgentOpen ? undefined : askFinanceAgent}
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
+          />
         ) : capTableMode ? (
           <CapTablePage
-            onShowAgent={cartaAgentOpen ? undefined : () => setCartaAgentOpen(true)}
-            onConnectCarta={() => navigate("/app/integrations?q=carta")}
+            onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
+            onCartaStatus={setCartaConnected}
           />
         ) : inboxMode ? (
           <InboxPage
@@ -4138,7 +4361,7 @@ export function ShellPage() {
           <div className="grid flex-1 place-items-center">
             <Button onClick={() => void createBot()}>
               <Plus size={16} aria-hidden="true" />
-              <Trans>Create new Bot</Trans>
+              <Trans>New bot</Trans>
             </Button>
           </div>
         ) : (
@@ -4187,12 +4410,35 @@ export function ShellPage() {
                 </Button>
               </div>
               {active ? (
-                threadView
+                <>
+                  {transcriptMessages.length === 0 &&
+                  !transcriptRunning &&
+                  (!capTableMode || activeSnapshot) ? (
+                    <AgentPanelIntro
+                      description={
+                        capTableMode
+                          ? t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`
+                          : active.description
+                      }
+                      suggestions={agentPanel.suggestions}
+                      disabled={sending}
+                      onPick={(text) => void sendMessage(text, [], newClientId())}
+                    />
+                  ) : null}
+                  {threadView}
+                </>
               ) : (
                 <div className="grid flex-1 place-content-center justify-items-center gap-3 px-5">
-                  <Button disabled={agentPanel.creating} onClick={() => void agentPanel.create()}>
-                    {agentPanel.createLabel}
-                  </Button>
+                  {agentPanel.create ? (
+                    <Button
+                      disabled={agentPanel.creating}
+                      onClick={() => void agentPanel.create?.()}
+                    >
+                      {agentPanel.createLabel}
+                    </Button>
+                  ) : agentPanel.creating ? (
+                    <Spinner aria-label={t`Loading`} />
+                  ) : null}
                   {agentPanel.error ? (
                     <p role="alert" className="text-center text-sm text-destructive">
                       {agentPanel.error}
@@ -4396,6 +4642,7 @@ export function ShellPage() {
               <BotSettings
                 key={active.id}
                 bot={active}
+                focusName={namingBotId === active.id}
                 memoryProviderConfigured={memoryProviderConfig != null}
                 onSkillsChange={setAgentSkills}
                 onSave={async ({ computerMode, ...patch }) => {
@@ -4920,6 +5167,17 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);
           }}
+          pages={appPages}
+          groups={groups.map((group) => ({
+            id: group.id,
+            label: group.name,
+            icon: <GroupAvatar members={group.members} size={26} />,
+          }))}
+          onSelectPage={openAppPage}
+          onSelectGroup={(id) => {
+            setMobileSidebarOpen(false);
+            navigate(`/app/g/${id}`);
+          }}
         />
 
         {newSpaceOpen ? (
@@ -5236,8 +5494,9 @@ export function ShellPage() {
   );
 }
 
-const Transcript = memo(function Transcript({
+export const Transcript = memo(function Transcript({
   scrollRef,
+  sentHere,
   scrollRequest,
   onScrollRequestHandled,
   artifactTarget,
@@ -5269,6 +5528,8 @@ const Transcript = memo(function Transcript({
   onOpenComputer,
 }: {
   scrollRef: RefObject<HTMLDivElement | null>;
+  /** Set by the composer while its own message is on the way in. */
+  sentHere: RefObject<boolean>;
   scrollRequest: { messageId: string; nonce: number } | null;
   onScrollRequestHandled: () => void;
   artifactTarget: ArtifactTarget;
@@ -5493,9 +5754,39 @@ const Transcript = memo(function Transcript({
     onScrollRequestHandled();
   }, [messages, scrollRequest, scrollRef, endJumpScroll, onScrollRequestHandled]);
 
+  // A message sent from this composer brings the transcript to the end even after the reader
+  // scrolled up (or clicked a card, which stops following), so the reply that follows is in view.
+  // A user message that arrives from elsewhere (another tab, a steer) leaves the reader in place.
+  // Mirrors atEnd for the layout effect below, which must not re-run on every scroll.
+  const atEndRef = useRef(true);
+  atEndRef.current = atEnd;
+  const lastMessageId = useRef<string | null>(null);
   useLayoutEffect(() => {
-    if (following.current) snapToEnd();
-  }, [messages, running, snapToEnd]);
+    const last = messages.at(-1);
+    const previousLastId = lastMessageId.current;
+    let sentNow = false;
+    if (last?.id !== previousLastId) {
+      sentNow = sentHere.current && transcriptUserJustSent(previousLastId, last);
+      if (sentNow) following.current = true;
+      sentHere.current = false;
+    }
+    lastMessageId.current = last?.id ?? null;
+    const snap = transcriptShouldSnap({
+      following: following.current,
+      atEnd: atEndRef.current,
+      previousLastId: previousLastId ?? undefined,
+      // Only a message sent from this composer counts as the user's own new message.
+      last: sentNow ? last : undefined,
+      jumping: jumpScrolling.current,
+    });
+    if (snap) {
+      snapToEnd();
+      return;
+    }
+    // Content grew below a reader who scrolled up: offer the Jump to latest button.
+    const element = scrollRef.current;
+    if (element) setAtEnd(transcriptIsNearEnd(element));
+  }, [messages, running, snapToEnd, scrollRef, sentHere]);
 
   useLayoutEffect(() => {
     const button = jumpButtonRef.current;
@@ -5572,7 +5863,7 @@ const Transcript = memo(function Transcript({
             following.current = false;
           }
         }}
-        className="rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-5 md:px-7 md:py-6"
+        className="@container rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-5 md:px-7 md:py-6"
       >
         {olderCursor != null ? (
           <button
@@ -5644,7 +5935,13 @@ const Transcript = memo(function Transcript({
               ) : null}
               <div
                 data-message-id={message.id}
-                className={peerReceipt ? "relative py-0.5" : "group/message relative hover:z-20"}
+                className={
+                  peerReceipt
+                    ? "relative py-0.5"
+                    : // A narrow transcript (the Inbox agent panel) has no gutter beside the bubbles, so the
+                      // hover time above and the actions below need room of their own.
+                      "group/message relative hover:z-20 @max-sm:[@media(hover:hover)]:pt-3 @max-sm:[@media(hover:hover)]:pb-5"
+                }
               >
                 <div
                   className={
@@ -5659,11 +5956,12 @@ const Transcript = memo(function Transcript({
                       peerReceipt
                         ? undefined
                         : `relative w-fit min-w-0 ${
+                            // A narrow transcript (the Inbox agent panel) cannot spare 8rem beside each bubble.
                             message.role === "user"
-                              ? "max-w-[min(84%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[84%]"
+                              ? "max-w-[max(min(84%,calc(100%_-_8rem)),min(84%,20rem))] @max-sm:max-w-[84%] [@media(hover:none)]:max-w-[84%]"
                               : message.blocks.some((block) => block.kind === "ask" && block.mail)
-                                ? "max-w-[calc(100%_-_5rem)] [@media(hover:none)]:max-w-full"
-                                : "max-w-[min(88%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[88%]"
+                                ? "max-w-[calc(100%_-_5rem)] @max-sm:max-w-full [@media(hover:none)]:max-w-full"
+                                : "max-w-[max(min(88%,calc(100%_-_8rem)),min(88%,20rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
                           }`
                     }
                   >
@@ -5715,9 +6013,12 @@ const Transcript = memo(function Transcript({
                         dateTime={message.createdAt}
                         data-testid="message-hover-time"
                         className={cn(
-                          "pointer-events-none absolute end-0 z-10 whitespace-nowrap text-xs tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100 group-has-[[aria-expanded=true]]/message:opacity-100 [@media(hover:none)]:transition-none",
-                          // Bot speaker header renders its own time in the header row; here it sits just above the bubble.
-                          "bottom-full pb-0.5",
+                          "pointer-events-none absolute z-10 whitespace-nowrap text-xs tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100 group-has-[[aria-expanded=true]]/message:opacity-100 [@media(hover:none)]:transition-none",
+                          // Bot speaker header renders its own time in the header row; here it sits in the
+                          // gutter beside the bubble, above the hover actions, clear of neighbouring messages.
+                          message.role === "user"
+                            ? "end-full bottom-8 pe-3"
+                            : "start-full bottom-8 ps-3",
                           // Touch has no hover margin: drop the revealed time in-flow under the bubble.
                           "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
                           "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
@@ -5781,15 +6082,16 @@ const Transcript = memo(function Transcript({
       <button
         ref={jumpButtonRef}
         type="button"
-        aria-label={t`Jump to latest`}
         aria-hidden={atEnd}
         tabIndex={atEnd ? -1 : 0}
         onClick={jumpToLatest}
-        className={`absolute bottom-4 left-1/2 z-20 grid h-9 w-9 -translate-x-1/2 place-items-center rounded-full border border-border bg-muted/95 text-foreground/75 shadow-md backdrop-blur transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-border motion-reduce:transition-none ${
+        // A labeled, opaque pill: an unlabeled see-through circle read as part of the text under it.
+        className={`absolute bottom-4 left-1/2 z-20 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-popover px-3 text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent motion-reduce:transition-none ${
           atEnd ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
         }`}
       >
-        <ArrowDown size={17} strokeWidth={1.8} />
+        <ArrowDown size={15} strokeWidth={1.8} aria-hidden="true" />
+        <Trans>Jump to latest</Trans>
       </button>
     </div>
   );
@@ -5876,6 +6178,7 @@ export const Composer = memo(function Composer({
   disabled,
   pendingAttachments,
   attachmentNotice,
+  onDismissAttachmentNotice,
   sendError,
   runError,
   runErrorId,
@@ -5903,6 +6206,7 @@ export const Composer = memo(function Composer({
   disabled?: boolean;
   pendingAttachments: PendingAttachment[];
   attachmentNotice: string | null;
+  onDismissAttachmentNotice?: () => void;
   sendError: string | null;
   runError: string | null;
   runErrorId: string | null;
@@ -5927,6 +6231,7 @@ export const Composer = memo(function Composer({
   /** The user's sent messages in this conversation, oldest first. */
   sentHistory?: string[];
 }) {
+  useHideAmounts();
   const { t } = useLingui();
   const [draft, setDraft] = useState("");
   const historyIndex = useRef<number | null>(null);
@@ -6138,11 +6443,15 @@ export const Composer = memo(function Composer({
 
   const mentionOptions = useMemo(() => {
     if (mentionQuery === null || !mentionTargets?.length) return [];
-    const query = mentionQuery.trim().toLowerCase();
-    return mentionTargets
-      .filter((target) => !query || target.name.toLowerCase().startsWith(query))
-      .slice(0, 10);
+    // Prefix, then word-start, then substring matches, so the cap never hides a better match.
+    return rankMentionOptions(mentionTargets, mentionQuery).slice(0, 10);
   }, [mentionQuery, mentionTargets]);
+  // A typed query with no match shows "No matches" instead of closing, so `@zz` is not sent unnoticed.
+  const mentionNoMatches =
+    mentionQuery !== null &&
+    mentionQuery !== "" &&
+    mentionOptions.length === 0 &&
+    Boolean(mentionTargets?.length);
 
   // Reset to the first option only when the typed query changes.
   useEffect(() => {
@@ -6183,7 +6492,8 @@ export const Composer = memo(function Composer({
     (slashSkillOptions.length > 0 || slashActionOptions.length > 0);
 
   async function send() {
-    if (!canSend || sending || disabled) return;
+    // Same as Enter: while "No matches" shows, Escape first, then send as typed.
+    if (!canSend || sending || disabled || mentionNoMatches) return;
     const revision = editRevision.current;
     const clientNonce = retryNonce.current ?? newClientId();
     retryNonce.current = null;
@@ -6411,7 +6721,7 @@ export const Composer = memo(function Composer({
         <ComposerReplyPreview
           author={replyName}
           text={previewMessageText(replyTarget)}
-          quote={replyQuote}
+          quote={replyQuote ? maskCurrencyWhenHidden(replyQuote) : replyQuote}
           attachment={replyAttachment(replyTarget.blocks)}
           target={artifactTarget}
           onDismiss={() => {
@@ -6424,8 +6734,22 @@ export const Composer = memo(function Composer({
         />
       ) : null}
       {attachmentNotice ? (
-        <div className="mb-3 rounded-[14px] border border-warning/40 bg-warning/10 px-4 py-2 text-[13px] text-warning">
-          {attachmentNotice}
+        <div
+          role="status"
+          className="mb-3 flex items-center gap-2 rounded-[14px] border border-warning/40 bg-warning/10 py-1 ps-4 pe-1 text-[13px] text-warning"
+        >
+          <span className="min-w-0 flex-1 py-1">{attachmentNotice}</span>
+          {onDismissAttachmentNotice ? (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label={t`Dismiss`}
+              className="shrink-0 text-warning"
+              onClick={onDismissAttachmentNotice}
+            >
+              <X aria-hidden="true" />
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {pendingAttachments.length ? (
@@ -6503,6 +6827,16 @@ export const Composer = memo(function Composer({
               </button>
             );
           })}
+        </div>
+      ) : null}
+      {mentionNoMatches ? (
+        <div
+          id={mentionListboxId}
+          role="status"
+          data-testid="mention-picker-empty"
+          className="mb-2 rounded-[14px] border border-border bg-muted px-4 py-2.5 text-[14px] text-muted-foreground"
+        >
+          <Trans>No matches. Press Escape to send as typed.</Trans>
         </div>
       ) : null}
       {showSlashPicker ? (
@@ -6614,6 +6948,15 @@ export const Composer = memo(function Composer({
               <span dir="auto" className="truncate">
                 {mention.name}
               </span>
+              {mention.kind === "routine" ? (
+                <span className="shrink-0 text-muted-foreground">
+                  <Trans>Runs on send</Trans>
+                </span>
+              ) : mention.authStatus === "needs_auth" ? (
+                <span className="shrink-0 text-muted-foreground">
+                  <Trans>Needs sign-in</Trans>
+                </span>
+              ) : null}
               <button
                 type="button"
                 aria-label={t`Remove mention ${mention.name}`}
@@ -6646,13 +6989,24 @@ export const Composer = memo(function Composer({
                 removeLastChip();
                 return;
               }
+              const composing = event.nativeEvent.isComposing || event.keyCode === 229;
               const action = resolveMentionPickerKey({
                 key: event.key,
                 shiftKey: event.shiftKey,
-                isComposing: event.nativeEvent.isComposing || event.keyCode === 229,
+                isComposing: composing,
                 optionCount: mentionOptions.length,
                 highlightedIndex: activeMentionIndex,
               });
+              if (mentionNoMatches && !composing && event.key === "Enter" && !event.shiftKey) {
+                // Escape dismisses the empty state first; Enter then sends the text as typed.
+                event.preventDefault();
+                return;
+              }
+              if (mentionNoMatches && !composing && event.key === "Escape") {
+                event.preventDefault();
+                setMentionQuery(null);
+                return;
+              }
               if (action.type === "complete") {
                 const mention = mentionOptions[action.index];
                 if (!mention) return;
@@ -6713,8 +7067,8 @@ export const Composer = memo(function Composer({
             role="combobox"
             aria-autocomplete="list"
             aria-haspopup="listbox"
-            aria-expanded={mentionPickerOpen}
-            aria-controls={mentionPickerOpen ? mentionListboxId : undefined}
+            aria-expanded={mentionPickerOpen || mentionNoMatches}
+            aria-controls={mentionPickerOpen || mentionNoMatches ? mentionListboxId : undefined}
             aria-activedescendant={activeMentionOptionId}
             name="chat-message"
             autoComplete="off"
@@ -6744,15 +7098,18 @@ export const Composer = memo(function Composer({
           ) : null}
           {running ? (
             <>
-              <Button
-                size="icon"
-                aria-label={t`Send`}
-                disabled={sending || !canSend || disabled}
-                onClick={send}
-                className="size-8 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95"
-              >
-                <ArrowUp size={16} strokeWidth={2.2} />
-              </Button>
+              {/* Two buttons at most, so the message field keeps its width while a run goes on. */}
+              {canSend ? (
+                <Button
+                  size="icon"
+                  aria-label={t`Send`}
+                  disabled={sending || disabled}
+                  onClick={send}
+                  className="size-8 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95"
+                >
+                  <ArrowUp size={16} strokeWidth={2.2} />
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
                 size="icon"
@@ -6838,7 +7195,7 @@ function previewMessageText(message: ThreadMessage): string {
     .filter(Boolean)
     .join(" ")
     .trim();
-  if (text) return text;
+  if (text) return maskCurrencyWhenHidden(text);
   const attachment = replyAttachment(message.blocks);
   if (attachment) return attachment.kind === "image" ? t`Photo` : attachment.name || t`Attachment`;
   return t`Message`;
@@ -6896,7 +7253,7 @@ function MessageHoverActions({
   if (message.id.startsWith("progress:")) return null;
 
   function copyMessage() {
-    const text = copyableMessageText(message);
+    const text = maskCurrencyWhenHidden(copyableMessageText(message));
     if (!text || !navigator.clipboard) return;
     void navigator.clipboard.writeText(text).catch(() => undefined);
   }
@@ -7151,6 +7508,7 @@ const MessageView = memo(function MessageView({
   onReply: (message: ThreadMessage) => void;
   showToolActivity: boolean;
 }) {
+  useHideAmounts();
   const { t } = useLingui();
   const botToolControls = useContext(BotToolControlsContext);
   const isNarration =
@@ -7280,12 +7638,16 @@ const MessageView = memo(function MessageView({
           return (
             <div
               key={i}
-              className="flex items-center justify-center gap-2 py-1 text-[13.5px] text-muted-foreground"
+              className="flex flex-col items-center gap-0.5 py-1 text-center text-[13.5px] text-muted-foreground"
             >
               <span>
-                ↪ {to} ← {from}
+                <Trans>
+                  {from} handed off to {to}
+                </Trans>
               </span>
-              <span>{block.text}</span>
+              {block.text ? (
+                <span className="max-w-prose">{maskCurrencyWhenHidden(block.text)}</span>
+              ) : null}
             </div>
           );
         }
@@ -7313,7 +7675,7 @@ const MessageView = memo(function MessageView({
             >
               <span>
                 {messageProviderLabel(block.provider, block.transport)} · {block.fromLabel}:{" "}
-                {block.text}
+                {maskCurrencyWhenHidden(block.text)}
               </span>
             </div>
           );
@@ -7325,7 +7687,7 @@ const MessageView = memo(function MessageView({
               className="flex items-center justify-center gap-2 py-1 text-[13.5px] text-muted-foreground"
             >
               <span className="text-warning">◷</span>
-              <span>{block.text}</span>
+              <span>{maskCurrencyWhenHidden(block.text)}</span>
             </div>
           );
         }

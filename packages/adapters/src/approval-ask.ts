@@ -1,6 +1,12 @@
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { MailApproval, MailEdits, MessageBlock } from "@rakazo/contracts";
-import { isCartaAgentSpawnKey, MAX_COMPOSE_BODY } from "@rakazo/contracts";
+import {
+  CARTA_WRITE_TOOLS,
+  isCartaAgentSpawnKey,
+  isCartaEndpoint,
+  isInboxAgentSpawnKey,
+  MAX_COMPOSE_BODY,
+} from "@rakazo/contracts";
 import { redactSecrets } from "@rakazo/core";
 import { buildRawMessage, displayAddress, parseRecipients } from "./mail-compose.js";
 
@@ -12,12 +18,15 @@ export function buildApprovalAskBlock(
   toolName: string,
   args: Record<string, unknown>,
   secrets: string[],
-  options?: { reviewReason?: string; fullMail?: boolean },
+  options?: { reviewReason?: string; fullMail?: boolean; cartaWriteTool?: string },
 ): MessageBlock {
   const summary = describeApprovalAction(toolName, args);
+  const fullDetail = options?.fullMail || options?.cartaWriteTool !== undefined;
   const detail = options?.fullMail
     ? fullMailDetail(args, options.reviewReason)
-    : formatApprovalDetail(toolName, args, options?.reviewReason);
+    : options?.cartaWriteTool !== undefined
+      ? cartaWriteDetail(options.cartaWriteTool, args, options.reviewReason)
+      : formatApprovalDetail(toolName, args, options?.reviewReason);
   const safeDetail = detail ? redactSecrets(detail, secrets) : undefined;
   return {
     kind: "ask",
@@ -31,7 +40,7 @@ export function buildApprovalAskBlock(
     ),
     // A full mail send shows every recipient and the whole body, never a cut-off one.
     detail: safeDetail
-      ? options?.fullMail
+      ? fullDetail
         ? safeDetail
         : truncate(safeDetail, MAX_APPROVAL_DETAIL_LENGTH)
       : undefined,
@@ -51,9 +60,26 @@ export function buildApprovalAskBlock(
   };
 }
 
-/** The Carta agent's mail_send: always asks, never from a saved rule or Auto Review. */
+/**
+ * The Carta and Inbox agents' mail_send: always asks, never from a saved rule or Auto Review, so
+ * the founder sees the whole message on a card before investor or customer mail goes out.
+ */
 export const isCartaMailSend = (botSpawnKey: string | null | undefined, toolName: string) =>
-  toolName === "mail_send" && isCartaAgentSpawnKey(botSpawnKey);
+  toolName === "mail_send" &&
+  (isCartaAgentSpawnKey(botSpawnKey) || isInboxAgentSpawnKey(botSpawnKey));
+
+/**
+ * The Carta agent's write tools on Carta's server: every call asks, whatever the saved rules say.
+ * The executor names MCP tools `mcp__<slug>__<tool>`, so this reads the server and raw tool name
+ * from the route, not the model-facing name.
+ */
+export const isCartaWrite = (
+  botSpawnKey: string | null | undefined,
+  route: { toolName: string; endpoint?: string } | undefined,
+) =>
+  isCartaAgentSpawnKey(botSpawnKey) &&
+  isCartaEndpoint(route?.endpoint) &&
+  (CARTA_WRITE_TOOLS as readonly string[]).includes(route?.toolName ?? "");
 
 /** Whether a mail_send call carries the whole message (no draftId shortcut). */
 export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean {
@@ -64,6 +90,17 @@ export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean 
     filled(args.subject) &&
     filled(args.body)
   );
+}
+
+/** The raw tool name and every argument, nested ones included, so the user sees the operation. */
+function cartaWriteDetail(
+  rawTool: string,
+  args: Record<string, unknown>,
+  reviewReason?: string,
+): string {
+  const lines = reviewReason?.trim() ? [reviewReason.trim()] : [];
+  lines.push(`tool: ${rawTool}`, `arguments: ${JSON.stringify(args, null, 2)}`);
+  return lines.join("\n");
 }
 
 /** Every recipient, Bcc included, and the whole body. */
@@ -77,7 +114,13 @@ function fullMailDetail(args: Record<string, unknown>, reviewReason?: string): s
   return lines.join("\n");
 }
 
-function describeApprovalAction(toolName: string, args: Record<string, unknown>): string {
+/** What the approval is for, in words; never a raw tool name for mail. */
+export function describeApprovalAction(toolName: string, args: Record<string, unknown>): string {
+  if (toolName === "mail_send" || toolName === "mail_draft") {
+    const [first, ...rest] = strings(args.to);
+    const to = first ? ` to ${first}${rest.length ? ` and ${rest.length} more` : ""}` : "";
+    return toolName === "mail_send" ? `sending email${to}` : `saving a draft${to}`;
+  }
   if (toolName === "destination.write") {
     const collection = args.collection ? String(args.collection) : "records";
     const title = args.title ? ` "${String(args.title)}"` : "";
@@ -142,7 +185,7 @@ const strings = (value: unknown): string[] =>
 
 /**
  * The fields of a mail_draft or mail_send call, for the inline mail card. A send of a saved draft
- * (draftId, no body) has nothing to show or edit, and an oversized body stays on the generic card.
+ * (draftId, no body) shows as a locked card, and an oversized body stays on the generic card.
  */
 function mailApproval(
   toolName: string,
@@ -153,9 +196,6 @@ function mailApproval(
   const text = (value: unknown) => (typeof value === "string" ? redactSecrets(value, secrets) : "");
   const body = text(args.body);
   if (body.length > MAX_COMPOSE_BODY) return undefined;
-  if (toolName === "mail_send" && typeof args.draftId === "string" && args.draftId.trim()) {
-    return undefined;
-  }
   return {
     tool: toolName,
     ...(typeof args.account === "string" && args.account

@@ -3,8 +3,9 @@ import { AppDetail } from "../components/integrations/AppDetail";
 import { IntegrationsHome } from "../components/integrations/IntegrationsHome";
 import { McpDetail } from "../components/integrations/McpDetail";
 import { useIntegrations } from "../components/integrations/useIntegrations";
+import { IntegrationSetupPage } from "./IntegrationSetup";
 
-/** The Integrations page: home, managed app detail and MCP server detail, in the shell's main pane. */
+/** The Integrations page: home, app and MCP server detail, and server setup, in the shell's main pane. */
 export function IntegrationsPage({ activeBotId }: { activeBotId?: string }) {
   const data = useIntegrations();
   return (
@@ -14,6 +15,7 @@ export function IntegrationsPage({ activeBotId }: { activeBotId?: string }) {
         element={<AppDetail data={data} activeBotId={activeBotId} />}
       />
       <Route path="mcp/:serverId" element={<McpDetail data={data} />} />
+      <Route path="setup" element={<IntegrationSetupPage />} />
       <Route path="*" element={<IntegrationsHome data={data} activeBotId={activeBotId} />} />
     </Routes>
   );

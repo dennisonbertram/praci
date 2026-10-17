@@ -39,7 +39,7 @@ test("Integrations page: filter apps, connect Gmail, manage it on its detail pag
   // Connect dialog: sign-in, which agents, done.
   await page.getByRole("button", { name: "Connect Gmail", exact: true }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("Which agents can use Gmail?")).toBeVisible();
+  await expect(dialog.getByText("Which bots can use Gmail?")).toBeVisible();
   await captureScreenshot(page, testInfo, "integrations-connect-agents");
   await finishConnectDialog(page, "Gmail");
   await expect(page.getByText("Connected", { exact: true }).first()).toBeVisible();
@@ -97,9 +97,11 @@ test("Integrations page: first-party MCP tiles prefill the custom connection", a
   await page.getByRole("button", { name: "Connect Carta", exact: true }).scrollIntoViewIfNeeded();
   await captureScreenshot(page, testInfo, "integrations-first-party");
 
-  // X has no dynamic client registration, so its dialog asks for a client ID up front.
+  // The URL is known for a first-party tile, so no Server URL field shows. X has no dynamic
+  // client registration, so its dialog asks for a client ID up front.
   await page.getByRole("button", { name: "Connect X", exact: true }).click();
-  await expect(page.getByLabel("Server URL")).toHaveValue("https://api.x.com/mcp");
+  await expect(page.getByRole("dialog", { name: "Connect X" })).toBeVisible();
+  await expect(page.getByLabel("Server URL")).toHaveCount(0);
   await expect(page.getByLabel("Client ID")).toBeVisible();
   await captureScreenshot(page, testInfo, "integrations-x-client-id");
 });
@@ -115,4 +117,66 @@ test("Integrations page fits a phone", async ({ page }, testInfo) => {
   );
   expect(overflow).toBeLessThanOrEqual(0);
   await captureScreenshot(page, testInfo, "integrations-phone");
+});
+
+test("App page: ?connect=1 opens the connect dialog and ?next= returns the person afterwards", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `integrations-return-${Date.now()}@rakazo.test`, "password12", "Return");
+  await completeOnboarding(page);
+  await openIntegrations(page);
+  // Connect and disconnect Gmail once to learn its app page, then arrive there as the Data room would.
+  await page.getByRole("button", { name: "Connect Gmail", exact: true }).click();
+  await finishConnectDialog(page, "Gmail");
+  await page.getByRole("link", { name: "Gmail", exact: true }).click();
+  const appPage = new URL(page.url()).pathname;
+  await page.getByRole("button", { name: "Disconnect Gmail", exact: true }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Disconnect Gmail", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/app\/integrations$/);
+  await page.goto(`${appPage}?connect=1&next=%2Fapp%2Fintegrations%3Fback%3D1`);
+  const dialog = page.getByRole("dialog");
+  // The link only opens the dialog; nothing is connected until the person clicks Connect in it.
+  await expect(dialog.getByText("Connect Gmail", { exact: true })).toBeVisible();
+  await captureScreenshot(page, testInfo, "integrations-auto-connect-confirm");
+  await dialog.getByRole("button", { name: "Connect", exact: true }).click();
+  await expect(dialog.getByText("Which bots can use Gmail?")).toBeVisible();
+  await finishConnectDialog(page, "Gmail");
+  await expect(page).toHaveURL(/\/app\/integrations\?back=1$/);
+
+  // An external ?next= is ignored: the person stays on the app page.
+  await page.goto(`${appPage}?next=https%3A%2F%2Fevil.example`);
+  await expect(page.getByRole("heading", { name: "Gmail", level: 1 })).toBeVisible();
+
+  // Already connected: ?connect=1 skips the dialog and goes straight back.
+  await page.goto(`${appPage}?connect=1&next=%2Fapp%2Fintegrations%3Fagain%3D1`);
+  await expect(page).toHaveURL(/\/app\/integrations\?again=1$/);
+});
+
+test("App page: an app missing from the catalog says so", async ({ page }, testInfo) => {
+  await signup(page, `integrations-missing-${Date.now()}@rakazo.test`, "password12", "Missing");
+  await completeOnboarding(page);
+  await page.goto("/app/integrations/app/composio/no-such-app?connect=1");
+  await expect(page.getByText("isn't available on this server")).toBeVisible();
+  await expect(page.getByText("Ask the server owner to set up the app catalog.")).toBeVisible();
+  await captureScreenshot(page, testInfo, "integrations-app-missing");
+});
+
+test("Integrations page: a first-party tile names its dialog after the service", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `integrations-title-${Date.now()}@rakazo.test`, "password12", "Title");
+  await completeOnboarding(page);
+  await openIntegrations(page);
+  await page.getByRole("button", { name: "Connect Zernio", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Connect Zernio", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Add a custom connection")).toHaveCount(0);
+  await captureScreenshot(page, testInfo, "integrations-zernio-dialog");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: "Connect Treg", exact: true }).click();
+  await expect(dialog.getByText("Connect Treg", { exact: true })).toBeVisible();
+  await captureScreenshot(page, testInfo, "integrations-treg-dialog");
 });

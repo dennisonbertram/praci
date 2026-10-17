@@ -20,8 +20,9 @@ import {
 } from "@rakazo/ui-web";
 import { Search } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  appPath,
   CATEGORY_IDS,
   type CategoryFilter,
   type ConnectedApp,
@@ -47,6 +48,11 @@ import {
 import { AgentStack, IntegrationTile, StatusBadge } from "./parts";
 import { agentsFor, type IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
+
+/** An in-app path to return to, or null for anything that could leave the app. */
+export function safeAppPath(value: string | null) {
+  return value?.startsWith("/app/") && !value.includes("//") ? value : null;
+}
 
 function hostOf(value: string | null) {
   if (!value) return "";
@@ -93,6 +99,18 @@ function CardHead({
   );
 }
 
+/** Opens the app page an integration feeds (Inbox, Cap table), like Mercury's "Open Finance". */
+function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="relative z-10 ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+    >
+      {children}
+    </Link>
+  );
+}
+
 function UsedBy({ bots }: { bots: ReturnType<typeof agentsFor> }) {
   if (bots.length === 0) return null;
   return (
@@ -103,21 +121,47 @@ function UsedBy({ bots }: { bots: ReturnType<typeof agentsFor> }) {
   );
 }
 
-function McpCard({ server, data }: { server: McpServer; data: IntegrationsData }) {
+function McpCard({
+  server,
+  data,
+  descriptions,
+}: {
+  server: McpServer;
+  data: IntegrationsData;
+  /** What each first-party server does, shown instead of its raw address. */
+  descriptions: Partial<Record<string, string>>;
+}) {
+  const { t } = useLingui();
   const reconnect = useMcpReconnect(server.id, () => void data.refresh());
   const status = reconnect.busy ? "connecting" : mcpStatus(server);
   const assigned = data.mcpAssignments
     .filter((entry) => entry.serverId === server.id)
     .map((entry) => entry.botId);
+  const known =
+    "endpoint" in server
+      ? FIRST_PARTY_MCP.find((entry) => isSameMcpEndpoint(server.endpoint, entry.endpoint))
+      : undefined;
+  // The app page a known server feeds, opened from its card like Mercury's "Open Finance".
+  const page =
+    known?.id === "carta" ? { to: "/app/cap-table", label: t`Open Cap table` } : undefined;
   return (
     <Card>
       <CardHead
         name={server.name}
-        sub={hostOf(server.endpoint) || server.command || undefined}
+        logo={known?.logo}
+        sub={
+          (known && descriptions[known.id]) ||
+          hostOf(server.endpoint) ||
+          server.command ||
+          undefined
+        }
         to={`/app/integrations/mcp/${server.id}`}
       />
-      <div className="flex items-center gap-2">
+      <div className="mt-auto flex min-h-7 items-center gap-2">
         <StatusBadge status={status} />
+        {page && status === "connected" ? (
+          <OpenPageLink to={page.to}>{page.label}</OpenPageLink>
+        ) : null}
         {status === "reconnect" ? (
           <Button
             size="sm"
@@ -162,10 +206,15 @@ function AppCard({
         name={app.name}
         logo={app.logo}
         sub={accounts || app.rows[0]?.displayName}
-        to={`/app/integrations/app/${encodeURIComponent(app.connectorId)}/${encodeURIComponent(app.provider)}`}
+        to={appPath({ connectorId: app.connectorId, slug: app.provider })}
       />
-      <div className="flex items-center gap-2">
+      <div className="mt-auto flex min-h-7 items-center gap-2">
         <StatusBadge status={app.status} />
+        {app.status === "connected" && app.provider.toUpperCase() === "GMAIL" ? (
+          <OpenPageLink to="/app/inbox">
+            <Trans>Open Inbox</Trans>
+          </OpenPageLink>
+        ) : null}
         {app.status === "failed" ? (
           <Button
             size="sm"
@@ -267,12 +316,20 @@ export function IntegrationsHome({
   );
   const financeRef = useRef<HTMLDivElement>(null);
   const jumpToFinance = useRef(params.get("category") === "finance");
+  // /app/integrations?connect=carta opens that first-party tile's sign-in once the page has loaded.
+  const connectOnLoad = useRef(params.get("connect"));
+  // ...&returnTo=/app/cap-table sends the founder back there when that dialog closes.
+  const returnTo = useRef(safeAppPath(params.get("returnTo")));
+  const navigate = useNavigate();
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
   const [custom, setCustom] = useState<{
     url: string;
+    /** The first-party service this dialog connects; titles the dialog. */
+    service?: string;
     oauthClient?: boolean;
     scope?: string;
+    token?: boolean;
   } | null>(null);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -321,10 +378,15 @@ export function IntegrationsHome({
   const financeServerIds = data.financeSources.flatMap((source) =>
     source.serverId ? [source.serverId] : [],
   );
-  // A Blockscout key is stored as its MCP server. Once the key is connected, the finance tile
-  // under Connected replaces that server's own tile.
+  // A Blockscout key is stored as its MCP server. Once that server exists, the finance tile under
+  // Connected replaces the server's own tile, so Blockscout has one status on the page.
   const isCrypto = (server: McpServer) => "endpoint" in server && isCryptoEndpoint(server.endpoint);
   const cryptoServer = connectedKeys.has("crypto") ? data.servers.find(isCrypto) : undefined;
+  /** The agents assigned to an MCP server. */
+  const botsOn = (serverId: string) =>
+    data.bots.filter((bot) =>
+      data.mcpAssignments.some((entry) => entry.serverId === serverId && entry.botId === bot.id),
+    );
   const servers = data.servers.filter(
     (server) => !financeServerIds.includes(server.id) && server !== cryptoServer,
   );
@@ -349,6 +411,24 @@ export function IntegrationsHome({
     jumpToFinance.current = false;
     financeRef.current?.scrollIntoView?.({ block: "start" });
   }, [data.loaded]);
+
+  function connectFirstParty(entry: (typeof FIRST_PARTY_MCP)[number]) {
+    setCustom({
+      url: entry.endpoint,
+      service: entry.name,
+      // Treg takes an API token, not a sign-in.
+      ...(entry.id === "treg" ? { token: true } : {}),
+      ...("oauthClient" in entry ? { oauthClient: true, scope: entry.scope } : {}),
+    });
+  }
+
+  useEffect(() => {
+    if (!connectOnLoad.current || !data.loaded) return;
+    const entry = firstPartyMcp.find((candidate) => candidate.id === connectOnLoad.current);
+    connectOnLoad.current = null;
+    if (entry) connectFirstParty(entry);
+    else returnTo.current = null;
+  }, [data.loaded, firstPartyMcp]);
 
   function retry(app: ConnectedApp) {
     const item = data.catalog.find((entry) => `${entry.connectorId}:${entry.slug}` === app.key);
@@ -378,15 +458,15 @@ export function IntegrationsHome({
   }
 
   return (
-    <div className="rk-scroll h-full overflow-y-auto px-4 py-6 md:px-9 md:py-7">
-      <div className="mx-auto max-w-[1040px]">
-        <h1 className="text-xl font-semibold">
+    <div className="rk-scroll h-full overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+      <div className="max-w-[1040px]">
+        <h1 className="text-lg font-semibold">
           <Trans>Integrations</Trans>
         </h1>
         <p className="mb-5 max-w-[640px] text-muted-foreground">
           <Trans>
-            Connect the apps you use so your agents can read and act in them. You choose which
-            agents get access to each one.
+            Connect the apps you use so your bots can read and act in them. You choose which bots
+            get access to each one.
           </Trans>
         </p>
         {data.error || data.catalogFailed ? (
@@ -405,7 +485,12 @@ export function IntegrationsHome({
                 <AppCard key={app.key} app={app} data={data} onRetry={retry} />
               ))}
               {servers.map((server) => (
-                <McpCard key={server.id} server={server} data={data} />
+                <McpCard
+                  key={server.id}
+                  server={server}
+                  data={data}
+                  descriptions={firstPartyDescription}
+                />
               ))}
               {data.sources.map((source) => (
                 <SourceCard key={source.id} source={source} onRemove={setRemoving} />
@@ -415,25 +500,20 @@ export function IntegrationsHome({
                 sources={data.financeSources}
                 status={financeStatus}
                 onChanged={() => void data.refresh()}
-                cryptoExtra={
-                  cryptoServer ? (
-                    <div className="flex items-center gap-2">
-                      <UsedBy
-                        bots={data.bots.filter((bot) =>
-                          data.mcpAssignments.some(
-                            (entry) => entry.serverId === cryptoServer.id && entry.botId === bot.id,
-                          ),
-                        )}
-                      />
-                      <Link
-                        to={`/app/integrations/mcp/${cryptoServer.id}`}
-                        aria-label={t`Manage ${cryptoServer.name}`}
-                        className="ms-auto text-[11px] text-muted-foreground underline hover:text-foreground"
-                      >
-                        <Trans>Manage</Trans>
-                      </Link>
-                    </div>
-                  ) : null
+                extras={{
+                  ...Object.fromEntries(
+                    data.financeSources.flatMap((source) =>
+                      source.serverId
+                        ? [[source.provider, <UsedBy key="used" bots={botsOn(source.serverId)} />]]
+                        : [],
+                    ),
+                  ),
+                  ...(cryptoServer
+                    ? { crypto: <UsedBy key="used" bots={botsOn(cryptoServer.id)} /> }
+                    : {}),
+                }}
+                cryptoManageTo={
+                  cryptoServer ? `/app/integrations/mcp/${cryptoServer.id}` : undefined
                 }
               />
             </div>
@@ -455,7 +535,7 @@ export function IntegrationsHome({
                 </b>
                 <div className="mt-3">
                   <Link
-                    to="/integrations/setup"
+                    to="/app/integrations/setup?next=/app/integrations"
                     className="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
                   >
                     <Trans>Set up app catalog</Trans>
@@ -476,7 +556,25 @@ export function IntegrationsHome({
               </>
             )}
           </div>
-        ) : (
+        ) : null}
+        {notSetUp && results.length > 0 ? (
+          // Native Google apps need no managed provider, so they stay connectable here.
+          <div
+            data-testid="app-grid"
+            className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+          >
+            {results.map((item) => (
+              <AppTile
+                key={`${item.connectorId}:${item.slug}`}
+                name={item.name}
+                logo={item.logo}
+                description={item.description}
+                onConnect={() => setConnecting(item)}
+              />
+            ))}
+          </div>
+        ) : null}
+        {notSetUp ? null : (
           <>
             <SectionTitle>
               <Trans>Find an app</Trans>
@@ -588,14 +686,7 @@ export function IntegrationsHome({
                     name={entry.name}
                     logo={entry.logo}
                     description={firstPartyDescription[entry.id]}
-                    onConnect={() =>
-                      setCustom({
-                        url: entry.endpoint,
-                        ...("oauthClient" in entry
-                          ? { oauthClient: true, scope: entry.scope }
-                          : {}),
-                      })
-                    }
+                    onConnect={() => connectFirstParty(entry)}
                   />
                 ))}
               </div>
@@ -634,9 +725,16 @@ export function IntegrationsHome({
         <CustomConnectionDialog
           data={data}
           initialUrl={custom.url}
+          service={custom.service}
+          tokenSource={custom.token}
           oauthClient={custom.oauthClient}
           oauthScope={custom.scope}
-          onClose={() => setCustom(null)}
+          onClose={() => {
+            setCustom(null);
+            const back = returnTo.current;
+            returnTo.current = null;
+            if (back) navigate(back);
+          }}
         />
       ) : null}
       <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
@@ -646,7 +744,7 @@ export function IntegrationsHome({
               <Trans>Remove {removing?.name}?</Trans>
             </AlertDialogTitle>
             <AlertDialogDescription>
-              <Trans>Agents lose access to its tools.</Trans>
+              <Trans>Bots lose access to its tools.</Trans>
             </AlertDialogDescription>
           </AlertDialogHeader>
           {removeError ? (

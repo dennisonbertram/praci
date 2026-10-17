@@ -15,36 +15,43 @@ import { AddAccountDialog } from "../../components/finance/AddAccountDialog";
 import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
 import { LineChart } from "../../components/finance/charts";
 import { exchangeName } from "../../components/finance/ExchangeGroup";
+import { RenameAccountDialog } from "../../components/finance/RenameAccountDialog";
 import {
   Chevron,
+  cashSubtitle,
   DetailPage,
+  HereLink,
   Kpi,
   PeriodTabs,
   rowClass,
   Section,
   Th,
-  TransactionTable,
+  TransactionsSection,
   useFinanceQuery,
   useRowNavigate,
 } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { ExchangeConnectDialog } from "../../components/integrations/ExchangeConnectDialog";
 import {
+  accountLabel,
   dayAxisLabels,
   money,
   moneyExact,
   monthAxisLabels,
   monthLabel,
+  percentFigure,
 } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 
 type AccountRow = FinanceAccountsOutput["cash"][number];
 
-const yieldText = (pct: number | null) => (pct === null ? null : `${pct.toFixed(1)}%`);
+const yieldText = (pct: number | null) => (pct === null ? null : percentFigure(pct, 1));
 
 function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
+  useHideAmounts();
   const rowProps = useRowNavigate();
   return (
     <table className="w-full border-collapse">
@@ -58,13 +65,13 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
               {...rowProps(financePath.account(account.id))}
             >
               <td className="font-semibold">
-                <Link
+                <HereLink
                   to={financePath.account(account.id)}
                   className="outline-none hover:underline focus-visible:underline"
                 >
                   {account.name}
-                </Link>
-                {account.lastFour ? (
+                </HereLink>
+                {accountLabel(account.name, account.lastFour) !== account.name ? (
                   <span className="ms-1.5 font-normal text-muted-foreground">
                     ••{account.lastFour}
                   </span>
@@ -95,6 +102,7 @@ function CryptoGroup({
   crypto: FinanceCryptoOutput;
   exchanges: FinanceExchange[];
 }) {
+  useHideAmounts();
   const typeNames = useTypeNames();
   const rowProps = useRowNavigate();
   const cents = new Map(crypto.summary.byWallet.map((row) => [row.walletId, row.cents]));
@@ -115,7 +123,7 @@ function CryptoGroup({
                   {typeNames[wallet.type]}
                 </span>
               </td>
-              <td className="text-end tabular-nums">{moneyExact(cents.get(wallet.id) ?? 0)}</td>
+              <td className="text-end tabular-nums">{money(cents.get(wallet.id) ?? 0)}</td>
               <Chevron />
             </tr>
           ))}
@@ -132,7 +140,7 @@ function CryptoGroup({
                   <Trans>Exchange</Trans>
                 </span>
               </td>
-              <td className="text-end tabular-nums">{moneyExact(exchange.totalCents)}</td>
+              <td className="text-end tabular-nums">{money(exchange.totalCents)}</td>
               <Chevron />
             </tr>
           ))}
@@ -142,7 +150,15 @@ function CryptoGroup({
   );
 }
 
-export function FinanceAccountsPage({ source = null }: { source?: FinanceProvider | null }) {
+export function FinanceAccountsPage({
+  source = null,
+  unknownSource,
+}: {
+  source?: FinanceProvider | null;
+  /** A `?source=` that is not a provider: every account is listed and the filter is flagged. */
+  unknownSource?: string;
+}) {
+  useHideAmounts();
   const accounts = useFinanceQuery(() => rpc.finance.accounts(), []);
   // Whatever reloads the accounts total (a wallet added, the crypto scope changed) reloads the chart too.
   const [balanceStamp, setBalanceStamp] = useState(0);
@@ -166,34 +182,45 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
     () => rpc.finance.balanceSeries({ range }),
     [range, balanceStamp],
   ).data;
+  // A source's own spend this month: Brex card spend sits on no account row, so this is where it shows.
+  const sourceSpend = useFinanceQuery(
+    () => (source ? rpc.finance.spend({ period: "month", source }) : Promise.resolve(null)),
+    [source],
+  ).data;
   const scope = prefs.data?.runwayCrypto ?? "bank";
   const sourceName = FINANCE_PROVIDERS.find((p) => p.provider === source)?.name;
-  // Cash accounts and cards both carry a provider; the total and chart stay unfiltered.
+  // Cash accounts and cards both carry a provider; a source filter narrows the total with the list.
   const fromSource = (rows: AccountRow[]) =>
     source ? rows.filter((a) => a.provider === source) : rows;
-  const cashSub = {
-    bank: t`Checking + Savings + Treasury`,
-    stablecoins: t`Checking + Savings + Treasury + Stablecoins`,
-    all: t`Checking + Savings + Treasury + Crypto`,
-  }[scope];
+  const shownCash = data ? fromSource(data.cash) : [];
+  // Brex shares no card balance owed, so with Brex and no card row the figure is unknown, not zero.
+  const brexOwedUnknown =
+    data !== null && data.cardOwedCents === null && data.cash.some((a) => a.provider === "brex");
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Accounts` }]}
       title={
-        <>
+        // A filter chip that wraps on a narrow screen starts under the title, not indented.
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Trans>Accounts</Trans>
           {sourceName ? (
             <Badge
               variant="outline"
-              className="ms-2 align-middle"
               render={
                 <Link to={financePath.accounts()} aria-label={t`Clear ${sourceName} filter`} />
               }
             >
               {sourceName} ×
             </Badge>
+          ) : unknownSource ? (
+            <Badge
+              variant="outline"
+              render={<Link to={financePath.accounts()} aria-label={t`Clear filter`} />}
+            >
+              {t`Unknown source: ${unknownSource}`} ×
+            </Badge>
           ) : null}
-        </>
+        </span>
       }
       action={
         <Button variant="outline" size="sm" onClick={() => setAdding("type")}>
@@ -202,6 +229,7 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
       }
       loading={!data}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
       {data ? (
@@ -236,7 +264,22 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
             />
           ) : null}
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
-            <Kpi title={t`Total cash`} value={money(data.totalCashCents)} sub={cashSub} />
+            {sourceName ? (
+              <Kpi
+                title={t`${sourceName} cash`}
+                value={money(shownCash.reduce((sum, a) => sum + a.balanceCents, 0))}
+                sub={cashSubtitle(shownCash.length, "none")}
+              />
+            ) : (
+              <Kpi
+                title={t`Total cash`}
+                value={money(data.totalCashCents)}
+                sub={cashSubtitle(
+                  data.cash.length,
+                  scope === "bank" ? "none" : scope === "stablecoins" ? "stablecoins" : "all",
+                )}
+              />
+            )}
             {data.cardOwedCents !== null ? (
               <Kpi
                 title={t`Card balance owed`}
@@ -244,9 +287,19 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
                 sub={t`Not counted in cash`}
                 to={data.cards[0] ? financePath.account(data.cards[0].id) : undefined}
               />
+            ) : brexOwedUnknown ? (
+              <Kpi title={t`Card balance owed`} value="—" sub={t`Brex does not share it`} />
+            ) : null}
+            {source && sourceName && sourceSpend ? (
+              <Kpi
+                title={t`${sourceName} spend`}
+                value={money(sourceSpend.totalCents)}
+                sub={t`This month`}
+                to={financePath.spend("month", null, null, source)}
+              />
             ) : null}
           </div>
-          {prefs.data && crypto && crypto.summary.totalCents > 0 ? (
+          {!sourceName && prefs.data && crypto && crypto.summary.totalCents > 0 ? (
             <div>
               <CountCryptoButton
                 scope={scope}
@@ -257,34 +310,38 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
               />
             </div>
           ) : null}
-          <Section
-            title={<Trans>Total balance</Trans>}
-            action={<PeriodTabs value={range} onChange={setRange} />}
-          >
-            <div style={{ minHeight: 200 }}>
-              {balance ? (
-                <LineChart
-                  values={balance.points.map((p) => p.balanceCents)}
-                  labels={
-                    range === "year"
-                      ? monthAxisLabels(balance.points.map((p) => p.day.slice(0, 7)))
-                      : dayAxisLabels(balance.points.map((p) => p.day))
-                  }
-                  height={200}
-                  label={t`Total balance`}
-                />
-              ) : null}
-            </div>
-          </Section>
+          {/* The chart is every account's total, so a source filter hides it rather than contradict the figure above. */}
+          {sourceName ? null : (
+            <Section
+              title={<Trans>Total balance</Trans>}
+              action={<PeriodTabs value={range} onChange={setRange} />}
+            >
+              <div style={{ minHeight: 200 }}>
+                {balance ? (
+                  <LineChart
+                    values={balance.points.map((p) => p.balanceCents)}
+                    labels={
+                      range === "year"
+                        ? monthAxisLabels(balance.points.map((p) => p.day.slice(0, 7)))
+                        : dayAxisLabels(balance.points.map((p) => p.day))
+                    }
+                    height={200}
+                    label={t`Total balance`}
+                  />
+                ) : null}
+              </div>
+            </Section>
+          )}
           <Section title={<Trans>Cash accounts</Trans>}>
-            <AccountTable rows={fromSource(data.cash)} />
+            <AccountTable rows={shownCash} />
           </Section>
           {fromSource(data.cards).length > 0 ? (
             <Section title={<Trans>Card balance owed</Trans>}>
               <AccountTable rows={fromSource(data.cards)} owed />
             </Section>
           ) : null}
-          {crypto && (crypto.wallets.length > 0 || exchanges.length > 0) ? (
+          {/* Wallets and exchanges come from no bank or card provider, so a source filter leaves them out. */}
+          {!sourceName && crypto && (crypto.wallets.length > 0 || exchanges.length > 0) ? (
             <CryptoGroup crypto={crypto} exchanges={exchanges} />
           ) : null}
         </>
@@ -294,12 +351,14 @@ export function FinanceAccountsPage({ source = null }: { source?: FinanceProvide
 }
 
 export function FinanceAccountPage({ id }: { id: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.account({ id }), [id]);
   const data = q.data;
   const account = data?.account;
   const name = account?.name ?? "";
   const isCard = account?.kind === "card";
   const pct = account ? yieldText(account.annualYieldPct) : null;
+  const [renaming, setRenaming] = useState(false);
   return (
     <DetailPage
       crumbs={[
@@ -311,16 +370,32 @@ export function FinanceAccountPage({ id }: { id: string }) {
         account ? (
           <>
             {account.name}
-            {account.lastFour ? (
+            {accountLabel(account.name, account.lastFour) !== account.name ? (
               <span className="ms-2 font-normal text-muted-foreground">••{account.lastFour}</span>
             ) : null}
           </>
         ) : null
       }
+      action={
+        // A statement account is named from its file; a synced account keeps the bank's name.
+        account?.provider === "statement" ? (
+          <Button variant="outline" size="sm" onClick={() => setRenaming(true)}>
+            <Trans>Rename</Trans>
+          </Button>
+        ) : null
+      }
       loading={!data}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
+      {renaming && account ? (
+        <RenameAccountDialog
+          account={account}
+          onClose={() => setRenaming(false)}
+          onSaved={q.reload}
+        />
+      ) : null}
       {data && account ? (
         <>
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
@@ -375,9 +450,11 @@ export function FinanceAccountPage({ id }: { id: string }) {
               </table>
             </Section>
           ) : null}
-          <Section title={<Trans>Transactions</Trans>}>
-            <TransactionTable rows={data.transactions} />
-          </Section>
+          <TransactionsSection
+            title={<Trans>Transactions</Trans>}
+            rows={data.transactions}
+            empty={<Trans>No transactions on this account yet</Trans>}
+          />
         </>
       ) : null}
     </DetailPage>

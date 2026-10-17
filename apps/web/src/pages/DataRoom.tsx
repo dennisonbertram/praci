@@ -5,28 +5,34 @@ import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web"
 import { LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FilterBar } from "../components/data-room/FilterBar";
+import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
+import { FilterBar, sourceLabels } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderNodes } from "../components/data-room/folders";
-import { ItemDialog } from "../components/data-room/ItemDialogs";
+import { type DataRoomEntry, ItemDialog, isFolder } from "../components/data-room/ItemDialogs";
 import type { ItemAction } from "../components/data-room/ItemMenu";
 import {
   GridView,
   ListView,
   ResultsView,
   type RowInteraction,
+  SubfolderList,
 } from "../components/data-room/ItemRows";
 import { Preview } from "../components/data-room/Preview";
-import { uploadFilesToDataRoom } from "../components/data-room/upload-toasts";
+import {
+  setOpenDataRoomFolder,
+  showDeletedToast,
+  uploadFilesToDataRoom,
+} from "../components/data-room/upload-toasts";
 import {
   type Filters,
   type Sort,
   useDataRoomList,
 } from "../components/data-room/use-data-room-list";
-import { DATA_ROOM_CHANGED } from "../lib/data-room";
+import { PageEmptyState } from "../components/PageEmptyState";
+import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
 
-const HOVER_MS = 150;
 const SEARCH_DEBOUNCE_MS = 300;
 /** Below this width of the page body the preview covers the list instead of sitting beside it. */
 const PREVIEW_BESIDE_PX = 560;
@@ -64,14 +70,48 @@ function FileInputButton({ children, ...props }: React.ComponentProps<typeof But
 
 /** The Data room: folders, a list or grid of filed items, and a preview of one of them. */
 export function DataRoomPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const linkedItem = params.get("item");
-  const [view, setView] = useState<"list" | "grid">("list");
+  const urlFolder = params.get("folder") ?? undefined;
+  // View and sort are remembered for this browser.
+  const [saved] = useState(readDataRoomView);
+  const [view, setView] = useState<"list" | "grid">(saved.view);
   const [queryInput, setQueryInput] = useState("");
-  const query = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
-  const [filters, setFilters] = useState<Filters>({});
+  const debouncedQuery = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
+  // Clearing the box shows the list again at once; only typing waits for a pause.
+  const query = queryInput.trim() === "" ? "" : debouncedQuery;
+  // The open folder lives in the URL and nothing else does: a reload, a bookmark, a shared link or
+  // the Back button opens the folder again. The other filters are page state.
+  const [otherFilters, setOtherFilters] = useState<Omit<Filters, "folderId">>({});
+  const filters = useMemo<Filters>(
+    () => (urlFolder ? { ...otherFilters, folderId: urlFolder } : otherFilters),
+    [otherFilters, urlFolder],
+  );
+  const urlFolderRef = useRef(urlFolder);
+  urlFolderRef.current = urlFolder;
+  // setParams changes with every navigation; the callbacks below must not.
+  const setParamsRef = useRef(setParams);
+  setParamsRef.current = setParams;
+  /** A folder the user chose is a new history entry; one the page chose replaces the current. */
+  const setFilters = useCallback(
+    ({ folderId, ...rest }: Filters, replace = false) => {
+      setOtherFilters(rest);
+      if (folderId === urlFolderRef.current) return;
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (folderId) next.set("folder", folderId);
+          else next.delete("folder");
+          return next;
+        },
+        { replace },
+      );
+    },
+    [setParams],
+  );
   // "Recently added" first, so a file just filed is on top even before it has a document date.
-  const [listSort, setListSort] = useState<Sort>({ field: "createdAt", direction: "desc" });
+  const [listSort, setListSort] = useState<Sort>(saved.sort);
+  useEffect(() => saveDataRoomView({ view, sort: listSort }), [view, listSort]);
   // Null orders a search by relevance.
   const [searchSort, setSearchSort] = useState<Sort | null>(null);
   const searching = query !== "";
@@ -79,13 +119,40 @@ export function DataRoomPage() {
   const list = useDataRoomList({ query, filters, sort });
 
   const [folders, setFolders] = useState<DataRoomApiFolder[]>([]);
-  useEffect(() => {
+  const reloadFolders = useCallback(() => {
     rpc.dataRoom
       .folders()
-      .then(setFolders)
+      .then((next) => {
+        setFolders(next);
+        // A folder that no longer exists (deleted, or a stale link) falls back to All items.
+        const open = urlFolderRef.current;
+        if (open && !next.some((folder) => folder.id === open)) {
+          setParamsRef.current(
+            (prev) => {
+              const params = new URLSearchParams(prev);
+              params.delete("folder");
+              return params;
+            },
+            { replace: true },
+          );
+        }
+      })
       .catch(() => undefined);
   }, []);
+  useEffect(reloadFolders, [reloadFolders]);
+  // Files added while a folder is open go into it, wherever they are dropped.
+  useEffect(() => {
+    setOpenDataRoomFolder(filters.folderId);
+    return () => setOpenDataRoomFolder(undefined);
+  }, [filters.folderId]);
   const nodes = useMemo(() => folderNodes(folders), [folders]);
+  const subfolders = useMemo(
+    () =>
+      searching || filters.folderId === undefined
+        ? []
+        : nodes.map(({ folder }) => folder).filter((f) => f.parentId === filters.folderId),
+    [nodes, searching, filters.folderId],
+  );
   const folderPath = useCallback(
     (id: string | null) => nodes.find(({ folder }) => folder.id === id)?.path ?? "",
     [nodes],
@@ -97,13 +164,14 @@ export function DataRoomPage() {
     return () => window.removeEventListener(DATA_ROOM_CHANGED, reload);
   }, [reload]);
 
-  // Preview: hovering or focusing a row shows it; a click pins it; clicking the pinned row closes the pane.
+  // Preview: a click (or Enter) on a row shows it; clicking the shown row again closes the pane.
+  // The pointer alone never changes it, so the highlight stays on the row the user chose. Nothing
+  // is previewed until the user picks a file.
   const [pinned, setPinned] = useState<DataRoomApiItem | null>(null);
-  const [hovered, setHovered] = useState<DataRoomApiItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(true);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // Narrow: the preview has no room beside the list, so a click opens it in a dialog.
+  // Narrow: the preview has no room beside the list, so a tap opens it in a dialog.
   const [narrow, setNarrow] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [bodyEl, setBodyEl] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!bodyEl) return;
@@ -115,9 +183,13 @@ export function DataRoomPage() {
     observer.observe(bodyEl);
     return () => observer.disconnect();
   }, [bodyEl]);
-  const autoPinned = useRef(false);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  // The dialog belongs to one width: resizing never opens it, and closes it when the page widens.
+  useEffect(() => {
+    setDialogOpen(false);
+  }, [narrow]);
 
+  /** The item a link opened: the first answer after it keeps it, even beyond the first page. */
+  const explicit = useRef<string | null>(null);
   useEffect(() => {
     if (!linkedItem) return;
     // Only the item that is still in the URL when the answer arrives may be shown.
@@ -126,10 +198,13 @@ export function DataRoomPage() {
       .item({ id: linkedItem })
       .then((item) => {
         if (!current || item.id !== linkedItem) return;
-        autoPinned.current = true;
+        // Show the folder the item is in, so the list and the preview agree.
+        setQueryInput("");
+        setFilters(item.folderId ? { folderId: item.folderId } : {}, true);
+        explicit.current = item.id;
         setPinned(item);
-        setHovered(null);
         setPreviewOpen(true);
+        setDialogOpen(true);
       })
       .catch(() => undefined);
     return () => {
@@ -137,16 +212,8 @@ export function DataRoomPage() {
     };
   }, [linkedItem]);
 
-  // The first item is pinned once, when there is room for the preview beside the list.
-  const firstItem = list.rows[0]?.item;
-  useEffect(() => {
-    if (autoPinned.current || !firstItem || linkedItem) return;
-    autoPinned.current = true;
-    if (!narrow) setPinned(firstItem);
-  }, [firstItem, linkedItem, narrow]);
-
   // When a new search, filter, folder or sort answers, keep the pinned item only if it is in the
-  // results; otherwise pin the first result, or close the preview when there are none.
+  // results; otherwise close the preview. Another item is never picked for the user.
   const queryKey = JSON.stringify({ query, filters, sort });
   const appliedKey = useRef<string | null>(null);
   const resultIds = list.rows.map((row) => row.item.id).join(",");
@@ -154,10 +221,13 @@ export function DataRoomPage() {
     if (list.loading || list.key !== queryKey || appliedKey.current === queryKey) return;
     const first = appliedKey.current === null;
     appliedKey.current = queryKey;
-    if (first || (pinned && resultIds.split(",").includes(pinned.id))) return;
-    setHovered(null);
-    setPinned(previewOpen && !narrow ? (list.rows[0]?.item ?? null) : null);
-  }, [list.loading, list.key, list.rows, queryKey, resultIds, pinned, previewOpen, narrow]);
+    if (first || !pinned || resultIds.split(",").includes(pinned.id)) return;
+    if (explicit.current === pinned.id) {
+      explicit.current = null;
+      return;
+    }
+    setPinned(null);
+  }, [list.loading, list.key, queryKey, resultIds, pinned]);
 
   // A reload of the same query can drop the pinned item (moved or deleted elsewhere). If it can no
   // longer be read, close its preview.
@@ -171,53 +241,44 @@ export function DataRoomPage() {
     const id = pinned.id;
     rpc.dataRoom.item({ id }).catch(() => {
       setPinned((current) => (current?.id === id ? null : current));
-      setHovered((current) => (current?.id === id ? null : current));
     });
   }, [list.loading, list.key, queryKey, resultIds, pinned]);
 
   const fresh = (item: DataRoomApiItem | null) =>
     item ? (list.rows.find((row) => row.item.id === item.id)?.item ?? item) : null;
-  const shown = previewOpen ? fresh(hovered ?? pinned) : null;
+  const shown = previewOpen ? fresh(pinned) : null;
 
   const interaction: RowInteraction = {
     shownId: shown?.id,
-    onHover: (item) => {
+    onSelect: (item) => {
       if (narrow) return;
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => setHovered(item), HOVER_MS);
-    },
-    onLeave: () => {
-      if (narrow) return;
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => setHovered(null), HOVER_MS);
-    },
-    onFocusItem: (item) => {
-      if (narrow) return;
-      clearTimeout(timer.current);
-      setHovered(item);
+      explicit.current = null;
+      setPinned(item);
+      setPreviewOpen(true);
     },
     onToggle: (item) => {
-      clearTimeout(timer.current);
-      setHovered(null);
-      if (pinned?.id === item.id && previewOpen) {
+      explicit.current = null;
+      if (!narrow && pinned?.id === item.id && previewOpen) {
         setPinned(null);
         setPreviewOpen(false);
       } else {
         setPinned(item);
         setPreviewOpen(true);
+        setDialogOpen(narrow);
       }
     },
     onAction: (kind, item) => setAction({ kind, item }),
     folderPath,
+    openFolderId: filters.folderId,
   };
 
-  const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomApiItem } | null>(null);
+  const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomEntry } | null>(null);
 
   function closePreview() {
     const id = shown?.id;
     setPinned(null);
-    setHovered(null);
     setPreviewOpen(false);
+    setDialogOpen(false);
     // Keep the keyboard where the user was.
     if (id) {
       requestAnimationFrame(() =>
@@ -227,13 +288,32 @@ export function DataRoomPage() {
   }
 
   const hasFilters = Object.values(filters).some(Boolean);
-  const empty = !list.loading && list.rows.length === 0 && !list.error && !searching && !hasFilters;
+  // Only rows that answer the query now asked count: for one render after a search is cleared, the
+  // old empty results are still in hand, and must not flash the first-run screen.
+  const empty =
+    !list.loading &&
+    list.key === queryKey &&
+    list.rows.length === 0 &&
+    !list.error &&
+    !searching &&
+    !hasFilters;
   const rows = list.rows;
   const uniq = (values: string[]) => [...new Set(values)].sort();
+  const subfolderList = (
+    <SubfolderList
+      tiles={view === "grid"}
+      folders={subfolders}
+      onOpen={(folderId) => setFilters({ ...filters, folderId })}
+      onAction={(kind, folder) => setAction({ kind, item: folder })}
+    />
+  );
+  /** A filter other than the folder is set. */
+  const filtered = Object.entries(filters).some(([key, value]) => key !== "folderId" && value);
+  const clearFilters = () => setFilters(filters.folderId ? { folderId: filters.folderId } : {});
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 px-3 pt-2 pb-3 md:px-5 md:pt-4">
+      <div className="flex items-center gap-2 px-4 pt-2 pb-3 md:px-7 md:pt-5">
         <h1 className="me-auto text-lg font-semibold">
           <Trans>Data room</Trans>
         </h1>
@@ -265,29 +345,38 @@ export function DataRoomPage() {
         )}
       </div>
       {empty ? (
-        <div className="grid flex-1 place-items-center p-6">
-          <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-xl border-2 border-dashed border-border px-6 py-12 text-center">
-            <Upload aria-hidden="true" className="size-7 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              <Trans>Drop files here</Trans>
-            </p>
+        <div className="flex justify-center px-6 pt-4">
+          <PageEmptyState
+            className="w-full max-w-md rounded-xl border-2 border-dashed border-border"
+            icon={<Upload aria-hidden="true" className="size-8" strokeWidth={1.6} />}
+            title={<Trans>Drop files here</Trans>}
+            description={
+              <Trans>Keep contracts, board decks and investor documents in one place.</Trans>
+            }
+          >
             <FileInputButton>
               <Trans>Choose files</Trans>
             </FileInputButton>
-          </div>
+          </PageEmptyState>
         </div>
       ) : (
         <>
+          <div className="px-3 pb-2.5 empty:hidden md:px-5">
+            <DataRoomConsentPrompt onAllowed={list.reload} />
+          </div>
           <FilterBar
             query={queryInput}
             onQuery={setQueryInput}
             searching={searching}
             filters={filters}
-            onFilters={setFilters}
+            onFilters={(next) => setFilters(next)}
             sort={sort}
             onSort={(next) => (searching ? setSearchSort(next) : next && setListSort(next))}
-            typeSuggestions={uniq(rows.flatMap(({ item }) => item.facets.docType ?? []))}
-            partySuggestions={uniq(rows.flatMap(({ item }) => item.facets.parties))}
+            types={uniq(rows.flatMap(({ item }) => item.facets.docType ?? []))}
+            parties={uniq(rows.flatMap(({ item }) => item.facets.parties))}
+            // The server has no list of sources, so offer every known one beside those on screen.
+            sources={uniq([...Object.keys(sourceLabels()), ...rows.map(({ item }) => item.source)])}
+            hasDates={rows.some(({ item }) => item.facets.docDate)}
             folders={nodes}
             folderId={filters.folderId}
             onFolder={(folderId) => setFilters({ ...filters, folderId })}
@@ -318,16 +407,42 @@ export function DataRoomPage() {
                     <Skeleton key={n} className="h-8 w-full" />
                   ))}
                 </div>
-              ) : rows.length === 0 && !list.error ? (
-                <p className="p-6 text-center text-sm text-muted-foreground">
-                  <Trans>No results</Trans>
-                </p>
+              ) : rows.length === 0 && !list.error && !subfolders.length ? (
+                <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
+                  {/* An open folder with nothing in it is empty, not a search that found nothing. */}
+                  {!searching && !filtered ? (
+                    <p>
+                      <Trans>This folder is empty. Drop files here to add them.</Trans>
+                    </p>
+                  ) : (
+                    <p>
+                      <Trans>No results</Trans>
+                    </p>
+                  )}
+                  {searching ? (
+                    <p className="text-xs">
+                      {query.includes(" ") ? (
+                        <Trans>Search matches words in names and text. Try fewer words.</Trans>
+                      ) : (
+                        <Trans>Search matches words in names and text.</Trans>
+                      )}
+                    </p>
+                  ) : null}
+                  {filtered ? (
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
+                      <Trans>Clear filters</Trans>
+                    </Button>
+                  ) : null}
+                </div>
               ) : searching ? (
                 <ResultsView rows={rows} o={interaction} />
               ) : view === "grid" ? (
-                <GridView rows={rows} o={interaction} />
+                <>
+                  {subfolderList}
+                  <GridView rows={rows} o={interaction} />
+                </>
               ) : (
-                <ListView rows={rows} o={interaction} />
+                <ListView rows={rows} o={interaction} lead={subfolderList} />
               )}
               {list.nextCursor ? (
                 <div className="grid place-items-center p-3">
@@ -353,7 +468,7 @@ export function DataRoomPage() {
           </div>
         </>
       )}
-      {shown && narrow ? (
+      {shown && narrow && dialogOpen ? (
         <Dialog open onOpenChange={(open) => !open && closePreview()}>
           <DialogContent className="max-h-[85dvh] overflow-y-auto p-0">
             <Preview
@@ -374,12 +489,18 @@ export function DataRoomPage() {
           onClose={() => setAction(null)}
           onDone={(kind, updated) => {
             if (kind === "delete") {
-              if (pinned?.id === action.item.id) setPinned(null);
-              if (hovered?.id === action.item.id) setHovered(null);
-            } else if (updated && pinned?.id === updated.id) {
+              // Deleting the previewed item shows its neighbour, so the pane stays and the list
+              // does not jump. The last item closes it.
+              if (pinned?.id === action.item.id) {
+                const at = rows.findIndex((row) => row.item.id === action.item.id);
+                setPinned(narrow ? null : ((rows[at + 1] ?? rows[at - 1])?.item ?? null));
+              }
+              showDeletedToast(action.item.name);
+            } else if (updated && !isFolder(updated) && pinned?.id === updated.id) {
               setPinned(updated);
             }
             list.reload();
+            reloadFolders();
           }}
         />
       ) : null}

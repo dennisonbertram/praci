@@ -51,3 +51,22 @@ export const NotSent: Story = {
     onOpenComposer: () => undefined,
   },
 };
+export const SentSavedDraft: Story = {
+  args: { mail: { ...mail, to: [], subject: "", body: "", locked: true } },
+};
+export const FailedDraft: Story = {
+  args: {
+    status: "answered",
+    answer: "deny",
+    mail: { ...mail, tool: "mail_draft", connectionId: "connection_1", outcome: "failed" },
+    onOpenComposer: () => undefined,
+  },
+};
+export const Unknown: Story = {
+  args: {
+    status: "answered",
+    answer: "deny",
+    mail: { ...mail, connectionId: "connection_1", outcome: "unknown" },
+  },
+};
+export const NotWaiting: Story = { args: { canAnswer: false } };

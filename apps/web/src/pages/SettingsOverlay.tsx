@@ -170,8 +170,6 @@ export function SettingsOverlay({
     leaveSettings(onClose);
   }
 
-  const widePane = section === "models" || section === "voice";
-
   return (
     <Dialog
       open
@@ -192,17 +190,14 @@ export function SettingsOverlay({
         initialFocus={() =>
           section === "usage" ? (usageRef.current ?? panelRef.current) : panelRef.current
         }
-        className={`flex max-h-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-h-[calc(100%-5rem)] ${
-          widePane
-            ? "h-[min(760px,calc(100%-2rem))] w-[min(1080px,calc(100%-2rem))] sm:max-w-[1080px]"
-            : "h-[min(720px,calc(100%-2rem))] w-[min(920px,calc(100%-2rem))] sm:max-w-[920px]"
-        }`}
+        // One size for every section, so switching tabs never resizes the dialog.
+        className="flex h-[min(760px,calc(100%-2rem))] max-h-[calc(100%-2rem)] w-[min(1080px,calc(100%-2rem))] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-h-[calc(100%-5rem)] sm:max-w-[1080px]"
       >
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <nav
             data-testid="settings-nav"
             aria-label={t`Settings`}
-            className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b border-border px-3 py-3 md:w-[200px] md:flex-col md:overflow-y-auto md:border-b-0 md:border-e md:px-3 md:py-4"
+            className="flex shrink-0 flex-row flex-wrap gap-1 border-b border-border px-3 py-3 md:w-[200px] md:flex-col md:flex-nowrap md:overflow-y-auto md:border-b-0 md:border-e md:px-3 md:py-4"
           >
             {navItems.map((item) => {
               const Icon = item.icon;

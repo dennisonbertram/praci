@@ -58,7 +58,7 @@ export async function signup(
   testInfo?: TestInfo,
 ) {
   await page.goto("/sign-up");
-  await expect(page.getByRole("heading", { name: "Create your Rakazo" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
   if (testInfo) await captureScreenshot(page, testInfo, "01-sign-up");
   await page.getByPlaceholder("Your name").fill(name);
   await page.getByPlaceholder("Your email address").fill(email);
@@ -77,7 +77,7 @@ export async function captureScreenshot(page: Page, testInfo: TestInfo, name: st
   await testInfo.attach(name, { contentType: "image/png", path: screenshotPath });
 }
 
-/** Click "Create new Bot" in the + picker; the app creates the bot and opens its chat. */
+/** Click "New bot" in the + picker; the app creates the bot and opens its chat. */
 export async function openNewBot(page: Page) {
   await page.getByTestId("create-menu-trigger").click();
   await page.getByTestId("create-new-bot").click();

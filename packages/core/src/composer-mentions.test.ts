@@ -38,7 +38,7 @@ describe("buildComposerMentionOptions", () => {
     ]);
     expect(options.find((option) => option.kind === "bot")?.subtitle).toBe("Bot");
     expect(options.find((option) => option.name === "Gmail")?.subtitle).toBe("Connected");
-    expect(options.find((option) => option.name === "Stripe")?.subtitle).toBe("Needs auth");
+    expect(options.find((option) => option.name === "Stripe")?.subtitle).toBe("Needs sign-in");
     expect(options.find((option) => option.kind === "routine")?.subtitle).toMatch(/Weekdays/i);
   });
 
@@ -60,6 +60,17 @@ describe("buildComposerMentionOptions", () => {
     expect(mentionChipKey(options[1]!)).toBe("routine:r2");
   });
 
+  it("ranks prefix, then word-start, then substring matches ahead of kind order", () => {
+    const options = buildComposerMentionOptions({
+      query: "mail",
+      bots: [{ id: "b1", name: "Outmailer" }],
+      groups: [{ id: "g1", name: "Team Mail" }],
+      routines: [],
+      connectors: [{ id: "c1", name: "Mailchimp", authStatus: "connected", connectionId: "c1" }],
+    });
+    expect(options.map((option) => option.name)).toEqual(["Mailchimp", "Team Mail", "Outmailer"]);
+  });
+
   it("skips the current group", () => {
     const options = buildComposerMentionOptions({
       query: "",
@@ -73,6 +84,21 @@ describe("buildComposerMentionOptions", () => {
       connectors: [],
     });
     expect(options.map((option) => option.id)).toEqual(["g2"]);
+  });
+
+  it("skips the bot whose chat this is", () => {
+    const options = buildComposerMentionOptions({
+      query: "",
+      currentBotId: "chief",
+      bots: [
+        { id: "chief", name: "Chief" },
+        { id: "legal", name: "Legal Desk" },
+      ],
+      groups: [],
+      routines: [],
+      connectors: [],
+    });
+    expect(options.map((option) => option.id)).toEqual(["legal"]);
   });
 
   it("filters by query before applying limit so later kinds stay reachable", () => {

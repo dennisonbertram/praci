@@ -21,11 +21,64 @@ const contacts = [
 ];
 const cartaServer = { id: "srv_c", enabled: true, endpoint: "https://mcp.app.carta.com/mcp" };
 
+const snapshot = {
+  companyName: "Example Co",
+  asOf: "2026-10-01",
+  fullyDilutedShares: 10_000_000,
+  amountRaisedUsd: null,
+  optionPoolAvailable: 500_000,
+  latest409a: { pricePerShareUsd: 1.25, date: "2026-09-01" },
+  shareClasses: [
+    { name: "Common", shares: 6_000_000, percent: 60 },
+    { name: "Options", shares: 1_000_000, percent: 10 },
+    { name: "Series Seed Preferred", shares: 3_000_000, percent: 30 },
+  ],
+  holders: [
+    {
+      name: "Founder Example",
+      email: null,
+      organization: null,
+      security: "Common",
+      shares: 6_000_000,
+      amountUsd: null,
+      percent: 60,
+    },
+    {
+      name: "Granted options",
+      email: null,
+      organization: null,
+      security: "Options",
+      shares: 1_000_000,
+      amountUsd: null,
+      percent: 10,
+    },
+    {
+      name: "Ada Example",
+      email: "ada.example@example.test",
+      organization: "Example Ventures",
+      security: "Series Seed Preferred",
+      shares: 1_000_000,
+      amountUsd: null,
+      percent: 10,
+    },
+    {
+      name: "Dee Newcomer",
+      email: null,
+      organization: "Newcomer Fund",
+      security: "SAFE",
+      shares: null,
+      amountUsd: 250_000,
+      percent: null,
+    },
+  ],
+  updatedAt: "2026-10-15T00:00:00.000Z",
+};
+
 const meta = {
   title: "CapTable/CapTablePage",
   component: CapTablePage,
   parameters: { layout: "fullscreen" },
-  args: { onConnectCarta: () => {}, onShowAgent: () => {} },
+  args: { onShowAgent: () => {} },
   decorators: [
     (Story) => (
       <div className="flex h-[700px]">
@@ -60,4 +113,37 @@ export const LoadError: Story = {
         throw new Error("Could not load contacts");
       },
     }),
+};
+
+export const WithSnapshot: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "carta.capTable": { snapshot, syncing: false },
+    }),
+};
+
+export const ReadingCarta: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": [],
+      "mcp.servers.list": [cartaServer],
+      "carta.capTable": { snapshot: null, syncing: true },
+    }),
+};
+
+export const CartaNeedsSignIn: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [{ ...cartaServer, oauthStatus: "reconnect" }],
+    }),
+};
+
+/** A kind tab with no contacts of that kind names the kind and offers to add one. */
+export const NoAuditors: Story = {
+  parameters: { initialEntries: ["/app/cap-table?kind=auditor"] },
+  beforeEach: () =>
+    mockRpc({ "contacts.list": [contacts[0], contacts[2]], "mcp.servers.list": [cartaServer] }),
 };

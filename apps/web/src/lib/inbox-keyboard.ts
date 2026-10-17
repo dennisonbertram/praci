@@ -53,6 +53,8 @@ export function useInboxKeyboard(options: InboxKeyboard) {
       const target = event.target instanceof Element ? event.target : null;
       if (target?.closest("input,textarea,select,[contenteditable],[role=menu],[role=tablist]"))
         return;
+      // Keys pressed elsewhere on the screen, such as by the Inbox agent's message box, are not for the list.
+      if (target && target !== document.body && !target.closest("[data-inbox-page]")) return;
       if (document.querySelector('[role="dialog"],[role="alertdialog"]')) return;
       const key = event.key;
       // A selection a filter or search has hidden is no selection.

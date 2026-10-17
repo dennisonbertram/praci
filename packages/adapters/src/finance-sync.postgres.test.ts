@@ -264,8 +264,12 @@ describePostgres("finance sync (PostgreSQL)", () => {
     const brexFails = async () => {
       throw new Error("MCP authorization expired. Reconnect this server in MCP settings.");
     };
-    callToolFor.mockImplementationOnce(async () => mercury.callTool);
-    callToolFor.mockImplementationOnce(async () => brexFails);
+    // Both servers are created in the same millisecond, so their sync order is not fixed.
+    // Route by provider instead of by call order.
+    const byProvider = async (server: { provider: string }) =>
+      server.provider === "brex" ? brexFails : mercury.callTool;
+    callToolFor.mockImplementationOnce(byProvider);
+    callToolFor.mockImplementationOnce(byProvider);
     expect(await sync({ user: owner })).toEqual({ mercury: "synced", brex: "failed" });
     const rows = await txns(owner);
     expect(rows.find((r) => r.externalId === "m-unlinked")?.classification).toBe("spend");

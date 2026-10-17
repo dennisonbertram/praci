@@ -1,6 +1,17 @@
-import { CARTA_READ_TOOLS, cartaAgentSpawnKey, financeAgentSpawnKey } from "@rakazo/contracts";
+import {
+  CARTA_READ_TOOLS,
+  CARTA_WRITE_TOOLS,
+  cartaAgentSpawnKey,
+  financeAgentSpawnKey,
+  inboxAgentSpawnKey,
+} from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import { buildApprovalAskBlock, cartaMailSendIsComplete, isCartaMailSend } from "./approval-ask.js";
+import {
+  buildApprovalAskBlock,
+  cartaMailSendIsComplete,
+  isCartaMailSend,
+  isCartaWrite,
+} from "./approval-ask.js";
 import { selectBuiltinToolsForRun } from "./executor.js";
 import { financeToolsAllowed } from "./finance-tools.js";
 import { assignmentAllowsTool } from "./mcp-connector.js";
@@ -27,13 +38,33 @@ describe("assignmentAllowsTool for the Carta agent", () => {
       ),
     ).toBe(false);
   });
+  it("refuses write tools until the server's writes are on, checked on each call", () => {
+    const assignment = (writesEnabled: boolean) => ({
+      allowAllTools: false,
+      allowedTools: [...CARTA_READ_TOOLS, ...CARTA_WRITE_TOOLS],
+      server: { ...server, writesEnabled },
+      bot: { spawnKey: carta },
+    });
+    expect(assignmentAllowsTool(assignment(false), "mutate")).toBe(false);
+    expect(assignmentAllowsTool(assignment(true), "mutate")).toBe(true);
+    expect(assignmentAllowsTool(assignment(true), "call_tool")).toBe(true);
+    expect(assignmentAllowsTool(assignment(false), "fetch")).toBe(true);
+  });
+  it("refuses every Carta tool to a bot that is not the Carta agent", () => {
+    for (const spawnKey of [null, financeAgentSpawnKey("u1")])
+      expect(
+        assignmentAllowsTool(
+          {
+            allowAllTools: true,
+            allowedTools: [],
+            server: { ...server, writesEnabled: true },
+            bot: { spawnKey },
+          },
+          CARTA_READ_TOOLS[0],
+        ),
+      ).toBe(false);
+  });
   it("leaves other bots and other servers unchanged", () => {
-    expect(
-      assignmentAllowsTool(
-        { allowAllTools: true, allowedTools: [], server, bot: { spawnKey: null } },
-        "write_something",
-      ),
-    ).toBe(true);
     expect(
       assignmentAllowsTool(
         {
@@ -49,8 +80,10 @@ describe("assignmentAllowsTool for the Carta agent", () => {
 });
 
 describe("Carta agent mail_send", () => {
-  it("is flagged for mandatory approval only for the Carta agent", () => {
+  it("is flagged for mandatory approval only for the Carta and Inbox agents", () => {
     expect(isCartaMailSend(carta, "mail_send")).toBe(true);
+    expect(isCartaMailSend(inboxAgentSpawnKey("u1"), "mail_send")).toBe(true);
+    expect(isCartaMailSend(inboxAgentSpawnKey("u1"), "mail_search")).toBe(false);
     expect(isCartaMailSend(carta, "mail_draft")).toBe(false);
     expect(isCartaMailSend(null, "mail_send")).toBe(false);
     expect(isCartaMailSend(financeAgentSpawnKey("u1"), "mail_send")).toBe(false);
@@ -136,5 +169,30 @@ describe("contacts_save approval card", () => {
     expect(block.detail).toBe(
       "name: Ada Fund\nemail: ada@example.test\norganization: Example Capital\nkind: auditor\nnotes: Met at the audit kickoff",
     );
+  });
+});
+
+describe("Carta write approval", () => {
+  const route = { toolName: "call_tool", endpoint: "https://mcp.app.carta.com/mcp" };
+  it("recognises a write by server and raw tool, not by name", () => {
+    expect(isCartaWrite(carta, route)).toBe(true);
+    expect(isCartaWrite(carta, { ...route, endpoint: "https://mcp.example.test/mcp" })).toBe(false);
+    expect(isCartaWrite(carta, { ...route, toolName: "search" })).toBe(false);
+    expect(isCartaWrite(null, route)).toBe(false);
+  });
+  it("shows the raw tool and the full nested arguments, untruncated", () => {
+    const args = {
+      name: "issue_draft",
+      arguments: { company_id: "c1", draft_set: { note: "x".repeat(5000), shares: 100 } },
+    };
+    const block = buildApprovalAskBlock("e1", "mcp__integration-1__call_tool", args, ["c1"], {
+      cartaWriteTool: "call_tool",
+    });
+    if (block.kind !== "ask") throw new Error("expected ask block");
+    expect(block.detail).toContain("tool: call_tool");
+    expect(block.detail).toContain('"name": "issue_draft"');
+    expect(block.detail).toContain('"shares": 100');
+    expect(block.detail).toContain("x".repeat(5000));
+    expect(block.detail).not.toContain('"c1"');
   });
 });

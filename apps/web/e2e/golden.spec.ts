@@ -101,9 +101,9 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   // Agent computer toggles the panel. Re-open when closed so Open can refresh computer status.
   const sidePanel = page.getByTestId("side-panel");
   if ((await sidePanel.getAttribute("data-panel")) === "computer") {
-    await page.getByTitle("Agent computer").click();
+    await page.getByTitle("Bot computer").click();
   }
-  await page.getByTitle("Agent computer").click();
+  await page.getByTitle("Bot computer").click();
   await expect(sidePanel).toHaveAttribute("data-panel", "computer");
   await expect(sidePanel).toHaveCSS("width", "384px");
   const [mainBox, panelBox] = await Promise.all([
@@ -194,7 +194,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
     await customDialog.getByText("Advanced", { exact: true }).click();
   };
   await openAdvanced();
-  for (const label of ["OpenAPI", "GraphQL", "Executor", "Treg", "Local command"]) {
+  for (const label of ["OpenAPI", "GraphQL", "Executor", "Local command"]) {
     await expect(customDialog.getByRole("button", { name: label, exact: true })).toBeVisible();
   }
   await captureScreenshot(page, testInfo, "11-custom-advanced");
@@ -223,9 +223,11 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
     await customDialog.getByRole("button", { name: "Verify and add", exact: true }).click();
     await customDialog.getByRole("button", { name: "Done", exact: true }).click();
   };
-  await installSource("Treg", () =>
-    customDialog.getByPlaceholder("Token").fill("fake-treg-browser-credential"),
-  );
+  // Treg connects from its own tile, with a token.
+  await page.getByRole("button", { name: "Connect Treg", exact: true }).click();
+  await customDialog.getByPlaceholder("Token").fill("fake-treg-browser-credential");
+  await customDialog.getByRole("button", { name: "Verify and add", exact: true }).click();
+  await customDialog.getByRole("button", { name: "Done", exact: true }).click();
   await expect(page.getByText(/MCP · treg\.to/)).toBeVisible();
   await installSource("OpenAPI", async () => {
     await customDialog.getByPlaceholder("Display name").fill("Browser API");
@@ -248,7 +250,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   await page.getByText("Chief").first().click();
   const gear = page.getByRole("button", { name: "Show settings" });
   if (!(await gear.isVisible().catch(() => false))) {
-    await page.getByTitle("Agent computer").click();
+    await page.getByTitle("Bot computer").click();
   }
   await gear.click();
   const downloadPromise = page.waitForEvent("download");
@@ -316,13 +318,15 @@ test("sign-in, spawn, and stop work in the shell", async ({ page }, testInfo) =>
   await expect(page.getByText("Messages sent now guide the next turn.")).toHaveCount(0);
   await expect(page.getByText(/^Steer /)).toHaveCount(0);
   await expect(composer).toHaveAttribute("placeholder", "Message Chief");
-  await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible();
+  // While a run goes on, Send shows only once there is something to send.
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
   const voiceButton = page
     .getByTestId("composer-bar")
     .getByRole("button", { name: "Voice", exact: true });
   await expect(voiceButton).toBeVisible();
   await composer.fill("Use the newer report and keep the answer short.");
   await expect(voiceButton).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible();
   await composer.press("Tab");
   await expect(page.getByRole("button", { name: "Send", exact: true })).toBeFocused();
   await page.keyboard.press("Enter");
@@ -332,7 +336,7 @@ test("sign-in, spawn, and stop work in the shell", async ({ page }, testInfo) =>
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "14-active-bot-work");
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
   await expect(composer).toHaveAttribute("placeholder", "Message Chief");
   await captureScreenshot(page, testInfo, "14-active-bot-work-mobile");
@@ -353,7 +357,8 @@ test("sign-in, spawn, and stop work in the shell", async ({ page }, testInfo) =>
   });
   await page.getByRole("button", { name: "Stop", exact: true }).click();
   await stopRequestStarted;
-  await expect(page.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
+  // The draft is empty, so Send stays out of the bar while the run is stopping.
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeDisabled();
   releaseStopRequest();
   // Idle Send stays disabled with an empty draft; wait for Stop to leave instead.
@@ -383,17 +388,17 @@ test("bot context menu pins, duplicates, edits, and confirms deletion", async ({
   const chief = page.getByRole("button", { name: /Chief/ }).first();
   await chief.click({ button: "right" });
   await expect(page.getByRole("menu", { name: "Actions for Chief" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "Edit Profile" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Edit profile" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Duplicate" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
   await captureScreenshot(page, testInfo, "16-bot-context-menu");
-  await page.getByRole("menuitem", { name: "Mark as Unread" }).click();
+  await page.getByRole("menuitem", { name: "Mark as unread" }).click();
 
   // Chief is the open bot, so the auto-read on window focus must not undo the manual mark.
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await chief.click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: "Mark as Read" })).toBeVisible();
-  await page.getByRole("menuitem", { name: "Mark as Read" }).click();
+  await expect(page.getByRole("menuitem", { name: "Mark as read" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Mark as read" }).click();
 
   await chief.click({ button: "right" });
   await page.getByRole("menuitem", { name: "Pin", exact: true }).click();
@@ -412,7 +417,7 @@ test("bot context menu pins, duplicates, edits, and confirms deletion", async ({
   await page.getByRole("button", { name: "Cancel" }).click();
 
   await chief.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Edit Profile" }).click();
+  await page.getByRole("menuitem", { name: "Edit profile" }).click();
   await expect(page.locator("label:has-text('Name') input")).toHaveValue("Chief");
   await captureScreenshot(page, testInfo, "19-edit-profile");
 });

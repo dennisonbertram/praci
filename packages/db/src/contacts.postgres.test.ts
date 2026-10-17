@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
-import { ContactEmailTakenError, deleteContact, listContacts, saveContact } from "./contacts.js";
+import {
+  addContact,
+  ContactEmailTakenError,
+  deleteContact,
+  listContacts,
+  saveContact,
+} from "./contacts.js";
 import { IsolationError } from "./scope.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -50,26 +56,46 @@ describePostgres("contacts (PostgreSQL)", () => {
     await close();
   });
 
-  it("creates, then updates by matching email instead of duplicating", async () => {
+  it("addContact creates, then refuses an email the user already has", async () => {
+    const first = await addContact(prisma, mine, {
+      name: "Add One",
+      email: "add-one@example.test",
+    });
+    expect(first.name).toBe("Add One");
+    await expect(
+      addContact(prisma, mine, { name: "Dup", email: "add-one@example.test" }),
+    ).rejects.toBeInstanceOf(ContactEmailTakenError);
+    const other = await addContact(prisma, sameSpace, {
+      name: "Mine",
+      email: "add-one@example.test",
+    });
+    expect(other.email).toBe("add-one@example.test");
+    await deleteContact(prisma, mine, first.id);
+    await deleteContact(prisma, sameSpace, other.id);
+  });
+
+  it("refuses to create a contact whose email another contact has, and leaves it unchanged", async () => {
     const first = await saveContact(prisma, mine, {
       name: "Ada Fund",
       email: "ada@example.test",
       organization: "Example Capital",
     });
     expect(first.kind).toBe("investor");
+    await expect(
+      saveContact(prisma, mine, { name: "Ada Lovelace", email: "ada@example.test", kind: "other" }),
+    ).rejects.toBeInstanceOf(ContactEmailTakenError);
+    expect(await listContacts(prisma, mine)).toEqual([first]);
+    // Updating by id keeps omitted fields and changes the given ones.
     const again = await saveContact(prisma, mine, {
+      id: first.id,
       name: "Ada Lovelace",
-      email: "ada@example.test",
       notes: "Lead",
     });
-    expect(again.id).toBe(first.id);
-    // Omitted fields stay; given fields change.
     expect(again).toMatchObject({
       name: "Ada Lovelace",
       organization: "Example Capital",
       notes: "Lead",
     });
-    expect(await listContacts(prisma, mine)).toHaveLength(1);
   });
 
   it("ignores extra actor fields such as email", async () => {

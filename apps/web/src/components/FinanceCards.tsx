@@ -4,8 +4,9 @@ import { Card } from "@rakazo/ui-web";
 import { ChevronRight, MessageSquareQuote } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { money, shortDay, transactionAmount } from "../lib/finance-format";
+import { dayRange, money, runwayText, shortDay, transactionAmount } from "../lib/finance-format";
 import { financePath } from "../lib/finance-route";
+import { useHideAmounts } from "../lib/hide-amounts-preference";
 
 type FinanceBlock = Extract<MessageBlock, { kind: "finance" }>;
 
@@ -114,13 +115,15 @@ function Header({ to, title, value }: { to: string; title: string; value?: strin
 }
 
 function Preview({ card }: { card: FinanceCard }) {
+  useHideAmounts();
   const { t } = useLingui();
   if (card.card === "overview") {
     const kpis = [
       [t`Cash`, money(card.cashCents)],
-      [t`Burn / mo`, money(card.burnCents)],
-      [t`Runway`, card.runwayMonths === null ? "–" : t`${Math.round(card.runwayMonths)} mo`],
-      [t`Spend this month`, money(card.monthSpendCents)],
+      [t`Monthly burn`, money(card.burnCents)],
+      // One decimal, as on the dashboard.
+      [t`Runway`, card.runwayMonths === null ? "–" : t`${runwayText(card.runwayMonths) ?? ""} mo`],
+      [t`Spent this month`, money(card.monthSpendCents)],
     ] as const;
     return (
       <Card size="sm" className="gap-1 py-2">
@@ -174,12 +177,21 @@ function Preview({ card }: { card: FinanceCard }) {
     );
   }
   if (card.card === "transactions") {
+    const period =
+      card.from && card.to
+        ? dayRange(card.from, card.to)
+        : card.from
+          ? t`since ${shortDay(card.from)}`
+          : card.to
+            ? t`until ${shortDay(card.to)}`
+            : t`all dates`;
     return (
       <Card size="sm" className="gap-1 py-2">
         <Header
           to={financePath.spend()}
-          title={t`${card.count} transactions`}
-          value={transactionAmount(card.totalCents)}
+          title={t`${card.count} transactions · ${period}`}
+          // Money in and out add up together here, so the total is a net amount, not spend.
+          value={t`Net ${transactionAmount(card.totalCents)}`}
         />
         <ul className="flex flex-col px-3">
           {card.rows.map((row) => (
@@ -199,6 +211,13 @@ function Preview({ card }: { card: FinanceCard }) {
             </li>
           ))}
         </ul>
+        {card.rows.length < card.count ? (
+          <p className="px-3 pt-1 text-xs text-muted-foreground">
+            <Trans>
+              Latest {card.rows.length} of {card.count}
+            </Trans>
+          </p>
+        ) : null}
       </Card>
     );
   }

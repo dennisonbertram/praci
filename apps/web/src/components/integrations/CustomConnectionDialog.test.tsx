@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { McpServer } from "@rakazo/contracts";
+import { CARTA_MCP_ENDPOINT, type McpServer } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -9,12 +9,13 @@ import type { IntegrationsData } from "./useIntegrations";
 
 const api = vi.hoisted(() => ({
   create: vi.fn(),
+  remove: vi.fn(),
   begin: vi.fn(),
   open: vi.fn(),
   wait: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({
-  rpc: { mcp: { servers: { create: api.create }, assignments: {} } },
+  rpc: { mcp: { servers: { create: api.create, remove: api.remove }, assignments: {} } },
 }));
 vi.mock("../../lib/mcp-connect", () => ({
   beginMcpOauth: api.begin,
@@ -40,7 +41,9 @@ const data = {
   refresh: vi.fn().mockResolvedValue(undefined),
 } as unknown as IntegrationsData;
 
-async function mount(props: { oauthClient?: boolean; oauthScope?: string } = {}) {
+async function mount(
+  props: { oauthClient?: boolean; oauthScope?: string; service?: string; initialUrl?: string } = {},
+) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
@@ -76,6 +79,7 @@ const click = (label: string) =>
 
 beforeEach(() => {
   api.create.mockResolvedValue(server);
+  api.remove.mockResolvedValue({ ok: true });
 });
 afterEach(() => {
   document.body.innerHTML = "";
@@ -157,4 +161,32 @@ it("locks the connection fields after the error and retries on the same server",
   await click("Connect");
   expect(api.create).toHaveBeenCalledTimes(1);
   expect(api.begin).toHaveBeenLastCalledWith("srv-1", { oauthClient: { clientId: "abc" } });
+});
+
+it("finishes Connect Carta right after sign-in: no agent step, and the done text is about Carta", async () => {
+  const carta = { id: "srv-c", name: "Carta", endpoint: CARTA_MCP_ENDPOINT } as McpServer;
+  api.create.mockResolvedValue(carta);
+  api.begin.mockResolvedValue({
+    status: "authorization_required",
+    authorizationUrl: "https://a/x",
+  });
+  api.open.mockReturnValue({ close: vi.fn(), closed: false });
+  api.wait.mockResolvedValue("connected");
+  await mount({ service: "Carta", initialUrl: CARTA_MCP_ENDPOINT });
+  await click("Sign in with Carta");
+  expect(document.body.textContent).toContain("Carta connected");
+  expect(document.body.textContent).toContain("The Carta agent can now read your cap table.");
+  expect(document.body.textContent).not.toContain("Step 2 of 3");
+});
+
+it("removes a connection it just added when the server cannot be reached", async () => {
+  api.begin.mockRejectedValueOnce(new Error("fetch failed: getaddrinfo ENOTFOUND example.com"));
+  await mount();
+  await click("Connect");
+  expect(api.remove).toHaveBeenCalledWith({ id: "srv-1" });
+  expect(document.body.textContent).toContain(
+    "Could not reach example.com. Check the address and try again.",
+  );
+  expect(document.body.textContent).not.toContain("ENOTFOUND");
+  expect(document.body.textContent).not.toContain("Needs reconnect");
 });

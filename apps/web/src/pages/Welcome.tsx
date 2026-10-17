@@ -21,9 +21,9 @@ export function WelcomePage() {
         </div>
         <p className="max-w-[600px] text-center text-[27px] leading-[1.4] text-foreground/75">
           <Trans>
-            Your team of always-on agents
+            Bots that run your inbox, cash,
             <br />
-            that you can give real work to.
+            cap table and investor documents.
           </Trans>
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">

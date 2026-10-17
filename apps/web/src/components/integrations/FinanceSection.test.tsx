@@ -28,7 +28,11 @@ vi.mock("@lingui/react/macro", () => ({
 
 import { FinanceSection, useFinanceStatus } from "./FinanceSection";
 
-function Standalone(props: { sources: FinanceSource[]; onChanged: () => void }) {
+function Standalone(props: {
+  sources: FinanceSource[];
+  onChanged: () => void;
+  extras?: Parameters<typeof FinanceSection>[0]["extras"];
+}) {
   return <FinanceSection {...props} status={useFinanceStatus()} />;
 }
 
@@ -43,14 +47,18 @@ const source = (provider: "mercury" | "brex", status: FinanceSource["status"]): 
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
-async function show(sources: FinanceSource[], onChanged = vi.fn()) {
+async function show(
+  sources: FinanceSource[],
+  onChanged = vi.fn(),
+  extras?: Parameters<typeof FinanceSection>[0]["extras"],
+) {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
   await act(async () =>
     root.render(
       <MemoryRouter>
-        <Standalone sources={sources} onChanged={onChanged} />
+        <Standalone sources={sources} onChanged={onChanged} extras={extras} />
       </MemoryRouter>,
     ),
   );
@@ -85,11 +93,24 @@ it("connects through the Finance API and shows Open Finance once connected", asy
   expect(onChanged).toHaveBeenCalled();
 });
 
+it("shows a connected bank's extra line (its agents) like the other connected tiles", async () => {
+  await show([source("mercury", "ok"), source("brex", "not_connected")], vi.fn(), {
+    mercury: <span>Used by Finance agent</span>,
+    brex: <span>Used by nobody</span>,
+  });
+  expect(tile("mercury")?.textContent).toContain("Used by Finance agent");
+  // A tile that is not connected has no agents to show.
+  expect(tile("brex")?.textContent).not.toContain("Used by");
+});
+
 it("reconnects a source that needs it and reports a cancelled sign-in", async () => {
   connect.mockResolvedValue("cancelled");
   await show([source("mercury", "needs_reconnect"), source("brex", "error")]);
   expect(tile("mercury")?.textContent).toContain("Needs reconnect");
   expect(tile("brex")?.textContent).toContain("Failed");
+  // The same word pair as app tiles: Failed offers "Try again", Needs reconnect offers "Reconnect".
+  expect(tile("brex")?.querySelector("button")?.textContent).toBe("Try again");
+  expect(tile("mercury")?.querySelector("button")?.textContent).toBe("Reconnect");
   await press("mercury");
   expect(connect).toHaveBeenCalledWith("mercury", true);
   expect(tile("mercury")?.querySelector('[role="alert"]')?.textContent).toContain("cancelled");
@@ -103,6 +124,12 @@ it("shows a failed connect", async () => {
 });
 
 const crypto = () => container.querySelector('[data-testid="finance-tile-crypto"]') as Element;
+const openCryptoMenu = () =>
+  act(async () =>
+    (crypto().querySelector('button[aria-label="More Blockscout actions"]') as HTMLElement).click(),
+  );
+const menuItems = () =>
+  [...document.body.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent);
 const typeKey = async (value: string) => {
   const input = document.body.querySelector('[role="dialog"] input') as HTMLInputElement;
   await act(async () => {
@@ -117,11 +144,17 @@ const press2 = (root: ParentNode, label: string) =>
     ).click();
   });
 
-it("shows a keyless Blockscout server as Not connected", async () => {
+it("shows a keyless Blockscout server as Connected and offers the optional key", async () => {
   cryptoRpc.crypto.mockResolvedValue({ connected: true, hasApiKey: false });
   await show([source("mercury", "ok"), source("brex", "ok")]);
-  expect(crypto().textContent).toContain("Not connected");
-  expect(crypto().textContent).not.toContain("Connected");
+  expect(crypto().querySelector('[data-status="connected"]')).not.toBeNull();
+  expect(crypto().textContent).not.toContain("Not connected");
+  // One main action like the other connected tiles; the optional key waits in the menu.
+  const links = [...crypto().querySelectorAll("a")].map((a) => a.textContent);
+  expect(links).toEqual(["Open Finance"]);
+  expect(crypto().querySelector('a[href="/app/finance/crypto"]')).not.toBeNull();
+  await openCryptoMenu();
+  expect(menuItems()).toEqual(["Add API key"]);
 });
 
 it("opens a modal from Connect, saves the key and then shows Connected", async () => {
@@ -141,7 +174,8 @@ it("opens a modal from Connect, saves the key and then shows Connected", async (
   expect(onChanged).toHaveBeenCalled(); // page data refreshes: the connect may create an MCP server
   expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   expect(crypto().textContent).toContain("Connected");
-  expect(crypto().textContent).toContain("Replace API key");
+  await openCryptoMenu();
+  expect(menuItems()).toEqual(["Replace API key"]);
 });
 
 it("shows the server's error inside the modal", async () => {

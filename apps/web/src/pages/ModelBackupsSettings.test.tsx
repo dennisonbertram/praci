@@ -179,6 +179,17 @@ describe("ModelBackupsSettings", () => {
     expect(backupApi.setBackups).not.toHaveBeenCalled();
   });
 
+  it("shows only the hint, without an empty picker or Save, when no model is connected", async () => {
+    await act(async () => {
+      root.render(<ModelBackupsSettings {...scope} catalog={catalog} credentials={[]} />);
+    });
+    await flush();
+
+    expect(container.textContent).toContain("Connect a provider to add backups.");
+    expect(container.querySelector("select")).toBeNull();
+    expect(container.textContent).not.toContain("Save backups");
+  });
+
   it("adds, removes, and explicitly reorders choices before saving in that order", async () => {
     await act(async () => {
       root.render(<ModelBackupsSettings {...scope} catalog={catalog} credentials={credentials} />);

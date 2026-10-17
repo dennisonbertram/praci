@@ -798,6 +798,8 @@ export const McpServerSchema = z.object({
   /** A browser sign-in was started and has not finished (its session is still open). */
   oauthAttempted: z.boolean(),
   enabled: z.boolean(),
+  /** Whether the server's known write tools may be offered to agents. Off by default. */
+  writesEnabled: z.boolean(),
   revision: z.number().int().positive(),
   createdAt: z.string(),
   updatedAt: z.string(),

@@ -1,12 +1,14 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { FinanceRecurringOutput, SpendPeriod } from "@rakazo/contracts";
+import type { FinanceProvider, FinanceRecurringOutput, SpendPeriod } from "@rakazo/contracts";
+import { Badge } from "@rakazo/ui-web";
 import { Link, useNavigate } from "react-router-dom";
 import { LineChart, MonthBars } from "../../components/finance/charts";
 import {
   Chevron,
   Chip,
   DetailPage,
+  HereLink,
   Kpi,
   Kv,
   KvRow,
@@ -14,7 +16,7 @@ import {
   rowClass,
   Section,
   Th,
-  TransactionTable,
+  TransactionsSection,
   toneClass,
   useFinanceQuery,
   useRowNavigate,
@@ -22,15 +24,20 @@ import {
 } from "../../components/finance/ui";
 import {
   changeText,
-  dayMonth,
+  dayRange,
+  lastDayOf,
   money,
   moneyExact,
   monthAxisLabels,
   monthLabel,
+  monthShort,
   paidWithLabel,
   shortDay,
+  txnDay,
 } from "../../lib/finance-format";
 import { financePath, type SpendRange } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { ReceiptIcon } from "./FinanceTransaction";
 
@@ -38,11 +45,15 @@ export function FinanceSpendPage({
   period,
   category,
   range,
+  source = null,
 }: {
   period: SpendPeriod;
   category: string | null;
   range: SpendRange | null;
+  /** Only this provider's spend, as opened from Brex on the Burn page. */
+  source?: FinanceProvider | null;
 }) {
+  useHideAmounts();
   const navigate = useNavigate();
   const q = useFinanceQuery(
     () =>
@@ -50,53 +61,83 @@ export function FinanceSpendPage({
         period,
         ...(category ? { category } : {}),
         ...(range ? { from: range.from, to: range.to } : {}),
+        ...(source ? { source } : {}),
       }),
-    [period, category, range?.from, range?.to],
+    [period, category, range?.from, range?.to, source],
   );
   const data = q.data;
+  const rangeLabel = range ? dayRange(range.from, range.to) : "";
+  const sourceName = FINANCE_PROVIDERS.find((p) => p.provider === source)?.name;
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Spend` }]}
-      title={<Trans>Spend</Trans>}
+      title={
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Trans>Spend</Trans>
+          {sourceName ? (
+            <Badge
+              variant="outline"
+              render={
+                <Link
+                  to={financePath.spend(period, category, range)}
+                  aria-label={t`Clear ${sourceName} filter`}
+                />
+              }
+            >
+              {sourceName} ×
+            </Badge>
+          ) : null}
+        </span>
+      }
       loading={!data}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
       {data ? (
         <>
           <Section>
             <div className="flex flex-wrap items-center gap-3.5">
+              {/* A day or week from the chart is its own range: no period tab is selected while it is shown. */}
               <PeriodTabs
-                value={period}
-                onChange={(next) => navigate(financePath.spend(next, category))}
+                value={range ? null : period}
+                onChange={(next) => navigate(financePath.spend(next, category, null, source))}
               />
               <span className="text-lg font-semibold tabular-nums">{money(data.totalCents)}</span>
               {range ? (
+                <Badge
+                  variant="outline"
+                  render={
+                    <Link
+                      to={financePath.spend(period, category, null, source)}
+                      aria-label={t`Clear ${rangeLabel}`}
+                    />
+                  }
+                >
+                  {rangeLabel} ×
+                </Badge>
+              ) : data.start && data.end ? (
                 <span className="text-xs text-muted-foreground">
-                  {range.from === range.to
-                    ? dayMonth(range.from)
-                    : `${dayMonth(range.from)} – ${dayMonth(range.to)}`}
+                  {dayRange(data.start, lastDayOf(data.end))}
                 </span>
               ) : null}
             </div>
           </Section>
           <div className="flex flex-wrap gap-1">
-            <Chip to={financePath.spend(period, null, range)} on={!category}>
+            <Chip to={financePath.spend(period, null, range, source)} on={!category}>
               <Trans>All</Trans>
             </Chip>
             {data.categories.map((row) => (
               <Chip
                 key={row.key}
-                to={financePath.spend(period, row.key, range)}
+                to={financePath.spend(period, row.key, range, source)}
                 on={row.key === category}
               >
                 {row.label}
               </Chip>
             ))}
           </div>
-          <Section>
-            <TransactionTable rows={data.transactions} />
-          </Section>
+          <TransactionsSection rows={data.transactions} />
         </>
       ) : null}
     </DetailPage>
@@ -104,6 +145,7 @@ export function FinanceSpendPage({
 }
 
 export function FinanceCategoryPage({ slug }: { slug: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.category({ slug }), [slug]);
   const rowProps = useRowNavigate();
   const data = q.data;
@@ -111,12 +153,13 @@ export function FinanceCategoryPage({ slug }: { slug: string }) {
     <DetailPage
       crumbs={[
         { label: t`Finance`, to: financePath.dashboard() },
-        { label: t`Breakdown`, to: financePath.dashboard() },
+        { label: t`Breakdown`, to: `${financePath.dashboard()}#breakdown` },
         { label: data?.label ?? "" },
       ]}
       title={data?.label}
       loading={!data}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
       {data ? (
@@ -150,12 +193,12 @@ export function FinanceCategoryPage({ slug }: { slug: string }) {
                     {...rowProps(financePath.vendor(vendor.key))}
                   >
                     <td className="font-semibold">
-                      <Link
+                      <HereLink
                         to={financePath.vendor(vendor.key)}
                         className="outline-none hover:underline focus-visible:underline"
                       >
                         {vendor.label}
-                      </Link>
+                      </HereLink>
                     </td>
                     <td className="text-end tabular-nums">{money(vendor.cents)}</td>
                     <Chevron />
@@ -164,9 +207,7 @@ export function FinanceCategoryPage({ slug }: { slug: string }) {
               </tbody>
             </table>
           </Section>
-          <Section title={<Trans>Recent</Trans>}>
-            <TransactionTable rows={data.recent} />
-          </Section>
+          <TransactionsSection title={<Trans>Recent</Trans>} rows={data.recent} />
         </>
       ) : null}
     </DetailPage>
@@ -183,6 +224,7 @@ const cadenceLabel = (cadence: FinanceRecurringOutput["recurring"]["cadence"]) =
         : t`Yearly`;
 
 export function FinanceRecurringPage({ keyName }: { keyName: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.recurring({ key: keyName }), [keyName]);
   const data = q.data;
   const recurring = data?.recurring;
@@ -190,12 +232,13 @@ export function FinanceRecurringPage({ keyName }: { keyName: string }) {
     <DetailPage
       crumbs={[
         { label: t`Finance`, to: financePath.dashboard() },
-        { label: t`Upcoming`, to: financePath.dashboard() },
+        { label: t`Upcoming`, to: `${financePath.dashboard()}#upcoming` },
         { label: recurring?.name ?? "" },
       ]}
       title={recurring?.name}
       loading={!data}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
       {data && recurring ? (
@@ -212,9 +255,7 @@ export function FinanceRecurringPage({ keyName }: { keyName: string }) {
               ) : null}
             </Kv>
           </Section>
-          <Section title={<Trans>Past charges</Trans>}>
-            <TransactionTable rows={data.pastCharges} />
-          </Section>
+          <TransactionsSection title={<Trans>Past charges</Trans>} rows={data.pastCharges} />
         </>
       ) : null}
     </DetailPage>
@@ -222,45 +263,64 @@ export function FinanceRecurringPage({ keyName }: { keyName: string }) {
 }
 
 export function FinanceVendorPage({ keyName }: { keyName: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.vendor({ key: keyName }), [keyName]);
   const rowProps = useRowNavigate();
   const data = q.data;
   const change = data ? changeText(data.changePct) : null;
   const paidWith = data ? paidWithLabel(data.paidWith) : "";
+  // Months before the first charge are not months of zero spend.
+  const charged = data ? data.monthly.filter((m) => m.month >= data.firstSeenAt.slice(0, 7)) : [];
   return (
     <DetailPage
       crumbs={[
         { label: t`Finance`, to: financePath.dashboard() },
-        {
-          label: data?.isSubscription ? t`Subscriptions` : t`Vendors`,
-          to: financePath.dashboard(),
-        },
-        { label: data?.name ?? "" },
+        // Only a loaded vendor knows which card it belongs to.
+        ...(data
+          ? [
+              {
+                label: data.isSubscription ? t`Subscriptions` : t`Breakdown`,
+                to: `${financePath.dashboard()}#${data.isSubscription ? "subscriptions" : "breakdown"}`,
+              },
+              { label: data.name },
+            ]
+          : []),
       ]}
       title={data?.name}
       loading={!data}
       error={q.error}
+      notFound={q.notFound}
       onRetry={q.retry}
     >
       {data ? (
         <>
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
-            <Kpi title={t`Monthly avg`} value={money(data.monthlyAvgCents)} sub={t`6 mo`} />
+            <Kpi
+              title={t`Monthly avg`}
+              value={money(data.monthlyAvgCents)}
+              sub={plural(data.monthlyAvgMonths ?? 6, {
+                one: "Last full month",
+                other: "Last # full months",
+              })}
+            />
             <Kpi
               title={t`Change`}
               value={change ? <span className={toneClass(data.changePct)}>{change}</span> : "—"}
-              sub={t`vs 3 mo ago`}
+              sub={
+                data.changePct === null
+                  ? t`Not enough history`
+                  : data.changeFromMonth
+                    ? t`vs ${monthShort(data.changeFromMonth)}`
+                    : t`vs 3 mo ago`
+              }
             />
             <Kpi title={t`First seen`} value={monthLabel(data.firstSeenAt.slice(0, 7))} />
-            <Kpi
-              title={t`Paid with`}
-              value={<span className="text-xs font-semibold leading-snug">{paidWith || "—"}</span>}
-            />
+            <Kpi title={t`Paid with`} value={paidWith || "—"} />
           </div>
           <Section title={<Trans>Monthly spend</Trans>}>
             <MonthBars
-              items={data.monthly.map((m, i) => ({
-                label: monthAxisLabels(data.monthly.map((x) => x.month))[i] ?? "",
+              items={charged.map((m, i) => ({
+                label: monthAxisLabels(charged.map((x) => x.month))[i] ?? "",
                 cents: m.cents,
               }))}
               label={t`Monthly spend`}
@@ -293,15 +353,15 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
                     {...rowProps(financePath.transaction(charge.id))}
                   >
                     <td className="w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground">
-                      {shortDay(charge.postedAt)}
+                      {shortDay(txnDay(charge))}
                     </td>
                     <td>
-                      <Link
+                      <HereLink
                         to={financePath.transaction(charge.id)}
                         className="outline-none hover:underline focus-visible:underline"
                       >
                         {charge.memo ?? charge.counterparty}
-                      </Link>
+                      </HereLink>
                     </td>
                     <td className="text-end tabular-nums">{moneyExact(charge.amountCents)}</td>
                     <td className="text-end text-muted-foreground">

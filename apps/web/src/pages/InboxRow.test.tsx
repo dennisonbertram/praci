@@ -47,7 +47,6 @@ async function render(
     onRead?: (id: string, read: boolean) => void;
     selected?: boolean;
     hideAttention?: boolean;
-    today?: boolean;
   } = {},
 ) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -64,7 +63,6 @@ async function render(
         onRead={props.onRead}
         selected={props.selected}
         hideAttention={props.hideAttention}
-        today={props.today ?? true}
       />,
     ),
   );
@@ -204,9 +202,9 @@ it("shows the reason a Needs reply row needs a reply as a tooltip, only there", 
 });
 
 it("shows the year only for mail from another year", async () => {
-  const old = await render(mail({ receivedAt: "2019-03-05T12:00:00.000Z" }), { today: false });
+  const old = await render(mail({ receivedAt: "2019-03-05T12:00:00.000Z" }));
   expect(old.querySelector("time")?.textContent).toContain("2019");
-  const recent = await render(mail({ receivedAt: new Date().toISOString() }), { today: false });
+  const recent = await render(mail({ receivedAt: new Date().toISOString() }));
   expect(recent.querySelector("time")?.textContent).not.toMatch(/\d{4}/);
 });
 
@@ -222,9 +220,7 @@ it("shows the row count beside a group heading, and no heading without a title",
   const rows = [mail({ id: "a" }), mail({ id: "b" })];
   const show = (title?: string) =>
     act(async () =>
-      root.render(
-        <InboxGroup title={title} rows={rows} onOpen={() => {}} onMark={undefined} today />,
-      ),
+      root.render(<InboxGroup title={title} rows={rows} onOpen={() => {}} onMark={undefined} />),
     );
   await show("Earlier");
   expect(container.querySelector("h2")?.textContent).toBe("Earlier2");

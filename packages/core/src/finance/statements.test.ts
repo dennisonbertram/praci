@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextMonthEnd, statementReminders } from "./statements.js";
+import { nextMonthEnd, nextStatementDue, statementReminders } from "./statements.js";
 
 const acct = (coveredThrough: string | null) => [
   { accountId: "a", accountName: "Bank ••1234", coveredThrough },
@@ -21,6 +21,20 @@ describe("statement reminders", () => {
         accountName: "Bank ••1234",
         coveredThrough: "2026-10-31",
         dueFor: "2026-11-30",
+      },
+    ]);
+  });
+  it("does not ask again for the month a mid-month statement just covered", () => {
+    // A September CSV whose lines run Sep 5 - Sep 20, checked on Oct 16.
+    expect(statementReminders(acct("2026-09-20"), "2026-10-16")).toEqual([]);
+    expect(nextStatementDue("2026-09-20")).toBe("2026-10-20");
+    expect(nextStatementDue("2026-01-30")).toBe("2026-02-28");
+    expect(statementReminders(acct("2026-09-20"), "2026-10-26")).toEqual([
+      {
+        accountId: "a",
+        accountName: "Bank ••1234",
+        coveredThrough: "2026-09-20",
+        dueFor: "2026-10-20",
       },
     ]);
   });

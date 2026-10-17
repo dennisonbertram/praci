@@ -42,7 +42,11 @@ test("onboarding skips model connect when a default model is already available",
   await expect(page.getByRole("textbox", { name: "Name" })).toHaveCount(0);
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveCount(0);
   await expect(page.getByRole("textbox", { name: "Description" })).toHaveCount(0);
-  for (const name of ["Composio", "Pipedream", "Executor"]) {
+  for (const name of [
+    "Popular apps through Composio",
+    "Popular apps through Pipedream",
+    "Your own tool server",
+  ]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeHidden();
   }
 

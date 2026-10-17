@@ -45,6 +45,7 @@ vi.mock("../lib/rpc", () => ({
   },
 }));
 vi.mock("../lib/inbox-message-cache", () => ({
+  INBOX_CHANGED_EVENT: "rakazo:inbox-changed",
   prefetchInboxMessage: () => {},
   peekInboxMessage: () => undefined,
   loadInboxMessage: () => new Promise(() => {}),
@@ -111,6 +112,7 @@ vi.mock("../components/inbox/InboxRow", () => ({
           data-row-id={row.id}
           data-selected={selectedId === row.id}
           data-feedback={row.feedback ?? ""}
+          data-category={row.category ?? ""}
           onClick={() => onOpen(row.id)}
         >
           {row.subject}
@@ -285,7 +287,7 @@ it("marks the row at once and offers Undo", async () => {
   const c = await render();
   await click(byText(c, "noise a"));
   expect(c.querySelector('[data-row-id="a"]')?.getAttribute("data-feedback")).toBe("noise");
-  expect(c.querySelector('[role="status"]')?.textContent).toContain("Marked noise");
+  expect(c.querySelector('[role="status"]')?.textContent).toContain("is now marked as noise");
   resolve({});
 });
 
@@ -386,6 +388,25 @@ it("marks a row read at once and unread again, saving each", async () => {
   expect(unread()).toBe("false");
   await click(byText(c, "read a"));
   expect(rpcMock.markRead).toHaveBeenLastCalledWith({ messageId: "a", read: false });
+});
+
+it("clears the live region before each announcement so a repeat is spoken again", async () => {
+  const c = await render();
+  const region = () => c.querySelector('[aria-live="polite"]')?.textContent;
+  await click(byText(c, "read a"));
+  expect(region()).toBe("");
+  await dwell(80);
+  expect(region()).toBe("Marked read");
+  await click(byText(c, "read a"));
+  expect(region()).toBe("");
+});
+
+it("announces only the latest read change when two happen within the delay", async () => {
+  const c = await render();
+  await click(byText(c, "read a"));
+  await click(byText(c, "read a"));
+  await dwell(80);
+  expect(c.querySelector('[aria-live="polite"]')?.textContent).toBe("Marked unread");
 });
 
 it("archives under a filter and a search too", async () => {
@@ -530,14 +551,28 @@ it("marks an unread deep-linked message read once, and j and k never mark read",
   expect(rpcMock.markRead).not.toHaveBeenCalled();
 });
 
-it("shows the Archived toast inside the open message, not behind it", async () => {
+it("archiving the open message closes it and offers Undo on the list", async () => {
   const c = await render(["/app/inbox?mail=a"]);
   await click(byText(c, "dialog archive"));
-  const notice = c.querySelector('[data-testid="notice"]') as HTMLElement;
-  expect(notice.textContent).toContain("Archived");
-  expect(c.querySelector('[role="status"]')?.textContent).toBe("");
-  await click(byText(notice, "Undo"));
+  // Back to the list, as Archive from the list does, not on to another message.
+  expect(c.querySelector('[data-testid="notice"]')).toBeNull();
+  const status = c.querySelector('[role="status"]') as HTMLElement;
+  expect(status.textContent).toContain("Archived");
+  await click(byText(status, "Undo"));
   expect(rpcMock.unarchive).toHaveBeenCalled();
+});
+
+it("leaves keys pressed outside the Inbox page, such as by the agent panel, to that panel", async () => {
+  const c = await render();
+  await press("j");
+  expect(selected(c)).toBe("a");
+  const panel = document.body.appendChild(document.createElement("fieldset"));
+  panel.tabIndex = -1;
+  await press("Enter", panel);
+  await press("j", panel);
+  expect(location.search).toBe("");
+  expect(selected(c)).toBe("a");
+  panel.remove();
 });
 
 it("takes one list step from a burst of j presses and ignores a held key", async () => {
@@ -568,4 +603,86 @@ it("a burst of 140 j presses in the open message moves one row and marks only it
   expect(location.search).toBe("?mail=b");
   expect(rpcMock.markRead).toHaveBeenCalledTimes(1);
   expect(rpcMock.markRead).toHaveBeenCalledWith({ messageId: "b", read: true });
+});
+
+it("keeps a mark's Undo on screen long enough to reach it", async () => {
+  const c = await render();
+  await click(byText(c, "noise b"));
+  const toast = () => c.textContent?.includes("Mail from Dana is now marked as noise");
+  await dwell(8_000);
+  expect(toast()).toBe(true);
+  await dwell(3_000);
+  expect(toast()).toBe(false);
+});
+
+it("stops spinning when sorting stalls and offers to try again", async () => {
+  // Each poll returns a fresh answer, as the server does.
+  rpcMock.list.mockImplementation(async () => list([row("a"), row("b")], { triagePending: true }));
+  const c = await render();
+  for (let i = 0; i < 13; i++) await dwell(5_000);
+  expect(c.textContent).not.toContain("Sorting your mail…");
+  expect(c.textContent).toContain("Sorting is taking longer than usual.");
+  const refreshes = rpcMock.refresh.mock.calls.length;
+  await click(byText(c, "Try sorting again"));
+  expect(rpcMock.refresh.mock.calls.length).toBe(refreshes + 1);
+  expect(c.textContent).toContain("Sorting your mail…");
+});
+
+it("shows nothing from the first sort until it and its to-dos have landed, then changes once", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")], { triagePending: true }));
+  const c = await render();
+  const sorting = () => c.textContent?.includes("Sorting your mail…");
+  const category = (id: string) =>
+    c.querySelector<HTMLElement>(`[data-row-id="${id}"]`)?.dataset.category;
+  // Part of the mail is sorted while sorting goes on: the rows show none of it yet.
+  rpcMock.list.mockResolvedValue(
+    list([row("a"), row("b", { needsReply: false, category: "newsletter" })], {
+      triagePending: true,
+    }),
+  );
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  expect(sorting()).toBe(true);
+  expect(category("b")).toBe("");
+  // Sorting finished, and its to-dos are still loading: the page waits for them.
+  let todosLoaded: (value: unknown) => void = () => {};
+  rpcMock.todos.mockReturnValue(new Promise((resolve) => (todosLoaded = resolve)));
+  rpcMock.list.mockResolvedValue(
+    list([row("a", { needsReply: true }), row("b", { needsReply: false, category: "newsletter" })]),
+  );
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  expect(sorting()).toBe(true);
+  expect(category("b")).toBe("");
+  const todo = {
+    id: "t1",
+    connectionId: "c1",
+    messageId: "a",
+    text: "Send the deck",
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: null,
+    doneAt: null,
+  };
+  await act(async () => todosLoaded({ todos: [todo] }));
+  expect(sorting()).toBe(false);
+  expect(category("b")).toBe("newsletter");
+  expect(c.textContent).toContain("Send the deck");
+});
+
+it("says it is sorting while the first triage runs, and names the sender a mark covers", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")], { triagePending: true }));
+  const c = await render();
+  const sorting = () =>
+    [...c.querySelectorAll('[role="status"]')].some((el) =>
+      el.textContent?.includes("Sorting your mail…"),
+    );
+  expect(sorting()).toBe(true);
+  // Triage finished: one update regroups the list and the status goes.
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  expect(sorting()).toBe(false);
+  await click(byText(c, "noise b"));
+  expect(c.querySelector('[role="status"]')?.textContent).toContain(
+    "Mail from Dana is now marked as noise",
+  );
 });

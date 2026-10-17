@@ -138,6 +138,16 @@ describe("CSV", () => {
     expect(statement.openingBalanceCents).toBeNull();
   });
 
+  it("says in plain words how many rows it skipped", async () => {
+    const one = await parse("x.csv", "Date,Description,Amount\n2026-03-04,EXAMPLE,-1.00\nbad,,\n");
+    expect(one.statement.warnings).toContain("1 row could not be read and was skipped.");
+    const two = await parse(
+      "x.csv",
+      "Date,Description,Amount\n2026-03-04,EXAMPLE,-1.00\nbad,,\nworse,,\n",
+    );
+    expect(two.statement.warnings).toContain("2 rows could not be read and were skipped.");
+  });
+
   it("warns when day/month order cannot be known", async () => {
     const { statement } = await parse(
       "x.csv",

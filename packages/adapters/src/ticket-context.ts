@@ -1,5 +1,5 @@
 import { parseTicketRef } from "@rakazo/contracts";
-import { byteLength, truncateUtf8 } from "@rakazo/core";
+import { byteLength, escapePromptData, truncateUtf8 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { coerceTicketStatus } from "@rakazo/db";
 
@@ -132,8 +132,4 @@ export async function loadAgentTicketContext(
     });
   }
   return renderTicketContext(entries, maxBytes);
-}
-
-function escapePromptData(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }

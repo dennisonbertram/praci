@@ -7,10 +7,12 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
   await signup(page, `inbox-${Date.now()}@rakazo.test`, "password12", "Inbox User");
   await completeOnboarding(page);
 
-  // No account yet: one button, which opens Integrations already filtered to Gmail.
+  // No account yet: the shared empty state says what goes here, and its button opens
+  // Integrations already filtered to Gmail.
   await page.getByTestId("sidebar-inbox").click();
   await expect(page).toHaveURL(/\/app\/inbox$/);
   await expect(page.getByRole("heading", { name: "Inbox", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No mail connected", level: 2 })).toBeVisible();
   await captureScreenshot(page, testInfo, "inbox-empty");
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/integrations\?q=gmail$/);
@@ -534,7 +536,7 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await rowButtons.getByRole("button", { name: "Mark noise" }).click();
   await expect.poll(() => feedbackBodies.at(-1)).toMatchObject({ mark: "noise" });
   const status = main.getByRole("status");
-  await expect(status).toContainText("Marked noise");
+  await expect(status).toContainText("is now marked as noise");
   await expect(main.getByRole("heading", { name: "Needs reply" })).toHaveCount(0);
   await expect(row(/Offsite dates/)).toBeVisible();
   await expect(row(/Offsite dates/)).toHaveClass(/text-muted-foreground/);
@@ -635,7 +637,9 @@ test("Inbox asks before a model sorts the mail, and Allow starts triage", async 
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
   const prompt = main.getByRole("region", { name: "Let Rakazo sort your mail" });
   await expect(prompt).toBeVisible();
-  await expect(prompt).toContainText("are sent to OpenRouter.");
+  await expect(prompt).toContainText(
+    "are sent to the AI service that runs your bots (OpenRouter).",
+  );
   await expect(main.getByRole("region", { name: "To do" })).toHaveCount(0);
   expect(allowBody).toBeUndefined();
   await captureScreenshot(page, testInfo, "inbox-consent-prompt");
@@ -818,7 +822,7 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
     await page.emulateMedia({ colorScheme: layout.scheme });
     // The panel starts collapsed: open it for the "open" cases and shut it again for the others.
     const collapse = page.getByRole("button", { name: "Collapse Inbox agent" });
-    const show = main.getByRole("button", { name: "Show Inbox agent" });
+    const show = main.getByRole("button", { name: "Ask Inbox agent" });
     if (layout.agent === "open" && (await show.isVisible())) await show.click();
     // The panel animates open; measure once the pane has given up its width.
     if (layout.agent === "open") {
@@ -872,14 +876,23 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
       expect(time.height).toBeLessThan(20);
       expect(time.x + time.width).toBeLessThanOrEqual(whole.x + whole.width);
       expect(subject.width).toBeGreaterThan(80);
-      // Always one line: every row is the same fixed height, with sender and subject side by side.
-      expect(whole.height).toBe(56);
-      expect(
-        Math.abs(subject.y + subject.height / 2 - (sender.y + sender.height / 2)),
-      ).toBeLessThan(8);
-      expect(subject.x).toBeGreaterThanOrEqual(sender.x + sender.width);
-      expect(subject.x + subject.width).toBeLessThanOrEqual(time.x + 1);
+      // A row narrower than the @md container breakpoint (28rem) stacks: sender and time on the first
+      // line, the subject on a second line under the sender. A wider row keeps all three on one line,
+      // sender and subject side by side. Either way every row has one fixed height.
+      const stacked = whole.width < 448;
+      expect(whole.height).toBe(stacked ? 64 : 56);
       expect(Math.abs(time.y + time.height / 2 - (sender.y + sender.height / 2))).toBeLessThan(8);
+      if (stacked) {
+        expect(subject.y).toBeGreaterThanOrEqual(sender.y + sender.height - 1);
+        expect(subject.x).toBeLessThanOrEqual(sender.x + 24);
+        expect(subject.x + subject.width).toBeLessThanOrEqual(whole.x + whole.width);
+      } else {
+        expect(
+          Math.abs(subject.y + subject.height / 2 - (sender.y + sender.height / 2)),
+        ).toBeLessThan(8);
+        expect(subject.x).toBeGreaterThanOrEqual(sender.x + sender.width);
+        expect(subject.x + subject.width).toBeLessThanOrEqual(time.x + 1);
+      }
     }
     await captureScreenshot(
       page,
