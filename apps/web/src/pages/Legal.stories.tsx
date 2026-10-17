@@ -70,6 +70,36 @@ export const LastScanFailed: Story = {
     }),
 };
 
+/** OpenRouter rejected the user's key: the header names it and opens the key field. */
+export const ScanKeyRejected: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "legal.overview": {
+        ...overview,
+        agent: {
+          ...overview.agent,
+          lastScanRun: {
+            id: overview.agent.lastScanRun!.id,
+            status: "failed",
+            error: '401: {"message":"User not found.","code":401}',
+          },
+        },
+      },
+      "legal.consent": consent,
+      "legal.graph": graph,
+    }),
+};
+
+/** Earlier results exist, but access is not allowed now: the daily scan waits for it. */
+export const ResultsAwaitingConsent: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "legal.overview": overview,
+      "legal.consent": { ...consent, allowed: false },
+      "legal.graph": graph,
+    }),
+};
+
 /** The first read worked; a later one failed. The page stays and says so. */
 export const RefreshFailed: Story = {
   beforeEach: () => {
