@@ -510,6 +510,7 @@ describe("Transcript jump to a search result", () => {
     const noop = () => {};
     const props = {
       scrollRef,
+      sentHere: { current: false },
       onScrollRequestHandled: noop,
       artifactTarget: { botId: "bot-1" },
       showToolActivity: false,

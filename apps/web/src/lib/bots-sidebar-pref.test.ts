@@ -63,7 +63,8 @@ describe("Inbox agent panel collapse preference", () => {
     // The Carta agent panel has its own preference.
     writeCartaAgentCollapsed("user-1", true);
     expect(readCartaAgentCollapsed("user-1")).toBe(true);
-    expect(readInboxAgentCollapsed("user-1")).toBe(false);
+    // Closing the Carta panel leaves the Inbox panel at its default (closed).
+    expect(readInboxAgentCollapsed("user-1")).toBe(true);
     writeCartaAgentCollapsed("user-1", false);
     expect(store.size).toBe(0);
     vi.unstubAllGlobals();

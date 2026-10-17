@@ -824,6 +824,16 @@ export const DEMO_DOCUMENT_FACETS: Record<
   "MOCK Investor Update Draft.pdf": { docType: "Investor update", daysAgo: 1, parties: [] },
   "MOCK Cap Table Summary.csv": { docType: "Cap table", daysAgo: 1, parties: [] },
   "MOCK Product Roadmap.pdf": { docType: "Roadmap", daysAgo: 30, parties: [] },
+  "MOCK Invoice NW-1044 - Acme Servo Supply.pdf": {
+    docType: "Invoice",
+    daysAgo: 12,
+    parties: ["Acme Servo Supply (Mock)"],
+  },
+  "MOCK Invoice 2209 - Cobalt Cloud Hosting.pdf": {
+    docType: "Invoice",
+    daysAgo: 8,
+    parties: ["Cobalt Cloud Hosting (Mock)"],
+  },
 };
 
 const doc = (folder: string, name: string, text: string, kind: DemoDocument["kind"] = "pdf") => ({

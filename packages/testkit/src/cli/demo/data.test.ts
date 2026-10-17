@@ -128,7 +128,10 @@ describe("mock demo data", () => {
 
   it("gives every mock Data room document a type and date for the list columns", () => {
     expect(Object.keys(DEMO_DOCUMENT_FACETS).sort()).toEqual(
-      DEMO_DOCUMENTS.map((d) => d.name).sort(),
+      // The unreadable scan stays unclassified, so the failed state shows.
+      DEMO_DOCUMENTS.filter((d) => d.kind !== "broken")
+        .map((d) => d.name)
+        .sort(),
     );
   });
 
@@ -136,7 +139,8 @@ describe("mock demo data", () => {
     const snapshot = CapTableSnapshotInputSchema.parse(DEMO_CAP_TABLE);
     const held = snapshot.holders.reduce((sum, h) => sum + (h.shares ?? 0), 0);
     const pool = snapshot.shareClasses.find((c) => /option pool/i.test(c.name))?.shares ?? 0;
-    expect(snapshot.optionPoolAvailable).toBe(pool);
+    // The pool class counts options already granted (held below); only the rest is still available.
+    expect(snapshot.optionPoolAvailable).toBeLessThanOrEqual(pool);
     expect(held + (snapshot.optionPoolAvailable ?? 0)).toBe(snapshot.fullyDilutedShares);
   });
 

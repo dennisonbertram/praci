@@ -173,13 +173,12 @@ it("shows a connected Carta by what it does, with a way to its page", async () =
   expect(container.querySelector('a[href="/app/cap-table"]')?.textContent).toBe("Open Cap table");
 });
 
-it("offers Carta and prefills the custom dialog", async () => {
+it("offers Carta and opens its sign-in dialog", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Carta"]');
   expect(connect).not.toBeNull();
   await act(async () => connect?.click());
-  const input = document.querySelector<HTMLInputElement>('input[aria-label="Server URL"]');
-  expect(input?.value).toBe("https://mcp.app.carta.com/mcp");
+  expect(document.body.textContent).toContain("Sign in with Carta");
 });
 
 it("shows Carta but not Zernio under the Finance chip", async () => {
