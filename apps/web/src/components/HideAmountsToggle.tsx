@@ -3,8 +3,10 @@ import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web"
 import { Eye, EyeOff } from "lucide-react";
 import { setHideAmounts, useHideAmounts } from "../lib/hide-amounts-preference";
 
-const helper = () =>
-  t`Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show.`;
+const helper = (hidden: boolean) =>
+  hidden
+    ? t`Amounts are hidden on finance screens and masked in chat text. Some plain numbers in agent replies may still show.`
+    : t`Hides amounts on finance screens and masks them in chat text. Some plain numbers in agent replies may still show.`;
 
 /** Icon button for page headers. Pressed while amounts are hidden. */
 export function HideAmountsButton() {
@@ -29,7 +31,7 @@ export function HideAmountsButton() {
         {hidden ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
       </TooltipTrigger>
       <TooltipContent>
-        {label}. {helper()}
+        {label}. {helper(hidden)}
       </TooltipContent>
     </Tooltip>
   );
@@ -41,7 +43,7 @@ export function HideAmountsMenuItem({ onDone }: { onDone?: () => void }) {
   return (
     <Button
       variant="ghost"
-      className="h-auto w-full justify-start py-1.5 font-normal"
+      className="h-auto w-full justify-start py-1.5 font-normal whitespace-normal"
       aria-pressed={hidden}
       data-testid="hide-amounts-menu-item"
       onClick={() => {
@@ -56,7 +58,7 @@ export function HideAmountsMenuItem({ onDone }: { onDone?: () => void }) {
       )}
       <span className="flex flex-col items-start text-start">
         <span>{hidden ? t`Show amounts` : t`Hide amounts`}</span>
-        <span className="text-xs text-muted-foreground">{helper()}</span>
+        <span className="text-xs text-muted-foreground">{helper(hidden)}</span>
       </span>
     </Button>
   );

@@ -835,6 +835,10 @@ msgstr ""
 msgid "Amount raised"
 msgstr ""
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Amounts are hidden on finance screens and masked in chat text. Some plain numbers in agent replies may still show."
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "इस प्रोवाइडर के लिए API कुंजी संग्रहीत है, सब्सक्रिप्शन साइन-इन नहीं।"
@@ -3678,7 +3682,7 @@ msgid "Hide transcript"
 msgstr "ट्रांसक्रिप्ट छिपाएँ"
 
 #: src/components/HideAmountsToggle.tsx
-msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
+msgid "Hides amounts on finance screens and masks them in chat text. Some plain numbers in agent replies may still show."
 msgstr ""
 
 #: src/lib/ticket-priority.ts
