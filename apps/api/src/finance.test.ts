@@ -525,6 +525,28 @@ describe("finance detail lookups", () => {
     expect(given.map((r) => r.id)).toEqual(["t-1"]);
   });
 
+  it("covers the dashboard period a category was opened from, in its total, vendors and list", async () => {
+    const { deps } = setup({
+      financeTransaction: [
+        txn(a, { id: "t-1" }),
+        txn(a, { id: "t-4", postedAt: new Date("2026-09-20T00:00:00Z") }),
+      ],
+    });
+    const month = await financeCategory(deps, a, { slug: "software", period: "month" });
+    expect(month.start).toBe("2026-10-01");
+    expect(month.recent.map((r) => r.id)).toEqual(["t-1"]);
+    const range = (
+      metrics.breakdown.mock.calls.at(-1) as unknown as [unknown, unknown, { start: string }]
+    )[2];
+    expect(range.start).toBe("2026-10-01");
+    const september = await financeCategory(deps, a, { slug: "software", month: "2026-09" });
+    expect([september.start, september.end]).toEqual(["2026-09-01", "2026-10-01"]);
+    expect(september.recent.map((r) => r.id)).toEqual(["t-4"]);
+    // Without a window it is the last 90 days, and the list covers the same days as the total.
+    const all = await financeCategory(deps, a, { slug: "software" });
+    expect(all.recent.map((r) => r.id)).toEqual(["t-1", "t-4"]);
+  });
+
   it("lists only spend of the chosen category for the period", async () => {
     const { deps } = setup({
       financeTransaction: [

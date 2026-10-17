@@ -34,16 +34,23 @@ describe("parseFinanceRoute", () => {
       financePath.account("acc 1"),
       financePath.month("2026-09"),
       financePath.category("servers-cloud"),
+      financePath.category("software", { period: "quarter" }),
+      financePath.category("software", { month: "2026-08" }),
       financePath.recurring("google workspace/x"),
       financePath.vendor("acme & co"),
       financePath.transaction("txn_1"),
       financePath.receipt("txn_1"),
     ];
-    const parsed = cases.map((path) => parseFinanceRoute(path));
+    const parsed = cases.map((path) => {
+      const [pathname = "", query = ""] = path.split("?");
+      return parseFinanceRoute(pathname, query ? `?${query}` : "");
+    });
     expect(parsed).toEqual([
       { page: "account", id: "acc 1" },
       { page: "month", month: "2026-09" },
       { page: "category", slug: "servers-cloud" },
+      { page: "category", slug: "software", window: { period: "quarter" } },
+      { page: "category", slug: "software", window: { month: "2026-08" } },
       { page: "recurring", key: "google workspace/x" },
       { page: "vendor", key: "acme & co" },
       { page: "transaction", id: "txn_1" },

@@ -137,7 +137,7 @@ export function FinancePage({
             source={route.source ?? null}
           />
         ) : route.page === "category" ? (
-          <FinanceCategoryPage slug={route.slug} />
+          <FinanceCategoryPage slug={route.slug} window={route.window} />
         ) : route.page === "recurring" ? (
           <FinanceRecurringPage keyName={route.key} />
         ) : route.page === "vendor" ? (
@@ -615,7 +615,9 @@ function Overview({
                 <BreakdownRows
                   rows={allBreakdown ? breakdownRows : breakdownRows.slice(0, MAX_ROWS)}
                   to={(row) =>
-                    by === "category" ? financePath.category(row.key) : financePath.vendor(row.key)
+                    by === "category"
+                      ? financePath.category(row.key, { period })
+                      : financePath.vendor(row.key)
                   }
                 />
                 {breakdownRows.every((row) => row.cents <= 0) ? (

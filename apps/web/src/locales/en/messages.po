@@ -5533,10 +5533,6 @@ msgstr "Receipt hidden while amounts are hidden"
 msgid "Receipts"
 msgstr "Receipts"
 
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Recent"
-msgstr "Recent"
-
 #: src/components/data-room/FilterBar.tsx
 msgid "Recently added"
 msgstr "Recently added"
@@ -7142,6 +7138,10 @@ msgstr "Total incl. crypto"
 msgid "Transactions"
 msgstr "Transactions"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Transactions · {windowName}"
+msgstr "Transactions · {windowName}"
+
 #. placeholder {0}: moneyExact(Math.abs(check.differenceCents))
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Transactions are {0} off the closing balance"
@@ -7488,9 +7488,12 @@ msgid "Vendor"
 msgstr "Vendor"
 
 #: src/components/FinanceCards.tsx
-#: src/pages/finance/FinanceSpend.tsx
 msgid "Vendors"
 msgstr "Vendors"
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Vendors · {windowName}"
+msgstr "Vendors · {windowName}"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Verify and add"

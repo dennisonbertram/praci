@@ -263,7 +263,7 @@ export function FinanceMonthPage({ month }: { month: string }) {
             <BreakdownRows
               rows={data.categories}
               swatches
-              to={(row) => financePath.category(row.key)}
+              to={(row) => financePath.category(row.key, { month })}
             />
           </Section>
           <TransactionsSection title={<Trans>Transactions</Trans>} rows={data.transactions} />

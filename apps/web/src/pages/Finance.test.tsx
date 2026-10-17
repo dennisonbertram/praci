@@ -531,10 +531,12 @@ it("switches the breakdown between category and vendor", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance");
   await flush();
-  expect(container.querySelector('a[href="/app/finance/category/software"]')).not.toBeNull();
+  // A category opens on the period the dashboard shows, so its page shows the same total.
+  const category = 'a[href="/app/finance/category/software?period=month"]';
+  expect(container.querySelector(category)).not.toBeNull();
   await act(async () => button("Vendor")?.click());
   expect(container.querySelector('a[href="/app/finance/vendor/acme-hosting"]')).not.toBeNull();
-  expect(container.querySelector('a[href="/app/finance/category/software"]')).toBeNull();
+  expect(container.querySelector(category)).toBeNull();
 });
 
 it("puts the paid-with text on the subscription row and links the row to its vendor", async () => {

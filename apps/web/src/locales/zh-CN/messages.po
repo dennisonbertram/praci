@@ -5533,10 +5533,6 @@ msgstr ""
 msgid "Receipts"
 msgstr ""
 
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Recent"
-msgstr "最近"
-
 #: src/components/data-room/FilterBar.tsx
 msgid "Recently added"
 msgstr ""
@@ -7142,6 +7138,10 @@ msgstr ""
 msgid "Transactions"
 msgstr ""
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Transactions · {windowName}"
+msgstr ""
+
 #. placeholder {0}: moneyExact(Math.abs(check.differenceCents))
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Transactions are {0} off the closing balance"
@@ -7488,8 +7488,11 @@ msgid "Vendor"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
-#: src/pages/finance/FinanceSpend.tsx
 msgid "Vendors"
+msgstr ""
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Vendors · {windowName}"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx

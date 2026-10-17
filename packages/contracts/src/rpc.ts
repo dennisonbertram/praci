@@ -148,6 +148,7 @@ import {
   FinanceWalletSchema,
   FinanceWalletsOutputSchema,
   FinanceWalletUpdateInputSchema,
+  SpendPeriodSchema,
 } from "./finance.js";
 import {
   FinanceStatementAccountRenameInputSchema,
@@ -1177,7 +1178,18 @@ export const appContract = {
       .output(FinanceCryptoHistoryOutputSchema),
     spend: oc.input(FinanceSpendInputSchema).output(FinanceSpendOutputSchema),
     category: oc
-      .input(z.object({ slug: z.string().min(1).max(200) }))
+      .input(
+        z.object({
+          slug: z.string().min(1).max(200),
+          /** The dashboard period the category was opened from; without it, the last 90 days. */
+          period: SpendPeriodSchema.optional(),
+          /** A calendar month (YYYY-MM), from the month page. */
+          month: z
+            .string()
+            .regex(/^\d{4}-\d{2}$/)
+            .optional(),
+        }),
+      )
       .output(FinanceCategoryOutputSchema),
     recurring: oc
       .input(z.object({ key: z.string().min(1).max(200) }))

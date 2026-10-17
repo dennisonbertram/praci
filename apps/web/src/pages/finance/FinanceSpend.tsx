@@ -35,7 +35,7 @@ import {
   shortDay,
   txnDay,
 } from "../../lib/finance-format";
-import { financePath, type SpendRange } from "../../lib/finance-route";
+import { type CategoryWindow, financePath, type SpendRange } from "../../lib/finance-route";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
@@ -144,11 +144,21 @@ export function FinanceSpendPage({
   );
 }
 
-export function FinanceCategoryPage({ slug }: { slug: string }) {
+export function FinanceCategoryPage({ slug, window }: { slug: string; window?: CategoryWindow }) {
   useHideAmounts();
-  const q = useFinanceQuery(() => rpc.finance.category({ slug }), [slug]);
+  const q = useFinanceQuery(
+    () => rpc.finance.category({ slug, ...window }),
+    [slug, JSON.stringify(window ?? null)],
+  );
   const rowProps = useRowNavigate();
   const data = q.data;
+  // The total, the vendors and the transactions all cover this one window, named on the page.
+  const windowName =
+    data?.start && data.end
+      ? window
+        ? dayRange(data.start, lastDayOf(data.end))
+        : t`Last 90 days`
+      : t`Last 90 days`;
   return (
     <DetailPage
       crumbs={[
@@ -167,9 +177,7 @@ export function FinanceCategoryPage({ slug }: { slug: string }) {
           <Section>
             <div className="flex flex-wrap items-center gap-5">
               <div>
-                <h2 className="text-xs font-semibold text-muted-foreground">
-                  <Trans>Last 90 days</Trans>
-                </h2>
+                <h2 className="text-xs font-semibold text-muted-foreground">{windowName}</h2>
                 <div className="text-lg font-semibold tabular-nums">{money(data.last90Cents)}</div>
               </div>
               <div className="min-w-32 flex-1">
@@ -183,7 +191,7 @@ export function FinanceCategoryPage({ slug }: { slug: string }) {
               </div>
             </div>
           </Section>
-          <Section title={<Trans>Vendors</Trans>}>
+          <Section title={t`Vendors · ${windowName}`}>
             <table className="w-full border-collapse">
               <tbody>
                 {data.vendors.map((vendor) => (
@@ -207,7 +215,7 @@ export function FinanceCategoryPage({ slug }: { slug: string }) {
               </tbody>
             </table>
           </Section>
-          <TransactionsSection title={<Trans>Recent</Trans>} rows={data.recent} />
+          <TransactionsSection title={t`Transactions · ${windowName}`} rows={data.recent} />
         </>
       ) : null}
     </DetailPage>

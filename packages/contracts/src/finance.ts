@@ -713,12 +713,17 @@ export const FinanceSpendOutputSchema = z.object({
 export const FinanceCategoryOutputSchema = z.object({
   slug: z.string(),
   label: z.string(),
+  /** Spend over [`start`, `end`): the period asked for, or the last 90 days. */
   last90Cents: Cents,
+  /** First day of the window, inclusive. */
+  start: DayId.optional(),
+  /** Day after the window, exclusive. */
+  end: DayId.optional(),
   /** Spend per month, 12 months oldest first. */
   trend: z.array(MonthCentsSchema),
-  /** Last 90 days; sums to `last90Cents`. */
+  /** Over the same window; sums to `last90Cents`. */
   vendors: z.array(BreakdownRowSchema),
-  /** Newest 8. */
+  /** The window's transactions, newest first (at most 100). */
   recent: z.array(FinanceTransactionSchema),
 });
 

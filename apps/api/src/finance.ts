@@ -37,6 +37,7 @@ import type {
   FinanceVendorOutput,
   PaidWithEntry,
   RunwayCryptoScope,
+  SpendPeriod,
   TreasuryYieldMonth,
 } from "@rakazo/contracts";
 import {
@@ -848,7 +849,7 @@ export async function financeSpend(
 export async function financeCategory(
   deps: FinanceDeps,
   actor: Actor,
-  input: { slug: string },
+  input: { slug: string; period?: SpendPeriod; month?: string },
 ): Promise<FinanceCategoryOutput> {
   const now = nowOf(deps);
   const own = (await loadTransactions(deps, actor)).filter(
@@ -856,14 +857,23 @@ export async function financeCategory(
   );
   const first = own[0];
   if (!first) throw notFound();
-  const range = last90(now);
+  // The window the page was opened from, so its total matches the row that was clicked; the
+  // vendor list and the transactions cover that same window.
+  const range = input.month
+    ? { start: `${input.month}-01`, end: monthStartOf(new Date(`${input.month}-01T00:00:00Z`), 1) }
+    : input.period
+      ? spendTotals(own, input.period, now)
+      : last90(now);
+  const inRange = own.filter((t) => txnDay(t) >= range.start && txnDay(t) < range.end);
   return {
     slug: input.slug,
     label: first.category?.trim() || "Uncategorized",
     last90Cents: breakdown(own, "category", range)[0]?.cents ?? 0,
+    start: range.start,
+    end: range.end,
     trend: monthlySpend(own, { categorySlug: input.slug }, now, 12),
     vendors: breakdown(own, "vendor", range),
-    recent: newest(own, 8),
+    recent: newest(inRange, 100),
   };
 }
 
