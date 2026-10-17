@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import {
+  findAccount,
   inferMailAccount,
   mailApprovalAgentNote,
   mailRequestIsValid,
@@ -76,9 +77,9 @@ export async function answerEditedMailApproval(
     { spaceId: actor.spaceId, userId: actor.userId },
     mailContext(actor, "mail.approval.edit"),
   );
-  const wanted = typeof merged.account === "string" ? merged.account.trim().toLowerCase() : "";
+  const wanted = typeof merged.account === "string" ? merged.account.trim() : "";
   const account = wanted
-    ? accounts.find((item) => item.address?.toLowerCase() === wanted)
+    ? findAccount(accounts, wanted)
     : await inferMailAccount(
         deps.prisma,
         { spaceId: actor.spaceId, userId: actor.userId },

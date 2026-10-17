@@ -166,9 +166,13 @@ export function accountName(account: MailAccount): string {
   return account.address ?? account.label;
 }
 
-function findAccount(accounts: MailAccount[], wanted: string): MailAccount | undefined {
+/** By address; else by the account's name as the user calls it ("Sales" for "Sales mail"), if only one fits. */
+export function findAccount(accounts: MailAccount[], wanted: string): MailAccount | undefined {
   const lower = wanted.trim().toLowerCase();
-  return accounts.find((account) => account.address?.toLowerCase() === lower);
+  const byAddress = accounts.find((account) => account.address?.toLowerCase() === lower);
+  if (byAddress || !lower) return byAddress;
+  const named = accounts.filter((account) => account.label?.toLowerCase().startsWith(lower));
+  return named.length === 1 ? named[0] : undefined;
 }
 
 function noAccount(wanted: string) {

@@ -277,6 +277,12 @@ describe("mail_get", () => {
     expect(
       await mailToolFromTool("mail_get", deps, context(), { id: "m3", account: "c@example.test" }),
     ).toEqual({ error: "No connected mail account c@example.test" });
+    // The account's name, as the user says it, works too.
+    const named = (await mailToolFromTool("mail_get", deps, context(), {
+      id: "m3",
+      account: "B",
+    })) as { text: string };
+    expect(named.text).toContain("Hello b");
   });
 
   it("reports a missing message as an error object", async () => {
