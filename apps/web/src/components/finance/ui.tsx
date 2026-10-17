@@ -24,6 +24,7 @@ import { createContext, type ReactNode, useContext, useEffect, useRef, useState 
 import { Link, useNavigate } from "react-router-dom";
 import { money, shortDay, transactionAmount } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { shade } from "./charts";
 
@@ -259,6 +260,7 @@ export function BreakdownRows({
   to: (row: BreakdownRow) => string;
   swatches?: boolean;
 }) {
+  useHideAmounts();
   const top = rows[0]?.cents || 1;
   return (
     <div className="-mx-2">
@@ -344,6 +346,7 @@ export const rowClass =
 
 /** Transactions: date, counterparty and memo, category, signed amount, status. Each row opens the transaction. */
 export function TransactionTable({ rows }: { rows: FinanceTransaction[] }) {
+  useHideAmounts();
   const rowProps = useRowNavigate();
   return (
     <table className="w-full border-collapse">

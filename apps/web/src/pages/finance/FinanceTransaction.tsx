@@ -17,6 +17,7 @@ import {
 } from "../../components/finance/ui";
 import { fullDay, monthLabel, transactionAmount } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 
 export const ReceiptIcon = () => (
@@ -117,6 +118,7 @@ function CheckReceipt({ id }: { id: string }) {
 }
 
 export function FinanceTransactionPage({ id }: { id: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.transaction({ id }), [id]);
   const data = q.data;
   const txn = data?.transaction;

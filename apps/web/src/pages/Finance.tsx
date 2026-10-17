@@ -29,6 +29,7 @@ import {
   useRowNavigate,
 } from "../components/finance/ui";
 import { WalletDialog } from "../components/finance/WalletDialog";
+import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { AppLogo } from "../components/integrations/AppLogo";
 import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnectDialog";
 import {
@@ -38,9 +39,11 @@ import {
   money,
   monthFull,
   paidWithLabel,
+  runwayText,
   shortDay,
 } from "../lib/finance-format";
 import { financePath, parseFinanceRoute } from "../lib/finance-route";
+import { useHideAmounts } from "../lib/hide-amounts-preference";
 import { FINANCE_PROVIDERS } from "../lib/integrations";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
@@ -263,6 +266,7 @@ function Overview({
   onRefresh: () => void;
   onReload: () => void;
 }) {
+  useHideAmounts();
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [period, setPeriod] = useState<SpendPeriod>("month");
@@ -285,13 +289,13 @@ function Overview({
   const upcomingRows = [...data.upcoming.items].sort((a, b) =>
     (a.dates[0] ?? "").localeCompare(b.dates[0] ?? ""),
   );
-  const runwayMonths = data.runway.months?.toFixed(1);
+  const runwayMonths = runwayText(data.runway.months);
   const stablecoins = data.cash.stablecoinCents ?? 0;
   const otherCounted = data.cash.otherCryptoCents ?? 0;
   const bankCash = data.cash.bankCashCents ?? data.cash.cashCents - stablecoins - otherCounted;
   const heldStablecoins = data.crypto?.stablecoinCents ?? 0;
   const heldTotal = data.crypto?.totalCents ?? 0;
-  const bankRunwayMonths = data.bankRunway?.months?.toFixed(1);
+  const bankRunwayMonths = runwayText(data.bankRunway?.months);
   const runOutMonth = data.runway.runOutDate ? monthFull(data.runway.runOutDate.slice(0, 7)) : "";
   const previousSpend = month.previousCents === null ? null : money(month.previousCents);
   const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
@@ -315,6 +319,7 @@ function Overview({
           <Trans>Finance</Trans>
         </h1>
         <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
+          <HideAmountsButton />
           {syncing ? <Trans>Syncing…</Trans> : updated ? <Trans>Updated {updated}</Trans> : null}
           <Button
             variant="ghost"
@@ -653,6 +658,7 @@ const upcomingTag = (kind: UpcomingItem["kind"]) =>
   kind === "recurring" ? t`recurring` : kind === "pending" ? t`pending` : t`bill`;
 
 function UpcomingRow({ item }: { item: UpcomingItem }) {
+  useHideAmounts();
   const to =
     item.kind === "recurring"
       ? financePath.recurring(item.key)
@@ -696,6 +702,7 @@ function UpcomingRow({ item }: { item: UpcomingItem }) {
 }
 
 function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }) {
+  useHideAmounts();
   const rowProps = useRowNavigate();
   return (
     <table className="w-full border-collapse">

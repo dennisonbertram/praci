@@ -24,8 +24,11 @@ import {
   monthFull,
   monthLabel,
   monthShort,
+  percentFigure,
+  runwayText,
 } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 
 const burnCrumbs = () => [
@@ -36,6 +39,7 @@ const burnCrumbs = () => [
 const netText = (cents: number) => `${cents < 0 ? "−" : "+"}${money(cents)}`;
 
 export function FinanceBurnPage() {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.burn(), []);
   const navigate = useNavigate();
   const rowProps = useRowNavigate();
@@ -117,7 +121,7 @@ export function FinanceBurnPage() {
                       </td>
                       <td className="text-end tabular-nums">{money(cents)}</td>
                       <td className="text-end text-muted-foreground tabular-nums">
-                        {Math.round((cents / accountTotal) * 100)}%
+                        {percentFigure(Math.round((cents / accountTotal) * 100), 0)}
                       </td>
                       <Chevron />
                     </tr>
@@ -184,6 +188,7 @@ export function FinanceBurnPage() {
 }
 
 export function FinanceMonthPage({ month }: { month: string }) {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.month({ month }), [month]);
   const data = q.data;
   return (
@@ -226,13 +231,14 @@ export function FinanceMonthPage({ month }: { month: string }) {
 }
 
 export function FinanceRunwayPage() {
+  useHideAmounts();
   const q = useFinanceQuery(() => rpc.finance.runway(), []);
   const data = q.data;
   // The projection may repeat the current month; the line continues from the last known balance.
   const lastKnown = data?.history.at(-1)?.month ?? "";
   const ahead = data?.projection.filter((p) => p.month > lastKnown) ?? [];
   const points = [...(data?.history ?? []), ...ahead];
-  const runMonths = data?.runway.months?.toFixed(1);
+  const runMonths = runwayText(data?.runway.months);
   const parts = data?.breakdown;
   const hasCrypto = !!parts && (parts.stablecoinCents > 0 || parts.otherCryptoCents > 0);
   return (

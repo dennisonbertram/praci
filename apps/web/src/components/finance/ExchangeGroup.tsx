@@ -17,6 +17,7 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { moneyExact } from "../../lib/finance-format";
+import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { EXCHANGES } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -33,6 +34,7 @@ export function ExchangeGroup({
   exchange: FinanceExchange;
   onChanged: () => void;
 }) {
+  useHideAmounts();
   const { t } = useLingui();
   const name = exchangeName(exchange.provider);
   const [confirming, setConfirming] = useState(false);
