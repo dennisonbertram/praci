@@ -10,6 +10,7 @@ import {
   DEMO_GROUP,
   DEMO_USER_NAME,
   demoFinance,
+  demoFolderPaths,
   MOCK_NOTE,
 } from "./data.js";
 
@@ -160,9 +161,13 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
 
   // Data room: folders and documents (uploaded through the real route, then ingested).
   const folders = new Map<string, string>();
-  for (const name of new Set(DEMO_DOCUMENTS.map((d) => d.folder))) {
-    const folder = await session.rpc<{ id: string }>("dataRoom/folderCreate", { name });
-    folders.set(name, folder.id);
+  for (const path of demoFolderPaths(DEMO_DOCUMENTS)) {
+    const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : null;
+    const folder = await session.rpc<{ id: string }>("dataRoom/folderCreate", {
+      name: path.slice(path.lastIndexOf("/") + 1),
+      parentId: parent ? folders.get(parent) : null,
+    });
+    folders.set(path, folder.id);
   }
   for (const document of DEMO_DOCUMENTS) {
     const bytes =
@@ -170,7 +175,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     await session.upload(
       document.name,
       folders.get(document.folder) as string,
-      document.kind === "pdf" ? "application/pdf" : "text/csv",
+      document.kind === "csv" ? "text/csv" : "application/pdf",
       bytes,
     );
   }

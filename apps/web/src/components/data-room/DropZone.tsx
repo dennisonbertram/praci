@@ -8,6 +8,7 @@ import { dataRoomItemPath, dragHasFiles } from "../../lib/data-room";
 import {
   dismissUploadToast,
   getUploadToasts,
+  holdUploadToasts,
   setUploadScope,
   subscribeUploadToasts,
   type UploadFailure,
@@ -20,6 +21,15 @@ const failureText = (reason: UploadFailure) =>
     : reason === "invalid"
       ? t`Unsupported file name`
       : t`Upload failed`;
+
+const duplicateText = ({ name, folder }: { name?: string; folder?: string }) =>
+  folder
+    ? name
+      ? t`Already in ${folder} as ${name}`
+      : t`Already in ${folder}`
+    : name
+      ? t`Already in your Data room as ${name}`
+      : t`Already in your Data room`;
 
 /** A full-window drop target for files, plus one toast per upload. Mounted once for every signed-in page. */
 export function DataRoomDropZone({ userId }: { userId: string | null }) {
@@ -100,19 +110,29 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
           role="status"
           aria-live="polite"
           data-testid="data-room-toasts"
-          className="fixed end-4 bottom-20 z-100 flex w-72 flex-col gap-2"
+          // Phones: the full width less a 16px gutter each side, so the toast is centred.
+          className="fixed inset-x-4 bottom-20 z-100 flex flex-col gap-2 sm:left-auto sm:w-72"
+          onPointerEnter={() => holdUploadToasts(true)}
+          onPointerLeave={() => holdUploadToasts(false)}
         >
           {toasts.map(({ id, name, state }) => (
             <div key={id} className="rounded-lg border border-border bg-card p-3 text-sm shadow-md">
               <div className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate" title={name}>
-                  {name}
-                </span>
+                {/* A delete leads with the outcome; the name follows. */}
+                {state.kind === "deleted" ? (
+                  <span className="font-medium">
+                    <Trans>Deleted</Trans>
+                  </span>
+                ) : (
+                  <span className="min-w-0 truncate" title={name}>
+                    {name}
+                  </span>
+                )}
                 {state.kind === "uploading" ? (
                   <span className="text-xs text-muted-foreground tabular-nums">
                     {Math.round(state.fraction * 100)}%
                   </span>
-                ) : state.kind === "error" ? (
+                ) : (
                   <Button
                     variant="ghost"
                     size="icon-xs"
@@ -121,7 +141,7 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                   >
                     <X aria-hidden="true" />
                   </Button>
-                ) : null}
+                )}
               </div>
               {state.kind === "uploading" ? (
                 <div
@@ -137,11 +157,17 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                     style={{ width: `${Math.round(state.fraction * 100)}%` }}
                   />
                 </div>
-              ) : state.kind === "filed" ? (
-                <div className="mt-1 flex items-center justify-between text-xs">
-                  <span className="text-success">
-                    <Trans>Filed</Trans>
-                  </span>
+              ) : state.kind === "uploaded" ? (
+                <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                  {state.existing ? (
+                    <span className="min-w-0 text-muted-foreground">
+                      {duplicateText(state.existing)}
+                    </span>
+                  ) : (
+                    <span className="text-success">
+                      <Trans>Uploaded</Trans>
+                    </span>
+                  )}
                   <Link
                     to={dataRoomItemPath(state.itemId)}
                     className="font-medium underline-offset-2 hover:underline"
@@ -150,6 +176,10 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                     <Trans>View</Trans>
                   </Link>
                 </div>
+              ) : state.kind === "deleted" ? (
+                <p className="mt-1 truncate text-xs text-muted-foreground" title={name}>
+                  {name}
+                </p>
               ) : (
                 <p className="mt-1 text-xs text-destructive">{failureText(state.reason)}</p>
               )}

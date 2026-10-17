@@ -389,6 +389,18 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
     expect(await reload(item.id)).toMatchObject({ status: "failed", failures: 3 });
   });
 
+  it("fails a file that is not a readable PDF at once, with a plain reason", async () => {
+    reset();
+    const junk = new TextEncoder().encode("%PDF-1.4\nMOCK not really a PDF\n");
+    const item = await addItem(junk, { name: "MOCK junk.pdf", mimeType: "application/pdf" });
+    // Reading the same bytes again cannot succeed, so the job does not ask to be retried.
+    await runDataRoomIngest(deps(), { ...scope(), itemId: item.id });
+    expect(await reload(item.id)).toMatchObject({
+      status: "failed",
+      error: "This file isn't a readable PDF.",
+    });
+  });
+
   it("lets exactly one of two overlapping index runs embed, and the loser writes nothing", async () => {
     reset();
     const item = await addItem("overlap text");

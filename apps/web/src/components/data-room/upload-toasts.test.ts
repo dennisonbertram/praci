@@ -2,8 +2,9 @@
 
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-const hoisted = vi.hoisted(() => ({ upload: vi.fn(), space: { id: "s1" } }));
+const hoisted = vi.hoisted(() => ({ upload: vi.fn(), folders: vi.fn(), space: { id: "s1" } }));
 vi.mock("../../lib/rpc", () => ({
+  rpc: { dataRoom: { folders: hoisted.folders } },
   selectedSpaceId: () => hoisted.space.id,
   withSpaceHeaders: () => new Headers(),
 }));
@@ -13,7 +14,15 @@ vi.mock("../../lib/data-room", async (original) => ({
 }));
 
 import { DataRoomUploadError } from "../../lib/data-room";
-import { getUploadToasts, setUploadScope, uploadFilesToDataRoom } from "./upload-toasts";
+import {
+  dismissUploadToast,
+  getUploadToasts,
+  holdUploadToasts,
+  setOpenDataRoomFolder,
+  setUploadScope,
+  showDeletedToast,
+  uploadFilesToDataRoom,
+} from "./upload-toasts";
 
 const names = () => getUploadToasts().map((toast) => toast.name);
 const file = (name: string) => new File(["x"], name);
@@ -23,6 +32,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   hoisted.space.id = "s1";
   setUploadScope(null);
+  setOpenDataRoomFolder(undefined);
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -66,5 +76,84 @@ it("dismisses a failed upload by itself after a while", async () => {
   await flush();
   expect(names()).toEqual(["big.bin"]);
   await vi.advanceTimersByTimeAsync(20_000);
+  expect(names()).toEqual([]);
+});
+
+it("uploads into the folder the Data room page has open, else the root", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockResolvedValue({ item: { id: "i1", name: "a.txt" }, duplicate: false });
+  setOpenDataRoomFolder("f-product");
+  uploadFilesToDataRoom([file("a.txt")]);
+  setOpenDataRoomFolder(undefined);
+  uploadFilesToDataRoom([file("b.txt")]);
+  await flush();
+  expect(hoisted.upload.mock.calls.map((call) => call[1])).toEqual(["f-product", undefined]);
+});
+
+it("says uploaded, or where the identical file already is and its name when it differs", async () => {
+  setUploadScope("u1");
+  hoisted.folders.mockResolvedValue([
+    { id: "f-legal", parentId: null, name: "Legal" },
+    { id: "f-leases", parentId: "f-legal", name: "Leases" },
+  ]);
+  hoisted.upload
+    .mockResolvedValueOnce({
+      item: { id: "i1", name: "new.txt", folderId: null },
+      duplicate: false,
+    })
+    .mockResolvedValueOnce({
+      item: { id: "i0", name: "lease.pdf", folderId: "f-leases" },
+      duplicate: true,
+    })
+    .mockResolvedValueOnce({
+      item: { id: "i2", name: "same.txt", folderId: null },
+      duplicate: true,
+    });
+  uploadFilesToDataRoom([file("new.txt"), file("lease copy.pdf"), file("same.txt")]);
+  await flush();
+  expect(getUploadToasts().map((toast) => toast.state)).toEqual([
+    { kind: "uploaded", itemId: "i1" },
+    {
+      kind: "uploaded",
+      itemId: "i0",
+      existing: { name: "lease.pdf", folder: "Legal / Leases" },
+    },
+    { kind: "uploaded", itemId: "i2", existing: {} },
+  ]);
+});
+
+it("shows a Deleted toast that goes away by itself after a few seconds", async () => {
+  setUploadScope("u1");
+  showDeletedToast("old.txt");
+  expect(getUploadToasts().map((toast) => [toast.name, toast.state.kind])).toEqual([
+    ["old.txt", "deleted"],
+  ]);
+  await vi.advanceTimersByTimeAsync(6_000);
+  expect(names()).toEqual([]);
+});
+
+it("keeps a finished toast while the pointer is over the toasts, then lets it go", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockResolvedValue({ item: { id: "i1", name: "a.txt" }, duplicate: false });
+  uploadFilesToDataRoom([file("a.txt")]);
+  await flush();
+  holdUploadToasts(true);
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(names()).toEqual(["a.txt"]);
+  holdUploadToasts(false);
+  await vi.advanceTimersByTimeAsync(3_000);
+  expect(names()).toEqual([]);
+});
+
+it("stops holding once the last toast is closed under the pointer", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockResolvedValue({ item: { id: "i1", name: "a.txt" }, duplicate: false });
+  uploadFilesToDataRoom([file("a.txt")]);
+  await flush();
+  holdUploadToasts(true);
+  dismissUploadToast(getUploadToasts()[0]?.id ?? 0);
+  uploadFilesToDataRoom([file("b.txt")]);
+  await flush();
+  await vi.advanceTimersByTimeAsync(11_000);
   expect(names()).toEqual([]);
 });

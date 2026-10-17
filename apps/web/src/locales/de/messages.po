@@ -728,6 +728,22 @@ msgstr "Einmal erlaubt"
 msgid "Already have an account?"
 msgstr "Du hast bereits ein Konto?"
 
+#: src/components/data-room/DropZone.tsx
+msgid "Already in {folder}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in {folder} as {name}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in your Data room"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Already in your Data room as {name}"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr ""
@@ -1145,7 +1161,7 @@ msgstr "Bot"
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "Bot"
-msgstr ""
+msgstr "Bot"
 
 #: src/pages/Shell.tsx
 msgid "Bot screen"
@@ -1529,8 +1545,16 @@ msgstr "Unterhaltung leeren"
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Clear filters"
+msgstr ""
+
 #: src/components/compose/RichTextEditor.tsx
 msgid "Clear formatting"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Clear search"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -2431,6 +2455,10 @@ msgstr ""
 msgid "Couldn't reach Gmail."
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "Couldn't read this file"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Couldn't save the draft"
 msgstr ""
@@ -2629,7 +2657,7 @@ msgstr "Standard"
 #. placeholder {0}: thinkingLevelLabel("medium")
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Default ({0})"
-msgstr ""
+msgstr "Standard ({0})"
 
 #. placeholder {0}: thinkingLevelLabel("medium")
 #. placeholder {0}: thinkingLevelLabel(defaultThinkingLevel)
@@ -2645,6 +2673,7 @@ msgstr "Standardbereich"
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
@@ -2696,9 +2725,18 @@ msgstr "Erinnerungen ebenfalls löschen"
 msgid "Delete space"
 msgstr ""
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Delete the folder {0}?"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "deleted"
 msgstr "gelöscht"
+
+#: src/components/data-room/DropZone.tsx
+msgid "Deleted"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2848,6 +2886,10 @@ msgstr "Docker begrenzt für mehr Sicherheit den Zugriff auf deinen Computer. We
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Document date"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -3009,6 +3051,10 @@ msgid "Engage when... Ignore..."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a folder name without slashes"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
 msgid "Enter a name without slashes"
 msgstr ""
 
@@ -3153,7 +3199,7 @@ msgstr "Sehr hoch"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Extra high"
-msgstr ""
+msgstr "Sehr hoch"
 
 #: src/components/CloudAgentCard.tsx
 msgid "failed"
@@ -3161,7 +3207,6 @@ msgstr "fehlgeschlagen"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
-#: src/components/data-room/Preview.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
@@ -3196,17 +3241,9 @@ msgstr ""
 msgid "File is too large to upload."
 msgstr "Datei ist zu groß zum Hochladen."
 
-#: src/components/data-room/DropZone.tsx
-msgid "Filed"
-msgstr ""
-
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Files"
 msgstr "Dateien"
-
-#: src/components/data-room/format.ts
-msgid "Filing"
-msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Filter"
@@ -3302,6 +3339,7 @@ msgid "Flag unexpected actions"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 msgid "Folder"
 msgstr ""
@@ -3494,7 +3532,7 @@ msgstr "Hoch"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "High"
-msgstr ""
+msgstr "Hoch"
 
 #: src/pages/CapTable.tsx
 msgid "Holding"
@@ -3539,6 +3577,10 @@ msgstr "Wenn du das gehört hast, ist die Stimme einsatzbereit."
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Ignore"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Image hidden while amounts are hidden"
 msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -3749,6 +3791,10 @@ msgstr "{app} gestartet"
 msgid "Leave"
 msgstr ""
 
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Let Rakazo read your documents"
+msgstr ""
+
 #: src/components/AiDataSharing.tsx
 msgid "Let Rakazo sort your mail"
 msgstr ""
@@ -3892,7 +3938,7 @@ msgstr "Niedrig"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Low"
-msgstr ""
+msgstr "Niedrig"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
@@ -4002,7 +4048,7 @@ msgstr "Max."
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Max"
-msgstr ""
+msgstr "Max."
 
 #: src/pages/Artifacts.tsx
 msgid "Maximize"
@@ -4034,7 +4080,7 @@ msgstr "Mittel"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Medium"
-msgstr ""
+msgstr "Mittel"
 
 #: src/pages/GroupPanel.tsx
 msgid "Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
@@ -4122,7 +4168,7 @@ msgstr "Minimal"
 #. js-lingui-explicit-id
 #: src/lib/model-catalog.ts
 msgid "Minimal"
-msgstr ""
+msgstr "Minimal"
 
 #: src/pages/WindowChrome.tsx
 msgid "Minimize"
@@ -4243,9 +4289,13 @@ msgstr ""
 msgid "More computer actions"
 msgstr ""
 
-#: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Move {0} to"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -4255,6 +4305,10 @@ msgstr "{full} nach unten verschieben"
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Move {full} up"
 msgstr "{full} nach oben verschieben"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Move or delete what is in this folder first."
+msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Move them to your shared memory."
@@ -4343,6 +4397,14 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "New Bot"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "New folder name"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "New folder…"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
@@ -4663,6 +4725,10 @@ msgstr ""
 msgid "on the 1st at {0}"
 msgstr "am 1. um {0}"
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Only an empty folder can be deleted. This can't be undone."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
@@ -4941,7 +5007,6 @@ msgstr ""
 msgid "pending"
 msgstr ""
 
-#: src/components/data-room/format.ts
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
@@ -5400,11 +5465,15 @@ msgstr ""
 msgid "Removes the connection and agent access."
 msgstr ""
 
-#: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Rename"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Rename {0}"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -5783,9 +5852,21 @@ msgstr ""
 msgid "Search mail, e.g. from:sam has:attachment"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Search matches words in names and text."
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Search matches words in names and text. Try fewer words."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
 msgstr "Modelle suchen"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Search names and text"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Search older mail"
@@ -6235,6 +6316,7 @@ msgstr "Wird gestartet…"
 msgid "Statement files"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
@@ -6281,6 +6363,10 @@ msgstr "Antworten streamen"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Streamable HTTP"
+msgstr ""
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Sub-folders"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -6474,6 +6560,7 @@ msgstr ""
 msgid "This bot runs on this computer, not a Linux desktop. Shell and files use your home folder."
 msgstr "Dieser Bot wird auf diesem Computer und nicht auf einem Linux-Desktop ausgeführt. Shell und Dateien verwenden deinen persönlichen Ordner."
 
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Artifacts.tsx
 msgid "This can't be undone."
 msgstr ""
@@ -6501,6 +6588,10 @@ msgstr ""
 
 #: src/components/ArtifactFileCard.tsx
 msgid "This file is not valid UTF-8 text."
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "This folder is empty. Drop files here to add them."
 msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
@@ -6587,6 +6678,10 @@ msgstr ""
 msgid "To do"
 msgstr ""
 
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "To tag new files and sort them into folders for you, their text (and images) is sent to {names}. Until then you can search by name and text and move files into folders yourself."
+msgstr ""
+
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
 msgstr "An:"
@@ -6612,6 +6707,10 @@ msgstr ""
 #. placeholder {0}: tools.length
 #: src/components/integrations/AppDetail.tsx
 msgid "Tools · {0}"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Top level"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -6877,6 +6976,10 @@ msgstr ""
 #. placeholder {0}: first.accountName
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "Upload the {month} statement for {0}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded"
 msgstr ""
 
 #: src/lib/ticket-priority.ts
@@ -7193,6 +7296,10 @@ msgstr "Du kannst diesen Tab schließen, wenn du nicht automatisch weitergeleite
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this window."
 msgstr "Du kannst dieses Fenster schließen."
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "You can search documents by name and text and move them into folders yourself. Set up a model in Settings to have new files tagged and sorted into folders for you."
+msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "You have an unsent reply to this email."

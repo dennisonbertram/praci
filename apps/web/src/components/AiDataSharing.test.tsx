@@ -22,6 +22,7 @@ vi.mock("@rakazo/ui-web", () => ({
     </button>
   ),
   Card: ({ children }: { children?: ReactNode }) => <section>{children}</section>,
+  cn: (...names: unknown[]) => names.filter(Boolean).join(" "),
   Switch: ({
     checked,
     onCheckedChange,
