@@ -353,6 +353,10 @@ msgstr ""
 msgid "{size} B"
 msgstr "{size} B"
 
+#: src/pages/Finance.tsx
+msgid "{soFar} · spent {spentRange}"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{sourceName} cash"
 msgstr ""
@@ -384,6 +388,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} 正在工作"
+
+#: src/pages/Finance.tsx
+msgid "{year} so far"
+msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "{yieldAmount} last month"
@@ -3310,10 +3318,6 @@ msgstr "每周"
 msgid "Exchange"
 msgstr ""
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Excluded"
-msgstr ""
-
 #: src/pages/shell/message-cards.tsx
 msgid "Expand"
 msgstr "展开"
@@ -3774,6 +3778,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "In cash, not counted as burn"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -5428,6 +5436,10 @@ msgstr "提供方"
 #: src/components/CloudAgentCard.tsx
 msgid "Pull request"
 msgstr "拉取请求"
+
+#: src/pages/Finance.tsx
+msgid "Q{quarter} so far"
+msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Quarter"

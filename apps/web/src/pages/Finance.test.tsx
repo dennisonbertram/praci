@@ -516,6 +516,15 @@ it("shows the figures, syncs once, and lets the period chips change the spend nu
   );
   await act(async () => (year as HTMLElement).click());
   expect(total()).toContain("$77,777");
+
+  // A quarter that has just begun says so, so it does not look like the month repeated.
+  const quarter = [...container.querySelectorAll('[role="tab"]')].find(
+    (tab) => tab.textContent === "Quarter",
+  );
+  await act(async () => (quarter as HTMLElement).click());
+  expect(container.textContent?.replace(/[\s\u2009]+/g, " ")).toContain(
+    "Q4 so far · spent Oct 1 – 14",
+  );
 });
 
 it("switches the breakdown between category and vendor", async () => {

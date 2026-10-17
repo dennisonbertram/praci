@@ -10,7 +10,7 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
-import { LineChart } from "./charts";
+import { BurnBars, LineChart } from "./charts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => setHideAmounts(false));
@@ -35,4 +35,44 @@ it("does not draw a finance chart while amounts are hidden, so its shape shows n
   await act(async () => setHideAmounts(false));
   expect(el.querySelector("[data-testid=chart-hidden]")).toBeNull();
   act(() => root.unmount());
+});
+
+it("scales the Burn bars to spend, and cuts a much larger raise at the top with its amount", async () => {
+  const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+  Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+    configurable: true,
+    get: () => 600,
+  });
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+  const day = (d: number, outCents: number, financingCents = 0) => ({
+    start: `2026-10-0${d}`,
+    end: `2026-10-0${d}`,
+    outCents,
+    revenueCents: 0,
+    financingCents,
+    partial: false,
+  });
+  await act(async () =>
+    root.render(
+      <BurnBars
+        label="Burn"
+        height={200}
+        granularity="day"
+        series={[day(1, 400_000), day(2, 300_000, 25_000_000)]}
+        onOpen={() => {}}
+      />,
+    ),
+  );
+  expect(el.querySelector("[data-testid=financing-clipped]")?.textContent).toBe("↑ $250,000");
+  // The spend bar fills most of the plot instead of being a sliver under a $300k axis.
+  const tallest = Math.max(
+    ...[...el.querySelectorAll("rect.fill-foreground")].map((r) =>
+      Number(r.getAttribute("height")),
+    ),
+  );
+  expect(tallest).toBeGreaterThan(100);
+  act(() => root.unmount());
+  if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
 });

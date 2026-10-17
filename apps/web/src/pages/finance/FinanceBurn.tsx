@@ -363,8 +363,8 @@ export function FinanceRunwayPage() {
             <Kv>
               <KvRow label={t`Burn`}>{t`Spending minus revenue, 3-mo avg`}</KvRow>
               <KvRow label={t`Revenue`}>{t`Subtracted from burn`}</KvRow>
-              <KvRow label={t`Financing`}>{t`Excluded`}</KvRow>
-              <KvRow label={t`Treasury yield`}>{t`Excluded`}</KvRow>
+              <KvRow label={t`Financing`}>{t`In cash, not counted as burn`}</KvRow>
+              <KvRow label={t`Treasury yield`}>{t`In cash, not counted as burn`}</KvRow>
               <KvRow label={t`Card balance owed`}>{t`Not counted`}</KvRow>
             </Kv>
           </Section>

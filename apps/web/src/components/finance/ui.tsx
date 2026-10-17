@@ -415,7 +415,8 @@ export function BreakdownRows({
   to: (row: BreakdownRow) => string;
   swatches?: boolean;
 }) {
-  useHideAmounts();
+  // While amounts are hidden the bar lengths would still show each share, so the bars stay empty.
+  const hidden = useHideAmounts();
   // A row that refunds outweigh is not spend; shown unsigned it would read as money out.
   const spent = rows.filter((row) => row.cents > 0);
   const top = spent[0]?.cents || 1;
@@ -439,13 +440,16 @@ export function BreakdownRows({
             {row.label}
           </span>
           <span className="col-span-full row-start-2 block h-2 overflow-hidden rounded-sm bg-muted group-hover:bg-border @md:col-span-1 @md:row-start-auto">
-            <i
-              className={cn(
-                "block h-full rounded-sm",
-                i < 2 ? "bg-foreground" : "bg-muted-foreground",
-              )}
-              style={{ width: `${Math.max((row.cents / top) * 100, 0)}%` }}
-            />
+            {hidden ? null : (
+              // A small share keeps a short bar (4px), not a dot.
+              <i
+                className={cn(
+                  "block h-full min-w-1 rounded-[2px]",
+                  i < 2 ? "bg-foreground" : "bg-muted-foreground",
+                )}
+                style={{ width: `${Math.max((row.cents / top) * 100, 0)}%` }}
+              />
+            )}
           </span>
           <span className="text-end tabular-nums">{money(row.cents)}</span>
           <ChevronRight

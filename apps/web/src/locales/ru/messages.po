@@ -353,6 +353,10 @@ msgstr ""
 msgid "{size} B"
 msgstr "{size} Б"
 
+#: src/pages/Finance.tsx
+msgid "{soFar} · spent {spentRange}"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{sourceName} cash"
 msgstr ""
@@ -384,6 +388,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} работает"
+
+#: src/pages/Finance.tsx
+msgid "{year} so far"
+msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "{yieldAmount} last month"
@@ -3310,10 +3318,6 @@ msgstr "Каждую неделю"
 msgid "Exchange"
 msgstr ""
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Excluded"
-msgstr ""
-
 #: src/pages/shell/message-cards.tsx
 msgid "Expand"
 msgstr "Развернуть"
@@ -3774,6 +3778,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "In cash, not counted as burn"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -5428,6 +5436,10 @@ msgstr "Провайдеры"
 #: src/components/CloudAgentCard.tsx
 msgid "Pull request"
 msgstr "Запрос на слияние"
+
+#: src/pages/Finance.tsx
+msgid "Q{quarter} so far"
+msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Quarter"

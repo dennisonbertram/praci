@@ -353,6 +353,10 @@ msgstr "{serverName} connected"
 msgid "{size} B"
 msgstr "{size} B"
 
+#: src/pages/Finance.tsx
+msgid "{soFar} · spent {spentRange}"
+msgstr "{soFar} · spent {spentRange}"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{sourceName} cash"
 msgstr "{sourceName} cash"
@@ -384,6 +388,10 @@ msgstr "{unpriced} unpriced"
 #: src/pages/Shell.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} is working"
+
+#: src/pages/Finance.tsx
+msgid "{year} so far"
+msgstr "{year} so far"
 
 #: src/pages/Finance.tsx
 msgid "{yieldAmount} last month"
@@ -3310,10 +3318,6 @@ msgstr "Every week"
 msgid "Exchange"
 msgstr "Exchange"
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Excluded"
-msgstr "Excluded"
-
 #: src/pages/shell/message-cards.tsx
 msgid "Expand"
 msgstr "Expand"
@@ -3775,6 +3779,10 @@ msgstr "Imported"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In"
 msgstr "In"
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "In cash, not counted as burn"
+msgstr "In cash, not counted as burn"
 
 #: src/lib/ticket-status.ts
 msgid "In progress"
@@ -5428,6 +5436,10 @@ msgstr "Providers"
 #: src/components/CloudAgentCard.tsx
 msgid "Pull request"
 msgstr "Pull request"
+
+#: src/pages/Finance.tsx
+msgid "Q{quarter} so far"
+msgstr "Q{quarter} so far"
 
 #: src/components/finance/ui.tsx
 msgid "Quarter"

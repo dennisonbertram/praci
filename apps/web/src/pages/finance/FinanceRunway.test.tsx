@@ -109,3 +109,10 @@ it("says revenue is subtracted from burn, as the burn figure is calculated", asy
   expect(container.textContent).toContain("RevenueSubtracted from burn");
   expect(container.textContent).not.toContain("RevenueExcluded");
 });
+
+it("says a raise is already in cash but not counted as burn, instead of 'Excluded'", async () => {
+  rpcMock.runway.mockResolvedValue(runway());
+  await show();
+  expect(container.textContent).toContain("FinancingIn cash, not counted as burn");
+  expect(container.textContent).not.toContain("Excluded");
+});

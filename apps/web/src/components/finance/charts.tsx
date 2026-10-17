@@ -287,13 +287,15 @@ export function BurnBars({
       {(width) => {
         const left = 40;
         const right = 4;
-        const top = 10;
         const bottom = 24;
-        const max = Math.max(
-          ...series.flatMap((m) => [m.outCents, m.revenueCents, m.financingCents]),
-          0,
+        // The scale follows spend and revenue; a raise many times larger would flatten every other
+        // bar, so a financing bar taller than the scale is cut at the top and labelled instead.
+        const max = Math.max(...series.flatMap((m) => [m.outCents, m.revenueCents]), 0);
+        const scale = niceScale(
+          max > 0 ? max : Math.max(...series.map((m) => m.financingCents), 0),
         );
-        const scale = niceScale(max);
+        const clipped = series.some((m) => m.financingCents > scale.top);
+        const top = clipped ? 22 : 10;
         const slot = (width - left - right) / Math.max(series.length, 1);
         const bw = Math.min(17, slot * 0.28);
         // Skip labels that would collide, counting back from the newest bar.
@@ -371,14 +373,26 @@ export function BurnBars({
                   {m.financingCents > 0 ? (
                     <rect
                       x={c + 1}
-                      y={y(m.financingCents)}
+                      y={y(Math.min(m.financingCents, scale.top))}
                       width={bw}
-                      height={bar(m.financingCents)}
+                      height={bar(Math.min(m.financingCents, scale.top))}
                       rx={2}
                       fill={`url(#${hatch})`}
                       className="stroke-foreground"
                       strokeWidth={1}
                     />
+                  ) : null}
+                  {m.financingCents > scale.top ? (
+                    <text
+                      data-testid="financing-clipped"
+                      x={c + 1 + bw / 2}
+                      y={top - 6}
+                      textAnchor="middle"
+                      className="fill-foreground"
+                      fontSize={10}
+                    >
+                      {`↑ ${money(m.financingCents)}`}
+                    </text>
                   ) : null}
                   {showLabel ? (
                     <text

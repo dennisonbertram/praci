@@ -370,6 +370,11 @@ function Overview({
     p.previousCents === null || p.previousCents === p.currentCents;
   const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
   const spentRange = range(totals);
+  // A quarter or year that has just begun covers the same days as the month; say it is partial.
+  const quarter = Math.floor((Number(totals.start.slice(5, 7)) - 1) / 3) + 1;
+  const year = totals.start.slice(0, 4);
+  const soFar =
+    period === "quarter" ? t`Q${quarter} so far` : period === "year" ? t`${year} so far` : null;
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
   const bars = data.cashSeries[period];
   const barGranularity = BAR_GRANULARITY[period];
@@ -539,7 +544,7 @@ function Overview({
                 {money(totals.currentCents)}
               </Link>
               <span className="text-[11px] text-muted-foreground">
-                {t`Spent ${spentRange}`}
+                {soFar ? t`${soFar} · spent ${spentRange}` : t`Spent ${spentRange}`}
                 {sameAsBefore(totals) ? null : (
                   <>
                     {" · "}
