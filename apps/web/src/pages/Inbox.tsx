@@ -101,8 +101,11 @@ export function InboxPage({
   onRefreshed,
   onShowAgent,
   paused,
+  spaceName,
 }: {
   onConnectMail: () => void;
+  /** The space's name, when the user has more than one, so they know whose mail this is. */
+  spaceName?: string;
   /** Called after a sync so the sidebar can refresh its unread count. */
   onRefreshed: () => void;
   /** Set while the Inbox agent panel is collapsed; shows the button that reopens it. */
@@ -583,9 +586,14 @@ export function InboxPage({
       className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-6 xl:px-10"
     >
       <div className="mb-5 flex flex-wrap items-center gap-2 @md:flex-nowrap">
-        <h1 className="me-auto shrink-0 text-lg font-semibold @md:me-1">
-          <Trans>Inbox</Trans>
-        </h1>
+        <div className="me-auto flex min-w-0 shrink-0 flex-col @md:me-1">
+          <h1 className="text-lg font-semibold">
+            <Trans>Inbox</Trans>
+          </h1>
+          {spaceName ? (
+            <span className="max-w-48 truncate text-xs text-muted-foreground">{spaceName}</span>
+          ) : null}
+        </div>
         <form
           ref={searchRef}
           className="order-last min-w-0 basis-full @md:order-none @md:flex-1 @md:basis-auto"
@@ -610,6 +618,8 @@ export function InboxPage({
               }}
               placeholder={t`Search mail, e.g. from:sam has:attachment`}
               aria-label={t`Search mail`}
+              // Nothing to search or filter before mail is connected.
+              disabled={Boolean(data) && accounts.length === 0}
               maxLength={MAX_QUERY}
               className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
               autoComplete="off"
@@ -645,6 +655,7 @@ export function InboxPage({
         <DropdownMenu>
           <DropdownMenuTrigger
             data-testid="inbox-filter"
+            disabled={Boolean(data) && accounts.length === 0}
             render={
               <Button
                 variant={filter || (triage && category) ? "secondary" : "outline"}
@@ -759,9 +770,16 @@ export function InboxPage({
       {failed ? (
         <div role="alert" className="mb-4 flex items-center gap-3 text-sm text-destructive">
           <span>{failed}</span>
-          <Button variant="outline" size="sm" onClick={retry}>
-            <Trans>Try again</Trans>
-          </Button>
+          {/* A lapsed sign-in is fixed by signing in again; trying again would fail the same way. */}
+          {!error && shown?.reconnectAccounts.length ? (
+            <Button variant="outline" size="sm" onClick={onConnectMail}>
+              <Trans>Reconnect Gmail</Trans>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={retry}>
+              <Trans>Try again</Trans>
+            </Button>
+          )}
         </div>
       ) : null}
 

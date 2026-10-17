@@ -137,6 +137,7 @@ export const Empty: Story = {
 };
 
 export const NoMailAccount: Story = {
+  args: { spaceName: "Empty space" },
   beforeEach: () => mockRpc({ "inbox.list": { ...list, accounts: [], rows: [] } }),
 };
 

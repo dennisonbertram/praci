@@ -180,6 +180,7 @@ const Probe = () => {
 };
 
 const cleanups: Array<() => Promise<void>> = [];
+const connectMail = vi.fn();
 async function render(entries = ["/app/inbox"], index?: number) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
@@ -189,7 +190,7 @@ async function render(entries = ["/app/inbox"], index?: number) {
     root.render(
       <MemoryRouter initialEntries={entries} initialIndex={index}>
         <Probe />
-        <InboxPage onConnectMail={() => {}} onRefreshed={() => {}} paused={false} />
+        <InboxPage onConnectMail={connectMail} onRefreshed={() => {}} paused={false} />
       </MemoryRouter>,
     ),
   );
@@ -714,4 +715,24 @@ it("looks for new mail once a minute while it is open", async () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("offers Reconnect Gmail, not Try again, when an account's sign-in lapsed", async () => {
+  rpcMock.list.mockResolvedValue(
+    list([row("a")], { failedAccounts: ["Me"], reconnectAccounts: ["Me"] }),
+  );
+  const c = await render();
+  expect(c.querySelector('[role="alert"]')?.textContent).toContain(
+    "Gmail needs to be reconnected.",
+  );
+  await click(byText(c, "Reconnect Gmail"));
+  expect(connectMail).toHaveBeenCalledTimes(1);
+  expect(c.textContent).not.toContain("Try again");
+});
+
+it("turns off search and Filter until mail is connected", async () => {
+  rpcMock.list.mockResolvedValue(list([], { accounts: [] }));
+  const c = await render();
+  expect(c.textContent).toContain("No mail connected");
+  expect(c.querySelector<HTMLInputElement>('input[aria-label="Search mail"]')?.disabled).toBe(true);
 });

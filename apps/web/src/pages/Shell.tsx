@@ -4354,6 +4354,11 @@ export function ShellPage() {
             }
             onRefreshed={refreshInboxUnread}
             onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
           />
         ) : !active && !activeGroup && initialBotsLoaded ? (
           <div className="grid flex-1 place-items-center">
