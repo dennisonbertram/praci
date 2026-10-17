@@ -19,6 +19,7 @@ const meta = {
         folders={folderNodes(folders)}
         onClose={() => undefined}
         onDone={() => undefined}
+        onOpenFolder={() => undefined}
       />
     </>
   ),
@@ -45,7 +46,7 @@ export const MoveToNewFolder: Story = {
 /** A folder: it cannot move into itself or its sub-folders, so those are not offered. */
 export const MoveFolder: Story = { args: { action: "move", folder: true } };
 export const RenameFolder: Story = { args: { action: "rename", folder: true } };
-/** A folder with something in it: the dialog says what it holds and offers no Delete. */
+/** A folder with something in it: the dialog says what it holds and offers to open it, not Delete. */
 export const DeleteFolder: Story = { args: { action: "delete", folder: true } };
 /** An empty folder is deleted after a confirmation. */
 export const DeleteEmptyFolder: Story = { args: { action: "delete", emptyFolder: true } };

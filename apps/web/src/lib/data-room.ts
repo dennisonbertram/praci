@@ -149,19 +149,32 @@ export const canOpenInBrowser = (item: Pick<DataRoomApiItem, "mimeType">) =>
 
 /**
  * Shows the file in a new tab, typed by us (never by the server), for reading without saving it.
- * The tab opens at once, before the bytes arrive, so the browser does not block it as a pop-up.
+ * The tab opens at once, before the bytes arrive, so the browser does not block it as a pop-up. It
+ * is titled with the file's name (a bare blob URL would title it with a random id) and shows the
+ * file in a frame that fills it.
  */
-export async function openDataRoomItem(item: Pick<DataRoomApiItem, "id" | "mimeType">) {
+export async function openDataRoomItem(item: Pick<DataRoomApiItem, "id" | "mimeType" | "name">) {
   const tab = window.open("", "_blank");
   if (tab) tab.opener = null;
   try {
     const blob = await fetchDataRoomBlob(item);
     const url = URL.createObjectURL(new Blob([blob], { type: item.mimeType }));
-    if (tab) tab.location.href = url;
+    if (tab) showInTab(tab, item.name, url);
     else window.open(url, "_blank", "noopener");
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   } catch (error) {
     tab?.close();
     throw error;
   }
+}
+
+function showInTab(tab: Window, name: string, url: string) {
+  const doc = tab.document;
+  doc.title = name;
+  doc.body.style.margin = "0";
+  const frame = doc.createElement("iframe");
+  frame.title = name;
+  frame.src = url;
+  frame.style.cssText = "border:0;display:block;width:100vw;height:100vh";
+  doc.body.replaceChildren(frame);
 }

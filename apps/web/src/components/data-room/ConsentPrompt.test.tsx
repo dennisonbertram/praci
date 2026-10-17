@@ -98,15 +98,21 @@ it("shows nothing once allowed", async () => {
   expect(container.textContent).toBe("");
 });
 
-it("hides on Not now, without allowing, and stays hidden next visit until the request changes", async () => {
+it("shrinks to one line on Not now, without allowing, with a way to be asked again", async () => {
   rpc.consent.mockResolvedValue(status());
   const onAllowed = vi.fn();
   await render(onAllowed);
   const notNow = [...container.querySelectorAll("button")].find((b) => b.textContent === "Not now");
   await act(async () => notNow?.click());
-  expect(container.textContent).toBe("");
+  expect(container.textContent).not.toContain("Example Model");
   expect(rpc.consentGrant).not.toHaveBeenCalled();
   expect(onAllowed).not.toHaveBeenCalled();
+  const askAgain = [...container.querySelectorAll("button")].find(
+    (b) => b.textContent === "Let Rakazo read documents",
+  );
+  await act(async () => askAgain?.click());
+  expect(container.textContent).toContain("Example Model");
+  expect(localStorage.getItem("rakazo.dataRoomConsentDismissed")).toBeNull();
 });
 
 it("remembers Not now across visits, and asks again for a new version", async () => {
@@ -117,7 +123,7 @@ it("remembers Not now across visits, and asks again for a new version", async ()
   await act(async () => root.unmount());
   root = createRoot(container);
   await render();
-  expect(container.textContent).toBe("");
+  expect(container.textContent).not.toContain("Example Model");
 
   await act(async () => root.unmount());
   root = createRoot(container);

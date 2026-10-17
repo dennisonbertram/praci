@@ -21,7 +21,7 @@ import {
 } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { sourceLabel } from "./FilterBar";
-import { dateText, isSettled, sizeText, statusLabel, typeLabel } from "./format";
+import { dateText, isSettled, sizeText, typeLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
 
 function amountText(item: DataRoomApiItem) {
@@ -151,7 +151,9 @@ export function Preview({
           {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
         </div>
       ) : !isSettled(item.status) ? (
-        <p className="text-sm text-muted-foreground">{statusLabel(item.status)}</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>Reading this file. You can keep working while it finishes.</Trans>
+        </p>
       ) : facets.summary ? (
         <p className="text-sm">{maskCurrencyWhenHidden(facets.summary)}</p>
       ) : null}

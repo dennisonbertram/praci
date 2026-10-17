@@ -636,7 +636,7 @@ it("says a failed file could not be read, with its reason and a Delete button", 
   expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain("junk.pdf");
 });
 
-it("hides the Type, Party and Date filters and columns while no item has them", async () => {
+it("keeps the Type, Party and Date filters but hides their columns while no item has them", async () => {
   const bare = (name: string) => ({
     ...item(name),
     facets: { ...item(name).facets, docType: null },
@@ -645,9 +645,10 @@ it("hides the Type, Party and Date filters and columns while no item has them", 
   await renderPage();
   const labels = () =>
     Array.from(container.querySelectorAll("button")).map((b) => b.getAttribute("aria-label"));
-  expect(labels()).not.toContain("Filter by Type");
-  expect(labels()).not.toContain("Filter by Party");
-  expect(labels()).not.toContain("Filter by Document date");
+  // The pills stay, so the bar keeps one shape from folder to folder; each says it has nothing.
+  expect(labels()).toContain("Filter by Type");
+  expect(labels()).toContain("Filter by Party");
+  expect(labels()).toContain("Filter by Document date");
   // One source filters nothing, and a source with no files would only lead to "No results".
   expect(labels()).not.toContain("Filter by Source");
   expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toBe("Name");
@@ -831,7 +832,13 @@ it("lists an open folder's sub-folders above its files, and opens one on click",
   await act(async () => sub?.click());
   await settle();
   expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f2" }));
-  expect(container.textContent).toContain("This folder is empty. Drop files here to add them.");
+  expect(container.textContent).toContain("This folder is empty. Drop files here or add them.");
+  // A phone cannot drop files: the empty folder has its own Add files button.
+  expect(
+    Array.from(container.querySelectorAll("[data-testid=data-room-list] button")).some(
+      (b) => b.textContent === "Add files",
+    ),
+  ).toBe(true);
 });
 
 it("shows the next item after deleting the previewed one, so the preview stays open", async () => {
@@ -955,7 +962,14 @@ it("offers every type and party in the folder, also those not on the loaded page
   // "Memo" is on the loaded rows; the other two only in the folder's values.
   expect(options).toEqual(["Contract", "Memo", "Statement"]);
   expect(container.querySelector('button[aria-label="Filter by Party"]')).not.toBeNull();
-  expect(rpcMock.facetValues).toHaveBeenCalledWith({ folderId: undefined });
+  expect(rpcMock.facetValues).toHaveBeenCalledWith({});
+  // A picked type narrows what the other filters offer, so no pick combines into nothing.
+  const contract = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="menuitemradio"]'),
+  ).find((el) => el.textContent === "Contract");
+  await act(async () => contract?.click());
+  await settle();
+  expect(rpcMock.facetValues).toHaveBeenLastCalledWith({ docType: "contract" });
 });
 
 it("says so when the open folder was deleted elsewhere, and shows All items", async () => {

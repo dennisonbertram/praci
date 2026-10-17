@@ -148,3 +148,17 @@ it("offers only Download for a file the browser cannot show", async () => {
   expect(buttons.map((button) => button.textContent)).toEqual(["Download"]);
   expect(container.textContent).not.toContain("Not tagged yet");
 });
+
+it("says a file still being read can be left to finish", async () => {
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, status: "extracting" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).toContain("You can keep working while it finishes.");
+});

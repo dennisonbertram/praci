@@ -109,3 +109,9 @@ it("offers only the sources that have files, in label order", () => {
   ]);
   expect(facetOptions([item("upload")]).sources).toEqual(["upload"]);
 });
+
+it("keeps the Type, Party and Document date pills where nothing has one, so the bar never changes shape", () => {
+  render("", vi.fn());
+  const pills = Array.from(container.querySelectorAll('[data-testid="data-room-filters"] button'));
+  expect(pills.map((pill) => pill.textContent)).toEqual(["Type", "Party", "Document date"]);
+});

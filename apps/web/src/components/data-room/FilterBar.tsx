@@ -5,6 +5,7 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
@@ -116,9 +117,12 @@ const dayLabel = (day: string) =>
 
 function DateFilter({
   filters,
+  hasDates,
   onChange,
 }: {
   filters: Filters;
+  /** False: nothing here has a document date, so the pill says so instead of offering a range. */
+  hasDates: boolean;
   onChange: (from: string | undefined, to: string | undefined) => void;
 }) {
   const from = filters.docDateFrom?.slice(0, 10);
@@ -127,44 +131,50 @@ function DateFilter({
     from || to ? `${from ? dayLabel(from) : "…"} – ${to ? dayLabel(to) : "…"}` : undefined;
   return (
     <Chip label={t`Document date`} value={value} onClear={() => onChange(undefined, undefined)}>
-      {(close) => (
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(event: FormEvent<HTMLFormElement>) => {
-            event.preventDefault();
-            const data = new FormData(event.currentTarget);
-            onChange(
-              String(data.get("from") ?? "") || undefined,
-              String(data.get("to") ?? "") || undefined,
-            );
-            close();
-          }}
-        >
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <Trans>From</Trans>
-            <Input
-              type="date"
-              name="from"
-              aria-label={t`From`}
-              defaultValue={from ?? ""}
-              className="w-40"
-            />
-          </div>
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <Trans>To</Trans>
-            <Input
-              type="date"
-              name="to"
-              aria-label={t`To`}
-              defaultValue={to ?? ""}
-              className="w-40"
-            />
-          </div>
-          <Button type="submit">
-            <Trans>Apply</Trans>
-          </Button>
-        </form>
-      )}
+      {(close) =>
+        !hasDates && !value ? (
+          <p className="text-sm text-muted-foreground">
+            <Trans>No documents here have a date yet.</Trans>
+          </p>
+        ) : (
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(event: FormEvent<HTMLFormElement>) => {
+              event.preventDefault();
+              const data = new FormData(event.currentTarget);
+              onChange(
+                String(data.get("from") ?? "") || undefined,
+                String(data.get("to") ?? "") || undefined,
+              );
+              close();
+            }}
+          >
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <Trans>From</Trans>
+              <Input
+                type="date"
+                name="from"
+                aria-label={t`From`}
+                defaultValue={from ?? ""}
+                className="w-40"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <Trans>To</Trans>
+              <Input
+                type="date"
+                name="to"
+                aria-label={t`To`}
+                defaultValue={to ?? ""}
+                className="w-40"
+              />
+            </div>
+            <Button type="submit">
+              <Trans>Apply</Trans>
+            </Button>
+          </form>
+        )
+      }
     </Chip>
   );
 }
@@ -174,12 +184,15 @@ function PickFilter({
   label,
   value,
   options,
+  empty,
   onChange,
 }: {
   label: string;
   value: string | undefined;
   /** [value, display name] pairs. */
   options: [string, string][];
+  /** Shown in the menu when there is nothing to pick, so the pill never vanishes unexplained. */
+  empty?: string;
   onChange: (value: string | undefined) => void;
 }) {
   const shown = options.find(([option]) => option === value)?.[1] ?? value;
@@ -214,6 +227,9 @@ function PickFilter({
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
+          {options.length === 0 && empty ? (
+            <DropdownMenuItem disabled>{empty}</DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
       {value ? (
@@ -288,8 +304,9 @@ export function FilterBar({
   sort: Sort | null;
   onSort: (sort: Sort | null) => void;
   /**
-   * The values the items on screen have. A filter shows only when it has a value to pick (two
-   * sources, since one source filters nothing), or is already set.
+   * The values the items here have, given the other filters. Type, Party and Document date always
+   * show, and say so when there is nothing to pick; Source shows only with two sources to choose
+   * between (one filters nothing), or when set.
    */
   types: string[];
   parties: string[];
@@ -385,34 +402,31 @@ export function FilterBar({
         data-testid="data-room-filters"
         className="order-4 flex basis-full flex-wrap items-center gap-1.5 *:h-8 *:shrink-0 empty:hidden @min-[960px]/bd:order-3 @min-[960px]/bd:min-w-0 @min-[960px]/bd:basis-0 @min-[960px]/bd:flex-1"
       >
-        {types.length || filters.docType ? (
-          <PickFilter
-            label={t`Type`}
-            value={filters.docType}
-            options={withValue(types, filters.docType).map((type) => [type, typeLabel(type)])}
-            onChange={(docType) => onFilters({ ...filters, docType })}
-          />
-        ) : null}
-        {parties.length || filters.party ? (
-          <PickFilter
-            label={t`Party`}
-            value={filters.party}
-            options={withValue(parties, filters.party).map((party) => [party, party])}
-            onChange={(party) => onFilters({ ...filters, party })}
-          />
-        ) : null}
-        {hasDates || filters.docDateFrom || filters.docDateTo ? (
-          <DateFilter
-            filters={filters}
-            onChange={(from, to) =>
-              onFilters({
-                ...filters,
-                docDateFrom: from && `${from}T00:00:00.000Z`,
-                docDateTo: to && `${to}T23:59:59.999Z`,
-              })
-            }
-          />
-        ) : null}
+        <PickFilter
+          label={t`Type`}
+          value={filters.docType}
+          options={withValue(types, filters.docType).map((type) => [type, typeLabel(type)])}
+          empty={t`No tagged documents here`}
+          onChange={(docType) => onFilters({ ...filters, docType })}
+        />
+        <PickFilter
+          label={t`Party`}
+          value={filters.party}
+          options={withValue(parties, filters.party).map((party) => [party, party])}
+          empty={t`No documents here name a party`}
+          onChange={(party) => onFilters({ ...filters, party })}
+        />
+        <DateFilter
+          filters={filters}
+          hasDates={hasDates}
+          onChange={(from, to) =>
+            onFilters({
+              ...filters,
+              docDateFrom: from && `${from}T00:00:00.000Z`,
+              docDateTo: to && `${to}T23:59:59.999Z`,
+            })
+          }
+        />
         {sources.length > 1 || filters.source ? (
           <PickFilter
             label={t`Source`}

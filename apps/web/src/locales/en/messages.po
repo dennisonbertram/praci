@@ -4170,6 +4170,10 @@ msgid "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key."
 msgstr "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key."
 
 #: src/components/data-room/ConsentPrompt.tsx
+msgid "Let Rakazo read documents"
+msgstr "Let Rakazo read documents"
+
+#: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Rakazo read your documents"
 msgstr "Let Rakazo read your documents"
 
@@ -4938,6 +4942,14 @@ msgstr "No chat apps linked yet."
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
 
+#: src/components/data-room/FilterBar.tsx
+msgid "No documents here have a date yet."
+msgstr "No documents here have a date yet."
+
+#: src/components/data-room/FilterBar.tsx
+msgid "No documents here name a party"
+msgstr "No documents here name a party"
+
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "No files found"
@@ -5057,6 +5069,10 @@ msgstr "No skills yet"
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
 msgstr "No spend in this period"
+
+#: src/components/data-room/FilterBar.tsx
+msgid "No tagged documents here"
+msgstr "No tagged documents here"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No team conversations yet."
@@ -5217,10 +5233,6 @@ msgstr "OAuth connection failed"
 msgid "Obligation"
 msgstr "Obligation"
 
-#: src/components/data-room/ItemDialogs.tsx
-msgid "OK"
-msgstr "OK"
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -5299,6 +5311,10 @@ msgstr "Open external link?"
 #: src/components/integrations/FinanceSection.tsx
 msgid "Open Finance"
 msgstr "Open Finance"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Open folder"
+msgstr "Open folder"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open in Brex"
@@ -5720,6 +5736,10 @@ msgstr "Quote"
 msgid "Rakazo can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
 msgstr "Rakazo can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
 
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Rakazo doesn't tag new files."
+msgstr "Rakazo doesn't tag new files."
+
 #: src/components/AiDataSharing.tsx
 msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
 msgstr "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
@@ -5774,6 +5794,10 @@ msgstr "Reading {0} again"
 #: src/pages/CapTable.tsx
 msgid "Reading Carta…"
 msgstr "Reading Carta…"
+
+#: src/components/data-room/Preview.tsx
+msgid "Reading this file. You can keep working while it finishes."
+msgstr "Reading this file. You can keep working while it finishes."
 
 #: src/components/finance/StatementImport.tsx
 msgid "Reading…"
@@ -7320,8 +7344,8 @@ msgid "This file is not valid UTF-8 text."
 msgstr "This file is not valid UTF-8 text."
 
 #: src/pages/DataRoom.tsx
-msgid "This folder is empty. Drop files here to add them."
-msgstr "This folder is empty. Drop files here to add them."
+msgid "This folder is empty. Drop files here or add them."
+msgstr "This folder is empty. Drop files here or add them."
 
 #: src/components/data-room/DropZone.tsx
 msgid "This folder no longer exists"

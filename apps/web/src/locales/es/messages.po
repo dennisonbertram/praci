@@ -4170,6 +4170,10 @@ msgid "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key."
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
+msgid "Let Rakazo read documents"
+msgstr ""
+
+#: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Rakazo read your documents"
 msgstr ""
 
@@ -4938,6 +4942,14 @@ msgstr "Aún no hay apps de chat vinculadas."
 msgid "No credentials saved for this bot."
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+msgid "No documents here have a date yet."
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "No documents here name a party"
+msgstr ""
+
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "No files found"
@@ -5056,6 +5068,10 @@ msgstr "Aún no hay habilidades"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "No tagged documents here"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -5217,10 +5233,6 @@ msgstr "Falló la conexión OAuth"
 msgid "Obligation"
 msgstr ""
 
-#: src/components/data-room/ItemDialogs.tsx
-msgid "OK"
-msgstr ""
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -5298,6 +5310,10 @@ msgstr "¿Abrir enlace externo?"
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Open Finance"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Open folder"
 msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
@@ -5720,6 +5736,10 @@ msgstr ""
 msgid "Rakazo can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
 msgstr ""
 
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Rakazo doesn't tag new files."
+msgstr ""
+
 #: src/components/AiDataSharing.tsx
 msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
 msgstr ""
@@ -5773,6 +5793,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Reading Carta…"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Reading this file. You can keep working while it finishes."
 msgstr ""
 
 #: src/components/finance/StatementImport.tsx
@@ -7320,7 +7344,7 @@ msgid "This file is not valid UTF-8 text."
 msgstr ""
 
 #: src/pages/DataRoom.tsx
-msgid "This folder is empty. Drop files here to add them."
+msgid "This folder is empty. Drop files here or add them."
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx

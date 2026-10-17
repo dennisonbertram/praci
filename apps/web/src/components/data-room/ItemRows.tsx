@@ -90,10 +90,10 @@ export const hasFacets = (rows: Row[]) =>
   rows.some(({ item: { facets } }) => facets.docType || facets.docDate || facets.parties.length);
 
 // One grid template for the header and every row. Name never goes below 200px and takes the rest;
-// as the list pane narrows, Parties goes first, then Type, then Date. The menu stays.
+// as the list pane narrows, Parties goes first, then Type and Date, which then go under the name.
+// The menu stays.
 const ROW_GRID =
   "grid items-center gap-2.5 px-2 grid-cols-[minmax(200px,1fr)_28px] " +
-  "@min-[400px]/list:grid-cols-[minmax(200px,1fr)_90px_28px] " +
   // Type is wide enough for "Investor document", and Parties fits beside an open preview.
   "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_110px_90px_28px] " +
   "@min-[590px]/list:grid-cols-[minmax(180px,1fr)_120px_90px_110px_28px] " +
@@ -105,9 +105,12 @@ const PLAIN_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_28px
 const STATUS_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_72px_28px]";
 const hasStatus = (rows: Row[]) => rows.some(({ item }) => statusLabel(item.status));
 const plainGrid = (status: boolean) => (status ? STATUS_GRID : PLAIN_GRID);
-const DATE_CELL = "hidden @min-[400px]/list:block";
+const DATE_CELL = "hidden @min-[500px]/list:block";
 const TYPE_CELL = "hidden @min-[500px]/list:block";
 const PARTIES_CELL = "hidden @min-[590px]/list:block";
+/** Parties wrap to a second line (as long names do) rather than lose the end of a name. */
+const PARTIES_VALUE =
+  "hidden min-w-0 break-words text-muted-foreground @min-[590px]/list:line-clamp-2";
 const CELL = "min-w-0 truncate text-muted-foreground";
 
 function TableHead({ facets, status }: { facets: boolean; status: boolean }) {
@@ -169,7 +172,7 @@ function ItemRow({
         facets ? ROW_GRID : plainGrid(status),
         "cursor-pointer border-b border-border py-1.5 text-sm outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         // Clearly stronger than the hover tint, so the chosen row stays obvious.
-        o.shownId === item.id && "bg-sidebar-accent font-medium hover:bg-sidebar-accent",
+        o.shownId === item.id && "bg-sidebar-accent hover:bg-sidebar-accent",
       )}
     >
       <span data-testid="data-room-name" className="flex min-w-0 items-center gap-2">
@@ -180,6 +183,8 @@ function ItemRow({
             className={cn(
               "line-clamp-2 break-words",
               !isSettled(item.status) && item.status !== "failed" && "text-muted-foreground",
+              // Only the name is bold, so the other columns keep their width and are not cut.
+              o.shownId === item.id && "font-medium",
             )}
             title={item.name}
           >
@@ -188,10 +193,16 @@ function ItemRow({
           {folder ? (
             <span className="truncate text-xs font-normal text-muted-foreground">{folder}</span>
           ) : null}
-          {/* Where the Type column is hidden (a phone), "Failed" goes under the name instead. */}
-          {facets && item.status === "failed" ? (
-            <span className="text-xs font-normal text-destructive @min-[500px]/list:hidden">
-              {label}
+          {/* Where the Type and Date columns are hidden (a phone), they go under the name. */}
+          {facets ? (
+            <span
+              data-testid="data-room-subline"
+              className={cn(
+                "truncate text-xs font-normal text-muted-foreground @min-[500px]/list:hidden",
+                item.status === "failed" && "text-destructive",
+              )}
+            >
+              {label || <TypeAndDate item={item} />}
             </span>
           ) : null}
         </span>
@@ -217,15 +228,14 @@ function ItemRow({
           >
             {label ||
               typeLabel(item.facets.docType) ||
-              // Read, but not tagged: AI reading was off (or "Not now") when it arrived.
-              (isSettled(item.status) ? (
-                <span className="text-muted-foreground/70">
-                  <Trans>Not tagged</Trans>
-                </span>
-              ) : null)}
+              (isSettled(item.status) ? <NotTagged /> : null)}
           </span>
           <span className={cn(DATE_CELL, CELL)}>{dateText(item.facets.docDate)}</span>
-          <span className={cn(PARTIES_CELL, CELL)} title={item.facets.parties.join(", ")}>
+          <span
+            data-testid="data-room-parties"
+            className={PARTIES_VALUE}
+            title={item.facets.parties.join(", ")}
+          >
             {item.facets.parties.join(", ")}
           </span>
         </>
@@ -389,22 +399,44 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
           <span className="line-clamp-3 min-h-15 font-medium break-words" title={item.name}>
             {item.name}
           </span>
-          {/* Always one line tall, so a "Failed" line never makes one tile taller than the rest. */}
+          {/* Type and date on lines of their own, two lines on every tile, so neither is cut short. */}
           <span
+            data-testid="data-room-tile-meta"
             className={cn(
-              "min-h-4 truncate text-xs text-muted-foreground",
+              "flex min-h-8 flex-col text-xs text-muted-foreground *:truncate",
               item.status === "failed" && "text-destructive",
             )}
           >
-            {statusLabel(item.status) ||
-              [typeLabel(item.facets.docType), dateText(item.facets.docDate)]
-                .filter(Boolean)
-                .join(" · ")}
+            {statusLabel(item.status) ? (
+              <span>{statusLabel(item.status)}</span>
+            ) : (
+              <>
+                <span>{typeLabel(item.facets.docType) || <NotTagged />}</span>
+                <span>{dateText(item.facets.docDate)}</span>
+              </>
+            )}
           </span>
         </li>
       ))}
     </ul>
   );
+}
+
+/** Read, but not tagged: AI reading was off (or "Not now") when it arrived. */
+function NotTagged() {
+  return (
+    <span className="text-muted-foreground/70">
+      <Trans>Not tagged</Trans>
+    </span>
+  );
+}
+
+/** "Invoice · Oct 3, 2026", for the line under a name where the columns do not fit. */
+function TypeAndDate({ item }: { item: DataRoomApiItem }) {
+  const type = typeLabel(item.facets.docType);
+  const date = dateText(item.facets.docDate);
+  if (!type && isSettled(item.status)) return <NotTagged />;
+  return <>{[type, date].filter(Boolean).join(" · ")}</>;
 }
 
 /** A search snippet as text and <mark> elements. The snippet is never parsed as HTML. */

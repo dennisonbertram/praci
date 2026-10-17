@@ -218,23 +218,29 @@ it("selects the name without its extension when renaming", async () => {
   expect([name?.selectionStart, name?.selectionEnd]).toEqual([0, "Lease".length]);
 });
 
-it("says up front that a folder with files cannot be deleted, and offers no Delete", async () => {
+it("says up front that a folder with files cannot be deleted, and offers to open it instead", async () => {
   const hr = { id: "f-hr", name: "HR", parentId: null, createdAt: "", itemCount: 3 };
+  const onOpenFolder = vi.fn();
+  const onClose = vi.fn();
   await act(async () =>
     root.render(
       <ItemDialog
         action="delete"
         item={hr}
         folders={folderNodes([hr])}
-        onClose={vi.fn()}
+        onClose={onClose}
         onDone={vi.fn()}
+        onOpenFolder={onOpenFolder}
       />,
     ),
   );
   const dialog = document.querySelector('[role="alertdialog"]');
   expect(dialog?.textContent).toContain("It holds 3 items");
-  const buttons = Array.from(dialog?.querySelectorAll("button") ?? []).map((b) => b.textContent);
-  expect(buttons).toEqual(["OK"]);
+  const buttons = Array.from(dialog?.querySelectorAll("button") ?? []);
+  expect(buttons.map((b) => b.textContent)).toEqual(["Cancel", "Open folder"]);
+  await act(async () => buttons[1]?.click());
+  expect(onOpenFolder).toHaveBeenCalledWith("f-hr");
+  expect(onClose).toHaveBeenCalled();
   expect(rpc.folderDelete).not.toHaveBeenCalled();
 });
 

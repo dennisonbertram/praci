@@ -57,7 +57,23 @@ export const ListWithUntagged: Story = {
     />
   ),
 };
-/** A phone-width list: long names wrap to a second line and each row names its folder. */
+/** Grid with an untagged file: its tile says "Not tagged"; type and date have a line each. */
+export const GridWithUntagged: Story = {
+  render: () => (
+    <GridView
+      rows={rows.map((row, index) =>
+        index === 0
+          ? { ...row, item: { ...row.item, facets: { ...row.item.facets, docType: null } } }
+          : row,
+      )}
+      o={o}
+    />
+  ),
+};
+/**
+ * A phone-width list: long names wrap to a second line, each row names its folder, and the type
+ * and date go under the name.
+ */
 export const ListNarrow: Story = {
   decorators: [
     (Story) => (

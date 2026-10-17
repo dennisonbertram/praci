@@ -194,21 +194,22 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
     [nodes],
   );
 
-  // What the filters offer: every value in the open folder, not only the loaded page.
+  // What the filters offer: every value in the open folder, not only the loaded page, given the
+  // other filters, so two picks never combine into nothing.
   const [facetValues, setFacetValues] = useState<DataRoomApiFacetValues | null>(null);
   const [facetsVersion, setFacetsVersion] = useState(0);
-  const facetFolder = filters.folderId;
+  const facetFilters = JSON.stringify(filters);
   // facetsVersion changes to ask for a fresh read.
   useEffect(() => {
     let live = true;
     rpc.dataRoom
-      .facetValues({ folderId: facetFolder })
+      .facetValues(JSON.parse(facetFilters))
       .then((next) => live && setFacetValues(next))
       .catch(() => undefined);
     return () => {
       live = false;
     };
-  }, [facetFolder, facetsVersion]);
+  }, [facetFilters, facetsVersion]);
   const listReload = list.reload;
   const reload = useCallback(() => {
     listReload();
@@ -555,9 +556,15 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
                 <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
                   {/* An open folder with nothing in it is empty, not a search that found nothing. */}
                   {!searching && !filtered ? (
-                    <p>
-                      <Trans>This folder is empty. Drop files here to add them.</Trans>
-                    </p>
+                    <>
+                      <p>
+                        <Trans>This folder is empty. Drop files here or add them.</Trans>
+                      </p>
+                      <FileInputButton variant="outline" size="sm">
+                        <Plus aria-hidden="true" />
+                        <Trans>Add files</Trans>
+                      </FileInputButton>
+                    </>
                   ) : (
                     <p>
                       <Trans>No results</Trans>
@@ -636,6 +643,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
           action={action.kind}
           item={action.item}
           folders={nodes}
+          onOpenFolder={(folderId) => setFilters({ folderId })}
           onClose={() => setAction(null)}
           onDone={(kind, updated) => {
             if (kind === "delete") {

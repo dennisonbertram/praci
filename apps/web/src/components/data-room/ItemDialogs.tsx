@@ -171,12 +171,15 @@ export function ItemDialog({
   folders,
   onClose,
   onDone,
+  onOpenFolder,
 }: {
   action: ItemAction;
   item: DataRoomEntry;
   folders: FolderNode[];
   onClose: () => void;
   onDone: (action: ItemAction, item: DataRoomEntry | null) => void;
+  /** A folder that cannot be deleted yet offers to open it, to move or delete what it holds. */
+  onOpenFolder?: (id: string) => void;
 }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -237,9 +240,20 @@ export function ItemDialog({
           {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
           <AlertDialogFooter>
             <AlertDialogCancel>
-              {full ? <Trans>OK</Trans> : <Trans>Cancel</Trans>}
+              <Trans>Cancel</Trans>
             </AlertDialogCancel>
-            {full ? null : (
+            {full ? (
+              onOpenFolder ? (
+                <AlertDialogAction
+                  onClick={() => {
+                    onOpenFolder(item.id);
+                    onClose();
+                  }}
+                >
+                  <Trans>Open folder</Trans>
+                </AlertDialogAction>
+              ) : null
+            ) : (
               <AlertDialogAction
                 variant="destructive"
                 disabled={busy}
