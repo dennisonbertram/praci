@@ -35,3 +35,5 @@ export const Blocked: Story = { args: { state: { kind: "blocked" } } };
 export const Failed: Story = {
   args: { state: { kind: "failed", message: "The provider refused the sign-in." } },
 };
+/** Carta: no agent step follows, so the sign-in is step 1 of 2. */
+export const WaitingTwoSteps: Story = { args: { appName: "Carta", totalSteps: 2 } };

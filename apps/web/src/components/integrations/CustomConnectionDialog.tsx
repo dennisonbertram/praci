@@ -103,6 +103,7 @@ export function CustomConnectionDialog({
   const { refresh } = data;
 
   const serverName = server?.name ?? (name.trim() || deriveMcpName(url.trim()));
+  const carta = isCartaEndpoint(server?.endpoint ?? url.trim());
 
   function close() {
     attempt.current?.abort();
@@ -148,7 +149,7 @@ export function CustomConnectionDialog({
       if (controller.signal.aborted) return;
       if (started.status !== "authorization_required") {
         // No browser sign-in is needed (or one is already stored).
-        setView({ kind: "agents" });
+        setView(afterSignIn(target));
         return;
       }
       authUrl.current = started.authorizationUrl;
@@ -160,7 +161,7 @@ export function CustomConnectionDialog({
       popup.current?.close();
       if (result === "connected") {
         void refresh();
-        setView({ kind: "agents" });
+        setView(afterSignIn(target));
       } else {
         void refresh();
         setView({
@@ -191,6 +192,12 @@ export function CustomConnectionDialog({
         },
       });
     }
+  }
+
+  /** Carta belongs to the Carta agent alone and the API gives it the new server, so there is no
+   * agent to choose. */
+  function afterSignIn(target: McpServer): View {
+    return isCartaEndpoint(target.endpoint) ? { kind: "done", hint: null } : { kind: "agents" };
   }
 
   function openWindow(target: string) {
@@ -752,6 +759,7 @@ export function CustomConnectionDialog({
         ) : view.kind === "signin" ? (
           <SignInStep
             appName={serverName}
+            totalSteps={carta ? 2 : 3}
             state={view.state}
             onOpenAgain={authUrl.current ? () => openWindow(authUrl.current as string) : undefined}
             onTryAgain={() => (server ? void signIn(server) : setView({ kind: "form" }))}
@@ -779,7 +787,11 @@ export function CustomConnectionDialog({
               <Trans>{serverName} connected</Trans>
             </DialogTitle>
             <DialogDescription className="text-center">
-              <Trans>It now appears under Connected.</Trans>
+              {carta ? (
+                <Trans>The Carta agent can now read your cap table.</Trans>
+              ) : (
+                <Trans>It now appears under Connected.</Trans>
+              )}
             </DialogDescription>
             <div className="mt-4 flex justify-end">
               <Button onClick={close}>
