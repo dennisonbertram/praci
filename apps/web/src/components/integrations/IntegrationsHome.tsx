@@ -424,11 +424,16 @@ export function IntegrationsHome({
 
   useEffect(() => {
     if (!connectOnLoad.current || !data.loaded) return;
-    const entry = firstPartyMcp.find((candidate) => candidate.id === connectOnLoad.current);
+    const wanted = connectOnLoad.current;
     connectOnLoad.current = null;
-    if (entry) connectFirstParty(entry);
-    else returnTo.current = null;
-  }, [data.loaded, firstPartyMcp]);
+    const entry = firstPartyMcp.find((candidate) => candidate.id === wanted);
+    if (entry) return connectFirstParty(entry);
+    // A catalog app (?connect=gmail from the Inbox) opens its own page's connect flow.
+    const app = data.catalog.find((item) => item.slug.toLowerCase() === wanted.toLowerCase());
+    if (app) navigate(appPath(app, { connect: true, next: returnTo.current ?? undefined }));
+    else setQuery(wanted);
+    returnTo.current = null;
+  }, [data.loaded, data.catalog, firstPartyMcp, navigate]);
 
   function retry(app: ConnectedApp) {
     const item = data.catalog.find((entry) => `${entry.connectorId}:${entry.slug}` === app.key);

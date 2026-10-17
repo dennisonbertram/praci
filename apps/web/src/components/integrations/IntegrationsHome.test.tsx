@@ -405,6 +405,29 @@ it("returns to the page that asked for the sign-in when its dialog closes", asyn
   expect(container.textContent).toContain("cap table page");
 });
 
+it("opens a catalog app's connect flow from ?connect= and carries the return path", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  function Search() {
+    const location = useLocation();
+    return <output data-testid="where">{location.pathname + location.search}</output>;
+  }
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/integrations?connect=gmail&returnTo=/app/inbox"]}>
+        <Routes>
+          <Route path="/app/integrations" element={<IntegrationsHome data={data(true, true)} />} />
+          <Route path="/app/integrations/app/:connectorId/:slug" element={<Search />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    "/app/integrations/app/google/gmail?connect=1&next=%2Fapp%2Finbox",
+  );
+});
+
 it("only returns to in-app paths", () => {
   expect(safeAppPath("/app/cap-table")).toBe("/app/cap-table");
   expect(safeAppPath("https://evil.example.test/app/")).toBeNull();

@@ -264,10 +264,10 @@ export function popularApps(
       .filter((row) => row.status !== "revoked")
       .map((row) => `${row.connectorId}:${row.provider}`),
   );
-  // First-party services (X, Treg, ...) have their own tile; listing them here too would give two ways in.
+  // `item.connected` is the provider's per-user flag, which also counts other spaces; this space's
+  // rows decide. First-party services (X, Treg, ...) have their own tile, so they are left out here.
   const open = catalog.filter(
     (item) =>
-      !item.connected &&
       !used.has(appKey(item)) &&
       !FIRST_PARTY_SLUGS.has(item.slug.toLowerCase().replace(/[^a-z0-9]+/g, "")),
   );

@@ -135,6 +135,11 @@ describe("groupConnections and popularApps", () => {
     expect(grouped[0]).toMatchObject({ name: "Slack", status: "connected" });
     expect(popularApps(catalog, rows).map((i) => i.slug)).toEqual(["notion"]);
   });
+  it("offers an app connected only in another space", () => {
+    // The provider flags Gmail connected for the user, but this space has no Gmail row.
+    const catalog = [item("gmail", "email_calendar", { connected: true })];
+    expect(popularApps(catalog, []).map((i) => i.slug)).toEqual(["gmail"]);
+  });
   it("surfaces the server error of a failed app", () => {
     const [app] = groupConnections([row("error", { error: "Access was denied" })], []);
     expect(app).toMatchObject({ status: "failed", error: "Access was denied" });
