@@ -86,8 +86,8 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
   const head = (m: (typeof threads)[number]) =>
     `${m.receivedAt.toISOString().slice(0, 16)}Z | ${where(m)} | ${from(m)} | ${clip(m.subject, 100)} | ${clip(m.snippet, 140)}`;
 
-  const needsReply = threads
-    .filter(wantsReply)
+  const waiting = threads.filter(wantsReply);
+  const needsReply = waiting
     .sort(
       (a, b) =>
         (RANK[a.priority ?? "normal"] ?? 2) - (RANK[b.priority ?? "normal"] ?? 2) ||
@@ -133,7 +133,14 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
   while (JSON.stringify(result).length > MAIL_GREP_BUDGET && (recent.length || needsReply.length)) {
     (recent.length ? recent : needsReply).pop();
   }
-  return result;
+  // Says outright whether the list is whole, so the model answers from it instead of doubting it.
+  return {
+    ...result,
+    needsReplyListed:
+      needsReply.length === waiting.length
+        ? `complete: all ${waiting.length} messages that need a reply are listed`
+        : `${needsReply.length} of ${waiting.length} listed, highest priority first`,
+  };
 }
 
 function accountLabel(account: MailAccount): string {

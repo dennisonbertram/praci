@@ -44,6 +44,7 @@ type Overview = {
     sync: string;
   }>;
   needsReply: string[];
+  needsReplyListed: string;
   todos: string[];
   recent: string[];
 };
@@ -239,6 +240,7 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(result.needsReply[0]).toContain("acct:a@example.test");
     expect(result.needsReply[1]).toContain("Budget question");
     expect(result.needsReply[2]).toContain("Snippet low-new");
+    expect(result.needsReplyListed).toBe("complete: all 3 messages that need a reply are listed");
     expect(result.todos).toHaveLength(1);
     expect(result.todos[0]).toContain("Send signed contract");
     expect(result.todos[0]).toContain("2026-10-16");
@@ -350,6 +352,9 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(result.recent.length).toBeGreaterThan(0);
     expect(rows).toBeLessThanOrEqual(25);
     expect(result.accounts[0]).toMatchObject({ unread: 60, needsReply: 30 });
+    expect(result.needsReplyListed).toBe(
+      `${result.needsReply.length} of 30 listed, highest priority first`,
+    );
     expect(JSON.stringify(result).length).toBeLessThanOrEqual(MAIL_GREP_BUDGET);
   });
 
