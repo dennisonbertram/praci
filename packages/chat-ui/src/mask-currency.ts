@@ -1,9 +1,9 @@
-const SC = "\p{Sc}";
+const SC = String.raw`\p{Sc}`;
 const CODES = "(?:USD|EUR|GBP|JPY|CAD|AUD|CHF|INR|CNY|MXN|BRL|SEK|NOK|DKK|NZD|SGD|HKD)";
 // 1,234.56  1.234,56  1 234,56  1234  (space, nbsp, comma or dot group separators)
 const NUM = String.raw`(?:\d{1,3}(?:[ ,.  ]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)`;
 const SCALE = String.raw`(?:\s?(?:million|billion|thousand)\b|[kKmMbB](?![\p{L}\p{N}_]))`;
-const SIGN = String.raw`[-−+]?`;
+const SIGN = "[-−+]?";
 const WORD = String.raw`[\p{L}\p{N}_]`;
 
 const CURRENCY = new RegExp(
