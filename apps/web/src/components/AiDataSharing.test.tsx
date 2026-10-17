@@ -158,7 +158,11 @@ it("lists only model recipients, each off until the user turns it on, with the s
   ]);
   expect(container.textContent).toContain(AI_DATA_DISCLOSURES.model);
   // Says what a switch covers, so Off while bots still answer does not look broken.
-  expect(container.textContent).toContain("Each switch covers one AI service.");
+  // The switch does not stop chats, so the section must say what it does control.
+  expect(container.textContent).toContain(
+    "Your bots always answer through the AI service chosen in Models.",
+  );
+  expect(container.textContent).toContain("Inbox sorting and Data room files");
   expect(container.textContent).not.toContain("ElevenLabs");
 });
 

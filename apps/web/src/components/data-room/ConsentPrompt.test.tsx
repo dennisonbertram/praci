@@ -98,3 +98,13 @@ it("shows nothing once allowed", async () => {
   await render();
   expect(container.textContent).toBe("");
 });
+
+it("offers Not now, like the Inbox, and hides the card for this visit without granting", async () => {
+  rpc.consent.mockResolvedValue(status());
+  await render();
+  expect(container.textContent).toContain("the AI service that runs your bots (Example Model)");
+  const notNow = [...container.querySelectorAll("button")].find((b) => b.textContent === "Not now");
+  await act(async () => notNow?.click());
+  expect(container.textContent).toBe("");
+  expect(rpc.consentGrant).not.toHaveBeenCalled();
+});
