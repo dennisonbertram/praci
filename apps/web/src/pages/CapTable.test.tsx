@@ -570,7 +570,8 @@ it("hides dollar amounts but keeps shares and ownership in place while amounts a
   const text = container.textContent ?? "";
   for (const real of ["1.25", "250,000"]) expect(text).not.toContain(real);
   // Share counts and ownership are not money: the rows stay readable for a screen share.
-  for (const shown of ["10,000,000", "1,000,000", "10.00%", "70.00%"]) expect(text).toContain(shown);
+  for (const shown of ["10,000,000", "1,000,000", "10.00%", "70.00%"])
+    expect(text).toContain(shown);
   expect(text).toContain("Example Ventures");
   await click(
     button("Show amounts") ??
