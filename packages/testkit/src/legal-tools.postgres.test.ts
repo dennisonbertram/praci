@@ -576,6 +576,55 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     );
   });
 
+  it("hides items from denied connections in the unreviewed list", async () => {
+    const connection = await prisma.connection.create({
+      data: {
+        spaceId: a.spaceId,
+        userId: a.userId,
+        connectorId: "google",
+        provider: "gmail",
+        displayName: "Denied mail",
+        status: "connected",
+      },
+    });
+    const hidden = await addItem(a, "from-denied-mail.txt", "Imported through a denied account.");
+    await prisma.dataRoomItem.update({
+      where: { id: hidden.id },
+      data: { sourceConnectionId: connection.id },
+    });
+    const ids = async (denied: string[]) => {
+      const result = await legalToolFromTool(
+        "legal_unreviewed_documents",
+        { ...deps(a), deniedConnectionIds: denied },
+        {},
+      );
+      return result as { remaining: number; documents: { id: string }[] };
+    };
+    const open = await ids([]);
+    expect(open.documents.map((d) => d.id)).toContain(hidden.id);
+    const denied = await ids([connection.id]);
+    expect(denied.documents.map((d) => d.id)).not.toContain(hidden.id);
+    expect(denied.remaining).toBe(open.remaining - 1);
+  });
+
+  it("refuses the Legal write tools when consent is off", async () => {
+    consent = false;
+    try {
+      const calls: [string, Record<string, unknown>][] = [
+        ["legal_upsert_contract", { dataRoomItemId: "x", revision: 0, notLegal: true }],
+        ["legal_upsert_deadline", { title: "T", dueDate: "2030-01-01", kind: "other" }],
+        ["legal_upsert_node", { kind: "company", label: "No Consent Co" }],
+        ["legal_link", { fromId: "x", toId: "y", relation: "party_to" }],
+      ];
+      for (const [name, args] of calls) {
+        expect(await legal(a, name, args)).toMatchObject({ consentRequired: true });
+      }
+      expect(await prisma.legalNode.count({ where: { userId: a.userId, label: "No Consent Co" } })).toBe(0);
+    } finally {
+      consent = true;
+    }
+  });
+
   it("refuses to link evidence from another user's document", async () => {
     const mine = await legal(a, "legal_upsert_node", { kind: "company", label: "Evidence Co" });
     const other = await legal(a, "legal_upsert_node", { kind: "company", label: "Evidence Two" });

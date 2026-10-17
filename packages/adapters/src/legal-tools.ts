@@ -41,12 +41,21 @@ export function legalToolsAllowed(
   );
 }
 
+const LEGAL_WRITE_TOOLS = new Set([
+  "legal_upsert_contract",
+  "legal_upsert_deadline",
+  "legal_upsert_node",
+  "legal_link",
+]);
+
 export interface LegalToolDeps {
   prisma: PrismaClient;
   /** From the run (the bot owner), never from model input. */
   scope: { spaceId: string; userId: string };
   /** The Data Room consent check, shared with the Data Room tools. */
   allowed: () => Promise<boolean>;
+  /** Connections the user denied this agent; items imported through them are not listed. */
+  deniedConnectionIds?: readonly string[];
   now?: () => Date;
 }
 
@@ -235,8 +244,8 @@ export async function legalToolFromTool(
       // Names, facets and summaries are document content, so they follow the same consent as reading.
       if (!(await deps.allowed())) return { error: REFUSAL, consentRequired: true };
       const [items, remaining] = await Promise.all([
-        repo.unreviewedItems(actor, parsed.data.limit),
-        repo.countUnreviewed(actor),
+        repo.unreviewedItems(actor, parsed.data.limit, deps.deniedConnectionIds),
+        repo.countUnreviewed(actor, deps.deniedConnectionIds),
       ]);
       return {
         remaining,
@@ -252,6 +261,11 @@ export async function legalToolFromTool(
           revision: item.revision,
         })),
       };
+    }
+    // Recording what a document says carries document content into the legal data, so it needs the
+    // same per-call consent as reading; revoking consent stops writes at once too.
+    if (LEGAL_WRITE_TOOLS.has(name) && !(await deps.allowed())) {
+      return { error: REFUSAL, consentRequired: true };
     }
     if (name === "legal_upsert_contract") return await upsertContract(deps, args);
     if (name === "legal_upsert_deadline") {

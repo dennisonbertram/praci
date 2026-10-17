@@ -5587,6 +5587,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               prisma: deps.prisma,
               scope: { spaceId: run.spaceId, userId: bot.userId },
               allowed,
+              deniedConnectionIds: [...deniedIds],
             };
             return finish(await legalToolFromTool(name, toolDeps, args));
           }

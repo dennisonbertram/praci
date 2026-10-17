@@ -87,17 +87,23 @@ export function createLegalRepos(prisma: PrismaClient) {
   }
 
   /** Ready Data Room items with no analysis yet, or analyzed at an older revision. */
-  const unreviewedCondition = (actor: Actor) => Prisma.sql`
+  const unreviewedCondition = (actor: Actor, excludeConnectionIds: readonly string[] = []) => Prisma.sql`
     FROM data_room_items i
     LEFT JOIN legal_contracts c
       ON c."dataRoomItemId" = i.id AND c."spaceId" = i."spaceId" AND c."userId" = i."userId"
     WHERE i."spaceId" = ${actor.spaceId} AND i."userId" = ${actor.userId} AND i.status = 'ready'
-      AND (c.id IS NULL OR i.revision > c."analyzedRevision")`;
+      AND (c.id IS NULL OR i.revision > c."analyzedRevision")
+      ${
+        excludeConnectionIds.length
+          ? Prisma.sql`AND (i."sourceConnectionId" IS NULL OR NOT (i."sourceConnectionId" = ANY(${[...excludeConnectionIds]})))`
+          : Prisma.empty
+      }`;
 
   return {
-    async unreviewedItems(actor: Actor, limit?: number) {
+    /** `excludeConnectionIds`: connections the user denied the agent; their items are not listed. */
+    async unreviewedItems(actor: Actor, limit?: number, excludeConnectionIds?: readonly string[]) {
       const rows = await prisma.$queryRaw<{ id: string }[]>`
-        SELECT i.id ${unreviewedCondition(actor)}
+        SELECT i.id ${unreviewedCondition(actor, excludeConnectionIds)}
         ORDER BY i."createdAt" DESC, i.id ASC LIMIT ${clamp(limit, 25, 100)}`;
       const items = await prisma.dataRoomItem.findMany({
         where: { id: { in: rows.map((row) => row.id) }, ...scope(actor) },
@@ -117,9 +123,9 @@ export function createLegalRepos(prisma: PrismaClient) {
       return rows.flatMap((row) => byId.get(row.id) ?? []);
     },
 
-    async countUnreviewed(actor: Actor): Promise<number> {
+    async countUnreviewed(actor: Actor, excludeConnectionIds?: readonly string[]): Promise<number> {
       const [row] = await prisma.$queryRaw<{ n: bigint }[]>`
-        SELECT count(*) AS n ${unreviewedCondition(actor)}`;
+        SELECT count(*) AS n ${unreviewedCondition(actor, excludeConnectionIds)}`;
       return Number(row?.n ?? 0);
     },
 
