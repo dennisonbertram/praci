@@ -765,7 +765,9 @@ export function detectRecurring(
 
 // ---- Upcoming and subscriptions ----
 
-const FIXED_COST_CATEGORY = /(^|-)(payroll|rent|salar(y|ies)|wages)(-|$)/;
+// A card bill paid from the bank (while the card itself is not connected) recurs, but it pays for
+// many purchases, so it is a fixed cost, not a subscription.
+const FIXED_COST_CATEGORY = /(^|-)(payroll|rent|salar(y|ies)|wages)(-|$)|^credit-loan-payments$/;
 const FIXED_COST_VENDOR = ["payroll", "landlord"];
 
 /** Payroll and rent recur, but they are fixed costs, not subscriptions a founder can cancel. */

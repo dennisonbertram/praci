@@ -918,11 +918,14 @@ describe("subscriptions", () => {
         ...monthly("Landlord Placeholder LLC", "01", 750_000, 4),
         ...monthly("Office Space Co", "02", 300_000, 4, { category: "Rent" }),
         ...monthly("Notion", "20", 1000, 4, { category: "Software" }),
+        // A Brex bill paid from Mercury while Brex is not connected: still spend, not a subscription.
+        ...monthly("Brex", "05", 1_120_000, 4, { category: "Credit & Loan Payments" }),
       ],
       NOW,
     );
     expect(fixed.filter((r) => r.fixedCost).map((r) => r.key)).toEqual([
       "paylodex-payroll",
+      "brex",
       "landlord-placeholder",
       "office-space",
     ]);
