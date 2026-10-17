@@ -110,7 +110,8 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
           role="status"
           aria-live="polite"
           data-testid="data-room-toasts"
-          className="fixed end-4 bottom-20 z-100 flex w-72 flex-col gap-2"
+          // Phones: the full width less a 16px gutter each side, so the toast is centred.
+          className="fixed inset-x-4 bottom-20 z-100 flex flex-col gap-2 sm:left-auto sm:w-72"
           onPointerEnter={() => holdUploadToasts(true)}
           onPointerLeave={() => holdUploadToasts(false)}
         >
