@@ -578,7 +578,7 @@ msgid "Add wallet"
 msgstr ""
 
 #: src/pages/CapTable.tsx
-msgid "Add your investors, auditors and counsel here. Contacts are your address book; ownership comes from Carta."
+msgid "Add your investors, auditors and counsel here. Contacts are your address book."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx

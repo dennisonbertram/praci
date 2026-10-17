@@ -540,7 +540,7 @@ export function CapTablePage({
     other: t`Other`,
   };
   const emptyText: Record<Filter, string> = {
-    all: t`Add your investors, auditors and counsel here. Contacts are your address book; ownership comes from Carta.`,
+    all: t`Add your investors, auditors and counsel here. Contacts are your address book.`,
     investor: t`No investors yet`,
     auditor: t`No auditors yet`,
     other: t`No other contacts yet`,

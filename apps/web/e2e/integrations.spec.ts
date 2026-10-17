@@ -97,9 +97,11 @@ test("Integrations page: first-party MCP tiles prefill the custom connection", a
   await page.getByRole("button", { name: "Connect Carta", exact: true }).scrollIntoViewIfNeeded();
   await captureScreenshot(page, testInfo, "integrations-first-party");
 
-  // X has no dynamic client registration, so its dialog asks for a client ID up front.
+  // The URL is known for a first-party tile, so no Server URL field shows. X has no dynamic
+  // client registration, so its dialog asks for a client ID up front.
   await page.getByRole("button", { name: "Connect X", exact: true }).click();
-  await expect(page.getByLabel("Server URL")).toHaveValue("https://api.x.com/mcp");
+  await expect(page.getByRole("dialog", { name: "Connect X" })).toBeVisible();
+  await expect(page.getByLabel("Server URL")).toHaveCount(0);
   await expect(page.getByLabel("Client ID")).toBeVisible();
   await captureScreenshot(page, testInfo, "integrations-x-client-id");
 });
