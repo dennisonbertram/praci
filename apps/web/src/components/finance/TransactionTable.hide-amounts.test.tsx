@@ -74,7 +74,7 @@ it("gives every column but Counterparty a fixed width, the same in List and By v
   const grouped = await render(<TransactionTable rows={rows} grouped />);
   // A fixed table sizes columns from the header alone, so row contents cannot move them.
   expect(list.querySelector("table")?.className).toContain("table-fixed");
-  expect(header(list)).toEqual(["w-[4.5rem]", null, "w-40", "w-28", "w-24", "w-5"]);
+  expect(header(list)).toEqual(["w-[4.5rem]", null, "w-48", "w-24", "w-24", "w-5"]);
   expect(header(grouped)).toEqual(header(list));
 });
 

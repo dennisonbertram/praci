@@ -241,7 +241,7 @@ function EmptyState({ cryptoCents, onAdd }: { cryptoCents: number | null; onAdd:
   return (
     <div>
       {/* The page title stays where every page has it, with the empty state under it. */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col items-start gap-0.5">
         <h1 className="text-lg font-semibold">
           <Trans>Finance</Trans>
         </h1>

@@ -248,7 +248,9 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
           <span className="ms-1">{previous?.label ?? t`Finance`}</span>
         </Link>
       ) : (
-        <nav aria-label={t`Breadcrumb`} className="min-w-0">
+        // The trail keeps its width (the company name truncates first) and wraps only when it
+        // would leave no room for the company and the eye.
+        <nav aria-label={t`Breadcrumb`} className="min-w-0 max-w-[calc(100%-6.5rem)] shrink-0">
           <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
             {crumbs.map((crumb, i) => (
               <li
@@ -285,8 +287,9 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
           </ol>
         </nav>
       )}
-      {/* Which company this is, on every Finance page, at the end of the row beside Hide amounts. */}
-      <span className="ms-auto flex min-w-0 shrink justify-end">
+      {/* Which company this is, on every Finance page, at the end of the row beside Hide amounts.
+      On a phone it truncates before the breadcrumb wraps. */}
+      <span className="ms-auto flex min-w-12 shrink justify-end">
         <SpaceName />
       </span>
       <HideAmountsButton />
@@ -619,7 +622,7 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
       <td className="hidden truncate text-muted-foreground @2xl:table-cell">
         {categoryLabel(row)}
       </td>
-      <td className="whitespace-nowrap ps-4 text-end tabular-nums">
+      <td className="whitespace-nowrap ps-3 text-end tabular-nums">
         {listAmount(row.amountCents, undefined, row.currency)}
       </td>
       <td className="hidden w-24 ps-4 text-muted-foreground @2xl:table-cell">
@@ -664,7 +667,7 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
         <td className="hidden truncate text-muted-foreground @2xl:table-cell">
           {group.mixed ? t`Mixed` : categoryLabel(group.rows[0] as FinanceTransaction)}
         </td>
-        <td className="whitespace-nowrap ps-4 text-end tabular-nums">
+        <td className="whitespace-nowrap ps-3 text-end tabular-nums">
           {listAmount(Number(group.totalCents), undefined, group.currency)}
         </td>
         <td className="hidden w-24 @2xl:table-cell" />
@@ -696,10 +699,10 @@ export function TransactionTable({
           <Th>
             <Trans>Counterparty</Trans>
           </Th>
-          <Th className="hidden w-40 @2xl:table-cell">
+          <Th className="hidden w-48 @2xl:table-cell">
             <Trans>Category</Trans>
           </Th>
-          <Th right className="w-28 ps-4">
+          <Th right className="w-24 ps-3">
             <Trans>Amount</Trans>
           </Th>
           <Th className="hidden w-24 ps-4 @2xl:table-cell">

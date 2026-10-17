@@ -84,7 +84,7 @@ function CryptoTile({
             ) : (
               // Nothing to connect: the first wallet added starts it. Not "Not connected".
               <span className="text-xs text-muted-foreground">
-                <Trans>Ready, no key needed</Trans>
+                <Trans>Ready</Trans>
               </span>
             )}
             {/* One main action like the other tiles; the optional key and agents sit in the menu. */}

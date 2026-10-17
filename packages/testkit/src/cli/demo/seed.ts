@@ -270,7 +270,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
             id: "runway",
             label: "Runway",
             value: overview.runway.months === null ? "—" : `${overview.runway.months} mo`,
-            detail: "At the last 3 months' burn",
+            detail: "At the average monthly burn",
           },
         ],
         list: {

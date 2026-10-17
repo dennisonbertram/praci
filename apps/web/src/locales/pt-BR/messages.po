@@ -5797,7 +5797,7 @@ msgid "Reading…"
 msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
-msgid "Ready, no key needed"
+msgid "Ready"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
