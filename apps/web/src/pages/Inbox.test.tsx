@@ -422,7 +422,8 @@ it("offers Undo after an archive, which restores the thread and reloads the list
   const c = await render();
   await click(byText(c, "archive b"));
   const toast = c.querySelector('[role="status"]');
-  expect(toast?.textContent).toContain("Archived");
+  // It names the email, so the person knows which one Undo brings back.
+  expect(toast?.textContent).toContain('Archived "Subject b"');
   const lists = rpcMock.list.mock.calls.length;
   await click(byText(toast as HTMLElement, "Undo"));
   expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "b" });

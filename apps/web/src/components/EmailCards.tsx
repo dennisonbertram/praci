@@ -1,7 +1,7 @@
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { EmailCard, MessageBlock } from "@rakazo/contracts";
 import { groupEmailCards } from "@rakazo/core";
-import { Card } from "@rakazo/ui-web";
+import { Button, Card } from "@rakazo/ui-web";
 import { Paperclip } from "lucide-react";
 import { useState } from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
@@ -19,6 +19,9 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
   // Read changes made here, until the message reloads; the dialog shows the cached state otherwise.
   const [unread, setUnread] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
+  // Archived from here: the card says so, and the last one can be undone, as in the Inbox list.
+  const [archived, setArchived] = useState<Record<string, boolean>>({});
+  const [lastArchived, setLastArchived] = useState<EmailCard | null>(null);
   const changed = (call: Promise<unknown>, undo?: () => void) =>
     call
       .then(() => window.dispatchEvent(new Event(INBOX_CHANGED_EVENT)))
@@ -70,7 +73,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
                   <span className="flex items-center gap-2">
                     {attachments(email)}
                     <span className="text-xs text-muted-foreground tabular-nums">
-                      {formatMailTime(email.receivedAt, now)}
+                      {archived[email.id] ? t`Archived` : formatMailTime(email.receivedAt, now)}
                     </span>
                   </span>
                   <span dir="auto" className="col-span-2 truncate text-muted-foreground">
@@ -95,7 +98,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
                   <span className="flex shrink-0 items-center gap-2">
                     {attachments(email)}
                     <span className="text-xs text-muted-foreground tabular-nums">
-                      {formatMailTime(email.receivedAt, now)}
+                      {archived[email.id] ? t`Archived` : formatMailTime(email.receivedAt, now)}
                     </span>
                   </span>
                 </span>
@@ -117,12 +120,21 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
         nextId={at >= 0 ? ordered[at + 1]?.id : undefined}
         onNavigate={(id) => setOpen(ordered.find((email) => email.id === id) ?? null)}
         unread={open ? unread[open.id] : undefined}
-        onArchive={() => {
-          if (!open) return;
-          setError("");
-          changed(rpc.inbox.archive({ messageId: open.id }));
-          setOpen(null);
-        }}
+        onArchive={
+          open && !archived[open.id]
+            ? () => {
+                const email = open;
+                setError("");
+                setArchived((all) => ({ ...all, [email.id]: true }));
+                setLastArchived(email);
+                changed(rpc.inbox.archive({ messageId: email.id }), () => {
+                  setArchived(({ [email.id]: _failed, ...rest }) => rest);
+                  setLastArchived(null);
+                });
+                setOpen(null);
+              }
+            : undefined
+        }
         onRead={(read) => {
           if (!open) return;
           setError("");
@@ -138,6 +150,27 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
         }}
         onClose={() => setOpen(null)}
       />
+      {lastArchived ? (
+        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="min-w-0 truncate" dir="auto">
+            <Trans>Archived "{maskCurrencyWhenHidden(lastArchived.subject)}"</Trans>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const email = lastArchived;
+              setLastArchived(null);
+              setArchived(({ [email.id]: _undone, ...rest }) => rest);
+              changed(rpc.inbox.unarchive({ messageId: email.id }), () =>
+                setArchived((all) => ({ ...all, [email.id]: true })),
+              );
+            }}
+          >
+            <Trans>Undo</Trans>
+          </Button>
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}

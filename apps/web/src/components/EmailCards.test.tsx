@@ -44,10 +44,12 @@ vi.mock("./inbox/InboxMessageDialog", () => ({
 }));
 const archive = vi.fn(async (_input: unknown) => ({ ok: true }));
 const markRead = vi.fn(async (_input: unknown) => ({ ok: true }));
+const unarchive = vi.fn(async (_input: unknown) => ({ ok: true }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
     inbox: {
       archive: (input: unknown) => archive(input),
+      unarchive: (input: unknown) => unarchive(input),
       markRead: (input: unknown) => markRead(input),
     },
   },
@@ -203,5 +205,25 @@ it("masks currency on cards and rows while amounts are hidden", async () => {
   });
   expect(view.container.textContent).not.toMatch(/2,400|58,400|4,812/);
   setHideAmounts(false);
+  await view.cleanup();
+});
+
+it("says a card's email was archived and offers Undo, as the Inbox list does", async () => {
+  const view = await render({ kind: "emails", emails: [email("t", "today")] });
+  const click = (el: Element | null | undefined) =>
+    act(async () => (el as HTMLElement | null)?.click());
+  await click(view.container.querySelector('[data-testid="email-card"]'));
+  await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Archive"));
+  expect(archive).toHaveBeenCalledWith({ messageId: "t" });
+  const card = view.container.querySelector('[data-testid="email-card"]');
+  expect(card?.textContent).toContain("Archived");
+  const status = view.container.querySelector('[role="status"]');
+  expect(status?.textContent).toContain('Archived "Subject t"');
+  await click(
+    [...(status?.querySelectorAll("button") ?? [])].find((b) => b.textContent === "Undo"),
+  );
+  expect(unarchive).toHaveBeenCalledWith({ messageId: "t" });
+  expect(view.container.querySelector('[role="status"]')).toBeNull();
+  expect(card?.textContent).not.toContain("Archived");
   await view.cleanup();
 });

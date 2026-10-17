@@ -39,6 +39,7 @@ import { InboxGroup } from "../components/inbox/InboxRow";
 import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
 import { TodoCard } from "../components/inbox/TodoCard";
 import { PageEmptyState } from "../components/PageEmptyState";
+import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
 import { useInboxKeyboard } from "../lib/inbox-keyboard";
 import {
   inboxListInput,
@@ -64,7 +65,7 @@ const LIST_OPEN = { inboxList: true };
 
 type Status =
   | { kind: "marked"; messageId: string; mark: InboxMark; sender: string }
-  | { kind: "archived"; messageId: string };
+  | { kind: "archived"; messageId: string; subject: string };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
 type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
@@ -387,8 +388,9 @@ export function InboxPage({
     const index = ids.indexOf(messageId);
     const neighbor = ids[index + 1] ?? ids[index - 1];
     if (selectedId === messageId) setSelectedId(neighbor);
+    const subject = rows.find((row) => row.id === messageId)?.subject ?? "";
     patchRows((list) => list.filter((row) => row.id !== messageId));
-    setStatus({ kind: "archived", messageId });
+    setStatus({ kind: "archived", messageId, subject });
     const call = rpc.inbox.archive({ messageId });
     // Resolves to whether the archive saved, so Undo never overtakes it.
     archiving.current.set(
@@ -535,16 +537,22 @@ export function InboxPage({
   }, [openId, selectedId]);
 
   const toast = status ? (
-    <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
+    <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-lg bg-primary py-1 ps-3 pe-1 text-sm text-primary-foreground shadow-lg">
       {status.kind === "archived" ? (
-        <Trans>Archived</Trans>
+        <span className="min-w-0 truncate" dir="auto">
+          {status.subject ? (
+            <Trans>Archived "{maskCurrencyWhenHidden(status.subject)}"</Trans>
+          ) : (
+            <Trans>Archived</Trans>
+          )}
+        </span>
       ) : status.mark === "noise" ? (
         <Trans>Mail from {status.sender} is now marked as noise</Trans>
       ) : (
         <Trans>Mail from {status.sender} is now marked important</Trans>
       )}
       <Button
-        variant="ghost"
+        variant="secondary"
         size="sm"
         onClick={() =>
           status.kind === "archived" ? unarchive(status.messageId) : mark(status.messageId, null)
