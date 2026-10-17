@@ -11,7 +11,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { ListView, type RowInteraction } from "./ItemRows";
+import { ListView, type RowInteraction, SubfolderList } from "./ItemRows";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -61,4 +61,28 @@ it("names each row's folder in All items, and not inside that folder", () => {
   expect(names()).toEqual(["lease.pdfLegal", "loose.pdf"]);
   act(() => root.render(<ListView rows={rows.slice(0, 1)} o={o("f-legal")} />));
   expect(names()).toEqual(["lease.pdf"]);
+});
+
+it("puts the status in its own column, so every row has the cell and only the failed one fills it", () => {
+  const rows = [
+    { ...item("junk", null), status: "failed" },
+    item("a-much-longer-file-name", null),
+  ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const cells = Array.from(container.querySelectorAll('[data-testid="data-room-status"]'));
+  expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", ""]);
+  expect(names()).toEqual(["junk.pdf", "a-much-longer-file-name.pdf"]);
+});
+
+it("gives every sub-folder a More actions menu", () => {
+  const onAction = vi.fn();
+  const invoices = { id: "f2", name: "Invoices", parentId: "f1", createdAt: "" };
+  for (const tiles of [false, true]) {
+    act(() =>
+      root.render(
+        <SubfolderList folders={[invoices]} onOpen={vi.fn()} onAction={onAction} tiles={tiles} />,
+      ),
+    );
+    expect(container.querySelector('li button[aria-label^="More actions for"]')).not.toBeNull();
+  }
 });

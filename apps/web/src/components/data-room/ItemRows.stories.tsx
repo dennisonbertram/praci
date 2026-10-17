@@ -73,7 +73,12 @@ const subfolders = [
 export const GridWithSubfolders: Story = {
   render: () => (
     <>
-      <SubfolderList tiles folders={subfolders} onOpen={() => undefined} />
+      <SubfolderList
+        tiles
+        folders={subfolders}
+        onOpen={() => undefined}
+        onAction={() => undefined}
+      />
       <GridView rows={rows} o={o} />
     </>
   ),
@@ -101,6 +106,7 @@ export const ListWithSubfolders: Story = {
             },
           ]}
           onOpen={() => undefined}
+          onAction={() => undefined}
         />
       }
     />

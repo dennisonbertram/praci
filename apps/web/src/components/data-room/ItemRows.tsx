@@ -56,18 +56,12 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction) {
   };
 }
 
-/** A document icon, or the state marker while a file is being read or has failed. */
+/** A document icon (red when the file failed), or a spinner while the file is being read. */
 function Marker({ item }: { item: DataRoomApiItem }) {
   if (item.status === "failed") {
+    const Icon = fileIcon(item);
     return (
-      <span
-        role="img"
-        aria-label={t`Failed`}
-        title={item.error ?? t`Failed`}
-        className="grid size-3.5 shrink-0 place-items-center"
-      >
-        <span className="size-2 rounded-full bg-destructive" />
-      </span>
+      <Icon role="img" aria-label={t`Failed`} className="size-3.5 shrink-0 text-destructive" />
     );
   }
   if (item.status !== "ready") {
@@ -104,18 +98,22 @@ const ROW_GRID =
   "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_110px_28px]";
 /** Without facets the name takes every column but the menu. */
 const PLAIN_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_28px]";
+/** As PLAIN_GRID, with a fixed status column so "Failed" lines up whatever the name's length. */
+const STATUS_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_72px_28px]";
+const hasStatus = (rows: Row[]) => rows.some(({ item }) => statusLabel(item.status));
+const plainGrid = (status: boolean) => (status ? STATUS_GRID : PLAIN_GRID);
 const DATE_CELL = "hidden @min-[400px]/list:block";
 const TYPE_CELL = "hidden @min-[500px]/list:block";
 const PARTIES_CELL = "hidden @min-[620px]/list:block";
 const CELL = "min-w-0 truncate text-muted-foreground";
 
-function TableHead({ facets }: { facets: boolean }) {
+function TableHead({ facets, status }: { facets: boolean; status: boolean }) {
   return (
     <div
       aria-hidden="true"
       data-testid="data-room-head"
       className={cn(
-        facets ? ROW_GRID : PLAIN_GRID,
+        facets ? ROW_GRID : plainGrid(status),
         "sticky top-0 z-10 bg-background py-2 text-xs text-muted-foreground",
       )}
     >
@@ -134,6 +132,10 @@ function TableHead({ facets }: { facets: boolean }) {
             <Trans>Parties</Trans>
           </span>
         </>
+      ) : status ? (
+        <span>
+          <Trans>Status</Trans>
+        </span>
       ) : null}
       <span />
     </div>
@@ -144,10 +146,12 @@ function ItemRow({
   item,
   o,
   facets,
+  status,
 }: {
   item: DataRoomApiItem;
   o: RowInteraction;
   facets: boolean;
+  status: boolean;
 }) {
   const label = statusLabel(item.status);
   const folder = item.folderId === (o.openFolderId ?? null) ? "" : o.folderPath(item.folderId);
@@ -156,7 +160,7 @@ function ItemRow({
       aria-current={o.shownId === item.id}
       {...rowProps(item, o)}
       className={cn(
-        facets ? ROW_GRID : PLAIN_GRID,
+        facets ? ROW_GRID : plainGrid(status),
         "cursor-pointer border-b border-border py-1.5 text-sm outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         // Clearly stronger than the hover tint, so the chosen row stays obvious.
         o.shownId === item.id && "bg-sidebar-accent font-medium hover:bg-sidebar-accent",
@@ -179,18 +183,16 @@ function ItemRow({
             <span className="truncate text-xs font-normal text-muted-foreground">{folder}</span>
           ) : null}
         </span>
-        {!facets && label ? (
-          <span
-            className={cn(
-              "shrink-0 text-muted-foreground",
-              item.status === "failed" && "text-destructive",
-            )}
-            title={item.status === "failed" ? (item.error ?? undefined) : undefined}
-          >
-            {label}
-          </span>
-        ) : null}
       </span>
+      {!facets && status ? (
+        <span
+          data-testid="data-room-status"
+          className={cn(CELL, item.status === "failed" && "text-destructive")}
+          title={item.status === "failed" ? (item.error ?? undefined) : undefined}
+        >
+          {label}
+        </span>
+      ) : null}
       {facets ? (
         <>
           <span
@@ -214,6 +216,8 @@ function ItemRow({
 
 /** Shared by the file tiles and the sub-folder tiles, so a grid reads as one set of tiles. */
 const TILE_GRID = "grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 p-3";
+/** The icon area at the top of every tile: no fill of its own, so file and folder tiles match. */
+const ICON_AREA = "grid h-20 place-items-center rounded-md [&>svg]:size-6";
 const TILE =
   "relative flex cursor-pointer flex-col gap-1 rounded-lg border border-border bg-card p-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring";
 
@@ -224,10 +228,12 @@ const TILE =
 export function SubfolderList({
   folders,
   onOpen,
+  onAction,
   tiles = false,
 }: {
   folders: DataRoomApiFolder[];
   onOpen: (id: string) => void;
+  onAction: (action: ItemAction, folder: DataRoomApiFolder) => void;
   tiles?: boolean;
 }) {
   if (!folders.length) return null;
@@ -235,22 +241,23 @@ export function SubfolderList({
     return (
       <ul aria-label={t`Sub-folders`} className={cn(TILE_GRID, "pb-0")}>
         {folders.map((folder) => (
-          <li key={folder.id} className="flex">
+          <li key={folder.id} className="relative flex">
             <Button
               variant="ghost"
               onClick={() => onOpen(folder.id)}
               className={cn(TILE, "h-auto w-full items-stretch font-medium whitespace-normal")}
             >
-              <span className="grid h-20 place-items-center rounded-md bg-muted [&>svg]:size-6">
+              <span className={ICON_AREA}>
                 <Folder aria-hidden="true" className="size-6 text-muted-foreground" />
               </span>
-              <span className="line-clamp-2 text-start break-words" title={folder.name}>
+              <span className="line-clamp-2 min-h-10 text-start break-words" title={folder.name}>
                 {folder.name}
               </span>
-              <span className="text-start text-xs font-normal text-muted-foreground">
+              <span className="min-h-4 text-start text-xs font-normal text-muted-foreground">
                 <Trans>Folder</Trans>
               </span>
             </Button>
+            <ItemMenu item={folder} onAction={onAction} className="absolute top-3 right-3" />
           </li>
         ))}
       </ul>
@@ -259,7 +266,10 @@ export function SubfolderList({
   return (
     <ul aria-label={t`Sub-folders`} className="flex flex-col">
       {folders.map((folder) => (
-        <li key={folder.id} className="border-b border-border">
+        <li
+          key={folder.id}
+          className="grid grid-cols-[minmax(0,1fr)_28px] items-center gap-2.5 border-b border-border pe-2"
+        >
           <Button
             variant="ghost"
             onClick={() => onOpen(folder.id)}
@@ -270,6 +280,7 @@ export function SubfolderList({
               {folder.name}
             </span>
           </Button>
+          <ItemMenu item={folder} onAction={onAction} />
         </li>
       ))}
     </ul>
@@ -279,13 +290,14 @@ export function SubfolderList({
 /** `lead` (the open folder's sub-folders) goes under the column header, above the files. */
 export function ListView({ rows, o, lead }: { rows: Row[]; o: RowInteraction; lead?: ReactNode }) {
   const facets = hasFacets(rows);
+  const status = hasStatus(rows);
   return (
     <div>
-      <TableHead facets={facets} />
+      <TableHead facets={facets} status={status} />
       {lead}
       <ul aria-label={t`Items`} data-rows>
         {rows.map(({ item }) => (
-          <ItemRow key={item.id} item={item} o={o} facets={facets} />
+          <ItemRow key={item.id} item={item} o={o} facets={facets} status={status} />
         ))}
       </ul>
     </div>
@@ -305,14 +317,21 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
             o.shownId === item.id && "border-primary bg-sidebar-accent ring-1 ring-primary",
           )}
         >
-          <span className="grid h-20 place-items-center rounded-md bg-muted [&>svg]:size-6">
+          <span className={ICON_AREA}>
             <Marker item={item} />
           </span>
           <ItemMenu item={item} onAction={o.onAction} className="absolute top-3 right-3" />
-          <span className="line-clamp-2 font-medium break-words" title={item.name}>
+          {/* Two lines kept for every name, so one-line and two-line tiles are the same height. */}
+          <span className="line-clamp-2 min-h-10 font-medium break-words" title={item.name}>
             {item.name}
           </span>
-          <span className="truncate text-xs text-muted-foreground">
+          {/* Always one line tall, so a "Failed" line never makes one tile taller than the rest. */}
+          <span
+            className={cn(
+              "min-h-4 truncate text-xs text-muted-foreground",
+              item.status === "failed" && "text-destructive",
+            )}
+          >
             {item.status === "ready"
               ? [item.facets.docType, dateText(item.facets.docDate)].filter(Boolean).join(" · ")
               : statusLabel(item.status)}
@@ -329,7 +348,11 @@ export function Snippet({ text }: { text: string }) {
     <p className="text-sm text-foreground/80">
       {splitSnippet(text).map((part, index) =>
         part.mark ? (
-          <mark key={index} className="rounded-sm bg-warning/25 text-inherit">
+          // The padding keeps the tint past the last letter's edge, so "November" looks fully marked.
+          <mark
+            key={index}
+            className="rounded-sm bg-warning/25 px-0.5 text-inherit box-decoration-clone"
+          >
             {part.text}
           </mark>
         ) : (
