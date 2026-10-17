@@ -13,7 +13,10 @@ import type { DataRoomAi } from "./data-room-models.js";
 
 /** A one-page PDF whose text layer holds `text` (ASCII, no parentheses or backslashes). */
 export function makePdf(text: string): Uint8Array {
-  const stream = `BT /F1 12 Tf 72 720 Td (${text}) Tj ET`;
+  // One line per ~80 characters, so text past the page width is not clipped on extraction.
+  const lines = text.match(/.{1,80}(\s|$)/g) ?? [text];
+  const shown = lines.map((line) => `(${line.trim()}) Tj`).join(" T* ");
+  const stream = `BT /F1 12 Tf 14 TL 72 720 Td ${shown} ET`;
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",

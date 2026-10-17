@@ -258,6 +258,11 @@ import { checkpointRunComputerWorkspace } from "./computer-workspace.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
 import { CONTACT_TOOL_NAMES, contactToolFromTool, contactToolsAllowed } from "./contact-tools.js";
 import { formatCurrentTimeInstruction } from "./current-time.js";
+import {
+  DATA_ROOM_TOOL_NAMES,
+  dataRoomToolFromTool,
+  dataRoomToolsAllowed,
+} from "./data-room-tools.js";
 import { resolveDeploymentModel } from "./deployment-model.js";
 import {
   DRIVE_TOOL_NAMES,
@@ -458,6 +463,8 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "finance_crypto",
   "contacts_list",
   "cap_table_read",
+  "data_room_search",
+  "data_room_read",
   "calendar_list_events",
   "calendar_get_event",
   "drive_search",
@@ -3982,6 +3989,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
           trigger: run.trigger,
           messagingChannelRun,
         });
+        const dataRoomEnabled = dataRoomToolsAllowed({
+          runUserId: run.userId,
+          botUserId: bot.userId,
+          groupId: thread.groupId,
+          groupUserId: thread.groupId
+            ? (
+                await deps.prisma.chatGroup.findUnique({
+                  where: { id: thread.groupId },
+                  select: { userId: true },
+                })
+              )?.userId
+            : undefined,
+          messagingChannelRun,
+        });
         const builtins = [
           ...selectBuiltinToolsForRun({
             ticketBoardEnabled: deps.ticketBoardEnabled,
@@ -3997,6 +4018,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             driveEnabled,
             financeEnabled,
             contactsEnabled,
+            dataRoomEnabled,
             messagingChannelRun,
             cartaAgent,
             voiceCall,
@@ -5449,6 +5471,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
           if (CONTACT_TOOL_NAMES.has(name) && contactsEnabled) {
             return finish(
               await contactToolFromTool(
+                name,
+                { prisma: deps.prisma, scope: { spaceId: run.spaceId, userId: bot.userId } },
+                args,
+              ),
+            );
+          }
+          if (DATA_ROOM_TOOL_NAMES.has(name) && dataRoomEnabled) {
+            return finish(
+              await dataRoomToolFromTool(
                 name,
                 { prisma: deps.prisma, scope: { spaceId: run.spaceId, userId: bot.userId } },
                 args,
@@ -7771,6 +7802,8 @@ export function selectBuiltinToolsForRun(options: {
   financeEnabled?: boolean;
   /** The Carta agent on a run its owner started. */
   contactsEnabled?: boolean;
+  /** The owner's bot, in their own chat or group: their Data room documents. */
+  dataRoomEnabled?: boolean;
   messagingChannelRun: boolean;
   /** The Carta agent: no delegation to other bots, whose runs would skip its mail approval. */
   cartaAgent?: boolean;
@@ -7807,6 +7840,7 @@ export function selectBuiltinToolsForRun(options: {
       (options.driveEnabled || !DRIVE_TOOL_NAMES.has(tool.name)) &&
       (options.financeEnabled || !FINANCE_TOOL_NAMES.has(tool.name)) &&
       (options.contactsEnabled || !CONTACT_TOOL_NAMES.has(tool.name)) &&
+      (options.dataRoomEnabled || !DATA_ROOM_TOOL_NAMES.has(tool.name)) &&
       !(options.cartaAgent && CARTA_BLOCKED_DELEGATION_TOOLS.has(tool.name)) &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&

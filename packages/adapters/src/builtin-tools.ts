@@ -1018,6 +1018,19 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "data_room_search",
+    description:
+      "Find documents in the user's Data room: board decks, SAFEs, contracts, budgets, cap table exports and investor updates. Search by words in the name or text; leave query empty to list every document. Look here first when the user mentions a company document.",
+    inputSchema: { type: "object", properties: { query: { type: "string" } } },
+    readOnly: true,
+  },
+  {
+    name: "data_room_read",
+    description: "The text of one Data room document, by the id data_room_search returned.",
+    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+    readOnly: true,
+  },
+  {
     name: "drive_search",
     description:
       "Find files in the user's connected Google Drive by name or content. Returns id, name, mimeType, modifiedTime, owners, webViewLink and size for each match. Use drive_read for the content.",
