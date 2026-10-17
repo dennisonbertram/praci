@@ -23,6 +23,8 @@ import {
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_RUNNING_RUN,
+  DEMO_USER_NAME,
   DEMO_WAITING_RUN,
   DEMO_WALLET,
   demoCarta,
@@ -252,5 +254,14 @@ describe("mock demo data", () => {
     };
     expect(bills.items.map((b) => b.vendor.name)).toEqual(["Placeholder Legal LLP (Mock)"]);
     expect(bills.items[0]?.due_at > "2026-10-16").toBe(true);
+  });
+
+  it("matches the story catalog's seed: Maya Chen, six artifacts and a working run off the group", () => {
+    expect(DEMO_USER_NAME).toBe("Maya Chen (Mock)");
+    // The investor update draft is seeded on top of these, as a second version.
+    expect(DEMO_ARTIFACTS).toHaveLength(5);
+    expect(DEMO_RUNNING_RUN.bot.description).toContain(MOCK_NOTE);
+    expect(DEMO_RUNNING_RUN.prompt).toContain("mock");
+    expect(DEMO_BOTS.map((bot) => bot.name)).not.toContain(DEMO_RUNNING_RUN.bot.name);
   });
 });

@@ -20,7 +20,7 @@ export const MOCK_NOTE = "Mock demo data";
 export const DEMO_COMPANY = "MOCK DEMO DATA — Northwind Robotics";
 /** A space with nothing connected, for the first-run and empty states. */
 export const DEMO_EMPTY_SPACE = "MOCK DEMO DATA — Empty space";
-export const DEMO_USER_NAME = "Alex Founder (Mock)";
+export const DEMO_USER_NAME = "Maya Chen (Mock)";
 export const DEMO_EMAIL = "mock-founder@demo.rakazo.test";
 /** Short, so the subject itself stays readable in a list row. */
 export const MOCK_SUBJECT_PREFIX = "[MOCK]";
@@ -31,7 +31,7 @@ const FOOTER = `\n\n-- \n${MOCK_NOTE}: invented for UX testing. Not a real messa
 
 // ---- Inbox ----
 
-const ME = "Alex Founder (Mock) <mock-founder@northwind.example.test>";
+const ME = "Maya Chen (Mock) <mock-founder@northwind.example.test>";
 const MORGAN = "Morgan Pretend <morgan@halcyon-logistics.example.test>";
 const DANA = "Dana Counselor <dana@halcyon-logistics.example.test>";
 
@@ -67,7 +67,7 @@ const MAIL: Mail[] = [
     agoMs: 2 * HOUR_MS,
     from: "Priya Placeholder <priya@quill-capital.example.test>",
     subject: "Q3 investor update: draft for your review",
-    text: "Hi Alex,\n\nHere is the draft of the Q3 update for our LPs. Can you check the runway and hiring numbers before Friday?\n\nPriya\nQuill Capital (Mock)",
+    text: "Hi Maya,\n\nHere is the draft of the Q3 update for our LPs. Can you check the runway and hiring numbers before Friday?\n\nPriya\nQuill Capital (Mock)",
     unread: true,
     starred: true,
   },
@@ -78,7 +78,7 @@ const MAIL: Mail[] = [
     from: MORGAN,
     cc: DANA,
     subject: "Redlines on the Master Services Agreement",
-    text: "Alex,\n\nOur counsel returned redlines on sections 4 (liability cap) and 9 (termination). We can sign this week if you accept them.\n\nMorgan\nHalcyon Logistics (Mock)",
+    text: "Maya,\n\nOur counsel returned redlines on sections 4 (liability cap) and 9 (termination). We can sign this week if you accept them.\n\nMorgan\nHalcyon Logistics (Mock)",
   },
   {
     thread: "msa-redlines",
@@ -88,7 +88,7 @@ const MAIL: Mail[] = [
     cc: DANA,
     sent: true,
     subject: "Redlines on the Master Services Agreement",
-    text: "Thanks Morgan. Our counsel is reviewing both sections and I will reply by Thursday.\n\nAlex",
+    text: "Thanks Morgan. Our counsel is reviewing both sections and I will reply by Thursday.\n\nMaya",
   },
   {
     thread: "msa-redlines",
@@ -96,7 +96,7 @@ const MAIL: Mail[] = [
     from: DANA,
     cc: MORGAN,
     subject: "Redlines on the Master Services Agreement",
-    text: "Alex, to clarify section 9: we are asking for 60 days' notice of termination instead of 30. Section 4 is as marked.\n\nDana\nHalcyon Logistics (Mock)",
+    text: "Maya, to clarify section 9: we are asking for 60 days' notice of termination instead of 30. Section 4 is as marked.\n\nDana\nHalcyon Logistics (Mock)",
   },
   {
     thread: "msa-redlines",
@@ -104,7 +104,7 @@ const MAIL: Mail[] = [
     from: MORGAN,
     cc: DANA,
     subject: "Redlines on the Master Services Agreement",
-    text: "Alex, if section 9 works for you, can we sign on Thursday?\n\nMorgan",
+    text: "Maya, if section 9 works for you, can we sign on Thursday?\n\nMorgan",
     unread: true,
   },
   {
@@ -129,14 +129,14 @@ const MAIL: Mail[] = [
     agoMs: 1.2 * DAY_MS,
     from: "Jamie Placeholder <jamie@intros.example.test>",
     subject: "Intro request: Dana Fakename at Acme Ventures (Mock)",
-    text: "Alex, Dana Fakename would like a short intro call about your seed round. Are you open to it? I can write the intro today.\n\nJamie",
+    text: "Maya, Dana Fakename would like a short intro call about your seed round. Are you open to it? I can write the intro today.\n\nJamie",
   },
   {
     thread: "board-deck",
     agoMs: 1.5 * DAY_MS,
     from: "Riley Testwell <riley@bookkeeping.example.test>",
     subject: "Q3 board deck (PDF attached)",
-    text: "Alex, the Q3 board deck is attached. The financial slides use the September close.\n\nRiley\nBookkeeping Co (Mock)",
+    text: "Maya, the Q3 board deck is attached. The financial slides use the September close.\n\nRiley\nBookkeeping Co (Mock)",
     attachments: [
       {
         filename: "MOCK-q3-board-deck.pdf",
@@ -151,7 +151,7 @@ const MAIL: Mail[] = [
     agoMs: 2 * DAY_MS,
     from: "Sam Samplesworth <sam@pilot-customer.example.test>",
     subject: "Pilot results and next steps",
-    text: "Alex, the pilot ran well. We would like to discuss moving to an annual contract. When can we talk?\n\nSam\nPilot Customer Inc (Mock)",
+    text: "Maya, the pilot ran well. We would like to discuss moving to an annual contract. When can we talk?\n\nSam\nPilot Customer Inc (Mock)",
     unread: true,
   },
   {
@@ -173,14 +173,14 @@ const MAIL: Mail[] = [
     agoMs: 3.5 * DAY_MS,
     from: "Taylor Notreal <taylor@recruiting.example.test>",
     subject: "Candidate for Senior Firmware Engineer",
-    text: "Alex, I have a strong candidate for the firmware role. Shall I send the resume?\n\nTaylor\nRecruiting Partners (Mock)",
+    text: "Maya, I have a strong candidate for the firmware role. Shall I send the resume?\n\nTaylor\nRecruiting Partners (Mock)",
   },
   {
     thread: "expense-question",
     agoMs: 4 * DAY_MS,
     from: "Riley Testwell <riley@bookkeeping.example.test>",
     subject: "Question about a September charge",
-    text: "Alex, there is a $2,400 charge from Globex Cloud (Mock) in September that I cannot match to a receipt. Can you send one?\n\nRiley",
+    text: "Maya, there is a $2,400 charge from Globex Cloud (Mock) in September that I cannot match to a receipt. Can you send one?\n\nRiley",
   },
   {
     thread: "demo-day",
@@ -226,7 +226,7 @@ const MAIL: Mail[] = [
     agoMs: 7 * DAY_MS,
     from: "Casey Coworker <casey@northwind.example.test>",
     subject: "Team offsite: dates and venue",
-    text: "Hi Alex, I shortlisted two venues for the team offsite on Nov 21 or Nov 28. Which date works for you?\n\nCasey",
+    text: "Hi Maya, I shortlisted two venues for the team offsite on Nov 21 or Nov 28. Which date works for you?\n\nCasey",
   },
   // Over the 10 MB attachment limit, so forwarding it shows the limit.
   {
@@ -234,7 +234,7 @@ const MAIL: Mail[] = [
     agoMs: 4.5 * DAY_MS,
     from: "Casey Coworker <casey@northwind.example.test>",
     subject: "Product demo video for the reseller call",
-    text: "Alex, here is the demo video for the reseller call. It is large, so download it before you travel.\n\nCasey",
+    text: "Maya, here is the demo video for the reseller call. It is large, so download it before you travel.\n\nCasey",
     attachments: [mockFile("MOCK-northwind-demo.mp4", "video/mp4", 12 * 1024 * 1024)],
   },
   {
@@ -282,7 +282,7 @@ const MAIL: Mail[] = [
     agoMs: 10 * DAY_MS,
     from: "Priya Placeholder <priya@quill-capital.example.test>",
     subject: "SAFE countersigned",
-    text: "Alex, the countersigned SAFE for $250,000 is filed. Wire should arrive within two business days.\n\nPriya",
+    text: "Maya, the countersigned SAFE for $250,000 is filed. Wire should arrive within two business days.\n\nPriya",
   },
   {
     thread: "partner-intro",
@@ -893,7 +893,7 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Fundraising",
     "MOCK Cap Table Summary.csv",
-    "holder,class,shares,percent\nAlex Founder Mock,common,4000000,40\nRiver Cofounder Mock,common,3000000,30\nEarly employees Mock,common,1500000,15\nOption pool Mock,pool,1500000,15\nQuill Capital SAFE Mock,safe,0,pending",
+    "holder,class,shares,percent\nMaya Chen Mock,common,4000000,40\nRiver Cofounder Mock,common,3000000,30\nEarly employees Mock,common,1500000,15\nOption pool Mock,pool,1500000,15\nQuill Capital SAFE Mock,safe,0,pending",
     "csv",
   ),
   doc(
@@ -935,7 +935,7 @@ Highlights
 Asks
 - Intros to robotics buyers in warehousing.
 
-Alex
+Maya
 
 ${MOCK_NOTE}: invented for UX testing. Not a real update.
 `,
@@ -991,6 +991,20 @@ current,46000,8.9
 hire two engineers,64000,6.4
 cut tools 10%,44000,9.4
 ${MOCK_NOTE},,
+`,
+  },
+  {
+    name: "MOCK Burn by Month.csv",
+    mimeType: "text/csv",
+    description: "Monthly net burn for the last six months",
+    text: `month,net_burn_usd
+2026-04,41000
+2026-05,43000
+2026-06,44000
+2026-07,45000
+2026-08,47000
+2026-09,46000
+${MOCK_NOTE},
 `,
   },
   {
@@ -1071,6 +1085,21 @@ export const DEMO_BOTS = [
 ];
 
 export const DEMO_GROUP = { name: "Leadership sync (mock)" };
+
+/**
+ * A bot whose run is still working, so Activity has something under "Working". Written straight
+ * to the database with a long lease and no worker behind it, so no model runs. The bot is not in
+ * the group chat, so group replies never wait on it. Reseed (demo:down/up) to reset it.
+ */
+export const DEMO_RUNNING_RUN = {
+  bot: {
+    name: "Finance helper (mock)",
+    title: "Finance",
+    description: `${MOCK_NOTE}: compares the demo spend month by month.`,
+  },
+  prompt: "Compare this quarter's burn with last quarter, by category (mock).",
+  leaseMs: 6 * HOUR_MS,
+};
 
 /**
  * One run parked on a question, so Activity has something under "Needs you" and the bot's chat

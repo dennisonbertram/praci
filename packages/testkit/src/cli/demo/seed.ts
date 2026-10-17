@@ -16,6 +16,7 @@ import {
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
   DEMO_GROUP,
+  DEMO_RUNNING_RUN,
   DEMO_USER_NAME,
   DEMO_WAITING_RUN,
   DEMO_WALLET,
@@ -306,13 +307,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       const thread = await db.prisma.thread.findUniqueOrThrow({ where: { botId: bot.id } });
       const owner = { spaceId, userId, botId: bot.id, threadId: thread.id };
       // Let the bot's own introduction finish first, so the question is the newest message.
-      for (let waited = 0; waited < 90_000; waited += 1_000) {
-        const busy = await db.prisma.run.count({
-          where: { botId: bot.id, status: { notIn: ["completed", "failed", "cancelled"] } },
-        });
-        if (!busy) break;
-        await new Promise((resolve) => setTimeout(resolve, 1_000));
-      }
+      await waitForIdleBot(db.prisma, bot.id);
       const task = await db.prisma.task.create({
         data: { ...owner, prompt: DEMO_WAITING_RUN.prompt, status: "waiting_input" },
       });
@@ -353,6 +348,52 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       await db.pool.end();
     }
   }
+  // A run still working, for Activity's "Working" list, on a bot outside the group chat.
+  {
+    const helper = await session.rpc<{ id: string }>("bots/create", {
+      ...DEMO_RUNNING_RUN.bot,
+      instructions: DEMO_RUNNING_RUN.bot.description,
+      notifyOnFinish: true,
+    });
+    const db = createDb(options.databaseUrl);
+    try {
+      await waitForIdleBot(db.prisma, helper.id);
+      const bot = await db.prisma.bot.findUniqueOrThrow({ where: { id: helper.id } });
+      const thread = await db.prisma.thread.findUniqueOrThrow({ where: { botId: bot.id } });
+      const owner = {
+        spaceId: bot.spaceId,
+        userId: bot.userId,
+        botId: bot.id,
+        threadId: thread.id,
+      };
+      const task = await db.prisma.task.create({
+        data: { ...owner, prompt: DEMO_RUNNING_RUN.prompt, status: "running" },
+      });
+      // A lease far ahead and an owner no worker uses: nothing picks the run up while the demo runs.
+      await db.prisma.run.create({
+        data: {
+          ...owner,
+          taskId: task.id,
+          status: "running",
+          trigger: "user",
+          startedAt: new Date(),
+          leaseOwner: "mock-demo-seed",
+          leaseExpiresAt: new Date(Date.now() + DEMO_RUNNING_RUN.leaseMs),
+        },
+      });
+      await db.prisma.$transaction((tx) =>
+        createThreadMessageInTransaction(tx, {
+          threadId: thread.id,
+          role: "user",
+          blocks: [{ kind: "text", text: DEMO_RUNNING_RUN.prompt }],
+          markUnread: false,
+        }),
+      );
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  }
   const archived = await session.rpc<{ id: string }>("bots/create", {
     ...DEMO_ARCHIVED_BOT,
     instructions: DEMO_ARCHIVED_BOT.description,
@@ -360,11 +401,22 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   });
   await session.rpc("bots/archive", { botId: archived.id });
   done.push(
-    `${DEMO_BOTS.length} extra bots, 1 archived bot, 1 group chat, 1 run waiting on an answer (${MOCK_NOTE})`,
+    `${DEMO_BOTS.length + 1} extra bots, 1 archived bot, 1 group chat, 1 run waiting on an answer, 1 run working (${MOCK_NOTE})`,
   );
 
   // A second, empty space: what a founder sees before connecting anything (switch to it to test).
   await session.rpc("spaces/create", { name: DEMO_EMPTY_SPACE });
   done.push(`empty space "${DEMO_EMPTY_SPACE}"`);
   return done;
+}
+
+/** Waits up to 90 seconds for a bot's own runs (its introduction) to finish. */
+async function waitForIdleBot(prisma: ReturnType<typeof createDb>["prisma"], botId: string) {
+  for (let waited = 0; waited < 90_000; waited += 1_000) {
+    const busy = await prisma.run.count({
+      where: { botId, status: { notIn: ["completed", "failed", "cancelled"] } },
+    });
+    if (!busy) return;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
 }
