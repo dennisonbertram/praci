@@ -153,6 +153,9 @@ test("Finance with nothing connected offers Add account", async ({ page }, testI
   await page.getByTestId("sidebar-finance").click();
   const main = page.getByRole("main");
   await expect(main.getByText("Add an account to see cash, burn, runway and spend.")).toBeVisible();
+  // The page title sits above the empty state, as on every other page.
+  await expect(main.getByRole("heading", { name: "Finance", level: 1 })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "No accounts yet", level: 2 })).toBeVisible();
   await expect(main.getByRole("button", { name: "Ask Finance agent" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "finance-empty");
   await main.getByRole("button", { name: "Add account" }).click();

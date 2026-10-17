@@ -266,9 +266,9 @@ export function DataRoomPage() {
         )}
       </div>
       {empty ? (
-        <div className="grid flex-1 place-items-center p-6">
+        <div className="flex justify-center px-6 pt-4">
           <PageEmptyState
-            className="w-full max-w-md flex-none rounded-xl border-2 border-dashed border-border"
+            className="w-full max-w-md rounded-xl border-2 border-dashed border-border"
             icon={<Upload aria-hidden="true" className="size-8" strokeWidth={1.6} />}
             title={<Trans>Drop files here</Trans>}
             description={

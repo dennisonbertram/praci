@@ -24,7 +24,7 @@ import {
   TabsTrigger,
   Toggle,
 } from "@rakazo/ui-web";
-import { ListFilter, Search, SquarePen, X } from "lucide-react";
+import { ListFilter, Mail, Search, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
@@ -34,6 +34,7 @@ import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
 import { InboxGroup } from "../components/inbox/InboxRow";
 import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
 import { TodoCard } from "../components/inbox/TodoCard";
+import { PageEmptyState } from "../components/PageEmptyState";
 import { useInboxKeyboard } from "../lib/inbox-keyboard";
 import {
   inboxListInput,
@@ -673,11 +674,15 @@ export function InboxPage({
       ) : null}
 
       {data && accounts.length === 0 ? (
-        <div className="grid place-items-center py-16">
+        <PageEmptyState
+          icon={<Mail className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+          title={<Trans>No mail connected</Trans>}
+          description={<Trans>Connect Gmail to read, sort and answer your mail here.</Trans>}
+        >
           <Button onClick={onConnectMail}>
             <Trans>Connect mail</Trans>
           </Button>
-        </div>
+        </PageEmptyState>
       ) : loading ? (
         <div className="flex flex-col gap-2" aria-busy="true">
           {[0, 1, 2, 3, 4].map((n) => (

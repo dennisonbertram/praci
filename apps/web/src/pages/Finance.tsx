@@ -165,43 +165,47 @@ function EmptyState({ hasCrypto, onChanged }: { hasCrypto: boolean; onChanged: (
   const [adding, setAdding] = useState(false);
   const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
   return (
-    <PageEmptyState
-      titleAs="h1"
-      className="h-full"
-      icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
-        <AppLogo key={provider} name={name} logo={logo} size="lg" />
-      ))}
-      title={<Trans>Finance</Trans>}
-      description={<Trans>Add an account to see cash, burn, runway and spend.</Trans>}
-    >
-      <Button onClick={() => setAdding(true)}>
-        <Trans>Add account</Trans>
-      </Button>
-      {hasCrypto ? (
-        <Button variant="outline" render={<Link to={financePath.accounts()} />}>
-          <Trans>Accounts</Trans>
+    <div>
+      {/* The page title stays where every page has it, with the empty state under it. */}
+      <h1 className="text-lg font-semibold">
+        <Trans>Finance</Trans>
+      </h1>
+      <PageEmptyState
+        icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
+          <AppLogo key={provider} name={name} logo={logo} size="lg" />
+        ))}
+        title={<Trans>No accounts yet</Trans>}
+        description={<Trans>Add an account to see cash, burn, runway and spend.</Trans>}
+      >
+        <Button onClick={() => setAdding(true)}>
+          <Trans>Add account</Trans>
         </Button>
-      ) : null}
-      {adding ? (
-        <AddAccountDialog
-          onPickCrypto={setCrypto}
-          onImported={onChanged}
-          onClose={() => setAdding(false)}
-        />
-      ) : null}
-      <WalletDialog
-        open={crypto === "wallet"}
-        onClose={() => setCrypto(null)}
-        onSaved={onChanged}
-      />
-      {crypto && crypto !== "wallet" ? (
-        <ExchangeConnectDialog
-          provider={crypto}
-          onConnected={onChanged}
+        {hasCrypto ? (
+          <Button variant="outline" render={<Link to={financePath.accounts()} />}>
+            <Trans>Accounts</Trans>
+          </Button>
+        ) : null}
+        {adding ? (
+          <AddAccountDialog
+            onPickCrypto={setCrypto}
+            onImported={onChanged}
+            onClose={() => setAdding(false)}
+          />
+        ) : null}
+        <WalletDialog
+          open={crypto === "wallet"}
           onClose={() => setCrypto(null)}
+          onSaved={onChanged}
         />
-      ) : null}
-    </PageEmptyState>
+        {crypto && crypto !== "wallet" ? (
+          <ExchangeConnectDialog
+            provider={crypto}
+            onConnected={onChanged}
+            onClose={() => setCrypto(null)}
+          />
+        ) : null}
+      </PageEmptyState>
+    </div>
   );
 }
 
