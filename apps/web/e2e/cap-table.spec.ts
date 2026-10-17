@@ -9,9 +9,10 @@ test("Cap Table lists contacts added through the dialog", async ({ page }, testI
   await page.getByTestId("sidebar-cap-table").click();
   await expect(page).toHaveURL(/\/app\/cap-table$/);
   const main = page.getByRole("main");
-  await expect(main.getByRole("heading", { name: "Cap Table", level: 1 })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Cap table", level: 1 })).toBeVisible();
   await expect(main.getByRole("button", { name: "Connect Carta" })).toBeVisible();
-  await expect(page.getByTestId("carta-agent-panel")).toBeVisible();
+  // Without Carta there is no Carta agent, so no empty side panel covers the page.
+  await expect(page.getByTestId("carta-agent-panel")).toHaveCount(0);
 
   await main.getByRole("button", { name: "Add contact" }).click();
   const dialog = page.getByRole("dialog");

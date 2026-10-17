@@ -20,8 +20,9 @@ import {
   TabsTrigger,
   Textarea,
 } from "@rakazo/ui-web";
-import { PanelRightOpen, Plus, RefreshCw } from "lucide-react";
+import { PanelRightOpen, PieChart, Plus, RefreshCw } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { PageEmptyState } from "../components/PageEmptyState";
 import { hasConnectedCarta } from "../lib/carta-agent";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
@@ -366,6 +367,8 @@ export function CapTablePage({
   const kindOf = (row: Row) => row.contact?.kind ?? "investor";
   const shown = rows.filter((row) => filter === "all" || kindOf(row) === filter);
   const showHoldings = snapshot !== null || reading;
+  // Nothing to show yet: the empty state carries the actions, so the header and tabs step aside.
+  const emptyPage = contacts !== null && !error && rows.length === 0 && !snapshot && !reading;
   const filterNames: Record<Filter, string> = {
     all: t`All`,
     investor: t`Investors`,
@@ -377,8 +380,8 @@ export function CapTablePage({
     <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="me-auto min-w-0">
-          <h1 className="text-lg font-medium">
-            <Trans>Cap Table</Trans>
+          <h1 className="text-lg font-semibold">
+            <Trans>Cap table</Trans>
           </h1>
           {snapshot ? (
             <p className="text-xs text-muted-foreground">
@@ -387,7 +390,7 @@ export function CapTablePage({
             </p>
           ) : null}
         </div>
-        {cartaConnected ? (
+        {emptyPage ? null : cartaConnected ? (
           <Button
             variant="ghost"
             size="icon-sm"
@@ -403,10 +406,12 @@ export function CapTablePage({
             <Trans>Connect Carta</Trans>
           </Button>
         )}
-        <Button onClick={() => setEditing("new")}>
-          <Plus aria-hidden="true" />
-          <Trans>Add contact</Trans>
-        </Button>
+        {emptyPage ? null : (
+          <Button onClick={() => setEditing("new")}>
+            <Plus aria-hidden="true" />
+            <Trans>Add contact</Trans>
+          </Button>
+        )}
         {onShowAgent ? (
           <Button
             variant="ghost"
@@ -428,15 +433,17 @@ export function CapTablePage({
         </p>
       ) : null}
 
-      <Tabs value={filter} onValueChange={(next) => setFilter(next as Filter)} className="mb-4">
-        <TabsList className="rounded-full" aria-label={t`Kind`}>
-          {(Object.keys(filterNames) as Filter[]).map((value) => (
-            <TabsTrigger key={value} value={value} className="rounded-full px-3">
-              {filterNames[value]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      {emptyPage ? null : (
+        <Tabs value={filter} onValueChange={(next) => setFilter(next as Filter)} className="mb-4">
+          <TabsList className="rounded-full" aria-label={t`Kind`}>
+            {(Object.keys(filterNames) as Filter[]).map((value) => (
+              <TabsTrigger key={value} value={value} className="rounded-full px-3">
+                {filterNames[value]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
 
       {capFailed && cartaConnected ? (
         <div role="alert" className="mb-3 flex items-center gap-3 text-sm text-destructive">
@@ -471,9 +478,29 @@ export function CapTablePage({
             <Skeleton key={n} className="h-9 w-full" />
           ))}
         </div>
+      ) : emptyPage ? (
+        <PageEmptyState
+          icon={<PieChart className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+          title={<Trans>No cap table yet</Trans>}
+          description={
+            <Trans>
+              Connect Carta to see shareholders, share classes and ownership. You can also add
+              investors and advisors by hand.
+            </Trans>
+          }
+        >
+          {cartaConnected ? null : (
+            <Button onClick={onConnectCarta}>
+              <Trans>Connect Carta</Trans>
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => setEditing("new")}>
+            <Trans>Add contact</Trans>
+          </Button>
+        </PageEmptyState>
       ) : shown.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted-foreground">
-          <Trans>No contacts yet</Trans>
+          <Trans>No contacts of this kind</Trans>
         </p>
       ) : (
         <table className="w-full text-sm">

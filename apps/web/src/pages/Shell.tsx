@@ -1745,7 +1745,7 @@ export function ShellPage() {
     return [
       { id: "inbox", label: t`Inbox`, icon: <Mail {...icon} /> },
       { id: "finance", label: t`Finance`, icon: <ChartColumn {...icon} /> },
-      { id: "cap-table", label: t`Cap Table`, icon: <PieChart {...icon} /> },
+      { id: "cap-table", label: t`Cap table`, icon: <PieChart {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
     ];
@@ -3365,7 +3365,7 @@ export function ShellPage() {
           testId="sidebar-cap-table"
           current={capTableMode}
           icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Cap Table</Trans>}
+          label={<Trans>Cap table</Trans>}
           onOpen={() => {
             setMobileSidebarOpen(false);
             navigate("/app/cap-table");

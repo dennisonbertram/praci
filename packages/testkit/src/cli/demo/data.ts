@@ -481,6 +481,71 @@ export const DEMO_CONTACTS = [
   },
 ];
 
+/** The Carta snapshot the Cap Table page shows; holder emails match DEMO_CONTACTS so rows join. */
+export function demoCapTable(now = new Date()) {
+  const day = (daysAgo: number) =>
+    new Date(now.getTime() - daysAgo * DAY_MS).toISOString().slice(0, 10);
+  return {
+    companyName: DEMO_COMPANY,
+    asOf: day(1),
+    fullyDilutedShares: 10_000_000,
+    amountRaisedUsd: 275_000,
+    optionPoolAvailable: 600_000,
+    latest409a: { pricePerShareUsd: 0.42, date: day(120) },
+    shareClasses: [
+      { name: "Common (Mock)", shares: 8_500_000, percent: 85 },
+      { name: "Option pool (Mock)", shares: 1_500_000, percent: 15 },
+    ],
+    holders: [
+      {
+        name: mockName("Alex Founder"),
+        email: DEMO_EMAIL,
+        organization: null,
+        security: "Common",
+        shares: 4_000_000,
+        amountUsd: null,
+        percent: 40,
+      },
+      {
+        name: mockName("River Cofounder"),
+        email: null,
+        organization: null,
+        security: "Common",
+        shares: 3_000_000,
+        amountUsd: null,
+        percent: 30,
+      },
+      {
+        name: mockName("Early employees"),
+        email: null,
+        organization: null,
+        security: "Common",
+        shares: 1_500_000,
+        amountUsd: null,
+        percent: 15,
+      },
+      {
+        name: "Priya Placeholder",
+        email: "priya@quill-capital.example.test",
+        organization: "Quill Capital (Mock)",
+        security: "SAFE",
+        shares: null,
+        amountUsd: 250_000,
+        percent: null,
+      },
+      {
+        name: "Lee Notarealperson",
+        email: "lee@angel.example.test",
+        organization: "Independent angel (Mock)",
+        security: "SAFE",
+        shares: null,
+        amountUsd: 25_000,
+        percent: null,
+      },
+    ],
+  };
+}
+
 export interface DemoDocument {
   folder: string;
   name: string;

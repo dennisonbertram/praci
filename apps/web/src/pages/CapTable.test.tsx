@@ -300,3 +300,14 @@ it("retries the refresh, not the contacts load, after a failed refresh", async (
   expect(rpcMock.list.mock.calls.length).toBe(lists);
   expect(container.textContent).not.toContain("boom");
 });
+
+it("explains an empty cap table and offers Connect Carta and Add contact once", async () => {
+  rpcMock.list.mockResolvedValue([]);
+  rpcMock.servers.mockResolvedValue([]);
+  await show();
+  expect(container.textContent).toContain("No cap table yet");
+  const labels = [...container.querySelectorAll("button")].map((b) => b.textContent);
+  expect(labels.filter((label) => label === "Connect Carta")).toHaveLength(1);
+  expect(labels.filter((label) => label?.includes("Add contact"))).toHaveLength(1);
+  expect(button("Investors")).toBeUndefined();
+});

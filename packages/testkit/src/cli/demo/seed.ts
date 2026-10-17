@@ -1,6 +1,6 @@
 import { createSecretStore, syncFinanceForUser } from "@rakazo/adapters";
-import { FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
-import { createDb } from "@rakazo/db";
+import { CARTA_MCP_ENDPOINT, FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
+import { createDb, saveCapTableSnapshot } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   DEMO_BOTS,
@@ -9,6 +9,7 @@ import {
   DEMO_DOCUMENTS,
   DEMO_GROUP,
   DEMO_USER_NAME,
+  demoCapTable,
   demoFinance,
   MOCK_NOTE,
 } from "./data.js";
@@ -143,6 +144,19 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       throw new Error(`Finance seed did not sync: ${JSON.stringify(result)}`);
     await session.rpc("finance/agent");
     done.push("Mercury and Brex (canned tools), Finance agent");
+
+    // Cap Table: a Carta connection (fake login, never synced) and the snapshot a sync would save.
+    await prisma.mcpServer.create({
+      data: {
+        ...scope,
+        slug: "carta",
+        name: "Carta",
+        transport: "streamable_http",
+        endpoint: CARTA_MCP_ENDPOINT,
+      },
+    });
+    await saveCapTableSnapshot(prisma, scope, demoCapTable());
+    done.push("Carta cap table snapshot");
   } finally {
     await prisma.$disconnect();
     await pool.end();

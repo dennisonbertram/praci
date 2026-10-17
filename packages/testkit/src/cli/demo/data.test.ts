@@ -1,8 +1,10 @@
+import { CapTableSnapshotInputSchema } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENTS,
+  demoCapTable,
   demoFinance,
   demoMailboxes,
   MOCK_NOTE,
@@ -17,6 +19,16 @@ describe("mock demo data", () => {
       expect(document.name).toContain("MOCK");
       expect(document.text).toContain(MOCK_NOTE);
     }
+  });
+
+  it("builds a valid mock cap table whose investors match the demo contacts", () => {
+    const snapshot = CapTableSnapshotInputSchema.parse(demoCapTable());
+    expect(snapshot.companyName).toBe(DEMO_COMPANY);
+    expect(snapshot.shareClasses.reduce((sum, c) => sum + c.percent, 0)).toBe(100);
+    const contactEmails = new Set(DEMO_CONTACTS.map((c) => c.email));
+    const investors = snapshot.holders.filter((h) => h.security === "SAFE");
+    expect(investors.length).toBeGreaterThan(0);
+    for (const holder of investors) expect(contactEmails.has(holder.email ?? "")).toBe(true);
   });
 
   it("builds a mailbox of 25 mock threads with unread mail and one attachment", () => {
