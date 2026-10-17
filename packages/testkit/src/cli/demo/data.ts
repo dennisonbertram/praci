@@ -555,6 +555,41 @@ export interface DemoDocument {
   text: string;
 }
 
+/**
+ * What the Data room classifier would file for each document. The demo has AI sharing off, so the
+ * classifier skips and the seed writes these instead, keeping the Type and Date columns filled.
+ */
+export const DEMO_DOCUMENT_FACETS: Record<
+  string,
+  { docType: string; daysAgo: number; parties: string[] }
+> = {
+  "MOCK Master Services Agreement - Halcyon Logistics.pdf": {
+    docType: "Contract",
+    daysAgo: 95,
+    parties: ["Halcyon Logistics (Mock)"],
+  },
+  "MOCK Mutual NDA - Acme Ventures.pdf": {
+    docType: "NDA",
+    daysAgo: 60,
+    parties: ["Acme Ventures (Mock)"],
+  },
+  "MOCK Office Lease - 100 Placeholder Street.pdf": {
+    docType: "Lease",
+    daysAgo: 400,
+    parties: ["Placeholder Street Landlord (Mock)"],
+  },
+  "MOCK SAFE - Quill Capital.pdf": {
+    docType: "SAFE",
+    daysAgo: 150,
+    parties: ["Quill Capital (Mock)"],
+  },
+  "MOCK Q3 Board Deck.pdf": { docType: "Board deck", daysAgo: 3, parties: [] },
+  "MOCK Budget FY27.csv": { docType: "Budget", daysAgo: 20, parties: [] },
+  "MOCK Investor Update Draft.pdf": { docType: "Investor update", daysAgo: 1, parties: [] },
+  "MOCK Cap Table Summary.csv": { docType: "Cap table", daysAgo: 1, parties: [] },
+  "MOCK Product Roadmap.pdf": { docType: "Roadmap", daysAgo: 30, parties: [] },
+};
+
 const doc = (folder: string, name: string, text: string, kind: "pdf" | "csv" = "pdf") => ({
   folder,
   name,

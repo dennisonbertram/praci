@@ -7,6 +7,7 @@ import {
   DEMO_CHIEF_DRAFT,
   DEMO_COMPANY,
   DEMO_CONTACTS,
+  DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_GROUP,
   DEMO_USER_NAME,
@@ -182,6 +183,24 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       document.kind === "pdf" ? "application/pdf" : "text/csv",
       bytes,
     );
+  }
+  {
+    const db = createDb(options.databaseUrl);
+    try {
+      for (const [name, facets] of Object.entries(DEMO_DOCUMENT_FACETS)) {
+        await db.prisma.dataRoomItem.updateMany({
+          where: { spaceId, name },
+          data: {
+            docType: facets.docType,
+            docDate: new Date(Date.now() - facets.daysAgo * 24 * 60 * 60 * 1000),
+            parties: facets.parties,
+          },
+        });
+      }
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
   }
   done.push(`${DEMO_DOCUMENTS.length} data room documents`);
 

@@ -4,6 +4,7 @@ import {
   DEMO_CHIEF_DRAFT,
   DEMO_COMPANY,
   DEMO_CONTACTS,
+  DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   demoCapTable,
   demoFinance,
@@ -32,6 +33,12 @@ describe("mock demo data", () => {
     const investors = snapshot.holders.filter((h) => h.security === "SAFE");
     expect(investors.length).toBeGreaterThan(0);
     for (const holder of investors) expect(contactEmails.has(holder.email ?? "")).toBe(true);
+  });
+
+  it("gives every mock Data room document a type and date for the list columns", () => {
+    expect(Object.keys(DEMO_DOCUMENT_FACETS).sort()).toEqual(
+      DEMO_DOCUMENTS.map((d) => d.name).sort(),
+    );
   });
 
   it("has a mock cap table whose holdings, option pool and fully diluted total add up", () => {
