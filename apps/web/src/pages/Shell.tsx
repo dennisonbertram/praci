@@ -3451,8 +3451,8 @@ export function ShellPage() {
                 setQuery("");
               }
             }}
-            // Chats, files and links; the Inbox has its own mail search.
-            placeholder={t`Search chats`}
+            // Chats, documents and mail, so the box says only "Search".
+            placeholder={t`Search`}
             autoComplete="off"
             name="sidebar-search"
           />
@@ -4322,7 +4322,13 @@ export function ShellPage() {
             </Suspense>
           </ErrorBoundary>
         ) : dataRoomMode ? (
-          <DataRoomPage />
+          <DataRoomPage
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
+          />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
