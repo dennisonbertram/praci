@@ -608,12 +608,14 @@ export function InboxPage({
       className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-6 xl:px-10"
     >
       <div className="mb-5 flex flex-wrap items-center gap-2 @md:flex-nowrap">
-        <div className="me-auto flex min-w-0 shrink-0 flex-col @md:me-1">
+        {/* On phones the title takes the room the buttons leave, so a long space name truncates
+            instead of pushing the buttons to a second line. */}
+        <div className="me-auto flex min-w-0 grow basis-0 flex-col @md:me-1 @md:shrink-0 @md:grow-0 @md:basis-auto">
           <h1 className="text-lg font-semibold">
             <Trans>Inbox</Trans>
           </h1>
           {spaceName ? (
-            <span className="max-w-40 truncate text-xs text-muted-foreground">{spaceName}</span>
+            <span className="truncate text-xs text-muted-foreground @md:max-w-72">{spaceName}</span>
           ) : null}
         </div>
         <form
