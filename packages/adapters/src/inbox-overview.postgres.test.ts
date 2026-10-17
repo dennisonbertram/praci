@@ -244,6 +244,8 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(result.todos).toHaveLength(1);
     expect(result.todos[0]).toContain("Send signed contract");
     expect(result.todos[0]).toContain("2026-10-16");
+    // Names the email's sender, so the agent can say whose email each to-do is about.
+    expect(result.todos[0]).toContain(`from:${critical.fromName || critical.fromAddress}`);
     // Everything else in the inbox, newest first; no sent-only mail, no repeats of needs-reply rows.
     const recent = result.recent.join("\n");
     expect(recent).toContain("Weekly digest");

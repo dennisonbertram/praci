@@ -62,7 +62,9 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
       where: { ...own, connectionId: { in: ids }, doneAt: null },
       orderBy: [{ dueOn: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
       take: MAX_TODOS,
-      include: { message: { select: { providerMessageId: true } } },
+      include: {
+        message: { select: { providerMessageId: true, fromName: true, fromAddress: true } },
+      },
     }),
     prisma.inboxTodo.count({ where: { ...own, connectionId: { in: ids }, doneAt: null } }),
     prisma.mailSyncState.findMany({
@@ -101,7 +103,9 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
   const todoRows = todos.map(
     (todo) =>
       `${clip(todo.text, 140)} | ${todo.dueOn ? `due ${day(todo.dueOn)}` : "no due date"} | acct:${label.get(todo.connectionId)}${
-        todo.message ? ` | id:${todo.message.providerMessageId}` : ""
+        todo.message
+          ? ` | id:${todo.message.providerMessageId} | from:${clip(todo.message.fromName || todo.message.fromAddress, 50)}`
+          : ""
       }${todo.detail ? ` | ${clip(todo.detail, 80)}` : ""}`,
   );
   const recent = threads
