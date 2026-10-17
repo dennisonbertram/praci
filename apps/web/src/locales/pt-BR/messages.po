@@ -199,6 +199,10 @@ msgstr "Computador do {botName}"
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 msgstr "{commandVariable} é reservada e não pode ser usada como variável de comando. Escolha outro nome."
 
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# transaction} other {# transactions}}"
+msgstr ""
+
 #: src/lib/billing.ts
 msgid "{count} days"
 msgstr ""
@@ -1200,6 +1204,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "By month"
+msgstr ""
+
+#: src/components/finance/ui.tsx
+msgid "By vendor"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -3714,6 +3722,7 @@ msgstr ""
 msgid "Link SSO"
 msgstr "Vincular SSO"
 
+#: src/components/finance/ui.tsx
 #: src/pages/Shell.tsx
 msgid "List"
 msgstr ""
@@ -4067,6 +4076,10 @@ msgstr "minuto"
 #: src/pages/RoutineSchedule.tsx
 msgid "minutes"
 msgstr "minutos"
+
+#: src/components/finance/ui.tsx
+msgid "Mixed"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
