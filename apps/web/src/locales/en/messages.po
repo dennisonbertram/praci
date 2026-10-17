@@ -2591,10 +2591,6 @@ msgid "Create account"
 msgstr "Create account"
 
 #: src/pages/Shell.tsx
-msgid "Create Carta agent"
-msgstr "Create Carta agent"
-
-#: src/pages/Shell.tsx
 msgid "Create Finance agent"
 msgstr "Create Finance agent"
 
