@@ -6641,6 +6641,7 @@ msgstr "Underline"
 msgid "Undo"
 msgstr "Undo"
 
+#: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
 msgstr "Unknown"

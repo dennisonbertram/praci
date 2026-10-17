@@ -8,7 +8,8 @@ const txn = (
   amountCents: number,
   category: string | null = "Servers",
   currency = "USD",
-) => ({ id, counterparty, amountCents, category, currency }) as FinanceTransaction;
+  vendorKey?: string,
+) => ({ id, counterparty, amountCents, category, currency, vendorKey }) as FinanceTransaction;
 
 test("groups case-insensitively on the trimmed name and sums integer cents", () => {
   const groups = groupByVendor([
@@ -70,4 +71,23 @@ test("totals beyond Number.MAX_SAFE_INTEGER keep every cent", () => {
 test("an empty counterparty still groups, under an empty name", () => {
   const [g] = groupByVendor([txn("1", "  ", -5), txn("2", "", -5)]);
   expect(g).toMatchObject({ name: "", totalCents: -10n });
+});
+
+test("rows sharing a vendorKey group together; the most frequent spelling names the group", () => {
+  const groups = groupByVendor([
+    txn("1", "Brex Inc.", -100, "Servers", "USD", "brex"),
+    txn("2", "BREX", -200, "Servers", "USD", "brex"),
+    txn("3", "BREX", -300, "Servers", "USD", "brex"),
+  ]);
+  expect(groups).toHaveLength(1);
+  expect(groups[0]).toMatchObject({ name: "BREX", totalCents: -600n });
+});
+
+test("a missing vendorKey falls back to the counterparty; different keys stay apart", () => {
+  const groups = groupByVendor([
+    txn("1", "Same", -1),
+    txn("2", " same", -1),
+    txn("3", "Same", -1, "Servers", "USD", "other-key"),
+  ]);
+  expect(groups.map((g) => g.rows.length).sort()).toEqual([1, 2]);
 });
