@@ -220,6 +220,7 @@ import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
 import { messageProviderLabel } from "../lib/messaging";
 import { parseModelOptionKey } from "../lib/model-catalog";
+import { createAgentSendWatch } from "../lib/outbox";
 import {
   isFileDrag,
   isFilePaste,
@@ -2131,11 +2132,18 @@ export function ShellPage() {
     const botId = activeBotId.current;
     if (botId) void jumpToMessageRef.current({ botId, messageId }).catch(() => undefined);
   }, []);
+  const agentSendWatch = useRef(createAgentSendWatch());
+  useEffect(() => agentSendWatch.current.running(transcriptRunning), [transcriptRunning]);
   const answerMessage = useCallback(
     async (message: ThreadMessage, text: string, username?: string, mail?: MailEdits) => {
       const botId = activeBotId.current;
       const groupId = activeGroupId.current;
       if (!botId && !groupId) return;
+      if (
+        text === "allow" &&
+        message.blocks.some((block) => block.kind === "ask" && block.mail?.tool === "mail_send")
+      )
+        agentSendWatch.current.sendApproved();
       await rpc.threads.answer({
         ...(groupId ? { groupId } : { botId: botId! }),
         runId: message.runId ?? "",
@@ -6804,15 +6812,18 @@ export const Composer = memo(function Composer({
           ) : null}
           {running ? (
             <>
-              <Button
-                size="icon"
-                aria-label={t`Send`}
-                disabled={sending || !canSend || disabled}
-                onClick={send}
-                className="size-8 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95"
-              >
-                <ArrowUp size={16} strokeWidth={2.2} />
-              </Button>
+              {/* Two buttons at most, so the message field keeps its width while a run goes on. */}
+              {canSend ? (
+                <Button
+                  size="icon"
+                  aria-label={t`Send`}
+                  disabled={sending || disabled}
+                  onClick={send}
+                  className="size-8 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95"
+                >
+                  <ArrowUp size={16} strokeWidth={2.2} />
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
                 size="icon"

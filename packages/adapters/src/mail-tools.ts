@@ -27,6 +27,7 @@ import {
 import { Prisma, type PrismaClient } from "@rakazo/db";
 import { inboxOverview } from "./inbox-overview.js";
 import { buildRawMessage, parseRecipients } from "./mail-compose.js";
+import { syncAfterSend } from "./mail-sync.js";
 
 export const MAIL_TOOL_NAMES = new Set([
   "mail_search",
@@ -803,6 +804,12 @@ async function mailSend(
     const sent = await deps.mail.sendDraft(account, draftId, context);
     sending = false;
     await record({ state: "sent", providerMessageId: sent.messageId || null });
+    // So the Inbox shows the reply in its conversation, and the thread leaves Needs reply.
+    await syncAfterSend({ prisma: deps.prisma, mail: deps.mail, jobs: deps.jobs }, account, {
+      ...context,
+      spaceId: deps.scope.spaceId,
+      userId: deps.scope.userId,
+    });
     return {
       ok: true,
       account: accountName(account),

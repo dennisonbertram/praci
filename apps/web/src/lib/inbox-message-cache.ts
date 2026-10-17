@@ -1,3 +1,4 @@
+import { MAIL_SENT_EVENT } from "./outbox";
 import { rpc } from "./rpc";
 
 export type InboxMessageOutput = Awaited<ReturnType<typeof rpc.inbox.get>>;
@@ -13,6 +14,18 @@ const values = new Map<string, InboxMessageOutput>();
 const PREFETCH_PAUSE_MS = 30_000;
 // After a failed load, background prefetches stop for a while; opening a message still loads.
 let pausedUntil = 0;
+
+/** Forgets every loaded message, so the next open shows the conversation as it is now. */
+export function clearInboxMessages(): void {
+  promises.clear();
+  values.clear();
+}
+
+// A sent reply joins its conversation, and an archive or mark changes a message's state.
+if (typeof window !== "undefined") {
+  window.addEventListener(MAIL_SENT_EVENT, clearInboxMessages);
+  window.addEventListener(INBOX_CHANGED_EVENT, clearInboxMessages);
+}
 
 export function peekInboxMessage(messageId: string): InboxMessageOutput | undefined {
   return values.get(messageId);

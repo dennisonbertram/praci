@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ComposeRestore } from "../components/ComposeEmail";
-import { closeRestored, getOutbox, holdDiscard, holdSend, UNDO_SEND_MS, undoSend } from "./outbox";
+import {
+  closeRestored,
+  createAgentSendWatch,
+  getOutbox,
+  holdDiscard,
+  holdSend,
+  MAIL_SENT_EVENT,
+  UNDO_SEND_MS,
+  undoSend,
+} from "./outbox";
 
 const restore = { clientId: "abcdefgh" } as ComposeRestore;
 
@@ -73,4 +82,27 @@ it("undo of a discard reopens the composer and never discards", async () => {
   await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
   expect(run).not.toHaveBeenCalled();
   expect(getOutbox()).toEqual({ view: null, restoring: restore });
+});
+
+it("announces an approved agent send once the run that sends it ends", () => {
+  const sent = vi.fn();
+  window.addEventListener(MAIL_SENT_EVENT, sent);
+  const watch = createAgentSendWatch();
+  // A run ending with no approved send announces nothing.
+  watch.running(true);
+  watch.running(false);
+  expect(sent).not.toHaveBeenCalled();
+  // Approved while the run waits; the send happens before the run ends.
+  watch.running(true);
+  watch.sendApproved();
+  expect(sent).not.toHaveBeenCalled();
+  watch.running(false);
+  expect(sent).toHaveBeenCalledTimes(1);
+  // Approved before the resumed run shows as running: it waits for that run to end.
+  watch.sendApproved();
+  watch.running(false);
+  expect(sent).toHaveBeenCalledTimes(1);
+  watch.running(true);
+  watch.running(false);
+  expect(sent).toHaveBeenCalledTimes(2);
 });

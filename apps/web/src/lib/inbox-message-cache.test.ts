@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const get = vi.fn();
@@ -53,4 +54,13 @@ it("pauses prefetching for 30 seconds after a failed load, but still opens messa
   vi.advanceTimersByTime(30_001);
   cache.prefetchInboxMessage("c");
   expect(get).toHaveBeenCalledTimes(3);
+});
+
+it("loads a conversation again after mail is sent, so the reply shows in it", async () => {
+  get.mockResolvedValueOnce({ id: "a", later: [] }).mockResolvedValueOnce({ id: "a", later: [{}] });
+  await cache.loadInboxMessage("a");
+  window.dispatchEvent(new Event("rakazo:mail-sent"));
+  expect(cache.peekInboxMessage("a")).toBeUndefined();
+  await expect(cache.loadInboxMessage("a")).resolves.toEqual({ id: "a", later: [{}] });
+  expect(get).toHaveBeenCalledTimes(2);
 });

@@ -114,6 +114,17 @@ function pressEnter(textarea: HTMLTextAreaElement) {
 }
 
 describe("Composer", () => {
+  it("shows Voice and Stop while a run goes on with nothing typed, and Send and Stop once there is", () => {
+    const textarea = renderComposer(async () => true, { running: true, onVoice: () => {} });
+    const labels = () =>
+      [...(container?.querySelectorAll("button[aria-label]") ?? [])]
+        .map((b) => b.getAttribute("aria-label"))
+        .filter((label) => label === "Voice" || label === "Send" || label === "Stop");
+    expect(labels()).toEqual(["Voice", "Stop"]);
+    type(textarea, "one more thing");
+    expect(labels()).toEqual(["Send", "Stop"]);
+  });
+
   it("lets the person dismiss the skipped-attachment notice", () => {
     const onDismissAttachmentNotice = vi.fn();
     renderComposer(async () => true, {

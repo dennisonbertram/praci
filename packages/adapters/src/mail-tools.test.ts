@@ -560,6 +560,7 @@ describe("mail write tools", () => {
     };
     const sends: Send[] = [];
     const sync: unknown[] = [];
+    const resyncs: unknown[] = [];
     const prisma = {
       composeSend: {
         upsert: async ({ create }: { create: { clientId: string; connectionId: string } }) => {
@@ -584,7 +585,13 @@ describe("mail write tools", () => {
         update: async ({ where, data }: { where: { id: string }; data: Partial<Send> }) =>
           Object.assign(sends.find((r) => r.id === where.id) as Send, data),
       },
-      mailSyncState: { upsert: async (arg: unknown) => sync.push(arg) },
+      mailSyncState: {
+        upsert: async (arg: unknown) => sync.push(arg),
+        updateMany: async (arg: unknown) => {
+          resyncs.push(arg);
+          return { count: 1 };
+        },
+      },
     };
     const { deps, gmail } = setup({ a: inbox }, { prisma });
     return {
@@ -592,6 +599,7 @@ describe("mail write tools", () => {
       gmail,
       sends,
       sync,
+      resyncs,
     };
   }
   const message = { to: ["Jana <jana@example.test>"], subject: "Friday", body: "See you then." };
@@ -609,6 +617,12 @@ describe("mail write tools", () => {
     expect(await run(second, "mail_send", { draftId })).toMatchObject({ ok: true });
     expect(gmail.sentOf("a")).toHaveLength(2);
     expect(gmail.draftsOf("a")).toHaveLength(0);
+  });
+
+  it("syncs the account again after a send, skipping the throttle, so the Inbox shows the reply", async () => {
+    const { deps, resyncs } = withSends();
+    expect(await run(deps, "mail_send", message)).toMatchObject({ ok: true });
+    expect(resyncs).toEqual([{ where: { connectionId: "conn-a" }, data: { lastSyncedAt: null } }]);
   });
 
   it("sends once when the same tool call runs twice", async () => {

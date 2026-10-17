@@ -91,3 +91,24 @@ export function undoSend() {
 }
 
 export const closeRestored = () => set({ restoring: null });
+
+/**
+ * Follows one agent thread's runs. An approved agent send happens in the run after the answer, so
+ * when that run ends this announces `MAIL_SENT_EVENT`, and the Inbox and its conversations reload.
+ */
+export function createAgentSendWatch() {
+  let approved = false;
+  let wasRunning = false;
+  return {
+    sendApproved() {
+      approved = true;
+    },
+    running(running: boolean) {
+      if (wasRunning && !running && approved) {
+        approved = false;
+        window.dispatchEvent(new Event(MAIL_SENT_EVENT));
+      }
+      wasRunning = running;
+    },
+  };
+}
