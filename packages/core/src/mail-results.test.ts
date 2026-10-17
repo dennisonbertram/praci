@@ -3,13 +3,13 @@ import * as core from "./index.js";
 import type { MailQueryOutcome, MailResultRow, MailResultSource } from "./mail-results.js";
 import {
   budgetJson,
-  MAIL_GREP_BUDGET,
   clampInt,
   coverage,
   createGrepScan,
   grepRows,
   isLiteralOnly,
   isSafeRegexPattern,
+  MAIL_GREP_BUDGET,
   normalizePatterns,
   resultRow,
   stripQuotedReply,
