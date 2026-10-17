@@ -2303,6 +2303,7 @@ export function ShellPage() {
       sendingRef.current = true;
       setSending(true);
       setSendError(null);
+      setForwarded(null);
       // Keep the draft cleared once any part of the submission is confirmed accepted.
       let accepted = false;
       try {
