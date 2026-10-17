@@ -54,7 +54,8 @@ const ALL = "all";
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 12;
-const STATUS_MS = 6_000;
+// Long enough to read the toast and reach its Undo.
+const STATUS_MS = 10_000;
 const PREFETCH_DELAY_MS = 250;
 /** Marks the `?mail=` history entry the list pushed, so closing the message can go Back. */
 const LIST_OPEN = { inboxList: true };
@@ -140,6 +141,8 @@ export function InboxPage({
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const polls = useRef(0);
+  // Triage still pending after the last poll: say so and offer a retry instead of spinning.
+  const [stalled, setStalled] = useState(false);
   const archiving = useRef(new Map<string, Promise<boolean>>());
   const [composing, setComposing] = useState(false);
   // "Not now" on the sorting prompt hides it for this visit only.
@@ -227,7 +230,11 @@ export function InboxPage({
 
   // Triage runs after the sync returns, so refetch a few times while the list reports it pending.
   useEffect(() => {
-    if (paused || !data?.triagePending || polls.current >= TRIAGE_MAX_POLLS) return;
+    if (paused || !data?.triagePending) return;
+    if (polls.current >= TRIAGE_MAX_POLLS) {
+      setStalled(true);
+      return;
+    }
     const timer = setTimeout(() => {
       polls.current += 1;
       setReload((n) => n + 1);
@@ -239,6 +246,7 @@ export function InboxPage({
   useEffect(() => {
     if (paused) return;
     polls.current = 0;
+    setStalled(false);
     let live = true;
     rpc.inbox
       .refresh({})
@@ -776,6 +784,16 @@ export function InboxPage({
                 onDismiss={() => setConsentDismissed(true)}
               />
             )
+          ) : sorting && stalled ? (
+            <div
+              role="status"
+              className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground"
+            >
+              <Trans>Sorting is taking longer than usual. Your mail is below.</Trans>
+              <Button variant="outline" size="sm" onClick={retry}>
+                <Trans>Try sorting again</Trans>
+              </Button>
+            </div>
           ) : sorting ? (
             <p role="status" className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
               <Spinner aria-hidden="true" />

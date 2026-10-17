@@ -591,6 +591,29 @@ it("a burst of 140 j presses in the open message moves one row and marks only it
   expect(rpcMock.markRead).toHaveBeenCalledWith({ messageId: "b", read: true });
 });
 
+it("keeps a mark's Undo on screen long enough to reach it", async () => {
+  const c = await render();
+  await click(byText(c, "noise b"));
+  const toast = () => c.textContent?.includes("Mail from Dana is now marked as noise");
+  await dwell(8_000);
+  expect(toast()).toBe(true);
+  await dwell(3_000);
+  expect(toast()).toBe(false);
+});
+
+it("stops spinning when sorting stalls and offers to try again", async () => {
+  // Each poll returns a fresh answer, as the server does.
+  rpcMock.list.mockImplementation(async () => list([row("a"), row("b")], { triagePending: true }));
+  const c = await render();
+  for (let i = 0; i < 13; i++) await dwell(5_000);
+  expect(c.textContent).not.toContain("Sorting your mail…");
+  expect(c.textContent).toContain("Sorting is taking longer than usual.");
+  const refreshes = rpcMock.refresh.mock.calls.length;
+  await click(byText(c, "Try sorting again"));
+  expect(rpcMock.refresh.mock.calls.length).toBe(refreshes + 1);
+  expect(c.textContent).toContain("Sorting your mail…");
+});
+
 it("says it is sorting while the first triage runs, and names the sender a mark covers", async () => {
   rpcMock.list.mockResolvedValue(list([row("a"), row("b")], { triagePending: true }));
   const c = await render();

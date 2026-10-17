@@ -184,7 +184,7 @@ export function InboxRow({
           </span>
           <span
             dir="auto"
-            className={`col-span-2 col-start-2 row-start-2 truncate text-sm @md:col-span-1 @md:col-start-3 @md:row-start-1 @md:text-[15px] ${muted ? "text-muted-foreground" : "text-foreground/70"} ${marks.length + actions.length ? "@md:group-hover/row:pe-24 @md:group-focus-within/row:pe-24" : ""}`}
+            className={`col-span-2 col-start-2 row-start-2 truncate text-sm @md:col-span-1 @md:col-start-3 @md:row-start-1 @md:text-[15px] ${muted ? "text-muted-foreground" : "text-foreground/70"} ${marks.length + actions.length ? `@md:group-hover/row:pe-24 @md:group-focus-within/row:pe-24 ${selected ? "@md:pe-24" : ""}` : ""}`}
           >
             {label ? (
               <span
