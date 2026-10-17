@@ -6919,7 +6919,7 @@ function MessageHoverActions({
   if (message.id.startsWith("progress:")) return null;
 
   function copyMessage() {
-    const text = copyableMessageText(message);
+    const text = maskCurrencyWhenHidden(copyableMessageText(message));
     if (!text || !navigator.clipboard) return;
     void navigator.clipboard.writeText(text).catch(() => undefined);
   }
@@ -7309,7 +7309,7 @@ const MessageView = memo(function MessageView({
               <span>
                 ↪ {to} ← {from}
               </span>
-              <span>{block.text}</span>
+              <span>{maskCurrencyWhenHidden(block.text)}</span>
             </div>
           );
         }
@@ -7337,7 +7337,7 @@ const MessageView = memo(function MessageView({
             >
               <span>
                 {messageProviderLabel(block.provider, block.transport)} · {block.fromLabel}:{" "}
-                {block.text}
+                {maskCurrencyWhenHidden(block.text)}
               </span>
             </div>
           );
@@ -7349,7 +7349,7 @@ const MessageView = memo(function MessageView({
               className="flex items-center justify-center gap-2 py-1 text-[13.5px] text-muted-foreground"
             >
               <span className="text-warning">◷</span>
-              <span>{block.text}</span>
+              <span>{maskCurrencyWhenHidden(block.text)}</span>
             </div>
           );
         }

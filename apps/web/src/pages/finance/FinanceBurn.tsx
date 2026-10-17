@@ -19,6 +19,7 @@ import {
 } from "../../components/finance/ui";
 import {
   fullDay,
+  hiddenOr,
   money,
   monthAxisLabels,
   monthFull,
@@ -261,7 +262,7 @@ export function FinanceRunwayPage() {
             <Kpi title={t`Runway`} value={runMonths === undefined ? "—" : t`${runMonths} mo`} />
             <Kpi
               title={t`Run-out`}
-              value={data.runway.runOutDate ? fullDay(data.runway.runOutDate) : "—"}
+              value={data.runway.runOutDate ? hiddenOr(fullDay(data.runway.runOutDate)) : "—"}
             />
           </div>
           {hasCrypto ? (

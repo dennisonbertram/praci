@@ -70,6 +70,7 @@ export function transactionCrumbs(data: FinanceTransactionOutput): Crumb[] {
 function ReceiptThumb({ id }: { id: string }) {
   const q = useFinanceQuery(() => rpc.finance.receiptUrl({ transactionId: id }), [id]);
   const url = q.data ? httpsUrl(q.data.url) : null;
+  const hidden = useHideAmounts();
   const image = Boolean(url && q.data?.mimeType?.startsWith("image/"));
   return (
     <Link
@@ -77,7 +78,7 @@ function ReceiptThumb({ id }: { id: string }) {
       aria-label={t`Open receipt`}
       className="inline-flex size-28 items-center justify-center overflow-hidden rounded-md border border-border hover:border-foreground"
     >
-      {image && url ? (
+      {image && url && !hidden ? (
         <img src={url} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
       ) : (
         <FileText aria-hidden="true" className="size-6" />
@@ -212,6 +213,7 @@ export function FinanceTransactionPage({ id }: { id: string }) {
 }
 
 export function FinanceReceiptPage({ id }: { id: string }) {
+  const hidden = useHideAmounts();
   const txn = useFinanceQuery(() => rpc.finance.transaction({ id }), [id]);
   const receipt = useFinanceQuery(() => rpc.finance.receiptUrl({ transactionId: id }), [id]);
   const url = receipt.data ? httpsUrl(receipt.data.url) : null;
@@ -230,7 +232,11 @@ export function FinanceReceiptPage({ id }: { id: string }) {
         receipt.retry();
       }}
     >
-      {url ? (
+      {url && hidden ? (
+        <Section>
+          <p className="text-sm text-muted-foreground">{t`Receipt hidden while amounts are hidden`}</p>
+        </Section>
+      ) : url ? (
         <Section>
           <div className="flex flex-col items-center gap-3">
             {mime.startsWith("image/") ? (

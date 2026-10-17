@@ -35,6 +35,7 @@ import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnec
 import {
   changeText,
   dayRange,
+  hiddenOr,
   lastDayOf,
   money,
   monthFull,
@@ -296,7 +297,9 @@ function Overview({
   const heldStablecoins = data.crypto?.stablecoinCents ?? 0;
   const heldTotal = data.crypto?.totalCents ?? 0;
   const bankRunwayMonths = runwayText(data.bankRunway?.months);
-  const runOutMonth = data.runway.runOutDate ? monthFull(data.runway.runOutDate.slice(0, 7)) : "";
+  const runOutMonth = data.runway.runOutDate
+    ? hiddenOr(monthFull(data.runway.runOutDate.slice(0, 7)))
+    : "";
   const previousSpend = month.previousCents === null ? null : money(month.previousCents);
   const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
   const spentRange = range(totals);

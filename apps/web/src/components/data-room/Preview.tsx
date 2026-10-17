@@ -7,7 +7,11 @@ import { Download, FileText, X } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { saveDataRoomItem } from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
-import { getHideAmounts, useHideAmounts } from "../../lib/hide-amounts-preference";
+import {
+  getHideAmounts,
+  maskCurrencyWhenHidden,
+  useHideAmounts,
+} from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { sourceLabel } from "./FilterBar";
 import { dateText, statusLabel } from "./format";
@@ -111,7 +115,7 @@ export function Preview({
       ) : item.status !== "ready" ? (
         <p className="text-sm text-muted-foreground">{statusLabel(item.status)}</p>
       ) : facets.summary ? (
-        <p className="text-sm">{facets.summary}</p>
+        <p className="text-sm">{maskCurrencyWhenHidden(facets.summary)}</p>
       ) : null}
       {item.status === "ready" && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>

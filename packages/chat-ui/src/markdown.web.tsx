@@ -20,11 +20,11 @@ import { CheckIcon, CopyIcon, GlobeIcon, ImageIcon } from "./icons";
 import type { ChatMarkdownProps } from "./markdown";
 import {
   closeUnterminatedFence,
+  HideAmountsContext,
   inlineMarkdownImageSrc,
   LinkFaviconsPausedContext,
   linkFaviconOrigin,
   linkLabel,
-  MarkdownTextTransformContext,
   markdownLinkDisplayParts,
   markdownLinkRequiresConfirmation,
   markRemoteImageLoaded,
@@ -37,6 +37,7 @@ import {
 } from "./markdown";
 import { useMarkdownLinkCopy } from "./markdown-link-prompt";
 import { MarkdownTable, MarkdownTableSourceContext } from "./markdown-table";
+import { currencyMatches, maskCurrencyText } from "./mask-currency";
 
 function preserveSkippedTableText() {
   return (tree: HastNode) => {
@@ -56,17 +57,70 @@ function preserveSkippedTableText() {
   };
 }
 
-function transformTextNodes(transform: (text: string) => string) {
-  return () => (tree: HastNode) => {
-    const walk = (node: HastNode) => {
-      if (node.tagName === "code" || node.tagName === "pre") return;
-      for (const child of node.children ?? []) {
-        if (child.type === "text" && typeof child.value === "string")
-          child.value = transform(child.value);
-        else walk(child);
+const BLOCK_TAGS = new Set([
+  "p",
+  "li",
+  "td",
+  "th",
+  "tr",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "pre",
+  "blockquote",
+  "div",
+  "ul",
+  "ol",
+  "table",
+]);
+
+/** Masks currency in the page text. A run is one block's text across inline nodes, so `$**1,200**` is caught. Also alt and title. */
+function maskAmounts() {
+  return (tree: HastNode) => {
+    const flush = (run: HastNode[]) => {
+      const text = run.map((n) => n.value ?? "").join("");
+      const matches = currencyMatches(text);
+      if (matches.length === 0) return;
+      let offset = 0;
+      for (const node of run) {
+        const value = node.value ?? "";
+        let out = "";
+        for (let i = 0; i < value.length; i++) {
+          const pos = offset + i;
+          const m = matches.find((x) => pos >= x.start && pos < x.end);
+          if (!m) out += value[i];
+          else if (pos === m.start) out += m.replacement;
+        }
+        node.value = out;
+        offset += value.length;
       }
     };
-    walk(tree);
+    const walk = (node: HastNode, run: HastNode[]): HastNode[] => {
+      for (const key of ["alt", "title"]) {
+        const v = node.properties?.[key];
+        if (typeof v === "string")
+          node.properties = { ...node.properties, [key]: maskCurrencyText(v) };
+      }
+      const block = node.tagName !== undefined && BLOCK_TAGS.has(node.tagName);
+      let current = run;
+      if (block) {
+        flush(current);
+        current = [];
+      }
+      for (const child of node.children ?? []) {
+        if (child.type === "text" && typeof child.value === "string") current.push(child);
+        else current = walk(child, current);
+      }
+      if (block) {
+        flush(current);
+        return [];
+      }
+      return current;
+    };
+    flush(walk(tree, []));
   };
 }
 
@@ -433,7 +487,8 @@ const components: Components = {
   },
 };
 
-export function LinkifiedText({ children }: { children: string }) {
+export function LinkifiedText({ children: raw }: { children: string }) {
+  const children = useContext(HideAmountsContext) ? maskCurrencyText(raw) : raw;
   const { request, dialog } = useExternalLinkConfirm();
   return (
     <ConfirmLinkContext.Provider value={request}>
@@ -461,9 +516,9 @@ export const ChatMarkdown = memo(function ChatMarkdown({
 }: ChatMarkdownProps) {
   const { request, dialog } = useExternalLinkConfirm();
   const source = streaming ? closeUnterminatedFence(children) : children;
-  const transform = useContext(MarkdownTextTransformContext);
-  const rehypePlugins = transform
-    ? [preserveSkippedTableText, transformTextNodes(transform)]
+  const hideAmounts = useContext(HideAmountsContext);
+  const rehypePlugins = hideAmounts
+    ? [preserveSkippedTableText, maskAmounts]
     : [preserveSkippedTableText];
 
   return (
@@ -495,6 +550,6 @@ export const ChatMarkdown = memo(function ChatMarkdown({
 });
 
 export type { ChatMarkdownProps, LinkFavicons } from "./markdown";
-export { LinkFaviconsContext, MarkdownTextTransformContext, RemoteImagesContext } from "./markdown";
+export { HideAmountsContext, LinkFaviconsContext, RemoteImagesContext } from "./markdown";
 
 export { MarkdownLinkPromptProvider } from "./markdown-link-prompt";

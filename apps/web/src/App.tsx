@@ -1,10 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { LinkFavicons } from "@rakazo/chat-ui/web";
-import {
-  LinkFaviconsContext,
-  MarkdownTextTransformContext,
-  RemoteImagesContext,
-} from "@rakazo/chat-ui/web";
+import { HideAmountsContext, LinkFaviconsContext, RemoteImagesContext } from "@rakazo/chat-ui/web";
 import { LOCAL_SETTINGS_PAGE } from "@rakazo/contracts";
 import { Button, Skeleton } from "@rakazo/ui-web";
 import {
@@ -24,7 +20,7 @@ import { MailOutbox } from "./components/MailOutbox";
 import { SubscriptionGate } from "./components/SubscriptionGate";
 import { authClient } from "./lib/auth";
 import { getTicketBoardEnabled, subscribeTicketBoardEnabled } from "./lib/bootstrap";
-import { maskCurrencyText, useHideAmounts } from "./lib/hide-amounts-preference";
+import { useHideAmounts } from "./lib/hide-amounts-preference";
 import { markAfterPaint, markOnce } from "./lib/performance";
 import { getRemoteImagesEnabled, subscribeRemoteImages } from "./lib/remote-images-preference";
 import { rpc } from "./lib/rpc";
@@ -81,7 +77,7 @@ export function App() {
   );
   return (
     <RemoteImagesContext.Provider value={loadRemoteImages}>
-      <MarkdownTextTransformContext.Provider value={hideAmounts ? maskCurrencyText : null}>
+      <HideAmountsContext.Provider value={hideAmounts}>
         <LinkFaviconsContext.Provider value={linkFavicons}>
           <ErrorBoundary fallback={<AppFailed />}>
             {window.location.pathname === SSO_CALLBACK_PATH ? (
@@ -93,7 +89,7 @@ export function App() {
             )}
           </ErrorBoundary>
         </LinkFaviconsContext.Provider>
-      </MarkdownTextTransformContext.Provider>
+      </HideAmountsContext.Provider>
     </RemoteImagesContext.Provider>
   );
 }

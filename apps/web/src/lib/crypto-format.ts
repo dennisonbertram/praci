@@ -1,9 +1,12 @@
 import { CRYPTO_CHAINS } from "@rakazo/contracts";
+import { MASK } from "./finance-format";
+import { getHideAmounts } from "./hide-amounts-preference";
 
 const FRACTION_DIGITS = 5;
 
 /** A token balance for display. Splits the integer string, so there is no float rounding. */
 export function tokenAmount(rawBalance: string, decimals: number, locale?: string): string {
+  if (getHideAmounts()) return MASK;
   const padded = rawBalance.padStart(decimals + 1, "0");
   const whole = padded.slice(0, padded.length - decimals);
   const fraction = padded.slice(

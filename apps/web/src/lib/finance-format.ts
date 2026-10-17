@@ -181,3 +181,6 @@ export const percentFigure = (value: number | null, digits = 2) =>
 /** Runway in months (`4.2`), undefined when unknown. Masked while amounts are hidden, since it follows from cash. */
 export const runwayText = (months: number | null | undefined, digits = 1): string | undefined =>
   months == null ? undefined : getHideAmounts() ? MASK : months.toFixed(digits);
+
+/** Any text that follows from amounts (token quantities, run-out dates). Masked while amounts are hidden. */
+export const hiddenOr = (text: string): string => (getHideAmounts() ? MASK : text);

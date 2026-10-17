@@ -4,6 +4,7 @@ import { formatTimeSeparator, isPeerReceiptBlocks, replyLabel } from "@rakazo/co
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ArtifactTarget } from "../../lib/artifact-open";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { useArtifactImage } from "../../lib/use-artifact-image";
 
 function ReplyThumbnail({
@@ -133,6 +134,7 @@ export function ReplyLine({
   onJump?: (id: string) => void;
 }) {
   const { t } = useLingui();
+  useHideAmounts();
   // Peer receipts use internal reply links for routing; their bodies belong in the peer view.
   if (isPeerReceiptBlocks(message.blocks)) return null;
   if (!message.replyToMessageId && message.replyQuote == null) return null;
@@ -145,11 +147,13 @@ export function ReplyLine({
       >{t`Original message unavailable`}</div>
     );
   const attachment = message.replyPreview?.attachment;
-  const text = replyLabel(
-    message.replyQuote,
-    message.replyPreview?.text || (attachment ? undefined : fallbackText),
-    attachment,
-    { photo: t`Photo`, attachment: t`Attachment` },
+  const text = maskCurrencyWhenHidden(
+    replyLabel(
+      message.replyQuote,
+      message.replyPreview?.text || (attachment ? undefined : fallbackText),
+      attachment,
+      { photo: t`Photo`, attachment: t`Attachment` },
+    ),
   );
   const excerpt = text.replace(/\s+/gu, " ").slice(0, 120);
   return (
