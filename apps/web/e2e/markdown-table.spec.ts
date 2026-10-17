@@ -29,36 +29,14 @@ test("markdown tables render as an interactive card", async ({ page }, testInfo)
   await expect(card.getByRole("button", { name: "Download CSV" })).toBeVisible();
   await expect(card.getByRole("button", { name: "Expand table" })).toBeVisible();
 
-  // Tools overlay the card's top-right corner (no band above the header row).
-  const toolbar = card.locator(":scope > .rk-table-head");
-  await card.hover();
-  await expect(toolbar).toHaveCSS("position", "absolute");
-  await expect(toolbar).toHaveCSS("opacity", "1");
-  const cardBox = await card.boundingBox();
+  // Tools sit in the footer beside the row count, below the rows and clear of the headers.
+  const toolbar = card.locator(".rk-table-footer > .rk-table-head");
+  await expect(toolbar).toBeVisible();
   const toolbarBox = await toolbar.boundingBox();
-  const headerBox = await card.locator("thead").boundingBox();
-  expect(cardBox).not.toBeNull();
+  const bodyBox = await card.locator("tbody").boundingBox();
   expect(toolbarBox).not.toBeNull();
-  expect(headerBox).not.toBeNull();
-  expect(toolbarBox!.y).toBeLessThan(headerBox!.y + headerBox!.height);
-  expect(Math.abs(toolbarBox!.x + toolbarBox!.width - (cardBox!.x + cardBox!.width))).toBeLessThan(
-    8,
-  );
-  // The overlay must not cover the last header's sort button.
-  const lastSort = card
-    .locator("thead th")
-    .last()
-    .getByRole("button", { name: /^Sort by/ });
-  await expect(lastSort).toBeVisible();
-  const sortBox = await lastSort.boundingBox();
-  expect(sortBox).not.toBeNull();
-  expect(sortBox!.x + sortBox!.width).toBeLessThanOrEqual(toolbarBox!.x + 1);
-  const hitIsSort = await lastSort.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-    return el === hit || el.contains(hit);
-  });
-  expect(hitIsSort).toBe(true);
+  expect(bodyBox).not.toBeNull();
+  expect(toolbarBox!.y).toBeGreaterThanOrEqual(bodyBox!.y + bodyBox!.height - 1);
 
   // Numeric sort: desc puts qty 12 first; lexicographic would put 9 first.
   // thead th nth(0) is the row-number gutter, so Qty sits at index 2.
@@ -421,21 +399,13 @@ test.describe("touch table controls", () => {
   }) => {
     await page.goto(fixture);
     const card = page.getByTestId("table-card");
-    const toolbar = card.locator(":scope > .rk-table-head");
+    const toolbar = card.locator(".rk-table-footer > .rk-table-head");
     await expect(toolbar).toBeVisible();
-    // Touch: the overlay is always shown and never covers the last header's sort button.
-    await expect(toolbar).toHaveCSS("position", "absolute");
-    await expect(toolbar).toHaveCSS("opacity", "1");
-
-    const toolbarBox = await toolbar.boundingBox();
+    // Touch: the tools are always shown in the footer, never over the header's sort buttons.
     const lastSort = card
       .locator("thead th")
       .last()
       .getByRole("button", { name: /^Sort by/ });
-    const lastSortBox = await lastSort.boundingBox();
-    expect(toolbarBox).not.toBeNull();
-    expect(lastSortBox).not.toBeNull();
-    expect(lastSortBox!.x + lastSortBox!.width).toBeLessThanOrEqual(toolbarBox!.x + 1);
     const hitIsSort = await lastSort.evaluate((el) => {
       const r = el.getBoundingClientRect();
       const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);

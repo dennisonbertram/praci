@@ -104,3 +104,15 @@ export const BusyWithoutPeriod: Story = {
     ],
   },
 };
+
+export const HeldForReview: Story = {
+  args: {
+    rows: [
+      {
+        ...row(1, { check: { balances: "mismatch", differenceCents: -1_240 } }),
+        review: true,
+      },
+    ],
+    onImport: () => undefined,
+  },
+};

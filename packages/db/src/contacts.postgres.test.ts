@@ -74,26 +74,28 @@ describePostgres("contacts (PostgreSQL)", () => {
     await deleteContact(prisma, sameSpace, other.id);
   });
 
-  it("creates, then updates by matching email instead of duplicating", async () => {
+  it("refuses to create a contact whose email another contact has, and leaves it unchanged", async () => {
     const first = await saveContact(prisma, mine, {
       name: "Ada Fund",
       email: "ada@example.test",
       organization: "Example Capital",
     });
     expect(first.kind).toBe("investor");
+    await expect(
+      saveContact(prisma, mine, { name: "Ada Lovelace", email: "ada@example.test", kind: "other" }),
+    ).rejects.toBeInstanceOf(ContactEmailTakenError);
+    expect(await listContacts(prisma, mine)).toEqual([first]);
+    // Updating by id keeps omitted fields and changes the given ones.
     const again = await saveContact(prisma, mine, {
+      id: first.id,
       name: "Ada Lovelace",
-      email: "ada@example.test",
       notes: "Lead",
     });
-    expect(again.id).toBe(first.id);
-    // Omitted fields stay; given fields change.
     expect(again).toMatchObject({
       name: "Ada Lovelace",
       organization: "Example Capital",
       notes: "Lead",
     });
-    expect(await listContacts(prisma, mine)).toHaveLength(1);
   });
 
   it("ignores extra actor fields such as email", async () => {

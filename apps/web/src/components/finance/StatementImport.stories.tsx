@@ -75,3 +75,33 @@ export const UnreadableFile: Story = {
     }),
   play: upload("demo.csv"),
 };
+
+export const HeldForReview: Story = {
+  name: "Balances do not add up: held for Import anyway or Discard",
+  beforeEach: () =>
+    mockRpc({
+      "finance.statementUpload": statement({
+        check: { balances: "mismatch", differenceCents: -1_240 },
+      }),
+    }),
+  play: upload("demo.csv"),
+};
+
+export const WithEarlierStatements: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "finance.statements": {
+        statements: [
+          statement({ id: "stmt_old", status: "imported", createsAccount: false }),
+          statement({
+            id: "stmt_feb",
+            status: "imported",
+            createsAccount: false,
+            periodStart: "2026-02-01",
+            periodEnd: "2026-02-28",
+          }),
+        ],
+        reminders: [],
+      },
+    }),
+};

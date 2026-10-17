@@ -162,7 +162,7 @@ it("says so when the app is not in the catalog, and points the owner at setup", 
   // Setup keeps the connect continuation so the person lands back in the flow.
   expect(
     container.querySelector(
-      `a[href="/integrations/setup?next=${encodeURIComponent(`${PAGE}?connect=1`)}"]`,
+      `a[href="/app/integrations/setup?next=${encodeURIComponent(`${PAGE}?connect=1`)}"]`,
     ),
   ).not.toBeNull();
 });
@@ -170,7 +170,7 @@ it("says so when the app is not in the catalog, and points the owner at setup", 
 it("tells a member to ask the server owner when the app is not in the catalog", async () => {
   await show(PAGE, data({ catalog: [] }));
   expect(container.textContent).toContain("Ask the server owner to set up the app catalog.");
-  expect(container.querySelector("a[href^='/integrations/setup']")).toBeNull();
+  expect(container.querySelector("a[href^='/app/integrations/setup']")).toBeNull();
 });
 
 it("re-arms ?connect=1 for each navigation between app pages", async () => {

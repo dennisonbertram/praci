@@ -11,7 +11,7 @@ test("board creates a ticket and opens it", async ({ page }, testInfo) => {
   await createNamedBot(page, "Planner");
 
   await page.getByTestId("user-menu-trigger").click();
-  await page.getByRole("button", { name: "Board", exact: true }).click();
+  await page.getByRole("button", { name: "Task board", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/board$/);
   await expect(page.getByTestId("board-columns")).toBeVisible();
   await expect(page.getByText("No tickets yet", { exact: true })).toBeVisible();

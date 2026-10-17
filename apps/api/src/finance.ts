@@ -47,8 +47,8 @@ import {
   RunwayCryptoScopeSchema,
 } from "@rakazo/contracts";
 import {
+  accountBalanceHistory,
   balanceGrid,
-  balanceHistory,
   breakdown,
   cashAtDays,
   cashHistory,
@@ -153,8 +153,14 @@ const monthOf = (date: Date, offset = 0) => monthStartOf(date, offset).slice(0, 
 const txnDay = (t: FinanceTransaction) => (t.purchasedAt ?? t.postedAt).slice(0, 10);
 const inRange = (t: FinanceTransaction, start: string, end: string) =>
   txnDay(t) >= start && txnDay(t) < end;
+/** Newest first by the day a transaction counts on, the day every page shows. */
 const newest = (txns: FinanceTransaction[], count: number) =>
-  [...txns].sort((a, b) => Date.parse(b.postedAt) - Date.parse(a.postedAt)).slice(0, count);
+  [...txns]
+    .sort(
+      (a, b) =>
+        txnDay(b).localeCompare(txnDay(a)) || Date.parse(b.postedAt) - Date.parse(a.postedAt),
+    )
+    .slice(0, count);
 /** The last 90 days including today, as a half-open range. */
 const last90 = (now: Date) => ({ start: addDays(dayOf(now), -89), end: addDays(dayOf(now), 1) });
 /** Bank cash and the crypto held, before the scope picks what counts. */
@@ -173,6 +179,25 @@ const cashParts = (
  * Cash at each of the last 12 month-ends under `scope`: bank history plus counted crypto (daily
  * snapshots for past months, today's holdings for this one). Without bank accounts bank is zero.
  */
+/**
+ * A balance chart from the last point before the first transaction (or counted crypto snapshot):
+ * earlier points would only repeat the opening balance for months nothing was synced.
+ */
+function fromFirstData<T>(points: T[], at: (point: T) => string, first: string | null): T[] {
+  if (!first) return points;
+  return points.slice(Math.max(points.findIndex((p) => at(p) >= first) - 1, 0));
+}
+
+/** The first day with data a cash chart shows: transactions, plus crypto snapshots when the scope counts crypto. */
+function firstDataDay(
+  txns: FinanceTransaction[],
+  snapshots: readonly { day: string }[],
+  scope: RunwayCryptoScope,
+): string | null {
+  const days = [earliestDay(txns), ...(scope === "bank" ? [] : snapshots.map((s) => s.day))];
+  return days.reduce<string | null>((min, d) => (d && (min === null || d < min) ? d : min), null);
+}
+
 function scopedCashHistory(
   accounts: FinanceAccount[],
   txns: FinanceTransaction[],
@@ -185,7 +210,7 @@ function scopedCashHistory(
   const bankByMonth = new Map(
     cashHistory(accounts, txns, now).map((p) => [p.month, p.balanceCents]),
   );
-  return Array.from({ length: 12 }, (_, i) => monthOf(now, i - 11)).map((month) => ({
+  const points = Array.from({ length: 12 }, (_, i) => monthOf(now, i - 11)).map((month) => ({
     month,
     balanceCents: countedCash(
       {
@@ -195,6 +220,8 @@ function scopedCashHistory(
       scope,
     ),
   }));
+  const first = firstDataDay(txns, snapshots, scope);
+  return fromFirstData(points, (p) => p.month, first ? first.slice(0, 7) : null);
 }
 /** Last day of a `YYYY-MM` month. */
 const monthEndOf = (month: string) =>
@@ -450,6 +477,16 @@ export async function financeOverview(
   const since = earliestDay(txns);
   const range = last90(now);
   const recurring = detectRecurring(txns, now, accounts);
+  const totals = {
+    week: spendTotals(txns, "week", now, since),
+    month: spendTotals(txns, "month", now, since),
+    quarter: spendTotals(txns, "quarter", now, since),
+    year: spendTotals(txns, "year", now, since),
+  };
+  const breakdownOver = (r: { start: string; end: string }) => ({
+    category: breakdown(txns, "category", r),
+    vendor: breakdown(txns, "vendor", r),
+  });
   const lastMonth = monthOf(now, -1);
   const lastMonthYields = yields.filter((y) => y.month === lastMonth);
   const statementReminders = await loadStatementReminders(deps, actor, dayOf(now));
@@ -466,21 +503,20 @@ export async function financeOverview(
     bankRunway: hasCashAccounts
       ? runway(cash.bankCashCents ?? 0, burn.monthlyCents, now)
       : { months: null, runOutDate: null },
-    spendTotals: {
-      week: spendTotals(txns, "week", now, since),
-      month: spendTotals(txns, "month", now, since),
-      quarter: spendTotals(txns, "quarter", now, since),
-      year: spendTotals(txns, "year", now, since),
-    },
+    spendTotals: totals,
+    // The chart covers the same days as the total above it.
     cashSeries: {
-      week: cashSeries(txns, { granularity: "day", buckets: 7, now }),
-      month: cashSeries(txns, { granularity: "day", buckets: 30, now }),
-      quarter: cashSeries(txns, { granularity: "week", buckets: 13, now }),
-      year: cashSeries(txns, { granularity: "month", buckets: 12, now }),
+      week: cashSeries(txns, { granularity: "day", from: totals.week.start, now }),
+      month: cashSeries(txns, { granularity: "day", from: totals.month.start, now }),
+      quarter: cashSeries(txns, { granularity: "week", from: totals.quarter.start, now }),
+      year: cashSeries(txns, { granularity: "month", from: totals.year.start, now }),
     },
-    breakdown: {
-      category: breakdown(txns, "category", range),
-      vendor: breakdown(txns, "vendor", range),
+    breakdown: breakdownOver(range),
+    breakdownByPeriod: {
+      week: breakdownOver(totals.week),
+      month: breakdownOver(totals.month),
+      quarter: breakdownOver(totals.quarter),
+      year: breakdownOver(totals.year),
     },
     upcoming: upcoming(
       recurring,
@@ -582,7 +618,7 @@ export async function financeAccountDetail(
   const treasuryYield = yieldRows.map(toYield);
   return {
     account: { ...account, annualYieldPct: annualYieldPct(account, treasuryYield, now) },
-    history: balanceHistory(account, txns, now),
+    history: accountBalanceHistory(account, txns, now),
     treasuryYield,
     transactions: newest(txns, 20),
   };
@@ -602,18 +638,21 @@ export async function financeBurn(deps: FinanceDeps, actor: Actor): Promise<Fina
       ? { start: `${first}-01`, end: monthStartOf(new Date(`${last}-01T00:00:00Z`), 1) }
       : null;
   const byExternalId = new Map(accounts.map((a) => [a.externalId, a]));
+  const accountRows = window ? breakdown(txns, "account", window) : [];
   return {
     monthlyCents: burn.monthlyCents,
     series: monthlySeries(txns, now),
     windowMonths: burn.months,
     whereItWent: window ? breakdown(txns, "category", window) : [],
     // Spend on an account that is no longer synced has no account to show, so it is left out here.
-    byAccount: window
-      ? breakdown(txns, "account", window).flatMap((row) => {
-          const account = byExternalId.get(row.key);
-          return account ? [{ account, cents: row.cents }] : [];
-        })
-      : [],
+    byAccount: accountRows.flatMap((row) => {
+      const account = byExternalId.get(row.key);
+      return account ? [{ account, cents: row.cents }] : [];
+    }),
+    // Brex expenses sit on synthetic per-type ids (`brex-card`, ...), not on an account row.
+    brexCents: accountRows
+      .filter((row) => !byExternalId.has(row.key) && row.key.startsWith("brex-"))
+      .reduce((sum, row) => sum + row.cents, 0),
   };
 }
 
@@ -694,15 +733,16 @@ export async function financeBalanceSeries(
   const today = dayOf(now);
   const days = balanceGrid(input.range, now);
   const bank = cashAtDays(accounts, txns, days, now);
+  const points = days.map((day, i) => ({
+    day,
+    balanceCents: countedCash(
+      { ...(day === today ? parts : cryptoPartsOn(snapshots, day)), bankCents: bank[i] ?? 0 },
+      scope,
+    ),
+  }));
   return {
     range: input.range,
-    points: days.map((day, i) => ({
-      day,
-      balanceCents: countedCash(
-        { ...(day === today ? parts : cryptoPartsOn(snapshots, day)), bankCents: bank[i] ?? 0 },
-        scope,
-      ),
-    })),
+    points: fromFirstData(points, (p) => p.day, firstDataDay(txns, snapshots, scope)),
   };
 }
 
@@ -763,7 +803,8 @@ export async function financeSpend(
   actor: Actor,
   input: FinanceSpendInput,
 ): Promise<FinanceSpendOutput> {
-  const txns = await loadTransactions(deps, actor);
+  const all = await loadTransactions(deps, actor);
+  const txns = input.source ? all.filter((t) => t.provider === input.source) : all;
   const totals = spendTotals(txns, input.period, nowOf(deps), earliestDay(txns));
   const customRange =
     input.from !== undefined && input.to !== undefined && input.from <= input.to
@@ -777,6 +818,8 @@ export async function financeSpend(
   return {
     period: input.period,
     range: customRange,
+    start,
+    end,
     category,
     totalCents: category
       ? (categories.find((row) => row.key === category)?.cents ?? 0)
@@ -862,19 +905,29 @@ export async function financeVendor(
   const seven = monthlySpend(own, { vendorKey: input.key }, now, 7);
   const full = seven.slice(0, 6);
   const lastFull = full[5]?.cents ?? 0;
-  const threeBefore = full[2]?.cents ?? 0;
   const sixMonthsFrom = `${seven[1]?.month ?? monthOf(now, -5)}-01`;
+  const firstSeenAt = own.reduce(
+    (min, t) => ((t.purchasedAt ?? t.postedAt) < min ? (t.purchasedAt ?? t.postedAt) : min),
+    latest.purchasedAt ?? latest.postedAt,
+  );
+  // Months before the vendor first charged are not months of zero spend.
+  const firstMonth = firstSeenAt.slice(0, 7);
+  const avgMonths = Math.max(full.filter((m) => m.month >= firstMonth).length, 1);
+  // The change compares the last full month with 3 months before it, or with the vendor's first
+  // full month when it is newer. A month that starts before the first synced data is incomplete.
+  const earliest = earliestDay(all) ?? "";
+  const base = full
+    .slice(2, 5)
+    .find((m) => m.month >= firstMonth && `${m.month}-01` >= earliest && m.cents > 0);
   return {
     key: input.key,
     name: latest.counterparty,
     isSubscription: subscriptions(recurring).items.some((s) => s.key === input.key),
-    monthlyAvgCents: Math.round(full.reduce((total, m) => total + m.cents, 0) / 6),
-    // Null when the earlier month starts before the first synced data, so it is incomplete.
-    changePct:
-      lastFull && threeBefore && `${seven[2]?.month}-01` >= (earliestDay(all) ?? "")
-        ? Math.round(((lastFull - threeBefore) / threeBefore) * 100)
-        : null,
-    firstSeenAt: own.reduce((min, t) => (t.postedAt < min ? t.postedAt : min), latest.postedAt),
+    monthlyAvgCents: Math.round(full.reduce((total, m) => total + m.cents, 0) / avgMonths),
+    monthlyAvgMonths: avgMonths,
+    changePct: lastFull && base ? Math.round(((lastFull - base.cents) / base.cents) * 100) : null,
+    changeFromMonth: lastFull && base ? base.month : null,
+    firstSeenAt,
     paidWith: recurring.find((r) => r.key === input.key)?.paidWith ?? paidWithFor(own, accounts),
     monthly: seven.slice(1),
     charges: newest(

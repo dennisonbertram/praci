@@ -20,7 +20,6 @@ import {
   resolvePersonaColorDef,
 } from "@rakazo/ui-web";
 import {
-  ChevronLeft,
   Download,
   Filter,
   LayoutGrid,
@@ -37,12 +36,10 @@ import { PdfViewer } from "../components/PdfViewer";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
 import { takeInitialBootstrap } from "../lib/bootstrap";
-import { desktopBridge } from "../lib/desktop";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
 import { useObjectUrl } from "../lib/use-object-url";
 import { errorText } from "../lib/user-error";
-import { WindowChrome } from "./WindowChrome";
 
 type ViewMode = "grid" | "list";
 type DateFilter = "all" | "today" | "week" | "month";
@@ -208,24 +205,13 @@ export function ArtifactsPage() {
   }
 
   return (
-    <div className="flex h-full min-w-0 flex-col bg-background text-foreground/90">
-      <header className="app-drag border-b border-border px-4 py-4 md:px-6">
-        {/* Wraps so window controls and the way back stay on screen with Filters. */}
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground/90">
+      {/* Same padding and title style as the other pages in the app shell. */}
+      <header className="border-b border-border px-4 pt-2 pb-3 md:px-7 md:pt-5">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <div className="flex items-center gap-2">
-            {/* This route is the window's leading edge, so Electron window controls sit in the header. */}
-            {desktopBridge() ? <WindowChrome /> : null}
-            <Link
-              to="/app"
-              className="app-no-drag flex shrink-0 items-center gap-0.5 rounded-lg py-1 pe-1.5 text-[13px] font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              <ChevronLeft size={16} strokeWidth={1.9} aria-hidden="true" />
-              <Trans>Bots</Trans>
-            </Link>
-            <h1 className="text-xl font-semibold">
-              <Trans>Artifacts</Trans>
-            </h1>
-          </div>
+          <h1 className="text-lg font-semibold">
+            <Trans>Artifacts</Trans>
+          </h1>
           <div className="app-no-drag flex shrink-0 items-center gap-2">
             <button
               type="button"

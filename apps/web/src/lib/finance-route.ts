@@ -6,13 +6,19 @@ export type SpendRange = { from: string; to: string };
 
 export type FinanceRoute =
   | { page: "dashboard" }
-  | { page: "accounts"; source: FinanceProvider | null }
+  | { page: "accounts"; source: FinanceProvider | null; unknownSource?: string }
   | { page: "account"; id: string }
   | { page: "burn" }
   | { page: "month"; month: string }
   | { page: "runway" }
   | { page: "crypto" }
-  | { page: "spend"; period: SpendPeriod; category: string | null; range: SpendRange | null }
+  | {
+      page: "spend";
+      period: SpendPeriod;
+      category: string | null;
+      range: SpendRange | null;
+      source?: FinanceProvider | null;
+    }
   | { page: "category"; slug: string }
   | { page: "recurring"; key: string }
   | { page: "vendor"; key: string }
@@ -33,10 +39,15 @@ export const financePath = {
   month: (month: string) => `${BASE}/month/${enc(month)}`,
   runway: () => `${BASE}/runway`,
   crypto: () => `${BASE}/crypto`,
-  spend: (period: SpendPeriod = "month", category?: string | null, range?: SpendRange | null) =>
+  spend: (
+    period: SpendPeriod = "month",
+    category?: string | null,
+    range?: SpendRange | null,
+    source?: FinanceProvider | null,
+  ) =>
     `${BASE}/spend?period=${period}${category ? `&cat=${enc(category)}` : ""}${
       range ? `&from=${range.from}&to=${range.to}` : ""
-    }`,
+    }${source ? `&source=${source}` : ""}`,
   category: (slug: string) => `${BASE}/category/${enc(slug)}`,
   recurring: (key: string) => `${BASE}/recurring/${enc(key)}`,
   vendor: (key: string) => `${BASE}/vendor/${enc(key)}`,
@@ -62,9 +73,13 @@ export function parseFinanceRoute(pathname: string, search = ""): FinanceRoute {
   if (name === undefined) return { page: "dashboard" };
   if (arg === undefined) {
     if (name === "accounts") {
-      // An unknown source parses to null, so the page lists every account.
-      const source = FinanceProviderSchema.safeParse(new URLSearchParams(search).get("source"));
-      return { page: "accounts", source: source.success ? source.data : null };
+      // An unknown source lists every account, and the page says the filter was not recognized.
+      const raw = new URLSearchParams(search).get("source");
+      const source = FinanceProviderSchema.safeParse(raw);
+      if (source.success) return { page: "accounts", source: source.data };
+      return raw
+        ? { page: "accounts", source: null, unknownSource: raw.slice(0, 40) }
+        : { page: "accounts", source: null };
     }
     if (name === "burn" || name === "runway" || name === "crypto") return { page: name };
     if (name === "spend") {
@@ -72,8 +87,10 @@ export function parseFinanceRoute(pathname: string, search = ""): FinanceRoute {
       const period = SpendPeriodSchema.safeParse(params.get("period"));
       const from = params.get("from") ?? "";
       const to = params.get("to") ?? "";
+      const source = FinanceProviderSchema.safeParse(params.get("source"));
       return {
         page: "spend",
+        source: source.success ? source.data : null,
         period: period.success ? period.data : "month",
         category: params.get("cat") || null,
         range: DAY.test(from) && DAY.test(to) && from <= to ? { from, to } : null,

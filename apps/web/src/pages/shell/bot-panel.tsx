@@ -31,6 +31,7 @@ import {
   Toggle,
 } from "@rakazo/ui-web";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { SuccessPop } from "../../components/ai/primitives";
 import { ErrorBoundary, SectionLoadFailed } from "../../components/ErrorBoundary";
 import { botProfilePatch } from "../../lib/bot-profile-patch";
 import { thinkingLevelLabel } from "../../lib/model-catalog";
@@ -92,8 +93,11 @@ export function BotSettings({
   onSave,
   onExport,
   onClear,
+  focusName = false,
 }: {
   bot: Bot;
+  /** A bot just created as "New bot": focus and select its name so it gets named first. */
+  focusName?: boolean;
   onSkillsChange: (skills: AgentSkillCatalogEntry[]) => void;
   memoryProviderConfigured: boolean;
   onSave: (patch: {
@@ -158,6 +162,9 @@ export function BotSettings({
   const [me, setMe] = useState<Me | null>(null);
   const [modelMetaReady, setModelMetaReady] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Set after the Save button's save succeeds; any later save clears it.
+  const [saved, setSaved] = useState(false);
+  const confirmSaveRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const saveQueueRef = useRef(Promise.resolve());
   const executeSaveRef = useRef<
@@ -303,9 +310,11 @@ export function BotSettings({
         break;
       }
       savedDescriptionRef.current = nextDescription;
+      if (confirmSaveRef.current) setSaved(true);
     } catch (err) {
       setError(errorText(err, t`Could not save`));
     } finally {
+      confirmSaveRef.current = false;
       pendingSavesRef.current -= 1;
       if (pendingSavesRef.current === 0) {
         setDisabledBuiltinTools([...persistedDisabledToolsRef.current]);
@@ -342,6 +351,7 @@ export function BotSettings({
     // finish after a newer one and clobber fields. Always call through a ref so
     // queued work reads the latest field values, not a stale render closure.
     pendingSavesRef.current += 1;
+    setSaved(false);
     const queuedPatch =
       patchOverrides?.disabledBuiltinTools === undefined
         ? patchOverrides
@@ -377,6 +387,8 @@ export function BotSettings({
           maxLength={BOT_NAME_MAX_LENGTH}
           onChange={(e) => setName(e.target.value)}
           onBlur={() => void enqueueSave()}
+          autoFocus={focusName}
+          onFocus={focusName ? (e) => e.currentTarget.select() : undefined}
           className="mt-1.5"
         />
       </label>
@@ -388,7 +400,7 @@ export function BotSettings({
           maxLength={BOT_TITLE_MAX_LENGTH}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => void enqueueSave()}
-          placeholder={t`e.g. Hivenet Agent, Presales, Timesheets bot`}
+          placeholder={t`e.g. Recruiting, Sales, Legal`}
           className="mt-1.5"
         />
       </label>
@@ -413,7 +425,7 @@ export function BotSettings({
             <Trans>Notifications</Trans>
           </div>
           <div id={`${ids}-notify-finish-desc`} className="text-[12px] text-muted-foreground/70">
-            <Trans>Get notified when this Bot finishes or needs input</Trans>
+            <Trans>Get notified when this bot finishes or needs input</Trans>
           </div>
         </div>
         <Switch
@@ -609,20 +621,26 @@ export function BotSettings({
       </details>
       {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
       <div className="mt-5 flex flex-col items-start gap-3">
-        <Button
-          disabled={saving}
-          onClick={() => {
-            void enqueueSave({
-              name,
-              title,
-              description,
-              color,
-              notifyOnFinish,
-            });
-          }}
-        >
-          <Trans>Save</Trans>
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Not disabled while saving: leaving the name field starts a save on mousedown, which
+              would otherwise swallow this click. Saves are queued, so a second one is safe. */}
+          <Button
+            aria-busy={saving}
+            onClick={() => {
+              confirmSaveRef.current = true;
+              void enqueueSave({
+                name,
+                title,
+                description,
+                color,
+                notifyOnFinish,
+              });
+            }}
+          >
+            <Trans>Save</Trans>
+          </Button>
+          {saved ? <SuccessPop label={t`Saved`} /> : null}
+        </div>
         <Button variant="ghost" size="sm" className="-ms-2.5" onClick={() => void onExport()}>
           <Trans>Export</Trans>
         </Button>

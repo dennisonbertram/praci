@@ -130,6 +130,19 @@ export const SpendFilteredToRange: Story = {
   beforeEach: () => mockRpc({ "finance.spend": { ...spend, category: "software" } }),
 };
 
+export const SpendFilteredToBrex: Story = {
+  name: "Spend, Brex only (opened from Burn)",
+  render: () => (
+    <FinanceSpendPage
+      period="month"
+      category={null}
+      range={{ from: "2026-07-01", to: "2026-09-30" }}
+      source="brex"
+    />
+  ),
+  beforeEach: () => mockRpc({ "finance.spend": spend }),
+};
+
 export const SpendEmpty: Story = {
   render: () => <FinanceSpendPage period="week" category={null} range={null} />,
   beforeEach: () =>
@@ -163,10 +176,68 @@ export const Vendor: Story = {
   beforeEach: () => mockRpc({ "finance.vendor": vendor }),
 };
 
+/** A vendor newer than three months compares with its first full month. */
+export const VendorComparedWithFirstMonth: Story = {
+  render: () => <FinanceVendorPage keyName="acme-hosting" />,
+  beforeEach: () =>
+    mockRpc({
+      "finance.vendor": {
+        ...vendor,
+        firstSeenAt: "2025-12-08T12:00:00.000Z",
+        monthly: vendor.monthly.map((m) => ({ ...m, cents: m.month >= "2025-12" ? 4900 : 0 })),
+        monthlyAvgMonths: 3,
+        changePct: 0,
+        changeFromMonth: "2025-12",
+      },
+    }),
+};
+
 export const VendorWithoutChange: Story = {
   render: () => <FinanceVendorPage keyName="acme-hosting" />,
   beforeEach: () =>
     mockRpc({
       "finance.vendor": { ...vendor, changePct: null, isSubscription: false, paidWith: [] },
+    }),
+};
+
+export const SpendOneDayFromChart: Story = {
+  name: "Spend for one day from the chart",
+  render: () => (
+    <FinanceSpendPage
+      period="month"
+      category={null}
+      range={{ from: "2026-03-08", to: "2026-03-08" }}
+    />
+  ),
+  beforeEach: () =>
+    mockRpc({
+      "finance.spend": {
+        ...spend,
+        range: { from: "2026-03-08", to: "2026-03-08" },
+        start: "2026-03-08",
+        end: "2026-03-09",
+      },
+    }),
+};
+
+export const SpendWithPeriodDays: Story = {
+  name: "Spend with the days it counts",
+  render: () => <FinanceSpendPage period="month" category={null} range={null} />,
+  beforeEach: () =>
+    mockRpc({ "finance.spend": { ...spend, start: "2026-03-01", end: "2026-03-17" } }),
+};
+
+export const VendorNewThisQuarter: Story = {
+  name: "Vendor first seen three months ago",
+  render: () => <FinanceVendorPage keyName="acme-hosting" />,
+  beforeEach: () => mockRpc({ "finance.vendor": { ...vendor, monthlyAvgMonths: 3 } }),
+};
+
+export const VendorNotFound: Story = {
+  render: () => <FinanceVendorPage keyName="missing" />,
+  beforeEach: () =>
+    mockRpc({
+      "finance.vendor": () =>
+        Promise.reject(Object.assign(new Error("Not found"), { code: "NOT_FOUND" })),
     }),
 };

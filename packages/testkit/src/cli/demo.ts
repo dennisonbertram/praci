@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from "node:child_process";
 import {
+  appendFileSync,
   closeSync,
   existsSync,
   mkdirSync,
@@ -13,8 +14,9 @@ import { createRequire } from "node:module";
 import net from "node:net";
 import { homedir } from "node:os";
 import path from "node:path";
+import { CARTA_MCP_ENDPOINT } from "@rakazo/contracts";
 import { loadOrCreateCredentials } from "./demo/credentials.js";
-import { demoFinance, demoMailboxes } from "./demo/data.js";
+import { demoCarta, demoCrypto, demoFinance, demoMailboxes } from "./demo/data.js";
 import {
   assertDemoContainer,
   assertStateSlot,
@@ -44,6 +46,8 @@ const {
   webPort: WEB_PORT,
 } = slotConfig(process.env.DEMO_SLOT);
 const DIR = stateDir(ROOT, SLOT);
+/** Mail the demo app sends (reset links, verification); never delivered anywhere. */
+const OUTBOX = path.join(DIR, "outbox.log");
 const STATE = path.join(DIR, "state.json");
 const WEB_ORIGIN = `http://127.0.0.1:${WEB_PORT}`;
 const API_URL = `http://127.0.0.1:${API_PORT}`;
@@ -205,6 +209,7 @@ Mock demo stack is running (slot ${SLOT}). Every record in it is invented and la
   Sign in as:   ${email}
   Login file:   ${CREDENTIALS}
   Logs:         ${DIR}/api.log, ${DIR}/web.log
+  Mail outbox:  ${OUTBOX}
 Stop and delete it with: ${SLOT ? `DEMO_SLOT=${SLOT} ` : ""}pnpm demo:down`);
 }
 
@@ -316,6 +321,14 @@ async function serve() {
   const { handles } = await createEmulatedApp(process.env.DATABASE_URL as string, {
     composio: createE2eComposio(demoMailboxes),
     financeCallToolFor: demoFinance().callToolFor,
+    mcpServers: { [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN) },
+    cryptoFetch: demoCrypto().fetch,
+    // Nothing is delivered: password-reset and verification mail lands in the slot's outbox file.
+    onEmail: (message) =>
+      appendFileSync(
+        OUTBOX,
+        `--- ${new Date().toISOString()}\nTo: ${message.to}\nSubject: ${message.subject}\n\n${message.text}\n\n`,
+      ),
   });
   const server = listen({ fetch: handles.app.fetch, port: API_PORT, hostname: "127.0.0.1" });
   const stop = () => void handles.stop().finally(() => server.close(() => process.exit(0)));

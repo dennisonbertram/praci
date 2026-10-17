@@ -1,16 +1,22 @@
 import { createSecretStore, syncFinanceForUser } from "@rakazo/adapters";
-import { FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
-import { createDb } from "@rakazo/db";
+import { CARTA_MCP_ENDPOINT, FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
+import { createDb, saveCapTableSnapshot } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   DEMO_BOTS,
+  DEMO_CAP_TABLE,
+  DEMO_CHIEF_DRAFT,
   DEMO_COMPANY,
   DEMO_CONTACTS,
+  DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
+  DEMO_EMPTY_SPACE,
   DEMO_GROUP,
   DEMO_USER_NAME,
+  DEMO_WALLET,
   demoFinance,
   demoFolderPaths,
+  demoStatementCsv,
   MOCK_NOTE,
 } from "./data.js";
 
@@ -114,7 +120,8 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     const user = await prisma.user.findUniqueOrThrow({ where: { email: options.email } });
     const scope = { spaceId, userId: user.id };
     const secrets = createSecretStore(options.encryptionKey, {});
-    for (const provider of ["mercury", "brex"] as const) {
+    // A fake stored login, so a server counts as signed in. Calls to it reach only the emulators.
+    const fakeLogin = async () => {
       const stored = await secrets.put(
         JSON.stringify({
           oauth: { tokens: { access_token: "mock-demo-token", token_type: "bearer" } },
@@ -130,6 +137,9 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       await prisma.secret.create({
         data: { id: stored.id, ...scope, kind: "mcp", ciphertext: stored.ciphertext },
       });
+      return stored.id;
+    };
+    for (const provider of ["mercury", "brex"] as const) {
       await prisma.mcpServer.create({
         data: {
           ...scope,
@@ -137,7 +147,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
           name: provider === "mercury" ? "Mercury" : "Brex",
           transport: "streamable_http",
           endpoint: FINANCE_MCP_ENDPOINTS[provider],
-          secretId: stored.id,
+          secretId: await fakeLogin(),
         },
       });
     }
@@ -150,6 +160,36 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       throw new Error(`Finance seed did not sync: ${JSON.stringify(result)}`);
     await session.rpc("finance/agent");
     done.push("Mercury and Brex (canned tools), Finance agent");
+
+    // Cap Table: a signed-in Carta server and the Carta agent's last read of the mock cap table.
+    await prisma.mcpServer.create({
+      data: {
+        ...scope,
+        slug: "carta",
+        name: "Carta (MOCK DEMO)",
+        transport: "streamable_http",
+        endpoint: CARTA_MCP_ENDPOINT,
+        secretId: await fakeLogin(),
+      },
+    });
+    await saveCapTableSnapshot(prisma, scope, DEMO_CAP_TABLE);
+    await session.rpc("carta/agent");
+    done.push("Carta (mock login; its tools reach only the emulator), mock cap table, Carta agent");
+    // A bank with no integration: last month's statement, uploaded and imported as a user would.
+    const statement = demoStatementCsv();
+    const reviewed = await session.rpc<{ id: string }>("finance/statementUpload", {
+      fileName: statement.fileName,
+      contentBase64: Buffer.from(statement.body).toString("base64"),
+    });
+    await session.rpc("finance/statementConfirm", { id: reviewed.id });
+    done.push("1 imported bank statement");
+    // A treasury wallet, read through the API's offline crypto fake (no real chain is called).
+    await session.rpc("finance/walletAdd", {
+      addressOrEns: DEMO_WALLET.address,
+      label: DEMO_WALLET.label,
+      type: "personal",
+    });
+    done.push("1 crypto wallet (offline fake balances)");
   } finally {
     await prisma.$disconnect();
     await pool.end();
@@ -179,7 +219,34 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       bytes,
     );
   }
+  {
+    const db = createDb(options.databaseUrl);
+    try {
+      for (const [name, facets] of Object.entries(DEMO_DOCUMENT_FACETS)) {
+        await db.prisma.dataRoomItem.updateMany({
+          where: { spaceId, name },
+          data: {
+            docType: facets.docType,
+            docDate: new Date(Date.now() - facets.daysAgo * 24 * 60 * 60 * 1000),
+            parties: facets.parties,
+          },
+        });
+      }
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  }
   done.push(`${DEMO_DOCUMENTS.length} data room documents`);
+
+  // Artifacts: last month's investor update, filed under Chief.
+  await session.rpc("artifacts/create", {
+    botId: chief.id,
+    name: DEMO_CHIEF_DRAFT.name,
+    mimeType: DEMO_CHIEF_DRAFT.mimeType,
+    contentBase64: Buffer.from(DEMO_CHIEF_DRAFT.text).toString("base64"),
+  });
+  done.push("Chief's investor update draft");
 
   // Team: extra bots and a group chat.
   const botIds = [chief.id];
@@ -193,5 +260,9 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   }
   await session.rpc("groups/create", { name: DEMO_GROUP.name, botIds });
   done.push(`${DEMO_BOTS.length} extra bots, 1 group chat (${MOCK_NOTE})`);
+
+  // A second, empty space: what a founder sees before connecting anything (switch to it to test).
+  await session.rpc("spaces/create", { name: DEMO_EMPTY_SPACE });
+  done.push(`empty space "${DEMO_EMPTY_SPACE}"`);
   return done;
 }

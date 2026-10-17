@@ -1,6 +1,6 @@
 import type { Actor } from "@rakazo/contracts";
 import { FINANCE_MCP_ENDPOINTS, financeAgentSpawnKey } from "@rakazo/contracts";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { notFound } from "./inbox.js";
 
 // The calculations are tested in @rakazo/core. Here they are stand-ins that record what they were
@@ -59,6 +59,7 @@ import {
   financeAccountDetail,
   financeAccounts,
   financeBalanceSeries,
+  financeBurn,
   financeCategory,
   financeConnect,
   financeCryptoHistory,
@@ -536,6 +537,21 @@ describe("finance detail lookups", () => {
     const out = await financeSpend(deps, a, { period: "month", category: "software" });
     expect(out.transactions.map((r) => r.id)).toEqual(["t-1"]);
   });
+
+  it("counts and lists only the chosen source's spend", async () => {
+    const { deps } = setup({
+      financeTransaction: [
+        txn(a, { id: "t-1" }),
+        txn(a, { id: "t-2", provider: "brex", accountExternalId: "brex-card" }),
+      ],
+    });
+    metrics.breakdown.mockClear();
+    const out = await financeSpend(deps, a, { period: "month", source: "brex" });
+    expect(out.transactions.map((r) => r.id)).toEqual(["t-2"]);
+    // The total and the category chips are worked out from the same Brex-only list.
+    const given = (metrics.breakdown.mock.calls[0] as unknown as [{ id: string }[]])[0];
+    expect(given.map((r) => r.id)).toEqual(["t-2"]);
+  });
 });
 
 describe("finance connect", () => {
@@ -863,7 +879,7 @@ describe("runway crypto scope", () => {
     );
   });
 
-  it("keeps 12 history months for a wallet-only user, bank counted as zero", async () => {
+  it("starts a wallet-only user's history at the month before the first snapshot, bank counted as zero", async () => {
     const wallet = {
       id: "w1",
       ...scope(a),
@@ -879,8 +895,8 @@ describe("runway crypto scope", () => {
     });
     const out = await financeRunway(deps, a);
     expect(out.cashCents).toBe(500);
-    expect(out.history).toHaveLength(12);
-    expect(out.history[0]).toEqual({ month: "2025-11", balanceCents: 0 });
+    expect(out.history).toHaveLength(3);
+    expect(out.history[0]).toEqual({ month: "2026-08", balanceCents: 0 });
     expect(out.history.at(-2)).toEqual({ month: "2026-09", balanceCents: 400 });
     expect(out.history.at(-1)).toEqual({ month: "2026-10", balanceCents: 500 });
   });
@@ -896,7 +912,7 @@ describe("runway crypto scope", () => {
     );
     const walletOnly = setup({ ...data("all"), financeAccount: [] });
     const lone = (await financeAccounts(walletOnly.deps, a)).history;
-    expect(lone).toHaveLength(12);
+    expect(lone[0]?.month).toBe("2026-07");
     expect(lone.at(-2)?.balanceCents).toBe(250);
     expect(lone.at(-1)?.balanceCents).toBe(370);
   });
@@ -955,12 +971,25 @@ describe("balance series", () => {
       "2026-10-13",
       "2026-10-14",
     ]);
-    expect(await series("bank", "month")).toHaveLength(30);
+    // The day before the first transaction (Sep 20) through today.
+    const month = await series("bank", "month");
+    expect([month[0]?.day, month.at(-1)?.day]).toEqual(["2026-09-19", "2026-10-14"]);
     expect((await series("bank", "quarter")).map((p) => p.day).slice(-2)).toEqual([
       "2026-10-07",
       "2026-10-14",
     ]);
-    expect((await series("bank", "year"))[0]?.day).toBe("2025-11-30");
+    // The year starts at the month end before the first transaction (Sep 20), not last November.
+    expect((await series("bank", "year"))[0]?.day).toBe("2026-08-31");
+  });
+
+  it("starts the runway and accounts charts at the month before the first data, not a year back", async () => {
+    const { deps } = setup(data("bank"));
+    expect((await financeAccounts(deps, a)).history.map((p) => p.month)).toEqual([
+      "2026-08",
+      "2026-09",
+      "2026-10",
+    ]);
+    expect((await financeRunway(deps, a)).history[0]?.month).toBe("2026-08");
   });
 
   it("rebuilds daily bank cash by undoing later transactions", async () => {
@@ -999,5 +1028,131 @@ describe("balance series", () => {
     const week = (await financeBalanceSeries(deps, a, { range: "week" })).points;
     expect(week).toHaveLength(7);
     expect(week.map((p) => p.balanceCents)).toEqual([300, 300, 400, 400, 400, 400, 700]);
+  });
+});
+
+describe("finance pages with the real calculations", () => {
+  type Name = keyof typeof metrics;
+  const standIns = new Map<Name, unknown>();
+  beforeEach(async () => {
+    const real = await vi.importActual<typeof import("@rakazo/core")>("@rakazo/core");
+    for (const name of Object.keys(metrics) as Name[]) {
+      standIns.set(name, metrics[name].getMockImplementation());
+      metrics[name].mockImplementation(real[name] as never);
+    }
+  });
+  afterEach(() => {
+    for (const [name, impl] of standIns) metrics[name].mockImplementation(impl as never);
+  });
+
+  const monthlyCharge = (month: string, over: Row = {}) =>
+    txn(a, {
+      id: `t-${month}`,
+      externalId: `x-${month}`,
+      postedAt: new Date(`2026-${month}-09T00:00:00Z`),
+      amountCents: -481_200n,
+      counterparty: "Cloudnine Hosting",
+      vendorKey: "cloudnine-hosting",
+      ...over,
+    });
+
+  it("averages a vendor over the months since it was first seen, not six", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: ["07", "08", "09", "10"].map((m) => monthlyCharge(m)),
+    });
+    const vendor = await financeVendor(deps, a, { key: "cloudnine-hosting" });
+    // Jul, Aug and Sep are the full months since first seen; October is still partial.
+    expect(vendor.monthlyAvgCents).toBe(481_200);
+    expect(vendor.monthlyAvgMonths).toBe(3);
+  });
+
+  it("windows a vendor by purchase date, the same date its monthly totals use", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [
+        monthlyCharge("09", {
+          id: "p1",
+          externalId: "p1",
+          purchasedAt: new Date("2026-08-31T00:00:00Z"),
+          postedAt: new Date("2026-09-02T00:00:00Z"),
+          amountCents: -10_000n,
+        }),
+        monthlyCharge("10", {
+          id: "p2",
+          externalId: "p2",
+          purchasedAt: new Date("2026-09-30T00:00:00Z"),
+          postedAt: new Date("2026-10-02T00:00:00Z"),
+          amountCents: -10_000n,
+        }),
+      ],
+    });
+    const vendor = await financeVendor(deps, a, { key: "cloudnine-hosting" });
+    expect(vendor.firstSeenAt.slice(0, 10)).toBe("2026-08-31");
+    expect(vendor.monthlyAvgMonths).toBe(2);
+    expect(vendor.monthlyAvgCents).toBe(10_000);
+  });
+
+  it("compares a new vendor's last full month with its first full month", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [
+        // Synced data starts in June, before the vendor's first charge in July.
+        monthlyCharge("06", {
+          vendorKey: "other",
+          counterparty: "Other",
+          id: "o",
+          externalId: "o",
+        }),
+        ...["07", "08", "09", "10"].map((m) => monthlyCharge(m)),
+      ],
+    });
+    const vendor = await financeVendor(deps, a, { key: "cloudnine-hosting" });
+    expect(vendor.changePct).toBe(0);
+    expect(vendor.changeFromMonth).toBe("2026-07");
+  });
+
+  it("counts Brex spend in By account, so the shares add up to all spend", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [
+        ...["07", "08", "09"].map((m) => monthlyCharge(m)),
+        ...["07", "08", "09"].map((m) =>
+          monthlyCharge(m, {
+            id: `b-${m}`,
+            externalId: `bx-${m}`,
+            provider: "brex",
+            mcpServerId: "srv-2",
+            accountExternalId: "brex-card",
+            amountCents: -10_000n,
+            counterparty: "Globex",
+            vendorKey: "globex",
+          }),
+        ),
+      ],
+    });
+    const burn = await financeBurn(deps, a);
+    expect(burn.byAccount.map((r) => r.cents)).toEqual([3 * 481_200]);
+    expect(burn.brexCents).toBe(30_000);
+  });
+
+  it("shows each period's chart and breakdown over the same days as its total", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [
+        monthlyCharge("09", { postedAt: new Date("2026-09-30T00:00:00Z") }),
+        monthlyCharge("10", { postedAt: new Date("2026-10-02T00:00:00Z") }),
+      ],
+    });
+    const overview = await financeOverview(deps, a);
+    const month = overview.cashSeries.month;
+    expect(month[0]?.start).toBe(overview.spendTotals.month.start);
+    expect(month.at(-1)?.start).toBe("2026-10-14");
+    expect(month.reduce((sum, p) => sum + p.outCents, 0)).toBe(
+      overview.spendTotals.month.currentCents,
+    );
+    expect(overview.breakdownByPeriod?.month.vendor).toEqual([
+      { key: "cloudnine-hosting", label: "Cloudnine Hosting", cents: 481_200 },
+    ]);
   });
 });

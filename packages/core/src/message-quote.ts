@@ -210,8 +210,9 @@ const rowList = (rows: string[]) => (rows.length ? ` — ${rows.join("; ")}` : "
 export function financeCardSummary(card: FinanceCard): string {
   switch (card.card) {
     case "overview": {
-      const runway = card.runwayMonths === null ? "–" : `${Math.round(card.runwayMonths)} mo`;
-      return `Finance overview: Cash ${usd(card.cashCents)}; Burn / mo ${usd(card.burnCents)}; Runway ${runway}; Spend this month ${usd(card.monthSpendCents)}`;
+      // One decimal and the same labels as the dashboard and the card.
+      const runway = card.runwayMonths === null ? "–" : `${card.runwayMonths.toFixed(1)} mo`;
+      return `Finance overview: Cash ${usd(card.cashCents)}; Monthly burn ${usd(card.burnCents)}; Runway ${runway}; Spent this month ${usd(card.monthSpendCents)}`;
     }
     case "breakdown": {
       const title = `${card.by === "vendor" ? "Vendors" : "Categories"} · ${oneLine(card.range)}`;
@@ -219,7 +220,11 @@ export function financeCardSummary(card: FinanceCard): string {
     }
     case "transactions": {
       const amount = (cents: number) => (cents > 0 ? `+${usd(cents, true)}` : usd(cents, true));
-      return `${card.count} transactions: ${amount(card.totalCents)}${rowList(card.rows.map((r) => `${oneLine(r.label)} (${r.day.slice(0, 10)}) ${amount(r.cents)}`))}`;
+      const period =
+        card.from || card.to
+          ? ` (${card.from?.slice(0, 10) ?? "…"} to ${card.to?.slice(0, 10) ?? "…"})`
+          : " (all dates)";
+      return `${card.count} transactions${period}: ${amount(card.totalCents)}${rowList(card.rows.map((r) => `${oneLine(r.label)} (${r.day.slice(0, 10)}) ${amount(r.cents)}`))}`;
     }
     case "recurring":
       return `Subscriptions / mo: ${usd(card.monthlyCents)}${rowList(card.rows.map((r) => `${oneLine(r.label)} ${usd(r.cents)}`))}; next 30 days ${usd(card.upcomingCents)}`;

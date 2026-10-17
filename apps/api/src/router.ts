@@ -322,6 +322,7 @@ import {
 } from "./finance-exchange.js";
 import type { ParseStatement } from "./finance-statements.js";
 import {
+  financeStatementAccountRename,
   financeStatementConfirm,
   financeStatementDiscard,
   financeStatements,
@@ -854,6 +855,9 @@ function botSecretMetadataDto(row: {
     updatedAt: row.updatedAt.toISOString(),
   };
 }
+
+/** The bot first-run onboarding creates (Chief); see apps/web Onboarding. */
+const FIRST_BOT_SPAWN_KEY = "onboarding:first";
 
 const BOT_INTRO_PROMPT =
   "You were just created. In one reply, say what you understood your role to be from your title, description and instructions, and ask for anything you need to get started.";
@@ -1805,11 +1809,17 @@ export function createRouter(deps: RouterDeps) {
         } catch (error) {
           throw mapSpaceLifecycleError(error);
         }
-        // A bot with no profile (and not the onboarding bot) has no role to restate: greet with a fixed message instead.
+        // A bot with no profile has no role to restate, and the onboarding bot introduces itself
+        // before the focus card: both greet with a fixed message instead of a model run.
+        const first = bot.spawnKey === FIRST_BOT_SPAWN_KEY;
         const blank =
-          !bot.spawnKey && !bot.description.trim() && !bot.instructions.trim() && !bot.title.trim();
+          first ||
+          (!bot.spawnKey &&
+            !bot.description.trim() &&
+            !bot.instructions.trim() &&
+            !bot.title.trim());
         await (blank
-          ? seedBlankBotGreeting(onboardingDeps, context.actor, bot)
+          ? seedBlankBotGreeting(onboardingDeps, context.actor, bot, { first })
           : enqueueBotIntroRun(deps, context.actor, bot)
         ).catch((error) => {
           getLogger().error("bot intro", error);
@@ -6462,6 +6472,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       statementDiscard: authed.finance.statementDiscard.handler(({ context, input }) =>
         financeStatementDiscard(financeDeps, context.actor, input),
+      ),
+      statementAccountRename: authed.finance.statementAccountRename.handler(({ context, input }) =>
+        financeStatementAccountRename(financeDeps, context.actor, input),
       ),
       cryptoProviderRemove: authed.finance.cryptoProviderRemove.handler(({ context }) =>
         financeCryptoProviderRemove(financeDeps, context.actor),

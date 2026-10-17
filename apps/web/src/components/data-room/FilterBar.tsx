@@ -294,116 +294,119 @@ export function FilterBar({
           </InputGroupAddon>
         ) : null}
       </InputGroup>
-      <div className="@min-[800px]/bd:hidden">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            data-testid="data-room-folder-picker"
-            render={<Button variant="outline" size="sm" className="max-w-36 rounded-full" />}
-            title={openFolder?.path}
-          >
-            <Folder aria-hidden="true" />
-            {/* The folder's own name, so the toolbar stays one row; the menu shows the full path. */}
-            <span className="truncate">{openFolder?.folder.name ?? t`All items`}</span>
-            <ChevronDown aria-hidden="true" />
-          </DropdownMenuTrigger>
-          {/* As wide as its longest path (not the button), so no path wraps. */}
-          <DropdownMenuContent
-            align="start"
-            className="w-max min-w-40 max-w-[calc(100vw-2rem)] whitespace-nowrap"
-          >
-            <DropdownMenuRadioGroup
-              value={folderId ?? ""}
-              onValueChange={(next) => onFolder(String(next) || undefined)}
+      {/* On a phone: search on its own line, then one scrolling row of filters and Sort. */}
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 *:shrink-0 @max-[640px]/bd:basis-full @max-[640px]/bd:flex-nowrap @max-[640px]/bd:overflow-x-auto">
+        <div className="@min-[800px]/bd:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              data-testid="data-room-folder-picker"
+              render={<Button variant="outline" size="sm" className="max-w-36 rounded-full" />}
+              title={openFolder?.path}
             >
-              <DropdownMenuRadioItem value="" closeOnClick>
-                <Trans>All items</Trans>
-              </DropdownMenuRadioItem>
-              {folders.map(({ folder, path }) => (
-                <DropdownMenuRadioItem key={folder.id} value={folder.id} closeOnClick>
-                  {path}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      {types.length || filters.docType ? (
-        <PickFilter
-          label={t`Type`}
-          value={filters.docType}
-          options={withValue(types, filters.docType).map((type) => [type, type])}
-          onChange={(docType) => onFilters({ ...filters, docType })}
-        />
-      ) : null}
-      {parties.length || filters.party ? (
-        <PickFilter
-          label={t`Party`}
-          value={filters.party}
-          options={withValue(parties, filters.party).map((party) => [party, party])}
-          onChange={(party) => onFilters({ ...filters, party })}
-        />
-      ) : null}
-      {hasDates || filters.docDateFrom || filters.docDateTo ? (
-        <DateFilter
-          filters={filters}
-          onChange={(from, to) =>
-            onFilters({
-              ...filters,
-              docDateFrom: from && `${from}T00:00:00.000Z`,
-              docDateTo: to && `${to}T23:59:59.999Z`,
-            })
-          }
-        />
-      ) : null}
-      {sources.length > 1 || filters.source ? (
-        <PickFilter
-          label={t`Source`}
-          value={filters.source}
-          options={withValue(sources, filters.source).map((source) => [
-            source,
-            sourceLabel(source),
-          ])}
-          onChange={(source) => onFilters({ ...filters, source })}
-        />
-      ) : null}
-      <div className="ms-auto flex items-center gap-0.5">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<Button variant="outline" size="sm" className="rounded-full" />}
-          >
-            <Trans>Sort: {labels[field]}</Trans>
-            <ChevronDown aria-hidden="true" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-40">
-            <DropdownMenuRadioGroup
-              value={field}
-              onValueChange={(next) =>
-                onSort(next === "relevance" ? null : naturalSort(next as SortField))
-              }
+              <Folder aria-hidden="true" />
+              {/* The folder's own name, so the toolbar stays one row; the menu shows the full path. */}
+              <span className="truncate">{openFolder?.folder.name ?? t`All items`}</span>
+              <ChevronDown aria-hidden="true" />
+            </DropdownMenuTrigger>
+            {/* As wide as its longest path (not the button), so no path wraps. */}
+            <DropdownMenuContent
+              align="start"
+              className="w-max min-w-40 max-w-[calc(100vw-2rem)] whitespace-nowrap"
             >
-              {fields.map((name) => (
-                <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                  {labels[name]}
+              <DropdownMenuRadioGroup
+                value={folderId ?? ""}
+                onValueChange={(next) => onFolder(String(next) || undefined)}
+              >
+                <DropdownMenuRadioItem value="" closeOnClick>
+                  <Trans>All items</Trans>
                 </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {/* Relevance has no direction, so the arrow only shows for a field sort. */}
-        {sort ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={direction === "asc" ? t`Ascending` : t`Descending`}
-            onClick={() => onSort({ ...sort, direction: direction === "asc" ? "desc" : "asc" })}
-          >
-            {direction === "asc" ? (
-              <ArrowUp aria-hidden="true" />
-            ) : (
-              <ArrowDown aria-hidden="true" />
-            )}
-          </Button>
+                {folders.map(({ folder, path }) => (
+                  <DropdownMenuRadioItem key={folder.id} value={folder.id} closeOnClick>
+                    {path}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        {types.length || filters.docType ? (
+          <PickFilter
+            label={t`Type`}
+            value={filters.docType}
+            options={withValue(types, filters.docType).map((type) => [type, type])}
+            onChange={(docType) => onFilters({ ...filters, docType })}
+          />
         ) : null}
+        {parties.length || filters.party ? (
+          <PickFilter
+            label={t`Party`}
+            value={filters.party}
+            options={withValue(parties, filters.party).map((party) => [party, party])}
+            onChange={(party) => onFilters({ ...filters, party })}
+          />
+        ) : null}
+        {hasDates || filters.docDateFrom || filters.docDateTo ? (
+          <DateFilter
+            filters={filters}
+            onChange={(from, to) =>
+              onFilters({
+                ...filters,
+                docDateFrom: from && `${from}T00:00:00.000Z`,
+                docDateTo: to && `${to}T23:59:59.999Z`,
+              })
+            }
+          />
+        ) : null}
+        {sources.length > 1 || filters.source ? (
+          <PickFilter
+            label={t`Source`}
+            value={filters.source}
+            options={withValue(sources, filters.source).map((source) => [
+              source,
+              sourceLabel(source),
+            ])}
+            onChange={(source) => onFilters({ ...filters, source })}
+          />
+        ) : null}
+        <div className="ms-auto flex items-center gap-0.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button variant="outline" size="sm" className="rounded-full" />}
+            >
+              <Trans>Sort: {labels[field]}</Trans>
+              <ChevronDown aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-40">
+              <DropdownMenuRadioGroup
+                value={field}
+                onValueChange={(next) =>
+                  onSort(next === "relevance" ? null : naturalSort(next as SortField))
+                }
+              >
+                {fields.map((name) => (
+                  <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                    {labels[name]}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {/* Relevance has no direction, so the arrow only shows for a field sort. */}
+          {sort ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={direction === "asc" ? t`Ascending` : t`Descending`}
+              onClick={() => onSort({ ...sort, direction: direction === "asc" ? "desc" : "asc" })}
+            >
+              {direction === "asc" ? (
+                <ArrowUp aria-hidden="true" />
+              ) : (
+                <ArrowDown aria-hidden="true" />
+              )}
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

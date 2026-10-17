@@ -55,3 +55,12 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 export const Loading: Story = { args: { loading: true } };
 export const Empty: Story = { args: { hits: [] } };
+export const PagesAndDocuments: Story = {
+  args: {
+    query: "SAFE",
+    hits: [],
+    pages: [{ id: "finance", label: "Finance" }],
+    documents: [{ id: "doc_1", label: "Sample SAFE - Example Capital.pdf" }],
+    onSearchMail: () => undefined,
+  },
+};

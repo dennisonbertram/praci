@@ -49,6 +49,23 @@ async function expectNoTouchSideGutter(frame: Locator) {
   );
 }
 
+type Box = { x: number; y: number; width: number; height: number };
+
+/**
+ * Hover-capable pointers reveal the rail in the gutter beside the bubble's bottom corner:
+ * bot bubbles (left) get it on their right, user bubbles (right) on their left. It must sit
+ * outside the bubble, close to it, and bottom-aligned so it covers no neighbouring text.
+ */
+function besideBubble(box: Box, frame: Box, gutter: "right" | "left") {
+  const frameEnd = frame.x + frame.width;
+  const gap = gutter === "right" ? box.x - frameEnd : frame.x - (box.x + box.width);
+  return {
+    outside: gap >= -2,
+    close: gap < 16,
+    bottomAligned: Math.abs(box.y + box.height - (frame.y + frame.height)) <= 2,
+  };
+}
+
 /** Park the pointer outside the message and blur focus so the rail returns to opacity-0. */
 async function expectRailAtRest(page: Page, row: Locator) {
   const rail = row.getByTestId("message-hover-rail");
@@ -98,29 +115,26 @@ test("message hover shows under-bubble actions; reply links to parent", async ({
   const botFrameBox = await botFrame.boundingBox();
   expect(botTimeBox).not.toBeNull();
   expect(botFrameBox).not.toBeNull();
-  // Time sits above the bubble (or in the speaker header row) at the frame's end edge.
-  expect(
-    Math.abs(botTimeBox!.x + botTimeBox!.width - botFrameBox!.x - botFrameBox!.width),
-  ).toBeLessThan(2);
-  expect(botTimeBox!.y + botTimeBox!.height).toBeLessThanOrEqual(botFrameBox!.y + 24);
+  // Time sits in the gutter beside the bubble (right of a bot bubble), above the actions.
+  const botRailBox = await botRail.boundingBox();
+  expect(botRailBox).not.toBeNull();
+  expect(besideBubble(botTimeBox!, botFrameBox!, "right")).toMatchObject({
+    outside: true,
+    close: true,
+  });
+  expect(botTimeBox!.y + botTimeBox!.height).toBeLessThanOrEqual(botRailBox!.y + 2);
+  expect(botTimeBox!.y).toBeGreaterThanOrEqual(botFrameBox!.y - 2);
 
   await expect(botToolbar.getByRole("button", { name: "Reply" })).toBeVisible();
   await expect(botToolbar.getByRole("button", { name: "More" })).toBeVisible();
-  // Measure a unique visible bubble, so an oversized wrapper cannot hide a gap.
-  const botBubble = botRow.getByTestId("message-bot-bubble").first();
   await expect
     .poll(async () => {
       const railBox = await botRail.boundingBox();
-      const bubbleBox = await botBubble.boundingBox();
-      if (!railBox || !bubbleBox) return null;
-      return {
-        // Rail sits under the bubble, aligned to its end edge.
-        below: railBox.y >= bubbleBox.y + bubbleBox.height - 2,
-        flush: railBox.y - (bubbleBox.y + bubbleBox.height) < 12,
-        endAligned: Math.abs(railBox.x + railBox.width - (bubbleBox.x + bubbleBox.width)) <= 2,
-      };
+      const frameBox = await botFrame.boundingBox();
+      if (!railBox || !frameBox) return null;
+      return besideBubble(railBox, frameBox, "right");
     })
-    .toEqual({ below: true, flush: true, endAligned: true });
+    .toEqual({ outside: true, close: true, bottomAligned: true });
   await captureScreenshot(page, testInfo, "message-bot-actions-desktop");
   await expectRailAtRest(page, botRow);
 
@@ -150,20 +164,16 @@ test("message hover shows under-bubble actions; reply links to parent", async ({
     })
     .toBe(true);
 
-  // User bubble (right): actions sit under the bubble, aligned to its end edge.
+  // User bubble (right): actions sit in the gutter on its left, bottom-aligned.
   const frame = parentRow.getByTestId("message-bubble-frame");
   await expect
     .poll(async () => {
       const railBox = await rail.boundingBox();
       const frameBox = await frame.boundingBox();
       if (!railBox || !frameBox) return null;
-      return {
-        below: railBox.y >= frameBox.y + frameBox.height - 2,
-        flush: railBox.y - (frameBox.y + frameBox.height) < 12,
-        endAligned: Math.abs(railBox.x + railBox.width - (frameBox.x + frameBox.width)) <= 2,
-      };
+      return besideBubble(railBox, frameBox, "left");
     })
-    .toEqual({ below: true, flush: true, endAligned: true });
+    .toEqual({ outside: true, close: true, bottomAligned: true });
 
   // User bubble is a muted elevated surface (not cream invert / bright pill).
   const userSurface = parentRow.getByTestId("message-user-bubble");
@@ -172,7 +182,7 @@ test("message hover shows under-bubble actions; reply links to parent", async ({
     .poll(async () => userSurface.evaluate((el) => getComputedStyle(el).backgroundColor))
     .not.toMatch(/^rgb\(241,\s*241,\s*239\)$/); // not cream primary foreground
 
-  // Long user bubble: rail stays aligned to the bubble's end edge, not the full row width.
+  // Long user bubble: rail stays beside the bubble's start edge, not the full row width.
   const longText = `hover-long-${stamp}-${"x".repeat(220)}`;
   await sendComposerMessage(page, composer, longText);
   const longRow = transcript
@@ -187,24 +197,27 @@ test("message hover shows under-bubble actions; reply links to parent", async ({
       const railBox = await longRail.boundingBox();
       const frameBox = await longFrame.boundingBox();
       if (!railBox || !frameBox) return null;
-      return Math.abs(frameBox.x + frameBox.width - (railBox.x + railBox.width));
+      return besideBubble(railBox, frameBox, "left");
     })
-    .toBeLessThan(8);
+    .toEqual({ outside: true, close: true, bottomAligned: true });
   await captureScreenshot(page, testInfo, "message-bubble-wide-desktop");
 
-  // Time appears above the bubble at its end edge on hover, outside More.
+  // Time appears beside the bubble on hover (left of a user bubble), above the actions, outside More.
   await revealHoverRail(parentRow);
   const rowTime = parentRow.getByTestId("message-hover-time");
   await expect(rowTime).toHaveCSS("opacity", "1");
   await expect(rowTime).toHaveText(/\d/);
   const timeBox = await rowTime.boundingBox();
   const timeFrameBox = await frame.boundingBox();
+  const timeRailBox = await rail.boundingBox();
   expect(timeBox).not.toBeNull();
   expect(timeFrameBox).not.toBeNull();
-  expect(timeBox!.y + timeBox!.height).toBeLessThanOrEqual(timeFrameBox!.y + 2);
-  expect(
-    Math.abs(timeBox!.x + timeBox!.width - (timeFrameBox!.x + timeFrameBox!.width)),
-  ).toBeLessThan(2);
+  expect(timeRailBox).not.toBeNull();
+  expect(besideBubble(timeBox!, timeFrameBox!, "left")).toMatchObject({
+    outside: true,
+    close: true,
+  });
+  expect(timeBox!.y + timeBox!.height).toBeLessThanOrEqual(timeRailBox!.y + 2);
   await toolbar.getByRole("button", { name: "More" }).click();
   await expect(page.getByRole("menu")).toBeVisible();
   await expect(page.getByRole("menu").locator("time")).toHaveCount(0);

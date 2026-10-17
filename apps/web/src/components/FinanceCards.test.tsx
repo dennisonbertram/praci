@@ -79,16 +79,18 @@ it("shows the four numbers of the overview", async () => {
       card: "overview",
       cashCents: 1_000_000,
       burnCents: 200_000,
-      runwayMonths: 5,
+      runwayMonths: 9.24,
       monthSpendCents: 120_000,
     },
   });
+  // One decimal, the same as the dashboard's 9.2 mo.
   expect([...view.querySelectorAll("dd")].map((dd) => dd.textContent)).toEqual([
     "$10,000",
     "$2,000",
-    "5 mo",
+    "9.2 mo",
     "$1,200",
   ]);
+  expect(view.textContent).toContain("Spent this month");
   expect(hrefs(view)).toEqual(["/app/finance"]);
 });
 
@@ -102,9 +104,27 @@ it("shows the count and first transactions, each linking to its page", async () 
       rows: [{ id: "t1", day: "2026-10-05", label: "Vendor A", cents: -10_000 }],
     },
   });
-  expect(view.textContent).toContain("12 transactions");
+  expect(view.textContent).toContain("12 transactions · all dates");
   expect(view.textContent).toContain("Vendor A");
+  // One row of twelve is shown, and the total is labelled as net, not spend.
+  expect(view.textContent).toContain("Latest 1 of 12");
+  expect(view.textContent).toContain("Net $345.00");
   expect(hrefs(view)).toContain("/app/finance/transaction/t1");
+});
+
+it("names the days a transactions card covers", async () => {
+  const view = await render({
+    kind: "finance",
+    card: {
+      card: "transactions",
+      from: "2026-09-01",
+      to: "2026-09-30",
+      count: 57,
+      totalCents: 3_591_118,
+      rows: [],
+    },
+  });
+  expect(view.textContent?.replace(/[\s\u2009]+/g, " ")).toContain("57 transactions · Sep 1 – 30");
 });
 
 it("shows subscriptions and the upcoming total", async () => {

@@ -46,12 +46,12 @@
 
 .rk-table-scroll {
   overflow: auto;
-  max-height: 20em;
+  max-height: 24em;
 }
 
 .rk-table td {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.92em;
+  /* The chat's own font; tabular figures keep number columns aligned. */
+  font-variant-numeric: tabular-nums;
   color: var(--foreground);
 }
 
@@ -190,32 +190,11 @@ button.rk-table-sort {
   overflow: hidden;
 }
 
-/* Inline card: tools overlay the top-right corner so the header row is the
-   first thing in the card. Hidden until hover/focus; always shown on touch. */
-.rk-table-card > .rk-table-head {
-  position: absolute;
-  top: 0.15em;
-  inset-inline-end: 0.15em;
-  z-index: 2;
-  padding: 0.1em;
-  border-radius: 0.55em;
-  background: var(--card);
-  box-shadow: 0 0 0 1px var(--border);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Reserve room under the overlay in the last header cell so it never covers a
-   sort button. 3 tools (1.7em) + gaps + padding + inset = ~5.75em of card font;
-   th is 0.85em, so ~6.8em here. Always reserved: hover must not shift layout. */
-.rk-table-card .rk-table thead th:last-child {
-  padding-inline-end: 7em;
-}
-
-.rk-table-card:hover > .rk-table-head,
-.rk-table-card:focus-within > .rk-table-head {
-  opacity: 1;
-  pointer-events: auto;
+/* Inline card: the tools sit in the footer beside the row count, clear of the
+   column headers. */
+.rk-table-footer > .rk-table-head {
+  margin-inline-start: auto;
+  padding: 0;
 }
 
 .rk-table-dialog .rk-table-head {
@@ -255,16 +234,6 @@ button.rk-table-sort {
   .rk-table-sort-trigger {
     min-width: 44px;
     min-height: 44px;
-  }
-
-  /* 3 x 44px tools + gaps/padding/inset. */
-  .rk-table-card .rk-table thead th:last-child {
-    padding-inline-end: calc(140px + 0.5em);
-  }
-
-  .rk-table-card > .rk-table-head {
-    opacity: 1;
-    pointer-events: auto;
   }
 
   .rk-table-sort-icon {

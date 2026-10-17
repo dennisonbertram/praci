@@ -1,6 +1,8 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
+import { useRender } from "@base-ui/react/use-render";
 import { cn } from "@rakazo/ui-web/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
+import { type ComponentProps, isValidElement, type ReactElement } from "react";
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -39,12 +41,29 @@ const buttonVariants = cva(
   },
 );
 
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+type ButtonProps = ButtonPrimitive.Props & VariantProps<typeof buttonVariants>;
+
+/** A link (or other non-button element) styled as a button keeps its own semantics. */
+function ButtonLook({ render, ...props }: { render: ReactElement } & ComponentProps<"a">) {
+  return useRender({ render, props: { "data-slot": "button", ...props } });
+}
+
+function Button({ className, variant = "default", size = "default", ...props }: ButtonProps) {
+  const { render, nativeButton, focusableWhenDisabled: _focusable, ...rest } = props;
+  // Base UI's button needs a native <button>; a Link or <a> rendered through it loses link
+  // semantics and logs an error, so those render as themselves with the button styles.
+  if (nativeButton === undefined && isValidElement(render) && render.type !== "button") {
+    return (
+      <ButtonLook
+        {...(rest as ComponentProps<"a">)}
+        render={render}
+        className={cn(
+          buttonVariants({ variant, size }),
+          typeof className === "string" ? className : "",
+        )}
+      />
+    );
+  }
   return (
     <ButtonPrimitive
       data-slot="button"

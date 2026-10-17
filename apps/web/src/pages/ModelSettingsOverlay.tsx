@@ -231,9 +231,16 @@ export function ModelSettingsOverlay({
     () => new Map(credentials.map((entry) => [entry.provider, entry])),
     [credentials],
   );
+  // The server's own provider and the active model's provider count as connected too, so the
+  // provider in use is listed first instead of lost in the A-Z list.
   const connectedProviderIds = useMemo(
-    () => new Set(credentials.map((entry) => entry.provider)),
-    [credentials],
+    () =>
+      new Set([
+        ...credentials.map((entry) => entry.provider),
+        ...(me?.hostCredentialProvider ? [me.hostCredentialProvider] : []),
+        ...(me?.defaultProvider && !me.needsModel ? [me.defaultProvider] : []),
+      ]),
+    [credentials, me?.hostCredentialProvider, me?.defaultProvider, me?.needsModel],
   );
   const searching = providerQuery.trim() !== "";
   const filteredGroups = useMemo(() => {
@@ -1155,11 +1162,12 @@ export function ModelSettingsOverlay({
       )}
 
       <div className={`mx-6 sm:mx-8 ${embedded ? "mt-4" : "mt-5"}`}>
-        <div className="flex items-baseline gap-3">
+        {/* Wraps on a phone instead of cutting the model name to "Ope…". */}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <span className="shrink-0 text-[12.5px] uppercase tracking-[0.08em] text-muted-foreground/80">
             <Trans>Active model</Trans>
           </span>
-          <span className="truncate text-[15px] text-foreground">
+          <span className="min-w-0 truncate text-[15px] text-foreground">
             {currentEntry?.label ?? me?.defaultModel ?? t`Deployment default`}
           </span>
           <span className="truncate text-[13px] text-muted-foreground">
@@ -1422,9 +1430,17 @@ export function ModelSettingsOverlay({
                   {saveButton}
                   <div className="mt-6 border-t border-border pt-5">{connectionControls}</div>
                 </>
-              ) : provider === me?.hostCredentialProvider ? (
+              ) : provider === me?.hostCredentialProvider ||
+                (provider === me?.defaultProvider && !me?.needsModel) ? (
                 <>
-                  {serverCredentialsNote}
+                  {/* Already in use for this space, so a key is optional, not a prerequisite. */}
+                  {provider === me?.hostCredentialProvider ? (
+                    serverCredentialsNote
+                  ) : (
+                    <p className="text-sm leading-[1.5] text-muted-foreground">
+                      <Trans>This space already uses {selectedProviderName}.</Trans>
+                    </p>
+                  )}
                   <details
                     className="mt-5 text-sm text-muted-foreground"
                     open={ownKeyProvider === provider}
@@ -1556,9 +1572,13 @@ function EmbeddingModelField() {
     }
   }
 
+  // Rarely changed, so it sits behind a disclosure instead of as an empty row under the active model.
   return (
-    <div className="mx-6 mt-3 sm:mx-8">
-      <div className="flex items-baseline gap-3">
+    <details className="mx-6 mt-3 text-[13px] text-muted-foreground sm:mx-8">
+      <summary className="cursor-pointer">
+        <Trans>Data room search model</Trans>
+      </summary>
+      <div className="mt-2 flex items-baseline gap-3">
         <label
           htmlFor="data-room-embedding-model"
           className="shrink-0 text-[12.5px] uppercase tracking-[0.08em] text-muted-foreground/80"
@@ -1567,6 +1587,7 @@ function EmbeddingModelField() {
         </label>
         <Input
           id="data-room-embedding-model"
+          placeholder={t`Default`}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onBlur={() => void save()}
@@ -1581,7 +1602,7 @@ function EmbeddingModelField() {
           {failed}
         </p>
       ) : null}
-    </div>
+    </details>
   );
 }
 

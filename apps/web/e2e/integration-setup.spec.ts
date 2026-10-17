@@ -26,17 +26,22 @@ test("setup exposes all integration choices and saves only the selected provider
   });
   await signup(page, `integration-setup-${Date.now()}@rakazo.test`, "password12", "Setup Test");
   await expect(page.getByRole("heading", { name: "Server integrations" })).toBeVisible();
-  for (const name of ["Direct MCP", "Composio", "Pipedream", "Executor"]) {
+  for (const name of [
+    "Apps with their own server",
+    "Popular apps through Composio",
+    "Popular apps through Pipedream",
+    "Your own tool server",
+  ]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
   }
   await expect(page.getByLabel("API key", { exact: true })).toBeHidden();
   await captureScreenshot(page, testInfo, "integration-setup-options");
-  await page.getByRole("button", { name: "Pipedream", exact: true }).click();
+  await page.getByRole("button", { name: "Popular apps through Pipedream", exact: true }).click();
   await expect(page.getByLabel("Client ID", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Project ID", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Client secret", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "integration-setup-pipedream");
-  await page.getByRole("button", { name: "Composio", exact: true }).click();
+  await page.getByRole("button", { name: "Popular apps through Composio", exact: true }).click();
   await page.getByLabel("API key", { exact: true }).fill("fake-composio-key");
   await captureScreenshot(page, testInfo, "integration-setup-composio");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -96,7 +101,7 @@ test("direct MCP connects a catalog result without asking for a URL and assigns 
   });
   await signup(page, `direct-mcp-setup-${Date.now()}@rakazo.test`, "password12", "Direct MCP");
   await page.getByRole("textbox", { name: "Search apps", exact: true }).fill("Notion");
-  await page.getByRole("button", { name: "Search integrations.sh", exact: true }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByText("Notion", { exact: true })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Server URL" })).toBeHidden();
   await page.getByRole("button", { name: "Connect", exact: true }).click();
@@ -180,7 +185,7 @@ test("Executor reconnect saves a replacement token before authorization", async 
     expect(saved).toBe(true);
     return route.fulfill({ json: { json: { status: "already_connected" } } });
   });
-  await page.getByRole("button", { name: "Executor", exact: true }).click();
+  await page.getByRole("button", { name: "Your own tool server", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Server URL", exact: true })
     .fill("https://203.0.113.10/mcp");
@@ -212,7 +217,11 @@ test("remote members skip server setup and keep direct MCP connections", async (
   await completeOnboarding(page);
   await page.goto("/integrations/setup?mode=mcp");
   await expect(page.getByRole("heading", { name: "Add MCP server" })).toBeVisible();
-  for (const name of ["Composio", "Pipedream", "Executor"]) {
+  for (const name of [
+    "Popular apps through Composio",
+    "Popular apps through Pipedream",
+    "Your own tool server",
+  ]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeHidden();
   }
   await expect(page.getByRole("textbox", { name: "Search apps", exact: true })).toBeVisible();
@@ -249,12 +258,15 @@ test("configured server owners manage providers from settings", async ({ page },
   await page.getByTestId("user-menu-trigger").click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const settings = page.getByTestId("user-settings");
-  const link = settings.getByRole("link", { name: "Server integrations", exact: true });
+  const link = settings.getByRole("link", { name: "Open server integrations", exact: true });
   await expect(link).toBeVisible();
   await captureScreenshot(page, testInfo, "server-integrations-settings");
   await link.click();
   await expect(page.getByRole("heading", { name: "Server integrations" })).toBeVisible();
-  await page.getByRole("button", { name: "Composio", exact: true }).click();
+  // It opens inside the app: Settings closes and the sidebar stays.
+  await expect(settings).toBeHidden();
+  await expect(page.getByTestId("bots-sidebar")).toBeVisible();
+  await page.getByRole("button", { name: "Popular apps through Composio", exact: true }).click();
   await expect(page.getByText("Connected", { exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "server-integrations-configured");
 });
@@ -280,7 +292,7 @@ test("owners can choose Google and see the redirect URI to register", async ({
     return route.fulfill({ json: { json: { ok: true } } });
   });
   await signup(page, `google-setup-${Date.now()}@rakazo.test`, "password12", "Google Setup");
-  await page.getByRole("button", { name: "Google", exact: true }).click();
+  await page.getByRole("button", { name: "Google apps", exact: true }).click();
   await expect(page.getByLabel("Redirect URI", { exact: true })).toHaveValue(
     "https://example.test/integrations/google/callback",
   );
@@ -347,7 +359,7 @@ test("Executor setup has Connect as its only action, without Continue or Skip", 
   );
   await signup(page, `executor-setup-${Date.now()}@rakazo.test`, "password12", "Executor Setup");
   await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Executor", exact: true }).click();
+  await page.getByRole("button", { name: "Your own tool server", exact: true }).click();
   await expect(page.getByRole("button", { name: "Connect", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Skip", exact: true })).toHaveCount(0);

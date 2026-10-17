@@ -24,6 +24,8 @@ export function AccountAccess({
     return code ? authErrorText({ code }, t`Could not continue`) : null;
   });
   const [attempt, setAttempt] = useState(0);
+  // A failed load is shown only where it matters: in the opened delete panel, beside Retry.
+  const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => {
     let active = true;
     void fetchAccountSecurity()
@@ -34,7 +36,7 @@ export function AccountAccess({
         }
       })
       .catch(() => {
-        if (active) setError(t`Could not continue`);
+        if (active) setLoadFailed(true);
       });
     return () => {
       active = false;
@@ -76,18 +78,38 @@ export function AccountAccess({
           <Trans>Link SSO</Trans>
         </Button>
       ) : null}
-      <Button variant="ghost" onClick={() => setOpen((value) => !value)}>
-        <Trans>Delete account</Trans>
-      </Button>
+      {/* Destructive and set apart from the account details above it. */}
+      <div className="mt-4 border-t border-border pt-4">
+        <Button
+          variant="destructive"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <Trans>Delete account</Trans>
+        </Button>
+      </div>
       {open ? (
         <div className="space-y-3">
           <p className="text-sm">
             <Trans>This permanently deletes your account and data.</Trans>
           </p>
           {!security ? (
-            <Button variant="outline" onClick={() => setAttempt((value) => value + 1)}>
-              <Trans>Retry</Trans>
-            </Button>
+            loadFailed ? (
+              <div className="flex items-center gap-3">
+                <p role="alert" className="text-sm text-destructive">
+                  <Trans>Could not load sign-in options.</Trans>
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setLoadFailed(false);
+                    setAttempt((value) => value + 1);
+                  }}
+                >
+                  <Trans>Retry</Trans>
+                </Button>
+              </div>
+            ) : null
           ) : security.hasPassword ? (
             <div>
               <Label htmlFor="delete-password">

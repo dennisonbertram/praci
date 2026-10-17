@@ -207,7 +207,7 @@ export function AddAccountDialog({
               <Trans>Back</Trans>
             </Button>
           ) : null}
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant={step === "bank" ? "default" : "outline"} onClick={onClose}>
             {step === "bank" ? <Trans>Done</Trans> : <Trans>Cancel</Trans>}
           </Button>
         </DialogFooter>

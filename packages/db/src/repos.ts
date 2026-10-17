@@ -1,6 +1,11 @@
 import type { Actor, Bot, BotSection, MessageBlock, SpaceBot } from "@rakazo/contracts";
 import { BOT_COLORS } from "@rakazo/contracts";
-import { BACKGROUND_RUN_TRIGGERS, isBackgroundRunTrigger, userVisibleMessages } from "@rakazo/core";
+import {
+  BACKGROUND_RUN_TRIGGERS,
+  isBackgroundRunTrigger,
+  messageReaction,
+  userVisibleMessages,
+} from "@rakazo/core";
 import type { PrismaClient } from "./client.js";
 import type { ComputerMode } from "./computers.js";
 import { ensureComputerRecord, parseComputerMode } from "./computers.js";
@@ -364,7 +369,13 @@ export function createRepos(prisma: PrismaClient) {
                 includeDelegatedReplyText: false,
               },
             );
-            preview = previewFromBlocks(visible[0]?.blocks);
+            // The latest words: a reaction is shown on its message, and a card (a choice, app
+            // connections) has no words, so the preview reads past both.
+            for (const message of visible) {
+              if (messageReaction(message)) continue;
+              preview = previewFromBlocks(message.blocks);
+              if (preview) break;
+            }
             if (preview || messages.length === 0 || !bot.thread || attempt === 4) break;
             const oldest = messages[messages.length - 1];
             if (!oldest) break;
