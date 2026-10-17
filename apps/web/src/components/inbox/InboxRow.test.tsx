@@ -99,3 +99,13 @@ it("names the user's own sent mail You, not their address", async () => {
   const sender = document.querySelector("button[data-row-id] > span:nth-child(2)");
   expect(sender?.textContent).toBe("You (unread)");
 });
+
+it("masks currency in the subject and preview while amounts are hidden", async () => {
+  const { setHideAmounts } = await import("../../lib/hide-amounts-preference");
+  setHideAmounts(true);
+  await show({ row: { ...row, subject: "Invoice $4,812.00", snippet: "Due: $250,000 total" } });
+  expect(document.body.textContent).not.toContain("4,812");
+  expect(document.body.textContent).not.toContain("250,000");
+  await act(async () => setHideAmounts(false));
+  expect(document.body.textContent).toContain("$4,812.00");
+});

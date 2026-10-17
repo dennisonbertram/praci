@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@rakazo/ui-web";
 import { Archive, BellOff, Ellipsis, Mail, MailOpen, Star, TriangleAlert } from "lucide-react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatMailTime } from "../../lib/mail-time";
 
 /** Narrow panes drop the badge for a dot: warning for Spam/Junk, solid for Needs attention, hollow for Newsletter; Spam is a solid warning dot and Junk a warning ring. */
@@ -91,6 +92,7 @@ export function InboxRow({
   hideAttention?: boolean;
 }) {
   const { t } = useLingui();
+  useHideAmounts();
   const labelNames = {
     attention: t`Needs attention`,
     newsletter: t`Newsletter`,
@@ -172,8 +174,13 @@ export function InboxRow({
                 className={`me-1.5 inline-block size-2 rounded-full align-middle @md:hidden ${LABEL_DOT[label]}`}
               />
             ) : null}
-            {row.subject}
-            {row.snippet ? <span className="text-muted-foreground"> — {row.snippet}</span> : null}
+            {maskCurrencyWhenHidden(row.subject)}
+            {row.snippet ? (
+              <span className="text-muted-foreground">
+                {" "}
+                — {maskCurrencyWhenHidden(row.snippet)}
+              </span>
+            ) : null}
           </span>
           {label ? (
             <Badge

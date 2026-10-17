@@ -4,6 +4,7 @@ import { groupEmailCards } from "@rakazo/core";
 import { Card } from "@rakazo/ui-web";
 import { Paperclip } from "lucide-react";
 import { useState } from "react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { INBOX_CHANGED_EVENT } from "../lib/inbox-message-cache";
 import { formatMailTime } from "../lib/mail-time";
 import { rpc } from "../lib/rpc";
@@ -13,6 +14,7 @@ import { InboxMessageDialog } from "./inbox/InboxMessageDialog";
 /** Mail the bot cited, grouped by urgency. Mail text is untrusted, so it only ever renders as text. */
 export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "emails" }> }) {
   const { t } = useLingui();
+  useHideAmounts();
   const [open, setOpen] = useState<EmailCard | null>(null);
   // Read changes made here, until the message reloads; the dialog shows the cached state otherwise.
   const [unread, setUnread] = useState<Record<string, boolean>>({});
@@ -72,7 +74,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
                     </span>
                   </span>
                   <span dir="auto" className="col-span-2 truncate text-muted-foreground">
-                    {email.subject}
+                    {maskCurrencyWhenHidden(email.subject)}
                   </span>
                 </button>
               ))}
@@ -98,10 +100,10 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
                   </span>
                 </span>
                 <span dir="auto" className="truncate">
-                  {email.subject}
+                  {maskCurrencyWhenHidden(email.subject)}
                 </span>
                 <span dir="auto" className="line-clamp-2 text-muted-foreground">
-                  {email.snippet}
+                  {maskCurrencyWhenHidden(email.snippet)}
                 </span>
               </button>
             ))

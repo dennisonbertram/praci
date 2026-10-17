@@ -190,3 +190,18 @@ it("puts the unread state back when marking read fails", async () => {
   expect(view.container.querySelector('[role="alert"]')).not.toBeNull();
   await view.cleanup();
 });
+
+it("masks currency on cards and rows while amounts are hidden", async () => {
+  const { setHideAmounts } = await import("../lib/hide-amounts-preference");
+  setHideAmounts(true);
+  const view = await render({
+    kind: "emails",
+    emails: [
+      email("t", "today", { subject: "Charge of $2,400", snippet: "Paid $58,400.00" }),
+      email("l", "later", { subject: "Invoice $4,812.00" }),
+    ],
+  });
+  expect(view.container.textContent).not.toMatch(/2,400|58,400|4,812/);
+  setHideAmounts(false);
+  await view.cleanup();
+});
