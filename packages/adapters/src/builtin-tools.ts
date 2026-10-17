@@ -769,7 +769,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "mail_draft",
     description:
-      "Save an email draft in the user's mail account, or replace one you saved earlier (pass its draftId; every field is replaced). To send it, use mail_send. Needs the user's approval. After saving, tell the user the draft is in their Drafts folder.",
+      "Save an email draft in the user's mail account, or replace one you saved earlier (pass its draftId; every field is replaced). To send it, use mail_send. Needs the user's approval. After saving, tell the user it is in the Drafts folder of that account in their mail app.",
     inputSchema: {
       type: "object",
       properties: {
