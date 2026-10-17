@@ -83,11 +83,17 @@ type ResumeEntry = {
 };
 
 /**
- * Runs the owner is behind: a direct message, a follow-up or their own routine. A bot_message run
+ * Runs the owner is behind: a direct message, a follow-up, their own routine, or one of their own taught skills or call wrap-ups. A bot_message run
  * (another agent asked, possibly from another account through an agent connection) is created under
  * the recipient owner's id but not started by them.
  */
-export const OWNER_INITIATED_TRIGGERS = new Set(["user", "follow_up", "routine"]);
+export const OWNER_INITIATED_TRIGGERS = new Set([
+  "user",
+  "follow_up",
+  "routine",
+  "skill",
+  "call_end",
+]);
 
 /** Owner only: the bot's owner started the run, in a direct thread, outside a messaging channel. */
 export function mailToolsAllowed(options: {

@@ -137,9 +137,12 @@ describe("mailToolsAllowed", () => {
     expect(mailToolsAllowed(owner)).toBe(true);
   });
 
-  it.each(["user", "follow_up", "routine"])("allows an owner-started %s run", (trigger) => {
-    expect(mailToolsAllowed({ ...owner, trigger })).toBe(true);
-  });
+  it.each(["user", "follow_up", "routine", "skill", "call_end"])(
+    "allows an owner-started %s run",
+    (trigger) => {
+      expect(mailToolsAllowed({ ...owner, trigger })).toBe(true);
+    },
+  );
 
   it("refuses a bot_message run, which another agent (even from another account) started", () => {
     expect(mailToolsAllowed({ ...owner, trigger: "bot_message" })).toBe(false);
