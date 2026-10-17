@@ -279,7 +279,13 @@ export function InboxRow({
                     onCheckedChange={(checked) => onMark?.(row.id, checked ? mark : null)}
                   >
                     <Icon aria-hidden="true" />
-                    {name}
+                    {/* No tooltip on touch, so the menu says the mark covers the whole sender. */}
+                    <span className="flex min-w-0 flex-col">
+                      <span>{name}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {t`All mail from ${row.from}`}
+                      </span>
+                    </span>
                   </DropdownMenuCheckboxItem>
                 ))}
               </DropdownMenuContent>

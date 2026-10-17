@@ -109,3 +109,15 @@ it("masks currency in the subject and preview while amounts are hidden", async (
   await act(async () => setHideAmounts(false));
   expect(document.body.textContent).toContain("$4,812.00");
 });
+
+it("says in the More menu that a mark covers all mail from the sender", async () => {
+  await show();
+  await act(async () => document.querySelector<HTMLElement>('button[aria-label="More"]')?.click());
+  const items = [...document.querySelectorAll('[role="menuitemcheckbox"]')].map(
+    (el) => el.textContent,
+  );
+  expect(items).toEqual([
+    "Mark importantAll mail from Sam Rivera",
+    "Mark noiseAll mail from Sam Rivera",
+  ]);
+});
