@@ -304,6 +304,7 @@ import {
   LEGAL_GATED_TOOL_NAMES,
   LEGAL_TOOL_NAMES,
   legalDataRoomGate,
+  lockLegalBot,
   legalToolFromTool,
   legalToolsAllowed,
 } from "./legal-tools.js";
@@ -3250,6 +3251,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
           },
         });
         if (updated.count !== 1) return null;
+        if (isLegalAgentSpawnKey(bot.spawnKey)) {
+          // Scan now and the daily wakeup share one lock and one rule: a scan already in flight is
+          // not started a second time. The claim above stays, so the schedule moves on.
+          await lockLegalBot(tx, bot.id);
+          const active = await tx.run.findFirst({
+            where: {
+              botId: bot.id,
+              routineId: routine.id,
+              status: { in: ["queued", "leased", "running", "waiting_input", "waiting_takeover"] },
+            },
+            select: { id: true },
+          });
+          if (active) return "active-run" as const;
+        }
         // The claim locks the row, so this is the model that was committed when it fired.
         const currentModel = await tx.routine.findUnique({
           where: { id: routine.id },
@@ -3281,6 +3296,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
       });
       if (!claimed) return;
+      if (claimed === "active-run") {
+        if (!isOneShotRoutineCrons(routine.crons) && nextRunAt) {
+          await deps.jobs.enqueue(routineWakeupJob(routine.id, nextRunAt));
+        }
+        return;
+      }
       // Enqueue continuation first so a thread-signal failure cannot strand the run.
       try {
         await deps.jobs.enqueue(runContinueJob(claimed.id));

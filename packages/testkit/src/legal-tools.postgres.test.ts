@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
+  createRunExecutor,
   legalDataRoomGate,
   legalToolFromTool,
   legalToolsAllowed,
@@ -654,6 +655,48 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(await prisma.legalNode.count({ where: { id: contractNode.node.id } })).toBe(0);
     expect(await prisma.legalEdge.count({ where: { toId: contractNode.node.id } })).toBe(0);
     expect(await prisma.legalNode.count({ where: { id: party.node.id } })).toBe(1);
+  });
+
+  it("skips the daily wakeup while a scan is already running, and runs it once the scan ended", async () => {
+    const enqueued: string[] = [];
+    const jobs = {
+      enqueue: async (job: { name: string }) => void enqueued.push(job.name),
+      cancel: async () => undefined,
+      close: async () => undefined,
+    };
+    const api = {
+      prisma,
+      repos: createRepos(prisma),
+      artifacts: {} as never,
+      jobs: jobs as never,
+      resolveAi: async () => {
+        throw new Error("unused");
+      },
+    };
+    const executor = createRunExecutor({
+      prisma,
+      jobs,
+      events: { append: async () => undefined },
+    } as unknown as Parameters<typeof createRunExecutor>[0]);
+    const bot = await ensureLegalAgent(api, a);
+    const routine = await prisma.routine.findFirstOrThrow({ where: { botId: bot.id } });
+    const { runId } = await legalScanNow(api, a);
+    const runs = () => prisma.run.count({ where: { botId: bot.id, routineId: routine.id } });
+    const before = await runs();
+    const due = async () => {
+      const at = new Date(Date.now() - 1_000);
+      await prisma.routine.update({ where: { id: routine.id }, data: { nextRunAt: at, active: true } });
+      return at.toISOString();
+    };
+
+    await executor.wakeRoutine(routine.id, await due());
+    expect(await runs()).toBe(before);
+    const moved = await prisma.routine.findUniqueOrThrow({ where: { id: routine.id } });
+    expect(moved.nextRunAt && moved.nextRunAt.getTime() > Date.now()).toBe(true);
+
+    await prisma.run.update({ where: { id: runId }, data: { status: "completed" } });
+    await executor.wakeRoutine(routine.id, await due());
+    expect(await runs()).toBe(before + 1);
   });
 
   it("refuses to link evidence from another user's document", async () => {

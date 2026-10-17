@@ -48,6 +48,11 @@ const LEGAL_WRITE_TOOLS = new Set([
   "legal_link",
 ]);
 
+/** Serializes work on one Legal agent (routine creation, scan runs) across API and worker processes. */
+export async function lockLegalBot(tx: Pick<PrismaClient, "$executeRaw">, botId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`legal-bot:${botId}`}, 0))`;
+}
+
 export interface LegalToolDeps {
   prisma: PrismaClient;
   /** From the run (the bot owner), never from model input. */
