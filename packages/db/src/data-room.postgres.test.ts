@@ -280,6 +280,17 @@ describePostgres("data room repository (PostgreSQL)", () => {
     ).toBeLessThanOrEqual(50);
   });
 
+  it("shows the matching text, not the name, when both match, ranked by the better match", async () => {
+    const { item } = await upload(a, "glimmer-lease.txt", `glimmer-${run}`);
+    await dr.replaceChunks(a, item.id, [
+      { ordinal: -1, text: "glimmer lease glimmer lease", contentHash: "m" },
+      { ordinal: 0, text: "the glimmer renewal date is January 31", contentHash: "t" },
+    ]);
+    const [hit] = await dr.searchKeyword(a, { query: "glimmer" });
+    expect(hit).toMatchObject({ ordinal: 0 });
+    expect(hit!.snippet).toContain("renewal date");
+  });
+
   it("marks highlights with control characters and strips forged markers", async () => {
     const { item } = await upload(a, "hostile.txt", `hostile-${run}`);
     await dr.replaceChunks(a, item.id, [

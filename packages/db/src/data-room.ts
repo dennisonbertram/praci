@@ -635,13 +635,15 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       const eligible = eligibleSql(actor, input.filters);
       const keywordBest = Prisma.sql`
         SELECT DISTINCT ON (c."itemId") c."itemId", c.ordinal, c.text,
-          ts_rank_cd(c.tsv, q.tsq)::float8 AS rank
+          max(ts_rank_cd(c.tsv, q.tsq)::float8) OVER (PARTITION BY c."itemId") AS rank
         FROM data_room_chunks c
         JOIN data_room_items i ON i.id = c."itemId", q
         WHERE c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
           AND ${eligible}
           AND c.tsv @@ q.tsq
-        ORDER BY c."itemId", rank DESC, c.ordinal`;
+        -- The item ranks by its best chunk, but its snippet comes from the text when the text
+        -- matches too: the name chunk (ordinal < 0) only says what the row already shows.
+        ORDER BY c."itemId", (c.ordinal < 0), ts_rank_cd(c.tsv, q.tsq) DESC, c.ordinal`;
       const best = vectorLiteral
         ? Prisma.sql`
           kw AS (
