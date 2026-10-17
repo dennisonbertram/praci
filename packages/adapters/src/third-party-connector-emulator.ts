@@ -22,9 +22,17 @@ const PIPEDREAM_APPS = [
   { id: "app-airtable", name_slug: "airtable", name: "Airtable" },
 ];
 
+/** An extra MCP server the emulator answers for one hostname, such as a mock Carta in the demo. */
+export interface EmulatedMcpServer {
+  tools: { name: string; description: string; inputSchema: Record<string, unknown> }[];
+  call: (name: string, args: Record<string, unknown>) => unknown;
+}
+
 /** Deterministic HTTP/MCP boundary emulator used by integration and browser journeys. */
 export class ThirdPartyConnectorEmulator {
   readonly records: EmulatorRecord[] = [];
+  /** Extra MCP servers by hostname. */
+  constructor(private readonly mcpServers: Record<string, EmulatedMcpServer> = {}) {}
   readonly resolveHostname: ResolveHostname = async () => [{ address: "203.0.113.10", family: 4 }];
 
   private readonly connectedApps = new Map<string, Set<string>>();
@@ -37,7 +45,11 @@ export class ThirdPartyConnectorEmulator {
     if (url.hostname === "remote.mcp.pipedream.net" || url.hostname === "treg.to") {
       return this.mcp(url, init);
     }
-    if (url.hostname === "mcp.example.test" || url.hostname === "executor.example.test") {
+    if (
+      url.hostname === "mcp.example.test" ||
+      url.hostname === "executor.example.test" ||
+      Object.hasOwn(this.mcpServers, url.hostname)
+    ) {
       return this.mcp(url, init);
     }
     if (url.hostname === "api.example.test") return this.openapi(url, init);
@@ -146,6 +158,8 @@ export class ThirdPartyConnectorEmulator {
       url.hostname === "executor.example.test"
         ? authorization === EXPECTED_EXECUTOR_BEARER
         : Boolean(authorization?.startsWith("Bearer ") && authorization.length > "Bearer ".length);
+    // No server-sent stream: the client's optional GET is refused the way a plain JSON server does.
+    if ((init?.method ?? "GET") === "GET") return new Response(null, { status: 405 });
     if (method === "notifications/initialized") return new Response(null, { status: 202 });
     if (method === "initialize") {
       return jsonRpc(id, {
@@ -163,6 +177,8 @@ export class ThirdPartyConnectorEmulator {
         host: url.hostname,
         authenticated,
       });
+      const extra = this.mcpServers[url.hostname];
+      if (extra) return jsonRpc(id, { tools: extra.tools });
       return jsonRpc(id, {
         tools: [
           {
@@ -187,6 +203,12 @@ export class ThirdPartyConnectorEmulator {
         authenticated,
         args,
       });
+      const extra = this.mcpServers[url.hostname];
+      if (extra) {
+        if (!authenticated) return jsonRpcError(id, -32001, "Unauthorized");
+        const output = extra.call(String(params.name ?? ""), args);
+        return jsonRpc(id, { content: [{ type: "text", text: JSON.stringify(output) }] });
+      }
       const result = { ok: true, app, text: args.text ?? null };
       return jsonRpc(id, {
         content: [{ type: "text", text: JSON.stringify(result) }],
@@ -353,7 +375,8 @@ function urlFromPinnedFetch(input: string | URL | Request, init?: RequestInit): 
 
 function parseBody(body: RequestInit["body"] | undefined): Record<string, unknown> {
   if (typeof body === "string") return JSON.parse(body) as Record<string, unknown>;
-  if (body instanceof Uint8Array) {
+  // The agent's MCP session sends its JSON-RPC body as an ArrayBuffer.
+  if (body instanceof Uint8Array || body instanceof ArrayBuffer) {
     return JSON.parse(new TextDecoder().decode(body)) as Record<string, unknown>;
   }
   return {};

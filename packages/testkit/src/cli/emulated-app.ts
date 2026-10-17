@@ -1,4 +1,4 @@
-import type { FinanceSyncDeps } from "@rakazo/adapters";
+import type { EmulatedMcpServer, FinanceSyncDeps } from "@rakazo/adapters";
 import { EmailEmulator, PipedreamConnector, ThirdPartyConnectorEmulator } from "@rakazo/adapters";
 import { createApp } from "../../../../apps/api/src/app.ts";
 import { createE2eComposio } from "./e2e-mail.js";
@@ -12,9 +12,11 @@ export async function createEmulatedApp(
   options: {
     composio?: ReturnType<typeof createE2eComposio>;
     financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+    /** Extra emulated MCP servers by hostname, such as the demo's mock Carta. */
+    mcpServers?: Record<string, EmulatedMcpServer>;
   } = {},
 ) {
-  const thirdParties = new ThirdPartyConnectorEmulator();
+  const thirdParties = new ThirdPartyConnectorEmulator(options.mcpServers);
   const pipedream = new PipedreamConnector(
     {
       clientId: "fake-client-id",

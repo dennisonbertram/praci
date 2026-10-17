@@ -1,10 +1,16 @@
-import { CapTableSnapshotInputSchema } from "@rakazo/contracts";
+import { McpSession, ThirdPartyConnectorEmulator } from "@rakazo/adapters";
+import {
+  CARTA_MCP_ENDPOINT,
+  CARTA_READ_TOOLS,
+  CapTableSnapshotInputSchema,
+} from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
   DEMO_CAP_TABLE,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENTS,
+  demoCarta,
   demoFinance,
   demoMailboxes,
   MOCK_NOTE,
@@ -29,6 +35,55 @@ describe("mock demo data", () => {
     expect(sum(table.shareClasses.map((c) => c.percent))).toBe(100);
     for (const holder of table.holders)
       expect(`${holder.name} ${holder.organization ?? ""}`).toMatch(/Mock|Placeholder|Notareal/);
+  });
+
+  it("answers the Carta agent's read tools from the mock cap table, only when signed in", async () => {
+    const emulator = new ThirdPartyConnectorEmulator({
+      [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(),
+    });
+    const call = async (method: string, params: unknown, token?: string) => {
+      const response = await emulator.fetch(CARTA_MCP_ENDPOINT, {
+        method: "POST",
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      return (await response.json()) as {
+        result?: { tools?: { name: string }[]; content?: { text: string }[] };
+        error?: unknown;
+      };
+    };
+    const listed = await call("tools/list", {}, "mock");
+    const names = listed.result?.tools?.map((tool) => tool.name) ?? [];
+    expect(names).toContain("cap_table_chart");
+    for (const name of names) expect(CARTA_READ_TOOLS).toContain(name);
+
+    const chart = await call("tools/call", { name: "cap_table_chart", arguments: {} }, "mock");
+    const table = JSON.parse(chart.result?.content?.[0]?.text ?? "{}");
+    expect(table.companyName).toBe(DEMO_COMPANY);
+    expect(table.optionPoolAvailable).toBe(600_000);
+    expect(table.safes.map((safe: { amountUsd: number }) => safe.amountUsd)).toEqual([
+      250_000, 50_000,
+    ]);
+
+    expect(
+      (await call("tools/call", { name: "cap_table_chart", arguments: {} })).error,
+    ).toBeDefined();
+
+    // The agent's own MCP session (signed in with a stored login) reaches the same tools.
+    const session = new McpSession();
+    await session.connectRemote({
+      url: CARTA_MCP_ENDPOINT,
+      transport: "streamable-http",
+      network: { fetch: emulator.fetch, resolveHostname: emulator.resolveHostname },
+      headerPolicy: { headers: { Authorization: "Bearer mock-demo-token" } },
+      fallbackToSse: false,
+      timeoutMs: 5_000,
+    });
+    const { tools } = await session.listTools();
+    expect(tools.map((tool) => tool.name)).toContain("cap_table_chart");
+    const result = await session.callTool("cap_table_chart");
+    expect(JSON.stringify(result.content)).toContain("Quill Capital (Mock)");
+    await session.close();
   });
 
   it("builds a mailbox of 25 mock threads with unread mail and one attachment", () => {

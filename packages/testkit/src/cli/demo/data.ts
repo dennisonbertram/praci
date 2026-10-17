@@ -1,4 +1,4 @@
-import type { EmulatedMessage } from "@rakazo/adapters";
+import type { EmulatedMcpServer, EmulatedMessage } from "@rakazo/adapters";
 import {
   brexAccountsResponse,
   brexExpense,
@@ -550,6 +550,61 @@ export const DEMO_CAP_TABLE = {
     },
   ],
 };
+
+/**
+ * A mock Carta MCP server for the demo: the read tools the Carta agent uses, all answering from
+ * DEMO_CAP_TABLE, so the agent can answer ownership questions offline.
+ */
+export function demoCarta(): EmulatedMcpServer {
+  const noInput = { type: "object", properties: {} };
+  const account = { id: "mock-demo-company", name: DEMO_COMPANY, note: MOCK_NOTE };
+  const capTable = {
+    note: `${MOCK_NOTE}: an invented cap table, not a real company.`,
+    ...DEMO_CAP_TABLE,
+    safes: DEMO_CAP_TABLE.holders
+      .filter((holder) => holder.security === "SAFE")
+      .map((holder) => ({
+        investor: holder.organization ?? holder.name,
+        contact: holder.name,
+        amountUsd: holder.amountUsd,
+        status: "unconverted",
+      })),
+  };
+  const tools = {
+    welcome: () => ({
+      note: MOCK_NOTE,
+      text: "Mock Carta. Call cap_table_chart for the cap table of the current company.",
+    }),
+    list_accounts: () => ({ accounts: [account] }),
+    get_current_user: () => ({ name: DEMO_USER_NAME, note: MOCK_NOTE }),
+    set_context: () => ({ ok: true, account }),
+    cap_table_chart: () => capTable,
+    // The generic Carta read path returns the same cap table.
+    fetch: () => capTable,
+    read_tool: () => capTable,
+  } satisfies Record<string, () => unknown>;
+  const description: Record<keyof typeof tools, string> = {
+    welcome: "How to use this Carta server.",
+    list_accounts: "List the companies you can read.",
+    get_current_user: "The signed-in Carta user.",
+    set_context: "Pick the company to read.",
+    cap_table_chart:
+      "The company's cap table: fully diluted shares, share classes, option pool, holders and SAFEs.",
+    fetch: "Read Carta data, such as the cap table.",
+    read_tool: "Read Carta data, such as the cap table.",
+  };
+  return {
+    tools: (Object.keys(tools) as (keyof typeof tools)[]).map((name) => ({
+      name,
+      description: description[name],
+      inputSchema: noInput,
+    })),
+    call: (name) =>
+      Object.hasOwn(tools, name)
+        ? tools[name as keyof typeof tools]()
+        : { error: `Unknown tool ${name}` },
+  };
+}
 
 export interface DemoDocument {
   folder: string;
