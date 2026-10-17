@@ -498,7 +498,7 @@ async function ownMessage(
   );
   const account: MailAccount | undefined = accounts.find((a) => a.id === row.connectionId);
   if (!account) throw notFound();
-  return { account, providerMessageId: row.providerMessageId };
+  return { account, providerMessageId: row.providerMessageId, row };
 }
 
 export function providerFailure(error: unknown, operation: string, connectionId: string): never {
@@ -530,10 +530,34 @@ export async function inboxGet(
   signal?: AbortSignal,
 ) {
   const context = mailContext(actor, "inbox.get", signal);
-  const { account, providerMessageId } = await ownMessage(deps, actor, input.messageId, context);
+  const { account, providerMessageId, row } = await ownMessage(
+    deps,
+    actor,
+    input.messageId,
+    context,
+  );
+  const thread = await deps.prisma.cachedMailMessage.findMany({
+    where: {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      connectionId: row.connectionId,
+      threadId: row.threadId,
+      id: { not: row.id },
+    },
+    orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+    take: 50,
+  });
   try {
     const message = await deps.mail.getMessage(account, providerMessageId, context);
     return {
+      unread: row.unread,
+      inInbox: row.inInbox,
+      thread: thread.map((m) => ({
+        id: m.id,
+        from: m.fromName || m.fromAddress,
+        receivedAt: m.receivedAt.toISOString(),
+        snippet: m.snippet,
+      })),
       from: formatAddress(message.from),
       to: message.to.map(formatAddress).join(", "),
       cc: message.cc.map(formatAddress).join(", "),

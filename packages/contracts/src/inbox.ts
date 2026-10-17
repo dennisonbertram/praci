@@ -159,6 +159,14 @@ export const InboxTodosOutputSchema = z.object({
   todos: z.array(InboxTodoSchema),
 });
 
+/** Another message of the same conversation, as the cache has it; its body loads with inbox.get. */
+export const InboxThreadMessageSchema = z.object({
+  id: Id,
+  from: z.string(),
+  receivedAt: z.string(),
+  snippet: z.string(),
+});
+
 export const InboxMessageSchema = z.object({
   from: z.string(),
   to: z.string(),
@@ -177,6 +185,11 @@ export const InboxMessageSchema = z.object({
       size: z.number().int().nonnegative(),
     }),
   ),
+  /** The cached copy's state, so any view of the message offers the same actions; optional for older servers. */
+  unread: z.boolean().optional(),
+  inInbox: z.boolean().optional(),
+  /** The conversation's other cached messages, oldest first; empty for a single message. */
+  thread: z.array(InboxThreadMessageSchema).optional(),
 });
 
 /** Chosen by the browser when a composer opens; it names that message for idempotency. */
@@ -289,6 +302,7 @@ export type InboxMarkReadInput = z.infer<typeof InboxMarkReadInputSchema>;
 export type InboxFeedbackInput = z.infer<typeof InboxFeedbackInputSchema>;
 export type InboxListInput = z.infer<typeof InboxListInputSchema>;
 export type InboxMessage = z.infer<typeof InboxMessageSchema>;
+export type InboxThreadMessage = z.infer<typeof InboxThreadMessageSchema>;
 export type InboxTodo = z.infer<typeof InboxTodoSchema>;
 export type MailRow = z.infer<typeof MailRowSchema>;
 export type InboxListOutput = z.infer<typeof InboxListOutputSchema>;

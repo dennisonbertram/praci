@@ -687,6 +687,43 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
 
+    it("lists the conversation's other messages, oldest first, and the cached state", async () => {
+      await wipe();
+      seedMailboxes();
+      const first = await cache(a, connA, "t-1", { threadId: "t", receivedAt: daysAgo(3) });
+      const second = await cache(a, connA, "t-2", {
+        threadId: "t",
+        receivedAt: daysAgo(2),
+        fromName: null,
+        fromAddress: "bob@example.test",
+      });
+      const latest = await cache(a, connA, "a-1", {
+        threadId: "t",
+        receivedAt: daysAgo(1),
+        unread: true,
+      });
+      // Same thread id on another user's mailbox stays out.
+      await cache(b, connB, "b-1", { threadId: "t" });
+
+      const message = await inboxGet(deps, a, { messageId: latest.id });
+
+      expect(message).toMatchObject({ unread: true, inInbox: true });
+      expect(message.thread).toEqual([
+        {
+          id: first.id,
+          from: "Ann Sender",
+          receivedAt: first.receivedAt.toISOString(),
+          snippet: "Snippet t-1",
+        },
+        {
+          id: second.id,
+          from: "bob@example.test",
+          receivedAt: second.receivedAt.toISOString(),
+          snippet: "Snippet t-2",
+        },
+      ]);
+    });
+
     it("answers NOT_FOUND for another user's, another space's, a revoked and an unknown id", async () => {
       await wipe();
       seedMailboxes();
