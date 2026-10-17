@@ -44,6 +44,11 @@ function useDebounced<T>(value: T, ms: number) {
   return debounced;
 }
 
+/** The item to preview unasked: the first readable one, so the page opens on a failure only when
+ * every item failed. */
+const firstToShow = (rows: { item: DataRoomApiItem }[]) =>
+  (rows.find(({ item }) => item.status !== "failed") ?? rows[0])?.item ?? null;
+
 function FileInputButton({ children, ...props }: React.ComponentProps<typeof Button>) {
   const input = useRef<HTMLInputElement>(null);
   return (
@@ -159,7 +164,7 @@ export function DataRoomPage() {
   }, [linkedItem]);
 
   // The first item is pinned once, when there is room for the preview beside the list.
-  const firstItem = list.rows[0]?.item;
+  const firstItem = firstToShow(list.rows);
   useEffect(() => {
     if (autoPinned.current || !firstItem || linkedItem) return;
     autoPinned.current = true;
@@ -176,7 +181,7 @@ export function DataRoomPage() {
     const first = appliedKey.current === null;
     appliedKey.current = queryKey;
     if (first || (pinned && resultIds.split(",").includes(pinned.id))) return;
-    setPinned(previewOpen && !narrow ? (list.rows[0]?.item ?? null) : null);
+    setPinned(previewOpen && !narrow ? firstToShow(list.rows) : null);
   }, [list.loading, list.key, list.rows, queryKey, resultIds, pinned, previewOpen, narrow]);
 
   // A reload of the same query can drop the pinned item (moved or deleted elsewhere). If it can no

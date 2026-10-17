@@ -542,6 +542,17 @@ it("offers Date and Type sorts only once some item has a date or type", async ()
   expect(options).toEqual(["Name", "Recently added"]);
 });
 
+it("opens the preview on the first readable item, not on a failed one", async () => {
+  rpcMock.list.mockResolvedValue({
+    items: [{ ...item("junk.pdf"), status: "failed", error: "Bad" }, item("b.txt")],
+    nextCursor: null,
+  });
+  await renderPage();
+  expect(container.querySelector('[data-testid="data-room-preview"] h3')?.textContent).toBe(
+    "b.txt",
+  );
+});
+
 it("says a failed file could not be read, with its reason and a Delete button", async () => {
   rpcMock.list.mockResolvedValue({
     items: [{ ...item("junk.pdf"), status: "failed", error: "This file isn't a readable PDF." }],

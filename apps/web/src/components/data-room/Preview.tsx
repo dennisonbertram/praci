@@ -3,7 +3,7 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
-import { Download, FileText, X } from "lucide-react";
+import { Download, FileText, Trash2, X } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { canPreviewImage, dataRoomImageUrl, saveDataRoomItem } from "../../lib/data-room";
 import { errorText } from "../../lib/user-error";
@@ -98,6 +98,11 @@ export function Preview({
   const [error, setError] = useState("");
   const { facets } = item;
   const amount = amountText(item);
+  const download = () => {
+    setError("");
+    saveDataRoomItem(item).catch((cause) => setError(errorText(cause)));
+  };
+  const downloadError = error ? <p className="text-sm text-destructive">{error}</p> : null;
   return (
     <aside
       aria-label={t`Preview`}
@@ -135,9 +140,17 @@ export function Preview({
             <Trans>Couldn't read this file</Trans>
           </p>
           {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
-          <Button variant="outline" size="sm" onClick={() => onAction("delete", item)}>
-            <Trans>Delete</Trans>
-          </Button>
+          <div className="flex gap-1.5 pt-0.5">
+            <Button variant="destructive" size="sm" onClick={() => onAction("delete", item)}>
+              <Trash2 aria-hidden="true" />
+              <Trans>Delete</Trans>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={download}>
+              <Download aria-hidden="true" />
+              <Trans>Download</Trans>
+            </Button>
+          </div>
+          {downloadError}
         </div>
       ) : item.status !== "ready" ? (
         <p className="text-sm text-muted-foreground">{statusLabel(item.status)}</p>
@@ -169,19 +182,16 @@ export function Preview({
         <Field label={t`Source`}>{sourceLabel(item.source)}</Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
       </dl>
-      <div className="flex flex-col gap-1.5">
-        <Button
-          variant="outline"
-          onClick={() => {
-            setError("");
-            saveDataRoomItem(item).catch((cause) => setError(errorText(cause)));
-          }}
-        >
-          <Download aria-hidden="true" />
-          <Trans>Download</Trans>
-        </Button>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      </div>
+      {/* A file that can't be read offers Download beside Delete, not as the main action. */}
+      {item.status === "failed" ? null : (
+        <div className="flex flex-col gap-1.5">
+          <Button variant="outline" onClick={download}>
+            <Download aria-hidden="true" />
+            <Trans>Download</Trans>
+          </Button>
+          {downloadError}
+        </div>
+      )}
     </aside>
   );
 }
