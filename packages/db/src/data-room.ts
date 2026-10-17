@@ -285,19 +285,30 @@ export function createDataRoomRepos(prisma: PrismaClient) {
      * Every type, party and source of the caller's items in one folder (or all of them), and
      * whether any has a document date: what the filters offer, whatever page is loaded.
      */
-    async facetValues(actor: Actor, folderId?: string | null) {
-      const where = eligibleSql(actor, { folderId });
+    /**
+     * The values each filter can offer: every item's, given the other filters (never its own, so a
+     * set filter still offers the alternatives). Picking any offered value finds something.
+     */
+    async facetValues(actor: Actor, filters: DataRoomFilters = {}) {
+      const types = eligibleSql(actor, { ...filters, docType: undefined });
+      const parties = eligibleSql(actor, { ...filters, party: undefined });
+      const sources = eligibleSql(actor, { ...filters, source: undefined });
+      const dates = eligibleSql(actor, {
+        ...filters,
+        docDateFrom: undefined,
+        docDateTo: undefined,
+      });
       const [row] = await prisma.$queryRaw<
         { types: string[]; parties: string[]; sources: string[]; hasDates: boolean }[]
       >`
         SELECT
           ARRAY(SELECT DISTINCT i."docType" FROM data_room_items i
-                WHERE ${where} AND i."docType" IS NOT NULL) AS types,
+                WHERE ${types} AND i."docType" IS NOT NULL) AS types,
           ARRAY(SELECT DISTINCT p FROM data_room_items i, unnest(i."parties") AS p
-                WHERE ${where}) AS parties,
-          ARRAY(SELECT DISTINCT i."source" FROM data_room_items i WHERE ${where}) AS sources,
+                WHERE ${parties}) AS parties,
+          ARRAY(SELECT DISTINCT i."source" FROM data_room_items i WHERE ${sources}) AS sources,
           EXISTS(SELECT 1 FROM data_room_items i
-                 WHERE ${where} AND i."docDate" IS NOT NULL) AS "hasDates"
+                 WHERE ${dates} AND i."docDate" IS NOT NULL) AS "hasDates"
       `;
       return row ?? { types: [], parties: [], sources: [], hasDates: false };
     },

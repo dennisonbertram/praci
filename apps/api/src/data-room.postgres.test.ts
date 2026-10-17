@@ -659,6 +659,11 @@ describePostgres("Data room API (PostgreSQL)", () => {
       sources: ["upload"],
       hasDates: true,
     });
+    // With a filter set, the others offer only values that still find something; its own keeps
+    // every alternative.
+    expect(
+      await c.dataRoom.facetValues({ folderId: folder.id, party: "Someone Else (Mock)" }),
+    ).toEqual({ types: [], parties: ["Landlord (Mock)"], sources: [], hasDates: false });
     // Another member of the same space sees none of it.
     expect(await client(actors.a2).dataRoom.facetValues({ folderId: folder.id })).toEqual({
       types: [],

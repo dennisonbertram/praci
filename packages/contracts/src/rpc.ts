@@ -28,6 +28,7 @@ import {
   DataRoomApiDriveListInputSchema,
   DataRoomApiDriveListOutputSchema,
   DataRoomApiFacetValuesSchema,
+  DataRoomApiFiltersSchema,
   DataRoomApiFolderSchema,
   DataRoomApiImportDriveInputSchema,
   DataRoomApiImportDriveOutputSchema,
@@ -1134,9 +1135,8 @@ export const appContract = {
   dataRoom: {
     folders: oc.output(z.array(DataRoomApiFolderSchema)),
     /** Omit folderId for every folder; null for items outside any folder. */
-    facetValues: oc
-      .input(z.object({ folderId: Id.nullable().optional() }))
-      .output(DataRoomApiFacetValuesSchema),
+    /** Each facet's values given the other filters, so no pick combines into nothing. */
+    facetValues: oc.input(DataRoomApiFiltersSchema).output(DataRoomApiFacetValuesSchema),
     folderCreate: oc
       .input(z.object({ name: DataRoomApiName, parentId: Id.nullable().optional() }))
       .output(DataRoomApiFolderSchema),
