@@ -232,7 +232,14 @@ export function SettingsOverlay({
           </nav>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="flex items-start justify-between gap-4 px-6 pt-6 sm:px-8 sm:pt-7">
+            {/* Scrolling sections get a divider so cards never look tucked under the title. */}
+            <div
+              className={`flex items-start justify-between gap-4 px-6 pt-6 sm:px-8 sm:pt-7 ${
+                section === "models" || section === "voice" || section === "memory"
+                  ? ""
+                  : "border-b border-border pb-4"
+              }`}
+            >
               <DialogTitle className="text-2xl font-medium text-foreground">
                 {sectionTitle}
               </DialogTitle>

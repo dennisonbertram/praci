@@ -336,11 +336,8 @@ export function UsageSettingsPanel({
       data-testid="usage-settings"
       className="rounded-xl border border-border px-4 py-4 outline-none"
     >
-      <h3 className="text-[15px] font-medium text-foreground">
-        <Trans>Usage</Trans>
-      </h3>
       {usage ? (
-        <p className="mt-3 text-[14px] text-foreground/75">
+        <p className="text-[14px] text-foreground/75">
           <Plural
             value={usage.runs}
             one="# task done by your bots"
@@ -354,7 +351,7 @@ export function UsageSettingsPanel({
           )}
         </p>
       ) : null}
-      <p className={`text-[12.5px] text-muted-foreground/80 ${usage ? "mt-2" : "mt-3"}`}>
+      <p className={`text-[12.5px] text-muted-foreground/80 ${usage ? "mt-2" : ""}`}>
         <Trans>Model spend uses your provider keys.</Trans>
       </p>
     </div>
@@ -395,6 +392,10 @@ export function UpdatesSettingsPanel({
 }) {
   return (
     <div className="space-y-5">
+      {/* Both sections can render nothing (hosted installs), so the tab is never blank. */}
+      <p className="text-[13.5px] text-muted-foreground">
+        <Trans>Rakazo keeps itself up to date. If an update ever needs you, it shows here.</Trans>
+      </p>
       <DesktopUpdateSection />
       <SoftwareUpdateSection isDeploymentOwner={isDeploymentOwner} />
     </div>

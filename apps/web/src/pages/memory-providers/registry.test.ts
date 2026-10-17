@@ -10,7 +10,9 @@ import {
 describe("Serenity memory provider settings", () => {
   it("does not register a default endpoint", () => {
     const registry = readFileSync(fileURLToPath(new URL("./registry.ts", import.meta.url)), "utf8");
-    expect(registry).toContain("Hosted or self-hosted Serenity brain for durable memory.");
+    expect(registry).toContain(
+      "Keeps bot memory in Serenity, hosted for you or on your own server.",
+    );
     expect(registry).not.toContain("serenity.sire.run");
     expect(registry).not.toContain("DEFAULT_ENDPOINT");
     expect(SERENITY_ENDPOINT_PLACEHOLDER).toBe("https://serenity.sire.run/mcp");
