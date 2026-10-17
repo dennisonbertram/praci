@@ -425,7 +425,7 @@ msgstr "İşlem onayları"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.spaceName
-#. placeholder {0}: sectionMenu.section.name
+#. placeholder {0}: item.chat.name
 #: src/pages/BotContextMenu.tsx
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
@@ -595,20 +595,8 @@ msgstr ""
 msgid "after fees"
 msgstr ""
 
-#: src/pages/Shell.tsx
-msgid "Agent computer"
-msgstr "Agent bilgisayarı"
-
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Agent connections"
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Agents lose access to its tools."
-msgstr ""
-
-#: src/components/integrations/AppDetail.tsx
-msgid "Agents lose access to this account."
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
@@ -794,10 +782,6 @@ msgstr ""
 msgid "App connections aren't set up on this server yet."
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "App servers"
-msgstr ""
-
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Appearance"
 msgstr "Görünüm"
@@ -817,8 +801,8 @@ msgid "Approve"
 msgstr "Onayla"
 
 #: src/pages/shell/message-cards.tsx
-msgid "Approve this server to let your agent use its tools."
-msgstr "Agent'ının bu sunucunun araçlarını kullanabilmesi için sunucuyu onayla."
+msgid "Approve this server to let your bot use its tools."
+msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Approved to save"
@@ -830,6 +814,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Apps"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Apps with their own server"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -865,12 +853,16 @@ msgstr ""
 msgid "Ascending"
 msgstr ""
 
-#: src/components/FinanceCards.tsx
-msgid "Ask about this"
+#: src/components/AskBotButton.tsx
+msgid "Ask"
 msgstr ""
 
-#: src/components/finance/ui.tsx
-msgid "Ask agent"
+#: src/components/AskBotButton.tsx
+msgid "Ask {botName}"
+msgstr ""
+
+#: src/components/FinanceCards.tsx
+msgid "Ask about this"
 msgstr ""
 
 #. placeholder {0}: rule.matchValue
@@ -1025,7 +1017,6 @@ msgstr ""
 #: src/components/computer/FilesApp.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/Artifacts.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/RoutineEditor.tsx
@@ -1144,6 +1135,10 @@ msgid "Bot"
 msgstr "Bot"
 
 #: src/pages/Shell.tsx
+msgid "Bot computer"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Bot screen"
 msgstr "Bot ekranı"
 
@@ -1170,6 +1165,14 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Bots are working"
 msgstr "Botlar çalışıyor"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Bots lose access to its tools."
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Bots lose access to this account."
+msgstr ""
 
 #: src/pages/Welcome.tsx
 msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
@@ -1802,10 +1805,6 @@ msgstr ""
 msgid "Connect API key"
 msgstr "API anahtarıyla bağlan"
 
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "Connect apps that publish a server address"
-msgstr ""
-
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Blockscout"
@@ -1822,6 +1821,10 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Executor"
 msgstr "Executor'a bağlan"
+
+#: src/pages/Inbox.tsx
+msgid "Connect Gmail to read, sort and answer your mail here."
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Connect mail"
@@ -2512,14 +2515,6 @@ msgstr "Grup oluştur"
 msgid "Create Inbox agent"
 msgstr ""
 
-#: src/pages/shell/bot-picker.tsx
-msgid "Create new Group"
-msgstr "Yeni grup oluştur"
-
-#: src/pages/shell/bot-picker.tsx
-msgid "Create new Space"
-msgstr "Yeni space oluştur"
-
 #: src/pages/RoutineEditor.tsx
 msgid "Create Routine"
 msgstr ""
@@ -2933,6 +2928,10 @@ msgstr ""
 msgid "Draft skill"
 msgstr "Taslak beceri"
 
+#: src/pages/Shell.tsx
+msgid "Draft this month's investor update"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Drafts are off for {botName}. Turn them back on in its tools."
 msgstr ""
@@ -2962,8 +2961,8 @@ msgid "Duplicate"
 msgstr "Çoğalt"
 
 #: src/pages/shell/bot-panel.tsx
-msgid "e.g. Hivenet Agent, Presales, Timesheets bot"
-msgstr "örn. Hivenet Agent, Presales, puantaj botu"
+msgid "e.g. Recruiting, Sales, Legal"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Earlier"
@@ -2983,8 +2982,8 @@ msgid "Edit first"
 msgstr "Önce düzenle"
 
 #: src/pages/BotContextMenu.tsx
-msgid "Edit Profile"
-msgstr "Profili Düzenle"
+msgid "Edit profile"
+msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Edit wallet"
@@ -3417,6 +3416,10 @@ msgstr ""
 
 #: src/pages/shell/command-palette.tsx
 msgid "Go to"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Google apps"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -3959,12 +3962,12 @@ msgid "Manual setup required"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
-msgid "Mark as Read"
-msgstr "Okundu olarak işaretle"
+msgid "Mark as read"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
-msgid "Mark as Unread"
-msgstr "Okunmadı olarak işaretle"
+msgid "Mark as unread"
+msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark important"
@@ -4351,6 +4354,7 @@ msgid "New Bot"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
+#: src/pages/shell/bot-picker.tsx
 msgid "New group"
 msgstr "Yeni grup"
 
@@ -4376,6 +4380,7 @@ msgstr "Yeni bölüm"
 msgid "New skill"
 msgstr "Yeni beceri"
 
+#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "New space"
 msgstr ""
@@ -4403,6 +4408,10 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "No accounts yet"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -4464,6 +4473,10 @@ msgstr "Artık etkin değil"
 
 #: src/pages/Inbox.tsx
 msgid "No mail"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "No mail connected"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -4706,6 +4719,10 @@ msgstr ""
 msgid "Open again"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Open Cap table"
+msgstr ""
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr ""
@@ -4734,12 +4751,20 @@ msgstr "Tam pencerede aç"
 msgid "Open in Mercury"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Open Inbox"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Open navigation"
 msgstr "Gezinmeyi aç"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open receipt"
+msgstr ""
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Open server integrations"
 msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
@@ -4932,6 +4957,10 @@ msgstr ""
 msgid "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed."
 msgstr "Sunucundaki OpenAI uyumlu adresi yapıştır. Gerekirse Rakazo /v1 ekler."
 
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Paste the web address an app gives you"
+msgstr ""
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste your API key"
 msgstr "API anahtarını yapıştır"
@@ -4994,6 +5023,14 @@ msgstr "Eklenti"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Popular"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Popular apps through Composio"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Popular apps through Pipedream"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -5970,16 +6007,8 @@ msgstr "Kabuk"
 msgid "Show all {total}"
 msgstr ""
 
-#: src/pages/CapTable.tsx
-msgid "Show Carta agent"
-msgstr ""
-
 #: src/pages/Shell.tsx
 msgid "Show computer"
-msgstr ""
-
-#: src/pages/Inbox.tsx
-msgid "Show Inbox agent"
 msgstr ""
 
 #: src/components/inbox/TodoCard.tsx
@@ -6041,14 +6070,6 @@ msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Sign in to {appName} in the new window"
-msgstr ""
-
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "Sign in to popular apps through Composio, with your API key"
-msgstr ""
-
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "Sign in to popular apps through Pipedream, with your project"
 msgstr ""
 
 #: src/pages/Auth.tsx
@@ -6125,6 +6146,14 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Slack not enabled"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Slack, Notion, GitHub and more, with one Composio API key"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Slack, Notion, GitHub and more, with one Pipedream project"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -6324,6 +6353,10 @@ msgstr ""
 
 #: src/components/FinanceCards.tsx
 msgid "Subscriptions / mo"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Summarize this week's investor email"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6552,6 +6585,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "This server needs an OAuth client ID."
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "This space already uses {selectedProviderName}."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -7086,6 +7123,14 @@ msgstr "Hafızası ne olsun?"
 msgid "What do you want me on first?"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "What is our runway?"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "What needs a reply from me today?"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "What result will you demonstrate?"
 msgstr "Hangi sonucu göstereceksin?"
@@ -7110,6 +7155,10 @@ msgstr "Ne zaman çalışacak"
 msgid "When to use"
 msgstr "Ne zaman kullanılır"
 
+#: src/pages/Shell.tsx
+msgid "Where did spend go up this month?"
+msgstr ""
+
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Where it went"
 msgstr ""
@@ -7120,6 +7169,10 @@ msgstr "Botlar nerede çalışsın?"
 
 #: src/components/integrations/AgentStep.tsx
 msgid "Which bots can use {appName}?"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Who are our investors?"
 msgstr ""
 
 #: src/components/EmailCards.tsx
@@ -7220,4 +7273,8 @@ msgstr "Adın"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Your own Google sign-in for Gmail, Calendar and Drive"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Your own tool server"
 msgstr ""
