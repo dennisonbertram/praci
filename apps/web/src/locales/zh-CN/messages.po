@@ -3291,6 +3291,7 @@ msgid "Flag unexpected actions"
 msgstr "标记异常操作"
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 msgid "Folder"
 msgstr ""
@@ -6552,7 +6553,7 @@ msgid "To do"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "To tag and file them, their text (and images) is sent to {names}. Until then you can search them by name and text, but they aren't tagged or filed."
+msgid "To tag new files and sort them into folders for you, their text (and images) is sent to {names}. Until then you can search by name and text and move files into folders yourself."
 msgstr ""
 
 #: src/pages/shell/bot-picker.tsx
@@ -7156,7 +7157,7 @@ msgid "You can close this window."
 msgstr "可以关闭此窗口。"
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "You can search documents by name and text, but they aren't tagged or filed. Set up a model in Settings to do that."
+msgid "You can search documents by name and text and move them into folders yourself. Set up a model in Settings to have new files tagged and sorted into folders for you."
 msgstr ""
 
 #: src/pages/Shell.tsx

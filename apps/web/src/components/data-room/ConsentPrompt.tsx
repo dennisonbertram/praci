@@ -27,8 +27,8 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
     return (
       <Card size="sm" className="px-3.5 text-xs text-muted-foreground">
         <Trans>
-          You can search documents by name and text, but they aren't tagged or filed. Set up a model
-          in Settings to do that.
+          You can search documents by name and text and move them into folders yourself. Set up a
+          model in Settings to have new files tagged and sorted into folders for you.
         </Trans>
       </Card>
     );
@@ -44,8 +44,8 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
       }}
     >
       <Trans>
-        To tag and file them, their text (and images) is sent to {names}. Until then you can search
-        them by name and text, but they aren't tagged or filed.
+        To tag new files and sort them into folders for you, their text (and images) is sent to{" "}
+        {names}. Until then you can search by name and text and move files into folders yourself.
       </Trans>
     </ConsentCard>
   );

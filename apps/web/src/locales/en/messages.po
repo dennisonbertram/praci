@@ -3291,6 +3291,7 @@ msgid "Flag unexpected actions"
 msgstr "Flag unexpected actions"
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 msgid "Folder"
 msgstr "Folder"
@@ -6552,8 +6553,8 @@ msgid "To do"
 msgstr "To do"
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "To tag and file them, their text (and images) is sent to {names}. Until then you can search them by name and text, but they aren't tagged or filed."
-msgstr "To tag and file them, their text (and images) is sent to {names}. Until then you can search them by name and text, but they aren't tagged or filed."
+msgid "To tag new files and sort them into folders for you, their text (and images) is sent to {names}. Until then you can search by name and text and move files into folders yourself."
+msgstr "To tag new files and sort them into folders for you, their text (and images) is sent to {names}. Until then you can search by name and text and move files into folders yourself."
 
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
@@ -7156,8 +7157,8 @@ msgid "You can close this window."
 msgstr "You can close this window."
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "You can search documents by name and text, but they aren't tagged or filed. Set up a model in Settings to do that."
-msgstr "You can search documents by name and text, but they aren't tagged or filed. Set up a model in Settings to do that."
+msgid "You can search documents by name and text and move them into folders yourself. Set up a model in Settings to have new files tagged and sorted into folders for you."
+msgstr "You can search documents by name and text and move them into folders yourself. Set up a model in Settings to have new files tagged and sorted into folders for you."
 
 #: src/pages/Shell.tsx
 msgid "You have control"

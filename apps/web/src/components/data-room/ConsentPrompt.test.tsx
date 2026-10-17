@@ -59,8 +59,10 @@ it("names where documents go and grants exactly the shown key and version on All
   const onAllowed = vi.fn();
   await render(onAllowed);
   expect(container.textContent).toContain("Example Model");
-  // Text search works before consent: only tagging and filing wait for it.
-  expect(container.textContent).toContain("you can search them by name and text");
+  // Text search and moving files work before consent: only automatic tagging and filing wait.
+  expect(container.textContent).toContain(
+    "you can search by name and text and move files into folders yourself",
+  );
   await act(async () => container.querySelector("button")?.click());
   expect(rpc.consentGrant).toHaveBeenCalledExactlyOnceWith({
     key: "data-room:abc",
@@ -87,7 +89,7 @@ it("says documents are searchable but not tagged when no model is set up, with n
   rpc.consent.mockResolvedValue(status({ recipients: [] }));
   await render();
   expect(container.textContent).toContain("search documents by name and text");
-  expect(container.textContent).toContain("aren't tagged or filed");
+  expect(container.textContent).toContain("move them into folders yourself");
   expect(container.querySelector("button")).toBeNull();
 });
 
