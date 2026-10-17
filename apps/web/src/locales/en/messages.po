@@ -1562,6 +1562,11 @@ msgstr "Channels"
 msgid "Charges"
 msgstr "Charges"
 
+#. placeholder {0}: shortDay(`${charged[0].month}-01`)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Charges since {0}"
+msgstr "Charges since {0}"
+
 #: src/pages/shell/message-cards.tsx
 msgid "Chart failed to render: {error}"
 msgstr "Chart failed to render: {error}"
@@ -4650,6 +4655,12 @@ msgstr "Monthly burn"
 msgid "Monthly spend"
 msgstr "Monthly spend"
 
+#. placeholder {0}: monthShort(charged[0]?.month ?? "")
+#. placeholder {1}: monthShort(charged.at(-1)?.month ?? "")
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Monthly spend · {0} – {1}"
+msgstr "Monthly spend · {0} – {1}"
+
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Monthly trend"
 msgstr "Monthly trend"
@@ -4867,6 +4878,10 @@ msgstr "Next deadline"
 msgid "Next message"
 msgstr "Next message"
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "No {sourceName} cash accounts."
+msgstr "No {sourceName} cash accounts."
+
 #: src/pages/Finance.tsx
 msgid "No accounts yet"
 msgstr "No accounts yet"
@@ -4894,6 +4909,10 @@ msgstr "No authentication"
 #: src/pages/legal/LegalContracts.tsx
 msgid "No auto-renewal"
 msgstr "No auto-renewal"
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "No bank accounts yet. Connect Mercury or Brex, or upload a bank statement, with Add account."
+msgstr "No bank accounts yet. Connect Mercury or Brex, or upload a bank statement, with Add account."
 
 #: src/components/computer/TerminalApp.tsx
 msgid "No bot activity yet."
@@ -7185,6 +7204,10 @@ msgstr "Test sign-in"
 msgid "Testing…"
 msgstr "Testing…"
 
+#: src/components/finance/StatementReminderBanner.tsx
+msgid "the {month} statement"
+msgstr "the {month} statement"
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "The API did not come back. Refresh this page."
 msgstr "The API did not come back. Refresh this page."
@@ -7241,6 +7264,11 @@ msgstr "The provider is rate-limiting requests."
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "The selected memory provider is not available in this build."
 msgstr "The selected memory provider is not available in this build."
+
+#. placeholder {0}: shortDay(first.dueFor)
+#: src/components/finance/StatementReminderBanner.tsx
+msgid "the statement through {0}"
+msgstr "the statement through {0}"
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "The transactions read add up to the closing balance"
@@ -7705,6 +7733,11 @@ msgstr "Updating…"
 msgid "Upload"
 msgstr "Upload"
 
+#. placeholder {0}: first.accountName
+#: src/components/finance/StatementReminderBanner.tsx
+msgid "Upload {statement} for {0}"
+msgstr "Upload {statement} for {0}"
+
 #: src/components/finance/StatementImport.tsx
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr "Upload a PDF, CSV, OFX or QFX file"
@@ -7720,11 +7753,6 @@ msgstr "Upload statement"
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Upload statements"
 msgstr "Upload statements"
-
-#. placeholder {0}: first.accountName
-#: src/components/finance/StatementReminderBanner.tsx
-msgid "Upload the {month} statement for {0}"
-msgstr "Upload the {month} statement for {0}"
 
 #: src/components/data-room/DropZone.tsx
 msgid "Uploaded"

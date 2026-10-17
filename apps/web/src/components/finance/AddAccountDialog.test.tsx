@@ -27,6 +27,7 @@ const rpcMock = vi.hoisted(() => ({
   statements: vi.fn(),
   overview: vi.fn(),
   exchanges: vi.fn(),
+  refresh: vi.fn(),
 }));
 const connectMock = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
@@ -113,6 +114,7 @@ beforeEach(() => {
   rpcMock.statements.mockResolvedValue({ statements: [], reminders: [] });
   rpcMock.overview.mockResolvedValue({ sources: [] });
   rpcMock.exchanges.mockResolvedValue([]);
+  rpcMock.refresh.mockResolvedValue(null);
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -141,11 +143,17 @@ it("routes wallet and exchange cards to the crypto flows", async () => {
   expect(onPickCrypto).toHaveBeenCalledWith("wallet");
 });
 
-it("connects Mercury through the finance flow and reloads", async () => {
+it("connects Mercury through the finance flow, syncs, and only then reloads the page", async () => {
   connectMock.mockResolvedValue("connected");
+  let synced = () => {};
+  rpcMock.refresh.mockReturnValue(new Promise<void>((resolve) => (synced = resolve)));
   await open();
   await act(async () => card("Mercury").click());
   expect(connectMock).toHaveBeenCalledWith("mercury");
+  // The page reloads after the sync, so it shows the new accounts rather than an empty list.
+  expect(rpcMock.refresh).toHaveBeenCalled();
+  expect(onImported).not.toHaveBeenCalled();
+  await act(async () => synced());
   expect(onImported).toHaveBeenCalled();
 });
 

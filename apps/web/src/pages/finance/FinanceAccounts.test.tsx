@@ -256,6 +256,47 @@ it("shows an account's last four digits once when its name already ends with the
   );
   await flush();
   expect(container.textContent?.match(/••0002/g)).toHaveLength(1);
+  // The ending is styled apart from the name, as for an account whose name does not repeat it.
+  const link = container.querySelector('a[href="/app/finance/account/a1"]');
+  expect(link?.textContent).toBe("MOCK Checking");
+  expect(link?.nextElementSibling?.textContent).toBe("••0002");
+});
+
+const renderAccounts = async (data: object, source?: "mercury" | "brex") => {
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.accounts.mockResolvedValue(data);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceAccountsPage source={source} />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+};
+const headings = () => [...container.querySelectorAll("h2")].map((h) => h.textContent);
+
+it("leaves the Brex card note off a Mercury-only view", async () => {
+  await renderAccounts(
+    {
+      ...accounts,
+      cash: [
+        { ...accounts.cash[0], provider: "mercury" },
+        { ...accounts.cash[0], id: "a2", provider: "brex", name: "Brex Cash" },
+      ],
+    },
+    "mercury",
+  );
+  expect(headings()).not.toContain("Card balance owed");
+});
+
+it("explains an empty account list and draws no year of $0 when nothing is added yet", async () => {
+  rpcMock.crypto.mockResolvedValue({ ...crypto, wallets: [] });
+  rpcMock.exchanges.mockResolvedValue([]);
+  await renderAccounts({ ...accounts, totalCashCents: 0, cash: [], cards: [] });
+  expect(container.textContent).toContain("No bank accounts yet.");
+  expect(headings()).not.toContain("Total balance");
 });
 
 it("reloads accounts after a wallet is added, since crypto can count in total cash", async () => {

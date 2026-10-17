@@ -1562,6 +1562,11 @@ msgstr "Canales"
 msgid "Charges"
 msgstr ""
 
+#. placeholder {0}: shortDay(`${charged[0].month}-01`)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Charges since {0}"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Chart failed to render: {error}"
 msgstr "No se pudo renderizar el gráfico: {error}"
@@ -4650,6 +4655,12 @@ msgstr ""
 msgid "Monthly spend"
 msgstr ""
 
+#. placeholder {0}: monthShort(charged[0]?.month ?? "")
+#. placeholder {1}: monthShort(charged.at(-1)?.month ?? "")
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Monthly spend · {0} – {1}"
+msgstr ""
+
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Monthly trend"
 msgstr ""
@@ -4867,6 +4878,10 @@ msgstr ""
 msgid "Next message"
 msgstr ""
 
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "No {sourceName} cash accounts."
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "No accounts yet"
 msgstr ""
@@ -4893,6 +4908,10 @@ msgstr "Sin autenticación"
 
 #: src/pages/legal/LegalContracts.tsx
 msgid "No auto-renewal"
+msgstr ""
+
+#: src/pages/finance/FinanceAccounts.tsx
+msgid "No bank accounts yet. Connect Mercury or Brex, or upload a bank statement, with Add account."
 msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
@@ -7185,6 +7204,10 @@ msgstr "Probar inicio de sesión"
 msgid "Testing…"
 msgstr "Probando…"
 
+#: src/components/finance/StatementReminderBanner.tsx
+msgid "the {month} statement"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "The API did not come back. Refresh this page."
 msgstr "La API no volvió. Actualiza esta página."
@@ -7241,6 +7264,11 @@ msgstr "El proveedor está limitando la frecuencia de las solicitudes."
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "The selected memory provider is not available in this build."
 msgstr "El proveedor de memoria seleccionado no está disponible en esta build."
+
+#. placeholder {0}: shortDay(first.dueFor)
+#: src/components/finance/StatementReminderBanner.tsx
+msgid "the statement through {0}"
+msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "The transactions read add up to the closing balance"
@@ -7705,6 +7733,11 @@ msgstr "Actualizando…"
 msgid "Upload"
 msgstr "Subir"
 
+#. placeholder {0}: first.accountName
+#: src/components/finance/StatementReminderBanner.tsx
+msgid "Upload {statement} for {0}"
+msgstr ""
+
 #: src/components/finance/StatementImport.tsx
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
@@ -7719,11 +7752,6 @@ msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Upload statements"
-msgstr ""
-
-#. placeholder {0}: first.accountName
-#: src/components/finance/StatementReminderBanner.tsx
-msgid "Upload the {month} statement for {0}"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx

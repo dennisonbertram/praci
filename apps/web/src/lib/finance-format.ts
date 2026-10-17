@@ -167,6 +167,21 @@ export function accountLabel(name: string, lastFour: string | null | undefined):
   return name.trimEnd().endsWith(tail) ? name : `${name} ${tail}`;
 }
 
+/** An account's name and its ending apart (`MOCK Checking`, `••1111`), whether or not the name
+ * already ends with the digits, so every account shows its ending the same way. */
+export function accountParts(
+  name: string,
+  lastFour: string | null | undefined,
+): { name: string; ending: string | null } {
+  if (!lastFour) return { name, ending: null };
+  const ending = `••${lastFour}`;
+  const trimmed = name.trimEnd();
+  return {
+    name: trimmed.endsWith(ending) ? trimmed.slice(0, -ending.length).trimEnd() || trimmed : name,
+    ending,
+  };
+}
+
 /** The sentence shown on the paid-with pill and the Paid with figure: `Brex ••0003 + Mercury Checking ••1234`. */
 export function paidWithLabel(entries: readonly PaidWithEntry[]): string {
   const last = (entry: PaidWithEntry) => (entry.lastFour ? `••${entry.lastFour}` : "");

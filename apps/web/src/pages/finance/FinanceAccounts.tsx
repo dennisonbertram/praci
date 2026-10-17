@@ -32,7 +32,7 @@ import {
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { ExchangeConnectDialog } from "../../components/integrations/ExchangeConnectDialog";
 import {
-  accountLabel,
+  accountParts,
   dayAxisLabels,
   money,
   moneyExact,
@@ -68,11 +68,11 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
                   to={financePath.account(account.id)}
                   className="outline-none hover:underline focus-visible:underline"
                 >
-                  {account.name}
+                  {accountParts(account.name, account.lastFour).name}
                 </HereLink>
-                {accountLabel(account.name, account.lastFour) !== account.name ? (
+                {account.lastFour ? (
                   <span className="ms-1.5 font-normal text-muted-foreground">
-                    ••{account.lastFour}
+                    {accountParts(account.name, account.lastFour).ending}
                   </span>
                 ) : null}
                 {pct ? (
@@ -193,8 +193,17 @@ export function FinanceAccountsPage({
     source ? rows.filter((a) => a.provider === source) : rows;
   const shownCash = data ? fromSource(data.cash) : [];
   // Brex shares no card balance owed, so with Brex and no card row the figure is unknown, not zero.
+  // A Mercury-only view says nothing about cards.
   const brexOwedUnknown =
-    data !== null && data.cardOwedCents === null && data.cash.some((a) => a.provider === "brex");
+    data !== null &&
+    (source === null || source === "brex") &&
+    data.cardOwedCents === null &&
+    data.cash.some((a) => a.provider === "brex");
+  // With no account and no crypto yet, a year-long $0 line says nothing.
+  const anyBalance =
+    (data?.cash.length ?? 0) + (data?.cards.length ?? 0) > 0 ||
+    (crypto?.wallets.length ?? 0) > 0 ||
+    exchanges.length > 0;
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Accounts` }]}
@@ -299,7 +308,7 @@ export function FinanceAccountsPage({
             ) : null}
           </div>
           {/* The chart is every account's total, so a source filter hides it rather than contradict the figure above. */}
-          {sourceName ? null : (
+          {sourceName || !anyBalance ? null : (
             <Section
               title={<Trans>Total balance</Trans>}
               action={<PeriodTabs value={range} onChange={setRange} />}
@@ -321,7 +330,18 @@ export function FinanceAccountsPage({
             </Section>
           )}
           <Section title={<Trans>Cash accounts</Trans>}>
-            <AccountTable rows={shownCash} />
+            {shownCash.length > 0 ? (
+              <AccountTable rows={shownCash} />
+            ) : sourceName ? (
+              <p className="text-sm text-muted-foreground">{t`No ${sourceName} cash accounts.`}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                <Trans>
+                  No bank accounts yet. Connect Mercury or Brex, or upload a bank statement, with
+                  Add account.
+                </Trans>
+              </p>
+            )}
           </Section>
           {fromSource(data.cards).length > 0 ? (
             <Section title={<Trans>Card balance owed</Trans>}>
@@ -358,9 +378,11 @@ export function FinanceAccountPage({ id }: { id: string }) {
       title={
         account ? (
           <>
-            {account.name}
-            {accountLabel(account.name, account.lastFour) !== account.name ? (
-              <span className="ms-2 font-normal text-muted-foreground">••{account.lastFour}</span>
+            {accountParts(account.name, account.lastFour).name}
+            {account.lastFour ? (
+              <span className="ms-2 font-normal text-muted-foreground">
+                {accountParts(account.name, account.lastFour).ending}
+              </span>
             ) : null}
           </>
         ) : null
