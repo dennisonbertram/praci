@@ -1,4 +1,4 @@
-import type { Actor, Bot } from "@rakazo/contracts";
+import type { Actor, Bot, MessageBlock } from "@rakazo/contracts";
 import {
   actorScope,
   CARTA_READ_TOOLS,
@@ -7,7 +7,12 @@ import {
   isCartaEndpoint,
 } from "@rakazo/contracts";
 import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
-import type { createRepos, PrismaClient } from "@rakazo/db";
+import {
+  appendEventInTransaction,
+  type createRepos,
+  createThreadMessageInTransaction,
+  type PrismaClient,
+} from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 
 const CARTA_AGENT_INSTRUCTIONS =
@@ -130,11 +135,13 @@ export type CartaSyncDeps = {
  *
  * The run uses the "routine" trigger: it is the only trigger besides a typed message that offers the
  * mail, contacts and finance tools (the user owns this run), and it needs no typed message from the
- * user. Its reply is the summary the user reads in the Carta agent's chat.
+ * user. Its reply is the summary the user reads in the Carta agent's chat, below a line that says
+ * why it ran, so the reply never reads as an unprompted message.
  */
 export async function startCartaSync(
   deps: CartaSyncDeps,
   actor: Actor,
+  reason: "refresh" | "connected" = "refresh",
 ): Promise<"started" | "running" | "no_model"> {
   const bot = await ensureCartaAgent(deps, actor);
   if (!(await deps.hasModel(actor))) return "no_model";
@@ -146,6 +153,28 @@ export async function startCartaSync(
       select: { id: true },
     });
     if (active) return null;
+    const blocks: MessageBlock[] = [
+      {
+        kind: "meta",
+        text:
+          reason === "connected"
+            ? "Carta is connected, so the Carta agent is reading your cap table"
+            : "You asked to refresh the cap table from Carta",
+      },
+    ];
+    const message = await createThreadMessageInTransaction(tx, {
+      threadId: bot.threadId,
+      role: "system",
+      blocks,
+      botId: bot.id,
+    });
+    await appendEventInTransaction(tx, {
+      spaceId: actor.spaceId,
+      threadId: bot.threadId,
+      botId: bot.id,
+      type: "thread.message.created",
+      payload: { messageId: message.id, role: "system", blocks },
+    });
     const task = await tx.task.create({
       data: {
         ...actorScope(actor),
@@ -187,7 +216,7 @@ export async function onMcpServerConnected(
       where: { id: serverId, ...actorScope(actor) },
       select: { endpoint: true },
     });
-    if (isCartaEndpoint(server?.endpoint)) await startCartaSync(deps, actor);
+    if (isCartaEndpoint(server?.endpoint)) await startCartaSync(deps, actor, "connected");
   } catch (error) {
     getLogger().error("carta sync kickoff", error);
   }
