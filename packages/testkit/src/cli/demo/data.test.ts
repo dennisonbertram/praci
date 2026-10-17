@@ -105,8 +105,21 @@ describe("mock demo data", () => {
     await session.close();
   });
 
-  it("includes one document that fails to read, so the failed state can be seen", () => {
-    expect(DEMO_DOCUMENTS.filter((document) => document.kind === "broken")).toHaveLength(1);
+  it("includes one document that fails to read, on the list's first page", () => {
+    const broken = DEMO_DOCUMENTS.filter((document) => document.kind === "broken");
+    expect(broken).toHaveLength(1);
+    // Uploaded in order and listed newest first, 50 to a page.
+    expect(DEMO_DOCUMENTS.slice(-50)).toContain(broken[0]);
+  });
+
+  it("numbers the monthly investor updates in date order, the latest highest", () => {
+    const dates = Array.from(
+      { length: 12 },
+      (_, i) =>
+        DEMO_DOCUMENT_FACETS[`MOCK Monthly Investor Update ${String(i + 1).padStart(2, "0")}.pdf`]
+          ?.daysAgo ?? 0,
+    );
+    expect(dates).toEqual([...dates].sort((a, b) => b - a));
   });
 
   it("has more documents than one list page, in the folders a founder keeps", () => {

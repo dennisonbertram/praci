@@ -911,12 +911,6 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
     "MOCK Product Roadmap.pdf",
     "Roadmap for the next two quarters. Q4: calibration tool. Q1: fleet dashboard.",
   ),
-  doc(
-    "Legal",
-    "MOCK Signed NDA - Bolt Freight.pdf",
-    "A damaged scan that is not a readable PDF.",
-    "broken",
-  ),
 ];
 
 /**
@@ -940,7 +934,8 @@ const MORE_DOCUMENTS: (DemoDocument & {
       `MOCK Monthly Investor Update ${String(index + 1).padStart(2, "0")}.pdf`,
       `Monthly investor update number ${index + 1}. Revenue, burn and hiring for the month.`,
     ),
-    facets: { docType: "investor", daysAgo: 30 * (index + 2), parties: [] },
+    // Numbered in date order: update 12 is the latest.
+    facets: { docType: "investor", daysAgo: 30 * (13 - index), parties: [] },
   })),
   ...Array.from({ length: 24 }, (_, index) => {
     const vendor = ["Acme Servo Supply", "Cobalt Cloud Hosting", "Delta Desk Rentals"][index % 3];
@@ -997,6 +992,18 @@ export const DEMO_UNTAGGED_DOCUMENT = doc(
   "Draft term sheet from Quill Capital Mock for a seed round. Pre money valuation 9000000 dollars.",
 );
 DEMO_DOCUMENTS.push(DEMO_UNTAGGED_DOCUMENT);
+
+/**
+ * A file that could not be read, added among the last so it is on the list's first page and the
+ * "Failed" state and Try again can be seen without paging.
+ */
+export const DEMO_FAILED_DOCUMENT = doc(
+  "Legal",
+  "MOCK Signed NDA - Bolt Freight.pdf",
+  "A damaged scan that is not a readable PDF.",
+  "broken",
+);
+DEMO_DOCUMENTS.push(DEMO_FAILED_DOCUMENT);
 
 /** Still being read when the demo opens, so the "Reading" state shows. */
 export const DEMO_READING_DOCUMENT = doc(
