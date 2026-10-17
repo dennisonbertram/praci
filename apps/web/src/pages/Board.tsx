@@ -110,16 +110,22 @@ export function BoardPage({ embedded = false }: { embedded?: boolean }) {
       }`}
     >
       {embedded ? null : <WindowChrome />}
-      <header className="flex items-center gap-3 border-b px-4 py-3 md:px-7">
+      {/* The same header spacing and title style as the other app pages. */}
+      <header className="flex items-center gap-3 px-4 pt-2 pb-3 md:px-7 md:pt-5">
         {embedded ? null : (
           <Button variant="ghost" size="icon" render={<Link to="/app" />} aria-label={t`Back`}>
             <ChevronLeft />
           </Button>
         )}
-        <h1 className="flex-1 font-medium">
+        <h1 className="flex-1 text-lg font-semibold">
           <Trans>Task board</Trans>
         </h1>
-        <Button onClick={() => setSelected("new")} disabled={bots.length === 0}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setSelected("new")}
+          disabled={bots.length === 0}
+        >
           <Trans>New ticket</Trans>
         </Button>
       </header>
