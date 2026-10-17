@@ -37,6 +37,27 @@ it("does not draw a finance chart while amounts are hidden, so its shape shows n
   act(() => root.unmount());
 });
 
+it("draws a chart that first appeared hidden once amounts are shown again", async () => {
+  const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+  Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+    configurable: true,
+    get: () => 600,
+  });
+  const el = document.createElement("div");
+  document.body.append(el);
+  const root = createRoot(el);
+  setHideAmounts(true);
+  await act(async () =>
+    root.render(
+      <LineChart label="Balance" height={160} values={[3, 2, 1]} labels={["a", "b", "c"]} />,
+    ),
+  );
+  await act(async () => setHideAmounts(false));
+  expect(el.querySelector('svg[aria-label="Balance"]')).not.toBeNull();
+  act(() => root.unmount());
+  if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
+});
+
 it("scales the Burn bars to spend, and cuts a much larger raise at the top with its amount", async () => {
   const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
   Object.defineProperty(HTMLElement.prototype, "clientWidth", {
@@ -101,6 +122,10 @@ it("draws one $0 gridline, not '$0, $0, $0', when there is nothing to plot", asy
     .map((t) => t.textContent)
     .filter((t) => t?.startsWith("$"));
   expect(labels).toEqual(["$0"]);
+  // A period still running is a lighter filled bar, never a dashed outline.
+  const bar = el.querySelector("rect[data-partial]");
+  expect(bar?.getAttribute("class")).toContain("fill-foreground/45");
+  expect(bar?.getAttribute("stroke-dasharray")).toBeNull();
   act(() => root.unmount());
   if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
 });

@@ -323,8 +323,16 @@ export function FinanceRunwayPage() {
             />
           </div>
           {hasCrypto ? (
-            <div>
+            // The pill says what to change; the line beside it says what counts now.
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <CountCryptoButton scope={data.runwayCrypto} onSaved={q.reload} />
+              <span className="text-xs text-muted-foreground">
+                {data.runwayCrypto === "all"
+                  ? t`All crypto counts as cash in this runway.`
+                  : data.runwayCrypto === "stablecoins"
+                    ? t`Stablecoins count as cash in this runway; other crypto does not.`
+                    : t`Crypto is left out of cash and this runway.`}
+              </span>
             </div>
           ) : null}
           <Section title={<Trans>Projected cash</Trans>}>

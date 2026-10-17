@@ -61,7 +61,8 @@ export function Chart({
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+    // Mounted while hidden there is nothing to measure yet; showing amounts measures again.
+  }, [hidden]);
   if (hidden)
     return (
       <div
@@ -358,9 +359,10 @@ export function BurnBars({
                     width={bw}
                     height={bar(m.outCents)}
                     rx={2}
-                    className={m.partial ? "fill-card stroke-foreground" : "fill-foreground"}
-                    strokeWidth={m.partial ? 1.5 : 0}
-                    strokeDasharray={m.partial ? "3 2" : undefined}
+                    // A period still running is a lighter bar (its label has a *), not a dashed
+                    // outline that reads as an empty box.
+                    data-partial={m.partial ? "" : undefined}
+                    className={m.partial ? "fill-foreground/45" : "fill-foreground"}
                   />
                   {m.revenueCents > 0 ? (
                     <rect

@@ -218,7 +218,7 @@ function Dashboard() {
     <>
       {/* Accounts fed by uploaded statements have no source to connect, but they are data. */}
       {!connected && !data.hasCashAccounts ? (
-        <EmptyState hasCrypto={Boolean(data.crypto)} onAdd={() => setAdding("type")} />
+        <EmptyState cryptoCents={data.crypto?.totalCents ?? null} onAdd={() => setAdding("type")} />
       ) : (
         <Overview
           data={data}
@@ -233,7 +233,11 @@ function Dashboard() {
   );
 }
 
-function EmptyState({ hasCrypto, onAdd }: { hasCrypto: boolean; onAdd: () => void }) {
+/** Nothing to chart yet. With only crypto added (a wallet, Coinbase or Kraken), it says so and where
+ * that crypto is, rather than "No accounts yet". */
+function EmptyState({ cryptoCents, onAdd }: { cryptoCents: number | null; onAdd: () => void }) {
+  useHideAmounts();
+  const hasCrypto = cryptoCents !== null;
   return (
     <div>
       {/* The page title stays where every page has it, with the empty state under it. */}
@@ -247,8 +251,17 @@ function EmptyState({ hasCrypto, onAdd }: { hasCrypto: boolean; onAdd: () => voi
         icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
           <AppLogo key={provider} name={name} logo={logo} size="lg" />
         ))}
-        title={<Trans>No accounts yet</Trans>}
-        description={<Trans>Add an account to see cash, burn, runway and spend.</Trans>}
+        title={hasCrypto ? <Trans>No bank accounts yet</Trans> : <Trans>No accounts yet</Trans>}
+        description={
+          hasCrypto ? (
+            <Trans>
+              Your crypto ({money(cryptoCents)}) is in Accounts. Add a bank account to see cash,
+              burn, runway and spend.
+            </Trans>
+          ) : (
+            <Trans>Add an account to see cash, burn, runway and spend.</Trans>
+          )
+        }
       >
         <Button onClick={onAdd}>
           <Trans>Add account</Trans>
@@ -359,9 +372,10 @@ function Overview({
   const runOutMonth = data.runway.runOutDate
     ? hiddenOr(monthFull(data.runway.runOutDate.slice(0, 7)))
     : "";
-  // The same figure on both sides says nothing, so the comparison is left out.
+  // The same figure on both sides says nothing, and nothing spent so far (a statement account has
+  // no lines for this period yet) is not a 100% drop, so the comparison is left out.
   const sameAsBefore = (p: { currentCents: number; previousCents: number | null }) =>
-    p.previousCents === null || p.previousCents === p.currentCents;
+    p.previousCents === null || p.previousCents === p.currentCents || p.currentCents === 0;
   const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
   const spentRange = range(totals);
   // A quarter or year that has just begun covers the same days as the month; say it is partial.
@@ -457,6 +471,23 @@ function Overview({
           <AskAgentButton />
         </div>
       </div>
+      {data.sources
+        .filter((source) => source.status === "needs_reconnect")
+        .map((source) => (
+          // A lapsed sign-in stops syncing while the figures still look current, so say so.
+          <div
+            key={source.provider}
+            role="status"
+            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning px-3 py-2 text-sm"
+          >
+            <span>
+              {t`${providerName(source.provider)} needs you to sign in again. Its figures stop updating until you do.`}
+            </span>
+            <Button variant="outline" size="sm" render={<Link to={CONNECT_PATH} />}>
+              {t`Reconnect`}
+            </Button>
+          </div>
+        ))}
       <StatementReminderBanner
         reminders={data.statementReminders ?? []}
         onUpload={() => onAdd("bank")}
@@ -565,19 +596,27 @@ function Overview({
             }
             action={<BurnLegend />}
           >
-            <BurnBars
-              series={bars}
-              granularity={barGranularity}
-              label={t`Cash out and cash in over time`}
-              onOpen={(p) =>
-                navigate(
-                  barGranularity === "month"
-                    ? financePath.month(p.start.slice(0, 7))
-                    : financePath.spend(period, null, { from: p.start, to: p.end }),
-                )
-              }
-            />
-            {bars.at(-1)?.partial ? (
+            {bars.every((p) => !p.outCents && !p.revenueCents && !p.financingCents) ? (
+              // An empty chart with axes at $0 looks broken; say what it will show.
+              <div className="py-2 text-muted-foreground">
+                <Trans>No money in or out in this period yet.</Trans>
+              </div>
+            ) : (
+              <BurnBars
+                series={bars}
+                granularity={barGranularity}
+                label={t`Cash out and cash in over time`}
+                onOpen={(p) =>
+                  navigate(
+                    barGranularity === "month"
+                      ? financePath.month(p.start.slice(0, 7))
+                      : financePath.spend(period, null, { from: p.start, to: p.end }),
+                  )
+                }
+              />
+            )}
+            {bars.at(-1)?.partial &&
+            bars.some((p) => p.outCents || p.revenueCents || p.financingCents) ? (
               <div className="text-[11px] text-muted-foreground">
                 <Trans>* So far</Trans>
               </div>
@@ -642,9 +681,11 @@ function Overview({
                 id="upcoming"
                 title={<Trans>Upcoming · 30 days</Trans>}
                 action={
-                  <span className="text-xs font-semibold tabular-nums">
-                    ~{money(data.upcoming.totalCents)}
-                  </span>
+                  data.upcoming.totalCents > 0 ? (
+                    <span className="text-xs font-semibold tabular-nums">
+                      ~{money(data.upcoming.totalCents)}
+                    </span>
+                  ) : null
                 }
               >
                 <div className="-mx-2">

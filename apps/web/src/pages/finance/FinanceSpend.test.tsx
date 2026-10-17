@@ -17,10 +17,10 @@ vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
-const rpcMock = vi.hoisted(() => ({ vendor: vi.fn(), spend: vi.fn() }));
+const rpcMock = vi.hoisted(() => ({ vendor: vi.fn(), spend: vi.fn(), category: vi.fn() }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 
-import { FinanceSpendPage, FinanceVendorPage } from "./FinanceSpend";
+import { FinanceCategoryPage, FinanceSpendPage, FinanceVendorPage } from "./FinanceSpend";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -99,4 +99,34 @@ it("asks for and names only the chosen source's spend, and keeps it across the f
   expect(container.textContent).toContain("$22,871");
   const chip = [...container.querySelectorAll("a")].find((a) => a.textContent === "Travel");
   expect(chip?.getAttribute("href")).toContain("source=brex");
+});
+
+it("charts a category's last six months with month labels instead of an unlabelled sparkline", async () => {
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
+  const months = Array.from(
+    { length: 12 },
+    (_, i) => `2025-${String(i + 11).padStart(2, "0")}`,
+  ).map((m, i) => (i < 2 ? m : `2026-${String(i - 1).padStart(2, "0")}`));
+  rpcMock.category.mockResolvedValue({
+    slug: "software",
+    label: "Software",
+    last90Cents: 108_500,
+    trend: months.map((month) => ({ month, cents: 36_000 })),
+    vendors: [],
+    recent: [],
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceCategoryPage slug="software" />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => {});
+  expect(container.textContent).toContain("Monthly spend · May – Oct");
+  const labels = [...container.querySelectorAll('svg[aria-label="Monthly spend"] text')].map(
+    (n) => n.textContent,
+  );
+  expect(labels.filter((l) => /^[A-Z][a-z]{2}/.test(l ?? ""))).toHaveLength(6);
+  vi.restoreAllMocks();
 });

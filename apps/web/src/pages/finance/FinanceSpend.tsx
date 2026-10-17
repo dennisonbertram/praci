@@ -3,7 +3,7 @@ import { Trans } from "@lingui/react/macro";
 import type { FinanceProvider, FinanceRecurringOutput, SpendPeriod } from "@rakazo/contracts";
 import { Badge } from "@rakazo/ui-web";
 import { Link, useNavigate } from "react-router-dom";
-import { LineChart, MonthBars } from "../../components/finance/charts";
+import { MonthBars } from "../../components/finance/charts";
 import {
   Chevron,
   Chip,
@@ -151,6 +151,8 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
   );
   const rowProps = useRowNavigate();
   const data = q.data;
+  // The last six months, like a vendor's chart, so the bars and their amounts fit a phone.
+  const trend = data?.trend.slice(-6) ?? [];
   // The total, the vendors and the transactions all cover this one window, named on the page.
   const windowName =
     data?.start && data.end
@@ -174,22 +176,24 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
       {data ? (
         <>
           <Section>
-            <div className="flex flex-wrap items-center gap-5">
-              <div>
-                <h2 className="text-xs font-semibold text-muted-foreground">{windowName}</h2>
-                <div className="text-lg font-semibold tabular-nums">{money(data.last90Cents)}</div>
-              </div>
-              <div className="min-w-32 flex-1">
-                <LineChart
-                  values={data.trend.map((p) => p.cents)}
-                  labels={[]}
-                  height={44}
-                  axes={false}
-                  label={t`Monthly trend`}
-                />
-              </div>
-            </div>
+            <h2 className="text-xs font-semibold text-muted-foreground">{windowName}</h2>
+            <div className="text-lg font-semibold tabular-nums">{money(data.last90Cents)}</div>
           </Section>
+          {/* A labelled monthly chart, not an unlabelled sparkline: which months, how much. */}
+          {trend.length > 0 ? (
+            <Section
+              title={t`Monthly spend · ${monthShort(trend[0]?.month ?? "")} – ${monthShort(trend.at(-1)?.month ?? "")}`}
+            >
+              <MonthBars
+                items={trend.map((m, i) => ({
+                  label: monthAxisLabels(trend.map((x) => x.month))[i] ?? "",
+                  cents: m.cents,
+                }))}
+                height={160}
+                label={t`Monthly spend`}
+              />
+            </Section>
+          ) : null}
           <Section title={t`Vendors · ${windowName}`}>
             <table className="w-full border-collapse">
               <tbody>

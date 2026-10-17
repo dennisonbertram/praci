@@ -265,8 +265,9 @@ it("lists statements uploaded before, so they can be found and removed later", a
   expect(text).not.toContain("New account");
   expect(text).not.toContain("broken.pdf");
   await click("Remove");
-  // Nothing is deleted until the removal is confirmed.
+  // Nothing is deleted until the removal is confirmed, asked over a dimmed upload dialog.
   expect(rpcMock.statementDiscard).not.toHaveBeenCalled();
+  expect(document.body.querySelector('[data-slot="alert-dialog-overlay"]')).not.toBeNull();
   await confirmRemove();
   expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "old" });
   expect(onImported).toHaveBeenCalledTimes(1);

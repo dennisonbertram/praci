@@ -271,10 +271,24 @@ it("says why a new dashboard's burn, runway, upcoming and subscriptions are empt
     runway: { months: null, runOutDate: null },
     upcoming: { items: [], totalCents: 0 },
     subscriptions: { items: [], totalMonthlyCents: 0 },
+    // A statement account: last month had spend, this month has no lines yet.
+    spendTotals: {
+      ...base.spendTotals,
+      month: { ...base.spendTotals.month, currentCents: 0, previousCents: 45_000, changePct: -100 },
+    },
+    cashSeries: {
+      ...base.cashSeries,
+      month: bars(14, "day").map((p) => ({ ...p, outCents: 0 })),
+    },
   });
   await show("/app/finance");
   await flush();
   const text = container.textContent ?? "";
+  // Nothing spent yet is not a 100% drop, an all-$0 chart is replaced by a line, and no ~$0.
+  expect(text).not.toContain("100%");
+  expect(text).toContain("No money in or out in this period yet.");
+  expect(container.querySelector('svg[aria-label="Cash out and cash in over time"]')).toBeNull();
+  expect(text).not.toContain("~$0");
   expect(text).toContain("No net spend in the last 3 full months");
   expect(text).toContain("Needs a monthly burn");
   expect(text).toContain("Nothing due in the next 30 days");
@@ -308,6 +322,14 @@ it("sends the Reconnect chip to Integrations instead of connecting", async () =>
   await flush();
   const chip = container.querySelector('a[aria-label="Reconnect Mercury"]');
   expect(chip?.getAttribute("href")).toBe("/app/integrations?category=finance");
+  // More than a dot: a line says the figures stopped updating, with a Reconnect button.
+  const banner = [...container.querySelectorAll('[role="status"]')].find((n) =>
+    n.textContent?.includes("Mercury needs you to sign in again"),
+  );
+  expect(banner?.querySelector("a")?.textContent).toBe("Reconnect");
+  expect(banner?.querySelector("a")?.getAttribute("href")).toBe(
+    "/app/integrations?category=finance",
+  );
   expect(rpcMock.connect).not.toHaveBeenCalled();
 });
 
@@ -922,6 +944,10 @@ it("links a crypto-only user from the empty state to Accounts", async () => {
   await show("/app/finance");
   await flush();
   expect(container.querySelector('a[href="/app/finance/accounts"]')?.textContent).toBe("Accounts");
+  // A connected exchange or wallet is not "No accounts": the page says where the crypto is.
+  expect(container.textContent).toContain("No bank accounts yet");
+  expect(container.textContent).not.toContain("No accounts yet");
+  expect(container.textContent).toContain("Your crypto ($1) is in Accounts.");
 });
 
 const cryptoWith = (stablecoinCents: number, totalCents: number) => ({

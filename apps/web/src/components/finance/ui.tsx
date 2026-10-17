@@ -830,7 +830,7 @@ function Legend({ className, children }: { className: string; children: ReactNod
 /** The key for a BurnBars chart: Out, Revenue and Financing. */
 export function BurnLegend() {
   return (
-    <div className="flex gap-3.5 text-[11px] text-muted-foreground">
+    <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[11px] text-muted-foreground">
       <Legend className="bg-foreground">
         <Trans>Out</Trans>
       </Legend>

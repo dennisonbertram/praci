@@ -159,14 +159,25 @@ it("shows a keyless Blockscout server as Connected and offers the optional key",
   expect(menuItems()).toEqual(["Add API key"]);
 });
 
-it("opens a modal from Connect, saves the key and then shows Connected", async () => {
+it("offers a wallet without a key, opens the key modal from the menu, then shows Connected", async () => {
   cryptoRpc.crypto
     .mockResolvedValueOnce({ connected: false, hasApiKey: false })
     .mockResolvedValue({ connected: true, hasApiKey: true });
   cryptoRpc.cryptoConnect.mockResolvedValue({ serverId: "s2", hasApiKey: true });
   const onChanged = await show([source("mercury", "ok"), source("brex", "ok")]);
   expect(crypto().querySelector("input")).toBeNull();
-  await press2(crypto(), "Connect");
+  // No key is needed, so the tile does not say "Not connected"; it offers a wallet, key in the menu.
+  expect(crypto().textContent).not.toContain("Not connected");
+  expect(crypto().textContent).toContain("Ready, no key needed");
+  expect(crypto().querySelector('a[href="/app/finance/crypto"]')?.textContent).toBe("Add wallet");
+  await openCryptoMenu();
+  await act(async () =>
+    (
+      [...document.body.querySelectorAll('[role="menuitem"]')].find(
+        (item) => item.textContent === "Add API key",
+      ) as HTMLElement
+    ).click(),
+  );
   const dialog = document.body.querySelector('[role="dialog"]') as Element;
   expect(dialog.textContent).toContain("Get an API key");
   expect(dialog.querySelector("a")?.getAttribute("href")).toBe("https://dev.blockscout.com");
@@ -183,7 +194,14 @@ it("opens a modal from Connect, saves the key and then shows Connected", async (
 it("shows the server's error inside the modal", async () => {
   cryptoRpc.cryptoConnect.mockRejectedValue(new Error("Invalid API key"));
   await show([source("mercury", "ok"), source("brex", "ok")]);
-  await press2(crypto(), "Connect");
+  await openCryptoMenu();
+  await act(async () =>
+    (
+      [...document.body.querySelectorAll('[role="menuitem"]')].find(
+        (item) => item.textContent === "Add API key",
+      ) as HTMLElement
+    ).click(),
+  );
   await typeKey("bad");
   await press2(document.body.querySelector('[role="dialog"]') as Element, "Save");
   expect(document.body.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain(
