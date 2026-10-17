@@ -91,3 +91,15 @@ it("gives every sub-folder a More actions menu", () => {
     expect(container.querySelector('li button[aria-label^="More actions for"]')).not.toBeNull();
   }
 });
+
+it("keeps the Type column for document types, so a failed file shows a dash there", () => {
+  const facets = { docType: "Contract", docDate: null, parties: ["Bolt Freight (Mock)"] };
+  const rows = [
+    { ...item("nda", null), status: "failed", facets },
+    { ...item("msa", null), facets },
+  ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const types = Array.from(container.querySelectorAll('[data-testid="data-room-type"]'));
+  expect(types.map((cell) => cell.textContent)).toEqual(["—", "Contract"]);
+  expect(container.querySelectorAll('[data-testid="data-room-failed-reason"]')).toHaveLength(1);
+});

@@ -96,7 +96,7 @@ const ROW_GRID =
   "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(200px,1fr)_28px] " +
   "@min-[400px]/list:grid-cols-[minmax(200px,1fr)_90px_28px] " +
   "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_108px_90px_28px] " +
-  "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_108px_90px_110px_28px]";
+  "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_108px_90px_minmax(110px,0.6fr)_28px]";
 /** Without facets the name takes every column but the menu. */
 const PLAIN_GRID =
   "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(0,1fr)_28px]";
@@ -208,14 +208,15 @@ function ItemRow({
       ) : null}
       {facets ? (
         <>
-          <span
-            className={cn(TYPE_CELL, CELL, item.status === "failed" && "text-destructive")}
-            title={item.status === "failed" ? (item.error ?? undefined) : undefined}
-          >
-            {item.status === "ready" ? item.facets.docType : label}
+          {/* A failed file says why under its name; the Type column is for document types. */}
+          <span data-testid="data-room-type" className={cn(TYPE_CELL, CELL)}>
+            {item.status === "ready" ? item.facets.docType : item.status === "failed" ? "—" : label}
           </span>
           <span className={cn(DATE_CELL, CELL)}>{dateText(item.facets.docDate)}</span>
-          <span className={cn(PARTIES_CELL, CELL)} title={item.facets.parties.join(", ")}>
+          <span
+            className={cn(PARTIES_CELL, "line-clamp-2 min-w-0 break-words text-muted-foreground")}
+            title={item.facets.parties.join(", ")}
+          >
             {item.facets.parties.join(", ")}
           </span>
         </>
