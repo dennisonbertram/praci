@@ -179,7 +179,14 @@ describe("mail_get", () => {
     "> Are we still on for Friday?",
   ].join("\n");
   const messages: EmulatedMessage[] = [
-    { ...base, id: "m1", date: "2026-01-05T10:00:00Z", subject: "Friday", text: quoted },
+    {
+      ...base,
+      id: "m1",
+      date: "2026-01-05T10:00:00Z",
+      subject: "Friday",
+      text: quoted,
+      cc: "Lee <lee@example.test>",
+    },
     {
       ...base,
       id: "m2",
@@ -197,6 +204,8 @@ describe("mail_get", () => {
     expect(result.text).toContain("Message ID: m1\n");
     expect(result.text).toContain("Subject: Friday\n");
     expect(result.text).toContain("From: Jana <jana@example.test>\n");
+    // A reply all can keep everyone the message was copied to.
+    expect(result.text).toContain("Cc: Lee <lee@example.test>\n");
     expect(result.text).toContain("Body:\nThanks, see you Friday.");
     expect(result.text).not.toContain("Are we still on for Friday");
   });

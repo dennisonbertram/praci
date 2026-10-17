@@ -256,6 +256,16 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     );
   });
 
+  it("lists every message that needs a reply, as many as the Inbox page shows", async () => {
+    const ids = Array.from({ length: 12 }, (_, i) => `ask-${i}`);
+    const t = await harness({ a: ids.map((id, i) => message(id, 0.1 + i * 0.1)) });
+    await t.overview();
+    for (const id of ids) await t.triage(id, { needsReply: true, priority: "normal" });
+    const result = await t.overview();
+    expect(result.needsReply).toHaveLength(12);
+    expect(result.needsReplyListed).toBe("complete: all 12 messages that need a reply are listed");
+  });
+
   it("reads the cache without calling Gmail again inside the sync throttle", async () => {
     const t = await harness({ a: [message("m1", 1)] });
     await t.overview();

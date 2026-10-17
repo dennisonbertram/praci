@@ -28,7 +28,7 @@ msgstr ""
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
 msgstr ""
 
-#. placeholder {0}: messages.length + 1
+#. placeholder {0}: (message.thread?.length ?? 0) + (message.later?.length ?? 0) + 1
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "{0, plural, one {# message} other {# messages}}"
 msgstr ""
@@ -78,8 +78,8 @@ msgstr "{0} (máx. anexos {ATTACHMENT_MAX_COUNT})"
 
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx
-msgid "{0} (over 10 MiB)"
-msgstr "{0} (acima de 10 MiB)"
+msgid "{0} (over 10 MB)"
+msgstr ""
 
 #. placeholder {0}: preset.n
 #: src/pages/RoutineSchedule.tsx
@@ -1881,6 +1881,10 @@ msgstr "Limite de contexto"
 msgid "Continue"
 msgstr "Continuar"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Continue draft"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Continue in Background"
 msgstr ""
@@ -2797,6 +2801,7 @@ msgstr "Desconectando…"
 #: src/components/data-room/DropZone.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
+#: src/pages/Shell.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr ""
@@ -3706,6 +3711,10 @@ msgstr ""
 #: src/components/DesktopUpdates.tsx
 #: src/components/EmailCards.tsx
 msgid "Later"
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Later in this conversation"
 msgstr ""
 
 #: src/pages/CapTable.tsx
@@ -5694,7 +5703,6 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
 msgid "Search"
@@ -5720,6 +5728,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search by domain"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Search chats"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -6080,6 +6092,10 @@ msgstr "Algo deu errado. Tente novamente."
 #. placeholder {0}: labels[field]
 #: src/components/data-room/FilterBar.tsx
 msgid "Sort: {0}"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Sorting is taking longer than usual. Your mail is below."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -6633,6 +6649,10 @@ msgstr ""
 msgid "Try again"
 msgstr "Tentar novamente"
 
+#: src/pages/Inbox.tsx
+msgid "Try sorting again"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
 msgstr "Tente o teste novamente."
@@ -7121,6 +7141,7 @@ msgstr "Ontem"
 msgid "Yield"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/Shell.tsx
 msgid "You"
 msgstr "Você"
@@ -7137,6 +7158,10 @@ msgstr "Você pode fechar esta guia se ela não for redirecionada automaticament
 #: src/pages/McpOAuthCallback.tsx
 msgid "You can close this window."
 msgstr "Você pode fechar esta janela."
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "You have an unsent reply to this email."
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "You have control"

@@ -2204,7 +2204,7 @@ export function ShellPage() {
           continue;
         }
         if (file.size > ATTACHMENT_MAX_BYTES) {
-          skipped.push(t`${file.name} (over 10 MiB)`);
+          skipped.push(t`${file.name} (over 10 MB)`);
           continue;
         }
         const mimeType = inferAttachmentMimeType(file.name, file.type);
@@ -3048,6 +3048,7 @@ export function ShellPage() {
               disabled={Boolean(recordingSkill)}
               pendingAttachments={activePendingAttachments}
               attachmentNotice={attachmentNotice}
+              onDismissAttachmentNotice={() => setAttachmentNotice(null)}
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}
@@ -3283,7 +3284,8 @@ export function ShellPage() {
           <InputGroupInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t`Search`}
+            // Chats, files and links; the Inbox has its own mail search.
+            placeholder={t`Search chats`}
             autoComplete="off"
             name="sidebar-search"
           />
@@ -5644,7 +5646,13 @@ const Transcript = memo(function Transcript({
               ) : null}
               <div
                 data-message-id={message.id}
-                className={peerReceipt ? "relative py-0.5" : "group/message relative hover:z-20"}
+                className={
+                  peerReceipt
+                    ? "relative py-0.5"
+                    : // A narrow transcript (the Inbox agent panel) has no gutter beside the bubbles, so the
+                      // hover time above and the actions below need room of their own.
+                      "group/message relative hover:z-20 @max-sm:[@media(hover:hover)]:pt-3 @max-sm:[@media(hover:hover)]:pb-5"
+                }
               >
                 <div
                   className={
@@ -5877,6 +5885,7 @@ export const Composer = memo(function Composer({
   disabled,
   pendingAttachments,
   attachmentNotice,
+  onDismissAttachmentNotice,
   sendError,
   runError,
   runErrorId,
@@ -5904,6 +5913,7 @@ export const Composer = memo(function Composer({
   disabled?: boolean;
   pendingAttachments: PendingAttachment[];
   attachmentNotice: string | null;
+  onDismissAttachmentNotice?: () => void;
   sendError: string | null;
   runError: string | null;
   runErrorId: string | null;
@@ -6430,8 +6440,22 @@ export const Composer = memo(function Composer({
         />
       ) : null}
       {attachmentNotice ? (
-        <div className="mb-3 rounded-[14px] border border-warning/40 bg-warning/10 px-4 py-2 text-[13px] text-warning">
-          {attachmentNotice}
+        <div
+          role="status"
+          className="mb-3 flex items-center gap-2 rounded-[14px] border border-warning/40 bg-warning/10 py-1 ps-4 pe-1 text-[13px] text-warning"
+        >
+          <span className="min-w-0 flex-1 py-1">{attachmentNotice}</span>
+          {onDismissAttachmentNotice ? (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label={t`Dismiss`}
+              className="shrink-0 text-warning"
+              onClick={onDismissAttachmentNotice}
+            >
+              <X aria-hidden="true" />
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {pendingAttachments.length ? (

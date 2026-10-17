@@ -9,7 +9,8 @@ const SYNC_DEADLINE_MS = 8_000;
 const WINDOW_MS = 14 * 86_400_000;
 const MAX_CACHED = 200;
 const MAX_ROWS = 25;
-const MAX_NEEDS_REPLY = 10;
+// Enough for a busy Needs reply group, so the agent lists what the page lists; recent mail keeps a few rows.
+const MAX_NEEDS_REPLY = 20;
 const MAX_TODOS = 6;
 const RANK: Record<string, number> = { critical: 0, important: 1, normal: 2, low: 3 };
 

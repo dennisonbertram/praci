@@ -114,6 +114,17 @@ function pressEnter(textarea: HTMLTextAreaElement) {
 }
 
 describe("Composer", () => {
+  it("lets the person dismiss the skipped-attachment notice", () => {
+    const onDismissAttachmentNotice = vi.fn();
+    renderComposer(async () => true, {
+      attachmentNotice: "Skipped big.mp4 (over 10 MB)",
+      onDismissAttachmentNotice,
+    });
+    const dismiss = container?.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
+    act(() => dismiss?.click());
+    expect(onDismissAttachmentNotice).toHaveBeenCalledTimes(1);
+  });
+
   describe("mention highlight when targets reload", () => {
     const researcher: ComposerMention = { kind: "bot", id: "bot-3", name: "Researcher" };
     const writer: ComposerMention = { kind: "bot", id: "bot-4", name: "Research Writer" };

@@ -542,6 +542,8 @@ async function mailGet(deps: MailToolDeps, context: AdapterContext, args: Record
       `Thread ID: ${message.threadId}`,
       `From: ${addressText(message.from)}`,
       `To: ${message.to.map(addressText).join(", ")}`,
+      // A reply all needs the Cc list too.
+      ...(message.cc.length ? [`Cc: ${message.cc.map(addressText).join(", ")}`] : []),
       `Subject: ${message.subject}`,
       `Date: ${message.date}`,
       "Body:",

@@ -140,6 +140,7 @@ import {
 import {
   buildApprovalAskBlock,
   cartaMailSendIsComplete,
+  describeApprovalAction,
   isCartaMailSend,
   isCartaWrite,
 } from "./approval-ask.js";
@@ -4734,7 +4735,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             await notifyRun(deps, run, {
               kind: "help",
               title: `${bot.name} needs approval`,
-              body: `Review before ${name}`,
+              body: redactSecrets(
+                `Review before ${describeApprovalAction(name, args)}`,
+                runSecrets,
+              ),
               botId: bot.id,
               threadId: thread.id,
             });

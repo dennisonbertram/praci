@@ -35,5 +35,9 @@ describe("ensureInboxAgent", () => {
     expect(String(input.instructions)).toContain("call mail_send");
     expect(String(input.instructions)).toContain("approves, edits or discards it");
     expect(String(input.instructions)).not.toContain("not send");
+    // A reply keeps the message's Cc, counts match the Inbox, and times are never shown in UTC.
+    expect(String(input.instructions)).toContain("every other To and Cc recipient");
+    expect(String(input.instructions)).toContain("give its full count");
+    expect(String(input.instructions)).toContain("never quote a clock time");
   });
 });

@@ -114,7 +114,13 @@ function fullMailDetail(args: Record<string, unknown>, reviewReason?: string): s
   return lines.join("\n");
 }
 
-function describeApprovalAction(toolName: string, args: Record<string, unknown>): string {
+/** What the approval is for, in words; never a raw tool name for mail. */
+export function describeApprovalAction(toolName: string, args: Record<string, unknown>): string {
+  if (toolName === "mail_send" || toolName === "mail_draft") {
+    const [first, ...rest] = strings(args.to);
+    const to = first ? ` to ${first}${rest.length ? ` and ${rest.length} more` : ""}` : "";
+    return toolName === "mail_send" ? `sending email${to}` : `saving a draft${to}`;
+  }
   if (toolName === "destination.write") {
     const collection = args.collection ? String(args.collection) : "records";
     const title = args.title ? ` "${String(args.title)}"` : "";

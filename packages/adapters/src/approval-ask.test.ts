@@ -99,6 +99,15 @@ describe("mail approval payload", () => {
     }
   });
 
+  it("names a mail approval in words, not by its tool name", () => {
+    const text = (tool: string) => {
+      const block = buildApprovalAskBlock("effect-1", tool, args, []);
+      return block.kind === "ask" ? block.text : "";
+    };
+    expect(text("mail_send")).toBe("Review before sending email to Jana <jana@example.test>");
+    expect(text("mail_draft")).toBe("Review before saving a draft to Jana <jana@example.test>");
+  });
+
   it("leaves the generic card for other tools, saved-draft sends and oversized bodies", () => {
     const mailOf = (tool: string, input: Record<string, unknown>) => {
       const block = buildApprovalAskBlock("effect-1", tool, input, []);
