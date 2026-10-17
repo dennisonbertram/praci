@@ -7142,6 +7142,7 @@ msgid "Yield"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid "You"
 msgstr "Vous"
