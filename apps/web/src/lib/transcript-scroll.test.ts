@@ -3,6 +3,7 @@ import {
   transcriptCanSnapAfterFrame,
   transcriptIsNearEnd,
   transcriptMovedDown,
+  transcriptUserJustSent,
 } from "./transcript-scroll.js";
 
 describe("transcriptIsNearEnd", () => {
@@ -36,5 +37,16 @@ describe("transcriptMovedDown", () => {
     expect(transcriptMovedDown(null, 920)).toBe(false);
     expect(transcriptMovedDown(950, 920)).toBe(false);
     expect(transcriptMovedDown(920, 950)).toBe(true);
+  });
+});
+
+describe("transcriptUserJustSent", () => {
+  it("is true only for a new last message from the user", () => {
+    expect(transcriptUserJustSent("m1", { id: "m2", role: "user" })).toBe(true);
+    expect(transcriptUserJustSent("m1", { id: "m2", role: "bot" })).toBe(false);
+    expect(transcriptUserJustSent("m2", { id: "m2", role: "user" })).toBe(false);
+    // The first render of a thread is not a send.
+    expect(transcriptUserJustSent(null, { id: "m2", role: "user" })).toBe(false);
+    expect(transcriptUserJustSent("m1", undefined)).toBe(false);
   });
 });

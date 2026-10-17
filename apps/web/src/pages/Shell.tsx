@@ -168,6 +168,7 @@ import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
+import { InboxAgentIntro } from "../components/inbox/InboxAgentIntro";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { SidebarPageLink } from "../components/SidebarPageLink";
@@ -272,6 +273,7 @@ import {
   transcriptCanSnapAfterFrame,
   transcriptIsNearEnd,
   transcriptMovedDown,
+  transcriptUserJustSent,
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
 import { errorText } from "../lib/user-error";
@@ -2953,47 +2955,56 @@ export function ShellPage() {
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <BotToolControlsContext.Provider value={botToolControls}>
-            <Transcript
-              key={activeSnapshot?.threadId}
-              scrollRef={messageScroll}
-              scrollRequest={scrollRequest}
-              onScrollRequestHandled={clearScrollRequest}
-              artifactTarget={transcriptArtifactTarget}
-              messages={transcriptMessages}
-              showToolActivity={showToolActivity}
-              olderCursor={activeSnapshot?.olderCursor ?? null}
-              loadingOlder={loadingOlder}
-              answerableAskMessageId={answerableAskMessageId}
-              running={transcriptRunning}
-              workingBots={workingBots}
-              workingActivity={soleWorkingActivity}
-              workingStartedAt={workingStartedAt}
-              onLoadOlder={loadOlder}
-              onOpenBot={openBot}
-              onAnswer={answerMessage}
-              onReply={(message) => {
-                setReplyTarget(message);
-                setReplyQuote(null);
-              }}
-              onQuote={(message, quote) => {
-                setReplyTarget(message);
-                setReplyQuote(quote);
-              }}
-              onReact={reactToMessage}
-              onJumpToMessage={jumpToReplyMessage}
-              onOpenPeerMessages={(peer) => {
-                setPeerConversation(peer);
-              }}
-              memberName={resolveTranscriptMemberName}
-              peerBot={resolveTranscriptBot}
-              onRefresh={refreshActiveThread}
-              onBotChanged={refreshBots}
-              onAddRoutine={addSkillRoutine}
-              voiceReady={Boolean(voiceStatus?.ready)}
-              speakingMessageId={speakingMessageId}
-              onSpeak={speakMessage}
-              onOpenComputer={onOpenComputer}
-            />
+            {inboxMode &&
+            activeSnapshot &&
+            transcriptMessages.length === 0 &&
+            activeSnapshot.olderCursor == null &&
+            !transcriptRunning &&
+            !sending ? (
+              <InboxAgentIntro onAsk={(text) => void sendMessage(text, [], newClientId())} />
+            ) : (
+              <Transcript
+                key={activeSnapshot?.threadId}
+                scrollRef={messageScroll}
+                scrollRequest={scrollRequest}
+                onScrollRequestHandled={clearScrollRequest}
+                artifactTarget={transcriptArtifactTarget}
+                messages={transcriptMessages}
+                showToolActivity={showToolActivity}
+                olderCursor={activeSnapshot?.olderCursor ?? null}
+                loadingOlder={loadingOlder}
+                answerableAskMessageId={answerableAskMessageId}
+                running={transcriptRunning}
+                workingBots={workingBots}
+                workingActivity={soleWorkingActivity}
+                workingStartedAt={workingStartedAt}
+                onLoadOlder={loadOlder}
+                onOpenBot={openBot}
+                onAnswer={answerMessage}
+                onReply={(message) => {
+                  setReplyTarget(message);
+                  setReplyQuote(null);
+                }}
+                onQuote={(message, quote) => {
+                  setReplyTarget(message);
+                  setReplyQuote(quote);
+                }}
+                onReact={reactToMessage}
+                onJumpToMessage={jumpToReplyMessage}
+                onOpenPeerMessages={(peer) => {
+                  setPeerConversation(peer);
+                }}
+                memberName={resolveTranscriptMemberName}
+                peerBot={resolveTranscriptBot}
+                onRefresh={refreshActiveThread}
+                onBotChanged={refreshBots}
+                onAddRoutine={addSkillRoutine}
+                voiceReady={Boolean(voiceStatus?.ready)}
+                speakingMessageId={speakingMessageId}
+                onSpeak={speakMessage}
+                onOpenComputer={onOpenComputer}
+              />
+            )}
           </BotToolControlsContext.Provider>
           {composerDraft ? (
             <ComposeEmail
@@ -5476,7 +5487,13 @@ const Transcript = memo(function Transcript({
     onScrollRequestHandled();
   }, [messages, scrollRequest, scrollRef, endJumpScroll, onScrollRequestHandled]);
 
+  // A message the user just sent brings the transcript to the end even after they scrolled up
+  // (or clicked a card, which stops following), so the reply that follows is in view.
+  const lastMessageId = useRef<string | null>(null);
   useLayoutEffect(() => {
+    const last = messages.at(-1);
+    if (transcriptUserJustSent(lastMessageId.current, last)) following.current = true;
+    lastMessageId.current = last?.id ?? null;
     if (following.current) snapToEnd();
   }, [messages, running, snapToEnd]);
 
@@ -5555,7 +5572,7 @@ const Transcript = memo(function Transcript({
             following.current = false;
           }
         }}
-        className="rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-5 md:px-7 md:py-6"
+        className="@container rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-5 md:px-7 md:py-6"
       >
         {olderCursor != null ? (
           <button
@@ -5642,11 +5659,12 @@ const Transcript = memo(function Transcript({
                       peerReceipt
                         ? undefined
                         : `relative w-fit min-w-0 ${
+                            // A narrow transcript (the Inbox agent panel) cannot spare 8rem beside each bubble.
                             message.role === "user"
-                              ? "max-w-[min(84%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[84%]"
+                              ? "max-w-[min(84%,calc(100%_-_8rem))] @max-sm:max-w-[84%] [@media(hover:none)]:max-w-[84%]"
                               : message.blocks.some((block) => block.kind === "ask" && block.mail)
-                                ? "max-w-[calc(100%_-_5rem)] [@media(hover:none)]:max-w-full"
-                                : "max-w-[min(88%,calc(100%_-_8rem))] [@media(hover:none)]:max-w-[88%]"
+                                ? "max-w-[calc(100%_-_5rem)] @max-sm:max-w-full [@media(hover:none)]:max-w-full"
+                                : "max-w-[min(88%,calc(100%_-_8rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
                           }`
                     }
                   >

@@ -28,6 +28,11 @@ msgstr ""
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
 msgstr ""
 
+#. placeholder {0}: messages.length + 1
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "{0, plural, one {# message} other {# messages}}"
+msgstr ""
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -58,6 +63,12 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "{0, plural, one {Waiting for sign-in — the link expires in about # minute.} other {Waiting for sign-in — the link expires in about # minutes.}}"
+msgstr ""
+
+#. placeholder {0}: first.name
+#. placeholder {1}: formatBytes(first.size)
+#: src/components/ComposeEmail.tsx
+msgid "{0} ({1}) was not added. Attachments can be up to {MAX_COMPOSE_ATTACHMENT_MB} MB in total."
 msgstr ""
 
 #. placeholder {0}: file.name
@@ -98,6 +109,11 @@ msgstr ""
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "{0} did not accept the sign-in."
+msgstr ""
+
+#. placeholder {0}: rejected.length
+#: src/components/ComposeEmail.tsx
+msgid "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHMENT_MB} MB in total."
 msgstr ""
 
 #. placeholder {0}: sender.name
@@ -1540,6 +1556,10 @@ msgstr "닫기"
 msgid "Close {title}"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Close and remove"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Close chart"
 msgstr "차트 닫기"
@@ -2382,6 +2402,11 @@ msgstr ""
 msgid "Couldn't classify"
 msgstr ""
 
+#. placeholder {0}: result.filename
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Couldn't download {0}"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
 msgstr "메시징 설정을 불러올 수 없습니다"
@@ -2731,10 +2756,6 @@ msgstr ""
 msgid "Discard"
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
-msgid "Discard attachments?"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Discarded"
 msgstr ""
@@ -2855,8 +2876,9 @@ msgstr "마크다운으로 다운로드"
 msgid "Download Executor"
 msgstr ""
 
+#. placeholder {0}: result.filename
 #: src/components/inbox/InboxMessageDialog.tsx
-msgid "Download failed"
+msgid "Downloaded {0}"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
@@ -3218,6 +3240,10 @@ msgstr ""
 msgid "Find models"
 msgstr "모델 찾기"
 
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "Find the latest invoice"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Finding…"
@@ -3469,6 +3495,10 @@ msgstr "실행 주기"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "How to check"
 msgstr "완료 확인 방법"
+
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "I’m done"
@@ -3850,6 +3880,16 @@ msgstr ""
 msgid "Mail data Rakazo cached from these accounts is removed."
 msgstr ""
 
+#. placeholder {0}: status.sender
+#: src/pages/Inbox.tsx
+msgid "Mail from {0} is now marked as noise"
+msgstr ""
+
+#. placeholder {0}: status.sender
+#: src/pages/Inbox.tsx
+msgid "Mail from {0} is now marked important"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Make sure nothing is still running on this computer."
 msgstr "이 컴퓨터에서 실행 중인 작업이 없는지 확인하세요."
@@ -3892,8 +3932,18 @@ msgstr "읽지 않음으로 표시"
 msgid "Mark important"
 msgstr ""
 
+#. placeholder {0}: row.from
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark important: all mail from {0}"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark noise"
+msgstr ""
+
+#. placeholder {0}: row.from
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark noise: all mail from {0}"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -3904,14 +3954,6 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark unread"
-msgstr ""
-
-#: src/pages/Inbox.tsx
-msgid "Marked important"
-msgstr ""
-
-#: src/pages/Inbox.tsx
-msgid "Marked noise"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -4516,6 +4558,7 @@ msgstr ""
 msgid "Not found"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "나중에"
@@ -5001,6 +5044,10 @@ msgstr "대기 중"
 msgid "Quote"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to {name}."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "React"
 msgstr "반응하기"
@@ -5251,6 +5298,10 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Remove attachments?"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -5687,6 +5738,10 @@ msgstr ""
 msgid "Search mail"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Search mail, e.g. from:sam has:attachment"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
 msgstr "모델 검색"
@@ -5756,10 +5811,6 @@ msgstr "재설정 링크 보내기"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Send saved draft"
-msgstr ""
-
-#: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews are sent to {name}."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -5894,13 +5945,13 @@ msgstr ""
 msgid "Show more"
 msgstr "더 보기"
 
+#: src/components/ComposeEmail.tsx
+msgid "Show original message"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Show password"
 msgstr "비밀번호 표시"
-
-#: src/components/ComposeEmail.tsx
-msgid "Show quoted text"
-msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Show settings"
@@ -6029,6 +6080,10 @@ msgstr "문제가 발생했습니다. 다시 시도하세요."
 #. placeholder {0}: labels[field]
 #: src/components/data-room/FilterBar.tsx
 msgid "Sort: {0}"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Sorting your mail…"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -6209,6 +6264,10 @@ msgstr ""
 
 #: src/components/FinanceCards.tsx
 msgid "Subscriptions / mo"
+msgstr ""
+
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "Summarize what's new this week"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6972,6 +7031,10 @@ msgstr "이 Bot의 기억은 어떻게 할까요?"
 msgid "What do you want me on first?"
 msgstr ""
 
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "What needs my reply today?"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "What result will you demonstrate?"
 msgstr "어떤 작업을 직접 보여줄까요?"
@@ -7103,3 +7166,7 @@ msgstr "이름"
 #: src/pages/Welcome.tsx
 msgid "Your team of always-on agents<0/>that you can give real work to."
 msgstr "언제든 실제 작업을 맡길 수 있는<0/>나만의 Agent 팀"
+
+#: src/components/ComposeEmail.tsx
+msgid "Your text is saved as a draft. Attachments are not kept."
+msgstr ""

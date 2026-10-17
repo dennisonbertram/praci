@@ -28,6 +28,11 @@ msgstr ", {0} already imported"
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
 msgstr "{0, plural, one {# finance lookup} other {# finance lookups}}"
 
+#. placeholder {0}: messages.length + 1
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "{0, plural, one {# message} other {# messages}}"
+msgstr "{0, plural, one {# message} other {# messages}}"
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -59,6 +64,12 @@ msgstr "{0, plural, one {Waiting for sign-in — the code expires in about # min
 #: src/pages/Onboarding.tsx
 msgid "{0, plural, one {Waiting for sign-in — the link expires in about # minute.} other {Waiting for sign-in — the link expires in about # minutes.}}"
 msgstr "{0, plural, one {Waiting for sign-in — the link expires in about # minute.} other {Waiting for sign-in — the link expires in about # minutes.}}"
+
+#. placeholder {0}: first.name
+#. placeholder {1}: formatBytes(first.size)
+#: src/components/ComposeEmail.tsx
+msgid "{0} ({1}) was not added. Attachments can be up to {MAX_COMPOSE_ATTACHMENT_MB} MB in total."
+msgstr "{0} ({1}) was not added. Attachments can be up to {MAX_COMPOSE_ATTACHMENT_MB} MB in total."
 
 #. placeholder {0}: file.name
 #: src/pages/Shell.tsx
@@ -99,6 +110,11 @@ msgstr "{0} default"
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "{0} did not accept the sign-in."
 msgstr "{0} did not accept the sign-in."
+
+#. placeholder {0}: rejected.length
+#: src/components/ComposeEmail.tsx
+msgid "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHMENT_MB} MB in total."
+msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHMENT_MB} MB in total."
 
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
@@ -1540,6 +1556,10 @@ msgstr "Close"
 msgid "Close {title}"
 msgstr "Close {title}"
 
+#: src/components/ComposeEmail.tsx
+msgid "Close and remove"
+msgstr "Close and remove"
+
 #: src/pages/shell/message-cards.tsx
 msgid "Close chart"
 msgstr "Close chart"
@@ -2382,6 +2402,11 @@ msgstr "Could not verify computer setup ({failureMessage}). Fix the connection, 
 msgid "Couldn't classify"
 msgstr "Couldn't classify"
 
+#. placeholder {0}: result.filename
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Couldn't download {0}"
+msgstr "Couldn't download {0}"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
 msgstr "Couldn't load messaging settings"
@@ -2731,10 +2756,6 @@ msgstr "Disabled tools"
 msgid "Discard"
 msgstr "Discard"
 
-#: src/components/ComposeEmail.tsx
-msgid "Discard attachments?"
-msgstr "Discard attachments?"
-
 #: src/components/MailApprovalCard.tsx
 msgid "Discarded"
 msgstr "Discarded"
@@ -2855,9 +2876,10 @@ msgstr "Download as markdown"
 msgid "Download Executor"
 msgstr "Download Executor"
 
+#. placeholder {0}: result.filename
 #: src/components/inbox/InboxMessageDialog.tsx
-msgid "Download failed"
-msgstr "Download failed"
+msgid "Downloaded {0}"
+msgstr "Downloaded {0}"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
@@ -3218,6 +3240,10 @@ msgstr "Find an app"
 msgid "Find models"
 msgstr "Find models"
 
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "Find the latest invoice"
+msgstr "Find the latest invoice"
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Finding…"
@@ -3469,6 +3495,10 @@ msgstr "How often"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "How to check"
 msgstr "How to check"
+
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
+msgstr "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 
 #: src/pages/Shell.tsx
 msgid "I’m done"
@@ -3850,6 +3880,16 @@ msgstr "Mail data from this account that Rakazo cached is removed."
 msgid "Mail data Rakazo cached from these accounts is removed."
 msgstr "Mail data Rakazo cached from these accounts is removed."
 
+#. placeholder {0}: status.sender
+#: src/pages/Inbox.tsx
+msgid "Mail from {0} is now marked as noise"
+msgstr "Mail from {0} is now marked as noise"
+
+#. placeholder {0}: status.sender
+#: src/pages/Inbox.tsx
+msgid "Mail from {0} is now marked important"
+msgstr "Mail from {0} is now marked important"
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Make sure nothing is still running on this computer."
 msgstr "Make sure nothing is still running on this computer."
@@ -3892,9 +3932,19 @@ msgstr "Mark as Unread"
 msgid "Mark important"
 msgstr "Mark important"
 
+#. placeholder {0}: row.from
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark important: all mail from {0}"
+msgstr "Mark important: all mail from {0}"
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark noise"
 msgstr "Mark noise"
+
+#. placeholder {0}: row.from
+#: src/components/inbox/InboxRow.tsx
+msgid "Mark noise: all mail from {0}"
+msgstr "Mark noise: all mail from {0}"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
@@ -3905,14 +3955,6 @@ msgstr "Mark read"
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark unread"
 msgstr "Mark unread"
-
-#: src/pages/Inbox.tsx
-msgid "Marked important"
-msgstr "Marked important"
-
-#: src/pages/Inbox.tsx
-msgid "Marked noise"
-msgstr "Marked noise"
 
 #: src/pages/Inbox.tsx
 msgid "Marked read"
@@ -4516,6 +4558,7 @@ msgstr "Not counted in cash"
 msgid "Not found"
 msgstr "Not found"
 
+#: src/components/AiDataSharing.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "Not now"
@@ -5001,6 +5044,10 @@ msgstr "Queued"
 msgid "Quote"
 msgstr "Quote"
 
+#: src/components/AiDataSharing.tsx
+msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to {name}."
+msgstr "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to {name}."
+
 #: src/pages/Shell.tsx
 msgid "React"
 msgstr "React"
@@ -5252,6 +5299,10 @@ msgstr "Remove {name}?"
 #: src/pages/shell/bot-credentials.tsx
 msgid "Remove {secretName}? This bot will no longer be able to use it."
 msgstr "Remove {secretName}? This bot will no longer be able to use it."
+
+#: src/components/ComposeEmail.tsx
+msgid "Remove attachments?"
+msgstr "Remove attachments?"
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Remove filter {label}"
@@ -5687,6 +5738,10 @@ msgstr "Search integrations.sh"
 msgid "Search mail"
 msgstr "Search mail"
 
+#: src/pages/Inbox.tsx
+msgid "Search mail, e.g. from:sam has:attachment"
+msgstr "Search mail, e.g. from:sam has:attachment"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search models"
 msgstr "Search models"
@@ -5757,10 +5812,6 @@ msgstr "Send reset link"
 #: src/components/MailApprovalCard.tsx
 msgid "Send saved draft"
 msgstr "Send saved draft"
-
-#: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews are sent to {name}."
-msgstr "Senders, recipients, subjects and short previews are sent to {name}."
 
 #: src/components/MailApprovalCard.tsx
 msgid "Sending is off for {botName}. Turn it back on in its tools."
@@ -5894,13 +5945,13 @@ msgstr "Show list"
 msgid "Show more"
 msgstr "Show more"
 
+#: src/components/ComposeEmail.tsx
+msgid "Show original message"
+msgstr "Show original message"
+
 #: src/pages/Auth.tsx
 msgid "Show password"
 msgstr "Show password"
-
-#: src/components/ComposeEmail.tsx
-msgid "Show quoted text"
-msgstr "Show quoted text"
 
 #: src/pages/Shell.tsx
 msgid "Show settings"
@@ -6030,6 +6081,10 @@ msgstr "Something went wrong. Try again."
 #: src/components/data-room/FilterBar.tsx
 msgid "Sort: {0}"
 msgstr "Sort: {0}"
+
+#: src/pages/Inbox.tsx
+msgid "Sorting your mail…"
+msgstr "Sorting your mail…"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/Preview.tsx
@@ -6210,6 +6265,10 @@ msgstr "Subscriptions"
 #: src/components/FinanceCards.tsx
 msgid "Subscriptions / mo"
 msgstr "Subscriptions / mo"
+
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "Summarize what's new this week"
+msgstr "Summarize what's new this week"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -6972,6 +7031,10 @@ msgstr "What about its memories?"
 msgid "What do you want me on first?"
 msgstr "What do you want me on first?"
 
+#: src/components/inbox/InboxAgentIntro.tsx
+msgid "What needs my reply today?"
+msgstr "What needs my reply today?"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "What result will you demonstrate?"
 msgstr "What result will you demonstrate?"
@@ -7103,3 +7166,7 @@ msgstr "Your name"
 #: src/pages/Welcome.tsx
 msgid "Your team of always-on agents<0/>that you can give real work to."
 msgstr "Your team of always-on agents<0/>that you can give real work to."
+
+#: src/components/ComposeEmail.tsx
+msgid "Your text is saved as a draft. Attachments are not kept."
+msgstr "Your text is saved as a draft. Attachments are not kept."
