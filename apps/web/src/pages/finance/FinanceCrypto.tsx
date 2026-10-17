@@ -20,7 +20,6 @@ import { LineChart } from "../../components/finance/charts";
 import { ExchangeGroup } from "../../components/finance/ExchangeGroup";
 import { DetailPage, Section, Th, useFinanceQuery } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
-import { BlockscoutConnectDialog } from "../../components/integrations/BlockscoutConnectDialog";
 import { chainName, tokenAmount } from "../../lib/crypto-format";
 import { dayMonth, money, moneyExact } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
@@ -146,7 +145,6 @@ export function FinanceCryptoPage() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<FinanceWallet | null>(null);
   const [removing, setRemoving] = useState<FinanceWallet | null>(null);
-  const [connecting, setConnecting] = useState(false);
   const data = q.data;
   const updated = data?.summary.lastSyncedAt ? formatRelativeTime(data.summary.lastSyncedAt) : "";
   const holdings = [...(data?.holdings ?? [])].sort(
@@ -171,24 +169,6 @@ export function FinanceCryptoPage() {
     >
       {data ? (
         <>
-          {/* Balances come from public RPC and need no key; the first wallet creates the keyless
-              Blockscout server the agent uses, so a key is only an optional extra. */}
-          {data.connected && !data.hasApiKey ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-sm text-muted-foreground">
-                <Trans>
-                  Wallet balances are read from public networks and need no key. The Finance agent
-                  uses a Blockscout API key, if you add one, for wallet lookups.
-                </Trans>
-              </span>
-              <Button size="sm" variant="outline" onClick={() => setConnecting(true)}>
-                <Trans>Add Blockscout API key</Trans>
-              </Button>
-            </div>
-          ) : null}
-          {connecting ? (
-            <BlockscoutConnectDialog onConnected={reloadAll} onClose={() => setConnecting(false)} />
-          ) : null}
           {data.lastError ? (
             <p role="alert" className="text-sm text-destructive">
               {data.lastError}
@@ -235,7 +215,8 @@ export function FinanceCryptoPage() {
               />
             </Section>
           ) : null}
-          {data.summary.byChain.length > 0 ? (
+          {/* One chain would only repeat the wallet total. */}
+          {data.summary.byChain.length > 1 ? (
             <Section title={<Trans>Chains</Trans>}>
               <table className="w-full border-collapse">
                 <tbody>

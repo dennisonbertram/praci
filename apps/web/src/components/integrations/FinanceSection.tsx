@@ -67,7 +67,12 @@ function CryptoTile({
         <div className="min-w-0">
           <div className="truncate font-semibold">Blockscout</div>
           <div className="truncate text-xs text-muted-foreground">
-            <Trans>Wallet balances and history</Trans>
+            {(hasKey || hasServer) && !hasKey ? (
+              // Connected without a key is complete: balances come from public networks.
+              <Trans>Wallet balances and history · no key needed</Trans>
+            ) : (
+              <Trans>Wallet balances and history</Trans>
+            )}
           </div>
         </div>
       </div>

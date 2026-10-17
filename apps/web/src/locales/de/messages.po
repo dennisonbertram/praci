@@ -599,10 +599,6 @@ msgstr ""
 msgid "Add auditor"
 msgstr ""
 
-#: src/pages/finance/FinanceCrypto.tsx
-msgid "Add Blockscout API key"
-msgstr ""
-
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Add connected model"
 msgstr "Verbundenes Modell hinzufügen"
@@ -7598,8 +7594,8 @@ msgstr ""
 msgid "Wallet balances and history"
 msgstr ""
 
-#: src/pages/finance/FinanceCrypto.tsx
-msgid "Wallet balances are read from public networks and need no key. The Finance agent uses a Blockscout API key, if you add one, for wallet lookups."
+#: src/components/integrations/FinanceSection.tsx
+msgid "Wallet balances and history · no key needed"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx

@@ -233,26 +233,11 @@ it("shows the server's error inline when adding a wallet fails", async () => {
   expect(document.body.querySelector('[role="alert"]')?.textContent).toContain("already added");
 });
 
-it("offers to add the Blockscout key, opening the modal, only when there is no API key", async () => {
-  rpcMock.crypto.mockResolvedValue(data({ hasApiKey: true }));
-  await show();
-  expect(
-    [...container.querySelectorAll("button")].some((b) => /Blockscout/.test(b.textContent ?? "")),
-  ).toBe(false);
-  await act(async () => root.unmount());
-  root = createRoot(container);
+it("does not ask for a Blockscout key on the Crypto page; balances need none", async () => {
   rpcMock.crypto.mockResolvedValue(data({ connected: true, hasApiKey: false }));
   await show();
-  // Balances never need the key, so the page does not claim they do.
-  expect(container.textContent).toContain("need no key");
-  expect(container.textContent).not.toContain("needs its API key");
-  const connect = [...container.querySelectorAll("button")].find(
-    (b) => b.textContent === "Add Blockscout API key",
-  );
-  await act(async () => (connect as HTMLElement).click());
-  expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain(
-    "Connect Blockscout",
-  );
+  expect(container.textContent).not.toContain("Blockscout");
+  expect(container.textContent).not.toContain("API key");
 });
 
 it("asks a founder with no wallet to add one, not to connect Blockscout first", async () => {
@@ -354,4 +339,14 @@ it("shows wallet-only totals in the Wallets section when exchanges add to the su
   expect(wallets?.textContent).not.toContain("$3,253");
   expect(wallets?.textContent).toContain("1 unpriced");
   expect(wallets?.textContent).not.toContain("4 unpriced");
+});
+
+it("leaves out the Chains card when every holding is on one chain", async () => {
+  const base = data();
+  rpcMock.crypto.mockResolvedValue({
+    ...base,
+    summary: { ...base.summary, byChain: [{ chainId: 1, cents: 300_250 }] },
+  });
+  await show();
+  expect([...container.querySelectorAll("h2")].map((h) => h.textContent)).not.toContain("Chains");
 });
