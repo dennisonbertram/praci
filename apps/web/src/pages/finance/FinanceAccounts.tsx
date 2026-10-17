@@ -23,7 +23,7 @@ import {
   rowClass,
   Section,
   Th,
-  TransactionTable,
+  TransactionsSection,
   useFinanceQuery,
   useRowNavigate,
 } from "../../components/finance/ui";
@@ -375,9 +375,7 @@ export function FinanceAccountPage({ id }: { id: string }) {
               </table>
             </Section>
           ) : null}
-          <Section title={<Trans>Transactions</Trans>}>
-            <TransactionTable rows={data.transactions} />
-          </Section>
+          <TransactionsSection title={<Trans>Transactions</Trans>} rows={data.transactions} />
         </>
       ) : null}
     </DetailPage>

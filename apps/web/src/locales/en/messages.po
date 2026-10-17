@@ -199,6 +199,10 @@ msgstr "{botName}’s computer"
 msgid "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 msgstr "{commandVariable} is reserved and cannot be used as a command variable. Choose another name."
 
+#: src/components/finance/ui.tsx
+msgid "{count, plural, one {# transaction} other {# transactions}}"
+msgstr "{count, plural, one {# transaction} other {# transactions}}"
+
 #: src/lib/billing.ts
 msgid "{count} days"
 msgstr "{count} days"
@@ -1201,6 +1205,10 @@ msgstr "By account"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "By month"
 msgstr "By month"
+
+#: src/components/finance/ui.tsx
+msgid "By vendor"
+msgstr "By vendor"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Cadence"
@@ -3714,6 +3722,7 @@ msgstr "Link address"
 msgid "Link SSO"
 msgstr "Link SSO"
 
+#: src/components/finance/ui.tsx
 #: src/pages/Shell.tsx
 msgid "List"
 msgstr "List"
@@ -4067,6 +4076,10 @@ msgstr "minute"
 #: src/pages/RoutineSchedule.tsx
 msgid "minutes"
 msgstr "minutes"
+
+#: src/components/finance/ui.tsx
+msgid "Mixed"
+msgstr "Mixed"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -6628,6 +6641,7 @@ msgstr "Underline"
 msgid "Undo"
 msgstr "Undo"
 
+#: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Unknown"
 msgstr "Unknown"
