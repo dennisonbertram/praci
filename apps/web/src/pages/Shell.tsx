@@ -48,6 +48,7 @@ import {
   isRunTerminalEvent,
   isToolActivityBlock,
   latestAnswerableAskMessageId,
+  matchesArtifactQuery,
   mentionChipKey,
   nestRosterByParent,
   newClientId,
@@ -1808,6 +1809,7 @@ export function ShellPage() {
     return needle ? appPages.filter((page) => page.label.toLocaleLowerCase().includes(needle)) : [];
   }, [appPages, spaceQuery]);
   const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
+  const [searchArtifacts, setSearchArtifacts] = useState<SearchLink[]>([]);
 
   function openSearchResult(path: string) {
     setQuery("");
@@ -1827,6 +1829,7 @@ export function ShellPage() {
     if (!showSpaceSearch) {
       setSearchHits([]);
       setSearchDocuments([]);
+      setSearchArtifacts([]);
       setSearchLoading(false);
       return;
     }
@@ -1842,6 +1845,21 @@ export function ShellPage() {
         })
         .catch(() => {
           if (!abort.signal.aborted) setSearchDocuments([]);
+        });
+      // ponytail: matches the 60 newest artifacts by name and description; a server query when spaces hold more.
+      void rpc.artifacts
+        .listSpace({ limit: 60 })
+        .then((result) => {
+          if (abort.signal.aborted) return;
+          setSearchArtifacts(
+            result.items
+              .filter((item) => matchesArtifactQuery(item, spaceQuery))
+              .slice(0, 5)
+              .map((item) => ({ id: item.id, label: item.name })),
+          );
+        })
+        .catch(() => {
+          if (!abort.signal.aborted) setSearchArtifacts([]);
         });
       void rpc.search
         .query({ q: spaceQuery })
@@ -3544,6 +3562,10 @@ export function ShellPage() {
               loading={searchLoading}
               pages={searchPages}
               documents={searchDocuments}
+              artifacts={searchArtifacts}
+              onSelectArtifact={(id) =>
+                openSearchResult(`/app/artifacts/${encodeURIComponent(id)}`)
+              }
               onSelect={(hit) => void jumpToSearchHit(hit)}
               onSelectPage={openAppPage}
               onSelectDocument={(id) =>
