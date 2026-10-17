@@ -65,6 +65,9 @@ function ranked<T>(items: readonly T[], score: (item: T) => number | null): T[] 
     .map((entry) => entry.item);
 }
 
+/** The row Enter opens: data-selected's bg-muted barely shows on the popover, so mark it. */
+const SELECTED_ROW = "data-selected:bg-accent data-selected:shadow-[inset_3px_0_0_var(--ring)]";
+
 /** An app page (Inbox, Finance, ...) or a group chat the palette can open. */
 export type PaletteEntry = { id: string; label: string; icon?: ReactNode };
 
@@ -101,15 +104,20 @@ export function CommandPalette({
   const needle = search.trim().toLowerCase();
   const botScore = (bot: Bot) => paletteMatchScore(bot.name, needle, botSearchText(bot));
   const entryScore = (entry: PaletteEntry) => paletteMatchScore(entry.label, needle);
-  const filteredBots = useMemo(
-    () =>
-      needle
-        ? ranked(bots, (bot) => paletteMatchScore(bot.name, needle, botSearchText(bot)))
-        : bots,
-    [bots, needle],
-  );
   const shownPages = needle ? ranked(pages, entryScore) : pages;
   const shownGroups = needle ? ranked(groups, entryScore) : groups;
+  const filteredBots = useMemo(() => {
+    if (!needle) return bots;
+    const matches = ranked(bots, (bot) => paletteMatchScore(bot.name, needle, botSearchText(bot)));
+    // Description-only matches are noise once anything matches by name.
+    const nameMatched =
+      shownPages.length > 0 ||
+      shownGroups.length > 0 ||
+      matches.some((bot) => paletteMatchScore(bot.name, needle) !== null);
+    return nameMatched
+      ? matches.filter((bot) => paletteMatchScore(bot.name, needle) !== null)
+      : matches;
+  }, [bots, needle, shownPages.length, shownGroups.length]);
   // While searching, the section with the best match comes first, so Enter opens it.
   const best = (score: number | null | undefined) => score ?? Number.POSITIVE_INFINITY;
   const sectionOrder = needle
@@ -162,7 +170,7 @@ export function CommandPalette({
               onSelectBot(bot.id);
               onOpenChange(false);
             }}
-            className="items-center gap-3 rounded-xl! px-2.5 py-2.5"
+            className={`items-center gap-3 rounded-xl! px-2.5 py-2.5 ${SELECTED_ROW}`}
           >
             <BotAvatar color={bot.color} identity={bot.id} size={32} status={bot.status} />
             <div className="min-w-0 flex-1">
@@ -186,7 +194,8 @@ export function CommandPalette({
               ) : null}
             </div>
             {shortcut ? (
-              <CommandShortcut className="tracking-normal">
+              // Number shortcuts need a keyboard, so phones do not show them.
+              <CommandShortcut className="tracking-normal max-sm:hidden">
                 <Kbd>{shortcut}</Kbd>
               </CommandShortcut>
             ) : null}
@@ -205,7 +214,7 @@ export function CommandPalette({
             onSelectGroup(group.id);
             onOpenChange(false);
           }}
-          className="items-center gap-3 rounded-xl! px-2.5 py-2"
+          className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
         >
           <span className="grid size-8 place-items-center">{group.icon}</span>
           <span className="truncate font-medium text-foreground" dir="auto">
@@ -225,7 +234,7 @@ export function CommandPalette({
             onSelectPage(page.id);
             onOpenChange(false);
           }}
-          className="items-center gap-3 rounded-xl! px-2.5 py-2"
+          className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
         >
           <span className="grid size-8 place-items-center text-muted-foreground">{page.icon}</span>
           <span className="truncate font-medium text-foreground">{page.label}</span>

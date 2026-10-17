@@ -116,3 +116,14 @@ it("ranks a name prefix over a word, a substring and a description match", () =>
   expect([...scores].sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual(scores);
   expect(paletteMatchScore("Chief", "fin")).toBeNull();
 });
+
+it("hides bots that only mention the search once something matches by name", async () => {
+  await mount();
+  await search("fin");
+  // Chief only mentions "find" in its description; Finance and Finance agent match by name.
+  expect(document.querySelector("[data-testid=command-palette-bot-b1]")).toBeNull();
+  expect(document.querySelector("[data-testid=command-palette-bot-b3]")).not.toBeNull();
+  await search("investor");
+  // With no name match, the description match is still offered.
+  expect(document.querySelector("[data-testid=command-palette-bot-b1]")).not.toBeNull();
+});
