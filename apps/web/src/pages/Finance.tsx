@@ -58,7 +58,6 @@ import {
   changeText,
   dayRange,
   fullDay,
-  hiddenOr,
   lastDayOf,
   money,
   moneyExact,
@@ -349,7 +348,7 @@ function Overview({
   const heldTotal = data.crypto?.totalCents ?? 0;
   const bankRunwayMonths = runwayText(data.bankRunway?.months);
   const runOutMonth = data.runway.runOutDate
-    ? hiddenOr(monthFull(data.runway.runOutDate.slice(0, 7)))
+    ? monthFull(data.runway.runOutDate.slice(0, 7))
     : "";
   // The same figure on both sides says nothing, so the comparison is left out.
   const sameAsBefore = (p: { currentCents: number; previousCents: number | null }) =>

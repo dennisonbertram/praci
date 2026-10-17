@@ -6,8 +6,8 @@ import { setHideAmounts, useHideAmounts } from "../lib/hide-amounts-preference";
 /** What the switch does next, so the text always matches the label beside it. */
 const helper = (hidden: boolean) =>
   hidden
-    ? t`Amounts are hidden on every page. Plain numbers in bot replies may still show.`
-    : t`Hides money on every page and in chat, for screen sharing.`;
+    ? t`Money is hidden on every page. Runway, share counts and plain numbers in bot replies still show.`
+    : t`Hides money on every page and in chat, for screen sharing. Runway and share counts stay visible.`;
 
 /** Icon button for page headers. Pressed while amounts are hidden. */
 export function HideAmountsButton() {

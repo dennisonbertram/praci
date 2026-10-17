@@ -20,6 +20,6 @@ it("describes what the account-menu row will do in each state", async () => {
   const row = () => document.querySelector("[data-testid='hide-amounts-menu-item']");
   expect(row()?.textContent).toMatch(/^Hide amountsHides money/);
   await act(async () => (row() as HTMLButtonElement).click());
-  expect(row()?.textContent).toMatch(/^Show amountsAmounts are hidden/);
+  expect(row()?.textContent).toMatch(/^Show amountsMoney is hidden/);
   await act(async () => root.unmount());
 });
