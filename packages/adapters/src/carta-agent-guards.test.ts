@@ -3,6 +3,7 @@ import {
   CARTA_WRITE_TOOLS,
   cartaAgentSpawnKey,
   financeAgentSpawnKey,
+  inboxAgentSpawnKey,
 } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
@@ -79,8 +80,10 @@ describe("assignmentAllowsTool for the Carta agent", () => {
 });
 
 describe("Carta agent mail_send", () => {
-  it("is flagged for mandatory approval only for the Carta agent", () => {
+  it("is flagged for mandatory approval only for the Carta and Inbox agents", () => {
     expect(isCartaMailSend(carta, "mail_send")).toBe(true);
+    expect(isCartaMailSend(inboxAgentSpawnKey("u1"), "mail_send")).toBe(true);
+    expect(isCartaMailSend(inboxAgentSpawnKey("u1"), "mail_search")).toBe(false);
     expect(isCartaMailSend(carta, "mail_draft")).toBe(false);
     expect(isCartaMailSend(null, "mail_send")).toBe(false);
     expect(isCartaMailSend(financeAgentSpawnKey("u1"), "mail_send")).toBe(false);
