@@ -509,7 +509,7 @@ export function CapTablePage({
               <th className="py-2 pe-3 text-start font-medium">
                 <Trans>Name</Trans>
               </th>
-              <th className="py-2 pe-3 text-start font-medium">
+              <th className="hidden py-2 pe-3 text-start font-medium @md:table-cell">
                 <Trans>Email</Trans>
               </th>
               {snapshot ? (
@@ -553,7 +553,7 @@ export function CapTablePage({
                       <div className="text-xs text-muted-foreground">{organization}</div>
                     ) : null}
                   </td>
-                  <td className="py-2 pe-3 text-muted-foreground">
+                  <td className="hidden py-2 pe-3 text-muted-foreground @md:table-cell">
                     {contact ? (
                       contact.email
                     ) : holder ? (
@@ -581,10 +581,10 @@ export function CapTablePage({
                             : holder.security
                           : null}
                       </td>
-                      <td className="py-2 pe-3 text-end font-mono tabular-nums">
+                      <td className="py-2 pe-3 text-end tabular-nums">
                         {holder ? num(holder.shares) : null}
                       </td>
-                      <td className="py-2 text-end font-mono tabular-nums">
+                      <td className="py-2 text-end tabular-nums">
                         {holder ? pct(holder.percent) : null}
                       </td>
                     </>
