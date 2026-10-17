@@ -28,10 +28,11 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
   // The same order the cards are listed in, so the preview steps through them.
   const ordered = groupEmailCards(block.emails).flatMap((group) => group.emails);
   const at = ordered.findIndex((email) => email.id === open?.id);
+  // Groups are how soon a reply is due, not when the mail came, so the titles say so.
   const titles = {
-    today: t`Today`,
-    within_3_days: t`Within 3 days`,
-    this_week: t`This week`,
+    today: t`Reply today`,
+    within_3_days: t`Reply within 3 days`,
+    this_week: t`Reply this week`,
     later: t`Later`,
   };
   const attachments = (email: EmailCard) =>

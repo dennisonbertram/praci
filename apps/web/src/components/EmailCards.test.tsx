@@ -99,10 +99,15 @@ it("groups cards by urgency in a fixed order and skips empty groups", async () =
       email("s", "within_3_days"),
     ],
   });
-  expect(headings(view.container)).toEqual(["Today", "Within 3 days", "This week", "Later"]);
+  expect(headings(view.container)).toEqual([
+    "Reply today",
+    "Reply within 3 days",
+    "Reply this week",
+    "Later",
+  ]);
   await view.cleanup();
   const partial = await render({ kind: "emails", emails: [email("w", "this_week")] });
-  expect(headings(partial.container)).toEqual(["This week"]);
+  expect(headings(partial.container)).toEqual(["Reply this week"]);
   await partial.cleanup();
 });
 

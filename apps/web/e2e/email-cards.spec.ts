@@ -28,9 +28,9 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   const cards = panel.getByTestId("email-cards");
   await expect(cards).toBeVisible({ timeout: 60_000 });
   await expect(cards.getByRole("heading")).toHaveText([
-    "Today",
-    "Within 3 days",
-    "This week",
+    "Reply today",
+    "Reply within 3 days",
+    "Reply this week",
     "Later",
   ]);
   await expect(cards.getByTestId("email-card")).toHaveCount(3);

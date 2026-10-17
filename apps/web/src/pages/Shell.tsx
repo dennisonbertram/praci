@@ -2696,10 +2696,8 @@ export function ShellPage() {
         createLabel: t`Create Inbox agent`,
         creating: creatingInboxAgent,
         error: inboxAgentError,
-        suggestions: [
-          t`What needs a reply from me today?`,
-          t`Summarize this week's investor email`,
-        ],
+        // InboxAgentIntro is its empty thread, with its own questions.
+        suggestions: [],
       }
     : financeMode
       ? {
@@ -4413,6 +4411,7 @@ export function ShellPage() {
                 <>
                   {transcriptMessages.length === 0 &&
                   !transcriptRunning &&
+                  !inboxMode &&
                   (!capTableMode || activeSnapshot) ? (
                     <AgentPanelIntro
                       description={
@@ -6019,6 +6018,10 @@ export const Transcript = memo(function Transcript({
                           message.role === "user"
                             ? "end-full bottom-8 pe-3"
                             : "start-full bottom-8 ps-3",
+                          // A narrow transcript has no gutter: the time sits above the bubble instead.
+                          message.role === "user"
+                            ? "@max-sm:[@media(hover:hover)]:end-0 @max-sm:[@media(hover:hover)]:bottom-full @max-sm:[@media(hover:hover)]:pe-0"
+                            : "@max-sm:[@media(hover:hover)]:start-0 @max-sm:[@media(hover:hover)]:bottom-full @max-sm:[@media(hover:hover)]:ps-0",
                           // Touch has no hover margin: drop the revealed time in-flow under the bubble.
                           "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
                           "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
