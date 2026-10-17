@@ -377,3 +377,23 @@ it("shows a stored OpenAI-compatible key and stays empty when none is saved", as
     await empty.unmount();
   }
 });
+
+it("lists the server's own provider under Connected, ahead of the A-Z list", async () => {
+  vi.mocked(rpc.me).mockResolvedValue({
+    ...account("openrouter", "or-model"),
+    hostCredentialProvider: "openrouter",
+    hostCredentialSource: "environment",
+  } as never);
+  models.list.mockResolvedValue([
+    { ...deepseekEntry, provider: "amazon", providerName: "Amazon Bedrock", id: "a" },
+    { ...deepseekEntry, provider: "openrouter", providerName: "OpenRouter", id: "or-model" },
+  ]);
+  const view = await renderSettings();
+  try {
+    const text = view.container.textContent ?? "";
+    expect(text).toContain("Connected");
+    expect(text.indexOf("OpenRouter")).toBeLessThan(text.indexOf("Amazon Bedrock"));
+  } finally {
+    await view.unmount();
+  }
+});

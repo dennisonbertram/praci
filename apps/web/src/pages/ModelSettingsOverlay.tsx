@@ -231,9 +231,16 @@ export function ModelSettingsOverlay({
     () => new Map(credentials.map((entry) => [entry.provider, entry])),
     [credentials],
   );
+  // The server's own provider and the active model's provider count as connected too, so the
+  // provider in use is listed first instead of lost in the A-Z list.
   const connectedProviderIds = useMemo(
-    () => new Set(credentials.map((entry) => entry.provider)),
-    [credentials],
+    () =>
+      new Set([
+        ...credentials.map((entry) => entry.provider),
+        ...(me?.hostCredentialProvider ? [me.hostCredentialProvider] : []),
+        ...(me?.defaultProvider && !me.needsModel ? [me.defaultProvider] : []),
+      ]),
+    [credentials, me?.hostCredentialProvider, me?.defaultProvider, me?.needsModel],
   );
   const searching = providerQuery.trim() !== "";
   const filteredGroups = useMemo(() => {
@@ -1556,9 +1563,13 @@ function EmbeddingModelField() {
     }
   }
 
+  // Rarely changed, so it sits behind a disclosure instead of as an empty row under the active model.
   return (
-    <div className="mx-6 mt-3 sm:mx-8">
-      <div className="flex items-baseline gap-3">
+    <details className="mx-6 mt-3 text-[13px] text-muted-foreground sm:mx-8">
+      <summary className="cursor-pointer">
+        <Trans>Data room search model</Trans>
+      </summary>
+      <div className="mt-2 flex items-baseline gap-3">
         <label
           htmlFor="data-room-embedding-model"
           className="shrink-0 text-[12.5px] uppercase tracking-[0.08em] text-muted-foreground/80"
@@ -1567,6 +1578,7 @@ function EmbeddingModelField() {
         </label>
         <Input
           id="data-room-embedding-model"
+          placeholder={t`Default`}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onBlur={() => void save()}
@@ -1581,7 +1593,7 @@ function EmbeddingModelField() {
           {failed}
         </p>
       ) : null}
-    </div>
+    </details>
   );
 }
 
