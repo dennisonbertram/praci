@@ -27,6 +27,7 @@ import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from ".
 import {
   DataRoomApiDriveListInputSchema,
   DataRoomApiDriveListOutputSchema,
+  DataRoomApiFacetValuesSchema,
   DataRoomApiFolderSchema,
   DataRoomApiImportDriveInputSchema,
   DataRoomApiImportDriveOutputSchema,
@@ -1132,6 +1133,10 @@ export const appContract = {
   },
   dataRoom: {
     folders: oc.output(z.array(DataRoomApiFolderSchema)),
+    /** Omit folderId for every folder; null for items outside any folder. */
+    facetValues: oc
+      .input(z.object({ folderId: Id.nullable().optional() }))
+      .output(DataRoomApiFacetValuesSchema),
     folderCreate: oc
       .input(z.object({ name: DataRoomApiName, parentId: Id.nullable().optional() }))
       .output(DataRoomApiFolderSchema),

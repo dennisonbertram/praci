@@ -6353,6 +6353,9 @@ export function createRouter(deps: RouterDeps) {
     },
     dataRoom: {
       folders: authed.dataRoom.folders.handler(({ context }) => dataRoom.folders(context.actor)),
+      facetValues: authed.dataRoom.facetValues.handler(({ context, input }) =>
+        dataRoom.facetValues(context.actor, input.folderId),
+      ),
       folderCreate: authed.dataRoom.folderCreate.handler(({ context, input }) =>
         dataRoom.createFolder(context.actor, input),
       ),

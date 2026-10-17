@@ -629,6 +629,48 @@ describePostgres("Data room API (PostgreSQL)", () => {
     enqueued.length = 0;
   });
 
+  it("offers every type, party and source of a folder's items, not only one page", async () => {
+    const c = client(actors.a);
+    const folder = await c.dataRoom.folderCreate({ name: `Facets ${run}` });
+    const make = async (name: string, folderId: string | null, data: object) => {
+      const query = `name=${name}${folderId ? `&folderId=${folderId}` : ""}`;
+      const { item } = (await (await upload("a", query, `${name} ${run}`)).json()) as {
+        item: DataRoomApiItem;
+      };
+      await prisma.dataRoomItem.update({ where: { id: item.id }, data });
+      return item;
+    };
+    const inside = await make("lease.txt", folder.id, {
+      docType: "contract",
+      parties: ["Landlord (Mock)"],
+      docDate: new Date("2025-01-31"),
+    });
+    const outside = await make("deck.txt", null, { docType: "presentation", source: "drive" });
+    // A list page of one item still gets every value.
+    expect((await c.dataRoom.items.list({ limit: 1 })).items).toHaveLength(1);
+    const all = await c.dataRoom.facetValues({});
+    expect(all.types).toEqual(expect.arrayContaining(["contract", "presentation"]));
+    expect(all.parties).toContain("Landlord (Mock)");
+    expect(all.sources).toEqual(expect.arrayContaining(["upload", "drive"]));
+    expect(all.hasDates).toBe(true);
+    expect(await c.dataRoom.facetValues({ folderId: folder.id })).toEqual({
+      types: ["contract"],
+      parties: ["Landlord (Mock)"],
+      sources: ["upload"],
+      hasDates: true,
+    });
+    // Another member of the same space sees none of it.
+    expect(await client(actors.a2).dataRoom.facetValues({ folderId: folder.id })).toEqual({
+      types: [],
+      parties: [],
+      sources: [],
+      hasDates: false,
+    });
+    for (const item of [inside, outside]) await c.dataRoom.itemDelete({ id: item.id });
+    await c.dataRoom.folderDelete({ id: folder.id });
+    enqueued.length = 0;
+  });
+
   it("answers a plain question by matching any of its words when all of them find nothing", async () => {
     const response = await upload("a", "name=lease.txt", `lease text ${run}`);
     const { item: lease } = (await response.json()) as { item: DataRoomApiItem };

@@ -9,6 +9,7 @@ import {
   CARTA_MCP_ENDPOINT,
   CARTA_READ_TOOLS,
   CapTableSnapshotInputSchema,
+  DataRoomDocTypeSchema,
 } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
@@ -19,6 +20,7 @@ import {
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_READING_DOCUMENT,
   DEMO_UNTAGGED_DOCUMENT,
   DEMO_WALLET,
   demoCarta,
@@ -120,7 +122,7 @@ describe("mock demo data", () => {
     ])
       expect(folders).toContain(path);
     expect(
-      Object.values(DEMO_DOCUMENT_FACETS).filter((facets) => facets.docType === "Bank statement"),
+      Object.values(DEMO_DOCUMENT_FACETS).filter((facets) => facets.docType === "statement"),
     ).toHaveLength(3);
   });
 
@@ -147,10 +149,21 @@ describe("mock demo data", () => {
   it("gives every mock Data room document a type and date for the list columns", () => {
     expect(Object.keys(DEMO_DOCUMENT_FACETS).sort()).toEqual(
       // The unreadable scan stays unclassified, so the failed state shows.
-      DEMO_DOCUMENTS.filter((d) => d.kind !== "broken" && d !== DEMO_UNTAGGED_DOCUMENT)
+      DEMO_DOCUMENTS.filter(
+        (d) => d.kind !== "broken" && d !== DEMO_UNTAGGED_DOCUMENT && d !== DEMO_READING_DOCUMENT,
+      )
         .map((d) => d.name)
         .sort(),
     );
+  });
+
+  it("tags documents as the classifier would: its types, and parties as the text names them", () => {
+    for (const document of DEMO_DOCUMENTS) {
+      const facets = DEMO_DOCUMENT_FACETS[document.name];
+      if (!facets) continue;
+      expect(DataRoomDocTypeSchema.options).toContain(facets.docType);
+      for (const party of facets.parties) expect(document.text).toContain(party);
+    }
   });
 
   it("has a mock cap table whose holdings, option pool and fully diluted total add up", () => {

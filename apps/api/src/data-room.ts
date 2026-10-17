@@ -224,6 +224,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
         itemCount: counts.get(folder.id) ?? 0,
       }));
     },
+    facetValues: (actor: Actor, folderId?: string | null) => repo.facetValues(actor, folderId),
     createFolder: (actor: Actor, input: { name: string; parentId?: string | null }) =>
       dataRoomCall(async () => folderDto(await repo.createFolder(actor, input))),
     renameFolder: (actor: Actor, input: { id: string; name: string }) =>

@@ -281,6 +281,27 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       return new Map(groups.map((group) => [group.folderId as string, group._count._all]));
     },
 
+    /**
+     * Every type, party and source of the caller's items in one folder (or all of them), and
+     * whether any has a document date: what the filters offer, whatever page is loaded.
+     */
+    async facetValues(actor: Actor, folderId?: string | null) {
+      const where = eligibleSql(actor, { folderId });
+      const [row] = await prisma.$queryRaw<
+        { types: string[]; parties: string[]; sources: string[]; hasDates: boolean }[]
+      >`
+        SELECT
+          ARRAY(SELECT DISTINCT i."docType" FROM data_room_items i
+                WHERE ${where} AND i."docType" IS NOT NULL) AS types,
+          ARRAY(SELECT DISTINCT p FROM data_room_items i, unnest(i."parties") AS p
+                WHERE ${where}) AS parties,
+          ARRAY(SELECT DISTINCT i."source" FROM data_room_items i WHERE ${where}) AS sources,
+          EXISTS(SELECT 1 FROM data_room_items i
+                 WHERE ${where} AND i."docDate" IS NOT NULL) AS "hasDates"
+      `;
+      return row ?? { types: [], parties: [], sources: [], hasDates: false };
+    },
+
     async createFolder(
       actor: Actor,
       input: { name: string; parentId?: string | null; createdBy?: "user" | "agent" },

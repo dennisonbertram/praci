@@ -66,6 +66,15 @@ export const DataRoomApiFiltersSchema = z.object({
   source: z.string().min(1).optional(),
 });
 
+/** The values the list filters offer: those of every item in the folder, not just a loaded page. */
+export const DataRoomApiFacetValuesSchema = z.object({
+  types: z.array(z.string()),
+  parties: z.array(z.string()),
+  sources: z.array(z.string()),
+  hasDates: z.boolean(),
+});
+export type DataRoomApiFacetValues = z.infer<typeof DataRoomApiFacetValuesSchema>;
+
 export const DataRoomApiSortSchema = z.object({
   /** "date" is the document date; items without one sort last in both directions. */
   field: z.enum(["date", "name", "type", "createdAt"]),
