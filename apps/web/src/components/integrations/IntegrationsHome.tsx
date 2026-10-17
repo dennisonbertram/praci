@@ -382,15 +382,15 @@ export function IntegrationsHome({
   }
 
   return (
-    <div className="rk-scroll h-full overflow-y-auto px-4 py-6 md:px-9 md:py-7">
-      <div className="mx-auto max-w-[1040px]">
-        <h1 className="text-xl font-semibold">
+    <div className="rk-scroll h-full overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+      <div className="max-w-[1040px]">
+        <h1 className="text-lg font-semibold">
           <Trans>Integrations</Trans>
         </h1>
         <p className="mb-5 max-w-[640px] text-muted-foreground">
           <Trans>
-            Connect the apps you use so your bots can read and act in them. You choose which
-            bots get access to each one.
+            Connect the apps you use so your bots can read and act in them. You choose which bots
+            get access to each one.
           </Trans>
         </p>
         {data.error || data.catalogFailed ? (

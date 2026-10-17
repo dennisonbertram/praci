@@ -234,7 +234,7 @@ export function DataRoomPage() {
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 px-3 pt-2 pb-3 md:px-5 md:pt-4">
+      <div className="flex items-center gap-2 px-4 pt-2 pb-3 md:px-7 md:pt-5">
         <h1 className="me-auto text-lg font-semibold">
           <Trans>Data room</Trans>
         </h1>

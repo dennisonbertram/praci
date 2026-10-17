@@ -272,7 +272,7 @@ export function FilterBar({
   const field = sort?.field ?? "relevance";
   const direction = sort?.direction ?? "desc";
   return (
-    <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2.5 md:px-5">
+    <div className="flex flex-wrap items-center gap-1.5 px-4 pb-2.5 md:px-7">
       <InputGroup className="me-1.5 w-full max-w-65 min-w-40 flex-1">
         <InputGroupAddon>
           <Search aria-hidden="true" />
