@@ -3,7 +3,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { RunActivityRow, RunStatus } from "@rakazo/contracts";
 import { isAgedStuckWork } from "@rakazo/core";
 import { Button, Input, Label, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ActivityListFilters } from "../lib/activity-list-filters";
 import {
   activityFiltersActive,
@@ -94,6 +94,10 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
   );
 
   const filtersOn = activityFiltersActive(filters);
+  const [showFilters, setShowFilters] = useState(false);
+  // What needs the person comes first; the rest of the active work follows as "Working".
+  const needsYou = filteredActive.filter((run) => NEEDS_YOU.has(run.status));
+  const working = filteredActive.filter((run) => !NEEDS_YOU.has(run.status));
   const hasAnyRuns = activeRuns.length > 0 || recentRuns.length > 0;
   const hasVisibleRuns = filteredActive.length > 0 || filteredRecent.length > 0;
 
@@ -106,7 +110,15 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
   }
 
   if (!hasAnyRuns && !filtersOn) {
-    if (!error) return null;
+    if (!error)
+      return (
+        <p
+          className="mb-2 border-b border-border px-2.5 pb-3 pt-1 text-[13px] text-muted-foreground/80"
+          role="status"
+        >
+          <Trans>Nothing needs you right now.</Trans>
+        </p>
+      );
     return (
       <div className="px-2.5 py-2" role="alert">
         <ActivityError error={error} onRetry={() => reloadRef.current?.()} />
@@ -116,7 +128,22 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   return (
     <div className="mb-2 border-b border-border pb-2" data-testid="activity-list">
-      <ActivityFilters filters={filters} onChange={setFilters} />
+      {showFilters || filtersOn ? (
+        <ActivityFilters filters={filters} onChange={setFilters} />
+      ) : (
+        <div className="flex justify-end px-2.5 pb-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 rounded-full px-2 text-[12px] text-muted-foreground"
+            data-testid="activity-show-filters"
+            onClick={() => setShowFilters(true)}
+          >
+            <Trans>Filter</Trans>
+          </Button>
+        </div>
+      )}
 
       {error ? (
         <div className="px-2.5 pb-2" role="alert">
@@ -134,36 +161,45 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
         </p>
       ) : null}
 
-      {filteredActive.length > 0 ? (
-        <section aria-labelledby="activity-now-heading">
-          <div
-            id="activity-now-heading"
-            className="px-2.5 pb-1 pt-1 text-[12.5px] font-medium text-muted-foreground/80"
-          >
-            <Trans>Now</Trans>
-          </div>
-          {filteredActive.map((run) => (
-            <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
-          ))}
-        </section>
-      ) : null}
-      {filteredRecent.length > 0 ? (
-        <section
-          className={filteredActive.length > 0 ? "mt-2" : undefined}
-          aria-labelledby="activity-recent-heading"
-        >
-          <div
-            id="activity-recent-heading"
-            className="px-2.5 pb-1 pt-1 text-[12.5px] font-medium text-muted-foreground/80"
-          >
-            <Trans>Recent</Trans>
-          </div>
-          {filteredRecent.map((run) => (
-            <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
-          ))}
-        </section>
-      ) : null}
+      <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>}>
+        {needsYou.map((run) => (
+          <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
+        ))}
+      </ActivitySection>
+      <ActivitySection id="activity-now-heading" title={<Trans>Working</Trans>}>
+        {working.map((run) => (
+          <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
+        ))}
+      </ActivitySection>
+      <ActivitySection id="activity-recent-heading" title={<Trans>Finished</Trans>}>
+        {filteredRecent.map((run) => (
+          <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
+        ))}
+      </ActivitySection>
     </div>
+  );
+}
+
+const NEEDS_YOU = new Set<RunStatus>(["waiting_input", "waiting_takeover"]);
+
+/** A titled group of runs; renders nothing when it has none. */
+function ActivitySection({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: ReactNode;
+  children: ReactNode[];
+}) {
+  if (children.length === 0) return null;
+  return (
+    <section className="mt-1 first:mt-0" aria-labelledby={id}>
+      <div id={id} className="px-2.5 pb-1 pt-1 text-[12.5px] font-medium text-muted-foreground/80">
+        {title}
+      </div>
+      {children}
+    </section>
   );
 }
 
