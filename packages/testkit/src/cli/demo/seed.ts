@@ -272,8 +272,11 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
           createdAt,
         },
       });
-      await db.prisma.spaceMember.create({
-        data: {
+      // Joining the organization may already add the space membership (a database trigger).
+      await db.prisma.spaceMember.upsert({
+        where: { spaceId_userId: { spaceId, userId: user.id } },
+        update: {},
+        create: {
           id: randomUUID(),
           spaceId,
           organizationId: space.organizationId,

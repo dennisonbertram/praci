@@ -354,8 +354,9 @@ export async function runDataRoomClassify(deps: DataRoomJobDeps, payload: Payloa
         onUsage: (usage, attribution) => recordUsage(deps.prisma, usage, attribution),
       });
     const folders = folderPaths(await repo.listFolders(actor));
+    const { parties } = await repo.facetValues(actor);
     const result = await classifier.classify(
-      { name: item.name, mimeType: item.mimeType, text, folders },
+      { name: item.name, mimeType: item.mimeType, text, folders, parties },
       context(payload, "classify"),
     );
     return repo.finishClassification(actor, item.id, revision, {
