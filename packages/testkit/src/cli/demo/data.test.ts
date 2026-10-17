@@ -1,6 +1,7 @@
 import { CapTableSnapshotInputSchema } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  DEMO_CHIEF_DRAFT,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENTS,
@@ -15,6 +16,8 @@ describe("mock demo data", () => {
   it("labels the company and every contact and document as mock", () => {
     expect(DEMO_COMPANY.startsWith("MOCK DEMO DATA —")).toBe(true);
     for (const contact of DEMO_CONTACTS) expect(contact.notes).toContain(MOCK_NOTE);
+    expect(DEMO_CHIEF_DRAFT.name).toContain("MOCK");
+    expect(DEMO_CHIEF_DRAFT.text).toContain(MOCK_NOTE);
     for (const document of DEMO_DOCUMENTS) {
       expect(document.name).toContain("MOCK");
       expect(document.text).toContain(MOCK_NOTE);

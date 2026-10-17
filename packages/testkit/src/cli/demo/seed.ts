@@ -4,6 +4,7 @@ import { createDb, saveCapTableSnapshot } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   DEMO_BOTS,
+  DEMO_CHIEF_DRAFT,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENTS,
@@ -183,6 +184,15 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     );
   }
   done.push(`${DEMO_DOCUMENTS.length} data room documents`);
+
+  // Artifacts: last month's investor update, filed under Chief.
+  await session.rpc("artifacts/create", {
+    botId: chief.id,
+    name: DEMO_CHIEF_DRAFT.name,
+    mimeType: DEMO_CHIEF_DRAFT.mimeType,
+    contentBase64: Buffer.from(DEMO_CHIEF_DRAFT.text).toString("base64"),
+  });
+  done.push("Chief's investor update draft");
 
   // Team: extra bots and a group chat.
   const botIds = [chief.id];

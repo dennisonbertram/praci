@@ -611,6 +611,27 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   ),
 ];
 
+/** A draft Chief "made" last week, so the monthly investor update can start from it. */
+export const DEMO_CHIEF_DRAFT = {
+  name: "MOCK Investor Update - September.md",
+  mimeType: "text/markdown",
+  text: `# MOCK DEMO DATA: Investor update, September
+
+Hi Priya, Dana and Lee,
+
+Highlights
+- The Halcyon Logistics (Mock) pilot converted to an annual contract.
+- Cash is $412,000 with $46,000 monthly net burn: about 8.9 months of runway.
+
+Asks
+- Intros to robotics buyers in warehousing.
+
+Alex
+
+${MOCK_NOTE}: invented for UX testing. Not a real update.
+`,
+};
+
 export const DEMO_BOTS = [
   {
     name: "Legal Desk (mock)",
