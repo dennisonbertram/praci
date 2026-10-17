@@ -871,7 +871,10 @@ export function InboxPage({
           ) : (
             <>
               <InboxGroup
-                title={<Trans>Today</Trans>}
+                // Today's mail that needs a reply is above, so this group says it holds the rest.
+                title={
+                  groups.needsReply.length ? <Trans>Other mail today</Trans> : <Trans>Today</Trans>
+                }
                 rows={groups.today}
                 onOpen={openMessage}
                 onMark={triage ? mark : undefined}

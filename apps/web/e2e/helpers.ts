@@ -175,6 +175,11 @@ export async function connectTwoGmailAccounts(page: Page, secondName = "Work") {
   await page.getByRole("button", { name: "Connect Gmail", exact: true }).click();
   await finishConnectDialog(page, "Gmail");
   await page.getByRole("link", { name: "Gmail", exact: true }).click();
+  await addGmailAccount(page, secondName);
+}
+
+/** On Gmail's detail page, connects one more account and names it. */
+export async function addGmailAccount(page: Page, secondName = "Work") {
   await page.getByRole("button", { name: "Add another account", exact: true }).click();
   await finishConnectDialog(page, "Gmail");
   const accounts = page.getByRole("button", { name: "Rename", exact: true });

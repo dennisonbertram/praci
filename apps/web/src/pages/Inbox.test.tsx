@@ -91,6 +91,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
 });
 vi.mock("../components/inbox/InboxRow", () => ({
   InboxGroup: ({
+    title,
     rows,
     onOpen,
     onMark,
@@ -98,14 +99,16 @@ vi.mock("../components/inbox/InboxRow", () => ({
     onRead,
     selectedId,
   }: {
+    title?: ReactNode;
     rows: MailRow[];
     onOpen: (id: string) => void;
     onMark?: (id: string, mark: "noise" | null) => void;
     onArchive?: (id: string) => void;
     onRead?: (id: string, read: boolean) => void;
     selectedId?: string;
-  }) =>
-    rows.map((row) => (
+  }) => [
+    title && rows.length ? <h2 key="title">{title}</h2> : null,
+    ...rows.map((row) => (
       <div key={row.id}>
         <button
           type="button"
@@ -132,6 +135,7 @@ vi.mock("../components/inbox/InboxRow", () => ({
         </button>
       </div>
     )),
+  ],
 }));
 
 import { InboxPage } from "./Inbox";
@@ -686,4 +690,14 @@ it("says it is sorting while the first triage runs, and names the sender a mark 
   expect(c.querySelector('[role="status"]')?.textContent).toContain(
     "Mail from Dana is now marked as noise",
   );
+});
+
+it("calls today's group 'Other mail today' when Needs reply is above it", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  const c = await render();
+  const headings = [...c.querySelectorAll("h2")].map((h) => h.textContent);
+  expect(headings).toEqual(["Needs reply", "Other mail today"]);
+  rpcMock.list.mockResolvedValue(list([row("b")]));
+  const plain = await render();
+  expect([...plain.querySelectorAll("h2")].map((h) => h.textContent)).toContain("Today");
 });

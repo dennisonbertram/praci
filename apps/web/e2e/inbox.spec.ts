@@ -1,5 +1,12 @@
 import { expect, type Locator, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, connectTwoGmailAccounts, signup } from "./helpers";
+import {
+  addGmailAccount,
+  captureScreenshot,
+  completeOnboarding,
+  connectTwoGmailAccounts,
+  finishConnectDialog,
+  signup,
+} from "./helpers";
 
 test("Inbox lists mail from every account, groups it, and opens a message in place", async ({
   page,
@@ -15,10 +22,17 @@ test("Inbox lists mail from every account, groups it, and opens a message in pla
   await expect(page.getByRole("heading", { name: "No mail connected", level: 2 })).toBeVisible();
   await captureScreenshot(page, testInfo, "inbox-empty");
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/integrations\?q=gmail$/);
-  await expect(page.getByPlaceholder("Search apps")).toHaveValue("gmail");
+  // Connect mail opens Gmail's own connect flow, then comes back to the Inbox.
+  await expect(page).toHaveURL(
+    /\/app\/integrations\/app\/[^/]+\/gmail\?connect=1&next=%2Fapp%2Finbox$/i,
+  );
+  await page.getByRole("dialog").getByRole("button", { name: "Connect", exact: true }).click();
+  await finishConnectDialog(page, "Gmail");
+  await expect(page).toHaveURL(/\/app\/inbox$/);
 
-  await connectTwoGmailAccounts(page);
+  await page.getByTestId("sidebar-integrations").click();
+  await page.getByRole("link", { name: "Gmail", exact: true }).click();
+  await addGmailAccount(page);
   await page.getByTestId("sidebar-inbox").click();
 
   // Opening the Inbox loads it fresh: both accounts sync and the list fills in.
