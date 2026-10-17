@@ -21,14 +21,16 @@ vi.mock("./inbox/InboxMessageDialog", () => ({
     subject,
     onArchive,
     onRead,
+    unread,
   }: {
     messageId: string | null;
     subject?: string;
     onArchive?: () => void;
     onRead?: (read: boolean) => void;
+    unread?: boolean;
   }) =>
     messageId ? (
-      <div role="dialog">
+      <div role="dialog" data-unread={unread === undefined ? "" : String(unread)}>
         {subject}
         <div data-testid="message-view">{messageId}</div>
         <button type="button" onClick={onArchive}>
@@ -166,5 +168,20 @@ it("archives and marks read from the opened card like the Inbox does, and tells 
   expect(document.querySelector('[data-testid="message-view"]')).toBeNull();
   expect(changed).toHaveBeenCalledTimes(2);
   window.removeEventListener("rakazo:inbox-changed", changed);
+  await view.cleanup();
+});
+
+it("puts the unread state back when marking read fails", async () => {
+  markRead.mockRejectedValueOnce(new Error("offline"));
+  const view = await render({ kind: "emails", emails: [email("one", "today")] });
+  await act(async () =>
+    (view.container.querySelector('[data-testid="email-card"]') as HTMLElement).click(),
+  );
+  const button = [...document.querySelectorAll("button")].find(
+    (b) => b.textContent === "Mark read",
+  );
+  await act(async () => (button as HTMLElement).click());
+  expect(document.querySelector('[role="dialog"]')?.getAttribute("data-unread")).toBe("");
+  expect(view.container.querySelector('[role="alert"]')).not.toBeNull();
   await view.cleanup();
 });

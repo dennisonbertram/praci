@@ -17,10 +17,13 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
   // Read changes made here, until the message reloads; the dialog shows the cached state otherwise.
   const [unread, setUnread] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
-  const changed = (call: Promise<unknown>) =>
+  const changed = (call: Promise<unknown>, undo?: () => void) =>
     call
       .then(() => window.dispatchEvent(new Event(INBOX_CHANGED_EVENT)))
-      .catch((cause) => setError(errorText(cause)));
+      .catch((cause) => {
+        undo?.();
+        setError(errorText(cause));
+      });
   const now = new Date();
   // The same order the cards are listed in, so the preview steps through them.
   const ordered = groupEmailCards(block.emails).flatMap((group) => group.emails);
@@ -120,8 +123,15 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
         onRead={(read) => {
           if (!open) return;
           setError("");
-          setUnread((all) => ({ ...all, [open.id]: !read }));
-          changed(rpc.inbox.markRead({ messageId: open.id, read }));
+          const { id } = open;
+          const before = unread[id];
+          setUnread((all) => ({ ...all, [id]: !read }));
+          // A failed change puts the previous state back, so the button offers the right action.
+          changed(rpc.inbox.markRead({ messageId: id, read }), () =>
+            setUnread(({ [id]: _failed, ...rest }) =>
+              before === undefined ? rest : { ...rest, [id]: before },
+            ),
+          );
         }}
         onClose={() => setOpen(null)}
       />
