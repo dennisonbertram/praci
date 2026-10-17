@@ -56,6 +56,8 @@ describe("finance formatting", () => {
     expect(changeText(-53.2)).toBe("↓ 53%");
     expect(changeText(12.5)).toBe("↑ 13%");
     expect(changeText(null)).toBeNull();
+    expect(changeText(0)).toBeNull();
+    expect(changeText(0.4)).toBeNull();
   });
 
   it("describes what paid a vendor", () => {

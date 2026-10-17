@@ -120,6 +120,8 @@ export const monthFull = (month: string, locale?: string) =>
 export function changeText(pct: number | null): string | null {
   if (pct === null || !Number.isFinite(pct)) return null;
   const rounded = Math.round(Math.abs(pct));
+  // "↑ 0%" reads as a rise; with no change the comparison figure says enough.
+  if (rounded === 0) return null;
   return `${pct < 0 ? "↓" : "↑"} ${rounded}%`;
 }
 

@@ -281,7 +281,7 @@ export function FilterBar({
           type="search"
           value={query}
           onChange={(event) => onQuery(event.target.value)}
-          placeholder={t`Search documents`}
+          placeholder={t`Search`}
           aria-label={t`Search documents`}
           autoComplete="off"
           name="data-room-search"
