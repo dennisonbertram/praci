@@ -20,6 +20,7 @@ export type ToolAction =
   | "mail-search"
   | "mail-open"
   | "mail-draft"
+  | "mail-show"
   | "finance";
 
 const TOOL_ACTIONS: Record<string, ToolAction> = {
@@ -39,6 +40,7 @@ const TOOL_ACTIONS: Record<string, ToolAction> = {
   mail_grep: "mail-search",
   mail_get: "mail-open",
   mail_draft: "mail-draft",
+  show_emails: "mail-show",
   finance_overview: "finance",
   finance_breakdown: "finance",
 };

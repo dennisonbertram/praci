@@ -566,6 +566,7 @@ msgstr ""
 msgid "Add a local command"
 msgstr ""
 
+#: src/components/AgentPanelIntro.tsx
 #: src/pages/CapTable.tsx
 msgid "Add a model"
 msgstr ""
@@ -2109,10 +2110,6 @@ msgstr "Connexion en cours…"
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
 msgstr "Le test de connexion a échoué."
-
-#: src/pages/CapTable.tsx
-msgid "Contact saved"
-msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Contacts are your address book. They do not change Carta."
@@ -5096,6 +5093,7 @@ msgstr ""
 msgid "None"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
 msgstr "Aucun pour le moment"
@@ -5613,6 +5611,10 @@ msgstr "Choisissez un modèle dans le catalogue."
 #: src/lib/model-connection-preflight.ts
 msgid "Pick a model from the list or enter a model id served by this endpoint."
 msgstr "Choisissez un modèle dans la liste ou saisissez un identifiant de modèle servi par ce point de terminaison."
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Pick a provider below and connect it."
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
@@ -6416,6 +6418,11 @@ msgstr "Enregistrer l’espace de travail et installer les logiciels actuels."
 msgid "Saved"
 msgstr "Enregistré"
 
+#. placeholder {0}: saved.name
+#: src/pages/CapTable.tsx
+msgid "Saved {0}"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Saved, but list refresh failed"
 msgstr "Enregistré, mais l'actualisation de la liste a échoué"
@@ -6786,6 +6793,10 @@ msgstr "Afficher la transcription"
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Showing the {shown} most connected of {total} items."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Showing the emails it found"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -7329,6 +7340,10 @@ msgstr "Réflexion"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Thinking: {activeThinkingLabel}"
+msgstr ""
+
+#: src/components/AgentPanelIntro.tsx
+msgid "This agent needs a model before it can answer. Add one in Settings, Models."
 msgstr ""
 
 #: src/pages/Shell.tsx

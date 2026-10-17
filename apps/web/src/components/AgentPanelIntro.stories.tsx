@@ -26,3 +26,6 @@ export const Default: Story = {};
 export const Sending: Story = { args: { disabled: true } };
 
 export const NoDescription: Story = { args: { description: "" } };
+
+/** No model is set up: the questions would only fail, so the panel offers Add a model. */
+export const NeedsModel: Story = { args: { onAddModel: fn() } };

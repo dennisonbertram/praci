@@ -566,6 +566,7 @@ msgstr ""
 msgid "Add a local command"
 msgstr ""
 
+#: src/components/AgentPanelIntro.tsx
 #: src/pages/CapTable.tsx
 msgid "Add a model"
 msgstr ""
@@ -2109,10 +2110,6 @@ msgstr "正在连接…"
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
 msgstr "连接测试失败。"
-
-#: src/pages/CapTable.tsx
-msgid "Contact saved"
-msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Contacts are your address book. They do not change Carta."
@@ -5096,6 +5093,7 @@ msgstr ""
 msgid "None"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
 msgstr "暂无"
@@ -5613,6 +5611,10 @@ msgstr "请从目录中选择模型。"
 #: src/lib/model-connection-preflight.ts
 msgid "Pick a model from the list or enter a model id served by this endpoint."
 msgstr "请从列表中选择模型，或输入此端点提供的模型 ID。"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Pick a provider below and connect it."
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
@@ -6416,6 +6418,11 @@ msgstr "保存工作区并安装最新软件。"
 msgid "Saved"
 msgstr "已保存"
 
+#. placeholder {0}: saved.name
+#: src/pages/CapTable.tsx
+msgid "Saved {0}"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Saved, but list refresh failed"
 msgstr "已保存，但列表刷新失败"
@@ -6786,6 +6793,10 @@ msgstr "显示文字记录"
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Showing the {shown} most connected of {total} items."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Showing the emails it found"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -7329,6 +7340,10 @@ msgstr "思考"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Thinking: {activeThinkingLabel}"
+msgstr ""
+
+#: src/components/AgentPanelIntro.tsx
+msgid "This agent needs a model before it can answer. Add one in Settings, Models."
 msgstr ""
 
 #: src/pages/Shell.tsx

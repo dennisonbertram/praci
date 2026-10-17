@@ -566,6 +566,7 @@ msgstr "Add a GraphQL endpoint"
 msgid "Add a local command"
 msgstr "Add a local command"
 
+#: src/components/AgentPanelIntro.tsx
 #: src/pages/CapTable.tsx
 msgid "Add a model"
 msgstr "Add a model"
@@ -2109,10 +2110,6 @@ msgstr "Connecting…"
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
 msgstr "Connection test failed."
-
-#: src/pages/CapTable.tsx
-msgid "Contact saved"
-msgstr "Contact saved"
 
 #: src/pages/CapTable.tsx
 msgid "Contacts are your address book. They do not change Carta."
@@ -5096,6 +5093,7 @@ msgstr "No wallets yet. Add a wallet address to see its balances here."
 msgid "None"
 msgstr "None"
 
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
 msgstr "None yet"
@@ -5613,6 +5611,10 @@ msgstr "Pick a model from the catalog."
 #: src/lib/model-connection-preflight.ts
 msgid "Pick a model from the list or enter a model id served by this endpoint."
 msgstr "Pick a model from the list or enter a model id served by this endpoint."
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Pick a provider below and connect it."
+msgstr "Pick a provider below and connect it."
 
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
@@ -6416,6 +6418,11 @@ msgstr "Save the workspace and install current software."
 msgid "Saved"
 msgstr "Saved"
 
+#. placeholder {0}: saved.name
+#: src/pages/CapTable.tsx
+msgid "Saved {0}"
+msgstr "Saved {0}"
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Saved, but list refresh failed"
 msgstr "Saved, but list refresh failed"
@@ -6787,6 +6794,10 @@ msgstr "Show transcript"
 #: src/components/legal/LegalGraph.tsx
 msgid "Showing the {shown} most connected of {total} items."
 msgstr "Showing the {shown} most connected of {total} items."
+
+#: src/pages/Shell.tsx
+msgid "Showing the emails it found"
+msgstr "Showing the emails it found"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Sidebar density"
@@ -7330,6 +7341,10 @@ msgstr "Thinking"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Thinking: {activeThinkingLabel}"
 msgstr "Thinking: {activeThinkingLabel}"
+
+#: src/components/AgentPanelIntro.tsx
+msgid "This agent needs a model before it can answer. Add one in Settings, Models."
+msgstr "This agent needs a model before it can answer. Add one in Settings, Models."
 
 #: src/pages/Shell.tsx
 msgid "This bot runs on this computer, not a Linux desktop. Shell and files use your home folder."

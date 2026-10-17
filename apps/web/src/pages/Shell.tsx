@@ -2810,6 +2810,9 @@ export function ShellPage() {
   // The Carta agent opened full screen from its panel: same intro, and a way back to Cap table.
   const cartaAgentPage =
     !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
+  // Without a model a page agent cannot answer, so its panel offers Add a model, not questions.
+  const pageAgentNeedsModel =
+    bootstrapMe?.needsModel === true && (agentPanel !== null || cartaAgentPage);
 
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
@@ -3184,6 +3187,7 @@ export function ShellPage() {
         <AgentPanelIntro
           description={cartaAgentIntro}
           suggestions={cartaSuggestions}
+          onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}
           disabled={sending}
           onPick={(text) => void sendMessage(text, [], newClientId())}
         />
@@ -3304,7 +3308,7 @@ export function ShellPage() {
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
               activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
               running={composerRunning}
-              disabled={Boolean(recordingSkill)}
+              disabled={Boolean(recordingSkill) || pageAgentNeedsModel}
               pendingAttachments={activePendingAttachments}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
@@ -4457,6 +4461,7 @@ export function ShellPage() {
             onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
             onCartaStatus={setCartaConnected}
             onOpenModelSettings={() => openSettings("models")}
+            needsModel={bootstrapMe?.needsModel === true}
             agentBusy={transcriptRunning}
           />
         ) : inboxMode ? (
@@ -4534,6 +4539,7 @@ export function ShellPage() {
                     <AgentPanelIntro
                       description={capTableMode ? cartaAgentIntro : active.description}
                       suggestions={agentPanel.suggestions ?? []}
+                      onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}
                       disabled={sending}
                       onPick={(text) => void sendMessage(text, [], newClientId())}
                     />
@@ -5403,6 +5409,11 @@ export function ShellPage() {
             onClose={() => {
               setSettingsOpen(false);
               setSettingsSection("general");
+              // A model may have been added or removed, which pages and agent panels show.
+              rpc
+                .me()
+                .then(setBootstrapMe)
+                .catch(() => {});
             }}
           />
         ) : null}
@@ -5732,6 +5743,8 @@ export const Transcript = memo(function Transcript({
         return t`Opening an email`;
       case "mail-draft":
         return t`Writing a draft email`;
+      case "mail-show":
+        return t`Showing the emails it found`;
       case "finance":
         return t`Reading your finances`;
       default:
@@ -5964,7 +5977,7 @@ export const Transcript = memo(function Transcript({
   );
 
   return (
-    <div className="relative flex min-h-0 flex-1">
+    <div className="@container relative flex min-h-0 flex-1">
       <div
         ref={scrollRef}
         data-testid="transcript"
@@ -6232,12 +6245,15 @@ export const Transcript = memo(function Transcript({
         tabIndex={atEnd ? -1 : 0}
         onClick={jumpToLatest}
         // A labeled, opaque pill: an unlabeled see-through circle read as part of the text under it.
-        className={`absolute bottom-4 left-1/2 z-20 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-popover px-3 text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent motion-reduce:transition-none ${
+        // In a narrow panel it shrinks to a round button at the right edge, so it covers less text.
+        className={`absolute bottom-4 left-1/2 z-20 flex h-8 -translate-x-1/2 items-center justify-center gap-1.5 rounded-full border border-border bg-popover px-3 @max-md:left-auto @max-md:right-3 @max-md:w-8 @max-md:translate-x-0 @max-md:px-0 text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent motion-reduce:transition-none ${
           atEnd ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
         }`}
       >
         <ArrowDown size={15} strokeWidth={1.8} aria-hidden="true" />
-        <Trans>Jump to latest</Trans>
+        <span className="@max-md:sr-only">
+          <Trans>Jump to latest</Trans>
+        </span>
       </button>
     </div>
   );

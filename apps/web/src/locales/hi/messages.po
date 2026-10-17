@@ -566,6 +566,7 @@ msgstr ""
 msgid "Add a local command"
 msgstr ""
 
+#: src/components/AgentPanelIntro.tsx
 #: src/pages/CapTable.tsx
 msgid "Add a model"
 msgstr ""
@@ -2109,10 +2110,6 @@ msgstr "कनेक्ट हो रहा है…"
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
 msgstr "कनेक्शन परीक्षण विफल रहा।"
-
-#: src/pages/CapTable.tsx
-msgid "Contact saved"
-msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Contacts are your address book. They do not change Carta."
@@ -5096,6 +5093,7 @@ msgstr ""
 msgid "None"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
 msgstr "अभी तक कोई नहीं"
@@ -5613,6 +5611,10 @@ msgstr "कैटलॉग से एक मॉडल चुनें।"
 #: src/lib/model-connection-preflight.ts
 msgid "Pick a model from the list or enter a model id served by this endpoint."
 msgstr "सूची से एक मॉडल चुनें या इस एंडपॉइंट द्वारा दिया गया मॉडल id दर्ज करें।"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Pick a provider below and connect it."
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
@@ -6416,6 +6418,11 @@ msgstr "कार्यक्षेत्र सहेजें और नवी
 msgid "Saved"
 msgstr "सहेजा गया"
 
+#. placeholder {0}: saved.name
+#: src/pages/CapTable.tsx
+msgid "Saved {0}"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Saved, but list refresh failed"
 msgstr "सहेजा गया, लेकिन सूची रिफ़्रेश विफल रही"
@@ -6786,6 +6793,10 @@ msgstr "ट्रांसक्रिप्ट दिखाएँ"
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Showing the {shown} most connected of {total} items."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Showing the emails it found"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -7329,6 +7340,10 @@ msgstr "सोच रहा है"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Thinking: {activeThinkingLabel}"
+msgstr ""
+
+#: src/components/AgentPanelIntro.tsx
+msgid "This agent needs a model before it can answer. Add one in Settings, Models."
 msgstr ""
 
 #: src/pages/Shell.tsx

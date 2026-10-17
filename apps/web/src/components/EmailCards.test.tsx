@@ -104,6 +104,14 @@ it("groups cards by urgency in a fixed order and skips empty groups", async () =
   const partial = await render({ kind: "emails", emails: [email("w", "this_week")] });
   expect(headings(partial.container)).toEqual(["This week"]);
   await partial.cleanup();
+  // Mail that is all "No rush", such as past updates the bot looked up, needs no heading.
+  const later = await render({
+    kind: "emails",
+    emails: [email("a", "later"), email("b", "later")],
+  });
+  expect(headings(later.container)).toEqual([]);
+  expect(later.container.querySelectorAll('[data-testid="email-row"]')).toHaveLength(2);
+  await later.cleanup();
 });
 
 it("shows Later as compact rows without the snippet, and urgent mail as cards with it", async () => {

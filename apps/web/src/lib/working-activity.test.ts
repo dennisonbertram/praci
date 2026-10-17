@@ -48,6 +48,11 @@ describe("workingActivity", () => {
         botMessage([{ kind: "steps", steps: [{ label: "Contacts add", count: 1 }] }]),
       ]),
     ).toEqual({ kind: "tool", label: "Contacts add", action: "contact-add" });
+    expect(
+      workingActivity(run, [
+        botMessage([{ kind: "progress", text: "", pendingToolNames: ["show_emails"] }]),
+      ]),
+    ).toEqual({ kind: "tool", label: "Show emails", action: "mail-show" });
   });
 
   it("reports status before any output, and writing once text streams", () => {
