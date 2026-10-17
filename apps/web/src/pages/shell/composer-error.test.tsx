@@ -61,7 +61,8 @@ it("offers Models settings when the provider did not accept the API key", async 
   );
   expect(container.textContent).toContain("did not accept your API key");
   await act(async () => settingsButton()?.click());
-  expect(open).toHaveBeenCalledWith(undefined);
+  // "" opens the default provider with its key field focused.
+  expect(open).toHaveBeenCalledWith("");
 });
 
 it("shows any other error with only Dismiss", async () => {

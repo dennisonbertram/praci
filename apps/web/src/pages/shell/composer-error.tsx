@@ -5,10 +5,13 @@ import { X } from "lucide-react";
 import type { Ref } from "react";
 import { runErrorText } from "../../lib/user-error";
 
-/** The Models settings that fix a run error, when they do; `provider` opens that provider's key form. */
-function modelSettingsFor(message: string): { provider?: string } | null {
+/**
+ * The Models settings that fix a run error, when they do. `provider` opens that provider's key
+ * field; `""` opens the space's default provider's key field (a rejected key).
+ */
+function modelSettingsFor(message: string): { provider: string } | null {
   if (message === LEGAL_MODEL_REQUIRED_MESSAGE) return { provider: LEGAL_AGENT_MODEL.provider };
-  return message === runErrorText("401") ? {} : null;
+  return message === runErrorText("401") ? { provider: "" } : null;
 }
 
 /** A send or run error above the composer; a model-setup error also offers the settings that fix it. */

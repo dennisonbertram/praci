@@ -79,7 +79,10 @@ export function ModelSettingsOverlay({
   /** Render panel body only for the shared Settings shell. */
   embedded?: boolean;
   localOwner?: boolean;
-  /** Opens on this provider, with its optional own-key form already open. */
+  /**
+   * Opens on this provider with its key field open and focused; `""` does the same for the
+   * space's default provider (a rejected key whose provider the caller does not know).
+   */
   focusProvider?: string;
 }) {
   const { t } = useLingui();
@@ -88,13 +91,13 @@ export function ModelSettingsOverlay({
   const [me, setMe] = useState<Me | null>(null);
   const [provider, setProvider] = useState(focusProvider ?? "");
   // The provider whose optional personal-key form is open.
-  const [ownKeyProvider, setOwnKeyProvider] = useState<string | null>(focusProvider ?? null);
+  const [ownKeyProvider, setOwnKeyProvider] = useState<string | null>(focusProvider || null);
   // Opened from a "add your key" link: bring the key field on screen once, even on a phone.
   const apiKeyRef = useRef<HTMLInputElement>(null);
   const keyShown = useRef(false);
   useEffect(() => {
     const field = apiKeyRef.current;
-    if (!focusProvider || keyShown.current || !field) return;
+    if (focusProvider === undefined || keyShown.current || !field) return;
     keyShown.current = true;
     field.scrollIntoView?.({ block: "center" });
     field.focus({ preventScroll: true });
@@ -186,6 +189,7 @@ export function ModelSettingsOverlay({
       invalidatePreflight();
       resetOpenAiCompatibleProbe();
       setProvider(nextProvider);
+      if (focusProvider === "" && !keyShown.current) setOwnKeyProvider(nextProvider);
       setModelId(nextModel);
       if (nextProvider === OPENAI_COMPATIBLE_PROVIDER_ID) {
         setBaseUrl(nextCredential?.baseUrl ?? "");
@@ -350,7 +354,12 @@ export function ModelSettingsOverlay({
     baseUrl: effectiveBaseUrl,
     modelId,
   });
-  const builtinLimitSave = !isOpenAiCompatible && Boolean(credential) && apiKey.trim().length === 0;
+  // With no new key typed, the key button saves only a changed output limit.
+  const builtinLimitSave =
+    !isOpenAiCompatible &&
+    Boolean(credential) &&
+    apiKey.trim().length === 0 &&
+    maxTokens !== connectionMaxTokensField(provider, credential?.maxTokens);
 
   function invalidatePreflight() {
     preflightRevisionRef.current += 1;
@@ -1072,7 +1081,7 @@ export function ModelSettingsOverlay({
             {pending === "connect" ? (
               <Trans>Saving…</Trans>
             ) : builtinLimitSave ? (
-              <Trans>Save limits</Trans>
+              <Trans>Save output limit</Trans>
             ) : credential ? (
               <Trans>Replace API key</Trans>
             ) : (
