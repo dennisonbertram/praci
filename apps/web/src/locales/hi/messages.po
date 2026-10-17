@@ -2684,6 +2684,11 @@ msgstr "मेमोरी भी डिलीट करें"
 msgid "Delete space"
 msgstr ""
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Delete the folder {0}?"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "deleted"
 msgstr "डिलीट किया गया"
@@ -4221,6 +4226,10 @@ msgstr "{full} को नीचे ले जाएँ"
 msgid "Move {full} up"
 msgstr "{full} को ऊपर ले जाएँ"
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Move or delete what is in this folder first."
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Move them to your shared memory."
 msgstr "उन्हें अपनी साझा मेमोरी में ले जाएं।"
@@ -4634,6 +4643,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "on the 1st at {0}"
 msgstr "1 तारीख को {0} बजे"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Only an empty folder can be deleted. This can't be undone."
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -6195,6 +6208,7 @@ msgstr "शुरू हो रहा है…"
 msgid "Statement files"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
@@ -6581,6 +6595,10 @@ msgstr ""
 #. placeholder {0}: tools.length
 #: src/components/integrations/AppDetail.tsx
 msgid "Tools · {0}"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Top level"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx

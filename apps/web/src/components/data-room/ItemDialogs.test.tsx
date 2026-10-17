@@ -15,9 +15,15 @@ vi.mock("@lingui/core/macro", () => ({ t: text }));
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
-const rpc = vi.hoisted(() => ({ folderCreate: vi.fn(), itemMove: vi.fn() }));
+const rpc = vi.hoisted(() => ({
+  folderCreate: vi.fn(),
+  itemMove: vi.fn(),
+  folderMove: vi.fn(),
+  folderDelete: vi.fn(),
+}));
 vi.mock("../../lib/rpc", () => ({ rpc: { dataRoom: rpc } }));
 
+import { folderNodes } from "./folders";
 import { ItemDialog } from "./ItemDialogs";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -103,4 +109,64 @@ it("closes every item dialog with Cancel only, like the Delete confirmation", as
     );
     expect(buttons.map((b) => b.textContent)).toContain("Cancel");
   }
+});
+
+const folder = (id: string, name: string, parentId: string | null) => ({
+  id,
+  name,
+  parentId,
+  createdAt: "2026-10-01T00:00:00.000Z",
+});
+
+it("moves a folder anywhere but into itself or a folder under it", async () => {
+  const finance = folder("f1", "Finance", null);
+  const tree = folderNodes([
+    finance,
+    folder("f2", "Invoices", "f1"),
+    folder("f3", "2026", "f2"),
+    folder("f4", "Legal", null),
+  ]);
+  rpc.folderMove.mockResolvedValue({ ...finance, parentId: "f4" });
+  const onDone = vi.fn();
+  await act(async () =>
+    root.render(
+      <ItemDialog action="move" item={finance} folders={tree} onClose={vi.fn()} onDone={onDone} />,
+    ),
+  );
+  const select = document.querySelector<HTMLSelectElement>('select[name="folder"]');
+  if (!select) throw new Error("no folder select");
+  expect(Array.from(select.options).map((option) => option.textContent)).toEqual([
+    "Top level",
+    "Legal",
+    "New folder…",
+  ]);
+  await act(async () => setValue(select, "f4"));
+  await act(async () => select.form?.requestSubmit());
+  expect(rpc.folderMove).toHaveBeenCalledExactlyOnceWith({ id: "f1", parentId: "f4" });
+  expect(rpc.itemMove).not.toHaveBeenCalled();
+  expect(onDone).toHaveBeenCalledWith("move", { ...finance, parentId: "f4" });
+});
+
+it("says to empty a folder first when the server refuses to delete it", async () => {
+  rpc.folderDelete.mockRejectedValue(new Error("Folder is not empty"));
+  const onClose = vi.fn();
+  await act(async () =>
+    root.render(
+      <ItemDialog
+        action="delete"
+        item={folder("f1", "Finance", null)}
+        folders={[]}
+        onClose={onClose}
+        onDone={vi.fn()}
+      />,
+    ),
+  );
+  expect(document.body.textContent).toContain("Delete the folder Finance?");
+  const confirm = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button'),
+  ).find((button) => button.textContent === "Delete");
+  await act(async () => confirm?.click());
+  expect(rpc.folderDelete).toHaveBeenCalledExactlyOnceWith({ id: "f1" });
+  expect(document.body.textContent).toContain("Move or delete what is in this folder first.");
+  expect(onClose).not.toHaveBeenCalled();
 });

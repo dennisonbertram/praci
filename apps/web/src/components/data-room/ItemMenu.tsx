@@ -1,6 +1,5 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { DataRoomApiItem } from "@rakazo/contracts";
 import {
   Button,
   DropdownMenu,
@@ -13,14 +12,14 @@ import { FolderInput, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 export type ItemAction = "move" | "rename" | "delete";
 
-/** Move, Rename and Delete for one item. */
-export function ItemMenu({
+/** Move, Rename and Delete for one item or folder. */
+export function ItemMenu<T extends { name: string }>({
   item,
   onAction,
   className,
 }: {
-  item: DataRoomApiItem;
-  onAction: (action: ItemAction, item: DataRoomApiItem) => void;
+  item: T;
+  onAction: (action: ItemAction, item: T) => void;
   className?: string;
 }) {
   return (
