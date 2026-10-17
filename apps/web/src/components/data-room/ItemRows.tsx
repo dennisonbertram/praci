@@ -95,8 +95,8 @@ export const hasFacets = (rows: Row[]) =>
 const ROW_GRID =
   "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(200px,1fr)_28px] " +
   "@min-[400px]/list:grid-cols-[minmax(200px,1fr)_90px_28px] " +
-  "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_28px] " +
-  "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_110px_28px]";
+  "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_108px_90px_28px] " +
+  "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_108px_90px_110px_28px]";
 /** Without facets the name takes every column but the menu. */
 const PLAIN_GRID =
   "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(0,1fr)_28px]";
@@ -184,6 +184,16 @@ function ItemRow({
           </span>
           {folder ? (
             <span className="truncate text-xs font-normal text-muted-foreground">{folder}</span>
+          ) : null}
+          {/* Shown at every width: on phones the Type and Status columns are hidden. */}
+          {item.status === "failed" ? (
+            <span
+              data-testid="data-room-failed-reason"
+              className="text-xs font-normal text-destructive"
+              title={item.error ?? undefined}
+            >
+              <Trans>Could not read this file. Delete it and upload it again.</Trans>
+            </span>
           ) : null}
         </span>
       </span>

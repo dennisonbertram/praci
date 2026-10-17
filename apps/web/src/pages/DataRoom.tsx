@@ -380,7 +380,7 @@ export function DataRoomPage() {
         </div>
       ) : (
         <>
-          <div className="px-3 pb-2.5 empty:hidden md:px-5">
+          <div className="px-4 pb-2.5 empty:hidden md:px-7">
             <DataRoomConsentPrompt onAllowed={list.reload} />
           </div>
           <FilterBar

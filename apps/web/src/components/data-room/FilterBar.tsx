@@ -260,7 +260,7 @@ export function FilterBar({
   const direction = sort?.direction ?? "desc";
   const openFolder = folders.find(({ folder }) => folder.id === folderId);
   return (
-    <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2.5 md:px-5">
+    <div className="flex flex-wrap items-center gap-1.5 px-4 pb-2.5 md:px-7">
       <InputGroup className="me-1.5 w-full min-w-40 @min-[560px]/bd:max-w-80 @min-[560px]/bd:flex-1">
         <InputGroupAddon>
           <Search aria-hidden="true" />
