@@ -96,7 +96,7 @@ it("names the recipient and allows exactly its key when the user presses Allow",
   expect(container.querySelector("h2")?.textContent).toBe("Let Rakazo sort your mail");
   // The recipient stays named, so consent stays accurate.
   expect(container.textContent).toContain(
-    "Senders, recipients, subjects and short previews are sent to OpenRouter.",
+    "Senders, recipients, subjects and short previews are sent to the AI service that runs your bots (OpenRouter).",
   );
   expect(onAllowed).not.toHaveBeenCalled();
   expect(consent.allowRecipient).not.toHaveBeenCalled();
