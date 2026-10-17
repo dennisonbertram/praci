@@ -6,7 +6,7 @@ const meta = {
   title: "Pages/Agent panel intro",
   component: AgentPanelIntro,
   args: {
-    description: "Answers questions about your Mercury and Brex accounts.",
+    description: "Answers questions about your bank, card, statement and crypto accounts.",
     suggestions: ["What is our runway?", "Where did spend go up this month?"],
     onPick: fn(),
   },

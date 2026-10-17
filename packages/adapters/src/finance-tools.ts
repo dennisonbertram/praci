@@ -463,6 +463,16 @@ async function financeOverview(deps: FinanceToolDeps) {
       totalInclOtherCrypto: dollars((cash.bankCashCents ?? 0) + stablecoinCents + otherCryptoCents),
       runwayCrypto: scope,
       note: `total and runway are bank cash plus ${COUNTED_CRYPTO[scope]}, as the user chose.`,
+      // Every cash account the Finance page counts, bank by bank: synced Mercury and Brex
+      // accounts and accounts fed by uploaded statements.
+      accounts: accounts
+        .filter((a) => a.kind !== "card")
+        .map((a) => ({
+          name: a.lastFour && !a.name.includes(a.lastFour) ? `${a.name} ••${a.lastFour}` : a.name,
+          source: a.provider === "statement" ? "uploaded statements" : a.provider,
+          kind: a.kind,
+          balance: dollars(a.balanceCents),
+        })),
     },
     monthlyBurn: dollars(burn.monthlyCents),
     burnMonths: burn.months,
