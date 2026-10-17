@@ -217,19 +217,23 @@ export function ArtifactsPage() {
             <Trans>Artifacts</Trans>
           </h1>
           <div className="app-no-drag flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              aria-pressed={filtersOpen}
-              onClick={() => setFiltersOpen((open) => !open)}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                filtersOpen
-                  ? "border-transparent bg-primary text-primary-foreground"
-                  : "border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              }`}
-            >
-              <Filter size={14} strokeWidth={1.9} />
-              <Trans>Filters</Trans>
-            </button>
+            {/* Filters act on the list, so they go when an open document hides it (phone, maximized). */}
+            {artifactId && maximized ? null : (
+              <button
+                type="button"
+                aria-pressed={filtersOpen}
+                data-testid="artifacts-filters"
+                onClick={() => setFiltersOpen((open) => !open)}
+                className={`${artifactId ? "hidden md:flex" : "flex"} items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                  filtersOpen
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                }`}
+              >
+                <Filter size={14} strokeWidth={1.9} />
+                <Trans>Filters</Trans>
+              </button>
+            )}
             {!artifactId ? (
               <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
                 <ViewModeButton
@@ -251,7 +255,7 @@ export function ArtifactsPage() {
           </div>
         </div>
 
-        {filtersOpen ? (
+        {filtersOpen && !(artifactId && maximized) ? (
           <div className="app-no-drag mt-3 flex flex-wrap items-center gap-2">
             <div className="relative w-full max-w-[260px]">
               <Search

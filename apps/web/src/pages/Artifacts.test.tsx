@@ -9,6 +9,7 @@ import { expect, it, vi } from "vitest";
 const api = vi.hoisted(() => ({
   listSpace: vi.fn(),
   listVersions: vi.fn(() => new Promise(() => {})),
+  getById: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { artifacts: api } }));
 vi.mock("../lib/bootstrap", () => ({
@@ -220,6 +221,29 @@ it("gives an open artifact a way back to the list", async () => {
     const back = page.container.querySelector("a[aria-label='Back to artifacts']");
     expect(back?.getAttribute("href")).toBe("/app/artifacts");
     expect(page.container.textContent).not.toContain("Loading…Loading…");
+  } finally {
+    await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps Filters to the list: phones hide it beside an open document, and maximizing removes it", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({ items: [artifact("Update", "artifact-1")], nextCursor: null });
+  api.listVersions.mockRejectedValueOnce(new Error("no versions"));
+  api.getById.mockResolvedValue({ ...artifact("Update", "artifact-1"), contentBase64: "" });
+  vi.mocked((await import("../lib/artifact-open")).decodeArtifactBase64).mockReturnValue(
+    new TextEncoder().encode("# Update"),
+  );
+  const page = await renderArtifacts("/app/artifacts/artifact-1");
+  try {
+    const filters = () => page.container.querySelector("[data-testid='artifacts-filters']");
+    expect(filters()?.className).toContain("hidden md:flex");
+    const maximize = page.container.querySelector<HTMLButtonElement>(
+      "button[aria-label='Maximize']",
+    );
+    await act(async () => maximize?.click());
+    expect(filters()).toBeNull();
   } finally {
     await page.cleanup();
     vi.unstubAllGlobals();
