@@ -82,4 +82,20 @@ describe("mock demo data", () => {
     );
     expect(prices.size).toBe(2);
   });
+
+  it("serves one pending Brex charge and one unpaid Brex bill", async () => {
+    const { callToolFor } = demoFinance(new Date("2026-10-16T12:00:00Z"));
+    const brex = await callToolFor({ id: "s", provider: "brex", endpoint: "" } as never);
+    const page = (await brex("list_expenses", { intent: "test", limit: 100 })) as {
+      items: Array<{ id: string; payment_status: string }>;
+    };
+    expect(page.items.filter((e) => e.payment_status === "PROCESSING").map((e) => e.id)).toEqual([
+      "mock-brex-pending",
+    ]);
+    const bills = (await brex("list_bills", { intent: "test" })) as {
+      items: Array<{ vendor: { name: string }; due_at: string }>;
+    };
+    expect(bills.items.map((b) => b.vendor.name)).toEqual(["Placeholder Legal LLP (Mock)"]);
+    expect(bills.items[0]?.due_at > "2026-10-16").toBe(true);
+  });
 });

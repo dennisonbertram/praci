@@ -453,7 +453,35 @@ export function demoFinance(now = new Date()) {
     accounts: mercuryAccounts,
     treasury: { accounts: [], page: {} },
   });
-  const brex = fakeBrex({ expenses });
+  // Not yet cleared: shows as Pending on the dashboard and on its transaction page.
+  const pendingAt = new Date(now.getTime() - DAY_MS);
+  const pendingMoney = { value: "612.40", currency: "USD", display: "$612.40 USD" };
+  expenses.unshift(
+    brexExpense("mock-brex-pending", {
+      purchased_at: pendingAt.toISOString(),
+      posted_at: null,
+      payment_status: "PROCESSING",
+      merchant: { id: "pmch_air", name: "Skyline Air (Mock)" },
+      vendor: { id: "pmch_air", name: "Skyline Air (Mock)", email: null },
+      merchant_category: { id: "pmca_air", name: "Travel" },
+      memo: MOCK_NOTE,
+      original_amount: pendingMoney,
+      purchased_amount: pendingMoney,
+      amount: pendingMoney,
+      card: { id: "ncard_1", last4: "0001", partner: null },
+    }),
+  );
+  // An approved bill not yet paid: an "Upcoming" bill row, not a transaction.
+  const bills = [
+    {
+      id: "mock-bill-legal",
+      status: "APPROVED",
+      due_at: new Date(now.getTime() + 10 * DAY_MS).toISOString(),
+      vendor: { name: "Placeholder Legal LLP (Mock)" },
+      amount: { value: "2000.00", currency: "USD" },
+    },
+  ];
+  const brex = fakeBrex({ expenses, bills });
   const brexCallTool: typeof brex.callTool = async (name, args) =>
     name === "list_business_accounts" ? brexAccounts : brex.callTool(name, args);
   return {
