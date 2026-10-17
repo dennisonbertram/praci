@@ -8,6 +8,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogTitle,
   Button,
@@ -142,7 +143,7 @@ const hasFiles = (event: React.DragEvent) => event.dataTransfer.types.includes("
  * because the server keys it by `clientId`. Closing keeps the draft unless nothing was written.
  */
 export function ComposeEmail({
-  seed,
+  seed: seedProp,
   accounts,
   connectionId,
   restore: restoreProp,
@@ -158,7 +159,9 @@ export function ComposeEmail({
   onClose: () => void;
 }) {
   // Reply, reply all and forward continue the composer closed last time for the same message.
-  const [restore] = useState(() => restoreProp ?? recallClosed(seed));
+  const [restore] = useState(() => restoreProp ?? recallClosed(seedProp));
+  // A reply typed under Reply comes back under Reply all too, in the mode it was written in.
+  const seed = restore?.seed ?? seedProp;
   const [clientId] = useState(() => restore?.clientId ?? newClientId());
   const initial: Fields = restore?.fields ?? {
     connectionId: connectionId ?? accounts[0]?.connectionId ?? "",
@@ -403,20 +406,24 @@ export function ComposeEmail({
     if (incoming.length === 0) return;
     let total = [...files, ...forwarded].reduce((sum, file) => sum + file.size, 0);
     const accepted: File[] = [];
-    let tooBig = false;
+    const rejected: File[] = [];
     for (const file of incoming) {
       if (total + file.size > MAX_COMPOSE_ATTACHMENT_BYTES) {
-        tooBig = true;
+        rejected.push(file);
         continue;
       }
       total += file.size;
       accepted.push(file);
     }
+    const [first] = rejected;
     setNotice(
-      tooBig
+      first
         ? {
             kind: "error",
-            text: t`Attachments can't be over ${MAX_COMPOSE_ATTACHMENT_MB} MB.`,
+            text:
+              rejected.length === 1
+                ? t`${first.name} (${formatBytes(first.size)}) was not added. Attachments can be up to ${MAX_COMPOSE_ATTACHMENT_MB} MB in total.`
+                : t`${rejected.length} files were not added. Attachments can be up to ${MAX_COMPOSE_ATTACHMENT_MB} MB in total.`,
           }
         : null,
     );
@@ -559,6 +566,12 @@ export function ComposeEmail({
                 ))}
               </NativeSelect>
             </Row>
+          ) : seed.kind === "new" && accounts[0] ? (
+            <Row label={t`From`}>
+              <span dir="auto" className="min-w-0 flex-1 truncate text-sm leading-7">
+                {accounts[0].label}
+              </span>
+            </Row>
           ) : null}
           {/* biome-ignore lint/a11y/noStaticElementInteractions: the handlers only track whether focus is inside */}
           <div
@@ -673,16 +686,14 @@ export function ComposeEmail({
             <EditorContent editor={editor} />
           </div>
           {collapsed ? (
-            <button
-              type="button"
-              aria-label={t`Show quoted text`}
-              className="group mx-4 mb-3 flex h-6 items-center rounded-full outline-none"
+            <Button
+              variant="secondary"
+              size="xs"
+              className="mx-4 mb-3 rounded-full text-muted-foreground"
               onClick={() => setQuoteOpen(true)}
             >
-              <span className="flex h-3 w-6 items-center justify-center rounded-full bg-muted pb-0.5 text-xs leading-none text-muted-foreground group-hover:bg-border group-focus-visible:ring-2 group-focus-visible:ring-ring/50">
-                …
-              </span>
-            </button>
+              <Trans>Show original message</Trans>
+            </Button>
           ) : null}
         </div>
 
@@ -819,8 +830,11 @@ export function ComposeEmail({
         <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
           <AlertDialogContent size="sm">
             <AlertDialogTitle>
-              <Trans>Discard attachments?</Trans>
+              <Trans>Remove attachments?</Trans>
             </AlertDialogTitle>
+            <AlertDialogDescription>
+              <Trans>Your text is saved as a draft. Attachments are not kept.</Trans>
+            </AlertDialogDescription>
             <AlertDialogFooter>
               <AlertDialogCancel>
                 <Trans>Keep editing</Trans>
@@ -831,7 +845,7 @@ export function ComposeEmail({
                   closeNow();
                 }}
               >
-                <Trans>Discard</Trans>
+                <Trans>Close and remove</Trans>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

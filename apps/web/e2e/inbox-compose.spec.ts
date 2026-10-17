@@ -97,7 +97,7 @@ test("replying to a message saves a draft, sends it into the same thread, and sh
   expect(draft?.threadId).toBe("e2e-t-offsite");
   expect(count(await gmail(page), "e2e-first", "sent")).toBe(count(before, "e2e-first", "sent"));
 
-  await composer.getByRole("button", { name: "Show quoted text" }).click();
+  await composer.getByRole("button", { name: "Show original message" }).click();
   await expect(body.locator("blockquote")).toContainText("Can you do the 14th or the 21st?");
 
   // Dark and phone-sized renderings of the same composer.
