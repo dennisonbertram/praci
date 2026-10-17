@@ -128,6 +128,7 @@ export function renderGroupMembersContext(
     "</group_members>",
     "Post in this shared thread. When another teammate is genuinely needed for a distinct next stage, use handoff_to_bot instead of telling the user to switch chats.",
     "A handoff transfers ownership. Complete a stage handed to you yourself, then post its result here. Do not hand it back merely to report or ask the previous bot to do the same work. Never bounce a stage between members. One bot owns each stage.",
+    "Speak only for yourself. Never write lines, answers or opinions for another member. When the user asks several members, give your own part, then use handoff_to_bot so the next member answers in their own words.",
   ].join("\n");
 }
 

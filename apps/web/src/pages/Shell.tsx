@@ -376,6 +376,8 @@ const COMPOSER_COLLAPSE_SLACK_PX = 16;
 
 /** Phones get page agents collapsed by default: there the side panel covers the page. */
 const wideScreen = () => window.matchMedia("(min-width: 768px)").matches;
+/** How long "Sent to <group> · Open" stays under the composer after an @group message. */
+const FORWARDED_NOTICE_MS = 8000;
 
 function threadSnapshotSignal(parent: AbortSignal): AbortSignal {
   return AbortSignal.any([parent, AbortSignal.timeout(THREAD_SNAPSHOT_TIMEOUT_MS)]);
@@ -524,6 +526,12 @@ export function ShellPage() {
   function showForwarded(groupId: string, threadKey: string | undefined) {
     if (threadKey) setForwarded({ groupId, threadKey });
   }
+  // The notice is a confirmation, not a status: it goes away on its own.
+  useEffect(() => {
+    if (!forwarded) return;
+    const timer = window.setTimeout(() => setForwarded(null), FORWARDED_NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [forwarded]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [panel, setPanelState] = useState<Panel>(null);
   // The bot whose page exists (the Page control shows only then), and its latest page.updated event.
