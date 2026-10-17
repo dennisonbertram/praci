@@ -110,7 +110,7 @@ export function BoardPage() {
           <ChevronLeft />
         </Button>
         <h1 className="flex-1 font-medium">
-          <Trans>Board</Trans>
+          <Trans>Task board</Trans>
         </h1>
         <Button onClick={() => setSelected("new")} disabled={bots.length === 0}>
           <Trans>New ticket</Trans>
@@ -147,9 +147,17 @@ export function BoardPage() {
           ))}
         </div>
         {tickets.length === 0 && !error ? (
-          <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-            <Trans>No tickets yet</Trans>
-          </p>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 text-center text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">
+              <Trans>No tickets yet</Trans>
+            </p>
+            <p className="max-w-sm">
+              <Trans>
+                Tickets track work for your bots. Bots add them when you ask them to track a task,
+                or press New ticket.
+              </Trans>
+            </p>
+          </div>
         ) : null}
       </main>
       {selected ? (
