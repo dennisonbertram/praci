@@ -258,9 +258,17 @@ msgstr ""
 msgid "{count} years"
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{days, plural, one {Due in # day} other {Due in # days}}"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "{days}d ago"
 msgstr "{days}일 전"
+
+#: src/components/data-room/format.ts
+msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "{from} handed off to {to}"
@@ -278,8 +286,16 @@ msgstr ""
 msgid "{hours}h ago"
 msgstr "{hours}시간 전"
 
+#: src/components/data-room/format.ts
+msgid "{imported, plural, one {Imported # file} other {Imported # files}}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 msgstr ""
 
 #: src/lib/relative-time.ts
@@ -510,6 +526,8 @@ msgid "Actions for space"
 msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
+#: src/pages/Legal.tsx
+#: src/pages/legal/LegalContracts.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Active"
 msgstr "활성"
@@ -739,6 +757,7 @@ msgid "All time"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
+#: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr ""
 
@@ -759,6 +778,10 @@ msgstr "확인 없이 {0} 허용"
 
 #: src/components/AiDataSharing.tsx
 msgid "Allow {name}"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Allow access below first."
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -807,6 +830,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Already in {folder} as {name}"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Already in the Data room"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
@@ -1022,6 +1049,7 @@ msgid "Ask the server owner to set up the app catalog."
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
+#: src/components/legal/LegalGraph.tsx
 msgid "Asset"
 msgstr ""
 
@@ -1106,6 +1134,14 @@ msgstr "인증하기"
 msgid "Authorize this server so bots can use its tools. A popup opens."
 msgstr ""
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "Auto-renews"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Auto-renews, {notice} days notice"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Automated senders"
 msgstr ""
@@ -1131,6 +1167,7 @@ msgid "Avatars"
 msgstr "아바타"
 
 #: src/components/computer/FilesApp.tsx
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
@@ -1787,6 +1824,10 @@ msgstr ""
 msgid "Collapse Inbox agent"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Collapse Legal agent"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Color"
 msgstr "색상"
@@ -1818,6 +1859,10 @@ msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Compact"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Company"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
@@ -1918,6 +1963,10 @@ msgstr ""
 msgid "Connect a model"
 msgstr "AI 모델 연결"
 
+#: src/pages/Legal.tsx
+msgid "Connect a model in Settings first."
+msgstr ""
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Connect a provider to add backups."
 msgstr "백업을 추가하려면 제공업체를 연결하세요."
@@ -1948,8 +1997,16 @@ msgstr ""
 msgid "Connect Executor"
 msgstr "Executor 연결"
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Connect Gmail"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Connect Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -2062,7 +2119,14 @@ msgid "Continue with email"
 msgstr "이메일로 계속하기"
 
 #: src/components/finance/WalletDialog.tsx
+#: src/components/legal/LegalGraph.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Contract"
+msgstr ""
+
+#: src/pages/Legal.tsx
+#: src/pages/legal/LegalContracts.tsx
+msgid "Contracts"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -2187,6 +2251,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Inbox agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Legal agent"
 msgstr ""
 
 #: src/pages/Onboarding.tsx
@@ -2591,6 +2659,10 @@ msgstr ""
 msgid "Couldn't download {0}"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Couldn't load mail"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Couldn't load messaging settings"
 msgstr "메시징 설정을 불러올 수 없습니다"
@@ -2676,6 +2748,10 @@ msgstr "그룹 만들기"
 
 #: src/pages/Shell.tsx
 msgid "Create Inbox agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Create Legal agent"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -2778,6 +2854,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "days"
 msgstr "일"
+
+#: src/pages/Legal.tsx
+msgid "Deadlines"
+msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Decline"
@@ -2989,14 +3069,25 @@ msgstr "연결 해제 중…"
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr "닫기"
 
+#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Dismiss {0}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Dismiss error"
 msgstr "오류 닫기"
+
+#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Dismissed {0}."
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Dismissed. Reconnect anytime from MCP settings."
@@ -3048,6 +3139,7 @@ msgstr "계정이 없나요?"
 #: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Done"
 msgstr "완료"
@@ -3084,6 +3176,10 @@ msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 msgid "Downloading…"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Draft"
 msgstr ""
 
 #: src/components/MailOutbox.tsx
@@ -3133,6 +3229,14 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Due"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Due today"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Due tomorrow"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -3327,6 +3431,10 @@ msgstr "{0} 펼치기"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Expired"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -3542,6 +3650,14 @@ msgstr ""
 msgid "From {0}"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
+msgid "From email"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "From Google Drive"
+msgstr ""
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "전체 화면"
@@ -3607,6 +3723,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Google Drive"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Graph"
 msgstr ""
 
 #: src/pages/DataRoom.tsx
@@ -3757,12 +3877,25 @@ msgstr ""
 msgid "Image upload area"
 msgstr "이미지 업로드 영역"
 
+#: src/components/data-room/ImportFromDrive.tsx
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Import"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Import an OpenAPI description"
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Import anyway"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Import from email"
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Import from Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3895,6 +4028,10 @@ msgstr "답장한 메시지로 이동: {excerpt}"
 msgid "Junk"
 msgstr ""
 
+#: src/components/legal/LegalGraph.tsx
+msgid "Jurisdiction"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "just now"
 msgstr "방금"
@@ -3948,6 +4085,19 @@ msgstr ""
 msgid "Last charge"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Last scan {lastScan}"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Last scan failed"
+msgstr ""
+
+#. placeholder {0}: lastRun.error
+#: src/pages/Legal.tsx
+msgid "Last scan failed: {0}"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 #: src/components/EmailCards.tsx
 msgid "Later"
@@ -3979,12 +4129,29 @@ msgstr ""
 msgid "Leave"
 msgstr "나가기"
 
+#: src/pages/Legal.tsx
+#: src/pages/Shell.tsx
+msgid "Legal"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Legal relationships"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key."
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Rakazo read your documents"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "Let Rakazo sort your mail"
+msgstr ""
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Let the Legal agent read your documents"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -4037,6 +4204,8 @@ msgstr ""
 msgid "Load earlier messages"
 msgstr "이전 메시지 불러오기"
 
+#: src/components/data-room/ImportFromDrive.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Inbox.tsx
@@ -4189,6 +4358,11 @@ msgstr "작업공간에서 사용할 장기 기억 서비스를 관리합니다.
 msgid "Manual setup required"
 msgstr ""
 
+#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Mark {0} done"
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Mark as read"
 msgstr ""
@@ -4223,6 +4397,11 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark unread"
+msgstr ""
+
+#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Marked {0} done."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -4669,6 +4848,10 @@ msgstr ""
 msgid "Next 30 days"
 msgstr ""
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "Next deadline"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
@@ -4698,6 +4881,10 @@ msgstr ""
 msgid "No authentication"
 msgstr "인증 없음"
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "No auto-renewal"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "No bot activity yet."
 msgstr "아직 봇 활동이 없습니다."
@@ -4717,6 +4904,11 @@ msgstr "아직 연결된 채팅 앱이 없습니다."
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "No files found"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -4779,6 +4971,10 @@ msgstr "나열된 모델이 없습니다."
 msgid "No more results"
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "No open deadlines."
+msgstr ""
+
 #: src/pages/CapTable.tsx
 msgid "No other contacts yet"
 msgstr ""
@@ -4789,6 +4985,14 @@ msgstr "검색된 AI 서비스가 없습니다."
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "No receipt"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "No relations."
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "No relationships yet."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -4917,6 +5121,10 @@ msgstr ""
 msgid "Not now"
 msgstr "나중에"
 
+#: src/pages/Legal.tsx
+msgid "Not scanned yet"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not sent"
 msgstr ""
@@ -4968,6 +5176,10 @@ msgstr "OAuth 인증이 취소되었습니다."
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "OAuth 연결 실패"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Obligation"
+msgstr ""
 
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
@@ -5035,6 +5247,14 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Open deadlines"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Open document"
+msgstr ""
+
 #: src/components/markdown-link-prompt.tsx
 msgid "Open external link?"
 msgstr "외부 링크를 열까요?"
@@ -5061,6 +5281,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Open Models settings"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -5152,6 +5376,7 @@ msgid "Original message unavailable"
 msgstr "원본 메시지를 사용할 수 없습니다"
 
 #: src/components/finance/ui.tsx
+#: src/components/legal/LegalGraph.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
@@ -5182,6 +5407,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Over the 50 MB limit"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Overdue"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -5232,6 +5461,7 @@ msgstr "보류"
 
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Parties"
 msgstr ""
 
@@ -5312,6 +5542,10 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Period"
+msgstr ""
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Person"
 msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
@@ -5537,6 +5771,7 @@ msgstr "최근"
 msgid "Recently added"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -5648,6 +5883,10 @@ msgstr "새로고침 중…"
 #: src/lib/user-error.ts
 msgid "Registration is closed"
 msgstr "가입이 마감되었습니다"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Relations of {selectedLabel}"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Release computer"
@@ -5805,6 +6044,10 @@ msgstr "섹션 이름 바꾸기"
 msgid "Rename space"
 msgstr "스페이스 이름 바꾸기"
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "Renewal"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Renews {day}"
 msgstr ""
@@ -5925,6 +6168,7 @@ msgstr ""
 #: src/components/AccountAccess.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Legal.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Retry"
 msgstr "다시 시도"
@@ -5960,6 +6204,10 @@ msgstr "서비스 설정을 확인한 뒤 다시 테스트하세요."
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Revoke"
 msgstr "연결 해제"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Right"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Robot"
@@ -6131,6 +6379,14 @@ msgstr "저장 중…"
 msgid "Say yes or no, or answer in a sentence."
 msgstr "예 또는 아니요로 답하거나 문장으로 답해 주세요."
 
+#: src/pages/Legal.tsx
+msgid "Scan now"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scanning…"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Scheduling"
 msgstr ""
@@ -6174,6 +6430,11 @@ msgstr ""
 msgid "Search documents"
 msgstr ""
 
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Search Drive"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
 msgid "Search mail"
 msgstr ""
@@ -6246,6 +6507,10 @@ msgstr "대화할 Bot을 선택하세요"
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Select a connected model"
 msgstr "연결된 모델 선택"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Select an item to see its relations."
+msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -6434,6 +6699,10 @@ msgstr ""
 #: src/components/call/VoiceChatCard.tsx
 msgid "Show transcript"
 msgstr "대화 기록 표시"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Showing the {shown} most connected of {total} items."
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Sidebar density"
@@ -6698,6 +6967,7 @@ msgstr ""
 #: src/pages/Board.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Status"
 msgstr ""
 
@@ -6856,8 +7126,16 @@ msgstr "Teams 메시지"
 msgid "Teams not enabled"
 msgstr ""
 
+#: src/pages/legal/LegalContracts.tsx
+msgid "Term"
+msgstr ""
+
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Terminal"
+msgstr ""
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Terminated"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -6923,6 +7201,10 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "The Inbox sorts and reads your mail only while its model is allowed here."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "The Legal agent scans your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -7255,11 +7537,13 @@ msgstr ""
 #: src/components/MailOutbox.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"
 msgstr ""
 
 #: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Unknown"
 msgstr ""
 
@@ -7289,6 +7573,10 @@ msgstr "고정 해제"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Unreviewed documents"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
@@ -7476,6 +7764,7 @@ msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
+#: src/pages/legal/LegalContracts.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Value"
 msgstr ""
@@ -7512,6 +7801,7 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Legal.tsx
 msgid "View"
 msgstr ""
 

@@ -285,6 +285,38 @@ describe("mail_get", () => {
     expect(named.text).toContain("Hello b");
   });
 
+  it("lists attachments with their ids, and leaves out inline pictures", async () => {
+    const { deps } = setup({
+      a: [
+        {
+          ...base,
+          id: "m5",
+          date: "2026-01-07T10:00:00Z",
+          subject: "Files",
+          text: "See attached",
+          attachments: [{ filename: "invoice.pdf", mimeType: "application/pdf", size: 1234 }],
+          inlineImages: [{ contentId: "logo", mimeType: "image/png", data: "aGk=" }],
+        },
+      ],
+    });
+    const result = (await mailToolFromTool("mail_get", deps, context(), { id: "m5" })) as {
+      text: string;
+    };
+    const lines = result.text.split("\n");
+    const at = lines.indexOf("Attachments (id | filename | type | bytes):");
+    expect(at).toBeGreaterThan(-1);
+    expect(lines.slice(at + 1)).toHaveLength(1);
+    expect(lines[at + 1]).toMatch(/^\S+ \| invoice\.pdf \| application\/pdf \| 1234$/);
+  });
+
+  it("omits the attachment section when there are none", async () => {
+    const { deps } = setup({ a: messages });
+    const result = (await mailToolFromTool("mail_get", deps, context(), { id: "m1" })) as {
+      text: string;
+    };
+    expect(result.text).not.toContain("Attachments");
+  });
+
   it("reports a missing message as an error object", async () => {
     const { deps } = setup({ a: messages });
     expect(await mailToolFromTool("mail_get", deps, context(), { id: "nope" })).toEqual({

@@ -588,6 +588,14 @@ async function mailGet(deps: MailToolDeps, context: AdapterContext, args: Record
   }
   const maxChars = clampInt(args.maxChars, MIN_BODY_CHARS, MAX_BODY_CHARS, DEFAULT_BODY_CHARS);
   const body = stripQuotedReply(message.text).trimEnd().slice(0, maxChars);
+  // Inline pictures the body shows itself are not files to offer.
+  const files = message.attachments.filter((part) => !part.inline && part.id);
+  const attachments = files.length
+    ? [
+        "Attachments (id | filename | type | bytes):",
+        ...files.map((part) => `${part.id} | ${part.filename} | ${part.mimeType} | ${part.size}`),
+      ]
+    : [];
   return {
     text: [
       `Message ID: ${message.id}`,
@@ -600,6 +608,7 @@ async function mailGet(deps: MailToolDeps, context: AdapterContext, args: Record
       `Date: ${message.date}`,
       "Body:",
       body,
+      ...attachments,
     ].join("\n"),
   };
 }
