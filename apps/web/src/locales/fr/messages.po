@@ -2175,6 +2175,10 @@ msgstr ""
 msgid "Connect API key"
 msgstr "Connecter la clé API"
 
+#: src/components/ConnectAppsButton.tsx
+msgid "Connect apps"
+msgstr ""
+
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Connect Blockscout"
 msgstr ""
@@ -4269,6 +4273,7 @@ msgstr "Instruction"
 msgid "Integration options"
 msgstr "Options d'intégration"
 
+#: src/components/ConnectAppsButton.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
