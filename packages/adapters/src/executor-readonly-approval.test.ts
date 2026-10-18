@@ -23,8 +23,10 @@ import { DestinationEmulator } from "./destination-emulator.js";
 import { createRunExecutor, MAIL_CONSENT_OFF } from "./executor.js";
 import { fakeMercury, fakeMercuryMcpFetch } from "./finance-fake-tools.js";
 import type * as InboxTriageModule from "./inbox-triage.js";
-import { catalogEntries, resolveCatalogCall } from "./lazy-tool-catalog.js";
+import { catalogEntries, DIRECT_TOOL_LIMIT, resolveCatalogCall } from "./lazy-tool-catalog.js";
 import { McpConnector } from "./mcp-connector.js";
+import { PipedreamConnector } from "./pipedream-connector.js";
+import { ThirdPartyConnectorEmulator } from "./third-party-connector-emulator.js";
 
 vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
   ...(await importOriginal<typeof ComputerLifecycleModule>()),
@@ -1185,6 +1187,64 @@ describe("connected app integration agent tools", () => {
     await f.run();
     expect(f.offeredTools).not.toContain(ownTool.name);
     expect(f.pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("executes pinned Pipedream reads above the catalog limit with writes off", async () => {
+    const reads = Array.from({ length: DIRECT_TOOL_LIMIT + 1 }, (_, index) => ({
+      name: `read_item_${index}`,
+      description: "Read a synthetic item",
+      inputSchema: { type: "object", properties: { id: { type: "string" } } },
+      annotations: { readOnlyHint: true },
+    }));
+    const call = vi.fn(() => ({ item: "synthetic item" }));
+    const tools = [
+      ...reads,
+      { ...reads[0]!, name: "write_item", annotations: { readOnlyHint: false } },
+      { name: "unknown_item", description: "Unknown action", inputSchema: { type: "object" } },
+    ];
+    const emulator = new ThirdPartyConnectorEmulator({
+      "remote.mcp.pipedream.net": {
+        tools,
+        call,
+      },
+    });
+    const accountIds: Array<string | null> = [];
+    const connector = new PipedreamConnector(
+      {
+        clientId: "fake-client-id",
+        clientSecret: "fake-client-secret",
+        projectId: "fake-project-id",
+        environment: "development",
+        identitySecret: "fake-identity-secret",
+      },
+      {
+        resolveHostname: emulator.resolveHostname,
+        fetch: async (input, init) => {
+          if (String(init?.body).includes('"method":"tools/call"')) {
+            accountIds.push(new Headers(init?.headers).get("x-pd-account-id"));
+          }
+          return emulator.fetch(input, init);
+        },
+      },
+    );
+    const f = fixture({
+      name: reads[0]!.name,
+      spawnKey: agentKey,
+      connectionRows: [
+        connection({ connectorId: "pipedream", provider: "gmail", writesEnabled: false }),
+      ],
+      connector: new ConnectorRegistry(new DestinationEmulator(), [connector]),
+    });
+
+    await f.run();
+
+    expect(f.offeredTools).toEqual(expect.arrayContaining(reads.map((tool) => tool.name)));
+    expect(f.offeredTools).not.toContain("write_item");
+    expect(f.offeredTools).not.toContain("unknown_item");
+    expect(f.offeredTools).not.toContain("pipedream_execute_tool");
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(call).toHaveBeenCalledExactlyOnceWith(reads[0]!.name, { id: "item-1" });
+    expect(accountIds).toEqual(["account-1"]);
   });
 
   it("hides linked-account writes from ordinary bots but leaves no-agent behavior unchanged", async () => {

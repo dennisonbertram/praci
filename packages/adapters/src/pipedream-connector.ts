@@ -219,6 +219,7 @@ export class PipedreamConnector implements ManagedConnectorProvider {
 
   async discoverTools(context: AdapterContext): Promise<ConnectorTool[]> {
     const tools = await this.allTools(context);
+    if (context.connectedAppAgentConnectionId) return tools;
     const exposed =
       tools.length <= DIRECT_TOOL_LIMIT
         ? tools

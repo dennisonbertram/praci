@@ -593,7 +593,7 @@ describe("PipedreamConnector", () => {
       ],
       connectedAppAgentConnectionId: "connection-gmail",
     };
-    const execute = (await connector.discoverTools(appAgentContext)).at(-1)!;
+    const execute = (await connector.discoverTools(connectedContext("gmail"))).at(-1)!;
     const call = {
       tool: execute.name,
       args: { id: "gmail:gmail_tool_0", arguments: { text: "hello" } },
