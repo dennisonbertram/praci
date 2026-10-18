@@ -32,10 +32,11 @@ async function render() {
   const container = document.createElement("div");
   document.body.append(container);
   const onClick = vi.fn();
-  await act(async () =>
-    createRoot(container).render(<ConnectAppsButton active={false} onClick={onClick} />),
-  );
-  return { container, onClick };
+  const root = createRoot(container);
+  const show = (active: boolean) =>
+    act(async () => root.render(<ConnectAppsButton active={active} onClick={onClick} />));
+  await show(false);
+  return { container, onClick, show };
 }
 const row = (c: HTMLElement) =>
   c.querySelector<HTMLButtonElement>("[data-testid=sidebar-integrations]");
@@ -87,4 +88,29 @@ it("leaves out Gmail when native Google Gmail is connected", async () => {
   const names = [...container.querySelectorAll("[data-testid=app-logo]")].map((el) => el.outerHTML);
   expect(names.join("")).not.toContain("gmail");
   expect(container.querySelectorAll("[data-testid=app-logo]")).toHaveLength(3);
+});
+
+it("shows the plain Integrations row, not the pill, while active", async () => {
+  const { container, show } = await render();
+  expect(row(container)?.textContent).toBe("Connect apps");
+  await show(true);
+  expect(row(container)?.textContent).toBe("Integrations");
+  expect(row(container)?.getAttribute("aria-current")).toBe("page");
+});
+
+it("keeps apps with pending or failed connections in the pill", async () => {
+  connections.list.mockResolvedValue(
+    ["gmail", "slack", "notion", "googledrive"].map((slug, i) => ({
+      connectorId: "composio",
+      provider: slug,
+      status: ["error", "pending", "connected", "connected"][i],
+    })),
+  );
+  const { container } = await render();
+  const html = [...container.querySelectorAll("[data-testid=app-logo]")]
+    .map((el) => el.outerHTML)
+    .join("");
+  expect(html).toContain("gmail");
+  expect(html).toContain("slack");
+  expect(html).not.toContain("notion");
 });
