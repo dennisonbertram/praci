@@ -4,7 +4,7 @@ import type { Contact } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -730,6 +730,45 @@ it("filters Carta's shareholders and option grants on their own tabs", async () 
   await click(button("Options"));
   expect(container.textContent).toContain("Granted options");
   expect(container.textContent).not.toContain("Founder Person");
+});
+
+it("keeps an option grant on Options when a contact with the holder's email is Other", async () => {
+  const granted = { ...holder("Granted options", "Options", 900_000, 9), email: "bo@example.test" };
+  rpcMock.list.mockResolvedValue([contact("c2", "Bo", "other")]);
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: { ...snapshot, holders: [granted] },
+    syncing: false,
+  });
+  await show("/app/cap-table?kind=options");
+  expect(container.textContent).not.toContain("No option grants in Carta");
+  expect(container.querySelector("tbody")?.textContent).toContain("Bo");
+});
+
+it("shows All and drops ?kind when its tab is missing without a cap table", async () => {
+  let search = "";
+  const Where = () => {
+    search = useLocation().search;
+    return null;
+  };
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/cap-table?kind=options"]}>
+        <CapTablePage />
+        <Where />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  expect(search).toBe("");
+  expect(container.textContent).not.toContain("No option grants in Carta");
+  expect(container.textContent).toContain("Ada");
+});
+
+it("colors the ownership bar in ink steps, not status colors", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  await show();
+  const classes = container.querySelector("[data-testid=ownership-bar]")?.innerHTML ?? "";
+  expect(classes).not.toMatch(/bg-(link|warning|success|destructive)/);
 });
 
 it("has no Shareholders or Options tab without a cap table", async () => {

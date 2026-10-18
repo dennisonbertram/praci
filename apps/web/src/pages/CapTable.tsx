@@ -80,13 +80,24 @@ type Row = { key: string; contact: Contact | null; holder: Holder | null };
 /** A contact's kind; a holder with no contact is an investor, a shareholder or an option grant. */
 type RowKind = ContactKind | "shareholder" | "options";
 
-export function rowKind({ contact, holder }: Pick<Row, "contact" | "holder">): RowKind {
-  if (contact) return contact.kind;
+/** What a Carta holding is, from its security alone. */
+const holdingKind = (holder: Holder | null): RowKind => {
   const security = holder?.security.toLowerCase() ?? "";
   if (security.includes("option")) return "options";
   if (/safe|preferred|series|note|convertible|warrant/.test(security)) return "investor";
   return "shareholder";
+};
+
+export function rowKind({ contact, holder }: Pick<Row, "contact" | "holder">): RowKind {
+  return contact ? contact.kind : holdingKind(holder);
 }
+
+/** Shareholders and Options sort Carta holdings by security, even when a contact matches the holder. */
+const matchesFilter = (row: Row, filter: Filter): boolean =>
+  filter === "all" ||
+  (CARTA_FILTERS.includes(filter)
+    ? !!row.holder && holdingKind(row.holder) === filter
+    : rowKind(row) === filter);
 
 function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
   const byEmail = new Map(contacts.filter((c) => c.email).map((c) => [c.email?.toLowerCase(), c]));
@@ -149,14 +160,14 @@ function Summary({ snapshot }: { snapshot: Snapshot | null }) {
   );
 }
 
-/** One theme colour per share class, distinct in light and dark. */
-// ponytail: five theme colours, then they repeat; add chart tokens to ui-tokens if cap tables need more.
+/** One ink lightness per share class (the app is monochrome), distinct in light and dark. */
+// ponytail: five lightness steps, then they repeat; the legend names every class, so colour never carries meaning alone.
 const SEGMENT_COLORS = [
   "bg-foreground",
-  "bg-link",
-  "bg-warning",
-  "bg-success",
-  "bg-muted-foreground",
+  "bg-foreground/70",
+  "bg-foreground/50",
+  "bg-foreground/35",
+  "bg-foreground/20",
 ];
 const segmentColor = (i: number) => SEGMENT_COLORS[i % SEGMENT_COLORS.length];
 
@@ -453,7 +464,7 @@ export function CapTablePage({
   const [cartaExpired, setCartaExpired] = useState(false);
   const [cap, setCap] = useState<CapTableState | null>(null);
   const [params, setParams] = useSearchParams();
-  const filter = parseFilter(params.get("kind"));
+  const requestedFilter = parseFilter(params.get("kind"));
   const setFilter = (next: Filter) =>
     setParams(
       (current) => {
@@ -600,7 +611,13 @@ export function CapTablePage({
   }, [savedId, contacts]);
   const rows = joinRows(snapshot, contacts ?? []);
   const filters = FILTERS.filter((value) => snapshot || !CARTA_FILTERS.includes(value));
-  const shown = rows.filter((row) => filter === "all" || rowKind(row) === filter);
+  // A link to a tab that is not there (no cap table) shows All, and the URL says so too.
+  const filter = filters.includes(requestedFilter) ? requestedFilter : "all";
+  const filtersSettled = cap !== null || capFailed || !cartaConnected;
+  useEffect(() => {
+    if (filtersSettled && filter !== requestedFilter) setFilter("all");
+  });
+  const shown = rows.filter((row) => matchesFilter(row, filter));
   const showHoldings = snapshot !== null || reading;
   const filterNames: Record<Filter, string> = {
     all: t`All`,

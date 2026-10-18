@@ -305,7 +305,7 @@ export class GmailApiEmulator {
         },
       };
     if (path === "history") return historyList(mailbox, parsed.searchParams);
-    if (path === "messages") return list(mailbox, parsed.searchParams);
+    if (path === "messages") return list(mailbox, parsed.searchParams, this.clock().getTime());
     const id = /^messages\/([^/]+)$/.exec(path)?.[1];
     if (id) return get(mailbox, decodeURIComponent(id), parsed.searchParams);
     const file = /^messages\/([^/]+)\/attachments\/([^/]+)$/.exec(path);
@@ -410,7 +410,7 @@ function newestFirst(a: Stored, b: Stored): number {
   return b.internalDate - a.internalDate || a.id.localeCompare(b.id);
 }
 
-function list(mailbox: Mailbox, params: URLSearchParams): ConnectorProxyResponse {
+function list(mailbox: Mailbox, params: URLSearchParams, now: number): ConnectorProxyResponse {
   const rawSize = params.get("maxResults") ?? "100";
   const size = /^\d+$/.test(rawSize) ? Number(rawSize) : 0;
   if (size < 1 || size > 500) return fail(400, "invalidArgument", "maxResults must be 1 to 500");
@@ -420,7 +420,7 @@ function list(mailbox: Mailbox, params: URLSearchParams): ConnectorProxyResponse
     return fail(400, "invalidArgument", "Invalid pageToken");
   let matches: Matcher;
   try {
-    matches = parseQuery(params.get("q") ?? "");
+    matches = parseQuery(params.get("q") ?? "", now);
   } catch (error) {
     if (error instanceof QueryError) return fail(400, "invalidArgument", error.message);
     throw error;
@@ -599,7 +599,7 @@ function get(mailbox: Mailbox, id: string, params: URLSearchParams): ConnectorPr
 // has:attachment, category:primary|social|promotions|updates, bare words, OR, parentheses.
 // Anything else is a 400, so a test cannot pass because a filter was silently ignored.
 
-function parseQuery(query: string): Matcher {
+function parseQuery(query: string, now: number): Matcher {
   const tokens = query.match(/\(|\)|[a-z_]+:"[^"]*"|"[^"]*"|[^\s()]+/gi) ?? [];
   let position = 0;
   const parseOr = (): Matcher => {
@@ -618,7 +618,7 @@ function parseQuery(query: string): Matcher {
   };
   const parseAtom = (): Matcher => {
     const token = tokens[position++] as string;
-    if (token !== "(") return parseTerm(token);
+    if (token !== "(") return parseTerm(token, now);
     const inner = parseOr();
     if (tokens[position++] !== ")") throw new QueryError("Unbalanced parentheses");
     return inner;
@@ -628,7 +628,7 @@ function parseQuery(query: string): Matcher {
   return result;
 }
 
-function parseTerm(token: string): Matcher {
+function parseTerm(token: string, now: number): Matcher {
   const operator = token.startsWith('"') ? null : /^([a-z_]+):(.*)$/i.exec(token);
   if (!operator) {
     const word = token.replace(/^"|"$/g, "").toLowerCase();
@@ -651,7 +651,7 @@ function parseTerm(token: string): Matcher {
       if (!span) throw new QueryError(`Invalid value for ${name}:`);
       const days =
         Number(span[1]) * { d: 1, m: 30, y: 365 }[(span[2] as string).toLowerCase() as "d"];
-      const at = Date.now() - days * 86_400_000;
+      const at = now - days * 86_400_000;
       return name === "newer_than" ? (m) => m.internalDate >= at : (m) => m.internalDate < at;
     }
     case "after":
