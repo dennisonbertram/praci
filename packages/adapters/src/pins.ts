@@ -174,7 +174,18 @@ async function checkSource(deps: PinsDeps, scope: PinsScope, source: PinSource) 
       userId: scope.userId,
       server: { enabled: true, spaceId: scope.spaceId, userId: scope.userId },
     },
-    include: { server: true, bot: { select: { spawnKey: true, spaceId: true, userId: true } } },
+    include: {
+      server: {
+        include: {
+          agentBot: {
+            select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+          },
+        },
+      },
+      bot: {
+        select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+      },
+    },
   });
   if (!assignment) throw new Error(`MCP tool ${source.tool} is not assigned to this bot`);
   if (!deps.mcp) throw new Error("MCP is not available");

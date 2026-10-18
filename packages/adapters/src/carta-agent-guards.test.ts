@@ -1,4 +1,5 @@
 import {
+  CARTA_MCP_ENDPOINT,
   CARTA_READ_TOOLS,
   CARTA_WRITE_TOOLS,
   cartaAgentSpawnKey,
@@ -17,11 +18,33 @@ import { financeToolsAllowed } from "./finance-tools.js";
 import { assignmentAllowsTool } from "./mcp-connector.js";
 
 const carta = cartaAgentSpawnKey("u1");
-const server = { endpoint: "https://mcp.app.carta.com/mcp" };
+const cartaBot = {
+  id: "bot-carta",
+  spawnKey: carta,
+  spaceId: "w1",
+  userId: "u1",
+  archivedAt: null,
+};
+const server = {
+  id: "server-1",
+  endpoint: CARTA_MCP_ENDPOINT,
+  spaceId: "w1",
+  userId: "u1",
+  agentBotId: cartaBot.id,
+  agentExclusive: false,
+  agentBot: cartaBot,
+};
+const cartaAssignment = (extra: Record<string, unknown> = {}) => ({
+  botId: cartaBot.id,
+  allowAllTools: true,
+  allowedTools: [],
+  server: { ...server, ...extra },
+  bot: cartaBot,
+});
 
 describe("assignmentAllowsTool for the Carta agent", () => {
   it("passes only read tools on a Carta server, even with allowAllTools", () => {
-    const assignment = { allowAllTools: true, allowedTools: [], server, bot: { spawnKey: carta } };
+    const assignment = cartaAssignment();
     expect(assignmentAllowsTool(assignment, "write_something")).toBe(false);
     expect(assignmentAllowsTool(assignment, CARTA_READ_TOOLS[0])).toBe(true);
   });
@@ -31,8 +54,15 @@ describe("assignmentAllowsTool for the Carta agent", () => {
         {
           allowAllTools: true,
           allowedTools: [],
-          server: { endpoint: "https://mail.example/mcp" },
-          bot: { spawnKey: carta },
+          server: {
+            id: "server-2",
+            endpoint: "https://mail.example/mcp",
+            spaceId: "w1",
+            userId: "u1",
+            agentBotId: null,
+            agentExclusive: false,
+          },
+          bot: cartaBot,
         },
         "send_email",
       ),
@@ -40,10 +70,9 @@ describe("assignmentAllowsTool for the Carta agent", () => {
   });
   it("refuses write tools until the server's writes are on, checked on each call", () => {
     const assignment = (writesEnabled: boolean) => ({
+      ...cartaAssignment({ writesEnabled }),
       allowAllTools: false,
       allowedTools: [...CARTA_READ_TOOLS, ...CARTA_WRITE_TOOLS],
-      server: { ...server, writesEnabled },
-      bot: { spawnKey: carta },
     });
     expect(assignmentAllowsTool(assignment(false), "mutate")).toBe(false);
     expect(assignmentAllowsTool(assignment(true), "mutate")).toBe(true);
@@ -55,10 +84,17 @@ describe("assignmentAllowsTool for the Carta agent", () => {
       expect(
         assignmentAllowsTool(
           {
+            ...cartaAssignment({ writesEnabled: true, agentExclusive: true }),
             allowAllTools: true,
             allowedTools: [],
-            server: { ...server, writesEnabled: true },
-            bot: { spawnKey },
+            botId: "ordinary",
+            bot: {
+              id: "ordinary",
+              spawnKey,
+              spaceId: "w1",
+              userId: "u1",
+              archivedAt: null,
+            },
           },
           CARTA_READ_TOOLS[0],
         ),
@@ -70,8 +106,21 @@ describe("assignmentAllowsTool for the Carta agent", () => {
         {
           allowAllTools: true,
           allowedTools: [],
-          server: { endpoint: "https://other.example/mcp" },
-          bot: { spawnKey: null },
+          server: {
+            id: "other",
+            endpoint: "https://other.example/mcp",
+            spaceId: "w1",
+            userId: "u1",
+            agentBotId: null,
+          },
+          botId: "ordinary",
+          bot: {
+            id: "ordinary",
+            spawnKey: null,
+            spaceId: "w1",
+            userId: "u1",
+            archivedAt: null,
+          },
         },
         "write_something",
       ),
@@ -186,7 +235,7 @@ describe("Carta write approval", () => {
       arguments: { company_id: "c1", draft_set: { note: "x".repeat(5000), shares: 100 } },
     };
     const block = buildApprovalAskBlock("e1", "mcp__integration-1__call_tool", args, ["c1"], {
-      cartaWriteTool: "call_tool",
+      integrationWriteTool: "call_tool",
     });
     if (block.kind !== "ask") throw new Error("expected ask block");
     expect(block.detail).toContain("tool: call_tool");

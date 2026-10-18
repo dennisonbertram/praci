@@ -6,7 +6,13 @@ import {
   syncFinanceForUser,
 } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
-import { integrationAgentSpawnKey } from "@rakazo/contracts";
+import {
+  CARTA_MCP_ENDPOINT,
+  CARTA_READ_TOOLS,
+  CARTA_WRITE_TOOLS,
+  cartaAgentSpawnKey,
+  integrationAgentSpawnKey,
+} from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -171,14 +177,44 @@ describePostgres("integration agents (PostgreSQL)", () => {
     );
   });
 
-  it("rejects a Carta server", async () => {
-    const carta = await mkServer(userA, "carta-ia", "https://mcp.app.carta.com/mcp");
-    await expect(client(a).integrationAgents.create({ serverId: carta.id })).rejects.toMatchObject({
-      code: "BAD_REQUEST",
+  it("creates Carta through its specialized agent and preserves switches across idempotent create", async () => {
+    const carta = await mkServer(userA, "carta-ia", CARTA_MCP_ENDPOINT);
+    const first = await client(a).integrationAgents.create({ serverId: carta.id });
+    const again = await client(a).integrationAgents.create({ serverId: carta.id });
+    expect(again.botId).toBe(first.botId);
+    const bot = await prisma.bot.findUniqueOrThrow({ where: { id: first.botId } });
+    expect(bot).toMatchObject({
+      name: "Carta agent",
+      spawnKey: cartaAgentSpawnKey(userA),
+      userId: userA,
+      spaceId,
+    });
+    expect(bot.instructions).toContain("carta-investor-update");
+    expect(first.server).toMatchObject({
+      agentBotId: first.botId,
+      agentExclusive: true,
+      writesEnabled: false,
+    });
+    await client(a).integrationAgents.setExclusive({ serverId: carta.id, exclusive: false });
+    await client(a).mcp.servers.setWrites({ id: carta.id, enabled: true });
+    const preserved = await client(a).integrationAgents.create({ serverId: carta.id });
+    expect(preserved.botId).toBe(first.botId);
+    expect(preserved.server).toMatchObject({
+      agentBotId: first.botId,
+      agentExclusive: false,
+      writesEnabled: true,
     });
     expect(
-      (await prisma.mcpServer.findUniqueOrThrow({ where: { id: carta.id } })).agentBotId,
-    ).toBeNull();
+      await prisma.bot.count({ where: { spaceId, spawnKey: cartaAgentSpawnKey(userA) } }),
+    ).toBe(1);
+    expect(
+      await prisma.botMcpServer.findUniqueOrThrow({
+        where: { botId_serverId: { botId: first.botId, serverId: carta.id } },
+      }),
+    ).toMatchObject({
+      allowAllTools: false,
+      allowedTools: [...CARTA_READ_TOOLS, ...CARTA_WRITE_TOOLS],
+    });
   });
 
   it("never links an agent that was archived while it was being created", async () => {
@@ -211,20 +247,34 @@ describePostgres("integration agents (PostgreSQL)", () => {
     const s = await mkServer(userA, "race-writes", "https://api.brex.com/mcp");
     const created = await client(a).integrationAgents.create({ serverId: s.id });
     const bot = await prisma.bot.findUniqueOrThrow({ where: { id: created.botId } });
-    // Release the server between the handler's read and its update.
+    // Archive after the server read but before its linked agent is locked.
+    let fired = false;
     const racing = new Proxy(prisma, {
       get(target, prop, receiver) {
         const value = Reflect.get(target, prop, receiver);
-        if (prop !== "mcpServer") return value;
-        return new Proxy(value, {
-          get(model, method, r) {
-            if (method !== "updateMany") return Reflect.get(model, method, r);
-            return async (args: never) => {
-              await archiveBot(lifecycleDeps(), bot, ctx(a));
-              return model.updateMany(args);
-            };
-          },
-        });
+        if (prop !== "$transaction") return value;
+        return (callback: (tx: PrismaClient) => unknown) =>
+          target.$transaction(((tx: PrismaClient) =>
+            callback(
+              new Proxy(tx, {
+                get(transaction, modelName, transactionReceiver) {
+                  const model = Reflect.get(transaction, modelName, transactionReceiver);
+                  if (modelName !== "bot") return model;
+                  return new Proxy(model, {
+                    get(botModel, method, botReceiver) {
+                      if (method !== "findFirst") return Reflect.get(botModel, method, botReceiver);
+                      return async (args: never) => {
+                        if (!fired) {
+                          fired = true;
+                          await archiveBot(lifecycleDeps(), bot, ctx(a));
+                        }
+                        return botModel.findFirst(args);
+                      };
+                    },
+                  });
+                },
+              }),
+            )) as never);
       },
     });
     const racer = createRouterClient(createRouter({ prisma: racing } as unknown as RouterDeps), {
@@ -233,6 +283,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
     await expect(racer.mcp.servers.setWrites({ id: s.id, enabled: true })).rejects.toMatchObject({
       code: "CONFLICT",
     });
+    expect(fired).toBe(true);
     expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } })).toMatchObject({
       agentBotId: null,
       writesEnabled: false,
@@ -419,7 +470,9 @@ describePostgres("integration agents (PostgreSQL)", () => {
     expect(await prisma.botMcpServer.count({ where: { botId: other.id, serverId: s.id } })).toBe(1);
   });
 
-  it("editing a server's endpoint releases its agent", async () => {
+  it("editing a server's endpoint to Carta links its specialized agent", async () => {
+    const cartaServer = await mkServer(userA, "existing-carta", CARTA_MCP_ENDPOINT);
+    const cartaAgent = await client(a).integrationAgents.create({ serverId: cartaServer.id });
     const s = await mkServer(userA, "edit-endpoint", "https://api.brex.com/mcp");
     await client(a).integrationAgents.create({ serverId: s.id });
     await client(a).integrationAgents.setExclusive({ serverId: s.id, exclusive: true });
@@ -437,11 +490,15 @@ describePostgres("integration agents (PostgreSQL)", () => {
         headers: {},
       },
     } as never);
-    expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } })).toMatchObject({
-      agentBotId: null,
-      agentExclusive: false,
+    const updated = await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } });
+    expect(updated).toMatchObject({
+      agentBotId: cartaAgent.botId,
+      agentExclusive: true,
       writesEnabled: false,
     });
+    expect(
+      await prisma.bot.findUniqueOrThrow({ where: { id: updated.agentBotId! } }),
+    ).toMatchObject({ spawnKey: cartaAgentSpawnKey(a.userId), archivedAt: null });
   });
 
   it("falls back to the server name for an unknown service", async () => {

@@ -1,3 +1,4 @@
+import { cartaAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
   buildApprovalAskBlock,
@@ -110,6 +111,33 @@ describe("connected app integration-agent writes", () => {
       isIntegrationAgentWrite(
         "ordinary-bot",
         { connectorId: "composio", connectionId: "connection-1" },
+        false,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("Carta integration-agent write classification", () => {
+  const carta = cartaAgentSpawnKey("user-1");
+  const route = {
+    connectorId: "mcp",
+    endpoint: "https://mcp.app.carta.com/mcp",
+  };
+
+  it("uses the shared Carta preset and forces writes despite misleading read-only annotations", () => {
+    expect(isIntegrationAgentWrite(carta, { ...route, toolName: "mutate" }, true)).toBe(true);
+    expect(isIntegrationAgentWrite(carta, { ...route, toolName: "call_tool" }, false)).toBe(true);
+    expect(isIntegrationAgentWrite(carta, { ...route, toolName: "fetch" }, false)).toBe(false);
+    expect(
+      isIntegrationAgentWrite(carta, { ...route, toolName: "unknownAnnotatedRead" }, true),
+    ).toBe(true);
+  });
+
+  it("does not gate Carta writes on a different endpoint", () => {
+    expect(
+      isIntegrationAgentWrite(
+        carta,
+        { connectorId: "mcp", endpoint: "https://mcp.example.test", toolName: "mutate" },
         false,
       ),
     ).toBe(false);

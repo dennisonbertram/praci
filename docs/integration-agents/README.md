@@ -308,16 +308,28 @@ Dispatch rechecks the connection's durable state, so turning changes off while
 an approval is pending prevents that call. No real provider account is needed
 for the offline emulator tests.
 
-## Carta later
+## Carta
 
-Not in this build; `integrationAgents.create` rejects a Carta server until then, and editing a server's endpoint releases its agent (no agent, shared, read-only). Migration: a data migration sets `agentBotId` to the bot whose
-spawn key is `carta-agent:<userId>` for each user's Carta server and
-`agentExclusive = true`; `assignmentAllowsTool` drops its Carta branches in favor of
-the general ones, with `CARTA_READ_TOOLS` and `CARTA_WRITE_TOOLS` becoming Carta's
-preset (it has no useful annotations recorded); `assignCartaServers` stops deleting
-rows; `isCartaWrite` becomes the general check. Carta's mail rules (`mail_send`) and
-the cap table tools stay Carta-specific. It does not fall out trivially, because the
-Carta agent has its own tool set and sync run, so it waits.
+Carta uses the general Agent section and tool gate, while keeping its specialized
+`carta-agent:<userId>` bot, cap-table tools, populate run, and full-message mail approval.
+`integrationAgents.create` reuses that specialized agent rather than creating a generic bot.
+Editing a server's endpoint still releases its agent; removal does not introduce automatic
+archiving or a new avatar policy.
+
+The data migration links only an unarchived bot with the exact spawn key, **space and user**
+of its Carta server. Valid links start exclusive, and all migrated Carta servers have changes
+off, including servers whose old switch was on. Missing or invalid agents stay unlinked.
+Other bots' assignment rows are preserved rather than deleted. Creating or refreshing an
+already-linked Carta agent preserves the owner's current settings.
+
+Carta's preset is a closed allowlist: exactly `CARTA_READ_TOOLS` and, when changes are on,
+`CARTA_WRITE_TOOLS`. An unknown tool is not allowed even if annotated read-only or changes
+are on. The shared gate checks the current link, owner, space and write setting before each
+call. Each write asks again; saved rules and Auto Review cannot bypass approval. `mail_send`
+retains its independent requirement for approval of the complete message.
+
+Validation uses synthetic data and offline fakes. The [owner-only manual checklist](./carta-manual-checklist.md)
+lists the remaining live-account checks; none are run by automation.
 
 ## Tests
 

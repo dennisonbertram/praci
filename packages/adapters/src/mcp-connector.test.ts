@@ -1,3 +1,9 @@
+import {
+  CARTA_MCP_ENDPOINT,
+  CARTA_READ_TOOLS,
+  CARTA_WRITE_TOOLS,
+  cartaAgentSpawnKey,
+} from "@rakazo/contracts";
 import { createLogger, createTestSink, getLogger, installLogger } from "@rakazo/logging";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InfisicalSecretStore } from "./infisical-secret-store.js";
@@ -1343,7 +1349,13 @@ describe("MCP connector integration agents", () => {
     agentBotId: "agent-1",
     agentExclusive: false,
   };
-  const agentBot = { spawnKey: "integration-agent:server-1", spaceId: "w1", userId: "u1" };
+  const agentBot = {
+    id: "agent-1",
+    spawnKey: "integration-agent:server-1",
+    spaceId: "w1",
+    userId: "u1",
+    archivedAt: null,
+  };
   const TOOLS = [
     { name: "getAccounts", inputSchema: { type: "object" } },
     { name: "requestSendMoney", inputSchema: { type: "object" } },
@@ -1353,10 +1365,21 @@ describe("MCP connector integration agents", () => {
 
   async function setup(
     botId: string,
-    bot: { spawnKey: string | null; spaceId?: string; userId?: string },
+    bot: {
+      id?: string;
+      spawnKey: string | null;
+      spaceId?: string;
+      userId?: string;
+      archivedAt?: Date | null;
+    },
     server: Record<string, unknown>,
   ) {
-    const assignment = { ...ASSIGNMENT, botId, bot, server: { ...agentServer, ...server } };
+    const assignment = {
+      ...ASSIGNMENT,
+      botId,
+      bot: { id: botId, archivedAt: null, ...bot },
+      server: { ...agentServer, ...server },
+    };
     const state = {
       failNext: false,
       initializations: 0,
@@ -1675,5 +1698,202 @@ describe("MCP connector integration agents", () => {
       expect(await call(tool)).toMatchObject([{ type: "error" }]);
     expect(state.calls).toEqual([]);
     await connector.close();
+  });
+});
+
+describe("MCP connector Carta integration-agent policy", () => {
+  const tools = [
+    ...CARTA_READ_TOOLS.map((name) => ({ name, inputSchema: { type: "object" } })),
+    ...CARTA_WRITE_TOOLS.map((name) => ({
+      name,
+      inputSchema: { type: "object" },
+      annotations: { readOnlyHint: true },
+    })),
+    {
+      name: "unexpectedAnnotatedRead",
+      inputSchema: { type: "object" },
+      annotations: { readOnlyHint: true },
+    },
+    {
+      name: "unexpectedWrite",
+      inputSchema: { type: "object" },
+      annotations: { readOnlyHint: false },
+    },
+  ];
+
+  async function setup(
+    options: {
+      botId?: string;
+      bot?: Record<string, unknown>;
+      server?: Record<string, unknown>;
+    } = {},
+  ) {
+    const botId = options.botId ?? "bot-carta";
+    const assignment = {
+      ...ASSIGNMENT,
+      botId,
+      allowAllTools: true,
+      allowedTools: [],
+      bot: {
+        id: botId,
+        spawnKey: cartaAgentSpawnKey("u1"),
+        spaceId: "w1",
+        userId: "u1",
+        archivedAt: null,
+        ...options.bot,
+      },
+      server: {
+        ...SERVER,
+        slug: "carta",
+        name: "Carta",
+        endpoint: CARTA_MCP_ENDPOINT,
+        spaceId: "w1",
+        userId: "u1",
+        agentBotId: botId,
+        agentExclusive: true,
+        writesEnabled: false,
+        agentBot: {
+          id: "bot-carta",
+          spawnKey: cartaAgentSpawnKey("u1"),
+          spaceId: "w1",
+          userId: "u1",
+          archivedAt: null,
+        },
+        ...options.server,
+      },
+    };
+    const state = {
+      failNext: false,
+      initializations: 0,
+      listings: 0,
+      calls: [] as string[],
+      tools,
+    };
+    vi.stubGlobal("fetch", mcpFetch(state, CARTA_MCP_ENDPOINT));
+    const connector = new McpConnector(
+      {
+        botMcpServer: {
+          findMany: vi.fn().mockResolvedValue([assignment]),
+          findFirst: vi.fn().mockResolvedValue(assignment),
+        },
+      } as never,
+      {} as never,
+      { network: TEST_NETWORK },
+    );
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId,
+      signal: new AbortController().signal,
+    } as never;
+    const names = async () =>
+      (await connector.discoverTools(context)).map((tool) => tool.route?.toolName);
+    const call = async (toolName: string) => {
+      const events: Array<{ type: string; message?: string }> = [];
+      for await (const event of connector.execute(
+        {
+          tool: `mcp__carta__${toolName}`,
+          args: {},
+          route: {
+            connectorId: "mcp",
+            resourceId: "server-1",
+            toolName,
+            endpoint: CARTA_MCP_ENDPOINT,
+          },
+        } as never,
+        context,
+      ))
+        events.push(event as never);
+      return events;
+    };
+    return { assignment, connector, state, names, call };
+  }
+
+  it("offers only exact Carta reads with writes off and allows only the exact write set when on", async () => {
+    const { assignment, connector, names, call, state } = await setup();
+    try {
+      expect(await names()).toEqual([...CARTA_READ_TOOLS]);
+      expect(await call(CARTA_WRITE_TOOLS[0])).toMatchObject([{ type: "error" }]);
+      assignment.server.writesEnabled = true;
+      expect(await names()).toEqual([...CARTA_READ_TOOLS, ...CARTA_WRITE_TOOLS]);
+      for (const unexpected of ["unexpectedAnnotatedRead", "unexpectedWrite"]) {
+        expect(await call(unexpected)).toMatchObject([{ type: "error" }]);
+      }
+      expect(state.calls).toEqual([]);
+    } finally {
+      await connector.close();
+    }
+  });
+
+  it("allows ordinary bots only reads when shared and no Carta tools when exclusive", async () => {
+    const shared = await setup({
+      botId: "ordinary-bot",
+      bot: { id: "ordinary-bot", spawnKey: null },
+      server: { agentBotId: "bot-carta", agentExclusive: false, writesEnabled: true },
+    });
+    try {
+      expect(await shared.names()).toEqual([...CARTA_READ_TOOLS]);
+      expect(await shared.call(CARTA_WRITE_TOOLS[0])).toMatchObject([{ type: "error" }]);
+      expect(shared.state.calls).toEqual([]);
+    } finally {
+      await shared.connector.close();
+    }
+
+    const exclusive = await setup({
+      botId: "ordinary-bot",
+      bot: { id: "ordinary-bot", spawnKey: null },
+      server: { agentBotId: "bot-carta", agentExclusive: true, writesEnabled: true },
+    });
+    try {
+      expect(await exclusive.names()).toEqual([]);
+      expect(await exclusive.call(CARTA_READ_TOOLS[0])).toMatchObject([{ type: "error" }]);
+      expect(exclusive.state.calls).toEqual([]);
+    } finally {
+      await exclusive.connector.close();
+    }
+  });
+
+  it("fails closed for wrong, archived, stranded, or unlinked Carta agent identities", async () => {
+    const invalid = [
+      {
+        botId: "bot-carta",
+        bot: { userId: "u2" },
+        server: { agentBot: { id: "bot-carta", userId: "u2" } },
+      },
+      {
+        botId: "bot-carta",
+        bot: { spaceId: "w2" },
+        server: { agentBot: { id: "bot-carta", spaceId: "w2" } },
+      },
+      {
+        botId: "bot-carta",
+        bot: { archivedAt: new Date() },
+        server: { agentBot: { id: "bot-carta", archivedAt: new Date() } },
+      },
+      {
+        botId: "bot-carta",
+        bot: { spawnKey: "carta-agent:u2" },
+        server: { agentBot: { id: "bot-carta", spawnKey: "carta-agent:u2" } },
+      },
+      {
+        botId: "stranded-bot",
+        bot: { id: "stranded-bot" },
+        server: { agentBotId: "stranded-bot" },
+      },
+      {
+        botId: "bot-carta",
+        server: { agentBotId: null, agentBot: null },
+      },
+    ];
+    for (const options of invalid) {
+      const { connector, names, call, state } = await setup(options);
+      try {
+        expect(await names()).toEqual([]);
+        expect(await call(CARTA_READ_TOOLS[0])).toMatchObject([{ type: "error" }]);
+        expect(state.calls).toEqual([]);
+      } finally {
+        await connector.close();
+      }
+    }
   });
 });

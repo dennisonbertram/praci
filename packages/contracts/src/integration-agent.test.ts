@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
+import {
+  CARTA_MCP_ENDPOINT,
+  CARTA_READ_TOOLS,
+  CARTA_WRITE_TOOLS,
+  cartaAgentSpawnKey,
+} from "./carta.js";
 import { FINANCE_READ_TOOLS } from "./finance.js";
 import {
   INTEGRATION_PRESETS,
   integrationAgentSpawnKey,
+  integrationAgentSpawnKeyForServer,
   integrationPresetForEndpoint,
+  isIntegrationAgentForServer,
   isIntegrationAgentSpawnKey,
   isReadTool,
 } from "./integration-agent.js";
@@ -45,11 +53,75 @@ describe("isReadTool", () => {
   });
   it("matches presets by endpoint host", () => {
     expect(integrationPresetForEndpoint("https://mcp.mercury.com/mcp")?.service).toBe("Mercury");
+    expect(integrationPresetForEndpoint(CARTA_MCP_ENDPOINT)).toBe(INTEGRATION_PRESETS.carta);
     expect(integrationPresetForEndpoint("https://example.test/mcp")).toBeUndefined();
   });
   it("builds and recognizes the spawn key", () => {
     expect(isIntegrationAgentSpawnKey(integrationAgentSpawnKey("s1"))).toBe(true);
     expect(isIntegrationAgentSpawnKey("carta-agent:u1")).toBe(false);
+  });
+});
+
+describe("Carta integration-agent preset", () => {
+  const carta = INTEGRATION_PRESETS.carta;
+
+  it("uses only the shared Carta read and write tool sets", () => {
+    expect(carta.reads).toEqual(CARTA_READ_TOOLS);
+    expect(carta.forcedWrites).toEqual(CARTA_WRITE_TOOLS);
+    expect(carta.allowedTools).toEqual([...CARTA_READ_TOOLS, ...CARTA_WRITE_TOOLS]);
+    expect(carta.requiresAgent).toBe(true);
+  });
+
+  it("does not let unexpected annotations expand the preset", () => {
+    expect(
+      isReadTool({ name: "unknownAnnotatedRead", annotations: { readOnlyHint: true } }, carta),
+    ).toBe(false);
+    expect(isReadTool({ name: "unknownWrite", annotations: { readOnlyHint: false } }, carta)).toBe(
+      false,
+    );
+    expect(
+      isReadTool({ name: CARTA_WRITE_TOOLS[0], annotations: { readOnlyHint: true } }, carta),
+    ).toBe(false);
+    for (const name of CARTA_READ_TOOLS) expect(isReadTool({ name }, carta)).toBe(true);
+  });
+
+  it("selects the specialized Carta identity and requires the exact live linked bot", () => {
+    const server = {
+      id: "server-1",
+      spaceId: "space-1",
+      userId: "user-1",
+      endpoint: CARTA_MCP_ENDPOINT,
+      agentBotId: "bot-1",
+    };
+    const bot = {
+      id: "bot-1",
+      spaceId: "space-1",
+      userId: "user-1",
+      spawnKey: cartaAgentSpawnKey("user-1"),
+      archivedAt: null,
+    };
+    expect(integrationAgentSpawnKeyForServer(server)).toBe(cartaAgentSpawnKey("user-1"));
+    expect(isIntegrationAgentForServer(server, bot)).toBe(true);
+    expect(isIntegrationAgentForServer({ ...server, agentBotId: null }, bot)).toBe(false);
+    expect(isIntegrationAgentForServer(server, { ...bot, id: "stranded-bot" })).toBe(false);
+    expect(isIntegrationAgentForServer(server, { ...bot, userId: "user-2" })).toBe(false);
+    expect(isIntegrationAgentForServer(server, { ...bot, spaceId: "space-2" })).toBe(false);
+    expect(isIntegrationAgentForServer(server, { ...bot, archivedAt: new Date() })).toBe(false);
+    expect(
+      isIntegrationAgentForServer(server, { ...bot, archivedAt: undefined as unknown as null }),
+    ).toBe(false);
+    expect(
+      isIntegrationAgentForServer(server, {
+        ...bot,
+        spawnKey: integrationAgentSpawnKey("server-1"),
+      }),
+    ).toBe(false);
+    expect(
+      integrationAgentSpawnKeyForServer({
+        ...server,
+        endpoint: "https://mcp.example.test/mcp",
+      }),
+    ).toBe(integrationAgentSpawnKey("server-1"));
   });
 });
 
