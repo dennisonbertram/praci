@@ -11,9 +11,10 @@ const MAX_ATTEMPTS = 3;
 const BASE_DELAY_MS = 500;
 // A longer Retry-After is not slept through (it would hold the caller); the error carries it instead.
 const MAX_RETRY_AFTER_MS = 30_000;
-// Measured through the Composio proxy (about 290 ms per get): 4 in flight hydrates 11 messages/s,
-// 12 gives about 30/s and more adds nothing. 30 gets/s is 150 of Gmail's 250 quota units/s per user.
-export const GOOGLE_API_CONCURRENCY = 12;
+// Gmail allows 6,000 quota units per user per minute (100/s) and messages.get costs 20 units, so
+// about 5 gets/s. Through the Composio proxy (about 290 ms per get) 2 in flight is about 7/s: close
+// to the limit, with the 429 retry below absorbing the rest. 12 sent about 30/s, six times the limit.
+export const GOOGLE_API_CONCURRENCY = 2;
 const AUTH_REASONS = new Set(["authError", "insufficientPermissions"]);
 const RATE_REASONS = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
 

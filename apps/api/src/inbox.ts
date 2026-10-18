@@ -456,6 +456,25 @@ export async function inboxFeedbackSet(
   return { mark: input.mark };
 }
 
+/** A sync inside a rate-limit backoff is skipped, so "Try again" would do nothing: wait it out (at most 30 s). */
+async function waitOutBackoff(prisma: PrismaClient, connectionId: string, signal?: AbortSignal) {
+  const state = await prisma.mailSyncState.findUnique({
+    where: { connectionId },
+    select: { backoffUntil: true },
+  });
+  const wait = state?.backoffUntil ? state.backoffUntil.getTime() - Date.now() : 0;
+  if (wait <= 0 || wait > 30_000) return;
+  await new Promise<void>((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, wait + 50);
+    signal?.addEventListener("abort", done, { once: true });
+  });
+}
+
 export async function inboxRefresh(
   deps: InboxDeps,
   actor: Actor,
@@ -474,6 +493,7 @@ export async function inboxRefresh(
   const queue = [...accounts];
   const worker = async () => {
     for (let account = queue.shift(); account; account = queue.shift()) {
+      await waitOutBackoff(deps.prisma, account.id, signal);
       await syncMailbox(deps, account, context);
     }
   };

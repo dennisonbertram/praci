@@ -657,6 +657,28 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(await status()).toEqual({ failed: [], reconnect: [] });
     });
 
+    it("waits out a rate-limit backoff and then syncs, so Try again is not a dead button", async () => {
+      await wipe();
+      seedMailboxes();
+      await prisma.mailSyncState.create({
+        data: {
+          connectionId: connA,
+          lastErrorAt: new Date(),
+          lastErrorKind: "rate_limited",
+          backoffUntil: new Date(Date.now() + 1500),
+        },
+      });
+
+      const started = Date.now();
+      await inboxRefresh(deps, a, { connectionId: connA });
+
+      expect(Date.now() - started).toBeGreaterThanOrEqual(1000);
+      const out = await inboxList(deps, a, {});
+      expect(out.syncedAt).not.toBeNull();
+      expect(out.failedAccounts).toEqual([]);
+      expect(out.rateLimitedAccounts).toEqual([]);
+    });
+
     it("rejects someone else's, a revoked or an unknown connection id with NOT_FOUND", async () => {
       await wipe();
       seedMailboxes();
