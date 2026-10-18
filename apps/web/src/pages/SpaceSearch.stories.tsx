@@ -64,3 +64,16 @@ export const PagesAndDocuments: Story = {
     onSearchMail: () => undefined,
   },
 };
+
+export const WithArtifacts: Story = {
+  args: {
+    query: "investor",
+    hits: [],
+    artifacts: [{ id: "art_1", label: "Sample Investor Update - September.md" }],
+    onSearchMail: () => undefined,
+  },
+};
+
+export const OnlyMailLeft: Story = {
+  args: { query: "qwxzv", hits: [], onSearchMail: () => undefined },
+};

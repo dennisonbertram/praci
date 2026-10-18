@@ -67,20 +67,32 @@ function CryptoTile({
         <div className="min-w-0">
           <div className="truncate font-semibold">Blockscout</div>
           <div className="truncate text-xs text-muted-foreground">
-            <Trans>Wallet balances and history</Trans>
+            {hasKey ? (
+              <Trans>Wallet balances and history</Trans>
+            ) : (
+              // Without a key it is complete: balances come from public networks.
+              <Trans>Wallet balances and history · no key needed</Trans>
+            )}
           </div>
         </div>
       </div>
       <div className="mt-auto flex items-center gap-2">
-        {hasKey || hasServer ? (
+        {hasKey === null ? null : (
           <>
-            <StatusBadge status="connected" />
-            {/* One main action like the other connected tiles; the optional key and agents sit in the menu. */}
+            {hasKey || hasServer ? (
+              <StatusBadge status="connected" />
+            ) : (
+              // Nothing to connect: the first wallet added starts it. Not "Not connected".
+              <span className="text-xs text-muted-foreground">
+                <Trans>Ready</Trans>
+              </span>
+            )}
+            {/* One main action like the other tiles; the optional key and agents sit in the menu. */}
             <Link
               to={financePath.crypto()}
               className="ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
             >
-              <Trans>Open Finance</Trans>
+              {hasKey || hasServer ? <Trans>Open Finance</Trans> : <Trans>Add wallet</Trans>}
             </Link>
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -102,22 +114,6 @@ function CryptoTile({
                 ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
-          </>
-        ) : (
-          <>
-            <span className="text-xs text-muted-foreground">
-              <Trans>Not connected</Trans>
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="ms-auto"
-              disabled={hasKey === null}
-              aria-label={t`Connect Blockscout`}
-              onClick={() => setDialog(true)}
-            >
-              <Trans>Connect</Trans>
-            </Button>
           </>
         )}
       </div>

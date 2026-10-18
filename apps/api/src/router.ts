@@ -726,6 +726,8 @@ export interface RouterDeps {
   /** Reads an uploaded bank statement; wired in app.ts. */
   parseStatement?: ParseStatement;
   financeCrypto?: FinanceCryptoDeps;
+  /** Replaces the network for Coinbase and Kraken reads (offline stacks). */
+  exchangeFetch?: typeof fetch;
   connectors: ConnectorRegistry;
   remoteConnectors?: RemoteConnectorDependencies;
   artifacts: ArtifactStore;
@@ -969,6 +971,7 @@ export function createRouter(deps: RouterDeps) {
     secrets: deps.secrets,
     crypto: deps.financeCrypto,
     parseStatement: deps.parseStatement,
+    ...(deps.exchangeFetch ? { exchangeFetch: deps.exchangeFetch } : {}),
   };
   const legalDeps = {
     prisma: deps.prisma,
@@ -5041,6 +5044,7 @@ export function createRouter(deps: RouterDeps) {
           // Without an order Postgres returns rows in storage order, which changes when a row is
           // updated, so the accounts of one app swapped places between loads.
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          include: { mailSyncState: { select: { needsReconnect: true, lastErrorAt: true } } },
         });
         return rows.map((row) => ({
           id: row.id,
@@ -5049,6 +5053,10 @@ export function createRouter(deps: RouterDeps) {
           displayName: row.displayName,
           status: row.status as "pending" | "connected" | "revoked" | "error",
           error: connectionError(row),
+          // Same test as the Inbox's Reconnect line, so both pages agree.
+          ...(row.mailSyncState?.needsReconnect && row.mailSyncState.lastErrorAt
+            ? { needsReconnect: true }
+            : {}),
           capabilities: [],
           createdAt: row.createdAt.toISOString(),
         }));
@@ -5147,10 +5155,13 @@ export function createRouter(deps: RouterDeps) {
                 status: auth.authorizationUrl ? "pending" : "connected",
                 providerRef: auth.state || null,
                 // complete() must repeat the redirect_uri the authorization used.
-                metadata:
-                  input.redirect === "desktop"
-                    ? { state: auth.state, redirectUrl }
-                    : { state: auth.state },
+                metadata: {
+                  state: auth.state,
+                  ...(input.redirect === "desktop" ? { redirectUrl } : {}),
+                  ...(input.replacesConnectionId
+                    ? { replacesConnectionId: input.replacesConnectionId }
+                    : {}),
+                },
               },
             });
             return updated.count > 0;
@@ -6354,6 +6365,9 @@ export function createRouter(deps: RouterDeps) {
     },
     dataRoom: {
       folders: authed.dataRoom.folders.handler(({ context }) => dataRoom.folders(context.actor)),
+      facetValues: authed.dataRoom.facetValues.handler(({ context, input }) =>
+        dataRoom.facetValues(context.actor, input),
+      ),
       folderCreate: authed.dataRoom.folderCreate.handler(({ context, input }) =>
         dataRoom.createFolder(context.actor, input),
       ),
@@ -6382,6 +6396,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       itemDelete: authed.dataRoom.itemDelete.handler(({ context, input }) =>
         dataRoom.deleteItem(context.actor, input.id),
+      ),
+      itemRetry: authed.dataRoom.itemRetry.handler(({ context, input }) =>
+        dataRoom.retryItem(context.actor, input.id),
       ),
       importEmail: authed.dataRoom.importEmail.handler(({ context, input }) =>
         dataRoom.importEmail(context.actor, input, context.signal),

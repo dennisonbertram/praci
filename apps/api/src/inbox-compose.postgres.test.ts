@@ -359,10 +359,14 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(reply.attachments).toEqual([]);
     });
 
-    it("lists nothing and flags a forward whose files are over the limit", async () => {
+    it("keeps the files that fit and names the ones over the limit", async () => {
       const row = await cache(a, connA, "a-big");
       const forward = await inboxComposePrefill(deps(), a, { messageId: row.id, mode: "forward" });
-      expect(forward).toMatchObject({ attachments: [], attachmentsTooLarge: true });
+      expect(forward.attachments.map((f) => f.filename)).toEqual(["big.bin"]);
+      expect(forward).toMatchObject({
+        attachmentsTooLarge: true,
+        attachmentsLeftOut: [{ filename: "big2.bin", size: expect.any(Number) }],
+      });
     });
 
     it("does not reveal another user's, another space's or a revoked account's message", async () => {
@@ -624,7 +628,10 @@ describePostgres("inbox compose (PostgreSQL)", () => {
     it("allows another try after a failure that proves nothing was sent", async () => {
       const input = fields();
       gmail.failNext(400, { urlIncludes: "drafts/send", reason: "invalidArgument" });
-      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "failed" });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({
+        status: "failed",
+        reason: "rejected",
+      });
       expect(gmail.sentOf("box-a")).toHaveLength(0);
       expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "sent" });
       expect(gmail.sentOf("box-a")).toHaveLength(1);
@@ -759,7 +766,10 @@ describePostgres("inbox compose (PostgreSQL)", () => {
     it("answers failed, and lets the user try again, when the rate limit never lets up", async () => {
       const input = fields();
       gmail.failNext(429, { urlIncludes: "drafts/send", times: 10 });
-      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "failed" });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({
+        status: "failed",
+        reason: "rate_limited",
+      });
       expect(
         (await prisma.composeSend.findFirstOrThrow({ where: { clientId: input.clientId } })).state,
       ).toBe("failed");

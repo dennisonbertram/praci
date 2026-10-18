@@ -13,7 +13,7 @@ vi.mock("../../lib/data-room", async (original) => ({
   uploadToDataRoom: hoisted.upload,
 }));
 
-import { DataRoomUploadError } from "../../lib/data-room";
+import { DATA_ROOM_CHANGED, DataRoomUploadError } from "../../lib/data-room";
 import {
   dismissUploadToast,
   getUploadToasts,
@@ -156,4 +156,25 @@ it("stops holding once the last toast is closed under the pointer", async () => 
   await flush();
   await vi.advanceTimersByTimeAsync(11_000);
   expect(names()).toEqual([]);
+});
+
+it("says a deleted folder is gone and offers to upload the same file to the top level", async () => {
+  setUploadScope("u1");
+  setOpenDataRoomFolder("f-gone");
+  const changed = vi.fn();
+  window.addEventListener(DATA_ROOM_CHANGED, changed);
+  hoisted.upload.mockRejectedValueOnce(new DataRoomUploadError("folder-gone"));
+  hoisted.upload.mockResolvedValueOnce({ item: { id: "i1", folderId: null }, duplicate: false });
+  const deck = file("deck.pdf");
+  uploadFilesToDataRoom([deck]);
+  await flush();
+  const [toast] = getUploadToasts();
+  expect(toast?.state).toMatchObject({ kind: "error", reason: "folder-gone" });
+  expect(changed).toHaveBeenCalled();
+  if (toast?.state.kind !== "error") throw new Error("expected an error toast");
+  toast.state.toTop?.();
+  await flush();
+  expect(hoisted.upload).toHaveBeenLastCalledWith(deck, undefined, expect.any(Function));
+  expect(getUploadToasts().map((t) => t.state.kind)).toEqual(["uploaded"]);
+  window.removeEventListener(DATA_ROOM_CHANGED, changed);
 });

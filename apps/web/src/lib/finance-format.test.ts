@@ -5,6 +5,7 @@ import {
   changeText,
   dayAxisLabels,
   fullDay,
+  listAmount,
   money,
   moneyExact,
   monthAxisLabels,
@@ -15,6 +16,7 @@ import {
   shareText,
   shortDay,
   transactionAmount,
+  trendText,
   txnDay,
 } from "./finance-format";
 import { setHideAmounts } from "./hide-amounts-preference";
@@ -40,6 +42,16 @@ describe("finance formatting", () => {
     expect(axisMoney(80_000)).toBe("$800");
     expect(axisMoney(0)).toBe("$0");
     expect(axisMoney(-500_000)).toBe("−$5k");
+    // Millions read as $2M, not $2000k.
+    expect(axisMoney(200_000_000)).toBe("$2M");
+    expect(axisMoney(150_000_000)).toBe("$1.5M");
+    expect(axisMoney(99_995_000)).toBe("$1M");
+  });
+
+  it("shows list amounts in whole dollars, signed like transactions", () => {
+    expect(listAmount(150_050, en)).toBe("+$1,501");
+    expect(listAmount(-8_750, en)).toBe("$88");
+    expect(listAmount(-8_750, en, "EUR")).toBe("€88");
   });
 
   it("reads the date part of a day or ISO datetime, adding the year only when it differs", () => {
@@ -63,6 +75,12 @@ describe("finance formatting", () => {
     expect(changeText(null)).toBeNull();
     expect(changeText(0.2)).toBe("0%");
     expect(changeText(-0.4)).toBe("0%");
+  });
+
+  it("says a flat subscription is flat and a rising one by how much", () => {
+    expect(trendText([4_500, 4_500, 4_500])).toBe("±0%");
+    expect(trendText([10_000, 11_000, 12_000])).toBe("↑ 20%");
+    expect(trendText([5_000])).toBeNull();
   });
 
   it("shows a charge on its purchase day, the day its totals and filters use", () => {
@@ -146,6 +164,9 @@ describe("figures the Finance pages derive from amounts", () => {
     expect(shareText(50, 100)).not.toMatch(/\d/);
     expect(shareText(500, 19_847_500)).not.toMatch(/\d/);
     expect(changeText(53)).not.toMatch(/\d/);
+    // The arrow would still tell a viewer whether spend went up or down.
+    expect(changeText(53)).not.toMatch(/[↑↓]/);
+    expect(changeText(-53)).toBe(changeText(53));
     expect(changeText(0)).not.toMatch(/\d/);
     expect(axisMoney(-250_000)).not.toMatch(/\d/);
     expect(txnDay({ purchasedAt: null, postedAt: "2026-10-01T00:00:00Z" })).toBe("2026-10-01");

@@ -15,6 +15,7 @@ vi.mock("@lingui/react/macro", () => {
   };
 });
 
+import { setHideAmounts } from "../../lib/hide-amounts-preference";
 import { InboxRow } from "./InboxRow";
 
 const row: MailRow = {
@@ -98,4 +99,47 @@ it("names the user's own sent mail You, not their address", async () => {
   await show({ row: { ...row, from: "me@example.test", fromSelf: true } });
   const sender = document.querySelector("button[data-row-id] > span:nth-child(2)");
   expect(sender?.textContent).toBe("You (unread)");
+});
+
+it("masks currency in the subject and preview while amounts are hidden", async () => {
+  const { setHideAmounts } = await import("../../lib/hide-amounts-preference");
+  setHideAmounts(true);
+  await show({ row: { ...row, subject: "Invoice $4,812.00", snippet: "Due: $250,000 total" } });
+  expect(document.body.textContent).not.toContain("4,812");
+  expect(document.body.textContent).not.toContain("250,000");
+  await act(async () => setHideAmounts(false));
+  expect(document.body.textContent).toContain("$4,812.00");
+});
+
+it("says in the More menu that a mark covers all mail from the sender", async () => {
+  await show();
+  await act(async () => document.querySelector<HTMLElement>('button[aria-label="More"]')?.click());
+  const items = [...document.querySelectorAll('[role="menuitemcheckbox"]')].map(
+    (el) => el.textContent,
+  );
+  expect(items).toEqual([
+    "Mark importantAll mail from Sam Rivera",
+    "Mark noiseAll mail from Sam Rivera",
+  ]);
+});
+
+it("labels an archived search result Archived", async () => {
+  await show({ row: { ...row, inInbox: false } });
+  const badges = [...document.querySelectorAll('[data-slot="badge"]')].map((b) => b.textContent);
+  expect(badges).toEqual(["Archived"]);
+});
+
+it("masks amounts in the subject and preview while amounts are hidden", async () => {
+  setHideAmounts(true);
+  try {
+    await show({
+      row: { ...row, subject: "Invoice for $4,812.00", snippet: "Pay USD 1,200 by Friday" },
+    });
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("4,812");
+    expect(text).not.toContain("1,200");
+    expect(text).toContain("Invoice for $•••");
+  } finally {
+    setHideAmounts(false);
+  }
 });

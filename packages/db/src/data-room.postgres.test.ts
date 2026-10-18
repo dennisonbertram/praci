@@ -280,6 +280,17 @@ describePostgres("data room repository (PostgreSQL)", () => {
     ).toBeLessThanOrEqual(50);
   });
 
+  it("shows the matching text, not the name, when both match, ranked by the better match", async () => {
+    const { item } = await upload(a, "glimmer-lease.txt", `glimmer-${run}`);
+    await dr.replaceChunks(a, item.id, [
+      { ordinal: -1, text: "glimmer lease glimmer lease", contentHash: "m" },
+      { ordinal: 0, text: "the glimmer renewal date is January 31", contentHash: "t" },
+    ]);
+    const [hit] = await dr.searchKeyword(a, { query: "glimmer" });
+    expect(hit).toMatchObject({ ordinal: 0 });
+    expect(hit!.snippet).toContain("renewal date");
+  });
+
   it("marks highlights with control characters and strips forged markers", async () => {
     const { item } = await upload(a, "hostile.txt", `hostile-${run}`);
     await dr.replaceChunks(a, item.id, [
@@ -559,6 +570,32 @@ describePostgres("data room repository (PostgreSQL)", () => {
         (await prisma.dataRoomItem.findUniqueOrThrow({ where: { id: skipped.id } })).status,
       ).toBe("classifying");
       expect(await dr.requeueReady(b, "classify")).not.toContain(skipped.id);
+    });
+
+    it("never sends an item that already has a type, date or parties back to classify", async () => {
+      const tagged = await put(a, "tagged", "already tagged", null);
+      await prisma.dataRoomItem.update({
+        where: { id: tagged.id },
+        data: { status: "ready", docType: "Lease", parties: ["Landlord (Mock)"] },
+      });
+      await prisma.dataRoomItemText.create({
+        data: { itemId: tagged.id, spaceId: a.spaceId, userId: a.userId, text: "body" },
+      });
+      expect(await dr.requeueReady(a, "classify")).not.toContain(tagged.id);
+      const after = await prisma.dataRoomItem.findUniqueOrThrow({ where: { id: tagged.id } });
+      expect([after.status, after.docType]).toEqual(["ready", "Lease"]);
+    });
+
+    it("counts the items directly in each folder", async () => {
+      const parent = await dr.createFolder(a, { name: `count-${run}` });
+      const child = await dr.createFolder(a, { name: "child", parentId: parent.id });
+      const one = await put(a, "c1", "count one", null);
+      const two = await put(a, "c2", "count two", null);
+      await dr.moveItem(a, one.id, parent.id);
+      await dr.moveItem(a, two.id, child.id);
+      const counts = await dr.folderItemCounts(a);
+      expect([counts.get(parent.id), counts.get(child.id)]).toEqual([1, 1]);
+      expect((await dr.folderItemCounts(b)).get(parent.id)).toBeUndefined();
     });
 
     it("requeues images stored as octet-stream by their extension for vision", async () => {

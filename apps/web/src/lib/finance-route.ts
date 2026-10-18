@@ -1,6 +1,9 @@
 import type { FinanceProvider, SpendPeriod } from "@rakazo/contracts";
 import { FinanceProviderSchema, SpendPeriodSchema } from "@rakazo/contracts";
 
+/** The window a category page covers: a dashboard period or a calendar month. */
+export type CategoryWindow = { period: SpendPeriod } | { month: string };
+
 /** Inclusive days, from a chart bar. */
 export type SpendRange = { from: string; to: string };
 
@@ -19,7 +22,7 @@ export type FinanceRoute =
       range: SpendRange | null;
       source?: FinanceProvider | null;
     }
-  | { page: "category"; slug: string }
+  | { page: "category"; slug: string; window?: CategoryWindow }
   | { page: "recurring"; key: string }
   | { page: "vendor"; key: string }
   | { page: "transaction"; id: string }
@@ -48,7 +51,10 @@ export const financePath = {
     `${BASE}/spend?period=${period}${category ? `&cat=${enc(category)}` : ""}${
       range ? `&from=${range.from}&to=${range.to}` : ""
     }${source ? `&source=${source}` : ""}`,
-  category: (slug: string) => `${BASE}/category/${enc(slug)}`,
+  category: (slug: string, window?: CategoryWindow) =>
+    `${BASE}/category/${enc(slug)}${
+      window ? ("period" in window ? `?period=${window.period}` : `?month=${window.month}`) : ""
+    }`,
   recurring: (key: string) => `${BASE}/recurring/${enc(key)}`,
   vendor: (key: string) => `${BASE}/vendor/${enc(key)}`,
   transaction: (id: string) => `${BASE}/transaction/${enc(id)}`,
@@ -105,8 +111,14 @@ export function parseFinanceRoute(pathname: string, search = ""): FinanceRoute {
       return { page: name, id: arg };
     case "month":
       return MONTH.test(arg) ? { page: "month", month: arg } : { page: "not-found" };
-    case "category":
+    case "category": {
+      const params = new URLSearchParams(search);
+      const period = SpendPeriodSchema.safeParse(params.get("period"));
+      const month = params.get("month") ?? "";
+      if (period.success) return { page: "category", slug: arg, window: { period: period.data } };
+      if (MONTH.test(month)) return { page: "category", slug: arg, window: { month } };
       return { page: "category", slug: arg };
+    }
     case "recurring":
     case "vendor":
       return { page: name, key: arg };

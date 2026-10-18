@@ -8,7 +8,11 @@ const meta = {
   title: "Settings/MemorySettingsOverlay",
   component: MemorySettingsOverlay,
   parameters: {
-    docs: { description: { component: "Also shows: ScopePicker (the Default scope toggles)" } },
+    docs: {
+      description: {
+        component: "Also shows: ScopePicker (the toggles for what bots remember by default)",
+      },
+    },
   },
   args: { onClose: () => undefined, onConfigChange: () => undefined, config: null },
   decorators: [withPageBehind()],

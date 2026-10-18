@@ -6,6 +6,7 @@ import { Button, Card, cn, Switch } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { aiConsentStatus, allowRecipient, revokeRecipient } from "../lib/ai-consent";
+import { INBOX_CHANGED_EVENT } from "../lib/inbox-message-cache";
 import { errorText } from "../lib/user-error";
 
 /** A card that asks once for consent: a heading, what is sent where, and one Allow button. */
@@ -118,7 +119,11 @@ export function AiDataSharingSection() {
     setPending(true);
     setError("");
     (allowed ? allowRecipient(recipient.key) : revokeRecipient(recipient.key))
-      .then(show)
+      .then((status) => {
+        show(status);
+        // An open Inbox reloads, so its sorting and the consent prompt match the switch.
+        window.dispatchEvent(new Event(INBOX_CHANGED_EVENT));
+      })
       .catch((cause) => setError(errorText(cause)))
       .finally(() => setPending(false));
   };
@@ -128,6 +133,14 @@ export function AiDataSharingSection() {
         <Trans>AI data sharing</Trans>
       </h3>
       <p className="mt-1 text-[13px] text-muted-foreground">{i18n._(AI_DATA_DISCLOSURES.model)}</p>
+      {/* Without this, an Off switch while bots still answer reads as a switch that does nothing. */}
+      <p className="mt-1 text-[13px] text-muted-foreground">
+        <Trans>
+          Your bots always answer through the AI service chosen in Models. A switch below also lets
+          that service read your mail and documents, so Rakazo can sort your Inbox and read Data
+          room files.
+        </Trans>
+      </p>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
@@ -144,7 +157,12 @@ export function AiDataSharingSection() {
                 disabled={pending}
                 onCheckedChange={(allowed) => set(recipient, allowed)}
               />
-              <span className="text-[14px] text-foreground/75">{name}</span>
+              <span className="flex min-w-0 flex-col">
+                <span className="text-[14px] text-foreground/75">{name}</span>
+                <span className="text-[12.5px] text-muted-foreground">
+                  <Trans>Inbox sorting and Data room files</Trans>
+                </span>
+              </span>
             </li>
           );
         })}

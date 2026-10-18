@@ -73,6 +73,11 @@ const fakes: Record<string, ReturnType<typeof fake>> = {
     line("2026-03-20", "Rent", -1_000),
   ]),
   "older.csv": fake("2026-02-01", "2026-02-28", 5_000, [line("2026-02-03", "Gym", -2_000)]),
+  // Opens at $250.00 although March closed at $200.00.
+  "gap.csv": (() => {
+    const f = fake("2026-04-01", "2026-04-30", 24_000, [line("2026-04-03", "Fuel", -1_000)]);
+    return { ...f, statement: { ...f.statement, openingBalanceCents: 25_000 } };
+  })(),
   "bad.csv": fake("2026-04-01", "2026-04-30", 1, [line("2026-04-03", "Fuel", -3_000)], {
     balances: "mismatch",
     differenceCents: 77,
@@ -216,6 +221,11 @@ describePostgres("bank statement import (PostgreSQL)", () => {
     });
     const renamed = await prisma.financeAccount.findUniqueOrThrow({ where: { id: account.id } });
     expect(renamed.name).toBe("Operating account");
+    // The statement list names the account as it is called now, not as the file named it.
+    const { statements } = await client(a).finance.statements();
+    expect(statements.find((s) => s.accountId === account.id)?.accountName).toBe(
+      "Operating account",
+    );
   });
 
   it("is never synced and its rows survive a sync", async () => {
@@ -266,6 +276,14 @@ describePostgres("bank statement import (PostgreSQL)", () => {
     expect(account.balanceCents).toBe(20_000n);
     const detail = await client(b).finance.account({ id: account.id });
     expect(detail.history.at(-1)?.balanceCents).toBe(20_000);
+  });
+
+  it("says when a statement does not continue from the one before it", async () => {
+    const gap = await upload(b, "gap.csv");
+    expect(gap.warnings).toContain(
+      "This statement opens at $250.00, but the one before it closed at $200.00.",
+    );
+    await client(b).finance.statementDiscard({ id: gap.id });
   });
 
   it("blocks a balance mismatch until it is accepted", async () => {

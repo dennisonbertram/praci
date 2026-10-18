@@ -91,6 +91,25 @@ export const Forward: Story = {
     }),
 };
 
+/** A forward whose video is over the attachment limit: the file that fit stays, the other is named. */
+export const ForwardWithFileLeftOut: Story = {
+  args: { seed: { kind: "forward", messageId: "msg_forward" } },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.compose.prefill": {
+        ...prefill,
+        to: "",
+        subject: "Fwd: Demo video",
+        replyToMessageId: undefined,
+        attachments: [
+          { id: "a1", filename: "notes.pdf", mimeType: "application/pdf", size: 82_000 },
+        ],
+        attachmentsTooLarge: true,
+        attachmentsLeftOut: [{ filename: "demo.mp4", size: 12_000_000 }],
+      },
+    }),
+};
+
 export const PrefillLoading: Story = {
   args: { seed: { kind: "reply", messageId: "msg_slow" } },
   beforeEach: () => mockRpc({ "inbox.compose.prefill": () => new Promise(() => undefined) }),
@@ -146,7 +165,7 @@ export const SendFailedNotice: Story = {
   args: {
     restore: restored(
       { to: ["ana@example.test"], subject: "Hello", text: "Body." },
-      { notice: "Not sent. Couldn't send. Try again." },
+      { notice: "Not sent. Gmail didn't accept it. Check the addresses." },
     ),
   },
 };

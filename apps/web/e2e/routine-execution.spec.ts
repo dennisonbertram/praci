@@ -18,13 +18,13 @@ test("Slack message trigger uses the mounted messaging provider and persists", a
   await completeOnboarding(page);
   const botId = activeBotId(page);
 
-  await page.getByTitle("Bot computer").click();
+  await page.getByTitle("Computer and routines").click();
   await page.getByRole("button", { name: "Create Routine" }).click();
   await page.getByPlaceholder("Name this routine").fill("Triage Slack updates");
   await page
     .getByPlaceholder("What should this routine do each time it runs?")
     .fill("Review the verified message event");
-  await page.getByRole("button", { name: "Add trigger" }).click();
+  await page.getByRole("button", { name: "Choose when it runs" }).click();
   await page.getByRole("menuitem", { name: "Slack message", exact: true }).click();
 
   const panel = page.getByTestId("side-panel");
@@ -57,13 +57,14 @@ test("GitHub event trigger exposes signed delivery settings and persists", async
   await completeOnboarding(page);
   const botId = activeBotId(page);
 
-  await page.getByTitle("Bot computer").click();
+  await page.getByTitle("Computer and routines").click();
   await page.getByRole("button", { name: "Create Routine" }).click();
   await page.getByPlaceholder("Name this routine").fill("Review repository events");
   await page
     .getByPlaceholder("What should this routine do each time it runs?")
     .fill("Inspect the signed GitHub event");
-  await page.getByRole("button", { name: "Add trigger" }).click();
+  await page.getByRole("button", { name: "Choose when it runs" }).click();
+  await page.getByRole("menuitem", { name: "From another app (advanced)" }).hover();
   await page.getByRole("menuitem", { name: "Git event", exact: true }).click();
 
   await expect(
@@ -102,13 +103,14 @@ test("Korean webhook routine keeps technical field labels in English", async ({
   await settings.getByRole("option", { name: "한국어", exact: true }).click();
   await page.getByRole("button", { name: "계정 설정 닫기" }).click();
 
-  await page.getByTitle("Bot 컴퓨터").click();
+  await page.getByTitle("Computer and routines").click();
   await page.getByRole("button", { name: "자동 실행 만들기" }).click();
   await page.getByPlaceholder("이 루틴의 이름을 정하세요").fill("한국어 웹훅 확인");
   await page
     .getByPlaceholder("이 루틴이 실행될 때마다 무엇을 해야 하나요?")
     .fill("웹훅을 확인합니다.");
-  await page.getByRole("button", { name: "트리거 추가" }).click();
+  await page.getByRole("button", { name: "Choose when it runs" }).click();
+  await page.getByRole("menuitem", { name: "From another app (advanced)" }).hover();
   await page.getByRole("menuitem", { name: "웹훅", exact: true }).click();
 
   await expect(page.getByText("웹훅이 실행될 때", { exact: true })).toBeVisible();
@@ -123,14 +125,14 @@ test("routine test-run completes and survives reload", async ({ page }, testInfo
   await signup(page, `routine-${stamp}@rakazo.test`, "password12", "Routine");
   await completeOnboarding(page);
 
-  await page.getByTitle("Bot computer").click();
+  await page.getByTitle("Computer and routines").click();
   await expect(page.getByRole("button", { name: "Test run" })).toHaveCount(0);
   await page.getByRole("button", { name: "Create Routine" }).click();
   await page.locator("label:has-text('Name') input").fill("Daily verification");
   await page
     .locator("label:has-text('Instruction') textarea")
     .fill("write routine-run-now-ok into the durable task result");
-  await page.getByRole("button", { name: "Add trigger" }).click();
+  await page.getByRole("button", { name: "Choose when it runs" }).click();
   await page.getByRole("menuitem", { name: "On a schedule" }).hover();
   await page.getByRole("menuitem", { name: "Weekdays", exact: true }).click();
   await expect(page.getByLabel("How often")).toHaveValue("Weekdays");
@@ -155,7 +157,7 @@ test("routine test-run completes and survives reload", async ({ page }, testInfo
 
   await page.reload();
   await expect(page.getByText(/routine-run-now-ok/i).first()).toBeVisible();
-  await page.getByTitle("Bot computer").click();
+  await page.getByTitle("Computer and routines").click();
   await expect(page.getByRole("button", { name: /Daily verification/ })).toContainText(
     "Weekdays at 9:00 AM",
   );
@@ -221,7 +223,7 @@ test("routine history expands from the latest run and pages older executions", a
       }),
     });
   });
-  await page.getByTitle("Bot computer").click();
+  await page.getByTitle("Computer and routines").click();
   await page.getByRole("button", { name: /Recent checks/ }).click();
   const history = page.getByTestId("routine-run-history");
   await expect(history.getByTestId("routine-run-row")).toHaveCount(1);

@@ -124,7 +124,17 @@ export async function inboxComposePrefill(
       input.mode === "forward" && message.html ? sanitizeComposeHtml(message.html) : "";
     const files =
       input.mode === "forward" ? message.attachments.filter((file) => !file.inline) : [];
-    const tooLarge = files.reduce((sum, file) => sum + file.size, 0) > MAX_COMPOSE_ATTACHMENT_BYTES;
+    // Files are kept in order while they fit; the rest are named so the person knows what is missing.
+    const kept: typeof files = [];
+    const leftOut: typeof files = [];
+    let total = 0;
+    for (const file of files) {
+      if (total + file.size <= MAX_COMPOSE_ATTACHMENT_BYTES) {
+        kept.push(file);
+        total += file.size;
+      } else leftOut.push(file);
+    }
+    const tooLarge = leftOut.length > 0;
     return {
       connectionId: account.id,
       account: accountOut(account),
@@ -132,10 +142,18 @@ export async function inboxComposePrefill(
       ...(htmlToText(quotedHtml) && quotedHtml.length <= MAX_COMPOSE_HTML / 2
         ? { quotedHtml }
         : {}),
-      attachments: tooLarge
-        ? []
-        : files.map(({ id, filename, mimeType, size }) => ({ id, filename, mimeType, size })),
-      ...(tooLarge ? { attachmentsTooLarge: true } : {}),
+      attachments: kept.map(({ id, filename, mimeType, size }) => ({
+        id,
+        filename,
+        mimeType,
+        size,
+      })),
+      ...(tooLarge
+        ? {
+            attachmentsTooLarge: true,
+            attachmentsLeftOut: leftOut.map(({ filename, size }) => ({ filename, size })),
+          }
+        : {}),
       ...(input.mode === "forward" ? {} : { replyToMessageId: input.messageId }),
     };
   } catch (error) {
@@ -336,8 +354,15 @@ export async function inboxComposeDraftSave(
       await flagReconnect(deps, account.id);
       return { status: "reconnect" };
     }
-    return { status: "failed" };
+    return failed(error);
   }
+}
+
+/** A failure that proves nothing was sent or saved, with Gmail's reason when it gave one. */
+function failed(error: MailProviderError): ComposeResult {
+  if (error.kind === "invalid") return { status: "failed", reason: "rejected" };
+  if (error.kind === "rate_limited") return { status: "failed", reason: "rate_limited" };
+  return { status: "failed" };
 }
 
 /** What an earlier or concurrent request settled on, waiting briefly for one still in flight. */
@@ -460,7 +485,7 @@ export async function inboxComposeSend(
       await flagReconnect(deps, account.id);
       return { status: "reconnect" };
     }
-    return { status: "failed" };
+    return failed(error);
   }
 }
 

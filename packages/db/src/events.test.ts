@@ -3390,7 +3390,7 @@ describe("setMailApprovalOutcome", () => {
     );
     expect(tx.externalEffect.updateMany).toHaveBeenCalledWith({
       where: { id: "effect-1", spaceId: "workspace-1", status: "denied" },
-      data: { result: { note: "nothing was sent" } },
+      data: { result: { note: "nothing was sent", outcome: "failed" } },
     });
     expect(tx.message.update.mock.calls[0]?.[0].data.blocks[0].mail.outcome).toBe("failed");
   });

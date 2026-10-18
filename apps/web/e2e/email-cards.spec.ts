@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, connectTwoGmailAccounts, signup } from "./helpers";
+import {
+  allowInboxAgentMail,
+  captureScreenshot,
+  completeOnboarding,
+  connectMailFromInbox,
+  signup,
+} from "./helpers";
 
 test("the Inbox agent cites mail as urgency-grouped cards that open the message", async ({
   page,
@@ -9,12 +15,13 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   await completeOnboarding(page);
 
   await page.goto("/app/inbox");
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
 
+  // The Inbox agent reads mail only with the AI data sharing consent the Inbox sorting needs.
+  await allowInboxAgentMail(page);
   const panel = page.getByTestId("side-panel");
   await main.getByRole("button", { name: "Ask Inbox agent" }).click();
   await panel.getByRole("button", { name: "Create Inbox agent", exact: true }).click();
@@ -31,7 +38,7 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
     "Today",
     "Within 3 days",
     "This week",
-    "Later",
+    "No rush",
   ]);
   await expect(cards.getByTestId("email-card")).toHaveCount(3);
   await expect(cards.getByTestId("email-row")).toHaveCount(2);

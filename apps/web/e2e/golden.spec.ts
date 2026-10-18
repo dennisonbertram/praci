@@ -101,9 +101,9 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   // Agent computer toggles the panel. Re-open when closed so Open can refresh computer status.
   const sidePanel = page.getByTestId("side-panel");
   if ((await sidePanel.getAttribute("data-panel")) === "computer") {
-    await page.getByTitle("Bot computer").click();
+    await page.getByTitle("Computer and routines").click();
   }
-  await page.getByTitle("Bot computer").click();
+  await page.getByTitle("Computer and routines").click();
   await expect(sidePanel).toHaveAttribute("data-panel", "computer");
   await expect(sidePanel).toHaveCSS("width", "384px");
   const [mainBox, panelBox] = await Promise.all([
@@ -135,7 +135,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   await page
     .locator("label:has-text('Instruction') textarea")
     .fill("write a file in your home called notes/result.txt that says routine-ok");
-  await page.getByRole("button", { name: "Add trigger" }).click();
+  await page.getByRole("button", { name: "Choose when it runs" }).click();
   await page.getByRole("menuitem", { name: "On a schedule" }).hover();
   await page.getByRole("menuitem", { name: "Every day", exact: true }).click();
   const savedRoutine = page.waitForResponse(
@@ -250,7 +250,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   await page.getByText("Chief").first().click();
   const gear = page.getByRole("button", { name: "Show settings" });
   if (!(await gear.isVisible().catch(() => false))) {
-    await page.getByTitle("Bot computer").click();
+    await page.getByTitle("Computer and routines").click();
   }
   await gear.click();
   const downloadPromise = page.waitForEvent("download");

@@ -143,6 +143,21 @@ describe("LlmDataRoomClassifier.classify", () => {
     expect(out.folderPath).toEqual(["Legal", "NDAs"]);
   });
 
+  it("sends the known parties and uses a known party's exact spelling", async () => {
+    const { classifier, requests } = make(
+      JSON.stringify({ ...valid, parties: ["northwind labs, inc", "Quill Capital"] }),
+    );
+    const out = await classifier.classify(
+      { ...input(), parties: ["Northwind Labs Inc", "Quill Capital (Mock)"] },
+      context,
+    );
+    expect(requests[0]?.prompt).toContain(
+      "Known parties:\nNorthwind Labs Inc\nQuill Capital (Mock)",
+    );
+    // Only spelling differences snap; a different name is left for the model to get right.
+    expect(out.parties).toEqual(["Northwind Labs Inc", "Quill Capital"]);
+  });
+
   it("sends existing folders and truncates long text keeping head and tail", async () => {
     const text = `HEAD${"x".repeat(100_000)}TAIL`;
     const { classifier, requests } = make(JSON.stringify(valid));

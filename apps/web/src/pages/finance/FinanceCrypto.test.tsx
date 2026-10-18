@@ -137,7 +137,7 @@ it("renders totals, wallets, chains and holdings from the data", async () => {
   rpcMock.crypto.mockResolvedValue(data());
   await show();
   const page = container.textContent ?? "";
-  // Totals are whole dollars like the other balances; a token's own value keeps its cents.
+  // Totals and each token's value are whole dollars, like every other list in Finance.
   expect(page).toContain("$3,003");
   expect(page).not.toContain("$3,002.50");
   expect(page).toContain("1 unpriced");
@@ -147,8 +147,17 @@ it("renders totals, wallets, chains and holdings from the data", async () => {
   expect(page).toContain("Ethereum");
   expect(page).toContain("Base");
   expect(page).toContain("1.5");
-  expect(page).toContain("$3,000.00");
+  expect(page).toContain("$3,000");
+  expect(page).not.toContain("$3,000.00");
   expect(page).toContain("2.5");
+  // A labelled wallet still says which wallet it is, and with two wallets each holding names its wallet.
+  expect(page).toContain("0x1111…1111");
+  const holdings = [...container.querySelectorAll("tr")].filter((tr) =>
+    tr.textContent?.startsWith("ETH"),
+  );
+  expect(holdings.map((tr) => [...tr.querySelectorAll("td")][1]?.textContent)).toEqual([
+    "Treasury",
+  ]);
   expect(page).toContain("Updated");
   expect(container.querySelector('[role="alert"]')).toBeNull();
 });
@@ -233,26 +242,11 @@ it("shows the server's error inline when adding a wallet fails", async () => {
   expect(document.body.querySelector('[role="alert"]')?.textContent).toContain("already added");
 });
 
-it("offers to add the Blockscout key, opening the modal, only when there is no API key", async () => {
-  rpcMock.crypto.mockResolvedValue(data({ hasApiKey: true }));
-  await show();
-  expect(
-    [...container.querySelectorAll("button")].some((b) => /Blockscout/.test(b.textContent ?? "")),
-  ).toBe(false);
-  await act(async () => root.unmount());
-  root = createRoot(container);
+it("does not ask for a Blockscout key on the Crypto page; balances need none", async () => {
   rpcMock.crypto.mockResolvedValue(data({ connected: true, hasApiKey: false }));
   await show();
-  // Balances never need the key, so the page does not claim they do.
-  expect(container.textContent).toContain("need no key");
-  expect(container.textContent).not.toContain("needs its API key");
-  const connect = [...container.querySelectorAll("button")].find(
-    (b) => b.textContent === "Add Blockscout API key",
-  );
-  await act(async () => (connect as HTMLElement).click());
-  expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain(
-    "Connect Blockscout",
-  );
+  expect(container.textContent).not.toContain("Blockscout");
+  expect(container.textContent).not.toContain("API key");
 });
 
 it("asks a founder with no wallet to add one, not to connect Blockscout first", async () => {
@@ -283,6 +277,7 @@ it("shows each exchange as its own group and reloads everything after removing o
       balances: [
         { asset: "BTC", amount: "0.004", usdPrice: "50000", usdValueCents: 20_000 },
         { asset: "ZZZ", amount: "5", usdPrice: null, usdValueCents: null },
+        { asset: "USD", amount: "12000.00", usdPrice: "1", usdValueCents: 1_200_000 },
       ],
     },
   ]);
@@ -291,7 +286,10 @@ it("shows each exchange as its own group and reloads everything after removing o
   const page = container.textContent ?? "";
   expect(page).toContain("Kraken");
   expect(page).toContain("0.004");
-  expect(page).toContain("$200.00");
+  expect(page).toContain("$200");
+  // An exchange's decimal balance reads like a token balance: grouped, no trailing zeros.
+  expect(page).toContain("12,000");
+  expect(page).not.toContain("12000.00");
   expect(page).toContain("$250");
   expect(page).not.toContain("$250.00");
   expect(page).toContain("rate limit reached");
@@ -354,4 +352,14 @@ it("shows wallet-only totals in the Wallets section when exchanges add to the su
   expect(wallets?.textContent).not.toContain("$3,253");
   expect(wallets?.textContent).toContain("1 unpriced");
   expect(wallets?.textContent).not.toContain("4 unpriced");
+});
+
+it("leaves out the Chains card when every holding is on one chain", async () => {
+  const base = data();
+  rpcMock.crypto.mockResolvedValue({
+    ...base,
+    summary: { ...base.summary, byChain: [{ chainId: 1, cents: 300_250 }] },
+  });
+  await show();
+  expect([...container.querySelectorAll("h2")].map((h) => h.textContent)).not.toContain("Chains");
 });

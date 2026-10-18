@@ -3,26 +3,28 @@ import { mockRpc } from "../../lib/__mocks__/rpc";
 import { folders, readyItem } from "../../stories/fixtures/data-room";
 
 const contracts = folders[0]!;
+const reports = folders.find((folder) => folder.name === "Reports")!;
 
 import { folderNodes } from "./folders";
-import { ItemDialog } from "./ItemDialogs";
+import { ItemDialog, NewFolderDialog } from "./ItemDialogs";
 import type { ItemAction } from "./ItemMenu";
 
 const meta = {
   title: "DataRoom/ItemDialog",
-  render: (args: { action: ItemAction; folder?: boolean }) => (
+  render: (args: { action: ItemAction; folder?: boolean; emptyFolder?: boolean }) => (
     <>
       <p className="p-4 text-sm">{readyItem.name}</p>
       <ItemDialog
         action={args.action}
-        item={args.folder ? contracts : readyItem}
+        item={args.emptyFolder ? reports : args.folder ? contracts : readyItem}
         folders={folderNodes(folders)}
         onClose={() => undefined}
         onDone={() => undefined}
+        onOpenFolder={() => undefined}
       />
     </>
   ),
-} satisfies Meta<{ action: ItemAction; folder?: boolean }>;
+} satisfies Meta<{ action: ItemAction; folder?: boolean; emptyFolder?: boolean }>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -53,5 +55,23 @@ export const MoveToNewFolder: Story = {
 /** A folder: it cannot move into itself or its sub-folders, so those are not offered. */
 export const MoveFolder: Story = { args: { action: "move", folder: true } };
 export const RenameFolder: Story = { args: { action: "rename", folder: true } };
-/** Only an empty folder can be deleted; the dialog says so up front. */
+/** A folder with something in it: the dialog says what it holds and offers to open it, not Delete. */
 export const DeleteFolder: Story = { args: { action: "delete", folder: true } };
+/** An empty folder is deleted after a confirmation. */
+export const DeleteEmptyFolder: Story = { args: { action: "delete", emptyFolder: true } };
+/** New folder from the tree: a name, and where it goes ("Inside", starting at the open folder). */
+export const NewFolder: Story = {
+  args: { action: "rename" },
+  // The dialog renders in a portal, so the page behind it is what the smoke check finds in the root.
+  render: () => (
+    <>
+      <p className="p-4 text-sm">{contracts.name}</p>
+      <NewFolderDialog
+        folders={folderNodes(folders)}
+        parentId="fld_contracts"
+        onClose={() => undefined}
+        onDone={() => undefined}
+      />
+    </>
+  ),
+};

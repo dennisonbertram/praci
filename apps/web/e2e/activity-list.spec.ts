@@ -86,6 +86,8 @@ test("sidebar Working and Finished surface active and terminal runs", async ({
   await expect(activityToggle).toHaveAttribute("aria-pressed", "true");
   await expect(activityToggle).toHaveAttribute("data-activity-mode", "on");
   await expect(page.getByText("Loading activity…")).toBeHidden({ timeout: 20_000 });
+  // Finished runs are folded away until asked for.
+  await aside.getByRole("button", { name: /^Show \d+ finished runs?$/ }).click();
   await expect(aside.getByText("Finished", { exact: true })).toBeVisible({ timeout: 20_000 });
   await expect(activityRow(page, "Chief")).toBeVisible();
   await expect(activityRow(page, "Chief")).toContainText(/Cancelled|keep working/i);
@@ -94,12 +96,14 @@ test("sidebar Working and Finished surface active and terminal runs", async ({
 
   const sidebarSearch = page
     .getByTestId("sidebar-search")
-    .getByPlaceholder("Search chats", { exact: true });
+    .getByPlaceholder("Search", { exact: true });
   await sidebarSearch.fill("Chief");
   await expect(aside.getByText("Finished", { exact: true })).toHaveCount(0);
   await expect(activityRow(page, "Chief")).toHaveCount(0);
 
   await sidebarSearch.fill("");
+  // Finished runs are folded away until asked for.
+  await aside.getByRole("button", { name: /^Show \d+ finished runs?$/ }).click();
   await expect(aside.getByText("Finished", { exact: true })).toBeVisible({ timeout: 20_000 });
   await expect(activityRow(page, "Chief")).toBeVisible();
 

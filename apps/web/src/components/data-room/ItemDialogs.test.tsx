@@ -82,7 +82,7 @@ it("moves an item into a folder it creates on the spot", async () => {
   if (!name) throw new Error("no folder name field");
   await act(async () => setValue(name, "Legal"));
   await act(async () => name.form?.requestSubmit());
-  expect(rpc.folderCreate).toHaveBeenCalledExactlyOnceWith({ name: "Legal" });
+  expect(rpc.folderCreate).toHaveBeenCalledExactlyOnceWith({ name: "Legal", parentId: null });
   expect(rpc.itemMove).toHaveBeenCalledExactlyOnceWith({ id: "i1", folderId: "f-new" });
   expect(onDone).toHaveBeenCalledWith("move", { ...item, folderId: "f-new" });
 });
@@ -144,7 +144,7 @@ it("moves a folder anywhere but into itself or a folder under it", async () => {
   const select = document.querySelector<HTMLSelectElement>('select[name="folder"]');
   if (!select) throw new Error("no folder select");
   expect(Array.from(select.options).map((option) => option.textContent)).toEqual([
-    "Top level",
+    "All items",
     "Legal",
     "New folder…",
   ]);
@@ -177,6 +177,96 @@ it("says to empty a folder first when the server refuses to delete it", async ()
   expect(rpc.folderDelete).toHaveBeenCalledExactlyOnceWith({ id: "f1" });
   expect(document.body.textContent).toContain("Move or delete what is in this folder first.");
   expect(onClose).not.toHaveBeenCalled();
+});
+
+it("creates the new folder inside the item's current folder unless another is chosen", async () => {
+  const folders = folderNodes([
+    { id: "f-product", name: "Product", parentId: null, createdAt: "" },
+    { id: "f-legal", name: "Legal", parentId: null, createdAt: "" },
+  ]);
+  rpc.folderCreate.mockResolvedValue({ id: "f-new", name: "Roadmaps", parentId: "f-product" });
+  rpc.itemMove.mockResolvedValue({ ...item, folderId: "f-new" });
+  await act(async () =>
+    root.render(
+      <ItemDialog
+        action="move"
+        item={{ ...item, folderId: "f-product" }}
+        folders={folders}
+        onClose={vi.fn()}
+        onDone={vi.fn()}
+      />,
+    ),
+  );
+  const select = document.querySelector<HTMLSelectElement>('select[name="folder"]');
+  if (!select) throw new Error("no folder select");
+  await act(async () => setValue(select, "__new__"));
+  const parent = document.querySelector<HTMLSelectElement>('select[name="parent"]');
+  expect(parent?.value).toBe("f-product");
+  const name = document.querySelector<HTMLInputElement>('input[name="folderName"]');
+  if (!name) throw new Error("no folder name field");
+  await act(async () => setValue(name, "Roadmaps"));
+  await act(async () => name.form?.requestSubmit());
+  expect(rpc.folderCreate).toHaveBeenCalledExactlyOnceWith({
+    name: "Roadmaps",
+    parentId: "f-product",
+  });
+});
+
+it("selects the name without its extension when renaming", async () => {
+  await act(async () =>
+    root.render(
+      <ItemDialog action="rename" item={item} folders={[]} onClose={vi.fn()} onDone={vi.fn()} />,
+    ),
+  );
+  const name = document.querySelector<HTMLInputElement>('input[name="name"]');
+  expect([name?.selectionStart, name?.selectionEnd]).toEqual([0, "Lease".length]);
+});
+
+it("says up front that a folder with files cannot be deleted, and offers to open it instead", async () => {
+  const hr = { id: "f-hr", name: "HR", parentId: null, createdAt: "", itemCount: 3 };
+  const onOpenFolder = vi.fn();
+  const onClose = vi.fn();
+  await act(async () =>
+    root.render(
+      <ItemDialog
+        action="delete"
+        item={hr}
+        folders={folderNodes([hr])}
+        onClose={onClose}
+        onDone={vi.fn()}
+        onOpenFolder={onOpenFolder}
+      />,
+    ),
+  );
+  const dialog = document.querySelector('[role="alertdialog"]');
+  expect(dialog?.textContent).toContain("It holds 3 items");
+  const buttons = Array.from(dialog?.querySelectorAll("button") ?? []);
+  expect(buttons.map((b) => b.textContent)).toEqual(["Cancel", "Open folder"]);
+  await act(async () => buttons[1]?.click());
+  expect(onOpenFolder).toHaveBeenCalledWith("f-hr");
+  expect(onClose).toHaveBeenCalled();
+  expect(rpc.folderDelete).not.toHaveBeenCalled();
+});
+
+it("still deletes an empty folder after a confirmation", async () => {
+  const old = { id: "f-old", name: "Old", parentId: null, createdAt: "", itemCount: 0 };
+  rpc.folderDelete.mockResolvedValue({ ok: true });
+  await act(async () =>
+    root.render(
+      <ItemDialog
+        action="delete"
+        item={old}
+        folders={folderNodes([old])}
+        onClose={vi.fn()}
+        onDone={vi.fn()}
+      />,
+    ),
+  );
+  const remove = Array.from(document.querySelectorAll('[role="alertdialog"] button')).find(
+    (b) => b.textContent === "Delete",
+  ) as HTMLButtonElement;
+  await act(async () => remove.click());
+  expect(rpc.folderDelete).toHaveBeenCalledWith({ id: "f-old" });
 });
 
 const flushAll = () => act(async () => {});

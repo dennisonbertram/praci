@@ -270,6 +270,22 @@ it("shows a stored BYOK key when provider settings reopen", async () => {
   }
 });
 
+it("says no model is active, not the saved default, while no model is set up", async () => {
+  vi.mocked(rpc.me).mockResolvedValue({
+    ...account("deepseek", "deepseek-chat"),
+    needsModel: true,
+  });
+  const view = await renderSettings();
+  expect(view.container.textContent).toContain("None yet");
+  expect(view.container.textContent).toContain("Pick a provider below and connect it.");
+  expect(view.container.textContent).not.toMatch(/Active model\s*DeepSeek Chat/);
+  // The detail names the provider it is about, since none is marked as connected yet.
+  expect(view.container.textContent).toContain(
+    "Connect DeepSeek to use it as your personal model.",
+  );
+  await view.unmount();
+});
+
 it("leaves the key field empty until a key is saved", async () => {
   const view = await renderSettings();
   try {
@@ -289,6 +305,8 @@ it("treats the provider this space already uses as connected, with a key optiona
     expect(text).toContain("This space already uses DeepSeek.");
     expect(text).not.toContain("Connect this provider");
     expect(text).toContain("Use your own key");
+    // A founder should learn they need to do nothing here before reading a list of providers.
+    expect(text).toContain("They already have one, so change this only");
   } finally {
     await view.unmount();
   }

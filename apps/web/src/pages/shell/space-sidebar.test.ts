@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { commitSpaceRename, sidebarGroupsForSpaces } from "./space-sidebar";
+import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./space-sidebar";
 
 function chat(id: string, name: string) {
   return {
@@ -30,11 +30,11 @@ function space(
 }
 
 describe("sidebarGroupsForSpaces", () => {
-  it("keeps rename on the only space without showing its name", () => {
+  it("names the only space above its chats, beside its actions", () => {
     const [group] = sidebarGroupsForSpaces([space("space-1", "Personal", { canRename: true })], "");
 
     expect(group).toMatchObject({
-      title: null,
+      title: "Personal",
       spaceName: "Personal",
       canRenameSpace: true,
       canDeleteSpace: false,
@@ -59,6 +59,17 @@ describe("sidebarGroupsForSpaces", () => {
       canDeleteSpace: true,
       emptySpaceId: "space-2",
     });
+  });
+
+  it("marks the space being shown, including an empty one, only when several are listed", () => {
+    const spaces = [space("space-1", "Personal"), space("space-2", "Empty", { bots: [] })];
+    expect(sidebarGroupsForSpaces(spaces, "", "space-2").map((g) => g.current)).toEqual([
+      false,
+      true,
+    ]);
+    expect(sidebarGroupsForSpaces([space("space-1", "Personal")], "", "space-1")[0]?.current).toBe(
+      false,
+    );
   });
 
   it("hides space actions while a search removes every chat from the only space", () => {
@@ -97,5 +108,13 @@ describe("commitSpaceRename", () => {
     ).rejects.toThrow("Space deletion is already in progress");
     expect(apply).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("activeSpaceFirst", () => {
+  it("puts the space on screen first and keeps the others in order", () => {
+    const spaces = [space("a", "Northwind"), space("b", "Empty"), space("c", "Third")];
+    expect(activeSpaceFirst(spaces, "b").map((s) => s.id)).toEqual(["b", "a", "c"]);
+    expect(activeSpaceFirst(spaces, undefined).map((s) => s.id)).toEqual(["a", "b", "c"]);
   });
 });

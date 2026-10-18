@@ -14,7 +14,7 @@ describe("MessageHoverMetadata", () => {
     // Beside the bubble, not under it: under it the rail covered the next message's text.
     expect(html).toContain("start-full");
     expect(html).toContain("bottom-0");
-    expect(html).not.toContain("top-full");
+    expect(html).not.toMatch(/(^|\s)top-full/);
     expect(html).not.toContain("<time");
     expect(html).toContain("opacity-0");
     expect(html).toContain("@media(hover:hover)_and_(pointer:fine)");
@@ -30,8 +30,18 @@ describe("MessageHoverMetadata", () => {
     );
 
     expect(html).toContain("end-full");
-    expect(html).not.toContain("top-full");
+    expect(html).not.toMatch(/(^|\s)top-full/);
     expect(html).not.toContain("<time");
+  });
+
+  it("drops the rail below the bubble only in a narrow transcript, which has no gutter", () => {
+    const html = renderToStaticMarkup(
+      <MessageHoverMetadata side="end">
+        <div data-testid="message-actions" />
+      </MessageHoverMetadata>,
+    );
+    expect(html).toContain("@max-sm:[@media(hover:hover)]:top-full");
+    expect(html).toContain("@max-sm:[@media(hover:hover)]:start-0");
   });
 
   it("drops the rail in-flow below the bubble on touch", () => {

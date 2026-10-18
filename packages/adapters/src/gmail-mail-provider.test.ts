@@ -136,6 +136,24 @@ describe("GmailMailProvider with the emulator", () => {
 });
 
 describe("listMessages", () => {
+  it("measures newer_than and older_than from the injected clock", async () => {
+    const gmail = new GmailApiEmulator({
+      clock: () => NOW,
+      mailboxes: {
+        x: { address: "me@example.test", messages: [msg("old", {}, 1), msg("new", {}, 25)] },
+      },
+    });
+    const ids = (q: string) => {
+      const res = gmail.handle(
+        "x",
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${q}`,
+      );
+      return ((res.data as { messages?: Array<{ id: string }> }).messages ?? []).map((m) => m.id);
+    };
+    expect(ids("newer_than:20d")).toEqual(["new"]);
+    expect(ids("older_than:20d")).toEqual(["old"]);
+  });
+
   it("gives auth before any request when the account belongs to another user or space", async () => {
     const gmail = box([msg("m1")]);
     const { provider } = over(gmail);

@@ -1,4 +1,6 @@
 import type { EmulatedMcpServer, EmulatedMessage } from "@rakazo/adapters";
+import { FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
+import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   brexAccountsResponse,
   brexExpense,
@@ -20,7 +22,22 @@ export const MOCK_NOTE = "Mock demo data";
 export const DEMO_COMPANY = "MOCK DEMO DATA — Northwind Robotics";
 /** A space with nothing connected, for the first-run and empty states. */
 export const DEMO_EMPTY_SPACE = "MOCK DEMO DATA — Empty space";
-export const DEMO_USER_NAME = "Alex Founder (Mock)";
+/** A space whose only Gmail account lost its sign-in, for the Reconnect state. */
+export const DEMO_RECONNECT_SPACE = "MOCK DEMO DATA — Mail needs reconnect";
+/** A space whose Gmail answers every call with a rate limit. */
+export const DEMO_RATE_LIMIT_SPACE = "MOCK DEMO DATA — Mail rate-limited";
+/** Mail sent to this domain fails, so a failed send can be tried (for example bounce@…). */
+export const DEMO_BOUNCE_DOMAIN = "send-fail.example.test";
+/** How long after the stack starts the mock new email arrives. */
+export const DEMO_NEW_MAIL_DELAY_MS = 3 * 60_000;
+/** A company whose Mercury sign-in has expired, for the Finance Reconnect path. */
+export const DEMO_FINANCE_RECONNECT_SPACE = "MOCK DEMO DATA — Reconnect needed";
+export const DEMO_USER_NAME = "Maya Chen (Mock)";
+/** A second member of the company, so sharing and privacy can be looked at. */
+export const DEMO_COFOUNDER = {
+  name: "River Cofounder (Mock)",
+  email: "mock-cofounder@demo.rakazo.test",
+};
 export const DEMO_EMAIL = "mock-founder@demo.rakazo.test";
 /** Short, so the subject itself stays readable in a list row. */
 export const MOCK_SUBJECT_PREFIX = "[MOCK]";
@@ -31,7 +48,7 @@ const FOOTER = `\n\n-- \n${MOCK_NOTE}: invented for UX testing. Not a real messa
 
 // ---- Inbox ----
 
-const ME = "Alex Founder (Mock) <mock-founder@northwind.example.test>";
+const ME = "Maya Chen (Mock) <mock-founder@northwind.example.test>";
 const MORGAN = "Morgan Pretend <morgan@halcyon-logistics.example.test>";
 const DANA = "Dana Counselor <dana@halcyon-logistics.example.test>";
 
@@ -67,7 +84,7 @@ const MAIL: Mail[] = [
     agoMs: 2 * HOUR_MS,
     from: "Priya Placeholder <priya@quill-capital.example.test>",
     subject: "Q3 investor update: draft for your review",
-    text: "Hi Alex,\n\nHere is the draft of the Q3 update for our LPs. Can you check the runway and hiring numbers before Friday?\n\nPriya\nQuill Capital (Mock)",
+    text: "Hi Maya,\n\nHere is the draft of the Q3 update for our LPs. Can you check the runway and hiring numbers before Friday?\n\nPriya\nQuill Capital (Mock)",
     unread: true,
     starred: true,
   },
@@ -78,7 +95,7 @@ const MAIL: Mail[] = [
     from: MORGAN,
     cc: DANA,
     subject: "Redlines on the Master Services Agreement",
-    text: "Alex,\n\nOur counsel returned redlines on sections 4 (liability cap) and 9 (termination). We can sign this week if you accept them.\n\nMorgan\nHalcyon Logistics (Mock)",
+    text: "Maya,\n\nOur counsel returned redlines on sections 4 (liability cap) and 9 (termination). We can sign this week if you accept them.\n\nMorgan\nHalcyon Logistics (Mock)",
   },
   {
     thread: "msa-redlines",
@@ -88,7 +105,7 @@ const MAIL: Mail[] = [
     cc: DANA,
     sent: true,
     subject: "Redlines on the Master Services Agreement",
-    text: "Thanks Morgan. Our counsel is reviewing both sections and I will reply by Thursday.\n\nAlex",
+    text: "Thanks Morgan. Our counsel is reviewing both sections and I will reply by Thursday.\n\nMaya",
   },
   {
     thread: "msa-redlines",
@@ -96,7 +113,7 @@ const MAIL: Mail[] = [
     from: DANA,
     cc: MORGAN,
     subject: "Redlines on the Master Services Agreement",
-    text: "Alex, to clarify section 9: we are asking for 60 days' notice of termination instead of 30. Section 4 is as marked.\n\nDana\nHalcyon Logistics (Mock)",
+    text: "Maya, to clarify section 9: we are asking for 60 days' notice of termination instead of 30. Section 4 is as marked.\n\nDana\nHalcyon Logistics (Mock)",
   },
   {
     thread: "msa-redlines",
@@ -104,7 +121,7 @@ const MAIL: Mail[] = [
     from: MORGAN,
     cc: DANA,
     subject: "Redlines on the Master Services Agreement",
-    text: "Alex, if section 9 works for you, can we sign on Thursday?\n\nMorgan",
+    text: "Maya, if section 9 works for you, can we sign on Thursday?\n\nMorgan",
     unread: true,
   },
   {
@@ -129,20 +146,25 @@ const MAIL: Mail[] = [
     agoMs: 1.2 * DAY_MS,
     from: "Jamie Placeholder <jamie@intros.example.test>",
     subject: "Intro request: Dana Fakename at Acme Ventures (Mock)",
-    text: "Alex, Dana Fakename would like a short intro call about your seed round. Are you open to it? I can write the intro today.\n\nJamie",
+    text: "Maya, Dana Fakename would like a short intro call about your seed round. Are you open to it? I can write the intro today.\n\nJamie",
   },
   {
     thread: "board-deck",
     agoMs: 1.5 * DAY_MS,
     from: "Riley Testwell <riley@bookkeeping.example.test>",
     subject: "Q3 board deck (PDF attached)",
-    text: "Alex, the Q3 board deck is attached. The financial slides use the September close.\n\nRiley\nBookkeeping Co (Mock)",
+    text: "Maya, the Q3 board deck is attached. The financial slides use the September close.\n\nRiley\nBookkeeping Co (Mock)",
     attachments: [
       {
         filename: "MOCK-q3-board-deck.pdf",
         mimeType: "application/pdf",
         size: 0,
-        data: Buffer.from("%PDF-1.4 MOCK DEMO DATA board deck").toString("base64"),
+        // A real one-page PDF, so it opens and shows a sensible size.
+        data: Buffer.from(
+          makePdf(
+            "MOCK DEMO DATA - Northwind Robotics Q3 board deck. Revenue, burn and hiring use the September close. Invented for UX testing.",
+          ),
+        ).toString("base64"),
       },
     ],
   },
@@ -151,7 +173,7 @@ const MAIL: Mail[] = [
     agoMs: 2 * DAY_MS,
     from: "Sam Samplesworth <sam@pilot-customer.example.test>",
     subject: "Pilot results and next steps",
-    text: "Alex, the pilot ran well. We would like to discuss moving to an annual contract. When can we talk?\n\nSam\nPilot Customer Inc (Mock)",
+    text: "Maya, the pilot ran well. We would like to discuss moving to an annual contract. When can we talk?\n\nSam\nPilot Customer Inc (Mock)",
     unread: true,
   },
   {
@@ -173,14 +195,14 @@ const MAIL: Mail[] = [
     agoMs: 3.5 * DAY_MS,
     from: "Taylor Notreal <taylor@recruiting.example.test>",
     subject: "Candidate for Senior Firmware Engineer",
-    text: "Alex, I have a strong candidate for the firmware role. Shall I send the resume?\n\nTaylor\nRecruiting Partners (Mock)",
+    text: "Maya, I have a strong candidate for the firmware role. Shall I send the resume?\n\nTaylor\nRecruiting Partners (Mock)",
   },
   {
     thread: "expense-question",
     agoMs: 4 * DAY_MS,
     from: "Riley Testwell <riley@bookkeeping.example.test>",
     subject: "Question about a September charge",
-    text: "Alex, there is a $2,400 charge from Globex Cloud (Mock) in September that I cannot match to a receipt. Can you send one?\n\nRiley",
+    text: "Maya, there is a $2,400 charge from Globex Cloud (Mock) in September that I cannot match to a receipt. Can you send one?\n\nRiley",
   },
   {
     thread: "demo-day",
@@ -226,7 +248,7 @@ const MAIL: Mail[] = [
     agoMs: 7 * DAY_MS,
     from: "Casey Coworker <casey@northwind.example.test>",
     subject: "Team offsite: dates and venue",
-    text: "Hi Alex, I shortlisted two venues for the team offsite on Nov 21 or Nov 28. Which date works for you?\n\nCasey",
+    text: "Hi Maya, I shortlisted two venues for the team offsite on Nov 21 or Nov 28. Which date works for you?\n\nCasey",
   },
   // Over the 10 MB attachment limit, so forwarding it shows the limit.
   {
@@ -234,7 +256,7 @@ const MAIL: Mail[] = [
     agoMs: 4.5 * DAY_MS,
     from: "Casey Coworker <casey@northwind.example.test>",
     subject: "Product demo video for the reseller call",
-    text: "Alex, here is the demo video for the reseller call. It is large, so download it before you travel.\n\nCasey",
+    text: "Maya, here is the demo video for the reseller call. It is large, so download it before you travel.\n\nCasey",
     attachments: [mockFile("MOCK-northwind-demo.mp4", "video/mp4", 12 * 1024 * 1024)],
   },
   {
@@ -282,7 +304,43 @@ const MAIL: Mail[] = [
     agoMs: 10 * DAY_MS,
     from: "Priya Placeholder <priya@quill-capital.example.test>",
     subject: "SAFE countersigned",
-    text: "Alex, the countersigned SAFE for $250,000 is filed. Wire should arrive within two business days.\n\nPriya",
+    text: "Maya, the countersigned SAFE for $250,000 is filed. Wire should arrive within two business days.\n\nPriya",
+  },
+  // For the Carta agent's audit-response skill: an auditor's confirmation request and its DocuSign.
+  {
+    thread: "audit-confirmation",
+    agoMs: 2.5 * DAY_MS,
+    from: "Quinn Auditwell <quinn@auditwell.example.test>",
+    subject: "Audit confirmation: Quill Capital Fund I holdings as of Sep 30",
+    text: "Hi Alex,\n\nAs part of the annual audit of Quill Capital Fund I (Mock), please confirm the fund's holdings in Northwind Robotics as of Sep 30, 2026:\n\n- SAFE, purchase amount $250,000, unconverted\n- No other securities\n\nA DocuSign envelope with this confirmation follows. Please reply with any differences by Oct 24.\n\nQuinn Auditwell\nAuditwell LLP (Mock)",
+    unread: true,
+  },
+  {
+    thread: "audit-docusign",
+    agoMs: 2.4 * DAY_MS,
+    from: "DocuSign via Auditwell LLP <dse@docusign.example.test>",
+    subject: "Please DocuSign: Investment confirmation for Quill Capital Fund I",
+    text: "Quinn Auditwell sent you a document to review and sign: Investment confirmation for Quill Capital Fund I (Mock), as of Sep 30, 2026.\n\nREVIEW DOCUMENT (mock link, does nothing)\n\nDue Oct 24.",
+    unread: true,
+  },
+  // Past monthly investor updates in Sent, so a new one can match their sections and voice.
+  {
+    thread: "investor-update-august",
+    agoMs: 47 * DAY_MS,
+    from: ME,
+    to: ME,
+    sent: true,
+    subject: "Northwind Robotics: August investor update",
+    text: "Hi all,\n\nHighlights\n- Signed our second pilot customer (Beacon Retail).\n- Shipped firmware 2.3 with 18% faster picking.\n\nLowlights\n- A sensor supplier slipped two weeks.\n\nMetrics\n- Cash: $1.42M. Monthly burn: $72k. Runway: 19 months.\n\nAsks\n- Intros to warehouse operators in the Midwest.\n\nThanks,\nAlex",
+  },
+  {
+    thread: "investor-update-july",
+    agoMs: 78 * DAY_MS,
+    from: ME,
+    to: ME,
+    sent: true,
+    subject: "Northwind Robotics: July investor update",
+    text: "Hi all,\n\nHighlights\n- Closed the $250,000 Quill Capital SAFE.\n- Hired our first firmware engineer.\n\nLowlights\n- Pilot install took a week longer than planned.\n\nMetrics\n- Cash: $1.55M. Monthly burn: $68k. Runway: 22 months.\n\nAsks\n- Candidates for a senior firmware role.\n\nThanks,\nAlex",
   },
   {
     thread: "partner-intro",
@@ -297,6 +355,14 @@ const MAIL: Mail[] = [
     from: "Mock Innovation Fund <grants@mock-innovation.example.test>",
     subject: "Grant application received",
     text: "We received your application for the Robotics Innovation Grant. Decisions are announced Dec 5.\n\nMock Innovation Fund",
+  },
+  // Older than the 14-day sync window: only Search older mail finds it.
+  {
+    thread: "w9-request",
+    agoMs: 40 * DAY_MS,
+    from: "Riley Testwell <riley@bookkeeping.example.test>",
+    subject: "W-9 for the new vendor",
+    text: "Alex, can you send the W-9 for Globex Cloud (Mock) so I can file it?\n\nRiley",
   },
   {
     thread: "support-ticket",
@@ -354,6 +420,20 @@ function toMessages(prefix: string, mail: Mail[], now: Date): EmulatedMessage[] 
   });
 }
 
+/** The email that arrives a few minutes after the stack starts, to watch new mail come in. */
+export function demoNewMail(now = new Date()): EmulatedMessage {
+  return {
+    id: `mock-demo-new-${now.getTime()}`,
+    threadId: "mock-demo-thread-new-mail",
+    date: now.toISOString(),
+    labels: ["INBOX", "UNREAD"],
+    from: "Priya Placeholder <priya@quill-capital.example.test>",
+    to: ME,
+    subject: `${MOCK_SUBJECT_PREFIX} Quick question on the hiring plan`,
+    text: `Hi Alex,\n\nBefore the LP call, can you confirm we still plan two engineering hires in Q4?\n\nPriya${FOOTER}`,
+  };
+}
+
 /**
  * The demo mailboxes, shaped like `e2eMailboxes` so the e2e Composio emulator can serve them. The
  * emulator hands them out in this order, one per Gmail connection.
@@ -372,8 +452,6 @@ export function demoMailboxes(now = new Date()) {
 }
 
 // ---- Finance ----
-
-const mockName = (name: string) => `${name} (Mock)`;
 
 type Recurring = { vendor: string; cents: number; category: string };
 
@@ -423,14 +501,101 @@ const MERCURY_MONTHLY: Array<{
   },
 ];
 
-const BREX_MONTHLY: Array<Recurring & { day: number }> = [
-  { vendor: "Cloudnine Hosting (Mock)", cents: 481_200, category: "Servers", day: 8 },
-  { vendor: "Docuflow (Mock)", cents: 12_900, category: "Software", day: 9 },
-  { vendor: "Chatterbox Messaging (Mock)", cents: 8_750, category: "Software", day: 10 },
-  { vendor: "Sketchpad Design (Mock)", cents: 4_500, category: "Software", day: 14 },
-  { vendor: "Globex Cloud (Mock)", cents: 240_000, category: "Servers", day: 16 },
-  { vendor: "Mockbooks Accounting (Mock)", cents: 15_000, category: "Software", day: 18 },
+/** `memo` says what the charge was for, as a card memo would; the month and "(Mock)" are added. */
+const BREX_MONTHLY: Array<Recurring & { day: number; memo: string; risePerMonth?: number }> = [
+  {
+    vendor: "Cloudnine Hosting (Mock)",
+    cents: 481_200,
+    category: "Servers",
+    day: 8,
+    memo: "Hosting",
+  },
+  {
+    vendor: "Docuflow (Mock)",
+    cents: 12_900,
+    category: "Software",
+    day: 9,
+    memo: "Document signing plan",
+  },
+  {
+    vendor: "Chatterbox Messaging (Mock)",
+    cents: 8_750,
+    category: "Software",
+    day: 10,
+    memo: "Team chat seats",
+  },
+  {
+    vendor: "Sketchpad Design (Mock)",
+    cents: 4_500,
+    category: "Software",
+    day: 14,
+    memo: "Design tool seat",
+  },
+  // Rising about 8% a month, so a vendor page shows a real change.
+  {
+    vendor: "Globex Cloud (Mock)",
+    cents: 240_000,
+    category: "Servers",
+    day: 16,
+    risePerMonth: 0.08,
+    memo: "Compute usage",
+  },
+  {
+    vendor: "Mockbooks Accounting (Mock)",
+    cents: 15_000,
+    category: "Software",
+    day: 18,
+    memo: "Bookkeeping plan",
+  },
+  // Two AI tools in the same overlap group, so Subscriptions shows the "overlaps" pill.
+  {
+    vendor: "Cursor Seats (Mock)",
+    cents: 20_000,
+    category: "Software",
+    day: 4,
+    memo: "Editor seats",
+  },
+  {
+    vendor: "Devin Agent Seats (Mock)",
+    cents: 50_000,
+    category: "Software",
+    day: 6,
+    memo: "Agent seats",
+  },
+  // More categories, early in the month, so the month-to-date Breakdown has 8 or more.
+  {
+    vendor: "Penwright Office Supply (Mock)",
+    cents: 31_400,
+    category: "Office Supplies",
+    day: 2,
+    memo: "Office supplies",
+  },
+  {
+    vendor: "Brightsign Ads (Mock)",
+    cents: 180_000,
+    category: "Marketing",
+    day: 3,
+    memo: "Search ads",
+  },
+  {
+    vendor: "Lunchbox Catering (Mock)",
+    cents: 42_600,
+    category: "Meals",
+    day: 7,
+    memo: "Team lunch",
+  },
+  {
+    vendor: "Placeholder Legal LLP (Mock)",
+    cents: 125_000,
+    category: "Legal",
+    day: 11,
+    memo: "Monthly retainer",
+  },
 ];
+
+/** How many months of history the demo holds (the catalog asks for 7 or more). */
+const HISTORY_MONTHS = 8;
+const HISTORY_DAYS = 250;
 
 /** Whole-day offsets from `now` back to the given day of the month `monthsAgo` months earlier. */
 function monthDay(now: Date, monthsAgo: number, day: number): Date {
@@ -440,7 +605,7 @@ function monthDay(now: Date, monthsAgo: number, day: number): Date {
 
 /**
  * Last month's statement for a bank with no integration, as a CSV export, so Accounts shows a
- * statement account (named from the file, so it can be renamed) and the monthly reminder.
+ * statement account (named from the statement, and renamable) and the monthly reminder.
  */
 export function demoStatementCsv(now = new Date()): { fileName: string; body: string } {
   const day = (d: number) => monthDay(now, 1, d).toISOString().slice(0, 10);
@@ -450,9 +615,18 @@ export function demoStatementCsv(now = new Date()): { fileName: string; body: st
     [day(9), "MOCK Office Supplies (Mock)", "-250.00", "10950.00"],
     [day(18), "MOCK Courier Service (Mock)", "-450.00", "10500.00"],
   ];
+  // A title line names the bank and account ending, and stated balances bracket the lines, the way
+  // bank exports do, so the account is named from the statement and its balances are checked.
   return {
     fileName: `mock-community-bank-${month}.csv`,
-    body: `Date,Description,Amount,Balance\n${rows.map((r) => r.join(",")).join("\n")}\n`,
+    body: [
+      "MOCK Community Bank,Account ending 5502",
+      "Opening balance,10000.00",
+      "Date,Description,Amount,Balance",
+      ...rows.map((r) => r.join(",")),
+      "Closing balance,10500.00",
+      "",
+    ].join("\n"),
   };
 }
 
@@ -478,9 +652,29 @@ export function demoFinance(now = new Date()) {
       kind: "wire",
     }),
   };
+  const once = (id: string, at: Date, row: Partial<Parameters<typeof mercuryRow>[1]>) => ({
+    at,
+    row: mercuryRow(id, { date: at.toISOString(), ...row }),
+  });
+  const oneOffs = [
+    // A large one-off two months ago, so that month's page has an outlier to explain.
+    once("mock-merc-hardware", monthDay(now, 2, 14), {
+      counterpartyName: "Ironclad Hardware Supply (Mock)",
+      amount: -48_000,
+      category: "Equipment",
+      kind: "ach",
+    }),
+    // Moving cash into Treasury is a transfer between own accounts, never spend.
+    once("mock-merc-to-treasury", monthDay(now, 3, 20), {
+      counterpartyName: "Mercury Treasury (Mock)",
+      amount: -100_000,
+      category: null,
+      kind: "treasuryTransfer",
+    }),
+  ];
   const checking = dated([
     safeWire,
-    ...[0, 1, 2, 3, 4].flatMap((monthsAgo) =>
+    ...Array.from({ length: HISTORY_MONTHS }, (_, monthsAgo) => monthsAgo).flatMap((monthsAgo) =>
       MERCURY_MONTHLY.map((m) => {
         const at = monthDay(now, monthsAgo, m.day);
         return {
@@ -493,15 +687,18 @@ export function demoFinance(now = new Date()) {
             kind: m.kind,
           }),
         };
-      }).filter(({ at }) => now.getTime() - at.getTime() < 130 * DAY_MS),
+      }).filter(({ at }) => now.getTime() - at.getTime() < HISTORY_DAYS * DAY_MS),
     ),
+    ...oneOffs,
   ]);
 
   const expenses = dated(
-    [0, 1, 2, 3, 4].flatMap((monthsAgo) =>
+    Array.from({ length: HISTORY_MONTHS }, (_, monthsAgo) => monthsAgo).flatMap((monthsAgo) =>
       BREX_MONTHLY.map((m) => {
         const at = monthDay(now, monthsAgo, m.day);
-        const value = (m.cents / 100).toFixed(2);
+        // Integer cents: a rising vendor was cheaper by its monthly rise for each month back.
+        const cents = Math.round(m.cents * (1 - (m.risePerMonth ?? 0) * monthsAgo));
+        const value = (cents / 100).toFixed(2);
         const money = { value, currency: "USD", display: `$${value} USD` };
         return {
           at,
@@ -511,14 +708,14 @@ export function demoFinance(now = new Date()) {
             merchant: { id: `pmch_${m.day}`, name: m.vendor },
             vendor: { id: `pmch_${m.day}`, name: m.vendor, email: null },
             merchant_category: { id: `pmca_${m.day}`, name: m.category },
-            memo: MOCK_NOTE,
+            memo: `${m.memo}, ${at.toLocaleString("en-US", { month: "long", timeZone: "UTC" })} (Mock)`,
             original_amount: money,
             purchased_amount: money,
             amount: money,
             card: { id: "ncard_1", last4: "0001", partner: null },
           }),
         };
-      }).filter(({ at }) => now.getTime() - at.getTime() < 130 * DAY_MS),
+      }).filter(({ at }) => now.getTime() - at.getTime() < HISTORY_DAYS * DAY_MS),
     ),
   );
 
@@ -528,15 +725,51 @@ export function demoFinance(now = new Date()) {
     accounts: (accounts.accounts as Array<Record<string, unknown>>).map((a) => ({
       ...a,
       name: a.id === MERCURY_CHECKING ? "MOCK Checking ••1111" : "MOCK Savings ••2222",
-      availableBalance: a.id === MERCURY_CHECKING ? 187_420.55 : 225_000,
+      // High enough that the balance rebuilt backward from today never dips below zero.
+      availableBalance: a.id === MERCURY_CHECKING ? 412_420.55 : 60_000,
     })),
-    totalAvailableBalance: 412_420.55,
+    totalAvailableBalance: 472_420.55,
+  };
+  // Treasury with six months of yield, so the Treasury yield card and the account's Yield table show.
+  const treasury = {
+    accounts: [
+      {
+        id: "mock-trs-3333",
+        status: "active",
+        createdAt: monthDay(now, 12, 1).toISOString(),
+        availableBalance: 1_150_000,
+        currentBalance: 1_150_000,
+        netReturns: Array.from({ length: 6 }, (_, i) => {
+          const month = monthDay(now, i + 1, 1)
+            .toISOString()
+            .slice(0, 10);
+          const dividends = 4_100 + i * 35;
+          return {
+            month,
+            netAmount: dividends - 95,
+            dividends: [
+              {
+                id: `mock-div-${i}`,
+                type: [],
+                securityName: "MOCK Money Market Fund",
+                amount: dividends,
+              },
+            ],
+            treasuryFee: -95,
+            status: "charged",
+          };
+        }),
+      },
+    ],
+    page: {},
   };
   const brexAccounts = {
     ...brexAccountsResponse,
     items: brexAccountsResponse.items.map((a) => ({
       ...a,
-      name: mockName(a.name),
+      name: a.account_type === "CARD" ? "MOCK Brex Card" : "MOCK Brex Cash",
+      // An ending like the other accounts', so every account reads the same way.
+      account_number_last_four: a.account_type === "CARD" ? null : "3003",
       nickname: undefined,
     })),
   };
@@ -544,7 +777,7 @@ export function demoFinance(now = new Date()) {
   const mercury = fakeMercury({
     txns: { [MERCURY_CHECKING]: checking, [MERCURY_SAVINGS]: [] },
     accounts: mercuryAccounts,
-    treasury: { accounts: [], page: {} },
+    treasury,
   });
   // Not yet cleared: shows as Pending on the dashboard and on its transaction page.
   const pendingAt = new Date(now.getTime() - DAY_MS);
@@ -557,13 +790,46 @@ export function demoFinance(now = new Date()) {
       merchant: { id: "pmch_air", name: "Skyline Air (Mock)" },
       vendor: { id: "pmch_air", name: "Skyline Air (Mock)", email: null },
       merchant_category: { id: "pmca_air", name: "Travel" },
-      memo: MOCK_NOTE,
+      memo: "Flight to the robotics expo (Mock)",
       original_amount: pendingMoney,
       purchased_amount: pendingMoney,
       amount: pendingMoney,
       card: { id: "ncard_1", last4: "0001", partner: null },
     }),
   );
+  // One charge in euros (left out of totals and noted on the dashboard), and one memo that holds a
+  // dollar amount, so Hide amounts can be checked on memos.
+  const euroAt = monthDay(now, 1, 21);
+  const euros = { value: "380.00", currency: "EUR", display: "€380.00 EUR" };
+  const depositAt = monthDay(now, 1, 24);
+  const deposit = { value: "4200.00", currency: "USD", display: "$4,200.00 USD" };
+  expenses.push(
+    brexExpense("mock-brex-eur", {
+      purchased_at: euroAt.toISOString(),
+      posted_at: new Date(euroAt.getTime() + DAY_MS).toISOString(),
+      merchant: { id: "pmch_eur", name: "Berlin Coworking (Mock)" },
+      vendor: { id: "pmch_eur", name: "Berlin Coworking (Mock)", email: null },
+      merchant_category: { id: "pmca_rent", name: "Rent" },
+      memo: "Coworking day passes (Mock)",
+      original_amount: euros,
+      purchased_amount: euros,
+      amount: euros,
+      card: { id: "ncard_1", last4: "0001", partner: null },
+    }),
+    brexExpense("mock-brex-deposit", {
+      purchased_at: depositAt.toISOString(),
+      posted_at: new Date(depositAt.getTime() + DAY_MS).toISOString(),
+      merchant: { id: "pmch_venue", name: "Harborview Event Space (Mock)" },
+      vendor: { id: "pmch_venue", name: "Harborview Event Space (Mock)", email: null },
+      merchant_category: { id: "pmca_events", name: "Events" },
+      memo: "Invoice 4417 — $4,200 deposit (Mock)",
+      original_amount: deposit,
+      purchased_amount: deposit,
+      amount: deposit,
+      card: { id: "ncard_1", last4: "0001", partner: null },
+    }),
+  );
+  expenses.sort((a, b) => b.purchased_at.localeCompare(a.purchased_at));
   // An approved bill not yet paid: an "Upcoming" bill row, not a transaction.
   const bills = [
     {
@@ -583,30 +849,166 @@ export function demoFinance(now = new Date()) {
   };
 }
 
-/** Invented treasury wallet: 0x…d3e0 is not a real holder; nothing here touches a real chain. */
-export const DEMO_WALLET = {
-  address: "0x000000000000000000000000000000000000d3e0",
-  label: "MOCK Treasury wallet",
+const str = { type: "string" } as const;
+const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
+  type: "object",
+  properties,
+  required,
+});
+/** Only the tools the canned servers answer, with the arguments their handlers need. */
+const DEMO_FINANCE_TOOLS = {
+  mercury: {
+    getAccounts: obj({}),
+    getTreasury: obj({}),
+    listTransactions: obj(
+      {
+        accountId: { type: "array", items: str },
+        status: { type: "array", items: str },
+        limit: { type: "number" },
+        start_after: str,
+      },
+      ["accountId", "limit"],
+    ),
+    getTransactionById: obj({ transactionId: str }, ["transactionId"]),
+    getAttachment: obj({ attachmentId: str }, ["attachmentId"]),
+  },
+  brex: {
+    list_business_accounts: obj({ intent: str }, ["intent"]),
+    list_expenses: obj({ intent: str, limit: { type: "number" }, cursor: str }, ["intent"]),
+    list_bills: obj({ intent: str, limit: { type: "number" }, cursor: str }, ["intent"]),
+    get_expense_by_id: obj({ intent: str, id: str }, ["intent", "id"]),
+  },
 } as const;
-const USDC_ETHEREUM = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 
 /**
- * An offline JSON-RPC and price fake holding the mock wallet's balances (2.5 ETH and 40,000 USDC on
- * Ethereum). Pass `fetch` to `createApp` as `cryptoFetch` so the Crypto page never calls the network.
+ * Mock Mercury and Brex MCP servers by hostname, so "Add account → Mercury" signs in and connects
+ * in the demo. Each asks for a sign-in like the real one; its sign-in page is the app's own OAuth
+ * callback with a mock code. Tool calls answer from the same canned history as `demoFinance`.
+ */
+export function demoFinanceMcp(
+  webOrigin: string,
+  now = new Date(),
+): Record<string, EmulatedMcpServer> {
+  const { callToolFor } = demoFinance(now);
+  const servers: Record<string, EmulatedMcpServer> = {};
+  for (const provider of ["mercury", "brex"] as const) {
+    servers[new URL(FINANCE_MCP_ENDPOINTS[provider]).hostname] = {
+      authorizeUrl: `${webOrigin}/mcp/oauth/callback?code=mock-demo-${provider}-code`,
+      tools: Object.entries(DEMO_FINANCE_TOOLS[provider]).map(([name, inputSchema]) => ({
+        name,
+        description: `${MOCK_NOTE}: ${name}`,
+        inputSchema,
+      })),
+      call: async (name, args) => (await callToolFor({ provider }))(name, args),
+    };
+  }
+  return servers;
+}
+
+/** Invented treasury Safe: 0x…d3e0 is not a real holder; nothing here touches a real chain. */
+export const DEMO_WALLET = {
+  address: "0x000000000000000000000000000000000000d3e0",
+  label: "MOCK Treasury Safe",
+  type: "safe",
+} as const;
+/** An invented ENS name for an operations wallet that also holds a token with no price. */
+export const DEMO_ENS_WALLET = {
+  name: "mock-ops.eth",
+  address: "0x000000000000000000000000000000000000b0b5",
+  label: "MOCK Ops wallet",
+  type: "personal",
+} as const;
+const USDC_ETHEREUM = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+/** A listed token the price fake has no price for, so the wallet shows "1 unpriced". */
+const LINK_ETHEREUM = "0x514910771af9ca656af840dff83e8264ecf986ca";
+const SAFE_OWNERS = [
+  "0x000000000000000000000000000000000000a001",
+  "0x000000000000000000000000000000000000a002",
+  "0x000000000000000000000000000000000000a003",
+];
+
+/**
+ * Coinbase and Kraken read-only answers for the demo: any well-formed key connects and reads the
+ * same invented balances. Requests never leave the process.
+ */
+function demoExchangeFetch(input: string | URL | Request): Response | null {
+  const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+  const json = (body: unknown) => Response.json(body);
+  if (url.host === "api.coinbase.com") {
+    if (url.pathname.endsWith("/key_permissions"))
+      return json({ can_view: true, can_trade: false, can_transfer: false });
+    if (url.pathname.endsWith("/accounts"))
+      return json({
+        accounts: [
+          { currency: "USD", available_balance: { value: "12000.00" }, hold: { value: "0" } },
+          { currency: "BTC", available_balance: { value: "0.35" }, hold: { value: "0" } },
+          { currency: "USDC", available_balance: { value: "25000" }, hold: { value: "0" } },
+        ],
+        has_next: false,
+      });
+  }
+  if (url.host === "api.kraken.com") {
+    if (url.pathname.endsWith("/GetApiKeyInfo"))
+      return json({ error: [], result: { permissions: ["query-funds"] } });
+    if (url.pathname.endsWith("/Balance"))
+      return json({ error: [], result: { ZUSD: "5000.0000", XETH: "1.2000000000" } });
+  }
+  return null;
+}
+
+/**
+ * An offline JSON-RPC, price and exchange fake: the treasury Safe (2 of 3, 2.5 ETH and 40,000 USDC
+ * on Ethereum), the ops wallet (0.4 ETH and an unpriced token), and Coinbase and Kraken answers.
+ * Pass `fetch` to `createApp` as `cryptoFetch` so Crypto never calls the network.
  */
 export function demoCrypto() {
-  return fakeRpc({
+  const rpc = fakeRpc({
     chains: {
       1: {
-        balances: { [DEMO_WALLET.address]: 2_500_000_000_000_000_000n },
-        tokens: { [USDC_ETHEREUM]: { [DEMO_WALLET.address]: 40_000_000_000n } },
+        balances: {
+          [DEMO_WALLET.address]: 2_500_000_000_000_000_000n,
+          [DEMO_ENS_WALLET.address]: 400_000_000_000_000_000n,
+        },
+        tokens: {
+          [USDC_ETHEREUM]: { [DEMO_WALLET.address]: 40_000_000_000n },
+          [LINK_ETHEREUM]: { [DEMO_ENS_WALLET.address]: 120_000_000_000_000_000_000n },
+        },
+        contracts: [DEMO_WALLET.address],
       },
     },
+    safe: { owners: SAFE_OWNERS, threshold: 2 },
+    ens: { [DEMO_ENS_WALLET.name]: DEMO_ENS_WALLET.address },
     prices: {
       "coingecko:ethereum": { price: 2_500, confidence: 0.99 },
+      "coingecko:bitcoin": { price: 60_000, confidence: 0.99 },
       [`ethereum:${USDC_ETHEREUM}`]: { price: 1, confidence: 0.99 },
     },
   });
+  const fetchFn = (async (input: string | URL | Request, init?: RequestInit) =>
+    demoExchangeFetch(input) ?? rpc.fetch(input, init)) as typeof fetch;
+  return { fetch: fetchFn, calls: rpc.calls };
+}
+
+/**
+ * 90 days of daily crypto totals for one wallet or exchange, so "Balance over time" has a line on
+ * the first visit (the sync itself only writes today's point). Stablecoins hold steady; the rest drifts.
+ */
+export function demoCryptoHistory(
+  now = new Date(),
+  /** Today's stablecoin and other-crypto cents; earlier days hold the stablecoins and drift the rest. */
+  today = { stablecoinCents: 4_000_000, otherCryptoCents: 625_000 },
+) {
+  return Array.from({ length: 90 }, (_, i) => {
+    const back = 89 - i;
+    const day = new Date(now.getTime() - back * DAY_MS).toISOString().slice(0, 10);
+    // Whole cents, no float money: the non-stable part moves within about ±6%.
+    const drift = Math.round((today.otherCryptoCents * (((back * 7_919) % 120) - 60)) / 1_000);
+    return {
+      day,
+      stablecoinCents: today.stablecoinCents,
+      otherCryptoCents: today.otherCryptoCents + drift,
+    };
+  }).slice(0, -1);
 }
 
 // ---- Cap table contacts, data room, bots ----
@@ -795,42 +1197,46 @@ export interface DemoDocument {
  * What the Data room classifier would file for each document. The demo has AI sharing off, so the
  * classifier skips and the seed writes these instead, keeping the Type and Date columns filled.
  */
+/**
+ * Types are the classifier's own values (DataRoomDocTypeSchema), so tagged and newly read documents
+ * use one vocabulary. Parties are written as the document text names them.
+ */
 export const DEMO_DOCUMENT_FACETS: Record<
   string,
   { docType: string; daysAgo: number; parties: string[] }
 > = {
   "MOCK Master Services Agreement - Halcyon Logistics.pdf": {
-    docType: "Contract",
+    docType: "contract",
     daysAgo: 95,
     parties: ["Halcyon Logistics (Mock)"],
   },
   "MOCK Mutual NDA - Acme Ventures.pdf": {
-    docType: "NDA",
+    docType: "contract",
     daysAgo: 60,
     parties: ["Acme Ventures (Mock)"],
   },
   "MOCK Office Lease - 100 Placeholder Street.pdf": {
-    docType: "Lease",
+    docType: "contract",
     daysAgo: 400,
     parties: ["Placeholder Street Landlord (Mock)"],
   },
   "MOCK SAFE - Quill Capital.pdf": {
-    docType: "SAFE",
+    docType: "investor",
     daysAgo: 150,
     parties: ["Quill Capital (Mock)"],
   },
-  "MOCK Q3 Board Deck.pdf": { docType: "Board deck", daysAgo: 3, parties: [] },
-  "MOCK Budget FY27.csv": { docType: "Budget", daysAgo: 20, parties: [] },
-  "MOCK Investor Update Draft.pdf": { docType: "Investor update", daysAgo: 1, parties: [] },
-  "MOCK Cap Table Summary.csv": { docType: "Cap table", daysAgo: 1, parties: [] },
-  "MOCK Product Roadmap.pdf": { docType: "Roadmap", daysAgo: 30, parties: [] },
+  "MOCK Q3 Board Deck.pdf": { docType: "presentation", daysAgo: 3, parties: [] },
+  "MOCK Budget FY27.csv": { docType: "spreadsheet", daysAgo: 20, parties: [] },
+  "MOCK Investor Update Draft.pdf": { docType: "investor", daysAgo: 1, parties: [] },
+  "MOCK Cap Table Summary.csv": { docType: "spreadsheet", daysAgo: 1, parties: [] },
+  "MOCK Product Roadmap.pdf": { docType: "report", daysAgo: 30, parties: [] },
   "MOCK Invoice NW-1044 - Acme Servo Supply.pdf": {
-    docType: "Invoice",
+    docType: "invoice",
     daysAgo: 12,
     parties: ["Acme Servo Supply (Mock)"],
   },
   "MOCK Invoice 2209 - Cobalt Cloud Hosting.pdf": {
-    docType: "Invoice",
+    docType: "invoice",
     daysAgo: 8,
     parties: ["Cobalt Cloud Hosting (Mock)"],
   },
@@ -840,7 +1246,8 @@ const doc = (folder: string, name: string, text: string, kind: DemoDocument["kin
   folder,
   name,
   kind,
-  text: `MOCK DEMO DATA. ${text} ${MOCK_NOTE}, not a real document.`,
+  // "Acme Mock" reads as "Acme (Mock)", the form the parties take, so a model reading it agrees.
+  text: `MOCK DEMO DATA. ${text.replace(/ Mock\b/g, " (Mock)")} ${MOCK_NOTE}, not a real document.`,
 });
 
 export const DEMO_DOCUMENTS: DemoDocument[] = [
@@ -857,7 +1264,7 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Legal",
     "MOCK Office Lease - 100 Placeholder Street.pdf",
-    "Office lease for 100 Placeholder Street. Monthly rent 7500 dollars. The lease renews automatically at the end of its term unless notice is given at least 62 days before.",
+    "Office lease for 100 Placeholder Street between Northwind Robotics Mock and Placeholder Street Landlord Mock. Monthly rent 7500 dollars. The lease renews automatically at the end of its term unless notice is given at least 62 days before.",
   ),
   doc(
     "Legal",
@@ -893,7 +1300,7 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Fundraising",
     "MOCK Cap Table Summary.csv",
-    "holder,class,shares,percent\nAlex Founder Mock,common,4000000,40\nRiver Cofounder Mock,common,3000000,30\nEarly employees Mock,common,1500000,15\nOption pool Mock,pool,1500000,15\nQuill Capital SAFE Mock,safe,0,pending",
+    "holder,class,shares,percent\nMaya Chen Mock,common,4000000,40\nRiver Cofounder Mock,common,3000000,30\nEarly employees Mock,common,1500000,15\nOption pool Mock,pool,1500000,15\nQuill Capital SAFE Mock,safe,0,pending",
     "csv",
   ),
   doc(
@@ -901,14 +1308,108 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
     "MOCK Product Roadmap.pdf",
     "Roadmap for the next two quarters. Q4: calibration tool. Q1: fleet dashboard.",
   ),
-  // Outside Legal, so the failed state does not hide a contract from the Legal page.
-  doc(
-    "Product",
-    "MOCK Damaged scan - Prototype photo.pdf",
-    "A damaged scan that is not a readable PDF.",
-    "broken",
-  ),
 ];
+
+/**
+ * Enough more documents to page the list (over 50), with the folders a founder keeps: investor
+ * updates, bank statements, HR, contracts and an archive. Each one has its type, date and parties.
+ */
+const MORE_DOCUMENTS: (DemoDocument & {
+  facets: { docType: string; daysAgo: number; parties: string[] };
+})[] = [
+  ...["July", "August", "September"].map((month, index) => ({
+    ...doc(
+      "Finance/Bank statements",
+      `MOCK Mercury Statement - ${month}.pdf`,
+      `Mercury Mock checking statement for ${month}. Opening balance and closing balance for Northwind Robotics Mock.`,
+    ),
+    facets: { docType: "statement", daysAgo: 75 - index * 30, parties: ["Mercury (Mock)"] },
+  })),
+  ...Array.from({ length: 12 }, (_, index) => ({
+    ...doc(
+      "Investors",
+      `MOCK Monthly Investor Update ${String(index + 1).padStart(2, "0")}.pdf`,
+      `Monthly investor update number ${index + 1}. Revenue, burn and hiring for the month.`,
+    ),
+    // Numbered in date order: update 12 is the latest.
+    facets: { docType: "investor", daysAgo: 30 * (13 - index), parties: [] },
+  })),
+  ...Array.from({ length: 24 }, (_, index) => {
+    const vendor = ["Acme Servo Supply", "Cobalt Cloud Hosting", "Delta Desk Rentals"][index % 3];
+    return {
+      ...doc(
+        "Finance/Invoices",
+        `MOCK Invoice ${3000 + index} - ${vendor}.pdf`,
+        `Invoice ${3000 + index} from ${vendor} Mock to Northwind Robotics Mock. Amount due ${400 + index * 25} dollars.`,
+      ),
+      facets: { docType: "invoice", daysAgo: 20 + index * 14, parties: [`${vendor} (Mock)`] },
+    };
+  }),
+  ...["Offer Letter - Sam Engineer", "Offer Letter - Jo Designer", "Employee Handbook"].map(
+    (name, index) => ({
+      ...doc("HR", `MOCK ${name}.pdf`, `${name} for Northwind Robotics Mock.`),
+      facets: {
+        docType: "hr",
+        daysAgo: 100 + index * 40,
+        parties: [],
+      },
+    }),
+  ),
+  ...["Halcyon Logistics", "Bolt Freight"].map((party, index) => ({
+    ...doc(
+      "Legal/Contracts",
+      `MOCK Pilot Agreement - ${party}.pdf`,
+      `Pilot agreement between Northwind Robotics Mock and ${party} Mock. Term 6 months.`,
+    ),
+    facets: { docType: "contract", daysAgo: 200 + index * 30, parties: [`${party} (Mock)`] },
+  })),
+  ...["Pitch Deck v1", "Pitch Deck v2", "Old Budget"].map((name, index) => ({
+    ...doc(
+      "Archive/Old drafts/2025",
+      `MOCK ${name}.pdf`,
+      `${name}, an old draft kept for reference.`,
+    ),
+    facets: {
+      docType: index === 2 ? "spreadsheet" : "presentation",
+      daysAgo: 300 + index * 10,
+      parties: [],
+    },
+  })),
+];
+DEMO_DOCUMENTS.push(...MORE_DOCUMENTS.map(({ facets: _facets, ...document }) => document));
+for (const { name, facets } of MORE_DOCUMENTS) DEMO_DOCUMENT_FACETS[name] = facets;
+
+/**
+ * Read but never tagged (AI sharing was off when it arrived), so "Allow" has something to tag
+ * while every other document keeps the type and date it already has.
+ */
+export const DEMO_UNTAGGED_DOCUMENT = doc(
+  "Fundraising",
+  "MOCK Term Sheet Draft - Quill Capital.pdf",
+  "Draft term sheet from Quill Capital Mock for a seed round. Pre money valuation 9000000 dollars.",
+);
+DEMO_DOCUMENTS.push(DEMO_UNTAGGED_DOCUMENT);
+
+/**
+ * A file that could not be read, added among the last so it is on the list's first page and the
+ * "Failed" state and Try again can be seen without paging.
+ */
+export const DEMO_FAILED_DOCUMENT = doc(
+  // Outside the Legal folder, so the failed state does not hide a contract from the Legal page.
+  "Product",
+  "MOCK Signed NDA - Bolt Freight.pdf",
+  "A damaged scan that is not a readable PDF.",
+  "broken",
+);
+DEMO_DOCUMENTS.push(DEMO_FAILED_DOCUMENT);
+
+/** Still being read when the demo opens, so the "Reading" state shows. */
+export const DEMO_READING_DOCUMENT = doc(
+  "Investors",
+  "MOCK Board Minutes - October.pdf",
+  "Minutes of the October board meeting of Northwind Robotics Mock.",
+);
+DEMO_DOCUMENTS.push(DEMO_READING_DOCUMENT);
 
 /** Every folder path the documents use, each parent before its children ("A" before "A/B"). */
 export function demoFolderPaths(documents: DemoDocument[]): string[] {
@@ -924,6 +1425,7 @@ export function demoFolderPaths(documents: DemoDocument[]): string[] {
 export const DEMO_CHIEF_DRAFT = {
   name: "MOCK Investor Update - September.md",
   mimeType: "text/markdown",
+  description: "Last month's update to investors, to start October from",
   text: `# MOCK DEMO DATA: Investor update, September
 
 Hi Priya, Dana and Lee,
@@ -935,10 +1437,140 @@ Highlights
 Asks
 - Intros to robotics buyers in warehousing.
 
-Alex
+Maya
 
 ${MOCK_NOTE}: invented for UX testing. Not a real update.
 `,
+};
+
+/** The draft's earlier version, so the artifact shows a version history. */
+export const DEMO_CHIEF_DRAFT_V1 = {
+  ...DEMO_CHIEF_DRAFT,
+  text: `# MOCK DEMO DATA: Investor update, September (first draft)
+
+Hi all,
+
+- Halcyon Logistics (Mock) pilot is going well.
+- Cash and burn: to fill in.
+
+${MOCK_NOTE}: invented for UX testing. Not a real update.
+`,
+};
+
+/** Other files bots "made", one of each kind the Artifacts page shows. */
+export const DEMO_ARTIFACTS = [
+  {
+    name: "MOCK Q3 Board Deck.md",
+    mimeType: "text/markdown",
+    description: "Board meeting deck: results, plan and asks",
+    text: `# MOCK DEMO DATA: Q3 board deck
+
+1. Results: 3 pilots, 1 annual contract
+2. Cash: $412,000, 8.9 months of runway
+3. Plan for Q4: 2 hires, 5 new pilots
+4. Asks for the board
+
+${MOCK_NOTE}: invented for UX testing.
+`,
+  },
+  {
+    name: "MOCK Cash Dashboard.html",
+    mimeType: "text/html",
+    description: "Cash, burn and runway at a glance",
+    text: `<!doctype html><html><body style="font-family:sans-serif;padding:24px">
+<h1>MOCK DEMO DATA: Cash dashboard</h1>
+<p>Cash: $412,000 · Monthly burn: $46,000 · Runway: 8.9 months</p>
+<p>${MOCK_NOTE}: invented for UX testing.</p>
+</body></html>
+`,
+  },
+  {
+    name: "MOCK Runway Scenarios.csv",
+    mimeType: "text/csv",
+    description: "Runway if burn changes",
+    text: `scenario,monthly_burn_usd,runway_months
+current,46000,8.9
+hire two engineers,64000,6.4
+cut tools 10%,44000,9.4
+${MOCK_NOTE},,
+`,
+  },
+  {
+    name: "MOCK Burn by Month.csv",
+    mimeType: "text/csv",
+    description: "Monthly net burn for the last six months",
+    text: `month,net_burn_usd
+2026-04,41000
+2026-05,43000
+2026-06,44000
+2026-07,45000
+2026-08,47000
+2026-09,46000
+${MOCK_NOTE},
+`,
+  },
+  {
+    name: "MOCK Hiring Plan - Q4.md",
+    mimeType: "text/markdown",
+    description: "Two roles for Q4 and what they cost",
+    text: `# MOCK DEMO DATA: Hiring plan, Q4
+
+- Senior robotics engineer, from November
+- Field deployment lead, from December
+
+${MOCK_NOTE}: invented for UX testing.
+`,
+  },
+];
+
+/** An earlier conversation with Chief, so history, search and recall have something to find. */
+/**
+ * Turns each `{artifact:<file name>}` in a seeded message into a link that opens that artifact,
+ * named without its extension. A name with no id is left as plain text.
+ */
+export function linkDemoArtifacts(text: string, ids: ReadonlyMap<string, string>): string {
+  return text.replace(/\{artifact:([^}]+)\}/g, (_match, name: string) => {
+    const label = name.replace(/\.[a-z0-9]+$/i, "");
+    const id = ids.get(name);
+    return id ? `[${label}](/app/artifacts/${id})` : label;
+  });
+}
+
+export const DEMO_CHIEF_HISTORY: Array<{ role: "user" | "bot"; text: string }> = [
+  { role: "user", text: "When is the next board meeting? (mock)" },
+  {
+    role: "bot",
+    text: "The Q3 board meeting is on the 28th. I drafted the deck; it is in Artifacts as {artifact:MOCK Q3 Board Deck.md}.",
+  },
+  { role: "user", text: "What did we agree with Halcyon Logistics (Mock)?" },
+  {
+    role: "bot",
+    text: "The pilot converted to an annual contract for 20 picking robots, starting in Q1.",
+  },
+  { role: "user", text: "Remind me what our runway was last month." },
+  { role: "bot", text: "About 8.9 months, from $412,000 cash and $46,000 monthly net burn." },
+  { role: "user", text: "Who still owes us a signed NDA?" },
+  {
+    role: "bot",
+    text: "Bolt Freight (Mock). Their NDA upload failed, so it is worth asking them to send it again.",
+  },
+  { role: "user", text: "Draft a short thank-you to Priya Placeholder for the intro." },
+  {
+    role: "bot",
+    text: 'Here is a draft: "Thanks for the intro to Acme Ventures (Mock), Priya. We are meeting next week."',
+  },
+  { role: "user", text: "What should I hire for first?" },
+  {
+    role: "bot",
+    text: "The hiring plan puts a senior robotics engineer first, in November. It is in Artifacts as {artifact:MOCK Hiring Plan - Q4.md}.",
+  },
+];
+
+/** A bot that was archived, so the archive has something to show and restore. */
+export const DEMO_ARCHIVED_BOT = {
+  name: "Hiring helper (mock)",
+  title: "Hiring",
+  description: `${MOCK_NOTE}: screened the demo candidates last quarter.`,
 };
 
 /** The Legal agent (created by the Legal page) is the space's one legal bot, so none is seeded here. */
@@ -952,6 +1584,37 @@ export const DEMO_BOTS = [
 
 export const DEMO_GROUP = { name: "Leadership sync (mock)" };
 
+/**
+ * A bot whose run is still working, so Activity has something under "Working". Written straight
+ * to the database with a long lease and no worker behind it, so no model runs. The bot is not in
+ * the group chat, so group replies never wait on it. Reseed (demo:down/up) to reset it.
+ */
+export const DEMO_RUNNING_RUN = {
+  bot: {
+    name: "Finance helper (mock)",
+    title: "Finance",
+    description: `${MOCK_NOTE}: compares the demo spend month by month.`,
+  },
+  prompt: "Compare this quarter's burn with last quarter, by category (mock).",
+  leaseMs: 6 * HOUR_MS,
+};
+
+/**
+ * One run parked on a question, so Activity has something under "Needs you" and the bot's chat
+ * shows an answerable question. No model runs until the founder answers. The stuck-work sweep
+ * cancels it after a day, so reseed (demo:down/up) for a fresh one.
+ */
+export const DEMO_WAITING_RUN = {
+  botName: "Investor Relations (mock)",
+  prompt: "Draft the October investor update from the September one.",
+  intro: `${MOCK_NOTE}: I have the September update open and can start the October draft.`,
+  question:
+    "Should the October update name the Bolt Freight pilot, or keep it as 'a logistics customer'?",
+  choices: [
+    { id: "name", label: "Name Bolt Freight" },
+    { id: "anonymous", label: "Say 'a logistics customer'" },
+  ],
+};
 /** A placeholder OpenRouter key for the Legal agent; OpenRouter rejects it, so it never spends. */
 export const DEMO_LEGAL_KEY = {
   apiKey: "sk-or-v1-mock-demo-not-a-real-key",
@@ -976,7 +1639,8 @@ export const DEMO_LEGAL = {
       autoRenews: true,
       renewalNoticeDays: 62,
       valueCents: 9_000_000n,
-      partyQuote: "Office lease for 100 Placeholder Street.",
+      partyQuote:
+        "Office lease for 100 Placeholder Street between Northwind Robotics Mock and Placeholder Street Landlord Mock.",
       renewalQuote:
         "The lease renews automatically at the end of its term unless notice is given at least 62 days before.",
       summary: `${MOCK_NOTE}: office lease, 7,500 dollars a month, renews automatically unless notice is given 62 days before it ends.`,

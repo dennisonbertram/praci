@@ -8,7 +8,10 @@ import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@lingui/core/macro", () => ({ msg: (parts: TemplateStringsArray) => parts[0] }));
+vi.mock("@lingui/core/macro", () => ({
+  msg: (parts: TemplateStringsArray) => parts[0],
+  t: (parts: TemplateStringsArray) => parts.join(""),
+}));
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((text, part, index) => `${text}${index > 0 ? values[index - 1] : ""}${part}`, "");
@@ -235,6 +238,85 @@ describe("Composer", () => {
       type(textarea, "@zz");
       expect(keydown(textarea, { key: "Enter", isComposing: true }).defaultPrevented).toBe(false);
     });
+  });
+
+  it("keeps a half-written message when the user leaves the chat and comes back", () => {
+    let textarea = renderComposer(vi.fn(), { draftKey: "bot:chief" });
+    type(textarea, "Draft about board meeting agenda");
+    act(() => root?.unmount());
+    container?.remove();
+    textarea = renderComposer(vi.fn(), { draftKey: "bot:carta" });
+    expect(textarea.value).toBe("");
+    act(() => root?.unmount());
+    container?.remove();
+    textarea = renderComposer(vi.fn(), { draftKey: "bot:chief" });
+    expect(textarea.value).toBe("Draft about board meeting agenda");
+    sessionStorage.clear();
+  });
+
+  it("keeps a chosen skill chip when the user leaves the chat and comes back", () => {
+    const skillChip = () => container?.querySelector("[data-testid='skill-chip']")?.textContent;
+    const textarea = renderComposer(vi.fn(), { draftKey: "bot:chief" });
+    type(textarea, "/sum");
+    act(() =>
+      container?.querySelector<HTMLButtonElement>("button[aria-label='Skill summarize']")?.click(),
+    );
+    expect(skillChip()).toBe("summarize");
+    act(() => root?.unmount());
+    container?.remove();
+    renderComposer(vi.fn(), { draftKey: "bot:carta" });
+    expect(skillChip()).toBeUndefined();
+    act(() => root?.unmount());
+    container?.remove();
+    renderComposer(vi.fn(), { draftKey: "bot:chief" });
+    expect(skillChip()).toBe("summarize");
+    sessionStorage.clear();
+  });
+
+  it("keeps a chosen @mention chip when the user leaves the chat and comes back", () => {
+    const legal: ComposerMention = { kind: "bot", id: "bot-legal", name: "Legal" };
+    const chips = () =>
+      [...(container?.querySelectorAll("[data-testid='mention-chip']") ?? [])].map(
+        (chip) => chip.textContent,
+      );
+    const textarea = renderComposer(vi.fn(), { draftKey: "group:g1", mentionTargets: [legal] });
+    type(textarea, "@Leg");
+    act(() => {
+      textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(chips()).toEqual(["Legal"]);
+    act(() => root?.unmount());
+    container?.remove();
+    renderComposer(vi.fn(), { draftKey: "bot:carta", mentionTargets: [legal] });
+    expect(chips()).toEqual([]);
+    act(() => root?.unmount());
+    container?.remove();
+    renderComposer(vi.fn(), { draftKey: "group:g1", mentionTargets: [legal] });
+    expect(chips()).toEqual(["Legal"]);
+    sessionStorage.clear();
+  });
+
+  it("moves through the / menu with the arrow keys and picks with Enter", () => {
+    const onSend = vi.fn();
+    const onSlashAction = vi.fn();
+    const textarea = renderComposer(onSend, { onSlashAction });
+    type(textarea, "/");
+    const selected = () =>
+      container?.querySelector("[data-testid='slash-picker'] [aria-selected='true']")?.textContent;
+    expect(selected()).toContain("summarize");
+    const sections = [
+      ...(container?.querySelectorAll("[data-testid='slash-picker'] [role='presentation']") ?? []),
+    ].map((node) => node.textContent);
+    expect(sections).toEqual(["Skills", "Actions"]);
+    act(() => {
+      textarea.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }),
+      );
+    });
+    expect(selected()).toBe("Chat settings");
+    pressEnter(textarea);
+    expect(onSlashAction).toHaveBeenCalledWith("chat-settings");
+    expect(onSend).not.toHaveBeenCalled();
   });
 
   it("clears the draft once the message is sent", async () => {
@@ -558,6 +640,93 @@ describe("Transcript jump to a search result", () => {
     });
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
     expect(scrollTo).not.toHaveBeenCalled();
+
+    // A handoff shows who handed off to whom, never the bot-to-bot prompt.
+    render(
+      [
+        {
+          ...msg("m12", 12),
+          blocks: [
+            {
+              kind: "handoff",
+              fromBotId: "bot-1",
+              toBotId: "bot-2",
+              text: "INTERNAL: summarize contract status for the user",
+            } as never,
+          ],
+        },
+      ],
+      null,
+    );
+    expect(container?.textContent).toContain("handed off to");
+    expect(container?.textContent).not.toContain("INTERNAL: summarize");
+  });
+  it("keeps the newest message in view when the layout grows while following", () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    window.matchMedia ??= () =>
+      ({
+        matches: true,
+        addEventListener() {},
+        removeEventListener() {},
+      }) as unknown as MediaQueryList;
+    Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.scrollTo = vi.fn() as never;
+    let resized: (() => void) | undefined;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: () => void) {
+          resized = callback;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    const scrollRef = createRef<HTMLDivElement>();
+    const noop = () => {};
+    const props = {
+      scrollRef,
+      sentHere: { current: false },
+      onScrollRequestHandled: noop,
+      artifactTarget: { botId: "bot-1" },
+      showToolActivity: false,
+      olderCursor: null,
+      loadingOlder: false,
+      answerableAskMessageId: null,
+      running: false,
+      workingBots: [],
+      onLoadOlder: noop,
+      onOpenBot: noop,
+      onAnswer: async () => {},
+      onReply: noop,
+      onQuote: noop,
+      onReact: async () => {},
+      onJumpToMessage: noop,
+      onOpenPeerMessages: noop,
+      peerBot: () => undefined,
+      onRefresh: async () => {},
+      onBotChanged: async () => {},
+      onAddRoutine: noop,
+      voiceReady: false,
+      speakingMessageId: null,
+      onSpeak: noop,
+      onOpenComputer: noop,
+    } as unknown as ComponentProps<typeof Transcript>;
+    act(() =>
+      root?.render(<Transcript {...props} messages={[msg("m1", 1)]} scrollRequest={null} />),
+    );
+    const element = scrollRef.current;
+    if (!element) throw new Error("no transcript");
+    // A phone rotation rewraps the bubbles: the content is now taller than the view.
+    Object.defineProperty(element, "scrollHeight", { configurable: true, value: 800 });
+    Object.defineProperty(element, "clientHeight", { configurable: true, value: 600 });
+    element.scrollTop = 0;
+    act(() => resized?.());
+    expect(element.scrollTop).toBe(800);
+    vi.unstubAllGlobals();
   });
 });
 

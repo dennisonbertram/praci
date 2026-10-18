@@ -28,6 +28,33 @@ describe("workingActivity", () => {
     ).toEqual({ kind: "tool", label: "Get balance" });
   });
 
+  it("names common tools by what they do, whether MCP or built in", () => {
+    expect(
+      workingActivity(run, [
+        botMessage([
+          { kind: "progress", text: "", pendingToolNames: ["mcp__integration-1__fetch"] },
+        ]),
+      ]),
+    ).toEqual({ kind: "tool", label: "Fetch", action: "connected-app" });
+    expect(
+      workingActivity(run, [
+        botMessage([
+          { kind: "progress", text: "", pendingToolNames: ["mcp__carta__cap_table_chart"] },
+        ]),
+      ]),
+    ).toEqual({ kind: "tool", label: "Carta cap table", action: "carta-cap-table" });
+    expect(
+      workingActivity(run, [
+        botMessage([{ kind: "steps", steps: [{ label: "Contacts add", count: 1 }] }]),
+      ]),
+    ).toEqual({ kind: "tool", label: "Contacts add", action: "contact-add" });
+    expect(
+      workingActivity(run, [
+        botMessage([{ kind: "progress", text: "", pendingToolNames: ["show_emails"] }]),
+      ]),
+    ).toEqual({ kind: "tool", label: "Show emails", action: "mail-show" });
+  });
+
   it("reports status before any output, and writing once text streams", () => {
     expect(workingActivity({ ...run, status: "queued" }, [])).toEqual({ kind: "starting" });
     expect(workingActivity(run, [])).toEqual({ kind: "thinking" });

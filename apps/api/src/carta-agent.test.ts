@@ -151,10 +151,14 @@ describe("Carta populate run", () => {
     const runFindFirst = vi.fn(async () => (options.active ? { id: "run-active" } : null));
     const runCreate = vi.fn(async () => ({ id: "run-new" }));
     const taskCreate = vi.fn(async () => ({ id: "task-1" }));
+    const messageCreate = vi.fn(async () => ({ id: "msg-1" }));
     const tx = {
       $executeRaw: vi.fn(async () => 0),
       run: { findFirst: runFindFirst, create: runCreate },
       task: { create: taskCreate },
+      thread: { update: vi.fn(async () => ({ nextMessageSeq: 1, nextEventSeq: 1 })) },
+      message: { create: messageCreate },
+      event: { create: vi.fn(async () => ({ id: "evt-1" })) },
     };
     const enqueueRun = vi.fn(async () => {});
     const deps = {
@@ -173,7 +177,7 @@ describe("Carta populate run", () => {
       hasModel: vi.fn(async () => options.hasModel ?? true),
       enqueueRun,
     } as unknown as CartaSyncDeps;
-    return { ...base, deps, runCreate, taskCreate, enqueueRun, runFindFirst };
+    return { ...base, deps, runCreate, taskCreate, enqueueRun, runFindFirst, messageCreate };
   }
 
   it("on Carta sign-in, ensures the agent and enqueues one routine-trigger run", async () => {
@@ -193,7 +197,7 @@ describe("Carta populate run", () => {
       }),
     );
     const task = (f.taskCreate.mock.calls[0] as unknown as [{ data: { prompt: string } }])[0];
-    for (const word of ["cap_table_update", "contacts_add", "mail_grep", "12 months", "charts"])
+    for (const word of ["cap_table_update", "contacts_add", "one short sentence", "charts"])
       expect(task.data.prompt).toContain(word);
     expect(f.enqueueRun).toHaveBeenCalledWith("run-new");
   });
@@ -203,6 +207,7 @@ describe("Carta populate run", () => {
     await onMcpServerConnected(f.deps, actor, "srv-carta");
     expect(f.runCreate).not.toHaveBeenCalled();
     expect(f.enqueueRun).not.toHaveBeenCalled();
+    expect(f.messageCreate).not.toHaveBeenCalled();
     expect(await startCartaSync(f.deps, actor)).toBe("running");
     // A run paused for approval or takeover is still going.
     expect(f.runFindFirst).toHaveBeenCalledWith(
@@ -218,6 +223,14 @@ describe("Carta populate run", () => {
     const f = syncFakes();
     expect(await startCartaSync(f.deps, actor)).toBe("started");
     expect(f.enqueueRun).toHaveBeenCalledTimes(1);
+    // A line in the chat says why the agent replies, since the founder typed no question.
+    expect(f.messageCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        threadId: "thread-1",
+        role: "system",
+        blocks: [{ kind: "meta", text: "You asked to refresh the cap table from Carta" }],
+      }),
+    });
     const none = syncFakes({ hasModel: false });
     expect(await startCartaSync(none.deps, actor)).toBe("no_model");
     expect(none.runCreate).not.toHaveBeenCalled();

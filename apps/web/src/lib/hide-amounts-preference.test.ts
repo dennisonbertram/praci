@@ -39,7 +39,8 @@ describe("hide amounts", () => {
     expect(moneyExact(123_456)).toBe("$•••");
     expect(transactionAmount(5_000)).toBe("+$•••");
     expect(axisMoney(150_000)).toBe("$•••");
-    expect(changeText(-53)).toBe("↓ •••%");
+    // The arrow would say which way spend went, so it is hidden too.
+    expect(changeText(-53)).toBe("•••%");
     expect(money(1)).toBe(money(99_999_999));
   });
 
@@ -75,7 +76,16 @@ it("masks token quantities and amount-derived text", async () => {
   const { tokenAmount } = await import("./crypto-format");
   setHideAmounts(true);
   expect(tokenAmount("1500000000000000000", 18)).toBe("•••");
-  expect(hiddenOr("Until July 2027")).toBe("•••");
+  expect(hiddenOr("$2,400")).toBe("•••");
   setHideAmounts(false);
   expect(tokenAmount("1500000000000000000", 18)).toBe("1.5");
+});
+
+it("keeps runway, share counts and ownership visible, since they are not money", async () => {
+  const { percentFigure, runwayText, shareCount } = await import("./finance-format");
+  setHideAmounts(true);
+  expect(runwayText(8.94)).toBe("8.9");
+  expect(shareCount(4_000_000, "en")).toBe("4,000,000");
+  expect(percentFigure(40)).toBe("40.00%");
+  expect(money(41_200_000)).toBe("$•••");
 });

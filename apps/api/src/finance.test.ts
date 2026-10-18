@@ -525,6 +525,28 @@ describe("finance detail lookups", () => {
     expect(given.map((r) => r.id)).toEqual(["t-1"]);
   });
 
+  it("covers the dashboard period a category was opened from, in its total, vendors and list", async () => {
+    const { deps } = setup({
+      financeTransaction: [
+        txn(a, { id: "t-1" }),
+        txn(a, { id: "t-4", postedAt: new Date("2026-09-20T00:00:00Z") }),
+      ],
+    });
+    const month = await financeCategory(deps, a, { slug: "software", period: "month" });
+    expect(month.start).toBe("2026-10-01");
+    expect(month.recent.map((r) => r.id)).toEqual(["t-1"]);
+    const range = (
+      metrics.breakdown.mock.calls.at(-1) as unknown as [unknown, unknown, { start: string }]
+    )[2];
+    expect(range.start).toBe("2026-10-01");
+    const september = await financeCategory(deps, a, { slug: "software", month: "2026-09" });
+    expect([september.start, september.end]).toEqual(["2026-09-01", "2026-10-01"]);
+    expect(september.recent.map((r) => r.id)).toEqual(["t-4"]);
+    // Without a window it is the last 90 days, and the list covers the same days as the total.
+    const all = await financeCategory(deps, a, { slug: "software" });
+    expect(all.recent.map((r) => r.id)).toEqual(["t-1", "t-4"]);
+  });
+
   it("lists only spend of the chosen category for the period", async () => {
     const { deps } = setup({
       financeTransaction: [
@@ -625,12 +647,14 @@ describe("finance connect", () => {
     expect(prisma.mcpServer.rows).toHaveLength(2);
   });
 
-  it("turns a refused redirect into BAD_REQUEST", async () => {
+  it("turns a failed sign-in start into BAD_REQUEST with plain copy, not the vendor's error", async () => {
     const { deps, beginMcpOAuth } = setup();
-    beginMcpOAuth.mockRejectedValueOnce(new Error("MCP OAuth redirect URI is not allowed"));
+    beginMcpOAuth.mockRejectedValueOnce(
+      new Error("Could not reach mcp.mercury.com: emulator received unexpected URL"),
+    );
     await expect(financeConnect(deps, a, input)).rejects.toMatchObject({
       code: "BAD_REQUEST",
-      message: "MCP OAuth redirect URI is not allowed",
+      message: "Could not connect to Mercury. Try again, or upload a statement instead.",
     });
   });
 
@@ -1065,6 +1089,17 @@ describe("finance pages with the real calculations", () => {
     // Jul, Aug and Sep are the full months since first seen; October is still partial.
     expect(vendor.monthlyAvgCents).toBe(481_200);
     expect(vendor.monthlyAvgMonths).toBe(3);
+    // The chart shows the six full months averaged, not the partial current one; charges list
+    // from the chart's first month.
+    expect(vendor.monthly.map((m) => m.month)).toEqual([
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09",
+    ]);
+    expect(vendor.charges.map((c) => c.postedAt.slice(0, 7))).toContain("2026-10");
   });
 
   it("windows a vendor by purchase date, the same date its monthly totals use", async () => {

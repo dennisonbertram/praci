@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { MailApproval } from "@rakazo/contracts";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { mailApprovalComposeClientId } from "@rakazo/db";
@@ -23,6 +24,18 @@ export function mailApprovalAgentNote(send: boolean, outcome?: Outcome): string 
     return `The user edited this ${what} on the approval card, but their ${send ? "send" : "save"} failed and nothing was ${send ? "sent" : "saved"}. Do not tell them it was ${send ? "sent" : "saved"}.`;
   }
   return `The user edited this ${what} on the approval card and the outcome of their ${send ? "send" : "save"} is ${outcome === "unknown" ? "unknown" : "not known yet"}. Do not ${send ? "send" : "save"} it again; they should check ${send ? "Sent" : "Drafts"}.`;
+}
+
+/** How an approved mail_send or mail_draft call ended, from its tool result, for its card. */
+export function approvedMailOutcome(
+  name: "mail_send" | "mail_draft",
+  result: Record<string, unknown>,
+): { outcome: Outcome; error?: string } {
+  const error = typeof result.error === "string" ? result.error : undefined;
+  if (!error) return { outcome: name === "mail_send" ? "sent" : "saved" };
+  // mail_send says so when the provider may have sent it; the card must not say "Not sent".
+  if (error.includes("may or may not")) return { outcome: "unknown" };
+  return { outcome: "failed", error };
 }
 
 /**
@@ -150,4 +163,87 @@ export async function reconcileMailApprovals(deps: {
         .catch(() => undefined);
     }
   }
+}
+
+const addresses = (value: unknown): string =>
+  (Array.isArray(value) ? value : [])
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => (item.match(/<([^>]+)>/)?.[1] ?? item).trim().toLowerCase())
+    .sort()
+    .join(",");
+const baseSubject = (value: unknown): string =>
+  (typeof value === "string" ? value : "")
+    .replace(/^\s*((re|fwd?)\s*:\s*)+/i, "")
+    .trim()
+    .toLowerCase();
+const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
+
+const bodyHash = (value: unknown): string =>
+  createHash("sha256").update(text(value).replace(/\s+/g, " ")).digest("hex");
+
+/**
+ * Two mail_send calls are the same email when they answer the same message, or go to the same
+ * people about the same thing, with the same text. A corrected body is a new email.
+ */
+function sameEmail(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  if (bodyHash(a.body) !== bodyHash(b.body)) return false;
+  return sameThread(a, b);
+}
+
+function sameThread(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const replyA = text(a.replyToId);
+  const replyB = text(b.replyToId);
+  if (replyA || replyB) return replyA === replyB;
+  return addresses(a.to) === addresses(b.to) && baseSubject(a.subject) === baseSubject(b.subject);
+}
+
+/** A bracketed stand-in the model left for the user to fill, such as "[Your Name]". */
+const PLACEHOLDER = /\[(?:your|my|sender|insert|recipient)[^\]\n]{0,40}\]/i;
+
+export type PriorMailEffect = { runId: string; status: string; request: unknown; result: unknown };
+
+/**
+ * Why a mail_send call must not reach an approval card, or undefined when it may. Checked before
+ * the card is made, so the user never sees a placeholder signature or a second card for an email
+ * that already went out (the agent does not always follow the note on the earlier result).
+ */
+export function mailSendRefusal(
+  args: Record<string, unknown>,
+  prior: PriorMailEffect[],
+  runId: string,
+): string | undefined {
+  const placeholder = `${text(args.subject)}\n${text(args.body)}`.match(PLACEHOLDER)?.[0];
+  if (placeholder) {
+    return `The email still contains the placeholder ${placeholder}. Replace it with real text (sign with the user's name if you know it, or leave the signature off), then call mail_send again.`;
+  }
+  // Only this run's own earlier calls count: a later request may legitimately send a follow-up.
+  for (const effect of prior) {
+    if (effect.runId !== runId) continue;
+    const request = effect.request as Record<string, unknown> | null;
+    if (!request || typeof request !== "object" || !sameThread(args, request)) continue;
+    const result = (effect.result ?? {}) as { error?: unknown; outcome?: unknown; note?: unknown };
+    // The user's own edited send on the approval card: the agent cannot know its text, so any
+    // new call about the same thing in this run is refused.
+    const cardSend =
+      effect.status === "denied" &&
+      (result.outcome === "sent" ||
+        result.outcome === "unknown" ||
+        result.note === mailApprovalAgentNote(true));
+    if (cardSend) {
+      return result.outcome === "sent"
+        ? "The user already sent this email from the approval card. Do not send it again or offer another approval for it; tell the user it was sent."
+        : "The user sent an edited version from the approval card and it may not have gone out. Do not send it again; tell the user it may not have been sent and to check Sent.";
+    }
+    if (!sameEmail(args, request)) continue;
+    if (effect.status === "completed" && !result.error) {
+      return "This email was already sent in this conversation. Do not send it again or offer another approval for it; tell the user it was sent.";
+    }
+    if (effect.status === "executing" || effect.status === "uncertain") {
+      return "This email may already have been sent, but the outcome is uncertain. Do not send it again or offer another approval for it; tell the user it may not have been sent and to check Sent.";
+    }
+    if (effect.status === "denied" && result.outcome !== "failed") {
+      return "The user discarded this email. Do not offer it again; ask the user what they want to change.";
+    }
+  }
+  return undefined;
 }

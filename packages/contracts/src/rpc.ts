@@ -27,6 +27,8 @@ import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from ".
 import {
   DataRoomApiDriveListInputSchema,
   DataRoomApiDriveListOutputSchema,
+  DataRoomApiFacetValuesSchema,
+  DataRoomApiFiltersSchema,
   DataRoomApiFolderSchema,
   DataRoomApiImportDriveInputSchema,
   DataRoomApiImportDriveOutputSchema,
@@ -154,6 +156,7 @@ import {
   FinanceWalletSchema,
   FinanceWalletsOutputSchema,
   FinanceWalletUpdateInputSchema,
+  SpendPeriodSchema,
 } from "./finance.js";
 import {
   FinanceStatementAccountRenameInputSchema,
@@ -901,6 +904,8 @@ export const appContract = {
           displayName: z.string(),
           /** `desktop`: Google returns to the app's loopback listener instead of the web callback. */
           redirect: z.literal("desktop").optional(),
+          /** Reconnect: the account of this connection may sign in again and takes its place. */
+          replacesConnectionId: Id.optional(),
         }),
       )
       .output(z.object({ connectionId: Id, authorizationUrl: z.string().nullable() })),
@@ -1133,6 +1138,9 @@ export const appContract = {
   },
   dataRoom: {
     folders: oc.output(z.array(DataRoomApiFolderSchema)),
+    /** Omit folderId for every folder; null for items outside any folder. */
+    /** Each facet's values given the other filters, so no pick combines into nothing. */
+    facetValues: oc.input(DataRoomApiFiltersSchema).output(DataRoomApiFacetValuesSchema),
     folderCreate: oc
       .input(z.object({ name: DataRoomApiName, parentId: Id.nullable().optional() }))
       .output(DataRoomApiFolderSchema),
@@ -1150,6 +1158,8 @@ export const appContract = {
     itemRename: oc.input(z.object({ id: Id, name: DataRoomApiName })).output(DataRoomApiItemSchema),
     itemMove: oc.input(z.object({ id: Id, folderId: Id.nullable() })).output(DataRoomApiItemSchema),
     itemDelete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    /** Reads a failed item again from the start. */
+    itemRetry: oc.input(z.object({ id: Id })).output(DataRoomApiItemSchema),
     importEmail: oc
       .input(DataRoomApiImportEmailInputSchema)
       .output(DataRoomApiImportEmailOutputSchema),
@@ -1202,7 +1212,7 @@ export const appContract = {
     account: oc.input(z.object({ id: Id })).output(FinanceAccountOutputSchema),
     burn: oc.output(FinanceBurnOutputSchema),
     month: oc
-      .input(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }))
+      .input(z.object({ month: z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])$/) }))
       .output(FinanceMonthOutputSchema),
     runway: oc.output(FinanceRunwayOutputSchema),
     preferences: oc.output(FinancePreferencesSchema),
@@ -1212,7 +1222,18 @@ export const appContract = {
       .output(FinanceCryptoHistoryOutputSchema),
     spend: oc.input(FinanceSpendInputSchema).output(FinanceSpendOutputSchema),
     category: oc
-      .input(z.object({ slug: z.string().min(1).max(200) }))
+      .input(
+        z.object({
+          slug: z.string().min(1).max(200),
+          /** The dashboard period the category was opened from; without it, the last 90 days. */
+          period: SpendPeriodSchema.optional(),
+          /** A calendar month (YYYY-MM), from the month page. */
+          month: z
+            .string()
+            .regex(/^\d{4}-(?:0[1-9]|1[0-2])$/)
+            .optional(),
+        }),
+      )
       .output(FinanceCategoryOutputSchema),
     recurring: oc
       .input(z.object({ key: z.string().min(1).max(200) }))

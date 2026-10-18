@@ -29,3 +29,15 @@ export const AccountMenuRow: Story = {
     </div>
   ),
 };
+
+export const AccountMenuRowHidden: Story = {
+  beforeEach: () => {
+    setHideAmounts(true);
+    return () => setHideAmounts(false);
+  },
+  render: () => (
+    <div className="w-72">
+      <HideAmountsMenuItem />
+    </div>
+  ),
+};

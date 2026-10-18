@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { SearchHit, SearchHitKind } from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
-import { FileText, Mail } from "lucide-react";
+import { Files, FileText, Mail } from "lucide-react";
 import type { ReactNode } from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 
@@ -44,8 +44,8 @@ function LinkRow({ link, onSelect }: { link: SearchLink; onSelect: () => void })
 }
 
 /**
- * Sidebar search results grouped by type: app pages, Data room documents, a mail search, and
- * chat hits. Only "No results" when every group is empty.
+ * Sidebar search results grouped by type: app pages, Data room documents, artifacts, a mail
+ * search, and chat hits. When only the mail search is left, a line says nothing else matched.
  */
 export function SpaceSearchResults({
   query = "",
@@ -53,9 +53,11 @@ export function SpaceSearchResults({
   loading,
   pages = [],
   documents = [],
+  artifacts = [],
   onSelect,
   onSelectPage = () => undefined,
   onSelectDocument = () => undefined,
+  onSelectArtifact = () => undefined,
   onSearchMail,
 }: {
   query?: string;
@@ -63,9 +65,12 @@ export function SpaceSearchResults({
   loading: boolean;
   pages?: SearchLink[];
   documents?: SearchLink[];
+  /** Files bots made, matched by name and description. */
+  artifacts?: SearchLink[];
   onSelect: (hit: SearchHit) => void;
   onSelectPage?: (id: string) => void;
   onSelectDocument?: (id: string) => void;
+  onSelectArtifact?: (id: string) => void;
   /** Present when the Inbox can run the query; shows a "Search mail" row. */
   onSearchMail?: () => void;
 }) {
@@ -77,7 +82,8 @@ export function SpaceSearchResults({
     link: t`Link`,
     routine: t`Routine`,
   };
-  const empty = !hits.length && !pages.length && !documents.length && !onSearchMail;
+  const nothingMatched = !hits.length && !pages.length && !documents.length && !artifacts.length;
+  const empty = nothingMatched && !onSearchMail;
   if (empty && loading) {
     return (
       <div className="px-3 py-4 text-[14px] text-muted-foreground">
@@ -114,6 +120,25 @@ export function SpaceSearchResults({
             />
           ))}
         </Section>
+      ) : null}
+      {artifacts.length ? (
+        <Section title={<Trans>Artifacts</Trans>}>
+          {artifacts.map((artifact) => (
+            <LinkRow
+              key={artifact.id}
+              link={{
+                ...artifact,
+                icon: artifact.icon ?? <Files size={15} strokeWidth={1.8} aria-hidden="true" />,
+              }}
+              onSelect={() => onSelectArtifact(artifact.id)}
+            />
+          ))}
+        </Section>
+      ) : null}
+      {nothingMatched && !loading && onSearchMail ? (
+        <div className="px-3 pt-3 pb-1 text-[14px] text-muted-foreground">
+          <Trans>No matches in chats, pages, documents or artifacts.</Trans>
+        </div>
       ) : null}
       {onSearchMail ? (
         <Section title={<Trans>Mail</Trans>}>

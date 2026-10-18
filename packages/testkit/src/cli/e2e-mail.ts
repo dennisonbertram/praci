@@ -1,5 +1,6 @@
+import type { ConnectorProxyRequest } from "@rakazo/adapter-kit";
 import type { EmulatedMessage } from "@rakazo/adapters";
-import { ComposioEmulator, GmailApiEmulator } from "@rakazo/adapters";
+import { ComposioEmulator, GmailApiEmulator, parseRawMime } from "@rakazo/adapters";
 
 const MINUTE_MS = 60_000;
 const DAY_MS = 86_400_000;
@@ -135,26 +136,113 @@ export type E2eGmailSnapshot = ReturnType<GmailApiEmulator["snapshot"]>;
  */
 export function createE2eComposio(
   mailboxes: () => Record<string, { address: string; messages: EmulatedMessage[] }> = e2eMailboxes,
+  options: {
+    /** A send to one of the user's own connected addresses lands in that Inbox, as with real Gmail. */
+    deliverBetweenOwnAccounts?: boolean;
+    /** A send to an address on this domain fails, as Gmail rejects an invalid recipient. */
+    bounceDomain?: string;
+    /**
+     * A broken state for a space's first Gmail account. "signed_out": it gets no mailbox, so every
+     * Gmail call answers 401; signing in again there gets a working mailbox. "rate_limited": every
+     * Gmail call answers 429.
+     */
+    accountState?: (context: {
+      userId: string;
+      spaceId: string;
+    }) => Promise<"signed_out" | "rate_limited" | undefined>;
+  } = {},
 ): ComposioEmulator & {
   gmailFor(userId: string): E2eGmailSnapshot;
+  /** Delivers a message to every user's copy of a seeded mailbox, as if it arrived just now. */
+  deliver(seededName: string, message: EmulatedMessage): void;
 } {
   const gmail = new GmailApiEmulator({ mailboxes: mailboxes() });
   const seeded = gmail.accountRefs();
   const refsByUser = new Map<string, string[]>();
+  const accountsBySpace = new Map<string, number>();
+  const rateLimited = new Set<string>();
   return new (class extends ComposioEmulator {
     override async begin(...args: Parameters<ComposioEmulator["begin"]>) {
       const result = await super.begin(...args);
       if (args[0].provider === "GMAIL") {
-        const refs = refsByUser.get(args[1].userId) ?? [];
-        const target = seeded[refs.length];
+        const { userId, spaceId } = args[1];
+        const refs = refsByUser.get(userId) ?? [];
+        // A space's accounts take the seeded mailboxes in order, so a Gmail connected in a second
+        // space works too. `refsByUser` keeps the first space's, which specs address by name.
+        const slot = accountsBySpace.get(`${userId}:${spaceId}`) ?? 0;
+        accountsBySpace.set(`${userId}:${spaceId}`, slot + 1);
+        const state = slot === 0 ? await options.accountState?.({ userId, spaceId }) : undefined;
+        if (state === "signed_out") return result;
+        if (state === "rate_limited") rateLimited.add(result.state);
+        const firstSpace = refs.length === slot;
+        const target = firstSpace ? seeded[slot] : seeded[slot % seeded.length];
         const fresh = target ? mailboxes()[target] : undefined;
         if (target && fresh) {
           gmail.isolate(result.state, target, fresh);
-          refs.push(result.state);
-          refsByUser.set(args[1].userId, refs);
+          if (firstSpace) {
+            refs.push(result.state);
+            refsByUser.set(userId, refs);
+          }
         }
       }
       return result;
+    }
+
+    override async proxy(request: ConnectorProxyRequest) {
+      if (rateLimited.has(request.accountRef)) {
+        const message = "Quota exceeded for quota metric 'Queries'";
+        return {
+          status: 429,
+          data: { error: { code: 429, message, status: "RESOURCE_EXHAUSTED" } },
+        };
+      }
+      const sending = request.method === "POST" && /\/drafts\/send(\?|$)/.test(request.url);
+      const id = (request.body as { id?: unknown } | undefined)?.id;
+      const draft = sending
+        ? gmail.draftsOf(request.accountRef).find((item) => item.id === id)
+        : undefined;
+      const mime = draft ? parseRawMime(draft.raw) : undefined;
+      const recipients = ["To", "Cc", "Bcc"]
+        .map((name) => mime?.header(name) ?? "")
+        .join(",")
+        .toLowerCase();
+      if (options.bounceDomain && recipients.includes(`@${options.bounceDomain.toLowerCase()}`)) {
+        const message = "Invalid To header";
+        return {
+          status: 400,
+          data: { error: { code: 400, message, errors: [{ reason: "invalidArgument", message }] } },
+        };
+      }
+      const response = await super.proxy(request);
+      if (mime && response.status === 200 && options.deliverBetweenOwnAccounts) {
+        const own = [...refsByUser.values()].find((refs) => refs.includes(request.accountRef));
+        const from = gmail.addressOf(request.accountRef) ?? "";
+        for (const ref of own ?? []) {
+          const address = gmail.addressOf(ref);
+          // Mail to the sender's own address arrives too, as Gmail puts it in the Inbox.
+          if (!address || !recipients.includes(address.toLowerCase())) continue;
+          gmail.addMessage(ref, {
+            id: `in-${ref}-${Date.now()}`,
+            date: new Date().toISOString(),
+            labels: ["INBOX", "UNREAD"],
+            from,
+            to: mime.header("To") ?? address,
+            ...(mime.header("Cc") ? { cc: mime.header("Cc") } : {}),
+            subject: mime.header("Subject") ?? "",
+            ...(mime.text === undefined ? {} : { text: mime.text }),
+            ...(mime.html === undefined ? {} : { html: mime.html }),
+          });
+        }
+      }
+      return response;
+    }
+
+    deliver(seededName: string, message: EmulatedMessage) {
+      const index = seeded.indexOf(seededName);
+      for (const refs of refsByUser.values()) {
+        const ref = refs[index];
+        if (ref) gmail.addMessage(ref, message);
+      }
     }
 
     gmailFor(userId: string): E2eGmailSnapshot {

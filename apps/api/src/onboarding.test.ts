@@ -112,6 +112,23 @@ describe("first bot greeting", () => {
   });
 });
 
+describe("greeting without a name", () => {
+  it("says Hi without the email handle that sign-up stored as the name", async () => {
+    const { deps, actor } = fixture([]);
+    (deps.prisma as unknown as { user: unknown }).user = {
+      findUnique: vi.fn(async () => ({ name: "user" })),
+    };
+    await seedBlankBotGreeting(
+      deps,
+      actor,
+      { id: "bot", name: "Chief", threadId: "thread" },
+      { first: true },
+    );
+    const text = (posted[0]?.blocks[0] as { text: string } | undefined)?.text;
+    expect(text).toMatch(/^Hi, I'm Chief\./);
+  });
+});
+
 describe("company focus", () => {
   it("points to the Finance, Cap Table and Data room pages after the email cards", async () => {
     const { deps, actor } = fixture([
@@ -130,7 +147,8 @@ describe("company focus", () => {
         (block as { kind: string }).kind === "text" ? [(block as { text: string }).text] : [],
       ),
     );
-    expect(texts.at(-1)).toMatch(/Finance and Cap table.*Data room/);
+    expect(texts.at(-1)).toContain("[Finance](/app/finance) and [Cap table](/app/cap-table)");
+    expect(texts.at(-1)).toContain("[Data room](/app/data-room)");
     expect(texts).toContain(
       "Gmail and Google Calendar are a good place to start. Connect them here and I’ll use what you already have.",
     );

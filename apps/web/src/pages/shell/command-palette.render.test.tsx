@@ -16,7 +16,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { CommandPalette } from "./command-palette";
+import { CommandPalette, paletteMatchScore } from "./command-palette";
 
 const bot = (id: string, name: string) =>
   ({ id, name, title: "", description: "", preview: "", color: "#000", status: "idle" }) as Bot;
@@ -48,7 +48,11 @@ async function mount(onSelectPage = vi.fn()) {
       <CommandPalette
         open
         onOpenChange={() => undefined}
-        bots={[bot("b1", "Chief"), bot("b2", "Inbox agent"), bot("b3", "Finance agent")]}
+        bots={[
+          { ...bot("b1", "Chief"), description: "I find investor updates" },
+          bot("b2", "Inbox agent"),
+          bot("b3", "Finance agent"),
+        ]}
         onSelectBot={() => undefined}
         pages={[{ id: "finance", label: "Finance" }]}
         groups={[{ id: "g1", label: "Leadership sync" }]}
@@ -82,11 +86,44 @@ it("lists pages and groups, and keeps a bot's shortcut while filtering", async (
 const headings = () =>
   [...document.querySelectorAll("[cmdk-group-heading]")].map((node) => node.textContent);
 
-it("keeps one group order while searching and drops a group with no matches", async () => {
+it("puts the section with the best name match first and drops a group with no matches", async () => {
   await mount();
   expect(headings()).toEqual(["Bots", "Groups", "Pages"]);
   await search("finance");
-  expect(headings()).toEqual(["Bots", "Pages"]);
+  expect(headings()).toEqual(["Pages", "Bots"]);
   await search("lead");
   expect(headings()).toEqual(["Groups"]);
+});
+
+it("opens the Finance page for fin and Enter, ahead of bots that only mention it", async () => {
+  const onSelectPage = vi.fn();
+  await mount(onSelectPage);
+  await search("fin");
+  const input = document.querySelector("[data-testid=command-palette-search]");
+  await act(async () => {
+    input?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  expect(onSelectPage).toHaveBeenCalledWith("finance");
+});
+
+it("ranks a name prefix over a word, a substring and a description match", () => {
+  const scores = [
+    paletteMatchScore("Finance", "fin"),
+    paletteMatchScore("Finance agent", "fin"),
+    paletteMatchScore("My finance", "fin"),
+    paletteMatchScore("Chief", "fin", "find investors"),
+  ];
+  expect([...scores].sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual(scores);
+  expect(paletteMatchScore("Chief", "fin")).toBeNull();
+});
+
+it("hides bots that only mention the search once something matches by name", async () => {
+  await mount();
+  await search("fin");
+  // Chief only mentions "find" in its description; Finance and Finance agent match by name.
+  expect(document.querySelector("[data-testid=command-palette-bot-b1]")).toBeNull();
+  expect(document.querySelector("[data-testid=command-palette-bot-b3]")).not.toBeNull();
+  await search("investor");
+  // With no name match, the description match is still offered.
+  expect(document.querySelector("[data-testid=command-palette-bot-b1]")).not.toBeNull();
 });

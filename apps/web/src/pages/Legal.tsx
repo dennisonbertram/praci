@@ -7,6 +7,7 @@ import {
   AskAgentButton,
   ErrorNotice,
   FinanceChromeProvider,
+  type FinanceSpace,
   Kpi,
   SpaceName,
   useFinanceQuery,
@@ -35,18 +36,24 @@ export function LegalPage({
   onAskAgent,
   onOpenSettings,
   settingsOpen = false,
-  spaceName,
+  spaces,
+  spaceId,
+  onSwitchSpace,
 }: {
   onAskAgent?: () => void;
-  /** The space's name when the user has more than one, so they know whose contracts these are. */
-  spaceName?: string;
+  /** Which company Legal shows, and how to switch, when the user has more than one space. */
+  spaces?: FinanceSpace[];
+  spaceId?: string;
+  onSwitchSpace?: (spaceId: string) => void;
   /** Opens Settings on Models > OpenRouter with the own-key form open. */
   onOpenSettings?: () => void;
   /** Settings is open over the page; the page re-reads its state when it closes. */
   settingsOpen?: boolean;
 }) {
   return (
-    <FinanceChromeProvider value={{ onAskAgent, agentName: "Legal agent", spaceName }}>
+    <FinanceChromeProvider
+      value={{ onAskAgent, agentName: "Legal agent", spaces, spaceId, onSwitchSpace }}
+    >
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
         <Legal onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} />
       </div>
@@ -171,7 +178,7 @@ function Legal({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-medium">
+        <h1 className="text-lg font-semibold">
           <Trans>Legal</Trans>
         </h1>
         <SpaceName />

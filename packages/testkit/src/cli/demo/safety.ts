@@ -84,3 +84,14 @@ export function assertStateSlot(state: { slot?: number } | null, slot: number): 
       `The recorded demo state is for slot ${state.slot ?? 0}, not slot ${slot}; refusing to stop anything.`,
     );
 }
+
+/**
+ * The model settings for the demo API. `noModel` (DEMO_NO_MODEL=1) seeds the "no model set up"
+ * state: the real runtime with empty keys, so the app asks for a model instead of running scripted.
+ */
+export function demoModelEnv(found: Record<string, string>, noModel: boolean): NodeJS.ProcessEnv {
+  if (noModel) return { OPENROUTER_API_KEY: "", ANTHROPIC_API_KEY: "", AGENT_RUNTIME: "pi" };
+  const env: NodeJS.ProcessEnv = { ...found };
+  if (!found.OPENROUTER_API_KEY && found.ANTHROPIC_API_KEY) env.PI_DEFAULT_PROVIDER = "anthropic";
+  return { ...env, AGENT_RUNTIME: Object.keys(found).length ? "pi" : "scripted" };
+}

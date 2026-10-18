@@ -360,8 +360,13 @@ export function resolveDuplicateEffectGate(
   }
   if (effect.status === "denied") {
     // A denial can carry its own note (the user sent an edited copy themselves).
-    const note = (effect.result as { note?: unknown } | null | undefined)?.note;
-    if (typeof note === "string" && note) return { action: "return", result: { error: note } };
+    const stored = effect.result as { note?: unknown; outcome?: unknown } | null | undefined;
+    const note = stored?.note;
+    if (typeof note === "string" && note) {
+      // Their own send went out: a success, so the agent does not offer the same email again.
+      const done = stored?.outcome === "sent" || stored?.outcome === "saved";
+      return { action: "return", result: done ? { ok: true, note } : { error: note } };
+    }
     return {
       action: "return",
       result: {

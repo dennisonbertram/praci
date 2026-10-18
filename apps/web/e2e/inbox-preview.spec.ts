@@ -10,9 +10,10 @@ async function openInbox(page: Page, name: string) {
   await completeOnboarding(page);
   await page.getByTestId("sidebar-inbox").click();
   await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await page.getByRole("button", { name: "Connect Gmail", exact: true }).click();
+  // Connect mail opens Gmail's own connect dialog, then returns to the Inbox.
+  await page.getByRole("dialog").getByRole("button", { name: "Connect", exact: true }).click();
   await finishConnectDialog(page, "Gmail");
-  await page.getByTestId("sidebar-inbox").click();
+  await expect(page).toHaveURL(/\/app\/inbox$/);
 }
 
 test("the preview shows Cc and keeps a long link and an HTML frame inside the dialog", async ({

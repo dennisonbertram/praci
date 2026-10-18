@@ -11,9 +11,11 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 const imageUrl = vi.hoisted(() => vi.fn());
+const openItem = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/data-room", async (original) => ({
   ...(await original<typeof import("../../lib/data-room")>()),
   dataRoomImageUrl: imageUrl,
+  openDataRoomItem: openItem,
 }));
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
@@ -78,4 +80,102 @@ it("replaces the picture with a note, and never fetches it, while amounts are hi
   expect(container.textContent).toContain("Image hidden while amounts are hidden");
   await act(async () => setHideAmounts(false));
   expect(container.querySelector("img")?.getAttribute("src")).toBe("blob:receipt");
+});
+
+it("disables Open, with a reason, while amounts are hidden", async () => {
+  const pdf = { ...receipt, mimeType: "application/pdf" } as DataRoomApiItem;
+  const show = () =>
+    act(async () => {
+      root.render(
+        <Preview item={pdf} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
+      );
+    });
+  const openButton = () =>
+    Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Open");
+  await show();
+  expect(openButton()?.disabled).toBe(false);
+  await act(async () => setHideAmounts(true));
+  expect(openButton()?.disabled).toBe(true);
+  expect(container.textContent).toContain("Hidden while amounts are hidden");
+});
+
+it("leads a failed file with Try again, and keeps Delete as a quieter button", async () => {
+  const onAction = vi.fn();
+  const failed = { ...receipt, mimeType: "application/pdf", status: "failed", error: "Not a PDF" };
+  await act(async () => {
+    root.render(
+      <Preview item={failed} folderPath="" onAction={onAction} onClose={() => undefined} />,
+    );
+  });
+  const buttons = Array.from(container.querySelectorAll("aside > div:last-child > button"));
+  expect(buttons.map((button) => button.textContent)).toEqual(["Try again", "Download", "Delete"]);
+  act(() => (buttons[0] as HTMLButtonElement).click());
+  expect(onAction).toHaveBeenCalledWith("retry", failed);
+});
+
+it("keeps showing the summary while a renamed file is re-indexed", async () => {
+  const indexing = {
+    ...receipt,
+    mimeType: "application/pdf",
+    status: "indexing",
+    facets: { ...receipt.facets, docType: "Roadmap", summary: "Two quarters of plans." },
+  };
+  await act(async () => {
+    root.render(
+      <Preview
+        item={indexing}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).toContain("Two quarters of plans.");
+  expect(container.textContent).not.toContain("Reading");
+});
+
+it("opens a readable PDF in the browser, and says an untagged file is not tagged yet", async () => {
+  openItem.mockResolvedValue(undefined);
+  const pdf = { ...receipt, name: "nda.pdf", mimeType: "application/pdf" };
+  await act(async () => {
+    root.render(
+      <Preview item={pdf} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
+    );
+  });
+  expect(container.textContent).toContain("Not tagged yet");
+  const buttons = Array.from(container.querySelectorAll("aside > div:last-child > button"));
+  expect(buttons.map((button) => button.textContent)).toEqual(["Open", "Download"]);
+  act(() => (buttons[0] as HTMLButtonElement).click());
+  expect(openItem).toHaveBeenCalledWith(pdf);
+});
+
+it("offers only Download for a file the browser cannot show", async () => {
+  const sheet = {
+    ...receipt,
+    name: "budget.csv",
+    mimeType: "text/csv",
+    facets: { ...receipt.facets, docType: "spreadsheet" },
+  };
+  await act(async () => {
+    root.render(
+      <Preview item={sheet} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
+    );
+  });
+  const buttons = Array.from(container.querySelectorAll("aside > div:last-child > button"));
+  expect(buttons.map((button) => button.textContent)).toEqual(["Download"]);
+  expect(container.textContent).not.toContain("Not tagged yet");
+});
+
+it("says a file still being read can be left to finish", async () => {
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, status: "extracting" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).toContain("You can keep working while it finishes.");
 });

@@ -18,6 +18,7 @@ const meta = {
     onCreateSection: noop,
     onRenameSection: noop,
     onToggleUnread: noop,
+    onRoutines: noop,
     onEdit: noop,
     onDuplicate: noop,
     onClear: noop,
@@ -42,3 +43,11 @@ export const PinnedAndUnread: Story = {
 };
 
 export const NoSections: Story = { args: { sections: [] } };
+
+/** A group has settings rather than a profile, and no routines. */
+export const Group: Story = {
+  args: {
+    bot: { name: "Leadership sync", pinned: false, sectionId: null, unread: false },
+    isGroup: true,
+  },
+};

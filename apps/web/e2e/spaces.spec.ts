@@ -9,7 +9,8 @@ test("spaces stay invisible by default and chat creation requires approval", asy
   await completeOnboarding(page);
 
   const sidebar = page.locator("aside").first();
-  await expect(sidebar.getByText("Personal", { exact: true })).toHaveCount(0);
+  // The only space is named on its header, so its actions button has a label beside it.
+  await expect(sidebar.getByText("Personal", { exact: true })).toHaveCount(1);
   await expect(sidebar.getByRole("button", { name: /^Chief/ })).toHaveCount(1);
   await sidebar.getByRole("button", { name: "Actions for Personal" }).click();
   await expect(page.getByRole("menuitem", { name: "Rename space" })).toBeVisible();
@@ -196,6 +197,7 @@ test("deleting the last bot in a space stays in the app after first use", async 
     .locator('[data-sidebar-group^="space:"]')
     .filter({ hasText: "Side" })
     .getByRole("button", { name: /^Chief/ });
+  const deletedBotPath = new URL(page.url()).pathname;
   await sideBot.click({ button: "right" });
   await page.getByRole("menuitem", { name: "Delete" }).click();
   const deleteDialog = page.getByRole("alertdialog", { name: /Delete Chief/ });
@@ -203,6 +205,8 @@ test("deleting the last bot in a space stays in the app after first use", async 
   await deleteDialog.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(sideBot).toHaveCount(0);
   await expect(page).not.toHaveURL(/\/onboarding/);
+  // The address of the deleted chat is left behind, so a reload does not land on "Page not found".
+  await page.waitForURL((url) => url.pathname !== deletedBotPath);
   await page.reload();
   await expect(page).not.toHaveURL(/\/onboarding/);
   await expect(sidebar.getByRole("button", { name: "Open Side" })).toBeVisible();

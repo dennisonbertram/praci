@@ -80,6 +80,8 @@ it("saves the chosen scope and reloads the runway", async () => {
   rpcMock.runway.mockResolvedValueOnce(runway({ runwayCrypto: "bank", cashCents: 100_000_00 }));
   rpcMock.setPreferences.mockResolvedValue({ runwayCrypto: "all" });
   await show();
+  // Beside the pill, a line says what counts now, so the off state reads as a state.
+  expect(container.textContent).toContain("Crypto is left out of cash and this runway.");
   rpcMock.runway.mockResolvedValueOnce(
     runway({
       runwayCrypto: "all",
@@ -92,6 +94,7 @@ it("saves the chosen scope and reloads the runway", async () => {
   expect(rpcMock.setPreferences).toHaveBeenCalledWith({ runwayCrypto: "all" });
   expect(rpcMock.runway).toHaveBeenCalledTimes(2);
   expect(container.textContent).toContain("$155,000");
+  expect(container.textContent).toContain("All crypto counts as cash in this runway.");
 });
 
 it("hides the scope control when there is no crypto", async () => {
@@ -108,4 +111,11 @@ it("says revenue is subtracted from burn, as the burn figure is calculated", asy
   await show();
   expect(container.textContent).toContain("RevenueSubtracted from burn");
   expect(container.textContent).not.toContain("RevenueExcluded");
+});
+
+it("says a raise is already in cash but not counted as burn, instead of 'Excluded'", async () => {
+  rpcMock.runway.mockResolvedValue(runway());
+  await show();
+  expect(container.textContent).toContain("FinancingIn cash, not counted as burn");
+  expect(container.textContent).not.toContain("Excluded");
 });

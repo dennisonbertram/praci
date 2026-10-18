@@ -324,3 +324,11 @@ export function isComputerStatusEvent(event: ProductEvent): boolean {
 function isComputerState(value: unknown): value is ComputerStatus["state"] {
   return computerStates.has(value);
 }
+
+/**
+ * Whether the composer offers Stop. A run parked on a question is not working: the composer's
+ * text answers that question, so it shows Send, not a Stop that suggests the bot is still busy.
+ */
+export function composerShowsStop(runs: readonly Pick<Run, "status">[]): boolean {
+  return runs.some((run) => run.status !== "waiting_input" && isActive(run.status as RunStatus));
+}

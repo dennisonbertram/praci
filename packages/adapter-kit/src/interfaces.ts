@@ -644,7 +644,14 @@ export class EmbedderMisconfiguredError extends Error {
 export interface DataRoomClassifier {
   describe(): AdapterDescriptor<Record<string, never>>;
   classify(
-    input: { name: string; mimeType: string; text: string; folders: string[][] },
+    input: {
+      name: string;
+      mimeType: string;
+      text: string;
+      folders: string[][];
+      /** Party names already in use, so the same party is named the same way. */
+      parties?: string[];
+    },
     context: AdapterContext,
   ): Promise<DataRoomClassification>;
   planQuery(

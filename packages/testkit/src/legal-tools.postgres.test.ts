@@ -81,7 +81,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
 
   let counter = 0;
   /** A ready Data Room item with extracted text, as the pipeline leaves it. */
-  async function addItem(actor: Actor, name: string, text: string) {
+  async function addItem(actor: Actor, name: string, text: string, tagged = true) {
     const repo = createDataRoomRepos(prisma);
     const { item } = await repo.createItem(actor, {
       source: "upload",
@@ -89,8 +89,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       name,
       mimeType: "text/plain",
       size: text.length,
-      docType: "contract",
-      parties: ["Acme Inc"],
+      ...(tagged ? { docType: "contract", parties: ["Acme Inc"] } : {}),
     });
     await prisma.dataRoomItemText.create({
       data: { itemId: item.id, spaceId: actor.spaceId, userId: actor.userId, text },
@@ -996,7 +995,8 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
   it("re-queues Data room items that were waiting for consent when the Legal grant is given", async () => {
     const c = await makeActor("f");
     extra.push(c);
-    const waiting = await addItem(c, "waiting.txt", "A ready item nobody classified yet.");
+    // Files that already carry tags keep them, so only an untagged one is sent for classifying.
+    const waiting = await addItem(c, "waiting.txt", "A ready item nobody classified yet.", false);
     const queued: { name: string; payload: any }[] = [];
     const ai = {
       model: { provider: "openrouter", id: "meta/muse-spark-1.2" },

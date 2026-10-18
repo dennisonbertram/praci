@@ -78,7 +78,7 @@ function ticket(
   };
 }
 
-async function renderBoard(stream?: AsyncIterable<{ ticketId?: string }>) {
+async function renderBoard(stream?: AsyncIterable<{ ticketId?: string }>, embedded = false) {
   api.boards.subscribe.mockReset();
   api.boards.subscribe.mockResolvedValue(
     stream ?? {
@@ -91,7 +91,7 @@ async function renderBoard(stream?: AsyncIterable<{ ticketId?: string }>) {
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={["/app/board"]}>
-        <BoardPage />
+        <BoardPage embedded={embedded} />
       </MemoryRouter>,
     ),
   );
@@ -103,6 +103,23 @@ async function renderBoard(stream?: AsyncIterable<{ ticketId?: string }>) {
     },
   };
 }
+
+it("drops its own Back button inside the app shell, which keeps the sidebar", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.bots.list.mockResolvedValue([]);
+  api.tickets.list.mockResolvedValue({ tickets: [] });
+  const standalone = await renderBoard();
+  expect(standalone.container.querySelector("[aria-label='Back']")).not.toBeNull();
+  await standalone.cleanup();
+  const embedded = await renderBoard(undefined, true);
+  try {
+    expect(embedded.container.querySelector("[aria-label='Back']")).toBeNull();
+    expect(embedded.container.textContent).toContain("Task board");
+  } finally {
+    await embedded.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
 
 it("renders status columns and opens a ticket with comments", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -166,6 +183,8 @@ it("creates a ticket without a status picker", async () => {
   const page = await renderBoard();
   try {
     expect(page.container.textContent).toContain("No tickets yet");
+    expect(page.container.textContent).toContain("Tickets track work for your bots.");
+    expect(page.container.querySelector("h1")?.textContent).toBe("Task board");
     await act(async () =>
       Array.from(page.container.querySelectorAll("button"))
         .find((button) => button.textContent === "New ticket")!

@@ -6,7 +6,7 @@ const meta = {
   title: "Pages/Agent panel intro",
   component: AgentPanelIntro,
   args: {
-    description: "Answers questions about your Mercury and Brex accounts.",
+    description: "Answers questions about your bank, card, statement and crypto accounts.",
     suggestions: ["What is our runway?", "Where did spend go up this month?"],
     onPick: fn(),
   },
@@ -26,3 +26,6 @@ export const Default: Story = {};
 export const Sending: Story = { args: { disabled: true } };
 
 export const NoDescription: Story = { args: { description: "" } };
+
+/** No model is set up: the questions would only fail, so the panel offers Add a model. */
+export const NeedsModel: Story = { args: { onAddModel: fn() } };

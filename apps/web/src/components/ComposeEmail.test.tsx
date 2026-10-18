@@ -335,6 +335,73 @@ it("shows a forward's attachments as removable chips and sends the ones left", a
   expect(send.mock.calls[0]?.[0].forwardOf).toEqual({ messageId: "m1", attachmentIds: ["2"] });
 });
 
+it("names a forward's file that was too large, and keeps it named after autosave", async () => {
+  draftSave.mockResolvedValue({ status: "saved" });
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  prefill.mockResolvedValue({
+    connectionId: "c1",
+    to: "",
+    cc: "",
+    subject: "Fwd: Demo",
+    body,
+    attachments: [{ id: "2", filename: "notes.pdf", mimeType: "application/pdf", size: 10 }],
+    attachmentsTooLarge: true,
+    attachmentsLeftOut: [{ filename: "demo.mp4", size: 12_000_000 }],
+  });
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mounted.push(root);
+  await act(async () =>
+    root.render(
+      <ComposeEmail seed={reply("forward")} accounts={[]} connectionId="c1" onClose={() => {}} />,
+    ),
+  );
+  const leftOut = () => document.querySelector('[data-testid="compose-left-out"]')?.textContent;
+  expect(leftOut()).toContain("demo.mp4");
+  expect(document.body.textContent).toContain("notes.pdf");
+  vi.useFakeTimers();
+  await type(field("To") as HTMLInputElement, "x@example.test,");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2_000);
+  });
+  vi.useRealTimers();
+  expect(document.body.textContent).toContain("Draft saved");
+  expect(leftOut()).toContain("demo.mp4");
+});
+
+it("masks amounts in a left-out file name while amounts are hidden", async () => {
+  const { setHideAmounts } = await import("../lib/hide-amounts-preference");
+  setHideAmounts(true);
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  prefill.mockResolvedValue({
+    connectionId: "c1",
+    to: "",
+    cc: "",
+    subject: "Fwd: Invoice",
+    body,
+    attachments: [],
+    attachmentsTooLarge: true,
+    attachmentsLeftOut: [{ filename: "Invoice-$4,812.pdf", size: 12_000_000 }],
+  });
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mounted.push(root);
+  try {
+    await act(async () =>
+      root.render(
+        <ComposeEmail seed={reply("forward")} accounts={[]} connectionId="c1" onClose={() => {}} />,
+      ),
+    );
+    const text = document.querySelector('[data-testid="compose-left-out"]')?.textContent ?? "";
+    expect(text).toContain("Not attached");
+    expect(text).not.toContain("4,812");
+  } finally {
+    setHideAmounts(false);
+  }
+});
+
 it("commits a single pasted address as a chip", async () => {
   await open({ kind: "new" });
   const to = field("To") as HTMLInputElement;
@@ -501,6 +568,23 @@ it("names the one address that blocks a send", async () => {
   expect(document.querySelector("[role=alert]")?.textContent).toBe(
     "josé@example.test isn't a valid email address",
   );
+});
+
+it("says why Gmail refused a send, once", async () => {
+  send.mockResolvedValue({ status: "failed", reason: "rejected" });
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(getOutbox().restoring?.notice).toBe(
+      "Not sent. Gmail didn't accept it. Check the addresses.",
+    );
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("says the message was not sent when a send fails, and keeps Send available", async () => {

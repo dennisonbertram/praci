@@ -6,8 +6,7 @@ import { FileImage, FileSpreadsheet, FileText, Folder } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { splitSnippet } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
-import { sourceLabel } from "./FilterBar";
-import { dateText, statusLabel } from "./format";
+import { dateText, isSettled, statusLabel, typeLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
 import type { Row } from "./use-data-room-list";
 
@@ -65,7 +64,7 @@ function Marker({ item }: { item: DataRoomApiItem }) {
       <Icon role="img" aria-label={t`Failed`} className="size-3.5 shrink-0 text-destructive" />
     );
   }
-  if (item.status !== "ready") {
+  if (!isSettled(item.status)) {
     return (
       <Spinner
         role="presentation"
@@ -91,21 +90,29 @@ export const hasFacets = (rows: Row[]) =>
   rows.some(({ item: { facets } }) => facets.docType || facets.docDate || facets.parties.length);
 
 // One grid template for the header and every row. Name never goes below 200px and takes the rest;
-// as the list pane narrows, Parties goes first, then Type, then Date. The menu stays.
+// as the list pane narrows, Parties goes first, then Type and Date, which then go under the name.
+// The menu stays.
 const ROW_GRID =
-  "grid items-center gap-2.5 px-2 grid-cols-[minmax(200px,1fr)_28px] " +
-  "@min-[400px]/list:grid-cols-[minmax(200px,1fr)_90px_28px] " +
-  "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_28px] " +
-  "@min-[620px]/list:grid-cols-[minmax(200px,1fr)_84px_90px_110px_28px]";
+  "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(200px,1fr)_28px] " +
+  // Type is wide enough for "Investor document", and Parties fits beside an open preview.
+  "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_110px_90px_28px] " +
+  "@min-[590px]/list:grid-cols-[minmax(180px,1fr)_120px_90px_110px_28px] " +
+  // With room to spare, Type and Parties widen first, so "Acme Servo Supply (Mock)" fits.
+  "@min-[820px]/list:grid-cols-[minmax(240px,1fr)_120px_100px_200px_28px]";
 /** Without facets the name takes every column but the menu. */
-const PLAIN_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_28px]";
+const PLAIN_GRID =
+  "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(0,1fr)_28px]";
 /** As PLAIN_GRID, with a fixed status column so "Failed" lines up whatever the name's length. */
-const STATUS_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_72px_28px]";
+const STATUS_GRID =
+  "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(0,1fr)_72px_28px]";
 const hasStatus = (rows: Row[]) => rows.some(({ item }) => statusLabel(item.status));
 const plainGrid = (status: boolean) => (status ? STATUS_GRID : PLAIN_GRID);
-const DATE_CELL = "hidden @min-[400px]/list:block";
+const DATE_CELL = "hidden @min-[500px]/list:block";
 const TYPE_CELL = "hidden @min-[500px]/list:block";
-const PARTIES_CELL = "hidden @min-[620px]/list:block";
+const PARTIES_CELL = "hidden @min-[590px]/list:block";
+/** Parties wrap to a second line (as long names do) rather than lose the end of a name. */
+const PARTIES_VALUE =
+  "hidden min-w-0 break-words text-muted-foreground @min-[590px]/list:line-clamp-2";
 const CELL = "min-w-0 truncate text-muted-foreground";
 
 function TableHead({ facets, status }: { facets: boolean; status: boolean }) {
@@ -145,11 +152,14 @@ function TableHead({ facets, status }: { facets: boolean; status: boolean }) {
 
 function ItemRow({
   item,
+  snippets,
   o,
   facets,
   status,
 }: {
   item: DataRoomApiItem;
+  /** Search only: the text that matched, under the row. */
+  snippets: string[];
   o: RowInteraction;
   facets: boolean;
   status: boolean;
@@ -164,7 +174,7 @@ function ItemRow({
         facets ? ROW_GRID : plainGrid(status),
         "cursor-pointer border-b border-border py-1.5 text-sm outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         // Clearly stronger than the hover tint, so the chosen row stays obvious.
-        o.shownId === item.id && "bg-sidebar-accent font-medium hover:bg-sidebar-accent",
+        o.shownId === item.id && "bg-sidebar-accent hover:bg-sidebar-accent",
       )}
     >
       <span data-testid="data-room-name" className="flex min-w-0 items-center gap-2">
@@ -174,7 +184,9 @@ function ItemRow({
           <span
             className={cn(
               "line-clamp-2 break-words",
-              item.status !== "ready" && item.status !== "failed" && "text-muted-foreground",
+              !isSettled(item.status) && item.status !== "failed" && "text-muted-foreground",
+              // Only the name is bold, so the other columns keep their width and are not cut.
+              o.shownId === item.id && "font-medium",
             )}
             title={item.name}
           >
@@ -182,6 +194,26 @@ function ItemRow({
           </span>
           {folder ? (
             <span className="truncate text-xs font-normal text-muted-foreground">{folder}</span>
+          ) : null}
+          {/* Where the Type and Date columns are hidden (a phone), they go under the name. */}
+          {facets ? (
+            <span
+              data-testid="data-room-subline"
+              className={cn(
+                "truncate text-xs font-normal text-muted-foreground @min-[500px]/list:hidden",
+                item.status === "failed" && "text-destructive",
+              )}
+            >
+              {label || <TypeAndDate item={item} />}
+            </span>
+          ) : item.status === "failed" && !item.error ? (
+            // Shown at every width: without facets there is no Type column to say why.
+            <span
+              data-testid="data-room-failed-reason"
+              className="text-xs font-normal text-destructive"
+            >
+              <Trans>Could not read this file. Delete it and upload it again.</Trans>
+            </span>
           ) : null}
           {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. */}
           {item.status === "failed" && item.error ? (
@@ -204,19 +236,37 @@ function ItemRow({
         <>
           <span
             className={cn(TYPE_CELL, CELL, item.status === "failed" && "text-destructive")}
-            title={item.status === "failed" ? (item.error ?? undefined) : undefined}
+            title={
+              item.status === "failed"
+                ? (item.error ?? undefined)
+                : typeLabel(item.facets.docType) || undefined
+            }
           >
-            {item.status === "ready" ? item.facets.docType : label}
+            {label ||
+              typeLabel(item.facets.docType) ||
+              (isSettled(item.status) ? <NotTagged /> : null)}
           </span>
           <span className={cn(DATE_CELL, CELL)}>{dateText(item.facets.docDate)}</span>
-          <span className={cn(PARTIES_CELL, CELL)} title={item.facets.parties.join(", ")}>
+          <span
+            data-testid="data-room-parties"
+            className={PARTIES_VALUE}
+            title={item.facets.parties.join(", ")}
+          >
             {item.facets.parties.join(", ")}
           </span>
         </>
       ) : null}
       <span>
-        <ItemMenu item={item} onAction={o.onAction} />
+        <ItemMenu item={item} onAction={o.onAction} canRetry={item.status === "failed"} />
       </span>
+      {snippets.length ? (
+        // Under the name (past its icon), across the whole row.
+        <span className="col-span-full -mt-0.5 flex flex-col gap-1 ps-5.5 font-normal">
+          {snippets.map((snippet) => (
+            <Snippet key={snippet} text={snippet} />
+          ))}
+        </span>
+      ) : null}
     </li>
   );
 }
@@ -236,12 +286,18 @@ export function SubfolderList({
   folders,
   onOpen,
   onAction,
+  contents,
   tiles = false,
+  rowClass = PLAIN_GRID,
 }: {
   folders: DataRoomApiFolder[];
   onOpen: (id: string) => void;
   onAction: (action: ItemAction, folder: DataRoomApiFolder) => void;
+  /** What a folder holds ("3 items"), so a parent never looks emptier than it is. */
+  contents: (folder: DataRoomApiFolder) => string;
   tiles?: boolean;
+  /** As rows: the file rows' grid, so the columns line up. */
+  rowClass?: string;
 }) {
   if (!folders.length) return null;
   if (tiles) {
@@ -257,11 +313,11 @@ export function SubfolderList({
               <span className={ICON_AREA}>
                 <Folder aria-hidden="true" className="size-6 text-muted-foreground" />
               </span>
-              <span className="line-clamp-2 min-h-10 text-start break-words" title={folder.name}>
+              <span className="line-clamp-3 min-h-15 text-start break-words" title={folder.name}>
                 {folder.name}
               </span>
               <span className="min-h-4 text-start text-xs font-normal text-muted-foreground">
-                <Trans>Folder</Trans>
+                {contents(folder)}
               </span>
             </Button>
             <ItemMenu item={folder} onAction={onAction} className="absolute top-3 right-3" />
@@ -275,36 +331,58 @@ export function SubfolderList({
       {folders.map((folder) => (
         <li
           key={folder.id}
-          className="grid grid-cols-[minmax(0,1fr)_28px] items-center gap-2.5 border-b border-border pe-2"
+          className={cn(rowClass, "border-b border-border py-1.5 text-sm hover:bg-muted/50")}
         >
+          {/* Every column but the menu, so the icon, name and height match the file rows. */}
           <Button
             variant="ghost"
             onClick={() => onOpen(folder.id)}
-            className="h-auto w-full justify-start rounded-none px-2 py-2 font-normal"
+            className="col-[1/-2] h-auto min-h-5 min-w-0 justify-start gap-2 rounded-sm p-0 text-start text-sm font-normal hover:bg-transparent"
           >
-            <Folder aria-hidden="true" className="size-3.5 text-muted-foreground" />
+            <Folder aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
             <span className="min-w-0 truncate" title={folder.name}>
               {folder.name}
             </span>
+            <span className="shrink-0 text-xs text-muted-foreground">{contents(folder)}</span>
           </Button>
-          <ItemMenu item={folder} onAction={onAction} />
+          <span>
+            <ItemMenu item={folder} onAction={onAction} />
+          </span>
         </li>
       ))}
     </ul>
   );
 }
 
-/** `lead` (the open folder's sub-folders) goes under the column header, above the files. */
-export function ListView({ rows, o, lead }: { rows: Row[]; o: RowInteraction; lead?: ReactNode }) {
+/**
+ * The files as rows; search results too, with the text that matched under each. `lead` (the open
+ * folder's sub-folders) goes under the column header, above the files, in the same grid.
+ */
+export function ListView({
+  rows,
+  o,
+  lead,
+}: {
+  rows: Row[];
+  o: RowInteraction;
+  lead?: (rowClass: string) => ReactNode;
+}) {
   const facets = hasFacets(rows);
   const status = hasStatus(rows);
   return (
     <div>
       <TableHead facets={facets} status={status} />
-      {lead}
+      {lead?.(facets ? ROW_GRID : plainGrid(status))}
       <ul aria-label={t`Items`} data-rows>
-        {rows.map(({ item }) => (
-          <ItemRow key={item.id} item={item} o={o} facets={facets} status={status} />
+        {rows.map(({ item, snippets }) => (
+          <ItemRow
+            key={item.id}
+            item={item}
+            snippets={snippets}
+            o={o}
+            facets={facets}
+            status={status}
+          />
         ))}
       </ul>
     </div>
@@ -327,26 +405,54 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
           <span className={ICON_AREA}>
             <Marker item={item} />
           </span>
-          <ItemMenu item={item} onAction={o.onAction} className="absolute top-3 right-3" />
-          {/* Two lines kept for every name, so one-line and two-line tiles are the same height. */}
-          <span className="line-clamp-2 min-h-10 font-medium break-words" title={item.name}>
+          <ItemMenu
+            item={item}
+            onAction={o.onAction}
+            canRetry={item.status === "failed"}
+            className="absolute top-3 right-3"
+          />
+          {/* Three lines kept for every name, so tiles are one height and long names still differ. */}
+          <span className="line-clamp-3 min-h-15 font-medium break-words" title={item.name}>
             {item.name}
           </span>
-          {/* Always one line tall, so a "Failed" line never makes one tile taller than the rest. */}
+          {/* Type and date on lines of their own, two lines on every tile, so neither is cut short. */}
           <span
+            data-testid="data-room-tile-meta"
             className={cn(
-              "min-h-4 truncate text-xs text-muted-foreground",
+              "flex min-h-8 flex-col text-xs text-muted-foreground *:truncate",
               item.status === "failed" && "text-destructive",
             )}
           >
-            {item.status === "ready"
-              ? [item.facets.docType, dateText(item.facets.docDate)].filter(Boolean).join(" · ")
-              : statusLabel(item.status)}
+            {statusLabel(item.status) ? (
+              <span>{statusLabel(item.status)}</span>
+            ) : (
+              <>
+                <span>{typeLabel(item.facets.docType) || <NotTagged />}</span>
+                <span>{dateText(item.facets.docDate)}</span>
+              </>
+            )}
           </span>
         </li>
       ))}
     </ul>
   );
+}
+
+/** Read, but not tagged: AI reading was off (or "Not now") when it arrived. */
+function NotTagged() {
+  return (
+    <span className="text-muted-foreground/70">
+      <Trans>Not tagged</Trans>
+    </span>
+  );
+}
+
+/** "Invoice · Oct 3, 2026", for the line under a name where the columns do not fit. */
+function TypeAndDate({ item }: { item: DataRoomApiItem }) {
+  const type = typeLabel(item.facets.docType);
+  const date = dateText(item.facets.docDate);
+  if (!type && isSettled(item.status)) return <NotTagged />;
+  return <>{[type, date].filter(Boolean).join(" · ")}</>;
 }
 
 /** A search snippet as text and <mark> elements. The snippet is never parsed as HTML. */
@@ -368,38 +474,5 @@ export function Snippet({ text }: { text: string }) {
         ),
       )}
     </p>
-  );
-}
-
-export function ResultsView({ rows, o }: { rows: Row[]; o: RowInteraction }): ReactNode {
-  return (
-    <ul aria-label={t`Results`} data-rows className="flex flex-col">
-      {rows.map(({ item, snippets }) => (
-        <li
-          key={item.id}
-          {...rowProps(item, o)}
-          aria-current={o.shownId === item.id}
-          className={cn(
-            "flex cursor-pointer flex-col gap-1.5 border-b border-border px-3 py-2.5 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-            // Clearly stronger than the hover tint, so the chosen row stays obvious.
-            o.shownId === item.id && "bg-sidebar-accent font-medium hover:bg-sidebar-accent",
-          )}
-        >
-          <div className="flex items-center gap-2 text-sm">
-            <Marker item={item} />
-            <span className="line-clamp-2 min-w-0 flex-1 font-medium break-words" title={item.name}>
-              {item.name}
-            </span>
-            <span className="truncate text-xs text-muted-foreground">
-              {[o.folderPath(item.folderId), sourceLabel(item.source)].filter(Boolean).join(" · ")}
-            </span>
-            <ItemMenu item={item} onAction={o.onAction} />
-          </div>
-          {snippets.map((snippet) => (
-            <Snippet key={snippet} text={snippet} />
-          ))}
-        </li>
-      ))}
-    </ul>
   );
 }

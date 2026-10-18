@@ -12,7 +12,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Navigate, Outlet, Route, Routes, useSearchParams } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
 import { DataRoomDropZone } from "./components/data-room/DropZone";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -30,6 +30,7 @@ import {
   sessionRetryDelayMs,
   showSessionUnavailable,
 } from "./lib/session-gate";
+import { signInFor, signInNext } from "./lib/sign-in-next";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
 import { GoogleOAuthCallbackPage } from "./pages/GoogleOAuthCallback";
 import { IntegrationSetupPage } from "./pages/IntegrationSetup";
@@ -49,8 +50,8 @@ const OnboardingPage = lazy(() =>
 const WelcomePage = lazy(() =>
   import("./pages/Welcome").then((module) => ({ default: module.WelcomePage })),
 );
-const BoardPage = lazy(() =>
-  import("./pages/Board").then((module) => ({ default: module.BoardPage })),
+const NotFoundPage = lazy(() =>
+  import("./pages/NotFound").then((module) => ({ default: module.NotFoundPage })),
 );
 
 function SsoCallbackPage() {
@@ -93,8 +94,7 @@ export function App() {
 
 function SessionApp() {
   const [searchParams] = useSearchParams();
-  const signInDestination =
-    searchParams.get("next") === "/integrations/setup" ? "/integrations/setup" : "/app";
+  const signInDestination = signInNext(searchParams.get("next"));
   const ticketBoardEnabled = useSyncExternalStore(
     subscribeTicketBoardEnabled,
     getTicketBoardEnabled,
@@ -178,7 +178,7 @@ function SessionApp() {
                   <DataRoomDropZone userId={user?.id ?? null} />
                 </SubscriptionGate>
               ) : (
-                <Navigate to="/sign-in" replace />
+                <SignInRedirect />
               )
             }
           >
@@ -187,7 +187,8 @@ function SessionApp() {
             <Route path="/app/g/:groupId" element={<ShellPage />} />
             <Route path="/app/artifacts" element={<ShellPage />} />
             <Route path="/app/artifacts/:artifactId" element={<ShellPage />} />
-            {ticketBoardEnabled ? <Route path="/app/board" element={<BoardPage />} /> : null}
+            {/* The board opens inside the shell, so the sidebar stays. */}
+            {ticketBoardEnabled ? <Route path="/app/board" element={<ShellPage />} /> : null}
             <Route path="/app/inbox" element={<ShellPage />} />
             <Route path="/app/integrations/*" element={<ShellPage />} />
             <Route path="/app/finance/*" element={<ShellPage />} />
@@ -197,6 +198,7 @@ function SessionApp() {
             <Route path="/app/data-room" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
     </div>
@@ -208,6 +210,12 @@ function SessionApp() {
  * waits and retries here instead of routing to sign-in and stranding a signed-in
  * user. Better Auth only polls once a session exists, so the retry lives here.
  */
+/** Signed-out visits to an app page come back to that page after sign-in. */
+function SignInRedirect() {
+  const { pathname, search } = useLocation();
+  return <Navigate to={signInFor(pathname + search)} replace />;
+}
+
 function SessionUnavailable({ refetch }: { refetch: () => Promise<void> }) {
   const { t } = useLingui();
   const [attempt, setAttempt] = useState(0);

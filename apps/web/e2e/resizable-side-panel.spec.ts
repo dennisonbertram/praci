@@ -10,7 +10,7 @@ test("computer rail resizes its preview and remembers width", async ({ page }, t
     "Computer Preferences",
   );
   await completeOnboarding(page);
-  await page.getByTitle("Bot computer").click();
+  await page.getByTitle("Computer and routines").click();
   const panel = page.getByTestId("side-panel");
   const separator = page.getByRole("separator", { name: "Resize panel" });
   await expect(separator).toBeVisible();
@@ -26,9 +26,9 @@ test("computer rail resizes its preview and remembers width", async ({ page }, t
   expect(after.width).toBeGreaterThan(before.width + 200);
   expect(after.height).toBeGreaterThan(before.height + 100);
   await page.reload();
-  await page.getByTitle("Bot computer").waitFor({ state: "visible" });
+  await page.getByTitle("Computer and routines").waitFor({ state: "visible" });
   if ((await page.getByTestId("side-panel").getAttribute("data-panel")) === "closed") {
-    await page.getByTitle("Bot computer").click();
+    await page.getByTitle("Computer and routines").click();
   }
   await expect.poll(async () => (await panel.boundingBox())!.width).toBeGreaterThan(600);
   const preferredWidth = await page.evaluate(() =>
@@ -66,7 +66,7 @@ test("phone composer menu and settings panel stay tappable", async ({ page }, te
   // Tap at the start edge, where the sidebar swipe strip runs beside the chat.
   await page
     .getByTestId("slash-picker")
-    .getByRole("button", { name: "Chat Settings" })
+    .getByRole("option", { name: "Chat settings" })
     .click({ position: { x: 4, y: 8 }, timeout: 5_000 });
   const settings = page.getByTestId("bot-settings");
   await expect(settings).toBeVisible();

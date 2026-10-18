@@ -112,6 +112,9 @@ export function AddAccountDialog({
       if (result === "cancelled") {
         setError(t`Sign-in was cancelled or did not finish. Try again.`);
       } else {
+        // Read the new accounts before the page reloads, so it shows them, not an empty list. A
+        // failed sync still connected; the dashboard shows the sync error and retries.
+        await rpc.finance.refresh().catch(() => {});
         onImported();
         onClose();
       }

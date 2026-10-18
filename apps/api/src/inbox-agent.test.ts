@@ -24,7 +24,7 @@ describe("ensureInboxAgent", () => {
         spawnKey: inboxAgentSpawnKey("user-1"),
         name: "Inbox agent",
         title: "",
-        description: "Searches your connected mail.",
+        description: "Reads your mail, finds what needs a reply and writes replies.",
         notifyOnFinish: true,
       }),
     );

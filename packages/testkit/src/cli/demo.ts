@@ -16,13 +16,25 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { CARTA_MCP_ENDPOINT } from "@rakazo/contracts";
 import { loadOrCreateCredentials } from "./demo/credentials.js";
-import { demoCarta, demoCrypto, demoFinance, demoMailboxes } from "./demo/data.js";
+import {
+  DEMO_BOUNCE_DOMAIN,
+  DEMO_NEW_MAIL_DELAY_MS,
+  DEMO_RATE_LIMIT_SPACE,
+  DEMO_RECONNECT_SPACE,
+  demoCarta,
+  demoCrypto,
+  demoFinance,
+  demoFinanceMcp,
+  demoMailboxes,
+  demoNewMail,
+} from "./demo/data.js";
 import {
   assertDemoContainer,
   assertStateSlot,
   type ContainerInfo,
   childEnv,
   DEMO_LABEL,
+  demoModelEnv,
   SLOT_LABEL,
   slotConfig,
   stateDir,
@@ -96,6 +108,8 @@ function docker(...args: string[]) {
 
 /** Model-provider keys come from this process's environment or the dev checkout's .env; never written anywhere. */
 function modelEnv(): NodeJS.ProcessEnv {
+  // DEMO_NO_MODEL=1 runs the stack as a space with no model set up (the "no model" states).
+  if (process.env.DEMO_NO_MODEL) return { AGENT_RUNTIME: "scripted" };
   const found: Record<string, string> = {};
   const devEnv = path.join(homedir(), "develop/rakazo/.env");
   const lines = existsSync(devEnv) ? readFileSync(devEnv, "utf8").split("\n") : [];
@@ -104,8 +118,7 @@ function modelEnv(): NodeJS.ProcessEnv {
     const value = process.env[key] || fromFile?.trim().replace(/^["']|["']$/g, "");
     if (value) found[key] = value;
   }
-  if (!found.OPENROUTER_API_KEY && found.ANTHROPIC_API_KEY) found.PI_DEFAULT_PROVIDER = "anthropic";
-  return { ...found, AGENT_RUNTIME: Object.keys(found).length ? "pi" : "scripted" };
+  return demoModelEnv(found, process.env.DEMO_NO_MODEL === "1");
 }
 
 /** The environment the demo API and its seeding run with. Throwaway values for a local stack. */
@@ -210,6 +223,12 @@ Mock demo stack is running (slot ${SLOT}). Every record in it is invented and la
   Login file:   ${CREDENTIALS}
   Logs:         ${DIR}/api.log, ${DIR}/web.log
   Mail outbox:  ${OUTBOX}
+Mail states to try:
+  New mail:     one email from Priya arrives ${DEMO_NEW_MAIL_DELAY_MS / 60_000} minutes after start
+  Failed send:  send to any address @${DEMO_BOUNCE_DOMAIN}
+  Reconnect:    switch to the space "${DEMO_RECONNECT_SPACE}"
+  Rate limit:   switch to the space "${DEMO_RATE_LIMIT_SPACE}"
+  Between accounts: mail from Sales mail to Founder mail arrives in Founder mail
 Stop and delete it with: ${SLOT ? `DEMO_SLOT=${SLOT} ` : ""}pnpm demo:down`);
 }
 
@@ -302,10 +321,11 @@ async function up() {
       encryptionKey: env.ENCRYPTION_KEY as string,
       email,
       password,
+      noModel: process.env.DEMO_NO_MODEL === "1",
     });
     console.log(`Seeded: ${done.join("; ")}`);
     console.log(
-      `Agent runtime: ${env.AGENT_RUNTIME === "pi" ? "pi with a model key from your environment" : "scripted (no model key found)"}`,
+      `Agent runtime: ${process.env.DEMO_NO_MODEL === "1" ? "none (DEMO_NO_MODEL=1: no model set up)" : env.AGENT_RUNTIME === "pi" ? "pi with a model key from your environment" : "scripted (no model key found)"}`,
     );
     printInfo(email);
   } catch (error) {
@@ -318,10 +338,34 @@ async function serve() {
   const { serve: listen } = await import("@hono/node-server");
   const { createEmulatedApp } = await import("./emulated-app.js");
   const { createE2eComposio } = await import("./e2e-mail.js");
+  const { createDb } = await import("@rakazo/db");
+  const { prisma } = createDb(process.env.DATABASE_URL as string);
+  const composio = createE2eComposio(demoMailboxes, {
+    deliverBetweenOwnAccounts: true,
+    bounceDomain: DEMO_BOUNCE_DOMAIN,
+    // Only the seeded reconnect and rate-limit spaces start broken; Gmail connected anywhere else works.
+    accountState: async ({ spaceId }) => {
+      const space = await prisma.space.findUnique({
+        where: { id: spaceId },
+        select: { name: true },
+      });
+      if (space?.name === DEMO_RECONNECT_SPACE) return "signed_out";
+      if (space?.name === DEMO_RATE_LIMIT_SPACE) return "rate_limited";
+      return undefined;
+    },
+  });
+  // New mail while the Inbox is open: one message lands in the founder's mailbox after a delay.
+  setTimeout(
+    () => composio.deliver("mock-demo-mailbox", demoNewMail()),
+    DEMO_NEW_MAIL_DELAY_MS,
+  ).unref();
   const { handles } = await createEmulatedApp(process.env.DATABASE_URL as string, {
-    composio: createE2eComposio(demoMailboxes),
+    composio,
     financeCallToolFor: demoFinance().callToolFor,
-    mcpServers: { [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN) },
+    mcpServers: {
+      [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN),
+      ...demoFinanceMcp(WEB_ORIGIN),
+    },
     cryptoFetch: demoCrypto().fetch,
     // Nothing is delivered: password-reset and verification mail lands in the slot's outbox file.
     onEmail: (message) =>

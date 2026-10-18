@@ -157,6 +157,12 @@ it("lists only model recipients, each off until the user turns it on, with the s
     ["Allow TypeSafe", "false"],
   ]);
   expect(container.textContent).toContain(AI_DATA_DISCLOSURES.model);
+  // Says what a switch covers, so Off while bots still answer does not look broken.
+  // The switch does not stop chats, so the section must say what it does control.
+  expect(container.textContent).toContain(
+    "Your bots always answer through the AI service chosen in Models.",
+  );
+  expect(container.textContent).toContain("Inbox sorting and Data room files");
   expect(container.textContent).not.toContain("ElevenLabs");
 });
 
@@ -179,6 +185,18 @@ it("revokes only the switched-off recipient and allows only the switched-on one"
 
   await click(container.querySelector('[aria-label="Allow TypeSafe"]'));
   expect(consent.allowRecipient).toHaveBeenCalledExactlyOnceWith("typesafe-key");
+});
+
+it("tells an open Inbox to reload once a switch changes", async () => {
+  consent.aiConsentStatus.mockResolvedValue(statusOf());
+  consent.revokeRecipient.mockResolvedValue(statusOf());
+  const changed = vi.fn();
+  window.addEventListener("rakazo:inbox-changed", changed);
+  await render(<AiDataSharingSection />);
+  expect(changed).not.toHaveBeenCalled();
+  await click(container.querySelector('[aria-label="Allow OpenRouter"]'));
+  expect(changed).toHaveBeenCalledTimes(1);
+  window.removeEventListener("rakazo:inbox-changed", changed);
 });
 
 it("renders nothing when there are no model recipients or the status cannot load", async () => {

@@ -290,8 +290,12 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
     const viewport = page.viewportSize();
     expect(at.x + at.width).toBeLessThanOrEqual(viewport?.width ?? 0);
     expect(at.y + at.height).toBeLessThanOrEqual(viewport?.height ?? 0);
-    await link.focus();
-    await expect(link).toBeFocused();
+    // The list reloads once the upload lands and may return focus to the open row, so focus the
+    // link again until it holds.
+    await expect(async () => {
+      await link.focus();
+      await expect(link).toBeFocused({ timeout: 1_000 });
+    }).toPass();
     await captureScreenshot(page, testInfo, `v2-toast-${width}`);
   }
 
@@ -326,14 +330,18 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
   await expect(sheet).toHaveCount(0);
   await expect(rows.nth(1)).toBeFocused();
 
-  // A phone: search on its own line, then the filters and Sort in one row, with no page scroll.
+  // A phone: search on its own line, the folder picker and Sort in one row, the filters on a row
+  // below, and no page scroll.
   await page.setViewportSize({ width: 390, height: 844 });
   const type = page.getByRole("button", { name: "Filter by Type" });
   const sortButton = page.getByRole("button", { name: /^Sort:/ });
   await expect(type).toBeVisible();
+  await expect(sortButton).toBeVisible();
+  const pickerBox = await page.getByTestId("data-room-folder-picker").boundingBox();
   const typeBox = await type.boundingBox();
   const sortBox = await sortButton.boundingBox();
-  expect(Math.abs((sortBox?.y ?? 0) - (typeBox?.y ?? 100))).toBeLessThan(2);
+  expect(Math.abs((sortBox?.y ?? 0) - (pickerBox?.y ?? 100))).toBeLessThan(2);
+  expect(typeBox?.y ?? 0).toBeGreaterThan((sortBox?.y ?? 0) + (sortBox?.height ?? 0));
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 

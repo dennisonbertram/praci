@@ -261,7 +261,12 @@ describe.skipIf(!databaseAvailable)(
           },
           {
             expect(request) {
-              expect(toolResult(request)).toEqual({ shown: 1, notFound: ["not-cached"] });
+              expect(toolResult(request)).toEqual({
+                shown: 1,
+                notFound: ["not-cached"],
+                // The tool tells the agent not to list the cards again.
+                note: expect.stringContaining("Do not list them again"),
+              });
             },
             response: { type: "text", text: "One message needs your signature today." },
           },

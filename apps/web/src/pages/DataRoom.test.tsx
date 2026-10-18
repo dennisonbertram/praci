@@ -31,6 +31,8 @@ const rpcMock = vi.hoisted(() => ({
   connections: vi.fn(),
   consent: vi.fn(),
   itemDelete: vi.fn(),
+  itemRetry: vi.fn(),
+  facetValues: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -42,6 +44,8 @@ vi.mock("../lib/rpc", () => ({
       item: rpcMock.item,
       consent: rpcMock.consent,
       itemDelete: rpcMock.itemDelete,
+      itemRetry: rpcMock.itemRetry,
+      facetValues: rpcMock.facetValues,
     },
     legal: { itemLinks: async () => ({ contractTitle: null, deadlines: 0 }) },
   },
@@ -50,6 +54,7 @@ vi.mock("../lib/rpc", () => ({
 }));
 
 import { Snippet } from "../components/data-room/ItemRows";
+import { getUploadToasts } from "../components/data-room/upload-toasts";
 import { DataRoomPage } from "./DataRoom";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -83,6 +88,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   rpcMock.connections.mockResolvedValue([]);
   rpcMock.folders.mockResolvedValue([]);
+  rpcMock.facetValues.mockResolvedValue({ types: [], parties: [], sources: [], hasDates: false });
   rpcMock.list.mockResolvedValue({ items: [item("b.txt"), item("a.txt")], nextCursor: null });
   rpcMock.search.mockResolvedValue({ results: [], nextCursor: null });
   rpcMock.item.mockResolvedValue(item("b.txt"));
@@ -504,7 +510,7 @@ it("keeps the chosen item through a narrow and back to wide resize, opening no d
   vi.unstubAllGlobals();
 });
 
-it("shows the list again as soon as the search is cleared, and hints by word count", async () => {
+it("shows the list again as soon as the search is cleared, without asking for fewer words", async () => {
   await renderPage();
   const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
   const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
@@ -514,17 +520,13 @@ it("shows the list again as soon as the search is cleared, and hints by word cou
       input?.dispatchEvent(new Event("input", { bubbles: true }));
     });
   };
+  // The server already falls back to any of the words, so fewer words would find no more.
   await type("notice of renewal");
   await act(async () => {
     await vi.advanceTimersByTimeAsync(500);
   });
-  expect(container.textContent).toContain("Try fewer words");
-  await type("notice");
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(500);
-  });
   expect(container.textContent).toContain("No results");
-  expect(container.textContent).not.toContain("Try fewer words");
+  expect(container.textContent).not.toContain("fewer words");
 
   const lists = rpcMock.list.mock.calls.length;
   const answer = deferred<{ items: DataRoomApiItem[]; nextCursor: null }>();
@@ -635,7 +637,7 @@ it("says a failed file could not be read, with its reason and a Delete button", 
   expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain("junk.pdf");
 });
 
-it("hides the Type, Party and Date filters and columns while no item has them", async () => {
+it("keeps the Type, Party and Date filters but hides their columns while no item has them", async () => {
   const bare = (name: string) => ({
     ...item(name),
     facets: { ...item(name).facets, docType: null },
@@ -644,11 +646,12 @@ it("hides the Type, Party and Date filters and columns while no item has them", 
   await renderPage();
   const labels = () =>
     Array.from(container.querySelectorAll("button")).map((b) => b.getAttribute("aria-label"));
-  expect(labels()).not.toContain("Filter by Type");
-  expect(labels()).not.toContain("Filter by Party");
-  expect(labels()).not.toContain("Filter by Document date");
-  // Sources cannot be listed from the server, so the filter stays even when one page is all uploads.
-  expect(labels()).toContain("Filter by Source");
+  // The pills stay, so the bar keeps one shape from folder to folder; each says it has nothing.
+  expect(labels()).toContain("Filter by Type");
+  expect(labels()).toContain("Filter by Party");
+  expect(labels()).toContain("Filter by Document date");
+  // One source filters nothing, and a source with no files would only lead to "No results".
+  expect(labels()).not.toContain("Filter by Source");
   expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toBe("Name");
 
   rpcMock.list.mockResolvedValue({
@@ -777,7 +780,9 @@ it("shows no snippet when only the name matched", async () => {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(500);
   });
-  const rows = container.querySelectorAll('ul[aria-label="Results"] > li');
+  // Results are the list's own rows, with the matching text under the name.
+  const rows = container.querySelectorAll('ul[aria-label="Items"] > li');
+  expect(rows).toHaveLength(3);
   expect(rows[0]?.querySelector("mark")).toBeNull();
   expect(rows[1]?.querySelector("mark")?.textContent).toBe("lease");
   // A metadata hit on the summary is not a name match, so its snippet stays.
@@ -804,7 +809,13 @@ it("remembers the view and sort across visits", async () => {
 it("lists an open folder's sub-folders above its files, and opens one on click", async () => {
   rpcMock.folders.mockResolvedValue([
     { id: "f1", name: "Finance", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
-    { id: "f2", name: "Invoices", parentId: "f1", createdAt: "2026-10-01T00:00:00.000Z" },
+    {
+      id: "f2",
+      name: "Invoices",
+      parentId: "f1",
+      createdAt: "2026-10-01T00:00:00.000Z",
+      itemCount: 2,
+    },
   ]);
   await renderPage();
   rpcMock.list.mockResolvedValue({ items: [], nextCursor: null });
@@ -817,11 +828,18 @@ it("lists an open folder's sub-folders above its files, and opens one on click",
   expect(container.textContent).not.toContain("No results");
   expect(container.textContent).not.toContain("This folder is empty");
   const sub = container.querySelector<HTMLElement>('[aria-label="Sub-folders"] button');
-  expect(sub?.textContent).toBe("Invoices");
+  // The row says what is inside, so Finance never looks emptier than it is.
+  expect(sub?.textContent).toBe("Invoices2 items");
   await act(async () => sub?.click());
   await settle();
   expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ folderId: "f2" }));
-  expect(container.textContent).toContain("This folder is empty. Drop files here to add them.");
+  expect(container.textContent).toContain("This folder is empty. Drop files here or add them.");
+  // A phone cannot drop files: the empty folder has its own Add files button.
+  expect(
+    Array.from(container.querySelectorAll("[data-testid=data-room-list] button")).some(
+      (b) => b.textContent === "Add files",
+    ),
+  ).toBe(true);
 });
 
 it("shows the next item after deleting the previewed one, so the preview stays open", async () => {
@@ -855,4 +873,131 @@ it("shows the next item after deleting the previewed one, so the preview stays o
   await settle();
   expect(rpcMock.itemDelete).toHaveBeenCalledWith({ id: "id-a.txt" });
   expect(heading()?.textContent).toBe("b.txt");
+});
+
+const typeSearch = async (value: string) => {
+  const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
+  if (!input) throw new Error("no search box");
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(400);
+  });
+};
+
+it("says a search covers only the open folder, and Search all items looks everywhere", async () => {
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Fundraising", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage("/?folder=f1");
+  await settle();
+  await typeSearch("lease");
+  expect(rpcMock.search.mock.lastCall?.[0]).toMatchObject({ filters: { folderId: "f1" } });
+  expect(container.textContent).toContain("Searching in Fundraising");
+  const all = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Search all items",
+  );
+  await act(async () => all?.click());
+  await settle();
+  expect(rpcMock.search.mock.lastCall?.[0]).toMatchObject({ query: "lease", filters: {} });
+  expect(container.textContent).not.toContain("Searching in");
+});
+
+it("says a linked document could not be found and drops it from the URL", async () => {
+  rpcMock.item.mockRejectedValue(new ORPCError("NOT_FOUND"));
+  let search = "";
+  function Location() {
+    search = useLocation().search;
+    return null;
+  }
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/?item=nonexistent"]}>
+        <DataRoomPage />
+        <Location />
+      </MemoryRouter>,
+    );
+  });
+  await settle();
+  expect(search).toBe("");
+  expect(getUploadToasts().map((toast) => toast.name)).toContain(
+    "That document could not be found",
+  );
+});
+
+it("reads a failed file again from its preview", async () => {
+  const junk = { ...item("junk.pdf"), status: "failed", error: "Not a PDF" };
+  rpcMock.list.mockResolvedValue({ items: [junk], nextCursor: null });
+  rpcMock.itemRetry.mockResolvedValue({ ...junk, status: "pending", error: null });
+  await renderPage();
+  await clickRow(0);
+  const again = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Try again",
+  );
+  await act(async () => again?.click());
+  await settle();
+  expect(rpcMock.itemRetry).toHaveBeenCalledWith({ id: junk.id });
+  expect(rpcMock.list.mock.calls.length).toBeGreaterThan(1);
+});
+
+it("offers every type and party in the folder, also those not on the loaded page", async () => {
+  rpcMock.facetValues.mockResolvedValue({
+    types: ["contract", "statement"],
+    parties: ["Mercury (Mock)"],
+    sources: ["upload"],
+    hasDates: true,
+  });
+  await renderPage();
+  await settle();
+  const typeFilter = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Filter by Type"]',
+  );
+  await act(async () => {
+    typeFilter?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const options = Array.from(document.querySelectorAll('[role="menuitemradio"]')).map(
+    (el) => el.textContent,
+  );
+  // "Memo" is on the loaded rows; the other two only in the folder's values.
+  expect(options).toEqual(["Contract", "Memo", "Statement"]);
+  expect(container.querySelector('button[aria-label="Filter by Party"]')).not.toBeNull();
+  expect(rpcMock.facetValues).toHaveBeenCalledWith({});
+  // A picked type narrows what the other filters offer, so no pick combines into nothing.
+  const contract = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="menuitemradio"]'),
+  ).find((el) => el.textContent === "Contract");
+  await act(async () => contract?.click());
+  await settle();
+  expect(rpcMock.facetValues).toHaveBeenLastCalledWith({ docType: "contract" });
+});
+
+it("says so when the open folder was deleted elsewhere, and shows All items", async () => {
+  const legal = { id: "f1", name: "Legal", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" };
+  rpcMock.folders.mockResolvedValue([legal]);
+  const gone = () =>
+    getUploadToasts().filter((toast) => toast.name === "That folder no longer exists").length;
+  await renderPage("/?folder=f1");
+  await settle();
+  const before = gone();
+  rpcMock.folders.mockResolvedValue([]);
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await settle();
+  expect(gone()).toBe(before + 1);
+  expect(rpcMock.list.mock.lastCall?.[0]).not.toHaveProperty("folderId", "f1");
+});
+
+it("confirms Try again at once, so the click visibly did something", async () => {
+  const junk = { ...item("junk.pdf"), status: "failed", error: "Not a PDF" };
+  rpcMock.list.mockResolvedValue({ items: [junk], nextCursor: null });
+  rpcMock.itemRetry.mockResolvedValue({ ...junk, status: "pending", error: null });
+  await renderPage();
+  await clickRow(0);
+  const again = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Try again",
+  );
+  await act(async () => again?.click());
+  await settle();
+  expect(getUploadToasts().map((toast) => toast.name)).toContain("Reading junk.pdf again");
 });

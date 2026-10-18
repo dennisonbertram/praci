@@ -3,7 +3,7 @@ import { Trans } from "@lingui/react/macro";
 import type { FinanceProvider, FinanceRecurringOutput, SpendPeriod } from "@rakazo/contracts";
 import { Badge } from "@rakazo/ui-web";
 import { Link, useNavigate } from "react-router-dom";
-import { LineChart, MonthBars } from "../../components/finance/charts";
+import { MonthBars } from "../../components/finance/charts";
 import {
   Chevron,
   Chip,
@@ -21,13 +21,13 @@ import {
   useFinanceQuery,
   useRowNavigate,
   ValueLink,
+  WithEndings,
 } from "../../components/finance/ui";
 import {
   changeText,
   dayRange,
   lastDayOf,
   money,
-  moneyExact,
   monthAxisLabels,
   monthLabel,
   monthShort,
@@ -35,7 +35,7 @@ import {
   shortDay,
   txnDay,
 } from "../../lib/finance-format";
-import { financePath, type SpendRange } from "../../lib/finance-route";
+import { type CategoryWindow, financePath, type SpendRange } from "../../lib/finance-route";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
@@ -144,11 +144,24 @@ export function FinanceSpendPage({
   );
 }
 
-export function FinanceCategoryPage({ slug }: { slug: string }) {
+export function FinanceCategoryPage({ slug, window }: { slug: string; window?: CategoryWindow }) {
   useHideAmounts();
-  const q = useFinanceQuery(() => rpc.finance.category({ slug }), [slug]);
+  const q = useFinanceQuery(
+    () => rpc.finance.category({ slug, ...window }),
+    [slug, JSON.stringify(window ?? null)],
+  );
   const rowProps = useRowNavigate();
   const data = q.data;
+  // The last six full months, the same window as a vendor's chart (the month still running is left
+  // out, as there), so the bars and their amounts fit a phone.
+  const trend = data?.trend.slice(-7, -1) ?? [];
+  // The total, the vendors and the transactions all cover this one window, named on the page.
+  const windowName =
+    data?.start && data.end
+      ? window
+        ? dayRange(data.start, lastDayOf(data.end))
+        : t`Last 90 days`
+      : t`Last 90 days`;
   return (
     <DetailPage
       crumbs={[
@@ -165,25 +178,25 @@ export function FinanceCategoryPage({ slug }: { slug: string }) {
       {data ? (
         <>
           <Section>
-            <div className="flex flex-wrap items-center gap-5">
-              <div>
-                <h2 className="text-xs font-semibold text-muted-foreground">
-                  <Trans>Last 90 days</Trans>
-                </h2>
-                <div className="text-lg font-semibold tabular-nums">{money(data.last90Cents)}</div>
-              </div>
-              <div className="min-w-32 flex-1">
-                <LineChart
-                  values={data.trend.map((p) => p.cents)}
-                  labels={[]}
-                  height={44}
-                  axes={false}
-                  label={t`Monthly trend`}
-                />
-              </div>
-            </div>
+            <h2 className="text-xs font-semibold text-muted-foreground">{windowName}</h2>
+            <div className="text-lg font-semibold tabular-nums">{money(data.last90Cents)}</div>
           </Section>
-          <Section title={<Trans>Vendors</Trans>}>
+          {/* A labelled monthly chart, not an unlabelled sparkline: which months, how much. */}
+          {trend.length > 0 ? (
+            <Section
+              title={t`Monthly spend · ${monthShort(trend[0]?.month ?? "")} – ${monthShort(trend.at(-1)?.month ?? "")}`}
+            >
+              <MonthBars
+                items={trend.map((m, i) => ({
+                  label: monthAxisLabels(trend.map((x) => x.month))[i] ?? "",
+                  cents: m.cents,
+                }))}
+                height={160}
+                label={t`Monthly spend`}
+              />
+            </Section>
+          ) : null}
+          <Section title={t`Vendors · ${windowName}`}>
             <table className="w-full border-collapse">
               <tbody>
                 {data.vendors.map((vendor) => (
@@ -207,7 +220,7 @@ export function FinanceCategoryPage({ slug }: { slug: string }) {
               </tbody>
             </table>
           </Section>
-          <TransactionsSection title={<Trans>Recent</Trans>} rows={data.recent} />
+          <TransactionsSection title={t`Transactions · ${windowName}`} rows={data.recent} />
         </>
       ) : null}
     </DetailPage>
@@ -247,7 +260,7 @@ export function FinanceRecurringPage({ keyName }: { keyName: string }) {
             <Kv>
               <KvRow label={t`Cadence`}>{cadenceLabel(recurring.cadence)}</KvRow>
               <KvRow label={t`Next`}>{shortDay(recurring.nextExpectedAt)}</KvRow>
-              <KvRow label={t`Expected`}>{moneyExact(recurring.amountCents)}</KvRow>
+              <KvRow label={t`Expected`}>{money(recurring.amountCents)}</KvRow>
               {recurring.classification === "spend" ? (
                 <KvRow label={t`Vendor`}>
                   <ValueLink to={financePath.vendor(recurring.key)}>{recurring.name}</ValueLink>
@@ -309,15 +322,21 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
               sub={
                 data.changePct === null
                   ? t`Not enough history`
-                  : data.changeFromMonth
-                    ? t`vs ${monthShort(data.changeFromMonth)}`
-                    : t`vs 3 mo ago`
+                  : data.changeFromMonth && data.monthly.at(-1)
+                    ? t`${monthShort(data.monthly.at(-1)?.month ?? "")} vs ${monthShort(data.changeFromMonth)}`
+                    : t`Last month vs 3 mo ago`
               }
             />
             <Kpi title={t`First seen`} value={monthLabel(data.firstSeenAt.slice(0, 7))} />
-            <Kpi title={t`Paid with`} value={paidWith || "—"} />
+            <Kpi title={t`Paid with`} value={paidWith ? <WithEndings text={paidWith} /> : "—"} />
           </div>
-          <Section title={<Trans>Monthly spend</Trans>}>
+          <Section
+            title={
+              charged.length > 0
+                ? t`Monthly spend · ${monthShort(charged[0]?.month ?? "")} – ${monthShort(charged.at(-1)?.month ?? "")}`
+                : t`Monthly spend`
+            }
+          >
             <MonthBars
               items={charged.map((m, i) => ({
                 label: monthAxisLabels(charged.map((x) => x.month))[i] ?? "",
@@ -326,7 +345,9 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
               label={t`Monthly spend`}
             />
           </Section>
-          <Section title={<Trans>Charges</Trans>}>
+          <Section
+            title={charged[0] ? t`Charges since ${shortDay(`${charged[0].month}-01`)}` : t`Charges`}
+          >
             <table className="w-full border-collapse">
               <thead>
                 <tr>
@@ -363,7 +384,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
                         {charge.memo ?? charge.counterparty}
                       </HereLink>
                     </td>
-                    <td className="text-end tabular-nums">{moneyExact(charge.amountCents)}</td>
+                    <td className="text-end tabular-nums">{money(charge.amountCents)}</td>
                     <td className="text-end text-muted-foreground">
                       {charge.hasReceipt ? <ReceiptIcon /> : "—"}
                     </td>

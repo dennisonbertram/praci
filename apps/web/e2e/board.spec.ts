@@ -13,8 +13,22 @@ test("board creates a ticket and opens it", async ({ page }, testInfo) => {
   await page.getByTestId("user-menu-trigger").click();
   await page.getByRole("button", { name: "Task board", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/board$/);
-  await expect(page.getByTestId("board-columns")).toBeVisible();
   await expect(page.getByText("No tickets yet", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("board-columns")).toHaveCount(0);
+  await page.getByRole("button", { name: "New ticket", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "New ticket" });
+  await dialog.getByLabel("Title").fill(title);
+  await dialog.getByLabel("Description").fill(description);
+  const owner = dialog.getByLabel("Owner");
+  await expect(owner.locator("option", { hasText: "Planner" })).toHaveCount(1);
+  await owner.selectOption({ label: "Planner" });
+  await dialog.getByRole("button", { name: "Create", exact: true }).click();
+
+  await expect(dialog).toBeHidden();
+  const card = page.locator("[data-testid^='board-card-']").filter({ hasText: title });
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("Planner");
+  await expect(page.getByTestId("board-columns")).toBeVisible();
   const board = page.getByTestId("board-columns");
   expect(await board.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
   await expect(page.getByRole("heading", { name: "Won't do", exact: true })).toBeInViewport();
@@ -30,19 +44,6 @@ test("board creates a ticket and opens it", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await captureScreenshot(page, testInfo, "board-kanban");
 
-  await page.getByRole("button", { name: "New ticket", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "New ticket" });
-  await dialog.getByLabel("Title").fill(title);
-  await dialog.getByLabel("Description").fill(description);
-  const owner = dialog.getByLabel("Owner");
-  await expect(owner.locator("option", { hasText: "Planner" })).toHaveCount(1);
-  await owner.selectOption({ label: "Planner" });
-  await dialog.getByRole("button", { name: "Create", exact: true }).click();
-
-  await expect(dialog).toBeHidden();
-  const card = page.locator("[data-testid^='board-card-']").filter({ hasText: title });
-  await expect(card).toBeVisible();
-  await expect(card).toContainText("Planner");
   await captureScreenshot(page, testInfo, "board-ticket-created");
 
   await card.click();

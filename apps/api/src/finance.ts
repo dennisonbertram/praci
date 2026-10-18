@@ -37,6 +37,7 @@ import type {
   FinanceVendorOutput,
   PaidWithEntry,
   RunwayCryptoScope,
+  SpendPeriod,
   TreasuryYieldMonth,
 } from "@rakazo/contracts";
 import {
@@ -362,8 +363,14 @@ export async function financeConnect(
     });
     return { ...begun, serverId: server.id };
   } catch (error) {
+    // The vendor's raw error (hosts, emulator details) is for the log, not the founder.
+    getLogger().warn("finance connect could not start sign-in", {
+      provider: input.provider,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    const name = input.provider === "mercury" ? "Mercury" : "Brex";
     throw new ORPCError("BAD_REQUEST", {
-      message: error instanceof Error ? error.message : "Could not start sign-in",
+      message: `Could not connect to ${name}. Try again, or upload a statement instead.`,
     });
   }
 }
@@ -842,7 +849,7 @@ export async function financeSpend(
 export async function financeCategory(
   deps: FinanceDeps,
   actor: Actor,
-  input: { slug: string },
+  input: { slug: string; period?: SpendPeriod; month?: string },
 ): Promise<FinanceCategoryOutput> {
   const now = nowOf(deps);
   const own = (await loadTransactions(deps, actor)).filter(
@@ -850,14 +857,23 @@ export async function financeCategory(
   );
   const first = own[0];
   if (!first) throw notFound();
-  const range = last90(now);
+  // The window the page was opened from, so its total matches the row that was clicked; the
+  // vendor list and the transactions cover that same window.
+  const range = input.month
+    ? { start: `${input.month}-01`, end: monthStartOf(new Date(`${input.month}-01T00:00:00Z`), 1) }
+    : input.period
+      ? spendTotals(own, input.period, now)
+      : last90(now);
+  const inRange = own.filter((t) => txnDay(t) >= range.start && txnDay(t) < range.end);
   return {
     slug: input.slug,
     label: first.category?.trim() || "Uncategorized",
     last90Cents: breakdown(own, "category", range)[0]?.cents ?? 0,
+    start: range.start,
+    end: range.end,
     trend: monthlySpend(own, { categorySlug: input.slug }, now, 12),
     vendors: breakdown(own, "vendor", range),
-    recent: newest(own, 8),
+    recent: newest(inRange, 100),
   };
 }
 
@@ -901,11 +917,12 @@ export async function financeVendor(
   const latest = newest(own, 1)[0];
   if (!latest) throw notFound();
   const recurring = detectRecurring(all, now, accounts);
-  // Six full months, then the current partial one. The average and the change use full months only.
+  // Six full months, then the current partial one. The average, the change and the chart use the
+  // full months only, so the chart shows exactly what is averaged; charges list from the same start.
   const seven = monthlySpend(own, { vendorKey: input.key }, now, 7);
   const full = seven.slice(0, 6);
   const lastFull = full[5]?.cents ?? 0;
-  const sixMonthsFrom = `${seven[1]?.month ?? monthOf(now, -5)}-01`;
+  const sixMonthsFrom = `${full[0]?.month ?? monthOf(now, -6)}-01`;
   const firstSeenAt = own.reduce(
     (min, t) => ((t.purchasedAt ?? t.postedAt) < min ? (t.purchasedAt ?? t.postedAt) : min),
     latest.purchasedAt ?? latest.postedAt,
@@ -929,7 +946,7 @@ export async function financeVendor(
     changeFromMonth: lastFull && base ? base.month : null,
     firstSeenAt,
     paidWith: recurring.find((r) => r.key === input.key)?.paidWith ?? paidWithFor(own, accounts),
-    monthly: seven.slice(1),
+    monthly: full,
     charges: newest(
       own.filter((t) => txnDay(t) >= sixMonthsFrom),
       LIST_LIMIT,

@@ -12,7 +12,6 @@ import { Badge, Button } from "@rakazo/ui-web";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AddAccountDialog } from "../../components/finance/AddAccountDialog";
-import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
 import { LineChart } from "../../components/finance/charts";
 import { exchangeName } from "../../components/finance/ExchangeGroup";
 import { RenameAccountDialog } from "../../components/finance/RenameAccountDialog";
@@ -33,7 +32,7 @@ import {
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { ExchangeConnectDialog } from "../../components/integrations/ExchangeConnectDialog";
 import {
-  accountLabel,
+  accountParts,
   dayAxisLabels,
   money,
   moneyExact,
@@ -69,11 +68,11 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
                   to={financePath.account(account.id)}
                   className="outline-none hover:underline focus-visible:underline"
                 >
-                  {account.name}
+                  {accountParts(account.name, account.lastFour).name}
                 </HereLink>
-                {accountLabel(account.name, account.lastFour) !== account.name ? (
+                {account.lastFour ? (
                   <span className="ms-1.5 font-normal text-muted-foreground">
-                    ••{account.lastFour}
+                    {accountParts(account.name, account.lastFour).ending}
                   </span>
                 ) : null}
                 {pct ? (
@@ -194,8 +193,17 @@ export function FinanceAccountsPage({
     source ? rows.filter((a) => a.provider === source) : rows;
   const shownCash = data ? fromSource(data.cash) : [];
   // Brex shares no card balance owed, so with Brex and no card row the figure is unknown, not zero.
+  // A Mercury-only view says nothing about cards.
   const brexOwedUnknown =
-    data !== null && data.cardOwedCents === null && data.cash.some((a) => a.provider === "brex");
+    data !== null &&
+    (source === null || source === "brex") &&
+    data.cardOwedCents === null &&
+    data.cash.some((a) => a.provider === "brex");
+  // With no account and no crypto yet, a year-long $0 line says nothing.
+  const anyBalance =
+    (data?.cash.length ?? 0) + (data?.cards.length ?? 0) > 0 ||
+    (crypto?.wallets.length ?? 0) > 0 ||
+    exchanges.length > 0;
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Accounts` }]}
@@ -299,19 +307,8 @@ export function FinanceAccountsPage({
               />
             ) : null}
           </div>
-          {!sourceName && prefs.data && crypto && crypto.summary.totalCents > 0 ? (
-            <div>
-              <CountCryptoButton
-                scope={scope}
-                onSaved={() => {
-                  q.reload();
-                  prefs.reload();
-                }}
-              />
-            </div>
-          ) : null}
           {/* The chart is every account's total, so a source filter hides it rather than contradict the figure above. */}
-          {sourceName ? null : (
+          {sourceName || !anyBalance ? null : (
             <Section
               title={<Trans>Total balance</Trans>}
               action={<PeriodTabs value={range} onChange={setRange} />}
@@ -333,7 +330,18 @@ export function FinanceAccountsPage({
             </Section>
           )}
           <Section title={<Trans>Cash accounts</Trans>}>
-            <AccountTable rows={shownCash} />
+            {shownCash.length > 0 ? (
+              <AccountTable rows={shownCash} />
+            ) : sourceName ? (
+              <p className="text-sm text-muted-foreground">{t`No ${sourceName} cash accounts.`}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                <Trans>
+                  No bank accounts yet. Connect Mercury or Brex, or upload a bank statement, with
+                  Add account.
+                </Trans>
+              </p>
+            )}
           </Section>
           {fromSource(data.cards).length > 0 ? (
             <Section title={<Trans>Card balance owed</Trans>}>
@@ -359,6 +367,7 @@ export function FinanceAccountPage({ id }: { id: string }) {
   const isCard = account?.kind === "card";
   const pct = account ? yieldText(account.annualYieldPct) : null;
   const [renaming, setRenaming] = useState(false);
+  const [uploading, setUploading] = useState(false);
   return (
     <DetailPage
       crumbs={[
@@ -369,19 +378,27 @@ export function FinanceAccountPage({ id }: { id: string }) {
       title={
         account ? (
           <>
-            {account.name}
-            {accountLabel(account.name, account.lastFour) !== account.name ? (
-              <span className="ms-2 font-normal text-muted-foreground">••{account.lastFour}</span>
+            {accountParts(account.name, account.lastFour).name}
+            {account.lastFour ? (
+              <span className="ms-2 font-normal text-muted-foreground">
+                {accountParts(account.name, account.lastFour).ending}
+              </span>
             ) : null}
           </>
         ) : null
       }
       action={
         // A statement account is named from its file; a synced account keeps the bank's name.
+        // Next month's statement goes in from here, not through Accounts > Add account.
         account?.provider === "statement" ? (
-          <Button variant="outline" size="sm" onClick={() => setRenaming(true)}>
-            <Trans>Rename</Trans>
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => setUploading(true)}>
+              <Trans>Upload statement</Trans>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setRenaming(true)}>
+              <Trans>Rename</Trans>
+            </Button>
+          </>
         ) : null
       }
       loading={!data}
@@ -389,6 +406,13 @@ export function FinanceAccountPage({ id }: { id: string }) {
       notFound={q.notFound}
       onRetry={q.retry}
     >
+      {uploading ? (
+        <AddAccountDialog
+          initialStep="bank"
+          onImported={q.reload}
+          onClose={() => setUploading(false)}
+        />
+      ) : null}
       {renaming && account ? (
         <RenameAccountDialog
           account={account}
@@ -401,11 +425,11 @@ export function FinanceAccountPage({ id }: { id: string }) {
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-3">
             <Kpi
               title={isCard ? t`Balance owed` : t`Balance`}
-              value={moneyExact(account.balanceCents)}
+              value={money(account.balanceCents)}
             />
             {pct ? <Kpi title={t`Yield`} value={pct} /> : null}
           </div>
-          <Section title={<Trans>Balance</Trans>}>
+          <Section title={<Trans>Balance over time</Trans>}>
             <LineChart
               values={data.history.map((p) => p.balanceCents)}
               labels={monthAxisLabels(data.history.map((p) => p.month))}

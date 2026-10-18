@@ -292,6 +292,22 @@ describe("resolveDuplicateEffectGate", () => {
     });
   });
 
+  it("reports the person's own edited send as done, so the agent does not offer it again", () => {
+    const note = "The user edited this email and sent it themselves from the approval card.";
+    expect(
+      resolveDuplicateEffectGate(
+        { status: "denied", result: { note, outcome: "sent" } },
+        "mail_send",
+      ),
+    ).toEqual({ action: "return", result: { ok: true, note } });
+    expect(
+      resolveDuplicateEffectGate(
+        { status: "denied", result: { note, outcome: "failed" } },
+        "mail_send",
+      ),
+    ).toEqual({ action: "return", result: { error: note } });
+  });
+
   it("returns paused for intended effects instead of executing", () => {
     expect(resolveDuplicateEffectGate({ status: "intended" }, "archive_bot")).toEqual({
       action: "paused",

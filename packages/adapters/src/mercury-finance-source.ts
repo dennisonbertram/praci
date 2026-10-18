@@ -1,4 +1,4 @@
-import { vendorKey } from "@rakazo/core";
+import { categorySlug, vendorKey } from "@rakazo/core";
 import { z } from "zod";
 import {
   dollarsToCents,
@@ -254,6 +254,10 @@ function mapTransaction(
   accountExternalId: string,
 ): SourceTransaction {
   const counterparty = t.counterpartyName?.trim() || "Unknown";
+  const key = vendorKey(counterparty);
+  // Mercury can leave a payment to Brex uncategorized; it is a card bill, so it gets the category
+  // Mercury gives one elsewhere, and does not read as an unexplained 'Uncategorized' expense.
+  const cardBill = key === "brex" && t.amount < 0 && categorySlug(t.category) === "uncategorized";
   return {
     provider: "mercury",
     externalId: t.id,
@@ -263,8 +267,8 @@ function mapTransaction(
     amountCents: dollarsToCents(t.amount),
     currency: "USD",
     counterparty,
-    vendorKey: vendorKey(counterparty),
-    category: t.category || null,
+    vendorKey: key,
+    category: cardBill ? "Credit & Loan Payments" : t.category || null,
     status: t.status === "sent" ? "posted" : t.status === "pending" ? "pending" : "other",
     kind: t.kind || "other",
     cardLastFour: null,

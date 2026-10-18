@@ -91,6 +91,9 @@ export const Unread: Story = {};
 
 export const Read: Story = { args: { row: base } };
 
+/** An archived email found by search. */
+export const Archived: Story = { args: { row: { ...base, inInbox: false } } };
+
 export const Selected: Story = {
   args: { row: rows[0] as MailRow, selected: true, onMark: noop, onArchive: noop, onRead: noop },
 };

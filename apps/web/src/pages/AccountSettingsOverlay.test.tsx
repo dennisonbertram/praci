@@ -78,7 +78,7 @@ vi.mock("../components/AccountAccess", () => ({
         }),
       [onSecurity],
     );
-    return null;
+    return <button type="button">Delete account</button>;
   },
 }));
 
@@ -103,7 +103,7 @@ vi.mock("react-router-dom", () => ({ Link: ({ children }: { children?: ReactNode
 
 import { getRemoteImagesEnabled } from "../lib/remote-images-preference";
 import { TOOL_ACTIVITY_STORAGE_KEY } from "../lib/tool-activity-preference";
-import { GeneralSettingsPanels } from "./AccountSettingsOverlay";
+import { GeneralSettingsPanels, UpdatesSettingsPanel } from "./AccountSettingsOverlay";
 
 afterEach(() => {
   localStorage.clear();
@@ -211,6 +211,47 @@ it.each([undefined, true, false])("respects the password-change policy (%s)", as
   } finally {
     await act(async () => root.unmount());
     accountPolicy.passwordChangeEnabled = undefined;
+    vi.unstubAllGlobals();
+  }
+});
+
+it("puts Delete account after every other setting", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        <GeneralSettingsPanels
+          name="Jamie"
+          avatarStyle="robot"
+          onAvatarStyleChange={async () => undefined}
+        />,
+      );
+    });
+    const panels = container.firstElementChild?.children ?? [];
+    const last = panels[panels.length - 1];
+    expect(last?.textContent).toBe("Delete account");
+    expect(panels[0]?.textContent).not.toContain("Delete account");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("explains the Updates tab even when no update channel has anything to show", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(<UpdatesSettingsPanel isDeploymentOwner />));
+    expect(container.textContent).toContain("Rakazo keeps itself up to date");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
     vi.unstubAllGlobals();
   }
 });

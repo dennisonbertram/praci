@@ -446,6 +446,8 @@ export const RecurringChargeSchema = z.object({
   paidWith: z.array(PaidWithEntrySchema),
   /** True for payroll and rent: recurring, but fixed costs rather than subscriptions. Absent from older payloads. */
   fixedCost: z.boolean().optional(),
+  /** True for a card or loan bill paid from the bank (its category is Credit & Loan Payments). */
+  cardBill: z.boolean().optional(),
 });
 
 export const UpcomingItemSchema = z.object({
@@ -461,6 +463,8 @@ export const UpcomingItemSchema = z.object({
   billStatus: z.string().optional(),
   /** A bill's own due date, which may be before today when it is overdue. Bills only. */
   dueAt: DayId.optional(),
+  /** A recurring card bill paid from the bank, shown as a card bill rather than a recurring vendor. */
+  cardBill: z.boolean().optional(),
 });
 
 export const UpcomingSchema = z.object({
@@ -713,12 +717,17 @@ export const FinanceSpendOutputSchema = z.object({
 export const FinanceCategoryOutputSchema = z.object({
   slug: z.string(),
   label: z.string(),
+  /** Spend over [`start`, `end`): the period asked for, or the last 90 days. */
   last90Cents: Cents,
+  /** First day of the window, inclusive. */
+  start: DayId.optional(),
+  /** Day after the window, exclusive. */
+  end: DayId.optional(),
   /** Spend per month, 12 months oldest first. */
   trend: z.array(MonthCentsSchema),
-  /** Last 90 days; sums to `last90Cents`. */
+  /** Over the same window; sums to `last90Cents`. */
   vendors: z.array(BreakdownRowSchema),
-  /** Newest 8. */
+  /** The window's transactions, newest first (at most 100). */
   recent: z.array(FinanceTransactionSchema),
 });
 
@@ -743,9 +752,9 @@ export const FinanceVendorOutputSchema = z.object({
   changeFromMonth: MonthId.nullable().optional(),
   firstSeenAt: IsoDate,
   paidWith: z.array(PaidWithEntrySchema),
-  /** 6 months, oldest first. */
+  /** The 6 full months the average covers, oldest first (the current month is not among them). */
   monthly: z.array(MonthCentsSchema),
-  /** Charges in the last 6 months, newest first. */
+  /** Charges since the first of `monthly`'s months, including this month's, newest first. */
   charges: z.array(FinanceTransactionSchema),
 });
 

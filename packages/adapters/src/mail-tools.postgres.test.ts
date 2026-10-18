@@ -541,7 +541,11 @@ describePostgres("mail tools (PostgreSQL + Gmail emulator)", () => {
       emails: [{ id: "shared" }, { id: "revoked-only" }, { id: "theirs-only" }],
     });
 
-    expect(result).toEqual({ shown: 1, notFound: ["revoked-only", "theirs-only"] });
+    expect(result).toEqual({
+      shown: 1,
+      notFound: ["revoked-only", "theirs-only"],
+      note: expect.any(String),
+    });
     expect(published).toHaveLength(1);
     const [block] = published as Array<{ emails: Array<{ id: string; subject: string }> }>;
     expect(block?.emails.map((email) => email.subject)).toEqual(["Mine"]);

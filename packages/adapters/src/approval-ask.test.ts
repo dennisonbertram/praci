@@ -99,6 +99,18 @@ describe("mail approval payload", () => {
     }
   });
 
+  it("shows the From account the call will use when it named none", () => {
+    const { account: _named, ...unnamed } = args;
+    const block = buildApprovalAskBlock("effect-1", "mail_send", unnamed, [], {
+      mailAccount: "sales@example.test",
+    });
+    expect(block.kind === "ask" && block.mail?.account).toBe("sales@example.test");
+    const named = buildApprovalAskBlock("effect-1", "mail_send", args, [], {
+      mailAccount: "sales@example.test",
+    });
+    expect(named.kind === "ask" && named.mail?.account).toBe("me@example.test");
+  });
+
   it("names a mail approval in words, not by its tool name", () => {
     const text = (tool: string) => {
       const block = buildApprovalAskBlock("effect-1", tool, args, []);

@@ -37,9 +37,23 @@ export async function commitSpaceRename(input: {
   await input.refresh().catch(() => undefined);
 }
 
+/**
+ * The space the app is showing comes first, so the chats at the top of the sidebar belong to the
+ * company on screen (Finance switches spaces too); the others keep their order below it.
+ */
+export function activeSpaceFirst<T extends { id: string }>(
+  spaces: readonly T[],
+  activeId: string | null | undefined,
+): T[] {
+  const active = spaces.filter((space) => space.id === activeId);
+  return [...active, ...spaces.filter((space) => space.id !== activeId)];
+}
+
 export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends SidebarChat>(
   spaces: readonly SidebarSpace<TBot, TGroup>[],
   query: string,
+  /** The space the app is showing; its headers are marked when several spaces are listed. */
+  currentSpaceId?: string,
 ) {
   const needle = query.toLowerCase();
   const showSpaceNames = spaces.length > 1;
@@ -66,13 +80,16 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       ...group,
       sectionId: group.key.startsWith("section:") ? group.key.slice("section:".length) : null,
       key: showSpaceNames ? `space:${space.id}:${group.key}` : group.key,
+      // The only space is named on its first, untitled header too, so its actions button is
+      // not left floating beside an empty label.
       title: showSpaceNames
         ? group.title
           ? `${space.name} · ${group.title}`
           : space.name
-        : group.title,
+        : group.title || (index === 0 ? space.name : group.title),
       showLock: showSpaceNames,
       emptySpaceId: undefined as string | undefined,
+      current: showSpaceNames && space.id === currentSpaceId,
       spaceId: space.id,
       spaceName: space.name,
       ...spaceHeaderMenu(space, index === 0),
@@ -89,6 +106,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
         sectionId: null,
         showLock: showSpaceNames,
         emptySpaceId: showSpaceNames ? space.id : undefined,
+        current: showSpaceNames && space.id === currentSpaceId,
         spaceId: space.id,
         spaceName: space.name,
         ...spaceHeaderMenu(space, true),

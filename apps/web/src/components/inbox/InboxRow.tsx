@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@rakazo/ui-web";
 import { Archive, BellOff, Ellipsis, Mail, MailOpen, Star, TriangleAlert } from "lucide-react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatMailTime } from "../../lib/mail-time";
 
 /** Narrow panes drop the badge for a dot: warning for Spam/Junk, solid for Needs attention, hollow for Newsletter; Spam is a solid warning dot and Junk a warning ring. */
@@ -91,6 +92,7 @@ export function InboxRow({
   hideAttention?: boolean;
 }) {
   const { t } = useLingui();
+  useHideAmounts();
   const labelNames = {
     attention: t`Needs attention`,
     newsletter: t`Newsletter`,
@@ -172,10 +174,15 @@ export function InboxRow({
                 className={`me-1.5 inline-block size-2 rounded-full align-middle @md:hidden ${LABEL_DOT[label]}`}
               />
             ) : null}
-            {row.subject}
-            {row.snippet ? <span className="text-muted-foreground"> — {row.snippet}</span> : null}
+            {maskCurrencyWhenHidden(row.subject)}
+            {row.snippet ? (
+              <span className="text-muted-foreground">
+                {" "}
+                — {maskCurrencyWhenHidden(row.snippet)}
+              </span>
+            ) : null}
           </span>
-          {label ? (
+          {label && row.inInbox ? (
             <Badge
               variant={label === "newsletter" ? "outline" : "secondary"}
               className={`col-start-4 row-start-1 hidden @md:inline-flex ${label === "spam" || label === "junk" ? "bg-warning/15 text-warning" : ""} ${marks.length + actions.length ? `group-focus-within/row:invisible group-hover/row:invisible ${selected ? "invisible" : ""}` : ""}`}
@@ -184,6 +191,15 @@ export function InboxRow({
             </Badge>
           ) : null}
           {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
+          {row.inInbox ? null : (
+            // Only search finds archived mail; say so, since it is not in the Inbox list.
+            <Badge
+              variant="outline"
+              className={`col-start-4 row-start-1 hidden @md:inline-flex ${marks.length + actions.length ? `group-focus-within/row:invisible group-hover/row:invisible ${selected ? "invisible" : ""}` : ""}`}
+            >
+              <Trans>Archived</Trans>
+            </Badge>
+          )}
           <time
             dateTime={row.receivedAt}
             className={`col-start-3 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
@@ -258,7 +274,7 @@ export function InboxRow({
               >
                 <Ellipsis aria-hidden="true" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-44">
+              <DropdownMenuContent align="end" className="min-w-44 max-w-72">
                 {actions.map(({ name, Icon, run }) => (
                   <DropdownMenuItem key={name} onClick={run}>
                     <Icon aria-hidden="true" />
@@ -272,7 +288,13 @@ export function InboxRow({
                     onCheckedChange={(checked) => onMark?.(row.id, checked ? mark : null)}
                   >
                     <Icon aria-hidden="true" />
-                    {name}
+                    {/* No tooltip on touch, so the menu says the mark covers the whole sender. */}
+                    <span className="flex min-w-0 flex-col">
+                      <span>{name}</span>
+                      <span className="text-xs break-words text-muted-foreground">
+                        {t`All mail from ${row.from}`}
+                      </span>
+                    </span>
                   </DropdownMenuCheckboxItem>
                 ))}
               </DropdownMenuContent>

@@ -323,7 +323,7 @@ test("an armed reply survives the parent paging out of the transcript", async ({
     reaction: "👍",
     clientNonce: `qr-${stamp}`,
   });
-  const computerButton = page.getByTitle("Bot computer");
+  const computerButton = page.getByTitle("Computer and routines");
   await expect(async () => {
     if ((await computerButton.getAttribute("data-active")) !== null) {
       await computerButton.click();

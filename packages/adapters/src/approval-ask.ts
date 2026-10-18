@@ -18,7 +18,13 @@ export function buildApprovalAskBlock(
   toolName: string,
   args: Record<string, unknown>,
   secrets: string[],
-  options?: { reviewReason?: string; fullMail?: boolean; cartaWriteTool?: string },
+  options?: {
+    reviewReason?: string;
+    fullMail?: boolean;
+    cartaWriteTool?: string;
+    /** The From account the mail call will use when it named none (see inferMailAccount). */
+    mailAccount?: string;
+  },
 ): MessageBlock {
   const summary = describeApprovalAction(toolName, args);
   const fullDetail = options?.fullMail || options?.cartaWriteTool !== undefined;
@@ -44,7 +50,13 @@ export function buildApprovalAskBlock(
         ? safeDetail
         : truncate(safeDetail, MAX_APPROVAL_DETAIL_LENGTH)
       : undefined,
-    mail: mailApproval(toolName, args, secrets),
+    mail: mailApproval(
+      toolName,
+      options?.mailAccount && !(typeof args.account === "string" && args.account)
+        ? { ...args, account: options.mailAccount }
+        : args,
+      secrets,
+    ),
     status: "pending",
     actions:
       toolName === "create_space"

@@ -60,18 +60,19 @@ export function groupByVendor(rows: readonly FinanceTransaction[]): VendorGroup[
 
 const STORAGE_KEY = "rakazo:finance-transactions-grouped";
 
-export function readGroupedPref(): boolean {
+/** Whether `page` (a path) was last switched to By vendor in this browser tab. */
+export function readGroupedPref(page: string): boolean {
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === "1";
+    return window.sessionStorage.getItem(`${STORAGE_KEY}:${page}`) === "1";
   } catch {
     return false;
   }
 }
 
-export function writeGroupedPref(grouped: boolean): void {
+export function writeGroupedPref(page: string, grouped: boolean): void {
   try {
-    if (grouped) window.localStorage.setItem(STORAGE_KEY, "1");
-    else window.localStorage.removeItem(STORAGE_KEY);
+    if (grouped) window.sessionStorage.setItem(`${STORAGE_KEY}:${page}`, "1");
+    else window.sessionStorage.removeItem(`${STORAGE_KEY}:${page}`);
   } catch {
     // Private mode or quota: the choice still applies for this visit.
   }

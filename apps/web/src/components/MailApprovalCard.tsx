@@ -188,10 +188,11 @@ export function MailApprovalCard({
 
   const firstRecipient = mail.to[0] ? parseRecipient(mail.to[0]).address : "";
   const statusText = answered ? (
+    // One final word whoever sent it: the agent after Send, or the person after editing.
     mail.outcome === "sent" ? (
-      <Trans>Sent by you</Trans>
+      <Trans>Sent</Trans>
     ) : mail.outcome === "saved" ? (
-      <Trans>Draft saved by you</Trans>
+      <Trans>Draft saved</Trans>
     ) : mail.outcome === "failed" ? (
       draft ? (
         <Trans>Draft not saved</Trans>
@@ -209,9 +210,10 @@ export function MailApprovalCard({
     ) : answer === "deny" ? (
       <Trans>Discarded</Trans>
     ) : draft ? (
-      <Trans>Approved to save</Trans>
+      // Approved: the agent is saving or sending it now, and the card changes when that ends.
+      <Trans>Saving…</Trans>
     ) : (
-      <Trans>Approved to send</Trans>
+      <Trans>Sending…</Trans>
     )
   ) : canAnswer ? (
     <Trans>Needs approval</Trans>
@@ -467,7 +469,12 @@ export function MailApprovalCard({
               )}
             </p>
           ) : null}
-          {mail.outcome === "failed" && onOpenComposer ? (
+          {mail.outcome === "failed" && mail.error ? (
+            <p role="status" className="pt-3 text-[13px] text-destructive">
+              {mail.error}
+            </p>
+          ) : null}
+          {mail.outcome === "failed" && onOpenComposer && mail.connectionId ? (
             <div className="pt-3">
               <Button variant="outline" size="sm" onClick={() => onOpenComposer(mail)}>
                 <Trans>Open in composer</Trans>

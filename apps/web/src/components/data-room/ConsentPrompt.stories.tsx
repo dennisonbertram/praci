@@ -42,6 +42,15 @@ export const AllowFailed: Story = {
   },
 };
 
+/** After "Not now": one line stays, with a way to be asked again. */
+export const NotNow: Story = {
+  beforeEach: () => {
+    localStorage.setItem("rakazo.dataRoomConsentDismissed", "data-room:demo:2026-01-01");
+    mockRpc({ "dataRoom.consent": status() });
+    return () => localStorage.removeItem("rakazo.dataRoomConsentDismissed");
+  },
+};
+
 export const NoModel: Story = {
   beforeEach: () => mockRpc({ "dataRoom.consent": status({ recipients: [] }) }),
 };

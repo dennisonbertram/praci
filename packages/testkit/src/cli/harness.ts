@@ -194,6 +194,17 @@ async function main() {
             headers: { "cache-control": "no-store" },
           });
         }
+        if (new URL(request.url).pathname === "/__e2e/ai-consent" && request.method === "POST") {
+          // The scripted runtime lists no consent recipients, so a spec cannot press Allow.
+          const userId = new URL(request.url).searchParams.get("userId");
+          if (!userId) return Response.json({ error: "userId is required" }, { status: 400 });
+          const { grantInboxAiConsent } = await import("./e2e-consent.js");
+          const granted = await grantInboxAiConsent(
+            { prisma: handles.prisma, resolveModel: handles.executor.resolveModel },
+            userId,
+          );
+          return Response.json({ granted }, { headers: { "cache-control": "no-store" } });
+        }
         activeRequests += 1;
         try {
           return await handles.app.fetch(request);

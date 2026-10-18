@@ -47,6 +47,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();
+  localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -59,10 +60,8 @@ it("names where documents go and grants exactly the shown key and version on All
   const onAllowed = vi.fn();
   await render(onAllowed);
   expect(container.textContent).toContain("Example Model");
-  // Text search and moving files work before consent: only automatic tagging and filing wait.
-  expect(container.textContent).toContain(
-    "you can search by name and text and move files into folders yourself",
-  );
+  // Never suggests the library is untagged: tags already there stay.
+  expect(container.textContent).toContain("Files that already have tags keep them.");
   await act(async () => container.querySelector("button")?.click());
   expect(rpc.consentGrant).toHaveBeenCalledExactlyOnceWith({
     key: "data-room:abc",
@@ -97,4 +96,38 @@ it("shows nothing once allowed", async () => {
   rpc.consent.mockResolvedValue(status({ allowed: true }));
   await render();
   expect(container.textContent).toBe("");
+});
+
+it("shrinks to one line on Not now, without allowing, with a way to be asked again", async () => {
+  rpc.consent.mockResolvedValue(status());
+  const onAllowed = vi.fn();
+  await render(onAllowed);
+  const notNow = [...container.querySelectorAll("button")].find((b) => b.textContent === "Not now");
+  await act(async () => notNow?.click());
+  expect(container.textContent).not.toContain("Example Model");
+  expect(rpc.consentGrant).not.toHaveBeenCalled();
+  expect(onAllowed).not.toHaveBeenCalled();
+  const askAgain = [...container.querySelectorAll("button")].find(
+    (b) => b.textContent === "Let Rakazo read documents",
+  );
+  await act(async () => askAgain?.click());
+  expect(container.textContent).toContain("Example Model");
+  expect(localStorage.getItem("rakazo.dataRoomConsentDismissed")).toBeNull();
+});
+
+it("remembers Not now across visits, and asks again for a new version", async () => {
+  rpc.consent.mockResolvedValue(status());
+  await render();
+  const notNow = [...container.querySelectorAll("button")].find((b) => b.textContent === "Not now");
+  await act(async () => notNow?.click());
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await render();
+  expect(container.textContent).not.toContain("Example Model");
+
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpc.consent.mockResolvedValue(status({ version: "2027-01-01" }));
+  await render();
+  expect(container.textContent).toContain("Let Rakazo read your documents");
 });

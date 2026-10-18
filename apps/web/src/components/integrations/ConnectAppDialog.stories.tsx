@@ -66,3 +66,6 @@ export const SecondAccount: Story = {
       "connections.complete": { ...demoConnection({ id: "conn_new" }), status: "pending" },
     }),
 };
+
+/** Opened by a link: nothing is created until Connect is clicked. */
+export const ConfirmFirst: Story = { args: { confirmFirst: true } };

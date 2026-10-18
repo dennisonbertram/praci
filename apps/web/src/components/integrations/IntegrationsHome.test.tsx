@@ -104,6 +104,13 @@ afterEach(() => {
   container.remove();
 });
 
+it("shows placeholders, not false 'Not connected' tiles, until the page has loaded", async () => {
+  await show({ ...data(true, true), loaded: false });
+  expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  expect(container.textContent).not.toContain("Connect Carta");
+  expect(container.textContent).not.toContain("Not connected");
+});
+
 it("tells the owner to connect a provider when only native Google is configured", async () => {
   await show(data(true, false));
   expect(container.querySelector('[data-testid="catalog-not-set-up"]')?.textContent).toContain(
@@ -403,6 +410,52 @@ it("returns to the page that asked for the sign-in when its dialog closes", asyn
   );
   await act(async () => cancel?.click());
   expect(container.textContent).toContain("cap table page");
+});
+
+it("opens a catalog app's connect flow from ?connect= and carries the return path", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  function Search() {
+    const location = useLocation();
+    return <output data-testid="where">{location.pathname + location.search}</output>;
+  }
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/integrations?connect=gmail&returnTo=/app/inbox"]}>
+        <Routes>
+          <Route path="/app/integrations" element={<IntegrationsHome data={data(true, true)} />} />
+          <Route path="/app/integrations/app/:connectorId/:slug" element={<Search />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    "/app/integrations/app/google/gmail?connect=1&next=%2Fapp%2Finbox",
+  );
+});
+
+it("opens a catalog app's page from ?open=, without starting a connect", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  function Search() {
+    const location = useLocation();
+    return <output data-testid="where">{location.pathname + location.search}</output>;
+  }
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/integrations?open=gmail"]}>
+        <Routes>
+          <Route path="/app/integrations" element={<IntegrationsHome data={data(true, true)} />} />
+          <Route path="/app/integrations/app/:connectorId/:slug" element={<Search />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    "/app/integrations/app/google/gmail",
+  );
 });
 
 it("only returns to in-app paths", () => {

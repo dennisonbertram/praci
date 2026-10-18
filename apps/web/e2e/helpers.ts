@@ -168,6 +168,20 @@ export async function finishConnectDialog(page: Page, appName: string) {
 }
 
 /**
+ * From an Inbox with no mail connected: Connect mail opens Gmail's connect dialog and returns to
+ * the Inbox once connected. Then adds a second account (named `secondName`) on Gmail's page.
+ */
+export async function connectMailFromInbox(page: Page, secondName = "Work") {
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Connect", exact: true }).click();
+  await finishConnectDialog(page, "Gmail");
+  await expect(page).toHaveURL(/\/app\/inbox$/);
+  await page.getByTestId("sidebar-integrations").click();
+  await page.getByRole("link", { name: "Gmail", exact: true }).click();
+  await addGmailAccount(page, secondName);
+}
+
+/**
  * From the Integrations page, connects two Gmail accounts through the connect dialog and the
  * app's detail page, and names the second one. Leaves the browser on Gmail's detail page.
  */
@@ -175,6 +189,11 @@ export async function connectTwoGmailAccounts(page: Page, secondName = "Work") {
   await page.getByRole("button", { name: "Connect Gmail", exact: true }).click();
   await finishConnectDialog(page, "Gmail");
   await page.getByRole("link", { name: "Gmail", exact: true }).click();
+  await addGmailAccount(page, secondName);
+}
+
+/** On Gmail's detail page, connects one more account and names it. */
+export async function addGmailAccount(page: Page, secondName = "Work") {
   await page.getByRole("button", { name: "Add another account", exact: true }).click();
   await finishConnectDialog(page, "Gmail");
   const accounts = page.getByRole("button", { name: "Rename", exact: true });
@@ -187,4 +206,17 @@ export async function connectTwoGmailAccounts(page: Page, secondName = "Work") {
   await page.getByLabel("Account name").press("Enter");
   await renamed;
   await expect(page.getByText(secondName, { exact: true })).toBeVisible();
+}
+
+/**
+ * Records the AI data sharing consent the Inbox agent's mail tools need. The e2e stack's scripted
+ * runtime lists no consent recipients, so the Inbox banner's Allow cannot grant it there; the
+ * harness writes the same consent row instead. Call it before the agent reads mail.
+ */
+export async function allowInboxAgentMail(page: Page) {
+  const { userId } = await rpc<{ userId: string }>(page, "me", {});
+  const api = process.env.API_URL ?? "http://127.0.0.1:3110";
+  const response = await page.request.post(`${api}/__e2e/ai-consent?userId=${userId}`);
+  expect(response.ok()).toBe(true);
+  expect(((await response.json()) as { granted: number }).granted).toBeGreaterThan(0);
 }

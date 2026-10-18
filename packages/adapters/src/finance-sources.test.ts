@@ -91,6 +91,7 @@ describe("Mercury source", () => {
             category: "Credit & Loan Payments",
             amount: -1234.56,
           }),
+          mercuryRow("b-1", { counterpartyName: "Brex", category: null, amount: -11200 }),
           mercuryRow("t-1", {
             counterpartyName: null,
             category: null,
@@ -112,6 +113,8 @@ describe("Mercury source", () => {
       provider: "mercury",
       postedAt: "2025-01-01T00:00:00.000Z",
     });
+    // An uncategorized payment to Brex is a card bill, not 'Uncategorized' spend.
+    expect(txns.find((t) => t.externalId === "b-1")?.category).toBe("Credit & Loan Payments");
     expect(txns.find((t) => t.externalId === "t-1")).toMatchObject({
       status: "posted",
       counterparty: "Unknown",

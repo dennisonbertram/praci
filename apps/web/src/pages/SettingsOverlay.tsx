@@ -15,6 +15,7 @@ import {
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { computersAreUnavailable } from "../components/ComputersUnavailableHint";
+import { useHasDesktopUpdates } from "../components/DesktopUpdates";
 import {
   ComputerSettingsPanel,
   GeneralSettingsPanels,
@@ -123,6 +124,10 @@ export function SettingsOverlay({
   useEffect(() => {
     if (!billingEnabled && section === "billing") setSection("general");
   }, [billingEnabled, section]);
+  const hasDesktopUpdates = useHasDesktopUpdates();
+  useEffect(() => {
+    if (!isDeploymentOwner && !hasDesktopUpdates && section === "updates") setSection("general");
+  }, [isDeploymentOwner, hasDesktopUpdates, section]);
 
   useEffect(() => {
     if (section !== "computer") releaseComputerRecovery();
@@ -144,7 +149,10 @@ export function SettingsOverlay({
     { id: "usage", label: t`Usage`, icon: Gauge },
     ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
     ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
-    { id: "updates", label: t`Updates`, icon: CloudDownload },
+    // Only deployment owners and the desktop app have anything to update.
+    ...(isDeploymentOwner || hasDesktopUpdates
+      ? [{ id: "updates" as const, label: t`Updates`, icon: CloudDownload }]
+      : []),
   ];
 
   const sectionTitle =
@@ -227,7 +235,14 @@ export function SettingsOverlay({
           </nav>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="flex items-start justify-between gap-4 px-6 pt-6 sm:px-8 sm:pt-7">
+            {/* Scrolling sections get a divider so cards never look tucked under the title. */}
+            <div
+              className={`flex items-start justify-between gap-4 px-6 pt-6 sm:px-8 sm:pt-7 ${
+                section === "models" || section === "voice" || section === "memory"
+                  ? ""
+                  : "border-b border-border pb-4"
+              }`}
+            >
               <DialogTitle className="text-2xl font-medium text-foreground">
                 {sectionTitle}
               </DialogTitle>

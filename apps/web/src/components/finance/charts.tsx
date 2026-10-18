@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import type { CashPoint } from "@rakazo/contracts";
 import { useEffect, useId, useRef, useState } from "react";
 import {
@@ -47,6 +48,8 @@ export function Chart({
   label: string;
   children: (width: number) => React.ReactNode;
 }) {
+  // A chart's shape alone shows trends and when cash runs out, so it is not drawn while hidden.
+  const hidden = useHideAmounts();
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -58,7 +61,18 @@ export function Chart({
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+    // Mounted while hidden there is nothing to measure yet; showing amounts measures again.
+  }, [hidden]);
+  if (hidden)
+    return (
+      <div
+        data-testid="chart-hidden"
+        className="grid w-full place-items-center rounded-md bg-muted text-[13px] text-muted-foreground"
+        style={{ height }}
+      >
+        {height >= 40 ? <Trans>Chart hidden while amounts are hidden</Trans> : null}
+      </div>
+    );
   return (
     <div ref={ref} className="w-full" style={{ height }}>
       {width > 0 ? (
@@ -97,7 +111,9 @@ function Grid({
   useHideAmounts();
   const floor = scale.floor ?? 0;
   const lines: number[] = [];
-  for (let v = floor; v <= scale.top; v += scale.step) lines.push(v);
+  // With nothing to plot every step rounds to "$0"; one $0 line is drawn instead of a stack of them.
+  for (let v = floor; v <= scale.top; v += scale.step)
+    if (lines.length === 0 || axisMoney(v) !== axisMoney(lines.at(-1) as number)) lines.push(v);
   return (
     <>
       {lines.map((v) => {
@@ -126,6 +142,25 @@ function Grid({
       })}
     </>
   );
+}
+
+/**
+ * Which axis labels a crowded line chart keeps: every `every`th one counted back from the last, so
+ * the last point (today, or the month a projection runs out) is always named. A kept label takes the
+ * year (`'27`) of a skipped label since the one kept before it, so a year change is never lost.
+ */
+export function axisTicks(labels: readonly string[], every: number): (string | null)[] {
+  const last = labels.length - 1;
+  let since = 0;
+  return labels.map((text, i) => {
+    if ((last - i) % every !== 0) return null;
+    const year = labels
+      .slice(since, i + 1)
+      .map((l) => l.match(/'\d\d$/)?.[0])
+      .findLast(Boolean);
+    since = i + 1;
+    return year && !text.endsWith(year) && !text.includes("•") ? `${text} ${year}` : text;
+  });
 }
 
 /**
@@ -184,8 +219,8 @@ export function LineChart({
                   bottom={bottom}
                   scale={scale}
                 />
-                {labels.map((text, i) =>
-                  i % every === 0 ? (
+                {axisTicks(labels, every).map((text, i) =>
+                  text !== null ? (
                     <text
                       key={i}
                       x={x(i)}
@@ -235,32 +270,6 @@ export function LineChart({
   );
 }
 
-/** A 60x20 trend line for a table cell. Flat data draws a line across the middle. */
-export function Sparkline({ values, label }: { values: number[]; label: string }) {
-  if (values.length < 2) return null;
-  const lo = Math.min(...values);
-  const hi = Math.max(...values);
-  const points = values
-    .map((v, i) => {
-      const x = 2 + (i * 56) / (values.length - 1);
-      const y = hi === lo ? 10 : 16 - ((v - lo) / (hi - lo)) * 12;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return (
-    <svg role="img" aria-label={label} viewBox="0 0 60 20" className="ms-auto block h-5 w-[60px]">
-      <polyline
-        points={points}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 const keyActivate = (action: () => void) => (event: React.KeyboardEvent) => {
   if (event.key === "Enter" || event.key === " ") {
     event.preventDefault();
@@ -300,13 +309,15 @@ export function BurnBars({
       {(width) => {
         const left = 40;
         const right = 4;
-        const top = 10;
         const bottom = 24;
-        const max = Math.max(
-          ...series.flatMap((m) => [m.outCents, m.revenueCents, m.financingCents]),
-          0,
+        // The scale follows spend and revenue; a raise many times larger would flatten every other
+        // bar, so a financing bar taller than the scale is cut at the top and labelled instead.
+        const max = Math.max(...series.flatMap((m) => [m.outCents, m.revenueCents]), 0);
+        const scale = niceScale(
+          max > 0 ? max : Math.max(...series.map((m) => m.financingCents), 0),
         );
-        const scale = niceScale(max);
+        const clipped = series.some((m) => m.financingCents > scale.top);
+        const top = clipped ? 22 : 10;
         const slot = (width - left - right) / Math.max(series.length, 1);
         const bw = Math.min(17, slot * 0.28);
         // Skip labels that would collide, counting back from the newest bar.
@@ -367,9 +378,10 @@ export function BurnBars({
                     width={bw}
                     height={bar(m.outCents)}
                     rx={2}
-                    className={m.partial ? "fill-card stroke-foreground" : "fill-foreground"}
-                    strokeWidth={m.partial ? 1.5 : 0}
-                    strokeDasharray={m.partial ? "3 2" : undefined}
+                    // A period still running is a lighter bar (its label has a *), not a dashed
+                    // outline that reads as an empty box.
+                    data-partial={m.partial ? "" : undefined}
+                    className={m.partial ? "fill-foreground/45" : "fill-foreground"}
                   />
                   {m.revenueCents > 0 ? (
                     <rect
@@ -384,14 +396,26 @@ export function BurnBars({
                   {m.financingCents > 0 ? (
                     <rect
                       x={c + 1}
-                      y={y(m.financingCents)}
+                      y={y(Math.min(m.financingCents, scale.top))}
                       width={bw}
-                      height={bar(m.financingCents)}
+                      height={bar(Math.min(m.financingCents, scale.top))}
                       rx={2}
                       fill={`url(#${hatch})`}
                       className="stroke-foreground"
                       strokeWidth={1}
                     />
+                  ) : null}
+                  {m.financingCents > scale.top ? (
+                    <text
+                      data-testid="financing-clipped"
+                      x={c + 1 + bw / 2}
+                      y={top - 6}
+                      textAnchor="middle"
+                      className="fill-foreground"
+                      fontSize={10}
+                    >
+                      {`↑ ${money(m.financingCents)}`}
+                    </text>
                   ) : null}
                   {showLabel ? (
                     <text

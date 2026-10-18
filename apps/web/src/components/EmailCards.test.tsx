@@ -44,10 +44,12 @@ vi.mock("./inbox/InboxMessageDialog", () => ({
 }));
 const archive = vi.fn(async (_input: unknown) => ({ ok: true }));
 const markRead = vi.fn(async (_input: unknown) => ({ ok: true }));
+const unarchive = vi.fn(async (_input: unknown) => ({ ok: true }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
     inbox: {
       archive: (input: unknown) => archive(input),
+      unarchive: (input: unknown) => unarchive(input),
       markRead: (input: unknown) => markRead(input),
     },
   },
@@ -99,11 +101,19 @@ it("groups cards by urgency in a fixed order and skips empty groups", async () =
       email("s", "within_3_days"),
     ],
   });
-  expect(headings(view.container)).toEqual(["Today", "Within 3 days", "This week", "Later"]);
+  expect(headings(view.container)).toEqual(["Today", "Within 3 days", "This week", "No rush"]);
   await view.cleanup();
   const partial = await render({ kind: "emails", emails: [email("w", "this_week")] });
   expect(headings(partial.container)).toEqual(["This week"]);
   await partial.cleanup();
+  // Mail that is all "No rush", such as past updates the bot looked up, needs no heading.
+  const later = await render({
+    kind: "emails",
+    emails: [email("a", "later"), email("b", "later")],
+  });
+  expect(headings(later.container)).toEqual([]);
+  expect(later.container.querySelectorAll('[data-testid="email-row"]')).toHaveLength(2);
+  await later.cleanup();
 });
 
 it("shows Later as compact rows without the snippet, and urgent mail as cards with it", async () => {
@@ -183,5 +193,59 @@ it("puts the unread state back when marking read fails", async () => {
   await act(async () => (button as HTMLElement).click());
   expect(document.querySelector('[role="dialog"]')?.getAttribute("data-unread")).toBe("");
   expect(view.container.querySelector('[role="alert"]')).not.toBeNull();
+  await view.cleanup();
+});
+
+it("masks currency on cards and rows while amounts are hidden", async () => {
+  const { setHideAmounts } = await import("../lib/hide-amounts-preference");
+  setHideAmounts(true);
+  const view = await render({
+    kind: "emails",
+    emails: [
+      email("t", "today", { subject: "Charge of $2,400", snippet: "Paid $58,400.00" }),
+      email("l", "later", { subject: "Invoice $4,812.00" }),
+    ],
+  });
+  expect(view.container.textContent).not.toMatch(/2,400|58,400|4,812/);
+  setHideAmounts(false);
+  await view.cleanup();
+});
+
+it("says a card's email was archived and offers Undo, as the Inbox list does", async () => {
+  const view = await render({ kind: "emails", emails: [email("t", "today")] });
+  const click = (el: Element | null | undefined) =>
+    act(async () => (el as HTMLElement | null)?.click());
+  await click(view.container.querySelector('[data-testid="email-card"]'));
+  await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Archive"));
+  expect(archive).toHaveBeenCalledWith({ messageId: "t" });
+  const card = view.container.querySelector('[data-testid="email-card"]');
+  expect(card?.textContent).toContain("Archived");
+  const status = view.container.querySelector('[role="status"]');
+  expect(status?.textContent).toContain('Archived "Subject t"');
+  await click(
+    [...(status?.querySelectorAll("button") ?? [])].find((b) => b.textContent === "Undo"),
+  );
+  expect(unarchive).toHaveBeenCalledWith({ messageId: "t" });
+  expect(view.container.querySelector('[role="status"]')).toBeNull();
+  expect(card?.textContent).not.toContain("Archived");
+  await view.cleanup();
+});
+
+it("starts Undo only after the archive it reverses has finished", async () => {
+  unarchive.mockClear();
+  let finishArchive: (value: { ok: boolean }) => void = () => {};
+  archive.mockReturnValueOnce(new Promise((r) => (finishArchive = r)));
+  const view = await render({ kind: "emails", emails: [email("t", "today")] });
+  const click = (el: Element | null | undefined) =>
+    act(async () => (el as HTMLElement | null)?.click());
+  await click(view.container.querySelector('[data-testid="email-card"]'));
+  await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Archive"));
+  const status = view.container.querySelector('[role="status"]');
+  await click(
+    [...(status?.querySelectorAll("button") ?? [])].find((b) => b.textContent === "Undo"),
+  );
+  expect(unarchive).not.toHaveBeenCalled();
+  await act(async () => finishArchive({ ok: true }));
+  expect(unarchive).toHaveBeenCalledWith({ messageId: "t" });
   await view.cleanup();
 });

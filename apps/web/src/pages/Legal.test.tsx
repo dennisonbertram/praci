@@ -525,7 +525,16 @@ it("links the unchecked documents line to the Data room and the deadline tiles t
 
 it("names the space beside the title when there is more than one", async () => {
   rpcMock.overview.mockResolvedValue(overview);
-  await render(<LegalPage spaceName="MOCK Empty space" />);
+  await render(
+    <LegalPage
+      spaces={[
+        { id: "s1", name: "MOCK Empty space" },
+        { id: "s2", name: "Other company" },
+      ]}
+      spaceId="s1"
+      onSwitchSpace={() => undefined}
+    />,
+  );
   expect(container.querySelector("h1")?.parentElement?.textContent).toContain("MOCK Empty space");
 });
 
