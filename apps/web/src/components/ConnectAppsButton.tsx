@@ -18,12 +18,15 @@ export function unconnectedFeatured(
     nativeGoogle: nativeGoogleAvailable(desktopBridge()),
   });
   const connected = connections.filter((c) => c.status === "connected");
+  const connectedIds = new Set(connected.map((c) => matchFeaturedConnectorId(c.provider)));
+  const seen = new Set<string>();
   return popularApps(visible, connected)
-    .filter(
-      (item) =>
-        matchFeaturedConnectorId(item.slug) !== null ||
-        matchFeaturedConnectorId(item.name) !== null,
-    )
+    .filter((item) => {
+      const id = matchFeaturedConnectorId(item.slug) ?? matchFeaturedConnectorId(item.name);
+      if (id === null || connectedIds.has(id) || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    })
     .slice(0, 3);
 }
 

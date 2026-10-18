@@ -114,3 +114,19 @@ it("keeps apps with pending or failed connections in the pill", async () => {
   expect(html).toContain("slack");
   expect(html).not.toContain("notion");
 });
+
+it("shows one logo when Slack and its alias are both unconnected", async () => {
+  connections.catalog.mockResolvedValue([app("slack"), app("slackbot")]);
+  const { container } = await render();
+  expect(container.querySelectorAll("[data-testid=app-logo]")).toHaveLength(1);
+});
+
+it("leaves out Slack's alias when Slack is connected", async () => {
+  connections.catalog.mockResolvedValue([app("slack"), app("slackbot")]);
+  connections.list.mockResolvedValue([
+    { connectorId: "composio", provider: "slack", status: "connected" },
+  ]);
+  const { container } = await render();
+  expect(container.querySelectorAll("[data-testid=app-logo]")).toHaveLength(0);
+  expect(row(container)?.textContent).toBe("Integrations");
+});
