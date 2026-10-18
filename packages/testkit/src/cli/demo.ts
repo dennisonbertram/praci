@@ -24,6 +24,7 @@ import {
   demoCarta,
   demoCrypto,
   demoFinance,
+  demoFinanceMcp,
   demoMailboxes,
   demoNewMail,
 } from "./demo/data.js";
@@ -361,7 +362,10 @@ async function serve() {
   const { handles } = await createEmulatedApp(process.env.DATABASE_URL as string, {
     composio,
     financeCallToolFor: demoFinance().callToolFor,
-    mcpServers: { [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN) },
+    mcpServers: {
+      [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN),
+      ...demoFinanceMcp(WEB_ORIGIN),
+    },
     cryptoFetch: demoCrypto().fetch,
     // Nothing is delivered: password-reset and verification mail lands in the slot's outbox file.
     onEmail: (message) =>

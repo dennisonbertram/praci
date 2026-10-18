@@ -37,6 +37,18 @@ export async function commitSpaceRename(input: {
   await input.refresh().catch(() => undefined);
 }
 
+/**
+ * The space the app is showing comes first, so the chats at the top of the sidebar belong to the
+ * company on screen (Finance switches spaces too); the others keep their order below it.
+ */
+export function activeSpaceFirst<T extends { id: string }>(
+  spaces: readonly T[],
+  activeId: string | null | undefined,
+): T[] {
+  const active = spaces.filter((space) => space.id === activeId);
+  return [...active, ...spaces.filter((space) => space.id !== activeId)];
+}
+
 export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends SidebarChat>(
   spaces: readonly SidebarSpace<TBot, TGroup>[],
   query: string,

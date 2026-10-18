@@ -3,8 +3,10 @@ import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web"
 import { Eye, EyeOff } from "lucide-react";
 import { setHideAmounts, useHideAmounts } from "../lib/hide-amounts-preference";
 
-const helper = () =>
-  t`Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts.`;
+const helper = (hidden: boolean) =>
+  hidden
+    ? t`Amounts are hidden: money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts.`
+    : t`Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts.`;
 
 /** Icon button for page headers. Pressed while amounts are hidden. */
 export function HideAmountsButton() {
@@ -29,7 +31,7 @@ export function HideAmountsButton() {
         {hidden ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
       </TooltipTrigger>
       <TooltipContent>
-        {label}. {helper()}
+        {label}. {helper(hidden)}
       </TooltipContent>
     </Tooltip>
   );
@@ -58,7 +60,9 @@ export function HideAmountsMenuItem({ onDone }: { onDone?: () => void }) {
         <span>{hidden ? t`Show amounts` : t`Hide amounts`}</span>
         {/* The menu is narrow; the header button's tooltip carries the full caveats. */}
         <span className="text-xs text-muted-foreground">
-          {t`Hides money amounts in finance, chat and email.`}
+          {hidden
+            ? t`Money amounts are hidden in finance, chat and email.`
+            : t`Hides money amounts in finance, chat and email.`}
         </span>
       </span>
     </Button>

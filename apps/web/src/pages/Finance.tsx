@@ -25,7 +25,7 @@ import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AddAccountDialog, type CryptoChoice } from "../components/finance/AddAccountDialog";
-import { type BarGranularity, BurnBars, Sparkline } from "../components/finance/charts";
+import { type BarGranularity, BurnBars } from "../components/finance/charts";
 import { StatementReminderBanner } from "../components/finance/StatementReminderBanner";
 import {
   AskAgentButton,
@@ -33,8 +33,10 @@ import {
   BreakdownRows,
   BurnLegend,
   Chevron,
+  CompanyAndEye,
   cashSubtitle,
   ErrorNotice,
+  type FinanceChrome,
   FinanceChromeProvider,
   HereLink,
   Kpi,
@@ -43,14 +45,12 @@ import {
   PeriodTabs,
   rowClass,
   Section,
-  SpaceName,
   Th,
   toneClass,
   useFinanceQuery,
   useRowNavigate,
 } from "../components/finance/ui";
 import { WalletDialog } from "../components/finance/WalletDialog";
-import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { AppLogo } from "../components/integrations/AppLogo";
 import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnectDialog";
 import { PageEmptyState } from "../components/PageEmptyState";
@@ -66,6 +66,7 @@ import {
   paidWithLabel,
   runwayText,
   shortDay,
+  trendText,
 } from "../lib/finance-format";
 import { financePath, parseFinanceRoute } from "../lib/finance-route";
 import { useHideAmounts } from "../lib/hide-amounts-preference";
@@ -101,18 +102,11 @@ const BAR_GRANULARITY: Record<SpendPeriod, BarGranularity> = {
 };
 
 /** The Finance area: the dashboard at /app/finance and its detail pages. */
-export function FinancePage({
-  onAskAgent,
-  spaceName,
-}: {
-  onAskAgent?: () => void;
-  /** The space's name, given when the user has more than one space. */
-  spaceName?: string;
-}) {
+export function FinancePage(chrome: FinanceChrome) {
   const location = useLocation();
   const route = parseFinanceRoute(location.pathname, location.search);
   return (
-    <FinanceChromeProvider value={{ onAskAgent, spaceName }}>
+    <FinanceChromeProvider value={chrome}>
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
         {route.page === "dashboard" ? (
           <Dashboard />
@@ -136,7 +130,7 @@ export function FinancePage({
             source={route.source ?? null}
           />
         ) : route.page === "category" ? (
-          <FinanceCategoryPage slug={route.slug} />
+          <FinanceCategoryPage slug={route.slug} window={route.window} />
         ) : route.page === "recurring" ? (
           <FinanceRecurringPage keyName={route.key} />
         ) : route.page === "vendor" ? (
@@ -187,68 +181,94 @@ function Dashboard() {
     sync();
   }, [connected]);
 
+  // The add dialogs live here, above the empty and loaded states: the first import turns the empty
+  // state into the dashboard, and the dialog must stay open on its results until Done.
+  const [adding, setAdding] = useState<"type" | "bank" | null>(null);
+  const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
+  const dialogs = (
+    <>
+      {adding ? (
+        <AddAccountDialog
+          initialStep={adding}
+          onPickCrypto={setCrypto}
+          onImported={overview.reload}
+          onClose={() => setAdding(null)}
+        />
+      ) : null}
+      <WalletDialog
+        open={crypto === "wallet"}
+        onClose={() => setCrypto(null)}
+        onSaved={overview.reload}
+      />
+      {crypto && crypto !== "wallet" ? (
+        <ExchangeConnectDialog
+          provider={crypto}
+          onConnected={overview.reload}
+          onClose={() => setCrypto(null)}
+        />
+      ) : null}
+    </>
+  );
+
   const data = overview.data;
   if (overview.error) return <ErrorNotice message={overview.error} onRetry={overview.retry} />;
   if (!data) return <DashboardSkeleton />;
-  // Accounts fed by uploaded statements have no source to connect, but they are data.
-  if (!connected && !data.hasCashAccounts)
-    return <EmptyState hasCrypto={Boolean(data.crypto)} onChanged={overview.reload} />;
   return (
-    <Overview
-      data={data}
-      syncing={syncing}
-      error={syncError}
-      onRefresh={() => sync(REFRESH_HOLD_MS)}
-      onReload={overview.reload}
-    />
+    <>
+      {/* Accounts fed by uploaded statements have no source to connect, but they are data. */}
+      {!connected && !data.hasCashAccounts ? (
+        <EmptyState cryptoCents={data.crypto?.totalCents ?? null} onAdd={() => setAdding("type")} />
+      ) : (
+        <Overview
+          data={data}
+          syncing={syncing}
+          error={syncError}
+          onRefresh={() => sync(REFRESH_HOLD_MS)}
+          onAdd={setAdding}
+        />
+      )}
+      {dialogs}
+    </>
   );
 }
 
-function EmptyState({ hasCrypto, onChanged }: { hasCrypto: boolean; onChanged: () => void }) {
-  const [adding, setAdding] = useState(false);
-  const [crypto, setCrypto] = useState<CryptoChoice | null>(null);
+/** Nothing to chart yet. With only crypto added (a wallet, Coinbase or Kraken), it says so and where
+ * that crypto is, rather than "No accounts yet". */
+function EmptyState({ cryptoCents, onAdd }: { cryptoCents: number | null; onAdd: () => void }) {
+  useHideAmounts();
+  const hasCrypto = cryptoCents !== null;
   return (
     <div>
       {/* The page title stays where every page has it, with the empty state under it. */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-semibold">
           <Trans>Finance</Trans>
         </h1>
-        <SpaceName />
+        <CompanyAndEye />
       </div>
       <PageEmptyState
         icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
           <AppLogo key={provider} name={name} logo={logo} size="lg" />
         ))}
-        title={<Trans>No accounts yet</Trans>}
-        description={<Trans>Add an account to see cash, burn, runway and spend.</Trans>}
+        title={hasCrypto ? <Trans>No bank accounts yet</Trans> : <Trans>No accounts yet</Trans>}
+        description={
+          hasCrypto ? (
+            <Trans>
+              Your crypto ({money(cryptoCents)}) is in Accounts. Add a bank account to see cash,
+              burn, runway and spend.
+            </Trans>
+          ) : (
+            <Trans>Add an account to see cash, burn, runway and spend.</Trans>
+          )
+        }
       >
-        <Button onClick={() => setAdding(true)}>
+        <Button onClick={onAdd}>
           <Trans>Add account</Trans>
         </Button>
         {hasCrypto ? (
           <Button variant="outline" render={<Link to={financePath.accounts()} />}>
             <Trans>Accounts</Trans>
           </Button>
-        ) : null}
-        {adding ? (
-          <AddAccountDialog
-            onPickCrypto={setCrypto}
-            onImported={onChanged}
-            onClose={() => setAdding(false)}
-          />
-        ) : null}
-        <WalletDialog
-          open={crypto === "wallet"}
-          onClose={() => setCrypto(null)}
-          onSaved={onChanged}
-        />
-        {crypto && crypto !== "wallet" ? (
-          <ExchangeConnectDialog
-            provider={crypto}
-            onConnected={onChanged}
-            onClose={() => setCrypto(null)}
-          />
         ) : null}
       </PageEmptyState>
     </div>
@@ -303,13 +323,14 @@ function Overview({
   syncing,
   error,
   onRefresh,
-  onReload,
+  onAdd,
 }: {
   data: FinanceOverview;
   syncing: boolean;
   error: string;
   onRefresh: () => void;
-  onReload: () => void;
+  /** Opens Add account on its first step, or straight on the statement upload. */
+  onAdd: (step: "type" | "bank") => void;
 }) {
   useHideAmounts();
   const navigate = useNavigate();
@@ -318,7 +339,6 @@ function Overview({
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });
   }, [hash]);
-  const [uploading, setUploading] = useState(false);
   const [period, setPeriod] = useState<SpendPeriod>("month");
   // The Breakdown mode lives in the URL, so Back (in the app or the browser) reopens it as left.
   const [params, setParams] = useSearchParams();
@@ -351,11 +371,17 @@ function Overview({
   const runOutMonth = data.runway.runOutDate
     ? hiddenOr(monthFull(data.runway.runOutDate.slice(0, 7)))
     : "";
-  // The same figure on both sides says nothing, so the comparison is left out.
+  // The same figure on both sides says nothing, and nothing spent so far (a statement account has
+  // no lines for this period yet) is not a 100% drop, so the comparison is left out.
   const sameAsBefore = (p: { currentCents: number; previousCents: number | null }) =>
-    p.previousCents === null || p.previousCents === p.currentCents;
+    p.previousCents === null || p.previousCents === p.currentCents || p.currentCents === 0;
   const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
   const spentRange = range(totals);
+  // A quarter or year that has just begun covers the same days as the month; say it is partial.
+  const quarter = Math.floor((Number(totals.start.slice(5, 7)) - 1) / 3) + 1;
+  const year = totals.start.slice(0, 4);
+  const soFar =
+    period === "quarter" ? t`Q${quarter} so far` : period === "year" ? t`${year} so far` : null;
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
   const bars = data.cashSeries[period];
   const barGranularity = BAR_GRANULARITY[period];
@@ -373,11 +399,9 @@ function Overview({
         <h1 className="text-lg font-semibold">
           <Trans>Finance</Trans>
         </h1>
-        <SpaceName />
-        <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
-          <HideAmountsButton />
+        <CompanyAndEye>
           {/* Both labels share one cell, so the chips beside them do not move when it changes. */}
-          <span className="grid">
+          <span className={cn("grid", !syncing && !updated && "hidden")}>
             <span
               aria-hidden={!syncing}
               className={cn("col-start-1 row-start-1", syncing ? "" : "invisible")}
@@ -413,7 +437,7 @@ function Overview({
               <Trans>Refresh</Trans>
             </TooltipContent>
           </Tooltip>
-        </span>
+        </CompanyAndEye>
         {data.excludedNonUsdCount > 0 ? (
           <span className="text-[11px] text-muted-foreground">
             {t`${data.excludedNonUsdCount} non-USD not counted`}
@@ -426,13 +450,16 @@ function Overview({
               <SourceChip key={source.provider} source={source} />
             ))}
         </div>
-        {onlyOne ? (
-          <Link
-            to={CONNECT_PATH}
-            className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+        {missing.length > 0 ? (
+          // One way to connect: the same Add account dialog as the empty state.
+          <Button
+            variant="link"
+            size="xs"
+            className="text-muted-foreground"
+            onClick={() => onAdd("type")}
           >
-            {t`Add ${providerName(onlyOne.provider)}`}
-          </Link>
+            {onlyOne ? t`Add ${providerName(onlyOne.provider)}` : t`Add account`}
+          </Button>
         ) : null}
         <div className="ms-auto flex items-center gap-2">
           <Button variant="outline" render={<Link to={financePath.accounts()} />}>
@@ -441,17 +468,27 @@ function Overview({
           <AskAgentButton />
         </div>
       </div>
+      {data.sources
+        .filter((source) => source.status === "needs_reconnect")
+        .map((source) => (
+          // A lapsed sign-in stops syncing while the figures still look current, so say so.
+          <div
+            key={source.provider}
+            role="status"
+            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning px-3 py-2 text-sm"
+          >
+            <span>
+              {t`${providerName(source.provider)} needs you to sign in again. Its figures stop updating until you do.`}
+            </span>
+            <Button variant="outline" size="sm" render={<Link to={CONNECT_PATH} />}>
+              {t`Reconnect`}
+            </Button>
+          </div>
+        ))}
       <StatementReminderBanner
         reminders={data.statementReminders ?? []}
-        onUpload={() => setUploading(true)}
+        onUpload={() => onAdd("bank")}
       />
-      {uploading ? (
-        <AddAccountDialog
-          initialStep="bank"
-          onImported={onReload}
-          onClose={() => setUploading(false)}
-        />
-      ) : null}
       {error ? <ErrorNotice message={error} onRetry={onRefresh} /> : null}
       {showSkeleton ? (
         <DashboardSkeleton />
@@ -490,14 +527,20 @@ function Overview({
             <Kpi
               title={t`Monthly burn`}
               value={burning ? money(data.burn.monthlyCents) : "—"}
-              sub={t`3-mo avg, after revenue`}
+              sub={burning ? t`3-mo avg, after revenue` : t`No net spend in the last 3 full months`}
               to={financePath.burn()}
             />
             {hasCash ? (
               <Kpi
                 title={t`Runway`}
                 value={runwayMonths === undefined ? "—" : t`${runwayMonths} mo`}
-                sub={runOutMonth ? t`Until ${runOutMonth}` : undefined}
+                sub={
+                  runOutMonth
+                    ? t`Until ${runOutMonth}`
+                    : runwayMonths === undefined
+                      ? t`Needs a monthly burn`
+                      : undefined
+                }
                 to={financePath.runway()}
                 hover={
                   stablecoins + otherCounted > 0 && bankRunwayMonths !== undefined ? (
@@ -529,7 +572,7 @@ function Overview({
                 {money(totals.currentCents)}
               </Link>
               <span className="text-[11px] text-muted-foreground">
-                {t`Spent ${spentRange}`}
+                {soFar ? t`${soFar} · spent ${spentRange}` : t`Spent ${spentRange}`}
                 {sameAsBefore(totals) ? null : (
                   <>
                     {" · "}
@@ -550,27 +593,41 @@ function Overview({
             }
             action={<BurnLegend />}
           >
-            <BurnBars
-              series={bars}
-              granularity={barGranularity}
-              label={t`Cash out and cash in over time`}
-              onOpen={(p) =>
-                navigate(
-                  barGranularity === "month"
-                    ? financePath.month(p.start.slice(0, 7))
-                    : financePath.spend(period, null, { from: p.start, to: p.end }),
-                )
-              }
-            />
-            {bars.at(-1)?.partial ? (
+            {bars.every((p) => !p.outCents && !p.revenueCents && !p.financingCents) ? (
+              // An empty chart with axes at $0 looks broken; say what it will show.
+              <div className="py-2 text-muted-foreground">
+                <Trans>No money in or out in this period yet.</Trans>
+              </div>
+            ) : (
+              <BurnBars
+                series={bars}
+                granularity={barGranularity}
+                label={t`Cash out and cash in over time`}
+                onOpen={(p) =>
+                  navigate(
+                    barGranularity === "month"
+                      ? financePath.month(p.start.slice(0, 7))
+                      : financePath.spend(period, null, { from: p.start, to: p.end }),
+                  )
+                }
+              />
+            )}
+            {bars.at(-1)?.partial &&
+            bars.some((p) => p.outCents || p.revenueCents || p.financingCents) ? (
               <div className="text-[11px] text-muted-foreground">
                 <Trans>* So far</Trans>
               </div>
             ) : null}
           </Section>
 
-          {/* Each card keeps its own height: expanding one does not stretch the other. */}
-          <div className="grid items-start gap-3 @3xl:grid-cols-2">
+          {/* Side by side, the two cards share one height, their footers on one line; once one
+          is expanded each keeps its own, so the other does not stretch to match. */}
+          <div
+            className={cn(
+              "grid gap-3 @3xl:grid-cols-2",
+              (allBreakdown || allUpcoming) && "items-start",
+            )}
+          >
             <BackHere
               value={{
                 label: t`Breakdown`,
@@ -600,7 +657,9 @@ function Overview({
                 <BreakdownRows
                   rows={allBreakdown ? breakdownRows : breakdownRows.slice(0, MAX_ROWS)}
                   to={(row) =>
-                    by === "category" ? financePath.category(row.key) : financePath.vendor(row.key)
+                    by === "category"
+                      ? financePath.category(row.key, { period })
+                      : financePath.vendor(row.key)
                   }
                 />
                 {breakdownRows.every((row) => row.cents <= 0) ? (
@@ -625,9 +684,11 @@ function Overview({
                 id="upcoming"
                 title={<Trans>Upcoming · 30 days</Trans>}
                 action={
-                  <span className="text-xs font-semibold tabular-nums">
-                    ~{money(data.upcoming.totalCents)}
-                  </span>
+                  data.upcoming.totalCents > 0 ? (
+                    <span className="text-xs font-semibold tabular-nums">
+                      ~{money(data.upcoming.totalCents)}
+                    </span>
+                  ) : null
                 }
               >
                 <div className="-mx-2">
@@ -635,6 +696,11 @@ function Overview({
                     <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
                   ))}
                 </div>
+                {upcomingRows.length === 0 ? (
+                  <div className="py-2 text-muted-foreground">
+                    <Trans>Nothing due in the next 30 days</Trans>
+                  </div>
+                ) : null}
                 <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
                   <ShowAll
                     total={upcomingRows.length}
@@ -651,11 +717,22 @@ function Overview({
             value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
           >
             <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
-              <SubscriptionsTable subs={subs} />
-              <div className="border-t border-border pt-2 text-xs text-muted-foreground">
-                {plural(subs.items.length, { one: "# subscription", other: "# subscriptions" })} ·{" "}
-                {t`${monthlyTotal}/mo`}
-              </div>
+              {subs.items.length === 0 ? (
+                <div className="py-2 text-muted-foreground">
+                  <Trans>None yet. A vendor shows here after three similar monthly charges.</Trans>
+                </div>
+              ) : (
+                <>
+                  <SubscriptionsTable subs={subs} />
+                  <div className="border-t border-border pt-2 text-xs text-muted-foreground">
+                    {plural(subs.items.length, {
+                      one: "# subscription",
+                      other: "# subscriptions",
+                    })}{" "}
+                    · {t`${monthlyTotal}/mo`}
+                  </div>
+                </>
+              )}
             </Section>
           </BackHere>
 
@@ -719,8 +796,14 @@ function HoverRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-const upcomingTag = (kind: UpcomingItem["kind"]) =>
-  kind === "recurring" ? t`recurring` : kind === "pending" ? t`pending` : t`bill`;
+const upcomingTag = ({ kind, cardBill }: UpcomingItem) =>
+  cardBill
+    ? t`card bill`
+    : kind === "recurring"
+      ? t`recurring`
+      : kind === "pending"
+        ? t`pending`
+        : t`bill`;
 
 /** `APPROVED` reads `Approved`. */
 const billStatusText = (status: string) =>
@@ -748,7 +831,7 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="@md:hidden">{dates}</span>
           <span className="shrink-0 rounded-full border border-border px-1.5 text-[10px]">
-            {upcomingTag(item.kind)}
+            {upcomingTag(item)}
           </span>
         </span>
       </span>
@@ -805,7 +888,7 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
             <Trans>Monthly</Trans>
           </Th>
           <Th right className="hidden @md:table-cell">
-            <Trans>3 mo</Trans>
+            <Trans>3-mo change</Trans>
           </Th>
           <Th right className="hidden @md:table-cell">
             <Trans>Last charge</Trans>
@@ -842,8 +925,8 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
                 ) : null}
               </td>
               <td className="text-end tabular-nums">{money(sub.monthlyCents)}</td>
-              <td className="hidden w-[90px] @md:table-cell">
-                <Sparkline values={sub.trendCents} label={t`Last 3 months`} />
+              <td className="hidden w-[90px] whitespace-nowrap text-end tabular-nums text-muted-foreground @md:table-cell">
+                {trendText(sub.trendCents) ?? "—"}
               </td>
               <td className="hidden whitespace-nowrap text-end text-muted-foreground @md:table-cell">
                 {shortDay(sub.lastChargeAt)}

@@ -58,3 +58,22 @@ it("shows the amount when shown", async () => {
   await show(false, <ChatMarkdown>{"You spent **$73,781.83**"}</ChatMarkdown>);
   expect(el.textContent).toContain("$73,781.83");
 });
+
+it("masks runway and run-out values in separate table cells", async () => {
+  const rows = [
+    "| Metric | Value |",
+    "| --- | --- |",
+    "| Runway | 9.2 months |",
+    "| Runs out | July 2027 |",
+    "| Last 3 months | 12 |",
+    "",
+    "| Runway | Runs out |",
+    "| --- | --- |",
+    "| 9.2 months | Aug 4, 2027 |",
+  ].join("\n");
+  await show(true, <ChatMarkdown>{rows}</ChatMarkdown>);
+  for (const real of ["9.2", "July 2027", "Aug 4"]) expect(everything()).not.toContain(real);
+  expect(el.textContent).toContain("12");
+  await show(false, <ChatMarkdown>{rows}</ChatMarkdown>);
+  expect(everything()).toContain("9.2 months");
+});

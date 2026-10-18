@@ -29,6 +29,11 @@ export const Several: Story = {
   },
 };
 
+/** A cycle that ends mid-month names its end day, not the month that is not over yet. */
+export const MidMonthCycle: Story = {
+  args: { reminders: [{ ...one, coveredThrough: "2026-09-07", dueFor: "2026-10-07" }] },
+};
+
 export const LongName: Story = {
   args: {
     reminders: [

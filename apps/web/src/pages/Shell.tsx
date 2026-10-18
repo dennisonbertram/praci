@@ -186,6 +186,7 @@ import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
+import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
 import {
   LIVE_TOOL_STEP_WINDOW,
   StandaloneToolActivity,
@@ -234,7 +235,11 @@ import {
 } from "../lib/computer-screen";
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
-import { findFinanceAgent } from "../lib/finance-agent";
+import {
+  chatStarterQuestions,
+  financeAgentSuggestions,
+  findFinanceAgent,
+} from "../lib/finance-agent";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { findLegalAgent } from "../lib/legal-agent";
@@ -348,7 +353,7 @@ import {
   ChoiceCard,
   McpApprovalCard,
 } from "./shell/message-cards";
-import { commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
+import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
 import { WindowChrome } from "./WindowChrome";
 
 const ArtifactsPage = lazy(() =>
@@ -1711,7 +1716,7 @@ export function ShellPage() {
   const sidebarGroups = useMemo(() => {
     const sidebarSpaces =
       spaces.length > 0
-        ? spaces.map((space) =>
+        ? activeSpaceFirst(spaces, bootstrapMe?.spaceId).map((space) =>
             space.id === bootstrapMe?.spaceId ? { ...space, bots, groups, botSections } : space,
           )
         : bootstrapMe
@@ -2779,7 +2784,7 @@ export function ShellPage() {
           createLabel: t`Create Finance agent`,
           creating: creatingFinanceAgent,
           error: financeAgentError,
-          suggestions: [t`What is our runway?`, t`Where did spend go up this month?`],
+          suggestions: financeAgentSuggestions(),
         }
       : legalMode
         ? {
@@ -3173,6 +3178,15 @@ export function ShellPage() {
     .toUpperCase();
 
   const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
+  const chatStarters = chatStarterQuestions(
+    active,
+    userId,
+    Boolean(activeSnapshot) &&
+      transcriptMessages.length === 0 &&
+      activeSnapshot?.olderCursor == null &&
+      !transcriptRunning &&
+      !sending,
+  );
   const threadView = (
     <>
       {cartaAgentPage ? (
@@ -3206,6 +3220,16 @@ export function ShellPage() {
             !transcriptRunning &&
             !sending ? (
               <InboxAgentIntro onAsk={(text) => void sendMessage(text, [], newClientId())} />
+            ) : !pageMode && chatStarters ? (
+              // The Finance agent's own chat starts like its Finance panel: what it does, and two questions.
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                <AgentPanelIntro
+                  description={active?.description ?? ""}
+                  suggestions={chatStarters}
+                  disabled={sending}
+                  onPick={(text) => void sendMessage(text, [], newClientId())}
+                />
+              </div>
             ) : (
               <Transcript
                 key={activeSnapshot?.threadId}
@@ -3426,6 +3450,7 @@ export function ShellPage() {
         mobileSidebarSwipeRef.current = null;
       }}
     >
+      <SkipToContent />
       <ComputerUpdateProgress
         onCompleted={() => {
           if (active) void refreshThread(active.id);
@@ -4322,9 +4347,11 @@ export function ShellPage() {
 
       {/* Keep the composer's z-index inside the chat so phone overlays like the side panel cover it. */}
       <main
+        id={MAIN_CONTENT_ID}
+        tabIndex={-1}
         aria-hidden={mobileSidebarOpen || undefined}
         inert={mobileSidebarOpen}
-        className="isolate flex min-w-0 flex-1 flex-col bg-background"
+        className="isolate flex min-w-0 flex-1 flex-col bg-background outline-none"
       >
         {/* Inside main so the composer and its menus stay above it. */}
         {!mobileSidebarOpen ? (
@@ -4466,11 +4493,13 @@ export function ShellPage() {
         ) : financeMode ? (
           <FinancePage
             onAskAgent={financeAgentOpen ? undefined : askFinanceAgent}
-            spaceName={
-              spaces.length > 1
-                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
-                : undefined
-            }
+            spaces={spaces}
+            spaceId={bootstrapMe?.spaceId}
+            onSwitchSpace={(spaceId) => {
+              // Like opening another space's chat: the auth boundary changes, so reload. A detail
+              // page belongs to this space, so the other space opens on its dashboard.
+              if (selectSpace(spaceId)) window.location.assign("/app/finance");
+            }}
           />
         ) : legalMode ? (
           <LegalPage

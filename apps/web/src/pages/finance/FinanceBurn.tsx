@@ -263,7 +263,7 @@ export function FinanceMonthPage({ month }: { month: string }) {
             <BreakdownRows
               rows={data.categories}
               swatches
-              to={(row) => financePath.category(row.key)}
+              to={(row) => financePath.category(row.key, { month })}
             />
           </Section>
           <TransactionsSection title={<Trans>Transactions</Trans>} rows={data.transactions} />
@@ -323,8 +323,16 @@ export function FinanceRunwayPage() {
             />
           </div>
           {hasCrypto ? (
-            <div>
+            // The pill says what to change; the line beside it says what counts now.
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <CountCryptoButton scope={data.runwayCrypto} onSaved={q.reload} />
+              <span className="text-xs text-muted-foreground">
+                {data.runwayCrypto === "all"
+                  ? t`All crypto counts as cash in this runway.`
+                  : data.runwayCrypto === "stablecoins"
+                    ? t`Stablecoins count as cash in this runway; other crypto does not.`
+                    : t`Crypto is left out of cash and this runway.`}
+              </span>
             </div>
           ) : null}
           <Section title={<Trans>Projected cash</Trans>}>
@@ -363,8 +371,8 @@ export function FinanceRunwayPage() {
             <Kv>
               <KvRow label={t`Burn`}>{t`Spending minus revenue, 3-mo avg`}</KvRow>
               <KvRow label={t`Revenue`}>{t`Subtracted from burn`}</KvRow>
-              <KvRow label={t`Financing`}>{t`Excluded`}</KvRow>
-              <KvRow label={t`Treasury yield`}>{t`Excluded`}</KvRow>
+              <KvRow label={t`Financing`}>{t`In cash, not counted as burn`}</KvRow>
+              <KvRow label={t`Treasury yield`}>{t`In cash, not counted as burn`}</KvRow>
               <KvRow label={t`Card balance owed`}>{t`Not counted`}</KvRow>
             </Kv>
           </Section>

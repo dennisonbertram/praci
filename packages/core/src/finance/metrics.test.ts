@@ -918,15 +918,22 @@ describe("subscriptions", () => {
         ...monthly("Landlord Placeholder LLC", "01", 750_000, 4),
         ...monthly("Office Space Co", "02", 300_000, 4, { category: "Rent" }),
         ...monthly("Notion", "20", 1000, 4, { category: "Software" }),
+        // A Brex bill paid from Mercury while Brex is not connected: still spend, not a subscription.
+        ...monthly("Brex", "05", 1_120_000, 4, { category: "Credit & Loan Payments" }),
       ],
       NOW,
     );
     expect(fixed.filter((r) => r.fixedCost).map((r) => r.key)).toEqual([
       "paylodex-payroll",
+      "brex",
       "landlord-placeholder",
       "office-space",
     ]);
     expect(subscriptions(fixed).items.map((s) => s.key)).toEqual(["notion"]);
+    // Upcoming calls it a card bill, not a recurring vendor.
+    const next = upcoming(fixed, [], [], NOW).items;
+    expect(next.find((i) => i.key === "brex")?.cardBill).toBe(true);
+    expect(next.find((i) => i.key === "notion")?.cardBill).toBeUndefined();
   });
   it("tags no overlap when only one vendor of a group is subscribed", () => {
     const only = subscriptions(detectRecurring(monthly("Anthropic", "06", 70000, 4), NOW));

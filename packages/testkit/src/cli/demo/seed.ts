@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto";
+import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { createSecretStore, syncFinanceForUser } from "@rakazo/adapters";
 import { CARTA_MCP_ENDPOINT, FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
-import { createDb, saveCapTableSnapshot } from "@rakazo/db";
+import { createDb, createThreadMessage, saveCapTableSnapshot } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   DEMO_BOTS,
@@ -13,12 +13,15 @@ import {
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_ENS_WALLET,
   DEMO_GROUP,
   DEMO_READING_DOCUMENT,
   DEMO_RATE_LIMIT_SPACE,
+  DEMO_FINANCE_RECONNECT_SPACE,
   DEMO_RECONNECT_SPACE,
   DEMO_USER_NAME,
   DEMO_WALLET,
+  demoCryptoHistory,
   demoFinance,
   demoFolderPaths,
   demoStatementCsv,
@@ -149,44 +152,55 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     const scope = { spaceId, userId: user.id };
     const secrets = createSecretStore(options.encryptionKey, {});
     // A fake stored login, so a server counts as signed in. Calls to it reach only the emulators.
-    const fakeLogin = async () => {
+    // `expired` keeps the OAuth record but drops its tokens, which is how a lapsed sign-in looks.
+    const fakeLogin = async (
+      where: { spaceId: string; userId: string } = scope,
+      expired = false,
+    ) => {
       const stored = await secrets.put(
         JSON.stringify({
-          oauth: { tokens: { access_token: "mock-demo-token", token_type: "bearer" } },
+          oauth: expired
+            ? { clientInformation: { client_id: "mock-demo-client" } }
+            : { tokens: { access_token: "mock-demo-token", token_type: "bearer" } },
         }),
         {
           operationId: "demo.seed",
           traceId: "demo.seed",
-          ...scope,
+          ...where,
           botId: "mcp",
           signal: new AbortController().signal,
         },
       );
       await prisma.secret.create({
-        data: { id: stored.id, ...scope, kind: "mcp", ciphertext: stored.ciphertext },
+        data: { id: stored.id, ...where, kind: "mcp", ciphertext: stored.ciphertext },
       });
       return stored.id;
     };
-    for (const provider of ["mercury", "brex"] as const) {
-      await prisma.mcpServer.create({
-        data: {
-          ...scope,
-          slug: `finance-${provider}`,
-          name: provider === "mercury" ? "Mercury" : "Brex",
-          transport: "streamable_http",
-          endpoint: FINANCE_MCP_ENDPOINTS[provider],
-          secretId: await fakeLogin(),
-        },
-      });
-    }
-    const result = await syncFinanceForUser(
-      { prisma, callToolFor: demoFinance().callToolFor },
-      scope,
-      { force: true },
-    );
-    if (Object.values(result).some((outcome) => outcome !== "synced"))
-      throw new Error(`Finance seed did not sync: ${JSON.stringify(result)}`);
-    await session.rpc("finance/agent");
+    // Mercury and Brex with a stored (fake) login, synced once from the canned tools.
+    const connectFinance = async (where: { spaceId: string; userId: string }) => {
+      for (const provider of ["mercury", "brex"] as const) {
+        await prisma.mcpServer.create({
+          data: {
+            ...where,
+            slug: `finance-${provider}`,
+            name: provider === "mercury" ? "Mercury" : "Brex",
+            transport: "streamable_http",
+            endpoint: FINANCE_MCP_ENDPOINTS[provider],
+            // The login belongs to the space it is stored for, as a real sign-in would.
+            secretId: await fakeLogin(where),
+          },
+        });
+      }
+      const result = await syncFinanceForUser(
+        { prisma, callToolFor: demoFinance().callToolFor },
+        where,
+        { force: true },
+      );
+      if (Object.values(result).some((outcome) => outcome !== "synced"))
+        throw new Error(`Finance seed did not sync: ${JSON.stringify(result)}`);
+    };
+    await connectFinance(scope);
+    const agent = await session.rpc<{ id: string }>("finance/agent");
     done.push("Mercury and Brex (canned tools), Finance agent");
 
     // Cap Table: a signed-in Carta server and the Carta agent's last read of the mock cap table.
@@ -214,13 +228,139 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     });
     await session.rpc("finance/statementConfirm", { id: reviewed.id });
     done.push("1 imported bank statement");
-    // A treasury wallet, read through the API's offline crypto fake (no real chain is called).
-    await session.rpc("finance/walletAdd", {
+    // A treasury Safe and an ENS ops wallet, read through the API's offline crypto fake (no real
+    // chain is called), with 90 days of history for the Safe, and a Coinbase connection whose
+    // invented key reaches only the fake.
+    const safe = await session.rpc<{ id: string }>("finance/walletAdd", {
       addressOrEns: DEMO_WALLET.address,
       label: DEMO_WALLET.label,
-      type: "personal",
+      type: DEMO_WALLET.type,
     });
-    done.push("1 crypto wallet (offline fake balances)");
+    const ops = await session.rpc<{ id: string }>("finance/walletAdd", {
+      addressOrEns: DEMO_ENS_WALLET.name,
+      label: DEMO_ENS_WALLET.label,
+      type: DEMO_ENS_WALLET.type,
+    });
+    const { privateKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+    const coinbase = await session.rpc<{ id: string }>("finance/exchangeConnect", {
+      provider: "coinbase",
+      key: "organizations/mock-demo/apiKeys/mock-demo-key",
+      secret: privateKey.export({ type: "sec1", format: "pem" }).toString(),
+    });
+    // History for each holder at about today's size, so the chart does not jump on the last day.
+    const history = (today: { stablecoinCents: number; otherCryptoCents: number }) =>
+      demoCryptoHistory(new Date(), today).map((point) => ({
+        ...scope,
+        day: point.day,
+        stablecoinCents: BigInt(point.stablecoinCents),
+        otherCryptoCents: BigInt(point.otherCryptoCents),
+      }));
+    await prisma.financeCryptoSnapshot.createMany({
+      data: [
+        ...history({ stablecoinCents: 4_000_000, otherCryptoCents: 625_000 }).map((row) => ({
+          ...row,
+          walletId: safe.id,
+        })),
+        ...history({ stablecoinCents: 0, otherCryptoCents: 100_000 }).map((row) => ({
+          ...row,
+          walletId: ops.id,
+        })),
+      ],
+      skipDuplicates: true,
+    });
+    await prisma.financeExchangeSnapshot.createMany({
+      data: history({ stablecoinCents: 3_700_000, otherCryptoCents: 2_100_000 }).map((row) => ({
+        ...row,
+        connectionId: coinbase.id,
+      })),
+      skipDuplicates: true,
+    });
+    done.push("2 crypto wallets (a 2-of-3 Safe and an ENS wallet) and Coinbase (offline fakes)");
+
+    // The Finance agent's pins: Cash and Runway as on the dashboard, and a month-end checklist.
+    const overview = await session.rpc<{
+      cash: { cashCents: number };
+      runway: { months: number | null; runOutDate: string | null };
+    }>("finance/overview");
+    const usd = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+    await prisma.botPins.create({
+      data: {
+        ...scope,
+        botId: agent.id,
+        updatedBy: "bot",
+        refreshedAt: new Date(),
+        stats: [
+          {
+            id: "cash",
+            label: "Cash",
+            value: usd(overview.cash.cashCents),
+            detail: "All bank accounts",
+          },
+          {
+            id: "runway",
+            label: "Runway",
+            value: overview.runway.months === null ? "—" : `${overview.runway.months} mo`,
+            detail: "At the average monthly burn",
+          },
+        ],
+        list: {
+          title: "Month-end close",
+          items: [
+            { id: "recon", text: "Reconcile Mercury and Brex", done: true },
+            { id: "receipts", text: "Chase missing receipts", done: false },
+            { id: "update", text: "Send the investor update", done: false },
+          ],
+        },
+      },
+    });
+    done.push("Finance agent pins (Cash, Runway) and a Month-end close checklist");
+    // One earlier question and answer, so Hide amounts can be checked on runway months and a
+    // run-out date in a reply without a live (paid) model call.
+    if (overview.runway.months !== null && overview.runway.runOutDate) {
+      const runOut = new Date(`${overview.runway.runOutDate}T00:00:00Z`).toLocaleDateString(
+        "en-US",
+        { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
+      );
+      const thread = await prisma.thread.upsert({
+        where: { botId: agent.id },
+        create: { ...scope, botId: agent.id },
+        update: {},
+      });
+      await createThreadMessage(prisma, {
+        threadId: thread.id,
+        role: "user",
+        blocks: [{ kind: "text", text: "What is our runway?" }],
+      });
+      await createThreadMessage(prisma, {
+        threadId: thread.id,
+        role: "bot",
+        botId: agent.id,
+        markUnread: false,
+        blocks: [
+          {
+            kind: "text",
+            text: `You have ${overview.runway.months} months of runway at the last 3 months' burn, with ${usd(overview.cash.cashCents)} in cash. At that pace cash would run out around ${runOut}. (${MOCK_NOTE})`,
+          },
+        ],
+      });
+      done.push("1 earlier Finance agent answer about runway");
+    }
+
+    // A second company whose Mercury login has expired, for the Reconnect path.
+    const reconnect = await session.rpc<{ id: string }>("spaces/create", {
+      name: DEMO_FINANCE_RECONNECT_SPACE,
+    });
+    const reconnectScope = { spaceId: reconnect.id, userId: user.id };
+    await connectFinance(reconnectScope);
+    const mercury = await prisma.mcpServer.findFirstOrThrow({
+      where: { ...reconnectScope, slug: "finance-mercury" },
+    });
+    // Synced once while signed in; now the sign-in has lapsed, so Finance asks to reconnect.
+    await prisma.mcpServer.update({
+      where: { id: mercury.id },
+      data: { secretId: await fakeLogin(reconnectScope, true) },
+    });
+    done.push(`space "${DEMO_FINANCE_RECONNECT_SPACE}" (Mercury needs reconnecting)`);
   } finally {
     await prisma.$disconnect();
     await pool.end();

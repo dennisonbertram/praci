@@ -19,6 +19,7 @@ vi.mock("@lingui/react/macro", () => {
   return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
 });
 
+import { setHideAmounts } from "../../lib/hide-amounts-preference";
 import { PinsList, PinsStrip } from "./bot-pins";
 
 i18n.loadAndActivate({ locale: "en", messages: {} });
@@ -102,6 +103,32 @@ describe("PinsStrip", () => {
     await act(async () => $('button[aria-label="Refresh"]').click());
     expect(rpcMock.pins.refresh).toHaveBeenCalledWith({ botId: "bot-1" });
     expect(onPins).toHaveBeenCalledWith(refreshed);
+  });
+
+  it("masks every figure in a pin while amounts are hidden, keeping the unit", async () => {
+    setHideAmounts(true);
+    try {
+      await render(
+        <PinsStrip
+          pins={base({
+            stats: [
+              { id: "c", label: "Cash", value: "$1,633,221", detail: "of $2,000,000 goal" },
+              { id: "r", label: "Runway", value: "24.2 mo" },
+              { id: "s", label: "Status", value: "On track" },
+            ],
+          })}
+          onPins={vi.fn()}
+        />,
+      );
+      const text = container.textContent ?? "";
+      expect(text).toContain("$•••");
+      expect(text).toContain("of $••• goal");
+      expect(text).toContain("••• mo");
+      expect(text).toContain("On track");
+      expect(text).not.toMatch(/\d/);
+    } finally {
+      setHideAmounts(false);
+    }
   });
 });
 

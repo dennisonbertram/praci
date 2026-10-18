@@ -42,6 +42,10 @@ describe("ensureFinanceAgent", () => {
     );
     const input = (createBot.mock.calls[0] as unknown as [Actor, Record<string, unknown>])[1];
     expect(String(input.instructions)).toContain("can read but not move money");
+    // The intro covers statements and crypto, not only Mercury and Brex.
+    expect(input.description).toBe(
+      "Answers questions about your bank, card, statement and crypto accounts.",
+    );
   });
 
   it("assigns each finance server with its explicit read-only tools, not all tools", async () => {

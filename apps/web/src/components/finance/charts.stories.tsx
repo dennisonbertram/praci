@@ -1,6 +1,6 @@
 import type { CashPoint } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { BurnBars, Chart, LineChart, MonthBars, Sparkline, StackBar } from "./charts";
+import { BurnBars, Chart, LineChart, MonthBars, StackBar } from "./charts";
 
 const meta = {
   title: "Finance/Charts",
@@ -72,14 +72,6 @@ export const LineBare: Story = {
 
 export const LineEmpty: Story = {
   render: () => <LineChart height={120} label="Empty" values={[]} labels={[]} />,
-};
-
-export const SparklineTrend: Story = {
-  render: () => <Sparkline label="Trend" values={[3, 5, 4, 8, 6]} />,
-};
-
-export const SparklineFlat: Story = {
-  render: () => <Sparkline label="Flat" values={[4, 4, 4, 4]} />,
 };
 
 export const Burn: Story = {

@@ -25,7 +25,7 @@ const PIPEDREAM_APPS = [
 /** An extra MCP server the emulator answers for one hostname, such as a mock Carta in the demo. */
 export interface EmulatedMcpServer {
   tools: { name: string; description: string; inputSchema: Record<string, unknown> }[];
-  call: (name: string, args: Record<string, unknown>) => unknown;
+  call: (name: string, args: Record<string, unknown>) => unknown | Promise<unknown>;
   /**
    * When set, the server asks for an OAuth sign-in the way a real hosted MCP server does, and its
    * authorization page is this browser-reachable URL (for the demo, the app's own OAuth callback
@@ -267,7 +267,7 @@ export class ThirdPartyConnectorEmulator {
       const extra = this.mcpServers[url.hostname];
       if (extra) {
         if (!authenticated) return jsonRpcError(id, -32001, "Unauthorized");
-        const output = extra.call(String(params.name ?? ""), args);
+        const output = await extra.call(String(params.name ?? ""), args);
         return jsonRpc(id, { content: [{ type: "text", text: JSON.stringify(output) }] });
       }
       const result = { ok: true, app, text: args.text ?? null };

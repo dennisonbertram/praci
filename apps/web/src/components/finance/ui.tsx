@@ -11,6 +11,12 @@ import {
   Button,
   Card,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   Skeleton,
   Tabs,
   TabsList,
@@ -19,10 +25,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Link, type LinkProps, useLocation, useNavigate } from "react-router-dom";
-import { money, shortDay, transactionAmount, txnDay } from "../../lib/finance-format";
+import { listAmount, money, shortDay, txnDay } from "../../lib/finance-format";
 import {
   groupByVendor,
   readGroupedPref,
@@ -30,25 +36,105 @@ import {
   writeGroupedPref,
 } from "../../lib/finance-group";
 import { financePath } from "../../lib/finance-route";
-import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import {
+  getHideAmounts,
+  maskCurrencyWhenHidden,
+  useHideAmounts,
+} from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
 import { HideAmountsButton } from "../HideAmountsToggle";
 import { shade } from "./charts";
 
+export type FinanceSpace = { id: string; name: string };
+
 /**
  * What the Shell tells every Finance page: how to open the agent panel (absent while it is open),
- * and the space's name when the user has more than one, so they know whose finances these are.
+ * and, when the user has more than one space, which one Finance shows and how to switch.
  */
-const ChromeContext = createContext<{ onAskAgent?: () => void; spaceName?: string }>({});
+export type FinanceChrome = {
+  onAskAgent?: () => void;
+  spaces?: FinanceSpace[];
+  spaceId?: string;
+  onSwitchSpace?: (spaceId: string) => void;
+};
+const ChromeContext = createContext<FinanceChrome>({});
 export const FinanceChromeProvider = ChromeContext.Provider;
 
-/** The space's name beside a Finance title; nothing with a single space. */
+/**
+ * A space's name without the words every space's name starts with ("MOCK DEMO DATA — Northwind
+ * Robotics" beside "MOCK DEMO DATA — Empty space" reads "Northwind Robotics"), so a narrow
+ * switcher shows which company it is rather than the shared start.
+ */
+export function shortSpaceName(name: string, all: readonly string[]): string {
+  const words = all.map((n) => n.split(" "));
+  const own = name.split(" ");
+  let shared = 0;
+  // Leave at least one word of every name.
+  while (
+    words.length > 1 &&
+    words.every((w) => shared < w.length - 1 && w[shared] === own[shared])
+  ) {
+    shared += 1;
+  }
+  return (
+    own
+      .slice(shared)
+      .join(" ")
+      .replace(/^[—–\-:·]\s*/, "") || name
+  );
+}
+
+/** Which company Finance shows, as a menu to switch to another space; nothing with a single space. */
 export function SpaceName() {
-  const { spaceName } = useContext(ChromeContext);
-  return spaceName ? (
-    <span className="min-w-0 truncate text-xs text-muted-foreground">{spaceName}</span>
-  ) : null;
+  const { spaces = [], spaceId, onSwitchSpace } = useContext(ChromeContext);
+  const current = spaces.find((space) => space.id === spaceId);
+  if (spaces.length < 2 || !current) return null;
+  const label = shortSpaceName(
+    current.name,
+    spaces.map((space) => space.name),
+  );
+  if (!onSwitchSpace) {
+    return (
+      <span title={current.name} className="min-w-0 truncate text-xs text-muted-foreground">
+        {label}
+      </span>
+    );
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="xs"
+            // Pulled back by its padding, so its text lines up with the title on a line of its own.
+            className="-ms-2 min-w-0 max-w-full shrink text-muted-foreground"
+            aria-label={t`Company: ${current.name}. Switch company`}
+          />
+        }
+      >
+        <span className="min-w-0 truncate">{label}</span>
+        <ChevronDown aria-hidden="true" />
+      </DropdownMenuTrigger>
+      {/* As wide as the longest name (not the trigger), within the screen. */}
+      <DropdownMenuContent align="start" className="w-max max-w-[calc(100vw-2rem)]">
+        <DropdownMenuRadioGroup
+          value={current.id}
+          onValueChange={(next) => next !== current.id && onSwitchSpace(next as string)}
+        >
+          <DropdownMenuLabel>
+            <Trans>Show finances for</Trans>
+          </DropdownMenuLabel>
+          {spaces.map((space) => (
+            <DropdownMenuRadioItem key={space.id} value={space.id}>
+              {space.name}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function AskAgentButton() {
@@ -109,6 +195,25 @@ export function useFinanceQuery<T>(load: () => Promise<T>, deps: readonly unknow
       setAttempt((n) => n + 1);
     },
   };
+}
+
+/** Text with each account ending (`••1111`) in the muted style every account list uses. */
+export function WithEndings({ text }: { text: string }) {
+  const parts = text.split(/(••\d{4})/);
+  if (parts.length === 1) return <>{text}</>;
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^••\d{4}$/.test(part) ? (
+          <span key={i} className="font-normal text-muted-foreground">
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
 }
 
 /** `back` is where the crumb's own page was opened from, so returning to it restores its Back too. */
@@ -172,7 +277,28 @@ export function trailFor(own: Crumb[], cameFrom: Crumb | null): Crumb[] {
   return [root, ...chain, here];
 }
 
-/** Back button, breadcrumb and Ask agent for every detail page; the last crumb is the page itself. */
+/**
+ * What a detail page tells the pages it links to: its name and address, and the trail it shows
+ * above itself, so a page opened from it continues that same trail (Finance / Breakdown / Software
+ * / the charge) whether this page was opened from a link or by its address.
+ */
+export function hereCrumb(own: Crumb[], cameFrom: Crumb | null, to: string): Crumb | null {
+  const label = own.at(-1)?.label;
+  if (!label) return null;
+  const back = trailFor(own, cameFrom)
+    .slice(1, -1)
+    .reduce<Crumb | undefined>(
+      (parent, c) =>
+        c.to ? { label: c.label, to: c.to, ...(parent ? { back: parent } : {}) } : parent,
+      undefined,
+    );
+  return { label, to, ...(back ? { back } : {}) };
+}
+
+/**
+ * One way back for every detail page, then the company and Hide amounts: a Back button one level
+ * down, or, deeper, a breadcrumb whose links lead back (the last crumb is the page itself).
+ */
 export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
   const cameFrom = useCameFrom();
   const crumbs = trailFor(own, cameFrom);
@@ -180,58 +306,76 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
   const previous = crumbs.length > 1 ? crumbs[crumbs.length - 2] : (cameFrom ?? undefined);
   const collapsed = (i: number) => crumbs.length > 3 && i > 0 && i < crumbs.length - 2;
   return (
-    <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
-      <Link
-        to={previous?.to ?? financePath.dashboard()}
-        state={crumbState(previous)}
-        className="inline-flex h-8 items-center whitespace-nowrap rounded-lg border border-border bg-card px-2.5 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-      >
-        <span aria-hidden="true">←</span>
-        <span className="ms-1">{previous?.label ?? t`Finance`}</span>
-      </Link>
-      {/* Narrow, the trail takes its own line, so Back and Ask agent share the first on every page. */}
-      <nav
-        aria-label={t`Breadcrumb`}
-        className="order-last w-full min-w-0 @md:order-none @md:w-auto"
-      >
-        <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-          {crumbs.map((crumb, i) => (
-            <li
-              key={i}
-              // Narrow, a deep trail keeps Finance, the page before and this page; Back names the one before.
-              className={cn("flex items-center gap-1", collapsed(i) && "hidden @md:flex")}
-            >
-              {crumb.to && i < crumbs.length - 1 ? (
-                <Link
-                  to={crumb.to}
-                  state={crumbState(crumb)}
-                  className="hover:text-foreground hover:underline"
-                >
-                  {crumb.label}
-                </Link>
-              ) : (
-                <span
-                  aria-current={i === crumbs.length - 1 ? "page" : undefined}
-                  className="text-foreground"
-                >
-                  {crumb.label}
-                </span>
-              )}
-              {/* The slash ends a crumb, so a wrapped trail never starts a line with one. */}
-              {i < crumbs.length - 1 ? <span aria-hidden="true">/</span> : null}
-              {i === 0 && crumbs.length > 3 ? (
-                <span aria-hidden="true" className="flex items-center gap-1 @md:hidden">
-                  <span>…</span>
-                  <span>/</span>
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      </nav>
-      <HideAmountsButton />
-      <AskAgentButton />
+    <div className="mb-1.5 flex min-h-8 flex-wrap items-center gap-x-2.5 gap-y-1">
+      {/* A trail of only the page before and this page would repeat the title, so one level down
+      shows Back instead; deeper, the trail's links are the way back. */}
+      {crumbs.length <= 2 ? (
+        <Link
+          to={previous?.to ?? financePath.dashboard()}
+          state={crumbState(previous)}
+          className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-card px-2.5 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+        >
+          <span aria-hidden="true">←</span>
+          <span className="ms-1">{previous?.label ?? t`Finance`}</span>
+        </Link>
+      ) : (
+        // The trail keeps its width; when it leaves too little room for the company and the eye,
+        // they move to the next line rather than cutting the company's name to a letter or two.
+        <nav aria-label={t`Breadcrumb`} className="min-w-0 max-w-full shrink-0">
+          <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+            {crumbs.map((crumb, i) => (
+              <li
+                key={i}
+                // Narrow, a deep trail keeps Finance, the page before and this page.
+                className={cn("flex items-center gap-1", collapsed(i) && "hidden @md:flex")}
+              >
+                {crumb.to && i < crumbs.length - 1 ? (
+                  <Link
+                    to={crumb.to}
+                    state={crumbState(crumb)}
+                    className="hover:text-foreground hover:underline"
+                  >
+                    {crumb.label}
+                  </Link>
+                ) : (
+                  <span
+                    aria-current={i === crumbs.length - 1 ? "page" : undefined}
+                    className="text-foreground"
+                  >
+                    <WithEndings text={crumb.label} />
+                  </span>
+                )}
+                {/* The slash ends a crumb, so a wrapped trail never starts a line with one. */}
+                {i < crumbs.length - 1 ? <span aria-hidden="true">/</span> : null}
+                {i === 0 && crumbs.length > 3 ? (
+                  <span aria-hidden="true" className="flex items-center gap-1 @md:hidden">
+                    <span>…</span>
+                    <span>/</span>
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
+      <CompanyAndEye />
     </div>
+  );
+}
+
+/**
+ * The company menu, then Hide amounts, right after the page's title or way back, in the same place
+ * on every Finance page. On a phone the company name truncates first.
+ */
+export function CompanyAndEye({ children }: { children?: ReactNode }) {
+  return (
+    <span className="flex min-w-[min(100%,9rem)] shrink items-center gap-0.5">
+      <SpaceName />
+      <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
+        <HideAmountsButton />
+        {children}
+      </span>
+    </span>
   );
 }
 
@@ -285,15 +429,7 @@ export function DetailPage({
   children?: ReactNode;
 }) {
   const location = useLocation();
-  const cameFrom = useCameFrom();
-  const label = crumbs.at(-1)?.label;
-  const here = label
-    ? {
-        label,
-        to: `${location.pathname}${location.search}`,
-        ...(cameFrom ? { back: cameFrom } : {}),
-      }
-    : null;
+  const here = hereCrumb(crumbs, useCameFrom(), `${location.pathname}${location.search}`);
   return (
     <BackHere value={here}>
       <div>
@@ -313,9 +449,13 @@ export function DetailPage({
           </div>
         ) : (
           <>
-            <div className="mt-1.5 flex items-center gap-3">
-              <h1 className="text-xl font-semibold">{title}</h1>
-              {action ? <div className="ms-auto">{action}</div> : null}
+            {/* The page's actions and Ask share the title's row. */}
+            <div className="mt-1.5 flex flex-wrap items-center gap-3">
+              <h1 className="min-w-0 text-xl font-semibold">{title}</h1>
+              <div className="ms-auto flex items-center gap-2">
+                {action}
+                <AskAgentButton />
+              </div>
             </div>
             {subtitle ? <div className="mb-3 text-xs text-muted-foreground">{subtitle}</div> : null}
             <div className={cn("flex flex-col gap-3", subtitle ? "" : "mt-3")}>{children}</div>
@@ -411,7 +551,8 @@ export function BreakdownRows({
   to: (row: BreakdownRow) => string;
   swatches?: boolean;
 }) {
-  useHideAmounts();
+  // While amounts are hidden the bar lengths would still show each share, so the bars stay empty.
+  const hidden = useHideAmounts();
   // A row that refunds outweigh is not spend; shown unsigned it would read as money out.
   const spent = rows.filter((row) => row.cents > 0);
   const top = spent[0]?.cents || 1;
@@ -435,13 +576,17 @@ export function BreakdownRows({
             {row.label}
           </span>
           <span className="col-span-full row-start-2 block h-2 overflow-hidden rounded-sm bg-muted group-hover:bg-border @md:col-span-1 @md:row-start-auto">
-            <i
-              className={cn(
-                "block h-full rounded-sm",
-                i < 2 ? "bg-foreground" : "bg-muted-foreground",
-              )}
-              style={{ width: `${Math.max((row.cents / top) * 100, 0)}%` }}
-            />
+            {hidden ? null : (
+              // A small share keeps a short bar, at least 1.5 times as long as it is tall and squared
+              // at its end, so it reads as the start of a bar rather than a dot.
+              <i
+                className={cn(
+                  "block h-full min-w-3",
+                  i < 2 ? "bg-foreground" : "bg-muted-foreground",
+                )}
+                style={{ width: `${Math.max((row.cents / top) * 100, 0)}%` }}
+              />
+            )}
           </span>
           <span className="text-end tabular-nums">{money(row.cents)}</span>
           <ChevronRight
@@ -513,6 +658,16 @@ export const Chevron = () => (
 export const rowClass =
   "group/row cursor-pointer border-t border-border hover:bg-background [&>td]:py-2";
 
+/** A transaction's category, or what it is when it is not spend: a card payoff or a transfer
+ * between the company's own accounts, which Finance leaves out of spend. */
+export function categoryLabel(
+  row: Pick<FinanceTransaction, "category" | "classification">,
+): string {
+  if (row.classification === "card_payment") return t`Card payment · not spend`;
+  if (row.classification === "internal_transfer") return t`Transfer · not spend`;
+  return row.category ?? t`Uncategorized`;
+}
+
 function TransactionRow({ row }: { row: FinanceTransaction }) {
   useHideAmounts();
   const rowProps = useRowNavigate();
@@ -525,7 +680,7 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
       <td className="w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground">
         {shortDay(txnDay(row))}
       </td>
-      <td className="min-w-0">
+      <td className="min-w-0 break-words">
         <Link
           state={{ ...back, preview: row }}
           to={financePath.transaction(row.id)}
@@ -534,16 +689,18 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
           {row.counterparty}
         </Link>
         {row.memo ? (
-          <div className="line-clamp-1 text-[11px] text-muted-foreground">{row.memo}</div>
+          <div className="line-clamp-1 text-[11px] text-muted-foreground">
+            {maskCurrencyWhenHidden(row.memo)}
+          </div>
         ) : null}
       </td>
-      <td className="hidden max-w-[10rem] truncate text-muted-foreground @2xl:table-cell">
-        {row.category ?? t`Uncategorized`}
+      <td className="hidden truncate text-muted-foreground @2xl:table-cell">
+        {categoryLabel(row)}
       </td>
-      <td className="whitespace-nowrap ps-4 text-end tabular-nums">
-        {transactionAmount(row.amountCents, undefined, row.currency)}
+      <td className="whitespace-nowrap ps-3 text-end tabular-nums">
+        {listAmount(row.amountCents, undefined, row.currency)}
       </td>
-      <td className="hidden ps-4 text-muted-foreground @2xl:table-cell">
+      <td className="hidden w-24 ps-4 text-muted-foreground @2xl:table-cell">
         {statusLabel(row.status)}
       </td>
       <Chevron />
@@ -570,7 +727,7 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
             className={cn("size-3.5 text-muted-foreground", open && "rotate-90")}
           />
         </td>
-        <td className="min-w-0">
+        <td className="min-w-0 break-words">
           <button
             type="button"
             aria-expanded={open}
@@ -582,13 +739,13 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
             {plural(count, { one: "# transaction", other: "# transactions" })}
           </div>
         </td>
-        <td className="hidden max-w-[10rem] truncate text-muted-foreground @2xl:table-cell">
-          {group.mixed ? t`Mixed` : (group.category ?? t`Uncategorized`)}
+        <td className="hidden truncate text-muted-foreground @2xl:table-cell">
+          {group.mixed ? t`Mixed` : categoryLabel(group.rows[0] as FinanceTransaction)}
         </td>
-        <td className="whitespace-nowrap ps-4 text-end tabular-nums">
-          {transactionAmount(Number(group.totalCents), undefined, group.currency)}
+        <td className="whitespace-nowrap ps-3 text-end tabular-nums">
+          {listAmount(Number(group.totalCents), undefined, group.currency)}
         </td>
-        <td className="hidden @2xl:table-cell" />
+        <td className="hidden w-24 @2xl:table-cell" />
         <td />
       </tr>
       {open ? group.rows.map((row) => <TransactionRow key={row.id} row={row} />) : null}
@@ -608,21 +765,28 @@ export function TransactionTable({
   empty?: ReactNode;
 }) {
   return (
-    <table className="w-full border-collapse">
+    // A fixed layout: every column but Counterparty has a set width, so opening a vendor, hiding
+    // amounts or a longer name moves no column.
+    <table className="w-full table-fixed border-collapse">
       <thead>
         <tr>
-          <Th>{grouped ? null : <Trans>Date</Trans>}</Th>
+          {/* Named in both views: an opened vendor's rows show their dates and status here. */}
+          <Th className="w-[4.5rem]">
+            <Trans>Date</Trans>
+          </Th>
           <Th>
             <Trans>Counterparty</Trans>
           </Th>
-          <Th className="hidden @2xl:table-cell">
+          <Th className="hidden w-48 @2xl:table-cell">
             <Trans>Category</Trans>
           </Th>
-          <Th right className="ps-4">
+          <Th right className="w-24 ps-3">
             <Trans>Amount</Trans>
           </Th>
-          <Th className="hidden ps-4 @2xl:table-cell">{grouped ? null : <Trans>Status</Trans>}</Th>
-          <Th />
+          <Th className="hidden w-24 ps-4 @2xl:table-cell">
+            <Trans>Status</Trans>
+          </Th>
+          <Th className="w-5" />
         </tr>
       </thead>
       <tbody>
@@ -641,7 +805,7 @@ export function TransactionTable({
   );
 }
 
-/** A Transactions card whose header switches between the flat list and one row per vendor. The choice is remembered on this device. */
+/** A Transactions card whose header switches between the flat list and one row per vendor. The choice is remembered for this page during the visit. */
 export function TransactionsSection({
   title,
   rows,
@@ -651,29 +815,36 @@ export function TransactionsSection({
   rows: FinanceTransaction[];
   empty?: ReactNode;
 }) {
-  const [grouped, setGrouped] = useState(readGroupedPref);
+  // Remembered per page, so choosing By vendor on one page does not hide dates on the next.
+  const page = useLocation().pathname;
+  const [preferGrouped, setGrouped] = useState(() => readGroupedPref(page));
   const choose = (next: boolean) => {
     setGrouped(next);
-    writeGroupedPref(next);
+    writeGroupedPref(page, next);
   };
+  // Grouping one vendor's charges by vendor changes nothing, so the switch is left out.
+  const manyVendors = groupByVendor(rows).length > 1;
+  const grouped = preferGrouped && manyVendors;
   return (
     <Section
       title={title}
       action={
-        <div className="flex gap-1">
-          {([false, true] as const).map((mode) => (
-            <Button
-              key={String(mode)}
-              size="xs"
-              variant={grouped === mode ? "default" : "outline"}
-              className="rounded-full"
-              aria-pressed={grouped === mode}
-              onClick={() => choose(mode)}
-            >
-              {mode ? <Trans>By vendor</Trans> : <Trans>List</Trans>}
-            </Button>
-          ))}
-        </div>
+        manyVendors ? (
+          <div className="flex gap-1">
+            {([false, true] as const).map((mode) => (
+              <Button
+                key={String(mode)}
+                size="xs"
+                variant={grouped === mode ? "default" : "outline"}
+                className="rounded-full"
+                aria-pressed={grouped === mode}
+                onClick={() => choose(mode)}
+              >
+                {mode ? <Trans>By vendor</Trans> : <Trans>List</Trans>}
+              </Button>
+            ))}
+          </div>
+        ) : null
       }
     >
       <TransactionTable rows={rows} grouped={grouped} empty={empty} />
@@ -740,7 +911,7 @@ function Legend({ className, children }: { className: string; children: ReactNod
 /** The key for a BurnBars chart: Out, Revenue and Financing. */
 export function BurnLegend() {
   return (
-    <div className="flex gap-3.5 text-[11px] text-muted-foreground">
+    <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[11px] text-muted-foreground">
       <Legend className="bg-foreground">
         <Trans>Out</Trans>
       </Legend>
@@ -803,7 +974,8 @@ export function cashSubtitle(
 /** Up/down tone: spending more or burning more is bad news. */
 /** Less spend reads as good news and more as bad; a change that rounds to 0% is neither. */
 export const toneClass = (change: number | null) =>
-  change === null || Math.round(change) === 0
+  // While amounts are hidden the colour would still say which way spend went.
+  change === null || Math.round(change) === 0 || getHideAmounts()
     ? ""
     : change < 0
       ? "text-success"

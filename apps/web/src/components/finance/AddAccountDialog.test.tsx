@@ -11,7 +11,11 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
@@ -23,6 +27,7 @@ const rpcMock = vi.hoisted(() => ({
   statements: vi.fn(),
   overview: vi.fn(),
   exchanges: vi.fn(),
+  refresh: vi.fn(),
 }));
 const connectMock = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
@@ -70,6 +75,16 @@ const click = (label: string) =>
       [...dialog().querySelectorAll("button")].find((b) => b.textContent === label) as HTMLElement
     ).click(),
   );
+/** Answers the removal confirmation, which deleting an imported statement asks first. */
+const confirmRemove = async () => {
+  const alert = document.body.querySelector('[role="alertdialog"]') as HTMLElement;
+  expect(alert.textContent).toContain("Its 4 transactions will be removed from Finance.");
+  await act(async () =>
+    (
+      [...alert.querySelectorAll("button")].find((b) => b.textContent === "Remove") as HTMLElement
+    ).click(),
+  );
+};
 const open = async (initialStep?: "bank") => {
   await act(async () =>
     root.render(
@@ -99,6 +114,7 @@ beforeEach(() => {
   rpcMock.statements.mockResolvedValue({ statements: [], reminders: [] });
   rpcMock.overview.mockResolvedValue({ sources: [] });
   rpcMock.exchanges.mockResolvedValue([]);
+  rpcMock.refresh.mockResolvedValue(null);
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -127,11 +143,17 @@ it("routes wallet and exchange cards to the crypto flows", async () => {
   expect(onPickCrypto).toHaveBeenCalledWith("wallet");
 });
 
-it("connects Mercury through the finance flow and reloads", async () => {
+it("connects Mercury through the finance flow, syncs, and only then reloads the page", async () => {
   connectMock.mockResolvedValue("connected");
+  let synced = () => {};
+  rpcMock.refresh.mockReturnValue(new Promise<void>((resolve) => (synced = resolve)));
   await open();
   await act(async () => card("Mercury").click());
   expect(connectMock).toHaveBeenCalledWith("mercury");
+  // The page reloads after the sync, so it shows the new accounts rather than an empty list.
+  expect(rpcMock.refresh).toHaveBeenCalled();
+  expect(onImported).not.toHaveBeenCalled();
+  await act(async () => synced());
   expect(onImported).toHaveBeenCalled();
 });
 
@@ -243,6 +265,10 @@ it("lists statements uploaded before, so they can be found and removed later", a
   expect(text).not.toContain("New account");
   expect(text).not.toContain("broken.pdf");
   await click("Remove");
+  // Nothing is deleted until the removal is confirmed, asked over a dimmed upload dialog.
+  expect(rpcMock.statementDiscard).not.toHaveBeenCalled();
+  expect(document.body.querySelector('[data-slot="alert-dialog-overlay"]')).not.toBeNull();
+  await confirmRemove();
   expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "old" });
   expect(onImported).toHaveBeenCalledTimes(1);
 });
@@ -254,6 +280,7 @@ it("removes an imported statement and reloads", async () => {
   await choose(new File(["x"], "march.pdf"));
   onImported.mockClear();
   await click("Remove");
+  await confirmRemove();
   expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "s1" });
   expect(onImported).toHaveBeenCalledTimes(1);
   expect(dialog().textContent).not.toContain("Example Bank");
@@ -278,4 +305,49 @@ it("shows a rejected import (for example a duplicate) on its row and discards th
   await choose(new File(["x"], "march.pdf"));
   expect(dialog().textContent).toContain("This statement is already imported");
   expect(rpcMock.statementDiscard).toHaveBeenCalledWith({ id: "s1" });
+});
+
+it("names a renamed account by its current name and says when there is no balance to check", async () => {
+  rpcMock.statements.mockResolvedValue({
+    statements: [
+      statement({
+        id: "old",
+        status: "imported",
+        accountId: "acc-1",
+        accountName: "Backup bank",
+        check: { balances: "unavailable", differenceCents: null },
+      }),
+    ],
+    reminders: [],
+  });
+  await open("bank");
+  const text = dialog().textContent ?? "";
+  expect(text).toContain("Backup bank ••1234");
+  expect(text).not.toContain("Example Bank");
+  expect(text).toContain("No closing balance found to check against");
+  expect(text).not.toContain("add up");
+});
+
+it("says a file the browser cannot read could not be read, not the browser's own error", async () => {
+  const real = globalThis.FileReader;
+  class Failing {
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    error = new DOMException(
+      "The requested file could not be read, typically due to permission problems",
+    );
+    readAsDataURL() {
+      setTimeout(() => this.onerror?.(), 0);
+    }
+  }
+  globalThis.FileReader = Failing as unknown as typeof FileReader;
+  try {
+    await open("bank");
+    await choose(new File(["x"], "march.csv"));
+    expect(dialog().textContent).toContain("Could not read this file");
+    expect(dialog().textContent).not.toContain("permission");
+    expect(rpcMock.statementUpload).not.toHaveBeenCalled();
+  } finally {
+    globalThis.FileReader = real;
+  }
 });

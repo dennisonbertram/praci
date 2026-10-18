@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   type Crumb,
+  categoryLabel,
   DetailPage,
   Kv,
   KvRow,
@@ -15,6 +16,7 @@ import {
   Section,
   useFinanceQuery,
   ValueLink,
+  WithEndings,
 } from "../../components/finance/ui";
 import {
   accountLabel,
@@ -25,7 +27,7 @@ import {
   txnDay,
 } from "../../lib/finance-format";
 import { financePath } from "../../lib/finance-route";
-import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 
 export const ReceiptIcon = () => (
@@ -182,7 +184,9 @@ export function FinanceTransactionPage({ id }: { id: string }) {
               <KvRow label={t`Date`}>{fullDay(day)}</KvRow>
               {posted !== day ? <KvRow label={t`Posted`}>{fullDay(posted)}</KvRow> : null}
               <KvRow label={t`Status`}>{status}</KvRow>
-              <KvRow label={t`Source`}>{source}</KvRow>
+              <KvRow label={t`Source`}>
+                <WithEndings text={source} />
+              </KvRow>
               {txn.cardholder ? (
                 <KvRow label={txn.cardLastFour ? t`Cardholder` : t`Initiated by`}>
                   {txn.cardholder}
@@ -194,10 +198,10 @@ export function FinanceTransactionPage({ id }: { id: string }) {
                     {txn.category}
                   </ValueLink>
                 ) : (
-                  (txn.category ?? t`Uncategorized`)
+                  categoryLabel(txn)
                 )}
               </KvRow>
-              {txn.memo ? <KvRow label={t`Memo`}>{txn.memo}</KvRow> : null}
+              {txn.memo ? <KvRow label={t`Memo`}>{maskCurrencyWhenHidden(txn.memo)}</KvRow> : null}
             </Kv>
             {external ? (
               <div className="mt-3.5">

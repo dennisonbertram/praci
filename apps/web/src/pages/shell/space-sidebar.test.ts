@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { commitSpaceRename, sidebarGroupsForSpaces } from "./space-sidebar";
+import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./space-sidebar";
 
 function chat(id: string, name: string) {
   return {
@@ -108,5 +108,13 @@ describe("commitSpaceRename", () => {
     ).rejects.toThrow("Space deletion is already in progress");
     expect(apply).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("activeSpaceFirst", () => {
+  it("puts the space on screen first and keeps the others in order", () => {
+    const spaces = [space("a", "Northwind"), space("b", "Empty"), space("c", "Third")];
+    expect(activeSpaceFirst(spaces, "b").map((s) => s.id)).toEqual(["b", "a", "c"]);
+    expect(activeSpaceFirst(spaces, undefined).map((s) => s.id)).toEqual(["a", "b", "c"]);
   });
 });

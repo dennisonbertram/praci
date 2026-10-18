@@ -1,6 +1,11 @@
 import { financeAgentSpawnKey } from "@rakazo/contracts";
-import { describe, expect, it } from "vitest";
-import { findFinanceAgent } from "./finance-agent";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@lingui/core/macro", () => ({
+  t: (parts: TemplateStringsArray) => parts.join(""),
+}));
+
+import { chatStarterQuestions, findFinanceAgent } from "./finance-agent";
 
 const bot = (id: string, spawnKey: string | null, name = "Bot") => ({ id, spawnKey, name });
 
@@ -22,5 +27,17 @@ describe("findFinanceAgent", () => {
     expect(findFinanceAgent([bot("b1", financeAgentSpawnKey("undefined"))], undefined)).toBe(
       undefined,
     );
+  });
+});
+
+describe("chatStarterQuestions", () => {
+  it("offers the Finance panel's starter questions in the Finance agent's own empty chat", () => {
+    const agent = bot("b1", financeAgentSpawnKey("user-1"));
+    expect(chatStarterQuestions(agent, "user-1", true)).toEqual([
+      "What is our runway?",
+      "Where did spend go up this month?",
+    ]);
+    expect(chatStarterQuestions(agent, "user-1", false)).toBeNull();
+    expect(chatStarterQuestions(bot("b2", null), "user-1", true)).toBeNull();
   });
 });

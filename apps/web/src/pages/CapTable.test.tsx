@@ -628,6 +628,12 @@ it("hides shares, ownership, 409A and amounts while amounts are hidden, and flip
     expect(text).not.toContain(real);
   expect(text).toContain("Example Co");
   expect(text).toContain("Example Ventures");
+  // The ownership bar's segments do not keep their proportions either.
+  const segments = [...container.querySelectorAll<HTMLElement>(".h-3 > div")].map(
+    (el) => el.style.width,
+  );
+  expect(segments.length).toBeGreaterThan(1);
+  expect(new Set(segments).size).toBe(1);
   await click(
     button("Show amounts") ??
       (document.querySelector("[data-testid=hide-amounts-toggle]") as HTMLElement),

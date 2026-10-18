@@ -452,6 +452,10 @@ describe("finance_overview", () => {
       spend: Array<{ period: string; spend: number }>;
     };
     expect(result.cash.total).toBe(10_000);
+    // Bank by bank, so "cash per account" can name every account the page counts.
+    expect((result.cash as unknown as { accounts: unknown[] }).accounts).toEqual([
+      { name: "Checking ••1111", source: "mercury", kind: "checking", balance: 10_000 },
+    ]);
     expect(result.monthlyBurn).toBe(20);
     expect(result.spend.find((s) => s.period === "month")?.spend).toBe(150);
     expect(published[0]).toMatchObject({ card: { card: "overview", cashCents: 1_000_000 } });

@@ -172,6 +172,7 @@ const SEGMENT_COLORS = [
 const segmentColor = (i: number) => SEGMENT_COLORS[i % SEGMENT_COLORS.length];
 
 export function OwnershipBar({ classes }: { classes: Snapshot["shareClasses"] }) {
+  // While amounts are hidden, equal segments keep the bar from showing who owns how much.
   const hidden = useHideAmounts();
   if (classes.length === 0) return null;
   return (

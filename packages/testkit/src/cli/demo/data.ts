@@ -1,5 +1,6 @@
 import type { EmulatedMcpServer, EmulatedMessage } from "@rakazo/adapters";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
+import { FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
 import {
   brexAccountsResponse,
   brexExpense,
@@ -29,6 +30,8 @@ export const DEMO_RATE_LIMIT_SPACE = "MOCK DEMO DATA — Mail rate-limited";
 export const DEMO_BOUNCE_DOMAIN = "send-fail.example.test";
 /** How long after the stack starts the mock new email arrives. */
 export const DEMO_NEW_MAIL_DELAY_MS = 3 * 60_000;
+/** A company whose Mercury sign-in has expired, for the Finance Reconnect path. */
+export const DEMO_FINANCE_RECONNECT_SPACE = "MOCK DEMO DATA — Reconnect needed";
 export const DEMO_USER_NAME = "Alex Founder (Mock)";
 /** A second member of the company, so sharing and privacy can be looked at. */
 export const DEMO_COFOUNDER = {
@@ -450,8 +453,6 @@ export function demoMailboxes(now = new Date()) {
 
 // ---- Finance ----
 
-const mockName = (name: string) => `${name} (Mock)`;
-
 type Recurring = { vendor: string; cents: number; category: string };
 
 const MERCURY_MONTHLY: Array<{
@@ -500,14 +501,101 @@ const MERCURY_MONTHLY: Array<{
   },
 ];
 
-const BREX_MONTHLY: Array<Recurring & { day: number }> = [
-  { vendor: "Cloudnine Hosting (Mock)", cents: 481_200, category: "Servers", day: 8 },
-  { vendor: "Docuflow (Mock)", cents: 12_900, category: "Software", day: 9 },
-  { vendor: "Chatterbox Messaging (Mock)", cents: 8_750, category: "Software", day: 10 },
-  { vendor: "Sketchpad Design (Mock)", cents: 4_500, category: "Software", day: 14 },
-  { vendor: "Globex Cloud (Mock)", cents: 240_000, category: "Servers", day: 16 },
-  { vendor: "Mockbooks Accounting (Mock)", cents: 15_000, category: "Software", day: 18 },
+/** `memo` says what the charge was for, as a card memo would; the month and "(Mock)" are added. */
+const BREX_MONTHLY: Array<Recurring & { day: number; memo: string; risePerMonth?: number }> = [
+  {
+    vendor: "Cloudnine Hosting (Mock)",
+    cents: 481_200,
+    category: "Servers",
+    day: 8,
+    memo: "Hosting",
+  },
+  {
+    vendor: "Docuflow (Mock)",
+    cents: 12_900,
+    category: "Software",
+    day: 9,
+    memo: "Document signing plan",
+  },
+  {
+    vendor: "Chatterbox Messaging (Mock)",
+    cents: 8_750,
+    category: "Software",
+    day: 10,
+    memo: "Team chat seats",
+  },
+  {
+    vendor: "Sketchpad Design (Mock)",
+    cents: 4_500,
+    category: "Software",
+    day: 14,
+    memo: "Design tool seat",
+  },
+  // Rising about 8% a month, so a vendor page shows a real change.
+  {
+    vendor: "Globex Cloud (Mock)",
+    cents: 240_000,
+    category: "Servers",
+    day: 16,
+    risePerMonth: 0.08,
+    memo: "Compute usage",
+  },
+  {
+    vendor: "Mockbooks Accounting (Mock)",
+    cents: 15_000,
+    category: "Software",
+    day: 18,
+    memo: "Bookkeeping plan",
+  },
+  // Two AI tools in the same overlap group, so Subscriptions shows the "overlaps" pill.
+  {
+    vendor: "Cursor Seats (Mock)",
+    cents: 20_000,
+    category: "Software",
+    day: 4,
+    memo: "Editor seats",
+  },
+  {
+    vendor: "Devin Agent Seats (Mock)",
+    cents: 50_000,
+    category: "Software",
+    day: 6,
+    memo: "Agent seats",
+  },
+  // More categories, early in the month, so the month-to-date Breakdown has 8 or more.
+  {
+    vendor: "Penwright Office Supply (Mock)",
+    cents: 31_400,
+    category: "Office Supplies",
+    day: 2,
+    memo: "Office supplies",
+  },
+  {
+    vendor: "Brightsign Ads (Mock)",
+    cents: 180_000,
+    category: "Marketing",
+    day: 3,
+    memo: "Search ads",
+  },
+  {
+    vendor: "Lunchbox Catering (Mock)",
+    cents: 42_600,
+    category: "Meals",
+    day: 7,
+    memo: "Team lunch",
+  },
+  {
+    vendor: "Placeholder Legal LLP (Mock)",
+    cents: 125_000,
+    category: "Legal",
+    day: 11,
+    memo: "Monthly retainer",
+  },
 ];
+
+/** How many months of history the demo holds (the catalog asks for 7 or more). */
+const HISTORY_MONTHS = 8;
+const HISTORY_DAYS = 250;
 
 /** Whole-day offsets from `now` back to the given day of the month `monthsAgo` months earlier. */
 function monthDay(now: Date, monthsAgo: number, day: number): Date {
@@ -517,7 +605,7 @@ function monthDay(now: Date, monthsAgo: number, day: number): Date {
 
 /**
  * Last month's statement for a bank with no integration, as a CSV export, so Accounts shows a
- * statement account (named from the file, so it can be renamed) and the monthly reminder.
+ * statement account (named from the statement, and renamable) and the monthly reminder.
  */
 export function demoStatementCsv(now = new Date()): { fileName: string; body: string } {
   const day = (d: number) => monthDay(now, 1, d).toISOString().slice(0, 10);
@@ -527,9 +615,18 @@ export function demoStatementCsv(now = new Date()): { fileName: string; body: st
     [day(9), "MOCK Office Supplies (Mock)", "-250.00", "10950.00"],
     [day(18), "MOCK Courier Service (Mock)", "-450.00", "10500.00"],
   ];
+  // A title line names the bank and account ending, and stated balances bracket the lines, the way
+  // bank exports do, so the account is named from the statement and its balances are checked.
   return {
     fileName: `mock-community-bank-${month}.csv`,
-    body: `Date,Description,Amount,Balance\n${rows.map((r) => r.join(",")).join("\n")}\n`,
+    body: [
+      "MOCK Community Bank,Account ending 5502",
+      "Opening balance,10000.00",
+      "Date,Description,Amount,Balance",
+      ...rows.map((r) => r.join(",")),
+      "Closing balance,10500.00",
+      "",
+    ].join("\n"),
   };
 }
 
@@ -555,9 +652,29 @@ export function demoFinance(now = new Date()) {
       kind: "wire",
     }),
   };
+  const once = (id: string, at: Date, row: Partial<Parameters<typeof mercuryRow>[1]>) => ({
+    at,
+    row: mercuryRow(id, { date: at.toISOString(), ...row }),
+  });
+  const oneOffs = [
+    // A large one-off two months ago, so that month's page has an outlier to explain.
+    once("mock-merc-hardware", monthDay(now, 2, 14), {
+      counterpartyName: "Ironclad Hardware Supply (Mock)",
+      amount: -48_000,
+      category: "Equipment",
+      kind: "ach",
+    }),
+    // Moving cash into Treasury is a transfer between own accounts, never spend.
+    once("mock-merc-to-treasury", monthDay(now, 3, 20), {
+      counterpartyName: "Mercury Treasury (Mock)",
+      amount: -100_000,
+      category: null,
+      kind: "treasuryTransfer",
+    }),
+  ];
   const checking = dated([
     safeWire,
-    ...[0, 1, 2, 3, 4].flatMap((monthsAgo) =>
+    ...Array.from({ length: HISTORY_MONTHS }, (_, monthsAgo) => monthsAgo).flatMap((monthsAgo) =>
       MERCURY_MONTHLY.map((m) => {
         const at = monthDay(now, monthsAgo, m.day);
         return {
@@ -570,15 +687,18 @@ export function demoFinance(now = new Date()) {
             kind: m.kind,
           }),
         };
-      }).filter(({ at }) => now.getTime() - at.getTime() < 130 * DAY_MS),
+      }).filter(({ at }) => now.getTime() - at.getTime() < HISTORY_DAYS * DAY_MS),
     ),
+    ...oneOffs,
   ]);
 
   const expenses = dated(
-    [0, 1, 2, 3, 4].flatMap((monthsAgo) =>
+    Array.from({ length: HISTORY_MONTHS }, (_, monthsAgo) => monthsAgo).flatMap((monthsAgo) =>
       BREX_MONTHLY.map((m) => {
         const at = monthDay(now, monthsAgo, m.day);
-        const value = (m.cents / 100).toFixed(2);
+        // Integer cents: a rising vendor was cheaper by its monthly rise for each month back.
+        const cents = Math.round(m.cents * (1 - (m.risePerMonth ?? 0) * monthsAgo));
+        const value = (cents / 100).toFixed(2);
         const money = { value, currency: "USD", display: `$${value} USD` };
         return {
           at,
@@ -588,14 +708,14 @@ export function demoFinance(now = new Date()) {
             merchant: { id: `pmch_${m.day}`, name: m.vendor },
             vendor: { id: `pmch_${m.day}`, name: m.vendor, email: null },
             merchant_category: { id: `pmca_${m.day}`, name: m.category },
-            memo: MOCK_NOTE,
+            memo: `${m.memo}, ${at.toLocaleString("en-US", { month: "long", timeZone: "UTC" })} (Mock)`,
             original_amount: money,
             purchased_amount: money,
             amount: money,
             card: { id: "ncard_1", last4: "0001", partner: null },
           }),
         };
-      }).filter(({ at }) => now.getTime() - at.getTime() < 130 * DAY_MS),
+      }).filter(({ at }) => now.getTime() - at.getTime() < HISTORY_DAYS * DAY_MS),
     ),
   );
 
@@ -605,15 +725,51 @@ export function demoFinance(now = new Date()) {
     accounts: (accounts.accounts as Array<Record<string, unknown>>).map((a) => ({
       ...a,
       name: a.id === MERCURY_CHECKING ? "MOCK Checking ••1111" : "MOCK Savings ••2222",
-      availableBalance: a.id === MERCURY_CHECKING ? 187_420.55 : 225_000,
+      // High enough that the balance rebuilt backward from today never dips below zero.
+      availableBalance: a.id === MERCURY_CHECKING ? 412_420.55 : 60_000,
     })),
-    totalAvailableBalance: 412_420.55,
+    totalAvailableBalance: 472_420.55,
+  };
+  // Treasury with six months of yield, so the Treasury yield card and the account's Yield table show.
+  const treasury = {
+    accounts: [
+      {
+        id: "mock-trs-3333",
+        status: "active",
+        createdAt: monthDay(now, 12, 1).toISOString(),
+        availableBalance: 1_150_000,
+        currentBalance: 1_150_000,
+        netReturns: Array.from({ length: 6 }, (_, i) => {
+          const month = monthDay(now, i + 1, 1)
+            .toISOString()
+            .slice(0, 10);
+          const dividends = 4_100 + i * 35;
+          return {
+            month,
+            netAmount: dividends - 95,
+            dividends: [
+              {
+                id: `mock-div-${i}`,
+                type: [],
+                securityName: "MOCK Money Market Fund",
+                amount: dividends,
+              },
+            ],
+            treasuryFee: -95,
+            status: "charged",
+          };
+        }),
+      },
+    ],
+    page: {},
   };
   const brexAccounts = {
     ...brexAccountsResponse,
     items: brexAccountsResponse.items.map((a) => ({
       ...a,
-      name: mockName(a.name),
+      name: a.account_type === "CARD" ? "MOCK Brex Card" : "MOCK Brex Cash",
+      // An ending like the other accounts', so every account reads the same way.
+      account_number_last_four: a.account_type === "CARD" ? null : "3003",
       nickname: undefined,
     })),
   };
@@ -621,7 +777,7 @@ export function demoFinance(now = new Date()) {
   const mercury = fakeMercury({
     txns: { [MERCURY_CHECKING]: checking, [MERCURY_SAVINGS]: [] },
     accounts: mercuryAccounts,
-    treasury: { accounts: [], page: {} },
+    treasury,
   });
   // Not yet cleared: shows as Pending on the dashboard and on its transaction page.
   const pendingAt = new Date(now.getTime() - DAY_MS);
@@ -634,13 +790,46 @@ export function demoFinance(now = new Date()) {
       merchant: { id: "pmch_air", name: "Skyline Air (Mock)" },
       vendor: { id: "pmch_air", name: "Skyline Air (Mock)", email: null },
       merchant_category: { id: "pmca_air", name: "Travel" },
-      memo: MOCK_NOTE,
+      memo: "Flight to the robotics expo (Mock)",
       original_amount: pendingMoney,
       purchased_amount: pendingMoney,
       amount: pendingMoney,
       card: { id: "ncard_1", last4: "0001", partner: null },
     }),
   );
+  // One charge in euros (left out of totals and noted on the dashboard), and one memo that holds a
+  // dollar amount, so Hide amounts can be checked on memos.
+  const euroAt = monthDay(now, 1, 21);
+  const euros = { value: "380.00", currency: "EUR", display: "€380.00 EUR" };
+  const depositAt = monthDay(now, 1, 24);
+  const deposit = { value: "4200.00", currency: "USD", display: "$4,200.00 USD" };
+  expenses.push(
+    brexExpense("mock-brex-eur", {
+      purchased_at: euroAt.toISOString(),
+      posted_at: new Date(euroAt.getTime() + DAY_MS).toISOString(),
+      merchant: { id: "pmch_eur", name: "Berlin Coworking (Mock)" },
+      vendor: { id: "pmch_eur", name: "Berlin Coworking (Mock)", email: null },
+      merchant_category: { id: "pmca_rent", name: "Rent" },
+      memo: "Coworking day passes (Mock)",
+      original_amount: euros,
+      purchased_amount: euros,
+      amount: euros,
+      card: { id: "ncard_1", last4: "0001", partner: null },
+    }),
+    brexExpense("mock-brex-deposit", {
+      purchased_at: depositAt.toISOString(),
+      posted_at: new Date(depositAt.getTime() + DAY_MS).toISOString(),
+      merchant: { id: "pmch_venue", name: "Harborview Event Space (Mock)" },
+      vendor: { id: "pmch_venue", name: "Harborview Event Space (Mock)", email: null },
+      merchant_category: { id: "pmca_events", name: "Events" },
+      memo: "Invoice 4417 — $4,200 deposit (Mock)",
+      original_amount: deposit,
+      purchased_amount: deposit,
+      amount: deposit,
+      card: { id: "ncard_1", last4: "0001", partner: null },
+    }),
+  );
+  expenses.sort((a, b) => b.purchased_at.localeCompare(a.purchased_at));
   // An approved bill not yet paid: an "Upcoming" bill row, not a transaction.
   const bills = [
     {
@@ -660,30 +849,166 @@ export function demoFinance(now = new Date()) {
   };
 }
 
-/** Invented treasury wallet: 0x…d3e0 is not a real holder; nothing here touches a real chain. */
-export const DEMO_WALLET = {
-  address: "0x000000000000000000000000000000000000d3e0",
-  label: "MOCK Treasury wallet",
+const str = { type: "string" } as const;
+const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
+  type: "object",
+  properties,
+  required,
+});
+/** Only the tools the canned servers answer, with the arguments their handlers need. */
+const DEMO_FINANCE_TOOLS = {
+  mercury: {
+    getAccounts: obj({}),
+    getTreasury: obj({}),
+    listTransactions: obj(
+      {
+        accountId: { type: "array", items: str },
+        status: { type: "array", items: str },
+        limit: { type: "number" },
+        start_after: str,
+      },
+      ["accountId", "limit"],
+    ),
+    getTransactionById: obj({ transactionId: str }, ["transactionId"]),
+    getAttachment: obj({ attachmentId: str }, ["attachmentId"]),
+  },
+  brex: {
+    list_business_accounts: obj({ intent: str }, ["intent"]),
+    list_expenses: obj({ intent: str, limit: { type: "number" }, cursor: str }, ["intent"]),
+    list_bills: obj({ intent: str, limit: { type: "number" }, cursor: str }, ["intent"]),
+    get_expense_by_id: obj({ intent: str, id: str }, ["intent", "id"]),
+  },
 } as const;
-const USDC_ETHEREUM = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 
 /**
- * An offline JSON-RPC and price fake holding the mock wallet's balances (2.5 ETH and 40,000 USDC on
- * Ethereum). Pass `fetch` to `createApp` as `cryptoFetch` so the Crypto page never calls the network.
+ * Mock Mercury and Brex MCP servers by hostname, so "Add account → Mercury" signs in and connects
+ * in the demo. Each asks for a sign-in like the real one; its sign-in page is the app's own OAuth
+ * callback with a mock code. Tool calls answer from the same canned history as `demoFinance`.
+ */
+export function demoFinanceMcp(
+  webOrigin: string,
+  now = new Date(),
+): Record<string, EmulatedMcpServer> {
+  const { callToolFor } = demoFinance(now);
+  const servers: Record<string, EmulatedMcpServer> = {};
+  for (const provider of ["mercury", "brex"] as const) {
+    servers[new URL(FINANCE_MCP_ENDPOINTS[provider]).hostname] = {
+      authorizeUrl: `${webOrigin}/mcp/oauth/callback?code=mock-demo-${provider}-code`,
+      tools: Object.entries(DEMO_FINANCE_TOOLS[provider]).map(([name, inputSchema]) => ({
+        name,
+        description: `${MOCK_NOTE}: ${name}`,
+        inputSchema,
+      })),
+      call: async (name, args) => (await callToolFor({ provider }))(name, args),
+    };
+  }
+  return servers;
+}
+
+/** Invented treasury Safe: 0x…d3e0 is not a real holder; nothing here touches a real chain. */
+export const DEMO_WALLET = {
+  address: "0x000000000000000000000000000000000000d3e0",
+  label: "MOCK Treasury Safe",
+  type: "safe",
+} as const;
+/** An invented ENS name for an operations wallet that also holds a token with no price. */
+export const DEMO_ENS_WALLET = {
+  name: "mock-ops.eth",
+  address: "0x000000000000000000000000000000000000b0b5",
+  label: "MOCK Ops wallet",
+  type: "personal",
+} as const;
+const USDC_ETHEREUM = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+/** A listed token the price fake has no price for, so the wallet shows "1 unpriced". */
+const LINK_ETHEREUM = "0x514910771af9ca656af840dff83e8264ecf986ca";
+const SAFE_OWNERS = [
+  "0x000000000000000000000000000000000000a001",
+  "0x000000000000000000000000000000000000a002",
+  "0x000000000000000000000000000000000000a003",
+];
+
+/**
+ * Coinbase and Kraken read-only answers for the demo: any well-formed key connects and reads the
+ * same invented balances. Requests never leave the process.
+ */
+function demoExchangeFetch(input: string | URL | Request): Response | null {
+  const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+  const json = (body: unknown) => Response.json(body);
+  if (url.host === "api.coinbase.com") {
+    if (url.pathname.endsWith("/key_permissions"))
+      return json({ can_view: true, can_trade: false, can_transfer: false });
+    if (url.pathname.endsWith("/accounts"))
+      return json({
+        accounts: [
+          { currency: "USD", available_balance: { value: "12000.00" }, hold: { value: "0" } },
+          { currency: "BTC", available_balance: { value: "0.35" }, hold: { value: "0" } },
+          { currency: "USDC", available_balance: { value: "25000" }, hold: { value: "0" } },
+        ],
+        has_next: false,
+      });
+  }
+  if (url.host === "api.kraken.com") {
+    if (url.pathname.endsWith("/GetApiKeyInfo"))
+      return json({ error: [], result: { permissions: ["query-funds"] } });
+    if (url.pathname.endsWith("/Balance"))
+      return json({ error: [], result: { ZUSD: "5000.0000", XETH: "1.2000000000" } });
+  }
+  return null;
+}
+
+/**
+ * An offline JSON-RPC, price and exchange fake: the treasury Safe (2 of 3, 2.5 ETH and 40,000 USDC
+ * on Ethereum), the ops wallet (0.4 ETH and an unpriced token), and Coinbase and Kraken answers.
+ * Pass `fetch` to `createApp` as `cryptoFetch` so Crypto never calls the network.
  */
 export function demoCrypto() {
-  return fakeRpc({
+  const rpc = fakeRpc({
     chains: {
       1: {
-        balances: { [DEMO_WALLET.address]: 2_500_000_000_000_000_000n },
-        tokens: { [USDC_ETHEREUM]: { [DEMO_WALLET.address]: 40_000_000_000n } },
+        balances: {
+          [DEMO_WALLET.address]: 2_500_000_000_000_000_000n,
+          [DEMO_ENS_WALLET.address]: 400_000_000_000_000_000n,
+        },
+        tokens: {
+          [USDC_ETHEREUM]: { [DEMO_WALLET.address]: 40_000_000_000n },
+          [LINK_ETHEREUM]: { [DEMO_ENS_WALLET.address]: 120_000_000_000_000_000_000n },
+        },
+        contracts: [DEMO_WALLET.address],
       },
     },
+    safe: { owners: SAFE_OWNERS, threshold: 2 },
+    ens: { [DEMO_ENS_WALLET.name]: DEMO_ENS_WALLET.address },
     prices: {
       "coingecko:ethereum": { price: 2_500, confidence: 0.99 },
+      "coingecko:bitcoin": { price: 60_000, confidence: 0.99 },
       [`ethereum:${USDC_ETHEREUM}`]: { price: 1, confidence: 0.99 },
     },
   });
+  const fetchFn = (async (input: string | URL | Request, init?: RequestInit) =>
+    demoExchangeFetch(input) ?? rpc.fetch(input, init)) as typeof fetch;
+  return { fetch: fetchFn, calls: rpc.calls };
+}
+
+/**
+ * 90 days of daily crypto totals for one wallet or exchange, so "Balance over time" has a line on
+ * the first visit (the sync itself only writes today's point). Stablecoins hold steady; the rest drifts.
+ */
+export function demoCryptoHistory(
+  now = new Date(),
+  /** Today's stablecoin and other-crypto cents; earlier days hold the stablecoins and drift the rest. */
+  today = { stablecoinCents: 4_000_000, otherCryptoCents: 625_000 },
+) {
+  return Array.from({ length: 90 }, (_, i) => {
+    const back = 89 - i;
+    const day = new Date(now.getTime() - back * DAY_MS).toISOString().slice(0, 10);
+    // Whole cents, no float money: the non-stable part moves within about ±6%.
+    const drift = Math.round((today.otherCryptoCents * (((back * 7_919) % 120) - 60)) / 1_000);
+    return {
+      day,
+      stablecoinCents: today.stablecoinCents,
+      otherCryptoCents: today.otherCryptoCents + drift,
+    };
+  }).slice(0, -1);
 }
 
 // ---- Cap table contacts, data room, bots ----

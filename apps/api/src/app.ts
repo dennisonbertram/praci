@@ -183,7 +183,7 @@ export async function createApp(
     contextStrategy?: AgentContextStrategy;
     /** Replaces the Mercury and Brex tool caller, so a stack with canned finance data can run offline. */
     financeCallToolFor?: FinanceSyncDeps["callToolFor"];
-    /** Replaces the network for wallet balances, prices and ENS, so canned crypto data runs offline. */
+    /** Replaces the network for wallet balances, prices, ENS and exchange reads, so canned crypto data runs offline. */
     cryptoFetch?: typeof fetch;
   } = {},
 ): Promise<AppHandles> {
@@ -593,6 +593,8 @@ export async function createApp(
     mail,
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     mcp,
+    // The same offline fake serves exchange reads (Coinbase, Kraken) and their prices.
+    ...(cryptoFetch ? { exchangeFetch: cryptoFetch } : {}),
     parseStatement: async (file, scope) => {
       // Only a PDF from an unknown bank reaches the model, and only with the consent the Inbox
       // triage model already needs. Without it the parser says no model is configured.

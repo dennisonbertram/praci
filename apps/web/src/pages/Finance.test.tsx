@@ -41,7 +41,16 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { finance: rpcMock } }));
 vi.mock("../lib/finance-connect", () => ({ connectFinanceProvider: rpcMock.connect }));
+// The upload itself is tested with StatementImport; here a button stands in for a finished import.
+vi.mock("../components/finance/StatementImport", () => ({
+  StatementImport: ({ onImported }: { onImported: () => void }) => (
+    <button type="button" onClick={onImported}>
+      Finish import
+    </button>
+  ),
+}));
 
+import { hereCrumb, shortSpaceName, trailFor, WithEndings } from "../components/finance/ui";
 import { cryptoSubtitle, FinancePage, UpcomingRow } from "./Finance";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -172,6 +181,9 @@ async function show(path: string, onAskAgent?: () => void) {
   });
 }
 const flush = () => act(async () => {});
+/** A button anywhere in the document, dialogs (rendered in a portal) included. */
+const anyButton = (name: string) =>
+  [...document.body.querySelectorAll("button")].find((b) => b.textContent === name);
 const button = (name: RegExp | string) =>
   [...container.querySelectorAll("button")].find((b) =>
     typeof name === "string"
@@ -230,7 +242,59 @@ it("shows the dashboard, not the connect prompt, for a user with only statement 
   await act(async () => button("Upload")?.click());
   const dialog = document.body.querySelector('[role="dialog"]');
   expect(dialog?.textContent).toContain("Upload statements");
-  expect(dialog?.querySelector('input[type="file"]')).not.toBeNull();
+  expect(anyButton("Finish import")).toBeDefined();
+});
+
+it("keeps the upload dialog open on its results when the first import fills the dashboard", async () => {
+  rpcMock.overview.mockResolvedValue(emptyOverview());
+  rpcMock.exchanges.mockResolvedValue([]);
+  await show("/app/finance");
+  await act(async () => button("Add account")?.click());
+  const upload = [...document.body.querySelectorAll("button")].find((b) =>
+    b.textContent?.startsWith("Upload statements"),
+  );
+  await act(async () => upload?.click());
+  // The first statement creates an account, so the next overview replaces the empty state.
+  rpcMock.overview.mockResolvedValue({ ...emptyOverview(), hasCashAccounts: true });
+  await act(async () => anyButton("Finish import")?.click());
+  await flush();
+  expect(container.textContent).not.toContain("Add an account to see");
+  expect(anyButton("Finish import")).toBeDefined();
+  expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Done");
+});
+
+it("says why a new dashboard's burn, runway, upcoming and subscriptions are empty", async () => {
+  const base = emptyOverview();
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    hasCashAccounts: true,
+    burn: { monthlyCents: 0, months: base.burn.months },
+    runway: { months: null, runOutDate: null },
+    upcoming: { items: [], totalCents: 0 },
+    subscriptions: { items: [], totalMonthlyCents: 0 },
+    // A statement account: last month had spend, this month has no lines yet.
+    spendTotals: {
+      ...base.spendTotals,
+      month: { ...base.spendTotals.month, currentCents: 0, previousCents: 45_000, changePct: -100 },
+    },
+    cashSeries: {
+      ...base.cashSeries,
+      month: bars(14, "day").map((p) => ({ ...p, outCents: 0 })),
+    },
+  });
+  await show("/app/finance");
+  await flush();
+  const text = container.textContent ?? "";
+  // Nothing spent yet is not a 100% drop, an all-$0 chart is replaced by a line, and no ~$0.
+  expect(text).not.toContain("100%");
+  expect(text).toContain("No money in or out in this period yet.");
+  expect(container.querySelector('svg[aria-label="Cash out and cash in over time"]')).toBeNull();
+  expect(text).not.toContain("~$0");
+  expect(text).toContain("No net spend in the last 3 full months");
+  expect(text).toContain("Needs a monthly burn");
+  expect(text).toContain("Nothing due in the next 30 days");
+  expect(text).toContain("None yet. A vendor shows here after three similar monthly charges.");
+  expect(text).not.toContain("0 subscriptions");
 });
 
 it("notes non-USD transactions only when some are left out", async () => {
@@ -259,6 +323,14 @@ it("sends the Reconnect chip to Integrations instead of connecting", async () =>
   await flush();
   const chip = container.querySelector('a[aria-label="Reconnect Mercury"]');
   expect(chip?.getAttribute("href")).toBe("/app/integrations?category=finance");
+  // More than a dot: a line says the figures stopped updating, with a Reconnect button.
+  const banner = [...container.querySelectorAll('[role="status"]')].find((n) =>
+    n.textContent?.includes("Mercury needs you to sign in again"),
+  );
+  expect(banner?.querySelector("a")?.textContent).toBe("Reconnect");
+  expect(banner?.querySelector("a")?.getAttribute("href")).toBe(
+    "/app/integrations?category=finance",
+  );
   expect(rpcMock.connect).not.toHaveBeenCalled();
 });
 
@@ -282,13 +354,16 @@ it("links each source chip to Accounts filtered to that source", async () => {
 
 it("links the header to Accounts and offers Add Brex when only Mercury is connected", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
+  rpcMock.exchanges.mockResolvedValue([]);
   await show("/app/finance", vi.fn());
   await flush();
   const links = [...container.querySelectorAll("a")];
   const accounts = links.find((a) => a.textContent === "Accounts");
   expect(accounts?.getAttribute("href")).toBe("/app/finance/accounts");
-  const add = links.find((a) => a.textContent === "Add Brex");
-  expect(add?.getAttribute("href")).toBe("/app/integrations?category=finance");
+  // Add Brex opens the same Add account dialog as the empty state, not a second connect route.
+  await act(async () => button("Add Brex")?.click());
+  await flush();
+  expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Add account");
   // Accounts comes before Ask in the header.
   const ask = button(/^Ask Finance agent$/) as HTMLElement;
   expect(accounts && ask && accounts.compareDocumentPosition(ask)).toBe(
@@ -484,16 +559,27 @@ it("shows the figures, syncs once, and lets the period chips change the spend nu
   );
   await act(async () => (year as HTMLElement).click());
   expect(total()).toContain("$77,777");
+
+  // A quarter that has just begun says so, so it does not look like the month repeated.
+  const quarter = [...container.querySelectorAll('[role="tab"]')].find(
+    (tab) => tab.textContent === "Quarter",
+  );
+  await act(async () => (quarter as HTMLElement).click());
+  expect(container.textContent?.replace(/[\s\u2009]+/g, " ")).toContain(
+    "Q4 so far · spent Oct 1 – 14",
+  );
 });
 
 it("switches the breakdown between category and vendor", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance");
   await flush();
-  expect(container.querySelector('a[href="/app/finance/category/software"]')).not.toBeNull();
+  // A category opens on the period the dashboard shows, so its page shows the same total.
+  const category = 'a[href="/app/finance/category/software?period=month"]';
+  expect(container.querySelector(category)).not.toBeNull();
   await act(async () => button("Vendor")?.click());
   expect(container.querySelector('a[href="/app/finance/vendor/acme-hosting"]')).not.toBeNull();
-  expect(container.querySelector('a[href="/app/finance/category/software"]')).toBeNull();
+  expect(container.querySelector(category)).toBeNull();
 });
 
 it("puts the paid-with text on the subscription row and links the row to its vendor", async () => {
@@ -586,6 +672,51 @@ it("labels a vendor page, breadcrumb and back link", async () => {
   );
   expect(container.textContent).toContain("↑ 25%");
   expect(container.textContent).toContain("Brex ••0001");
+});
+
+it("names the space on detail pages too, switches company from there, and puts Ask beside the page title", async () => {
+  rpcMock.vendor.mockResolvedValue({
+    key: "acme-hosting",
+    name: "Acme Hosting",
+    isSubscription: false,
+    monthlyAvgCents: 50_000,
+    changePct: null,
+    firstSeenAt: "2025-03-02T00:00:00.000Z",
+    paidWith: [],
+    monthly: [],
+    charges: [],
+  });
+  const onSwitchSpace = vi.fn();
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/app/finance/vendor/acme-hosting"]}>
+        <FinancePage
+          spaces={[
+            { id: "s1", name: "Example Space One" },
+            { id: "s2", name: "Example Space Two" },
+          ]}
+          spaceId="s2"
+          onSwitchSpace={onSwitchSpace}
+          onAskAgent={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+  });
+  await flush();
+  const switcher = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Company: Example Space Two. Switch company"]',
+  );
+  // The words every space shares are left off the trigger, so a narrow one still names the company.
+  expect(switcher?.textContent).toBe("Two");
+  await act(async () => switcher?.click());
+  await flush();
+  const other = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(
+    (item) => item.textContent === "Example Space One",
+  );
+  await act(async () => other?.click());
+  expect(onSwitchSpace).toHaveBeenCalledWith("s1");
+  const titleRow = container.querySelector("h1")?.parentElement;
+  expect(titleRow?.querySelector('button[aria-label="Ask Finance agent"]')).not.toBeNull();
 });
 
 const spendTransaction = (hasReceipt: boolean): FinanceTransactionOutput => ({
@@ -815,6 +946,10 @@ it("links a crypto-only user from the empty state to Accounts", async () => {
   await show("/app/finance");
   await flush();
   expect(container.querySelector('a[href="/app/finance/accounts"]')?.textContent).toBe("Accounts");
+  // A connected exchange or wallet is not "No accounts": the page says where the crypto is.
+  expect(container.textContent).toContain("No bank accounts yet");
+  expect(container.textContent).not.toContain("No accounts yet");
+  expect(container.textContent).toContain("Your crypto ($1) is in Accounts.");
 });
 
 const cryptoWith = (stablecoinCents: number, totalCents: number) => ({
@@ -968,7 +1103,7 @@ it("starts a vendor's monthly chart at its first charge and says why there is no
     changePct: null,
     firstSeenAt: "2026-07-09T00:00:00.000Z",
     paidWith: [],
-    monthly: ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"].map((month) => ({
+    monthly: ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"].map((month) => ({
       month,
       cents: month < "2026-07" ? 0 : 481_200,
     })),
@@ -976,6 +1111,9 @@ it("starts a vendor's monthly chart at its first charge and says why there is no
   });
   await show("/app/finance/vendor/cloud");
   await flush();
+  // The titles say which months the chart covers and where the charge list starts.
+  expect(container.textContent).toContain("Monthly spend · Jul – Sep");
+  expect(container.textContent).toContain("Charges since Jul 1");
   const labels = [...container.querySelectorAll('svg[aria-label="Monthly spend"] text')].map(
     (n) => n.textContent,
   );
@@ -1075,7 +1213,8 @@ it("leaves no empty crumb and no guessed origin on a missing vendor", async () =
   });
   await flush();
   expect(container.textContent).toContain("Not found");
-  expect(container.querySelector("nav")?.textContent).toBe("Finance");
+  // Back already names where to go, so a missing page shows no trail at all.
+  expect(container.querySelector("nav")).toBeNull();
   expect(container.textContent).not.toContain("Breakdown");
   // Back still names the card the founder actually came from.
   expect(container.querySelector('a[href="/app/finance#upcoming"]')?.textContent).toContain(
@@ -1193,6 +1332,54 @@ it("opens a bill's details from its Upcoming row, which has no page of its own",
   expect(details).toContain("$2,000.00");
   expect(details).toContain("Oct 27, 2026");
   expect(details).toContain("Approved");
+});
+
+it("tags a card bill paid from the bank as a card bill, not a recurring vendor", async () => {
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <UpcomingRow
+          item={{
+            key: "brex",
+            kind: "recurring",
+            name: "Brex",
+            dates: ["2026-11-05"],
+            amountCents: 1_120_000,
+            cardBill: true,
+          }}
+        />
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.textContent).toContain("card bill");
+  expect(container.textContent).not.toContain("recurring");
+});
+
+it("continues a page's own trail on the pages it opens, even when it was opened by its address", () => {
+  const category = [
+    { label: "Finance", to: "/app/finance" },
+    { label: "Breakdown", to: "/app/finance#breakdown" },
+    { label: "Software" },
+  ];
+  const here = hereCrumb(category, null, "/app/finance/category/software");
+  const charge = trailFor([{ label: "Finance", to: "/app/finance" }, { label: "Oct 14" }], here);
+  expect(charge.map((c) => c.label)).toEqual(["Finance", "Breakdown", "Software", "Oct 14"]);
+});
+
+it("shows account endings in the muted style lists use, wherever a name carries one", async () => {
+  await act(async () => root.render(<WithEndings text="Brex ••0001 + Mercury Checking ••1111" />));
+  const muted = [...container.querySelectorAll("span.text-muted-foreground")].map(
+    (s) => s.textContent,
+  );
+  expect(muted).toEqual(["••0001", "••1111"]);
+  expect(container.textContent).toBe("Brex ••0001 + Mercury Checking ••1111");
+});
+
+it("shortens a space name by the words every space's name starts with", () => {
+  const names = ["MOCK DEMO DATA — Northwind Robotics", "MOCK DEMO DATA — Empty space"];
+  expect(shortSpaceName(names[0] ?? "", names)).toBe("Northwind Robotics");
+  expect(shortSpaceName("Acme", ["Acme", "Acme Labs"])).toBe("Acme");
+  expect(shortSpaceName("Acme", ["Acme"])).toBe("Acme");
 });
 
 it("says whether crypto counts toward runway", () => {

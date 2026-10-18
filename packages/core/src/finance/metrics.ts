@@ -758,6 +758,7 @@ export function detectRecurring(
         accounts,
       ),
       fixedCost: isFixedCost(key, lastTxn.category),
+      ...(categorySlug(lastTxn.category) === "credit-loan-payments" ? { cardBill: true } : {}),
     });
   }
   return found.sort((a, b) => b.monthlyCents - a.monthlyCents || a.key.localeCompare(b.key));
@@ -765,7 +766,9 @@ export function detectRecurring(
 
 // ---- Upcoming and subscriptions ----
 
-const FIXED_COST_CATEGORY = /(^|-)(payroll|rent|salar(y|ies)|wages)(-|$)/;
+// A card bill paid from the bank (while the card itself is not connected) recurs, but it pays for
+// many purchases, so it is a fixed cost, not a subscription.
+const FIXED_COST_CATEGORY = /(^|-)(payroll|rent|salar(y|ies)|wages)(-|$)|^credit-loan-payments$/;
 const FIXED_COST_VENDOR = ["payroll", "landlord"];
 
 /** Payroll and rent recur, but they are fixed costs, not subscriptions a founder can cancel. */
@@ -817,6 +820,7 @@ export function upcoming(
         name: charge.name,
         dates,
         amountCents: charge.amountCents,
+        ...(charge.cardBill ? { cardBill: true } : {}),
       });
     }
   }

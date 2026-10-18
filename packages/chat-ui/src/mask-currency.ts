@@ -26,11 +26,71 @@ const CURRENCY = new RegExp(
 
 export type CurrencyMatch = { start: number; end: number; replacement: string };
 
+// Runway figures the Finance page also hides: "9.2 months of runway", "runs out around July 23, 2027".
+// "the last 3 months" names the window burn is averaged over, not a runway figure, so it stays.
+const MONTHS = String.raw`(?<!\b(?:last|past|previous)\s)\d+(?:[.,]\d+)?(?=\s?(?:months?|mos?)\b)`;
+const MONTH_NAME = String.raw`(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?`;
+const DATE = new RegExp(
+  String.raw`\b(?:${MONTH_NAME}\s\d{1,2}(?:st|nd|rd|th)?(?:,?\s\d{4})?|${MONTH_NAME}\s\d{4}|\d{4}-\d{2}-\d{2})\b`,
+  "gi",
+);
+const RUNWAY = /\brunway\b/i;
+const RUN_OUT = /\bruns?[\s-]?out\b|\bout of (?:cash|money)\b|\bzero cash\b/i;
+
+/** True when a table label (a header or a row's first cell) names runway or the run-out date. */
+export const isRunwayLabel = (label: string) => RUNWAY.test(label) || RUN_OUT.test(label);
+
+/** Masks every month count, date, or bare number in a table cell whose label says runway. */
+export function maskRunwayCell(text: string): string {
+  if (/^\s*\d+(?:[.,]\d+)?\s*$/.test(text)) return "•••";
+  return text.replace(new RegExp(MONTHS, "gi"), "•••").replace(DATE, "•••");
+}
+
+/** The sentence (or line) around `index`; a decimal point such as 9.2 does not end one. */
+function sentenceAround(text: string, index: number): string {
+  const boundary = /[.!?](?=\s|$)|\n/g;
+  let start = 0;
+  let end = text.length;
+  for (const m of text.matchAll(boundary)) {
+    const at = m.index ?? 0;
+    if (at < index) start = at + 1;
+    else {
+      end = at;
+      break;
+    }
+  }
+  return text.slice(start, end);
+}
+
+/** Runway months and run-out dates, masked like amounts, only in a sentence about runway. */
+function runwayMatches(text: string): CurrencyMatch[] {
+  const out: CurrencyMatch[] = [];
+  for (const m of text.matchAll(new RegExp(MONTHS, "gi"))) {
+    const start = m.index ?? 0;
+    if (RUNWAY.test(sentenceAround(text, start)))
+      out.push({ start, end: start + m[0].length, replacement: "•••" });
+  }
+  for (const m of text.matchAll(DATE)) {
+    const start = m.index ?? 0;
+    if (RUN_OUT.test(sentenceAround(text, start)))
+      out.push({ start, end: start + m[0].length, replacement: "•••" });
+  }
+  return out;
+}
+
 /**
  * Where amounts sit in `text`, each with its mask: currency keeps its symbol and sign (`$•••`), a
  * percentage keeps its sign (`•••%`), and a count written with thousands groups becomes `•••`.
+ * Also runway months and run-out dates in sentences about runway. Sorted and non-overlapping.
  */
 export function currencyMatches(text: string): CurrencyMatch[] {
+  const all = [...moneyMatches(text), ...runwayMatches(text)].sort((a, b) => a.start - b.start);
+  const out: CurrencyMatch[] = [];
+  for (const m of all) if (!out.length || m.start >= (out.at(-1) as CurrencyMatch).end) out.push(m);
+  return out;
+}
+
+function moneyMatches(text: string): CurrencyMatch[] {
   const out: CurrencyMatch[] = [];
   for (const m of text.matchAll(CURRENCY)) {
     const g = m.groups ?? {};
@@ -47,8 +107,8 @@ export function currencyMatches(text: string): CurrencyMatch[] {
 }
 
 /**
- * Replaces each currency amount, percentage and grouped count with a fixed mask. Small plain
- * numbers, years and dates stay.
+ * Replaces each currency amount, percentage, grouped count and runway figure with a fixed mask.
+ * Small plain numbers, years and dates stay.
  */
 export function maskCurrencyText(text: string): string {
   let out = "";

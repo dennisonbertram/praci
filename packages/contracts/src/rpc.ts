@@ -156,6 +156,7 @@ import {
   FinanceWalletSchema,
   FinanceWalletsOutputSchema,
   FinanceWalletUpdateInputSchema,
+  SpendPeriodSchema,
 } from "./finance.js";
 import {
   FinanceStatementAccountRenameInputSchema,
@@ -1208,7 +1209,7 @@ export const appContract = {
     account: oc.input(z.object({ id: Id })).output(FinanceAccountOutputSchema),
     burn: oc.output(FinanceBurnOutputSchema),
     month: oc
-      .input(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }))
+      .input(z.object({ month: z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])$/) }))
       .output(FinanceMonthOutputSchema),
     runway: oc.output(FinanceRunwayOutputSchema),
     preferences: oc.output(FinancePreferencesSchema),
@@ -1218,7 +1219,18 @@ export const appContract = {
       .output(FinanceCryptoHistoryOutputSchema),
     spend: oc.input(FinanceSpendInputSchema).output(FinanceSpendOutputSchema),
     category: oc
-      .input(z.object({ slug: z.string().min(1).max(200) }))
+      .input(
+        z.object({
+          slug: z.string().min(1).max(200),
+          /** The dashboard period the category was opened from; without it, the last 90 days. */
+          period: SpendPeriodSchema.optional(),
+          /** A calendar month (YYYY-MM), from the month page. */
+          month: z
+            .string()
+            .regex(/^\d{4}-(?:0[1-9]|1[0-2])$/)
+            .optional(),
+        }),
+      )
       .output(FinanceCategoryOutputSchema),
     recurring: oc
       .input(z.object({ key: z.string().min(1).max(200) }))

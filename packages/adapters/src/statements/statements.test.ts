@@ -125,6 +125,27 @@ describe("CSV", () => {
     expect((await parse("2026-07.csv", body)).statement.institution).toBeTruthy();
   });
 
+  it("does not take a generic report heading as the institution", async () => {
+    const body = "Transaction History\nDate,Description,Amount\n2026-03-02,Coffee,-5.00\n";
+    expect((await parse("checking.csv", body)).statement.institution).toBe("checking");
+    expect((await parse("savings.csv", body)).statement.institution).toBe("savings");
+    // A real bank name above a generic heading still wins.
+    const named = `MOCK First Bank\n${body}`;
+    expect((await parse("checking.csv", named)).statement.institution).toBe("MOCK First Bank");
+  });
+
+  it("keeps a dated transaction whose description starts with 'Opening balance'", async () => {
+    const { statement } = await parse(
+      "x.csv",
+      "Description,Date,Amount\nOpening balance adjustment,2026-03-02,-5.00\nCoffee,2026-03-03,-1.00\n",
+    );
+    expect(statement.transactions.map((t) => t.description)).toEqual([
+      "Opening balance adjustment",
+      "Coffee",
+    ]);
+    expect(statement.openingBalanceCents).toBeNull();
+  });
+
   it("maps Debit/Credit columns with semicolons and flips newest-first files", async () => {
     const { statement } = await parse(
       "x.csv",
@@ -136,6 +157,30 @@ describe("CSV", () => {
     ]);
     expect(statement.warnings.join()).not.toContain("ambiguous");
     expect(statement.openingBalanceCents).toBeNull();
+  });
+
+  it("reads the bank, account ending and stated balances around the table", async () => {
+    const body = [
+      "MOCK First Mock Bank,Account ending 5502",
+      "Opening balance,10000.00",
+      "Date,Description,Amount,Balance",
+      "2026-08-03,EXAMPLE DEPOSIT,20.00,10020.00",
+      "2026-08-09,EXAMPLE FEE,-7.60,10012.40",
+      "Closing balance,10000.00",
+    ].join("\n");
+    const { statement, check } = await parse("mock-firstbank-2026-08.csv", body);
+    expect(statement).toMatchObject({
+      institution: "MOCK First Mock Bank",
+      accountLast4: "5502",
+      openingBalanceCents: 1_000_000,
+      closingBalanceCents: 1_000_000,
+    });
+    expect(statement.transactions).toHaveLength(2);
+    // The balance rows are not unreadable transactions, and the bank is named, not guessed.
+    expect(statement.warnings.join()).not.toContain("skipped");
+    expect(statement.warnings.join()).not.toContain("file name");
+    // The printed closing balance is $12.40 below what the lines add up to.
+    expect(check).toEqual({ balances: "mismatch", differenceCents: -1240 });
   });
 
   it("says in plain words how many rows it skipped", async () => {

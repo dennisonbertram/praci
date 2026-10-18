@@ -39,7 +39,8 @@ describe("hide amounts", () => {
     expect(moneyExact(123_456)).toBe("$•••");
     expect(transactionAmount(5_000)).toBe("+$•••");
     expect(axisMoney(150_000)).toBe("$•••");
-    expect(changeText(-53)).toBe("↓ •••%");
+    // The arrow would say which way spend went, so it is hidden too.
+    expect(changeText(-53)).toBe("•••%");
     expect(money(1)).toBe(money(99_999_999));
   });
 

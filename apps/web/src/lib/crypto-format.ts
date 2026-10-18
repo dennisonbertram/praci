@@ -22,6 +22,14 @@ export function tokenAmount(rawBalance: string, decimals: number, locale?: strin
   return `${grouped}${point}${trimmed}`;
 }
 
+/** An exchange's decimal balance (`12000.00`) grouped and trimmed like a token balance (`12,000`); other text as is. */
+export function decimalAmount(amount: string, locale?: string): string {
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(amount.trim());
+  if (!match) return getHideAmounts() ? MASK : amount;
+  const fraction = match[2] ?? "";
+  return tokenAmount(`${match[1]}${fraction}`.replace(/^0+(?=\d)/, ""), fraction.length, locale);
+}
+
 export const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 
 export const chainName = (chainId: number) =>
