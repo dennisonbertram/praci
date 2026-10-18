@@ -308,7 +308,10 @@ describe("listMessages", () => {
         },
       };
     };
-    const provider = new GmailMailProvider({ connectors: connectors(proxy), sleep: async () => undefined });
+    const provider = new GmailMailProvider({
+      connectors: connectors(proxy),
+      sleep: async () => undefined,
+    });
     const [a, b] = await Promise.all([
       provider.listMessages(
         account({ id: "c-a", accountRef: "A" }),
