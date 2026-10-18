@@ -412,6 +412,10 @@ export class ComposioConnector implements ComposioProvider {
     );
   }
 
+  async catalogDirectory(): Promise<Omit<ConnectorCatalogItem, "connected">[]> {
+    return (await this.directory()).map((item) => ({ ...item, connectorId: "composio" }));
+  }
+
   async warmDirectory(): Promise<void> {
     await this.directory();
   }

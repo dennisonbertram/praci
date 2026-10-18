@@ -1,7 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-kit";
 import { GOOGLE_DESKTOP_REDIRECT_URI } from "@rakazo/contracts";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { GmailMailProvider } from "./gmail-mail-provider.js";
 import { GoogleConnector } from "./google-connector.js";
@@ -39,12 +39,14 @@ function matches(row: Row, where: Row): boolean {
 /** In-memory stand-in for the two tables the connector touches. */
 function fakePrisma(connections: Row[] = []) {
   const secrets: Row[] = [];
+  const connectionFindMany = vi.fn(async ({ where }: { where: Row }) =>
+    connections.filter((row) => matches(row, where)),
+  );
   const prisma = {
     connection: {
       findFirst: async ({ where }: { where: Row }) =>
         connections.find((row) => matches(row, where)) ?? null,
-      findMany: async ({ where }: { where: Row }) =>
-        connections.filter((row) => matches(row, where)),
+      findMany: connectionFindMany,
       updateMany: async ({ where, data }: { where: Row; data: Row }) => {
         const hit = connections.filter((row) => matches(row, where));
         for (const row of hit) Object.assign(row, data);
@@ -66,7 +68,7 @@ function fakePrisma(connections: Row[] = []) {
       },
     },
   };
-  return { prisma: prisma as never, connections, secrets };
+  return { prisma: prisma as never, connections, secrets, connectionFindMany };
 }
 
 const verifierFor = (state: string) =>
@@ -615,6 +617,34 @@ describe("GoogleConnector.revoke", () => {
 });
 
 describe("GoogleConnector catalog", () => {
+  it("returns provider metadata without querying connected rows", async () => {
+    const s = setup();
+    await expect(s.connector.catalogDirectory()).resolves.toEqual([
+      {
+        connectorId: "google",
+        slug: "gmail",
+        name: "Gmail",
+        logo: "https://cdn.simpleicons.org/gmail",
+        noAuth: false,
+      },
+      {
+        connectorId: "google",
+        slug: "googlecalendar",
+        name: "Google Calendar",
+        logo: "https://cdn.simpleicons.org/googlecalendar",
+        noAuth: false,
+      },
+      {
+        connectorId: "google",
+        slug: "googledrive",
+        name: "Google Drive",
+        logo: "https://cdn.simpleicons.org/googledrive",
+        noAuth: false,
+      },
+    ]);
+    expect(s.db.connectionFindMany).not.toHaveBeenCalled();
+  });
+
   it("offers one Gmail entry, connected only when the user has a connected row", async () => {
     const s = setup();
     const [item] = await s.connector.catalog(context);

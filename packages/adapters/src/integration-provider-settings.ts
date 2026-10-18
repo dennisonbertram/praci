@@ -182,6 +182,9 @@ class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
   async catalog(context: AdapterContext, query?: string) {
     return (await this.resolve())?.catalog(context, query) ?? [];
   }
+  async catalogDirectory() {
+    return (await this.resolve())?.catalogDirectory?.() ?? [];
+  }
   async discoverTools(context: AdapterContext) {
     return (await this.resolve())?.discoverTools(context) ?? [];
   }

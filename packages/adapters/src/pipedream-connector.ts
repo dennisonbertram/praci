@@ -129,22 +129,26 @@ export class PipedreamConnector implements ManagedConnectorProvider {
   }
 
   async catalog(context: AdapterContext, query?: string): Promise<ConnectorCatalogItem[]> {
-    const [apps, connected] = await Promise.all([
-      this.apps(),
+    const [directory, connected] = await Promise.all([
+      this.catalogDirectory(),
       this.listConnectedExternalIds(context),
     ]);
     const connectedSet = new Set(connected);
     return filterCatalog(
-      apps.map((app) => ({
-        connectorId: "pipedream",
-        slug: app.name_slug,
-        name: app.name,
-        logo: app.img_src ?? null,
-        connected: connectedSet.has(app.name_slug),
-        noAuth: false,
-      })),
+      directory.map((item) => ({ ...item, connected: connectedSet.has(item.slug) })),
       query ?? "",
     );
+  }
+
+  async catalogDirectory(): Promise<Omit<ConnectorCatalogItem, "connected">[]> {
+    const apps = await this.apps();
+    return apps.map((app) => ({
+      connectorId: "pipedream",
+      slug: app.name_slug,
+      name: app.name,
+      logo: app.img_src ?? null,
+      noAuth: false,
+    }));
   }
 
   async warmDirectory(): Promise<void> {
