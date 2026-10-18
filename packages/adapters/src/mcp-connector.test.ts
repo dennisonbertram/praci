@@ -1295,7 +1295,6 @@ describe("MCP connector Finance agent", () => {
       })),
     };
     vi.stubGlobal("fetch", mcpFetch(state, endpoint));
-    const findFirst = vi.fn().mockImplementation(async () => assignment);
     const connector = new McpConnector(
       {
         botMcpServer: {

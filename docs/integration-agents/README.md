@@ -194,6 +194,11 @@ All in `packages/adapters`, generalizing the Carta checks:
    branch. TBD: confirm that a run started by `message_bot` shows its approval card
    to the user (needs-you inbox), not only in the agent's own thread. If it does
    not, task 2 adds it before Mercury writes ship.
+   A `message_bot` run normally gets no connector tools, because the sender may be
+   another account. The one exception: an integration agent whose sender is a bot
+   of the same space and user (and whose server still links to it) gets its own
+   server's MCP tools. Writes still ask on every call. A sender from another user
+   or space is not found in that scope and gets nothing.
 6. **Prompt injection.** A message from another agent or from tool output is a
    request, not an instruction to pay. The seed instructions say so, and the
    mandatory approval card shows the full call, so the user decides.
@@ -299,7 +304,7 @@ that classification path and the Composio tool filter are separate code from MCP
 
 ## Carta later
 
-Not in this build. Migration: a data migration sets `agentBotId` to the bot whose
+Not in this build; `integrationAgents.create` rejects a Carta server until then. Migration: a data migration sets `agentBotId` to the bot whose
 spawn key is `carta-agent:<userId>` for each user's Carta server and
 `agentExclusive = true`; `assignmentAllowsTool` drops its Carta branches in favor of
 the general ones, with `CARTA_READ_TOOLS` and `CARTA_WRITE_TOOLS` becoming Carta's

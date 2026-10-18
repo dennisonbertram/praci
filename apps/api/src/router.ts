@@ -4711,10 +4711,20 @@ export function createRouter(deps: RouterDeps) {
             throw new ORPCError("BAD_REQUEST", {
               message: "Writes can only be turned on for a Carta server or a server with an agent",
             });
-          const row = await deps.prisma.mcpServer.update({
-            where: { id: server.id },
+          // Archiving the agent can release the server after the check above: the update only applies
+          // while the server still has the agent (or is still the Carta server) that was checked.
+          const { count } = await deps.prisma.mcpServer.updateMany({
+            where: {
+              ...where,
+              ...(isCartaEndpoint(server.endpoint)
+                ? { endpoint: server.endpoint }
+                : { agentBotId: server.agentBotId }),
+            },
             data: { writesEnabled: input.enabled },
           });
+          if (!count)
+            throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });
+          const row = await deps.prisma.mcpServer.findFirstOrThrow({ where });
           // The Carta agent's tool list follows the switch; the call-time check already does.
           if (isCartaEndpoint(server.endpoint))
             await assignToExistingCartaAgent(deps.prisma, context.actor);
