@@ -134,10 +134,14 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
                 setError("");
                 setArchived((all) => ({ ...all, [email.id]: true }));
                 setLastArchived(email);
-                changed(email.id, () => rpc.inbox.archive({ messageId: email.id }), () => {
-                  setArchived(({ [email.id]: _failed, ...rest }) => rest);
-                  setLastArchived(null);
-                });
+                changed(
+                  email.id,
+                  () => rpc.inbox.archive({ messageId: email.id }),
+                  () => {
+                    setArchived(({ [email.id]: _failed, ...rest }) => rest);
+                    setLastArchived(null);
+                  },
+                );
                 setOpen(null);
               }
             : undefined
@@ -149,10 +153,13 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
           const before = unread[id];
           setUnread((all) => ({ ...all, [id]: !read }));
           // A failed change puts the previous state back, so the button offers the right action.
-          changed(id, () => rpc.inbox.markRead({ messageId: id, read }), () =>
-            setUnread(({ [id]: _failed, ...rest }) =>
-              before === undefined ? rest : { ...rest, [id]: before },
-            ),
+          changed(
+            id,
+            () => rpc.inbox.markRead({ messageId: id, read }),
+            () =>
+              setUnread(({ [id]: _failed, ...rest }) =>
+                before === undefined ? rest : { ...rest, [id]: before },
+              ),
           );
         }}
         onClose={() => setOpen(null)}
@@ -169,8 +176,10 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
               const email = lastArchived;
               setLastArchived(null);
               setArchived(({ [email.id]: _undone, ...rest }) => rest);
-              changed(email.id, () => rpc.inbox.unarchive({ messageId: email.id }), () =>
-                setArchived((all) => ({ ...all, [email.id]: true })),
+              changed(
+                email.id,
+                () => rpc.inbox.unarchive({ messageId: email.id }),
+                () => setArchived((all) => ({ ...all, [email.id]: true })),
               );
             }}
           >

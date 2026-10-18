@@ -230,7 +230,7 @@ it("says a card's email was archived and offers Undo, as the Inbox list does", a
 
 it("starts Undo only after the archive it reverses has finished", async () => {
   unarchive.mockClear();
-  let finishArchive: (value: unknown) => void = () => {};
+  let finishArchive: (value: { ok: boolean }) => void = () => {};
   archive.mockReturnValueOnce(new Promise((r) => (finishArchive = r)));
   const view = await render({ kind: "emails", emails: [email("t", "today")] });
   const click = (el: Element | null | undefined) =>

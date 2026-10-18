@@ -6,7 +6,13 @@ const actor = { spaceId: "s1", userId: "u1" };
 /** A small in-memory store with just the calls completeNativeOAuth makes. */
 function setup(replacesConnectionId?: string) {
   const rows: Record<string, Record<string, unknown>> = {
-    old: { id: "old", status: "connected", providerRef: "acct-1", secretId: "sec-old", metadata: {} },
+    old: {
+      id: "old",
+      status: "connected",
+      providerRef: "acct-1",
+      secretId: "sec-old",
+      metadata: {},
+    },
     pending: {
       id: "pending",
       status: "pending",
@@ -25,10 +31,19 @@ function setup(replacesConnectionId?: string) {
   const messages = [{ id: "m1", connectionId: "old" }];
   const secrets = new Set(["sec-old", "sec-new"]);
   const move = (list: { connectionId: string }[]) =>
-    vi.fn(async ({ where, data }: { where: { connectionId: string }; data: { connectionId: string } }) => {
-      for (const item of list) if (item.connectionId === where.connectionId) item.connectionId = data.connectionId;
-      return { count: 1 };
-    });
+    vi.fn(
+      async ({
+        where,
+        data,
+      }: {
+        where: { connectionId: string };
+        data: { connectionId: string };
+      }) => {
+        for (const item of list)
+          if (item.connectionId === where.connectionId) item.connectionId = data.connectionId;
+        return { count: 1 };
+      },
+    );
   const tx = {
     connection: {
       findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> }) => {
@@ -36,8 +51,9 @@ function setup(replacesConnectionId?: string) {
         if (where.providerRef === "acct-1") return rows.old ?? null;
         return null;
       }),
-      update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
-        Object.assign(rows[where.id]!, data),
+      update: vi.fn(
+        async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) =>
+          Object.assign(rows[where.id]!, data),
       ),
       delete: vi.fn(async ({ where }: { where: { id: string } }) => {
         delete rows[where.id];

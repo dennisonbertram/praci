@@ -91,7 +91,10 @@ describe("mailSendRefusal", () => {
       expect(refusal).toMatch(/may not have been sent/);
       expect(refusal).not.toMatch(/tell the user it was sent/);
     }
-    const unknown = effect("denied", { note: mailApprovalAgentNote(true, "unknown"), outcome: "unknown" });
+    const unknown = effect("denied", {
+      note: mailApprovalAgentNote(true, "unknown"),
+      outcome: "unknown",
+    });
     expect(mailSendRefusal(reply, [unknown], "r1")).toMatch(/may not have gone out/);
   });
 

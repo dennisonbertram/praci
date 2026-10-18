@@ -81,7 +81,8 @@ export async function completeNativeOAuth(options: {
           await tx.inboxTodo.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.connection.delete({ where: { id: taken.id } });
-          if (taken.secretId) await tx.secret.deleteMany({ where: { id: taken.secretId, ...owner } });
+          if (taken.secretId)
+            await tx.secret.deleteMany({ where: { id: taken.secretId, ...owner } });
         } else if (taken)
           throw new ORPCError("CONFLICT", { message: "This Google account is already connected." });
         return tx.connection.update({
