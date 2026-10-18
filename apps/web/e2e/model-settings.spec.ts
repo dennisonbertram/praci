@@ -266,7 +266,7 @@ test("model settings connect, replace, and cancel provider authentication", asyn
     await page.getByText("Advanced", { exact: true }).click();
   }
   await outputLimit.fill("16384");
-  await page.getByRole("button", { name: "Save limits", exact: true }).click();
+  await page.getByRole("button", { name: "Save output limit", exact: true }).click();
   await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
   const updated = await rpc<Array<{ provider: string; maxTokens?: number }>>(
     page,
