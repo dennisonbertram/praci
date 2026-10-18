@@ -653,8 +653,22 @@ describePostgres("integration agents (PostgreSQL)", () => {
       if (isApprovalPausedResult(result)) return;
       yield { type: "done", text: "Done" };
     };
+    const executorPrisma = new Proxy(prisma, {
+      get(target, property, receiver) {
+        if (property === "deploymentSettings") {
+          return {
+            ...target.deploymentSettings,
+            findUnique: async () => ({
+              defaultModelProvider: "scripted",
+              defaultModelId: "scripted",
+            }),
+          };
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
     const executor = createRunExecutor({
-      prisma,
+      prisma: executorPrisma,
       runtime,
       connector,
       events: createThreadEvents(prisma),
@@ -664,21 +678,6 @@ describePostgres("integration agents (PostgreSQL)", () => {
       memoryProviders: { resolve: async () => null },
       secrets: [],
     } as unknown as Parameters<typeof createRunExecutor>[0]);
-    const previousModelSettings = await prisma.deploymentSettings.findUnique({
-      where: { id: "default" },
-    });
-    await prisma.deploymentSettings.upsert({
-      where: { id: "default" },
-      create: {
-        id: "default",
-        defaultModelProvider: "scripted",
-        defaultModelId: "scripted",
-      },
-      update: {
-        defaultModelProvider: "scripted",
-        defaultModelId: "scripted",
-      },
-    });
     try {
       await executor.continueRun(senderRun.id, "synthetic-worker");
       expect(
@@ -737,21 +736,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
         (await listSpaceRuns(prisma, b, "active")).some((row) => row.runId === recipientRun.id),
       ).toBe(false);
     } finally {
-      try {
-        if (previousModelSettings) {
-          await prisma.deploymentSettings.update({
-            where: { id: "default" },
-            data: {
-              defaultModelProvider: previousModelSettings.defaultModelProvider,
-              defaultModelId: previousModelSettings.defaultModelId,
-            },
-          });
-        } else {
-          await prisma.deploymentSettings.deleteMany({ where: { id: "default" } });
-        }
-      } finally {
-        await connector.close();
-      }
+      await connector.close();
     }
   });
   it("keeps Finance sync and receipt links working while the Mercury server is exclusive", async () => {

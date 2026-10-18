@@ -4,8 +4,21 @@ import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 test("creates an integration agent, opens its chat, and persists its permissions", async ({
   page,
 }, testInfo) => {
+  const catalogRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/rpc/connections/catalog") {
+      catalogRequests.push(request.url());
+    }
+  });
   await signup(page, `integration-agent-${Date.now()}@rakazo.test`, "password12", "Agent Test");
   await completeOnboarding(page);
+  await expect(page.getByTestId("sidebar-integrations")).toHaveText("Connect apps");
+  expect(catalogRequests).toHaveLength(0);
+  await captureScreenshot(page, testInfo, "featured-connect-apps");
+  const catalogResponse = page.waitForResponse("**/rpc/connections/catalog");
+  await page.getByTestId("sidebar-integrations").click();
+  expect((await catalogResponse).ok()).toBe(true);
+  expect(catalogRequests.length).toBeGreaterThan(0);
   const { server, firstBotId } = await page.evaluate(async () => {
     const headers = {
       "content-type": "application/json",
