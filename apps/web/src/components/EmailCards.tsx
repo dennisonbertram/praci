@@ -3,7 +3,7 @@ import type { EmailCard, MessageBlock } from "@rakazo/contracts";
 import { groupEmailCards } from "@rakazo/core";
 import { Button, Card } from "@rakazo/ui-web";
 import { Paperclip } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { INBOX_CHANGED_EVENT } from "../lib/inbox-message-cache";
 import { formatMailTime } from "../lib/mail-time";
@@ -22,13 +22,20 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
   // Archived from here: the card says so, and the last one can be undone, as in the Inbox list.
   const [archived, setArchived] = useState<Record<string, boolean>>({});
   const [lastArchived, setLastArchived] = useState<EmailCard | null>(null);
-  const changed = (call: Promise<unknown>, undo?: () => void) =>
-    call
+  // Changes to one email run in order, so an Undo never starts before the change it reverses.
+  const inFlight = useRef(new Map<string, Promise<unknown>>());
+  const changed = (messageId: string, call: () => Promise<unknown>, undo?: () => void) => {
+    const settled = (inFlight.current.get(messageId) ?? Promise.resolve()).catch(() => undefined);
+    const next = settled
+      .then(call)
       .then(() => window.dispatchEvent(new Event(INBOX_CHANGED_EVENT)))
       .catch((cause) => {
         undo?.();
         setError(errorText(cause));
       });
+    inFlight.current.set(messageId, next);
+    return next;
+  };
   const now = new Date();
   // The same order the cards are listed in, so the preview steps through them.
   const ordered = groupEmailCards(block.emails).flatMap((group) => group.emails);
@@ -127,7 +134,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
                 setError("");
                 setArchived((all) => ({ ...all, [email.id]: true }));
                 setLastArchived(email);
-                changed(rpc.inbox.archive({ messageId: email.id }), () => {
+                changed(email.id, () => rpc.inbox.archive({ messageId: email.id }), () => {
                   setArchived(({ [email.id]: _failed, ...rest }) => rest);
                   setLastArchived(null);
                 });
@@ -142,7 +149,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
           const before = unread[id];
           setUnread((all) => ({ ...all, [id]: !read }));
           // A failed change puts the previous state back, so the button offers the right action.
-          changed(rpc.inbox.markRead({ messageId: id, read }), () =>
+          changed(id, () => rpc.inbox.markRead({ messageId: id, read }), () =>
             setUnread(({ [id]: _failed, ...rest }) =>
               before === undefined ? rest : { ...rest, [id]: before },
             ),
@@ -162,7 +169,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
               const email = lastArchived;
               setLastArchived(null);
               setArchived(({ [email.id]: _undone, ...rest }) => rest);
-              changed(rpc.inbox.unarchive({ messageId: email.id }), () =>
+              changed(email.id, () => rpc.inbox.unarchive({ messageId: email.id }), () =>
                 setArchived((all) => ({ ...all, [email.id]: true })),
               );
             }}

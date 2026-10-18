@@ -763,6 +763,38 @@ it("looks for new mail once a minute while it is open", async () => {
   }
 });
 
+it("keeps Load more results when the minute refresh reloads the list", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockResolvedValue(list([row("a")], { nextPageToken: "p2" }));
+    const c = await render(["/app/inbox?q=zebra"]);
+    rpcMock.list.mockResolvedValue(list([row("b")]));
+    await click(byText(c, "Load more"));
+    expect(c.textContent).toContain("Subject b");
+    rpcMock.list.mockResolvedValue(list([row("a")], { nextPageToken: "p2" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(c.textContent).toContain("Subject a");
+    expect(c.textContent).toContain("Subject b");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("Undo after Move to Inbox waits for the move before archiving again", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { inInbox: false })]));
+  const c = await render(["/app/inbox?q=old&mail=a"]);
+  let finishMove: (value: unknown) => void = () => {};
+  rpcMock.unarchive.mockReturnValue(new Promise((r) => (finishMove = r)));
+  rpcMock.list.mockResolvedValue(list([row("a")]));
+  await click(byText(c, "dialog move"));
+  await click(byText(c, "Undo"));
+  expect(rpcMock.archive).not.toHaveBeenCalled();
+  await act(async () => finishMove({ ok: true }));
+  expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "a" });
+});
+
 it("offers Reconnect Gmail, not Try again, when an account's sign-in lapsed", async () => {
   rpcMock.list.mockResolvedValue(
     list([row("a")], { failedAccounts: ["Me"], reconnectAccounts: ["Me"] }),

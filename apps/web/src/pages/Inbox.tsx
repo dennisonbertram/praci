@@ -167,6 +167,7 @@ export function InboxPage({
   const polls = useRef(0);
   // Triage still pending after the last poll: say so and offer a retry instead of spinning.
   const [stalled, setStalled] = useState(false);
+  const appliedKey = useRef<string | null>(null);
   const archiving = useRef(new Map<string, Promise<boolean>>());
   const [composing, setComposing] = useState(false);
   // The first sort after Allow: rows keep their places until triage finishes, then regroup once.
@@ -225,7 +226,16 @@ export function InboxPage({
         cache.current.set(key, next);
         setData(next);
         setDataKey(key);
-        setMore({ rows: [], token: next.nextPageToken, busy: false });
+        // A refresh of the same list keeps the pages already loaded (minus rows the fresh first
+        // page now holds); only a different list starts over.
+        const same = appliedKey.current === key;
+        appliedKey.current = key;
+        const fresh = new Set(next.rows.map((row) => row.id));
+        setMore((m) =>
+          same && m.rows.length > 0
+            ? { ...m, rows: m.rows.filter((row) => !fresh.has(row.id)) }
+            : { rows: [], token: next.nextPageToken, busy: false },
+        );
       })
       .catch((cause) => {
         if (!live()) return;
@@ -442,7 +452,10 @@ export function InboxPage({
         : list.filter((row) => row.id !== messageId),
     );
     setStatus({ kind: "archived", messageId, subject });
-    const call = rpc.inbox.archive({ messageId });
+    // A pending Move to Inbox finishes first, so the archive is not overtaken by it.
+    const call = (archiving.current.get(messageId) ?? Promise.resolve()).then(() =>
+      rpc.inbox.archive({ messageId }),
+    );
     // Resolves to whether the archive saved, so Undo never overtakes it.
     archiving.current.set(
       messageId,
@@ -1079,9 +1092,18 @@ export function InboxPage({
                 );
                 setStatus({ kind: "moved", messageId: id, subject });
                 setError("");
-                rpc.inbox
-                  .unarchive({ messageId: id })
-                  .then(onRefreshed)
+                const pending = (archiving.current.get(id) ?? Promise.resolve())
+                  .then(() => rpc.inbox.unarchive({ messageId: id }))
+                  .then(onRefreshed);
+                // Undo (an archive) waits for this move to finish.
+                archiving.current.set(
+                  id,
+                  pending.then(
+                    () => true,
+                    () => false,
+                  ),
+                );
+                pending
                   .catch((cause) => setError(errorText(cause)))
                   .then(() => setReload((n) => n + 1));
               }

@@ -370,6 +370,38 @@ it("names a forward's file that was too large, and keeps it named after autosave
   expect(leftOut()).toContain("demo.mp4");
 });
 
+it("masks amounts in a left-out file name while amounts are hidden", async () => {
+  const { setHideAmounts } = await import("../lib/hide-amounts-preference");
+  setHideAmounts(true);
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  prefill.mockResolvedValue({
+    connectionId: "c1",
+    to: "",
+    cc: "",
+    subject: "Fwd: Invoice",
+    body,
+    attachments: [],
+    attachmentsTooLarge: true,
+    attachmentsLeftOut: [{ filename: "Invoice-$4,812.pdf", size: 12_000_000 }],
+  });
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mounted.push(root);
+  try {
+    await act(async () =>
+      root.render(
+        <ComposeEmail seed={reply("forward")} accounts={[]} connectionId="c1" onClose={() => {}} />,
+      ),
+    );
+    const text = document.querySelector('[data-testid="compose-left-out"]')?.textContent ?? "";
+    expect(text).toContain("Not attached");
+    expect(text).not.toContain("4,812");
+  } finally {
+    setHideAmounts(false);
+  }
+});
+
 it("commits a single pasted address as a chip", async () => {
   await open({ kind: "new" });
   const to = field("To") as HTMLInputElement;

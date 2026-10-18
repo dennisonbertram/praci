@@ -30,6 +30,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { clientLocale, fileToBase64, prefillHtml, textToHtml } from "../lib/compose-body";
 import { createDraftSaver } from "../lib/compose-draft";
 import { formatBytes } from "../lib/format-bytes";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { holdDiscard, holdSend } from "../lib/outbox";
 import { invalidRecipients, summarizeRecipients, takeEntries } from "../lib/recipients";
 import { rpc } from "../lib/rpc";
@@ -213,7 +214,9 @@ export function ComposeEmail({
   const [forwarded, setForwarded] = useState<Forwarded[]>(restore?.forwarded ?? []);
   // Named for as long as the composer is open, so autosave's "Draft saved" never hides it.
   const [leftOut, setLeftOut] = useState(restore?.leftOut ?? []);
-  const leftOutNames = leftOut.map((file) => file.filename).join(", ");
+  // Display only: the warning masks amounts in file names when they are hidden.
+  useHideAmounts();
+  const leftOutNames = maskCurrencyWhenHidden(leftOut.map((file) => file.filename).join(", "));
   const [files, setFiles] = useState<File[]>(recalled?.files ?? []);
   const [dragging, setDragging] = useState(false);
   const [sending, setSending] = useState(false);

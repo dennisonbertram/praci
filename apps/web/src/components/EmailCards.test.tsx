@@ -227,3 +227,22 @@ it("says a card's email was archived and offers Undo, as the Inbox list does", a
   expect(card?.textContent).not.toContain("Archived");
   await view.cleanup();
 });
+
+it("starts Undo only after the archive it reverses has finished", async () => {
+  unarchive.mockClear();
+  let finishArchive: (value: unknown) => void = () => {};
+  archive.mockReturnValueOnce(new Promise((r) => (finishArchive = r)));
+  const view = await render({ kind: "emails", emails: [email("t", "today")] });
+  const click = (el: Element | null | undefined) =>
+    act(async () => (el as HTMLElement | null)?.click());
+  await click(view.container.querySelector('[data-testid="email-card"]'));
+  await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Archive"));
+  const status = view.container.querySelector('[role="status"]');
+  await click(
+    [...(status?.querySelectorAll("button") ?? [])].find((b) => b.textContent === "Undo"),
+  );
+  expect(unarchive).not.toHaveBeenCalled();
+  await act(async () => finishArchive({ ok: true }));
+  expect(unarchive).toHaveBeenCalledWith({ messageId: "t" });
+  await view.cleanup();
+});
