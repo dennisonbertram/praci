@@ -145,10 +145,12 @@ describePostgres("integration agents (PostgreSQL)", () => {
       [a, bServer.id],
       [a, other.id],
     ] as const) {
-      await expect(client(who).integrationAgents.create({ serverId })).rejects.toBeDefined();
+      await expect(client(who).integrationAgents.create({ serverId })).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
       await expect(
         client(who).integrationAgents.setExclusive({ serverId, exclusive: true }),
-      ).rejects.toBeDefined();
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
     }
     expect(await prisma.bot.count({ where: { userId: userB } })).toBe(0);
     expect(
