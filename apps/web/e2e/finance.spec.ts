@@ -77,10 +77,11 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect(main.getByRole("link", { name: "$117,250" })).toBeVisible();
 
   // Breakdown toggles between categories and vendors.
-  await expect(main.locator('a[href="/app/finance/category/payroll"]')).toBeVisible();
+  // Category links carry the chosen period, so the category page opens on the same window.
+  await expect(main.locator('a[href="/app/finance/category/payroll?period=year"]')).toBeVisible();
   await main.getByRole("button", { name: "Vendor", exact: true }).click();
   await expect(main.locator('a[href="/app/finance/vendor/globex-compute"]').first()).toBeVisible();
-  await expect(main.locator('a[href="/app/finance/category/payroll"]')).toHaveCount(0);
+  await expect(main.locator('a[href^="/app/finance/category/payroll"]')).toHaveCount(0);
 
   // Subscription rows show what paid them on hover and on keyboard focus.
   const row = main.locator("tbody tr").filter({ hasText: "Umbrella AI" });
@@ -242,10 +243,14 @@ test("Finance crypto card and page", async ({ page }, testInfo) => {
   await expect(page).toHaveURL(/\/app\/finance\/crypto$/);
   await expect(main.getByRole("heading", { name: "Crypto", level: 1 })).toBeVisible();
   await expect(main.getByText("Safe · 2 of 3")).toBeVisible();
-  await expect(main.getByText("alice.eth")).toBeVisible();
-  await expect(main.getByRole("cell", { name: "$3,000.00" }).first()).toBeVisible();
+  // The wallet's ENS name shows under its label, and a Wallet column names it in each holding row.
+  await expect(main.getByText("alice.eth").first()).toBeVisible();
+  await expect(main.getByRole("columnheader", { name: "Wallet" })).toBeVisible();
+  await expect(main.getByRole("cell", { name: "alice.eth" }).first()).toBeVisible();
+  await expect(main.getByRole("cell", { name: "$3,000", exact: true }).first()).toBeVisible();
   await expect(main.getByRole("cell", { name: "1.5", exact: true })).toBeVisible();
-  await expect(main.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Finance");
+  // One level below the dashboard, the trail is a Back link rather than a breadcrumb.
+  await expect(main.getByRole("link", { name: "Finance", exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-crypto-page");
 
   await main.getByRole("button", { name: "Add wallet" }).click();
@@ -305,7 +310,8 @@ test("Finance Accounts lists wallets apart from cash and adds one from the menu"
   const main = page.getByRole("main");
   await expect(main.getByText("Mercury Checking")).toBeVisible();
   await expect(main.getByRole("heading", { name: "Crypto" })).toBeVisible();
-  await expect(main.getByRole("button", { name: "Count crypto" })).toBeVisible();
+  // Count crypto lives on the Runway page now, not on Accounts.
+  await expect(main.getByRole("button", { name: "Count crypto" })).toHaveCount(0);
   await expect(main.getByRole("img", { name: "Total balance" })).toBeVisible();
   const quarterRequest = page.waitForRequest(
     (r) => r.url().includes("/rpc/finance/balanceSeries") && !!r.postData()?.includes("quarter"),
@@ -325,7 +331,7 @@ test("Finance Accounts lists wallets apart from cash and adds one from the menu"
   await captureScreenshot(page, testInfo, "finance-accounts-add-wallet");
 });
 
-test("Blockscout tile: no server is not connected, Connect opens the key modal", async ({
+test("Blockscout tile: no server is ready without a key, Add API key opens the key modal", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1500, height: 1000 });
@@ -364,9 +370,14 @@ test("Blockscout tile: no server is not connected, Connect opens the key modal",
   await completeOnboarding(page);
   await page.goto("/app/integrations?category=finance");
   const tile = page.getByTestId("finance-tile-crypto");
-  await expect(tile).toContainText("Not connected");
+  // No key is needed: the tile is ready, offers Add wallet, and keeps the key in its menu.
+  await expect(tile).toContainText("Ready");
+  await expect(tile).toContainText("no key needed");
+  await expect(tile).not.toContainText("Not connected");
+  await expect(tile.getByRole("link", { name: "Add wallet" })).toBeVisible();
   await captureScreenshot(page, testInfo, "blockscout-tile-not-connected");
-  await tile.getByRole("button", { name: "Connect Blockscout" }).click();
+  await tile.getByRole("button", { name: "More Blockscout actions" }).click();
+  await page.getByRole("menuitem", { name: "Add API key" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("link", { name: "Get an API key" })).toHaveAttribute(
     "href",
@@ -451,13 +462,13 @@ test("Finance month groups transactions by vendor and expands a vendor", async (
   await main.getByRole("button", { name: "By vendor", exact: true }).click();
   await expect(rows).toHaveCount(3);
   await expect(rows.nth(0)).toContainText("Example Customer Inc");
-  await expect(rows.nth(0)).toContainText("+$1,000.00");
+  await expect(rows.nth(0)).toContainText("+$1,000");
   await expect(rows.nth(1)).toContainText("Acme Hosting");
   await expect(rows.nth(1)).toContainText("2 transactions");
-  await expect(rows.nth(1)).toContainText("$620.00");
+  await expect(rows.nth(1)).toContainText("$620");
   await expect(rows.nth(2)).toContainText("Globex Compute");
   await expect(rows.nth(2)).toContainText("Mixed");
-  await expect(rows.nth(2)).toContainText("$250.00");
+  await expect(rows.nth(2)).toContainText("$250");
   await captureScreenshot(page, testInfo, "finance-month-grouped");
 
   // Expanding a vendor lists its transactions in the flat row style.

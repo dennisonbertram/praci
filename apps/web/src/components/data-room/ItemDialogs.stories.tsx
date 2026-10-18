@@ -53,12 +53,16 @@ export const DeleteEmptyFolder: Story = { args: { action: "delete", emptyFolder:
 /** New folder from the tree: a name, and where it goes ("Inside", starting at the open folder). */
 export const NewFolder: Story = {
   args: { action: "rename" },
+  // The dialog renders in a portal, so the page behind it is what the smoke check finds in the root.
   render: () => (
-    <NewFolderDialog
-      folders={folderNodes(folders)}
-      parentId="fld_contracts"
-      onClose={() => undefined}
-      onDone={() => undefined}
-    />
+    <>
+      <p className="p-4 text-sm">{contracts.name}</p>
+      <NewFolderDialog
+        folders={folderNodes(folders)}
+        parentId="fld_contracts"
+        onClose={() => undefined}
+        onDone={() => undefined}
+      />
+    </>
   ),
 };
