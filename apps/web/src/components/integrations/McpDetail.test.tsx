@@ -6,6 +6,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
+import { BOTS_CHANGED_EVENT } from "../../lib/bots-changed";
 import { mockIntegrations, mockServer } from "../../stories/fixtures";
 
 const setWrites = vi.hoisted(() => vi.fn());
@@ -150,9 +151,16 @@ it("offers Create agent, which creates the agent and opens its chat", async () =
   create.mockResolvedValue({ server: {}, botId: "bot_new" });
   await show(false, OTHER);
   expect(container.textContent).not.toContain("Allow changes in");
+  const order: string[] = [];
+  const onChanged = () => order.push("bots-changed");
+  navigate.mockImplementation(() => order.push("navigate"));
+  window.addEventListener(BOTS_CHANGED_EVENT, onChanged);
   await press("Create agent");
+  window.removeEventListener(BOTS_CHANGED_EVENT, onChanged);
   expect(create).toHaveBeenCalledWith({ serverId: "s1" });
   expect(navigate).toHaveBeenCalledWith("/app/bot_new");
+  // Shell must reload its bot list before the new id is routed, or it shows the first bot.
+  expect(order).toEqual(["bots-changed", "navigate"]);
 });
 
 it("shows an error and stays when creating the agent fails", async () => {

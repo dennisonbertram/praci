@@ -206,6 +206,7 @@ import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
 import { takeInitialBootstrap } from "../lib/bootstrap";
+import { BOTS_CHANGED_EVENT } from "../lib/bots-changed";
 import {
   getBotsSidebarDensity,
   subscribeBotsSidebarDensity,
@@ -1442,7 +1443,9 @@ export function ShellPage() {
       window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => void refreshBots().catch(() => undefined), 50);
     };
+    const refreshNow = () => void refreshBots().catch(() => undefined);
     window.addEventListener("focus", refreshVisibleBots);
+    window.addEventListener(BOTS_CHANGED_EVENT, refreshNow);
     document.addEventListener("visibilitychange", refreshVisibleBots);
     // Poll skips while a refresh is in flight; focus/visibility and event-driven
     // callers still bump botsRefreshEpoch so only the latest response applies.
@@ -1455,6 +1458,7 @@ export function ShellPage() {
       window.clearTimeout(refreshTimer);
       window.clearInterval(poll);
       window.removeEventListener("focus", refreshVisibleBots);
+      window.removeEventListener(BOTS_CHANGED_EVENT, refreshNow);
       document.removeEventListener("visibilitychange", refreshVisibleBots);
     };
   }, []);

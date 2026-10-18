@@ -4,6 +4,7 @@ import { Button, Input } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { BOTS_CHANGED_EVENT } from "../../lib/bots-changed";
 import { mcpStatus } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -200,6 +201,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
               onClick={() =>
                 void run(async () => {
                   const { botId } = await rpc.integrationAgents.create({ serverId: server.id });
+                  window.dispatchEvent(new Event(BOTS_CHANGED_EVENT));
                   navigate(`/app/${botId}`);
                 }, t`Could not create agent`)
               }
