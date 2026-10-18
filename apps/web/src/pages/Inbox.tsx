@@ -603,12 +603,23 @@ export function InboxPage({
     }
   }, [openId, selectedId]);
 
+  // The main action of the empty page, as Connect mail is; a small one beside a line above rows.
+  const fixVariant = failedEmpty ? "default" : "outline";
   const fixButton = reconnect ? (
-    <Button variant="outline" size="sm" onClick={onReconnectMail ?? onConnectMail}>
+    <Button
+      variant={fixVariant}
+      size={failedEmpty ? "default" : "sm"}
+      onClick={onReconnectMail ?? onConnectMail}
+    >
       <Trans>Reconnect Gmail</Trans>
     </Button>
   ) : (
-    <Button variant="outline" size="sm" onClick={retry} disabled={retrying}>
+    <Button
+      variant={fixVariant}
+      size={failedEmpty ? "default" : "sm"}
+      onClick={retry}
+      disabled={retrying}
+    >
       {retrying ? <Trans>Trying again…</Trans> : <Trans>Try again</Trans>}
     </Button>
   );
@@ -648,10 +659,11 @@ export function InboxPage({
     </div>
   ) : null;
 
+  // The bottom padding lets the last rows scroll clear of a toast.
   return (
     <div
       data-inbox-page
-      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-6 xl:px-10"
+      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-6 xl:px-10"
     >
       <div className="mb-5 flex flex-wrap items-center gap-2 @md:flex-nowrap">
         {/* On phones the title takes the room the buttons leave, so a long space name truncates
