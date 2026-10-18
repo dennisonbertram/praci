@@ -273,6 +273,29 @@ describe("Composer", () => {
     sessionStorage.clear();
   });
 
+  it("keeps a chosen @mention chip when the user leaves the chat and comes back", () => {
+    const legal: ComposerMention = { kind: "bot", id: "bot-legal", name: "Legal" };
+    const chips = () =>
+      [...(container?.querySelectorAll("[data-testid='mention-chip']") ?? [])].map(
+        (chip) => chip.textContent,
+      );
+    const textarea = renderComposer(vi.fn(), { draftKey: "group:g1", mentionTargets: [legal] });
+    type(textarea, "@Leg");
+    act(() => {
+      textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(chips()).toEqual(["Legal"]);
+    act(() => root?.unmount());
+    container?.remove();
+    renderComposer(vi.fn(), { draftKey: "bot:carta", mentionTargets: [legal] });
+    expect(chips()).toEqual([]);
+    act(() => root?.unmount());
+    container?.remove();
+    renderComposer(vi.fn(), { draftKey: "group:g1", mentionTargets: [legal] });
+    expect(chips()).toEqual(["Legal"]);
+    sessionStorage.clear();
+  });
+
   it("moves through the / menu with the arrow keys and picks with Enter", () => {
     const onSend = vi.fn();
     const onSlashAction = vi.fn();

@@ -41,11 +41,9 @@ export function resolveGroupTargetBotIds(input: {
     if (membersById.has(mentionId)) targetIds.add(mentionId);
   }
 
-  // "@everyone", or asking "everyone"/"everybody" in plain words, wakes every member.
-  if (
-    hasMentionToken(input.text, "everyone") ||
-    /(?<![\w@.])(?:everyone|everybody)\b/i.test(input.text)
-  ) {
+  // Only an explicit "@everyone" token broadcasts; the plain word never does,
+  // and explicit chips take precedence over text tokens.
+  if (targetIds.size === 0 && hasMentionToken(input.text, "everyone")) {
     for (const member of input.members) targetIds.add(member.id);
   } else {
     for (const member of input.members) {

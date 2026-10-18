@@ -43,3 +43,27 @@ export function writeChatDraftSkill(chatKey: string | undefined, skill: unknown)
     // Quota or private mode: the chip lives only while the composer stays open.
   }
 }
+
+/** The @ chips (bots, groups, routines, connectors) picked for a chat's draft, kept with its text. */
+export function readChatDraftMentions<T>(chatKey: string | undefined): T[] {
+  if (!chatKey) return [];
+  try {
+    const parsed: unknown = JSON.parse(
+      sessionStorage.getItem(`${PREFIX}${chatKey}:mentions`) ?? "[]",
+    );
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeChatDraftMentions(chatKey: string | undefined, mentions: unknown[]): void {
+  if (!chatKey) return;
+  try {
+    if (mentions.length) {
+      sessionStorage.setItem(`${PREFIX}${chatKey}:mentions`, JSON.stringify(mentions));
+    } else sessionStorage.removeItem(`${PREFIX}${chatKey}:mentions`);
+  } catch {
+    // Quota or private mode: the chips live only while the composer stays open.
+  }
+}

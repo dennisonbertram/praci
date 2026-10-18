@@ -7,8 +7,9 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ list: vi.fn(), create: vi.fn(), get: vi.fn() }));
+const memoryList = vi.hoisted(() => vi.fn(async () => []));
 vi.mock("../lib/rpc", () => ({
-  rpc: { agentSkills: api, memory: { list: async () => [] } },
+  rpc: { agentSkills: api, memory: { list: memoryList } },
 }));
 vi.mock("../lib/artifact-open", () => ({ downloadArtifactBytes: vi.fn() }));
 vi.mock("@lingui/react/macro", () => {
@@ -31,6 +32,7 @@ vi.mock("@rakazo/ui-web", () => {
   };
 });
 
+import { resetHideAmountsMemory, setHideAmounts } from "../lib/hide-amounts-preference";
 import { KnowledgeSection } from "./KnowledgeSection";
 
 it("disables skill rows while a completed save is refreshing the catalog", async () => {
@@ -154,4 +156,30 @@ it("previews what a memory document says instead of its file name", async () => 
   ).toBe("Board meeting is on the 28th");
   expect(memoryDocPreview("1. Runway is 8.9 months")).toBe("Runway is 8.9 months");
   expect(memoryDocPreview("  \n#\n")).toBeNull();
+});
+
+it("masks currency in memory previews while amounts are hidden", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  memoryList.mockResolvedValueOnce([
+    { id: "m1", path: "MEMORY.md", scope: "bot", content: "ARR is $2.4M" },
+  ] as never);
+  api.list.mockReset();
+  api.list.mockResolvedValue([]);
+  setHideAmounts(true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () =>
+      root.render(<KnowledgeSection botId="bot-fixture" onSkillsChange={() => undefined} />),
+    );
+    expect(container.textContent).not.toContain("$2.4M");
+    expect(container.textContent).toContain("ARR is");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    setHideAmounts(false);
+    resetHideAmountsMemory();
+    vi.unstubAllGlobals();
+  }
 });

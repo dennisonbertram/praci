@@ -51,3 +51,10 @@ body,
     opacity: 0.3;
   }
 }
+
+/* Fades the bottom edge of a scroller only while more rows are below (covers scroll with content). */
+.rk-scroll-fade-bottom {
+  background:
+    linear-gradient(transparent, var(--sidebar) 70%) bottom / 100% 24px no-repeat local,
+    linear-gradient(transparent, var(--sidebar-border)) bottom / 100% 24px no-repeat scroll;
+}

@@ -222,8 +222,10 @@ import {
 } from "../lib/carta-agent";
 import {
   readChatDraft,
+  readChatDraftMentions,
   readChatDraftSkill,
   writeChatDraft,
+  writeChatDraftMentions,
   writeChatDraftSkill,
 } from "../lib/chat-draft";
 import { stepComposerHistory } from "../lib/composer-history";
@@ -3499,16 +3501,17 @@ export function ShellPage() {
             >
               <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
             </button>
-            <button
-              type="button"
-              className="app-no-drag inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:hidden"
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="app-no-drag md:hidden"
               aria-label={t`Close menu`}
               title={t`Close menu`}
               data-testid="close-mobile-sidebar"
               onClick={() => setMobileSidebarOpen(false)}
             >
               <X size={16} strokeWidth={1.8} aria-hidden="true" />
-            </button>
+            </Button>
             <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
               <PopoverTrigger
                 className="app-no-drag text-[21px] text-muted-foreground/70 hover:text-foreground/75"
@@ -3594,7 +3597,7 @@ export function ShellPage() {
             </InputGroupAddon>
           ) : null}
         </InputGroup>
-        <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
+        <div className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {/* While searching, matching pages are listed with the results instead. */}
           {showSpaceSearch ? null : (
             // Inside the scroll area, so on a short screen the chats are never squeezed out.
@@ -4423,17 +4426,18 @@ export function ShellPage() {
           </div>
           <div className="flex items-center gap-1">
             {inGroup && !pageMode && activeGroup ? (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 data-testid="group-settings-button"
                 title={t`Members and settings`}
                 aria-label={t`Members and settings`}
                 onClick={() => setPanel(panel === "group-settings" ? null : "group-settings")}
                 data-active={panel === "group-settings" ? "" : undefined}
-                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                className="app-no-drag data-active:bg-accent"
               >
                 <Users size={18} strokeWidth={1.6} className="text-foreground/75" />
-              </button>
+              </Button>
             ) : null}
             {!inGroup && !pageMode && active && pageBotId === active.id ? (
               <button
@@ -6468,7 +6472,12 @@ export const Composer = memo(function Composer({
   useEffect(() => {
     writeChatDraftSkill(draftKey, selectedSkill);
   }, [draftKey, selectedSkill]);
-  const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>([]);
+  const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>(() =>
+    readChatDraftMentions<ComposerMention>(draftKey),
+  );
+  useEffect(() => {
+    writeChatDraftMentions(draftKey, selectedMentions);
+  }, [draftKey, selectedMentions]);
   const editRevision = useRef(0);
   const retryNonce = useRef<string | null>(null);
   const replyId = replyTarget?.id ?? null;

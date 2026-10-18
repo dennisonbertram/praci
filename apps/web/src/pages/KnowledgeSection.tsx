@@ -13,6 +13,7 @@ import {
 } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { downloadArtifactBytes } from "../lib/artifact-open";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { rpc } from "../lib/rpc";
 
 const fieldClass = "mt-2 w-full font-mono text-[13px] leading-relaxed";
@@ -145,6 +146,7 @@ function MemoryDocumentList({
   onHasDocs?: (hasDocs: boolean) => void;
 }) {
   const { t } = useLingui();
+  useHideAmounts();
   const [loading, setLoading] = useState(true);
   const [docs, setDocs] = useState<MemoryDocument[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -283,7 +285,7 @@ function MemoryDocumentList({
                   dir="auto"
                   title={doc.path}
                 >
-                  {memoryDocPreview(doc.content) ?? (
+                  {maskCurrencyWhenHidden(memoryDocPreview(doc.content) ?? "") || (
                     <span className="font-normal text-muted-foreground">
                       <Trans>Nothing remembered yet</Trans>
                     </span>

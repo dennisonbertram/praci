@@ -121,18 +121,25 @@ describe("inferHandoffTargetBotId", () => {
 });
 
 describe("plain-word everyone", () => {
-  it("wakes every member when the user asks everyone without an @", () => {
-    const members = [
-      { id: "a", name: "Chief" },
-      { id: "b", name: "Legal" },
-      { id: "c", name: "IR" },
-    ];
+  const members = [
+    { id: "a", name: "Chief" },
+    { id: "b", name: "Legal" },
+    { id: "c", name: "IR" },
+  ];
+  it("never broadcasts on the plain word", () => {
+    expect(resolveGroupTargetBotIds({ text: "status from everyone please", members })).toEqual([
+      "a",
+    ]);
     expect(
-      resolveGroupTargetBotIds({ text: "Quick status check from everyone please", members }),
-    ).toEqual(["a", "b", "c"]);
-    expect(resolveGroupTargetBotIds({ text: "Quick status check please", members })).toEqual(["a"]);
+      resolveGroupTargetBotIds({ text: "@Legal do not send this to everybody", members }),
+    ).toEqual(["b"]);
     expect(resolveGroupTargetBotIds({ text: "mail contact@everyone.test", members })).toEqual([
       "a",
     ]);
+  });
+  it("lets explicit chips win over @everyone text", () => {
+    expect(
+      resolveGroupTargetBotIds({ text: "@everyone hi", members, explicitMentions: ["b"] }),
+    ).toEqual(["b"]);
   });
 });
