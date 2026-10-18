@@ -645,6 +645,9 @@ export function ShellPage() {
   const botsRefreshApplied = useRef(0);
   // Request number of the newest refresh whose bot list was actually stored (a reorder can drop it).
   const botsListApplied = useRef(0);
+  // The route bot id and the refresh epoch when the route changed; set in a layout effect so no
+  // refresh already in flight can redirect away from a bot it never had the chance to see.
+  const routeBotStart = useRef<{ id: string | undefined; epoch: number } | null>(null);
   const missingBotSeen = useRef<MissingBotSeen | null>(null);
   const [, rerenderAfterMissingBot] = useReducer((n: number) => n + 1, 0);
   const archivedBotsRefreshEpoch = useRef(0);
@@ -1170,12 +1173,14 @@ export function ShellPage() {
         if (archivedFresh && archived) setArchivedBots(archived);
         if (archivedFresh && archivedGroupList) setArchivedGroups(archivedGroupList);
         if (!botsFresh) return;
+        let listApplied = false;
         if (
           botOrderEpoch === botOrderEpochRef.current &&
           (replaceBotOrder || (!preserveBotOrder && !savingBotOrderRef.current))
         ) {
           setBots(list);
           botsListApplied.current = request;
+          listApplied = true;
         }
         setBotSections(sections);
         setGroups(groupList);
@@ -1209,9 +1214,14 @@ export function ShellPage() {
         if (routePageMode.current) return;
         const currentBotId = routeBotId.current;
         if (!currentBotId || !list.some((bot) => bot.id === currentBotId)) {
-          // A refresh that started before the route's bot was first missed cannot know about it.
-          const seen = missingBotSeen.current;
-          if (seen && seen.id === currentBotId && request <= seen.epoch) return;
+          // Leave the route's bot only on a list that was stored, from a refresh that started after
+          // the route changed; any other response may not know about it yet.
+          if (currentBotId) {
+            const start = routeBotStart.current;
+            if (!listApplied || (start && start.id === currentBotId && request <= start.epoch)) {
+              return;
+            }
+          }
           navigate(firstThreadRoute(list, groupList), { replace: true });
         }
       } finally {
@@ -1220,6 +1230,10 @@ export function ShellPage() {
     },
     [navigate],
   );
+
+  useLayoutEffect(() => {
+    routeBotStart.current = { id: botId, epoch: botsRefreshEpoch.current };
+  }, [botId]);
 
   // A route bot the list does not know yet (created on another page) gets one refresh before the
   // chat falls back to the first bot; the chat area keeps its loading state meanwhile.
