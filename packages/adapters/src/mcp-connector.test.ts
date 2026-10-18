@@ -1295,6 +1295,7 @@ describe("MCP connector Finance agent", () => {
       })),
     };
     vi.stubGlobal("fetch", mcpFetch(state, endpoint));
+    const findFirst = vi.fn().mockImplementation(async () => assignment);
     const connector = new McpConnector(
       {
         botMcpServer: {
@@ -1357,11 +1358,12 @@ describe("MCP connector integration agents", () => {
     const assignment = { ...ASSIGNMENT, botId, bot, server: { ...agentServer, ...server } };
     const state = { failNext: false, initializations: 0, calls: [] as string[], tools: TOOLS };
     vi.stubGlobal("fetch", mcpFetch(state, endpoint));
+    const findFirst = vi.fn().mockImplementation(async () => assignment);
     const connector = new McpConnector(
       {
         botMcpServer: {
           findMany: vi.fn().mockImplementation(async () => [assignment]),
-          findFirst: vi.fn().mockImplementation(async () => assignment),
+          findFirst,
         },
       } as never,
       {} as never,
@@ -1373,13 +1375,19 @@ describe("MCP connector integration agents", () => {
       botId,
       signal: new AbortController().signal,
     } as never;
-    const call = async (toolName: string) => {
+    const call = async (toolName: string, discoveredReadOnly?: boolean) => {
       const events: Array<{ type: string; message?: string }> = [];
       for await (const event of connector.execute(
         {
           tool: `mcp__demo__${toolName}`,
           args: {},
-          route: { connectorId: "mcp", resourceId: "server-1", toolName, endpoint },
+          route: {
+            connectorId: "mcp",
+            resourceId: "server-1",
+            toolName,
+            endpoint,
+            discoveredReadOnly,
+          },
         } as never,
         context,
       ))
@@ -1387,7 +1395,7 @@ describe("MCP connector integration agents", () => {
       return events;
     };
     const names = async () => (await connector.discoverTools(context)).map((t) => t.name.slice(11));
-    return { connector, state, call, names, assignment };
+    return { connector, state, call, names, assignment, findFirst };
   }
 
   it("denies a non-agent bot everything on an exclusive server, with the ask-the-agent message", async () => {
@@ -1483,6 +1491,35 @@ describe("MCP connector integration agents", () => {
     );
     expect(await names()).toEqual(["getAccounts", "requestSendMoney", "mystery", "annotatedRead"]);
     expect(await call("requestSendMoney")).toMatchObject([{ type: "result" }]);
+    await connector.close();
+  });
+
+  it("refuses a tool that was a read at discovery and is a write at dispatch", async () => {
+    const { connector, state, call } = await setup("agent-1", agentBot, { writesEnabled: true });
+    // requestSendMoney is a forced write now; discovery recorded it as a read.
+    expect(await call("requestSendMoney", true)).toMatchObject([
+      { type: "error", message: expect.stringContaining("changed from a read") },
+    ]);
+    expect(state.calls).toEqual([]);
+    // Classified as a write at discovery, the executor asked, so it runs.
+    expect(await call("requestSendMoney", false)).toMatchObject([{ type: "result" }]);
+    // A true read stays a read.
+    expect(await call("getAccounts", true)).toMatchObject([{ type: "result" }]);
+    await connector.close();
+  });
+
+  it("authorizes on the server row read after listTools, not before", async () => {
+    const { connector, state, call, assignment, findFirst } = await setup("agent-1", agentBot, {
+      writesEnabled: true,
+    });
+    let reads = 0;
+    findFirst.mockImplementation(async () => ({
+      ...assignment,
+      server: { ...assignment.server, writesEnabled: ++reads === 1 },
+    }));
+    expect(await call("requestSendMoney", false)).toMatchObject([{ type: "error" }]);
+    expect(reads).toBe(2);
+    expect(state.calls).toEqual([]);
     await connector.close();
   });
 });

@@ -288,6 +288,14 @@ export class McpConnector implements ConnectorProvider {
                 : {}),
               route: {
                 connectorId: "mcp",
+                ...(isServerAgent(assignment)
+                  ? {
+                      discoveredReadOnly: isReadTool(
+                        tool,
+                        integrationPresetForEndpoint(assignment.server.endpoint),
+                      ),
+                    }
+                  : {}),
                 resourceId: assignment.serverId,
                 resourceRevision: assignment.server.revision,
                 toolName: tool.name,
@@ -383,16 +391,19 @@ export class McpConnector implements ConnectorProvider {
       yield { type: "error", message: "MCP tools require a bot context" };
       return;
     }
-    const assignment = await this.prisma.botMcpServer.findFirst({
-      where: {
-        botId: context.botId,
-        serverId: call.route.resourceId,
-        spaceId: context.spaceId,
-        userId: context.userId,
-        server: { enabled: true },
-      },
-      include: { server: true, bot: { select: { spawnKey: true, spaceId: true, userId: true } } },
-    });
+    const route = call.route;
+    const loadAssignment = () =>
+      this.prisma.botMcpServer.findFirst({
+        where: {
+          botId: context.botId,
+          serverId: route.resourceId,
+          spaceId: context.spaceId,
+          userId: context.userId,
+          server: { enabled: true },
+        },
+        include: { server: true, bot: { select: { spawnKey: true, spaceId: true, userId: true } } },
+      });
+    let assignment = await loadAssignment();
     if (!assignment) {
       yield { type: "error", message: "MCP tool is not assigned to this bot" };
       return;
@@ -403,21 +414,43 @@ export class McpConnector implements ConnectorProvider {
       try {
         const session = await this.sessionFor(assignment.server, context);
         const listed = await session.listTools({ signal: context.signal });
-        annotations = listed.tools.find((tool) => tool.name === call.route?.toolName)?.annotations;
+        annotations = listed.tools.find((tool) => tool.name === route.toolName)?.annotations;
       } catch (error) {
         yield { type: "error", message: sanitizeConnectorError(error) };
         return;
       }
+      // The listing took time: authorize on the row as it is now, not as it was before the call.
+      assignment = await loadAssignment();
+      if (!assignment) {
+        yield { type: "error", message: "MCP tool is not assigned to this bot" };
+        return;
+      }
     }
     const denial = integrationAgentDenial(assignment, {
-      name: call.route.toolName,
+      name: route.toolName,
       annotations,
     });
     if (denial) {
       yield { type: "error", message: denialMessage(denial, assignment.server) };
       return;
     }
-    if (!assignmentAllowsTool(assignment, call.route.toolName, annotations)) {
+    // The executor asked for approval according to the classification at discovery. A tool that
+    // was a read then and is a write now was not asked about, so it must not run.
+    if (
+      route.discoveredReadOnly === true &&
+      isServerAgent(assignment) &&
+      !isReadTool(
+        { name: route.toolName, annotations },
+        integrationPresetForEndpoint(assignment.server.endpoint),
+      )
+    ) {
+      yield {
+        type: "error",
+        message: `${route.toolName} changed from a read to a change since it was listed, so it was not run. Try again in a new message.`,
+      };
+      return;
+    }
+    if (!assignmentAllowsTool(assignment, route.toolName, annotations)) {
       yield { type: "error", message: "MCP tool is not assigned to this bot" };
       return;
     }

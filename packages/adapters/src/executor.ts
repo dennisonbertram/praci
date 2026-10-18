@@ -54,6 +54,7 @@ import {
   isCartaAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
+  integrationAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
@@ -4161,10 +4162,39 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // Generic connector tools (Composio, Pipedream, MCP) reach the owner's accounts, so a run
         // another agent started (bot_message, possibly from another account) gets none of them.
         // Webhook and messaging runs keep them: they have their own approval rules.
+        // The one exception: an integration agent asked by another bot of the same space and user
+        // works with its own server's MCP tools (writes still ask). A peer from another account
+        // or space is not found in this scope, so it gets nothing.
+        let integrationPeerRun = false;
+        if (integrationAgent && run.trigger === "bot_message" && peerMessage?.fromBotId) {
+          const [sender, linked] = await Promise.all([
+            deps.prisma.bot.findFirst({
+              where: {
+                id: peerMessage.fromBotId,
+                spaceId: run.spaceId,
+                userId: run.userId,
+                archivedAt: null,
+              },
+              select: { id: true },
+            }),
+            deps.prisma.mcpServer.findFirst({
+              where: {
+                id: bot.spawnKey?.slice(integrationAgentSpawnKey("").length),
+                spaceId: run.spaceId,
+                userId: run.userId,
+                agentBotId: bot.id,
+              },
+              select: { id: true },
+            }),
+          ]);
+          integrationPeerRun = Boolean(sender && linked);
+        }
         const exposedConnectorTools =
-          run.trigger !== "bot_message"
+          run.trigger !== "bot_message" || integrationPeerRun
             ? discovered.filter(
-                (tool) => !builtinAgentTools.some((builtin) => builtin.name === tool.name),
+                (tool) =>
+                  !builtinAgentTools.some((builtin) => builtin.name === tool.name) &&
+                  (!integrationPeerRun || tool.route?.connectorId === "mcp"),
               )
             : [];
         const connectorTools = new Map(
@@ -6832,7 +6862,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (deps.connector) {
             // A model can call a name it was never offered; refuse connector calls on a peer-started run.
-            if (run.trigger === "bot_message" && !BUILTIN_AGENT_TOOL_NAMES.has(name)) {
+            if (
+              run.trigger === "bot_message" &&
+              !BUILTIN_AGENT_TOOL_NAMES.has(name) &&
+              !(integrationPeerRun && connectorTools.has(name))
+            ) {
               return { error: `unknown tool ${name}` };
             }
             let result: unknown = { error: `unknown tool ${name}` };

@@ -60,6 +60,8 @@ function fakeWorld(opts: {
   assignment?: { allowAllTools: boolean; allowedTools: string[] } | null;
   tools?: { name: string; annotations?: Row }[];
   stats?: Row[];
+  /** The bot is the integration agent of the server, whose writes are off. */
+  agent?: boolean;
 }) {
   let row: Row = {
     id: "p",
@@ -78,7 +80,15 @@ function fakeWorld(opts: {
     botMcpServer: {
       findFirst: vi.fn(async () =>
         assignment && enabled
-          ? { ...assignment, server: { id: "srv" }, bot: { spawnKey: null }, serverId: "srv" }
+          ? opts.agent
+            ? {
+                ...assignment,
+                botId: "bot",
+                serverId: "srv",
+                server: { id: "srv", spaceId: "sp", userId: "u", agentBotId: "bot" },
+                bot: { spawnKey: "integration-agent:srv", spaceId: "sp", userId: "u" },
+              }
+            : { ...assignment, server: { id: "srv" }, bot: { spawnKey: null }, serverId: "srv" }
           : null,
       ),
     },
@@ -143,6 +153,15 @@ describe("pin source authorization", () => {
     await expect(save(tool(undefined, "get_balance"), src("get_other"))).rejects.toThrow(
       /not offered/,
     );
+  });
+});
+
+describe("pin sources for an integration agent", () => {
+  it("accepts the agent's own read, judged on the listed annotations, and refuses a write", async () => {
+    const agent = (annotations?: Row) =>
+      fakeWorld({ agent: true, tools: [{ name: "get_balance", annotations }] });
+    await expect(save(agent({ readOnlyHint: true }), src())).resolves.toMatchObject({ ok: true });
+    await expect(save(agent(), src())).rejects.toThrow(/not assigned/);
   });
 });
 

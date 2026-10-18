@@ -84,7 +84,10 @@ function fixture({
   afterCall,
   route,
   connector: realConnector,
+  peer,
 }: {
+  /** A bot_message run started by bot `peer-1`: whether that bot is in the run's space and user, and whether the bot is its server's agent. */
+  peer?: { senderInScope: boolean; linked: boolean };
   /** Replaces the stub connector, for runs against a real McpConnector. */
   connector?: unknown;
   route?: ConnectorTool["route"];
@@ -152,6 +155,7 @@ function fixture({
     status: "queued",
     trigger,
     leaseFence: 0,
+    ...(peer ? { sourceMessageId: "msg-1" } : {}),
   };
   const externalEffect = {
     findMany: vi.fn(
@@ -215,14 +219,33 @@ function fixture({
         computer: { id: "computer-1", scope: "dedicated" },
       })),
       findMany: vi.fn(async () => []),
+      findFirst: vi.fn(async () => (peer?.senderInScope ? { id: "peer-1" } : null)),
     },
+    mcpServer: { findFirst: vi.fn(async () => (peer?.linked ? { id: "server-1" } : null)) },
     attempt: {
       create: vi.fn(async () => ({ id: "attempt-1" })),
       update: vi.fn(),
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
     thread: { findUniqueOrThrow: vi.fn(async () => ({ id: run.threadId, groupId: null })) },
-    message: { findMany: vi.fn(async () => []) },
+    message: {
+      findMany: vi.fn(async () => []),
+      findFirst: vi.fn(async () => null),
+      findUnique: vi.fn(async () => ({
+        blocks: [
+          {
+            kind: "bot_message_received",
+            fromBotId: "peer-1",
+            fromBotName: "Peer",
+            text: "Pay the invoice",
+            hop: 1,
+            intent: "request",
+            returnToMessageId: "m0",
+          },
+        ],
+        replyTo: null,
+      })),
+    },
     task: { findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt })) },
     connection: { findMany: vi.fn(async () => []) },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
@@ -1113,5 +1136,48 @@ describe("tools offered to a peer-started run", () => {
     expect(f.offeredTools).not.toContain("demo_get_item");
     expect(f.execute).not.toHaveBeenCalled();
     expect(f.results[0]).toEqual({ error: expect.stringContaining("unknown tool") });
+  });
+});
+
+describe("integration agent asked by another bot", () => {
+  const peerRun = (peer: { senderInScope: boolean; linked: boolean }, spawnKey: string | null) =>
+    fixture({
+      name: "mcp__demo__requestSendMoney",
+      readOnly: false,
+      trigger: "bot_message",
+      spawnKey,
+      peer,
+      route: { connectorId: "mcp", resourceId: "server-1", toolName: "requestSendMoney" },
+    });
+  const agentKey = integrationAgentSpawnKey("server-1");
+
+  it("offers its server's tools to a bot of the same space and user, and still asks before a write", async () => {
+    const f = peerRun({ senderInScope: true, linked: true }, agentKey);
+    await f.run();
+    expect(f.offeredTools).toContain("mcp__demo__requestSendMoney");
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("gives a peer from another space or user nothing", async () => {
+    const f = peerRun({ senderInScope: false, linked: true }, agentKey);
+    await f.run();
+    expect(f.offeredTools).not.toContain("mcp__demo__requestSendMoney");
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("unknown tool") });
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("gives nothing when the agent is no longer linked to the server", async () => {
+    const f = peerRun({ senderInScope: true, linked: false }, agentKey);
+    await f.run();
+    expect(f.offeredTools).not.toContain("mcp__demo__requestSendMoney");
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("changes nothing for an ordinary bot", async () => {
+    const f = peerRun({ senderInScope: true, linked: true }, null);
+    await f.run();
+    expect(f.offeredTools).not.toContain("mcp__demo__requestSendMoney");
+    expect(f.execute).not.toHaveBeenCalled();
   });
 });

@@ -246,6 +246,8 @@ export interface ConnectorRoute {
   catalogGroup?: string;
   /** The MCP server's endpoint, so approval checks can tell which server a raw tool name belongs to. */
   endpoint?: string;
+  /** Read or write as classified at discovery, for an integration agent's tools. The executor asked for approval on that basis, so execute() refuses a tool that has since become a write. */
+  discoveredReadOnly?: boolean;
 }
 
 export interface ConnectorCall {
