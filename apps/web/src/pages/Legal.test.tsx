@@ -597,3 +597,13 @@ it("breaks a long label over two lines instead of cutting it short", () => {
   ]);
   expect(labelLines(`${"A ".repeat(40)}end`)[1]?.endsWith("…")).toBe(true);
 });
+
+it("says the daily scan is paused when the Legal routine is off", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    agent: { ...overview.agent, dailyScanActive: false },
+  });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("Daily scan paused.");
+  expect(container.textContent).not.toContain("Scans daily");
+});

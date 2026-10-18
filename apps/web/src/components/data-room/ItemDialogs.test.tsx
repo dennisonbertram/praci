@@ -29,6 +29,7 @@ const rpc = vi.hoisted(() => ({
 const legal = vi.hoisted(() => ({ itemLinks: vi.fn() }));
 vi.mock("../../lib/rpc", () => ({ rpc: { dataRoom: rpc, legal } }));
 
+import { resetHideAmountsMemory, setHideAmounts } from "../../lib/hide-amounts-preference";
 import { folderNodes } from "./folders";
 import { ItemDialog } from "./ItemDialogs";
 
@@ -206,3 +207,33 @@ it("keeps the plain warning when Legal has nothing for the file or cannot be ask
   expect(dialogText()).toContain("This can't be undone.");
   expect(dialogText()).not.toContain("Legal contract");
 });
+
+it.each([
+  [2, "This also removes the Legal contract"],
+  [0, "This also removes the Legal contract"],
+])(
+  "masks a currency amount in the contract title while amounts are hidden (%i deadlines)",
+  async (deadlines, lead) => {
+    setHideAmounts(true);
+    try {
+      legal.itemLinks.mockResolvedValue({ contractTitle: "Lease — $12,500 deposit", deadlines });
+      await act(async () =>
+        root.render(
+          <ItemDialog
+            action="delete"
+            item={item}
+            folders={[]}
+            onClose={() => {}}
+            onDone={() => {}}
+          />,
+        ),
+      );
+      await flushAll();
+      expect(dialogText()).toContain(lead);
+      expect(dialogText()).not.toContain("12,500");
+    } finally {
+      setHideAmounts(false);
+      resetHideAmountsMemory();
+    }
+  },
+);

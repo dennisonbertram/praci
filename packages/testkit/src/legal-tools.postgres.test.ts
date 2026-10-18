@@ -363,6 +363,10 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
 
     const overview = await legalOverview(api, a);
     expect(overview.agent.botId).toBe(bot.id);
+    expect(overview.agent.dailyScanActive).toBe(true);
+    await prisma.routine.updateMany({ where: { botId: bot.id }, data: { active: false } });
+    expect((await legalOverview(api, a)).agent.dailyScanActive).toBe(false);
+    await prisma.routine.updateMany({ where: { botId: bot.id }, data: { active: true } });
     expect(overview.agent.lastScanRun).toEqual({ id: first.runId, status: "running", error: null });
     await prisma.run.update({
       where: { id: first.runId },

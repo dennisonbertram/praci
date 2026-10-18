@@ -26,7 +26,7 @@ function historyMessages() {
   ];
 }
 
-async function runLegal(consented: boolean, modelId = "meta/muse-spark-1.2") {
+async function runLegal(consented: boolean, modelId = "meta/muse-spark-1.2", trigger = "user") {
   const switchModel = { provider: "openrouter", modelId: "openai/gpt-4o" };
   const backupReadFails = false;
   const scripted = false;
@@ -38,7 +38,7 @@ async function runLegal(consented: boolean, modelId = "meta/muse-spark-1.2") {
     spaceId: "space-1",
     userId: "user-1",
     status: "queued",
-    trigger: "user",
+    trigger,
     leaseFence: 0,
   };
   const get = vi.fn(async () => new Uint8Array([1, 2, 3, 4]));
@@ -193,5 +193,14 @@ describe("Legal agent runs need Data Room consent for the model they use", () =>
     );
     // The run's error is the only notice; no bot message repeats it in the chat.
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("still sends the model notice as a bot message on a linked messaging chat", async () => {
+    const { prisma, finalizeRun } = await runLegal(true, "openai/gpt-6-luna", "messaging");
+    expect(finalizeRun).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "failed", error: LEGAL_MODEL_REQUIRED_MESSAGE }),
+    );
+    // Messaging channels deliver stored bot messages, not the run's error.
+    expect(prisma.$transaction).toHaveBeenCalled();
   });
 });

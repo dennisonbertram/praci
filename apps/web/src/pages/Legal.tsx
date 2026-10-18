@@ -187,9 +187,15 @@ function Legal({
           ) : lastScan && needsConsent ? (
             <Trans>Last scan {lastScan}. Daily scans wait until you allow access.</Trans>
           ) : lastScan ? (
-            <Trans>Last scan {lastScan}. Scans daily.</Trans>
-          ) : (
+            data.agent.dailyScanActive ? (
+              <Trans>Last scan {lastScan}. Scans daily.</Trans>
+            ) : (
+              <Trans>Last scan {lastScan}. Daily scan paused.</Trans>
+            )
+          ) : data.agent.dailyScanActive ? (
             <Trans>Not scanned yet</Trans>
+          ) : (
+            <Trans>Not scanned yet. Daily scan paused.</Trans>
           )}
         </span>
         {/* A rejected key is fixed in one place; go straight to its field. */}
@@ -272,10 +278,14 @@ function Legal({
                 and deadlines.
               </Trans>
             ) : (
-              <Trans>
-                Press Scan now to read your Data room for contracts and deadlines. Legal also scans
-                every day.
-              </Trans>
+              data.agent.dailyScanActive ? (
+                <Trans>
+                  Press Scan now to read your Data room for contracts and deadlines. Legal also
+                  scans every day.
+                </Trans>
+              ) : (
+                <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
+              )
             )}
           </p>
         </div>

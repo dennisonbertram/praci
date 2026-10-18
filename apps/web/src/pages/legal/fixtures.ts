@@ -84,6 +84,7 @@ export const overview: LegalOverview = {
   agent: {
     botId: id(900),
     lastScanAt: "2026-10-15T08:00:00.000Z",
+    dailyScanActive: true,
     lastScanRun: { id: id(950), status: "completed", error: null },
   },
   model: { provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true },
@@ -100,7 +101,7 @@ export const emptyOverview: LegalOverview = {
     overdueDeadlines: 0,
     unreviewedDocuments: 0,
   },
-  agent: { botId: id(900), lastScanAt: null, lastScanRun: null },
+  agent: { botId: id(900), lastScanAt: null, dailyScanActive: true, lastScanRun: null },
   model: { provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true },
   modelBlocker: null,
 };

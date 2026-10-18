@@ -143,6 +143,8 @@ export const LegalOverviewSchema = z.object({
   agent: z.object({
     botId: Id.nullable(),
     lastScanAt: z.string().datetime().nullable(),
+    /** Whether the daily scan routine is switched on; Scan now works either way. */
+    dailyScanActive: z.boolean(),
     /** The newest scan run (daily or Scan now), whatever its outcome; `error` is set when it failed. */
     lastScanRun: z
       .object({

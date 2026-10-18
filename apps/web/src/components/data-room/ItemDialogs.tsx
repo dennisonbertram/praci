@@ -22,6 +22,7 @@ import {
   NativeSelectOption,
 } from "@rakazo/ui-web";
 import { type FormEvent, useEffect, useState } from "react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import type { FolderNode } from "./folders";
@@ -222,7 +223,9 @@ function DeleteDialog({
   }, [folder, item.id]);
   const deadlines = links?.deadlines ?? 0;
   const deadlineCount = plural(deadlines, { one: "# deadline", other: "# deadlines" });
-  const contractTitle = links?.contractTitle;
+  useHideAmounts(); // re-render when Hide amounts flips
+  const rawTitle = links?.contractTitle;
+  const contractTitle = rawTitle ? maskCurrencyWhenHidden(rawTitle) : rawTitle;
   return (
     <AlertDialog open onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent>
