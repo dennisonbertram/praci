@@ -301,6 +301,8 @@ export const ComposeFieldsSchema = z.object({
  */
 export const ComposeResultSchema = z.object({
   status: z.enum(["saved", "sent", "unknown", "reconnect", "disabled", "failed"]),
+  /** Why a `failed` send failed, when Gmail said: it refused the message, or it is limiting requests. */
+  reason: z.enum(["rejected", "rate_limited"]).optional(),
 });
 
 /** `mark: null` removes the mark from the message's sender. */

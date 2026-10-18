@@ -165,7 +165,7 @@ export const SendFailedNotice: Story = {
   args: {
     restore: restored(
       { to: ["ana@example.test"], subject: "Hello", text: "Body." },
-      { notice: "Not sent. Couldn't send. Try again." },
+      { notice: "Not sent. Gmail didn't accept it. Check the addresses." },
     ),
   },
 };

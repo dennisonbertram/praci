@@ -628,7 +628,10 @@ describePostgres("inbox compose (PostgreSQL)", () => {
     it("allows another try after a failure that proves nothing was sent", async () => {
       const input = fields();
       gmail.failNext(400, { urlIncludes: "drafts/send", reason: "invalidArgument" });
-      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "failed" });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({
+        status: "failed",
+        reason: "rejected",
+      });
       expect(gmail.sentOf("box-a")).toHaveLength(0);
       expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "sent" });
       expect(gmail.sentOf("box-a")).toHaveLength(1);
@@ -763,7 +766,10 @@ describePostgres("inbox compose (PostgreSQL)", () => {
     it("answers failed, and lets the user try again, when the rate limit never lets up", async () => {
       const input = fields();
       gmail.failNext(429, { urlIncludes: "drafts/send", times: 10 });
-      expect(await inboxComposeSend(deps(), a, input)).toEqual({ status: "failed" });
+      expect(await inboxComposeSend(deps(), a, input)).toEqual({
+        status: "failed",
+        reason: "rate_limited",
+      });
       expect(
         (await prisma.composeSend.findFirstOrThrow({ where: { clientId: input.clientId } })).state,
       ).toBe("failed");

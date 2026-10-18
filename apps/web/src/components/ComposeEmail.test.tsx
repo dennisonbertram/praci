@@ -538,6 +538,23 @@ it("names the one address that blocks a send", async () => {
   );
 });
 
+it("says why Gmail refused a send, once", async () => {
+  send.mockResolvedValue({ status: "failed", reason: "rejected" });
+  vi.useFakeTimers();
+  try {
+    await open(reply("reply"));
+    await act(async () => button("Send").click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_SEND_MS);
+    });
+    expect(getOutbox().restoring?.notice).toBe(
+      "Not sent. Gmail didn't accept it. Check the addresses.",
+    );
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it("says the message was not sent when a send fails, and keeps Send available", async () => {
   send.mockRejectedValue(new Error("Could not reach the server"));
   vi.useFakeTimers();

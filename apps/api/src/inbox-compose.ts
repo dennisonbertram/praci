@@ -354,6 +354,8 @@ export async function inboxComposeDraftSave(
       await flagReconnect(deps, account.id);
       return { status: "reconnect" };
     }
+    if (error.kind === "invalid") return { status: "failed", reason: "rejected" };
+    if (error.kind === "rate_limited") return { status: "failed", reason: "rate_limited" };
     return { status: "failed" };
   }
 }

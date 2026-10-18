@@ -96,11 +96,16 @@ const isBlank = (f: Fields) =>
   [f.subject, f.text].every((text) => text.trim() === "") &&
   f.to.length + f.cc.length + f.bcc.length === 0;
 
-function problemText(status: ComposeResult["status"], sending: boolean): string {
+function problemText(
+  { status, reason }: Pick<ComposeResult, "status" | "reason">,
+  sending: boolean,
+): string {
   if (status === "reconnect") return t`Gmail needs to be reconnected.`;
   if (status === "disabled") return t`Sending is turned off.`;
   if (status === "unknown") return t`Not confirmed as sent. Check Sent before trying again.`;
-  return sending ? t`Couldn't send. Try again.` : t`Couldn't save the draft`;
+  if (reason === "rejected") return t`Gmail didn't accept it. Check the addresses.`;
+  if (reason === "rate_limited") return t`Gmail is limiting requests. Try again in a minute.`;
+  return sending ? t`Gmail didn't respond. Try again.` : t`Couldn't save the draft`;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -256,12 +261,13 @@ export function ComposeEmail({
     () =>
       createDraftSaver<Payload>(async (value) => {
         try {
-          const { status } = await rpc.inbox.compose.draftSave(value);
+          const result = await rpc.inbox.compose.draftSave(value);
+          const { status } = result;
           if (status === "saved") {
             saved.current = true;
             setNotice({ kind: "saved", text: t`Draft saved` });
           } else if (status !== "sent") {
-            setNotice({ kind: "error", text: problemText(status, false) });
+            setNotice({ kind: "error", text: problemText(result, false) });
           }
         } catch {
           setNotice({ kind: "error", text: t`Couldn't save the draft` });
@@ -513,8 +519,10 @@ export function ComposeEmail({
       // Held for a few seconds so Undo can bring this composer back; a failure does too.
       holdSend(async () => {
         try {
-          const { status } = await rpc.inbox.compose.send(request);
-          return status === "sent" ? null : notSent(problemText(status, true), status);
+          const result = await rpc.inbox.compose.send(request);
+          return result.status === "sent"
+            ? null
+            : notSent(problemText(result, true), result.status);
         } catch (cause) {
           return notSent(errorText(cause));
         }
