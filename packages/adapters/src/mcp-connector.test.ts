@@ -58,6 +58,7 @@ function mcpFetch(
       annotations?: { readOnlyHint?: boolean };
     }>;
     calls?: string[];
+    listings?: number;
   },
   expectedUrl = "https://mcp.example.test/mcp",
 ) {
@@ -86,6 +87,7 @@ function mcpFetch(
       });
     }
     if (message.method === "tools/list") {
+      state.listings = (state.listings ?? 0) + 1;
       return Response.json({
         jsonrpc: "2.0",
         id: message.id,
@@ -1355,7 +1357,13 @@ describe("MCP connector integration agents", () => {
     server: Record<string, unknown>,
   ) {
     const assignment = { ...ASSIGNMENT, botId, bot, server: { ...agentServer, ...server } };
-    const state = { failNext: false, initializations: 0, calls: [] as string[], tools: TOOLS };
+    const state = {
+      failNext: false,
+      initializations: 0,
+      listings: 0,
+      calls: [] as string[],
+      tools: TOOLS,
+    };
     vi.stubGlobal("fetch", mcpFetch(state, endpoint));
     const findFirst = vi.fn().mockImplementation(async () => assignment);
     const connector = new McpConnector(
@@ -1396,6 +1404,97 @@ describe("MCP connector integration agents", () => {
     const names = async () => (await connector.discoverTools(context)).map((t) => t.name.slice(11));
     return { connector, state, call, names, assignment, findFirst };
   }
+
+  it("coalesces discovery and uses one tool list per session within the TTL for preset calls", async () => {
+    const { connector, state, call, names } = await setup("agent-1", agentBot, {
+      writesEnabled: true,
+    });
+    try {
+      const discovered = await Promise.all([names(), names(), names()]);
+      expect(discovered[0]).toContain("getAccounts");
+      expect(discovered[1]).toEqual(discovered[0]);
+      expect(discovered[2]).toEqual(discovered[0]);
+      expect(await call("getAccounts", true)).toMatchObject([{ type: "result" }]);
+      expect(await call("requestSendMoney", false)).toMatchObject([{ type: "result" }]);
+      await names();
+      expect(state.initializations).toBe(1);
+      expect(state.listings).toBe(1);
+    } finally {
+      await connector.close();
+    }
+  });
+
+  it("refreshes expired metadata and coalesces the refresh", async () => {
+    const { connector, state, names } = await setup("agent-1", agentBot, {});
+    const clock = vi.spyOn(Date, "now").mockReturnValue(1_000);
+    try {
+      expect(await names()).toContain("annotatedRead");
+      state.tools = TOOLS.filter((tool) => tool.name !== "annotatedRead");
+      clock.mockReturnValue(30_999);
+      expect(await names()).toContain("annotatedRead");
+      expect(state.listings).toBe(1);
+      clock.mockReturnValue(31_000);
+      const refreshed = await Promise.all([names(), names()]);
+      expect(refreshed).toEqual([["getAccounts"], ["getAccounts"]]);
+      expect(state.listings).toBe(2);
+    } finally {
+      clock.mockRestore();
+      await connector.close();
+    }
+  });
+
+  it("does not reuse metadata after a session revision changes", async () => {
+    const { connector, state, names, assignment } = await setup("agent-1", agentBot, {});
+    try {
+      expect(await names()).toContain("annotatedRead");
+      state.tools = TOOLS.filter((tool) => tool.name !== "annotatedRead");
+      assignment.server.revision += 1;
+      expect(await names()).toEqual(["getAccounts"]);
+      expect(state.initializations).toBe(2);
+      expect(state.listings).toBe(2);
+    } finally {
+      await connector.close();
+    }
+  });
+
+  it("never falls back to expired metadata when a refresh fails", async () => {
+    const { connector, state, names } = await setup("agent-1", agentBot, {});
+    const clock = vi.spyOn(Date, "now").mockReturnValue(1_000);
+    try {
+      await names();
+      clock.mockReturnValue(31_000);
+      state.failNext = true;
+      expect(await names()).toEqual([]);
+      state.failNext = false;
+      state.tools = TOOLS.filter((tool) => tool.name !== "annotatedRead");
+      expect(await names()).toEqual(["getAccounts"]);
+      expect(state.initializations).toBe(2);
+      expect(state.listings).toBe(2);
+    } finally {
+      clock.mockRestore();
+      await connector.close();
+    }
+  });
+
+  it("revalidates annotation-dependent dispatch even while discovery metadata is cached", async () => {
+    for (const [botId, bot] of [
+      ["agent-1", agentBot],
+      ["other", { spawnKey: null }],
+    ] as const) {
+      const { connector, state, names, call } = await setup(botId, bot, { writesEnabled: true });
+      try {
+        expect(await names()).toContain("annotatedRead");
+        state.tools = TOOLS.map((tool) =>
+          tool.name === "annotatedRead" ? { ...tool, annotations: { readOnlyHint: false } } : tool,
+        );
+        expect(await call("annotatedRead", true)).toMatchObject([{ type: "error" }]);
+        expect(state.calls).toEqual([]);
+        expect(state.listings).toBe(2);
+      } finally {
+        await connector.close();
+      }
+    }
+  });
 
   it("denies a non-agent bot everything on an exclusive server, with the ask-the-agent message", async () => {
     const { connector, state, call, names } = await setup(

@@ -1,4 +1,4 @@
-import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult, ListToolsResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type {
   AdapterContext,
   ConnectorCall,
@@ -57,6 +57,13 @@ type PendingSession = {
   promise: Promise<McpSession>;
   invalidated?: boolean;
   ref?: string;
+};
+
+const TOOL_LIST_TTL_MS = 30_000;
+type ToolListEntry = {
+  result?: ListToolsResult;
+  expiresAt: number;
+  pending?: Promise<ListToolsResult>;
 };
 
 /** Runtime MCP connector. Authorization is re-checked against the bot assignment on every call. */
@@ -198,6 +205,7 @@ function reportAllowlistDrift(
 export class McpConnector implements ConnectorProvider {
   private readonly sessions = new Map<string, SessionEntry>();
   private readonly connecting = new Map<string, PendingSession>();
+  private readonly toolLists = new WeakMap<McpSession, ToolListEntry>();
   // Discovery runs more than once per run: once up front, then again on every lazy
   // catalog access. Each attempt needs its own executionId.
   private discoverySeq = 0;
@@ -269,7 +277,7 @@ export class McpConnector implements ConnectorProvider {
         const startedAt = Date.now();
         try {
           const session = await this.sessionFor(assignment.server, context);
-          const listed = await session.listTools({ signal: context.signal });
+          const listed = await this.cachedTools(session, context.signal);
           reportAllowlistDrift(assignment, listed.tools, context);
           return listed.tools
             .filter((tool) => assignmentAllowsTool(assignment, tool.name, tool.annotations))
@@ -408,12 +416,18 @@ export class McpConnector implements ConnectorProvider {
       yield { type: "error", message: "MCP tool is not assigned to this bot" };
       return;
     }
-    // Annotations decide read or write, so a server with an agent is asked for its tool list.
+    // Preset classifications cannot change with annotations. Other tools still need a live list:
+    // cached read hints must never authorize a tool that has become a write since discovery.
     let annotations: ToolAnnotations;
     if (assignment.server.agentBotId) {
       try {
         const session = await this.sessionFor(assignment.server, context);
-        const listed = await session.listTools({ signal: context.signal });
+        const preset = integrationPresetForEndpoint(assignment.server.endpoint);
+        const fixedClassification =
+          preset?.reads.includes(route.toolName) || preset?.forcedWrites.includes(route.toolName);
+        const listed = fixedClassification
+          ? await this.cachedTools(session, context.signal)
+          : await session.listTools({ signal: context.signal });
         annotations = listed.tools.find((tool) => tool.name === route.toolName)?.annotations;
       } catch (error) {
         yield { type: "error", message: sanitizeConnectorError(error) };
@@ -525,7 +539,7 @@ export class McpConnector implements ConnectorProvider {
     const sessionKey = this.sessionKey(server, context);
     try {
       const session = await this.sessionFor(server, context);
-      return (await session.listTools({ signal: context.signal })).tools;
+      return structuredClone((await this.cachedTools(session, context.signal)).tools);
     } catch (error) {
       await this.evict(sessionKey);
       throw new Error(sanitizeConnectorError(error));
@@ -535,7 +549,12 @@ export class McpConnector implements ConnectorProvider {
   async close(): Promise<void> {
     this.unsubscribe();
     await Promise.allSettled([...this.connecting.values()].map(({ promise }) => promise));
-    await Promise.all([...this.sessions.values()].map(({ session }) => session.close()));
+    await Promise.all(
+      [...this.sessions.values()].map(({ session }) => {
+        this.toolLists.delete(session);
+        return session.close();
+      }),
+    );
     this.sessions.clear();
     this.connecting.clear();
   }
@@ -550,7 +569,39 @@ export class McpConnector implements ConnectorProvider {
     const entry = this.sessions.get(sessionKey);
     if (!entry) return;
     this.sessions.delete(sessionKey);
+    this.toolLists.delete(entry.session);
     await entry.session.close();
+  }
+
+  private async cachedTools(session: McpSession, signal?: AbortSignal): Promise<ListToolsResult> {
+    signal?.throwIfAborted();
+    let entry = this.toolLists.get(session);
+    if (!entry) {
+      entry = { expiresAt: 0 };
+      this.toolLists.set(session, entry);
+    }
+    if (entry.result && Date.now() < entry.expiresAt) return entry.result;
+    let pending = entry.pending;
+    if (!pending) {
+      const current = entry;
+      pending = session.listTools({ signal }).then(
+        (result) => {
+          current.result = result;
+          current.expiresAt = Date.now() + TOOL_LIST_TTL_MS;
+          current.pending = undefined;
+          return result;
+        },
+        (error) => {
+          current.result = undefined;
+          current.pending = undefined;
+          throw error;
+        },
+      );
+      entry.pending = pending;
+    }
+    const result = await pending;
+    signal?.throwIfAborted();
+    return result;
   }
 
   private async sessionFor(server: McpServer, context: AdapterContext): Promise<McpSession> {
