@@ -177,6 +177,7 @@ import {
   computersAreUnavailable,
 } from "../components/ComputersUnavailableHint";
 import { ComputerUpdateProgress } from "../components/ComputerUpdateProgress";
+import { ConnectAppsButton } from "../components/ConnectAppsButton";
 import { CallCard } from "../components/call/CallCard";
 import { VoiceChatCard } from "../components/call/VoiceChatCard";
 import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
@@ -4352,25 +4353,13 @@ export function ShellPage() {
         </div>
         {/* The top border shows that the list above scrolls under this row. */}
         <div className="border-t border-sidebar-border pt-1">
-          <button
-            type="button"
-            data-testid="sidebar-integrations"
-            aria-current={integrationsMode ? "page" : undefined}
+          <ConnectAppsButton
+            active={integrationsMode}
             onClick={() => {
               setMobileSidebarOpen(false);
               navigate("/app/integrations");
             }}
-            className={`mx-3 mb-1 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
-              integrationsMode ? "bg-sidebar-accent" : ""
-            }`}
-          >
-            <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
-              <LayoutGrid size={15} strokeWidth={1.8} />
-            </span>
-            <span className="text-[14px] font-medium text-foreground/90">
-              <Trans>Integrations</Trans>
-            </span>
-          </button>
+          />
         </div>
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger
