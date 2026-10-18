@@ -4119,6 +4119,10 @@ msgid "Last run failed."
 msgstr ""
 
 #: src/pages/Legal.tsx
+msgid "Last scan {lastScan}. Daily scan paused."
+msgstr ""
+
+#: src/pages/Legal.tsx
 msgid "Last scan {lastScan}. Daily scans wait until you allow access."
 msgstr ""
 
@@ -5170,6 +5174,10 @@ msgstr "Ahora no"
 msgid "Not scanned yet"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Not scanned yet. Daily scan paused."
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not sent"
 msgstr ""
@@ -5646,6 +5654,10 @@ msgstr "POST a"
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Posted"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Press Scan now to read your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/pages/Legal.tsx

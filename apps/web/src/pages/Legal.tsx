@@ -277,15 +277,13 @@ function Legal({
                 Allow access above to start. The Legal agent then reads your Data room for contracts
                 and deadlines.
               </Trans>
+            ) : data.agent.dailyScanActive ? (
+              <Trans>
+                Press Scan now to read your Data room for contracts and deadlines. Legal also scans
+                every day.
+              </Trans>
             ) : (
-              data.agent.dailyScanActive ? (
-                <Trans>
-                  Press Scan now to read your Data room for contracts and deadlines. Legal also
-                  scans every day.
-                </Trans>
-              ) : (
-                <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
-              )
+              <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
             )}
           </p>
         </div>
