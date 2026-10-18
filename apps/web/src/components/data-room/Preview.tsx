@@ -219,10 +219,15 @@ export function Preview({
           </Button>
         ) : null}
         {item.status !== "failed" && canOpenInBrowser(item) ? (
-          <Button onClick={open}>
-            <ExternalLink aria-hidden="true" />
-            <Trans>Open</Trans>
-          </Button>
+          <>
+            <Button onClick={open} disabled={hidden}>
+              <ExternalLink aria-hidden="true" />
+              <Trans>Open</Trans>
+            </Button>
+            {hidden ? (
+              <p className="text-xs text-muted-foreground">{t`Hidden while amounts are hidden`}</p>
+            ) : null}
+          </>
         ) : null}
         <Button variant="outline" onClick={download}>
           <Download aria-hidden="true" />

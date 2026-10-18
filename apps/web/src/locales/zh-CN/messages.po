@@ -3799,6 +3799,10 @@ msgstr "试听"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "你好，这是我朗读回复时的声音。"
 
+#: src/components/data-room/Preview.tsx
+msgid "Hidden while amounts are hidden"
+msgstr ""
+
 #: src/components/HideAmountsToggle.tsx
 msgid "Hide amounts"
 msgstr ""

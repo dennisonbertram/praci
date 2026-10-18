@@ -121,15 +121,37 @@ const toFilters = (input: {
 
 /**
  * The query's words joined by "or", for a second try when every word had to match. Null for a
- * single word. Quotes and leading minus signs are dropped, so the words are plain terms.
+ * single word, and for a query that already uses operators (quotes, "-word", "or"), which
+ * broadening would change.
  */
 export function anyWordQuery(query: string): string | null {
-  const words = query
-    .replace(/["]/g, " ")
-    .split(/\s+/)
-    .map((word) => word.replace(/^-+/, ""))
-    .filter((word) => word && word.toLowerCase() !== "or");
+  if (/["]|(^|\s)-\S|(^|\s)or(\s|$)/i.test(query)) return null;
+  const words = query.split(/\s+/).filter(Boolean);
   return words.length > 1 ? words.join(" or ") : null;
+}
+
+const ANY_PREFIX = "any:";
+
+/**
+ * A question ("when does our lease end") rarely has every word in one file: on a first page with
+ * nothing found, match any of its words instead. The cursor of such a page is marked, so later
+ * pages keep matching any word.
+ */
+export async function searchWithFallback<
+  P extends { results: unknown[]; nextCursor: string | null },
+>(
+  searchPage: (query: string, cursor: string | undefined) => Promise<P>,
+  input: { query: string; cursor?: string },
+): Promise<P> {
+  const anyWords = anyWordQuery(input.query);
+  if (input.cursor?.startsWith(ANY_PREFIX) && anyWords) {
+    const page = await searchPage(anyWords, input.cursor.slice(ANY_PREFIX.length));
+    return { ...page, nextCursor: page.nextCursor && ANY_PREFIX + page.nextCursor };
+  }
+  const page = await searchPage(input.query, input.cursor);
+  if (input.cursor || page.results.length > 0 || !anyWords) return page;
+  const broad = await searchPage(anyWords, undefined);
+  return { ...broad, nextCursor: broad.nextCursor && ANY_PREFIX + broad.nextCursor };
 }
 
 const DRIVE_ERRORS = {
@@ -514,15 +536,11 @@ export function createDataRoomService(deps: DataRoomDeps) {
       dataRoomCall(async () => {
         const vector = await dataRoomQueryVector(deps.resolveAi, actor, input.query);
         const filters = input.filters && toFilters(input.filters);
-        let page = await repo.searchPage(actor, { ...input, ...vector, filters });
-        // A question ("when does our lease end") rarely has every word in one file: on a first page
-        // with nothing found, match any of its words instead.
-        const anyWords = anyWordQuery(input.query);
-        if (!input.cursor && page.results.length === 0 && anyWords) {
-          page = await repo.searchPage(actor, { ...input, ...vector, filters, query: anyWords });
-          // ponytail: the fallback shows its first page only; carry the mode in the cursor if needed.
-          page = { ...page, nextCursor: null };
-        }
+        const page = await searchWithFallback(
+          (query, cursor) =>
+            repo.searchPage(actor, { ...input, ...vector, filters, query, cursor }),
+          input,
+        );
         return {
           results: page.results.map((hit) => ({ ...hit, item: itemDto(hit.item) })),
           nextCursor: page.nextCursor,

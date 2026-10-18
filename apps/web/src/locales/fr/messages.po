@@ -3799,6 +3799,10 @@ msgstr "Écouter un extrait"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Bonjour, c'est ainsi que je sonnerai quand je lirai les réponses à voix haute."
 
+#: src/components/data-room/Preview.tsx
+msgid "Hidden while amounts are hidden"
+msgstr ""
+
 #: src/components/HideAmountsToggle.tsx
 msgid "Hide amounts"
 msgstr ""

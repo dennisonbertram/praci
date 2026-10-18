@@ -17,6 +17,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { syncErrorText } from "../../lib/inbox-sync-error";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
 import { failedText, importedText, sizeText } from "./format";
 import { DriveImportButton } from "./ImportFromDrive";
 
@@ -308,15 +309,16 @@ export function ImportSources({
   const label = connected.gmail ? t`Import from email` : t`Connect Gmail`;
   return (
     <>
-      <Button
-        variant="outline"
-        size={compact ? "icon" : "default"}
-        aria-label={compact ? label : undefined}
-        onClick={() => (connected.gmail ? setOpen(true) : navigate(GMAIL_PAGE))}
-      >
-        <Mail aria-hidden="true" />
-        {compact ? null : label}
-      </Button>
+      <ToolbarTip label={label} compact={compact}>
+        <Button
+          variant="outline"
+          className={compact ? TOOLBAR_BUTTON : undefined}
+          onClick={() => (connected.gmail ? setOpen(true) : navigate(GMAIL_PAGE))}
+        >
+          <Mail aria-hidden="true" />
+          <span className={compact ? TOOLBAR_LABEL : undefined}>{label}</span>
+        </Button>
+      </ToolbarTip>
       {open ? (
         <EmailPicker folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
       ) : null}

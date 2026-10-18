@@ -82,6 +82,23 @@ it("replaces the picture with a note, and never fetches it, while amounts are hi
   expect(container.querySelector("img")?.getAttribute("src")).toBe("blob:receipt");
 });
 
+it("disables Open, with a reason, while amounts are hidden", async () => {
+  const pdf = { ...receipt, mimeType: "application/pdf" } as DataRoomApiItem;
+  const show = () =>
+    act(async () => {
+      root.render(
+        <Preview item={pdf} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
+      );
+    });
+  const openButton = () =>
+    Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Open");
+  await show();
+  expect(openButton()?.disabled).toBe(false);
+  await act(async () => setHideAmounts(true));
+  expect(openButton()?.disabled).toBe(true);
+  expect(container.textContent).toContain("Hidden while amounts are hidden");
+});
+
 it("leads a failed file with Try again, and keeps Delete as a quieter button", async () => {
   const onAction = vi.fn();
   const failed = { ...receipt, mimeType: "application/pdf", status: "failed", error: "Not a PDF" };

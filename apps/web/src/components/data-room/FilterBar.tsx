@@ -64,6 +64,23 @@ export function Tip({
   );
 }
 
+/** In the page header the labelled buttons shrink to icons where the line is too short for text. */
+export const TOOLBAR_BUTTON = "@max-[639px]/bd:w-8 @max-[639px]/bd:px-0";
+export const TOOLBAR_LABEL = "@max-[639px]/bd:sr-only";
+
+/** A tooltip around a header button (the text is also visible on a wide line). */
+export function ToolbarTip({
+  label,
+  compact,
+  children,
+}: {
+  label: string;
+  compact: boolean;
+  children: ReactElement;
+}) {
+  return compact ? <Tip label={label}>{children}</Tip> : children;
+}
+
 /** A pill that opens a popover; with a value it shows "Label: value" and a remove button. */
 function Chip({
   label,

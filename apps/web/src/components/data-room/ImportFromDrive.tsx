@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
 import { failedText, importedText, sizeText } from "./format";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -239,17 +240,18 @@ export function DriveImportButton({
   const label = connected ? t`Import from Google Drive` : t`Connect Google Drive`;
   return (
     <>
-      <Button
-        variant="outline"
-        size={compact ? "icon" : "default"}
-        aria-label={compact ? label : undefined}
-        onClick={() =>
-          connected ? setOpen(true) : navigate("/app/integrations/app/google/googledrive")
-        }
-      >
-        <HardDrive aria-hidden="true" />
-        {compact ? null : label}
-      </Button>
+      <ToolbarTip label={label} compact={compact}>
+        <Button
+          variant="outline"
+          className={compact ? TOOLBAR_BUTTON : undefined}
+          onClick={() =>
+            connected ? setOpen(true) : navigate("/app/integrations/app/google/googledrive")
+          }
+        >
+          <HardDrive aria-hidden="true" />
+          <span className={compact ? TOOLBAR_LABEL : undefined}>{label}</span>
+        </Button>
+      </ToolbarTip>
       {open ? (
         <DrivePicker folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
       ) : null}

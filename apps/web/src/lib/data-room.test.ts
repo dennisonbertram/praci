@@ -73,3 +73,17 @@ it("opens a file in a new tab titled with its name, not the blob's random id", a
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
+
+it("saves the file instead when the new tab is refused", async () => {
+  vi.spyOn(window, "open").mockReturnValue(null);
+  const fetchMock = vi.fn().mockResolvedValue(new Response(new Blob(["%PDF"])));
+  vi.stubGlobal("fetch", fetchMock);
+  URL.createObjectURL = vi.fn(() => "blob:x");
+  URL.revokeObjectURL = vi.fn();
+  const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+  await openDataRoomItem({ id: "i1", mimeType: "application/pdf", name: "MOCK NDA.pdf" });
+  expect(window.open).toHaveBeenCalledTimes(1);
+  expect(click).toHaveBeenCalled();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});

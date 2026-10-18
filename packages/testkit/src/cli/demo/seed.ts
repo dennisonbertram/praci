@@ -79,6 +79,21 @@ class DemoSession {
   }
 }
 
+/**
+ * Sign-up gave the user a Personal space that is also marked default and is older, so it would win
+ * the default-space tie and the user could never reach the company. Only `spaceId` stays default.
+ */
+export async function makeSpaceTheOnlyDefault(
+  prisma: Pick<ReturnType<typeof createDb>["prisma"], "space">,
+  spaceId: string,
+  userId: string,
+) {
+  await prisma.space.updateMany({
+    where: { id: { not: spaceId }, memberships: { some: { userId } } },
+    data: { isDefault: false },
+  });
+}
+
 /** Creates the demo account and fills every area the app can hold offline. Returns what it did. */
 export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   const done: string[] = [];
@@ -285,6 +300,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
           createdAt,
         },
       });
+      await makeSpaceTheOnlyDefault(db.prisma, spaceId, user.id);
     } finally {
       await db.prisma.$disconnect();
       await db.pool.end();

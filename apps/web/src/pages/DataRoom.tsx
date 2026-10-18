@@ -6,7 +6,13 @@ import { LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
-import { FilterBar, facetOptions, Tip } from "../components/data-room/FilterBar";
+import {
+  FilterBar,
+  facetOptions,
+  Tip,
+  TOOLBAR_BUTTON,
+  TOOLBAR_LABEL,
+} from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderContents, folderNodes } from "../components/data-room/folders";
 import { ImportSources } from "../components/data-room/ImportFromEmail";
@@ -458,13 +464,11 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
               </Tip>
             </fieldset>
             <ImportSources compact folderId={filters.folderId ?? null} onDone={showNotice} />
-            <FileInputButton
-              variant="outline"
-              size="icon"
-              aria-label={t`Add files`}
-              tip={t`Add files`}
-            >
+            <FileInputButton variant="outline" className={TOOLBAR_BUTTON} tip={t`Add files`}>
               <Plus aria-hidden="true" />
+              <span className={TOOLBAR_LABEL}>
+                <Trans>Add files</Trans>
+              </span>
             </FileInputButton>
           </>
         )}

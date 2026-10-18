@@ -155,15 +155,16 @@ export const canOpenInBrowser = (item: Pick<DataRoomApiItem, "mimeType">) =>
  */
 export async function openDataRoomItem(item: Pick<DataRoomApiItem, "id" | "mimeType" | "name">) {
   const tab = window.open("", "_blank");
-  if (tab) tab.opener = null;
+  // Electron's window policy (and pop-up blockers) can refuse the tab; save the file instead.
+  if (!tab) return saveDataRoomItem(item);
+  tab.opener = null;
   try {
     const blob = await fetchDataRoomBlob(item);
     const url = URL.createObjectURL(new Blob([blob], { type: item.mimeType }));
-    if (tab) showInTab(tab, item.name, url);
-    else window.open(url, "_blank", "noopener");
+    showInTab(tab, item.name, url);
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   } catch (error) {
-    tab?.close();
+    tab.close();
     throw error;
   }
 }
