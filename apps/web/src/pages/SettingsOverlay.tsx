@@ -49,6 +49,7 @@ export function SettingsOverlay({
   usage,
   onUsageOpen,
   initialSection = "general",
+  modelProvider,
   avatarStyle,
   onAvatarStyleChange,
   isDeploymentOwner = false,
@@ -72,6 +73,8 @@ export function SettingsOverlay({
   } | null;
   onUsageOpen: () => void;
   initialSection?: SettingsSection;
+  /** Models opens on this provider with its own-key form open (the Legal page's "Add your OpenRouter key"). */
+  modelProvider?: string;
   avatarStyle: AvatarStyle;
   onAvatarStyleChange: (style: AvatarStyle) => Promise<void>;
   isDeploymentOwner?: boolean;
@@ -290,7 +293,11 @@ export function SettingsOverlay({
                 <UpdatesSettingsPanel isDeploymentOwner={isDeploymentOwner} />
               ) : null}
               {section === "models" ? (
-                <ModelSettingsOverlay embedded onClose={requestClose} />
+                <ModelSettingsOverlay
+                  embedded
+                  onClose={requestClose}
+                  focusProvider={modelProvider}
+                />
               ) : null}
               {section === "memory" ? (
                 <MemorySettingsOverlay

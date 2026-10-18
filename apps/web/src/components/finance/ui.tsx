@@ -54,6 +54,8 @@ export type FinanceSpace = { id: string; name: string };
  */
 export type FinanceChrome = {
   onAskAgent?: () => void;
+  /** The agent Ask opens, for its accessible name; Finance's by default. */
+  agentName?: string;
   spaces?: FinanceSpace[];
   spaceId?: string;
   onSwitchSpace?: (spaceId: string) => void;
@@ -138,11 +140,11 @@ export function SpaceName() {
 }
 
 export function AskAgentButton() {
-  const { onAskAgent } = useContext(ChromeContext);
+  const { onAskAgent, agentName } = useContext(ChromeContext);
   if (!onAskAgent) return null;
   return (
     <div className="ms-auto">
-      <AskBotButton botName="Finance agent" onClick={onAskAgent} />
+      <AskBotButton botName={agentName ?? "Finance agent"} onClick={onAskAgent} />
     </div>
   );
 }

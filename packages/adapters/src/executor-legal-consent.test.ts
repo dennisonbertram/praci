@@ -1,4 +1,5 @@
 import type { AgentRunRequest } from "@rakazo/adapter-kit";
+import { LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
@@ -25,7 +26,7 @@ function historyMessages() {
   ];
 }
 
-async function runLegal(consented: boolean, modelId = "meta/muse-spark-1.2") {
+async function runLegal(consented: boolean, modelId = "meta/muse-spark-1.2", trigger = "user") {
   const switchModel = { provider: "openrouter", modelId: "openai/gpt-4o" };
   const backupReadFails = false;
   const scripted = false;
@@ -37,7 +38,7 @@ async function runLegal(consented: boolean, modelId = "meta/muse-spark-1.2") {
     spaceId: "space-1",
     userId: "user-1",
     status: "queued",
-    trigger: "user",
+    trigger,
     leaseFence: 0,
   };
   const get = vi.fn(async () => new Uint8Array([1, 2, 3, 4]));
@@ -47,6 +48,10 @@ async function runLegal(consented: boolean, modelId = "meta/muse-spark-1.2") {
     yield { type: "done" as const, text: "Done" };
   });
   const prisma = {
+    // Messages are written in a transaction; none is set up here, so a write fails like before.
+    $transaction: vi.fn(async () => {
+      throw new Error("no message writes in this test");
+    }),
     run: {
       findUnique: vi.fn(async () => run),
       findUniqueOrThrow: vi.fn(async () => run),
@@ -181,13 +186,21 @@ describe("Legal agent runs need Data Room consent for the model they use", () =>
   });
 
   it("ends a run that resolved to any other model before calling it, even with consent", async () => {
-    const { runtimeRun, finalizeRun } = await runLegal(true, "openai/gpt-6-luna");
+    const { runtimeRun, finalizeRun, prisma } = await runLegal(true, "openai/gpt-6-luna");
     expect(runtimeRun).not.toHaveBeenCalled();
     expect(finalizeRun).toHaveBeenCalledWith(
-      expect.objectContaining({
-        outcome: "failed",
-        error: "The Legal agent runs only on Muse Spark 1.2. Add an OpenRouter key in Settings.",
-      }),
+      expect.objectContaining({ outcome: "failed", error: LEGAL_MODEL_REQUIRED_MESSAGE }),
     );
+    // The run's error is the only notice; no bot message repeats it in the chat.
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("still sends the model notice as a bot message on a linked messaging chat", async () => {
+    const { prisma, finalizeRun } = await runLegal(true, "openai/gpt-6-luna", "messaging");
+    expect(finalizeRun).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "failed", error: LEGAL_MODEL_REQUIRED_MESSAGE }),
+    );
+    // Messaging channels deliver stored bot messages, not the run's error.
+    expect(prisma.$transaction).toHaveBeenCalled();
   });
 });

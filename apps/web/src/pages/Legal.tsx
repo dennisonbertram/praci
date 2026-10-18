@@ -1,24 +1,31 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   AskAgentButton,
   ErrorNotice,
   FinanceChromeProvider,
+  type FinanceSpace,
   Kpi,
+  SpaceName,
   useFinanceQuery,
 } from "../components/finance/ui";
+import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
+import { DATA_ROOM_PATH } from "../lib/data-room";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
-import { errorText } from "../lib/user-error";
+import { errorText, KEY_REJECTED_PATTERN, runErrorText } from "../lib/user-error";
 import { LegalContracts } from "./legal/LegalContracts";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
 
-type View = "contracts" | "deadlines" | "graph";
+const VIEWS = ["contracts", "deadlines", "graph"] as const;
+type View = (typeof VIEWS)[number];
+const LEGAL_PATH = "/app/legal";
 
 /** How often the page re-reads the overview while a scan runs, and when it stops waiting. */
 const SCAN_POLL_MS = 4_000;
@@ -29,32 +36,35 @@ export function LegalPage({
   onAskAgent,
   onOpenSettings,
   settingsOpen = false,
+  spaces,
+  spaceId,
+  onSwitchSpace,
 }: {
   onAskAgent?: () => void;
-  /** Opens Settings on the Models section. */
+  /** Which company Legal shows, and how to switch, when the user has more than one space. */
+  spaces?: FinanceSpace[];
+  spaceId?: string;
+  onSwitchSpace?: (spaceId: string) => void;
+  /** Opens Settings on Models > OpenRouter with the own-key form open. */
   onOpenSettings?: () => void;
   /** Settings is open over the page; the page re-reads its state when it closes. */
   settingsOpen?: boolean;
 }) {
   return (
-    <FinanceChromeProvider value={{ onAskAgent }}>
+    <FinanceChromeProvider
+      value={{ onAskAgent, agentName: "Legal agent", spaces, spaceId, onSwitchSpace }}
+    >
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
-        <Legal
-          onAskAgent={onAskAgent}
-          onOpenSettings={onOpenSettings}
-          settingsOpen={settingsOpen}
-        />
+        <Legal onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} />
       </div>
     </FinanceChromeProvider>
   );
 }
 
 function Legal({
-  onAskAgent,
   onOpenSettings,
   settingsOpen,
 }: {
-  onAskAgent?: () => void;
   onOpenSettings?: () => void;
   settingsOpen: boolean;
 }) {
@@ -62,7 +72,14 @@ function Legal({
   // A failed consent read must not hide the page; the agent reports when it cannot read documents.
   const consent = useFinanceQuery(() => rpc.legal.consent(), []);
   const [granted, setGranted] = useState<typeof consent.data>(null);
-  const [view, setView] = useState<View>("contracts");
+  // The tab lives in the URL, so the deadline tiles can link straight to it.
+  const [params, setParams] = useSearchParams();
+  const asked = params.get("view");
+  const view: View = VIEWS.includes(asked as View) ? (asked as View) : "contracts";
+  // The Overdue tile opens Deadlines on just the overdue ones.
+  const onlyOverdue = view === "deadlines" && params.get("due") === "overdue";
+  const setView = (next: View) =>
+    setParams(next === "contracts" ? {} : { view: next }, { replace: true });
   const [scanError, setScanError] = useState("");
   // The run Scan now queued, until the overview shows it finished.
   const [waitingFor, setWaitingFor] = useState<string | null>(null);
@@ -120,29 +137,43 @@ function Legal({
     setScanError("");
     try {
       const { runId } = await rpc.legal.scanNow();
+      // The page shows the scan's progress and result; the agent panel stays as the founder left it.
       setWaitingFor(runId);
-      onAskAgent?.();
       overview.reload();
     } catch (cause) {
       setScanError(errorText(cause));
     }
   };
 
-  if (overview.error) return <ErrorNotice message={overview.error} onRetry={overview.retry} />;
+  // A failed first load has nothing to show; a failed re-read keeps the page and says so.
+  if (overview.error && !data) {
+    return <ErrorNotice message={overview.error} onRetry={overview.retry} />;
+  }
   if (!data) return <LegalSkeleton />;
-  const modelReady = Boolean(data.model?.isPreferred);
+  const blocker = data.modelBlocker;
   const needsConsent = status?.allowed === false;
-  const scanDisabled = running || !modelReady || needsConsent;
-  const consentReason =
-    modelReady && status && needsConsent
-      ? status.recipients.length > 0
-        ? t`Allow access below first.`
-        : t`Connect a model in Settings first.`
-      : "";
+  const scanDisabled = running || blocker !== null || needsConsent;
+  // Said next to a disabled Scan now, whatever the reason.
+  const scanReason = running
+    ? ""
+    : blocker === "own_key"
+      ? t`Needs your OpenRouter key.`
+      : blocker === "model_changed"
+        ? t`Needs Muse Spark 1.2.`
+        : status && needsConsent
+          ? status.recipients.length > 0
+            ? t`Allow access below first.`
+            : t`Connect a model in Settings first.`
+          : "";
   const { counts } = data;
   // Counted here so the tile and the row pills use the viewer's date, not the server's.
   const today = todayIso();
   const overdue = data.deadlines.filter((d) => daysBetween(today, d.dueDate) < 0).length;
+  // Legal runs only on the user's OpenRouter key, so a rejected key is always that one.
+  const keyRejected =
+    lastRun?.status === "failed" &&
+    !running &&
+    Boolean(lastRun.error && KEY_REJECTED_PATTERN.test(lastRun.error));
   const lastScan = data.agent.lastScanAt ? formatRelativeTime(data.agent.lastScanAt) : "";
   return (
     <div>
@@ -150,65 +181,117 @@ function Legal({
         <h1 className="text-lg font-semibold">
           <Trans>Legal</Trans>
         </h1>
+        <SpaceName />
         <span className="text-[11px] text-muted-foreground">
           {lastRun?.status === "failed" && !running ? (
-            lastRun.error ? (
-              <Trans>Last scan failed: {lastRun.error}</Trans>
+            keyRejected ? (
+              <Trans>Last scan failed: OpenRouter did not accept your key.</Trans>
+            ) : lastRun.error ? (
+              <Trans>Last scan failed: {runErrorText(lastRun.error)}</Trans>
             ) : (
               <Trans>Last scan failed</Trans>
             )
+          ) : lastScan && needsConsent ? (
+            <Trans>Last scan {lastScan}. Daily scans wait until you allow access.</Trans>
           ) : lastScan ? (
-            <Trans>Last scan {lastScan}</Trans>
-          ) : (
+            data.agent.dailyScanActive ? (
+              <Trans>Last scan {lastScan}. Scans daily.</Trans>
+            ) : (
+              <Trans>Last scan {lastScan}. Daily scan paused.</Trans>
+            )
+          ) : data.agent.dailyScanActive ? (
             <Trans>Not scanned yet</Trans>
+          ) : (
+            <Trans>Not scanned yet. Daily scan paused.</Trans>
           )}
         </span>
-        {lastRun?.status === "failed" && !running ? (
-          <Button size="sm" variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
-            <Trans>Retry</Trans>
+        {/* A rejected key is fixed in one place; go straight to its field. */}
+        {keyRejected && onOpenSettings ? (
+          <Button size="sm" variant="outline" onClick={onOpenSettings}>
+            <Trans>Replace OpenRouter key</Trans>
           </Button>
         ) : null}
-        <div className="ms-auto flex items-center gap-2">
-          {consentReason ? (
-            <span className="text-xs text-muted-foreground">{consentReason}</span>
+        <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
+          {/* Narrow, the reason takes its own line under the buttons, so they stay on one row. */}
+          {scanReason ? (
+            <span className="order-last w-full text-end text-xs text-muted-foreground @xl:order-none @xl:w-auto">
+              {scanReason}
+            </span>
           ) : null}
-          <Button variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
-            {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
-          </Button>
-          <AskAgentButton />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
+              {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
+            </Button>
+            <HideAmountsButton />
+            <AskAgentButton />
+          </div>
         </div>
       </div>
-      {!modelReady ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <p className="text-xs text-muted-foreground">
-            <Trans>Legal runs only on Muse Spark 1.2, which needs an OpenRouter key.</Trans>
-          </p>
-          {onOpenSettings ? (
-            <Button size="sm" variant="outline" onClick={onOpenSettings}>
-              <Trans>Open Models settings</Trans>
-            </Button>
-          ) : null}
-        </div>
+      {overview.error ? (
+        <ErrorNotice message={t`Could not refresh: ${overview.error}`} onRetry={overview.reload} />
+      ) : null}
+      {blocker ? (
+        <ModelBlockerNotice
+          blocker={blocker}
+          model={data.model?.id ?? null}
+          onOpenSettings={onOpenSettings}
+        />
       ) : null}
       {scanError ? (
         <p role="alert" className="mb-3 text-sm text-destructive">
           {scanError}
         </p>
       ) : null}
-      {modelReady && status && !status.allowed && status.recipients.length > 0 ? (
+      {!blocker && status && !status.allowed && status.recipients.length > 0 ? (
         <LegalConsentPrompt consent={status} onChange={setGranted} />
       ) : null}
-      <div className="mb-4 grid grid-cols-2 gap-3 @3xl:grid-cols-5">
+      <div className="mb-4 grid grid-cols-2 gap-3 @3xl:grid-cols-4">
         <Kpi title={t`Contracts`} value={counts.contracts} />
         <Kpi title={t`Active`} value={counts.activeContracts} />
-        <Kpi title={t`Open deadlines`} value={counts.openDeadlines} />
-        <Kpi title={t`Overdue`} value={overdue} />
-        <Kpi title={t`Unreviewed documents`} value={counts.unreviewedDocuments} />
+        <Kpi
+          title={t`Open deadlines`}
+          value={counts.openDeadlines}
+          to={`${LEGAL_PATH}?view=deadlines`}
+        />
+        <Kpi title={t`Overdue`} value={overdue} to={`${LEGAL_PATH}?view=deadlines&due=overdue`} />
       </div>
+      {/* A line, not a fifth tile: four tiles fill two rows of two, or one row, with none alone. */}
+      {counts.unreviewedDocuments > 0 ? (
+        <p className="-mt-2 mb-4 text-xs text-muted-foreground">
+          <Link to={DATA_ROOM_PATH} className="underline underline-offset-2 hover:text-foreground">
+            {plural(counts.unreviewedDocuments, {
+              one: "# Data room document not yet checked by Legal",
+              other: "# Data room documents not yet checked by Legal",
+            })}
+          </Link>
+        </p>
+      ) : null}
       {data.contracts.length === 0 && data.deadlines.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <p className="max-w-sm text-sm text-muted-foreground">
-            <Trans>The Legal agent scans your Data room for contracts and deadlines.</Trans>
+            {blocker === "own_key" ? (
+              <Trans>
+                Add your OpenRouter key above to start. The Legal agent then reads your Data room
+                for contracts and deadlines.
+              </Trans>
+            ) : blocker ? (
+              <Trans>
+                Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room
+                for contracts and deadlines.
+              </Trans>
+            ) : needsConsent ? (
+              <Trans>
+                Allow access above to start. The Legal agent then reads your Data room for contracts
+                and deadlines.
+              </Trans>
+            ) : data.agent.dailyScanActive ? (
+              <Trans>
+                Press Scan now to read your Data room for contracts and deadlines. Legal also scans
+                every day.
+              </Trans>
+            ) : (
+              <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
+            )}
           </p>
         </div>
       ) : (
@@ -228,11 +311,58 @@ function Legal({
           </Tabs>
           {view === "contracts" ? <LegalContracts contracts={data.contracts} /> : null}
           {view === "deadlines" ? (
-            <LegalDeadlines deadlines={data.deadlines} onChanged={overview.reload} />
+            <LegalDeadlines
+              deadlines={data.deadlines}
+              onChanged={overview.reload}
+              onlyOverdue={onlyOverdue}
+              onShowAll={() => setView("deadlines")}
+            />
           ) : null}
           {view === "graph" ? <GraphTab /> : null}
         </>
       )}
+    </div>
+  );
+}
+
+/** Why the Legal agent cannot run on Muse Spark 1.2, and the one step that fixes it. */
+function ModelBlockerNotice({
+  blocker,
+  model,
+  onOpenSettings,
+}: {
+  blocker: "own_key" | "model_changed";
+  /** The model the agent would run on instead, when one resolves. */
+  model: string | null;
+  onOpenSettings?: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm"
+    >
+      <p className="min-w-0 flex-1 basis-64">
+        {blocker === "own_key" ? (
+          <Trans>
+            Legal runs on Muse Spark 1.2 and needs your own OpenRouter key. The space's shared
+            OpenRouter access can't be used for Legal.
+          </Trans>
+        ) : model ? (
+          <Trans>
+            The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in
+            the Legal agent's settings.
+          </Trans>
+        ) : (
+          <Trans>
+            Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings.
+          </Trans>
+        )}
+      </p>
+      {blocker === "own_key" && onOpenSettings ? (
+        <Button size="sm" variant="outline" onClick={onOpenSettings}>
+          <Trans>Add your OpenRouter key</Trans>
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -248,8 +378,8 @@ function LegalSkeleton() {
   return (
     <div aria-busy="true" className="flex flex-col gap-3">
       <Skeleton className="h-7 w-32" />
-      <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-5">
-        {[0, 1, 2, 3, 4].map((n) => (
+      <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
+        {[0, 1, 2, 3].map((n) => (
           <Skeleton key={n} className="h-20" />
         ))}
       </div>

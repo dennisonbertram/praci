@@ -352,6 +352,7 @@ import {
   legalConsent,
   legalConsentGrant,
   legalGraph,
+  legalItemLinks,
   legalOverview,
   legalScanNow,
   legalUpdateDeadline,
@@ -6428,6 +6429,9 @@ export function createRouter(deps: RouterDeps) {
       graph: authed.legal.graph.handler(({ context }) => legalGraph(legalDeps, context.actor)),
       updateDeadline: authed.legal.updateDeadline.handler(({ context, input }) =>
         legalUpdateDeadline(legalDeps, context.actor, input),
+      ),
+      itemLinks: authed.legal.itemLinks.handler(({ context, input }) =>
+        legalItemLinks(legalDeps, context.actor, input.itemId),
       ),
       scanNow: authed.legal.scanNow.handler(({ context }) =>
         legalScanNow(legalDeps, context.actor).catch((error: unknown) => {

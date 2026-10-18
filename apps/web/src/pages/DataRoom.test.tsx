@@ -47,6 +47,7 @@ vi.mock("../lib/rpc", () => ({
       itemRetry: rpcMock.itemRetry,
       facetValues: rpcMock.facetValues,
     },
+    legal: { itemLinks: async () => ({ contractTitle: null, deadlines: 0 }) },
   },
   withSpaceHeaders: () => new Headers(),
   selectedSpaceId: () => "s1",

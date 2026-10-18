@@ -28,6 +28,7 @@ import {
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_LEGAL,
   DEMO_READING_DOCUMENT,
   DEMO_RECONNECT_SPACE,
   DEMO_RUNNING_RUN,
@@ -226,6 +227,20 @@ describe("mock demo data", () => {
     expect(
       Object.values(DEMO_DOCUMENT_FACETS).filter((facets) => facets.docType === "statement"),
     ).toHaveLength(3);
+  });
+
+  it("ties every Legal contract to a readable PDF in the Legal folder, and keeps the failed scan out of it", () => {
+    const legalFolder = DEMO_DOCUMENTS.filter((d) => d.folder === "Legal");
+    expect(legalFolder.every((d) => d.kind === "pdf")).toBe(true);
+    expect(DEMO_LEGAL.contracts.map((c) => c.document).sort()).toEqual(
+      legalFolder.map((d) => d.name).sort(),
+    );
+    // One overdue and one upcoming hand-made deadline, so both states show.
+    expect(DEMO_LEGAL.manualDeadlines.map((d) => Math.sign(d.dueInDays)).sort()).toEqual([-1, 1]);
+  });
+
+  it("seeds no bot that competes with the Legal agent", () => {
+    expect(DEMO_BOTS.map((bot) => bot.name).filter((name) => /legal/i.test(name))).toEqual([]);
   });
 
   it("creates each parent folder before its sub-folders", () => {

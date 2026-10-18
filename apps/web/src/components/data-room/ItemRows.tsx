@@ -206,14 +206,19 @@ function ItemRow({
             >
               {label || <TypeAndDate item={item} />}
             </span>
-          ) : item.status === "failed" ? (
+          ) : item.status === "failed" && !item.error ? (
             // Shown at every width: without facets there is no Type column to say why.
             <span
               data-testid="data-room-failed-reason"
               className="text-xs font-normal text-destructive"
-              title={item.error ?? undefined}
             >
               <Trans>Could not read this file. Delete it and upload it again.</Trans>
+            </span>
+          ) : null}
+          {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. */}
+          {item.status === "failed" && item.error ? (
+            <span data-testid="data-room-error" className="text-xs font-normal text-destructive">
+              {item.error}
             </span>
           ) : null}
         </span>

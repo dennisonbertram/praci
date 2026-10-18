@@ -2,7 +2,7 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { LegalGraph as Graph, LegalNode, LegalNodeKind } from "@rakazo/contracts";
 import { cn } from "@rakazo/ui-web";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
@@ -10,22 +10,26 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-p
 /** Most nodes drawn; past this the busiest ones are kept and a note says so. */
 export const MAX_GRAPH_NODES = 120;
 
-// Left to right; contracts sit in the middle, the entities they bind on the left, what they say on the right.
+// Left to right: the parties a contract binds, the contracts, then what the contracts say (where they
+// are governed, what they oblige). Every edge then joins neighbouring columns instead of crossing one.
 const COLUMN_ORDER: LegalNodeKind[] = [
   "company",
   "person",
-  "jurisdiction",
   "contract",
+  "jurisdiction",
   "obligation",
   "right",
   "asset",
   "other",
 ];
-const COLUMN_W = 180;
-const ROW = 30;
+/** From one column's centre to the next: a box plus room for the edges between. */
+const COLUMN_W = 260;
+const ROW = 46;
 const PAD = 24;
-const NODE_W = 164;
-const NODE_H = 22;
+const NODE_W = 200;
+const NODE_H = 36;
+/** Characters per label line at 11px in a NODE_W box. */
+const LINE_CHARS = 30;
 
 const kindName = (kind: LegalNodeKind): string =>
   ({
@@ -42,20 +46,29 @@ const kindName = (kind: LegalNodeKind): string =>
 /** Relations are stored as short verbs like "party_to"; show them as words. */
 const relationText = (relation: string) => relation.replace(/_/g, " ");
 
-const short = (label: string) => (label.length > 27 ? `${label.slice(0, 26)}…` : label);
+/** A label on at most two lines, broken at a space; what does not fit ends in "…". */
+export function labelLines(label: string, width = LINE_CHARS): string[] {
+  if (label.length <= width) return [label];
+  const cut = label.lastIndexOf(" ", width);
+  const first = cut > 0 ? label.slice(0, cut) : label.slice(0, width);
+  const rest = label.slice(first.length).trim();
+  return [first, rest.length > width ? `${rest.slice(0, width - 1).trimEnd()}…` : rest];
+}
 
 type Placed = { node: LegalNode; x: number; y: number };
 
 /**
- * ponytail: simple column layout, one column per node kind, in a fixed order, no edge routing.
- * Upgrade to a force-directed or layered layout (and edge labels) once graphs routinely cross
- * a few hundred edges and the straight lines stop being readable.
+ * ponytail: one column per node kind in a fixed order, three barycenter sweeps to cut crossings, no
+ * edge routing. Upgrade to a layered layout library once graphs routinely cross a few hundred edges.
  */
 function layout(graph: Graph) {
   const degree = new Map<string, number>();
+  const neighbours = new Map<string, string[]>();
   for (const edge of graph.edges) {
     degree.set(edge.fromId, (degree.get(edge.fromId) ?? 0) + 1);
     degree.set(edge.toId, (degree.get(edge.toId) ?? 0) + 1);
+    neighbours.set(edge.fromId, [...(neighbours.get(edge.fromId) ?? []), edge.toId]);
+    neighbours.set(edge.toId, [...(neighbours.get(edge.toId) ?? []), edge.fromId]);
   }
   const hidden = Math.max(0, graph.nodes.length - MAX_GRAPH_NODES);
   const kept =
@@ -64,23 +77,59 @@ function layout(graph: Graph) {
       : [...graph.nodes]
           .sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0))
           .slice(0, MAX_GRAPH_NODES);
-  const columns = COLUMN_ORDER.map((kind) => kept.filter((node) => node.kind === kind)).filter(
-    (column) => column.length > 0,
-  );
-  const width = Math.max(720, columns.length * COLUMN_W);
-  const step = width / columns.length;
+  const byLabel = (a: LegalNode, b: LegalNode) => a.label.localeCompare(b.label);
+  const columns = COLUMN_ORDER.map((kind) =>
+    kept.filter((node) => node.kind === kind).sort(byLabel),
+  ).filter((column) => column.length > 0);
+  // Each column sits next to what it links to: sort it by the average row of its neighbours in the
+  // column just ordered, sweeping right, then left, then right again.
+  const rowOf = new Map<string, number>();
+  const number = (column: LegalNode[]) =>
+    column.forEach((node, r) => {
+      rowOf.set(node.id, r);
+    });
+  const reorder = (column: LegalNode[], beside: LegalNode[]) => {
+    const near = new Set(beside.map((node) => node.id));
+    const centre = (node: LegalNode) => {
+      const rows = (neighbours.get(node.id) ?? [])
+        .filter((id) => near.has(id))
+        .map((id) => rowOf.get(id) ?? 0);
+      return rows.length
+        ? rows.reduce((sum, row) => sum + row, 0) / rows.length
+        : (rowOf.get(node.id) ?? 0);
+    };
+    const centres = new Map(column.map((node) => [node.id, centre(node)]));
+    column.sort((a, b) => (centres.get(a.id) ?? 0) - (centres.get(b.id) ?? 0) || byLabel(a, b));
+    number(column);
+  };
+  for (const column of columns) number(column);
+  for (let c = 1; c < columns.length; c++) reorder(columns[c]!, columns[c - 1]!);
+  for (let c = columns.length - 2; c >= 0; c--) reorder(columns[c]!, columns[c + 1]!);
+  for (let c = 1; c < columns.length; c++) reorder(columns[c]!, columns[c - 1]!);
+  // Only PAD outside the outer boxes, so the drawing starts at the frame's edge, not a column away.
+  const width = PAD * 2 + NODE_W + (columns.length - 1) * COLUMN_W;
+  const centreX = (c: number) => PAD + NODE_W / 2 + c * COLUMN_W;
   const rows = Math.max(1, ...columns.map((column) => column.length));
   const height = PAD * 2 + 20 + rows * ROW;
   const placed = new Map<string, Placed>();
   columns.forEach((column, c) => {
     const top = PAD + 20 + ((rows - column.length) * ROW) / 2;
     column.forEach((node, r) => {
-      placed.set(node.id, { node, x: step * (c + 0.5), y: top + r * ROW + ROW / 2 });
+      placed.set(node.id, { node, x: centreX(c), y: top + r * ROW + ROW / 2 });
     });
   });
-  const heads = columns.map((column, c) => ({ kind: column[0]?.kind, x: step * (c + 0.5) }));
+  const heads = columns.map((column, c) => ({ kind: column[0]?.kind, x: centreX(c) }));
   const edges = graph.edges.filter((edge) => placed.has(edge.fromId) && placed.has(edge.toId));
   return { placed, edges, heads, width, height, hidden };
+}
+
+/** An edge from the side of one box to the facing side of the other, so it never runs behind a box. */
+function edgePath(from: Placed, to: Placed): string {
+  const [left, right] = from.x <= to.x ? [from, to] : [to, from];
+  const x1 = left.x + (left.x === right.x ? 0 : NODE_W / 2);
+  const x2 = right.x - (left.x === right.x ? 0 : NODE_W / 2);
+  const mid = (x1 + x2) / 2;
+  return `M${x1} ${left.y} C${mid} ${left.y} ${mid} ${right.y} ${x2} ${right.y}`;
 }
 
 /** Nodes and edges as an SVG diagram. Selecting a node highlights its edges and lists its relations below. */
@@ -88,6 +137,18 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
   useHideAmounts();
   const [selected, setSelected] = useState<string | null>(null);
   const { placed, edges, heads, width, height, hidden } = useMemo(() => layout(graph), [graph]);
+  // Drawn at its own size so labels stay readable; when that is wider than the page, say it scrolls.
+  const frame = useRef<HTMLDivElement>(null);
+  const [scrolls, setScrolls] = useState(false);
+  useEffect(() => {
+    const el = frame.current;
+    if (!el) return;
+    const check = () => setScrolls(el.scrollWidth > el.clientWidth + 1);
+    check();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(check);
+    observer?.observe(el);
+    return () => observer?.disconnect();
+  }, [width]);
   if (graph.nodes.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
@@ -112,13 +173,20 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
           </Trans>
         </p>
       ) : null}
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+      {scrolls ? (
+        <p className="text-xs text-muted-foreground">
+          <Trans>Scroll sideways to see the whole graph.</Trans>
+        </p>
+      ) : null}
+      <div ref={frame} className="overflow-x-auto rounded-xl border border-border bg-card">
         {/* biome-ignore lint/a11y/useSemanticElements: an SVG cannot be a fieldset */}
         <svg
           role="group"
           aria-label={t`Legal relationships`}
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full min-w-[640px]"
+          width={width}
+          height={height}
+          className="mx-auto block max-w-none"
         >
           {heads.map((head) => (
             <text
@@ -139,7 +207,7 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
             return (
               <path
                 key={edge.id}
-                d={`M${from.x} ${from.y} C${(from.x + to.x) / 2} ${from.y} ${(from.x + to.x) / 2} ${to.y} ${to.x} ${to.y}`}
+                d={edgePath(from, to)}
                 fill="none"
                 className={cn(
                   on ? "stroke-foreground" : "stroke-muted-foreground",
@@ -183,14 +251,18 @@ export function LegalGraphView({ graph }: { graph: Graph }) {
               />
               <text
                 x={x}
-                y={y + 4}
+                y={y}
                 textAnchor="middle"
                 className={cn(
                   "fill-foreground text-[11px]",
                   node.kind === "contract" && "font-medium",
                 )}
               >
-                {short(maskCurrencyWhenHidden(node.label))}
+                {labelLines(maskCurrencyWhenHidden(node.label)).map((line, i, lines) => (
+                  <tspan key={i} x={x} dy={i === 0 ? (lines.length === 1 ? 4 : -2) : 13}>
+                    {line}
+                  </tspan>
+                ))}
               </text>
             </g>
           ))}

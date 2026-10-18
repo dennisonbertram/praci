@@ -17,3 +17,6 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const Empty: Story = { args: { deadlines: [] } };
+
+/** Opened from the Overdue tile: only the overdue ones, with a way back to all. */
+export const OnlyOverdue: Story = { args: { onlyOverdue: true, onShowAll: () => {} } };

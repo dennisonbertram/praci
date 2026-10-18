@@ -15,6 +15,7 @@ import {
   computerPanelAutoUsesBoot,
   computerPanelNeedsMaintenance,
   computerTakeoverBlocked,
+  dismissedThreadRunError,
   isThreadSnapshotEvent,
   mergeThreadSnapshot,
   prependThreadMessagePage,
@@ -858,6 +859,35 @@ describe("thread event reduction", () => {
     expect(threadRunError(next, new Set(["other-run"]))).toBe(
       "Provider is not configured: openrouter",
     );
+  });
+
+  it("says a provider's raw 401 means the API key was not accepted", () => {
+    const failed: ThreadSnapshot = {
+      ...snapshot([]),
+      run: {
+        ...threadRun("run-a"),
+        status: "failed",
+        error: '401: {"message":"User not found.","code":401}',
+      },
+    };
+    expect(threadRunError(failed)).toBe(
+      "The model provider did not accept your API key. Check it in Settings > Models.",
+    );
+  });
+
+  it("keeps a dismissed failure for the transcript, and nothing while it is still shown", () => {
+    const failed: ThreadSnapshot = {
+      ...snapshot([]),
+      run: { ...threadRun("run-a"), status: "failed", error: "member exploded" },
+    };
+    expect(dismissedThreadRunError(failed, new Set())).toBeNull();
+    expect(dismissedThreadRunError(failed, new Set(["run-a"]))).toBe("member exploded");
+    expect(
+      dismissedThreadRunError(
+        { ...failed, run: { ...threadRun("run-a"), status: "completed" } },
+        new Set(["run-a"]),
+      ),
+    ).toBeNull();
   });
 
   it("keeps the error when a member run fails while another member is still running", () => {

@@ -1,0 +1,31 @@
+import { LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { ComposerError } from "./composer-error";
+
+const meta = {
+  title: "Shell/Composer error",
+  component: ComposerError,
+  args: { onDismiss: () => {}, onOpenModelSettings: () => {} },
+  decorators: [
+    (Story) => (
+      <div className="max-w-xl">
+        <Story />
+      </div>
+    ),
+  ],
+} satisfies Meta<typeof ComposerError>;
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+export const RunFailed: Story = { args: { message: "The run stopped: the model timed out." } };
+
+/** The Legal agent cannot use the space's model: the fix is one click away. */
+export const LegalNeedsOwnKey: Story = { args: { message: LEGAL_MODEL_REQUIRED_MESSAGE } };
+
+/** The provider rejected the API key: the error says so and opens Models settings. */
+export const KeyRejected: Story = {
+  args: {
+    message: "The model provider did not accept your API key. Check it in Settings > Models.",
+  },
+};

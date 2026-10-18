@@ -47,7 +47,7 @@ test("Legal shows contracts, deadlines and the graph", async ({ page }, testInfo
   await expect(page).toHaveURL(/\/app\/legal$/);
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { name: "Legal", level: 1 })).toBeVisible();
-  await expect(main.getByText("$50,000")).toBeVisible();
+  await expect(main.getByRole("cell", { name: "$50,000" })).toBeVisible();
   await expect(main.getByRole("link", { name: "Master Services Agreement" })).toHaveAttribute(
     "href",
     /\/app\/data-room\?item=/,
@@ -68,10 +68,12 @@ test("Legal shows contracts, deadlines and the graph", async ({ page }, testInfo
   await expect(main.getByText("Customer shall pay the monthly fee.")).toBeVisible();
   await captureScreenshot(page, testInfo, "legal-graph");
 
-  // Scan now queues a run and opens the agent panel.
+  // Scan now queues a run and stays on the page: it reports progress itself and leaves the agent
+  // panel as it was (closed here).
+  await expect(main.getByText(/Scans daily\./)).toBeVisible();
   await main.getByRole("button", { name: "Scan now", exact: true }).click();
-  await expect(page.getByTestId("legal-agent-panel")).toBeVisible();
-  expect(calls.some((c) => c.name === "scanNow")).toBe(true);
+  await expect.poll(() => calls.some((c) => c.name === "scanNow")).toBe(true);
+  await expect(page.getByTestId("legal-agent-panel")).toBeHidden();
 });
 
 test("Legal asks for consent before scanning, and explains an empty page", async ({
@@ -85,7 +87,8 @@ test("Legal asks for consent before scanning, and explains an empty page", async
   await page.getByTestId("sidebar-legal").click();
   const main = page.getByRole("main");
   await expect(main.getByText("Let the Legal agent read your documents")).toBeVisible();
-  await expect(main.getByText("scans your Data room")).toBeVisible();
+  await expect(main.getByText(/Allow access above to start\./)).toBeVisible();
+  await expect(main.getByText(/Muse Spark 1\.2, through your OpenRouter key/)).toBeVisible();
   await expect(main.getByRole("button", { name: "Scan now", exact: true }).first()).toBeDisabled();
   await captureScreenshot(page, testInfo, "legal-consent");
 

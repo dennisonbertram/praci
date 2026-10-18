@@ -79,6 +79,16 @@ it("puts the status in its own column, so every row has the cell and only the fa
   expect(container.querySelectorAll('[data-testid="data-room-failed-reason"]')).toHaveLength(1);
 });
 
+it("says in the row why a file failed, not only in a tooltip", () => {
+  const rows = [
+    { ...item("scan", null), status: "failed", error: "This file isn't a readable PDF." },
+    item("fine", null),
+  ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const errors = Array.from(container.querySelectorAll('[data-testid="data-room-error"]'));
+  expect(errors.map((cell) => cell.textContent)).toEqual(["This file isn't a readable PDF."]);
+});
+
 it("gives every sub-folder a More actions menu", () => {
   const onAction = vi.fn();
   const invoices = { id: "f2", name: "Invoices", parentId: "f1", createdAt: "" };

@@ -1,6 +1,6 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
+import type { DataRoomApiFolder, DataRoomApiItem, LegalItemLinks } from "@rakazo/contracts";
 import { DataRoomApiName } from "@rakazo/contracts";
 import {
   AlertDialog,
@@ -23,6 +23,7 @@ import {
   NativeSelectOption,
 } from "@rakazo/ui-web";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { type FolderNode, folderContents } from "./folders";
@@ -216,64 +217,24 @@ export function ItemDialog({
         )
       : "";
     return (
-      <AlertDialog open onOpenChange={(open) => !open && onClose()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {full
-                ? t`The folder ${item.name} isn't empty`
-                : folder
-                  ? t`Delete the folder ${item.name}?`
-                  : t`Delete ${item.name}?`}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {full ? (
-                <Trans>
-                  It holds {holds}. Move or delete what is in it first; only an empty folder can be
-                  deleted.
-                </Trans>
-              ) : (
-                <Trans>This can't be undone.</Trans>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              <Trans>Cancel</Trans>
-            </AlertDialogCancel>
-            {full ? (
-              onOpenFolder ? (
-                <AlertDialogAction
-                  onClick={() => {
-                    onOpenFolder(item.id);
-                    onClose();
-                  }}
-                >
-                  <Trans>Open folder</Trans>
-                </AlertDialogAction>
-              ) : null
-            ) : (
-              <AlertDialogAction
-                variant="destructive"
-                disabled={busy}
-                onClick={(event) => {
-                  // Stay open to show an error.
-                  event.preventDefault();
-                  void run(async () => {
-                    await (folder
-                      ? rpc.dataRoom.folderDelete({ id: item.id })
-                      : rpc.dataRoom.itemDelete({ id: item.id }));
-                    return null;
-                  });
-                }}
-              >
-                <Trans>Delete</Trans>
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteDialog
+        item={item}
+        folder={folder}
+        full={full}
+        holds={holds}
+        onOpenFolder={onOpenFolder}
+        busy={busy}
+        error={error}
+        onClose={onClose}
+        onDelete={() =>
+          void run(async () => {
+            await (folder
+              ? rpc.dataRoom.folderDelete({ id: item.id })
+              : rpc.dataRoom.itemDelete({ id: item.id }));
+            return null;
+          })
+        }
+      />
     );
   }
 
@@ -373,5 +334,118 @@ export function ItemDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Confirms a delete; for a file Legal has read, it also says what Legal loses with it. */
+function DeleteDialog({
+  item,
+  folder,
+  full,
+  holds,
+  onOpenFolder,
+  busy,
+  error,
+  onClose,
+  onDelete,
+}: {
+  item: DataRoomEntry;
+  folder: boolean;
+  /** A folder with something in it: it cannot be deleted, so the dialog says what it holds. */
+  full: boolean;
+  holds: string;
+  onOpenFolder?: (id: string) => void;
+  busy: boolean;
+  error: string;
+  onClose: () => void;
+  onDelete: () => void;
+}) {
+  const [links, setLinks] = useState<LegalItemLinks | null>(null);
+  useEffect(() => {
+    if (folder) return;
+    let live = true;
+    // Without the answer the dialog still works; it just cannot list what Legal loses.
+    rpc.legal
+      .itemLinks({ itemId: item.id })
+      .then((found) => live && setLinks(found))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [folder, item.id]);
+  const deadlines = links?.deadlines ?? 0;
+  const deadlineCount = plural(deadlines, { one: "# deadline", other: "# deadlines" });
+  useHideAmounts(); // re-render when Hide amounts flips
+  const rawTitle = links?.contractTitle;
+  const contractTitle = rawTitle ? maskCurrencyWhenHidden(rawTitle) : rawTitle;
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {full
+              ? t`The folder ${item.name} isn't empty`
+              : folder
+                ? t`Delete the folder ${item.name}?`
+                : t`Delete ${item.name}?`}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {full ? (
+              <Trans>
+                It holds {holds}. Move or delete what is in it first; only an empty folder can be
+                deleted.
+              </Trans>
+            ) : folder ? (
+              <Trans>This can't be undone.</Trans>
+            ) : contractTitle ? (
+              deadlines > 0 ? (
+                <Trans>
+                  This also removes the Legal contract {contractTitle}, its {deadlineCount}{" "}
+                  (including ones added by hand) and its links in the Legal graph. This can't be
+                  undone.
+                </Trans>
+              ) : (
+                <Trans>
+                  This also removes the Legal contract {contractTitle} and its links in the Legal
+                  graph. This can't be undone.
+                </Trans>
+              )
+            ) : (
+              <Trans>This can't be undone.</Trans>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+        <AlertDialogFooter>
+          <AlertDialogCancel>
+            <Trans>Cancel</Trans>
+          </AlertDialogCancel>
+          {full ? (
+            onOpenFolder ? (
+              <AlertDialogAction
+                onClick={() => {
+                  onOpenFolder(item.id);
+                  onClose();
+                }}
+              >
+                <Trans>Open folder</Trans>
+              </AlertDialogAction>
+            ) : null
+          ) : (
+            <AlertDialogAction
+              variant="destructive"
+              disabled={busy}
+              onClick={(event) => {
+                // Stay open to show an error.
+                event.preventDefault();
+                onDelete();
+              }}
+            >
+              <Trans>Delete</Trans>
+            </AlertDialogAction>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
