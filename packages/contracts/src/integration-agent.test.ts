@@ -52,3 +52,13 @@ describe("isReadTool", () => {
     expect(isIntegrationAgentSpawnKey("carta-agent:u1")).toBe(false);
   });
 });
+
+describe("preset instructions", () => {
+  it("say what each service is and keep writes as requests", () => {
+    expect(mercury.instructions).toContain("Mercury is");
+    expect(mercury.instructions).toContain("hold it for its own approval");
+    expect(mercury.instructions).toContain("TBD");
+    expect(brex.instructions).toContain("Brex is");
+    expect(brex.instructions).toContain("TBD");
+  });
+});

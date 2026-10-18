@@ -67,7 +67,9 @@ export function buildApprovalAskBlock(
           ]
         : [
             { id: "allow", label: "Allow once" },
-            ...(options?.fullMail ? [] : [{ id: "always", label: "Always allow this tool" }]),
+            ...(options?.fullMail || options?.cartaWriteTool !== undefined
+              ? []
+              : [{ id: "always", label: "Always allow this tool" }]),
             { id: "deny", label: "Deny" },
           ],
   };

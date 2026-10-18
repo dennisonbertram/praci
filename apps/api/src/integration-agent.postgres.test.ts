@@ -1,10 +1,21 @@
 import { createRouterClient } from "@orpc/server";
-import { archiveBot, destroyBot } from "@rakazo/adapters";
+import {
+  archiveBot,
+  createFinanceCallToolFor,
+  destroyBot,
+  syncFinanceForUser,
+} from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { integrationAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  fakeMercury,
+  MERCURY_CHECKING,
+  mercuryRow,
+} from "../../../packages/adapters/src/finance-fake-tools.js";
+import { type FinanceDeps, financeReceiptUrl } from "./finance.js";
 import { createRouter, type RouterDeps } from "./router.js";
 import { listSpaceRuns } from "./runs.js";
 
@@ -112,6 +123,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
       spaceId,
     });
     expect(bot.instructions).toContain("Mercury");
+    expect(bot.instructions).toContain("Mercury may also hold it for its own approval");
     expect(bot.description).toContain("message_bot");
     const rows = await prisma.botMcpServer.findMany({ where: { serverId: server.id } });
     expect(rows).toMatchObject([{ botId: first.botId, allowAllTools: true }]);
@@ -303,5 +315,35 @@ describePostgres("integration agents (PostgreSQL)", () => {
     expect((await listSpaceRuns(prisma, b, "active")).some((row) => row.runId === run.id)).toBe(
       false,
     );
+  });
+  it("keeps Finance sync and receipt links working while the Mercury server is exclusive", async () => {
+    // Sync and receipts run as the server's owner through callServerTool, outside any bot's gate.
+    const finServer = await mkServer(userA, "mercury-fin", "https://mcp.mercury.com/mcp");
+    await client(a).integrationAgents.create({ serverId: finServer.id });
+    await client(a).integrationAgents.setExclusive({ serverId: finServer.id, exclusive: true });
+    const mercury = fakeMercury({
+      txns: { [MERCURY_CHECKING]: [mercuryRow("m-ia-1")] },
+      attachments: [{ id: "att-1" }],
+    });
+    const mcp = {
+      callServerTool: async (_row: unknown, _ctx: unknown, name: string, args: object) => ({
+        content: [
+          { type: "text" as const, text: JSON.stringify(await mercury.callTool(name, args)) },
+        ],
+      }),
+    };
+    const callToolFor = createFinanceCallToolFor(prisma, mcp);
+    const result = await syncFinanceForUser({ prisma, callToolFor }, { spaceId, userId: userA });
+    expect(result.mercury).toBe("synced");
+    const row = await prisma.financeTransaction.findFirstOrThrow({
+      where: { spaceId, userId: userA, externalId: "m-ia-1" },
+    });
+    const link = await financeReceiptUrl({ prisma, callToolFor } as unknown as FinanceDeps, a, {
+      transactionId: row.id,
+    });
+    expect(link.url).toContain("receipt.pdf");
+    expect(mercury.sendMoneyRequests).toHaveLength(0);
+    await prisma.financeTransaction.deleteMany({ where: { mcpServerId: finServer.id } });
+    await prisma.financeSyncState.deleteMany({ where: { mcpServerId: finServer.id } });
   });
 });
