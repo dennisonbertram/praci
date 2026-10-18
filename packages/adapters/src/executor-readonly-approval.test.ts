@@ -75,11 +75,13 @@ function fixture({
   advanceRevisionAfterRead = false,
   spawnKey = null,
   mail,
+  afterCall,
   route,
 }: {
   route?: ConnectorTool["route"];
   spawnKey?: string | null;
   mail?: unknown;
+  afterCall?: (index: number) => void;
   builtin?: boolean;
   disabledBuiltinTools?: string[];
   existingSharedMemory?: string;
@@ -252,6 +254,7 @@ function fixture({
         call.executionId,
       );
       results.push(result);
+      afterCall?.(results.length - 1);
       if (isApprovalPausedResult(result)) return;
     }
     yield { type: "done" as const, text: "Done" };
@@ -797,6 +800,58 @@ describe("Inbox agent mail without AI data sharing consent", () => {
     const f = mailFixture();
     await f.run();
     expect(f.results[0]).not.toEqual({ error: MAIL_CONSENT_OFF });
+  });
+
+  it("settles a claimed send as failed instead of leaving it executing", async () => {
+    triage.needsConsent = true;
+    try {
+      const f = fixture({
+        name: "mail_send",
+        builtin: true,
+        spawnKey: inboxAgentSpawnKey("user-1"),
+        rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "mail_send" }],
+        mail: { listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]) },
+      });
+      f.setCalls([
+        {
+          args: { to: ["sam@example.test"], subject: "Hi", body: "Hello" },
+          executionId: "call-1",
+        },
+      ]);
+      await f.run();
+      expect(isApprovalPausedResult(f.results[0])).toBe(true);
+      // The user approves the card; consent is withdrawn before the resumed call runs.
+      f.effects[0]!.status = "approved";
+      await f.run();
+      expect(f.results[1]).toEqual({ error: MAIL_CONSENT_OFF });
+      expect(f.effects[0]?.status).toBe("completed");
+    } finally {
+      triage.needsConsent = false;
+    }
+  });
+
+  it("stops reading mail when consent is withdrawn during the run", async () => {
+    // The first call runs with consent; consent is revoked before the second call of the same run.
+    try {
+      const f = fixture({
+        name: "mail_search",
+        builtin: true,
+        spawnKey: inboxAgentSpawnKey("user-1"),
+        mail: { listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]) },
+        afterCall: (index) => {
+          if (index === 0) triage.needsConsent = true;
+        },
+      });
+      f.setCalls([
+        { args: { queries: ["from:priya"] }, executionId: "call-1" },
+        { args: { queries: ["from:sam"] }, executionId: "call-2" },
+      ]);
+      await f.run();
+      expect(f.results[0]).not.toEqual({ error: MAIL_CONSENT_OFF });
+      expect(f.results[1]).toEqual({ error: MAIL_CONSENT_OFF });
+    } finally {
+      triage.needsConsent = false;
+    }
   });
 });
 

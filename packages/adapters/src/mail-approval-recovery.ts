@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { MailApproval } from "@rakazo/contracts";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { mailApprovalComposeClientId } from "@rakazo/db";
@@ -177,8 +178,19 @@ const baseSubject = (value: unknown): string =>
     .toLowerCase();
 const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
 
-/** Two mail_send calls are the same email when they answer the same message, or go to the same people about the same thing. */
+const bodyHash = (value: unknown): string =>
+  createHash("sha256").update(text(value).replace(/\s+/g, " ")).digest("hex");
+
+/**
+ * Two mail_send calls are the same email when they answer the same message, or go to the same
+ * people about the same thing, with the same text. A corrected body is a new email.
+ */
 function sameEmail(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  if (bodyHash(a.body) !== bodyHash(b.body)) return false;
+  return sameThread(a, b);
+}
+
+function sameThread(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   const replyA = text(a.replyToId);
   const replyB = text(b.replyToId);
   if (replyA || replyB) return replyA === replyB;
@@ -204,22 +216,32 @@ export function mailSendRefusal(
   if (placeholder) {
     return `The email still contains the placeholder ${placeholder}. Replace it with real text (sign with the user's name if you know it, or leave the signature off), then call mail_send again.`;
   }
+  // Only this run's own earlier calls count: a later request may legitimately send a follow-up.
   for (const effect of prior) {
+    if (effect.runId !== runId) continue;
     const request = effect.request as Record<string, unknown> | null;
-    if (!request || typeof request !== "object" || !sameEmail(args, request)) continue;
+    if (!request || typeof request !== "object" || !sameThread(args, request)) continue;
     const result = (effect.result ?? {}) as { error?: unknown; outcome?: unknown; note?: unknown };
-    const sentOrMaybe =
-      (effect.status === "completed" && !result.error) ||
-      effect.status === "executing" ||
-      effect.status === "uncertain" ||
-      (effect.status === "denied" &&
-        (result.outcome === "sent" ||
-          result.outcome === "unknown" ||
-          result.note === mailApprovalAgentNote(true)));
-    if (sentOrMaybe) {
+    // The user's own edited send on the approval card: the agent cannot know its text, so any
+    // new call about the same thing in this run is refused.
+    const cardSend =
+      effect.status === "denied" &&
+      (result.outcome === "sent" ||
+        result.outcome === "unknown" ||
+        result.note === mailApprovalAgentNote(true));
+    if (cardSend) {
+      return result.outcome === "sent"
+        ? "The user already sent this email from the approval card. Do not send it again or offer another approval for it; tell the user it was sent."
+        : "The user sent an edited version from the approval card and it may not have gone out. Do not send it again; tell the user it may not have been sent and to check Sent.";
+    }
+    if (!sameEmail(args, request)) continue;
+    if (effect.status === "completed" && !result.error) {
       return "This email was already sent in this conversation. Do not send it again or offer another approval for it; tell the user it was sent.";
     }
-    if (effect.status === "denied" && effect.runId === runId && result.outcome !== "failed") {
+    if (effect.status === "executing" || effect.status === "uncertain") {
+      return "This email may already have been sent, but the outcome is uncertain. Do not send it again or offer another approval for it; tell the user it may not have been sent and to check Sent.";
+    }
+    if (effect.status === "denied" && result.outcome !== "failed") {
       return "The user discarded this email. Do not offer it again; ask the user what they want to change.";
     }
   }

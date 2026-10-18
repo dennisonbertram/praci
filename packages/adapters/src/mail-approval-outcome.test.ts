@@ -50,18 +50,18 @@ describe("mailSendRefusal", () => {
   it("refuses a second card after the user edited and sent the reply themselves", () => {
     const sent = effect("denied", { note: mailApprovalAgentNote(true, "sent"), outcome: "sent" });
     const again = { ...reply, body: "Hi Sam, 10am works. Best, Alex" };
-    expect(mailSendRefusal(again, [sent], "r2")).toMatch(/already sent/);
+    expect(mailSendRefusal(again, [sent], "r1")).toMatch(/already sent/);
   });
 
   it("refuses while the user's own send is still in flight", () => {
     const claimed = effect("denied", { note: mailApprovalAgentNote(true) });
-    expect(mailSendRefusal(reply, [claimed], "r1")).toMatch(/already sent/);
+    expect(mailSendRefusal(reply, [claimed], "r1")).toMatch(/may not have gone out/);
   });
 
   it("refuses after an approved send went out, matching a new message by people and subject", () => {
     const newMail = { to: ["robin@example.test"], subject: "Pricing", body: "Hi" };
     const sent = effect("completed", { ok: true }, newMail);
-    expect(mailSendRefusal({ ...newMail, subject: "Re: pricing" }, [sent], "r2")).toMatch(
+    expect(mailSendRefusal({ ...newMail, subject: "Re: pricing" }, [sent], "r1")).toMatch(
       /already sent/,
     );
   });
@@ -77,6 +77,22 @@ describe("mailSendRefusal", () => {
     const discarded = effect("denied", { error: "denied" });
     expect(mailSendRefusal(reply, [discarded], "r1")).toMatch(/discarded/);
     expect(mailSendRefusal(reply, [discarded], "r2")).toBeUndefined();
+  });
+
+  it("allows a correction email with different text, and a follow-up in a later run", () => {
+    const sent = effect("completed", { ok: true });
+    expect(mailSendRefusal({ ...reply, body: "Correction: 11am" }, [sent], "r1")).toBeUndefined();
+    expect(mailSendRefusal(reply, [sent], "r2")).toBeUndefined();
+  });
+
+  it("reports an in-flight or uncertain send as uncertain, never as sent", () => {
+    for (const status of ["executing", "uncertain"]) {
+      const refusal = mailSendRefusal(reply, [effect(status, {})], "r1");
+      expect(refusal).toMatch(/may not have been sent/);
+      expect(refusal).not.toMatch(/tell the user it was sent/);
+    }
+    const unknown = effect("denied", { note: mailApprovalAgentNote(true, "unknown"), outcome: "unknown" });
+    expect(mailSendRefusal(reply, [unknown], "r1")).toMatch(/may not have gone out/);
   });
 
   it("refuses a placeholder signature", () => {

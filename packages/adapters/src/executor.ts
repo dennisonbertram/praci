@@ -4044,11 +4044,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             trigger: run.trigger,
           }) && (await mailAccounts().catch(() => [])).length > 0;
         // The Inbox agent reads mail only with the AI data sharing consent the Inbox sorting needs,
-        // so turning that off stops both. Looked up once, on its first mail tool call.
-        let mailConsentPromise: Promise<boolean> | undefined;
+        // so turning that off stops both. Read on every mail tool call, so revoking it mid-run applies.
         const inboxMailConsentMissing = () => {
           if (!isInboxAgentSpawnKey(bot.spawnKey)) return Promise.resolve(false);
-          mailConsentPromise ??= triageStatus(
+          return triageStatus(
             { prisma: deps.prisma, resolveModel },
             { userId: bot.userId, spaceId: run.spaceId },
           ).then(
@@ -4056,7 +4055,6 @@ export function createRunExecutor(deps: ExecutorDeps) {
             // Unknown is treated as not allowed: mail content never leaves on a failed check.
             () => true,
           );
-          return mailConsentPromise;
         };
         // Connected Google Drive accounts of the bot owner, looked up once per run.
         let driveAccountsPromise: ReturnType<typeof listDriveAccounts> | undefined;
@@ -5608,7 +5606,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (MAIL_TOOL_NAMES.has(name) && deps.mail && mailEnabled) {
-            if (await inboxMailConsentMissing()) return { error: MAIL_CONSENT_OFF };
+            if (await inboxMailConsentMissing()) {
+              const refused = { error: MAIL_CONSENT_OFF };
+              if (!claimedEffect) return refused;
+              // An approved send or draft was already claimed: settle it so it is not left executing.
+              if (approvedByCard && applied && (name === "mail_send" || name === "mail_draft")) {
+                await recordApprovedMailOutcome(deps, run, applied.effect.id, name, refused);
+              }
+              return finish(refused);
+            }
             const result = await mailToolFromTool(
               name,
               {
