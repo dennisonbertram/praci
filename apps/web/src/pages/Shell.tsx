@@ -3591,7 +3591,9 @@ export function ShellPage() {
           }}
         />
         <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
-        <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
+        {/* Lines above and below mark where the chat list scrolls, so a half-hidden row reads as cut by
+            the edge rather than tucked under the links. */}
+        <div className="rk-scroll mt-1 flex flex-1 flex-col gap-0.5 overflow-y-auto border-y border-sidebar-border px-2.5 pt-1 pb-2.5">
           {showSpaceSearch ? (
             <SpaceSearchResults
               query={spaceQuery}
@@ -4133,7 +4135,7 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate("/app/integrations");
           }}
-          className={`mx-3 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
+          className={`mx-3 mt-1 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
             integrationsMode ? "bg-sidebar-accent" : ""
           }`}
         >
