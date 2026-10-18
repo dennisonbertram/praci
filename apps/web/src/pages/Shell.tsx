@@ -147,6 +147,7 @@ import {
   useId,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   useSyncExternalStore,
@@ -206,7 +207,6 @@ import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
 import { takeInitialBootstrap } from "../lib/bootstrap";
-import { BOTS_CHANGED_EVENT, type BotsChangedDetail } from "../lib/bots-changed";
 import {
   getBotsSidebarDensity,
   subscribeBotsSidebarDensity,
@@ -282,6 +282,7 @@ import {
   rosterHasUndismissedRunError,
   rosterWorkStatusLabel,
 } from "../lib/roster-status";
+import { type MissingBotSeen, resolveRouteBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import { sharedInflight } from "../lib/shared-inflight";
@@ -642,6 +643,8 @@ export function ShellPage() {
   const groupRefreshEpoch = useRef(0);
   const botsRefreshEpoch = useRef(0);
   const botsRefreshApplied = useRef(0);
+  const missingBotSeen = useRef<MissingBotSeen | null>(null);
+  const [, rerenderAfterMissingBot] = useReducer((n: number) => n + 1, 0);
   const archivedBotsRefreshEpoch = useRef(0);
   const botsRefreshInFlight = useRef(0);
   // A very fast run can finish over SSE while its threads.send response is still
@@ -972,6 +975,13 @@ export function ShellPage() {
   useEffect(() => {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
+  const routeBot = resolveRouteBot({
+    bots,
+    botId,
+    loaded: initialBotsLoaded,
+    seen: missingBotSeen.current,
+    applied: botsRefreshApplied.current,
+  });
   const active =
     inGroup || integrationsMode || dataRoomMode || artifactsMode || boardMode
       ? undefined
@@ -983,7 +993,7 @@ export function ShellPage() {
             ? findLegalAgent(bots, userId)
             : capTableMode
               ? findCartaAgent(bots, userId)
-              : (bots.find((b) => b.id === botId) ?? bots[0]);
+              : routeBot.bot;
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
   const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =
@@ -1196,6 +1206,9 @@ export function ShellPage() {
         if (routePageMode.current) return;
         const currentBotId = routeBotId.current;
         if (!currentBotId || !list.some((bot) => bot.id === currentBotId)) {
+          // A refresh that started before the route's bot was first missed cannot know about it.
+          const seen = missingBotSeen.current;
+          if (seen && seen.id === currentBotId && request <= seen.epoch) return;
           navigate(firstThreadRoute(list, groupList), { replace: true });
         }
       } finally {
@@ -1204,6 +1217,19 @@ export function ShellPage() {
     },
     [navigate],
   );
+
+  // A route bot the list does not know yet (created on another page) gets one refresh before the
+  // chat falls back to the first bot; the chat area keeps its loading state meanwhile.
+  useEffect(() => {
+    if (!routeBot.needsRefresh || !botId) return;
+    const seen = { id: botId, epoch: botsRefreshEpoch.current };
+    missingBotSeen.current = seen;
+    refreshBots().catch(() => {
+      // Do not wait forever on a failed refresh.
+      seen.epoch = -1;
+      rerenderAfterMissingBot();
+    });
+  }, [routeBot.needsRefresh, botId, refreshBots]);
 
   function snapTranscriptToEndAfterFrame() {
     const queuedElement = messageScroll.current;
@@ -1443,12 +1469,7 @@ export function ShellPage() {
       window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => void refreshBots().catch(() => undefined), 50);
     };
-    const refreshNow = (event: Event) =>
-      void refreshBots()
-        .catch(() => undefined)
-        .finally(() => (event as CustomEvent<BotsChangedDetail | undefined>).detail?.done());
     window.addEventListener("focus", refreshVisibleBots);
-    window.addEventListener(BOTS_CHANGED_EVENT, refreshNow);
     document.addEventListener("visibilitychange", refreshVisibleBots);
     // Poll skips while a refresh is in flight; focus/visibility and event-driven
     // callers still bump botsRefreshEpoch so only the latest response applies.
@@ -1461,7 +1482,6 @@ export function ShellPage() {
       window.clearTimeout(refreshTimer);
       window.clearInterval(poll);
       window.removeEventListener("focus", refreshVisibleBots);
-      window.removeEventListener(BOTS_CHANGED_EVENT, refreshNow);
       document.removeEventListener("visibilitychange", refreshVisibleBots);
     };
   }, []);
@@ -4721,7 +4741,7 @@ export function ShellPage() {
                 : undefined
             }
           />
-        ) : !active && !activeGroup && initialBotsLoaded ? (
+        ) : !active && !activeGroup && initialBotsLoaded && !routeBot.waiting ? (
           <div className="grid flex-1 place-items-center">
             <Button onClick={() => void createBot()}>
               <Plus size={16} aria-hidden="true" />
