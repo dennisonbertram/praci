@@ -643,6 +643,8 @@ export function ShellPage() {
   const groupRefreshEpoch = useRef(0);
   const botsRefreshEpoch = useRef(0);
   const botsRefreshApplied = useRef(0);
+  // Request number of the newest refresh whose bot list was actually stored (a reorder can drop it).
+  const botsListApplied = useRef(0);
   const missingBotSeen = useRef<MissingBotSeen | null>(null);
   const [, rerenderAfterMissingBot] = useReducer((n: number) => n + 1, 0);
   const archivedBotsRefreshEpoch = useRef(0);
@@ -980,7 +982,7 @@ export function ShellPage() {
     botId,
     loaded: initialBotsLoaded,
     seen: missingBotSeen.current,
-    applied: botsRefreshApplied.current,
+    applied: botsListApplied.current,
   });
   const active =
     inGroup || integrationsMode || dataRoomMode || artifactsMode || boardMode
@@ -1173,6 +1175,7 @@ export function ShellPage() {
           (replaceBotOrder || (!preserveBotOrder && !savingBotOrderRef.current))
         ) {
           setBots(list);
+          botsListApplied.current = request;
         }
         setBotSections(sections);
         setGroups(groupList);
