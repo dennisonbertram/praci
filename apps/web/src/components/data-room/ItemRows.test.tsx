@@ -71,7 +71,12 @@ it("puts the status in its own column, so every row has the cell and only the fa
   act(() => root.render(<ListView rows={rows} o={o()} />));
   const cells = Array.from(container.querySelectorAll('[data-testid="data-room-status"]'));
   expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", ""]);
-  expect(names()).toEqual(["junk.pdf", "a-much-longer-file-name.pdf"]);
+  // The failed row also says why under its name, so phones (no Status column) still explain it.
+  expect(names()).toEqual([
+    "junk.pdfCould not read this file. Delete it and upload it again.",
+    "a-much-longer-file-name.pdf",
+  ]);
+  expect(container.querySelectorAll('[data-testid="data-room-failed-reason"]')).toHaveLength(1);
 });
 
 it("gives every sub-folder a More actions menu", () => {

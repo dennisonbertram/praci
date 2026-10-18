@@ -15,6 +15,7 @@ vi.mock("@lingui/react/macro", () => {
   };
 });
 
+import { setHideAmounts } from "../../lib/hide-amounts-preference";
 import { InboxRow } from "./InboxRow";
 
 const row: MailRow = {
@@ -126,4 +127,19 @@ it("labels an archived search result Archived", async () => {
   await show({ row: { ...row, inInbox: false } });
   const badges = [...document.querySelectorAll('[data-slot="badge"]')].map((b) => b.textContent);
   expect(badges).toEqual(["Archived"]);
+});
+
+it("masks amounts in the subject and preview while amounts are hidden", async () => {
+  setHideAmounts(true);
+  try {
+    await show({
+      row: { ...row, subject: "Invoice for $4,812.00", snippet: "Pay USD 1,200 by Friday" },
+    });
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("4,812");
+    expect(text).not.toContain("1,200");
+    expect(text).toContain("Invoice for $•••");
+  } finally {
+    setHideAmounts(false);
+  }
 });

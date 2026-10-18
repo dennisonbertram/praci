@@ -48,6 +48,7 @@ import {
   isRunTerminalEvent,
   isToolActivityBlock,
   latestAnswerableAskMessageId,
+  matchesArtifactQuery,
   mentionChipKey,
   nestRosterByParent,
   newClientId,
@@ -94,7 +95,6 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
-  Bell,
   Box,
   ChartColumn,
   ChevronDown,
@@ -104,6 +104,7 @@ import {
   FileText,
   FolderOpen,
   Gauge,
+  History,
   LayoutGrid,
   ListTodo,
   Lock,
@@ -130,6 +131,7 @@ import {
   SquareKanban,
   TextQuote,
   Trash2,
+  Users,
   X,
 } from "lucide-react";
 import type { ClipboardEvent, DragEvent, MutableRefObject, ReactNode, RefObject } from "react";
@@ -181,9 +183,9 @@ import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
-import { InboxAgentIntro } from "../components/inbox/InboxAgentIntro";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
+import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
 import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
@@ -227,6 +229,14 @@ import {
   useAutoCreateCartaAgent,
   useOnPhoneWidth,
 } from "../lib/carta-agent";
+import {
+  readChatDraft,
+  readChatDraftMentions,
+  readChatDraftSkill,
+  writeChatDraft,
+  writeChatDraftMentions,
+  writeChatDraftSkill,
+} from "../lib/chat-draft";
 import { stepComposerHistory } from "../lib/composer-history";
 import {
   embeddableScreenUrl,
@@ -271,11 +281,12 @@ import {
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import { sharedInflight } from "../lib/shared-inflight";
-import { slashSkillOptions as pickSlashSkills } from "../lib/slash-skills";
+import { slashSkillOptions as pickSlashSkills, slashSkillLabel } from "../lib/slash-skills";
 import {
   activeThreadRuns,
   applyThreadSendReceipt,
   clearActiveThreadRuns,
+  composerShowsStop,
   computerPanelAutoBoot,
   computerPanelAutoUsesBoot,
   computerPanelNeedsMaintenance,
@@ -317,6 +328,7 @@ import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { HostComputerPrompt } from "./HostComputerPrompt";
 import { InboxPage } from "./Inbox";
 import { LegalPage } from "./Legal";
+import { NotFoundPage } from "./NotFound";
 import { ResizableSidePanel } from "./ResizableSidePanel";
 import type { RoutineDraftState } from "./RoutineEditor";
 import {
@@ -345,6 +357,7 @@ import {
   RenameBotSectionDialog,
   RenameSpaceDialog,
 } from "./shell/dialogs";
+import { GroupIntro } from "./shell/GroupIntro";
 import { MentionIcon } from "./shell/mention-icon";
 import {
   AppConnectCard,
@@ -359,6 +372,7 @@ import { WindowChrome } from "./WindowChrome";
 const ArtifactsPage = lazy(() =>
   import("./Artifacts").then((module) => ({ default: module.ArtifactsPage })),
 );
+const BoardPage = lazy(() => import("./Board").then((module) => ({ default: module.BoardPage })));
 const BotContextMenu = lazyOverlay(() =>
   import("./BotContextMenu").then((module) => module.BotContextMenu),
 );
@@ -680,6 +694,12 @@ export function ShellPage() {
   useEffect(refreshInboxUnread, [refreshInboxUnread]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { pathname } = useLocation();
+  const [missingPath, setMissingPath] = useState<string | null>(null);
+  const missingPathRef = useRef<string | null>(null);
+  const markMissing = useCallback((path: string) => {
+    missingPathRef.current = path;
+    setMissingPath(path);
+  }, []);
   // A link inside Settings (for example Server integrations) opens a page; the dialog closes.
   useEffect(() => setSettingsOpen(false), [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
@@ -921,6 +941,8 @@ export function ShellPage() {
   const dataRoomMode = useMatch("/app/data-room") != null;
   const legalMode = useMatch("/app/legal") != null;
   const artifactsMode = useMatch("/app/artifacts/*") != null;
+  // The route exists only while bootstrap enables the board (see App).
+  const boardMode = useMatch("/app/board") != null;
   const capTableMode = useMatch("/app/cap-table/*") != null;
   // Inbox, Finance, Legal, Data room, Cap Table and Integrations are pages of their own: no bot
   // route. Inbox, Finance, Legal and Cap Table keep their agent in a side panel.
@@ -931,7 +953,8 @@ export function ShellPage() {
     capTableMode ||
     integrationsMode ||
     dataRoomMode ||
-    artifactsMode;
+    artifactsMode ||
+    boardMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
@@ -939,7 +962,7 @@ export function ShellPage() {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
   const active =
-    inGroup || integrationsMode || dataRoomMode || artifactsMode
+    inGroup || integrationsMode || dataRoomMode || artifactsMode || boardMode
       ? undefined
       : inboxMode
         ? findInboxAgent(bots, userId)
@@ -1149,6 +1172,8 @@ export function ShellPage() {
           navigate("/onboarding", { replace: true });
           return;
         }
+        // An unknown address keeps showing Page not found instead of jumping to a chat.
+        if (missingPathRef.current === window.location.pathname) return;
         const currentGroupId = routeGroupId.current;
         if (currentGroupId) {
           if (!groupList.some((group) => group.id === currentGroupId)) {
@@ -1382,8 +1407,13 @@ export function ShellPage() {
         }
         if (groupId) {
           if (!groupList.some((group) => group.id === groupId)) {
-            navigate(firstThreadRoute(bootstrap.bots, groupList), { replace: true });
+            markMissing(window.location.pathname);
           }
+          return;
+        }
+        if (botId && !pageMode && !knownBotId(botId, bootstrap.bots, bootstrap.archivedBots)) {
+          // Keep the address the person typed; only the page says it is not found.
+          markMissing(window.location.pathname);
           return;
         }
         const selectedBotId = bootstrap.thread?.botId ?? bootstrap.bots[0]?.id;
@@ -1851,6 +1881,7 @@ export function ShellPage() {
       : [];
   }, [appPages, spaceQuery]);
   const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
+  const [searchArtifacts, setSearchArtifacts] = useState<SearchLink[]>([]);
 
   function openSearchResult(path: string) {
     setQuery("");
@@ -1870,6 +1901,7 @@ export function ShellPage() {
     if (!showSpaceSearch) {
       setSearchHits([]);
       setSearchDocuments([]);
+      setSearchArtifacts([]);
       setSearchLoading(false);
       return;
     }
@@ -1885,6 +1917,21 @@ export function ShellPage() {
         })
         .catch(() => {
           if (!abort.signal.aborted) setSearchDocuments([]);
+        });
+      // ponytail: matches the 60 newest artifacts by name and description; a server query when spaces hold more.
+      void rpc.artifacts
+        .listSpace({ limit: 60 })
+        .then((result) => {
+          if (abort.signal.aborted) return;
+          setSearchArtifacts(
+            result.items
+              .filter((item) => matchesArtifactQuery(item, spaceQuery))
+              .slice(0, 5)
+              .map((item) => ({ id: item.id, label: item.name })),
+          );
+        })
+        .catch(() => {
+          if (!abort.signal.aborted) setSearchArtifacts([]);
         });
       void rpc.search
         .query({ q: spaceQuery })
@@ -3219,17 +3266,33 @@ export function ShellPage() {
             activeSnapshot.olderCursor == null &&
             !transcriptRunning &&
             !sending ? (
-              <InboxAgentIntro onAsk={(text) => void sendMessage(text, [], newClientId())} />
-            ) : !pageMode && chatStarters ? (
-              // The Finance agent's own chat starts like its Finance panel: what it does, and two questions.
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                <AgentPanelIntro
-                  description={active?.description ?? ""}
-                  suggestions={chatStarters}
-                  disabled={sending}
-                  onPick={(text) => void sendMessage(text, [], newClientId())}
-                />
-              </div>
+              <PageAgentIntro
+                kind="inbox"
+                onAsk={(text) => void sendMessage(text, [], newClientId())}
+              />
+            ) : !inGroup &&
+              !pageMode &&
+              activeSnapshot &&
+              pageAgentKind(active?.spawnKey) &&
+              transcriptMessages.length === 0 &&
+              activeSnapshot.olderCursor == null &&
+              !transcriptRunning &&
+              !sending ? (
+              <PageAgentIntro
+                kind={pageAgentKind(active?.spawnKey) ?? "inbox"}
+                onAsk={(text) => void sendMessage(text, [], newClientId())}
+              />
+            ) : inGroup &&
+              activeGroup &&
+              activeSnapshot &&
+              transcriptMessages.length === 0 &&
+              activeSnapshot.olderCursor == null &&
+              !transcriptRunning &&
+              !sending ? (
+              <GroupIntro
+                members={activeGroup.members}
+                onAsk={(text) => void sendMessage(text, [], newClientId())}
+              />
             ) : (
               <Transcript
                 key={activeSnapshot?.threadId}
@@ -3333,8 +3396,9 @@ export function ShellPage() {
           {active || activeGroup ? (
             <Composer
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
+              draftKey={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
               activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
-              running={composerRunning}
+              running={composerShowsStop(currentRuns)}
               disabled={Boolean(recordingSkill) || pageAgentNeedsModel}
               pendingAttachments={activePendingAttachments}
               attachmentNotice={attachmentNotice}
@@ -3496,12 +3560,8 @@ export function ShellPage() {
                   : "text-muted-foreground/70 hover:text-foreground/75"
               }`}
             >
-              <Bell
-                size={15}
-                strokeWidth={1.8}
-                fill={activityMode ? "currentColor" : "none"}
-                aria-hidden="true"
-              />
+              {/* A history clock, not a bell: this lists recent bot runs, not notifications. */}
+              <History size={15} strokeWidth={1.8} aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -3513,6 +3573,17 @@ export function ShellPage() {
             >
               <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
             </button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="app-no-drag md:hidden"
+              aria-label={t`Close menu`}
+              title={t`Close menu`}
+              data-testid="close-mobile-sidebar"
+              onClick={() => setMobileSidebarOpen(false)}
+            >
+              <X size={16} strokeWidth={1.8} aria-hidden="true" />
+            </Button>
             <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
               <PopoverTrigger
                 className="app-no-drag text-[21px] text-muted-foreground/70 hover:text-foreground/75"
@@ -3598,81 +3669,85 @@ export function ShellPage() {
             </InputGroupAddon>
           ) : null}
         </InputGroup>
-        <SidebarPageLink
-          testId="sidebar-inbox"
-          current={inboxMode}
-          icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Inbox</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/inbox");
-          }}
-        >
-          {inboxUnread > 0 ? (
-            <span
-              role="img"
-              aria-label={plural(inboxUnread, { one: "# unread", other: "# unread" })}
-              className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
-            >
-              {inboxUnread}
-            </span>
-          ) : null}
-        </SidebarPageLink>
-        <SidebarPageLink
-          testId="sidebar-finance"
-          current={financeMode}
-          icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Finance</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/finance");
-          }}
-        />
-        <SidebarPageLink
-          testId="sidebar-legal"
-          current={legalMode}
-          icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Legal</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/legal");
-          }}
-        />
-        <SidebarPageLink
-          testId="sidebar-cap-table"
-          current={capTableMode}
-          icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Cap table</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/cap-table");
-          }}
-        />
-        <SidebarPageLink
-          testId="sidebar-data-room"
-          current={dataRoomMode}
-          icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Data room</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/data-room");
-          }}
-        />
-        <SidebarPageLink
-          testId="sidebar-artifacts"
-          current={artifactsMode}
-          // Not the Data room's folder icon: these are files bots made.
-          icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-          label={<Trans>Artifacts</Trans>}
-          onOpen={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/artifacts");
-          }}
-        />
-        <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
-        {/* Lines above and below mark where the chat list scrolls, so a half-hidden row reads as cut by
-            the edge rather than tucked under the links. */}
-        <div className="rk-scroll mt-1 flex flex-1 flex-col gap-0.5 overflow-y-auto border-y border-sidebar-border px-2.5 pt-1 pb-2.5">
+        <div className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
+          {/* While searching, matching pages are listed with the results instead. */}
+          {showSpaceSearch ? null : (
+            // Inside the scroll area, so on a short screen the chats are never squeezed out.
+            <div className="-mx-2.5 flex shrink-0 flex-col">
+              <SidebarPageLink
+                testId="sidebar-inbox"
+                current={inboxMode}
+                icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Inbox</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/inbox");
+                }}
+              >
+                {inboxUnread > 0 ? (
+                  <span
+                    role="img"
+                    aria-label={plural(inboxUnread, { one: "# unread", other: "# unread" })}
+                    className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
+                  >
+                    {inboxUnread}
+                  </span>
+                ) : null}
+              </SidebarPageLink>
+              <SidebarPageLink
+                testId="sidebar-finance"
+                current={financeMode}
+                icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Finance</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/finance");
+                }}
+              />
+              <SidebarPageLink
+                testId="sidebar-legal"
+                current={legalMode}
+                icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Legal</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/legal");
+                }}
+              />
+              <SidebarPageLink
+                testId="sidebar-cap-table"
+                current={capTableMode}
+                icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Cap table</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/cap-table");
+                }}
+              />
+              <SidebarPageLink
+                testId="sidebar-data-room"
+                current={dataRoomMode}
+                icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Data room</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/data-room");
+                }}
+              />
+              <SidebarPageLink
+                testId="sidebar-artifacts"
+                current={artifactsMode}
+                // Not the Data room's folder icon: these are files bots made.
+                icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={<Trans>Artifacts</Trans>}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/artifacts");
+                }}
+              />
+              <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
+            </div>
+          )}
           {showSpaceSearch ? (
             <SpaceSearchResults
               query={spaceQuery}
@@ -3680,6 +3755,10 @@ export function ShellPage() {
               loading={searchLoading}
               pages={searchPages}
               documents={searchDocuments}
+              artifacts={searchArtifacts}
+              onSelectArtifact={(id) =>
+                openSearchResult(`/app/artifacts/${encodeURIComponent(id)}`)
+              }
               onSelect={(hit) => void jumpToSearchHit(hit)}
               onSelectPage={openAppPage}
               onSelectDocument={(id) =>
@@ -4206,25 +4285,28 @@ export function ShellPage() {
             </div>
           ) : null}
         </div>
-        <button
-          type="button"
-          data-testid="sidebar-integrations"
-          aria-current={integrationsMode ? "page" : undefined}
-          onClick={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/integrations");
-          }}
-          className={`mx-3 mt-1 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
-            integrationsMode ? "bg-sidebar-accent" : ""
-          }`}
-        >
-          <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
-            <LayoutGrid size={15} strokeWidth={1.8} />
-          </span>
-          <span className="text-[14px] font-medium text-foreground/90">
-            <Trans>Integrations</Trans>
-          </span>
-        </button>
+        {/* The top border shows that the list above scrolls under this row. */}
+        <div className="border-t border-sidebar-border pt-1">
+          <button
+            type="button"
+            data-testid="sidebar-integrations"
+            aria-current={integrationsMode ? "page" : undefined}
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/app/integrations");
+            }}
+            className={`mx-3 mb-1 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
+              integrationsMode ? "bg-sidebar-accent" : ""
+            }`}
+          >
+            <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
+              <LayoutGrid size={15} strokeWidth={1.8} />
+            </span>
+            <span className="text-[14px] font-medium text-foreground/90">
+              <Trans>Integrations</Trans>
+            </span>
+          </button>
+        </div>
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger
             data-testid="user-menu-trigger"
@@ -4353,12 +4435,14 @@ export function ShellPage() {
         inert={mobileSidebarOpen}
         className="isolate flex min-w-0 flex-1 flex-col bg-background outline-none"
       >
-        {/* Inside main so the composer and its menus stay above it. */}
+        {/* Inside main so the composer and its menus stay above it. As wide as the
+            12px phone gutter only, so it never covers a tappable control; the swipe
+            itself is detected on the shell root from a wider edge zone. */}
         {!mobileSidebarOpen ? (
           <div
             data-testid="mobile-sidebar-swipe-edge"
             aria-hidden="true"
-            className="absolute bottom-20 start-0 top-16 z-20 w-8 touch-none md:hidden"
+            className="absolute bottom-20 start-0 top-16 z-20 w-3 touch-none md:hidden"
           />
         ) : null}
         {/* Page modes keep only the navigation controls, so phones can still open the sidebar. */}
@@ -4426,6 +4510,20 @@ export function ShellPage() {
             )}
           </div>
           <div className="flex items-center gap-1">
+            {inGroup && !pageMode && activeGroup ? (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                data-testid="group-settings-button"
+                title={t`Members and settings`}
+                aria-label={t`Members and settings`}
+                onClick={() => setPanel(panel === "group-settings" ? null : "group-settings")}
+                data-active={panel === "group-settings" ? "" : undefined}
+                className="app-no-drag data-active:bg-accent"
+              >
+                <Users size={18} strokeWidth={1.6} className="text-foreground/75" />
+              </Button>
+            ) : null}
             {!inGroup && !pageMode && active && pageBotId === active.id ? (
               <button
                 type="button"
@@ -4453,7 +4551,7 @@ export function ShellPage() {
             {!inGroup && !pageMode && active ? (
               <button
                 type="button"
-                title={t`Bot computer`}
+                title={t`Computer and routines`}
                 onClick={() => {
                   const next = panel === "computer" ? null : "computer";
                   setPanel(next);
@@ -4488,6 +4586,12 @@ export function ShellPage() {
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
               <ArtifactsPage />
+            </Suspense>
+          </ErrorBoundary>
+        ) : boardMode ? (
+          <ErrorBoundary fallback={<SectionLoadFailed />}>
+            <Suspense fallback={null}>
+              <BoardPage embedded />
             </Suspense>
           </ErrorBoundary>
         ) : financeMode ? (
@@ -4637,7 +4741,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    (computer?.state ?? active.status)
+                    computerStateLabel(computer?.state)
                   ) : (
                     <Trans>Group</Trans>
                   )}
@@ -4750,7 +4854,7 @@ export function ShellPage() {
                   ) : null}
                 </div>
                 <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
-                  {t`${active.name}'s screen`}
+                  {t`${active.name}'s computer screen`}
                 </p>
                 <RoutineListHeader
                   onCreate={() => {
@@ -5084,6 +5188,24 @@ export function ShellPage() {
               if (section && spaceId) setRenameSectionTarget({ section, spaceId });
               setBotMenu(null);
             }}
+            isGroup={!contextBot}
+            onRoutines={
+              contextBot
+                ? () => {
+                    const destKey =
+                      userId && bootstrapMe?.spaceId
+                        ? rightPanelStorageKey(userId, bootstrapMe.spaceId, "bot", contextBot.id)
+                        : null;
+                    explicitPanelTarget.current = destKey;
+                    pendingPanelRestore.current = null;
+                    navigate(`/app/${contextBot.id}`);
+                    // Routines live in the computer panel, under the bot's screen.
+                    setPanelState("computer");
+                    setRestoredPanelKey(destKey);
+                    setBotMenu(null);
+                  }
+                : undefined
+            }
             onEdit={() => {
               const destKey =
                 userId && bootstrapMe?.spaceId
@@ -5671,7 +5793,7 @@ export function ShellPage() {
 
   return (
     <AvatarStyleProvider value={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}>
-      {shell}
+      {missingPath === pathname ? <NotFoundPage /> : shell}
     </AvatarStyleProvider>
   );
 }
@@ -5903,6 +6025,23 @@ export const Transcript = memo(function Transcript({
     setAtEnd(true);
     element.scrollTo({ top: element.scrollHeight, behavior: "auto" });
   }, [scrollRef]);
+
+  // Keep the newest message in view while following when the layout changes under it: a phone
+  // rotating or a window resizing rewraps every bubble, and cards (asks, connect steps) grow
+  // after they mount. Message changes are handled by the layout effect below.
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (!following.current || jumpScrolling.current) return;
+      if (element.scrollHeight - element.scrollTop - element.clientHeight > 1) {
+        element.scrollTop = element.scrollHeight;
+      }
+    });
+    observer.observe(element);
+    for (const child of element.children) observer.observe(child);
+    return () => observer.disconnect();
+  }, [scrollRef, messages]);
 
   const jumpToLatest = useCallback(() => {
     const element = scrollRef.current;
@@ -6233,9 +6372,11 @@ export const Transcript = memo(function Transcript({
                           message.role === "user"
                             ? "end-full bottom-8 pe-3"
                             : "start-full bottom-8 ps-3",
-                          // A narrow transcript (a side panel on a phone) has no room beside the
-                          // bubble, so the time sits above its end edge instead of being cut off.
-                          "@max-md:start-auto @max-md:end-0 @max-md:bottom-full @max-md:ps-0 @max-md:pe-0",
+                          // A narrow chat has no gutter beside a wide bubble: sit under it instead.
+                          "@max-sm:[@media(hover:hover)]:top-full @max-sm:[@media(hover:hover)]:bottom-auto @max-sm:[@media(hover:hover)]:pt-1",
+                          message.role === "user"
+                            ? "@max-sm:[@media(hover:hover)]:end-0 @max-sm:[@media(hover:hover)]:pe-0"
+                            : "@max-sm:[@media(hover:hover)]:start-0 @max-sm:[@media(hover:hover)]:ps-0",
                           // Touch has no hover margin: drop the revealed time in-flow under the bubble.
                           "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
                           "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
@@ -6393,6 +6534,7 @@ const QuoteSelectionButton = memo(function QuoteSelectionButton({
 
 export const Composer = memo(function Composer({
   artifactTarget,
+  draftKey,
   activeName,
   running,
   disabled,
@@ -6440,6 +6582,8 @@ export const Composer = memo(function Composer({
   onStop: () => Promise<void>;
   onVoice?: () => void;
   artifactTarget: ArtifactTarget;
+  /** Which chat this composer writes to, so a half-written message survives switching chats. */
+  draftKey?: string;
   replyTarget?: ThreadMessage | null;
   replyQuote?: string | null;
   replyTargetName?: string;
@@ -6453,15 +6597,28 @@ export const Composer = memo(function Composer({
 }) {
   useHideAmounts();
   const { t } = useLingui();
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(() => readChatDraft(draftKey));
+  useEffect(() => {
+    writeChatDraft(draftKey, draft);
+  }, [draftKey, draft]);
   const historyIndex = useRef<number | null>(null);
   const historyDraft = useRef("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   // Highlight is tracked by option identity so late-loading targets cannot shift it to another item.
   const [mentionHighlightKey, setMentionHighlightKey] = useState<string | null>(null);
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
-  const [selectedSkill, setSelectedSkill] = useState<AgentSkillCatalogEntry | null>(null);
-  const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>([]);
+  const [selectedSkill, setSelectedSkill] = useState(() =>
+    readChatDraftSkill<AgentSkillCatalogEntry>(draftKey),
+  );
+  useEffect(() => {
+    writeChatDraftSkill(draftKey, selectedSkill);
+  }, [draftKey, selectedSkill]);
+  const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>(() =>
+    readChatDraftMentions<ComposerMention>(draftKey),
+  );
+  useEffect(() => {
+    writeChatDraftMentions(draftKey, selectedMentions);
+  }, [draftKey, selectedMentions]);
   const editRevision = useRef(0);
   const retryNonce = useRef<string | null>(null);
   const replyId = replyTarget?.id ?? null;
@@ -6491,6 +6648,7 @@ export const Composer = memo(function Composer({
   const runErrorRef = useRef<HTMLDivElement>(null);
   const presentedRunErrorIdRef = useRef<string | null>(null);
   const mentionListboxId = useId();
+  const slashListboxId = useId();
   const dragDepth = useRef(0);
   const [draggingFiles, setDraggingFiles] = useState(false);
   const canSend =
@@ -6710,6 +6868,20 @@ export const Composer = memo(function Composer({
     slashQuery !== null &&
     mentionQuery === null &&
     (slashSkillOptions.length > 0 || slashActionOptions.length > 0);
+  const slashOptionCount = slashSkillOptions.length + slashActionOptions.length;
+  const [slashHighlight, setSlashHighlight] = useState(0);
+  // Each new query starts at the first option.
+  useEffect(() => {
+    setSlashHighlight(0);
+  }, [slashQuery]);
+  const activeSlashIndex = Math.min(slashHighlight, Math.max(0, slashOptionCount - 1));
+
+  function pickSlashOption(index: number) {
+    const skill = slashSkillOptions[index];
+    if (skill) return insertSkill(skill);
+    const action = slashActionOptions[index - slashSkillOptions.length];
+    if (action) runSlashAction(action.id);
+  }
 
   async function send() {
     // Same as Enter: while "No matches" shows, Escape first, then send as typed.
@@ -7061,37 +7233,72 @@ export const Composer = memo(function Composer({
       ) : null}
       {showSlashPicker ? (
         <div
+          id={slashListboxId}
+          role="listbox"
+          aria-label={t`Skills and actions`}
           data-testid="slash-picker"
           className="mb-2 overflow-hidden rounded-[14px] border border-border bg-muted"
         >
-          {slashSkillOptions.map((skill) => (
-            <button
-              key={skill.id}
-              type="button"
-              aria-label={t`Skill ${skill.name}`}
-              onClick={() => insertSkill(skill)}
-              className="flex w-full items-start gap-3 px-4 py-2.5 text-start hover:bg-accent"
-            >
-              <Box size={16} strokeWidth={1.7} className="mt-0.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0">
-                <span dir="auto" className="block text-[14px] text-foreground">
-                  {skill.name}
-                </span>
-                <span dir="auto" className="block truncate text-[12.5px] text-muted-foreground">
-                  {truncateSlashDescription(skill.description)}
-                </span>
-              </span>
-            </button>
-          ))}
-          {slashActionOptions.map((action) => {
-            const label = slashActionLabel(action.id);
+          {slashSkillOptions.length ? (
+            <div role="presentation" className={SLASH_SECTION_CLASS}>
+              <Trans>Skills</Trans>
+            </div>
+          ) : null}
+          {slashSkillOptions.map((skill, index) => {
+            const label = slashSkillLabel(skill);
             return (
               <button
+                id={`${slashListboxId}-option-${index}`}
+                key={skill.id}
+                type="button"
+                role="option"
+                aria-selected={index === activeSlashIndex}
+                aria-label={t`Skill ${label.title}`}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => insertSkill(skill)}
+                onMouseMove={() => setSlashHighlight(index)}
+                className={`flex w-full items-start gap-3 px-4 py-2.5 text-start hover:bg-accent ${
+                  index === activeSlashIndex ? SLASH_SELECTED_CLASS : ""
+                }`}
+              >
+                <Box
+                  size={16}
+                  strokeWidth={1.7}
+                  className="mt-0.5 shrink-0 text-muted-foreground"
+                />
+                <span className="min-w-0">
+                  <span dir="auto" className="block text-[14px] text-foreground">
+                    {label.title}
+                  </span>
+                  <span dir="auto" className="block truncate text-[12.5px] text-muted-foreground">
+                    {truncateSlashDescription(label.description)}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+          {slashActionOptions.length ? (
+            <div role="presentation" className={SLASH_SECTION_CLASS}>
+              <Trans>Actions</Trans>
+            </div>
+          ) : null}
+          {slashActionOptions.map((action, actionIndex) => {
+            const label = slashActionLabel(action.id);
+            const index = slashSkillOptions.length + actionIndex;
+            return (
+              <button
+                id={`${slashListboxId}-option-${index}`}
                 key={action.id}
                 type="button"
+                role="option"
+                aria-selected={index === activeSlashIndex}
                 aria-label={label}
+                onMouseDown={(event) => event.preventDefault()}
                 onClick={() => runSlashAction(action.id)}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-start hover:bg-accent"
+                onMouseMove={() => setSlashHighlight(index)}
+                className={`flex w-full items-center gap-3 px-4 py-2.5 text-start hover:bg-accent ${
+                  index === activeSlashIndex ? SLASH_SELECTED_CLASS : ""
+                }`}
               >
                 <Settings size={16} strokeWidth={1.7} className="shrink-0 text-muted-foreground" />
                 <span className="text-[14px] text-foreground">{label}</span>
@@ -7142,11 +7349,11 @@ export const Composer = memo(function Composer({
             >
               <Box size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />
               <span dir="auto" className="truncate">
-                {selectedSkill.name}
+                {slashSkillLabel(selectedSkill).title}
               </span>
               <button
                 type="button"
-                aria-label={t`Remove skill ${selectedSkill.name}`}
+                aria-label={t`Remove skill ${slashSkillLabel(selectedSkill).title}`}
                 onClick={() => {
                   markEdited();
                   setSelectedSkill(null);
@@ -7210,6 +7417,30 @@ export const Composer = memo(function Composer({
                 return;
               }
               const composing = event.nativeEvent.isComposing || event.keyCode === 229;
+              if (showSlashPicker) {
+                const slashKey = resolveMentionPickerKey({
+                  key: event.key,
+                  shiftKey: event.shiftKey,
+                  isComposing: composing,
+                  optionCount: slashOptionCount,
+                  highlightedIndex: activeSlashIndex,
+                });
+                if (slashKey.type === "move") {
+                  event.preventDefault();
+                  setSlashHighlight(slashKey.index);
+                  return;
+                }
+                if (slashKey.type === "complete") {
+                  event.preventDefault();
+                  pickSlashOption(slashKey.index);
+                  return;
+                }
+                if (slashKey.type === "dismiss") {
+                  event.preventDefault();
+                  setSlashQuery(null);
+                  return;
+                }
+              }
               const action = resolveMentionPickerKey({
                 key: event.key,
                 shiftKey: event.shiftKey,
@@ -7288,8 +7519,17 @@ export const Composer = memo(function Composer({
             aria-autocomplete="list"
             aria-haspopup="listbox"
             aria-expanded={mentionPickerOpen || mentionNoMatches}
-            aria-controls={mentionPickerOpen || mentionNoMatches ? mentionListboxId : undefined}
-            aria-activedescendant={activeMentionOptionId}
+            aria-controls={
+              mentionPickerOpen || mentionNoMatches
+                ? mentionListboxId
+                : showSlashPicker
+                  ? slashListboxId
+                  : undefined
+            }
+            aria-activedescendant={
+              activeMentionOptionId ??
+              (showSlashPicker ? `${slashListboxId}-option-${activeSlashIndex}` : undefined)
+            }
             name="chat-message"
             autoComplete="off"
             dir="auto"
@@ -7390,14 +7630,19 @@ function measureTextareaHeight(textarea: HTMLTextAreaElement, width?: number) {
   return height;
 }
 
+/** The picker sits on bg-muted, where bg-accent barely shows; the page background stands out. */
+const SLASH_SELECTED_CLASS = "bg-background shadow-[inset_3px_0_0_var(--ring)]";
+const SLASH_SECTION_CLASS =
+  "px-4 pt-2.5 pb-1 text-[11.5px] font-medium uppercase tracking-wide text-muted-foreground/80";
+
 function slashActionLabel(id: SlashActionId) {
   switch (id) {
     case "chat-settings":
-      return t`Chat Settings`;
+      return t`Chat settings`;
     case "settings-general":
-      return t`Settings: General`;
+      return t`Open Settings`;
     case "settings-usage":
-      return t`Settings: Usage`;
+      return t`See usage`;
   }
 }
 
@@ -7561,6 +7806,15 @@ function MessageHoverActions({
       </div>
     </MessageHoverMetadata>
   );
+}
+
+/** Whether an `/app/:botId` link still names a chat, live or archived. */
+export function knownBotId(
+  botId: string,
+  bots: readonly Pick<Bot, "id">[],
+  archivedBots: readonly Pick<Bot, "id">[],
+): boolean {
+  return bots.some((bot) => bot.id === botId) || archivedBots.some((bot) => bot.id === botId);
 }
 
 function firstThreadRoute(
@@ -7860,14 +8114,12 @@ const MessageView = memo(function MessageView({
               key={i}
               className="flex flex-col items-center gap-0.5 py-1 text-center text-[13.5px] text-muted-foreground"
             >
+              {/* The handoff note is the bot-to-bot prompt, not something written for the reader. */}
               <span>
                 <Trans>
                   {from} handed off to {to}
                 </Trans>
               </span>
-              {block.text ? (
-                <span className="max-w-prose">{maskCurrencyWhenHidden(block.text)}</span>
-              ) : null}
             </div>
           );
         }
@@ -8251,6 +8503,15 @@ function computerPlaceholder(
   if (state === "suspended") return t`Computer is asleep. Open it to wake.`;
   if (state === "error") return t`Computer failed to boot`;
   return t`Computer is stopped`;
+}
+
+/** Panel heading for the bot computer, in words rather than the raw state slug. */
+function computerStateLabel(state: ComputerStatus["state"] | undefined) {
+  if (state === "running") return t`Computer is on`;
+  if (state === "booting") return t`Computer is starting`;
+  if (state === "suspended") return t`Computer is asleep`;
+  if (state === "error") return t`Computer could not start`;
+  return t`Computer is off`;
 }
 
 function computerLabel(mode: ComputerStatus["mode"] | undefined, botName: string) {

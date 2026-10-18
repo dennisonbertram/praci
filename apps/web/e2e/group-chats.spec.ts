@@ -273,6 +273,11 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await expect(settings).toHaveAttribute("data-panel", "group-settings");
   await page.keyboard.press("Escape");
   await expect(settings).toHaveAttribute("data-panel", "closed");
+  // The header's members button opens the same panel and closes it again.
+  await page.getByRole("button", { name: "Members and settings" }).click();
+  await expect(settings).toHaveAttribute("data-panel", "group-settings");
+  await page.getByRole("button", { name: "Members and settings" }).click();
+  await expect(settings).toHaveAttribute("data-panel", "closed");
   await page.getByTestId("bot-settings-trigger").click();
   await settings.getByRole("button", { name: "Close panel", exact: true }).click();
   await expect(settings).toHaveAttribute("data-panel", "closed");

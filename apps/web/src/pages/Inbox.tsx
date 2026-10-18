@@ -34,6 +34,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
 import { AskBotButton } from "../components/AskBotButton";
 import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
+import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
 import { InboxGroup } from "../components/inbox/InboxRow";
 import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
@@ -744,6 +745,7 @@ export function InboxPage({
             ) : null}
           </InputGroup>
         </form>
+        <HideAmountsButton />
         {triage ? (
           <Toggle
             variant="outline"

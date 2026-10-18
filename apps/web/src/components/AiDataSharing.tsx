@@ -132,9 +132,14 @@ export function AiDataSharingSection() {
       <h3 className="text-[15px] font-medium text-foreground">
         <Trans>AI data sharing</Trans>
       </h3>
+      <p className="mt-1 text-[13px] text-muted-foreground">{i18n._(AI_DATA_DISCLOSURES.model)}</p>
+      {/* Without this, an Off switch while bots still answer reads as a switch that does nothing. */}
       <p className="mt-1 text-[13px] text-muted-foreground">
-        {i18n._(AI_DATA_DISCLOSURES.model)}{" "}
-        <Trans>The Inbox sorts and reads your mail only while its model is allowed here.</Trans>
+        <Trans>
+          Your bots always answer through the AI service chosen in Models. A switch below also lets
+          that service read your mail and documents, so Rakazo can sort your Inbox and read Data
+          room files.
+        </Trans>
       </p>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
@@ -152,7 +157,12 @@ export function AiDataSharingSection() {
                 disabled={pending}
                 onCheckedChange={(allowed) => set(recipient, allowed)}
               />
-              <span className="text-[14px] text-foreground/75">{name}</span>
+              <span className="flex min-w-0 flex-col">
+                <span className="text-[14px] text-foreground/75">{name}</span>
+                <span className="text-[12.5px] text-muted-foreground">
+                  <Trans>Inbox sorting and Data room files</Trans>
+                </span>
+              </span>
             </li>
           );
         })}

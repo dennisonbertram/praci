@@ -42,6 +42,7 @@ import {
   type Sort,
   useDataRoomList,
 } from "../components/data-room/use-data-room-list";
+import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
@@ -440,6 +441,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
         </div>
         {empty ? null : (
           <>
+            <HideAmountsButton />
             <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
               <legend className="sr-only">{t`View`}</legend>
               <Tip label={t`List view`}>
@@ -493,7 +495,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
         </div>
       ) : (
         <>
-          <div className="px-3 pb-2.5 empty:hidden md:px-5">
+          <div className="px-4 pb-2.5 empty:hidden md:px-7">
             <DataRoomConsentPrompt onAllowed={reload} />
           </div>
           <FilterBar

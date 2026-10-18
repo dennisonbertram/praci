@@ -1399,3 +1399,23 @@ it("leaves out a comparison whose two figures are the same", async () => {
   expect(container.textContent).not.toMatch(/vs \$[\d,]+ for/);
   expect(container.textContent).not.toMatch(/Spent [^·]+· .*vs /);
 });
+
+it("shows the Crypto card loading, not $0, while a wallet's first sync runs", async () => {
+  rpcMock.refresh.mockReturnValue(new Promise(() => {}));
+  rpcMock.overview.mockResolvedValue(
+    connectedOverview({
+      crypto: {
+        totalCents: 0,
+        byChain: [],
+        byWallet: [],
+        lastSyncedAt: null,
+        unpricedTokenCount: 0,
+      },
+    }),
+  );
+  await show("/app/finance");
+  await flush();
+  const card = container.querySelector('a[href="/app/finance/crypto"]');
+  expect(card?.textContent).not.toContain("$0");
+  expect(card?.querySelector('[aria-label="Loading"]')).not.toBeNull();
+});

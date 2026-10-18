@@ -38,7 +38,7 @@ const FOCUS_OPTIONS: FocusOption[] = [
     label: "Run my company",
     summary: "cash, cap table, investors, and email",
     apps: ["gmail", "googlecalendar"],
-    note: "For cash and equity, open Finance and Cap table in the sidebar to connect your bank, card, and Carta. Board decks and investor documents go in the Data room.",
+    note: "For cash and equity, connect your bank, card, and Carta in [Finance](/app/finance) and [Cap table](/app/cap-table). Board decks and investor documents go in the [Data room](/app/data-room).",
   },
   {
     id: "day",
@@ -118,7 +118,11 @@ export async function seedBlankBotGreeting(
     where: { id: actor.userId },
     select: { name: true },
   });
-  const firstName = user?.name.trim().split(/\s+/)[0];
+  const fullName = user?.name.trim() ?? "";
+  // Sign-up without a name stores the email handle; greeting someone as "new-founder-2" reads wrong.
+  const emailHandle = actor.email?.split("@")[0]?.toLowerCase();
+  const firstName =
+    fullName && fullName.toLowerCase() !== emailHandle ? fullName.split(/\s+/)[0] : undefined;
   const hi = firstName ? `Hi ${firstName}` : "Hi";
   // A blank bot is usually renamed right after it is created, so its greeting does not name it.
   const text = options.first
@@ -338,7 +342,7 @@ export async function chooseFocus(
   await post(deps, target, [
     {
       kind: "text",
-      text: `Hit those ${cards.length === 1 ? "one" : cards.length === 2 ? "two" : "three"} and I’ll start pulling the picture.`,
+      text: `Authorize ${cards.length === 1 ? "it" : cards.length === 2 ? "both" : "all three"} and I’ll start pulling the picture together.`,
     },
   ]);
   if (option.note) await post(deps, target, [{ kind: "text", text: option.note }]);

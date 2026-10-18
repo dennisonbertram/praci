@@ -119,3 +119,27 @@ describe("inferHandoffTargetBotId", () => {
     ).toBe("research");
   });
 });
+
+describe("plain-word everyone", () => {
+  const members = [
+    { id: "a", name: "Chief" },
+    { id: "b", name: "Legal" },
+    { id: "c", name: "IR" },
+  ];
+  it("never broadcasts on the plain word", () => {
+    expect(resolveGroupTargetBotIds({ text: "status from everyone please", members })).toEqual([
+      "a",
+    ]);
+    expect(
+      resolveGroupTargetBotIds({ text: "@Legal do not send this to everybody", members }),
+    ).toEqual(["b"]);
+    expect(resolveGroupTargetBotIds({ text: "mail contact@everyone.test", members })).toEqual([
+      "a",
+    ]);
+  });
+  it("lets explicit chips win over @everyone text", () => {
+    expect(
+      resolveGroupTargetBotIds({ text: "@everyone hi", members, explicitMentions: ["b"] }),
+    ).toEqual(["b"]);
+  });
+});

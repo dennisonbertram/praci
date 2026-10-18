@@ -40,7 +40,7 @@ test("a bot's page opens from the Page control, renders, and saves edits", async
   const botId = activeBotId(page);
 
   // No page yet: no Page control.
-  await expect(page.getByRole("button", { name: "Bot computer" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Computer and routines" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Page", exact: true })).toHaveCount(0);
 
   const saved = await rpc<{ ok: boolean }>(page, "pages/save", {

@@ -211,9 +211,9 @@ export const lastDayOf = (endExclusive: string): string =>
     .toISOString()
     .slice(0, 10);
 
-/** A share or unit count, or `—`. Masked while amounts are hidden. */
+/** A share or unit count, or `—`. Not money, so it stays visible while amounts are hidden. */
 export const shareCount = (value: number | null, locale?: string) =>
-  value == null ? "—" : getHideAmounts() ? MASK : value.toLocaleString(locale);
+  value == null ? "—" : value.toLocaleString(locale);
 
 /** A whole or per-share USD figure (`digits` decimals), or `—`. Masked while amounts are hidden. */
 export const usdFigure = (value: number | null, digits = 0, locale?: string) =>
@@ -228,13 +228,16 @@ export const usdFigure = (value: number | null, digits = 0, locale?: string) =>
           maximumFractionDigits: digits,
         });
 
-/** A percentage with `digits` decimals, or `—`. Masked while amounts are hidden. */
+/** A percentage with `digits` decimals (ownership, yield), or `—`. Not money, so it stays visible. */
 export const percentFigure = (value: number | null, digits = 2) =>
-  value == null ? "—" : getHideAmounts() ? `${MASK}%` : `${value.toFixed(digits)}%`;
+  value == null ? "—" : `${value.toFixed(digits)}%`;
 
-/** Runway in months (`4.2`), undefined when unknown. Masked while amounts are hidden, since it follows from cash. */
+/**
+ * Runway in months (`4.2`), undefined when unknown. A length of time, not money, so it stays
+ * visible while amounts are hidden, as it does in bot replies and artifacts.
+ */
 export const runwayText = (months: number | null | undefined, digits = 1): string | undefined =>
-  months == null ? undefined : getHideAmounts() ? MASK : months.toFixed(digits);
+  months == null ? undefined : months.toFixed(digits);
 
-/** Any text that follows from amounts (token quantities, run-out dates). Masked while amounts are hidden. */
+/** Money written as text (a contract value, an exchange balance). Masked while amounts are hidden. */
 export const hiddenOr = (text: string): string => (getHideAmounts() ? MASK : text);

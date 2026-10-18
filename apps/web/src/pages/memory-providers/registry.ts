@@ -25,7 +25,7 @@ export const MEMORY_PROVIDER_SETTINGS: readonly MemoryProviderSettingsRegistrati
   {
     id: "supermemory",
     name: "Supermemory",
-    description: "Add semantic recall alongside native MEMORY.md memory.",
+    description: "Lets bots search everything they have learned, on top of built-in memory.",
     SettingsForm: SupermemorySettingsForm,
     connectedLabel: (config) =>
       config.settings.mode === "cloud" ? "Supermemory Cloud" : `Local · ${config.settings.baseUrl}`,
@@ -33,7 +33,7 @@ export const MEMORY_PROVIDER_SETTINGS: readonly MemoryProviderSettingsRegistrati
   {
     id: "serenity",
     name: "Serenity",
-    description: "Hosted or self-hosted Serenity brain for durable memory.",
+    description: "Keeps bot memory in Serenity, hosted for you or on your own server.",
     SettingsForm: SerenitySettingsForm,
     connectedLabel: (config) => {
       const label = config.settings.brainLabel?.trim();

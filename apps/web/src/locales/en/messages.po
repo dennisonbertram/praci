@@ -19,8 +19,8 @@ msgid " (unread)"
 msgstr " (unread)"
 
 #: src/pages/AccountSettingsOverlay.tsx
-msgid "— tokens"
-msgstr "— tokens"
+msgid "— tokens of AI text"
+msgstr "— tokens of AI text"
 
 #. placeholder {0}: statement.duplicateCount
 #: src/components/finance/StatementReviewCard.tsx
@@ -47,15 +47,15 @@ msgstr "{0, plural, one {# model} other {# models}}"
 msgid "{0, plural, one {# result} other {# results}}"
 msgstr "{0, plural, one {# result} other {# results}}"
 
-#. placeholder {0}: usage.runs
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "{0, plural, one {# run} other {# runs}}"
-msgstr "{0, plural, one {# run} other {# runs}}"
-
 #. placeholder {0}: subs.items.length
 #: src/pages/Finance.tsx
 msgid "{0, plural, one {# subscription} other {# subscriptions}}"
 msgstr "{0, plural, one {# subscription} other {# subscriptions}}"
+
+#. placeholder {0}: usage.runs
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
+msgstr "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
 
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
@@ -71,6 +71,11 @@ msgstr "{0, plural, one {Its # transaction will be removed from Finance.} other 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr "{0, plural, one {Last full month} other {Last # full months}}"
+
+#. placeholder {0}: filteredRecent.length
+#: src/pages/ActivityList.tsx
+msgid "{0, plural, one {Show # finished run} other {Show # finished runs}}"
+msgstr "{0, plural, one {Show # finished run} other {Show # finished runs}}"
 
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
@@ -219,8 +224,8 @@ msgstr "{0} will still respond to direct mentions."
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
-msgid "{0}'s screen"
-msgstr "{0}'s screen"
+msgid "{0}'s computer screen"
+msgstr "{0}'s computer screen"
 
 #: src/components/finance/ui.tsx
 msgid "{accounts} + crypto"
@@ -285,6 +290,10 @@ msgstr "{days}d ago"
 #: src/components/data-room/format.ts
 msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
 msgstr "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
+
+#: src/pages/shell/GroupIntro.tsx
+msgid "{first} answers by default. Type @ and a name to ask one bot, or ask everyone to hear from each of them."
+msgstr "{first} answers by default. Type @ and a name to ask one bot, or ask everyone to hear from each of them."
 
 #: src/components/data-room/folders.ts
 msgid "{folders, plural, one {# folder} other {# folders}}"
@@ -418,8 +427,8 @@ msgid "{title}, {label}"
 msgstr "{title}, {label}"
 
 #: src/pages/AccountSettingsOverlay.tsx
-msgid "{tokens, plural, one {# token} other {# tokens}}"
-msgstr "{tokens, plural, one {# token} other {# tokens}}"
+msgid "{tokens, plural, one {# token of AI text} other {# tokens of AI text}}"
+msgstr "{tokens, plural, one {# token of AI text} other {# tokens of AI text}}"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "{unpriced} unpriced"
@@ -540,6 +549,10 @@ msgstr "Accounts"
 msgid "Action confirmations"
 msgstr "Action confirmations"
 
+#: src/pages/Shell.tsx
+msgid "Actions"
+msgstr "Actions"
+
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.spaceName
 #. placeholder {0}: item.chat.name
@@ -619,10 +632,6 @@ msgstr "Add a run time for this one-shot."
 #: src/pages/Shell.tsx
 msgid "Add a schedule, webhook, GitHub, or message trigger"
 msgstr "Add a schedule, webhook, GitHub, or message trigger"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Add a schedule, webhook, GitHub, or message trigger to run this routine."
-msgstr "Add a schedule, webhook, GitHub, or message trigger to run this routine."
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/pages/Finance.tsx
@@ -704,10 +713,6 @@ msgstr "Add server URL"
 msgid "Add to routine"
 msgstr "Add to routine"
 
-#: src/pages/RoutineEditor.tsx
-msgid "Add trigger"
-msgstr "Add trigger"
-
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -736,6 +741,10 @@ msgstr "Address or ENS"
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "Advanced"
+
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Advanced: connect an outside memory service"
+msgstr "Advanced: connect an outside memory service"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
@@ -768,6 +777,10 @@ msgstr "All bots"
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "All bots can use {0}."
 msgstr "All bots can use {0}."
+
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "All bots share one memory"
+msgstr "All bots share one memory"
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "All crypto"
@@ -927,6 +940,10 @@ msgstr "An API key is stored for this provider, not a subscription sign-in."
 msgid "Answer"
 msgstr "Answer"
 
+#: src/lib/slash-skills.ts
+msgid "Answer auditor requests"
+msgstr "Answer auditor requests"
+
 #: src/components/AskCard.tsx
 msgid "Answered"
 msgstr "Answered"
@@ -1040,7 +1057,12 @@ msgid "Arguments"
 msgstr "Arguments"
 
 #: src/pages/Artifacts.tsx
+msgid "Artifact"
+msgstr "Artifact"
+
+#: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
+#: src/pages/SpaceSearch.tsx
 msgid "Artifacts"
 msgstr "Artifacts"
 
@@ -1228,6 +1250,10 @@ msgstr "Avatars"
 msgid "Back"
 msgstr "Back"
 
+#: src/pages/Artifacts.tsx
+msgid "Back to artifacts"
+msgstr "Back to artifacts"
+
 #: src/pages/Shell.tsx
 msgid "Back to Cap table"
 msgstr "Back to Cap table"
@@ -1320,10 +1346,6 @@ msgstr "Bills"
 msgid "Blocked"
 msgstr "Blocked"
 
-#: src/pages/Board.tsx
-msgid "Board"
-msgstr "Board"
-
 #: src/components/compose/RichTextEditor.tsx
 msgid "Bold"
 msgstr "Bold"
@@ -1350,10 +1372,6 @@ msgstr "Bot"
 #: src/lib/browser-notifications.ts
 msgid "Bot"
 msgstr "Bot"
-
-#: src/pages/Shell.tsx
-msgid "Bot computer"
-msgstr "Bot computer"
 
 #: src/pages/Shell.tsx
 msgid "Bot screen"
@@ -1577,11 +1595,19 @@ msgstr "Cash out and cash in by month"
 msgid "Cash out and cash in over time"
 msgstr "Cash out and cash in over time"
 
+#: src/pages/shell/message-cards.tsx
+msgid "Cash, cap table, investors and email"
+msgstr "Cash, cap table, investors and email"
+
 #: src/components/FinanceCards.tsx
 #: src/pages/finance/FinanceBurn.tsx
 #: src/pages/Inbox.tsx
 msgid "Categories"
 msgstr "Categories"
+
+#: src/lib/slash-skills.ts
+msgid "Categorize transactions"
+msgstr "Categorize transactions"
 
 #: src/components/finance/ui.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1661,8 +1687,8 @@ msgid "Chat apps, group channels, and agent connections."
 msgstr "Chat apps, group channels, and agent connections."
 
 #: src/pages/Shell.tsx
-msgid "Chat Settings"
-msgstr "Chat Settings"
+msgid "Chat settings"
+msgstr "Chat settings"
 
 #: src/pages/SpaceSearch.tsx
 msgid "Chats"
@@ -1676,6 +1702,10 @@ msgstr "Check again"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check failed"
 msgstr "Check failed"
+
+#: src/lib/slash-skills.ts
+msgid "Check for crypto scams"
+msgstr "Check for crypto scams"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Check for receipt"
@@ -1746,9 +1776,9 @@ msgstr "Choose how apps connect for everyone on this server."
 msgid "Choose the account to connect, then come back here."
 msgstr "Choose the account to connect, then come back here."
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Choose which connected model Rakazo uses."
-msgstr "Choose which connected model Rakazo uses."
+#: src/pages/RoutineEditor.tsx
+msgid "Choose when it runs"
+msgstr "Choose when it runs"
 
 #: src/pages/Shell.tsx
 msgid "Choosing your company in Carta"
@@ -1859,6 +1889,10 @@ msgstr "Close image preview"
 msgid "Close memory settings"
 msgstr "Close memory settings"
 
+#: src/pages/Shell.tsx
+msgid "Close menu"
+msgstr "Close menu"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Close messaging settings"
 msgstr "Close messaging settings"
@@ -1950,6 +1984,10 @@ msgstr "Command variable"
 msgid "Comment"
 msgstr "Comment"
 
+#: src/pages/CapTable.tsx
+msgid "Common share price"
+msgstr "Common share price"
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Compact"
 msgstr "Compact"
@@ -1979,6 +2017,14 @@ msgid "Computer"
 msgstr "Computer"
 
 #: src/pages/Shell.tsx
+msgid "Computer and routines"
+msgstr "Computer and routines"
+
+#: src/pages/Shell.tsx
+msgid "Computer could not start"
+msgstr "Computer could not start"
+
+#: src/pages/Shell.tsx
 msgid "Computer failed to boot"
 msgstr "Computer failed to boot"
 
@@ -1989,6 +2035,18 @@ msgstr "Computer is asleep"
 #: src/pages/Shell.tsx
 msgid "Computer is asleep. Open it to wake."
 msgstr "Computer is asleep. Open it to wake."
+
+#: src/pages/Shell.tsx
+msgid "Computer is off"
+msgstr "Computer is off"
+
+#: src/pages/Shell.tsx
+msgid "Computer is on"
+msgstr "Computer is on"
+
+#: src/pages/Shell.tsx
+msgid "Computer is starting"
+msgstr "Computer is starting"
 
 #: src/pages/Shell.tsx
 msgid "Computer is stopped"
@@ -2898,6 +2956,10 @@ msgstr "Cron expression"
 msgid "Crypto"
 msgstr "Crypto"
 
+#: src/lib/slash-skills.ts
+msgid "Crypto holdings"
+msgstr "Crypto holdings"
+
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Crypto is left out of cash and this runway."
 msgstr "Crypto is left out of cash and this runway."
@@ -2922,6 +2984,10 @@ msgstr "Customer support"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Customize bot avatar"
 msgstr "Customize bot avatar"
+
+#: src/lib/slash-skills.ts
+msgid "Cut costs"
+msgstr "Cut costs"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Dark"
@@ -2985,10 +3051,6 @@ msgstr "Default ({0})"
 #: src/pages/shell/bot-panel.tsx
 msgid "Default ({0})"
 msgstr "Default ({0})"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Default scope"
-msgstr "Default scope"
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
@@ -3289,6 +3351,10 @@ msgstr "Draft"
 msgid "Draft discarded"
 msgstr "Draft discarded"
 
+#: src/lib/slash-skills.ts
+msgid "Draft investor update"
+msgstr "Draft investor update"
+
 #: src/components/MailApprovalCard.tsx
 msgid "Draft not saved"
 msgstr "Draft not saved"
@@ -3302,6 +3368,7 @@ msgstr "Draft saved"
 msgid "Draft skill"
 msgstr "Draft skill"
 
+#: src/components/PageAgentIntro.tsx
 #: src/pages/Shell.tsx
 msgid "Draft this month's investor update"
 msgstr "Draft this month's investor update"
@@ -3350,6 +3417,10 @@ msgstr "Duplicate"
 msgid "e.g. Recruiting, Sales, Legal"
 msgstr "e.g. Recruiting, Sales, Legal"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Each bot keeps its own"
+msgstr "Each bot keeps its own"
+
 #: src/pages/Inbox.tsx
 msgid "Earlier"
 msgstr "Earlier"
@@ -3384,6 +3455,10 @@ msgstr "Email"
 msgid "Email & calendar"
 msgstr "Email & calendar"
 
+#: src/pages/shell/message-cards.tsx
+msgid "Email and calendar"
+msgstr "Email and calendar"
+
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
 msgstr "Email is not allowed to register"
@@ -3395,6 +3470,10 @@ msgstr "Email not found"
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "Email verification required"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Email, Slack and docs"
+msgstr "Email, Slack and docs"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Embedding model"
@@ -3611,6 +3690,10 @@ msgstr "File is too large to upload."
 msgid "Files"
 msgstr "Files"
 
+#: src/pages/Artifacts.tsx
+msgid "Files your bots make, like investor updates and board decks, appear here. Ask a bot to write one."
+msgstr "Files your bots make, like investor updates and board decks, appear here. Ask a bot to write one."
+
 #: src/pages/ActivityList.tsx
 #: src/pages/Inbox.tsx
 msgid "Filter"
@@ -3661,7 +3744,11 @@ msgstr "Find an app"
 msgid "Find models"
 msgstr "Find models"
 
-#: src/components/inbox/InboxAgentIntro.tsx
+#: src/lib/slash-skills.ts
+msgid "Find recurring and overlapping spend to cut."
+msgstr "Find recurring and overlapping spend to cut."
+
+#: src/components/PageAgentIntro.tsx
 msgid "Find the latest invoice"
 msgstr "Find the latest invoice"
 
@@ -3752,6 +3839,10 @@ msgstr "From"
 msgid "From {0}"
 msgstr "From {0}"
 
+#: src/pages/RoutineEditor.tsx
+msgid "From another app (advanced)"
+msgstr "From another app (advanced)"
+
 #: src/components/data-room/Preview.tsx
 msgid "From email"
 msgstr "From email"
@@ -3759,6 +3850,10 @@ msgstr "From email"
 #: src/components/data-room/Preview.tsx
 msgid "From Google Drive"
 msgstr "From Google Drive"
+
+#: src/pages/CapTable.tsx
+msgid "From the latest 409A valuation"
+msgstr "From the latest 409A valuation"
 
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
@@ -3839,6 +3934,10 @@ msgstr "Gmail tabs"
 msgid "Go to"
 msgstr "Go to"
 
+#: src/pages/NotFound.tsx
+msgid "Go to Rakazo"
+msgstr "Go to Rakazo"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Google apps"
 msgstr "Google apps"
@@ -3860,6 +3959,7 @@ msgstr "Grid view"
 msgid "Group"
 msgstr "Group"
 
+#: src/pages/BotContextMenu.tsx
 #: src/pages/GroupPanel.tsx
 msgid "Group settings"
 msgstr "Group settings"
@@ -3966,6 +4066,18 @@ msgstr "hour"
 msgid "hours"
 msgstr "hours"
 
+#: src/lib/slash-skills.ts
+msgid "How long cash lasts, with what-ifs."
+msgstr "How long cash lasts, with what-ifs."
+
+#: src/components/PageAgentIntro.tsx
+msgid "How much of the option pool is left?"
+msgstr "How much of the option pool is left?"
+
+#: src/components/PageAgentIntro.tsx
+msgid "How much runway do we have?"
+msgstr "How much runway do we have?"
+
 #: src/pages/RoutineSchedule.tsx
 msgid "How often"
 msgstr "How often"
@@ -3978,7 +4090,15 @@ msgstr "How to check"
 msgid "HR document"
 msgstr "HR document"
 
-#: src/components/inbox/InboxAgentIntro.tsx
+#: src/components/PageAgentIntro.tsx
+msgid "I keep your cap table and investor contacts, and draft investor updates for you to review."
+msgstr "I keep your cap table and investor contacts, and draft investor updates for you to review."
+
+#: src/components/PageAgentIntro.tsx
+msgid "I read your bank and card accounts and answer questions about cash, spending and runway."
+msgstr "I read your bank and card accounts and answer questions about cash, spending and runway."
+
+#: src/components/PageAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 msgstr "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 
@@ -4073,6 +4193,10 @@ msgstr "Inbox"
 msgid "Inbox & email"
 msgstr "Inbox & email"
 
+#: src/components/AiDataSharing.tsx
+msgid "Inbox sorting and Data room files"
+msgstr "Inbox sorting and Data room files"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Inherit default"
 msgstr "Inherit default"
@@ -4137,7 +4261,6 @@ msgstr "Investor document"
 msgid "Investors"
 msgstr "Investors"
 
-#: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
 msgstr "Isolated"
@@ -4266,10 +4389,6 @@ msgstr "Later statements for this account keep this name."
 msgid "Latest {0} of {1}"
 msgstr "Latest {0} of {1}"
 
-#: src/pages/CapTable.tsx
-msgid "Latest 409A"
-msgstr "Latest 409A"
-
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
 msgstr "Launched {app}"
@@ -4381,6 +4500,7 @@ msgstr "Load older runs"
 msgid "Load web images automatically"
 msgstr "Load web images automatically"
 
+#: src/pages/Finance.tsx
 #: src/pages/Shell.tsx
 msgid "Loading"
 msgstr "Loading"
@@ -4511,10 +4631,6 @@ msgstr "Manage billing"
 msgid "Manage messaging settings"
 msgstr "Manage messaging settings"
 
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Manage the Space semantic memory provider."
-msgstr "Manage the Space semantic memory provider."
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Manual setup required"
 msgstr "Manual setup required"
@@ -4615,6 +4731,10 @@ msgstr "Medium"
 msgid "Medium"
 msgstr "Medium"
 
+#: src/pages/shell/GroupIntro.tsx
+msgid "Members"
+msgstr "Members"
+
 #: src/pages/GroupPanel.tsx
 msgid "Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
 msgstr "Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
@@ -4622,6 +4742,10 @@ msgstr "Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
 #: src/pages/GroupPanel.tsx
 msgid "Members (pick {GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
 msgstr "Members (pick {GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
+
+#: src/pages/Shell.tsx
+msgid "Members and settings"
+msgstr "Members and settings"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Memo"
@@ -4800,6 +4924,10 @@ msgstr "Monthly avg"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Monthly burn"
 msgstr "Monthly burn"
+
+#: src/lib/slash-skills.ts
+msgid "Monthly money review"
+msgstr "Monthly money review"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Monthly spend"
@@ -5057,8 +5185,12 @@ msgid "No apps match."
 msgstr "No apps match."
 
 #: src/pages/Artifacts.tsx
-msgid "No artifacts found."
-msgstr "No artifacts found."
+msgid "No artifacts match these filters."
+msgstr "No artifacts match these filters."
+
+#: src/pages/Artifacts.tsx
+msgid "No artifacts yet"
+msgstr "No artifacts yet"
 
 #: src/pages/CapTable.tsx
 msgid "No auditors yet"
@@ -5149,6 +5281,10 @@ msgstr "No mail matches this filter"
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
 msgstr "No matches"
+
+#: src/pages/SpaceSearch.tsx
+msgid "No matches in chats, pages, documents or artifacts."
+msgstr "No matches in chats, pages, documents or artifacts."
 
 #: src/pages/Shell.tsx
 msgid "No matches. Press Escape to send as typed."
@@ -5502,6 +5638,10 @@ msgstr "Open again"
 msgid "Open Cap table"
 msgstr "Open Cap table"
 
+#: src/pages/Artifacts.tsx
+msgid "Open chat"
+msgstr "Open chat"
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr "Open computer settings"
@@ -5565,6 +5705,10 @@ msgstr "Open receipt"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Open server integrations"
 msgstr "Open server integrations"
+
+#: src/pages/Shell.tsx
+msgid "Open Settings"
+msgstr "Open Settings"
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Open shell"
@@ -5705,6 +5849,10 @@ msgstr "Page"
 msgid "Page changed. Reload"
 msgstr "Page changed. Reload"
 
+#: src/pages/NotFound.tsx
+msgid "Page not found"
+msgstr "Page not found"
+
 #: src/components/SidebarPages.tsx
 msgid "Page options"
 msgstr "Page options"
@@ -5836,6 +5984,10 @@ msgstr "Pick a model from the list or enter a model id served by this endpoint."
 msgid "Pick a provider below and connect it."
 msgstr "Pick a provider below and connect it."
 
+#: src/pages/RoutineEditor.tsx
+msgid "Pick when this runs, for example every Monday morning."
+msgstr "Pick when this runs, for example every Monday morning."
+
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
 msgstr "Pin"
@@ -5953,6 +6105,10 @@ msgstr "Quarter"
 msgid "Queued"
 msgstr "Queued"
 
+#: src/pages/shell/GroupIntro.tsx
+msgid "Quick status check from everyone, please"
+msgstr "Quick status check from everyone, please"
+
 #: src/pages/Shell.tsx
 msgid "Quote"
 msgstr "Quote"
@@ -5968,6 +6124,10 @@ msgstr "Rakazo doesn't tag new files."
 #: src/components/AiDataSharing.tsx
 msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
 msgstr "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Rakazo keeps itself up to date. If an update ever needs you, it shows here."
+msgstr "Rakazo keeps itself up to date. If an update ever needs you, it shows here."
 
 #: src/pages/Shell.tsx
 msgid "React"
@@ -6311,7 +6471,7 @@ msgstr "Remove message trigger"
 msgid "Remove schedule"
 msgstr "Remove schedule"
 
-#. placeholder {0}: selectedSkill.name
+#. placeholder {0}: slashSkillLabel(selectedSkill).title
 #: src/pages/Shell.tsx
 msgid "Remove skill {0}"
 msgstr "Remove skill {0}"
@@ -6508,11 +6668,6 @@ msgstr "Retry screen"
 msgid "Return to Rakazo"
 msgstr "Return to Rakazo"
 
-#. placeholder {0}: doc.revision
-#: src/pages/KnowledgeSection.tsx
-msgid "rev {0}"
-msgstr "rev {0}"
-
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
@@ -6548,6 +6703,7 @@ msgstr "Rotate key"
 msgid "Routine"
 msgstr "Routine"
 
+#: src/pages/BotContextMenu.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Routines"
 msgstr "Routines"
@@ -6605,6 +6761,10 @@ msgstr "Runs when this bot receives a verified message from this provider."
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Runway"
 msgstr "Runway"
+
+#: src/lib/slash-skills.ts
+msgid "Runway scenarios"
+msgstr "Runway scenarios"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Safe"
@@ -6840,6 +7000,10 @@ msgstr "Searching…"
 msgid "Security"
 msgstr "Security"
 
+#: src/pages/Shell.tsx
+msgid "See usage"
+msgstr "See usage"
+
 #: src/pages/CapTable.tsx
 msgid "See who owns your company"
 msgstr "See who owns your company"
@@ -6951,14 +7115,6 @@ msgstr "Set up app catalog"
 msgid "Settings"
 msgstr "Settings"
 
-#: src/pages/Shell.tsx
-msgid "Settings: General"
-msgstr "Settings: General"
-
-#: src/pages/Shell.tsx
-msgid "Settings: Usage"
-msgstr "Settings: Usage"
-
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Setup help"
@@ -6968,18 +7124,17 @@ msgstr "Setup help"
 msgid "Shape"
 msgstr "Shape"
 
-#: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
 msgstr "Shared"
 
+#: src/pages/KnowledgeSection.tsx
+msgid "Shared by all bots"
+msgstr "Shared by all bots"
+
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Shared chat with 2-6 bots. They all reply in the same thread."
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared documents"
-msgstr "Shared documents"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared skills"
@@ -7151,10 +7306,18 @@ msgstr "Site"
 msgid "Size"
 msgstr "Size"
 
-#. placeholder {0}: skill.name
+#. placeholder {0}: label.title
 #: src/pages/Shell.tsx
 msgid "Skill {0}"
 msgstr "Skill {0}"
+
+#: src/pages/Shell.tsx
+msgid "Skills"
+msgstr "Skills"
+
+#: src/pages/Shell.tsx
+msgid "Skills and actions"
+msgstr "Skills and actions"
 
 #: src/components/integrations/AgentStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -7182,6 +7345,10 @@ msgstr "Slack message"
 #: src/pages/RoutineEditor.tsx
 msgid "Slack not enabled"
 msgstr "Slack not enabled"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Slack, calendar and email"
+msgstr "Slack, calendar and email"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Slack, Notion, GitHub and more, with one Composio API key"
@@ -7268,6 +7435,10 @@ msgstr "Speech model"
 msgid "Spend"
 msgstr "Spend"
 
+#: src/lib/slash-skills.ts
+msgid "Spend, changes, and new or upcoming charges."
+msgstr "Spend, changes, and new or upcoming charges."
+
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Spending minus revenue, 3-mo avg"
 msgstr "Spending minus revenue, 3-mo avg"
@@ -7279,6 +7450,10 @@ msgstr "Spent {spentRange}"
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
 msgstr "Spent this month"
+
+#: src/lib/slash-skills.ts
+msgid "Spot scam tokens and look-alike addresses in your wallets."
+msgstr "Spot scam tokens and look-alike addresses in your wallets."
 
 #: src/lib/user-error.ts
 msgid "SSO is temporarily unavailable. Try again."
@@ -7420,7 +7595,11 @@ msgstr "Subscriptions / mo"
 msgid "Subtracted from burn"
 msgstr "Subtracted from burn"
 
-#: src/components/inbox/InboxAgentIntro.tsx
+#: src/lib/slash-skills.ts
+msgid "Suggests categories for uncategorized transactions."
+msgstr "Suggests categories for uncategorized transactions."
+
+#: src/components/PageAgentIntro.tsx
 msgid "Summarize what's new this week"
 msgstr "Summarize what's new this week"
 
@@ -7458,6 +7637,7 @@ msgstr "Tags"
 msgid "Take control"
 msgstr "Take control"
 
+#: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 msgid "Task board"
 msgstr "Task board"
@@ -7542,6 +7722,10 @@ msgstr "That folder no longer exists"
 msgid "the {month} statement"
 msgstr "the {month} statement"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "The AI your bots think with. They already have one, so change this only to use another AI company or your own key."
+msgstr "The AI your bots think with. They already have one, so change this only to use another AI company or your own key."
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "The API did not come back. Refresh this page."
 msgstr "The API did not come back. Refresh this page."
@@ -7600,10 +7784,6 @@ msgstr "the group"
 msgid "The Inbox page stops showing new mail until you reconnect."
 msgstr "The Inbox page stops showing new mail until you reconnect."
 
-#: src/components/AiDataSharing.tsx
-msgid "The Inbox sorts and reads your mail only while its model is allowed here."
-msgstr "The Inbox sorts and reads your mail only while its model is allowed here."
-
 #: src/pages/Legal.tsx
 msgid "The Legal agent scans your Data room for contracts and deadlines."
 msgstr "The Legal agent scans your Data room for contracts and deadlines."
@@ -7628,6 +7808,10 @@ msgstr "the statement through {0}"
 #: src/components/finance/StatementReviewCard.tsx
 msgid "The transactions read add up to the closing balance"
 msgstr "The transactions read add up to the closing balance"
+
+#: src/pages/shell/message-cards.tsx
+msgid "The web, notes and docs"
+msgstr "The web, notes and docs"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
@@ -7695,6 +7879,10 @@ msgstr "This folder is empty. Drop files here or add them."
 msgid "This folder no longer exists"
 msgstr "This folder no longer exists"
 
+#: src/pages/NotFound.tsx
+msgid "This link is wrong or the page is no longer available."
+msgstr "This link is wrong or the page is no longer available."
+
 #: src/pages/HostComputerPrompt.tsx
 msgid "this Mac"
 msgstr "this Mac"
@@ -7756,6 +7944,10 @@ msgstr "This subscription sign-in is not available in Rakazo yet. Use a deployme
 #: src/pages/Artifacts.tsx
 msgid "This week"
 msgstr "This week"
+
+#: src/pages/Board.tsx
+msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
+msgstr "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
 
 #: src/pages/RoutineSchedule.tsx
 msgid "Time of day"
@@ -8140,7 +8332,6 @@ msgstr "Urgent"
 msgid "URL"
 msgstr "URL"
 
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
 msgid "Usage"
@@ -8185,6 +8376,10 @@ msgstr "Used by"
 #: src/pages/shell/bot-credentials.tsx
 msgid "Username"
 msgstr "Username"
+
+#: src/lib/slash-skills.ts
+msgid "Uses Carta figures and asks before sending."
+msgstr "Uses Carta figures and asks before sending."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
@@ -8290,6 +8485,10 @@ msgstr "Waiting…"
 msgid "Wallet"
 msgstr "Wallet"
 
+#: src/lib/slash-skills.ts
+msgid "Wallet balances and allocation."
+msgstr "Wallet balances and allocation."
+
 #: src/components/integrations/FinanceSection.tsx
 msgid "Wallet balances and history"
 msgstr "Wallet balances and history"
@@ -8335,6 +8534,14 @@ msgstr "Weekly"
 msgid "What about its memories?"
 msgstr "What about its memories?"
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "What bots remember by default"
+msgstr "What bots remember by default"
+
+#: src/components/PageAgentIntro.tsx
+msgid "What did we spend last month?"
+msgstr "What did we spend last month?"
+
 #: src/pages/shell/message-cards.tsx
 msgid "What do you want me on first?"
 msgstr "What do you want me on first?"
@@ -8343,7 +8550,7 @@ msgstr "What do you want me on first?"
 msgid "What is our runway?"
 msgstr "What is our runway?"
 
-#: src/components/inbox/InboxAgentIntro.tsx
+#: src/components/PageAgentIntro.tsx
 msgid "What needs my reply today?"
 msgstr "What needs my reply today?"
 
@@ -8358,6 +8565,10 @@ msgstr "What should this routine do each time it runs?"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
 msgstr "What to return"
+
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "What your bots remember between chats, and where they keep it."
+msgstr "What your bots remember between chats, and where they keep it."
 
 #: src/pages/RoutineEditor.tsx
 msgid "When a webhook fires"
@@ -8383,6 +8594,10 @@ msgstr "Where it went"
 msgid "Where should bots run?"
 msgstr "Where should bots run?"
 
+#: src/components/PageAgentIntro.tsx
+msgid "Which bills are unpaid?"
+msgstr "Which bills are unpaid?"
+
 #: src/components/integrations/AgentStep.tsx
 msgid "Which bots can use {appName}?"
 msgstr "Which bots can use {appName}?"
@@ -8391,6 +8606,10 @@ msgstr "Which bots can use {appName}?"
 msgid "Who are our investors?"
 msgstr "Who are our investors?"
 
+#: src/components/PageAgentIntro.tsx
+msgid "Who owns what in the company?"
+msgstr "Who owns what in the company?"
+
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
 msgstr "Within 3 days"
@@ -8398,6 +8617,10 @@ msgstr "Within 3 days"
 #: src/lib/ticket-status.ts
 msgid "Won't do"
 msgstr "Won't do"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Work this bot repeats for you, like a cash check every Monday."
+msgstr "Work this bot repeats for you, like a cash check every Monday."
 
 #: src/pages/ActivityList.tsx
 msgid "Working"
@@ -8423,6 +8646,10 @@ msgstr "Writing"
 #: src/pages/Shell.tsx
 msgid "Writing a draft email"
 msgstr "Writing a draft email"
+
+#: src/lib/slash-skills.ts
+msgid "Written from Finance, Carta and past updates."
+msgstr "Written from Finance, Carta and past updates."
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Wrote {path}"
@@ -8484,6 +8711,10 @@ msgstr "You have control"
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "You'll sign in to {0} in a new window. Then you choose which bots can use it."
 msgstr "You'll sign in to {0} in a new window. Then you choose which bots can use it."
+
+#: src/components/AiDataSharing.tsx
+msgid "Your bots always answer through the AI service chosen in Models. A switch below also lets that service read your mail and documents, so Rakazo can sort your Inbox and read Data room files."
+msgstr "Your bots always answer through the AI service chosen in Models. A switch below also lets that service read your mail and documents, so Rakazo can sort your Inbox and read Data room files."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"

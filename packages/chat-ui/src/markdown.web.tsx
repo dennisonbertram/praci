@@ -254,12 +254,18 @@ function useExternalLinkConfirm() {
 
 function ConfirmableAnchor({ href, ...props }: React.ComponentPropsWithoutRef<"a">) {
   const request = useContext(ConfirmLinkContext);
+  // An in-app path such as /app/finance opens in place, like any other link in the app.
+  const inApp = typeof href === "string" && href.startsWith("/") && !href.startsWith("//");
   return (
     <a
       {...props}
+      // In-app links read as part of the app (text colour, medium weight), not as web links.
+      className={
+        inApp ? [props.className, "rk-chat-app-link"].filter(Boolean).join(" ") : props.className
+      }
       href={href}
-      target="_blank"
-      rel="noreferrer noopener"
+      target={inApp ? undefined : "_blank"}
+      rel={inApp ? undefined : "noreferrer noopener"}
       onClick={(event) => holdExternalLink(event, request)}
       onAuxClick={(event) => holdExternalLink(event, request)}
     />

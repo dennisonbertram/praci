@@ -132,11 +132,12 @@ function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
   return rows;
 }
 
-function Figure({ title, value }: { title: string; value: string }) {
+function Figure({ title, value, hint }: { title: string; value: string; hint?: string }) {
   return (
     <Card size="sm" className="px-3.5">
       <h2 className="text-xs font-semibold text-muted-foreground">{title}</h2>
       <div className="mt-1 text-[22px] font-semibold leading-tight tabular-nums">{value}</div>
+      {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
     </Card>
   );
 }
@@ -150,7 +151,11 @@ function Summary({ snapshot }: { snapshot: Snapshot | null }) {
         <>
           <Figure title={t`Fully diluted shares`} value={num(snapshot.fullyDilutedShares)} />
           <Figure title={t`Option pool available`} value={num(snapshot.optionPoolAvailable)} />
-          <Figure title={t`Latest 409A`} value={a ? usd(a.pricePerShareUsd, 2) : DASH} />
+          <Figure
+            title={t`Common share price`}
+            value={a ? usd(a.pricePerShareUsd, 2) : DASH}
+            hint={t`From the latest 409A valuation`}
+          />
           <Figure title={t`Amount raised`} value={usd(snapshot.amountRaisedUsd)} />
         </>
       ) : (
@@ -981,12 +986,16 @@ export function CapTablePage({
                     ) : null}
                     {/* A phone has no room for the Email column, so the email shows here in full width. */}
                     {email ? (
-                      <div className="truncate text-xs text-muted-foreground @md:hidden">
+                      <div
+                        data-testid="cap-table-row-email"
+                        className="truncate text-xs text-muted-foreground @md:hidden"
+                      >
                         {email}
                       </div>
                     ) : null}
                   </td>
                   <td
+                    data-testid="cap-table-email-cell"
                     className="hidden truncate py-2 pe-3 text-muted-foreground @md:table-cell"
                     title={contact?.email ?? holder?.email ?? undefined}
                   >

@@ -10,6 +10,7 @@ import {
   activeThreadRuns,
   applyThreadSendReceipt,
   clearActiveThreadRuns,
+  composerShowsStop,
   computerPanelAutoBoot,
   computerPanelAutoUsesBoot,
   computerPanelNeedsMaintenance,
@@ -1765,3 +1766,14 @@ function event(overrides: Partial<ProductEvent>): ProductEvent {
     ...overrides,
   };
 }
+
+describe("composer Stop button", () => {
+  it("offers Send, not Stop, while the only run waits on the founder's answer", () => {
+    expect(composerShowsStop([{ status: "waiting_input" }])).toBe(false);
+  });
+  it("offers Stop while a run is working", () => {
+    expect(composerShowsStop([{ status: "running" }])).toBe(true);
+    expect(composerShowsStop([{ status: "waiting_input" }, { status: "queued" }])).toBe(true);
+    expect(composerShowsStop([{ status: "completed" }])).toBe(false);
+  });
+});

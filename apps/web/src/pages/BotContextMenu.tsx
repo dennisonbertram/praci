@@ -21,6 +21,7 @@ import {
   FolderPlus,
   Pencil,
   Pin,
+  Repeat,
   Trash2,
 } from "lucide-react";
 
@@ -38,6 +39,8 @@ export function BotContextMenu({
   onCreateSection,
   onRenameSection,
   onToggleUnread,
+  isGroup = false,
+  onRoutines,
   onEdit,
   onDuplicate,
   onClear,
@@ -53,6 +56,9 @@ export function BotContextMenu({
   onCreateSection: () => void;
   onRenameSection?: (sectionId: string) => void;
   onToggleUnread: () => void;
+  /** Groups have settings, not a profile, and no routines. */
+  isGroup?: boolean;
+  onRoutines?: () => void;
   onEdit: () => void;
   onDuplicate: () => void;
   onClear: () => void;
@@ -128,8 +134,14 @@ export function BotContextMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onEdit}>
           <Pencil />
-          {t`Edit profile`}
+          {isGroup ? t`Group settings` : t`Edit profile`}
         </DropdownMenuItem>
+        {onRoutines && !isGroup ? (
+          <DropdownMenuItem onClick={onRoutines}>
+            <Repeat />
+            {t`Routines`}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem onClick={onDuplicate}>
           <Copy />
           {t`Duplicate`}

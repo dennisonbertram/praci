@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { Group } from "@rakazo/contracts";
+import type { Bot, Group } from "@rakazo/contracts";
 import type { ComponentProps, ReactNode } from "react";
 import { act } from "react";
 import type { Root } from "react-dom/client";
@@ -74,6 +74,7 @@ async function render(
     onRemove?: () => Promise<void>;
     covered?: boolean;
     instance?: string;
+    bots?: Bot[];
   } = {},
 ) {
   const onRemove = vi.fn(options.onRemove ?? (async () => undefined));
@@ -83,7 +84,7 @@ async function render(
       <GroupSettings
         key={options.instance}
         group={group}
-        bots={[]}
+        bots={options.bots ?? []}
         onSave={options.onSave ?? (async () => undefined)}
         onRemove={onRemove}
         onClose={onClose}
@@ -131,6 +132,21 @@ afterEach(async () => {
 });
 
 describe("GroupSettings", () => {
+  it("lists the group's members first and shows every bot without an inner scroll", async () => {
+    const bot = (id: string, name: string) => ({ id, name, color: "blue", status: "idle" }) as Bot;
+    await render({
+      bots: [
+        bot("bot-3", "Chief"),
+        bot("bot-4", "Inbox agent"),
+        bot("bot-1", "Researcher"),
+        bot("bot-2", "Writer"),
+      ],
+    });
+    const names = [...container.querySelectorAll("button[aria-pressed]")].map((b) => b.textContent);
+    expect(names).toEqual(["Researcher", "Writer", "Chief", "Inbox agent"]);
+    expect(container.querySelector(".overflow-y-auto")).toBeNull();
+  });
+
   it("closes from the header button", async () => {
     const { onClose } = await render();
     await click("Close panel");

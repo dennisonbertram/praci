@@ -275,7 +275,7 @@ it("follows the count until the user toggles, then keeps their choice", async ()
   expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
 });
 
-it("masks every amount on the overview card while amounts are hidden", async () => {
+it("masks every dollar amount on the overview card while amounts are hidden", async () => {
   setHideAmounts(true);
   const view = await render({
     kind: "finance",
@@ -288,7 +288,8 @@ it("masks every amount on the overview card while amounts are hidden", async () 
     },
   });
   const text = view.textContent ?? "";
-  for (const real of ["10,000", "2,000", "1,234", "1,235", "5 mo", "5.0"])
-    expect(text).not.toContain(real);
+  for (const real of ["10,000", "2,000", "1,234", "1,235"]) expect(text).not.toContain(real);
   expect([...view.querySelectorAll("dd")].map((dd) => dd.textContent)).toContain("$•••");
+  // Runway is a length of time, not money, so it stays readable.
+  expect(text).toContain("5.0 mo");
 });

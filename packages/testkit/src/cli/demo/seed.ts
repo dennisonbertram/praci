@@ -1,13 +1,22 @@
 import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { createSecretStore, syncFinanceForUser } from "@rakazo/adapters";
 import { CARTA_MCP_ENDPOINT, FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
-import { createDb, createThreadMessage, saveCapTableSnapshot } from "@rakazo/db";
+import {
+  createDb,
+  createThreadMessage,
+  createThreadMessageInTransaction,
+  saveCapTableSnapshot,
+} from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
+  DEMO_ARCHIVED_BOT,
+  DEMO_ARTIFACTS,
   DEMO_BOTS,
   DEMO_CAP_TABLE,
   DEMO_CHIEF_DRAFT,
   DEMO_COFOUNDER,
+  DEMO_CHIEF_DRAFT_V1,
+  DEMO_CHIEF_HISTORY,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENT_FACETS,
@@ -19,12 +28,15 @@ import {
   DEMO_RATE_LIMIT_SPACE,
   DEMO_FINANCE_RECONNECT_SPACE,
   DEMO_RECONNECT_SPACE,
+  DEMO_RUNNING_RUN,
   DEMO_USER_NAME,
+  DEMO_WAITING_RUN,
   DEMO_WALLET,
   demoCryptoHistory,
   demoFinance,
   demoFolderPaths,
   demoStatementCsv,
+  linkDemoArtifacts,
   MOCK_NOTE,
 } from "./data.js";
 
@@ -461,14 +473,41 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   }
   done.push(`second member ${DEMO_COFOUNDER.name} (${DEMO_COFOUNDER.email}, same password)`);
 
-  // Artifacts: last month's investor update, filed under Chief.
-  await session.rpc("artifacts/create", {
-    botId: chief.id,
-    name: DEMO_CHIEF_DRAFT.name,
-    mimeType: DEMO_CHIEF_DRAFT.mimeType,
-    contentBase64: Buffer.from(DEMO_CHIEF_DRAFT.text).toString("base64"),
-  });
-  done.push("Chief's investor update draft");
+  // Artifacts: last month's investor update in two versions, and the other files Chief made.
+  const artifactIds = new Map<string, string>();
+  for (const artifact of [DEMO_CHIEF_DRAFT_V1, DEMO_CHIEF_DRAFT, ...DEMO_ARTIFACTS]) {
+    const created = await session.rpc<{ id: string }>("artifacts/create", {
+      botId: chief.id,
+      name: artifact.name,
+      mimeType: artifact.mimeType,
+      ...("description" in artifact ? { description: artifact.description } : {}),
+      contentBase64: Buffer.from(artifact.text).toString("base64"),
+    });
+    artifactIds.set(artifact.name, created.id);
+  }
+  done.push(`${DEMO_ARTIFACTS.length + 1} artifacts (the investor update has 2 versions)`);
+
+  // Chief's earlier conversation, written straight to the thread (no model call).
+  {
+    const db = createDb(options.databaseUrl);
+    try {
+      const thread = await db.prisma.thread.findFirstOrThrow({ where: { botId: chief.id } });
+      for (const entry of DEMO_CHIEF_HISTORY) {
+        await db.prisma.$transaction((tx) =>
+          createThreadMessageInTransaction(tx, {
+            threadId: thread.id,
+            role: entry.role,
+            blocks: [{ kind: "text", text: linkDemoArtifacts(entry.text, artifactIds) }],
+            markUnread: false,
+          }),
+        );
+      }
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  }
+  done.push(`${DEMO_CHIEF_HISTORY.length} earlier messages with Chief`);
 
   // Team: extra bots and a group chat.
   const botIds = [chief.id];
@@ -481,7 +520,116 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     botIds.push(created.id);
   }
   await session.rpc("groups/create", { name: DEMO_GROUP.name, botIds });
-  done.push(`${DEMO_BOTS.length} extra bots, 1 group chat (${MOCK_NOTE})`);
+
+  // A run waiting on the founder's answer, written straight to the database (no model call).
+  {
+    const db = createDb(options.databaseUrl);
+    try {
+      const { spaceId, userId } = await db.prisma.bot.findUniqueOrThrow({
+        where: { id: chief.id },
+      });
+      const bot = await db.prisma.bot.findFirstOrThrow({
+        where: { spaceId, name: DEMO_WAITING_RUN.botName },
+      });
+      const thread = await db.prisma.thread.findUniqueOrThrow({ where: { botId: bot.id } });
+      const owner = { spaceId, userId, botId: bot.id, threadId: thread.id };
+      // Let the bot's own introduction finish first, so the question is the newest message.
+      await waitForIdleBot(db.prisma, bot.id);
+      const task = await db.prisma.task.create({
+        data: { ...owner, prompt: DEMO_WAITING_RUN.prompt, status: "waiting_input" },
+      });
+      const run = await db.prisma.run.create({
+        data: {
+          ...owner,
+          taskId: task.id,
+          status: "waiting_input",
+          trigger: "user",
+          startedAt: new Date(),
+        },
+      });
+      await db.prisma.$transaction(async (tx) => {
+        await createThreadMessageInTransaction(tx, {
+          threadId: thread.id,
+          role: "user",
+          blocks: [{ kind: "text", text: DEMO_WAITING_RUN.prompt }],
+          markUnread: false,
+        });
+        await createThreadMessageInTransaction(tx, {
+          threadId: thread.id,
+          role: "bot",
+          botId: bot.id,
+          runId: run.id,
+          blocks: [
+            { kind: "text", text: DEMO_WAITING_RUN.intro },
+            {
+              kind: "ask",
+              text: DEMO_WAITING_RUN.question,
+              status: "pending",
+              actions: DEMO_WAITING_RUN.choices,
+            },
+          ],
+        });
+      });
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  }
+  // A run still working, for Activity's "Working" list, on a bot outside the group chat.
+  {
+    const helper = await session.rpc<{ id: string }>("bots/create", {
+      ...DEMO_RUNNING_RUN.bot,
+      instructions: DEMO_RUNNING_RUN.bot.description,
+      notifyOnFinish: true,
+    });
+    const db = createDb(options.databaseUrl);
+    try {
+      await waitForIdleBot(db.prisma, helper.id);
+      const bot = await db.prisma.bot.findUniqueOrThrow({ where: { id: helper.id } });
+      const thread = await db.prisma.thread.findUniqueOrThrow({ where: { botId: bot.id } });
+      const owner = {
+        spaceId: bot.spaceId,
+        userId: bot.userId,
+        botId: bot.id,
+        threadId: thread.id,
+      };
+      const task = await db.prisma.task.create({
+        data: { ...owner, prompt: DEMO_RUNNING_RUN.prompt, status: "running" },
+      });
+      // A lease far ahead and an owner no worker uses: nothing picks the run up while the demo runs.
+      await db.prisma.run.create({
+        data: {
+          ...owner,
+          taskId: task.id,
+          status: "running",
+          trigger: "user",
+          startedAt: new Date(),
+          leaseOwner: "mock-demo-seed",
+          leaseExpiresAt: new Date(Date.now() + DEMO_RUNNING_RUN.leaseMs),
+        },
+      });
+      await db.prisma.$transaction((tx) =>
+        createThreadMessageInTransaction(tx, {
+          threadId: thread.id,
+          role: "user",
+          blocks: [{ kind: "text", text: DEMO_RUNNING_RUN.prompt }],
+          markUnread: false,
+        }),
+      );
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  }
+  const archived = await session.rpc<{ id: string }>("bots/create", {
+    ...DEMO_ARCHIVED_BOT,
+    instructions: DEMO_ARCHIVED_BOT.description,
+    notifyOnFinish: true,
+  });
+  await session.rpc("bots/archive", { botId: archived.id });
+  done.push(
+    `${DEMO_BOTS.length + 1} extra bots, 1 archived bot, 1 group chat, 1 run waiting on an answer, 1 run working (${MOCK_NOTE})`,
+  );
 
   // A second, empty space: what a founder sees before connecting anything (switch to it to test).
   await session.rpc("spaces/create", { name: DEMO_EMPTY_SPACE });
@@ -504,4 +652,15 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     done.push(`space "${name}" with a Gmail account that ${what}`);
   }
   return done;
+}
+
+/** Waits up to 90 seconds for a bot's own runs (its introduction) to finish. */
+async function waitForIdleBot(prisma: ReturnType<typeof createDb>["prisma"], botId: string) {
+  for (let waited = 0; waited < 90_000; waited += 1_000) {
+    const busy = await prisma.run.count({
+      where: { botId, status: { notIn: ["completed", "failed", "cancelled"] } },
+    });
+    if (!busy) return;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
 }

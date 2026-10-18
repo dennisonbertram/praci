@@ -465,6 +465,21 @@ async function render(node: ReactNode) {
 }
 
 describe("web external link confirmation", () => {
+  it("opens an in-app path in place and a website in a new tab", async () => {
+    const view = await render(
+      <ChatMarkdown>
+        {"[Open Finance](/app/finance) or [site](https://example.test/)"}
+      </ChatMarkdown>,
+    );
+    const [inApp, site] = view.container.querySelectorAll("a");
+    expect(inApp?.getAttribute("href")).toBe("/app/finance");
+    expect(inApp?.hasAttribute("target")).toBe(false);
+    expect(inApp?.classList.contains("rk-chat-app-link")).toBe(true);
+    expect(site?.getAttribute("target")).toBe("_blank");
+    expect(site?.classList.contains("rk-chat-app-link")).toBe(false);
+    await view.cleanup();
+  });
+
   it("asks before an external bot link and opens it only after confirmation", async () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     const view = await render(

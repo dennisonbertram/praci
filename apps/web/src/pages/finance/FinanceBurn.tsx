@@ -21,7 +21,6 @@ import {
 } from "../../components/finance/ui";
 import {
   fullDay,
-  hiddenOr,
   money,
   monthAxisLabels,
   monthFull,
@@ -319,7 +318,7 @@ export function FinanceRunwayPage() {
             <Kpi title={t`Runway`} value={runMonths === undefined ? "—" : t`${runMonths} mo`} />
             <Kpi
               title={t`Run-out`}
-              value={data.runway.runOutDate ? hiddenOr(fullDay(data.runway.runOutDate)) : "—"}
+              value={data.runway.runOutDate ? fullDay(data.runway.runOutDate) : "—"}
             />
           </div>
           {hasCrypto ? (
@@ -338,9 +337,7 @@ export function FinanceRunwayPage() {
           <Section title={<Trans>Projected cash</Trans>}>
             <LineChart
               values={points.map((p) => p.balanceCents)}
-              labels={monthAxisLabels(points.map((p) => p.month)).map((label, i) =>
-                i >= (data?.history.length ?? 0) ? hiddenOr(label) : label,
-              )}
+              labels={monthAxisLabels(points.map((p) => p.month))}
               height={240}
               label={t`Projected cash`}
               solidUntil={Math.max(data.history.length - 1, 0)}

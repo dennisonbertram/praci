@@ -223,6 +223,8 @@ it("shows the summary, ownership legend and joined investors", async () => {
   expect(text).toContain("10,000,000");
   expect(text).toContain("500,000");
   expect(text).toContain("$1.25");
+  // The 409A figure is named for what it is, with the term explained underneath.
+  expect(text).toContain("Common share price$1.25From the latest 409A valuation");
   expect(text).toContain("Series Seed Preferred 30.00%");
   expect(text).toContain("Common 70.00%");
   expect(text).toContain("1,000,000");
@@ -286,10 +288,9 @@ it("shows Ownership in the same font as the other figures", async () => {
 it("offers Add email for a holder without a contact and prefills the dialog", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
   await show();
-  // The Email column; on a phone the same action also shows under the name.
-  const add = [...container.querySelectorAll("tbody td:nth-child(2) button")].filter(
-    (b) => b.textContent === "Add email",
-  ) as HTMLElement[];
+  const add = [
+    ...container.querySelectorAll<HTMLButtonElement>("[data-testid=cap-table-email-cell] button"),
+  ].filter((b) => b.textContent === "Add email");
   expect(add).toHaveLength(1);
   await click(add[0]);
   expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Dee Newcomer");
@@ -558,9 +559,9 @@ it("lists only investors on the Investors tab and offers Add email only to inves
   expect(text).not.toContain("Granted options");
   await click(button("All"));
   expect(container.textContent).toContain("Founder Person");
-  const adds = [...container.querySelectorAll("tbody td:nth-child(2) button")].filter(
-    (b) => b.textContent === "Add email",
-  );
+  const adds = [
+    ...container.querySelectorAll<HTMLButtonElement>("[data-testid=cap-table-email-cell] button"),
+  ].filter((b) => b.textContent === "Add email");
   expect(adds).toHaveLength(1);
   // A contact with no holding shows a dash, the same as a holder with no shares.
   const rows = [...container.querySelectorAll("tbody tr")];
@@ -610,23 +611,15 @@ it("opens the Carta sign-in on Cap Table and tells the shell whether Carta is co
   expect(status).toHaveBeenLastCalledWith(true);
 });
 
-it("hides shares, ownership, 409A and amounts while amounts are hidden, and flips back live", async () => {
+it("hides dollar amounts but keeps shares and ownership in place while amounts are hidden, and flips back live", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
   setHideAmounts(true);
   await show();
   const text = container.textContent ?? "";
-  for (const real of [
-    "10,000,000",
-    "500,000",
-    "1.25",
-    "70.00",
-    "30.00",
-    "1,000,000",
-    "10.00",
-    "250,000",
-  ])
-    expect(text).not.toContain(real);
-  expect(text).toContain("Example Co");
+  for (const real of ["1.25", "250,000"]) expect(text).not.toContain(real);
+  // Share counts and ownership are not money: the rows stay readable for a screen share.
+  for (const shown of ["10,000,000", "1,000,000", "10.00%", "70.00%"])
+    expect(text).toContain(shown);
   expect(text).toContain("Example Ventures");
   // The ownership bar's segments do not keep their proportions either.
   const segments = [...container.querySelectorAll<HTMLElement>(".h-3 > div")].map(
@@ -638,7 +631,18 @@ it("hides shares, ownership, 409A and amounts while amounts are hidden, and flip
     button("Show amounts") ??
       (document.querySelector("[data-testid=hide-amounts-toggle]") as HTMLElement),
   );
-  expect(container.textContent).toContain("10,000,000");
+  expect(container.textContent).toContain("250,000");
+});
+
+it("repeats each email under the name, for phones where the Email column is hidden", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  await show();
+  const under = [...container.querySelectorAll("[data-testid=cap-table-row-email]")].map(
+    (cell) => cell.textContent,
+  );
+  expect(under).toContain("ada@example.test");
+  // A holder with no contact gets Add email there too, so phones can still add one.
+  expect(under).toContain("Add email");
 });
 
 it("reloads contacts and the cap table when the agent finishes a chat turn", async () => {

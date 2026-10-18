@@ -276,6 +276,12 @@
 }
 
 /* A website link: its site icon, then the label. The icon never ends a line on its own. */
+.rk-chat-markdown a.rk-chat-app-link {
+  color: inherit;
+  font-weight: 500;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+}
+
 a.rk-chat-link {
   color: inherit;
   font-weight: 500;

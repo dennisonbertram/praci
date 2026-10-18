@@ -147,7 +147,7 @@ function Legal({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-medium">
+        <h1 className="text-lg font-semibold">
           <Trans>Legal</Trans>
         </h1>
         <span className="text-[11px] text-muted-foreground">

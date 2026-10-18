@@ -121,6 +121,12 @@ it.each(["in", "up"] as const)("puts quiet SSO below the primary action on %s", 
   expect(sso.dataset.size).toBe("sm");
 });
 
+it("asks for a name at sign-up, so Chief can greet the founder by it", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
+  await render("up");
+  expect(host.querySelector<HTMLInputElement>("#name")?.required).toBe(true);
+});
+
 it("hides SSO in password recovery", async () => {
   vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
   await render("forgot");

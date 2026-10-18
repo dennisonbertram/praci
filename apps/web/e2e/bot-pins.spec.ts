@@ -17,7 +17,7 @@ test("a bot's list renders beside the chat and saves ticks and new items", async
   const botId = activeBotId(page);
 
   // No pins yet: no strip, no list.
-  await expect(page.getByRole("button", { name: "Bot computer" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Computer and routines" })).toBeVisible();
   await expect(page.getByTestId("pins-strip")).toHaveCount(0);
   await expect(page.getByTestId("pins-list")).toHaveCount(0);
 

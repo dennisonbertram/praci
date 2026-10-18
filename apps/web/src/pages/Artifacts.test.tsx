@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
 
-import type { ComponentProps, ReactNode } from "react";
-import { act } from "react";
+import type { ComponentProps, ReactElement, ReactNode } from "react";
+import { act, cloneElement } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({ listSpace: vi.fn() }));
+const api = vi.hoisted(() => ({
+  listSpace: vi.fn(),
+  listVersions: vi.fn(() => new Promise(() => {})),
+  getById: vi.fn(),
+}));
 vi.mock("../lib/rpc", () => ({ rpc: { artifacts: api } }));
 vi.mock("../lib/bootstrap", () => ({
   takeInitialBootstrap: vi.fn().mockResolvedValue({ bots: [] }),
@@ -35,7 +39,9 @@ vi.mock("@rakazo/ui-web", () => {
     AlertDialogHeader: Container,
     AlertDialogTitle: Container,
     BotAvatar: () => <span />,
-    Button: (props: ComponentProps<"button">) => <button {...props} />,
+    Button: ({ render, ...props }: ComponentProps<"button"> & { render?: ReactElement }) =>
+      render ? cloneElement(render, props as object) : <button {...props} />,
+    Skeleton: () => <span />,
     NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
     NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
     parseBotAvatar: () => ({ color: undefined }),
@@ -69,14 +75,17 @@ function typeSearch(container: HTMLElement, value: string) {
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-async function renderArtifacts() {
+async function renderArtifacts(path = "/app/artifacts") {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   await act(async () =>
     root.render(
-      <MemoryRouter initialEntries={["/app/artifacts"]}>
-        <ArtifactsPage />
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/app/artifacts" element={<ArtifactsPage />} />
+          <Route path="/app/artifacts/:artifactId" element={<ArtifactsPage />} />
+        </Routes>
       </MemoryRouter>,
     ),
   );
@@ -182,6 +191,59 @@ it("still offers Load more when filters match nothing on the loaded page", async
         expect(page.container.textContent).toContain("Beta report");
       });
     });
+  } finally {
+    await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("explains what artifacts are when the space has none", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({ items: [], nextCursor: null });
+  const page = await renderArtifacts();
+  try {
+    expect(page.container.textContent).toContain("No artifacts yet");
+    const open = [...page.container.querySelectorAll("a")].find((link) =>
+      link.textContent?.includes("Open chat"),
+    );
+    expect(open?.getAttribute("href")).toBe("/app");
+  } finally {
+    await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("gives an open artifact a way back to the list", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({ items: [artifact("Update", "artifact-1")], nextCursor: null });
+  const page = await renderArtifacts("/app/artifacts/artifact-1");
+  try {
+    const back = page.container.querySelector("a[aria-label='Back to artifacts']");
+    expect(back?.getAttribute("href")).toBe("/app/artifacts");
+    expect(page.container.textContent).not.toContain("Loading…Loading…");
+  } finally {
+    await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps Filters to the list: phones hide it beside an open document, and maximizing removes it", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({ items: [artifact("Update", "artifact-1")], nextCursor: null });
+  api.listVersions.mockRejectedValueOnce(new Error("no versions"));
+  api.getById.mockResolvedValue({ ...artifact("Update", "artifact-1"), contentBase64: "" });
+  vi.mocked((await import("../lib/artifact-open")).decodeArtifactBase64).mockReturnValue(
+    new TextEncoder().encode("# Update"),
+  );
+  const page = await renderArtifacts("/app/artifacts/artifact-1");
+  try {
+    const filters = () => page.container.querySelector("[data-testid='artifacts-filters']");
+    expect(filters()?.className).toContain("hidden md:flex");
+    const maximize = page.container.querySelector<HTMLButtonElement>(
+      "button[aria-label='Maximize']",
+    );
+    await act(async () => maximize?.click());
+    expect(filters()).toBeNull();
   } finally {
     await page.cleanup();
     vi.unstubAllGlobals();

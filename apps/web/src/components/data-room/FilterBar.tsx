@@ -347,7 +347,7 @@ export function FilterBar({
   return (
     // Search and Sort share the first row; the filter pills wrap on a row of their own below, or,
     // given room, between the two. Sort never moves down among the pills.
-    <div className="flex flex-wrap items-start gap-1.5 px-3 pb-2.5 md:px-5">
+    <div className="flex flex-wrap items-start gap-1.5 px-4 pb-2.5 md:px-7">
       <InputGroup className="order-1 w-full @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80">
         <InputGroupAddon>
           <Search aria-hidden="true" />

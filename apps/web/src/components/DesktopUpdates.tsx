@@ -125,6 +125,11 @@ export function DesktopUpdatesProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Whether the desktop app has an update channel, so Settings has something to show under Updates. */
+export function useHasDesktopUpdates(): boolean {
+  return Boolean(useContext(UpdatesContext)?.state);
+}
+
 export function DesktopUpdateSection() {
   const updates = useContext(UpdatesContext);
   if (!updates?.state) return null;

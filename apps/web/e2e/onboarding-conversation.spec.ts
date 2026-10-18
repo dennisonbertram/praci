@@ -42,7 +42,7 @@ test("focus choice suggests apps and preserves a completed connection", async ({
   expect(cardBoxes[2].top - cardBoxes[1].bottom).toBeGreaterThanOrEqual(8);
   await page
     .getByTestId("transcript")
-    .getByText("Hit those three and I’ll start pulling the picture.")
+    .getByText("Authorize all three and I’ll start pulling the picture together.")
     .scrollIntoViewIfNeeded();
   await page.mouse.move(1, 1);
   await captureScreenshot(page, testInfo, "02-app-suggestions");

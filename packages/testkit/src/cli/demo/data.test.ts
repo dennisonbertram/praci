@@ -17,8 +17,12 @@ import {
 } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  DEMO_ARCHIVED_BOT,
+  DEMO_ARTIFACTS,
+  DEMO_BOTS,
   DEMO_CAP_TABLE,
   DEMO_CHIEF_DRAFT,
+  DEMO_CHIEF_DRAFT_V1,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENT_FACETS,
@@ -27,6 +31,9 @@ import {
   DEMO_READING_DOCUMENT,
   DEMO_UNTAGGED_DOCUMENT,
   DEMO_RECONNECT_SPACE,
+  DEMO_RUNNING_RUN,
+  DEMO_USER_NAME,
+  DEMO_WAITING_RUN,
   DEMO_WALLET,
   demoCarta,
   demoCrypto,
@@ -36,17 +43,38 @@ import {
   demoMailboxes,
   demoNewMail,
   demoStatementCsv,
+  linkDemoArtifacts,
   MOCK_NOTE,
   MOCK_SUBJECT_PREFIX,
 } from "./data.js";
 
 describe("mock demo data", () => {
+  it("links Chief's mentions of an artifact to that artifact", () => {
+    const ids = new Map([["MOCK Q3 Board Deck.md", "art1"]]);
+    expect(linkDemoArtifacts("See {artifact:MOCK Q3 Board Deck.md}.", ids)).toBe(
+      "See [MOCK Q3 Board Deck](/app/artifacts/art1).",
+    );
+    expect(linkDemoArtifacts("See {artifact:Missing.md}.", ids)).toBe("See Missing.");
+  });
+
+  it("parks one mock run on a question for a bot the seed creates", () => {
+    expect(DEMO_BOTS.map((bot) => bot.name)).toContain(DEMO_WAITING_RUN.botName);
+    expect(DEMO_WAITING_RUN.intro.startsWith(MOCK_NOTE)).toBe(true);
+    expect(DEMO_WAITING_RUN.question.endsWith("?")).toBe(true);
+  });
+
   it("labels the company and every contact and document as mock", () => {
     expect(DEMO_COMPANY.startsWith("MOCK DEMO DATA —")).toBe(true);
     expect(DEMO_EMPTY_SPACE.startsWith("MOCK DEMO DATA —")).toBe(true);
     for (const contact of DEMO_CONTACTS) expect(contact.notes).toContain(MOCK_NOTE);
     expect(DEMO_CHIEF_DRAFT.name).toContain("MOCK");
     expect(DEMO_CHIEF_DRAFT.text).toContain(MOCK_NOTE);
+    expect(DEMO_CHIEF_DRAFT_V1.name).toBe(DEMO_CHIEF_DRAFT.name);
+    for (const artifact of [DEMO_CHIEF_DRAFT_V1, ...DEMO_ARTIFACTS]) {
+      expect(artifact.name).toContain("MOCK");
+      expect(artifact.text).toContain(MOCK_NOTE);
+    }
+    expect(DEMO_ARCHIVED_BOT.description).toContain(MOCK_NOTE);
     for (const document of DEMO_DOCUMENTS) {
       expect(document.name).toContain("MOCK");
       expect(document.text).toContain(MOCK_NOTE);
@@ -437,5 +465,14 @@ describe("mock demo data", () => {
     };
     expect(bills.items.map((b) => b.vendor.name)).toEqual(["Placeholder Legal LLP (Mock)"]);
     expect(bills.items[0]?.due_at > "2026-10-16").toBe(true);
+  });
+
+  it("matches the story catalog's seed: Maya Chen, six artifacts and a working run off the group", () => {
+    expect(DEMO_USER_NAME).toBe("Maya Chen (Mock)");
+    // The investor update draft is seeded on top of these, as a second version.
+    expect(DEMO_ARTIFACTS).toHaveLength(5);
+    expect(DEMO_RUNNING_RUN.bot.description).toContain(MOCK_NOTE);
+    expect(DEMO_RUNNING_RUN.prompt).toContain("mock");
+    expect(DEMO_BOTS.map((bot) => bot.name)).not.toContain(DEMO_RUNNING_RUN.bot.name);
   });
 });

@@ -36,7 +36,7 @@ function ScopePicker({
 }) {
   return (
     <div className="text-[13.5px] text-muted-foreground">
-      <Trans>Default scope</Trans>
+      <Trans>What bots remember by default</Trans>
       <div className="mt-2 flex gap-2">
         {(["isolated", "shared"] as const).map((option) => (
           <Toggle
@@ -45,9 +45,13 @@ function ScopePicker({
             pressed={value === option}
             disabled={disabled}
             onPressedChange={() => onChange(option)}
-            className="flex-1 font-normal text-muted-foreground aria-pressed:text-foreground"
+            className="flex-1 font-normal text-muted-foreground aria-pressed:border-foreground/50 aria-pressed:text-foreground"
           >
-            {option === "isolated" ? <Trans>Isolated</Trans> : <Trans>Shared</Trans>}
+            {option === "isolated" ? (
+              <Trans>Each bot keeps its own</Trans>
+            ) : (
+              <Trans>All bots share one memory</Trans>
+            )}
           </Toggle>
         ))}
       </div>
@@ -160,9 +164,7 @@ export function MemorySettingsOverlay({
               <Trans>Memory</Trans>
             </DialogTitle>
             <DialogDescription className="mt-1 text-[13.5px] text-muted-foreground/70">
-              {registration?.description ?? (
-                <Trans>Manage the Space semantic memory provider.</Trans>
-              )}
+              <Trans>What your bots remember between chats, and where they keep it.</Trans>
             </DialogDescription>
           </div>
           <DialogClose
@@ -175,7 +177,7 @@ export function MemorySettingsOverlay({
         </div>
       ) : (
         <p className="px-6 pt-1 text-[13.5px] text-muted-foreground/70 sm:px-8">
-          {registration?.description ?? <Trans>Manage the Space semantic memory provider.</Trans>}
+          <Trans>What your bots remember between chats, and where they keep it.</Trans>
         </p>
       )}
 
@@ -213,7 +215,13 @@ export function MemorySettingsOverlay({
             </Button>
           </div>
         ) : registration ? (
-          <>
+          <details data-testid="memory-provider-advanced" className="group">
+            <summary className="cursor-pointer text-[13.5px] text-muted-foreground hover:text-foreground">
+              <Trans>Advanced: connect an outside memory service</Trans>
+            </summary>
+            <p className="mt-2 mb-4 text-[13px] text-muted-foreground/80">
+              {registration.description}
+            </p>
             {MEMORY_PROVIDER_SETTINGS.length > 1 ? (
               <Field className="mb-4">
                 <FieldLabel htmlFor={providerSelectId}>
@@ -240,7 +248,7 @@ export function MemorySettingsOverlay({
             </div>
 
             <registration.SettingsForm busy={busy} onConnect={connect} />
-          </>
+          </details>
         ) : (
           <p className="text-sm text-destructive">
             <Trans>The selected memory provider is not available in this build.</Trans>

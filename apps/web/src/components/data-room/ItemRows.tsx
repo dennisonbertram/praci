@@ -93,16 +93,18 @@ export const hasFacets = (rows: Row[]) =>
 // as the list pane narrows, Parties goes first, then Type and Date, which then go under the name.
 // The menu stays.
 const ROW_GRID =
-  "grid items-center gap-2.5 px-2 grid-cols-[minmax(200px,1fr)_28px] " +
+  "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(200px,1fr)_28px] " +
   // Type is wide enough for "Investor document", and Parties fits beside an open preview.
   "@min-[500px]/list:grid-cols-[minmax(200px,1fr)_110px_90px_28px] " +
   "@min-[590px]/list:grid-cols-[minmax(180px,1fr)_120px_90px_110px_28px] " +
   // With room to spare, Type and Parties widen first, so "Acme Servo Supply (Mock)" fits.
   "@min-[820px]/list:grid-cols-[minmax(240px,1fr)_120px_100px_200px_28px]";
 /** Without facets the name takes every column but the menu. */
-const PLAIN_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_28px]";
+const PLAIN_GRID =
+  "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(0,1fr)_28px]";
 /** As PLAIN_GRID, with a fixed status column so "Failed" lines up whatever the name's length. */
-const STATUS_GRID = "grid items-center gap-2.5 px-2 grid-cols-[minmax(0,1fr)_72px_28px]";
+const STATUS_GRID =
+  "grid items-center gap-2.5 px-4 md:px-7 @min-[800px]/bd:px-2 grid-cols-[minmax(0,1fr)_72px_28px]";
 const hasStatus = (rows: Row[]) => rows.some(({ item }) => statusLabel(item.status));
 const plainGrid = (status: boolean) => (status ? STATUS_GRID : PLAIN_GRID);
 const DATE_CELL = "hidden @min-[500px]/list:block";

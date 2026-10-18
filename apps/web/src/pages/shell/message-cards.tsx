@@ -100,6 +100,9 @@ export function ChoiceCard({
                     label={option.label}
                     question={block.question}
                   />
+                  {block.answerId ? null : (
+                    <OnboardingFocusOptionHint id={option.id} question={block.question} />
+                  )}
                 </span>
                 {block.answerId === option.id ? (
                   <span className="mt-0.5 text-foreground/75">✓</span>
@@ -119,6 +122,26 @@ function OnboardingFocusQuestion({ question }: { question: string }) {
     return <Trans>What do you want me on first?</Trans>;
   }
   return question;
+}
+
+/** One line on what each first-run focus covers, so the choice is clear before it is made. */
+function OnboardingFocusOptionHint({ id, question }: { id: string; question: string }) {
+  if (question !== "What do you want me on first?") return null;
+  const hint =
+    id === "company" ? (
+      <Trans>Cash, cap table, investors and email</Trans>
+    ) : id === "day" ? (
+      <Trans>Slack, calendar and email</Trans>
+    ) : id === "inbox" ? (
+      <Trans>Email and calendar</Trans>
+    ) : id === "research" ? (
+      <Trans>The web, notes and docs</Trans>
+    ) : id === "everything" ? (
+      <Trans>Email, Slack and docs</Trans>
+    ) : null;
+  return hint ? (
+    <span className="mt-0.5 block text-[13px] text-muted-foreground">{hint}</span>
+  ) : null;
 }
 
 function OnboardingFocusOptionLabel({
@@ -225,8 +248,8 @@ export function AppConnectCard({
           <SuccessPop label={t`Connected`} />
         ) : (
           <Button
-            variant="secondary"
-            className="ms-auto rounded-full hover:border-border hover:bg-accent hover:text-foreground"
+            variant="outline"
+            className="ms-auto rounded-full"
             disabled={busy}
             onClick={() => void authorize()}
           >

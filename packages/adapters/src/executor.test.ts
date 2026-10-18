@@ -1146,6 +1146,7 @@ describe("directoryDescription", () => {
     });
     expect(line).toContain("Answers questions about your bank accounts.");
     expect(line).toContain("ask it there instead of messaging it");
+    expect(line).toContain("[Open Finance](/app/finance)");
   });
 
   it("leaves other bots' descriptions alone", () => {

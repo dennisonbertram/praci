@@ -68,6 +68,10 @@ test("swiping inward from the mobile edge opens the bots sidebar", async ({ page
   const closeNavigation = page.getByRole("button", { name: "Close navigation" });
   await expect(closeNavigation).toHaveCount(0);
   await expect(page.getByTestId("mobile-sidebar-swipe-edge")).toHaveCSS("touch-action", "none");
+  // The strip must stay inside the 12px gutter so it never covers back arrows or row controls.
+  expect(
+    (await page.getByTestId("mobile-sidebar-swipe-edge").boundingBox())?.width,
+  ).toBeLessThanOrEqual(12);
 
   await swipe(page, [16, 420], [92, 426]);
 

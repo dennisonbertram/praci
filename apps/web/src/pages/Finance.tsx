@@ -552,7 +552,14 @@ function Overview({
             {data.crypto ? (
               <Kpi
                 title={t`Crypto`}
-                value={money(data.crypto.totalCents)}
+                value={
+                  // A wallet's first sync reads as $0 until it lands; show that it is loading.
+                  syncing && data.crypto.lastSyncedAt === null && data.crypto.totalCents === 0 ? (
+                    <Skeleton className="mt-1 h-6 w-24" aria-label={t`Loading`} />
+                  ) : (
+                    money(data.crypto.totalCents)
+                  )
+                }
                 sub={cryptoSubtitle(
                   otherCounted > 0 ? "all" : stablecoins > 0 ? "stablecoins" : "bank",
                   data.crypto.unpricedTokenCount,

@@ -69,3 +69,32 @@ it("masks amounts in document names while amounts are hidden", () => {
     setHideAmounts(false);
   }
 });
+
+it("says nothing matched when only the mail search is left", () => {
+  const html = renderToStaticMarkup(
+    <SpaceSearchResults
+      query="qwxzv"
+      hits={[]}
+      loading={false}
+      onSelect={() => undefined}
+      onSearchMail={() => undefined}
+    />,
+  );
+  expect(html).toContain("No matches in chats, pages, documents or artifacts.");
+  expect(html).toContain("Search mail for “qwxzv”");
+});
+
+it("lists matching artifacts", () => {
+  const html = renderToStaticMarkup(
+    <SpaceSearchResults
+      query="investor"
+      hits={[]}
+      loading={false}
+      artifacts={[{ id: "a1", label: "MOCK Investor Update - September.md" }]}
+      onSelect={() => undefined}
+      onSearchMail={() => undefined}
+    />,
+  );
+  expect(html).toContain("MOCK Investor Update - September.md");
+  expect(html).not.toContain("No matches in chats");
+});
