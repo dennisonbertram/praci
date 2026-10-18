@@ -13,7 +13,7 @@ test("opens Artifacts from the sidebar and lists created files", async ({ page }
   const sidebar = page.getByTestId("bots-sidebar");
   await expect(sidebar).toBeVisible();
   expect((await sidebar.boundingBox())?.x).toBe(0);
-  await expect(sidebar.getByRole("button", { name: "Integrations" })).toBeVisible();
+  await expect(sidebar.getByTestId("sidebar-integrations")).toBeVisible();
   // Artifacts sits with the other pages in the sidebar, not in the account menu.
   const artifactsItem = sidebar.getByTestId("sidebar-artifacts");
   await expect(artifactsItem).toBeVisible();

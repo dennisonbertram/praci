@@ -314,6 +314,34 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await prisma.connection.delete({ where: { id: second } });
     });
 
+    it("reports a rate limit only while its backoff is active", async () => {
+      await wipe();
+      const stale = await connect(a, "box-a-stale");
+      const active = await connect(a, "box-a-active");
+      const hour = new Date(Date.now() - 3_600_000);
+      await prisma.mailSyncState.create({
+        data: {
+          connectionId: stale,
+          lastErrorAt: hour,
+          lastErrorKind: "rate_limited",
+          backoffUntil: new Date(hour.getTime() + 30_000),
+        },
+      });
+      await prisma.mailSyncState.create({
+        data: {
+          connectionId: active,
+          lastErrorAt: new Date(),
+          lastErrorKind: "rate_limited",
+          backoffUntil: new Date(Date.now() + 30_000),
+        },
+      });
+
+      const out = await inboxList(deps, a, {});
+      expect(out.rateLimitedAccounts).toEqual([active]);
+      expect(out.failedAccounts).toEqual([active]);
+      await prisma.connection.deleteMany({ where: { id: { in: [stale, active] } } });
+    });
+
     it("answers with an empty account list when no mail account is connected", async () => {
       const out = await inboxList(deps, actor(userA, spaceB), {});
       expect(out).toMatchObject({ accounts: [], rows: [], agent: null, syncedAt: null });
@@ -627,6 +655,47 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       gmail.failNext(429, { times: 1000, urlIncludes: "messages/a-1" });
       await inboxRefresh(deps, a, {});
       expect(await status()).toEqual({ failed: [], reconnect: [] });
+    });
+
+    it("waits out a rate-limit backoff and then syncs, so Try again is not a dead button", async () => {
+      await wipe();
+      seedMailboxes();
+      await prisma.mailSyncState.create({
+        data: {
+          connectionId: connA,
+          lastErrorAt: new Date(),
+          lastErrorKind: "rate_limited",
+          backoffUntil: new Date(Date.now() + 1500),
+        },
+      });
+
+      const started = Date.now();
+      await inboxRefresh(deps, a, { connectionId: connA });
+
+      expect(Date.now() - started).toBeGreaterThanOrEqual(1000);
+      const out = await inboxList(deps, a, {});
+      expect(out.syncedAt).not.toBeNull();
+      expect(out.failedAccounts).toEqual([]);
+      expect(out.rateLimitedAccounts).toEqual([]);
+    });
+
+    it("does not wait or sync when the request is already aborted", async () => {
+      await wipe();
+      seedMailboxes();
+      await prisma.mailSyncState.create({
+        data: {
+          connectionId: connA,
+          lastErrorAt: new Date(),
+          lastErrorKind: "rate_limited",
+          backoffUntil: new Date(Date.now() + 5000),
+        },
+      });
+
+      const started = Date.now();
+      await inboxRefresh(deps, a, { connectionId: connA }, AbortSignal.abort());
+
+      expect(Date.now() - started).toBeLessThan(1000);
+      expect(gmail.requests).toEqual([]);
     });
 
     it("rejects someone else's, a revoked or an unknown connection id with NOT_FOUND", async () => {

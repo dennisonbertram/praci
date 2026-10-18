@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 184 of 184
-- Web and shared components: 531
+- Web and shared component files with stories: 185 of 185
+- Web and shared components: 532
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -70,6 +70,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ComputerMaintenanceActions | [apps/web/src/components/ComputerMaintenanceActions.tsx](../../apps/web/src/components/ComputerMaintenanceActions.tsx) | [ComputerMaintenanceActions.stories.tsx](../../apps/web/src/components/ComputerMaintenanceActions.stories.tsx) | web |
 | ComputersUnavailableHint, UnavailableCopy | [apps/web/src/components/ComputersUnavailableHint.tsx](../../apps/web/src/components/ComputersUnavailableHint.tsx) | [ComputersUnavailableHint.stories.tsx](../../apps/web/src/components/ComputersUnavailableHint.stories.tsx) | web |
 | ComputerUpdateProgress | [apps/web/src/components/ComputerUpdateProgress.tsx](../../apps/web/src/components/ComputerUpdateProgress.tsx) | [ComputerUpdateProgress.stories.tsx](../../apps/web/src/components/ComputerUpdateProgress.stories.tsx) | web |
+| ConnectAppsButton | [apps/web/src/components/ConnectAppsButton.tsx](../../apps/web/src/components/ConnectAppsButton.tsx) | [ConnectAppsButton.stories.tsx](../../apps/web/src/components/ConnectAppsButton.stories.tsx) | web |
 | DesktopUpdatesProvider, DesktopUpdateSection | [apps/web/src/components/DesktopUpdates.tsx](../../apps/web/src/components/DesktopUpdates.tsx) | [DesktopUpdates.stories.tsx](../../apps/web/src/components/DesktopUpdates.stories.tsx) | web |
 | EmailCards | [apps/web/src/components/EmailCards.tsx](../../apps/web/src/components/EmailCards.tsx) | [EmailCards.stories.tsx](../../apps/web/src/components/EmailCards.stories.tsx) | web |
 | SectionLoadFailed | [apps/web/src/components/ErrorBoundary.tsx](../../apps/web/src/components/ErrorBoundary.tsx) | [ErrorBoundary.stories.tsx](../../apps/web/src/components/ErrorBoundary.stories.tsx) | web |

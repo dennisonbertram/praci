@@ -2184,6 +2184,10 @@ msgstr "Connect any app that offers an MCP server URL."
 msgid "Connect API key"
 msgstr "Connect API key"
 
+#: src/components/ConnectAppsButton.tsx
+msgid "Connect apps"
+msgstr "Connect apps"
+
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Connect Blockscout"
 msgstr "Connect Blockscout"
@@ -4290,6 +4294,7 @@ msgstr "Instruction"
 msgid "Integration options"
 msgstr "Integration options"
 
+#: src/components/ConnectAppsButton.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx

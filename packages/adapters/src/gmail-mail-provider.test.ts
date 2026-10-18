@@ -19,6 +19,7 @@ import {
   isMailConnection,
   parseAddressList,
 } from "./gmail-mail-provider.js";
+import { GOOGLE_API_CONCURRENCY } from "./google-api-request.js";
 import { assertMailConformance } from "./testing/mail-conformance.js";
 
 const NOW = new Date("2026-10-01T12:00:00Z");
@@ -271,7 +272,7 @@ describe("listMessages", () => {
     expect(m?.labelIds).toEqual(["INBOX", "UNREAD"]);
   });
 
-  it("keeps at most 12 requests in flight per account, independently per account", async () => {
+  it("keeps at most the concurrency cap of requests in flight per account, independently per account", async () => {
     const inflight = new Map<string, number>();
     const peak = new Map<string, number>();
     let total = 0;
@@ -307,7 +308,10 @@ describe("listMessages", () => {
         },
       };
     };
-    const provider = new GmailMailProvider({ connectors: connectors(proxy) });
+    const provider = new GmailMailProvider({
+      connectors: connectors(proxy),
+      sleep: async () => undefined,
+    });
     const [a, b] = await Promise.all([
       provider.listMessages(
         account({ id: "c-a", accountRef: "A" }),
@@ -322,9 +326,9 @@ describe("listMessages", () => {
     ]);
     expect(a.messages).toHaveLength(30);
     expect(b.messages).toHaveLength(30);
-    expect(peak.get("A")).toBe(12);
-    expect(peak.get("B")).toBe(12);
-    expect(totalPeak).toBe(24);
+    expect(peak.get("A")).toBe(GOOGLE_API_CONCURRENCY);
+    expect(peak.get("B")).toBe(GOOGLE_API_CONCURRENCY);
+    expect(totalPeak).toBe(2 * GOOGLE_API_CONCURRENCY);
   });
 
   it("skips malformed messages and drops a message deleted between list and get", async () => {
@@ -367,6 +371,33 @@ describe("retries and status mapping", () => {
     gmail.failNext(429, { times: 2, retryAfter: 2 });
     await provider.listMessages(account(), { query: "", pageSize: 5 }, context());
     expect(sleeps).toEqual([2000, 2000]);
+  });
+
+  it("hydrates a burst within the concurrency cap and recovers from a 429 with Retry-After", async () => {
+    const gmail = box(Array.from({ length: 30 }, (_, i) => msg(`b${i}`, {}, 1 + (i % 20))));
+    const sleeps: number[] = [];
+    let active = 0;
+    let peak = 0;
+    const provider = new GmailMailProvider({
+      connectors: connectors(async (r) => {
+        peak = Math.max(peak, ++active);
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        active--;
+        return gmail.handle(r.accountRef, r.url, r.method, r.body);
+      }),
+      sleep: async (ms) => void sleeps.push(ms),
+      random: () => 0,
+    });
+    gmail.failNext(429, { urlIncludes: "/messages/", retryAfter: 2 });
+    const page = await provider.listMessages(
+      account(),
+      { query: "", pageSize: 30, useCache: false },
+      context(),
+    );
+    expect(page.messages).toHaveLength(30);
+    expect(page.unhydratedIds ?? []).toEqual([]);
+    expect(sleeps).toEqual([2000]);
+    expect(peak).toBeLessThanOrEqual(GOOGLE_API_CONCURRENCY);
   });
 
   it("retries a 403 rate-limit reason but maps other 403 reasons to auth immediately", async () => {
@@ -1014,7 +1045,7 @@ describe("retry policy", () => {
     expect(gmail.sentOf("x")).toHaveLength(1);
   });
 
-  it("allows at most 12 requests in flight per account", async () => {
+  it("allows at most the concurrency cap of requests in flight per account", async () => {
     let active = 0;
     let peak = 0;
     const release: Array<() => void> = [];
@@ -1031,12 +1062,12 @@ describe("retry policy", () => {
     const calls = Array.from({ length: 30 }, () =>
       provider.getMessage(account(), "m1", context()).catch(() => undefined),
     );
-    await vi.waitFor(() => expect(active).toBe(12));
+    await vi.waitFor(() => expect(active).toBe(GOOGLE_API_CONCURRENCY));
     while (release.length || active) {
       release.shift()?.();
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
     await Promise.all(calls);
-    expect(peak).toBe(12);
+    expect(peak).toBe(GOOGLE_API_CONCURRENCY);
   });
 });
