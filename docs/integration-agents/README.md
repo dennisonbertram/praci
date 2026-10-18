@@ -315,6 +315,23 @@ Carta agent has its own tool set and sync run, so it waits.
 
 ## Tests
 
+### Tool metadata cache
+
+MCP discovery and server tool listings share a session-local 30-second cache. Concurrent
+cache misses share one fetch; expiry starts when the fetch succeeds. A new session (including
+a server revision or observed credential change), eviction, or connector close discards its metadata.
+Failed refreshes never fall back to expired data. The cache is only a transport optimization,
+not durable state or an authorization cache; assignments and switches still come from the database.
+
+Preset reads and forced writes have classifications independent of server annotations, so their
+dispatches can reuse this list. Other tools still fetch live annotations on every dispatch:
+one listing per TTL for those calls would hide read-to-write changes and is deliberately not
+promised. The final database gate remains after session preparation and all metadata awaits,
+immediately before `callTool`. Discovery can show stale names, schemas, descriptions and read
+hints until expiry, but a stale read hint cannot authorize an annotation-dependent write.
+New sessions and expired entries re-fetch; this does not guarantee metadata stays unchanged
+between the server's response and its tool execution.
+
 All deterministic and offline; no real vendor is called.
 
 - **Unit (`packages/contracts`, `packages/adapters`):** `isReadTool` (annotation true
