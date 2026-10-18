@@ -4659,6 +4659,10 @@ export function createRouter(deps: RouterDeps) {
                         : {}) as Prisma.InputJsonValue,
                       enabled: config.enabled,
                       revision: { increment: 1 },
+                      // A server that moves to another endpoint is no longer the one its agent works with.
+                      ...(current.endpoint !== nextEndpoint && current.agentBotId
+                        ? { agentBotId: null, agentExclusive: false, writesEnabled: false }
+                        : {}),
                       ...(stored ? { secretId: stored.id } : clearing ? { secretId: null } : {}),
                     },
                   });

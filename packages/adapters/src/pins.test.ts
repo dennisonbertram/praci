@@ -62,6 +62,8 @@ function fakeWorld(opts: {
   stats?: Row[];
   /** The bot is the integration agent of the server, whose writes are off. */
   agent?: boolean;
+  /** With `agent`: the server's "Allow changes" switch. */
+  writesOn?: boolean;
 }) {
   let row: Row = {
     id: "p",
@@ -85,7 +87,13 @@ function fakeWorld(opts: {
                 ...assignment,
                 botId: "bot",
                 serverId: "srv",
-                server: { id: "srv", spaceId: "sp", userId: "u", agentBotId: "bot" },
+                server: {
+                  id: "srv",
+                  spaceId: "sp",
+                  userId: "u",
+                  agentBotId: "bot",
+                  writesEnabled: opts.writesOn === true,
+                },
                 bot: { spawnKey: "integration-agent:srv", spaceId: "sp", userId: "u" },
               }
             : { ...assignment, server: { id: "srv" }, bot: { spawnKey: null }, serverId: "srv" }
@@ -162,6 +170,24 @@ describe("pin sources for an integration agent", () => {
       fakeWorld({ agent: true, tools: [{ name: "get_balance", annotations }] });
     await expect(save(agent({ readOnlyHint: true }), src())).resolves.toMatchObject({ ok: true });
     await expect(save(agent(), src())).rejects.toThrow(/not assigned/);
+  });
+});
+
+describe("pins never reach an agent write", () => {
+  const world = (extra: Row = {}) =>
+    fakeWorld({ agent: true, writesOn: true, tools: [{ name: "get_balance" }], ...extra });
+
+  it("refuses an unannotated tool by name when changes are on, on save", async () => {
+    await expect(save(world(), src())).rejects.toThrow(/not read-only/);
+  });
+
+  it("refuses on refresh a source that is now a write, without calling it", async () => {
+    const w = world({
+      stats: [{ id: "a", label: "A", value: "1", source: src() }],
+    });
+    const result = await refreshBotPins(w, scope);
+    expect(w.mcp.callServerTool).not.toHaveBeenCalled();
+    expect(result?.pins.stats[0]).toMatchObject({ error: expect.any(String) });
   });
 });
 

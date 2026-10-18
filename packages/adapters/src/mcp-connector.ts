@@ -426,32 +426,28 @@ export class McpConnector implements ConnectorProvider {
         return;
       }
     }
-    const denial = integrationAgentDenial(assignment, {
-      name: route.toolName,
-      annotations,
-    });
-    if (denial) {
-      yield { type: "error", message: denialMessage(denial, assignment.server) };
-      return;
-    }
-    // The executor asked for approval according to the classification at discovery. A tool that
-    // was a read then and is a write now was not asked about, so it must not run.
-    if (
-      route.discoveredReadOnly === true &&
-      isServerAgent(assignment) &&
-      !isReadTool(
-        { name: route.toolName, annotations },
-        integrationPresetForEndpoint(assignment.server.endpoint),
+    // Synchronous, so the same decision runs on the row read just before the call.
+    const gate = (row: NonNullable<typeof assignment>): string | null => {
+      const denial = integrationAgentDenial(row, { name: route.toolName, annotations });
+      if (denial) return denialMessage(denial, row.server);
+      // The executor asked for approval according to the classification at discovery. A tool that
+      // was a read then and is a write now was not asked about, so it must not run.
+      if (
+        route.discoveredReadOnly === true &&
+        isServerAgent(row) &&
+        !isReadTool(
+          { name: route.toolName, annotations },
+          integrationPresetForEndpoint(row.server.endpoint),
+        )
       )
-    ) {
-      yield {
-        type: "error",
-        message: `${route.toolName} changed from a read to a change since it was listed, so it was not run. Try again in a new message.`,
-      };
-      return;
-    }
-    if (!assignmentAllowsTool(assignment, route.toolName, annotations)) {
-      yield { type: "error", message: "MCP tool is not assigned to this bot" };
+        return `${route.toolName} changed from a read to a change since it was listed, so it was not run. Try again in a new message.`;
+      if (!assignmentAllowsTool(row, route.toolName, annotations))
+        return "MCP tool is not assigned to this bot";
+      return null;
+    };
+    const early = gate(assignment);
+    if (early) {
+      yield { type: "error", message: early };
       return;
     }
     // Capture material before callTool so a concurrent eviction/replace cannot
@@ -460,9 +456,17 @@ export class McpConnector implements ConnectorProvider {
     let material: OAuthMaterial | undefined;
     const sessionKey = this.sessionKey(assignment.server, context);
     try {
+      // Connect first (it can wait on secrets), then read the row and decide, then call: nothing
+      // awaits between the decision and callTool.
       const session = await this.sessionFor(assignment.server, context);
       material = this.sessions.get(sessionKey)?.material;
-      const result = await session.callTool(call.route.toolName, call.args, {
+      const fresh = await loadAssignment();
+      const denied = fresh ? gate(fresh) : "MCP tool is not assigned to this bot";
+      if (denied) {
+        yield { type: "error", message: denied };
+        return;
+      }
+      const result = await session.callTool(route.toolName, call.args, {
         signal: context.signal,
       });
       const secrets = material ? oauthMaterialSecrets(material) : [];

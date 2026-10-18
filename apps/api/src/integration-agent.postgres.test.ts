@@ -221,6 +221,99 @@ describePostgres("integration agents (PostgreSQL)", () => {
     });
   });
 
+  /** A router whose first server updateMany first runs `before`, to land a change between check and update. */
+  const racingClient = (before: () => Promise<unknown>, extra: object = {}) => {
+    let fired = false;
+    const racing = new Proxy(prisma, {
+      get(target, prop, receiver) {
+        const value = Reflect.get(target, prop, receiver);
+        if (prop !== "mcpServer") return value;
+        return new Proxy(value, {
+          get(model, method, r) {
+            if (method !== "updateMany") return Reflect.get(model, method, r);
+            return async (args: never) => {
+              if (!fired) {
+                fired = true;
+                await before();
+              }
+              return model.updateMany(args);
+            };
+          },
+        });
+      },
+    });
+    return createRouterClient(createRouter({ prisma: racing, ...extra } as unknown as RouterDeps), {
+      context: { actor: a } as never,
+    });
+  };
+
+  it("setExclusive cannot change a server released after its check", async () => {
+    const s = await mkServer(userA, "race-excl", "https://api.brex.com/mcp");
+    const created = await client(a).integrationAgents.create({ serverId: s.id });
+    const bot = await prisma.bot.findUniqueOrThrow({ where: { id: created.botId } });
+    const racer = racingClient(() => archiveBot(lifecycleDeps(), bot, ctx(a)));
+    await expect(
+      racer.integrationAgents.setExclusive({ serverId: s.id, exclusive: true }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } })).toMatchObject({
+      agentBotId: null,
+      agentExclusive: false,
+    });
+  });
+
+  it("create refuses a server edited to Carta while the agent was being created", async () => {
+    const s = await mkServer(userA, "race-carta", "https://api.brex.com/mcp");
+    const racing = {
+      ...repos,
+      createBot: async (...args: Parameters<typeof repos.createBot>) => {
+        const bot = await repos.createBot(...args);
+        await prisma.mcpServer.update({
+          where: { id: s.id },
+          data: { endpoint: "https://mcp.app.carta.com/mcp" },
+        });
+        return bot;
+      },
+    };
+    await expect(ensureIntegrationAgent({ prisma, repos: racing }, a, s.id)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(
+      (await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } })).agentBotId,
+    ).toBeNull();
+  });
+
+  it("editing a server's endpoint releases its agent", async () => {
+    const s = await mkServer(userA, "edit-endpoint", "https://api.brex.com/mcp");
+    await client(a).integrationAgents.create({ serverId: s.id });
+    await client(a).integrationAgents.setExclusive({ serverId: s.id, exclusive: true });
+    await client(a).mcp.servers.setWrites({ id: s.id, enabled: true });
+    const editor = createRouterClient(
+      createRouter({
+        prisma,
+        env: {},
+        remoteConnectors: { resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }] },
+      } as unknown as RouterDeps),
+      { context: { actor: a } as never },
+    );
+    await editor.mcp.servers.update({
+      id: s.id,
+      config: {
+        slug: "edit-endpoint",
+        name: "edit-endpoint",
+        description: "",
+        enabled: true,
+        transport: "streamable_http",
+        endpoint: "https://mcp.app.carta.com/mcp",
+        headers: {},
+      },
+    } as never);
+    expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } })).toMatchObject({
+      agentBotId: null,
+      agentExclusive: false,
+      writesEnabled: false,
+    });
+  });
+
   it("falls back to the server name for an unknown service", async () => {
     const r = await client(a).integrationAgents.create({ serverId: plain.id });
     expect((await prisma.bot.findUniqueOrThrow({ where: { id: r.botId } })).name).toBe(

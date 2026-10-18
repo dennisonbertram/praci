@@ -10,7 +10,13 @@ import type {
   PinSource,
   PinStat,
 } from "@rakazo/contracts";
-import { BotPinsSchema, PinListSchema } from "@rakazo/contracts";
+import {
+  BotPinsSchema,
+  integrationPresetForEndpoint,
+  isIntegrationAgentSpawnKey,
+  isReadTool,
+  PinListSchema,
+} from "@rakazo/contracts";
 import { connectorToolRequiresApproval } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { isUniqueViolation, Prisma } from "@rakazo/db";
@@ -181,10 +187,14 @@ async function checkSource(deps: PinsDeps, scope: PinsScope, source: PinSource) 
   if (!meta) throw new Error(`Tool ${source.tool} is not offered by the server`);
   const hints = meta.annotations;
   // Never rerun what a bot run would need approval for: the name rule applies whatever the server claims.
+  // With an integration agent involved, only the agent's own read classification counts: refresh runs
+  // outside the approval flow, so an unannotated get_* tool (a write there) must not pass by its name.
   const readOnly =
-    hints?.readOnlyHint !== false &&
-    hints?.destructiveHint !== true &&
-    toolNameIsReadOnly(source.tool);
+    assignment.server.agentBotId || isIntegrationAgentSpawnKey(assignment.bot?.spawnKey)
+      ? isReadTool(meta, integrationPresetForEndpoint(assignment.server.endpoint))
+      : hints?.readOnlyHint !== false &&
+        hints?.destructiveHint !== true &&
+        toolNameIsReadOnly(source.tool);
   if (!readOnly) {
     throw new Error(`Tool ${source.tool} is not read-only, so it cannot be a pin source`);
   }

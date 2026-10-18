@@ -1521,4 +1521,22 @@ describe("MCP connector integration agents", () => {
     expect(state.calls).toEqual([]);
     await connector.close();
   });
+
+  it("authorizes on the row read after the session is ready, not before", async () => {
+    const { connector, state, call, assignment } = await setup("agent-1", agentBot, {
+      writesEnabled: true,
+    });
+    const inner = connector as never as { sessionFor: (...a: unknown[]) => Promise<unknown> };
+    const real = inner.sessionFor.bind(connector);
+    let sessions = 0;
+    // The switch flips while the second session setup (secret revalidation) waits.
+    inner.sessionFor = async (...args) => {
+      const session = await real(...args);
+      if (++sessions === 2) assignment.server.writesEnabled = false;
+      return session;
+    };
+    expect(await call("requestSendMoney", false)).toMatchObject([{ type: "error" }]);
+    expect(state.calls).toEqual([]);
+    await connector.close();
+  });
 });

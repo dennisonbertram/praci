@@ -304,7 +304,7 @@ that classification path and the Composio tool filter are separate code from MCP
 
 ## Carta later
 
-Not in this build; `integrationAgents.create` rejects a Carta server until then. Migration: a data migration sets `agentBotId` to the bot whose
+Not in this build; `integrationAgents.create` rejects a Carta server until then, and editing a server's endpoint releases its agent (no agent, shared, read-only). Migration: a data migration sets `agentBotId` to the bot whose
 spawn key is `carta-agent:<userId>` for each user's Carta server and
 `agentExclusive = true`; `assignmentAllowsTool` drops its Carta branches in favor of
 the general ones, with `CARTA_READ_TOOLS` and `CARTA_WRITE_TOOLS` becoming Carta's

@@ -4165,6 +4165,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The one exception: an integration agent asked by another bot of the same space and user
         // works with its own server's MCP tools (writes still ask). A peer from another account
         // or space is not found in this scope, so it gets nothing.
+        const integrationServerId = bot.spawnKey?.slice(integrationAgentSpawnKey("").length);
         let integrationPeerRun = false;
         if (integrationAgent && run.trigger === "bot_message" && peerMessage?.fromBotId) {
           const [sender, linked] = await Promise.all([
@@ -4179,7 +4180,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             }),
             deps.prisma.mcpServer.findFirst({
               where: {
-                id: bot.spawnKey?.slice(integrationAgentSpawnKey("").length),
+                id: integrationServerId,
                 spaceId: run.spaceId,
                 userId: run.userId,
                 agentBotId: bot.id,
@@ -4444,6 +4445,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           );
           if (approvedReplay.error) return { error: approvedReplay.error };
           if (approvedReplay.args) connectorCall.args = approvedReplay.args;
+          const requestedName = name;
           let catalogRemapped = false;
           let resolvedTool: ConnectorTool | undefined;
           if (name.startsWith("cloud_agent_") && !validCloudAgentArgs(name, args)) {
@@ -6865,7 +6867,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
             if (
               run.trigger === "bot_message" &&
               !BUILTIN_AGENT_TOOL_NAMES.has(name) &&
-              !(integrationPeerRun && connectorTools.has(name))
+              // A peer call on a catalog wrapper resolves to the underlying tool; that tool must be
+              // one of the agent's own server (writes still ask, further up).
+              !(
+                integrationPeerRun &&
+                connectorTools.has(requestedName) &&
+                (!resolvedTool ||
+                  (resolvedTool.route?.connectorId === "mcp" &&
+                    resolvedTool.route.resourceId === integrationServerId))
+              )
             ) {
               return { error: `unknown tool ${name}` };
             }

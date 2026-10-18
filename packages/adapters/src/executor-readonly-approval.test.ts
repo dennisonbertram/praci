@@ -282,7 +282,7 @@ function fixture({
     for (const call of calls) {
       const result = await request.executeTool!(
         catalog ? "demo_execute_tool" : name,
-        catalog ? { id: `resource-1:${name}`, arguments: call.args } : call.args,
+        catalog ? { id: name, arguments: call.args } : call.args,
         call.executionId,
       );
       results.push(result);
@@ -304,7 +304,10 @@ function fixture({
                   name: "demo_execute_tool",
                   description: "Execute a catalog tool",
                   inputSchema: { type: "object" },
-                  route: { connectorId: "demo", toolName: "__catalog_execute" },
+                  route: {
+                    connectorId: route?.connectorId ?? "demo",
+                    toolName: "__catalog_execute",
+                  },
                 },
               ]
             : [tool],
@@ -1140,8 +1143,13 @@ describe("tools offered to a peer-started run", () => {
 });
 
 describe("integration agent asked by another bot", () => {
-  const peerRun = (peer: { senderInScope: boolean; linked: boolean }, spawnKey: string | null) =>
+  const peerRun = (
+    peer: { senderInScope: boolean; linked: boolean },
+    spawnKey: string | null,
+    catalog = false,
+  ) =>
     fixture({
+      catalog,
       name: "mcp__demo__requestSendMoney",
       readOnly: false,
       trigger: "bot_message",
@@ -1157,6 +1165,18 @@ describe("integration agent asked by another bot", () => {
     expect(f.offeredTools).toContain("mcp__demo__requestSendMoney");
     expect(f.pauseRunForInput).toHaveBeenCalledOnce();
     expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("resolves a catalog wrapper to the agent's own tool and still asks before a write", async () => {
+    const f = peerRun({ senderInScope: true, linked: true }, agentKey, true);
+    await f.run();
+    expect(f.offeredTools).toContain("demo_execute_tool");
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(f.execute).not.toHaveBeenCalled();
+    // Once the user approves, the resolved tool reaches the connector.
+    f.effects[0]!.status = "approved";
+    await f.run();
+    expect(f.execute).toHaveBeenCalledOnce();
   });
 
   it("gives a peer from another space or user nothing", async () => {

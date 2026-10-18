@@ -58,6 +58,14 @@ export async function ensureIntegrationAgent(
         data: { updatedAt: new Date() },
       });
       if (!count) return null;
+      // The endpoint may have been edited to Carta since the first read.
+      const current = await tx.mcpServer.findFirst({
+        where: scope(actor, server.id),
+        select: { endpoint: true },
+      });
+      if (!current) throw new ORPCError("NOT_FOUND", { message: "Integration not found" });
+      if (isCartaEndpoint(current.endpoint))
+        throw new ORPCError("BAD_REQUEST", { message: "Carta has its own agent" });
       // The gate classifies each tool, so the agent's row can allow all of them.
       await tx.botMcpServer.upsert({
         where: { botId_serverId: { botId: bot.id, serverId: server.id } },
@@ -71,7 +79,14 @@ export async function ensureIntegrationAgent(
         },
         update: {},
       });
-      return tx.mcpServer.update({ where: { id: server.id }, data: { agentBotId: bot.id } });
+      // Pinned to the endpoint just checked: an edit landing now either fails this or releases the link.
+      const linkedRows = await tx.mcpServer.updateMany({
+        where: { ...scope(actor, server.id), endpoint: current.endpoint },
+        data: { agentBotId: bot.id },
+      });
+      if (!linkedRows.count)
+        throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });
+      return tx.mcpServer.findFirstOrThrow({ where: scope(actor, server.id) });
     });
     if (linked) return { server: linked, bot };
   }
@@ -89,5 +104,11 @@ export async function setIntegrationExclusive(
   const server = await loadServer(prisma, actor, serverId);
   if (!server.agentBotId)
     throw new ORPCError("BAD_REQUEST", { message: "This server has no agent" });
-  return prisma.mcpServer.update({ where: { id: server.id }, data: { agentExclusive: exclusive } });
+  // Archiving the agent can release the server after the check above: only the checked agent counts.
+  const { count } = await prisma.mcpServer.updateMany({
+    where: { ...scope(actor, server.id), agentBotId: server.agentBotId },
+    data: { agentExclusive: exclusive },
+  });
+  if (!count) throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });
+  return loadServer(prisma, actor, server.id);
 }
