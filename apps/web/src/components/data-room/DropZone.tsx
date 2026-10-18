@@ -53,6 +53,8 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
     const enter = (event: DragEvent) => {
       if (!dragHasFiles(event)) return;
       depth += 1;
+      // A drop target that wants these files claims the drag on dragenter; no overlay flash.
+      if (event.defaultPrevented) return;
       setDragging(true);
       // Close any open menu or popover (not a dialog); they would stay open under the overlay.
       if (depth === 1 && !document.querySelector('[role="dialog"], [role="alertdialog"]'))

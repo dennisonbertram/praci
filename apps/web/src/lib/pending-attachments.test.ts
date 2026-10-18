@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { isFileDrag, isFilePaste, revokePendingAttachmentPreviews } from "./pending-attachments.js";
+import {
+  isFileDrag,
+  isFilePaste,
+  isUnclaimedFileDrag,
+  revokePendingAttachmentPreviews,
+} from "./pending-attachments.js";
 
 function fileList(length: number) {
   return { length } as unknown as FileList;
@@ -58,5 +63,25 @@ describe("revokePendingAttachmentPreviews", () => {
     expect(revoke).toHaveBeenCalledWith("blob:a");
     expect(revoke).toHaveBeenCalledWith("blob:b");
     revoke.mockRestore();
+  });
+});
+
+describe("isUnclaimedFileDrag", () => {
+  it("accepts a file drag nothing has handled", () => {
+    expect(
+      isUnclaimedFileDrag({ dataTransfer: dragData(["Files"]), defaultPrevented: false }),
+    ).toBe(true);
+  });
+
+  it("ignores a file drag the composer already claimed", () => {
+    expect(isUnclaimedFileDrag({ dataTransfer: dragData(["Files"]), defaultPrevented: true })).toBe(
+      false,
+    );
+  });
+
+  it("ignores a bot reorder drag", () => {
+    expect(
+      isUnclaimedFileDrag({ dataTransfer: dragData(["text/plain"]), defaultPrevented: false }),
+    ).toBe(false);
   });
 });
