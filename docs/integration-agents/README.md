@@ -30,7 +30,7 @@ Web and desktop (Electron hosts the web UI) ship first. See "Mobile".
    (`McpServer`). v1 covers MCP servers. Connected apps (`Connection`, for example
    Notion through Composio) follow in a later task, and the plan for them is below;
    they are left out of v1 because their tools are classified differently (see
-   "Connected apps") and the two Fintech agents do not need them.
+   "Connected apps") and the Mercury and Brex agents do not need them.
 2. **The agent is found by a spawn key and linked by a foreign key.** Spawn key
    `integration-agent:<serverId>` (reserved in `bots.create`, like the Inbox,
    Finance, Legal and Carta prefixes) makes creation idempotent through the unique
@@ -291,7 +291,7 @@ the confirmation.
 Notion-style apps use `Connection`. Create agent makes the same kind of bot
 (spawn key `integration-agent:<connectionId>`), "Only this agent" sets
 `allAgents = false` plus one `BotConnectionAccess` row (already enforced by
-`deniedConnectionIds`; a checkbox for it exists as the "Used by" list), and the
+`deniedConnectionIds`, and `AppDetail` already has the "Used by" list for it), and the
 write gate marks the agent's non-read app tools as mandatory approval using the
 `readOnly` flag the tool list already carries (`AppDetail` already groups tools
 into Read and Write). The writes switch needs a home on `Connection` (a field, or
