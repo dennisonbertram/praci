@@ -354,10 +354,15 @@ export async function inboxComposeDraftSave(
       await flagReconnect(deps, account.id);
       return { status: "reconnect" };
     }
-    if (error.kind === "invalid") return { status: "failed", reason: "rejected" };
-    if (error.kind === "rate_limited") return { status: "failed", reason: "rate_limited" };
-    return { status: "failed" };
+    return failed(error);
   }
+}
+
+/** A failure that proves nothing was sent or saved, with Gmail's reason when it gave one. */
+function failed(error: MailProviderError): ComposeResult {
+  if (error.kind === "invalid") return { status: "failed", reason: "rejected" };
+  if (error.kind === "rate_limited") return { status: "failed", reason: "rate_limited" };
+  return { status: "failed" };
 }
 
 /** What an earlier or concurrent request settled on, waiting briefly for one still in flight. */
@@ -480,7 +485,7 @@ export async function inboxComposeSend(
       await flagReconnect(deps, account.id);
       return { status: "reconnect" };
     }
-    return { status: "failed" };
+    return failed(error);
   }
 }
 
