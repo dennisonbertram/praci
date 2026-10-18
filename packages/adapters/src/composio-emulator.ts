@@ -387,6 +387,10 @@ export class ComposioEmulator implements ComposioProvider {
     ).map((item) => ({ ...item, connectorId: "composio" }));
   }
 
+  async catalogDirectory() {
+    return this.directory.map((item) => ({ ...item, connectorId: "composio" }));
+  }
+
   async warmDirectory(): Promise<void> {}
 
   async listConnectedSlugs(userId: string): Promise<string[]> {

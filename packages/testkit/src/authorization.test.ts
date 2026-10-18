@@ -15,6 +15,7 @@ import type { createApp } from "../../../apps/api/src/app.ts";
 import type { BotIntroHarness } from "./discard-bot-intro.js";
 import { discardBotIntroFromCreate } from "./discard-bot-intro.js";
 import { sessionCookieHeader } from "./index.js";
+import { isolatedDatabase } from "./isolated-database.js";
 
 type App = { request: (input: string, init?: RequestInit) => Response | Promise<Response> };
 type AppHandles = Awaited<ReturnType<typeof createApp>>;
@@ -38,13 +39,16 @@ let botIntroHarness: BotIntroHarness | undefined;
 describeWithDatabase("API authorization and resource isolation", () => {
   let handles: AppHandles;
   let app: App;
+  let database: Awaited<ReturnType<typeof isolatedDatabase>> | undefined;
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const dataDir = mkdtempSync(path.join(tmpdir(), "rakazo-authz-"));
 
   beforeAll(async () => {
     const { createApp } = await import("../../../apps/api/src/app.ts");
+    database = await isolatedDatabase(process.env.DATABASE_URL!);
     handles = await createApp({
-      databaseUrl: process.env.DATABASE_URL!,
+      databaseUrl: database.url,
+      realtimeDatabaseUrl: database.url,
       dataDir,
       sandboxProvider: "fake",
       agentRuntime: "scripted",
@@ -57,8 +61,15 @@ describeWithDatabase("API authorization and resource isolation", () => {
   });
 
   afterAll(async () => {
-    await handles?.stop();
-    rmSync(dataDir, { recursive: true, force: true });
+    try {
+      await handles?.stop();
+    } finally {
+      try {
+        await database?.close();
+      } finally {
+        rmSync(dataDir, { recursive: true, force: true });
+      }
+    }
   });
 
   it("rejects unauthenticated calls to every protected RPC family", async () => {

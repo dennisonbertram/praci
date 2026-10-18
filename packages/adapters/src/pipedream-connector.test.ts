@@ -138,6 +138,52 @@ describe("pipedreamConfigFromEnv", () => {
 describe("PipedreamConnector", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it("lists app metadata without querying user accounts", async () => {
+    const requests: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input instanceof Request ? input.url : input);
+      requests.push(url);
+      if (url.endsWith("/v1/oauth/token")) {
+        return Response.json({ access_token: "fake-access-token", expires_in: 3_600 });
+      }
+      if (new URL(url).pathname === "/v1/connect/apps") {
+        return Response.json({
+          data: [
+            {
+              id: "gmail-app",
+              name_slug: "gmail",
+              name: "Gmail",
+              img_src: "https://logos.example.test/gmail.svg",
+            },
+          ],
+          page_info: {},
+        });
+      }
+      throw new Error(`Unexpected request ${url}`);
+    });
+    const connector = new PipedreamConnector(
+      {
+        clientId: "fake-client-id",
+        clientSecret: "fake-client-secret",
+        projectId: "fake-project-id",
+        environment: "development",
+        identitySecret: "fake-identity-secret",
+      },
+      { fetch },
+    );
+
+    await expect(connector.catalogDirectory()).resolves.toEqual([
+      {
+        connectorId: "pipedream",
+        slug: "gmail",
+        name: "Gmail",
+        logo: "https://logos.example.test/gmail.svg",
+        noAuth: false,
+      },
+    ]);
+    expect(requests.some((url) => url.includes("/accounts?"))).toBe(false);
+  });
+
   it.each([
     "javascript:alert(document.domain)",
     "http://pipedream.example.test/connect",

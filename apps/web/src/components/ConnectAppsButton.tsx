@@ -41,7 +41,7 @@ export function ConnectAppsButton({ active, onClick }: { active: boolean; onClic
     if (active) return;
     let cancelled = false;
     const load = () => {
-      void Promise.all([rpc.connections.catalog({}), rpc.connections.list()])
+      void Promise.all([rpc.connections.featured(), rpc.connections.list()])
         .then(([catalog, connections]) => {
           if (!cancelled) setApps(unconnectedFeatured(catalog, connections));
         })

@@ -126,21 +126,28 @@ export class GoogleConnector implements ManagedConnectorProvider {
   }
 
   async catalog(context: AdapterContext, query?: string): Promise<ConnectorCatalogItem[]> {
-    const connected = new Set(await this.listConnectedExternalIds(context));
+    const [directory, connected] = await Promise.all([
+      this.catalogDirectory(),
+      this.listConnectedExternalIds(context),
+    ]);
+    const connectedSet = new Set(connected);
     return filterCatalog(
-      (
-        Object.entries(PROVIDERS) as Array<[GoogleProvider, (typeof PROVIDERS)[GoogleProvider]]>
-      ).map(([slug, { name }]) => ({
-        connectorId: "google",
-        slug,
-        name,
-        // Simple Icons slugs match the provider keys; the web app inverts the black glyph in dark mode.
-        logo: `https://cdn.simpleicons.org/${slug}`,
-        connected: connected.has(slug),
-        noAuth: false,
-      })),
+      directory.map((item) => ({ ...item, connected: connectedSet.has(item.slug) })),
       query ?? "",
     );
+  }
+
+  async catalogDirectory(): Promise<Omit<ConnectorCatalogItem, "connected">[]> {
+    return (
+      Object.entries(PROVIDERS) as Array<[GoogleProvider, (typeof PROVIDERS)[GoogleProvider]]>
+    ).map(([slug, { name }]) => ({
+      connectorId: "google",
+      slug,
+      name,
+      // Simple Icons slugs match the provider keys; the web app inverts the black glyph in dark mode.
+      logo: `https://cdn.simpleicons.org/${slug}`,
+      noAuth: false,
+    }));
   }
 
   async discoverTools(): Promise<ConnectorTool[]> {

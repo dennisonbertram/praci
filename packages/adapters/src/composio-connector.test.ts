@@ -359,6 +359,33 @@ describe("composio tool mapping", () => {
     };
   }
 
+  it("returns directory metadata without opening an actor session", async () => {
+    const previous = composioSdkState.connectedAccounts.list;
+    const list = vi.fn(previous);
+    composioSdkState.connectedAccounts.list = list;
+    composioSdkState.created.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    try {
+      const connector = new ComposioConnector();
+      await expect(connector.catalogDirectory()).resolves.toEqual([
+        {
+          slug: "GITHUB",
+          name: "GitHub",
+          logo: null,
+          noAuth: false,
+          connectorId: "composio",
+        },
+      ]);
+      expect(composioSdkState.created.map(({ userId }) => userId)).toEqual(["__rakazo_catalog__"]);
+      expect(list).not.toHaveBeenCalled();
+    } finally {
+      composioSdkState.connectedAccounts.list = previous;
+      composioSdkState.sessions.clear();
+      composioToolkitDirectory.invalidate();
+    }
+  });
+
   it("pins every connected account into multi-account execute sessions", async () => {
     composioSdkState.created.length = 0;
     composioSdkState.sessions.clear();

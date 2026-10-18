@@ -186,6 +186,7 @@ import {
   expandSkillReferencesInPrompt,
   hasMixedOneShotSchedule,
   isOneShotRoutineCrons,
+  matchFeaturedConnectorId,
   nextCronDateAcrossStrict,
   splitPage,
   withAppDirectory,
@@ -5167,6 +5168,27 @@ export function createRouter(deps: RouterDeps) {
               return [];
             }
           }),
+        );
+        return dedupeCatalogBySlug(withAppDirectory(catalogs.flat()));
+      }),
+      featured: authed.connections.featured.handler(async () => {
+        const catalogs = await Promise.all(
+          deps.connectors
+            .managedProviders()
+            .map(async (provider): Promise<ConnectorCatalogItem[]> => {
+              try {
+                const items = (await provider.catalogDirectory?.()) ?? [];
+                return items
+                  .filter(
+                    (item) =>
+                      matchFeaturedConnectorId(item.slug) !== null ||
+                      matchFeaturedConnectorId(item.name) !== null,
+                  )
+                  .map((item) => ({ ...item, connected: false }));
+              } catch {
+                return [];
+              }
+            }),
         );
         return dedupeCatalogBySlug(withAppDirectory(catalogs.flat()));
       }),
