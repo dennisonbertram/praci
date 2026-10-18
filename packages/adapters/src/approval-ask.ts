@@ -5,6 +5,7 @@ import {
   isCartaAgentSpawnKey,
   isCartaEndpoint,
   isInboxAgentSpawnKey,
+  isIntegrationAgentSpawnKey,
   MAX_COMPOSE_BODY,
 } from "@rakazo/contracts";
 import { redactSecrets } from "@rakazo/core";
@@ -66,7 +67,9 @@ export function buildApprovalAskBlock(
           ]
         : [
             { id: "allow", label: "Allow once" },
-            ...(options?.fullMail ? [] : [{ id: "always", label: "Always allow this tool" }]),
+            ...(options?.fullMail || options?.cartaWriteTool !== undefined
+              ? []
+              : [{ id: "always", label: "Always allow this tool" }]),
             { id: "deny", label: "Deny" },
           ],
   };
@@ -92,6 +95,16 @@ export const isCartaWrite = (
   isCartaAgentSpawnKey(botSpawnKey) &&
   isCartaEndpoint(route?.endpoint) &&
   (CARTA_WRITE_TOOLS as readonly string[]).includes(route?.toolName ?? "");
+
+/**
+ * An integration agent's write tool on its MCP server: every call asks, whatever the saved rules say.
+ * MCP tools the connector listed to the agent carry `readOnly`; anything not marked a read is a write.
+ */
+export const isIntegrationAgentWrite = (
+  botSpawnKey: string | null | undefined,
+  route: { connectorId?: string } | undefined,
+  readOnly: boolean | undefined,
+) => isIntegrationAgentSpawnKey(botSpawnKey) && route?.connectorId === "mcp" && readOnly !== true;
 
 /** Whether a mail_send call carries the whole message (no draftId shortcut). */
 export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean {

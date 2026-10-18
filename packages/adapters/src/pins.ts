@@ -10,7 +10,13 @@ import type {
   PinSource,
   PinStat,
 } from "@rakazo/contracts";
-import { BotPinsSchema, PinListSchema } from "@rakazo/contracts";
+import {
+  BotPinsSchema,
+  integrationPresetForEndpoint,
+  isIntegrationAgentSpawnKey,
+  isReadTool,
+  PinListSchema,
+} from "@rakazo/contracts";
 import { connectorToolRequiresApproval } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { isUniqueViolation, Prisma } from "@rakazo/db";
@@ -168,21 +174,27 @@ async function checkSource(deps: PinsDeps, scope: PinsScope, source: PinSource) 
       userId: scope.userId,
       server: { enabled: true, spaceId: scope.spaceId, userId: scope.userId },
     },
-    include: { server: true, bot: { select: { spawnKey: true } } },
+    include: { server: true, bot: { select: { spawnKey: true, spaceId: true, userId: true } } },
   });
-  if (!assignment || !assignmentAllowsTool(assignment, source.tool)) {
-    throw new Error(`MCP tool ${source.tool} is not assigned to this bot`);
-  }
+  if (!assignment) throw new Error(`MCP tool ${source.tool} is not assigned to this bot`);
   if (!deps.mcp) throw new Error("MCP is not available");
   const tools = await deps.mcp.listServerTools(assignment.server, pinContext(scope));
   const meta = tools.find((tool) => tool.name === source.tool);
+  // The gate needs the tool's annotations (an integration agent's reads) and the bot's owner.
+  if (!assignmentAllowsTool(assignment, source.tool, meta?.annotations)) {
+    throw new Error(`MCP tool ${source.tool} is not assigned to this bot`);
+  }
   if (!meta) throw new Error(`Tool ${source.tool} is not offered by the server`);
   const hints = meta.annotations;
   // Never rerun what a bot run would need approval for: the name rule applies whatever the server claims.
+  // With an integration agent involved, only the agent's own read classification counts: refresh runs
+  // outside the approval flow, so an unannotated get_* tool (a write there) must not pass by its name.
   const readOnly =
-    hints?.readOnlyHint !== false &&
-    hints?.destructiveHint !== true &&
-    toolNameIsReadOnly(source.tool);
+    assignment.server.agentBotId || isIntegrationAgentSpawnKey(assignment.bot?.spawnKey)
+      ? isReadTool(meta, integrationPresetForEndpoint(assignment.server.endpoint))
+      : hints?.readOnlyHint !== false &&
+        hints?.destructiveHint !== true &&
+        toolNameIsReadOnly(source.tool);
   if (!readOnly) {
     throw new Error(`Tool ${source.tool} is not read-only, so it cannot be a pin source`);
   }

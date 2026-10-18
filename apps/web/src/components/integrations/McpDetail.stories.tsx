@@ -1,3 +1,4 @@
+import type { McpServer } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { mockAssignments, mockIntegrations, mockServer } from "../../stories/fixtures";
@@ -40,6 +41,34 @@ export const CartaWritesOff: Story = {
 export const CartaWritesOn: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },
   args: { data: mockIntegrations({ servers: [cartaServer(true)] }) },
+};
+
+const mercury = (extra: Partial<McpServer> = {}) =>
+  mockServer("srv_1", "Mercury", { endpoint: "https://mcp.mercury.example.com/mcp", ...extra });
+
+export const CanCreateAgent: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: { data: mockIntegrations({ servers: [mercury()] }) },
+};
+
+export const WithAgent: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: {
+    data: mockIntegrations({
+      servers: [mercury({ agentBotId: "bot_ada" })],
+      mcpAssignments: mockAssignments,
+    }),
+  },
+};
+
+export const WithAgentOnlyThisAgent: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: {
+    data: mockIntegrations({
+      servers: [mercury({ agentBotId: "bot_ada", agentExclusive: true, writesEnabled: true })],
+      mcpAssignments: mockAssignments,
+    }),
+  },
 };
 
 export const NeedsReconnect: Story = {

@@ -60,6 +60,10 @@ function fakeWorld(opts: {
   assignment?: { allowAllTools: boolean; allowedTools: string[] } | null;
   tools?: { name: string; annotations?: Row }[];
   stats?: Row[];
+  /** The bot is the integration agent of the server, whose writes are off. */
+  agent?: boolean;
+  /** With `agent`: the server's "Allow changes" switch. */
+  writesOn?: boolean;
 }) {
   let row: Row = {
     id: "p",
@@ -78,7 +82,21 @@ function fakeWorld(opts: {
     botMcpServer: {
       findFirst: vi.fn(async () =>
         assignment && enabled
-          ? { ...assignment, server: { id: "srv" }, bot: { spawnKey: null }, serverId: "srv" }
+          ? opts.agent
+            ? {
+                ...assignment,
+                botId: "bot",
+                serverId: "srv",
+                server: {
+                  id: "srv",
+                  spaceId: "sp",
+                  userId: "u",
+                  agentBotId: "bot",
+                  writesEnabled: opts.writesOn === true,
+                },
+                bot: { spawnKey: "integration-agent:srv", spaceId: "sp", userId: "u" },
+              }
+            : { ...assignment, server: { id: "srv" }, bot: { spawnKey: null }, serverId: "srv" }
           : null,
       ),
     },
@@ -143,6 +161,33 @@ describe("pin source authorization", () => {
     await expect(save(tool(undefined, "get_balance"), src("get_other"))).rejects.toThrow(
       /not offered/,
     );
+  });
+});
+
+describe("pin sources for an integration agent", () => {
+  it("accepts the agent's own read, judged on the listed annotations, and refuses a write", async () => {
+    const agent = (annotations?: Row) =>
+      fakeWorld({ agent: true, tools: [{ name: "get_balance", annotations }] });
+    await expect(save(agent({ readOnlyHint: true }), src())).resolves.toMatchObject({ ok: true });
+    await expect(save(agent(), src())).rejects.toThrow(/not assigned/);
+  });
+});
+
+describe("pins never reach an agent write", () => {
+  const world = (extra: Row = {}) =>
+    fakeWorld({ agent: true, writesOn: true, tools: [{ name: "get_balance" }], ...extra });
+
+  it("refuses an unannotated tool by name when changes are on, on save", async () => {
+    await expect(save(world(), src())).rejects.toThrow(/not read-only/);
+  });
+
+  it("refuses on refresh a source that is now a write, without calling it", async () => {
+    const w = world({
+      stats: [{ id: "a", label: "A", value: "1", source: src() }],
+    });
+    const result = await refreshBotPins(w, scope);
+    expect(w.mcp.callServerTool).not.toHaveBeenCalled();
+    expect(result?.pins.stats[0]).toMatchObject({ error: expect.any(String) });
   });
 });
 

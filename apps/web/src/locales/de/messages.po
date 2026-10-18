@@ -130,6 +130,11 @@ msgstr ""
 msgid "{0} {unitLabel}"
 msgstr "{0} {unitLabel}"
 
+#. placeholder {0}: server.name
+#: src/components/integrations/McpDetail.tsx
+msgid "{0} agent"
+msgstr ""
+
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -781,6 +786,10 @@ msgstr ""
 msgid "after fees"
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Agent"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Agent connections"
 msgstr ""
@@ -880,12 +889,12 @@ msgstr ""
 msgid "Allow changes"
 msgstr ""
 
-#: src/components/integrations/McpDetail.tsx
-msgid "Allow changes in Carta"
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Allow changes in {service}"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
-msgid "Allow changes in Carta?"
+msgid "Allow changes in {service}?"
 msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
@@ -2419,6 +2428,10 @@ msgstr ""
 msgid "Could not continue"
 msgstr "Fortfahren fehlgeschlagen"
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Could not create agent"
+msgstr ""
+
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "Gruppe konnte nicht erstellt werden"
@@ -2820,6 +2833,10 @@ msgstr "Kontrolle konnte nicht übernommen werden"
 msgid "Could not update"
 msgstr "Aktualisierung fehlgeschlagen"
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Could not update access"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update bot access"
@@ -2933,6 +2950,10 @@ msgstr "Erstelle einen Abschnitt und verschiebe {0} dorthin."
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "Konto erstellen"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Create agent"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Create Finance agent"
@@ -5654,6 +5675,10 @@ msgstr "OAuth-Verbindung fehlgeschlagen"
 msgid "Obligation"
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
+msgstr ""
+
 #: src/components/integrations/McpDetail.tsx
 msgid "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
 msgstr ""
@@ -5678,6 +5703,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Only if the server does not use sign-in"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Only this agent"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -5880,6 +5909,10 @@ msgstr "Originalnachricht nicht verfügbar"
 #: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Other agents ask the {service} agent instead of using {service} themselves."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -7836,6 +7869,10 @@ msgstr ""
 
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the {month} statement"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "The agent will be able to change your {service} data. It asks before each change."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx

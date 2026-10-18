@@ -50,10 +50,12 @@ import {
   disabledBuiltinToolSet,
   HistoryReadInputSchema,
   HistorySearchInputSchema,
+  integrationAgentSpawnKey,
   isAttachmentImageMimeType,
   isCartaAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
+  isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
   LEGAL_AGENT_MODEL,
@@ -147,6 +149,7 @@ import {
   describeApprovalAction,
   isCartaMailSend,
   isCartaWrite,
+  isIntegrationAgentWrite,
 } from "./approval-ask.js";
 import {
   approvalPausedToolResult,
@@ -3586,7 +3589,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The Carta agent likewise uses only MCP tools (Carta) plus the built-in mail, drive and
         // finance tools.
         const cartaAgent = isCartaAgentSpawnKey(bot.spawnKey);
-        const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey) || cartaAgent;
+        // An integration agent works with its one MCP server and the plain built-ins only.
+        const integrationAgent = isIntegrationAgentSpawnKey(bot.spawnKey);
+        const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey) || cartaAgent || integrationAgent;
         // The Legal agent works from the Data Room, mail and Drive through its own tools only: no
         // Composio, MCP or other connector tools, and a fixed list of built-ins (read-only mail).
         const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
@@ -4142,21 +4147,55 @@ export function createRunExecutor(deps: ExecutorDeps) {
             contactsEnabled,
             messagingChannelRun,
             cartaAgent,
+            integrationAgent,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
           }),
           // Cross-owner agent connections only exist for chat-linked bots.
-          ...(hasMessagingIdentity && !cartaAgent && !isBackgroundRunTrigger(run.trigger)
+          ...(hasMessagingIdentity &&
+          !cartaAgent &&
+          !integrationAgent &&
+          !isBackgroundRunTrigger(run.trigger)
             ? agentConnectionTools.filter((tool) => !disabledBuiltinTools.has(tool.name))
             : []),
         ].filter((tool) => !legalOnly || legalToolSet.has(tool.name));
         // Generic connector tools (Composio, Pipedream, MCP) reach the owner's accounts, so a run
         // another agent started (bot_message, possibly from another account) gets none of them.
         // Webhook and messaging runs keep them: they have their own approval rules.
+        // The one exception: an integration agent asked by another bot of the same space and user
+        // works with its own server's MCP tools (writes still ask). A peer from another account
+        // or space is not found in this scope, so it gets nothing.
+        const integrationServerId = bot.spawnKey?.slice(integrationAgentSpawnKey("").length);
+        let integrationPeerRun = false;
+        if (integrationAgent && run.trigger === "bot_message" && peerMessage?.fromBotId) {
+          const [sender, linked] = await Promise.all([
+            deps.prisma.bot.findFirst({
+              where: {
+                id: peerMessage.fromBotId,
+                spaceId: run.spaceId,
+                userId: run.userId,
+                archivedAt: null,
+              },
+              select: { id: true },
+            }),
+            deps.prisma.mcpServer.findFirst({
+              where: {
+                id: integrationServerId,
+                spaceId: run.spaceId,
+                userId: run.userId,
+                agentBotId: bot.id,
+              },
+              select: { id: true },
+            }),
+          ]);
+          integrationPeerRun = Boolean(sender && linked);
+        }
         const exposedConnectorTools =
-          run.trigger !== "bot_message"
+          run.trigger !== "bot_message" || integrationPeerRun
             ? discovered.filter(
-                (tool) => !builtinAgentTools.some((builtin) => builtin.name === tool.name),
+                (tool) =>
+                  !builtinAgentTools.some((builtin) => builtin.name === tool.name) &&
+                  (!integrationPeerRun || tool.route?.connectorId === "mcp"),
               )
             : [];
         const connectorTools = new Map(
@@ -4406,6 +4445,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           );
           if (approvedReplay.error) return { error: approvedReplay.error };
           if (approvedReplay.args) connectorCall.args = approvedReplay.args;
+          const requestedName = name;
           let catalogRemapped = false;
           let resolvedTool: ConnectorTool | undefined;
           if (name.startsWith("cloud_agent_") && !validCloudAgentArgs(name, args)) {
@@ -4591,9 +4631,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
             requiresUnattendedApproval ||
             toolRequiresApproval(name, viaConnector, declaredReadOnly);
           const callRoute = (resolvedTool ?? connectorTools.get(name))?.route;
-          const cartaWriteTool = isCartaWrite(bot.spawnKey, callRoute)
-            ? callRoute?.toolName
-            : undefined;
+          // Carta's write tools and an integration agent's non-read MCP tools (the connector marks
+          // the agent's reads `readOnly`): same card with the full call, no saved rule, no Auto Review.
+          const cartaWriteTool =
+            isCartaWrite(bot.spawnKey, callRoute) ||
+            isIntegrationAgentWrite(bot.spawnKey, callRoute, declaredReadOnly)
+              ? callRoute?.toolName
+              : undefined;
           const requiresMandatoryApproval =
             requiresUnattendedApproval ||
             toolRequiresExplicitApproval(name) ||
@@ -6820,7 +6864,19 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (deps.connector) {
             // A model can call a name it was never offered; refuse connector calls on a peer-started run.
-            if (run.trigger === "bot_message" && !BUILTIN_AGENT_TOOL_NAMES.has(name)) {
+            if (
+              run.trigger === "bot_message" &&
+              !BUILTIN_AGENT_TOOL_NAMES.has(name) &&
+              // A peer call on a catalog wrapper resolves to the underlying tool; that tool must be
+              // one of the agent's own server (writes still ask, further up).
+              !(
+                integrationPeerRun &&
+                connectorTools.has(requestedName) &&
+                (!resolvedTool ||
+                  (resolvedTool.route?.connectorId === "mcp" &&
+                    resolvedTool.route.resourceId === integrationServerId))
+              )
+            ) {
               return { error: `unknown tool ${name}` };
             }
             let result: unknown = { error: `unknown tool ${name}` };
@@ -6867,11 +6923,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ? legalEnabled
               ? "Start with legal_unreviewed_documents, read each with read_data_room_item, and record what you find with the legal_* tools. Use mail_search and drive_search for legal documents that are not in the Data Room yet."
               : undefined
-            : financeOnly
-              ? financeAgentRunLine(financeEnabled, run.trigger)
-              : connectedPlugins.length > 0
-                ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
-                : "No plugins are connected yet.";
+            : integrationAgent
+              ? undefined
+              : financeOnly
+                ? financeAgentRunLine(financeEnabled, run.trigger)
+                : connectedPlugins.length > 0
+                  ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
+                  : "No plugins are connected yet.";
         const taughtSkillIndex = savedSkills.slice(0, 20);
         const taughtSkillsLine =
           taughtSkillIndex.length > 0
@@ -8046,11 +8104,23 @@ export function selectBuiltinToolsForRun(options: {
   messagingChannelRun: boolean;
   /** The Carta agent: no delegation to other bots, whose runs would skip its mail approval. */
   cartaAgent?: boolean;
+  /** An integration agent: no mail, calendar, Drive, Data room, finance or contact tools. */
+  integrationAgent?: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
   /** Built-in names this bot turned off. Unknown names are ignored. */
   disabledBuiltinTools?: readonly string[];
 }) {
+  if (options.integrationAgent)
+    options = {
+      ...options,
+      mailEnabled: false,
+      calendarEnabled: false,
+      driveEnabled: false,
+      dataRoomEnabled: false,
+      financeEnabled: false,
+      contactsEnabled: false,
+    };
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
   return selectCalendarTools(
     selectMailTools(

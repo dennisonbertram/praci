@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rakazo Integration Agents Mockup</title>
+<style>
+:root{
+  --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#b7791f; --success:#2f855a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323;
+  }
+}
+:root[data-theme="dark"]{
+  --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+  --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+  --sidebar:#141414; --sidebar-accent:#232323;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+.app{display:grid;grid-template-columns:220px 1fr;height:100vh;min-height:640px}
+aside{background:var(--sidebar);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px}
+.row.active{background:var(--sidebar-accent);font-weight:600}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+.label{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.mute{color:var(--muted-fg)}
+.shell{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.bar{display:flex;gap:6px;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--card)}
+.tab{padding:5px 12px;border-radius:999px;border:1px solid var(--border);color:var(--muted-fg);background:transparent;cursor:pointer;font:inherit}
+.tab[aria-selected="true"]{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.bar .sp{flex:1}
+main{overflow:auto;padding:20px 28px;flex:1}
+.view{display:none;max-width:760px}
+.view.on{display:block}
+h1{font-size:18px;margin:0}
+h2.sec{font-size:12px;margin:20px 0 8px;color:var(--muted-fg);font-weight:600}
+.head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.badge{font-size:11px;border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--success)}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+button.b{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:default}
+button.b.p{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.cap{font-size:11px;color:var(--muted-fg);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.sw{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;margin:8px 0}
+.sw p{grid-column:2;margin:0;color:var(--muted-fg)}
+.tg{width:30px;height:18px;border-radius:999px;background:var(--border);position:relative;display:inline-block}
+.tg::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--card);transition:.15s}
+.tg.on{background:var(--primary)} .tg.on::after{left:14px;background:var(--primary-fg)}
+.used{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border)}
+.used:first-of-type{border-top:0}
+.used .tg{margin-left:auto}
+.tools{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--card)}
+.tools .gh{display:flex;justify-content:space-between;background:var(--muted);padding:6px 12px;font-size:12px;font-weight:600;border-top:1px solid var(--border)}
+.tools .gh:first-child{border-top:0}
+.tools .gh span+span{font-weight:400;color:var(--muted-fg)}
+.tools div.t{padding:5px 12px;border-top:1px solid var(--border);font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.dlg{border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--card);max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.dlg h3{margin:0 0 6px;font-size:14px}
+.chat{display:flex;flex-direction:column;gap:10px}
+.msg{max-width:78%;padding:8px 12px;border-radius:12px;background:var(--muted)}
+.msg.me{align-self:flex-end;background:var(--primary);color:var(--primary-fg)}
+.step{color:var(--muted-fg);font-size:12px;display:flex;gap:6px;align-items:center}
+.step::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--muted-fg)}
+.appr{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:12px 14px;max-width:460px}
+.appr h3{margin:0 0 2px;font-size:13px}
+.appr table{width:100%;border-collapse:collapse;margin:8px 0}
+.appr td{padding:4px 0;border-top:1px solid var(--border)}
+.appr td:first-child{color:var(--muted-fg);width:110px}
+.appr .btns{margin:6px 0 0}
+.chead{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.noteline{font-size:12px;color:var(--muted-fg);margin-top:16px;border-left:2px solid var(--border);padding-left:10px}
+@media (max-width:760px){.app{grid-template-columns:1fr}aside{display:none}main{padding:16px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="row">Inbox</div>
+    <div class="label">Agents</div>
+    <div class="row"><span class="av" style="background:#4a7bd0">R</span>Research</div>
+    <div class="row"><span class="av" style="background:#3f9b8a">O</span>Ops</div>
+    <div class="row"><span class="av" style="background:#2f855a">F</span>Finance agent</div>
+    <div class="row"><span class="av" style="background:#b7791f">M</span>Mercury agent</div>
+    <div style="flex:1"></div>
+    <div class="row active">Integrations</div>
+  </aside>
+  <div class="shell">
+    <div class="bar" role="tablist" aria-label="Mockup views">
+      <button class="tab" role="tab" aria-selected="true" data-v="a">Integration page</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="b">Mercury agent chat</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="c">Another agent</button>
+      <span class="sp"></span>
+      <button class="tab" id="theme" aria-label="Toggle theme">Light / dark</button>
+    </div>
+    <main>
+
+<section class="view on" id="a">
+  <div class="cap">Before: no agent yet</div>
+  <div class="card">
+    <div class="head"><h1>Mercury</h1><span class="badge">Connected</span></div>
+    <div class="btns"><button class="b p">Create agent</button><button class="b">Disconnect sign-in</button><button class="b">Rename</button></div>
+  </div>
+
+  <div class="cap">After: agent created, still read-only and shared</div>
+  <div class="card">
+    <div class="head"><h1>Mercury</h1><span class="badge">Connected</span></div>
+    <div class="btns"><button class="b">Disconnect sign-in</button><button class="b">Rename</button></div>
+    <h2 class="sec">Agent</h2>
+    <div class="used"><span class="av" style="background:#b7791f">M</span>Mercury agent<span class="mute" style="margin-left:auto">Open chat</span></div>
+    <div class="sw"><span class="tg"></span><b>Allow changes in Mercury</b>
+      <p>Off: the agent only reads. On: it can also make changes, and asks you before each one.</p></div>
+    <div class="sw"><span class="tg"></span><b>Only this agent</b>
+      <p>Other agents ask the Mercury agent instead of using Mercury themselves.</p></div>
+    <h2 class="sec">Used by</h2>
+    <div class="used"><span class="av" style="background:#b7791f">M</span>Mercury agent<span class="tg on"></span></div>
+    <div class="used"><span class="av" style="background:#2f855a">F</span>Finance agent<span class="mute" style="margin-left:auto;margin-right:8px">reads only</span><span class="tg on"></span></div>
+    <div class="used"><span class="av" style="background:#4a7bd0">R</span>Research<span class="mute" style="margin-left:auto;margin-right:8px">reads only</span><span class="tg on"></span></div>
+  </div>
+
+  <div class="cap">Writes on, Only this agent on</div>
+  <div class="card">
+    <div class="sw"><span class="tg on"></span><b>Allow changes in Mercury</b>
+      <p>Off: the agent only reads. On: it can also make changes, and asks you before each one.</p></div>
+    <div class="sw"><span class="tg on"></span><b>Only this agent</b>
+      <p>Other agents ask the Mercury agent instead of using Mercury themselves.</p></div>
+    <h2 class="sec">Used by</h2>
+    <div class="used"><span class="av" style="background:#b7791f">M</span>Mercury agent<span class="tg on"></span></div>
+    <p class="mute" style="margin:6px 0 0">Other agents' rows are hidden, not deleted. Turning Only this agent off brings them back.</p>
+    <h2 class="sec">Tools · 41</h2>
+    <div class="tools">
+      <div class="gh"><span>Read</span><span>Never changes your account</span></div>
+      <div class="t">listTransactions</div><div class="t">getAccounts</div>
+      <div class="gh"><span>Write</span><span>Changes your account</span></div>
+      <div class="t">requestSendMoney</div><div class="t">updateTransaction</div>
+    </div>
+  </div>
+
+  <div class="cap">Turning on Allow changes</div>
+  <div class="dlg"><h3>Allow changes in Mercury?</h3>
+    <p style="margin:0 0 10px">The agent will be able to change your Mercury data. It asks before each change.</p>
+    <div class="btns" style="margin:0"><button class="b">Cancel</button><button class="b p">Allow</button></div></div>
+</section>
+
+<section class="view" id="b">
+  <div class="chead"><span class="av" style="background:#b7791f">M</span><b>Mercury agent</b></div>
+  <div class="chat">
+    <div class="msg me">Pay the Northwind Supplies invoice from checking.</div>
+    <div class="step">Read invoice INV-0042 and Northwind Supplies in Mercury</div>
+    <div class="msg">The invoice is for $1,250.00, due Nov 3. I will send it from Checking, and you approve the payment first.</div>
+    <div class="appr" role="group" aria-label="Approval">
+      <h3>requestSendMoney</h3>
+      <span class="mute">Mercury</span>
+      <table>
+        <tr><td>To</td><td>Northwind Supplies</td></tr>
+        <tr><td>From</td><td>Checking ••0000</td></tr>
+        <tr><td>Amount</td><td>$1,250.00</td></tr>
+        <tr><td>Memo</td><td>INV-0042</td></tr>
+      </table>
+      <div class="btns"><button class="b p">Approve</button><button class="b">Deny</button></div>
+    </div>
+  </div>
+  <p class="noteline">Every write asks for this exact call. There is no "Always allow", and saved rules and Auto Review do not apply.</p>
+</section>
+
+<section class="view" id="c">
+  <div class="chead"><span class="av" style="background:#4a7bd0">R</span><b>Research</b></div>
+  <div class="chat">
+    <div class="msg me">Pay the Northwind Supplies invoice.</div>
+    <div class="step">Mercury tools are not available to this agent</div>
+    <div class="step">Asked Mercury agent</div>
+    <div class="msg">The Mercury agent handles Mercury. I sent it the request, and it will ask you to approve the payment in its chat.</div>
+  </div>
+  <p class="noteline">Only this agent is on, so Research has no Mercury tools and reaches the Mercury agent with a message.</p>
+  <div class="cap">Mercury agent chat, as the request arrives</div>
+  <div class="chat">
+    <div class="msg">Message from Research: pay the Northwind Supplies invoice.</div>
+    <div class="appr">
+      <h3>requestSendMoney</h3><span class="mute">Mercury</span>
+      <table><tr><td>To</td><td>Northwind Supplies</td></tr><tr><td>Amount</td><td>$1,250.00</td></tr></table>
+      <div class="btns"><button class="b p">Approve</button><button class="b">Deny</button></div>
+    </div>
+  </div>
+</section>
+
+    </main>
+  </div>
+</div>
+<script>
+document.querySelectorAll('[data-v]').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('[data-v]').forEach(x=>x.setAttribute('aria-selected',x===t));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id===t.dataset.v));
+}));
+document.getElementById('theme').addEventListener('click',()=>{
+  const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme=dark?'light':'dark';
+});
+</script>
+</body>
+</html>

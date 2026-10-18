@@ -4273,9 +4273,17 @@ describe("MCP server writes switch", () => {
       updatedAt: new Date(0),
     };
     const findFirst = vi.fn().mockResolvedValue(found ? row : null);
-    const update = vi.fn(async ({ data }: { data: object }) => ({ ...row, ...data }));
+    const update = vi.fn(async ({ data }: { data: object }) => {
+      Object.assign(row, data);
+      return { count: 1 };
+    });
     const prisma = {
-      mcpServer: { findFirst, update, findMany: vi.fn().mockResolvedValue([]) },
+      mcpServer: {
+        findFirst,
+        findFirstOrThrow: vi.fn(async () => row),
+        updateMany: update,
+        findMany: vi.fn().mockResolvedValue([]),
+      },
       bot: { findFirst: vi.fn().mockResolvedValue(null) },
       botMcpServer: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
       secret: { findFirst: vi.fn().mockResolvedValue(null) },
@@ -4313,7 +4321,12 @@ describe("MCP server writes switch", () => {
       where: { id: "server-1", spaceId: "workspace-1", userId: "user-1" },
     });
     expect(update).toHaveBeenCalledWith({
-      where: { id: "server-1" },
+      where: {
+        id: "server-1",
+        spaceId: "workspace-1",
+        userId: "user-1",
+        endpoint: CARTA_MCP_ENDPOINT,
+      },
       data: { writesEnabled: true },
     });
   });

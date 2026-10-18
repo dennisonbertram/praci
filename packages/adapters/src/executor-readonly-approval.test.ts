@@ -5,7 +5,11 @@ import type {
   ConnectorTool,
 } from "@rakazo/adapter-kit";
 import { MEMORY_REVISION_CONFLICT_ERROR } from "@rakazo/adapter-kit";
-import { cartaAgentSpawnKey, inboxAgentSpawnKey } from "@rakazo/contracts";
+import {
+  cartaAgentSpawnKey,
+  inboxAgentSpawnKey,
+  integrationAgentSpawnKey,
+} from "@rakazo/contracts";
 import type { ActionApprovalRule } from "@rakazo/core";
 import { approvalEffectKey, toolEffectIdempotencyKey } from "@rakazo/core/node/approval-effect-key";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,8 +17,10 @@ import { isApprovalPausedResult } from "./approval-effect.js";
 import { MAX_SHARED_MEMORY_CHARS } from "./builtin-tools.js";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor, MAIL_CONSENT_OFF } from "./executor.js";
+import { fakeMercury, fakeMercuryMcpFetch } from "./finance-fake-tools.js";
 import type * as InboxTriageModule from "./inbox-triage.js";
 import { catalogEntries, resolveCatalogCall } from "./lazy-tool-catalog.js";
+import { McpConnector } from "./mcp-connector.js";
 
 vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
   ...(await importOriginal<typeof ComputerLifecycleModule>()),
@@ -77,7 +83,13 @@ function fixture({
   mail,
   afterCall,
   route,
+  connector: realConnector,
+  peer,
 }: {
+  /** A bot_message run started by bot `peer-1`: whether that bot is in the run's space and user, and whether the bot is its server's agent. */
+  peer?: { senderInScope: boolean; linked: boolean };
+  /** Replaces the stub connector, for runs against a real McpConnector. */
+  connector?: unknown;
   route?: ConnectorTool["route"];
   spawnKey?: string | null;
   mail?: unknown;
@@ -143,6 +155,7 @@ function fixture({
     status: "queued",
     trigger,
     leaseFence: 0,
+    ...(peer ? { sourceMessageId: "msg-1" } : {}),
   };
   const externalEffect = {
     findMany: vi.fn(
@@ -206,14 +219,33 @@ function fixture({
         computer: { id: "computer-1", scope: "dedicated" },
       })),
       findMany: vi.fn(async () => []),
+      findFirst: vi.fn(async () => (peer?.senderInScope ? { id: "peer-1" } : null)),
     },
+    mcpServer: { findFirst: vi.fn(async () => (peer?.linked ? { id: "server-1" } : null)) },
     attempt: {
       create: vi.fn(async () => ({ id: "attempt-1" })),
       update: vi.fn(),
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
     thread: { findUniqueOrThrow: vi.fn(async () => ({ id: run.threadId, groupId: null })) },
-    message: { findMany: vi.fn(async () => []) },
+    message: {
+      findMany: vi.fn(async () => []),
+      findFirst: vi.fn(async () => null),
+      findUnique: vi.fn(async () => ({
+        blocks: [
+          {
+            kind: "bot_message_received",
+            fromBotId: "peer-1",
+            fromBotName: "Peer",
+            text: "Pay the invoice",
+            hop: 1,
+            intent: "request",
+            returnToMessageId: "m0",
+          },
+        ],
+        replyTo: null,
+      })),
+    },
     task: { findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt })) },
     connection: { findMany: vi.fn(async () => []) },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
@@ -250,7 +282,7 @@ function fixture({
     for (const call of calls) {
       const result = await request.executeTool!(
         catalog ? "demo_execute_tool" : name,
-        catalog ? { id: `resource-1:${name}`, arguments: call.args } : call.args,
+        catalog ? { id: name, arguments: call.args } : call.args,
         call.executionId,
       );
       results.push(result);
@@ -262,7 +294,7 @@ function fixture({
   const executor = createRunExecutor({
     prisma,
     runtime: { describe: () => ({ capabilities: { scripted: false } }), run: runtimeRun },
-    connector: {
+    connector: realConnector ?? {
       discoverTools: async () =>
         builtin
           ? []
@@ -272,7 +304,10 @@ function fixture({
                   name: "demo_execute_tool",
                   description: "Execute a catalog tool",
                   inputSchema: { type: "object" },
-                  route: { connectorId: "demo", toolName: "__catalog_execute" },
+                  route: {
+                    connectorId: route?.connectorId ?? "demo",
+                    toolName: "__catalog_execute",
+                  },
                 },
               ]
             : [tool],
@@ -324,12 +359,15 @@ function fixture({
     setCalls(next: typeof calls) {
       calls = next;
     },
-    async run() {
+    async run(options: { expectFailure?: boolean } = {}) {
       run.status = "queued";
       await executor.continueRun(run.id, "worker-1");
       expect(runtimeRun).toHaveBeenCalled();
       expect(prisma.attempt.update).not.toHaveBeenCalled();
-      expect(finalizeRun).not.toHaveBeenCalledWith(expect.objectContaining({ outcome: "failed" }));
+      if (!options.expectFailure)
+        expect(finalizeRun).not.toHaveBeenCalledWith(
+          expect.objectContaining({ outcome: "failed" }),
+        );
     },
   };
 }
@@ -904,6 +942,179 @@ describe("Carta write tools", () => {
   });
 });
 
+describe("integration agent write tools", () => {
+  beforeEach(() => {
+    reviewMock.mockReset();
+  });
+  const tool = (spawnKey: string | null, readOnly: boolean) =>
+    fixture({
+      name: "mcp__demo__requestSendMoney",
+      readOnly,
+      autoReview: true,
+      rules: [
+        { effect: "always_allow", matchKind: "tool", matchValue: "mcp__demo__requestSendMoney" },
+      ],
+      spawnKey,
+      route: { connectorId: "mcp", resourceId: "server-1", toolName: "requestSendMoney" },
+    });
+
+  it("asks despite an always-allow rule and Auto Review, and the card has no rule option", async () => {
+    const f = tool(integrationAgentSpawnKey("server-1"), false);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(isApprovalPausedResult(f.results[0])).toBe(true);
+    expect(reviewMock).not.toHaveBeenCalled();
+    expect(f.execute).not.toHaveBeenCalled();
+    const [{ blocks }] = f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }];
+    const card = blocks[0] as { detail: string; actions: Array<{ id: string }> };
+    expect(card.actions.map((a) => a.id)).toEqual(["allow", "deny"]);
+    expect(card.detail).toContain("requestSendMoney");
+  });
+
+  it("does not ask for a read", async () => {
+    const f = tool(integrationAgentSpawnKey("server-1"), true);
+    await f.run();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(f.execute).toHaveBeenCalledOnce();
+  });
+});
+
+/**
+ * Real executor (scripted model, in-memory stores) over a real McpConnector, talking to the emulated
+ * Mercury MCP server through fetch. Not exercised: Postgres, the model runtime, the MCP network.
+ */
+describe("Mercury agent writes, offline end to end", () => {
+  const endpoint = "https://mcp.mercury.com/mcp";
+  const serverId = "server-1";
+  const server = {
+    id: serverId,
+    slug: "demo",
+    name: "Mercury",
+    transport: "streamable_http",
+    endpoint,
+    secretId: null,
+    args: [],
+    revision: 1,
+    spaceId: "space-1",
+    userId: "user-1",
+    writesEnabled: true,
+    agentBotId: "bot-1",
+    agentExclusive: false,
+  };
+  const assignmentFor = (botId: string, spawnKey: string | null) => ({
+    botId,
+    serverId,
+    spaceId: "space-1",
+    userId: "user-1",
+    allowAllTools: true,
+    allowedTools: [],
+    bot: { spawnKey, spaceId: "space-1", userId: "user-1" },
+    server,
+  });
+  const mercuryConnector = (botId: string, spawnKey: string | null) => {
+    const assignment = assignmentFor(botId, spawnKey);
+    return new McpConnector(
+      {
+        botMcpServer: {
+          findMany: async () => [assignment],
+          findFirst: async () => assignment,
+        },
+      } as never,
+      {} as never,
+      {
+        network: {
+          fetch: (input: string | URL | Request, init?: RequestInit) =>
+            fakeMercuryMcpFetch(mercury)(input, init),
+          resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+        },
+      },
+    );
+  };
+  const agentKey = integrationAgentSpawnKey(serverId);
+  const sendArgs = { amount: 12.5, recipientId: "rcp-1", note: "Test" };
+  let mercury = fakeMercury({ txns: {} });
+  beforeEach(() => {
+    mercury = fakeMercury({ txns: {} });
+    server.writesEnabled = true;
+    server.agentExclusive = false;
+    reviewMock.mockReset();
+  });
+  const agentRun = (connector: McpConnector) => {
+    const f = fixture({
+      name: "mcp__demo__requestSendMoney",
+      readOnly: false,
+      autoReview: true,
+      rules: [
+        { effect: "always_allow", matchKind: "tool", matchValue: "mcp__demo__requestSendMoney" },
+      ],
+      spawnKey: agentKey,
+      connector,
+    });
+    f.setCalls([{ args: sendArgs, executionId: "call-1" }]);
+    return f;
+  };
+
+  it("asks first, and a denial sends nothing", async () => {
+    const f = agentRun(mercuryConnector("bot-1", agentKey));
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(mercury.sendMoneyRequests).toHaveLength(0);
+    f.effects[0]!.status = "denied";
+    await f.run();
+    expect(f.results.at(-1)).toMatchObject({ error: expect.stringContaining("denied") });
+    expect(mercury.sendMoneyRequests).toHaveLength(0);
+  });
+
+  it("sends exactly one request once the user approves", async () => {
+    const f = agentRun(mercuryConnector("bot-1", agentKey));
+    await f.run();
+    expect(mercury.sendMoneyRequests).toHaveLength(0);
+    f.effects[0]!.status = "approved";
+    await f.run();
+    expect(mercury.sendMoneyRequests).toEqual([sendArgs]);
+  });
+
+  it("refuses even an approved call when changes are switched off before it runs", async () => {
+    const connector = mercuryConnector("bot-1", agentKey);
+    const discover = connector.discoverTools.bind(connector);
+    // The tool list is read at the start of each run. The user approves in the first run, then
+    // the switch flips after the second run read its list and before the approved call.
+    let listings = 0;
+    connector.discoverTools = async (context) => {
+      const tools = await discover(context);
+      if (++listings === 2) server.writesEnabled = false;
+      return tools;
+    };
+    const f = agentRun(connector);
+    await f.run();
+    f.effects[0]!.status = "approved";
+    // The refused approved call is never replayed, so the run itself ends failed.
+    await f.run({ expectFailure: true });
+    expect(f.results.at(-1)).toMatchObject({ error: expect.stringContaining("Changes are off") });
+    expect(mercury.sendMoneyRequests).toHaveLength(0);
+  });
+
+  it("does not offer the write tool when changes are off from the start", async () => {
+    server.writesEnabled = false;
+    const f = agentRun(mercuryConnector("bot-1", agentKey));
+    await f.run();
+    expect(f.offeredTools).not.toContain("mcp__demo__requestSendMoney");
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(mercury.sendMoneyRequests).toHaveLength(0);
+  });
+
+  it("hides the write tool from another bot when shared, and every tool when exclusive", async () => {
+    const context = { spaceId: "space-1", userId: "user-1", botId: "bot-2" } as never;
+    const other = mercuryConnector("bot-2", null);
+    const shared = (await other.discoverTools(context)).map((t) => t.name);
+    expect(shared).toContain("mcp__demo__getAccounts");
+    expect(shared).not.toContain("mcp__demo__requestSendMoney");
+    server.agentExclusive = true;
+    expect(await other.discoverTools(context)).toEqual([]);
+    await other.close();
+  });
+});
+
 describe("tools offered to a peer-started run", () => {
   const mailRun = (trigger: string) => {
     const mail = {
@@ -928,5 +1139,65 @@ describe("tools offered to a peer-started run", () => {
     expect(f.offeredTools).not.toContain("demo_get_item");
     expect(f.execute).not.toHaveBeenCalled();
     expect(f.results[0]).toEqual({ error: expect.stringContaining("unknown tool") });
+  });
+});
+
+describe("integration agent asked by another bot", () => {
+  const peerRun = (
+    peer: { senderInScope: boolean; linked: boolean },
+    spawnKey: string | null,
+    catalog = false,
+  ) =>
+    fixture({
+      catalog,
+      name: "mcp__demo__requestSendMoney",
+      readOnly: false,
+      trigger: "bot_message",
+      spawnKey,
+      peer,
+      route: { connectorId: "mcp", resourceId: "server-1", toolName: "requestSendMoney" },
+    });
+  const agentKey = integrationAgentSpawnKey("server-1");
+
+  it("offers its server's tools to a bot of the same space and user, and still asks before a write", async () => {
+    const f = peerRun({ senderInScope: true, linked: true }, agentKey);
+    await f.run();
+    expect(f.offeredTools).toContain("mcp__demo__requestSendMoney");
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("resolves a catalog wrapper to the agent's own tool and still asks before a write", async () => {
+    const f = peerRun({ senderInScope: true, linked: true }, agentKey, true);
+    await f.run();
+    expect(f.offeredTools).toContain("demo_execute_tool");
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(f.execute).not.toHaveBeenCalled();
+    // Once the user approves, the resolved tool reaches the connector.
+    f.effects[0]!.status = "approved";
+    await f.run();
+    expect(f.execute).toHaveBeenCalledOnce();
+  });
+
+  it("gives a peer from another space or user nothing", async () => {
+    const f = peerRun({ senderInScope: false, linked: true }, agentKey);
+    await f.run();
+    expect(f.offeredTools).not.toContain("mcp__demo__requestSendMoney");
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("unknown tool") });
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("gives nothing when the agent is no longer linked to the server", async () => {
+    const f = peerRun({ senderInScope: true, linked: false }, agentKey);
+    await f.run();
+    expect(f.offeredTools).not.toContain("mcp__demo__requestSendMoney");
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("changes nothing for an ordinary bot", async () => {
+    const f = peerRun({ senderInScope: true, linked: true }, null);
+    await f.run();
+    expect(f.offeredTools).not.toContain("mcp__demo__requestSendMoney");
+    expect(f.execute).not.toHaveBeenCalled();
   });
 });

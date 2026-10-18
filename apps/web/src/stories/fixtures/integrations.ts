@@ -96,6 +96,8 @@ export function mockServer(id: string, name: string, extra: Partial<McpServer> =
     oauthAttempted: false,
     enabled: true,
     writesEnabled: false,
+    agentBotId: null,
+    agentExclusive: false,
     revision: 1,
     createdAt: STAMP,
     updatedAt: STAMP,

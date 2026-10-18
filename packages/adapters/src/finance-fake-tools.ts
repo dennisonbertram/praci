@@ -109,10 +109,22 @@ export interface MercuryOptions {
   attachments?: Array<Record<string, unknown>>;
 }
 
-export function fakeMercury(options: MercuryOptions): { callTool: FinanceCallTool } & FakeCalls {
+/**
+ * The emulated Mercury. `requestSendMoney` only records the call and returns a made-up request id;
+ * it exists for offline write tests and the demo, and this file is imported by neither production code
+ * nor the package index.
+ */
+export function fakeMercury(
+  options: MercuryOptions,
+): { callTool: FinanceCallTool; sendMoneyRequests: Array<Record<string, unknown>> } & FakeCalls {
   const calls: FakeCalls["calls"] = [];
+  const sendMoneyRequests: Array<Record<string, unknown>> = [];
   const callTool: FinanceCallTool = async (name, args) => {
     calls.push({ name, args });
+    if (name === "requestSendMoney") {
+      sendMoneyRequests.push(args);
+      return { requestId: `fake-request-${sendMoneyRequests.length}`, status: "pendingApproval" };
+    }
     if (name === "getAccounts") return options.accounts ?? mercuryAccountsResponse();
     if (name === "getTreasury") return options.treasury ?? mercuryTreasuryResponse;
     if (name === "getTransactionById")
@@ -138,7 +150,7 @@ export function fakeMercury(options: MercuryOptions): { callTool: FinanceCallToo
       ...(options.withNextPage && more ? { page: { nextPage: page.at(-1)?.id } } : {}),
     };
   };
-  return { callTool, calls };
+  return { callTool, calls, sendMoneyRequests };
 }
 
 export const brexAccountsResponse = {
@@ -221,4 +233,40 @@ export function fakeBrex(options: BrexOptions): { callTool: FinanceCallTool } & 
     return { items, next_cursor: from + limit < source.length ? String(from + limit) : null };
   };
   return { callTool, calls };
+}
+
+/**
+ * A JSON-RPC MCP server over `fetch` for the emulated Mercury, so a real `McpConnector` can talk to
+ * it offline. Lists a read tool and the write tool; calls go to `mercury.callTool`.
+ */
+export function fakeMercuryMcpFetch(mercury: Pick<ReturnType<typeof fakeMercury>, "callTool">) {
+  const tools = ["getAccounts", "requestSendMoney"].map((name) => ({
+    name,
+    inputSchema: { type: "object" },
+  }));
+  return async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    const request = input instanceof Request ? input : new Request(input, init);
+    if (request.method !== "POST") return new Response(null, { status: 405 });
+    const message = JSON.parse(await request.text()) as {
+      id?: number;
+      method?: string;
+      params?: { name?: string; arguments?: Record<string, unknown> };
+    };
+    const reply = (result: unknown) => Response.json({ jsonrpc: "2.0", id: message.id, result });
+    if (message.method === "initialize")
+      return reply({
+        protocolVersion: "2025-11-25",
+        capabilities: { tools: {} },
+        serverInfo: { name: "fake-mercury", version: "1" },
+      });
+    if (message.method === "tools/list") return reply({ tools });
+    if (message.method === "tools/call") {
+      const result = await mercury.callTool(
+        message.params?.name ?? "",
+        message.params?.arguments ?? {},
+      );
+      return reply({ content: [{ type: "text", text: JSON.stringify(result) }] });
+    }
+    return new Response(null, { status: 202 });
+  };
 }
