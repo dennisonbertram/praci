@@ -2,12 +2,15 @@ import type { Locator } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { completeOnboarding, createNamedBot, signup } from "./helpers";
 
-async function dropFile(target: Locator, name: string) {
-  const dataTransfer = await target.page().evaluateHandle((fileName) => {
-    const transfer = new DataTransfer();
-    transfer.items.add(new File(["dropped"], fileName, { type: "text/plain" }));
-    return transfer;
-  }, name);
+async function dropFile(target: Locator, name: string, size = 7) {
+  const dataTransfer = await target.page().evaluateHandle(
+    ({ fileName, byteSize }) => {
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([new Uint8Array(byteSize)], fileName, { type: "text/plain" }));
+      return transfer;
+    },
+    { fileName: name, byteSize: size },
+  );
   await target.dispatchEvent("dragenter", { dataTransfer });
   await target.dispatchEvent("dragover", { dataTransfer });
   await target.dispatchEvent("drop", { dataTransfer });
@@ -43,4 +46,26 @@ test("dropping files on an agent attaches them and sends with Enter", async ({ p
   // (d) No drop above raised the Data room overlay or uploaded to it.
   await expect(overlay).toHaveCount(0);
   await expect(page.getByTestId("data-room-toasts")).toHaveCount(0);
+});
+
+test("a sidebar drop on a narrow screen closes the sidebar and keeps the skipped-file notice", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signup(page, `drop-narrow-${Date.now()}@rakazo.test`, "password12", "Drop Narrow");
+  await completeOnboarding(page);
+  await createNamedBot(page, "Alpha Narrow");
+  const betaId = await createNamedBot(page, "Beta Narrow");
+  await page.goto("/app");
+  await page.waitForURL(/\/app\/[^/]+$/);
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await dropFile(
+    page.locator(`[data-roster-bot-id="${betaId}"]`),
+    "huge.txt",
+    10 * 1024 * 1024 + 1,
+  );
+  await expect(page.getByRole("button", { name: "Close navigation" })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: /Message/ })).toBeFocused();
+  await expect(page.getByText("Skipped huge.txt (over 10 MB)")).toBeVisible();
+  await expect(page.getByTestId("data-room-drop-overlay")).toHaveCount(0);
 });

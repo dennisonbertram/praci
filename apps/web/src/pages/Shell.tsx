@@ -725,6 +725,7 @@ export function ShellPage() {
   const mobileSidebarSwipeRef = useRef<{ startX: number; startY: number } | null>(null);
   const [draggedBotId, setDraggedBotId] = useState<string | null>(null);
   const [paneDraggingFiles, setPaneDraggingFiles] = useState(false);
+  const keepNoticeFor = useRef<string | null>(null);
   const [fileDropBotId, setFileDropBotId] = useState<string | null>(null);
   const [focusComposerBotId, setFocusComposerBotId] = useState<string | null>(null);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
@@ -3098,7 +3099,8 @@ export function ShellPage() {
       return attachmentsForThread(current, threadKey);
     });
     clearReply();
-    setAttachmentNotice(null);
+    if (keepNoticeFor.current === threadKey) keepNoticeFor.current = null;
+    else setAttachmentNotice(null);
     setSendError(null);
   }, [active?.id, clearReply, groupId, inGroup]);
 
@@ -3252,6 +3254,15 @@ export function ShellPage() {
     event.preventDefault();
     event.dataTransfer.dropEffect = composerDisabled ? "none" : "copy";
     setPaneDraggingFiles(!composerDisabled);
+  }
+  // A drop on another space's agent is refused here, not uploaded to the Data room.
+  function rowFileDrag(event: DragEvent<HTMLElement>, bot: { id: string; spaceId?: string }) {
+    if (!isUnclaimedFileDrag(event)) return false;
+    event.preventDefault();
+    const ok = bot.spaceId === bootstrapMe?.spaceId;
+    event.dataTransfer.dropEffect = ok ? "copy" : "none";
+    setFileDropBotId(ok ? bot.id : null);
+    return true;
   }
   useEffect(() => {
     if (!focusComposerBotId || active?.id !== focusComposerBotId) return;
@@ -4036,19 +4047,11 @@ export function ShellPage() {
                                 event.dataTransfer.effectAllowed = "move";
                                 event.dataTransfer.setData("text/plain", item.chat.id);
                               }}
+                              onDragEnter={(event) => {
+                                if (item.kind === "bot") rowFileDrag(event, item.chat);
+                              }}
                               onDragOver={(event) => {
-                                if (
-                                  item.kind === "bot" &&
-                                  item.chat.spaceId === bootstrapMe?.spaceId &&
-                                  isUnclaimedFileDrag(event)
-                                ) {
-                                  event.preventDefault();
-                                  event.dataTransfer.dropEffect = composerDisabled
-                                    ? "none"
-                                    : "copy";
-                                  setFileDropBotId(composerDisabled ? null : item.chat.id);
-                                  return;
-                                }
+                                if (item.kind === "bot" && rowFileDrag(event, item.chat)) return;
                                 if (
                                   item.kind === "bot" &&
                                   draggedBotId &&
@@ -4066,16 +4069,16 @@ export function ShellPage() {
                                   setFileDropBotId(null);
                               }}
                               onDrop={(event) => {
-                                if (
-                                  item.kind === "bot" &&
-                                  item.chat.spaceId === bootstrapMe?.spaceId &&
-                                  isUnclaimedFileDrag(event)
-                                ) {
+                                if (item.kind === "bot" && isUnclaimedFileDrag(event)) {
                                   event.preventDefault();
                                   setFileDropBotId(null);
-                                  if (composerDisabled) return;
+                                  if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
+                                  // Keep the "Skipped ..." notice through the thread-change reset.
+                                  if (item.chat.id !== active?.id)
+                                    keepNoticeFor.current = item.chat.id;
                                   onAttachmentPick(event.dataTransfer.files, item.chat.id);
                                   setFocusComposerBotId(item.chat.id);
+                                  setMobileSidebarOpen(false);
                                   openBot(item.chat.id);
                                   return;
                                 }
