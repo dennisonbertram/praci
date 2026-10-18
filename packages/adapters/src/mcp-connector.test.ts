@@ -1539,4 +1539,42 @@ describe("MCP connector integration agents", () => {
     expect(state.calls).toEqual([]);
     await connector.close();
   });
+
+  it("refuses the call when the server was edited while the session was being set up", async () => {
+    for (const edit of [
+      (server: Record<string, unknown>) => (server.revision = 2),
+      (server: Record<string, unknown>) => (server.secretId = "secret-2"),
+      (server: Record<string, unknown>) => (server.endpoint = "https://mcp.brex.com/mcp"),
+    ]) {
+      const { connector, state, call, assignment } = await setup("agent-1", agentBot, {
+        writesEnabled: true,
+      });
+      const inner = connector as never as { sessionFor: (...a: unknown[]) => Promise<unknown> };
+      const real = inner.sessionFor.bind(connector);
+      let sessions = 0;
+      inner.sessionFor = async (...args) => {
+        const session = await real(...args);
+        if (++sessions === 2) edit(assignment.server);
+        return session;
+      };
+      expect(await call("requestSendMoney", false)).toMatchObject([
+        { type: "error", message: expect.stringContaining("changed while") },
+      ]);
+      expect(state.calls).toEqual([]);
+      await connector.close();
+    }
+  });
+
+  it("denies an integration agent every tool of an unrelated server without an agent", async () => {
+    const { connector, state, call, names } = await setup(
+      "agent-9",
+      { spawnKey: "integration-agent:server-9", spaceId: "w1", userId: "u1" },
+      { agentBotId: null, agentExclusive: false, writesEnabled: true },
+    );
+    expect(await names()).toEqual([]);
+    for (const tool of ["getAccounts", "annotatedRead", "requestSendMoney"])
+      expect(await call(tool)).toMatchObject([{ type: "error" }]);
+    expect(state.calls).toEqual([]);
+    await connector.close();
+  });
 });

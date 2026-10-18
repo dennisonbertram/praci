@@ -458,10 +458,27 @@ export class McpConnector implements ConnectorProvider {
     try {
       // Connect first (it can wait on secrets), then read the row and decide, then call: nothing
       // awaits between the decision and callTool.
-      const session = await this.sessionFor(assignment.server, context);
+      const opened = assignment.server;
+      const openedFor = {
+        endpoint: opened.endpoint,
+        secretId: opened.secretId,
+        revision: opened.revision,
+      };
+      const session = await this.sessionFor(opened, context);
       material = this.sessions.get(sessionKey)?.material;
       const fresh = await loadAssignment();
-      const denied = fresh ? gate(fresh) : "MCP tool is not assigned to this bot";
+      // An edit while the session was being set up (new endpoint or credentials) leaves this session
+      // pointed at the old account: it must not carry the call.
+      const moved =
+        fresh !== null &&
+        (fresh.server.endpoint !== openedFor.endpoint ||
+          fresh.server.secretId !== openedFor.secretId ||
+          fresh.server.revision !== openedFor.revision);
+      const denied = moved
+        ? "The integration changed while the call was starting, so it was not run. Try again in a new message."
+        : fresh
+          ? gate(fresh)
+          : "MCP tool is not assigned to this bot";
       if (denied) {
         yield { type: "error", message: denied };
         return;

@@ -30,6 +30,8 @@ export async function ensureIntegrationAgent(
   deps: {
     prisma: Pick<PrismaClient, "mcpServer" | "botMcpServer" | "bot" | "$transaction">;
     repos: Pick<ReturnType<typeof createRepos>, "createBot">;
+    /** Archives a bot this call created when it could not be linked. */
+    archiveBot: (botId: string) => Promise<void>;
   },
   actor: Actor,
   serverId: string,
@@ -43,16 +45,8 @@ export async function ensureIntegrationAgent(
   // Archiving the agent can land between createBot and the link. The link therefore locks the bot
   // row first (a touch of an unarchived bot), so it either sees the archive or finishes before the
   // archive releases the server. An archived bot is never linked; a second pass makes a fresh one.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const bot = await deps.repos.createBot(actor, {
-      spawnKey: integrationAgentSpawnKey(server.id),
-      name: `${service} agent`,
-      title: "",
-      description: `Works with the user's ${service} account. Other agents: ask it with message_bot instead of using ${service} yourself.`,
-      instructions: instructions(service, preset?.instructions),
-      notifyOnFinish: true,
-    });
-    const linked = await deps.prisma.$transaction(async (tx) => {
+  const link = (bot: Bot) =>
+    deps.prisma.$transaction(async (tx) => {
       const { count } = await tx.bot.updateMany({
         where: { id: bot.id, spaceId: actor.spaceId, userId: actor.userId, archivedAt: null },
         data: { updatedAt: new Date() },
@@ -87,6 +81,27 @@ export async function ensureIntegrationAgent(
       if (!linkedRows.count)
         throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });
       return tx.mcpServer.findFirstOrThrow({ where: scope(actor, server.id) });
+    });
+  const spawnKey = integrationAgentSpawnKey(server.id);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const existed = Boolean(
+      await deps.prisma.bot.findFirst({
+        where: { spaceId: actor.spaceId, userId: actor.userId, spawnKey, archivedAt: null },
+        select: { id: true },
+      }),
+    );
+    const bot = await deps.repos.createBot(actor, {
+      spawnKey: integrationAgentSpawnKey(server.id),
+      name: `${service} agent`,
+      title: "",
+      description: `Works with the user's ${service} account. Other agents: ask it with message_bot instead of using ${service} yourself.`,
+      instructions: instructions(service, preset?.instructions),
+      notifyOnFinish: true,
+    });
+    const linked = await link(bot).catch(async (error) => {
+      // A bot this call made must not be left without a server; one that already existed is not ours to archive.
+      if (!existed) await deps.archiveBot(bot.id).catch(() => undefined);
+      throw error;
     });
     if (linked) return { server: linked, bot };
   }

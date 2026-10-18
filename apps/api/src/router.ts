@@ -946,6 +946,21 @@ export function createRouter(deps: RouterDeps) {
     stillAuthorized?: () => Promise<boolean>;
   }>();
   const repos = createRepos(deps.prisma);
+  const archiveActorBot = async (actor: Actor, botId: string) => {
+    const bot = await repos.getBot(actor, botId, { includeArchived: true });
+    await archiveBot(
+      {
+        prisma: deps.prisma,
+        sandbox: deps.sandbox,
+        home: deps.home,
+        jobs: deps.jobs,
+        artifacts: deps.artifacts,
+        dataDir: deps.dataDir,
+      },
+      bot,
+      computerContext(actor, bot.id, "archive"),
+    );
+  };
   const onboardingDeps = { prisma: deps.prisma, events: deps.events, connectors: deps.connectors };
   const mcpOAuth = deps.mcpOAuth ?? new McpOAuthBroker(deps.prisma, deps.secrets);
   const cartaSyncDeps: CartaSyncDeps = {
@@ -2134,19 +2149,7 @@ export function createRouter(deps: RouterDeps) {
         }
       }),
       archive: authed.bots.archive.handler(async ({ context, input }) => {
-        const bot = await repos.getBot(context.actor, input.botId, { includeArchived: true });
-        await archiveBot(
-          {
-            prisma: deps.prisma,
-            sandbox: deps.sandbox,
-            home: deps.home,
-            jobs: deps.jobs,
-            artifacts: deps.artifacts,
-            dataDir: deps.dataDir,
-          },
-          bot,
-          computerContext(context.actor, bot.id, "archive"),
-        );
+        await archiveActorBot(context.actor, input.botId);
         return { ok: true as const };
       }),
       restore: authed.bots.restore.handler(async ({ context, input }) => {
@@ -4424,7 +4427,11 @@ export function createRouter(deps: RouterDeps) {
     integrationAgents: {
       create: authed.integrationAgents.create.handler(async ({ context, input }) => {
         const { server, bot } = await ensureIntegrationAgent(
-          { prisma: deps.prisma, repos },
+          {
+            prisma: deps.prisma,
+            repos,
+            archiveBot: (botId) => archiveActorBot(context.actor, botId),
+          },
           context.actor,
           input.serverId,
         );
@@ -4684,6 +4691,10 @@ export function createRouter(deps: RouterDeps) {
                 await deps.prisma.botMcpServer.deleteMany({
                   where: { serverId: row.id, ...actorScope(context.actor) },
                 });
+              // The released agent belongs to the old service (spawn key per server id): archive it so
+              // Create agent makes a fresh one for the new service.
+              if (existing.agentBotId && !row.agentBotId && existing.endpoint !== row.endpoint)
+                await archiveActorBot(context.actor, existing.agentBotId);
               return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
             }
           }
@@ -4933,6 +4944,8 @@ export function createRouter(deps: RouterDeps) {
                 spaceId: context.actor.spaceId,
                 userId: context.actor.userId,
                 serverId: { notIn: exclusiveOthers },
+                // Exclusivity can turn on after the read above: the delete itself spares such rows.
+                server: { OR: [{ agentExclusive: false }, { agentBotId: bot.id }] },
               },
             });
             const kept = input.assignments.filter(
@@ -4948,6 +4961,7 @@ export function createRouter(deps: RouterDeps) {
                   allowAllTools: assignment.allowAllTools,
                   allowedTools: assignment.allowedTools as Prisma.InputJsonValue,
                 })),
+                skipDuplicates: true,
               });
             const seqs = (
               await Promise.all(
