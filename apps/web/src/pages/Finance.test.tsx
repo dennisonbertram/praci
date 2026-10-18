@@ -50,6 +50,7 @@ vi.mock("../components/finance/StatementImport", () => ({
   ),
 }));
 
+import { hereCrumb, shortSpaceName, trailFor, WithEndings } from "../components/finance/ui";
 import { cryptoSubtitle, FinancePage, UpcomingRow } from "./Finance";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -705,7 +706,8 @@ it("names the space on detail pages too, switches company from there, and puts A
   const switcher = container.querySelector<HTMLButtonElement>(
     'button[aria-label="Company: Example Space Two. Switch company"]',
   );
-  expect(switcher?.textContent).toBe("Example Space Two");
+  // The words every space shares are left off the trigger, so a narrow one still names the company.
+  expect(switcher?.textContent).toBe("Two");
   await act(async () => switcher?.click());
   await flush();
   const other = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(
@@ -1330,6 +1332,54 @@ it("opens a bill's details from its Upcoming row, which has no page of its own",
   expect(details).toContain("$2,000.00");
   expect(details).toContain("Oct 27, 2026");
   expect(details).toContain("Approved");
+});
+
+it("tags a card bill paid from the bank as a card bill, not a recurring vendor", async () => {
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <UpcomingRow
+          item={{
+            key: "brex",
+            kind: "recurring",
+            name: "Brex",
+            dates: ["2026-11-05"],
+            amountCents: 1_120_000,
+            cardBill: true,
+          }}
+        />
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.textContent).toContain("card bill");
+  expect(container.textContent).not.toContain("recurring");
+});
+
+it("continues a page's own trail on the pages it opens, even when it was opened by its address", () => {
+  const category = [
+    { label: "Finance", to: "/app/finance" },
+    { label: "Breakdown", to: "/app/finance#breakdown" },
+    { label: "Software" },
+  ];
+  const here = hereCrumb(category, null, "/app/finance/category/software");
+  const charge = trailFor([{ label: "Finance", to: "/app/finance" }, { label: "Oct 14" }], here);
+  expect(charge.map((c) => c.label)).toEqual(["Finance", "Breakdown", "Software", "Oct 14"]);
+});
+
+it("shows account endings in the muted style lists use, wherever a name carries one", async () => {
+  await act(async () => root.render(<WithEndings text="Brex ••0001 + Mercury Checking ••1111" />));
+  const muted = [...container.querySelectorAll("span.text-muted-foreground")].map(
+    (s) => s.textContent,
+  );
+  expect(muted).toEqual(["••0001", "••1111"]);
+  expect(container.textContent).toBe("Brex ••0001 + Mercury Checking ••1111");
+});
+
+it("shortens a space name by the words every space's name starts with", () => {
+  const names = ["MOCK DEMO DATA — Northwind Robotics", "MOCK DEMO DATA — Empty space"];
+  expect(shortSpaceName(names[0] ?? "", names)).toBe("Northwind Robotics");
+  expect(shortSpaceName("Acme", ["Acme", "Acme Labs"])).toBe("Acme");
+  expect(shortSpaceName("Acme", ["Acme"])).toBe("Acme");
 });
 
 it("says whether crypto counts toward runway", () => {

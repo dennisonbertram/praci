@@ -21,6 +21,7 @@ import {
   useFinanceQuery,
   useRowNavigate,
   ValueLink,
+  WithEndings,
 } from "../../components/finance/ui";
 import {
   changeText,
@@ -151,8 +152,9 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
   );
   const rowProps = useRowNavigate();
   const data = q.data;
-  // The last six months, like a vendor's chart, so the bars and their amounts fit a phone.
-  const trend = data?.trend.slice(-6) ?? [];
+  // The last six full months, the same window as a vendor's chart (the month still running is left
+  // out, as there), so the bars and their amounts fit a phone.
+  const trend = data?.trend.slice(-7, -1) ?? [];
   // The total, the vendors and the transactions all cover this one window, named on the page.
   const windowName =
     data?.start && data.end
@@ -320,13 +322,13 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
               sub={
                 data.changePct === null
                   ? t`Not enough history`
-                  : data.changeFromMonth
-                    ? t`vs ${monthShort(data.changeFromMonth)}`
-                    : t`vs 3 mo ago`
+                  : data.changeFromMonth && data.monthly.at(-1)
+                    ? t`${monthShort(data.monthly.at(-1)?.month ?? "")} vs ${monthShort(data.changeFromMonth)}`
+                    : t`Last month vs 3 mo ago`
               }
             />
             <Kpi title={t`First seen`} value={monthLabel(data.firstSeenAt.slice(0, 7))} />
-            <Kpi title={t`Paid with`} value={paidWith || "—"} />
+            <Kpi title={t`Paid with`} value={paidWith ? <WithEndings text={paidWith} /> : "—"} />
           </div>
           <Section
             title={

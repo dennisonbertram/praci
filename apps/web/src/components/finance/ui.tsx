@@ -61,13 +61,45 @@ export type FinanceChrome = {
 const ChromeContext = createContext<FinanceChrome>({});
 export const FinanceChromeProvider = ChromeContext.Provider;
 
+/**
+ * A space's name without the words every space's name starts with ("MOCK DEMO DATA — Northwind
+ * Robotics" beside "MOCK DEMO DATA — Empty space" reads "Northwind Robotics"), so a narrow
+ * switcher shows which company it is rather than the shared start.
+ */
+export function shortSpaceName(name: string, all: readonly string[]): string {
+  const words = all.map((n) => n.split(" "));
+  const own = name.split(" ");
+  let shared = 0;
+  // Leave at least one word of every name.
+  while (
+    words.length > 1 &&
+    words.every((w) => shared < w.length - 1 && w[shared] === own[shared])
+  ) {
+    shared += 1;
+  }
+  return (
+    own
+      .slice(shared)
+      .join(" ")
+      .replace(/^[—–\-:·]\s*/, "") || name
+  );
+}
+
 /** Which company Finance shows, as a menu to switch to another space; nothing with a single space. */
 export function SpaceName() {
   const { spaces = [], spaceId, onSwitchSpace } = useContext(ChromeContext);
   const current = spaces.find((space) => space.id === spaceId);
   if (spaces.length < 2 || !current) return null;
+  const label = shortSpaceName(
+    current.name,
+    spaces.map((space) => space.name),
+  );
   if (!onSwitchSpace) {
-    return <span className="min-w-0 truncate text-xs text-muted-foreground">{current.name}</span>;
+    return (
+      <span title={current.name} className="min-w-0 truncate text-xs text-muted-foreground">
+        {label}
+      </span>
+    );
   }
   return (
     <DropdownMenu>
@@ -76,15 +108,17 @@ export function SpaceName() {
           <Button
             variant="ghost"
             size="xs"
-            className="min-w-0 max-w-full text-muted-foreground"
+            // Pulled back by its padding, so its text lines up with the title on a line of its own.
+            className="-ms-2 min-w-0 max-w-full shrink text-muted-foreground"
             aria-label={t`Company: ${current.name}. Switch company`}
           />
         }
       >
-        <span className="min-w-0 truncate">{current.name}</span>
+        <span className="min-w-0 truncate">{label}</span>
         <ChevronDown aria-hidden="true" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      {/* As wide as the longest name (not the trigger), within the screen. */}
+      <DropdownMenuContent align="start" className="w-max max-w-[calc(100vw-2rem)]">
         <DropdownMenuRadioGroup
           value={current.id}
           onValueChange={(next) => next !== current.id && onSwitchSpace(next as string)}
@@ -163,6 +197,25 @@ export function useFinanceQuery<T>(load: () => Promise<T>, deps: readonly unknow
   };
 }
 
+/** Text with each account ending (`••1111`) in the muted style every account list uses. */
+export function WithEndings({ text }: { text: string }) {
+  const parts = text.split(/(••\d{4})/);
+  if (parts.length === 1) return <>{text}</>;
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^••\d{4}$/.test(part) ? (
+          <span key={i} className="font-normal text-muted-foreground">
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
 /** `back` is where the crumb's own page was opened from, so returning to it restores its Back too. */
 export type Crumb = { label: string; to?: string; back?: Crumb };
 
@@ -225,6 +278,24 @@ export function trailFor(own: Crumb[], cameFrom: Crumb | null): Crumb[] {
 }
 
 /**
+ * What a detail page tells the pages it links to: its name and address, and the trail it shows
+ * above itself, so a page opened from it continues that same trail (Finance / Breakdown / Software
+ * / the charge) whether this page was opened from a link or by its address.
+ */
+export function hereCrumb(own: Crumb[], cameFrom: Crumb | null, to: string): Crumb | null {
+  const label = own.at(-1)?.label;
+  if (!label) return null;
+  const back = trailFor(own, cameFrom)
+    .slice(1, -1)
+    .reduce<Crumb | undefined>(
+      (parent, c) =>
+        c.to ? { label: c.label, to: c.to, ...(parent ? { back: parent } : {}) } : parent,
+      undefined,
+    );
+  return { label, to, ...(back ? { back } : {}) };
+}
+
+/**
  * One way back for every detail page, then the company and Hide amounts: a Back button one level
  * down, or, deeper, a breadcrumb whose links lead back (the last crumb is the page itself).
  */
@@ -235,7 +306,7 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
   const previous = crumbs.length > 1 ? crumbs[crumbs.length - 2] : (cameFrom ?? undefined);
   const collapsed = (i: number) => crumbs.length > 3 && i > 0 && i < crumbs.length - 2;
   return (
-    <div className="mb-1.5 flex min-h-8 items-center gap-2.5">
+    <div className="mb-1.5 flex min-h-8 flex-wrap items-center gap-x-2.5 gap-y-1">
       {/* A trail of only the page before and this page would repeat the title, so one level down
       shows Back instead; deeper, the trail's links are the way back. */}
       {crumbs.length <= 2 ? (
@@ -248,9 +319,9 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
           <span className="ms-1">{previous?.label ?? t`Finance`}</span>
         </Link>
       ) : (
-        // The trail keeps its width (the company name truncates first) and wraps only when it
-        // would leave no room for the company and the eye.
-        <nav aria-label={t`Breadcrumb`} className="min-w-0 max-w-[calc(100%-6.5rem)] shrink-0">
+        // The trail keeps its width; when it leaves too little room for the company and the eye,
+        // they move to the next line rather than cutting the company's name to a letter or two.
+        <nav aria-label={t`Breadcrumb`} className="min-w-0 max-w-full shrink-0">
           <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
             {crumbs.map((crumb, i) => (
               <li
@@ -271,7 +342,7 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
                     aria-current={i === crumbs.length - 1 ? "page" : undefined}
                     className="text-foreground"
                   >
-                    {crumb.label}
+                    <WithEndings text={crumb.label} />
                   </span>
                 )}
                 {/* The slash ends a crumb, so a wrapped trail never starts a line with one. */}
@@ -287,13 +358,24 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
           </ol>
         </nav>
       )}
-      {/* Which company this is, on every Finance page, at the end of the row beside Hide amounts.
-      On a phone it truncates before the breadcrumb wraps. */}
-      <span className="ms-auto flex min-w-12 shrink justify-end">
-        <SpaceName />
-      </span>
-      <HideAmountsButton />
+      <CompanyAndEye />
     </div>
+  );
+}
+
+/**
+ * The company menu, then Hide amounts, right after the page's title or way back, in the same place
+ * on every Finance page. On a phone the company name truncates first.
+ */
+export function CompanyAndEye({ children }: { children?: ReactNode }) {
+  return (
+    <span className="flex min-w-[min(100%,9rem)] shrink items-center gap-0.5">
+      <SpaceName />
+      <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
+        <HideAmountsButton />
+        {children}
+      </span>
+    </span>
   );
 }
 
@@ -347,15 +429,7 @@ export function DetailPage({
   children?: ReactNode;
 }) {
   const location = useLocation();
-  const cameFrom = useCameFrom();
-  const label = crumbs.at(-1)?.label;
-  const here = label
-    ? {
-        label,
-        to: `${location.pathname}${location.search}`,
-        ...(cameFrom ? { back: cameFrom } : {}),
-      }
-    : null;
+  const here = hereCrumb(crumbs, useCameFrom(), `${location.pathname}${location.search}`);
   return (
     <BackHere value={here}>
       <div>
@@ -503,10 +577,11 @@ export function BreakdownRows({
           </span>
           <span className="col-span-full row-start-2 block h-2 overflow-hidden rounded-sm bg-muted group-hover:bg-border @md:col-span-1 @md:row-start-auto">
             {hidden ? null : (
-              // A small share keeps a short bar (4px), not a dot.
+              // A small share keeps a short bar, at least 1.5 times as long as it is tall and squared
+              // at its end, so it reads as the start of a bar rather than a dot.
               <i
                 className={cn(
-                  "block h-full min-w-1 rounded-[2px]",
+                  "block h-full min-w-3",
                   i < 2 ? "bg-foreground" : "bg-muted-foreground",
                 )}
                 style={{ width: `${Math.max((row.cents / top) * 100, 0)}%` }}
@@ -695,7 +770,10 @@ export function TransactionTable({
     <table className="w-full table-fixed border-collapse">
       <thead>
         <tr>
-          <Th className="w-[4.5rem]">{grouped ? null : <Trans>Date</Trans>}</Th>
+          {/* Named in both views: an opened vendor's rows show their dates and status here. */}
+          <Th className="w-[4.5rem]">
+            <Trans>Date</Trans>
+          </Th>
           <Th>
             <Trans>Counterparty</Trans>
           </Th>
@@ -706,7 +784,7 @@ export function TransactionTable({
             <Trans>Amount</Trans>
           </Th>
           <Th className="hidden w-24 ps-4 @2xl:table-cell">
-            {grouped ? null : <Trans>Status</Trans>}
+            <Trans>Status</Trans>
           </Th>
           <Th className="w-5" />
         </tr>

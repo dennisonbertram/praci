@@ -16,6 +16,7 @@ import {
   Section,
   useFinanceQuery,
   ValueLink,
+  WithEndings,
 } from "../../components/finance/ui";
 import {
   accountLabel,
@@ -183,7 +184,9 @@ export function FinanceTransactionPage({ id }: { id: string }) {
               <KvRow label={t`Date`}>{fullDay(day)}</KvRow>
               {posted !== day ? <KvRow label={t`Posted`}>{fullDay(posted)}</KvRow> : null}
               <KvRow label={t`Status`}>{status}</KvRow>
-              <KvRow label={t`Source`}>{source}</KvRow>
+              <KvRow label={t`Source`}>
+                <WithEndings text={source} />
+              </KvRow>
               {txn.cardholder ? (
                 <KvRow label={txn.cardLastFour ? t`Cardholder` : t`Initiated by`}>
                   {txn.cardholder}

@@ -76,6 +76,9 @@ it("gives every column but Counterparty a fixed width, the same in List and By v
   expect(list.querySelector("table")?.className).toContain("table-fixed");
   expect(header(list)).toEqual(["w-[4.5rem]", null, "w-48", "w-24", "w-24", "w-5"]);
   expect(header(grouped)).toEqual(header(list));
+  // An opened vendor's rows show dates and status, so By vendor names those columns too.
+  const names = (el: HTMLElement) => [...el.querySelectorAll("th")].map((th) => th.textContent);
+  expect(names(grouped)).toEqual(names(list));
 });
 
 it("shows list amounts in whole dollars, like the vendor and category totals", async () => {

@@ -10,7 +10,7 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
-import { BurnBars, LineChart } from "./charts";
+import { axisTicks, BurnBars, LineChart } from "./charts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => setHideAmounts(false));
@@ -128,4 +128,11 @@ it("draws one $0 gridline, not '$0, $0, $0', when there is nothing to plot", asy
   expect(bar?.getAttribute("stroke-dasharray")).toBeNull();
   act(() => root.unmount());
   if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
+});
+
+it("keeps the last axis label and carries a skipped year onto the next label shown", () => {
+  const labels = ["Feb '26", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  labels.push("Jan '27", "Feb", "Mar");
+  expect(axisTicks(labels, 3).filter(Boolean)).toEqual(["Mar '26", "Jun", "Sep", "Dec", "Mar '27"]);
+  expect(axisTicks(["a", "b"], 1)).toEqual(["a", "b"]);
 });

@@ -345,7 +345,7 @@ import {
   ChoiceCard,
   McpApprovalCard,
 } from "./shell/message-cards";
-import { commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
+import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
 import { WindowChrome } from "./WindowChrome";
 
 const ArtifactsPage = lazy(() =>
@@ -1708,7 +1708,7 @@ export function ShellPage() {
   const sidebarGroups = useMemo(() => {
     const sidebarSpaces =
       spaces.length > 0
-        ? spaces.map((space) =>
+        ? activeSpaceFirst(spaces, bootstrapMe?.spaceId).map((space) =>
             space.id === bootstrapMe?.spaceId ? { ...space, bots, groups, botSections } : space,
           )
         : bootstrapMe

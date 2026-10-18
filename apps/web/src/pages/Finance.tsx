@@ -33,6 +33,7 @@ import {
   BreakdownRows,
   BurnLegend,
   Chevron,
+  CompanyAndEye,
   cashSubtitle,
   ErrorNotice,
   type FinanceChrome,
@@ -44,14 +45,12 @@ import {
   PeriodTabs,
   rowClass,
   Section,
-  SpaceName,
   Th,
   toneClass,
   useFinanceQuery,
   useRowNavigate,
 } from "../components/finance/ui";
 import { WalletDialog } from "../components/finance/WalletDialog";
-import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { AppLogo } from "../components/integrations/AppLogo";
 import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnectDialog";
 import { PageEmptyState } from "../components/PageEmptyState";
@@ -241,11 +240,11 @@ function EmptyState({ cryptoCents, onAdd }: { cryptoCents: number | null; onAdd:
   return (
     <div>
       {/* The page title stays where every page has it, with the empty state under it. */}
-      <div className="flex flex-col items-start gap-0.5">
+      <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-semibold">
           <Trans>Finance</Trans>
         </h1>
-        <SpaceName />
+        <CompanyAndEye />
       </div>
       <PageEmptyState
         icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
@@ -400,9 +399,7 @@ function Overview({
         <h1 className="text-lg font-semibold">
           <Trans>Finance</Trans>
         </h1>
-        <SpaceName />
-        <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
-          <HideAmountsButton />
+        <CompanyAndEye>
           {/* Both labels share one cell, so the chips beside them do not move when it changes. */}
           <span className={cn("grid", !syncing && !updated && "hidden")}>
             <span
@@ -440,7 +437,7 @@ function Overview({
               <Trans>Refresh</Trans>
             </TooltipContent>
           </Tooltip>
-        </span>
+        </CompanyAndEye>
         {data.excludedNonUsdCount > 0 ? (
           <span className="text-[11px] text-muted-foreground">
             {t`${data.excludedNonUsdCount} non-USD not counted`}
@@ -623,8 +620,14 @@ function Overview({
             ) : null}
           </Section>
 
-          {/* Each card keeps its own height: expanding one does not stretch the other. */}
-          <div className="grid items-start gap-3 @3xl:grid-cols-2">
+          {/* Side by side, the two cards share one height, their footers on one line; once one
+          is expanded each keeps its own, so the other does not stretch to match. */}
+          <div
+            className={cn(
+              "grid gap-3 @3xl:grid-cols-2",
+              (allBreakdown || allUpcoming) && "items-start",
+            )}
+          >
             <BackHere
               value={{
                 label: t`Breakdown`,
@@ -793,8 +796,14 @@ function HoverRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-const upcomingTag = (kind: UpcomingItem["kind"]) =>
-  kind === "recurring" ? t`recurring` : kind === "pending" ? t`pending` : t`bill`;
+const upcomingTag = ({ kind, cardBill }: UpcomingItem) =>
+  cardBill
+    ? t`card bill`
+    : kind === "recurring"
+      ? t`recurring`
+      : kind === "pending"
+        ? t`pending`
+        : t`bill`;
 
 /** `APPROVED` reads `Approved`. */
 const billStatusText = (status: string) =>
@@ -822,7 +831,7 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="@md:hidden">{dates}</span>
           <span className="shrink-0 rounded-full border border-border px-1.5 text-[10px]">
-            {upcomingTag(item.kind)}
+            {upcomingTag(item)}
           </span>
         </span>
       </span>

@@ -201,6 +201,12 @@ msgstr "{0} transactions"
 msgid "{0} transactions · {period}"
 msgstr "{0} transactions · {period}"
 
+#. placeholder {0}: monthShort(data.monthly.at(-1)?.month ?? "")
+#. placeholder {1}: monthShort(data.changeFromMonth)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "{0} vs {1}"
+msgstr "{0} vs {1}"
+
 #. placeholder {0}: target.name
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "{0} was added and shows Needs reconnect until you sign in."
@@ -1486,6 +1492,10 @@ msgstr "Cap table, equity and investors"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Card balance owed"
 msgstr "Card balance owed"
+
+#: src/pages/Finance.tsx
+msgid "card bill"
+msgstr "card bill"
 
 #: src/components/finance/ui.tsx
 msgid "Card payment · not spend"
@@ -4112,6 +4122,10 @@ msgstr "Last 90 days"
 #: src/pages/Finance.tsx
 msgid "Last charge"
 msgstr "Last charge"
+
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Last month vs 3 mo ago"
+msgstr "Last month vs 3 mo ago"
 
 #: src/pages/Legal.tsx
 msgid "Last scan {lastScan}"
@@ -7910,18 +7924,9 @@ msgstr "Voice"
 msgid "Voice chat"
 msgstr "Voice chat"
 
-#. placeholder {0}: monthShort(data.changeFromMonth)
-#: src/pages/finance/FinanceSpend.tsx
-msgid "vs {0}"
-msgstr "vs {0}"
-
 #: src/pages/Finance.tsx
 msgid "vs {previousRange}"
 msgstr "vs {previousRange}"
-
-#: src/pages/finance/FinanceSpend.tsx
-msgid "vs 3 mo ago"
-msgstr "vs 3 mo ago"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."

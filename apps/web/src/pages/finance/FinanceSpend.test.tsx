@@ -48,7 +48,7 @@ it("shows a new vendor's steady spend as 0% against the month it compares with",
     changeFromMonth: "2026-07",
     firstSeenAt: "2026-07-08T00:00:00.000Z",
     paidWith: [],
-    monthly: ["07", "08", "09", "10"].map((m) => ({ month: `2026-${m}`, cents: 481_200 })),
+    monthly: ["07", "08", "09"].map((m) => ({ month: `2026-${m}`, cents: 481_200 })),
     charges: [],
   } satisfies FinanceVendorOutput);
   await act(async () =>
@@ -60,7 +60,8 @@ it("shows a new vendor's steady spend as 0% against the month it compares with",
   );
   await act(async () => {});
   const page = container.textContent ?? "";
-  expect(page).toContain("Change0%vs Jul");
+  // It names both months compared, not only the earlier one.
+  expect(page).toContain("Change0%Sep vs Jul");
   expect(page).not.toContain("Not enough history");
   // No change is neither good nor bad news, so it is not shown in green.
   const zero = [...container.querySelectorAll("span")].find((s) => s.textContent === "0%");
@@ -101,7 +102,7 @@ it("asks for and names only the chosen source's spend, and keeps it across the f
   expect(chip?.getAttribute("href")).toContain("source=brex");
 });
 
-it("charts a category's last six months with month labels instead of an unlabelled sparkline", async () => {
+it("charts a category's last six full months, like a vendor's chart, with month labels", async () => {
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
   const months = Array.from(
     { length: 12 },
@@ -123,7 +124,8 @@ it("charts a category's last six months with month labels instead of an unlabell
     ),
   );
   await act(async () => {});
-  expect(container.textContent).toContain("Monthly spend · May – Oct");
+  // The month still running (Oct) is left out, as on a vendor's chart.
+  expect(container.textContent).toContain("Monthly spend · Apr – Sep");
   const labels = [...container.querySelectorAll('svg[aria-label="Monthly spend"] text')].map(
     (n) => n.textContent,
   );

@@ -145,6 +145,25 @@ function Grid({
 }
 
 /**
+ * Which axis labels a crowded line chart keeps: every `every`th one counted back from the last, so
+ * the last point (today, or the month a projection runs out) is always named. A kept label takes the
+ * year (`'27`) of a skipped label since the one kept before it, so a year change is never lost.
+ */
+export function axisTicks(labels: readonly string[], every: number): (string | null)[] {
+  const last = labels.length - 1;
+  let since = 0;
+  return labels.map((text, i) => {
+    if ((last - i) % every !== 0) return null;
+    const year = labels
+      .slice(since, i + 1)
+      .map((l) => l.match(/'\d\d$/)?.[0])
+      .findLast(Boolean);
+    since = i + 1;
+    return year && !text.endsWith(year) && !text.includes("•") ? `${text} ${year}` : text;
+  });
+}
+
+/**
  * A line over equally spaced points. Points after `solidUntil` are dashed, `endMarker` draws a hollow
  * dot on the last point (a projection that reaches zero). Without axes it is a bare trend line.
  */
@@ -200,8 +219,8 @@ export function LineChart({
                   bottom={bottom}
                   scale={scale}
                 />
-                {labels.map((text, i) =>
-                  i % every === 0 ? (
+                {axisTicks(labels, every).map((text, i) =>
+                  text !== null ? (
                     <text
                       key={i}
                       x={x(i)}

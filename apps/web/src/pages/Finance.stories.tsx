@@ -129,8 +129,17 @@ const overview: FinanceOverview = {
         billStatus: "APPROVED",
         dueAt: day(9),
       },
+      // A card bill paid from the bank: tagged "card bill", not "recurring".
+      {
+        key: "brex",
+        kind: "recurring",
+        name: "Brex",
+        dates: [day(12)],
+        amountCents: 1_120_000,
+        cardBill: true,
+      },
     ],
-    totalCents: 540_000,
+    totalCents: 1_660_000,
   },
   subscriptions: {
     items: [
@@ -198,9 +207,10 @@ export const Default: Story = { args: { onAskAgent: () => {} }, beforeEach: load
 export const NamedSpace: Story = {
   args: {
     onAskAgent: () => {},
+    // The switcher leaves off the words every name starts with, so it reads "Northwind Robotics".
     spaces: [
-      { id: "s1", name: "Northwind Robotics" },
-      { id: "s2", name: "Example Labs" },
+      { id: "s1", name: "MOCK DEMO DATA — Northwind Robotics" },
+      { id: "s2", name: "MOCK DEMO DATA — Empty space" },
     ],
     spaceId: "s1",
     onSwitchSpace: () => {},
