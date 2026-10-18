@@ -28,7 +28,7 @@ it("calls the inbox procedures with the account only when one is chosen", async 
     ["inbox/list", {}],
     ["inbox/list", { connectionId: "c1" }],
     ["inbox/todos/list", { connectionId: "c1" }],
-    ["inbox/refresh", {}],
+    ["inbox/refresh", {}, { timeoutMs: 90_000 }],
     ["inbox/todos/setDone", { id: "t1", done: true }],
     ["inbox/agent"],
     ["inbox/get", { messageId: "m1" }],
