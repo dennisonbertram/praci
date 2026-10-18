@@ -232,6 +232,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
         activeBotId={activeBotId}
         confirmFirst={confirmFirst}
         accountName={replacing?.displayName}
+        replacesConnectionId={replacing?.id}
         onClose={() => {
           setAdding(false);
           setConfirmFirst(false);

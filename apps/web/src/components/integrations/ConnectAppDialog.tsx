@@ -34,6 +34,7 @@ export function ConnectAppDialog({
   onConnected,
   confirmFirst = false,
   accountName,
+  replacesConnectionId,
 }: {
   item: ConnectionCatalogItem;
   data: IntegrationsData;
@@ -45,6 +46,8 @@ export function ConnectAppDialog({
   confirmFirst?: boolean;
   /** The name for the new account, when it replaces one that must sign in again. */
   accountName?: string;
+  /** Reconnect: this connection is replaced by the new sign-in, keeping its Inbox data. */
+  replacesConnectionId?: string;
 }) {
   const { t } = useLingui();
   const [phase, setPhase] = useState<Phase>(
@@ -138,6 +141,7 @@ export function ConnectAppDialog({
           accountName ??
           nextAccountLabel(item.name, rows.filter((entry) => entry.status === "connected").length),
         ...(viaSystemBrowser ? { redirect: "desktop" as const } : {}),
+        ...(replacesConnectionId ? { replacesConnectionId } : {}),
       });
       connectionId.current = begun.connectionId;
       for (const old of stale)

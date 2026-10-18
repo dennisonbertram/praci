@@ -5151,10 +5151,13 @@ export function createRouter(deps: RouterDeps) {
                 status: auth.authorizationUrl ? "pending" : "connected",
                 providerRef: auth.state || null,
                 // complete() must repeat the redirect_uri the authorization used.
-                metadata:
-                  input.redirect === "desktop"
-                    ? { state: auth.state, redirectUrl }
-                    : { state: auth.state },
+                metadata: {
+                  state: auth.state,
+                  ...(input.redirect === "desktop" ? { redirectUrl } : {}),
+                  ...(input.replacesConnectionId
+                    ? { replacesConnectionId: input.replacesConnectionId }
+                    : {}),
+                },
               },
             });
             return updated.count > 0;

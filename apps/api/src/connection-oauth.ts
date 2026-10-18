@@ -68,9 +68,21 @@ export async function completeNativeOAuth(options: {
             status: { in: ["connected", "pending", "error"] },
             providerRef: connectionRef,
           },
-          select: { id: true },
+          select: { id: true, secretId: true },
         });
-        if (taken)
+        const replaces = (current.metadata as { replacesConnectionId?: unknown } | null)
+          ?.replacesConnectionId;
+        if (taken && taken.id === replaces) {
+          // The same account signing in again replaces its old connection: the Inbox's to-dos and
+          // cached mail move over, so reconnecting loses nothing. Not revoked remotely, since that
+          // could invalidate the new token of the same grant.
+          const next = { connectionId: current.id };
+          await tx.cachedMailMessage.updateMany({ where: { connectionId: taken.id }, data: next });
+          await tx.inboxTodo.updateMany({ where: { connectionId: taken.id }, data: next });
+          await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
+          await tx.connection.delete({ where: { id: taken.id } });
+          if (taken.secretId) await tx.secret.deleteMany({ where: { id: taken.secretId, ...owner } });
+        } else if (taken)
           throw new ORPCError("CONFLICT", { message: "This Google account is already connected." });
         return tx.connection.update({
           where: { id: current.id },
