@@ -107,6 +107,8 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await page.unroute("**/rpc/groups/list");
   await page.unroute("**/rpc/threads/get");
   await page.reload();
+  // The page restores its right panel as it loads; wait for that before opening it by hand.
+  await expect(page.getByRole("combobox", { name: "Message Draft team" })).toBeVisible();
 
   await page.getByTestId("bot-settings-trigger").click();
   const desktopSettings = page.getByTestId("side-panel");
@@ -131,7 +133,11 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await sidebar.getByRole("button", { name: /^Review team/ }).click();
   await expect(page.getByRole("combobox", { name: "Message Review team" })).toHaveValue("");
   await sidebar.getByRole("button", { name: /^Draft team/ }).click();
-  await expect(page.getByRole("combobox", { name: "Message Draft team" })).toHaveValue("");
+  // An unsent message stays with its chat when you leave and come back.
+  await expect(page.getByRole("combobox", { name: "Message Draft team" })).toHaveValue(
+    "@Researcher unfinished draft",
+  );
+  await page.getByRole("combobox", { name: "Message Draft team" }).fill("");
 
   const composer = page.getByRole("combobox", { name: "Message Draft team" });
   await composer.fill("@Res");
@@ -273,10 +279,11 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await expect(settings).toHaveAttribute("data-panel", "group-settings");
   await page.keyboard.press("Escape");
   await expect(settings).toHaveAttribute("data-panel", "closed");
-  // The header's members button opens the same panel and closes it again.
+  // The header's members button opens the panel.
   await page.getByRole("button", { name: "Members and settings" }).click();
   await expect(settings).toHaveAttribute("data-panel", "group-settings");
-  await page.getByRole("button", { name: "Members and settings" }).click();
+  // On a phone the open panel covers the header, so it closes with its own button.
+  await settings.getByRole("button", { name: "Close panel", exact: true }).click();
   await expect(settings).toHaveAttribute("data-panel", "closed");
   await page.getByTestId("bot-settings-trigger").click();
   await settings.getByRole("button", { name: "Close panel", exact: true }).click();
@@ -285,6 +292,8 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
 
   await rpc(page, "groups/remove", { groupId: reviewGroup.id });
   await page.goto(`/app/g/${reviewGroup.id}`);
-  await page.waitForURL(/\/app\/(?!g\/)[^/]+$/);
+  // An address for a removed group says so instead of jumping to another chat.
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await page.getByRole("link", { name: "Go to Rakazo" }).click();
   await expect(page.getByRole("combobox", { name: /Message/ })).toBeVisible();
 });

@@ -4,7 +4,7 @@ import type { Bot, Routine } from "@rakazo/contracts";
 import { activeBotId, captureScreenshot, completeOnboarding, rpc, signup } from "./helpers";
 
 async function addScheduleTrigger(page: Page, freq: string) {
-  await page.getByRole("button", { name: "Add trigger" }).click();
+  await page.getByRole("button", { name: "Choose when it runs" }).click();
   await page.getByRole("menuitem", { name: "On a schedule" }).hover();
   await page.getByRole("menuitem", { name: freq, exact: true }).click();
 }

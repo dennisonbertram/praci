@@ -22,12 +22,12 @@ test("composer / picker lists skills above actions", async ({ page }, testInfo) 
 
   const picker = page.getByTestId("slash-picker");
   await expect(picker).toBeVisible();
-  const skillButton = picker.getByRole("button", { name: "Skill Daily standup" });
-  const chatSettings = picker.getByRole("button", { name: "Chat settings" });
+  const skillButton = picker.getByRole("option", { name: "Skill Daily standup" });
+  const chatSettings = picker.getByRole("option", { name: "Chat settings" });
   await expect(skillButton).toBeVisible();
   await expect(chatSettings).toBeVisible();
-  await expect(picker.getByRole("button", { name: "Open Settings" })).toBeVisible();
-  await expect(picker.getByRole("button", { name: "See usage" })).toBeVisible();
+  await expect(picker.getByRole("option", { name: "Open Settings" })).toBeVisible();
+  await expect(picker.getByRole("option", { name: "See usage" })).toBeVisible();
 
   const skillBox = await skillButton.boundingBox();
   const actionBox = await chatSettings.boundingBox();
@@ -36,9 +36,8 @@ test("composer / picker lists skills above actions", async ({ page }, testInfo) 
   expect(skillBox!.y).toBeLessThan(actionBox!.y);
 
   await expect(skillButton).toContainText("Prepare a concise standup");
-  const interrogate = picker.getByRole("button", { name: "Skill Interrogate", exact: true });
-  await expect(interrogate).toBeVisible();
-  await expect(interrogate).toContainText("Review only; never applies fixes.");
+  // Interrogate is a review helper the bots load, not something to pick from the menu.
+  await expect(picker.getByRole("option", { name: "Skill Interrogate" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "slash-skills-picker");
 
   await skillButton.click();
@@ -55,14 +54,6 @@ test("composer / picker lists skills above actions", async ({ page }, testInfo) 
 
   await page.getByRole("button", { name: "Remove skill Daily standup" }).click();
   await expect(page.getByTestId("skill-chip")).toHaveCount(0);
-
-  await composer.fill("/Inter");
-  await expect(interrogate).toBeVisible();
-  await captureScreenshot(page, testInfo, "interrogate-skill-picker");
-  await interrogate.click();
-  await expect(skillChip).toContainText("Interrogate");
-  await expect(composer).toHaveValue("");
-  await page.getByRole("button", { name: "Remove skill Interrogate" }).click();
 
   await composer.fill("@");
   await expect(page.getByTestId("slash-picker")).toHaveCount(0);

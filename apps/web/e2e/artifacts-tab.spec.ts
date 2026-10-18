@@ -27,7 +27,7 @@ test("opens Artifacts from the sidebar and lists created files", async ({ page }
   await expect(page).toHaveURL(/\/app\/artifacts$/);
   await expect(page.getByRole("heading", { name: "Artifacts", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Filters" })).toBeVisible();
-  await expect(page.getByText("No artifacts found.")).toBeVisible();
+  await expect(page.getByText("No artifacts yet")).toBeVisible();
   // Artifacts opens inside the app, with the sidebar still there.
   await expect(sidebar).toBeVisible();
   await captureScreenshot(page, testInfo, "artifacts-empty");

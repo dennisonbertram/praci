@@ -5334,6 +5334,8 @@ export function ShellPage() {
             onCancel={() => setDeleteTarget(null)}
             onConfirm={async (deleteMemories) => {
               await rpc.bots.remove({ botId: deleteTarget.id, deleteMemories });
+              // Leave a link to the deleted chat, which no longer exists, before the list reloads.
+              if (botId === deleteTarget.id) navigate("/app", { replace: true });
               setDeleteTarget(null);
               setPanel(null);
               await refreshBots(true);
@@ -5348,6 +5350,7 @@ export function ShellPage() {
             onCancel={() => setDeleteGroupTarget(null)}
             onConfirm={async () => {
               await rpc.groups.remove({ groupId: deleteGroupTarget.id });
+              if (groupId === deleteGroupTarget.id) navigate("/app", { replace: true });
               setDeleteGroupTarget(null);
               setPanel(null);
               await refreshBots(true);

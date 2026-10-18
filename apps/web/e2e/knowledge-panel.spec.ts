@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, test } from "@playwright/test";
 import type { MemoryDocument } from "@rakazo/contracts";
 import {
   activeBotId,
@@ -23,14 +23,16 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
   await openUserSettings(page, "memory");
   await expect(page.getByLabel("Close memory settings")).toBeVisible();
   const spaceDocs = page.getByTestId("space-memory-documents");
-  await expect(spaceDocs.getByText("Shared documents")).toBeVisible();
+  await expect(spaceDocs.getByText("Shared by all bots")).toBeVisible();
   const sharedGroup = spaceDocs.getByTestId("memory-group-shared");
-  const memoryRow = sharedGroup.getByRole("button", { name: /MEMORY\.md/ });
+  // A row shows what is remembered, with the file name only as its title, so find it by that.
+  const memoryFile = (scope: Locator) => scope.locator('button:has([title="MEMORY.md"])');
+  const memoryRow = memoryFile(sharedGroup);
   await expect(memoryRow).toBeVisible();
   // The bot's own document (seeded MEMORY.md) is browsable here too, under its name.
   const botGroup = spaceDocs.getByTestId(`memory-group-${activeBotId(page)}`);
   await expect(botGroup.getByText("Chief", { exact: true })).toBeVisible();
-  await expect(botGroup.getByRole("button", { name: /MEMORY\.md/ })).toBeVisible();
+  await expect(memoryFile(botGroup)).toBeVisible();
   await captureScreenshot(page, testInfo, "86-memory-browser");
   await memoryRow.click();
   const docEditor = sharedGroup.locator("textarea");
@@ -57,7 +59,8 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
   } finally {
     releaseSave();
   }
-  await expect(spaceDocs.getByText("rev 2")).toBeVisible();
+  // The editor closes once the save lands.
+  await expect(docEditor).toHaveCount(0);
 
   // Filtering by text only the saved shared document contains hides the bot group.
   const filterInput = spaceDocs.getByLabel("Filter memory");
@@ -106,7 +109,7 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
 
   // Bot creation seeds MEMORY.md (`# Chief`); edit it and assert the revision bumps.
   const botMemory = knowledge.getByTestId("bot-knowledge-memory");
-  const botMemoryRow = botMemory.getByRole("button", { name: /MEMORY\.md/ });
+  const botMemoryRow = memoryFile(botMemory);
   await expect(botMemoryRow).toBeVisible();
   await botMemoryRow.click();
   const botDocEditor = botMemory.locator("textarea");
@@ -116,7 +119,7 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
   await botMemory.getByRole("button", { name: "Save", exact: true }).scrollIntoViewIfNeeded();
   await captureScreenshot(page, testInfo, "80-knowledge-bot-memory");
   await botMemory.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(botMemory.getByText("rev 2")).toBeVisible();
+  await expect(botDocEditor).toHaveCount(0);
   expect(
     await rpc<MemoryDocument[]>(page, "memory/list", {
       botId: activeBotId(page),
@@ -158,7 +161,7 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
   const composer = page.getByRole("combobox", { name: /^Message/ });
   await composer.fill("/");
   await expect(
-    page.getByRole("button", { name: "Skill greet-politely", exact: true }),
+    page.getByRole("option", { name: "Skill greet-politely", exact: true }),
   ).toBeVisible();
   await composer.fill("");
 
@@ -219,7 +222,7 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
   await knowledge.getByRole("button", { name: "Confirm delete", exact: true }).click();
   await expect(skillRow).toBeHidden();
   await composer.fill("/");
-  await expect(page.getByRole("button", { name: "Skill greet-politely", exact: true })).toHaveCount(
+  await expect(page.getByRole("option", { name: "Skill greet-politely", exact: true })).toHaveCount(
     0,
   );
   expect(await rpc<Array<{ name: string }>>(page, "agentSkills/list", {})).not.toContainEqual(

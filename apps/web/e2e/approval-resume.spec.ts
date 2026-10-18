@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, signup } from "./helpers";
+import { activeBotId, captureScreenshot, completeOnboarding, rpc, signup } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -56,7 +56,8 @@ test("approval input resumes durable work", async ({ page }, testInfo) => {
   await composer.fill("ask me which city to use");
   await page.keyboard.press("Enter");
   await expect(prompt).toHaveCount(3, { timeout: 30_000 });
-  await page.getByRole("button", { name: "Stop" }).click();
+  // A bot waiting on an answer shows Send, not Stop, so stop the run the way Stop does.
+  await rpc(page, "threads/stop", { botId: activeBotId(page) });
   await expect(page.getByText("No longer active", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Send it" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "25-stopped-approval-prompt");

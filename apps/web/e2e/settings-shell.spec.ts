@@ -15,7 +15,7 @@ for (const totalTokens of [201, null]) {
     await completeOnboarding(page);
     await openUserSettings(page, "usage");
     await expect(page.getByTestId("usage-settings")).toContainText(
-      `2 runs · ${totalTokens ?? "—"} tokens`,
+      `2 tasks done by your bots · ${totalTokens ?? "—"} tokens of AI text`,
     );
     await captureScreenshot(
       page,
@@ -75,6 +75,8 @@ test("settings shell is two-pane and deep-links Models Memory Voice Usage", asyn
   await expect(settings.getByRole("heading", { name: "Memory", exact: true })).toBeVisible();
   await expect(settings.getByTestId("memory-settings")).toBeVisible();
   const memory = settings.getByTestId("memory-settings");
+  // An outside memory service is an advanced choice, folded away until asked for.
+  await memory.getByText("Advanced: connect an outside memory service").click();
   await expect(memory.getByLabel("Provider")).toBeVisible();
   await memory.getByLabel("Provider").selectOption("serenity");
   await expect(memory.getByLabel("MCP endpoint")).toBeVisible();
