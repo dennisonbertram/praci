@@ -15,6 +15,12 @@ test("creates an integration agent, opens its chat, and persists its permissions
   await expect(page.getByTestId("sidebar-integrations")).toHaveText("Connect apps");
   expect(catalogRequests).toHaveLength(0);
   await captureScreenshot(page, testInfo, "featured-connect-apps");
+  const mentionCatalogResponse = page.waitForResponse("**/rpc/connections/catalog");
+  const composer = page.getByRole("combobox", { name: "Message Chief", exact: true });
+  await composer.fill("@Notion");
+  expect((await mentionCatalogResponse).ok()).toBe(true);
+  await expect(page.getByRole("option", { name: "@Notion", exact: true })).toBeVisible();
+  await composer.fill("");
   const catalogResponse = page.waitForResponse("**/rpc/connections/catalog");
   await page.getByTestId("sidebar-integrations").click();
   expect((await catalogResponse).ok()).toBe(true);
