@@ -58,6 +58,10 @@ function balanceRow(row: string[]): { kind: "opening" | "closing"; cents: number
   return cents === null ? null : { kind, cents };
 }
 
+/** Titles like "Transaction History" name the report, not a bank; they must not decide account identity. */
+const GENERIC_TITLE =
+  /^(?:(?:account|transaction|transactions|statement|activity|history|summary|details|download(?:ed)?|export(?:ed)?|report|recent|csv|data|for|of|my|the|and)\b\W*)+$/i;
+
 /** The bank and account ending named on a title line above the column header, if any. */
 function titleOf(before: string[][]): { institution: string | null; last4: string | null } {
   let institution: string | null = null;
@@ -73,12 +77,19 @@ function titleOf(before: string[][]): { institution: string | null; last4: strin
         .replace(LAST4, "")
         .replace(/[\s,:–—-]+$/, "")
         .trim();
-      if (!institution && /\p{L}{2,}/u.test(name) && !/^(?:account|statement)\b/i.test(name))
+      if (
+        !institution &&
+        /\p{L}{2,}/u.test(name) &&
+        !/^(?:account|statement)\b/i.test(name) &&
+        !GENERIC_TITLE.test(name)
+      )
         institution = name;
     }
   }
   return { institution, last4 };
 }
+
+const DATE_CELL = /^\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}/;
 
 type DateOrder = "ymd" | "mdy" | "dmy";
 
@@ -119,13 +130,18 @@ export const csvParser: StatementParser = {
     const { before, rows, cols } = found;
     const warnings: string[] = [];
     const cell = (row: string[], i: number) => (i >= 0 ? (row[i] ?? "").trim() : "");
+    const dated = (r: string[]) => DATE_CELL.test(cell(r, cols.date));
     // Stated balances may sit above the header or below the last line; they are not transactions.
     const stated: { opening?: number; closing?: number } = {};
     for (const row of [...before, ...rows]) {
-      const found = balanceRow(row);
+      const found = dated(row) ? null : balanceRow(row);
       if (found) stated[found.kind] ??= found.cents;
     }
-    const body = rows.filter((r) => cell(r, cols.date) && !balanceRow(r));
+    // A balance-summary row ("Closing balance,10000.00") has no date; a dated row is a transaction
+    // even when its description starts with "Opening balance".
+    const summary = (r: string[]) => !dated(r) && balanceRow(r) !== null;
+    const body = rows.filter((r) => cell(r, cols.date) && !summary(r));
+    const undated = rows.filter((r) => !cell(r, cols.date) && r.some((c) => c.trim()) && !balanceRow(r)).length;
     const { order, ambiguous } = dateOrder(body.map((r) => cell(r, cols.date)));
     if (ambiguous) warnings.push("Dates like 03/04/2026 are ambiguous; read as month/day/year.");
     let skipped = 0;
@@ -151,6 +167,7 @@ export const csvParser: StatementParser = {
         externalId: null,
       });
     }
+    skipped += undated;
     if (skipped) warnings.push(unreadNote(skipped, "row", "rows"));
     if (!txns.length) throw new Error("CSV has no readable transactions");
     // Newest-first exports are common; put them oldest-first so balances follow.

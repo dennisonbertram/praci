@@ -31,6 +31,17 @@ const DATE = new RegExp(
 const RUNWAY = /\brunway\b/i;
 const RUN_OUT = /\bruns?[\s-]?out\b|\bout of (?:cash|money)\b|\bzero cash\b/i;
 
+/** True when a table label (a header or a row's first cell) names runway or the run-out date. */
+export const isRunwayLabel = (label: string) => RUNWAY.test(label) || RUN_OUT.test(label);
+
+/** Masks every month count, date, or bare number in a table cell whose label says runway. */
+export function maskRunwayCell(text: string): string {
+  if (/^\s*\d+(?:[.,]\d+)?\s*$/.test(text)) return "•••";
+  return text
+    .replace(new RegExp(MONTHS, "gi"), "•••")
+    .replace(DATE, "•••");
+}
+
 /** The sentence (or line) around `index`; a decimal point such as 9.2 does not end one. */
 function sentenceAround(text: string, index: number): string {
   const boundary = /[.!?](?=\s|$)|\n/g;

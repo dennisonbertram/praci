@@ -125,6 +125,27 @@ describe("CSV", () => {
     expect((await parse("2026-07.csv", body)).statement.institution).toBeTruthy();
   });
 
+  it("does not take a generic report heading as the institution", async () => {
+    const body = "Transaction History\nDate,Description,Amount\n2026-03-02,Coffee,-5.00\n";
+    expect((await parse("checking.csv", body)).statement.institution).toBe("checking");
+    expect((await parse("savings.csv", body)).statement.institution).toBe("savings");
+    // A real bank name above a generic heading still wins.
+    const named = `MOCK First Bank\n${body}`;
+    expect((await parse("checking.csv", named)).statement.institution).toBe("MOCK First Bank");
+  });
+
+  it("keeps a dated transaction whose description starts with 'Opening balance'", async () => {
+    const { statement } = await parse(
+      "x.csv",
+      "Description,Date,Amount\nOpening balance adjustment,2026-03-02,-5.00\nCoffee,2026-03-03,-1.00\n",
+    );
+    expect(statement.transactions.map((t) => t.description)).toEqual([
+      "Opening balance adjustment",
+      "Coffee",
+    ]);
+    expect(statement.openingBalanceCents).toBeNull();
+  });
+
   it("maps Debit/Credit columns with semicolons and flips newest-first files", async () => {
     const { statement } = await parse(
       "x.csv",

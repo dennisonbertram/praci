@@ -107,6 +107,32 @@ describe("mock demo data", () => {
     await session.close();
   });
 
+  it("advertises only tools whose handlers work with the arguments the schema requires", async () => {
+    const servers = demoFinanceMcp("http://127.0.0.1:5374");
+    for (const provider of ["mercury", "brex"] as const) {
+      const server = servers[new URL(FINANCE_MCP_ENDPOINTS[provider]).hostname];
+      expect(server?.tools.length).toBeGreaterThan(0);
+      for (const tool of server?.tools ?? []) {
+        const schema = tool.inputSchema as {
+          properties: Record<string, { type: string }>;
+          required: string[];
+        };
+        const args = Object.fromEntries(
+          schema.required.map((key) => [
+            key,
+            schema.properties[key]?.type === "array"
+              ? ["x"]
+              : schema.properties[key]?.type === "number"
+                ? 10
+                : "x",
+          ]),
+        );
+        const result = await server?.call(tool.name, args);
+        expect(result, `${provider} ${tool.name}`).not.toHaveProperty("error");
+      }
+    }
+  });
+
   it("lets Mercury and Brex sign in and answer their tools in the demo", async () => {
     const emulator = new ThirdPartyConnectorEmulator(demoFinanceMcp("http://127.0.0.1:5374"));
     for (const provider of ["mercury", "brex"] as const) {

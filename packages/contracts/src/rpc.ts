@@ -1200,7 +1200,7 @@ export const appContract = {
     account: oc.input(z.object({ id: Id })).output(FinanceAccountOutputSchema),
     burn: oc.output(FinanceBurnOutputSchema),
     month: oc
-      .input(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }))
+      .input(z.object({ month: z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])$/) }))
       .output(FinanceMonthOutputSchema),
     runway: oc.output(FinanceRunwayOutputSchema),
     preferences: oc.output(FinancePreferencesSchema),
@@ -1218,7 +1218,7 @@ export const appContract = {
           /** A calendar month (YYYY-MM), from the month page. */
           month: z
             .string()
-            .regex(/^\d{4}-\d{2}$/)
+            .regex(/^\d{4}-(?:0[1-9]|1[0-2])$/)
             .optional(),
         }),
       )

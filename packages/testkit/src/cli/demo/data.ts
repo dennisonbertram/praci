@@ -1,5 +1,5 @@
 import type { EmulatedMcpServer, EmulatedMessage } from "@rakazo/adapters";
-import { FINANCE_MCP_ENDPOINTS, FINANCE_READ_TOOLS } from "@rakazo/contracts";
+import { FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
 import {
   brexAccountsResponse,
   brexExpense,
@@ -772,6 +772,37 @@ export function demoFinance(now = new Date()) {
   };
 }
 
+const str = { type: "string" } as const;
+const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
+  type: "object",
+  properties,
+  required,
+});
+/** Only the tools the canned servers answer, with the arguments their handlers need. */
+const DEMO_FINANCE_TOOLS = {
+  mercury: {
+    getAccounts: obj({}),
+    getTreasury: obj({}),
+    listTransactions: obj(
+      {
+        accountId: { type: "array", items: str },
+        status: { type: "array", items: str },
+        limit: { type: "number" },
+        start_after: str,
+      },
+      ["accountId", "limit"],
+    ),
+    getTransactionById: obj({ transactionId: str }, ["transactionId"]),
+    getAttachment: obj({ attachmentId: str }, ["attachmentId"]),
+  },
+  brex: {
+    list_business_accounts: obj({ intent: str }, ["intent"]),
+    list_expenses: obj({ intent: str, limit: { type: "number" }, cursor: str }, ["intent"]),
+    list_bills: obj({ intent: str, limit: { type: "number" }, cursor: str }, ["intent"]),
+    get_expense_by_id: obj({ intent: str, id: str }, ["intent", "id"]),
+  },
+} as const;
+
 /**
  * Mock Mercury and Brex MCP servers by hostname, so "Add account → Mercury" signs in and connects
  * in the demo. Each asks for a sign-in like the real one; its sign-in page is the app's own OAuth
@@ -786,10 +817,10 @@ export function demoFinanceMcp(
   for (const provider of ["mercury", "brex"] as const) {
     servers[new URL(FINANCE_MCP_ENDPOINTS[provider]).hostname] = {
       authorizeUrl: `${webOrigin}/mcp/oauth/callback?code=mock-demo-${provider}-code`,
-      tools: FINANCE_READ_TOOLS[provider].map((name) => ({
+      tools: Object.entries(DEMO_FINANCE_TOOLS[provider]).map(([name, inputSchema]) => ({
         name,
         description: `${MOCK_NOTE}: ${name}`,
-        inputSchema: { type: "object", properties: {} },
+        inputSchema,
       })),
       call: async (name, args) => (await callToolFor({ provider }))(name, args),
     };
