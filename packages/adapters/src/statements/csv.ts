@@ -141,7 +141,9 @@ export const csvParser: StatementParser = {
     // even when its description starts with "Opening balance".
     const summary = (r: string[]) => !dated(r) && balanceRow(r) !== null;
     const body = rows.filter((r) => cell(r, cols.date) && !summary(r));
-    const undated = rows.filter((r) => !cell(r, cols.date) && r.some((c) => c.trim()) && !balanceRow(r)).length;
+    const undated = rows.filter(
+      (r) => !cell(r, cols.date) && r.some((c) => c.trim()) && !balanceRow(r),
+    ).length;
     const { order, ambiguous } = dateOrder(body.map((r) => cell(r, cols.date)));
     if (ambiguous) warnings.push("Dates like 03/04/2026 are ambiguous; read as month/day/year.");
     let skipped = 0;
