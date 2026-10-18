@@ -1,21 +1,31 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
+import type { DataRoomApiFacetValues, DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
 import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web";
 import { LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
-import { FilterBar, sourceLabels } from "../components/data-room/FilterBar";
+import {
+  FilterBar,
+  facetOptions,
+  Tip,
+  TOOLBAR_BUTTON,
+  TOOLBAR_LABEL,
+} from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
-import { folderNodes } from "../components/data-room/folders";
+import { folderContents, folderNodes } from "../components/data-room/folders";
 import { ImportSources } from "../components/data-room/ImportFromEmail";
-import { type DataRoomEntry, ItemDialog, isFolder } from "../components/data-room/ItemDialogs";
+import {
+  type DataRoomEntry,
+  ItemDialog,
+  isFolder,
+  NewFolderDialog,
+} from "../components/data-room/ItemDialogs";
 import type { ItemAction } from "../components/data-room/ItemMenu";
 import {
   GridView,
   ListView,
-  ResultsView,
   type RowInteraction,
   SubfolderList,
 } from "../components/data-room/ItemRows";
@@ -23,6 +33,8 @@ import { Preview } from "../components/data-room/Preview";
 import {
   setOpenDataRoomFolder,
   showDeletedToast,
+  showNoticeToast,
+  showRenamedToast,
   uploadFilesToDataRoom,
 } from "../components/data-room/upload-toasts";
 import {
@@ -33,6 +45,7 @@ import {
 import { PageEmptyState } from "../components/PageEmptyState";
 import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
+import { errorText } from "../lib/user-error";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const NOTICE_MS = 6_000;
@@ -48,7 +61,11 @@ function useDebounced<T>(value: T, ms: number) {
   return debounced;
 }
 
-function FileInputButton({ children, ...props }: React.ComponentProps<typeof Button>) {
+function FileInputButton({
+  children,
+  tip,
+  ...props
+}: React.ComponentProps<typeof Button> & { tip?: string }) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -63,15 +80,27 @@ function FileInputButton({ children, ...props }: React.ComponentProps<typeof But
           event.target.value = "";
         }}
       />
-      <Button {...props} onClick={() => input.current?.click()}>
-        {children}
-      </Button>
+      {tip ? (
+        // To the side, so the label never covers the toolbar below.
+        <Tip label={tip} side="left">
+          <Button {...props} onClick={() => input.current?.click()}>
+            {children}
+          </Button>
+        </Tip>
+      ) : (
+        <Button {...props} onClick={() => input.current?.click()}>
+          {children}
+        </Button>
+      )}
     </>
   );
 }
 
-/** The Data room: folders, a list or grid of filed items, and a preview of one of them. */
-export function DataRoomPage() {
+/**
+ * The Data room: folders, a list or grid of filed items, and a preview of one of them. `spaceName`
+ * names the company when there is more than one, so its documents are never mistaken for another's.
+ */
+export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
   const [params, setParams] = useSearchParams();
   const linkedItem = params.get("item");
   const urlFolder = params.get("folder") ?? undefined;
@@ -126,9 +155,11 @@ export function DataRoomPage() {
       .folders()
       .then((next) => {
         setFolders(next);
-        // A folder that no longer exists (deleted, or a stale link) falls back to All items.
+        // A folder that no longer exists (a stale link, or deleted in another tab) falls back to
+        // All items, and says why. Deleting it here moves to its parent first, so no message.
         const open = urlFolderRef.current;
         if (open && !next.some((folder) => folder.id === open)) {
+          showNoticeToast(t`That folder no longer exists`);
           setParamsRef.current(
             (prev) => {
               const params = new URLSearchParams(prev);
@@ -142,6 +173,15 @@ export function DataRoomPage() {
       .catch(() => undefined);
   }, []);
   useEffect(reloadFolders, [reloadFolders]);
+  // Another tab may have added, renamed or deleted folders: catch up when this one is used again.
+  useEffect(() => {
+    window.addEventListener("focus", reloadFolders);
+    window.addEventListener(DATA_ROOM_CHANGED, reloadFolders);
+    return () => {
+      window.removeEventListener("focus", reloadFolders);
+      window.removeEventListener(DATA_ROOM_CHANGED, reloadFolders);
+    };
+  }, [reloadFolders]);
   // Files added while a folder is open go into it, wherever they are dropped.
   useEffect(() => {
     setOpenDataRoomFolder(filters.folderId);
@@ -160,7 +200,27 @@ export function DataRoomPage() {
     [nodes],
   );
 
-  const reload = list.reload;
+  // What the filters offer: every value in the open folder, not only the loaded page, given the
+  // other filters, so two picks never combine into nothing.
+  const [facetValues, setFacetValues] = useState<DataRoomApiFacetValues | null>(null);
+  const [facetsVersion, setFacetsVersion] = useState(0);
+  const facetFilters = JSON.stringify(filters);
+  // facetsVersion changes to ask for a fresh read.
+  useEffect(() => {
+    let live = true;
+    rpc.dataRoom
+      .facetValues(JSON.parse(facetFilters))
+      .then((next) => live && setFacetValues(next))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [facetFilters, facetsVersion]);
+  const listReload = list.reload;
+  const reload = useCallback(() => {
+    listReload();
+    setFacetsVersion((n) => n + 1);
+  }, [listReload]);
   useEffect(() => {
     window.addEventListener(DATA_ROOM_CHANGED, reload);
     return () => window.removeEventListener(DATA_ROOM_CHANGED, reload);
@@ -208,7 +268,18 @@ export function DataRoomPage() {
         setPreviewOpen(true);
         setDialogOpen(true);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!current) return;
+        showNoticeToast(t`That document could not be found`);
+        setParamsRef.current(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("item");
+            return next;
+          },
+          { replace: true },
+        );
+      });
     return () => {
       current = false;
     };
@@ -269,12 +340,25 @@ export function DataRoomPage() {
         setDialogOpen(narrow);
       }
     },
-    onAction: (kind, item) => setAction({ kind, item }),
+    onAction: (kind, item) => (kind === "retry" ? retry(item) : setAction({ kind, item })),
     folderPath,
     openFolderId: filters.folderId,
   };
 
   const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomEntry } | null>(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+
+  /** Reads a failed file again; the list shows it as Reading until it settles. */
+  function retry(item: DataRoomApiItem) {
+    rpc.dataRoom
+      .itemRetry({ id: item.id })
+      .then((updated) => {
+        showNoticeToast(t`Reading ${updated.name} again`);
+        setPinned((current) => (current?.id === updated.id ? updated : current));
+      })
+      .catch((cause) => showNoticeToast(errorText(cause)))
+      .finally(reload);
+  }
 
   function closePreview() {
     const id = shown?.id;
@@ -311,10 +395,25 @@ export function DataRoomPage() {
     !searching &&
     !hasFilters;
   const rows = list.rows;
-  const uniq = (values: string[]) => [...new Set(values)].sort();
-  const subfolderList = (
+  // The folder's values, plus any on rows newer than that answer. They stay when a search or
+  // filter finds nothing, so changing one is never a dead end.
+  const options = useMemo(() => {
+    const shown = facetOptions(rows.map(({ item }) => item));
+    if (!facetValues) return shown;
+    const merge = (a: string[], b: string[]) =>
+      [...new Set([...a, ...b])].sort((x, y) => x.localeCompare(y));
+    return {
+      types: merge(facetValues.types, shown.types),
+      parties: merge(facetValues.parties, shown.parties),
+      sources: [...new Set([...facetValues.sources, ...shown.sources])],
+      hasDates: facetValues.hasDates || shown.hasDates,
+    };
+  }, [rows, facetValues]);
+  const subfolderList = (rowClass?: string) => (
     <SubfolderList
       tiles={view === "grid"}
+      rowClass={rowClass}
+      contents={(folder) => folderContents(folder, folders)}
       folders={subfolders}
       onOpen={(folderId) => setFilters({ ...filters, folderId })}
       onAction={(kind, folder) => setAction({ kind, item: folder })}
@@ -323,37 +422,53 @@ export function DataRoomPage() {
   /** A filter other than the folder is set. */
   const filtered = Object.entries(filters).some(([key, value]) => key !== "folderId" && value);
   const clearFilters = () => setFilters(filters.folderId ? { folderId: filters.folderId } : {});
+  const openFolderPath = filters.folderId ? folderPath(filters.folderId) : "";
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center gap-2 px-4 pt-2 pb-3 md:px-7 md:pt-5">
-        <h1 className="me-auto text-lg font-semibold">
-          <Trans>Data room</Trans>
-        </h1>
+        {/* The company's name goes under the title where a line is too short for both. */}
+        <div className="me-auto flex min-w-0 flex-col @min-[640px]/bd:flex-row @min-[640px]/bd:items-baseline @min-[640px]/bd:gap-2">
+          <h1 className="shrink-0 text-lg font-semibold">
+            <Trans>Data room</Trans>
+          </h1>
+          {spaceName ? (
+            <span className="min-w-0 text-xs break-words text-muted-foreground @min-[640px]/bd:truncate">
+              {spaceName}
+            </span>
+          ) : null}
+        </div>
         {empty ? null : (
           <>
             <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
               <legend className="sr-only">{t`View`}</legend>
-              <Toggle
-                size="sm"
-                pressed={view === "list"}
-                onPressedChange={() => setView("list")}
-                aria-label={t`List view`}
-              >
-                <List aria-hidden="true" />
-              </Toggle>
-              <Toggle
-                size="sm"
-                pressed={view === "grid"}
-                onPressedChange={() => setView("grid")}
-                aria-label={t`Grid view`}
-              >
-                <LayoutGrid aria-hidden="true" />
-              </Toggle>
+              <Tip label={t`List view`}>
+                <Toggle
+                  size="sm"
+                  pressed={view === "list"}
+                  onPressedChange={() => setView("list")}
+                  aria-label={t`List view`}
+                >
+                  <List aria-hidden="true" />
+                </Toggle>
+              </Tip>
+              <Tip label={t`Grid view`}>
+                <Toggle
+                  size="sm"
+                  pressed={view === "grid"}
+                  onPressedChange={() => setView("grid")}
+                  aria-label={t`Grid view`}
+                >
+                  <LayoutGrid aria-hidden="true" />
+                </Toggle>
+              </Tip>
             </fieldset>
             <ImportSources compact folderId={filters.folderId ?? null} onDone={showNotice} />
-            <FileInputButton variant="outline" size="icon" aria-label={t`Add files`}>
+            <FileInputButton variant="outline" className={TOOLBAR_BUTTON} tip={t`Add files`}>
               <Plus aria-hidden="true" />
+              <span className={TOOLBAR_LABEL}>
+                <Trans>Add files</Trans>
+              </span>
             </FileInputButton>
           </>
         )}
@@ -379,7 +494,7 @@ export function DataRoomPage() {
       ) : (
         <>
           <div className="px-3 pb-2.5 empty:hidden md:px-5">
-            <DataRoomConsentPrompt onAllowed={list.reload} />
+            <DataRoomConsentPrompt onAllowed={reload} />
           </div>
           <FilterBar
             query={queryInput}
@@ -389,11 +504,10 @@ export function DataRoomPage() {
             onFilters={(next) => setFilters(next)}
             sort={sort}
             onSort={(next) => (searching ? setSearchSort(next) : next && setListSort(next))}
-            types={uniq(rows.flatMap(({ item }) => item.facets.docType ?? []))}
-            parties={uniq(rows.flatMap(({ item }) => item.facets.parties))}
-            // The server has no list of sources, so offer every known one beside those on screen.
-            sources={uniq([...Object.keys(sourceLabels()), ...rows.map(({ item }) => item.source)])}
-            hasDates={rows.some(({ item }) => item.facets.docDate)}
+            types={options.types}
+            parties={options.parties}
+            sources={options.sources}
+            hasDates={options.hasDates}
             folders={nodes}
             folderId={filters.folderId}
             onFolder={(folderId) => setFilters({ ...filters, folderId })}
@@ -404,12 +518,30 @@ export function DataRoomPage() {
                 nodes={nodes}
                 selected={filters.folderId}
                 onSelect={(folderId) => setFilters({ ...filters, folderId })}
+                onAction={(kind, folder) => setAction({ kind, item: folder })}
+                onNewFolder={() => setCreatingFolder(true)}
               />
             </div>
             <div
               data-testid="data-room-list"
               className="@container/list rk-scroll min-w-0 flex-1 overflow-y-auto"
             >
+              {searching && openFolderPath ? (
+                // A search inside a folder says so, with a way to look everywhere.
+                <div className="flex flex-wrap items-center gap-x-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+                  <span className="min-w-0 truncate">
+                    <Trans>Searching in {openFolderPath}</Trans>
+                  </span>
+                  <Button
+                    variant="link"
+                    size="xs"
+                    className="h-auto p-0"
+                    onClick={() => setFilters({ ...filters, folderId: undefined })}
+                  >
+                    <Trans>Search all items</Trans>
+                  </Button>
+                </div>
+              ) : null}
               {list.error ? (
                 <div className="flex items-center gap-3 p-4 text-sm text-destructive">
                   {list.error}
@@ -428,9 +560,15 @@ export function DataRoomPage() {
                 <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
                   {/* An open folder with nothing in it is empty, not a search that found nothing. */}
                   {!searching && !filtered ? (
-                    <p>
-                      <Trans>This folder is empty. Drop files here to add them.</Trans>
-                    </p>
+                    <>
+                      <p>
+                        <Trans>This folder is empty. Drop files here or add them.</Trans>
+                      </p>
+                      <FileInputButton variant="outline" size="sm">
+                        <Plus aria-hidden="true" />
+                        <Trans>Add files</Trans>
+                      </FileInputButton>
+                    </>
                   ) : (
                     <p>
                       <Trans>No results</Trans>
@@ -438,11 +576,7 @@ export function DataRoomPage() {
                   )}
                   {searching ? (
                     <p className="text-xs">
-                      {query.includes(" ") ? (
-                        <Trans>Search matches words in names and text. Try fewer words.</Trans>
-                      ) : (
-                        <Trans>Search matches words in names and text.</Trans>
-                      )}
+                      <Trans>Search looks for these words in names and text.</Trans>
                     </p>
                   ) : null}
                   {filtered ? (
@@ -451,11 +585,9 @@ export function DataRoomPage() {
                     </Button>
                   ) : null}
                 </div>
-              ) : searching ? (
-                <ResultsView rows={rows} o={interaction} />
-              ) : view === "grid" ? (
+              ) : view === "grid" && !searching ? (
                 <>
-                  {subfolderList}
+                  {subfolderList()}
                   <GridView rows={rows} o={interaction} />
                 </>
               ) : (
@@ -498,11 +630,24 @@ export function DataRoomPage() {
           </DialogContent>
         </Dialog>
       ) : null}
+      {creatingFolder ? (
+        <NewFolderDialog
+          folders={nodes}
+          parentId={filters.folderId}
+          onClose={() => setCreatingFolder(false)}
+          onDone={(folder) => {
+            showNoticeToast(t`Created ${folder.name}`);
+            reloadFolders();
+            setFilters({ ...filters, folderId: folder.id });
+          }}
+        />
+      ) : null}
       {action ? (
         <ItemDialog
           action={action.kind}
           item={action.item}
           folders={nodes}
+          onOpenFolder={(folderId) => setFilters({ folderId })}
           onClose={() => setAction(null)}
           onDone={(kind, updated) => {
             if (kind === "delete") {
@@ -513,10 +658,15 @@ export function DataRoomPage() {
                 setPinned(narrow ? null : ((rows[at + 1] ?? rows[at - 1])?.item ?? null));
               }
               showDeletedToast(action.item.name);
+              // The open folder is gone: show the one it was in.
+              if (isFolder(action.item) && action.item.id === filters.folderId) {
+                setFilters({ ...filters, folderId: action.item.parentId ?? undefined }, true);
+              }
             } else if (updated && !isFolder(updated) && pinned?.id === updated.id) {
               setPinned(updated);
             }
-            list.reload();
+            if (kind === "rename" && updated) showRenamedToast(updated.name);
+            reload();
             reloadFolders();
           }}
         />

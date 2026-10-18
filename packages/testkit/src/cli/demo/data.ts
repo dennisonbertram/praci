@@ -21,6 +21,11 @@ export const DEMO_COMPANY = "MOCK DEMO DATA — Northwind Robotics";
 /** A space with nothing connected, for the first-run and empty states. */
 export const DEMO_EMPTY_SPACE = "MOCK DEMO DATA — Empty space";
 export const DEMO_USER_NAME = "Alex Founder (Mock)";
+/** A second member of the company, so sharing and privacy can be looked at. */
+export const DEMO_COFOUNDER = {
+  name: "River Cofounder (Mock)",
+  email: "mock-cofounder@demo.rakazo.test",
+};
 export const DEMO_EMAIL = "mock-founder@demo.rakazo.test";
 /** Short, so the subject itself stays readable in a list row. */
 export const MOCK_SUBJECT_PREFIX = "[MOCK]";
@@ -831,42 +836,46 @@ export interface DemoDocument {
  * What the Data room classifier would file for each document. The demo has AI sharing off, so the
  * classifier skips and the seed writes these instead, keeping the Type and Date columns filled.
  */
+/**
+ * Types are the classifier's own values (DataRoomDocTypeSchema), so tagged and newly read documents
+ * use one vocabulary. Parties are written as the document text names them.
+ */
 export const DEMO_DOCUMENT_FACETS: Record<
   string,
   { docType: string; daysAgo: number; parties: string[] }
 > = {
   "MOCK Master Services Agreement - Halcyon Logistics.pdf": {
-    docType: "Contract",
+    docType: "contract",
     daysAgo: 95,
     parties: ["Halcyon Logistics (Mock)"],
   },
   "MOCK Mutual NDA - Acme Ventures.pdf": {
-    docType: "NDA",
+    docType: "contract",
     daysAgo: 60,
     parties: ["Acme Ventures (Mock)"],
   },
   "MOCK Office Lease - 100 Placeholder Street.pdf": {
-    docType: "Lease",
+    docType: "contract",
     daysAgo: 400,
     parties: ["Placeholder Street Landlord (Mock)"],
   },
   "MOCK SAFE - Quill Capital.pdf": {
-    docType: "SAFE",
+    docType: "investor",
     daysAgo: 150,
     parties: ["Quill Capital (Mock)"],
   },
-  "MOCK Q3 Board Deck.pdf": { docType: "Board deck", daysAgo: 3, parties: [] },
-  "MOCK Budget FY27.csv": { docType: "Budget", daysAgo: 20, parties: [] },
-  "MOCK Investor Update Draft.pdf": { docType: "Investor update", daysAgo: 1, parties: [] },
-  "MOCK Cap Table Summary.csv": { docType: "Cap table", daysAgo: 1, parties: [] },
-  "MOCK Product Roadmap.pdf": { docType: "Roadmap", daysAgo: 30, parties: [] },
+  "MOCK Q3 Board Deck.pdf": { docType: "presentation", daysAgo: 3, parties: [] },
+  "MOCK Budget FY27.csv": { docType: "spreadsheet", daysAgo: 20, parties: [] },
+  "MOCK Investor Update Draft.pdf": { docType: "investor", daysAgo: 1, parties: [] },
+  "MOCK Cap Table Summary.csv": { docType: "spreadsheet", daysAgo: 1, parties: [] },
+  "MOCK Product Roadmap.pdf": { docType: "report", daysAgo: 30, parties: [] },
   "MOCK Invoice NW-1044 - Acme Servo Supply.pdf": {
-    docType: "Invoice",
+    docType: "invoice",
     daysAgo: 12,
     parties: ["Acme Servo Supply (Mock)"],
   },
   "MOCK Invoice 2209 - Cobalt Cloud Hosting.pdf": {
-    docType: "Invoice",
+    docType: "invoice",
     daysAgo: 8,
     parties: ["Cobalt Cloud Hosting (Mock)"],
   },
@@ -876,7 +885,8 @@ const doc = (folder: string, name: string, text: string, kind: DemoDocument["kin
   folder,
   name,
   kind,
-  text: `MOCK DEMO DATA. ${text} ${MOCK_NOTE}, not a real document.`,
+  // "Acme Mock" reads as "Acme (Mock)", the form the parties take, so a model reading it agrees.
+  text: `MOCK DEMO DATA. ${text.replace(/ Mock\b/g, " (Mock)")} ${MOCK_NOTE}, not a real document.`,
 });
 
 export const DEMO_DOCUMENTS: DemoDocument[] = [
@@ -893,7 +903,7 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Legal",
     "MOCK Office Lease - 100 Placeholder Street.pdf",
-    "Office lease for 100 Placeholder Street. Monthly rent 7500 dollars. Renewal date 31 January. Notice of renewal due 30 November.",
+    "Office lease for 100 Placeholder Street between Northwind Robotics Mock and Placeholder Street Landlord Mock. Monthly rent 7500 dollars. Renewal date 31 January. Notice of renewal due 30 November.",
   ),
   doc(
     "Legal",
@@ -937,13 +947,107 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
     "MOCK Product Roadmap.pdf",
     "Roadmap for the next two quarters. Q4: calibration tool. Q1: fleet dashboard.",
   ),
-  doc(
-    "Legal",
-    "MOCK Signed NDA - Bolt Freight.pdf",
-    "A damaged scan that is not a readable PDF.",
-    "broken",
-  ),
 ];
+
+/**
+ * Enough more documents to page the list (over 50), with the folders a founder keeps: investor
+ * updates, bank statements, HR, contracts and an archive. Each one has its type, date and parties.
+ */
+const MORE_DOCUMENTS: (DemoDocument & {
+  facets: { docType: string; daysAgo: number; parties: string[] };
+})[] = [
+  ...["July", "August", "September"].map((month, index) => ({
+    ...doc(
+      "Finance/Bank statements",
+      `MOCK Mercury Statement - ${month}.pdf`,
+      `Mercury Mock checking statement for ${month}. Opening balance and closing balance for Northwind Robotics Mock.`,
+    ),
+    facets: { docType: "statement", daysAgo: 75 - index * 30, parties: ["Mercury (Mock)"] },
+  })),
+  ...Array.from({ length: 12 }, (_, index) => ({
+    ...doc(
+      "Investors",
+      `MOCK Monthly Investor Update ${String(index + 1).padStart(2, "0")}.pdf`,
+      `Monthly investor update number ${index + 1}. Revenue, burn and hiring for the month.`,
+    ),
+    // Numbered in date order: update 12 is the latest.
+    facets: { docType: "investor", daysAgo: 30 * (13 - index), parties: [] },
+  })),
+  ...Array.from({ length: 24 }, (_, index) => {
+    const vendor = ["Acme Servo Supply", "Cobalt Cloud Hosting", "Delta Desk Rentals"][index % 3];
+    return {
+      ...doc(
+        "Finance/Invoices",
+        `MOCK Invoice ${3000 + index} - ${vendor}.pdf`,
+        `Invoice ${3000 + index} from ${vendor} Mock to Northwind Robotics Mock. Amount due ${400 + index * 25} dollars.`,
+      ),
+      facets: { docType: "invoice", daysAgo: 20 + index * 14, parties: [`${vendor} (Mock)`] },
+    };
+  }),
+  ...["Offer Letter - Sam Engineer", "Offer Letter - Jo Designer", "Employee Handbook"].map(
+    (name, index) => ({
+      ...doc("HR", `MOCK ${name}.pdf`, `${name} for Northwind Robotics Mock.`),
+      facets: {
+        docType: "hr",
+        daysAgo: 100 + index * 40,
+        parties: [],
+      },
+    }),
+  ),
+  ...["Halcyon Logistics", "Bolt Freight"].map((party, index) => ({
+    ...doc(
+      "Legal/Contracts",
+      `MOCK Pilot Agreement - ${party}.pdf`,
+      `Pilot agreement between Northwind Robotics Mock and ${party} Mock. Term 6 months.`,
+    ),
+    facets: { docType: "contract", daysAgo: 200 + index * 30, parties: [`${party} (Mock)`] },
+  })),
+  ...["Pitch Deck v1", "Pitch Deck v2", "Old Budget"].map((name, index) => ({
+    ...doc(
+      "Archive/Old drafts/2025",
+      `MOCK ${name}.pdf`,
+      `${name}, an old draft kept for reference.`,
+    ),
+    facets: {
+      docType: index === 2 ? "spreadsheet" : "presentation",
+      daysAgo: 300 + index * 10,
+      parties: [],
+    },
+  })),
+];
+DEMO_DOCUMENTS.push(...MORE_DOCUMENTS.map(({ facets: _facets, ...document }) => document));
+for (const { name, facets } of MORE_DOCUMENTS) DEMO_DOCUMENT_FACETS[name] = facets;
+
+/**
+ * Read but never tagged (AI sharing was off when it arrived), so "Allow" has something to tag
+ * while every other document keeps the type and date it already has.
+ */
+export const DEMO_UNTAGGED_DOCUMENT = doc(
+  "Fundraising",
+  "MOCK Term Sheet Draft - Quill Capital.pdf",
+  "Draft term sheet from Quill Capital Mock for a seed round. Pre money valuation 9000000 dollars.",
+);
+DEMO_DOCUMENTS.push(DEMO_UNTAGGED_DOCUMENT);
+
+/**
+ * A file that could not be read, added among the last so it is on the list's first page and the
+ * "Failed" state and Try again can be seen without paging.
+ */
+export const DEMO_FAILED_DOCUMENT = doc(
+  "Legal",
+  "MOCK Signed NDA - Bolt Freight.pdf",
+  "A damaged scan that is not a readable PDF.",
+  "broken",
+);
+DEMO_DOCUMENTS.push(DEMO_FAILED_DOCUMENT);
+
+/** Still being read when the demo opens, so the "Reading" state shows. */
+export const DEMO_READING_DOCUMENT = doc(
+  "Investors",
+  "MOCK Board Minutes - October.pdf",
+  "Minutes of the October board meeting of Northwind Robotics Mock.",
+);
+DEMO_DOCUMENTS.push(DEMO_READING_DOCUMENT);
 
 /** Every folder path the documents use, each parent before its children ("A" before "A/B"). */
 export function demoFolderPaths(documents: DemoDocument[]): string[] {

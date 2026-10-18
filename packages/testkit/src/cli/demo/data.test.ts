@@ -9,6 +9,7 @@ import {
   CARTA_MCP_ENDPOINT,
   CARTA_READ_TOOLS,
   CapTableSnapshotInputSchema,
+  DataRoomDocTypeSchema,
 } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
@@ -19,6 +20,8 @@ import {
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
+  DEMO_READING_DOCUMENT,
+  DEMO_UNTAGGED_DOCUMENT,
   DEMO_WALLET,
   demoCarta,
   demoCrypto,
@@ -102,8 +105,38 @@ describe("mock demo data", () => {
     await session.close();
   });
 
-  it("includes one document that fails to read, so the failed state can be seen", () => {
-    expect(DEMO_DOCUMENTS.filter((document) => document.kind === "broken")).toHaveLength(1);
+  it("includes one document that fails to read, on the list's first page", () => {
+    const broken = DEMO_DOCUMENTS.filter((document) => document.kind === "broken");
+    expect(broken).toHaveLength(1);
+    // Uploaded in order and listed newest first, 50 to a page.
+    expect(DEMO_DOCUMENTS.slice(-50)).toContain(broken[0]);
+  });
+
+  it("numbers the monthly investor updates in date order, the latest highest", () => {
+    const dates = Array.from(
+      { length: 12 },
+      (_, i) =>
+        DEMO_DOCUMENT_FACETS[`MOCK Monthly Investor Update ${String(i + 1).padStart(2, "0")}.pdf`]
+          ?.daysAgo ?? 0,
+    );
+    expect(dates).toEqual([...dates].sort((a, b) => b - a));
+  });
+
+  it("has more documents than one list page, in the folders a founder keeps", () => {
+    // The web list pages at 50, so "Load more" shows.
+    expect(DEMO_DOCUMENTS.length).toBeGreaterThan(50);
+    const folders = demoFolderPaths(DEMO_DOCUMENTS);
+    for (const path of [
+      "Investors",
+      "HR",
+      "Finance/Bank statements",
+      "Legal/Contracts",
+      "Archive/Old drafts/2025",
+    ])
+      expect(folders).toContain(path);
+    expect(
+      Object.values(DEMO_DOCUMENT_FACETS).filter((facets) => facets.docType === "statement"),
+    ).toHaveLength(3);
   });
 
   it("creates each parent folder before its sub-folders", () => {
@@ -129,10 +162,21 @@ describe("mock demo data", () => {
   it("gives every mock Data room document a type and date for the list columns", () => {
     expect(Object.keys(DEMO_DOCUMENT_FACETS).sort()).toEqual(
       // The unreadable scan stays unclassified, so the failed state shows.
-      DEMO_DOCUMENTS.filter((d) => d.kind !== "broken")
+      DEMO_DOCUMENTS.filter(
+        (d) => d.kind !== "broken" && d !== DEMO_UNTAGGED_DOCUMENT && d !== DEMO_READING_DOCUMENT,
+      )
         .map((d) => d.name)
         .sort(),
     );
+  });
+
+  it("tags documents as the classifier would: its types, and parties as the text names them", () => {
+    for (const document of DEMO_DOCUMENTS) {
+      const facets = DEMO_DOCUMENT_FACETS[document.name];
+      if (!facets) continue;
+      expect(DataRoomDocTypeSchema.options).toContain(facets.docType);
+      for (const party of facets.parties) expect(document.text).toContain(party);
+    }
   });
 
   it("has a mock cap table whose holdings, option pool and fully diluted total add up", () => {

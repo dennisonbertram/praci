@@ -97,6 +97,8 @@ function docker(...args: string[]) {
 
 /** Model-provider keys come from this process's environment or the dev checkout's .env; never written anywhere. */
 function modelEnv(): NodeJS.ProcessEnv {
+  // DEMO_NO_MODEL=1 runs the stack as a space with no model set up (the "no model" states).
+  if (process.env.DEMO_NO_MODEL) return { AGENT_RUNTIME: "scripted" };
   const found: Record<string, string> = {};
   const devEnv = path.join(homedir(), "develop/rakazo/.env");
   const lines = existsSync(devEnv) ? readFileSync(devEnv, "utf8").split("\n") : [];

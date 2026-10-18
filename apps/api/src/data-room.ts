@@ -119,6 +119,41 @@ const toFilters = (input: {
   };
 };
 
+/**
+ * The query's words joined by "or", for a second try when every word had to match. Null for a
+ * single word, and for a query that already uses operators (quotes, "-word", "or"), which
+ * broadening would change.
+ */
+export function anyWordQuery(query: string): string | null {
+  if (/["]|(^|\s)-\S|(^|\s)or(\s|$)/i.test(query)) return null;
+  const words = query.split(/\s+/).filter(Boolean);
+  return words.length > 1 ? words.join(" or ") : null;
+}
+
+const ANY_PREFIX = "any:";
+
+/**
+ * A question ("when does our lease end") rarely has every word in one file: on a first page with
+ * nothing found, match any of its words instead. The cursor of such a page is marked, so later
+ * pages keep matching any word.
+ */
+export async function searchWithFallback<
+  P extends { results: unknown[]; nextCursor: string | null },
+>(
+  searchPage: (query: string, cursor: string | undefined) => Promise<P>,
+  input: { query: string; cursor?: string },
+): Promise<P> {
+  const anyWords = anyWordQuery(input.query);
+  if (input.cursor?.startsWith(ANY_PREFIX) && anyWords) {
+    const page = await searchPage(anyWords, input.cursor.slice(ANY_PREFIX.length));
+    return { ...page, nextCursor: page.nextCursor && ANY_PREFIX + page.nextCursor };
+  }
+  const page = await searchPage(input.query, input.cursor);
+  if (input.cursor || page.results.length > 0 || !anyWords) return page;
+  const broad = await searchPage(anyWords, undefined);
+  return { ...broad, nextCursor: broad.nextCursor && ANY_PREFIX + broad.nextCursor };
+}
+
 const DRIVE_ERRORS = {
   not_connected: "PRECONDITION_FAILED",
   reconnect: "PRECONDITION_FAILED",
@@ -201,7 +236,18 @@ export function createDataRoomService(deps: DataRoomDeps) {
   }
 
   return {
-    folders: async (actor: Actor) => (await repo.listFolders(actor)).map(folderDto),
+    folders: async (actor: Actor) => {
+      const [folders, counts] = await Promise.all([
+        repo.listFolders(actor),
+        repo.folderItemCounts(actor),
+      ]);
+      return folders.map((folder) => ({
+        ...folderDto(folder),
+        itemCount: counts.get(folder.id) ?? 0,
+      }));
+    },
+    facetValues: (actor: Actor, filters: Parameters<typeof toFilters>[0]) =>
+      repo.facetValues(actor, toFilters(filters)),
     createFolder: (actor: Actor, input: { name: string; parentId?: string | null }) =>
       dataRoomCall(async () => folderDto(await repo.createFolder(actor, input))),
     renameFolder: (actor: Actor, input: { id: string; name: string }) =>
@@ -257,6 +303,16 @@ export function createDataRoomService(deps: DataRoomDeps) {
         }
         await repo.deleteItem(actor, id);
         return { ok: true as const };
+      }),
+    /** A failed item starts over from reading its text; any other status is a conflict. */
+    retryItem: (actor: Actor, id: string) =>
+      dataRoomCall(async () => {
+        const item = await repo.getItem(actor, id);
+        if (item.status !== "failed" || !(await repo.restartItem(actor, id))) {
+          throw new ORPCError("CONFLICT", { message: "This file is already being read." });
+        }
+        await deps.jobs.enqueue(dataRoomStepJob("dataroom.ingest", actor, id));
+        return itemDto(await repo.getItem(actor, id));
       }),
     consent: async (actor: Actor): Promise<DataRoomConsentStatus> => {
       const { ai: _ai, ...status } = await consentStatus(actor);
@@ -478,11 +534,13 @@ export function createDataRoomService(deps: DataRoomDeps) {
       },
     ) =>
       dataRoomCall(async () => {
-        const page = await repo.searchPage(actor, {
-          ...input,
-          ...(await dataRoomQueryVector(deps.resolveAi, actor, input.query)),
-          filters: input.filters && toFilters(input.filters),
-        });
+        const vector = await dataRoomQueryVector(deps.resolveAi, actor, input.query);
+        const filters = input.filters && toFilters(input.filters);
+        const page = await searchWithFallback(
+          (query, cursor) =>
+            repo.searchPage(actor, { ...input, ...vector, filters, query, cursor }),
+          input,
+        );
         return {
           results: page.results.map((hit) => ({ ...hit, item: itemDto(hit.item) })),
           nextCursor: page.nextCursor,

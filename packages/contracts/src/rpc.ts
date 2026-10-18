@@ -27,6 +27,8 @@ import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from ".
 import {
   DataRoomApiDriveListInputSchema,
   DataRoomApiDriveListOutputSchema,
+  DataRoomApiFacetValuesSchema,
+  DataRoomApiFiltersSchema,
   DataRoomApiFolderSchema,
   DataRoomApiImportDriveInputSchema,
   DataRoomApiImportDriveOutputSchema,
@@ -1132,6 +1134,9 @@ export const appContract = {
   },
   dataRoom: {
     folders: oc.output(z.array(DataRoomApiFolderSchema)),
+    /** Omit folderId for every folder; null for items outside any folder. */
+    /** Each facet's values given the other filters, so no pick combines into nothing. */
+    facetValues: oc.input(DataRoomApiFiltersSchema).output(DataRoomApiFacetValuesSchema),
     folderCreate: oc
       .input(z.object({ name: DataRoomApiName, parentId: Id.nullable().optional() }))
       .output(DataRoomApiFolderSchema),
@@ -1149,6 +1154,8 @@ export const appContract = {
     itemRename: oc.input(z.object({ id: Id, name: DataRoomApiName })).output(DataRoomApiItemSchema),
     itemMove: oc.input(z.object({ id: Id, folderId: Id.nullable() })).output(DataRoomApiItemSchema),
     itemDelete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    /** Reads a failed item again from the start. */
+    itemRetry: oc.input(z.object({ id: Id })).output(DataRoomApiItemSchema),
     importEmail: oc
       .input(DataRoomApiImportEmailInputSchema)
       .output(DataRoomApiImportEmailOutputSchema),

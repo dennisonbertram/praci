@@ -96,6 +96,8 @@ export function uploadToDataRoom(
     request.onload = () => {
       if (request.status === 413) return reject(new DataRoomUploadError("too-large"));
       if (request.status === 400) return reject(new DataRoomUploadError("invalid"));
+      // The only 404 is the folder: deleted since the page loaded it.
+      if (request.status === 404) return reject(new DataRoomUploadError("folder-gone"));
       if (request.status < 200 || request.status >= 300) {
         return reject(new DataRoomUploadError("failed"));
       }
@@ -139,4 +141,41 @@ export const canPreviewImage = (item: Pick<DataRoomApiItem, "mimeType" | "size">
 export async function dataRoomImageUrl(item: Pick<DataRoomApiItem, "id" | "mimeType">) {
   const blob = await fetchDataRoomBlob(item);
   return URL.createObjectURL(new Blob([blob], { type: item.mimeType }));
+}
+
+/** PDFs and raster images, which the browser shows by itself; anything else only downloads. */
+export const canOpenInBrowser = (item: Pick<DataRoomApiItem, "mimeType">) =>
+  item.mimeType === "application/pdf" || PREVIEW_IMAGE_TYPES.has(item.mimeType);
+
+/**
+ * Shows the file in a new tab, typed by us (never by the server), for reading without saving it.
+ * The tab opens at once, before the bytes arrive, so the browser does not block it as a pop-up. It
+ * is titled with the file's name (a bare blob URL would title it with a random id) and shows the
+ * file in a frame that fills it.
+ */
+export async function openDataRoomItem(item: Pick<DataRoomApiItem, "id" | "mimeType" | "name">) {
+  const tab = window.open("", "_blank");
+  // Electron's window policy (and pop-up blockers) can refuse the tab; save the file instead.
+  if (!tab) return saveDataRoomItem(item);
+  tab.opener = null;
+  try {
+    const blob = await fetchDataRoomBlob(item);
+    const url = URL.createObjectURL(new Blob([blob], { type: item.mimeType }));
+    showInTab(tab, item.name, url);
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (error) {
+    tab.close();
+    throw error;
+  }
+}
+
+function showInTab(tab: Window, name: string, url: string) {
+  const doc = tab.document;
+  doc.title = name;
+  doc.body.style.margin = "0";
+  const frame = doc.createElement("iframe");
+  frame.title = name;
+  frame.src = url;
+  frame.style.cssText = "border:0;display:block;width:100vw;height:100vh";
+  doc.body.replaceChildren(frame);
 }

@@ -6353,6 +6353,9 @@ export function createRouter(deps: RouterDeps) {
     },
     dataRoom: {
       folders: authed.dataRoom.folders.handler(({ context }) => dataRoom.folders(context.actor)),
+      facetValues: authed.dataRoom.facetValues.handler(({ context, input }) =>
+        dataRoom.facetValues(context.actor, input),
+      ),
       folderCreate: authed.dataRoom.folderCreate.handler(({ context, input }) =>
         dataRoom.createFolder(context.actor, input),
       ),
@@ -6381,6 +6384,9 @@ export function createRouter(deps: RouterDeps) {
       ),
       itemDelete: authed.dataRoom.itemDelete.handler(({ context, input }) =>
         dataRoom.deleteItem(context.actor, input.id),
+      ),
+      itemRetry: authed.dataRoom.itemRetry.handler(({ context, input }) =>
+        dataRoom.retryItem(context.actor, input.id),
       ),
       importEmail: authed.dataRoom.importEmail.handler(({ context, input }) =>
         dataRoom.importEmail(context.actor, input, context.signal),

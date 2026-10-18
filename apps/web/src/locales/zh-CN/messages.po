@@ -270,6 +270,10 @@ msgstr "{days} 天前"
 msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
 msgstr ""
 
+#: src/components/data-room/folders.ts
+msgid "{folders, plural, one {# folder} other {# folders}}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "{from} handed off to {to}"
 msgstr ""
@@ -292,6 +296,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
+msgstr ""
+
+#: src/components/data-room/folders.ts
+msgid "{items, plural, one {# item} other {# items}}"
 msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
@@ -750,6 +758,7 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
+#: src/components/data-room/ItemDialogs.tsx
 msgid "All items"
 msgstr ""
 
@@ -2744,6 +2753,7 @@ msgstr ""
 msgid "Counting stablecoins"
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -2799,6 +2809,11 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "Created"
 msgstr "已创建"
+
+#. placeholder {0}: folder.name
+#: src/pages/DataRoom.tsx
+msgid "Created {0}"
+msgstr ""
 
 #: src/pages/GroupPanel.tsx
 #: src/pages/shell/dialogs.tsx
@@ -3325,6 +3340,10 @@ msgstr "需要验证邮箱"
 msgid "Embedding model"
 msgstr ""
 
+#: src/components/data-room/folders.ts
+msgid "Empty"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Ends {day}"
 msgstr ""
@@ -3635,7 +3654,6 @@ msgid "Flag unexpected actions"
 msgstr "标记异常操作"
 
 #: src/components/data-room/ItemDialogs.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 msgid "Folder"
 msgstr ""
@@ -3820,6 +3838,10 @@ msgstr "试听"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "你好，这是我朗读回复时的声音。"
 
+#: src/components/data-room/Preview.tsx
+msgid "Hidden while amounts are hidden"
+msgstr ""
+
 #: src/components/HideAmountsToggle.tsx
 msgid "Hide amounts"
 msgstr ""
@@ -3871,6 +3893,10 @@ msgstr "频率"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "How to check"
 msgstr "如何检查"
+
+#: src/components/data-room/format.ts
+msgid "HR document"
+msgstr ""
 
 #: src/components/inbox/InboxAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
@@ -3979,6 +4005,10 @@ msgstr "输入"
 msgid "Insert link"
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Inside"
+msgstr ""
+
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Instance API key"
 msgstr "实例 API 密钥"
@@ -4015,6 +4045,10 @@ msgstr "间隔单位"
 msgid "Investor"
 msgstr ""
 
+#: src/components/data-room/format.ts
+msgid "Investor document"
+msgstr ""
+
 #: src/pages/CapTable.tsx
 msgid "Investors"
 msgstr ""
@@ -4026,6 +4060,10 @@ msgstr "隔离"
 
 #: src/pages/Artifacts.tsx
 msgid "Isolated preview — no access to your account"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "It holds {holds}. Move or delete what is in it first; only an empty folder can be deleted."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -4161,12 +4199,20 @@ msgstr "退出"
 msgid "Legal"
 msgstr ""
 
+#: src/components/data-room/format.ts
+msgid "Legal document"
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Legal relationships"
 msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key."
+msgstr ""
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Let Rakazo read documents"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
@@ -4179,6 +4225,10 @@ msgstr ""
 
 #: src/components/legal/ConsentPrompt.tsx
 msgid "Let the Legal agent read your documents"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Letter or email"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -4811,6 +4861,11 @@ msgstr ""
 msgid "New Bot"
 msgstr ""
 
+#: src/components/data-room/FolderTree.tsx
+#: src/components/data-room/ItemDialogs.tsx
+msgid "New folder"
+msgstr ""
+
 #: src/components/data-room/ItemDialogs.tsx
 msgid "New folder name"
 msgstr ""
@@ -4927,6 +4982,14 @@ msgstr "还没有关联聊天应用。"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "No documents here have a date yet."
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "No documents here name a party"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -5061,6 +5124,10 @@ msgstr "暂无技能"
 msgid "No spend in this period"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+msgid "No tagged documents here"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No team conversations yet."
 msgstr ""
@@ -5169,6 +5236,14 @@ msgstr ""
 msgid "Not sent. {text}"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not tagged"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Not tagged yet. Files are tagged once you let Rakazo read documents; you can still search it by name and text."
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not waiting for approval"
 msgstr ""
@@ -5235,10 +5310,6 @@ msgstr "按计划"
 msgid "on the 1st at {0}"
 msgstr "每月 1 日 {0}"
 
-#: src/components/data-room/ItemDialogs.tsx
-msgid "Only an empty folder can be deleted. This can't be undone."
-msgstr ""
-
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
@@ -5247,6 +5318,7 @@ msgstr ""
 msgid "Only if the server does not use sign-in"
 msgstr ""
 
+#: src/components/data-room/Preview.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
@@ -5307,6 +5379,10 @@ msgstr "打开外部链接？"
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Open Finance"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Open folder"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -5733,6 +5809,14 @@ msgstr "排队中"
 msgid "Quote"
 msgstr ""
 
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Rakazo can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
+msgstr ""
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Rakazo doesn't tag new files."
+msgstr ""
+
 #: src/components/AiDataSharing.tsx
 msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
 msgstr ""
@@ -5783,6 +5867,11 @@ msgstr ""
 msgid "Reading"
 msgstr ""
 
+#. placeholder {0}: updated.name
+#: src/pages/DataRoom.tsx
+msgid "Reading {0} again"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Reading a connected app"
 msgstr ""
@@ -5793,6 +5882,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Reading the cap table"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Reading this file. You can keep working while it finishes."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -6118,6 +6211,10 @@ msgstr "重命名分组"
 msgid "Rename space"
 msgstr "重命名工作区"
 
+#: src/components/data-room/DropZone.tsx
+msgid "Renamed"
+msgstr ""
+
 #: src/pages/legal/LegalContracts.tsx
 msgid "Renewal"
 msgstr ""
@@ -6225,10 +6322,6 @@ msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Restoring your workspace"
-msgstr ""
-
-#: src/components/data-room/ItemRows.tsx
-msgid "Results"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
@@ -6489,6 +6582,10 @@ msgstr "搜索"
 msgid "Search activity"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Search all items"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -6515,6 +6612,10 @@ msgstr ""
 msgid "Search Drive"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Search looks for these words in names and text."
+msgstr ""
+
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
 msgid "Search mail"
@@ -6526,14 +6627,6 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Search mail, e.g. from:sam has:attachment"
-msgstr ""
-
-#: src/pages/DataRoom.tsx
-msgid "Search matches words in names and text."
-msgstr ""
-
-#: src/pages/DataRoom.tsx
-msgid "Search matches words in names and text. Try fewer words."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6567,6 +6660,10 @@ msgstr ""
 #. placeholder {0}: filters.query.trim()
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Searching in {openFolderPath}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -7189,6 +7286,10 @@ msgstr "接管控制权"
 msgid "Task board"
 msgstr ""
 
+#: src/components/data-room/format.ts
+msgid "Tax document"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Teach a task"
 msgstr "示范任务"
@@ -7253,6 +7354,14 @@ msgstr "测试登录"
 msgid "Testing…"
 msgstr "正在测试…"
 
+#: src/pages/DataRoom.tsx
+msgid "That document could not be found"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "That folder no longer exists"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "The API did not come back. Refresh this page."
 msgstr "API 未恢复。请刷新此页面。"
@@ -7296,6 +7405,11 @@ msgstr "连接超时。"
 
 #: src/components/finance/StatementImport.tsx
 msgid "The file is too large"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "The folder {0} isn't empty"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -7381,7 +7495,11 @@ msgid "This file is not valid UTF-8 text."
 msgstr ""
 
 #: src/pages/DataRoom.tsx
-msgid "This folder is empty. Drop files here to add them."
+msgid "This folder is empty. Drop files here or add them."
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "This folder no longer exists"
 msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
@@ -7477,10 +7595,6 @@ msgstr ""
 msgid "To do"
 msgstr ""
 
-#: src/components/data-room/ConsentPrompt.tsx
-msgid "To tag new files and sort them into folders for you, their text (and images) is sent to {names}. Until then you can search by name and text and move files into folders yourself."
-msgstr ""
-
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
 msgstr "至:"
@@ -7510,10 +7624,6 @@ msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Tools from an Executor server you run"
-msgstr ""
-
-#: src/components/data-room/ItemDialogs.tsx
-msgid "Top level"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -7568,6 +7678,8 @@ msgid "Try {name} again"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -7801,6 +7913,10 @@ msgstr ""
 #. placeholder {0}: first.accountName
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "Upload the {month} statement for {0}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Upload to All items"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
@@ -8153,7 +8269,7 @@ msgid "You can close this window."
 msgstr "可以关闭此窗口。"
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "You can search documents by name and text and move them into folders yourself. Set up a model in Settings to have new files tagged and sorted into folders for you."
+msgid "You can search documents by name and text and move them into folders yourself. Set up a model in Settings to have files you add tagged and sorted into folders for you."
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx

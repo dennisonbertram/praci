@@ -11,7 +11,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { ListView, type RowInteraction, SubfolderList } from "./ItemRows";
+import { GridView, ListView, type RowInteraction, SubfolderList } from "./ItemRows";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -80,9 +80,79 @@ it("gives every sub-folder a More actions menu", () => {
   for (const tiles of [false, true]) {
     act(() =>
       root.render(
-        <SubfolderList folders={[invoices]} onOpen={vi.fn()} onAction={onAction} tiles={tiles} />,
+        <SubfolderList
+          folders={[invoices]}
+          contents={() => "2 items"}
+          onOpen={vi.fn()}
+          onAction={onAction}
+          tiles={tiles}
+        />,
       ),
     );
     expect(container.querySelector('li button[aria-label^="More actions for"]')).not.toBeNull();
   }
+});
+
+it("keeps a renamed file's type while search re-indexes it, and names a failure under the name", () => {
+  const typed = (id: string, status: string) =>
+    ({
+      ...item(id, null),
+      status,
+      facets: { docType: "Roadmap", docDate: null, parties: [] },
+    }) as unknown as DataRoomApiItem;
+  const rows = [typed("roadmap", "indexing"), typed("scan", "failed")].map((i) => ({
+    item: i,
+    snippets: [],
+  }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.textContent).toContain("Roadmap");
+  expect(container.textContent).not.toContain("Reading");
+  // The phone-only line under the name, for where the Type column is hidden.
+  expect(names()[1]).toBe("scan.pdfFailed");
+});
+
+const tagged = (id: string, docType: string | null, docDate: string | null) =>
+  ({
+    ...item(id, null),
+    facets: { docType, docDate, parties: docType ? ["Quill Capital (Mock)"] : [] },
+  }) as unknown as DataRoomApiItem;
+
+it("puts the type and date under the name for a phone, and says when a file is not tagged", () => {
+  const rows = [
+    tagged("deck", "presentation", "2025-12-21T00:00:00.000Z"),
+    tagged("sheet", null, null),
+  ].map((i) => ({ item: i, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const lines = Array.from(container.querySelectorAll('[data-testid="data-room-subline"]')).map(
+    (line) => line.textContent,
+  );
+  expect(lines[0]).toMatch(/^Presentation · Dec 21, 2025$/);
+  expect(lines[1]).toBe("Not tagged");
+});
+
+it("bolds only the shown row's name, so its type and parties keep their width", () => {
+  const rows = [tagged("deck", "investor", null)].map((i) => ({ item: i, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), shownId: "deck" }} />));
+  const row = container.querySelector('[data-item-id="deck"]');
+  expect(row?.className).not.toContain("font-medium");
+  expect(row?.querySelector('[title="deck.pdf"]')?.className).toContain("font-medium");
+  // A long party wraps to a second line instead of losing the end of its name.
+  const parties = row?.querySelector('[data-testid="data-room-parties"]')?.className ?? "";
+  expect(parties).toContain("line-clamp-2");
+  expect(parties).not.toContain("truncate");
+});
+
+it("gives a tile's type and date a line each, and marks an untagged tile", () => {
+  const rows = [
+    tagged("deck", "presentation", "2025-12-21T00:00:00.000Z"),
+    tagged("sheet", null, null),
+  ].map((i) => ({ item: i, snippets: [] }));
+  act(() => root.render(<GridView rows={rows} o={o()} />));
+  const tiles = Array.from(container.querySelectorAll("[data-item-id]"));
+  const lines = (tile: Element) =>
+    Array.from(tile.querySelectorAll('[data-testid="data-room-tile-meta"] > span')).map(
+      (s) => s.textContent,
+    );
+  expect(lines(tiles[0] as Element)).toEqual(["Presentation", "Dec 21, 2025"]);
+  expect(tiles[1]?.textContent).toContain("Not tagged");
 });

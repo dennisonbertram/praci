@@ -18,13 +18,14 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
   NativeSelect,
   NativeSelectOption,
 } from "@rakazo/ui-web";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
-import type { FolderNode } from "./folders";
+import { type FolderNode, folderContents } from "./folders";
 import type { ItemAction } from "./ItemMenu";
 
 /** The Move select's value for "put it in a new folder", which no folder id can equal. */
@@ -32,6 +33,124 @@ const NEW_FOLDER = "__new__";
 
 export type DataRoomEntry = DataRoomApiItem | DataRoomApiFolder;
 export const isFolder = (entry: DataRoomEntry): entry is DataRoomApiFolder => "parentId" in entry;
+
+/** The name with the part before its extension selected, so typing replaces only the name. */
+function NameInput({ name, invalid }: { name: string; invalid: boolean }) {
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const dot = name.lastIndexOf(".");
+    input.current?.setSelectionRange(0, dot > 0 ? dot : name.length);
+  }, [name]);
+  return (
+    <Input
+      ref={input}
+      name="name"
+      aria-label={t`Name`}
+      aria-invalid={invalid || undefined}
+      defaultValue={name}
+      autoFocus
+    />
+  );
+}
+
+/** The top level (named as the tree names it) and every folder by path, for choosing a place. */
+function FolderOptions({
+  folders,
+  blocked = new Set<string>(),
+  topLabel,
+}: {
+  folders: FolderNode[];
+  blocked?: Set<string>;
+  topLabel: string;
+}) {
+  return (
+    <>
+      <NativeSelectOption value="">{topLabel}</NativeSelectOption>
+      {folders
+        .filter((node) => !blocked.has(node.folder.id))
+        .map((node) => (
+          <NativeSelectOption key={node.folder.id} value={node.folder.id}>
+            {node.path}
+          </NativeSelectOption>
+        ))}
+    </>
+  );
+}
+
+/** Creates a folder inside the one chosen (the open folder to start with). */
+export function NewFolderDialog({
+  folders,
+  parentId,
+  onClose,
+  onDone,
+}: {
+  folders: FolderNode[];
+  parentId: string | undefined;
+  onClose: () => void;
+  onDone: (folder: DataRoomApiFolder) => void;
+}) {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const parentField = useId();
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const name = DataRoomApiName.safeParse(String(data.get("folderName") ?? "").trim());
+    if (!name.success) return setError(t`Enter a folder name without slashes`);
+    setBusy(true);
+    setError("");
+    rpc.dataRoom
+      .folderCreate({ name: name.data, parentId: String(data.get("parent") ?? "") || null })
+      .then((folder) => {
+        onDone(folder);
+        onClose();
+      })
+      .catch((cause) => setError(errorText(cause)))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent showCloseButton={false}>
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>
+              <Trans>New folder</Trans>
+            </DialogTitle>
+          </DialogHeader>
+          <Input
+            name="folderName"
+            aria-label={t`New folder name`}
+            placeholder={t`New folder name`}
+            aria-invalid={error ? true : undefined}
+            autoFocus
+          />
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={parentField}>
+              <Trans>Inside</Trans>
+            </Label>
+            <NativeSelect
+              id={parentField}
+              name="parent"
+              defaultValue={parentId ?? ""}
+              className="w-full"
+            >
+              <FolderOptions folders={folders} topLabel={t`All items`} />
+            </NativeSelect>
+          </div>
+          {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              <Trans>Cancel</Trans>
+            </Button>
+            <Button type="submit" disabled={busy}>
+              <Trans>Create</Trans>
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 /** The folder and every folder under it: where a folder cannot move. */
 function selfAndBelow(id: string, folders: FolderNode[]) {
@@ -52,17 +171,22 @@ export function ItemDialog({
   folders,
   onClose,
   onDone,
+  onOpenFolder,
 }: {
   action: ItemAction;
   item: DataRoomEntry;
   folders: FolderNode[];
   onClose: () => void;
   onDone: (action: ItemAction, item: DataRoomEntry | null) => void;
+  /** A folder that cannot be deleted yet offers to open it, to move or delete what it holds. */
+  onOpenFolder?: (id: string) => void;
 }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const folder = isFolder(item);
-  const [target, setTarget] = useState((folder ? item.parentId : item.folderId) ?? "");
+  const parentField = useId();
+  const current = (folder ? item.parentId : item.folderId) ?? "";
+  const [target, setTarget] = useState(current);
   // folderNodes lists parents before children, so one pass finds every folder below.
   const blocked = folder ? selfAndBelow(item.id, folders) : new Set<string>();
 
@@ -81,16 +205,33 @@ export function ItemDialog({
   }
 
   if (action === "delete") {
+    // A folder with something in it cannot be deleted: say so before, not after, the click.
+    const full =
+      folder &&
+      ((item.itemCount ?? 0) > 0 || folders.some((node) => node.folder.parentId === item.id));
+    const holds = full
+      ? folderContents(
+          item,
+          folders.map((node) => node.folder),
+        )
+      : "";
     return (
       <AlertDialog open onOpenChange={(open) => !open && onClose()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {folder ? t`Delete the folder ${item.name}?` : t`Delete ${item.name}?`}
+              {full
+                ? t`The folder ${item.name} isn't empty`
+                : folder
+                  ? t`Delete the folder ${item.name}?`
+                  : t`Delete ${item.name}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {folder ? (
-                <Trans>Only an empty folder can be deleted. This can't be undone.</Trans>
+              {full ? (
+                <Trans>
+                  It holds {holds}. Move or delete what is in it first; only an empty folder can be
+                  deleted.
+                </Trans>
               ) : (
                 <Trans>This can't be undone.</Trans>
               )}
@@ -101,22 +242,35 @@ export function ItemDialog({
             <AlertDialogCancel>
               <Trans>Cancel</Trans>
             </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={busy}
-              onClick={(event) => {
-                // Stay open to show an error.
-                event.preventDefault();
-                void run(async () => {
-                  await (folder
-                    ? rpc.dataRoom.folderDelete({ id: item.id })
-                    : rpc.dataRoom.itemDelete({ id: item.id }));
-                  return null;
-                });
-              }}
-            >
-              <Trans>Delete</Trans>
-            </AlertDialogAction>
+            {full ? (
+              onOpenFolder ? (
+                <AlertDialogAction
+                  onClick={() => {
+                    onOpenFolder(item.id);
+                    onClose();
+                  }}
+                >
+                  <Trans>Open folder</Trans>
+                </AlertDialogAction>
+              ) : null
+            ) : (
+              <AlertDialogAction
+                variant="destructive"
+                disabled={busy}
+                onClick={(event) => {
+                  // Stay open to show an error.
+                  event.preventDefault();
+                  void run(async () => {
+                    await (folder
+                      ? rpc.dataRoom.folderDelete({ id: item.id })
+                      : rpc.dataRoom.itemDelete({ id: item.id }));
+                    return null;
+                  });
+                }}
+              >
+                <Trans>Delete</Trans>
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -143,7 +297,10 @@ export function ItemDialog({
     if (target === NEW_FOLDER) {
       const name = DataRoomApiName.safeParse(String(data.get("folderName") ?? "").trim());
       if (!name.success) return setError(t`Enter a folder name without slashes`);
-      void run(async () => moveTo((await rpc.dataRoom.folderCreate({ name: name.data })).id));
+      const parentId = String(data.get("parent") ?? "") || null;
+      void run(async () =>
+        moveTo((await rpc.dataRoom.folderCreate({ name: name.data, parentId })).id),
+      );
     } else {
       void run(() => moveTo(target || null));
     }
@@ -160,13 +317,7 @@ export function ItemDialog({
             </DialogTitle>
           </DialogHeader>
           {action === "rename" ? (
-            <Input
-              name="name"
-              aria-label={t`Name`}
-              aria-invalid={error ? true : undefined}
-              defaultValue={item.name}
-              autoFocus
-            />
+            <NameInput name={item.name} invalid={Boolean(error)} />
           ) : (
             <>
               <NativeSelect
@@ -176,26 +327,37 @@ export function ItemDialog({
                 onChange={(event) => setTarget(event.target.value)}
                 className="w-full"
               >
-                <NativeSelectOption value="">
-                  {folder ? t`Top level` : t`No folder`}
-                </NativeSelectOption>
-                {folders
-                  .filter((node) => !blocked.has(node.folder.id))
-                  .map((node) => (
-                    <NativeSelectOption key={node.folder.id} value={node.folder.id}>
-                      {node.path}
-                    </NativeSelectOption>
-                  ))}
+                <FolderOptions
+                  folders={folders}
+                  blocked={blocked}
+                  topLabel={folder ? t`All items` : t`No folder`}
+                />
                 <NativeSelectOption value={NEW_FOLDER}>{t`New folder…`}</NativeSelectOption>
               </NativeSelect>
               {target === NEW_FOLDER ? (
-                <Input
-                  name="folderName"
-                  aria-label={t`New folder name`}
-                  placeholder={t`New folder name`}
-                  aria-invalid={error ? true : undefined}
-                  autoFocus
-                />
+                <>
+                  <Input
+                    name="folderName"
+                    aria-label={t`New folder name`}
+                    placeholder={t`New folder name`}
+                    aria-invalid={error ? true : undefined}
+                    autoFocus
+                  />
+                  {/* Where the new folder goes: where the item is now, unless chosen otherwise. */}
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={parentField}>
+                      <Trans>Inside</Trans>
+                    </Label>
+                    <NativeSelect
+                      id={parentField}
+                      name="parent"
+                      defaultValue={blocked.has(current) ? "" : current}
+                      className="w-full"
+                    >
+                      <FolderOptions folders={folders} blocked={blocked} topLabel={t`All items`} />
+                    </NativeSelect>
+                  </div>
+                </>
               ) : null}
             </>
           )}

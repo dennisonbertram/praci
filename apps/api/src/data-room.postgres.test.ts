@@ -328,7 +328,8 @@ describePostgres("Data room API (PostgreSQL)", () => {
     expect(
       (await c.dataRoom.items.list({ limit: 50, folderId: folder.id })).items.map((i) => i.id),
     ).toEqual([item.id]);
-    expect((await c.dataRoom.folders()).map((f) => f.id)).toContain(folder.id);
+    // The folder list says how many items each folder holds, so a parent never looks empty.
+    expect((await c.dataRoom.folders()).find((f) => f.id === folder.id)?.itemCount).toBe(1);
     await expect(c.dataRoom.folderDelete({ id: folder.id })).rejects.toMatchObject({
       code: "CONFLICT",
     });
@@ -601,6 +602,94 @@ describePostgres("Data room API (PostgreSQL)", () => {
       }),
     ).resolves.toBeInstanceOf(Uint8Array);
     await client(actors.a).dataRoom.itemDelete({ id: target.id });
+    enqueued.length = 0;
+  });
+
+  it("reads a failed item again on Try again, and refuses one that is not failed", async () => {
+    const response = await upload("a", "name=retry.txt", `retry me ${run}`);
+    const { item: failed } = (await response.json()) as { item: DataRoomApiItem };
+    await prisma.dataRoomItem.update({
+      where: { id: failed.id },
+      data: { status: "failed", failures: 3, error: "boom" },
+    });
+    enqueued.length = 0;
+    const c = client(actors.a);
+    expect(await c.dataRoom.itemRetry({ id: failed.id })).toMatchObject({
+      status: "pending",
+      error: null,
+    });
+    expect(enqueued.map((job) => job.name)).toEqual(["dataroom.ingest"]);
+    await expect(c.dataRoom.itemRetry({ id: failed.id })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    await expect(client(actors.b).dataRoom.itemRetry({ id: failed.id })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await c.dataRoom.itemDelete({ id: failed.id });
+    enqueued.length = 0;
+  });
+
+  it("offers every type, party and source of a folder's items, not only one page", async () => {
+    const c = client(actors.a);
+    const folder = await c.dataRoom.folderCreate({ name: `Facets ${run}` });
+    const make = async (name: string, folderId: string | null, data: object) => {
+      const query = `name=${name}${folderId ? `&folderId=${folderId}` : ""}`;
+      const { item } = (await (await upload("a", query, `${name} ${run}`)).json()) as {
+        item: DataRoomApiItem;
+      };
+      await prisma.dataRoomItem.update({ where: { id: item.id }, data });
+      return item;
+    };
+    const inside = await make("lease.txt", folder.id, {
+      docType: "contract",
+      parties: ["Landlord (Mock)"],
+      docDate: new Date("2025-01-31"),
+    });
+    const outside = await make("deck.txt", null, { docType: "presentation", source: "drive" });
+    // A list page of one item still gets every value.
+    expect((await c.dataRoom.items.list({ limit: 1 })).items).toHaveLength(1);
+    const all = await c.dataRoom.facetValues({});
+    expect(all.types).toEqual(expect.arrayContaining(["contract", "presentation"]));
+    expect(all.parties).toContain("Landlord (Mock)");
+    expect(all.sources).toEqual(expect.arrayContaining(["upload", "drive"]));
+    expect(all.hasDates).toBe(true);
+    expect(await c.dataRoom.facetValues({ folderId: folder.id })).toEqual({
+      types: ["contract"],
+      parties: ["Landlord (Mock)"],
+      sources: ["upload"],
+      hasDates: true,
+    });
+    // With a filter set, the others offer only values that still find something; its own keeps
+    // every alternative.
+    expect(
+      await c.dataRoom.facetValues({ folderId: folder.id, party: "Someone Else (Mock)" }),
+    ).toEqual({ types: [], parties: ["Landlord (Mock)"], sources: [], hasDates: false });
+    // Another member of the same space sees none of it.
+    expect(await client(actors.a2).dataRoom.facetValues({ folderId: folder.id })).toEqual({
+      types: [],
+      parties: [],
+      sources: [],
+      hasDates: false,
+    });
+    for (const item of [inside, outside]) await c.dataRoom.itemDelete({ id: item.id });
+    await c.dataRoom.folderDelete({ id: folder.id });
+    enqueued.length = 0;
+  });
+
+  it("answers a plain question by matching any of its words when all of them find nothing", async () => {
+    const response = await upload("a", "name=lease.txt", `lease text ${run}`);
+    const { item: lease } = (await response.json()) as { item: DataRoomApiItem };
+    await createDataRoomRepos(prisma).replaceChunks(actors.a, lease.id, [
+      { ordinal: 0, text: `Office${run} renewal is January 31`, contentHash: `lease-${run}` },
+    ]);
+    const c = client(actors.a);
+    const page = await c.dataRoom.search({
+      query: `when does our office${run} lease end`,
+      limit: 10,
+    });
+    expect(page.results.map((r) => r.item.id)).toEqual([lease.id]);
+    expect(page.nextCursor).toBeNull();
+    await c.dataRoom.itemDelete({ id: lease.id });
     enqueued.length = 0;
   });
 

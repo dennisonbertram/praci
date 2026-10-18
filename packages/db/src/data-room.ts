@@ -271,6 +271,48 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         orderBy: [{ name: "asc" }, { id: "asc" }],
       }),
 
+    /** How many items sit directly in each folder (not in its sub-folders), by folder id. */
+    async folderItemCounts(actor: Actor): Promise<Map<string, number>> {
+      const groups = await prisma.dataRoomItem.groupBy({
+        by: ["folderId"],
+        where: { ...eligibleWhere(actor), folderId: { not: null } },
+        _count: { _all: true },
+      });
+      return new Map(groups.map((group) => [group.folderId as string, group._count._all]));
+    },
+
+    /**
+     * Every type, party and source of the caller's items in one folder (or all of them), and
+     * whether any has a document date: what the filters offer, whatever page is loaded.
+     */
+    /**
+     * The values each filter can offer: every item's, given the other filters (never its own, so a
+     * set filter still offers the alternatives). Picking any offered value finds something.
+     */
+    async facetValues(actor: Actor, filters: DataRoomFilters = {}) {
+      const types = eligibleSql(actor, { ...filters, docType: undefined });
+      const parties = eligibleSql(actor, { ...filters, party: undefined });
+      const sources = eligibleSql(actor, { ...filters, source: undefined });
+      const dates = eligibleSql(actor, {
+        ...filters,
+        docDateFrom: undefined,
+        docDateTo: undefined,
+      });
+      const [row] = await prisma.$queryRaw<
+        { types: string[]; parties: string[]; sources: string[]; hasDates: boolean }[]
+      >`
+        SELECT
+          ARRAY(SELECT DISTINCT i."docType" FROM data_room_items i
+                WHERE ${types} AND i."docType" IS NOT NULL) AS types,
+          ARRAY(SELECT DISTINCT p FROM data_room_items i, unnest(i."parties") AS p
+                WHERE ${parties}) AS parties,
+          ARRAY(SELECT DISTINCT i."source" FROM data_room_items i WHERE ${sources}) AS sources,
+          EXISTS(SELECT 1 FROM data_room_items i
+                 WHERE ${dates} AND i."docDate" IS NOT NULL) AS "hasDates"
+      `;
+      return row ?? { types: [], parties: [], sources: [], hasDates: false };
+    },
+
     async createFolder(
       actor: Actor,
       input: { name: string; parentId?: string | null; createdBy?: "user" | "agent" },
@@ -604,13 +646,15 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       const eligible = eligibleSql(actor, input.filters);
       const keywordBest = Prisma.sql`
         SELECT DISTINCT ON (c."itemId") c."itemId", c.ordinal, c.text,
-          ts_rank_cd(c.tsv, q.tsq)::float8 AS rank
+          max(ts_rank_cd(c.tsv, q.tsq)::float8) OVER (PARTITION BY c."itemId") AS rank
         FROM data_room_chunks c
         JOIN data_room_items i ON i.id = c."itemId", q
         WHERE c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
           AND ${eligible}
           AND c.tsv @@ q.tsq
-        ORDER BY c."itemId", rank DESC, c.ordinal`;
+        -- The item ranks by its best chunk, but its snippet comes from the text when the text
+        -- matches too: the name chunk (ordinal < 0) only says what the row already shows.
+        ORDER BY c."itemId", (c.ordinal < 0), ts_rank_cd(c.tsv, q.tsq) DESC, c.ordinal`;
       const best = vectorLiteral
         ? Prisma.sql`
           kw AS (
@@ -878,7 +922,8 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     /**
      * Sends ready items back to a pipeline step and returns their ids. "ingest": image items with
      * no text (vision was skipped). "classify": items whose
-     * classification was skipped. "index": items with a chunk that has no embedding, or (when
+     * classification was skipped and that have no type, date or parties (facets already there are
+     * never replaced). "index": items with a chunk that has no embedding, or (when
      * `embeddingModel` is given) one embedded by another model.
      */
     async requeueReady(
@@ -899,6 +944,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
             ? await prisma.$queryRaw<{ id: string }[]>`
               SELECT i.id FROM data_room_items i
               WHERE ${eligibleSql(actor, { status: "ready" })} AND i."classifiedAt" IS NULL
+                AND i."docType" IS NULL AND i."docDate" IS NULL AND COALESCE(cardinality(i.parties), 0) = 0
                 AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
                   AND t.text <> '')`
             : await prisma.$queryRaw<{ id: string }[]>`

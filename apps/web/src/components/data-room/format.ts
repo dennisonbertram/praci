@@ -9,12 +9,35 @@ export const dateText = (iso: string | null) =>
       }).format(new Date(iso))
     : "";
 
+/** Words for the types the classifier gives (DataRoomDocTypeSchema), where one word is unclear. */
+const typeNames = (): Record<string, string> => ({
+  tax: t`Tax document`,
+  legal: t`Legal document`,
+  hr: t`HR document`,
+  investor: t`Investor document`,
+  correspondence: t`Letter or email`,
+});
+
+/**
+ * A document type as shown: a clear name for the classifier's short types, otherwise the value
+ * with its first letter capitalised. The stored value (and the filter) stays as it is.
+ */
+export const typeLabel = (docType: string | null) =>
+  docType ? (typeNames()[docType] ?? docType.charAt(0).toLocaleUpperCase() + docType.slice(1)) : "";
+
+/**
+ * True once the item's text, type and folder are in place. "indexing" only brings search up to
+ * date (after a rename or move too), so it shows as done rather than sending the row back to
+ * "Reading".
+ */
+export const isSettled = (status: string) => status === "ready" || status === "indexing";
+
 /**
  * The word for an item's status. Every working step is "Reading": whether the item is then tagged
  * and filed depends on consent, so the list never promises filing it may not do.
  */
 export const statusLabel = (status: string) =>
-  status === "failed" ? t`Failed` : status === "ready" ? "" : t`Reading`;
+  status === "failed" ? t`Failed` : isSettled(status) ? "" : t`Reading`;
 
 /** A file size with a space before the unit: "722 bytes", "12.3 kB", "4.1 MB". */
 export function sizeText(bytes: number) {

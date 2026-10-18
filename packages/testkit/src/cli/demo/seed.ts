@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createSecretStore, syncFinanceForUser } from "@rakazo/adapters";
 import { CARTA_MCP_ENDPOINT, FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
 import { createDb, saveCapTableSnapshot } from "@rakazo/db";
@@ -6,12 +7,14 @@ import {
   DEMO_BOTS,
   DEMO_CAP_TABLE,
   DEMO_CHIEF_DRAFT,
+  DEMO_COFOUNDER,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENT_FACETS,
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
   DEMO_GROUP,
+  DEMO_READING_DOCUMENT,
   DEMO_USER_NAME,
   DEMO_WALLET,
   demoFinance,
@@ -76,6 +79,21 @@ class DemoSession {
     );
     if (!response.ok) throw new Error(`Upload of ${name} failed: ${response.status}`);
   }
+}
+
+/**
+ * Sign-up gave the user a Personal space that is also marked default and is older, so it would win
+ * the default-space tie and the user could never reach the company. Only `spaceId` stays default.
+ */
+export async function makeSpaceTheOnlyDefault(
+  prisma: Pick<ReturnType<typeof createDb>["prisma"], "space">,
+  spaceId: string,
+  userId: string,
+) {
+  await prisma.space.updateMany({
+    where: { id: { not: spaceId }, memberships: { some: { userId } } },
+    data: { isDefault: false },
+  });
 }
 
 /** Creates the demo account and fills every area the app can hold offline. Returns what it did. */
@@ -234,15 +252,66 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
             docType: facets.docType,
             docDate: new Date(Date.now() - facets.daysAgo * 24 * 60 * 60 * 1000),
             parties: facets.parties,
+            // As if the classifier filed it: allowing AI sharing later leaves these facets alone.
+            classifiedAt: new Date(),
           },
         });
       }
+      // Left mid-read with no job behind it, so it shows as "Reading" for as long as the demo runs.
+      await db.prisma.dataRoomItem.updateMany({
+        where: { spaceId, name: DEMO_READING_DOCUMENT.name },
+        data: { status: "extracting" },
+      });
     } finally {
       await db.prisma.$disconnect();
       await db.pool.end();
     }
   }
-  done.push(`${DEMO_DOCUMENTS.length} data room documents`);
+  done.push(`${DEMO_DOCUMENTS.length} data room documents (1 still reading)`);
+
+  // A cofounder in the same company, with a login of their own.
+  {
+    await new DemoSession(options.apiUrl, options.webOrigin).signUp(
+      DEMO_COFOUNDER.name,
+      DEMO_COFOUNDER.email,
+      options.password,
+    );
+    const db = createDb(options.databaseUrl);
+    try {
+      const space = await db.prisma.space.findUniqueOrThrow({ where: { id: spaceId } });
+      const user = await db.prisma.user.findUniqueOrThrow({
+        where: { email: DEMO_COFOUNDER.email },
+      });
+      const createdAt = new Date();
+      await db.prisma.member.create({
+        data: {
+          id: randomUUID(),
+          organizationId: space.organizationId,
+          userId: user.id,
+          role: "member",
+          createdAt,
+        },
+      });
+      // Joining the organization may already add the space membership (a database trigger).
+      await db.prisma.spaceMember.upsert({
+        where: { spaceId_userId: { spaceId, userId: user.id } },
+        update: {},
+        create: {
+          id: randomUUID(),
+          spaceId,
+          organizationId: space.organizationId,
+          userId: user.id,
+          role: "member",
+          createdAt,
+        },
+      });
+      await makeSpaceTheOnlyDefault(db.prisma, spaceId, user.id);
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  }
+  done.push(`second member ${DEMO_COFOUNDER.name} (${DEMO_COFOUNDER.email}, same password)`);
 
   // Artifacts: last month's investor update, filed under Chief.
   await session.rpc("artifacts/create", {

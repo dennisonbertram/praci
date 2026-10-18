@@ -1,12 +1,19 @@
 import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
 
 export const folders: DataRoomApiFolder[] = [
-  { id: "fld_contracts", name: "Contracts", parentId: null, createdAt: "2026-01-01T00:00:00.000Z" },
+  {
+    id: "fld_contracts",
+    name: "Contracts",
+    parentId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    itemCount: 2,
+  },
   {
     id: "fld_sample",
     name: "Sample vendor",
     parentId: "fld_contracts",
     createdAt: "2026-01-01T00:00:00.000Z",
+    itemCount: 3,
   },
   { id: "fld_reports", name: "Reports", parentId: null, createdAt: "2026-01-01T00:00:00.000Z" },
 ];
@@ -37,16 +44,17 @@ const item = (id: string, name: string, over: Partial<DataRoomApiItem> = {}): Da
 });
 
 export const readyItem = item("itm_ready", "Sample agreement.txt");
+export const failedItem = item("itm_failed", "Broken sample.pdf", {
+  status: "failed",
+  error: "Could not read this file",
+  facets: { ...facets, docType: null, docDate: null, parties: [], summary: null },
+});
 export const items: DataRoomApiItem[] = [
   readyItem,
   item("itm_pending", "Reading sample.pdf", {
     status: "extracting",
     facets: { ...facets, docType: null, docDate: null, parties: [], summary: null },
   }),
-  item("itm_failed", "Broken sample.pdf", {
-    status: "failed",
-    error: "Could not read this file",
-    facets: { ...facets, docType: null, docDate: null, parties: [], summary: null },
-  }),
+  failedItem,
   item("itm_mail", "Sample thread", { source: "gmail", folderId: null }),
 ];

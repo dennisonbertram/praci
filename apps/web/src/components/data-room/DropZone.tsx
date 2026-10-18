@@ -20,7 +20,9 @@ const failureText = (reason: UploadFailure) =>
     ? t`Over the 50 MB limit`
     : reason === "invalid"
       ? t`Unsupported file name`
-      : t`Upload failed`;
+      : reason === "folder-gone"
+        ? t`This folder no longer exists`
+        : t`Upload failed`;
 
 const duplicateText = ({ name, folder }: { name?: string; folder?: string }) =>
   folder
@@ -118,11 +120,13 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
           {toasts.map(({ id, name, state }) => (
             <div key={id} className="rounded-lg border border-border bg-card p-3 text-sm shadow-md">
               <div className="flex items-center justify-between gap-2">
-                {/* A delete leads with the outcome; the name follows. */}
-                {state.kind === "deleted" ? (
+                {/* A delete or rename leads with the outcome; the name follows. */}
+                {state.kind === "deleted" || state.kind === "renamed" ? (
                   <span className="font-medium">
-                    <Trans>Deleted</Trans>
+                    {state.kind === "deleted" ? <Trans>Deleted</Trans> : <Trans>Renamed</Trans>}
                   </span>
+                ) : state.kind === "notice" ? (
+                  <span className="min-w-0">{name}</span>
                 ) : (
                   <span className="min-w-0 truncate" title={name}>
                     {name}
@@ -176,12 +180,19 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                     <Trans>View</Trans>
                   </Link>
                 </div>
-              ) : state.kind === "deleted" ? (
+              ) : state.kind === "deleted" || state.kind === "renamed" ? (
                 <p className="mt-1 truncate text-xs text-muted-foreground" title={name}>
                   {name}
                 </p>
-              ) : (
-                <p className="mt-1 text-xs text-destructive">{failureText(state.reason)}</p>
+              ) : state.kind === "notice" ? null : (
+                <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                  <span className="text-destructive">{failureText(state.reason)}</span>
+                  {state.toTop ? (
+                    <Button variant="link" size="xs" className="h-auto p-0" onClick={state.toTop}>
+                      <Trans>Upload to All items</Trans>
+                    </Button>
+                  ) : null}
+                </div>
               )}
             </div>
           ))}

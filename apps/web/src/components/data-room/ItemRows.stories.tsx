@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { items } from "../../stories/fixtures/data-room";
-import { GridView, ListView, ResultsView, type RowInteraction, SubfolderList } from "./ItemRows";
+import { GridView, ListView, type RowInteraction, SubfolderList } from "./ItemRows";
 
 const o: RowInteraction = {
   shownId: "itm_ready",
@@ -42,8 +42,38 @@ export const ListWithoutFacets: Story = {
   ),
 };
 export const Grid: Story = { render: () => <GridView rows={rows} o={o} /> };
-export const Results: Story = { render: () => <ResultsView rows={hits} o={o} /> };
-/** A phone-width list: long names wrap to a second line and each row names its folder. */
+/** Search results: the same rows, with the text that matched under each. */
+export const Results: Story = { render: () => <ListView rows={hits} o={o} /> };
+/** Read while AI reading was off: the Type column says so instead of staying blank. */
+export const ListWithUntagged: Story = {
+  render: () => (
+    <ListView
+      rows={rows.map((row, index) =>
+        index === 0
+          ? { ...row, item: { ...row.item, facets: { ...row.item.facets, docType: null } } }
+          : row,
+      )}
+      o={o}
+    />
+  ),
+};
+/** Grid with an untagged file: its tile says "Not tagged"; type and date have a line each. */
+export const GridWithUntagged: Story = {
+  render: () => (
+    <GridView
+      rows={rows.map((row, index) =>
+        index === 0
+          ? { ...row, item: { ...row.item, facets: { ...row.item.facets, docType: null } } }
+          : row,
+      )}
+      o={o}
+    />
+  ),
+};
+/**
+ * A phone-width list: long names wrap to a second line, each row names its folder, and the type
+ * and date go under the name.
+ */
 export const ListNarrow: Story = {
   decorators: [
     (Story) => (
@@ -66,7 +96,13 @@ export const ListNarrow: Story = {
   ),
 };
 const subfolders = [
-  { id: "fld_inv", name: "Invoices", parentId: "fld_fin", createdAt: "2026-10-01T00:00:00.000Z" },
+  {
+    id: "fld_inv",
+    name: "Invoices",
+    parentId: "fld_fin",
+    createdAt: "2026-10-01T00:00:00.000Z",
+    itemCount: 2,
+  },
   { id: "fld_rec", name: "Receipts", parentId: "fld_fin", createdAt: "2026-10-01T00:00:00.000Z" },
 ];
 /** The grid of an open folder with sub-folders: they are tiles too, above the files. */
@@ -74,6 +110,7 @@ export const GridWithSubfolders: Story = {
   render: () => (
     <>
       <SubfolderList
+        contents={(folder) => (folder.itemCount ? `${folder.itemCount} items` : "Empty")}
         tiles
         folders={subfolders}
         onOpen={() => undefined}
@@ -89,14 +126,17 @@ export const ListWithSubfolders: Story = {
     <ListView
       rows={rows}
       o={o}
-      lead={
+      lead={(rowClass) => (
         <SubfolderList
+          rowClass={rowClass}
+          contents={(folder) => (folder.itemCount ? `${folder.itemCount} items` : "Empty")}
           folders={[
             {
               id: "fld_inv",
               name: "Invoices",
               parentId: "fld_fin",
               createdAt: "2026-10-01T00:00:00.000Z",
+              itemCount: 2,
             },
             {
               id: "fld_rec",
@@ -108,7 +148,7 @@ export const ListWithSubfolders: Story = {
           onOpen={() => undefined}
           onAction={() => undefined}
         />
-      }
+      )}
     />
   ),
 };
