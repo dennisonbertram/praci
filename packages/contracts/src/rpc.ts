@@ -794,6 +794,16 @@ export const appContract = {
       .output(CapabilityInstallSchema),
     remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
   },
+  integrationAgents: {
+    /** Idempotent: returns the server's agent bot, creating it on first call. */
+    create: oc
+      .input(z.object({ serverId: Id }))
+      .output(z.object({ server: McpServerSchema, botId: Id })),
+    /** Only the agent may use the server. Reversible; no assignment rows are deleted. */
+    setExclusive: oc
+      .input(z.object({ serverId: Id, exclusive: z.boolean() }))
+      .output(McpServerSchema),
+  },
   mcp: {
     servers: {
       list: oc.output(z.array(McpServerSchema)),
@@ -811,7 +821,7 @@ export const appContract = {
         .input(z.object({ id: Id, name: z.string().trim().min(1).max(120) }))
         .output(McpServerSchema),
       remove: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
-      /** Turns the server's known write tools on or off (Carta only for now). */
+      /** Turns the server's write tools on or off (Carta, or any server that has an agent). */
       setWrites: oc.input(z.object({ id: Id, enabled: z.boolean() })).output(McpServerSchema),
     },
     assignments: {

@@ -50,20 +50,19 @@ Web and desktop (Electron hosts the web UI) ship first. See "Mobile".
    there, whether or not exclusivity is on. This closes the case where a shared
    Mercury server is also assigned to a general bot with `allowAllTools` and a
    saved "Always allow" rule. A server with no agent behaves exactly as today.
-   Lead to confirm: this narrows existing shared access once an agent is created.
-6. **Reads and writes are classified from MCP annotations.** A tool is a read only
-   when its `tools/list` entry has `annotations.readOnlyHint === true`. A tool with
-   no annotation is a write. A small per-provider override table may force a tool
-   to read (when the real annotation is missing) or to write (when it is wrong);
-   write wins on conflict. Nothing is overridden until the spike below shows a
-   need. The seed table lists only forced writes for money movement, which can
-   only make the agent safer.
+   Confirmed: this narrows existing shared access once an agent is created.
+6. **Reads and writes are classified from annotations plus explicit preset lists.**
+   `isReadTool(tool, preset)` is true when `annotations.readOnlyHint === true` or the
+   tool name is in the preset's `reads`, and false when the name is in the preset's
+   `forcedWrites` (write wins). Everything else is a write. Presets are matched by the
+   server's provider (`financeProviderForEndpoint`). Mercury and Brex are seeded with
+   the lists under "Mercury and Brex tools"; every `FINANCE_READ_TOOLS` tool is a read.
 7. **An integration agent sees only its own server.** Like the Finance and Carta
    agents (`financeOnly` in `packages/adapters/src/executor.ts`), it gets no
    Composio, no other MCP servers and no mail, Drive or Data room tools. This keeps
    a Mercury payment from being paired with an outbound email that has its own
    approval rule. It keeps the plain built-ins (messaging, memory, scratchpad).
-   Lead to confirm.
+   Confirmed.
 8. **Deleting or archiving the agent releases the server.** `agentBotId` is
    `ON DELETE SET NULL`; archiving clears it in the same code that archives the
    bot. Release also sets `agentExclusive = false` and `writesEnabled = false`, so
@@ -115,7 +114,7 @@ Web and desktop (Electron hosts the web UI) ship first. See "Mobile".
 - **Real tool lists.** `FINANCE_READ_TOOLS` (`packages/contracts/src/finance.ts:51`)
   records the read tools Finance uses, from real lists, but not their annotations.
   The tool names under "Mercury and Brex tools" below were visible to the planning
-  session; their annotations were not inspected. The spike (task 0) settles it.
+  session; their annotations were not inspected. The explicit preset lists (decision 6) make the rule independent of annotations.
 
 ## Data model
 
@@ -248,7 +247,7 @@ tools) and has a usable title for an MCP tool.
 ## Mercury and Brex tools
 
 Planning-session view of the real tool names (annotations not inspected). These
-lists seed the preset's forced writes and are the fallback for the spike.
+lists are the presets' `reads` and `forcedWrites` (decision 6).
 
 - **Mercury writes:** `requestSendMoney`, `requestTransferMoney` (money movement; the
   vendor may also hold them for its own approval, which is a second gate, not a
@@ -263,7 +262,7 @@ lists seed the preset's forced writes and are the fallback for the spike.
   `assign_limit_to_card`, `assign_limit_for_card_expenses`, `update_expense_memo`,
   `replace_attendees_for_card_expense`, `upload_card_expense_receipt_from_urls`,
   `submit_feedback`.
-- **Brex unclear (treated as writes until the spike):** `start_expense_download`
+- **Brex unclear (kept as writes):** `start_expense_download`
   (starts an export job), `verify_shipping_address`.
 - **Brex reads:** the remaining `get_*`, `list_*` and `query_expense_analytics`.
 
@@ -337,18 +336,12 @@ All deterministic and offline; no real vendor is called.
   count at 0, approve makes it 1. Another agent cannot call the tool and can reach
   the agent through `message_bot`.
 - **Manual:** against the emulator only. Never exercise writes against a real
-  Mercury or Brex account. The one real-account step is read-only: signing in and
-  recording each server's `tools/list` annotations (task 0). It moves no money.
+  Mercury or Brex account.
 
 ## Tasks
 
-Task 0 is a maintainer step, not code. Tasks run in waves; within a wave they touch
+Tasks run in waves; within a wave they touch
 disjoint files and can run in parallel.
-
-**Task 0 (spike, maintainer, any time before Task 4).** Sign in to Mercury and Brex,
-list tools, and record per tool: name, `readOnlyHint`, `destructiveHint`. Paste the
-table (names and flags only) into this file under "Mercury and Brex tools". Settles
-the override table.
 
 **Wave 1**
 
@@ -383,8 +376,8 @@ the override table.
 **Wave 3 (after Wave 2)**
 
 - **Task 4: Mercury and Brex, and the offline write test.** Owns:
-  `packages/contracts/src/integration-agent.ts` (preset text and, from Task 0,
-  overrides; sequenced after Task 1, so no conflict),
+  `packages/contracts/src/integration-agent.ts` (preset text;
+  sequenced after Task 1, so no conflict),
   `packages/adapters/src/finance-fake-tools.ts`,
   `packages/testkit/src/cli/emulated-app.ts` and `demo/data.ts` (the fake write
   tool), and the end-to-end spec. Also runs the manual path above and records what
@@ -395,12 +388,9 @@ mobile screen. Each gets its own plan update.
 
 ## Open questions
 
-- TBD: do Mercury and Brex annotate their tools? Task 0 answers it.
 - TBD: should exclusivity also deny `read` tools to other agents? Assumed yes
   (it is "no direct access").
 - TBD: removing a server that has an agent: archive the agent or leave it?
 - TBD: bot avatar from the integration's logo.
 - TBD: does a `message_bot`-started run show its approval to the user outside the
   agent's own thread (Task 2).
-- Lead to confirm: decision 5 (shared server limits other bots to reads) and
-  decision 7 (no mail, Drive or other connectors for an integration agent).

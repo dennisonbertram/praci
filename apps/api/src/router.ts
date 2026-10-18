@@ -574,6 +574,8 @@ function mcpServerDto(
     secretId: string | null;
     enabled: boolean;
     writesEnabled: boolean;
+    agentBotId: string | null;
+    agentExclusive: boolean;
     revision: number;
     createdAt: Date;
     updatedAt: Date;
@@ -607,6 +609,8 @@ function mcpServerDto(
     oauthAttempted,
     enabled: row.enabled,
     writesEnabled: row.writesEnabled,
+    agentBotId: row.agentBotId,
+    agentExclusive: row.agentExclusive,
     revision: row.revision,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -4396,6 +4400,19 @@ export function createRouter(deps: RouterDeps) {
           }
         });
         return { ok: true as const };
+      }),
+    },
+    // TODO(integration-agents Task 2): replace with the real handlers.
+    integrationAgents: {
+      create: authed.integrationAgents.create.handler(async () => {
+        throw new ORPCError("NOT_IMPLEMENTED", {
+          message: "Integration agents are not available yet",
+        });
+      }),
+      setExclusive: authed.integrationAgents.setExclusive.handler(async () => {
+        throw new ORPCError("NOT_IMPLEMENTED", {
+          message: "Integration agents are not available yet",
+        });
       }),
     },
     mcp: {

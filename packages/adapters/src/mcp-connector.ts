@@ -13,10 +13,14 @@ import {
   CARTA_WRITE_TOOLS,
   FINANCE_READ_TOOLS,
   financeProviderForEndpoint,
+  integrationAgentSpawnKey,
+  integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
   isFinanceAgentSpawnKey,
+  isIntegrationAgentSpawnKey,
   isLocalMcpHost,
+  isReadTool,
 } from "@rakazo/contracts";
 import type { McpServer, PrismaClient, ThreadEvents } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -75,19 +79,81 @@ export function allowlistDrift(
   };
 }
 
+type ToolAnnotations = { readOnlyHint?: boolean } | null | undefined;
+
+type GateAssignment = {
+  botId?: string;
+  allowAllTools: boolean;
+  allowedTools: unknown;
+  server: {
+    id?: string;
+    name?: string;
+    spaceId?: string;
+    userId?: string;
+    endpoint?: string | null;
+    writesEnabled?: boolean;
+    agentBotId?: string | null;
+    agentExclusive?: boolean;
+  };
+  bot?: { spawnKey: string | null; spaceId?: string; userId?: string } | null;
+};
+
+/** Whether the assignment's bot is the server's integration agent. Never trusts agentBotId alone. */
+export function isServerAgent(assignment: GateAssignment): boolean {
+  const { server, bot } = assignment;
+  return (
+    Boolean(server.agentBotId) &&
+    server.agentBotId === assignment.botId &&
+    bot?.spawnKey === integrationAgentSpawnKey(server.id ?? "") &&
+    bot?.spaceId === server.spaceId &&
+    bot?.userId === server.userId
+  );
+}
+
+/**
+ * The integration-agent gate. Returns why a tool is denied, or null. While a server has an agent, only
+ * the agent may use its write tools, and only while the server's switch is on; other bots get reads
+ * (none when the server is exclusive). An integration agent bot never works outside its own server.
+ * `writesEnabled` and the flags come from the row loaded for this call, so changes apply at once.
+ */
+export function integrationAgentDenial(
+  assignment: GateAssignment,
+  tool: { name: string; annotations?: ToolAnnotations },
+): "belongs-to-agent" | "writes-off" | null {
+  const { server, bot } = assignment;
+  const botIsIntegrationAgent = isIntegrationAgentSpawnKey(bot?.spawnKey);
+  if (!server.agentBotId && !botIsIntegrationAgent) return null;
+  if (isServerAgent(assignment)) {
+    const preset = integrationPresetForEndpoint(server.endpoint);
+    return isReadTool(tool, preset) || server.writesEnabled === true ? null : "writes-off";
+  }
+  // exclusive without an agent is off; a stranded agent bot (released or forged) gets reads only.
+  if (server.agentBotId && server.agentExclusive) return "belongs-to-agent";
+  if (botIsIntegrationAgent && bot?.spawnKey !== integrationAgentSpawnKey(server.id ?? ""))
+    return "belongs-to-agent";
+  return isReadTool(tool, integrationPresetForEndpoint(server.endpoint))
+    ? null
+    : "belongs-to-agent";
+}
+
+const denialMessage = (
+  denial: "belongs-to-agent" | "writes-off",
+  server: { name?: string },
+): string =>
+  denial === "writes-off"
+    ? `Changes are off for ${server.name ?? "this integration"}. The user can turn on "Allow changes".`
+    : `This tool belongs to the ${server.name ?? "integration"} agent. Ask it with message_bot.`;
+
 /**
  * Whether the assignment exposes a tool. The Finance agent is read-only whatever its assignment row
  * says: on a Mercury or Brex server only that provider's read tools pass, even with allowAllTools.
  */
 export function assignmentAllowsTool(
-  assignment: {
-    allowAllTools: boolean;
-    allowedTools: unknown;
-    server: { endpoint?: string | null; writesEnabled?: boolean };
-    bot?: { spawnKey: string | null } | null;
-  },
+  assignment: GateAssignment,
   toolName: string,
+  annotations?: ToolAnnotations,
 ): boolean {
+  if (integrationAgentDenial(assignment, { name: toolName, annotations })) return false;
   const cartaServer = isCartaEndpoint(assignment.server.endpoint);
   const cartaAgent = isCartaAgentSpawnKey(assignment.bot?.spawnKey);
   // Carta belongs to the Carta agent; other bots ask it through message_bot.
@@ -196,7 +262,7 @@ export class McpConnector implements ConnectorProvider {
         userId: context.userId,
         server: { enabled: true },
       },
-      include: { server: true, bot: { select: { spawnKey: true } } },
+      include: { server: true, bot: { select: { spawnKey: true, spaceId: true, userId: true } } },
     });
     const groups = await Promise.all(
       assignments.map(async (assignment): Promise<ConnectorTool[]> => {
@@ -206,11 +272,20 @@ export class McpConnector implements ConnectorProvider {
           const listed = await session.listTools({ signal: context.signal });
           reportAllowlistDrift(assignment, listed.tools, context);
           return listed.tools
-            .filter((tool) => assignmentAllowsTool(assignment, tool.name))
+            .filter((tool) => assignmentAllowsTool(assignment, tool.name, tool.annotations))
             .map((tool) => ({
               name: `mcp__${assignment.server.slug}__${tool.name}`,
               description: tool.description ?? tool.name,
               inputSchema: tool.inputSchema as Record<string, unknown>,
+              // Only for the server's agent: false makes the executor ask before each write.
+              ...(isServerAgent(assignment)
+                ? {
+                    readOnly: isReadTool(
+                      tool,
+                      integrationPresetForEndpoint(assignment.server.endpoint),
+                    ),
+                  }
+                : {}),
               route: {
                 connectorId: "mcp",
                 resourceId: assignment.serverId,
@@ -316,9 +391,33 @@ export class McpConnector implements ConnectorProvider {
         userId: context.userId,
         server: { enabled: true },
       },
-      include: { server: true, bot: { select: { spawnKey: true } } },
+      include: { server: true, bot: { select: { spawnKey: true, spaceId: true, userId: true } } },
     });
-    if (!assignment || !assignmentAllowsTool(assignment, call.route.toolName)) {
+    if (!assignment) {
+      yield { type: "error", message: "MCP tool is not assigned to this bot" };
+      return;
+    }
+    // Annotations decide read or write, so a server with an agent is asked for its tool list.
+    let annotations: ToolAnnotations;
+    if (assignment.server.agentBotId) {
+      try {
+        const session = await this.sessionFor(assignment.server, context);
+        const listed = await session.listTools({ signal: context.signal });
+        annotations = listed.tools.find((tool) => tool.name === call.route?.toolName)?.annotations;
+      } catch (error) {
+        yield { type: "error", message: sanitizeConnectorError(error) };
+        return;
+      }
+    }
+    const denial = integrationAgentDenial(assignment, {
+      name: call.route.toolName,
+      annotations,
+    });
+    if (denial) {
+      yield { type: "error", message: denialMessage(denial, assignment.server) };
+      return;
+    }
+    if (!assignmentAllowsTool(assignment, call.route.toolName, annotations)) {
       yield { type: "error", message: "MCP tool is not assigned to this bot" };
       return;
     }

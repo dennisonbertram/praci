@@ -51,7 +51,12 @@ function mcpFetch(
     failNext: boolean;
     initializations: number;
     headers?: Record<string, string>[];
-    tools?: Array<{ name: string; description?: string; inputSchema: Record<string, unknown> }>;
+    tools?: Array<{
+      name: string;
+      description?: string;
+      inputSchema: Record<string, unknown>;
+      annotations?: { readOnlyHint?: boolean };
+    }>;
     calls?: string[];
   },
   expectedUrl = "https://mcp.example.test/mcp",
@@ -1320,6 +1325,164 @@ describe("MCP connector Finance agent", () => {
       events.push(event);
     expect(events).toMatchObject([{ type: "error" }]);
     expect(state.calls).toEqual([]);
+    await connector.close();
+  });
+});
+
+describe("MCP connector integration agents", () => {
+  const endpoint = "https://mcp.mercury.com/mcp";
+  const agentServer = {
+    ...SERVER,
+    endpoint,
+    name: "Mercury",
+    spaceId: "w1",
+    userId: "u1",
+    writesEnabled: false,
+    agentBotId: "agent-1",
+    agentExclusive: false,
+  };
+  const agentBot = { spawnKey: "integration-agent:server-1", spaceId: "w1", userId: "u1" };
+  const TOOLS = [
+    { name: "getAccounts", inputSchema: { type: "object" } },
+    { name: "requestSendMoney", inputSchema: { type: "object" } },
+    { name: "mystery", inputSchema: { type: "object" } },
+    { name: "annotatedRead", inputSchema: { type: "object" }, annotations: { readOnlyHint: true } },
+  ];
+
+  async function setup(
+    botId: string,
+    bot: { spawnKey: string | null; spaceId?: string; userId?: string },
+    server: Record<string, unknown>,
+  ) {
+    const assignment = { ...ASSIGNMENT, botId, bot, server: { ...agentServer, ...server } };
+    const state = { failNext: false, initializations: 0, calls: [] as string[], tools: TOOLS };
+    vi.stubGlobal("fetch", mcpFetch(state, endpoint));
+    const connector = new McpConnector(
+      {
+        botMcpServer: {
+          findMany: vi.fn().mockImplementation(async () => [assignment]),
+          findFirst: vi.fn().mockImplementation(async () => assignment),
+        },
+      } as never,
+      {} as never,
+      { network: TEST_NETWORK },
+    );
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId,
+      signal: new AbortController().signal,
+    } as never;
+    const call = async (toolName: string) => {
+      const events: Array<{ type: string; message?: string }> = [];
+      for await (const event of connector.execute(
+        {
+          tool: `mcp__demo__${toolName}`,
+          args: {},
+          route: { connectorId: "mcp", resourceId: "server-1", toolName, endpoint },
+        } as never,
+        context,
+      ))
+        events.push(event as never);
+      return events;
+    };
+    const names = async () => (await connector.discoverTools(context)).map((t) => t.name.slice(11));
+    return { connector, state, call, names, assignment };
+  }
+
+  it("denies a non-agent bot everything on an exclusive server, with the ask-the-agent message", async () => {
+    const { connector, state, call, names } = await setup(
+      "other",
+      { spawnKey: null },
+      { agentExclusive: true },
+    );
+    expect(await names()).toEqual([]);
+    const events = await call("getAccounts");
+    expect(events).toEqual([
+      {
+        type: "error",
+        message: "This tool belongs to the Mercury agent. Ask it with message_bot.",
+      },
+    ]);
+    expect(state.calls).toEqual([]);
+    await connector.close();
+  });
+
+  it("limits a non-agent bot to read tools on a shared server", async () => {
+    const { connector, state, call, names } = await setup("other", { spawnKey: null }, {});
+    expect(await names()).toEqual(["getAccounts", "annotatedRead"]);
+    expect(await call("requestSendMoney")).toMatchObject([{ type: "error" }]);
+    expect(await call("mystery")).toMatchObject([{ type: "error" }]);
+    expect(await call("getAccounts")).toMatchObject([{ type: "result" }]);
+    expect(state.calls).toEqual(["getAccounts"]);
+    await connector.close();
+  });
+
+  it("gives the agent reads, and writes only while writesEnabled is on", async () => {
+    const { connector, state, call, names, assignment } = await setup("agent-1", agentBot, {});
+    expect(await names()).toEqual(["getAccounts", "annotatedRead"]);
+    expect(await call("requestSendMoney")).toMatchObject([{ type: "error" }]);
+    expect(state.calls).toEqual([]);
+    assignment.server.writesEnabled = true; // read fresh on every call
+    expect(await names()).toEqual(["getAccounts", "requestSendMoney", "mystery", "annotatedRead"]);
+    expect(await call("requestSendMoney")).toMatchObject([{ type: "result" }]);
+    assignment.server.writesEnabled = false;
+    expect(await call("requestSendMoney")).toMatchObject([{ type: "error" }]);
+    expect(state.calls).toEqual(["requestSendMoney"]);
+    await connector.close();
+  });
+
+  it("marks the agent's tools read or write so the executor can require approval", async () => {
+    const { connector, assignment } = await setup("agent-1", agentBot, { writesEnabled: true });
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId: "agent-1",
+      signal: new AbortController().signal,
+    } as never;
+    const tools = await connector.discoverTools(context);
+    expect(Object.fromEntries(tools.map((t) => [t.route?.toolName, t.readOnly]))).toEqual({
+      getAccounts: true,
+      requestSendMoney: false,
+      mystery: false,
+      annotatedRead: true,
+    });
+    expect(assignment).toBeDefined();
+    await connector.close();
+  });
+
+  it("does not trust agentBotId alone: the bot must match the server's space and user", async () => {
+    for (const bot of [
+      { ...agentBot, spaceId: "w2" },
+      { ...agentBot, userId: "u2" },
+      { ...agentBot, spawnKey: "integration-agent:server-2" },
+      { spawnKey: null },
+    ]) {
+      const { connector, call, names } = await setup("agent-1", bot, { writesEnabled: true });
+      expect(await names()).not.toContain("requestSendMoney");
+      expect(await call("requestSendMoney")).toMatchObject([{ type: "error" }]);
+      await connector.close();
+    }
+  });
+
+  it("keeps an integration agent off every server but its own", async () => {
+    const { connector, names } = await setup(
+      "agent-9",
+      { spawnKey: "integration-agent:server-9", spaceId: "w1", userId: "u1" },
+      { agentBotId: null },
+    );
+    expect(await names()).toEqual([]);
+    await connector.close();
+  });
+
+  it("leaves a server without an agent unchanged, and ignores exclusive without an agent", async () => {
+    const { connector, call, names } = await setup(
+      "other",
+      { spawnKey: null },
+      { agentBotId: null, agentExclusive: true },
+    );
+    expect(await names()).toEqual(["getAccounts", "requestSendMoney", "mystery", "annotatedRead"]);
+    expect(await call("requestSendMoney")).toMatchObject([{ type: "result" }]);
     await connector.close();
   });
 });

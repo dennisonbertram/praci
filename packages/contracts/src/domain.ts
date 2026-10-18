@@ -800,8 +800,12 @@ export const McpServerSchema = z.object({
   /** A browser sign-in was started and has not finished (its session is still open). */
   oauthAttempted: z.boolean(),
   enabled: z.boolean(),
-  /** Whether the server's known write tools may be offered to agents. Off by default. */
+  /** Whether the server's write tools may be used by its agent. Off by default. */
   writesEnabled: z.boolean(),
+  /** The server's integration agent (a bot), or null. Defaults let handlers omit it until they set it. */
+  agentBotId: Id.nullable().default(null),
+  /** While true, only the agent may use the server's tools. Ignored without an agent. */
+  agentExclusive: z.boolean().default(false),
   revision: z.number().int().positive(),
   createdAt: z.string(),
   updatedAt: z.string(),

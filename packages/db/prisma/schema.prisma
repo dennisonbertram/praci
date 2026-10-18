@@ -465,6 +465,7 @@ model Bot {
   runs                   Run[]
   steeringMessages       SteeringMessage[]
   mcpServers             BotMcpServer[]
+  agentForServers        McpServer[]           @relation("McpServerAgent")
   connectionAccess       BotConnectionAccess[]
   groupMembers           ChatGroupMember[]
   botSecrets             BotSecret[]
@@ -1310,8 +1311,13 @@ model McpServer {
   secretId              String?
   secret                Secret?                @relation(fields: [secretId], references: [id], onDelete: SetNull)
   enabled               Boolean                @default(true)
-  /// Whether the server's known write tools may be offered to agents (Carta only for now).
+  /// Whether the server's agent may use its write tools (Carta, or any server that has an agent).
   writesEnabled         Boolean                @default(false)
+  /// The server's integration agent, if the user made one. Cleared when the bot is deleted.
+  agentBotId            String?
+  agentBot              Bot?                   @relation("McpServerAgent", fields: [agentBotId], references: [id], onDelete: SetNull)
+  /// While true, only agentBotId may use the server's tools.
+  agentExclusive        Boolean                @default(false)
   revision              Int                    @default(1)
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
@@ -1325,6 +1331,7 @@ model McpServer {
 
   @@unique([spaceId, userId, slug])
   @@index([spaceId, userId])
+  @@index([agentBotId])
   @@map("mcp_servers")
 }
 

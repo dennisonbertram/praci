@@ -54,6 +54,7 @@ import {
   isCartaAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
+  isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
   LEGAL_AGENT_MODEL,
@@ -147,6 +148,7 @@ import {
   describeApprovalAction,
   isCartaMailSend,
   isCartaWrite,
+  isIntegrationAgentWrite,
 } from "./approval-ask.js";
 import {
   approvalPausedToolResult,
@@ -3586,7 +3588,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The Carta agent likewise uses only MCP tools (Carta) plus the built-in mail, drive and
         // finance tools.
         const cartaAgent = isCartaAgentSpawnKey(bot.spawnKey);
-        const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey) || cartaAgent;
+        // An integration agent works with its one MCP server and the plain built-ins only.
+        const integrationAgent = isIntegrationAgentSpawnKey(bot.spawnKey);
+        const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey) || cartaAgent || integrationAgent;
         // The Legal agent works from the Data Room, mail and Drive through its own tools only: no
         // Composio, MCP or other connector tools, and a fixed list of built-ins (read-only mail).
         const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
@@ -4142,11 +4146,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
             contactsEnabled,
             messagingChannelRun,
             cartaAgent,
+            integrationAgent,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
           }),
           // Cross-owner agent connections only exist for chat-linked bots.
-          ...(hasMessagingIdentity && !cartaAgent && !isBackgroundRunTrigger(run.trigger)
+          ...(hasMessagingIdentity &&
+          !cartaAgent &&
+          !integrationAgent &&
+          !isBackgroundRunTrigger(run.trigger)
             ? agentConnectionTools.filter((tool) => !disabledBuiltinTools.has(tool.name))
             : []),
         ].filter((tool) => !legalOnly || legalToolSet.has(tool.name));
@@ -4591,9 +4599,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
             requiresUnattendedApproval ||
             toolRequiresApproval(name, viaConnector, declaredReadOnly);
           const callRoute = (resolvedTool ?? connectorTools.get(name))?.route;
-          const cartaWriteTool = isCartaWrite(bot.spawnKey, callRoute)
-            ? callRoute?.toolName
-            : undefined;
+          // Carta's write tools and an integration agent's non-read MCP tools (the connector marks
+          // the agent's reads `readOnly`): same card with the full call, no saved rule, no Auto Review.
+          const cartaWriteTool =
+            isCartaWrite(bot.spawnKey, callRoute) ||
+            isIntegrationAgentWrite(bot.spawnKey, callRoute, declaredReadOnly)
+              ? callRoute?.toolName
+              : undefined;
           const requiresMandatoryApproval =
             requiresUnattendedApproval ||
             toolRequiresExplicitApproval(name) ||
@@ -6867,11 +6879,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ? legalEnabled
               ? "Start with legal_unreviewed_documents, read each with read_data_room_item, and record what you find with the legal_* tools. Use mail_search and drive_search for legal documents that are not in the Data Room yet."
               : undefined
-            : financeOnly
-              ? financeAgentRunLine(financeEnabled, run.trigger)
-              : connectedPlugins.length > 0
-                ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
-                : "No plugins are connected yet.";
+            : integrationAgent
+              ? undefined
+              : financeOnly
+                ? financeAgentRunLine(financeEnabled, run.trigger)
+                : connectedPlugins.length > 0
+                  ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
+                  : "No plugins are connected yet.";
         const taughtSkillIndex = savedSkills.slice(0, 20);
         const taughtSkillsLine =
           taughtSkillIndex.length > 0
@@ -8046,11 +8060,23 @@ export function selectBuiltinToolsForRun(options: {
   messagingChannelRun: boolean;
   /** The Carta agent: no delegation to other bots, whose runs would skip its mail approval. */
   cartaAgent?: boolean;
+  /** An integration agent: no mail, calendar, Drive, Data room, finance or contact tools. */
+  integrationAgent?: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
   /** Built-in names this bot turned off. Unknown names are ignored. */
   disabledBuiltinTools?: readonly string[];
 }) {
+  if (options.integrationAgent)
+    options = {
+      ...options,
+      mailEnabled: false,
+      calendarEnabled: false,
+      driveEnabled: false,
+      dataRoomEnabled: false,
+      financeEnabled: false,
+      contactsEnabled: false,
+    };
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
   return selectCalendarTools(
     selectMailTools(
