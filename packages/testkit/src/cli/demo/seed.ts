@@ -12,6 +12,7 @@ import {
   DEMO_DOCUMENTS,
   DEMO_EMPTY_SPACE,
   DEMO_GROUP,
+  DEMO_RATE_LIMIT_SPACE,
   DEMO_RECONNECT_SPACE,
   DEMO_USER_NAME,
   DEMO_WALLET,
@@ -272,16 +273,21 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   await session.rpc("spaces/create", { name: DEMO_EMPTY_SPACE });
   done.push(`empty space "${DEMO_EMPTY_SPACE}"`);
 
-  // A space whose Gmail sign-in has lapsed: the emulator has no mailbox for this third account, so
-  // every Gmail call answers 401 and the Inbox shows Reconnect.
-  const broken = await session.rpc<{ id: string }>("spaces/create", { name: DEMO_RECONNECT_SPACE });
-  const lapsed = await session.rpc<{ connectionId: string }>(
-    "connections/begin",
-    { provider: "GMAIL", displayName: "Old mail (Mock)" },
-    broken.id,
-  );
-  await session.rpc("connections/complete", { connectionId: lapsed.connectionId }, broken.id);
-  await session.rpc("inbox/refresh", {}, broken.id).catch(() => undefined);
-  done.push(`space "${DEMO_RECONNECT_SPACE}" with a Gmail account that needs reconnecting`);
+  // Spaces whose Gmail is broken: the demo's emulator answers 401 (sign-in lapsed, so the Inbox
+  // shows Reconnect) or 429 (rate limited) for each one's first account.
+  for (const [name, label, what] of [
+    [DEMO_RECONNECT_SPACE, "Old mail (Mock)", "needs reconnecting"],
+    [DEMO_RATE_LIMIT_SPACE, "Busy mail (Mock)", "is rate-limited"],
+  ] as const) {
+    const space = await session.rpc<{ id: string }>("spaces/create", { name });
+    const begun = await session.rpc<{ connectionId: string }>(
+      "connections/begin",
+      { provider: "GMAIL", displayName: label },
+      space.id,
+    );
+    await session.rpc("connections/complete", { connectionId: begun.connectionId }, space.id);
+    await session.rpc("inbox/refresh", {}, space.id).catch(() => undefined);
+    done.push(`space "${name}" with a Gmail account that ${what}`);
+  }
   return done;
 }

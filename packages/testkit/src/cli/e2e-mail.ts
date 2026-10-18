@@ -141,6 +141,15 @@ export function createE2eComposio(
     deliverBetweenOwnAccounts?: boolean;
     /** A send to an address on this domain fails, as Gmail rejects an invalid recipient. */
     bounceDomain?: string;
+    /**
+     * A broken state for a space's first Gmail account. "signed_out": it gets no mailbox, so every
+     * Gmail call answers 401; signing in again there gets a working mailbox. "rate_limited": every
+     * Gmail call answers 429.
+     */
+    accountState?: (context: {
+      userId: string;
+      spaceId: string;
+    }) => Promise<"signed_out" | "rate_limited" | undefined>;
   } = {},
 ): ComposioEmulator & {
   gmailFor(userId: string): E2eGmailSnapshot;
@@ -150,23 +159,43 @@ export function createE2eComposio(
   const gmail = new GmailApiEmulator({ mailboxes: mailboxes() });
   const seeded = gmail.accountRefs();
   const refsByUser = new Map<string, string[]>();
+  const accountsBySpace = new Map<string, number>();
+  const rateLimited = new Set<string>();
   return new (class extends ComposioEmulator {
     override async begin(...args: Parameters<ComposioEmulator["begin"]>) {
       const result = await super.begin(...args);
       if (args[0].provider === "GMAIL") {
-        const refs = refsByUser.get(args[1].userId) ?? [];
-        const target = seeded[refs.length];
+        const { userId, spaceId } = args[1];
+        const refs = refsByUser.get(userId) ?? [];
+        // A space's accounts take the seeded mailboxes in order, so a Gmail connected in a second
+        // space works too. `refsByUser` keeps the first space's, which specs address by name.
+        const slot = accountsBySpace.get(`${userId}:${spaceId}`) ?? 0;
+        accountsBySpace.set(`${userId}:${spaceId}`, slot + 1);
+        const state = slot === 0 ? await options.accountState?.({ userId, spaceId }) : undefined;
+        if (state === "signed_out") return result;
+        if (state === "rate_limited") rateLimited.add(result.state);
+        const firstSpace = refs.length === slot;
+        const target = firstSpace ? seeded[slot] : seeded[slot % seeded.length];
         const fresh = target ? mailboxes()[target] : undefined;
         if (target && fresh) {
           gmail.isolate(result.state, target, fresh);
-          refs.push(result.state);
-          refsByUser.set(args[1].userId, refs);
+          if (firstSpace) {
+            refs.push(result.state);
+            refsByUser.set(userId, refs);
+          }
         }
       }
       return result;
     }
 
     override async proxy(request: ConnectorProxyRequest) {
+      if (rateLimited.has(request.accountRef)) {
+        const message = "Quota exceeded for quota metric 'Queries'";
+        return {
+          status: 429,
+          data: { error: { code: 429, message, status: "RESOURCE_EXHAUSTED" } },
+        };
+      }
       const sending = request.method === "POST" && /\/drafts\/send(\?|$)/.test(request.url);
       const id = (request.body as { id?: unknown } | undefined)?.id;
       const draft = sending

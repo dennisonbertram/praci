@@ -23,6 +23,8 @@ export const DEMO_COMPANY = "MOCK DEMO DATA — Northwind Robotics";
 export const DEMO_EMPTY_SPACE = "MOCK DEMO DATA — Empty space";
 /** A space whose only Gmail account lost its sign-in, for the Reconnect state. */
 export const DEMO_RECONNECT_SPACE = "MOCK DEMO DATA — Mail needs reconnect";
+/** A space whose Gmail answers every call with a rate limit. */
+export const DEMO_RATE_LIMIT_SPACE = "MOCK DEMO DATA — Mail rate-limited";
 /** Mail sent to this domain fails, so a failed send can be tried (for example bounce@…). */
 export const DEMO_BOUNCE_DOMAIN = "send-fail.example.test";
 /** How long after the stack starts the mock new email arrives. */

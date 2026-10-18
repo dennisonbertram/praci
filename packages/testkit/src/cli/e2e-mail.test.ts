@@ -67,6 +67,60 @@ describe("demo Composio", () => {
     expect(response.status).toBe(400);
     expect(t.composio.gmailFor("u1")["e2e-first"]?.sent).toHaveLength(0);
   });
+
+  it("gives a Gmail connected in another space a working mailbox", async () => {
+    const t = await setup({});
+    const other = (
+      await t.composio.begin({ provider: "GMAIL", redirectUrl: "http://localhost/cb" }, {
+        userId: "u1",
+        spaceId: "s2",
+      } as AdapterContext)
+    ).state;
+    const listed = await t.composio.proxy({
+      accountRef: other,
+      url: `${BASE}/messages`,
+      method: "GET",
+    } as never);
+    expect(listed.status).toBe(200);
+    // The first space's accounts keep their seeded names.
+    expect(Object.keys(t.composio.gmailFor("u1"))).toEqual(["e2e-first", "e2e-second"]);
+  });
+
+  it("signs out the first Gmail of a chosen space, and signing in again works", async () => {
+    const composio = createE2eComposio(undefined, {
+      accountState: async ({ spaceId }) => (spaceId === "lapsed" ? "signed_out" : undefined),
+    });
+    const begin = async () =>
+      (
+        await composio.begin({ provider: "GMAIL", redirectUrl: "http://localhost/cb" }, {
+          userId: "u1",
+          spaceId: "lapsed",
+        } as AdapterContext)
+      ).state;
+    const get = async (accountRef: string) =>
+      (await composio.proxy({ accountRef, url: `${BASE}/messages`, method: "GET" } as never))
+        .status;
+    expect(await get(await begin())).toBe(401);
+    expect(await get(await begin())).toBe(200);
+  });
+
+  it("rate-limits the first Gmail of a chosen space", async () => {
+    const composio = createE2eComposio(undefined, {
+      accountState: async () => "rate_limited",
+    });
+    const ref = (
+      await composio.begin({ provider: "GMAIL", redirectUrl: "http://localhost/cb" }, {
+        userId: "u1",
+        spaceId: "busy",
+      } as AdapterContext)
+    ).state;
+    const listed = await composio.proxy({
+      accountRef: ref,
+      url: `${BASE}/messages`,
+      method: "GET",
+    } as never);
+    expect(listed.status).toBe(429);
+  });
 });
 
 const inbox = (t: Awaited<ReturnType<typeof setup>>, ref: string) => t.inbox(ref);

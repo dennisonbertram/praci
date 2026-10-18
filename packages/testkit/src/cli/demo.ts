@@ -19,6 +19,7 @@ import { loadOrCreateCredentials } from "./demo/credentials.js";
 import {
   DEMO_BOUNCE_DOMAIN,
   DEMO_NEW_MAIL_DELAY_MS,
+  DEMO_RATE_LIMIT_SPACE,
   DEMO_RECONNECT_SPACE,
   demoCarta,
   demoCrypto,
@@ -223,6 +224,7 @@ Mail states to try:
   New mail:     one email from Priya arrives ${DEMO_NEW_MAIL_DELAY_MS / 60_000} minutes after start
   Failed send:  send to any address @${DEMO_BOUNCE_DOMAIN}
   Reconnect:    switch to the space "${DEMO_RECONNECT_SPACE}"
+  Rate limit:   switch to the space "${DEMO_RATE_LIMIT_SPACE}"
   Between accounts: mail from Sales mail to Founder mail arrives in Founder mail
 Stop and delete it with: ${SLOT ? `DEMO_SLOT=${SLOT} ` : ""}pnpm demo:down`);
 }
@@ -332,9 +334,21 @@ async function serve() {
   const { serve: listen } = await import("@hono/node-server");
   const { createEmulatedApp } = await import("./emulated-app.js");
   const { createE2eComposio } = await import("./e2e-mail.js");
+  const { createDb } = await import("@rakazo/db");
+  const { prisma } = createDb(process.env.DATABASE_URL as string);
   const composio = createE2eComposio(demoMailboxes, {
     deliverBetweenOwnAccounts: true,
     bounceDomain: DEMO_BOUNCE_DOMAIN,
+    // Only the seeded reconnect and rate-limit spaces start broken; Gmail connected anywhere else works.
+    accountState: async ({ spaceId }) => {
+      const space = await prisma.space.findUnique({
+        where: { id: spaceId },
+        select: { name: true },
+      });
+      if (space?.name === DEMO_RECONNECT_SPACE) return "signed_out";
+      if (space?.name === DEMO_RATE_LIMIT_SPACE) return "rate_limited";
+      return undefined;
+    },
   });
   // New mail while the Inbox is open: one message lands in the founder's mailbox after a delay.
   setTimeout(
