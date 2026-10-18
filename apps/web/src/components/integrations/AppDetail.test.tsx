@@ -216,3 +216,26 @@ it("offers Reconnect on a signed-out mail account and replaces it once signed in
   expect(revoke).toHaveBeenCalledWith({ connectionId: "old" });
   expect(where()).toBe("/app/inbox");
 });
+
+it("offers Remove account per row only when there is more than one account", async () => {
+  const account = (id: string) =>
+    ({
+      id,
+      connectorId: "google",
+      provider: "gmail",
+      displayName: `Mail ${id}`,
+      status: "connected",
+      error: null,
+      capabilities: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+    }) as IntegrationsData["connections"][number];
+  const labels = () => [...container.querySelectorAll("button")].map((b) => b.textContent);
+  await show(PAGE, data({ connections: [account("a")] }));
+  // With one account, Disconnect Gmail is the single way to remove it.
+  expect(labels()).not.toContain("Remove account");
+  expect(labels()).toContain("Disconnect Gmail");
+  act(() => root.unmount());
+  container.remove();
+  await show(PAGE, data({ connections: [account("a"), account("b")] }));
+  expect(labels().filter((label) => label === "Remove account")).toHaveLength(2);
+});

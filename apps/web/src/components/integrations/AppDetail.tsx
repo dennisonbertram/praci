@@ -43,7 +43,8 @@ function AccountRow({
 }: {
   row: Connection;
   onChanged: () => void;
-  onRemove: (row: Connection) => void;
+  /** Left out for the only account: Disconnect below does the same thing, and two such buttons confuse. */
+  onRemove?: (row: Connection) => void;
   /** Offered when the provider refuses this account's sign-in. */
   onReconnect?: (row: Connection) => void;
 }) {
@@ -110,15 +111,17 @@ function AccountRow({
       <Button size="sm" variant="outline" onClick={() => setDraft(row.displayName)}>
         <Trans>Rename</Trans>
       </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        className="text-destructive"
-        aria-label={t`Remove ${row.displayName}`}
-        onClick={() => onRemove(row)}
-      >
-        <Trans>Remove account</Trans>
-      </Button>
+      {onRemove ? (
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-destructive"
+          aria-label={t`Remove ${row.displayName}`}
+          onClick={() => onRemove(row)}
+        >
+          <Trans>Remove account</Trans>
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -340,7 +343,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                 key={row.id}
                 row={row}
                 onChanged={() => void data.refresh()}
-                onRemove={setRemovingRow}
+                onRemove={accountCount > 1 ? setRemovingRow : undefined}
                 onReconnect={
                   item
                     ? (lapsed) => {
