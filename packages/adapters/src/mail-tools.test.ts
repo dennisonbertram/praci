@@ -368,7 +368,7 @@ describe("show_emails", () => {
         { id: "m2", urgency: "later" },
       ],
     });
-    expect(result).toEqual({ shown: 2 });
+    expect(result).toEqual({ shown: 2, note: expect.stringContaining("Do not list them again") });
     expect(publish).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledWith([
       {
@@ -423,7 +423,7 @@ describe("show_emails", () => {
       await mailToolFromTool("show_emails", deps, context(), {
         emails: [{ id: "m1" }, { id: "gone" }],
       }),
-    ).toEqual({ shown: 1, notFound: ["gone"] });
+    ).toEqual({ shown: 1, notFound: ["gone"], note: expect.any(String) });
     publish.mockClear();
     const none = withRows([]);
     const result = await mailToolFromTool("show_emails", none.deps, context(), {

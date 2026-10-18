@@ -679,7 +679,12 @@ async function showEmails(
   if (emails.length === 0) return CARD_NOT_FOUND;
   await deps.publish([{ kind: "emails", emails }]);
   const notFound = [...requested.keys()].filter((id) => !found.has(id));
-  return { shown: emails.length, ...(notFound.length ? { notFound } : {}) };
+  return {
+    shown: emails.length,
+    ...(notFound.length ? { notFound } : {}),
+    // Models tended to list every card again as text below them.
+    note: "The user now sees these emails as cards with sender, subject and date. Do not list them again; answer in a sentence or two.",
+  };
 }
 
 // --- mail_draft, mail_modify, mail_send ---
