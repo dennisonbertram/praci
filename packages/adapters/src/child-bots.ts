@@ -267,6 +267,14 @@ export async function archiveSpawnedBot(
   return { ok: true as const, botId: target.id, name: target.name };
 }
 
+/** Deleting or archiving an integration agent frees its servers: no agent, shared, read-only. */
+function releaseAgentServers(tx: Pick<PrismaClient, "mcpServer">, botId: string) {
+  return tx.mcpServer.updateMany({
+    where: { agentBotId: botId },
+    data: { agentBotId: null, agentExclusive: false, writesEnabled: false },
+  });
+}
+
 export async function archiveBot(
   deps: BotLifecycleDeps,
   bot: LifecycleBot,
@@ -317,6 +325,7 @@ export async function archiveBot(
       where: { id: bot.id },
       data: { archivedAt: bot.archivedAt ?? now, pinned: false },
     });
+    await releaseAgentServers(tx, bot.id);
   });
   await Promise.allSettled([
     ...activeRuns.map((run) => deps.jobs.cancel(runJobKey(run.id))),
@@ -419,6 +428,7 @@ export async function destroyBot(
           memoriesPreserved: !options.deleteMemories,
         },
       });
+      await releaseAgentServers(tx, bot.id);
       await tx.bot.delete({ where: { id: bot.id } });
       if (webhookSecretId) {
         await tx.secret.deleteMany({

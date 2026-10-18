@@ -168,6 +168,7 @@ import {
   isCartaEndpoint,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
+  isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   parseTicketRef,
@@ -346,6 +347,7 @@ import {
   inboxComposeSend,
 } from "./inbox-compose.js";
 import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
+import { ensureIntegrationAgent, setIntegrationExclusive } from "./integration-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
   legalAgent,
@@ -557,6 +559,7 @@ function computerContext(actor: Actor, botId: string, operationId: string): Adap
 }
 
 const CARTA_ONLY_MESSAGE = "Carta is used only by the Carta agent.";
+const EXCLUSIVE_SERVER_MESSAGE = "This integration is used only by its agent.";
 
 function mcpServerDto(
   row: {
@@ -1837,7 +1840,8 @@ export function createRouter(deps: RouterDeps) {
           isInboxAgentSpawnKey(input.spawnKey) ||
           isFinanceAgentSpawnKey(input.spawnKey) ||
           isLegalAgentSpawnKey(input.spawnKey) ||
-          isCartaAgentSpawnKey(input.spawnKey)
+          isCartaAgentSpawnKey(input.spawnKey) ||
+          isIntegrationAgentSpawnKey(input.spawnKey)
         ) {
           throw new ORPCError("BAD_REQUEST", { message: "Reserved spawn key" });
         }
@@ -1890,9 +1894,24 @@ export function createRouter(deps: RouterDeps) {
             userId: context.actor.userId,
           },
         });
-        if (assignments.length) {
+        // An exclusive server belongs to its agent; the copy never gets it.
+        const exclusive = new Set(
+          (
+            await deps.prisma.mcpServer.findMany({
+              where: {
+                id: { in: assignments.map((assignment) => assignment.serverId) },
+                spaceId: context.actor.spaceId,
+                userId: context.actor.userId,
+                agentExclusive: true,
+              },
+              select: { id: true },
+            })
+          ).map((server) => server.id),
+        );
+        const copied = assignments.filter((assignment) => !exclusive.has(assignment.serverId));
+        if (copied.length) {
           await deps.prisma.botMcpServer.createMany({
-            data: assignments.map((assignment) => ({
+            data: copied.map((assignment) => ({
               spaceId: context.actor.spaceId,
               userId: context.actor.userId,
               botId: duplicate.id,
@@ -4402,17 +4421,26 @@ export function createRouter(deps: RouterDeps) {
         return { ok: true as const };
       }),
     },
-    // TODO(integration-agents Task 2): replace with the real handlers.
     integrationAgents: {
-      create: authed.integrationAgents.create.handler(async () => {
-        throw new ORPCError("NOT_IMPLEMENTED", {
-          message: "Integration agents are not available yet",
-        });
+      create: authed.integrationAgents.create.handler(async ({ context, input }) => {
+        const { server, bot } = await ensureIntegrationAgent(
+          { prisma: deps.prisma, repos },
+          context.actor,
+          input.serverId,
+        );
+        return {
+          server: mcpServerDto(server, await mcpOAuth.statusFor(server, context.actor)),
+          botId: bot.id,
+        };
       }),
-      setExclusive: authed.integrationAgents.setExclusive.handler(async () => {
-        throw new ORPCError("NOT_IMPLEMENTED", {
-          message: "Integration agents are not available yet",
-        });
+      setExclusive: authed.integrationAgents.setExclusive.handler(async ({ context, input }) => {
+        const row = await setIntegrationExclusive(
+          deps.prisma,
+          context.actor,
+          input.serverId,
+          input.exclusive,
+        );
+        return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
       }),
     },
     mcp: {
@@ -4679,16 +4707,17 @@ export function createRouter(deps: RouterDeps) {
           };
           const server = await deps.prisma.mcpServer.findFirst({ where });
           if (!server) throw new IsolationError();
-          if (!isCartaEndpoint(server.endpoint))
+          if (!isCartaEndpoint(server.endpoint) && !server.agentBotId)
             throw new ORPCError("BAD_REQUEST", {
-              message: "Writes can only be turned on for a Carta server",
+              message: "Writes can only be turned on for a Carta server or a server with an agent",
             });
           const row = await deps.prisma.mcpServer.update({
             where: { id: server.id },
             data: { writesEnabled: input.enabled },
           });
           // The Carta agent's tool list follows the switch; the call-time check already does.
-          await assignToExistingCartaAgent(deps.prisma, context.actor);
+          if (isCartaEndpoint(server.endpoint))
+            await assignToExistingCartaAgent(deps.prisma, context.actor);
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         remove: authed.mcp.servers.remove.handler(async ({ context, input }) => {
@@ -4786,10 +4815,12 @@ export function createRouter(deps: RouterDeps) {
                     userId: context.actor.userId,
                     enabled: true,
                   },
-                  select: { id: true, endpoint: true },
+                  select: { id: true, endpoint: true, agentBotId: true, agentExclusive: true },
                 }),
               ]);
               if (!bot || !server) throw new IsolationError();
+              if (server.agentExclusive && server.agentBotId !== bot.id)
+                throw new ORPCError("BAD_REQUEST", { message: EXCLUSIVE_SERVER_MESSAGE });
               if (
                 bot.spawnKey !== cartaAgentSpawnKey(context.actor.userId) &&
                 isCartaEndpoint(server.endpoint)
@@ -4844,6 +4875,19 @@ export function createRouter(deps: RouterDeps) {
               select: { id: true, endpoint: true },
             });
             if (servers.length !== input.assignments.length) throw new IsolationError();
+            // Exclusive servers of other bots: never newly granted, and their saved rows are kept
+            // (hidden from this bot's list) so turning exclusivity off restores the sharing.
+            const exclusiveOthers = (
+              await tx.mcpServer.findMany({
+                where: {
+                  spaceId: context.actor.spaceId,
+                  userId: context.actor.userId,
+                  agentExclusive: true,
+                  agentBotId: { not: bot.id },
+                },
+                select: { id: true },
+              })
+            ).map((server) => server.id);
             if (
               bot.spawnKey !== cartaAgentSpawnKey(context.actor.userId) &&
               servers.some((server) => isCartaEndpoint(server.endpoint))
@@ -4857,20 +4901,32 @@ export function createRouter(deps: RouterDeps) {
               },
               select: { serverId: true },
             });
+            if (
+              input.assignments.some(
+                (assignment) =>
+                  exclusiveOthers.includes(assignment.serverId) &&
+                  !previous.some((row) => row.serverId === assignment.serverId),
+              )
+            )
+              throw new ORPCError("BAD_REQUEST", { message: EXCLUSIVE_SERVER_MESSAGE });
             const nextIds = new Set(input.assignments.map((assignment) => assignment.serverId));
             const removed = previous
               .map((row) => row.serverId)
-              .filter((serverId) => !nextIds.has(serverId));
+              .filter((serverId) => !nextIds.has(serverId) && !exclusiveOthers.includes(serverId));
             await tx.botMcpServer.deleteMany({
               where: {
                 botId: bot.id,
                 spaceId: context.actor.spaceId,
                 userId: context.actor.userId,
+                serverId: { notIn: exclusiveOthers },
               },
             });
-            if (input.assignments.length)
+            const kept = input.assignments.filter(
+              (assignment) => !exclusiveOthers.includes(assignment.serverId),
+            );
+            if (kept.length)
               await tx.botMcpServer.createMany({
-                data: input.assignments.map((assignment) => ({
+                data: kept.map((assignment) => ({
                   spaceId: context.actor.spaceId,
                   userId: context.actor.userId,
                   botId: bot.id,
