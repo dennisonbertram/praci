@@ -54,8 +54,8 @@ jobs:
   playwright:
     name: Web E2E
     runs-on: ubuntu-latest
-    # 224 of 257 tests ran in 20 minutes on 2 workers with no hangs, so the full suite needs about 23.
-    timeout-minutes: 30
+    # The full suite takes about 25 minutes on 2 workers; leave room so a run is not cancelled.
+    timeout-minutes: 45
     concurrency:
       group: ${{ inputs.publish_report && 'playwright-publication' || format('playwright-{0}', github.run_id) }}
       cancel-in-progress: false
